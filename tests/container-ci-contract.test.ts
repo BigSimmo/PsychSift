@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -175,5 +176,64 @@ describe("container delivery contract", () => {
     expect(workflow).toMatch(/Generate SBOMs[\s\S]*?continue-on-error:\s*true/);
     expect(workflow).toMatch(/Vulnerability scan \(HIGH,CRITICAL\)[\s\S]*?continue-on-error:\s*true/);
     expect(workflow).toContain("if-no-files-found: warn");
+  });
+
+  it("builds the image on main/release pushes whenever a container input changes, and only then", () => {
+    const workflow = read(".github/workflows/docker-image.yml");
+    const pushBlock = /^  push:\n((?:    .*\n)+)/m.exec(workflow)?.[1] ?? "";
+    expect(pushBlock).toContain('branches: [main, "release/**"]');
+    const globs = [...pushBlock.matchAll(/^      - "([^"]+)"$/gm)].map((match) => match[1]);
+    expect(globs.length).toBeGreaterThan(10);
+    const globToRegExp = (glob: string) =>
+      new RegExp(
+        `^${glob
+          .split(/(\*\*|\*)/)
+          .map((part) => (part === "**" ? ".*" : part === "*" ? "[^/]*" : part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")))
+          .join("")}$`,
+      );
+    const matchers = globs.map(globToRegExp);
+    const triggersBuild = (file: string) => matchers.some((matcher) => matcher.test(file));
+
+    // Every path that sends a PR through the container job (containerPatterns in
+    // ci-change-scope.mjs) must also rebuild on main, or main could stop proving
+    // an input the PR side treats as container-relevant.
+    const scope = read("scripts/ci-change-scope.mjs");
+    const patternBlock = /const containerPatterns = \[([\s\S]*?)\n\];/.exec(scope)?.[1] ?? "";
+    const literals = [...patternBlock.matchAll(/^\s*"([^"]+)",/gm)].map((match) => match[1]);
+    const regexes = [...patternBlock.matchAll(/^\s*\/(.+)\/,\s*$/gm)].map((match) => new RegExp(match[1]));
+    expect(literals.length).toBeGreaterThan(10);
+    expect(regexes.length).toBeGreaterThanOrEqual(3);
+    const tracked = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean);
+    for (const literal of literals) {
+      const covered = tracked.filter((file) => file === literal || file.startsWith(`${literal}/`));
+      for (const file of covered.length ? covered : [literal]) {
+        expect(triggersBuild(file), `${file} (containerPatterns "${literal}") must rebuild the image on main`).toBe(
+          true,
+        );
+      }
+    }
+    for (const regex of regexes) {
+      for (const file of tracked.filter((candidate) => regex.test(candidate))) {
+        expect(triggersBuild(file), `${file} (containerPatterns ${regex}) must rebuild the image on main`).toBe(true);
+      }
+    }
+
+    // Files the Dockerfiles COPY by name are build inputs even where the PR
+    // classifier does not list them.
+    for (const dockerfile of ["Dockerfile", "Dockerfile.worker"]) {
+      for (const match of read(dockerfile).matchAll(/^COPY (?!--from)(.+) \S+$/gm)) {
+        for (const source of match[1].split(/\s+/)) {
+          if (source === ".") continue;
+          expect(triggersBuild(source), `${dockerfile} copies ${source}; it must rebuild the image on main`).toBe(true);
+        }
+      }
+    }
+
+    // Source-only and docs-only merges no longer rebuild (Railway builds them itself).
+    for (const file of ["src/app/page.tsx", "docs/deployment-architecture.md", "tests/ui-smoke.spec.ts"]) {
+      expect(triggersBuild(file), `${file} should not rebuild the image on main`).toBe(false);
+    }
+    // A daily schedule still builds, smokes and scans main.
+    expect(workflow).toMatch(/^\s*- cron: "0 18 \* \* \*"$/m);
   });
 });

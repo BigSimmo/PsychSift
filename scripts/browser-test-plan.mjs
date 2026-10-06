@@ -102,7 +102,7 @@ export const SHARED_FOUNDATION_PATTERNS = [
   /^playwright(?:\..*)?\.config\.ts$/,
   /^tests\/helpers\//,
   /^tests\/playwright-.*\.ts$/,
-  /^scripts\/(?:run-playwright|playwright-base-url|playwright-browser-preflight|playwright-pr-shards)\.mjs$/,
+  /^scripts\/(?:run-playwright|playwright-base-url|playwright-browser-preflight|playwright-pr-shards|playwright-release-shards)\.mjs$/,
   /^src\/components\/ClinicalDashboard\.tsx$/,
   /^src\/components\/clinical-dashboard\/(?:global-search-shell|master-search-header|mobile-composer-reserve|phone-footer-layer-portal|scroll-surface|use-active-scroll-owner|use-dashboard-chrome-coordinator|use-hide-on-scroll|use-phone-overlay-chrome-reserve)\.(?:ts|tsx)$/,
   /^src\/lib\/app-modes\.ts$/,
@@ -212,7 +212,7 @@ export const BROWSER_LANE_PATTERNS = [
   /^tests\/helpers\/.*\.ts$/,
   /^tests\/__screenshots__\//,
   /^playwright(?:\..*)?\.config\.ts$/,
-  /^scripts\/(?:run-playwright|playwright-base-url|playwright-browser-preflight|playwright-pr-shards|check-playwright-browser-revision)\.(?:mjs|ts)$/,
+  /^scripts\/(?:run-playwright|playwright-base-url|playwright-browser-preflight|playwright-pr-shards|playwright-release-shards|check-playwright-browser-revision)\.(?:mjs|ts)$/,
   /^scripts\/(?:run|check)-lighthouse-budget\.mjs$/,
   /^lighthouse-budget\.json$/,
   // On Call's stored entries and its demo corpus, plus demo fixtures generally —

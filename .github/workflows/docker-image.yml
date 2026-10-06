@@ -9,16 +9,68 @@ name: Docker image build
 #
 # Pull requests and merge queues call this workflow from CI when the repository's
 # container scope changes, so the result feeds the required `pr-required`
-# aggregate. Standalone runs cover main/release pushes, the weekly schedule, and
-# manual dispatch. Nothing is pushed to a registry.
+# aggregate. Standalone runs cover main/release pushes that touch the image
+# inputs, a daily schedule, and manual dispatch. Nothing is pushed to a registry:
+# Railway builds its own images from the Dockerfiles on deploy (railway.app.json /
+# railway.worker.json `builder: DOCKERFILE`), so no deploy consumes this job.
+#
+# Push paths: `containerPatterns` in scripts/ci-change-scope.mjs (the same scope
+# that runs the PR-side container job) plus every file the Dockerfiles COPY by
+# name. Before this filter the image rebuilt on every merge, but only 16 of 114
+# merges in the week to 6 Oct 2026 touched these paths (~1.4k job-minutes/week).
+# tests/container-ci-contract.test.ts fails closed if this list stops covering
+# `containerPatterns`. A source-only merge is still built by Railway itself, and
+# the daily schedule (was weekly) rebuilds, smokes and Trivy-scans main within a
+# day, so a CVE in the base image is still found promptly.
 
 on:
   workflow_call:
   push:
     branches: [main, "release/**"]
+    paths:
+      - "Dockerfile"
+      - "Dockerfile.worker"
+      - ".dockerignore"
+      - ".github/workflows/docker-image.yml"
+      - ".npmrc"
+      - ".nvmrc"
+      - "next.config.ts"
+      - "postcss.config.mjs"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
+      - "railway.app.json"
+      - "railway.worker.json"
+      - "tests/stubs/server-only.ts"
+      - "tests/container-ci-contract.test.ts"
+      - "tests/deploy-migration-gate.test.ts"
+      - "worker/**"
+      - "eval/docling/requirements.txt"
+      - "eval/docling/verify-model-artifacts.mjs"
+      - "eval/docling/model-artifacts.json"
+      - "scripts/deploy/**"
+      - "scripts/lib/is-entrypoint.mjs"
+      - "scripts/app-container-smoke.*"
+      - "scripts/build-worker.*"
+      - "scripts/check-client-bundle-secrets.*"
+      - "scripts/check-image-content-contract.*"
+      - "scripts/check-installed-lock-parity.*"
+      - "scripts/check-node-engine.*"
+      - "scripts/check-upload-limit-parity.*"
+      - "scripts/check-worker-python-lock.*"
+      - "scripts/enable-server-only-stub.*"
+      - "scripts/generate-worker-python-lock.*"
+      - "scripts/guard-next-build.*"
+      - "scripts/install-git-hooks.*"
+      - "scripts/register-server-only.*"
+      - "scripts/resolve-oci-image-digest.*"
+      - "scripts/resolve-tsx-cli.*"
+      - "scripts/run-heavy.*"
+      - "scripts/run-tsx.*"
+      - "scripts/trivy-image-scan.*"
   workflow_dispatch:
   schedule:
-    - cron: "0 18 * * 0"
+    - cron: "0 18 * * *"
 
 concurrency:
   # Use a workflow-specific literal. In a reusable invocation `github.workflow`

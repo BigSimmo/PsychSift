@@ -315,7 +315,7 @@ const uiPatterns = [
   // Without these, a main-only edit to the helpers reports ui_changed=false and
   // the narrowed release-browser-matrix backstop also skips, so a browser-launch
   // or shard-runner regression can pass Vitest alone.
-  /^scripts\/(run-playwright|playwright-base-url|playwright-browser-preflight|playwright-pr-shards|check-playwright-browser-revision)\.(?:mjs|ts)$/,
+  /^scripts\/(run-playwright|playwright-base-url|playwright-browser-preflight|playwright-pr-shards|playwright-release-shards|check-playwright-browser-revision)\.(?:mjs|ts)$/,
   // Committed visual baselines. Without this a commit that changes only a golden
   // PNG reports ui_changed=false, the visual job is skipped, and an incorrect or
   // corrupted baseline is never compared against the app it claims to describe.
@@ -1070,6 +1070,7 @@ function selfTest() {
       "scripts/playwright-browser-preflight.mjs",
       "scripts/check-playwright-browser-revision.mjs",
       "scripts/playwright-pr-shards.mjs",
+      "scripts/playwright-release-shards.mjs",
     ],
     {
       source_changed: true,
