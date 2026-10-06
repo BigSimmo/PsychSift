@@ -52,7 +52,6 @@ const SITES = {
 // Per-day counts follow the approved mock-up's signed-out example (v10), within the 14-day window.
 const ROWS: readonly SampleRow[] = [
   { day: 0, start: "17:00", end: "23:00", kind: "evening", code: "E", site: "northgate" },
-  { day: 0, start: "21:30", end: "08:00", kind: "night", code: "N", site: "riverside" },
   { day: 1, start: "08:00", end: "16:30", kind: "day", code: "D", site: "northgate", urgent: true },
   { day: 1, start: "14:00", end: "22:30", kind: "evening", code: "E", site: "riverside" },
   { day: 1, start: "21:30", end: "08:00", kind: "night", code: "N", site: "riverside", urgent: true },
