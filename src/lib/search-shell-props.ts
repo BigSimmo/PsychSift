@@ -97,7 +97,9 @@ export function searchShellPropsForPathname(pathname: string): SearchShellPathPr
     return {
       initialMode: "sources",
       desktopSearchPlacement: "hero",
-      ...(pathname === "/sources/method" || isDetail ? { searchComposerVisible: false } : {}),
+      ...(pathname === "/sources/method" || pathname === "/sources/currency" || isDetail
+        ? { searchComposerVisible: false }
+        : {}),
     };
   }
 

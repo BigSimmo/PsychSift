@@ -598,6 +598,11 @@
         "area": "mockup"
       },
       {
+        "path": "/sources/currency",
+        "file": "src/app/(search-app)/sources/currency/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/document-navigation-contract",
         "file": "src/app/mockups/document-navigation-contract/page.tsx",
         "area": "mockup"

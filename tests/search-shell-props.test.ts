@@ -97,6 +97,7 @@ describe("searchShellPropsForPathname", () => {
     expect(searchShellPropsForPathname("/sources/topics")).toEqual(visible);
     expect(searchShellPropsForPathname("/sources/publishers")).toEqual(visible);
     expect(searchShellPropsForPathname("/sources/method")).toEqual({ ...visible, searchComposerVisible: false });
+    expect(searchShellPropsForPathname("/sources/currency")).toEqual({ ...visible, searchComposerVisible: false });
     expect(searchShellPropsForPathname("/sources/src_example")).toEqual({ ...visible, searchComposerVisible: false });
   });
 
@@ -107,7 +108,7 @@ describe("searchShellPropsForPathname", () => {
       const props = searchShellPropsForPathname(entry.href);
       expect(props.initialMode).toBe("sources");
       expect(props.desktopSearchPlacement).toBe("hero");
-      if (entry.id === "method") {
+      if (entry.id === "method" || entry.id === "currency") {
         expect(props.searchComposerVisible).toBe(false);
       } else {
         expect(props.searchComposerVisible).not.toBe(false);

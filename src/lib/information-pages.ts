@@ -67,7 +67,7 @@ export function isInformationPage(pathname: string): boolean {
   if (isSlugDetail(pathname, "/formulation")) return true;
   if (isSlugDetail(pathname, "/factsheets", ["search", "topics"])) return true;
   if (isSlugDetail(pathname, "/dictionary", ["search", "browse", "topics", "compare", "sources"])) return true;
-  if (isSlugDetail(pathname, "/sources", ["topics", "publishers", "method"])) return true;
+  if (isSlugDetail(pathname, "/sources", ["topics", "publishers", "currency", "method"])) return true;
   // Every On Call route, the mode home included. The mode declares no search
   // surface: it has no composer on any page, filter chips inside a page do the
   // narrowing, and this is what keeps the shell from mounting one. Its pages

@@ -155,6 +155,8 @@ const routeDescriptions: Record<string, string> = {
   "/sources/[sourceId]": "Clinical source traceability record: identity, rating, canonical locations and usage.",
   "/sources/method": "How the catalogue rates, reviews and traces a source, and its stated limitations.",
   "/sources/publishers": "Publishing bodies grouped by jurisdiction scope.",
+  "/sources/currency":
+    "Currency check: which sources are current or due for review, and recorded review dates in the next six months.",
   "/sources/search":
     "The ranked clinical source catalogue: filter and sort by quality band, jurisdiction, source type, publisher, topic, lifecycle and application usage.",
   "/sources/topics": "Clinical topics derived from registered source metadata.",
@@ -673,7 +675,7 @@ function renderModePageIndex() {
       home: appModeHomeHref("sources"),
       search: appModeHomeHref("sources", { query: "RANZCP", focus: true, run: true }),
       detail:
-        "`/sources` redirects to the shared home, which carries a `Browse catalogue` chip; `/sources/search` is the filterable catalogue, and a submitted or filter-carrying deep link to `/sources` forwards there. Also `/sources/topics`, `/sources/publishers`, `/sources/method`, and `/sources/[sourceId]` traceability records.",
+        "`/sources` redirects to the shared home, which carries a `Browse catalogue` chip; `/sources/search` is the filterable catalogue, and a submitted or filter-carrying deep link to `/sources` forwards there. Also `/sources/topics`, `/sources/publishers`, `/sources/currency`, `/sources/method`, and `/sources/[sourceId]` traceability records.",
     },
     {
       mode: "Therapy Compass",

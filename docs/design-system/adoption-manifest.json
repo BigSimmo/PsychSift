@@ -688,6 +688,7 @@
         "src/components/cme/cme-entry-page.tsx",
         "src/components/cme/cme-routines-page.tsx",
         "src/components/sources/sources-catalogue-client.tsx",
+        "src/components/sources/sources-currency-page.tsx",
         "src/components/sources/sources-pages.tsx",
         "src/components/therapy-compass/screens/pathways-screen.tsx",
         "src/components/therapy-compass/ui.tsx",
@@ -699,6 +700,7 @@
         "src/components/cme/cme-entry-page.tsx",
         "src/components/cme/cme-routines-page.tsx",
         "src/components/sources/sources-catalogue-client.tsx",
+        "src/components/sources/sources-currency-page.tsx",
         "src/components/sources/sources-pages.tsx",
         "src/components/therapy-compass/screens/pathways-screen.tsx",
         "src/components/therapy-compass/ui.tsx",
@@ -3255,6 +3257,7 @@
         "src/app/(search-app)/services/page.tsx",
         "src/app/(search-app)/services/search/page.tsx",
         "src/app/(search-app)/sources/[sourceId]/page.tsx",
+        "src/app/(search-app)/sources/currency/page.tsx",
         "src/app/(search-app)/sources/method/page.tsx",
         "src/app/(search-app)/sources/page.tsx",
         "src/app/(search-app)/sources/publishers/page.tsx",
@@ -4257,6 +4260,16 @@
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
           "sanctionedPatternsPresent": ["DetailPage"]
+        },
+        {
+          "file": "src/app/(search-app)/sources/currency/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
         },
         {
           "file": "src/app/(search-app)/sources/method/page.tsx",
@@ -5672,6 +5685,7 @@
       "src/app/(search-app)/services/page.tsx",
       "src/app/(search-app)/services/search/page.tsx",
       "src/app/(search-app)/sources/[sourceId]/page.tsx",
+      "src/app/(search-app)/sources/currency/page.tsx",
       "src/app/(search-app)/sources/method/page.tsx",
       "src/app/(search-app)/sources/page.tsx",
       "src/app/(search-app)/sources/publishers/page.tsx",
@@ -5835,6 +5849,7 @@
       "src/app/(search-app)/services/page.tsx",
       "src/app/(search-app)/services/search/page.tsx",
       "src/app/(search-app)/sources/[sourceId]/page.tsx",
+      "src/app/(search-app)/sources/currency/page.tsx",
       "src/app/(search-app)/sources/method/page.tsx",
       "src/app/(search-app)/sources/page.tsx",
       "src/app/(search-app)/sources/publishers/page.tsx",
@@ -5886,7 +5901,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 168,
+    "inheritedCkbV2RootCount": 169,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5895,8 +5910,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 46,
-    "rootCount": 169,
-    "productionRouteCount": 161,
-    "nextUiEntryCount": 260
+    "rootCount": 170,
+    "productionRouteCount": 162,
+    "nextUiEntryCount": 261
   }
 }
