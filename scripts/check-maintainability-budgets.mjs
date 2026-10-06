@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 const budgets = new Map([
   // Chrome ownership/reporting lives in use-dashboard-chrome-coordinator; keep
   // the reclaimed monolith budget so it cannot silently drift back to 4160.
-  ["src/components/ClinicalDashboard.tsx", 4140],
+  // 3889: per-document actions moved to use-dashboard-document-actions.ts.
+  ["src/components/ClinicalDashboard.tsx", 3889],
   // Evidence coverage, per-request hydration, and second-stage ranking live in
   // focused rag modules; keep the reclaimed budget so it cannot silently drift back.
   // 4362: soft-tail answer-cache skip call site (logic in rag-query-guard.ts).
