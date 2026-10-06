@@ -43,6 +43,18 @@
  * calls per main push. Every proved job checks out the run's GITHUB_SHA (no `ref:` override,
  * pinned by tests/ci-main-tree-proof.test.ts), so the Change scope record covers every leg.
  *
+ * PR branch updates (`pull_request` / `synchronize`, same-repo PRs only) use the same record:
+ * a newer head of the same PR reuses an earlier green run of that PR when
+ *   - the earlier head is an ancestor of the new head and the run is <= 24h old;
+ *   - the earlier run's recorded tested tree can be rebuilt locally with exactly that hash
+ *     (its head's tree, or `git merge-tree` of its head with a recent main commit), so the
+ *     file delta is computed between the two trees that were ACTUALLY tested; and
+ *   - that delta is empty (identical tested tree: coverage, UI and Lighthouse all carry), or
+ *     every changed path is in UNRELATED_INPUT_RULES (UI and Lighthouse carry; unit coverage,
+ *     lint, typecheck and every security gate still run). Anything else is a full run.
+ * Each group is taken from the newest candidate run in which that group's legs really ran
+ * green, so a carried (skipped) result is never used as proof for the next update.
+ *
  * Run:  node scripts/ci-main-tree-proof.mjs              (in CI)
  *       node scripts/ci-main-tree-proof.mjs --self-test  (offline unit checks)
  */
@@ -52,6 +64,30 @@ import { pathToFileURL } from "node:url";
 
 export const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
 export const TESTED_TREE_TITLE = "CI tested tree";
+export const MAX_PR_CANDIDATE_RUNS = 3;
+const MAX_MERGE_BASE_SEARCH = 40;
+
+/**
+ * Paths that are NOT transitive inputs of the Next production build, the Playwright projects or
+ * the Lighthouse run, so a delta made only of these cannot change those verdicts. Deliberately
+ * tiny and extension-scoped: tsconfig.json includes every *.ts/*.tsx/*.mts in the repository in
+ * `next build`'s type check, the build's prebuild step reads docs/outstanding-issues.md, src
+ * imports docs/**\/*.json, and specs read docs files - so no code, JSON or docs path is listed.
+ * tests/ci-main-tree-proof.test.ts re-scans every build/browser/Lighthouse input (src, public,
+ * data, specs, helpers, fixtures, configs, and the transitive closure of the scripts those jobs
+ * run) and fails if any of them references one of these roots.
+ */
+export const UNRELATED_INPUT_RULES = Object.freeze([
+  /^[^/]+\.md$/,
+  /^\.github\/pull_request_template\.md$/,
+  /^worker\/(?:[^/]+\/)*[^/]+\.(?:py|txt|toml|cfg|ini|lock)$/,
+  /^eval\/(?:[^/]+\/)*[^/]+\.(?:py|txt|toml|cfg|ini|lock|md)$/,
+]);
+
+/** True only when `path` matches an UNRELATED_INPUT_RULES entry. Pure. */
+export function isUnrelatedInput(path) {
+  return UNRELATED_INPUT_RULES.some((rule) => rule.test(String(path)));
+}
 const TESTED_TREE_MESSAGE = /^event=(\S+) sha=([0-9a-f]{40}) tree=([0-9a-f]{40})$/;
 export const DEFAULT_MAX_PROOF_AGE_HOURS = 24;
 
@@ -231,6 +267,156 @@ export async function evaluate({
   };
 }
 
+/** Candidate earlier green runs of the same PR, newest first. Pure. */
+export function selectPullRequestCandidates(
+  runs,
+  { prNumber, now = new Date(), maxAgeHours = DEFAULT_MAX_PROOF_AGE_HOURS },
+) {
+  const maxAgeMs = maxAgeHours * 3_600_000;
+  return (Array.isArray(runs) ? runs : [])
+    .filter(
+      (run) =>
+        run?.event === "pull_request" &&
+        run?.path === CI_WORKFLOW_PATH &&
+        run?.status === "completed" &&
+        run?.conclusion === "success" &&
+        /^[0-9a-f]{40}$/.test(String(run?.head_sha ?? "")) &&
+        Array.isArray(run?.pull_requests) &&
+        run.pull_requests.some((pr) => pr?.number === prNumber) &&
+        Number.isFinite(Date.parse(run?.updated_at)) &&
+        now.getTime() - Date.parse(run.updated_at) <= maxAgeMs &&
+        Date.parse(run.updated_at) <= now.getTime() + 60_000,
+    )
+    .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))
+    .slice(0, MAX_PR_CANDIDATE_RUNS);
+}
+
+/**
+ * Rebuild the tree an earlier run recorded as tested, so its hash can be diffed locally. Returns
+ * the tree id only when a locally produced tree has exactly the recorded hash, else null.
+ */
+export function reconstructTestedTree({ recordedTree, oldHead, mainTip, runGit, runGitOk }) {
+  if (runGitOk(["cat-file", "-e", `${recordedTree}^{tree}`])) return recordedTree;
+  if (runGit(["rev-parse", `${oldHead}^{tree}`]) === recordedTree) return recordedTree;
+  const bases = runGit(["rev-list", "--first-parent", `--max-count=${MAX_MERGE_BASE_SEARCH}`, mainTip])
+    .split("\n")
+    .filter(Boolean);
+  for (const base of bases) {
+    let tree;
+    try {
+      tree = runGit(["merge-tree", "--write-tree", base, oldHead]).split("\n")[0];
+    } catch {
+      continue; // conflicted against that base: GitHub could not have tested it either
+    }
+    if (tree === recordedTree) return tree;
+  }
+  return null;
+}
+
+/** PR branch update: reuse an earlier green run of the same PR (see the module docblock). */
+export async function evaluatePullRequestUpdate({
+  env = process.env,
+  now = new Date(),
+  request = api,
+  runGit = git,
+  runGitOk = gitOk,
+} = {}) {
+  if (env.GITHUB_EVENT_NAME !== "pull_request" || env.PR_ACTION !== "synchronize") {
+    return { proof: NONE, reason: "not a pull_request synchronize" };
+  }
+  const repo = env.GITHUB_REPOSITORY;
+  const sha = env.GITHUB_SHA;
+  const prHead = env.PR_HEAD_SHA;
+  const prNumber = Number(env.PR_NUMBER);
+  const headRef = env.PR_HEAD_REF;
+  if (
+    !repo ||
+    !headRef ||
+    !Number.isInteger(prNumber) ||
+    ![sha, prHead].every((value) => /^[0-9a-f]{40}$/.test(value ?? ""))
+  ) {
+    return { proof: NONE, reason: "missing or unusable PR event fields" };
+  }
+  if (env.PR_HEAD_REPO !== repo) return { proof: NONE, reason: "fork PR: its runs' records are not trusted" };
+  if (runGit(["rev-parse", "HEAD"]) !== sha) return { proof: NONE, reason: "checkout is not the run's commit" };
+  if (runGit(["rev-parse", "HEAD^2"]) !== prHead) {
+    return { proof: NONE, reason: "checkout is not the PR merge commit for this head" };
+  }
+  const mainTip = runGit(["rev-parse", "HEAD^1"]);
+  const newTree = runGit(["rev-parse", "HEAD^{tree}"]);
+  const maxAgeHours = Number(env.MAX_PROOF_AGE_HOURS || DEFAULT_MAX_PROOF_AGE_HOURS);
+  if (!Number.isFinite(maxAgeHours) || maxAgeHours <= 0) return { proof: NONE, reason: "invalid MAX_PROOF_AGE_HOURS" };
+
+  const runs = await request(
+    `/repos/${repo}/actions/workflows/ci.yml/runs?event=pull_request&branch=${encodeURIComponent(headRef)}&status=success&per_page=30`,
+  );
+  const candidates = selectPullRequestCandidates(runs?.workflow_runs, { prNumber, now, maxAgeHours });
+  const proof = { coverage: false, ui: false, lighthouse: false };
+  const notes = [];
+  let runUrl = "";
+  for (const run of candidates) {
+    if (proof.coverage && proof.ui && proof.lighthouse) break;
+    if (!runGitOk(["merge-base", "--is-ancestor", run.head_sha, prHead])) {
+      notes.push(`run ${run.id}: head ${run.head_sha.slice(0, 12)} is not an ancestor of this head`);
+      continue;
+    }
+    const jobs = await request(`/repos/${repo}/actions/runs/${run.id}/jobs?filter=latest&per_page=100`);
+    if (!Array.isArray(jobs?.jobs) || jobs.total_count > jobs.jobs.length) {
+      notes.push(`run ${run.id}: incomplete job list`);
+      continue;
+    }
+    const legs = classifyProof(jobs.jobs);
+    if (!Object.entries(legs).some(([group, value]) => value && !proof[group])) {
+      notes.push(`run ${run.id}: no group it ran green is still unproven`);
+      continue;
+    }
+    const scopeJobs = jobs.jobs.filter((job) => job?.name === "Change scope");
+    if (scopeJobs.length !== 1 || scopeJobs[0].conclusion !== "success") {
+      notes.push(`run ${run.id}: no single successful Change scope job`);
+      continue;
+    }
+    const tested = parseTestedTree(
+      await request(`/repos/${repo}/check-runs/${scopeJobs[0].id}/annotations?per_page=50`),
+    );
+    if (!tested || tested.event !== "pull_request") {
+      notes.push(`run ${run.id}: no tested-tree record`);
+      continue;
+    }
+    const oldTree = reconstructTestedTree({
+      recordedTree: tested.tree,
+      oldHead: run.head_sha,
+      mainTip,
+      runGit,
+      runGitOk,
+    });
+    if (!oldTree) {
+      notes.push(`run ${run.id}: could not rebuild its tested tree ${tested.tree.slice(0, 12)}`);
+      continue;
+    }
+    const changed = runGit(["diff", "--name-only", "--no-renames", oldTree, newTree]).split("\n").filter(Boolean);
+    if (changed.length === 0) {
+      for (const group of Object.keys(proof)) proof[group] ||= legs[group];
+      notes.push(`run ${run.id}: identical tested tree`);
+    } else if (changed.every(isUnrelatedInput)) {
+      proof.ui ||= legs.ui;
+      proof.lighthouse ||= legs.lighthouse;
+      notes.push(`run ${run.id}: ${changed.length} changed path(s), all outside build/browser/Lighthouse inputs`);
+    } else {
+      const first = changed.find((file) => !isUnrelatedInput(file));
+      notes.push(`run ${run.id}: ${changed.length} changed path(s) incl. input ${first}`);
+      continue;
+    }
+    runUrl ||= run.html_url ?? "";
+  }
+  return {
+    proof,
+    reason: candidates.length
+      ? notes.join("; ") || "no usable candidate run"
+      : "no earlier green run of this PR within the window",
+    runUrl,
+  };
+}
+
 function writeOutputs({ proof, reason, runUrl = "" }) {
   const lines = [
     `coverage=${proof.coverage === true}`,
@@ -248,7 +434,7 @@ function writeOutputs({ proof, reason, runUrl = "" }) {
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,
       [
-        "### Main tree proof",
+        "### Tree proof",
         "",
         `- Result: ${reason}`,
         runUrl ? `- Proving PR run: ${runUrl}` : "- Proving PR run: none",
@@ -493,10 +679,10 @@ async function main() {
   }
   let outcome;
   try {
-    outcome = await evaluate();
+    outcome = await (process.env.GITHUB_EVENT_NAME === "pull_request" ? evaluatePullRequestUpdate() : evaluate());
   } catch (error) {
     console.log(
-      `::warning title=Main tree proof unavailable::${String(error?.message ?? error)} — running the full job set.`,
+      `::warning title=Tree proof unavailable::${String(error?.message ?? error)} — running the full job set.`,
     );
     outcome = { proof: NONE, reason: `error: ${String(error?.message ?? error)}` };
   }

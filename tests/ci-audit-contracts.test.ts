@@ -38,10 +38,10 @@ describe("Lighthouse requirement matches its producer", () => {
                 for (const refresh of [false, true])
                   for (const proven of [false, true]) {
                     // Drafts and labels exist only on PRs, the refresh input only on dispatch, and
-                    // the tree proof only on main pushes.
+                    // the tree proof only on main pushes and PR updates.
                     if ((draft || label || skip) && event !== "pull_request") continue;
                     if (refresh && event !== "workflow_dispatch") continue;
-                    if (proven && event !== "push") continue;
+                    if (proven && event !== "push" && event !== "pull_request") continue;
                     const github = {
                       event_name: event,
                       event: {

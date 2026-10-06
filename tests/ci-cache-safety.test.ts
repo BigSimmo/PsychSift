@@ -673,6 +673,22 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
     expect(runAggregate().status).toBe(0);
   });
 
+  it("accepts a PR-update skip of both browser lanes only when an earlier run of the PR proved them", () => {
+    const prUpdate = {
+      EVENT_NAME: "pull_request",
+      UI_CHANGED: "true",
+      UI_BUILD_RESULT: "success",
+      UI_FAST_RESULT: "skipped",
+      UI_RESULT: "skipped",
+    };
+    const proven = runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true" });
+    expect(proven.status).toBe(0);
+    expect(proven.output).toContain("Proven on the identical tree");
+    expect(runAggregate(prUpdate).output).toContain("production-ui-critical result was skipped");
+    expect(runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true", UI_FAST_RESULT: "failure" }).status).not.toBe(0);
+    expect(runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true", UI_FAST_RESULT: "cancelled" }).status).not.toBe(0);
+  });
+
   it("accepts a main-push skip only for jobs the merged PR proved on the identical tree", () => {
     const heavyMainPush = {
       EVENT_NAME: "push",

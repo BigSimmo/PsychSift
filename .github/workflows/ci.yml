@@ -155,12 +155,25 @@ jobs:
       - name: Record tested tree
         run: node scripts/ci-main-tree-proof.mjs --record-tested-tree
 
+      #
+      # PR branch updates (same-repo PRs, `synchronize`) reuse an earlier green run of the SAME PR
+      # through the same record: identical tested tree -> coverage, UI and Lighthouse carry; a
+      # delta made only of paths outside every build/browser/Lighthouse input -> UI and Lighthouse
+      # carry, while lint, typecheck, unit coverage and security gates still run. Anything else,
+      # or any doubt, is the full run. opened/reopened/ready_for_review never take this path.
       - name: Main tree proof
         id: tree-proof
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'pull_request' && github.event.action == 'synchronize')
         env:
           GITHUB_TOKEN: ${{ github.token }}
           BEFORE_SHA: ${{ github.event.before }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: node scripts/ci-main-tree-proof.mjs
 
   sync-pr-policy-body:
@@ -664,8 +677,9 @@ jobs:
   coverage-shards:
     name: Unit coverage partition
     needs: changes
-    # `tree_proven_coverage` is only ever true on a main push whose identical tree already
-    # passed both partitions and the merged thresholds on the PR (see Main tree proof).
+    # `tree_proven_coverage` is only ever true when a recorded green run already passed both
+    # partitions and the merged thresholds on the IDENTICAL tested tree: the merged PR's run for a
+    # main push, or an earlier run of the same PR for a branch update (see Main tree proof).
     if: >
       needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true &&
       needs.changes.outputs.tree_proven_coverage != 'true'
@@ -936,7 +950,8 @@ jobs:
     if: >
       needs.changes.outputs.ui_changed == 'true' &&
       (github.event_name == 'pull_request' || github.event_name == 'merge_group') &&
-      github.event.pull_request.draft != true
+      github.event.pull_request.draft != true &&
+      needs.changes.outputs.tree_proven_ui != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -1000,8 +1015,9 @@ jobs:
     needs: [changes, static-pr, ui-playwright-build]
     # Start alongside the fail-fast subset. The suites stay disjoint on PR and
     # merge-queue events, and PR required independently demands both results.
-    # Skipped on a main push only when the identical tree already passed the @critical
-    # subset AND every PR shard (together the full production project; see Main tree proof).
+    # Skipped (main push or PR update) only when a recorded green run already passed the
+    # @critical subset AND every PR shard (together the full production project) and nothing
+    # those journeys read has changed since (see Main tree proof).
     if: >
       needs.changes.outputs.ui_changed == 'true' &&
       github.event.pull_request.draft != true &&
@@ -1566,8 +1582,8 @@ jobs:
           UI_RESULT: ${{ needs.ui-critical.result }}
           LIGHTHOUSE_RESULT: ${{ needs.lighthouse-budget.result }}
           DB_RESULT: ${{ needs.db-reset-verify.result }}
-          # Main push only: the job was skipped because its identical tree already passed it on the
-          # merged PR (Main tree proof). Empty on every other event.
+          # Main push or PR synchronize only: the job was skipped because a recorded green run already
+          # passed it and nothing it reads has changed since (Main tree proof). Empty otherwise.
           TREE_PROVEN_COVERAGE: ${{ needs.changes.outputs.tree_proven_coverage }}
           TREE_PROVEN_UI: ${{ needs.changes.outputs.tree_proven_ui }}
           TREE_PROVEN_LIGHTHOUSE: ${{ needs.changes.outputs.tree_proven_lighthouse }}
@@ -1690,7 +1706,10 @@ jobs:
             echo "::notice title=Browser tests deferred::static-pr did not pass, so the browser" \
               "lanes were skipped for this head. They run on the push that fixes static-pr."
           elif [ "$UI_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; then
-            if [ "$EVENT_NAME" = "pull_request" ] || [ "$EVENT_NAME" = "merge_group" ]; then
+            if [ "$TREE_PROVEN_UI" = "true" ]; then
+              # Carried from an earlier green run of this PR (Main tree proof, PR update path).
+              require_skipped_or_success "production-ui-critical" "$UI_FAST_RESULT"
+            elif [ "$EVENT_NAME" = "pull_request" ] || [ "$EVENT_NAME" = "merge_group" ]; then
               require_success "production-ui-critical" "$UI_FAST_RESULT"
             else
               require_skipped_or_success "production-ui-critical" "$UI_FAST_RESULT"
@@ -1807,9 +1826,9 @@ jobs:
           if [ "$TREE_PROVEN_UI" = "true" ]; then proven+=("production-ui"); fi
           if [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ]; then proven+=("lighthouse-budget"); fi
           if [ ${#proven[@]} -gt 0 ]; then
-            echo "::notice title=Proven on the identical tree::Not re-run on this main push because the" \
-              "merged PR's CI already passed them on a byte-identical tree: ${proven[*]}. The proving" \
-              "run is linked in the Change scope job summary."
+            echo "::notice title=Proven on the identical tree::Not re-run because an earlier green run" \
+              "already passed them on the tree it recorded testing, and nothing they read has changed" \
+              "since: ${proven[*]}. The proving run is linked in the Change scope job summary."
           fi
 
           echo "Required in-scope PR checks passed."
