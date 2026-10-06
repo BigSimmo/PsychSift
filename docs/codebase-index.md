@@ -692,6 +692,16 @@ rules are quoted from the one signed fatigue source with the same gate Roster's 
 doctor's self-chosen stage (`workStage`, `ranzcpStage`) lives in account preferences and is never
 copied from a shared device into a new account.
 
+**Ask the agreement.** `src/lib/work-profile/agreement-answers.ts` answers hours and rest questions
+with no AI: fixed word patterns pick a topic, and the answer is only the verbatim `FATIGUE_RULE_SET`
+quotes with their clause numbers and the agreement PDF, marked "Not signed off yet" whenever the same
+fatigue sign-off gate is off. Any other topic (overtime, leave, pay and the rest) says it is not in the
+clauses PsychSift has checked and points to the agreement. Every answer ends with AMA (WA) by name,
+with no phone number. The question runs through both patient-detail checks, is never saved and never
+goes in a URL (deep links carry fixed topic or clause ids only). The page is
+`/my-day/profile/agreement` (`src/components/agreement-ask/`); `agreementWorkSearchRecords` and
+`agreementWorkSearchAnswer` are the hooks for Search my work.
+
 **Reminder controls.** `src/lib/reminders/settings.ts` is a settings layer over the reminders that
 already exist; it never decides when anything is due. Five types (compliance dates, On Call checks,
 CPD year-end, CPD routines, teaching — in that priority order) each have "Show in the app", a snooze

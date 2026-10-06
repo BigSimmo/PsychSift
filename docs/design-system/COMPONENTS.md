@@ -1058,7 +1058,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `AnswerFooter`           | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `Breadcrumb`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             156 |
+| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             157 |
 | `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
 | `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
 | `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
@@ -1091,10 +1091,10 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `RadioGroup`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `RetrievalStateBanner`   | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `SafeBoldText`           | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
-| `SearchField`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
+| `SearchField`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              24 |
 | `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
-| `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             100 |
+| `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             101 |
 | `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `SourceDesignationBadge` | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `SourceProvenance`       | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |

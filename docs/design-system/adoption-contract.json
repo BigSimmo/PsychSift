@@ -177,6 +177,7 @@
         "src/app/(search-app)/my-day/alerts/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
+        "src/app/(search-app)/my-day/profile/agreement/page.tsx",
         "src/app/(search-app)/my-day/profile/page.tsx",
         "src/app/(search-app)/my-day/week/page.tsx",
         "src/app/(search-app)/my-work/page.tsx",

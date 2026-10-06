@@ -309,6 +309,7 @@
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/renewals/renew-next-card.tsx",
         "src/components/admin/renewals/show-filter-list.tsx",
+        "src/components/agreement-ask/agreement-ask-page.tsx",
         "src/components/alerts/alerts-device-section.tsx",
         "src/components/alerts/alerts-sheets.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
@@ -471,6 +472,7 @@
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/renewals/renew-next-card.tsx",
         "src/components/admin/renewals/show-filter-list.tsx",
+        "src/components/agreement-ask/agreement-ask-page.tsx",
         "src/components/alerts/alerts-device-section.tsx",
         "src/components/alerts/alerts-sheets.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
@@ -2089,6 +2091,7 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
+        "src/components/agreement-ask/agreement-ask-page.tsx",
         "src/components/cme/cme-log-page.tsx",
         "src/components/on-call/call/call-page.tsx",
         "src/components/on-call/find/find-page.tsx",
@@ -2096,6 +2099,7 @@
         "src/components/on-call/refer/refer-page.tsx"
       ],
       "productImportFiles": [
+        "src/components/agreement-ask/agreement-ask-page.tsx",
         "src/components/cme/cme-log-page.tsx",
         "src/components/on-call/call/call-page.tsx",
         "src/components/on-call/find/find-page.tsx",
@@ -2255,6 +2259,7 @@
         "previewValid": true
       },
       "testFiles": [
+        "tests/agreement-ask-page.dom.test.tsx",
         "tests/answer-progress-ui-smoke.spec.ts",
         "tests/challenger-m3-2-empirical.dom.test.tsx",
         "tests/challenger-m4-stress.dom.test.tsx",
@@ -2301,6 +2306,7 @@
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/admin/renewals/item-detail-sheet.tsx",
         "src/components/admin/renewals/record-dates-sheet.tsx",
+        "src/components/agreement-ask/agreement-clause-sheet.tsx",
         "src/components/alerts/alerts-sheets.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
         "src/components/applications-launcher-page.tsx",
@@ -2405,6 +2411,7 @@
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/admin/renewals/item-detail-sheet.tsx",
         "src/components/admin/renewals/record-dates-sheet.tsx",
+        "src/components/agreement-ask/agreement-clause-sheet.tsx",
         "src/components/alerts/alerts-sheets.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
         "src/components/applications-launcher-page.tsx",
@@ -3292,6 +3299,7 @@
         "src/app/(search-app)/my-day/alerts/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
+        "src/app/(search-app)/my-day/profile/agreement/page.tsx",
         "src/app/(search-app)/my-day/profile/page.tsx",
         "src/app/(search-app)/my-day/week/page.tsx",
         "src/app/(search-app)/my-work/page.tsx",
@@ -3986,6 +3994,16 @@
         },
         {
           "file": "src/app/(search-app)/my-day/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["ModeHome"]
+        },
+        {
+          "file": "src/app/(search-app)/my-day/profile/agreement/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5862,6 +5880,7 @@
       "src/app/(search-app)/my-day/alerts/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
+      "src/app/(search-app)/my-day/profile/agreement/page.tsx",
       "src/app/(search-app)/my-day/profile/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
       "src/app/(search-app)/my-work/page.tsx",
@@ -6039,6 +6058,7 @@
       "src/app/(search-app)/my-day/alerts/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
+      "src/app/(search-app)/my-day/profile/agreement/page.tsx",
       "src/app/(search-app)/my-day/profile/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
       "src/app/(search-app)/my-work/page.tsx",
@@ -6140,7 +6160,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 182,
+    "inheritedCkbV2RootCount": 183,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6149,8 +6169,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 183,
-    "productionRouteCount": 175,
-    "nextUiEntryCount": 276
+    "rootCount": 184,
+    "productionRouteCount": 176,
+    "nextUiEntryCount": 277
   }
 }
