@@ -127,3 +127,19 @@ export async function removeGoneSubscription(
 ): Promise<void> {
   await client.from("web_push_subscriptions").delete().eq("owner_id", row.owner_id).eq("id", row.id);
 }
+
+/** The owner's own row for one endpoint, or null: a test may only reach the device that asked for it. */
+export async function ownerSubscriptionFor(
+  client: RosterAdminClient,
+  ownerId: string,
+  endpoint: string,
+): Promise<PushRow | null> {
+  const { data, error } = await client
+    .from("web_push_subscriptions")
+    .select("id,owner_id,endpoint,p256dh,auth")
+    .eq("owner_id", ownerId)
+    .eq("endpoint", endpoint)
+    .limit(1);
+  if (error || !data) throw storageError(error ?? {});
+  return (data[0] as PushRow | undefined) ?? null;
+}

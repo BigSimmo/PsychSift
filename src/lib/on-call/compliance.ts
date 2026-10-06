@@ -4,6 +4,7 @@ import {
   type OnCallComplianceConsequence,
   type OnCallEntry,
 } from "@/lib/on-call/entry-model";
+import { dateKeyToUtcMillis } from "@/lib/calendar/date-keys";
 import { onCallLocalDateKey } from "@/lib/on-call/local-date";
 
 /**
@@ -120,7 +121,9 @@ export function complianceExpiresOn(entry: OnCallEntry): string | undefined {
   const details = entry.details;
   if (typeof details !== "object" || details === null) return undefined;
   const value = (details as { expiresOn?: unknown }).expiresOn;
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
+  // A real calendar day only: a stored "2026-02-30" is no date at all, never a
+  // deadline that has passed.
+  return typeof value === "string" && dateKeyToUtcMillis(value) !== null ? value : undefined;
 }
 
 /**
@@ -132,7 +135,9 @@ export function complianceIssuerCheckedOn(entry: OnCallEntry): string | undefine
   const details = entry.details;
   if (typeof details !== "object" || details === null) return undefined;
   const value = (details as { issuerCheckedOn?: unknown }).issuerCheckedOn;
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
+  // A real calendar day only: a stored "2026-02-30" is no date at all, never a
+  // deadline that has passed.
+  return typeof value === "string" && dateKeyToUtcMillis(value) !== null ? value : undefined;
 }
 
 /**

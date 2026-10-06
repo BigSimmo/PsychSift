@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-05"
+    "committed_at": "2026-10-06"
   },
   "routes": {
     "modes": [
@@ -533,6 +533,11 @@
         "area": "product"
       },
       {
+        "path": "/my-day/profile",
+        "file": "src/app/(search-app)/my-day/profile/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/also-matches-closed",
         "file": "src/app/mockups/also-matches-closed/page.tsx",
         "area": "mockup"
@@ -583,6 +588,11 @@
         "area": "product"
       },
       {
+        "path": "/my-day/alerts",
+        "file": "src/app/(search-app)/my-day/alerts/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/dictionary/topics/[slug]",
         "file": "src/app/(search-app)/dictionary/topics/[slug]/page.tsx",
         "area": "product"
@@ -596,6 +606,11 @@
         "path": "/mockups/care-plan/team",
         "file": "src/app/mockups/care-plan/team/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/sources/currency",
+        "file": "src/app/(search-app)/sources/currency/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/document-navigation-contract",
@@ -690,6 +705,11 @@
       {
         "path": "/admin/compliance",
         "file": "src/app/(search-app)/admin/compliance/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/admin/compliance/export",
+        "file": "src/app/(search-app)/admin/compliance/export/page.tsx",
         "area": "product"
       },
       {
@@ -1569,6 +1589,10 @@
       {
         "path": "/api/on-call/shifts",
         "file": "src/app/api/on-call/shifts/route.ts"
+      },
+      {
+        "path": "/api/alerts/test",
+        "file": "src/app/api/alerts/test/route.ts"
       },
       {
         "path": "/api/on-call/entries",
@@ -3944,6 +3968,11 @@
         "path": "docs/branch-cleanup-guide.md",
         "section": "root",
         "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-05-alerts-agreed-decisions.md",
+        "section": "decisions",
+        "catalogued": false
       },
       {
         "path": "docs/redesign/crisp-white-colour-system-plan.md",
