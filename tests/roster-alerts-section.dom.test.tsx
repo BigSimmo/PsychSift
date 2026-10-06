@@ -47,10 +47,16 @@ beforeEach(() => {
   getSubscription.mockResolvedValue(null);
   requestPermission.mockResolvedValue("granted");
   vi.stubGlobal("fetch", fetchMock);
-  vi.stubGlobal("Notification", { requestPermission });
+  vi.stubGlobal("Notification", { requestPermission, permission: "granted" });
+  const reg = { pushManager: { getSubscription, subscribe } };
   Object.defineProperty(navigator, "serviceWorker", {
     configurable: true,
-    value: { ready: Promise.resolve({ pushManager: { getSubscription, subscribe } }) },
+    value: {
+      ready: Promise.resolve(reg),
+      getRegistration: vi.fn(async () => reg),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    },
   });
 });
 

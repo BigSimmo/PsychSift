@@ -23,7 +23,10 @@ async function removeSubscription(progress: { removedHere: boolean }): Promise<v
       progress.removedHere = true;
       return;
     }
-    const registration = await navigator.serviceWorker.getRegistration();
+    const registration =
+      typeof navigator.serviceWorker.getRegistration === "function"
+        ? await navigator.serviceWorker.getRegistration()
+        : await navigator.serviceWorker.ready;
     const subscription = await registration?.pushManager?.getSubscription();
     if (!subscription) {
       progress.removedHere = true;
