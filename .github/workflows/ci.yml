@@ -70,6 +70,12 @@ jobs:
     name: Change scope
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # actions/pull-requests read only for the main tree proof below (find the merged PR and its
+    # CI run). Nothing here writes; every other job keeps the workflow-level `contents: read`.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
     # Export only signals consumed by job/step routing. Unknown non-document
     # paths fail closed to static_heavy_changed in ci-change-scope.mjs.
     outputs:
@@ -88,6 +94,10 @@ jobs:
       lockfile_changed: ${{ steps.scope.outputs.lockfile_changed }}
       pr_policy_body_changed: ${{ steps.scope.outputs.pr_policy_body_changed }}
       site_content_changed: ${{ steps.scope.outputs.site_content_changed }}
+      # Main-push only; empty (= not proven) on every other event. See the tree-proof step.
+      tree_proven_coverage: ${{ steps.tree-proof.outputs.coverage }}
+      tree_proven_ui: ${{ steps.tree-proof.outputs.ui }}
+      tree_proven_lighthouse: ${{ steps.tree-proof.outputs.lighthouse }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -127,6 +137,24 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           PR_DRAFT: ${{ github.event.pull_request.draft == true }}
         run: node scripts/browser-test-plan.mjs --ci-summary
+
+      # Don't re-test on main what the merged PR already proved on the IDENTICAL tree. Strict
+      # up-to-date merges mean main's new tree equals the PR head tree its pull_request CI run
+      # passed; scripts/ci-main-tree-proof.mjs checks that (single merged PR, head contains the
+      # previous tip, identical tree, green PR run under 24h old, every leg of the job green)
+      # and emits per-job proof. Any mismatch, error or missing evidence emits nothing proven,
+      # so the push runs the full job set exactly as before. Only tree-determined jobs are
+      # eligible (unit coverage, Chromium production UI, Lighthouse budget); static checks,
+      # safety, Build + deployment boot smoke, visual baselines and the Firefox/WebKit
+      # release-browser-matrix still run on every main push, and the weekly schedule and
+      # dispatches never take this path — they are the scheduled full run for drift.
+      - name: Main tree proof
+        id: tree-proof
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: node scripts/ci-main-tree-proof.mjs
 
   sync-pr-policy-body:
     name: Sync PR policy body
@@ -629,7 +657,11 @@ jobs:
   coverage-shards:
     name: Unit coverage partition
     needs: changes
-    if: needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true
+    # `tree_proven_coverage` is only ever true on a main push whose identical tree already
+    # passed both partitions and the merged thresholds on the PR (see Main tree proof).
+    if: >
+      needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true &&
+      needs.changes.outputs.tree_proven_coverage != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -683,7 +715,8 @@ jobs:
     # of `skipped` exactly as it fails `failure`.
     if: >
       !cancelled() && needs.changes.result == 'success' &&
-      needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true
+      needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true &&
+      needs.changes.outputs.tree_proven_coverage != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -960,9 +993,12 @@ jobs:
     needs: [changes, static-pr, ui-playwright-build]
     # Start alongside the fail-fast subset. The suites stay disjoint on PR and
     # merge-queue events, and PR required independently demands both results.
+    # Skipped on a main push only when the identical tree already passed the @critical
+    # subset AND every PR shard (together the full production project; see Main tree proof).
     if: >
       needs.changes.outputs.ui_changed == 'true' &&
-      github.event.pull_request.draft != true
+      github.event.pull_request.draft != true &&
+      needs.changes.outputs.tree_proven_ui != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -1224,7 +1260,8 @@ jobs:
         )
       ) &&
       !contains(github.event.pull_request.labels.*.name, 'skip-lighthouse-budget') &&
-      github.event.inputs.refresh_lighthouse_baseline != 'true'
+      github.event.inputs.refresh_lighthouse_baseline != 'true' &&
+      needs.changes.outputs.tree_proven_lighthouse != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -1520,6 +1557,11 @@ jobs:
           UI_RESULT: ${{ needs.ui-critical.result }}
           LIGHTHOUSE_RESULT: ${{ needs.lighthouse-budget.result }}
           DB_RESULT: ${{ needs.db-reset-verify.result }}
+          # Main push only: the job was skipped because its identical tree already passed it on the
+          # merged PR (Main tree proof). Empty on every other event.
+          TREE_PROVEN_COVERAGE: ${{ needs.changes.outputs.tree_proven_coverage }}
+          TREE_PROVEN_UI: ${{ needs.changes.outputs.tree_proven_ui }}
+          TREE_PROVEN_LIGHTHOUSE: ${{ needs.changes.outputs.tree_proven_lighthouse }}
         run: |
           set -euo pipefail
 
@@ -1601,7 +1643,9 @@ jobs:
             require_skipped_or_success "safety" "$SAFETY_RESULT"
           fi
 
-          if [ "$COVERAGE_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; then
+          if [ "$TREE_PROVEN_COVERAGE" = "true" ]; then
+            require_skipped_or_success "coverage" "$COVERAGE_RESULT"
+          elif [ "$COVERAGE_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; then
             require_success "coverage" "$COVERAGE_RESULT"
           else
             require_skipped_or_success "coverage" "$COVERAGE_RESULT"
@@ -1642,7 +1686,11 @@ jobs:
             else
               require_skipped_or_success "production-ui-critical" "$UI_FAST_RESULT"
             fi
-            require_success "production-ui" "$UI_RESULT"
+            if [ "$TREE_PROVEN_UI" = "true" ]; then
+              require_skipped_or_success "production-ui" "$UI_RESULT"
+            else
+              require_success "production-ui" "$UI_RESULT"
+            fi
           else
             require_skipped_or_success "production-ui-critical" "$UI_FAST_RESULT"
             require_skipped_or_success "production-ui" "$UI_RESULT"
@@ -1654,7 +1702,7 @@ jobs:
           # skipped-ok (job itself does not run on drafts unless labeled).
           # Baseline-refresh dispatch forces PERF_CHANGED=true while intentionally
           # skipping lighthouse-budget (refresh job runs instead) — accept that skip.
-          if [ "$SKIP_LIGHTHOUSE_LABEL" = "true" ] || [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ]; then
+          if [ "$SKIP_LIGHTHOUSE_LABEL" = "true" ] || [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ] || [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ]; then
             require_skipped_or_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
           elif [ "$LIGHTHOUSE_LABEL" = "true" ] || { [ "$PERF_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; }; then
             require_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
@@ -1738,6 +1786,16 @@ jobs:
                 "ready for review - which reruns this workflow in full - or run the equivalent gate" \
                 "locally and say which one you ran."
             fi
+          fi
+
+          proven=()
+          if [ "$TREE_PROVEN_COVERAGE" = "true" ]; then proven+=("coverage"); fi
+          if [ "$TREE_PROVEN_UI" = "true" ]; then proven+=("production-ui"); fi
+          if [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ]; then proven+=("lighthouse-budget"); fi
+          if [ ${#proven[@]} -gt 0 ]; then
+            echo "::notice title=Proven on the identical tree::Not re-run on this main push because the" \
+              "merged PR's CI already passed them on a byte-identical tree: ${proven[*]}. The proving" \
+              "run is linked in the Change scope job summary."
           fi
 
           echo "Required in-scope PR checks passed."
@@ -1893,6 +1951,9 @@ jobs:
           # includes mockups, whose public flag is baked in, so it builds its own.
           # If the producer was out of scope, the wrapper also builds normally.
           PLAYWRIGHT_REUSE_BUILD: ${{ matrix.engine != 'chromium' && needs.ui-playwright-build.result == 'success' }}
+          # "true" only when this main push skipped Production UI because the identical tree already
+          # passed it on the merged PR (Main tree proof) — the same proof the primary path relies on.
+          UI_PROVEN_BY_PR: ${{ needs.changes.outputs.tree_proven_ui }}
         run: |
           # Both paths below are exhaustive across playwright.config.ts projects
           # for their own path, and disjoint between engines. The fail-safe union
@@ -1900,9 +1961,10 @@ jobs:
           # vanish from CI silently, so
           # `tests/ci-browser-matrix-coverage.test.ts` re-derives both unions from
           # this file plus playwright.config.ts and fails closed on any drift.
-          if [ "${{ needs.changes.outputs.ui_changed }}" = "true" ] && [ "${{ needs.ui-critical.result }}" = "success" ]; then
-            # Production Chromium already passed in this run. Keep mockup
-            # Chromium plus the cross-browser backstop without repeating it.
+          if [ "${{ needs.changes.outputs.ui_changed }}" = "true" ] && { [ "${{ needs.ui-critical.result }}" = "success" ] || [ "$UI_PROVEN_BY_PR" = "true" ]; }; then
+            # Production Chromium already passed — in this run, or on the merged PR's
+            # byte-identical tree. Keep mockup Chromium plus the cross-browser
+            # backstop without repeating it.
             case "$ENGINE" in
               chromium) PROJECTS="--project=chromium-mockups" ;;
               firefox)  PROJECTS="--project=firefox" ;;
