@@ -220,6 +220,7 @@
     "tests/resolve-tsx-cli.test.ts",
     "tests/reviewed-commit-history.test.ts",
     "tests/scripts-shared-helpers.test.ts",
+    "tests/secret-scan-merge-group.test.ts",
     "tests/setup-codex-worktree.test.ts",
     "tests/setup/**",
     "tests/soak-test.test.ts",
