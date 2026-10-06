@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-06T07:48:44.931Z",
+  "generated_at": "2026-10-06T12:18:54.473Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "e36b385bc832676585fbcaae48d526dc5794a0b445654c1fe90235ba94591945",
-  "replay_seconds": 14,
+  "schema_sha256": "c23378261073db0bc09975a62c5e34fc74bc555de462a4081c80a35d969f4511",
+  "replay_seconds": 21,
   "snapshot": {
     "views": [
       {
@@ -15509,6 +15509,12 @@
         "def_hash": "7934650c5776bb1b3f190aa376ad6084"
       },
       {
+        "def": "CREATE UNIQUE INDEX user_favourite_sets_user_lower_name_key ON public.user_favourite_sets USING btree (user_id, lower(name))",
+        "name": "user_favourite_sets_user_lower_name_key",
+        "table": "user_favourite_sets",
+        "def_hash": "add89f0e256ba2986b0aacf85cd2ca82"
+      },
+      {
         "def": "CREATE UNIQUE INDEX user_favourite_sets_user_name_key ON public.user_favourite_sets USING btree (user_id, name)",
         "name": "user_favourite_sets_user_name_key",
         "table": "user_favourite_sets",
@@ -23239,7 +23245,7 @@
         "table": "teaching_week_adds"
       },
       {
-        "def": "CHECK ((name = ANY (ARRAY['Clinical review'::text, 'Ward round'::text, 'On call'::text, 'Follow up'::text, 'Teaching'::text, 'Reference'::text])))",
+        "def": "CHECK ((((char_length(name) >= 1) AND (char_length(name) <= 40)) AND (name = btrim(name)) AND (name !~ '[0-9]{5}'::text) AND (name !~ '[0-9][/.-][0-9]'::text) AND (char_length(regexp_replace(name, '[^0-9]'::text, ''::text, 'g'::text)) <= 4) AND (POSITION(('@'::text) IN (name)) = 0) AND (lower(name) <> ALL (ARRAY['unsorted'::text, 'all'::text]))))",
         "name": "user_favourite_sets_name_check",
         "table": "user_favourite_sets"
       },

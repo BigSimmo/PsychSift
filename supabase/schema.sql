@@ -9207,8 +9207,17 @@ create table if not exists public.user_favourite_sets (
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  -- Typed names, held to the identifier rules in src/lib/favourite-set-name.ts.
   constraint user_favourite_sets_name_check
-    check (name in ('Clinical review', 'Ward round', 'On call', 'Follow up', 'Teaching', 'Reference')),
+    check (
+      char_length(name) between 1 and 40
+      and name = btrim(name)
+      and name !~ '[0-9]{5}'
+      and name !~ '[0-9][/.-][0-9]'
+      and char_length(regexp_replace(name, '[^0-9]', '', 'g')) <= 4
+      and position('@' in name) = 0
+      and lower(name) not in ('unsorted', 'all')
+    ),
   constraint user_favourite_sets_sort_order_check check (sort_order between 0 and 10000),
   constraint user_favourite_sets_user_name_key unique (user_id, name),
   constraint user_favourite_sets_user_id_id_key unique (user_id, id)
@@ -9243,6 +9252,8 @@ begin
 end
 $guard$;
 
+create unique index if not exists user_favourite_sets_user_lower_name_key
+  on public.user_favourite_sets (user_id, lower(name));
 create index if not exists user_favourite_sets_owner_order_idx
   on public.user_favourite_sets (user_id, sort_order, created_at, id);
 create index if not exists user_favourites_owner_set_order_idx
