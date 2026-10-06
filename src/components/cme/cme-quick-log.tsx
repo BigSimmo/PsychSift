@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useCmeSample } from "@/components/cme/cme-sample-context";
 import { CmeEntryForm, type CmeEntryDraft, type CmeEntryFormProps } from "@/components/cme/cme-entry-form";
@@ -17,6 +17,42 @@ import { routinesDueOn, type CmeRoutine } from "@/lib/cme/routines";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { perthCalendarDate } from "@/lib/perth-time";
 type InitialEntry = NonNullable<CmeEntryFormProps["initialEntry"]>;
+
+/**
+ * A page's own "Log an activity" button (the Year page's one filled button)
+ * carries this attribute. While one is on the page, the floating "+ Log" stays
+ * away, so the screen never shows two filled buttons for the same thing.
+ */
+export const CME_LOG_TRIGGER_ATTRIBUTE = "data-cme-log-trigger";
+const OPEN_EVENT = "cme:open-quick-log";
+
+/** Re-reads the snapshot once after mount, when sibling elements earlier in the page are in the DOM. */
+function subscribeAfterMount(callback: () => void) {
+  const frame = window.requestAnimationFrame(callback);
+  return () => window.cancelAnimationFrame(frame);
+}
+
+/**
+ * Whether an element matching `selector` is on the page (another CPD part's
+ * marker). `serverValue` is the answer before the page is in the browser.
+ */
+function usePageHasElement(selector: string, serverValue: boolean): boolean {
+  return useSyncExternalStore(
+    subscribeAfterMount,
+    () => document.querySelector(selector) !== null,
+    () => serverValue,
+  );
+}
+
+/**
+ * Asks the page's quick-log panel to open, returning focus to `trigger` when it
+ * closes. Returns false when no panel is listening, so the caller's link can
+ * fall back to the full new-entry page.
+ */
+export function openCmeQuickLog(trigger: HTMLElement): boolean {
+  const event = new CustomEvent<HTMLElement>(OPEN_EVENT, { detail: trigger, cancelable: true });
+  return !window.dispatchEvent(event);
+}
 type LogAgainChoice = { id: string; label: string; detail: string; entry: InitialEntry };
 
 /** Due routines first, then recent distinct titles. No choice records anything. */
@@ -127,6 +163,8 @@ export function CmeQuickLog({
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [actionContainer, setActionContainer] = useState<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const pageHasTrigger = usePageHasElement(`[${CME_LOG_TRIGGER_ATTRIBUTE}]`, true);
   const domains = set.requirements.flatMap((requirement) =>
     requirement.spec.shape === "activity-count" ? [...requirement.spec.buckets] : [],
   );
@@ -134,6 +172,17 @@ export function CmeQuickLog({
   const today = perthCalendarDate(now);
   const initialDate = today.startsWith(`${set.year}-`) ? today : `${set.year}-01-01`;
   const choices = logAgainChoices(routines, entries, now, initialDate);
+
+  useEffect(() => {
+    function handleOpen(event: Event) {
+      event.preventDefault();
+      const trigger = (event as CustomEvent<HTMLElement>).detail;
+      returnFocusRef.current = trigger instanceof HTMLElement ? trigger : buttonRef.current;
+      setOpen(true);
+    }
+    window.addEventListener(OPEN_EVENT, handleOpen);
+    return () => window.removeEventListener(OPEN_EVENT, handleOpen);
+  }, []);
 
   useEffect(() => {
     if (savedNotice === null) return;
@@ -196,19 +245,24 @@ export function CmeQuickLog({
     <>
       <CmeSavedLogNotice entryId={savedNotice} undoing={undoing} undoError={undoError} onUndo={() => void undo()} />
 
-      <button
-        ref={buttonRef}
-        type="button"
-        data-testid="cme-quick-log-button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          primaryControl,
-          "fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[var(--z-chrome)] rounded-full shadow-[var(--e4)] print:hidden",
-        )}
-      >
-        <Plus aria-hidden="true" className="size-icon-sm" />
-        Log
-      </button>
+      {pageHasTrigger ? null : (
+        <button
+          ref={buttonRef}
+          type="button"
+          data-testid="cme-quick-log-button"
+          onClick={() => {
+            returnFocusRef.current = buttonRef.current;
+            setOpen(true);
+          }}
+          className={cn(
+            primaryControl,
+            "fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[var(--z-chrome)] rounded-full shadow-[var(--e4)] print:hidden",
+          )}
+        >
+          <Plus aria-hidden="true" className="size-icon-sm" />
+          Log
+        </button>
+      )}
 
       <Sheet
         open={open}
@@ -218,7 +272,7 @@ export function CmeQuickLog({
         mobilePlacement="bottom"
         footer={<div ref={setActionContainer} data-testid="cme-quick-log-actions" />}
         footerClassName="pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-        returnFocusRef={buttonRef}
+        returnFocusRef={returnFocusRef}
         testId="cme-quick-log-sheet"
       >
         <div className="flex flex-col gap-4 pb-2">

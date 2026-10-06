@@ -99,6 +99,12 @@ export function formatCalendarDateLong(dateOnly: string): string {
   return `${Number.parseInt(day, 10)} ${FULL_MONTH_NAMES[monthIndex]} ${year}`;
 }
 
+/** Renders a Perth calendar date (`YYYY-MM-DD`) as "3 February": the long form without its year, for a line already about one year. */
+export function formatCalendarDayMonth(dateOnly: string): string {
+  const [, month, day] = dateOnly.split("-");
+  return `${Number.parseInt(day, 10)} ${FULL_MONTH_NAMES[Number.parseInt(month, 10) - 1]}`;
+}
+
 /**
  * Renders a Perth calendar date (`YYYY-MM-DD`) as "16 Sep" — no year, for a
  * list already grouped or tabbed by year. Same plain-string approach as

@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-import { cardSurface } from "@/components/card-recipes";
+import { focusRing } from "@/components/card-recipes";
 import { CmeYearEndActions } from "@/components/cme/cme-year-close-panel";
 import { cn, textMuted } from "@/components/ui-primitives";
 import {
@@ -17,6 +17,9 @@ import { furthestFromMet } from "@/lib/cme/requirement-gaps";
 import type { CmeEntry, CmeRequirementSet, CmeRequirementStatus } from "@/lib/cme/types";
 import { CME_CLOSE_WINDOW_DAYS } from "@/lib/cme/year-close";
 
+/** A quiet note: hairline border on the raised surface, no shadow and no tint (the 5 Oct mock-up). */
+const NOTE = "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]";
+
 /**
  * Today's one next step, by season — driven entirely by `now` against the CPD
  * year in `set`, never by anything Today decides on its own:
@@ -28,14 +31,15 @@ import { CME_CLOSE_WINDOW_DAYS } from "@/lib/cme/year-close";
  *     a task not started: that task, usually the development plan.
  *   - **Only the total is short**: the total, so it stays actionable.
  *   - **Tracking** (the rest of the year): whichever requirement is furthest
- *     from met. That is the first row of the "What's left" list, so Today
- *     shows it there (`inList`) rather than saying the same thing twice.
+ *     from met.
+ * The last two are rows of the Year page's "What's left" list (`rowId`), so
+ * the page marks that row rather than saying the same thing twice.
  */
 export type CmeNextStep = {
   readonly label: string;
   readonly href: string;
-  /** The step is the "What's left" list's own first row. */
-  readonly inList: boolean;
+  /** The "What's left" row that IS this step ("total" or "requirement-<id>"), or null when it has none. */
+  readonly rowId: string | null;
 };
 
 /** "32.5", never "32.50" — and a whole number drops its decimal point, so a legitimate zero reads as a plain "0". */
@@ -57,7 +61,7 @@ export function computeCmeNextStep(args: {
     return {
       label: "This CPD year is closed. Open the annual summary for its snapshot and any amendments.",
       href: summaryHref,
-      inList: false,
+      rowId: null,
     };
   }
 
@@ -65,7 +69,7 @@ export function computeCmeNextStep(args: {
     return {
       label: "Every target is reached for this year. Keep logging activities as you go.",
       href: `/cme/new?year=${set.year}`,
-      inList: false,
+      rowId: null,
     };
   }
 
@@ -75,7 +79,7 @@ export function computeCmeNextStep(args: {
     return {
       label: "Year end: check each entry against the records you keep, then close the year from your annual summary.",
       href: summaryHref,
-      inList: false,
+      rowId: null,
     };
   }
 
@@ -86,7 +90,7 @@ export function computeCmeNextStep(args: {
     return {
       label: `It's early in the year for a pace projection — a good place to start is ${earlyTask.label.toLowerCase()}.`,
       href: `/cme/setup?year=${set.year}#cme-requirement-${encodeURIComponent(earlyTask.id)}`,
-      inList: false,
+      rowId: null,
     };
   }
 
@@ -94,7 +98,7 @@ export function computeCmeNextStep(args: {
     return {
       label: `Next: Total CPD hours — ${formatCmeHours(set.totalHours - totalHours)} h to go`,
       href: `/cme/new?year=${set.year}`,
-      inList: false,
+      rowId: "total",
     };
   }
 
@@ -106,7 +110,7 @@ export function computeCmeNextStep(args: {
       requirement?.spec.shape === "task"
         ? `/cme/setup?year=${set.year}#cme-requirement-${encodeURIComponent(requirement.id)}`
         : `/cme/new?year=${set.year}`,
-    inList: true,
+    rowId: `requirement-${next.requirementId}`,
   };
 }
 
@@ -138,7 +142,7 @@ export function CmeNextStepRow({
 }) {
   if (offerYearEnd) {
     return (
-      <div data-testid="cme-next-action" className={cn(cardSurface, "p-3")}>
+      <div data-testid="cme-next-action" className={cn(NOTE, "p-3")}>
         <CmeYearEndActions
           set={set}
           entries={entries}
@@ -155,8 +159,9 @@ export function CmeNextStepRow({
       data-testid="cme-next-action"
       href={step.href}
       className={cn(
-        cardSurface,
-        "flex min-h-tap items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-[color:var(--text)]",
+        NOTE,
+        focusRing,
+        "flex min-h-12 items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium text-[color:var(--text-heading)] no-underline",
       )}
     >
       <span className="min-w-0">{step.label}</span>
