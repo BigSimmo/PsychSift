@@ -26,9 +26,11 @@ import {
   Layers3,
   Menu,
   MessageSquarePlus,
+  Briefcase,
   Search,
   Send,
   ShieldCheck,
+  Stethoscope,
   X,
   ArrowLeft,
   LayoutGrid,
@@ -68,6 +70,7 @@ import {
 import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/universal-search-command-surface";
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { WorkSearchButton } from "@/components/work-search/work-search-button";
 import {
   appModeDefinition,
@@ -114,7 +117,13 @@ import {
   useRosterHasEnabledTeam,
   useTeachingRoles,
 } from "@/lib/teaching/page-visibility";
-import { orderByPhoneModeGroups, phoneModeGroups } from "@/lib/phone-mode-groups";
+import {
+  modeMenuSideForMode,
+  modeMenuSides,
+  orderModesForSide,
+  phoneModeGroupsForSide,
+  type ModeMenuSideId,
+} from "@/lib/phone-mode-groups";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import type { CommandSurfacePlacement } from "@/lib/search-command-surface";
 import { useCommandDropdownDisplayableByPlacement } from "@/components/clinical-dashboard/use-command-dropdown-displayable";
@@ -378,10 +387,6 @@ export function MasterSearchHeader({
     authenticated: canAccessFavourites,
     demoMode: false,
   });
-  // The mode menu draws modes under their group headings, so its keyboard
-  // order (the index each row is registered at, and what Arrow Up/Down, Home
-  // and End walk) must be that same drawn order, not registry order.
-  const modeMenuOptions = orderByPhoneModeGroups(visibleAppModeOptions);
   const trimmedQuery = query.trim();
   const selectedSearch = appModeSearchConfig(searchMode);
   // The trigger names the route the user is viewing. Session filtering still
@@ -425,6 +430,9 @@ export function MasterSearchHeader({
   const commandDropdownDisplayableByPlacement = useCommandDropdownDisplayableByPlacement();
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const [modeMenuQuery, setModeMenuQuery] = useState("");
+  // Which room the open menu is showing. Opening the pill sets this from the
+  // mode you are already in; the switch changes only the list.
+  const [modeMenuSide, setModeMenuSide] = useState<ModeMenuSideId>("clinical");
   // Which menuitemradio should receive initial focus when the mode menu opens
   // (keyboard ArrowOpen or the active mode on tap). Shared by the desktop
   // popover and the phone bottom sheet.
@@ -435,10 +443,17 @@ export function MasterSearchHeader({
   // paths also refresh from the live query so the first tap still picks Sheet.
   const [usesPhoneSearchLayout, setUsesPhoneSearchLayout] = useState(false);
   const normalizedModeMenuQuery = modeMenuQuery.trim().toLowerCase();
+  const sideModeMenuOptions = orderModesForSide(visibleAppModeOptions, modeMenuSide);
+  const otherModeMenuSide: ModeMenuSideId = modeMenuSide === "clinical" ? "work" : "clinical";
+  const modeMenuOptionMatches = (mode: (typeof visibleAppModeOptions)[number]) =>
+    mode.label.toLowerCase().includes(normalizedModeMenuQuery);
   const desktopModeMenuOptions = normalizedModeMenuQuery
-    ? modeMenuOptions.filter((mode) => mode.label.toLowerCase().includes(normalizedModeMenuQuery))
-    : modeMenuOptions;
-  const activeModeMenuOptions = usesPhoneSearchLayout ? modeMenuOptions : desktopModeMenuOptions;
+    ? sideModeMenuOptions.filter(modeMenuOptionMatches)
+    : sideModeMenuOptions;
+  const activeModeMenuOptions = usesPhoneSearchLayout ? sideModeMenuOptions : desktopModeMenuOptions;
+  const otherSideMatchCount = normalizedModeMenuQuery
+    ? orderModesForSide(visibleAppModeOptions, otherModeMenuSide).filter(modeMenuOptionMatches).length
+    : 0;
   const [desktopComposerPortalActive, setDesktopComposerPortalActive] = useState(false);
   const [desktopComposerPortalFallback, setDesktopComposerPortalFallback] = useState(false);
   // SSR and first paint assume a declared home slot is media-eligible so the
@@ -1069,7 +1084,7 @@ export function MasterSearchHeader({
 
   const selectedModeIndex = Math.max(
     0,
-    modeMenuOptions.findIndex((mode) => mode.id === selectedAppMode.id),
+    sideModeMenuOptions.findIndex((mode) => mode.id === selectedAppMode.id),
   );
 
   useEffect(() => {
@@ -1157,12 +1172,26 @@ export function MasterSearchHeader({
     } as Parameters<typeof router.prefetch>[1]);
   }
 
-  function openModeMenuWithFocus(index: number) {
+  function selectModeMenuSide(side: ModeMenuSideId) {
+    setModeMenuSide(side);
+    const options = usesPhoneSearchLayout
+      ? orderModesForSide(visibleAppModeOptions, side)
+      : orderModesForSide(visibleAppModeOptions, side).filter((mode) =>
+          normalizedModeMenuQuery ? mode.label.toLowerCase().includes(normalizedModeMenuQuery) : true,
+        );
+    const selected = options.findIndex((mode) => mode.id === selectedAppMode.id);
+    setModeMenuFocusIndex(selected >= 0 ? selected : 0);
+  }
+
+  function openModeMenuWithFocus(index: number, side: ModeMenuSideId) {
     closeModeSurfaces();
-    const nextIndex = (index + modeMenuOptions.length) % modeMenuOptions.length;
-    const highlighted = modeMenuOptions[nextIndex];
+    const options = orderModesForSide(visibleAppModeOptions, side);
+    if (options.length === 0) return;
+    const nextIndex = (index + options.length) % options.length;
+    const highlighted = options[nextIndex];
     if (highlighted) prefetchModeSelection(highlighted.id);
     const phoneLayout = currentUsesPhoneSearchLayout();
+    setModeMenuSide(side);
     setModeMenuQuery("");
     setUsesPhoneSearchLayout(phoneLayout);
     setModeMenuFocusIndex(nextIndex);
@@ -1181,7 +1210,7 @@ export function MasterSearchHeader({
     // zero (leaving focus stuck on the trigger) or wraps every index to 0
     // (focusing whatever renders first in the *next* render's full list,
     // not the mode this call actually targets). `nextIndex` above is already
-    // a valid position in the unfiltered `modeMenuOptions`, which is
+    // a valid position in the unfiltered side list, which is
     // exactly what the query reset guarantees `activeModeMenuOptions` will
     // equal once React commits it — so focus directly by that index instead
     // of re-deriving it against a list that hasn't caught up yet.
@@ -1216,12 +1245,19 @@ export function MasterSearchHeader({
       closeModeMenu();
       return;
     }
-    const highlighted = modeMenuOptions[selectedModeIndex];
+    const side = modeMenuSideForMode(selectedAppMode.id);
+    const openingOptions = orderModesForSide(visibleAppModeOptions, side);
+    const openingIndex = Math.max(
+      0,
+      openingOptions.findIndex((mode) => mode.id === selectedAppMode.id),
+    );
+    const highlighted = openingOptions[openingIndex];
     if (highlighted) prefetchModeSelection(highlighted.id);
     const phoneLayout = currentUsesPhoneSearchLayout();
+    setModeMenuSide(side);
     setModeMenuQuery("");
     setUsesPhoneSearchLayout(phoneLayout);
-    setModeMenuFocusIndex(selectedModeIndex);
+    setModeMenuFocusIndex(openingIndex);
     setModeSheetView(modeOwnPagesAvailable ? "sections" : "modes");
     setModeMenuOpen(true);
     if (!phoneLayout) {
@@ -1236,12 +1272,15 @@ export function MasterSearchHeader({
   }
 
   function handleModeTriggerKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
-    if (event.key === "ArrowDown") {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      openModeMenuWithFocus(selectedModeIndex);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      openModeMenuWithFocus(selectedModeIndex - 1);
+      const side = modeMenuSideForMode(selectedAppMode.id);
+      const options = orderModesForSide(visibleAppModeOptions, side);
+      const current = Math.max(
+        0,
+        options.findIndex((mode) => mode.id === selectedAppMode.id),
+      );
+      openModeMenuWithFocus(event.key === "ArrowDown" ? current : current - 1, side);
     } else if (event.key === "Tab" && modeMenuOpen && !usesPhoneSearchLayout) {
       // Desktop: Tab/Shift+Tab is leaving the trigger — close without trapping (APG
       // menu-button pattern; arrow keys are the entry into the menu). WebKit's
@@ -1335,12 +1374,15 @@ export function MasterSearchHeader({
     label,
     description,
     active,
+    showDescription = false,
     modeIconId,
   }: {
     icon: LucideIcon;
     label: string;
     description?: string;
     active: boolean;
+    /** Work's short list shows the line on desktop too. Clinical stays compact. */
+    showDescription?: boolean;
     /** Only the mode list stamps this; the section list has no per-mode hook to offer. */
     modeIconId?: string;
   }) {
@@ -1372,7 +1414,7 @@ export function MasterSearchHeader({
           <span className="block truncate text-sm font-semibold tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
             {label}
           </span>
-          {usesPhoneSearchLayout && description ? (
+          {(showDescription || usesPhoneSearchLayout) && description ? (
             <span className="mt-0.5 line-clamp-2 text-xs font-medium leading-4 text-[color:var(--text-muted)]">
               {description}
             </span>
@@ -1420,6 +1462,7 @@ export function MasterSearchHeader({
           label: mode.label,
           description: mode.description,
           active,
+          showDescription: modeMenuSide === "work",
           modeIconId: usesPhoneSearchLayout ? mode.id : undefined,
         })}
       </button>
@@ -1531,12 +1574,23 @@ export function MasterSearchHeader({
   }
 
   function renderGroupedDesktopModeMenuOptions() {
-    return phoneModeGroups.map((group) => {
+    return phoneModeGroupsForSide(modeMenuSide).map((group) => {
       const groupModes = group.modeIds.flatMap((modeId) => {
         const mode = desktopModeMenuOptions.find((candidate) => candidate.id === modeId);
         return mode ? [mode] : [];
       });
       if (groupModes.length === 0) return null;
+      const rows = (
+        <div className={cn("grid gap-0.5", group.showHeading && "pt-1")}>
+          {groupModes.map((mode) =>
+            renderModeMenuOption(
+              mode,
+              desktopModeMenuOptions.findIndex((candidate) => candidate.id === mode.id),
+            ),
+          )}
+        </div>
+      );
+      if (!group.showHeading) return <div key={group.id}>{rows}</div>;
       const headingId = `desktop-app-mode-group-${group.id}`;
       return (
         <section key={group.id} role="group" aria-labelledby={headingId} className="pt-2 first:pt-0">
@@ -1546,17 +1600,34 @@ export function MasterSearchHeader({
           >
             {group.label}
           </h3>
-          <div className="grid gap-0.5 pt-1">
-            {groupModes.map((mode) =>
-              renderModeMenuOption(
-                mode,
-                desktopModeMenuOptions.findIndex((candidate) => candidate.id === mode.id),
-              ),
-            )}
-          </div>
+          {rows}
         </section>
       );
     });
+  }
+
+  function renderModeMenuSideSwitch(controlsId: string) {
+    const side = modeMenuSides.find((entry) => entry.id === modeMenuSide) ?? modeMenuSides[0];
+    return (
+      <div className="grid gap-2">
+        <SegmentedControl
+          label="Clinical or Work"
+          layout="equal"
+          value={modeMenuSide}
+          onChange={selectModeMenuSide}
+          ariaControls={controlsId}
+          ariaDescribedBy="app-mode-side-hint"
+          options={modeMenuSides.map((entry) => ({
+            value: entry.id,
+            label: entry.label,
+            icon: entry.id === "clinical" ? Stethoscope : Briefcase,
+          }))}
+        />
+        <p id="app-mode-side-hint" className="px-1 text-xs font-medium leading-4 text-[color:var(--text-muted)]">
+          {side.hint}
+        </p>
+      </div>
+    );
   }
 
   const restoreActionMenuFocusRef = useRef(false);
@@ -2791,7 +2862,8 @@ export function MasterSearchHeader({
               className={cn(glassOverlaySurface, modeMenuPopoverShell)}
             >
               <div className="border-b border-[color:var(--border)] p-3 pb-2.5">
-                <div className="search-shell grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] px-3 shadow-[var(--shadow-inset)] transition-[border-color,box-shadow]">
+                {renderModeMenuSideSwitch("app-mode-options")}
+                <div className="search-shell mt-2.5 grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] px-3 shadow-[var(--shadow-inset)] transition-[border-color,box-shadow]">
                   <Search aria-hidden="true" className="size-icon-md text-[color:var(--text-muted)]" strokeWidth={2} />
                   <input
                     ref={desktopModeMenuSearchRef}
@@ -2832,8 +2904,18 @@ export function MasterSearchHeader({
                 >
                   {normalizedModeMenuQuery
                     ? `${desktopModeMenuOptions.length} ${desktopModeMenuOptions.length === 1 ? "match" : "matches"}`
-                    : `${desktopModeMenuOptions.length} modes`}
+                    : `${desktopModeMenuOptions.length} in ${modeMenuSides.find((entry) => entry.id === modeMenuSide)?.label ?? "Clinical"}`}
                 </p>
+                {normalizedModeMenuQuery && otherSideMatchCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => selectModeMenuSide(otherModeMenuSide)}
+                    aria-label={`Show ${otherSideMatchCount} ${otherSideMatchCount === 1 ? "match" : "matches"} in ${modeMenuSides.find((entry) => entry.id === otherModeMenuSide)?.label ?? "Work"}`}
+                    className="mt-1 flex min-h-12 w-full items-center rounded-lg px-2 text-left text-sm font-semibold text-[color:var(--clinical-accent)] transition-colors hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+                  >
+                    {otherSideMatchCount} in {modeMenuSides.find((entry) => entry.id === otherModeMenuSide)?.label}
+                  </button>
+                ) : null}
               </div>
 
               <div className="polished-scroll max-h-[min(34rem,calc(100dvh-13rem))] overflow-y-auto p-1.5">
@@ -2965,47 +3047,60 @@ export function MasterSearchHeader({
           {modeSheetView === "sections" ? (
             renderModeSectionLevel()
           ) : (
-            <div ref={phoneModeMenuListRef} id="app-mode-menu" role="menu" aria-label="Choose app mode">
-              {phoneModeGroups.map((group) => {
-                const groupModes = group.modeIds.flatMap((modeId) => {
-                  const mode = modeMenuOptions.find((candidate) => candidate.id === modeId);
-                  return mode ? [mode] : [];
-                });
-                if (groupModes.length === 0) return null;
-                const headingId = `app-mode-group-${group.id}`;
-                return (
-                  <section
-                    key={group.id}
-                    role="group"
-                    aria-labelledby={headingId}
-                    data-mode-group={group.id}
-                    className="pt-3 first:pt-1"
-                  >
-                    <div className="sticky top-0 z-[5] -mx-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-lux)]/96 px-3 py-1.5 backdrop-blur-md">
-                      <div className="flex min-w-0 items-baseline gap-2">
-                        <h3
-                          id={headingId}
-                          className="shrink-0 text-2xs font-black uppercase tracking-kicker text-[color:var(--text-muted)]"
-                        >
-                          {group.label}
-                        </h3>
-                        <p className="min-w-0 truncate text-2xs font-medium text-[color:var(--text-muted)]">
-                          {group.hint}
-                        </p>
-                      </div>
-                    </div>
+            <>
+              <div className="px-1 pb-2 pt-1">{renderModeMenuSideSwitch("app-mode-menu")}</div>
+              <div ref={phoneModeMenuListRef} id="app-mode-menu" role="menu" aria-label="Choose app mode">
+                {phoneModeGroupsForSide(modeMenuSide).map((group) => {
+                  const groupModes = group.modeIds.flatMap((modeId) => {
+                    const mode = activeModeMenuOptions.find((candidate) => candidate.id === modeId);
+                    return mode ? [mode] : [];
+                  });
+                  if (groupModes.length === 0) return null;
+                  const rows = (
                     <div className="mt-1.5 grid gap-1">
                       {groupModes.map((mode) =>
                         renderModeMenuOption(
                           mode,
-                          modeMenuOptions.findIndex((candidate) => candidate.id === mode.id),
+                          activeModeMenuOptions.findIndex((candidate) => candidate.id === mode.id),
                         ),
                       )}
                     </div>
-                  </section>
-                );
-              })}
-            </div>
+                  );
+                  if (!group.showHeading) {
+                    return (
+                      <div key={group.id} className="pt-1">
+                        {rows}
+                      </div>
+                    );
+                  }
+                  const headingId = `app-mode-group-${group.id}`;
+                  return (
+                    <section
+                      key={group.id}
+                      role="group"
+                      aria-labelledby={headingId}
+                      data-mode-group={group.id}
+                      className="pt-3 first:pt-1"
+                    >
+                      <div className="sticky top-0 z-[5] -mx-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-lux)]/96 px-3 py-1.5 backdrop-blur-md">
+                        <div className="flex min-w-0 items-baseline gap-2">
+                          <h3
+                            id={headingId}
+                            className="shrink-0 text-2xs font-black uppercase tracking-kicker text-[color:var(--text-muted)]"
+                          >
+                            {group.label}
+                          </h3>
+                          <p className="min-w-0 truncate text-2xs font-medium text-[color:var(--text-muted)]">
+                            {group.hint}
+                          </p>
+                        </div>
+                      </div>
+                      {rows}
+                    </section>
+                  );
+                })}
+              </div>
+            </>
           )}
         </Sheet>
       ) : null}

@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { LAST_APP_MODE_STORAGE_KEY } from "@/components/clinical-dashboard/use-last-app-mode";
 import { appModeSelectionHref, visibleAppModeDefinitionsForSession, type AppModeId } from "@/lib/app-modes";
-import { orderByPhoneModeGroups } from "@/lib/phone-mode-groups";
+import { modeMenuSideForMode, orderModesForSide } from "@/lib/phone-mode-groups";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
 
 /**
@@ -229,8 +229,8 @@ describe("mode menu destination prefetch", () => {
 
   it("prefetches the highlighted mode when openModeMenuWithFocus targets another mode", async () => {
     const user = userEvent.setup();
-    // Arrow keys walk the modes in the order the grouped menu draws them.
-    const modes = orderByPhoneModeGroups(guestModeHomes());
+    // Arrow keys walk the open side, which for Answer is Clinical, and wrap inside it.
+    const modes = orderModesForSide(guestModeHomes(), modeMenuSideForMode("answer"));
     const answerIndex = modes.findIndex((mode) => mode.id === "answer");
     expect(answerIndex).toBeGreaterThanOrEqual(0);
     const previous = modes[(answerIndex - 1 + modes.length) % modes.length];
@@ -313,5 +313,46 @@ describe("mode menu destination prefetch", () => {
     await new Promise((resolve) => setTimeout(resolve, 120));
     expect(outside).toHaveFocus();
     expect(trigger).not.toHaveFocus();
+  });
+
+  it("opens on the current side and keeps a search when switching to the other side's matches", async () => {
+    const user = userEvent.setup();
+    render(<MasterSearchHeader {...headerProps()} />);
+
+    await user.click(screen.getByRole("button", { name: /Mode Answer/i }));
+    const dialog = await screen.findByRole("dialog", { name: "Choose app mode" });
+    expect(within(dialog).getByRole("radio", { name: "Clinical" })).toHaveAttribute("aria-checked", "true");
+    expect(within(dialog).getByText("Care, diagnosis and reference")).toBeTruthy();
+    expect(within(dialog).queryByRole("menuitemradio", { name: /^On Call\b/i })).toBeNull();
+    expect(within(dialog).getByRole("menuitemradio", { name: /^Answer\b/i })).toBeTruthy();
+
+    await user.click(within(dialog).getByRole("radio", { name: "Work" }));
+    expect(within(dialog).getByRole("menuitemradio", { name: /^On Call\b/i })).toBeTruthy();
+    expect(within(dialog).queryByRole("menuitemradio", { name: /^Answer\b/i })).toBeNull();
+    expect(within(dialog).getByText("Your working day")).toBeTruthy();
+    expect(within(dialog).getByText(/One list of what needs you today/i)).toBeTruthy();
+
+    await user.click(within(dialog).getByRole("radio", { name: "Clinical" }));
+    const search = within(dialog).getByRole("textbox", { name: "Find a mode" });
+    await user.type(search, "d");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("6 matches");
+    await user.click(within(dialog).getByRole("button", { name: "Show 3 matches in Work" }));
+    expect(search).toHaveValue("d");
+    expect(within(dialog).getByRole("menuitemradio", { name: /^CPD\b/i })).toBeTruthy();
+    expect(within(dialog).getByRole("menuitemradio", { name: /^My Day\b/i })).toBeTruthy();
+    expect(within(dialog).queryByRole("menuitemradio", { name: /^Documents\b/i })).toBeNull();
+  });
+
+  it("returns from On Call's pages into the Work list", async () => {
+    const user = userEvent.setup();
+    render(<MasterSearchHeader {...headerProps()} searchMode="on-call" />);
+
+    await user.click(screen.getByRole("button", { name: /Mode On Call/i }));
+    await user.click(await screen.findByTestId("app-mode-section-all-modes"));
+
+    const dialog = await screen.findByRole("dialog", { name: "Choose app mode" });
+    expect(within(dialog).getByRole("radio", { name: "Work" })).toHaveAttribute("aria-checked", "true");
+    expect(within(dialog).getByRole("menuitemradio", { name: /^On Call\b/i })).toHaveAttribute("aria-checked", "true");
+    expect(within(dialog).queryByRole("menuitemradio", { name: /^Answer\b/i })).toBeNull();
   });
 });
