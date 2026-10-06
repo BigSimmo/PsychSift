@@ -40,7 +40,7 @@ describe("CmeDraftsSection", () => {
     expect(screen.getByTestId("cme-drafts-load-failed")).toHaveTextContent("could not be loaded");
   });
 
-  it("groups drafts into My next action, Waiting for supervisor and Waiting for workforce, hiding empty groups", () => {
+  it("groups drafts into Yours to do (the Log tab's count) and Waiting on others, with counts, hiding empty groups", () => {
     const mine = draft({ id: "11111111-1111-4111-8111-111111111111", waitingOn: null });
     const supervisor = draft({
       id: "22222222-2222-4222-8222-222222222222",
@@ -49,8 +49,10 @@ describe("CmeDraftsSection", () => {
     });
     render(<CmeDraftsSection drafts={[mine, supervisor]} />);
 
-    expect(screen.getByTestId("cme-drafts-group-nextAction")).toHaveTextContent("My next action");
-    expect(screen.getByTestId("cme-drafts-group-supervisor")).toHaveTextContent("Waiting for supervisor");
+    expect(screen.getByTestId("cme-drafts-group-nextAction")).toHaveTextContent("Yours to do · 1");
+    expect(screen.getByTestId("cme-drafts-group-supervisor")).toHaveTextContent(
+      "Waiting on others: your supervisor · 1",
+    );
     // Nothing is waiting on workforce, so that group is not rendered at all.
     expect(screen.queryByTestId("cme-drafts-group-workforce")).toBeNull();
 
@@ -60,6 +62,12 @@ describe("CmeDraftsSection", () => {
     expect(
       within(screen.getByTestId("cme-drafts-group-supervisor")).getByText("Peer review session"),
     ).toBeInTheDocument();
+  });
+
+  it("shows the last-edited day in Perth, not UTC", () => {
+    // 23:30 UTC on 9 Sep is 07:30 on 10 Sep in Perth.
+    render(<CmeDraftsSection drafts={[draft({ updatedAt: "2026-09-09T23:30:00.000Z" })]} />);
+    expect(screen.getByText(/Last edited/)).toHaveTextContent("10 Sep");
   });
 
   it("falls back to 'Untitled draft' for a blank draft", () => {
@@ -73,7 +81,7 @@ describe("CmeDraftsSection", () => {
     expect(screen.getByTestId(`cme-draft-continue-${item.id}`)).toHaveAttribute("href", `/cme/new?draft=${item.id}`);
   });
 
-  it("marks a draft waiting for a supervisor, moving it out of My next action", async () => {
+  it("marks a draft waiting for a supervisor, moving it out of Yours to do", async () => {
     const user = userEvent.setup();
     const item = draft();
     const updated: CmeDraft = { ...item, waitingOn: "supervisor" };

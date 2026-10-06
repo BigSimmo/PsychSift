@@ -181,7 +181,10 @@ describe("links run one way, into CPD (plan-contracts §10)", () => {
 
   it("opens Teaching from CPD's Teaching sessions card", () => {
     const dashboard = readFileSync("src/components/cme/cme-dashboard.tsx", "utf8");
-    expect(dashboard).toMatch(/href="\/teaching"\s+data-testid="cme-teaching-link"/);
+    // The Year page's "Teaching you gave" row: Teaching's review list when it has a count, Teaching itself otherwise.
+    expect(dashboard).toMatch(
+      /testId="cme-teaching-link"\s+href=\{teachingCount !== null \? "\/teaching\/review" : "\/teaching"\}/,
+    );
     expect(dashboard).not.toContain('href="/on-call/education"');
   });
 });

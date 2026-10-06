@@ -81,24 +81,33 @@ describe("Today", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Year" })).toBeInTheDocument();
   });
 
-  it("lists every requirement once, biggest gap first, with met ones folded under N done", () => {
+  it("lists the year check's open items one per row, biggest gap first, with done ones folded", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
     expect(screen.queryByTestId("cme-fact-tiles")).toBeNull();
     expect(screen.queryByText("Next to log")).toBeNull();
     const list = screen.getByTestId("cme-requirements");
-    expect(within(list).getByRole("heading", { name: "What's left" })).toBeInTheDocument();
-    const rows = within(list).getAllByRole("listitem");
-    expect(rows.map((row) => row.textContent)).toEqual([
-      expect.stringContaining("Big gap requirement20 h to go"),
-      expect.stringContaining("Small gap requirement1 h to go"),
-      expect.stringContaining("Professional development planNot started"),
-      expect.stringContaining("Measuring requirementReached"),
+    // The count is the year check's own open rows.
+    expect(within(list).getByRole("heading", { name: "What's left · 6" })).toBeInTheDocument();
+    expect(within(list).getByTestId("cme-year-check-link")).toHaveAttribute("href", "/cme/check?year=2026");
+    const rows = within(list)
+      .getAllByRole("listitem")
+      .filter((row) => row.getAttribute("data-met") === "false");
+    expect(rows.map((row) => row.textContent?.replace(/\u00a0/g, " "))).toEqual([
+      "Hours in total39 h to go",
+      "Big gap requirement0 of 20 h",
+      "Small gap requirement9 of 10 h",
+      "Professional development planNot started",
+      // No evidence counts were loaded, so the check says so rather than guessing.
+      "Evidence kept for each activityNot checked",
+      "Copied to your CPD home2 activities not marked copied",
     ]);
     const done = screen.getByTestId("cme-requirements-done");
     expect(done.tagName).toBe("DETAILS");
     expect(done).not.toHaveAttribute("open");
-    expect(within(done).getByText("1 done")).toBeInTheDocument();
-    expect(within(done).getByRole("listitem")).toHaveAttribute("data-met", "true");
+    expect(done).toHaveTextContent("2 done · Measuring requirement, a reflection on each activity");
+    const doneRows = within(done).getAllByRole("listitem");
+    expect(doneRows).toHaveLength(2);
+    for (const row of doneRows) expect(row).toHaveAttribute("data-met", "true");
     // Each requirement row appears exactly once on the page.
     for (const requirement of SET.requirements) {
       expect(
@@ -132,59 +141,86 @@ describe("Today", () => {
     );
   });
 
-  it("shows things to finish as chips: not copied, the year check, drafts", () => {
-    render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} draftsToFinish={1} />);
+  it("shows things to finish as chips, counted by the year check: not marked copied, no reflection, drafts", () => {
+    const noReflection = { ...ENTRIES[0]!, id: "d", reflection: " " };
+    render(<CmeDashboard set={SET} entries={[...ENTRIES, noReflection]} now={NOW} draftsToFinish={1} />);
     const chips = screen.getByTestId("cme-today-shortcuts");
-    expect(within(chips).getByRole("link", { name: /^Not copied\s*2/ })).toHaveAttribute(
+    expect(
+      within(chips)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Not marked copied3", "No reflection1", "Draft to finish1"]);
+    expect(within(chips).getByRole("link", { name: /^Not marked copied\s*3/ })).toHaveAttribute(
       "href",
       "/cme/log?year=2026&copy=todo",
     );
-    const check = within(chips).getByTestId("cme-year-check-link");
-    expect(check).toHaveAttribute("href", "/cme/check?year=2026");
-    expect(check).toHaveTextContent(/^Year check\d+ of \d+$/);
-    expect(within(chips).getByRole("link", { name: /^Drafts to finish\s*1/ })).toBeInTheDocument();
-    for (const link of within(chips).getAllByRole("link")) expect(link.className).toMatch(/min-h-tap/);
+    expect(within(chips).getByRole("link", { name: /^No reflection\s*1/ })).toHaveAttribute(
+      "href",
+      "/cme/log?year=2026&fix=reflection",
+    );
+    // The 32 px chip face carries a 48 px tap area.
+    for (const link of within(chips).getAllByRole("link")) expect(link.className).toContain("min-h-12");
+  });
+
+  it("still shows drafts to finish before anything is logged, and no other chip", () => {
+    render(<CmeDashboard set={SET} entries={[]} now={NOW} draftsToFinish={2} />);
+    const chips = screen.getByTestId("cme-today-shortcuts");
+    expect(
+      within(chips)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Drafts to finish2"]);
+  });
+
+  it("leaves out a chip with nothing in it, and the drafts chip when drafts did not load", () => {
+    render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} draftsToFinish={null as unknown as number} />);
+    const chips = screen.getByTestId("cme-today-shortcuts");
+    expect(
+      within(chips)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Not marked copied2"]);
   });
 });
 
-describe("the catch-up planner card", () => {
-  it("splits what is left into logged, routines likely and still to find, and says it is an estimate", () => {
+describe("the summary's catch-up line", () => {
+  it("adds what routines will likely add to the legend and the bar, and says what is still to find", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} routines={[ROUTINE]} />);
-    const card = screen.getByTestId("cme-catch-up");
-    expect(within(card).getByRole("heading", { name: "To reach 50 h by 31 Dec" })).toBeInTheDocument();
-    expect(within(card).getByTestId("cme-catch-up-logged-hours")).toHaveTextContent("11 h");
+    const summary = screen.getByTestId("cme-year-summary");
     // 1 Oct, 1 Nov, 1 Dec × 2 h.
-    expect(within(card).getByTestId("cme-catch-up-routine-hours")).toHaveTextContent("≈ 6 h");
-    // 33 h over 103 days (14.7 weeks).
-    expect(within(card).getByTestId("cme-catch-up-remaining-hours")).toHaveTextContent("33 h · 2.2 h a week");
-    expect(within(card).getByTestId("cme-catch-up-gap")).toHaveTextContent(
-      /^Biggest gap: Big gap requirement \(20\sh to go\)$/,
+    expect(within(summary).getByTestId("cme-catch-up-routine-hours")).toHaveTextContent("6 h");
+    expect(within(summary).getByTestId("cme-close-gap")).toHaveAccessibleName(
+      "Your routines will likely add 6 h. See how they would close the gap",
     );
-    expect(card).toHaveTextContent("Estimate from your routines");
-    expect(card).not.toHaveTextContent(/ahead|behind/i);
-    expect(within(card).getByTestId("cme-catch-up-bar").querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    // 39 h over 103 days (14.7 weeks).
+    expect(within(summary).getByTestId("cme-pace-sentence")).toHaveTextContent(
+      "39 h to go, about 2.7 h a week. After routines, 33 h is still to find.",
+    );
+    expect(summary).not.toHaveTextContent(/ahead|behind/i);
+    const bar = within(summary).getByTestId("cme-summary-bar");
+    expect(bar).toHaveAttribute("aria-hidden", "true");
+    expect(bar.querySelector('[data-category="routines"]')).not.toBeNull();
   });
 
-  it("sits right after the hero", () => {
+  it("sits in one card before the one filled button", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
-    expect(screen.getByTestId("cme-hero-summary").nextElementSibling).toBe(screen.getByTestId("cme-catch-up"));
-    expect(screen.getByTestId("cme-hero-summary").parentElement?.className).toMatch(/md:grid-cols-2/);
+    const summary = screen.getByTestId("cme-year-summary");
+    expect(summary.nextElementSibling).toBe(screen.getByTestId("cme-log-activity"));
   });
 
-  it("gives no weekly figure in the first four weeks, as the hero does not", () => {
-    render(<CmeDashboard set={SET} entries={[]} now={new Date("2026-01-06T02:00:00Z")} />);
-    expect(screen.getByTestId("cme-catch-up-remaining-hours")).toHaveTextContent(/^50 h$/);
+  it("gives no weekly figure in the first four weeks", () => {
+    render(<CmeDashboard set={SET} entries={ENTRIES} now={new Date("2026-01-06T02:00:00Z")} />);
+    expect(screen.getByTestId("cme-pace-sentence")).toHaveTextContent(/^39 h to go\.$/);
   });
 
-  it("is hidden once the total is reached, and once the year has ended", () => {
+  it("says when the total was reached, and says nothing once the year has ended", () => {
     const view = render(
       <CmeDashboard set={{ ...SET, totalHours: 10 }} entries={ENTRIES} now={NOW} routines={[ROUTINE]} />,
     );
-    expect(screen.queryByTestId("cme-catch-up")).toBeNull();
-    // With no second card the hero spans the row instead of leaving a blank column.
-    expect(screen.getByTestId("cme-hero-summary").parentElement?.className).not.toMatch(/md:grid-cols-2/);
+    expect(screen.getByTestId("cme-pace-sentence")).toHaveTextContent("10 h reached on 1 Jun.");
+    expect(screen.queryByTestId("cme-close-gap")).toBeNull();
     view.rerender(<CmeDashboard set={SET} entries={ENTRIES} now={new Date("2027-01-10T02:00:00Z")} />);
-    expect(screen.queryByTestId("cme-catch-up")).toBeNull();
-    expect(screen.getByTestId("cme-hero-summary").parentElement?.className).not.toMatch(/md:grid-cols-2/);
+    expect(screen.queryByTestId("cme-pace-sentence")).toBeNull();
+    expect(screen.getByTestId("cme-year-label")).toHaveTextContent("2026 · year ended");
   });
 });
