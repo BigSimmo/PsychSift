@@ -17,6 +17,7 @@ const lighthouseChromiumSetup = readFileSync(
 );
 const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 const prShardRunner = readFileSync(new URL("../scripts/playwright-pr-shards.mjs", import.meta.url), "utf8");
+const releaseShardRunner = readFileSync(new URL("../scripts/playwright-release-shards.mjs", import.meta.url), "utf8");
 const liveWebVitalsWorkflow = readFileSync(
   new URL("../.github/workflows/live-web-vitals.yml", import.meta.url),
   "utf8",
@@ -449,7 +450,11 @@ describe("CI cache safety", () => {
     });
     expect(releaseJob).not.toContain("path: .next/cache");
     expect(releaseJob).not.toContain("run: npm run build");
-    expect(releaseJob).toContain("npm run test:e2e");
+    // The legs run through scripts/playwright-release-shards.mjs, which only chooses the leg's
+    // spec files and then hands everything to the same wrapper `npm run test:e2e` runs.
+    expect(releaseJob).toContain("node scripts/playwright-release-shards.mjs");
+    expect(releaseShardRunner).toContain('"run-playwright.mjs"');
+    expect(releaseShardRunner).not.toContain("next build");
 
     // Until 2026-09-07 this pinned the single-job command
     // `npm run test:e2e -- --project=chromium-mockups --project=firefox --project=webkit`.
