@@ -1,0 +1,669 @@
+import {
+  DOMAIN_NUMBERS,
+  DOMAINS,
+  EVIDENCE_SOURCES,
+  LAST_FORM_STEP,
+  domain,
+  type DomainNumber,
+  type EpaNumber,
+  type GlobalRating,
+  type Rating,
+  SUPERVISION_LEVELS,
+  type SupervisionLevel,
+} from "@/lib/teaching/assessments/content";
+import {
+  EXAMPLE_ANSWERS,
+  GOAL_SUGGESTIONS,
+  INITIAL_AVAILABILITY,
+  NIGHT_DAYS,
+  SAMPLE_EPA_RECORDS,
+  SAMPLE_REGISTRAR,
+  SAMPLE_SUPERVISOR,
+  WINDOW_DAYS,
+  type EpaRecord,
+  type Ratings,
+  type TermId,
+  type Ticks,
+} from "@/lib/teaching/assessments/sample";
+
+/*
+ * Teaching › Assessments: the end-of-term story as pure functions over one state.
+ * Nothing here reads a clock or the network. `now` is the made-up date: -1 is
+ * Mon 5 Oct (week 6), 0 to 9 are the ten weekdays of the booking window.
+ */
+
+export type Who = "self" | "sup";
+
+export type AssessmentForm = {
+  status: "new" | "draft" | "done";
+  step: number;
+  sources: string[];
+  other: string;
+  ticks: Ticks;
+  ratings: Ratings;
+  feedback: Record<DomainNumber, string>;
+  global: GlobalRating | null;
+  strengths: string;
+  areas: string;
+  /** Supervisor ticked "Notify the MEU now" for an improvement plan. */
+  ipap: boolean;
+  fullWording: boolean;
+};
+
+/** A drawn signature as line data, so it is redrawn in the reader's own text colour in either theme. */
+export type SignatureInk = { width: number; height: number; path: string };
+export type Signature = { typed: string; image: SignatureInk | null; date: string; day: number };
+
+type EpaRequest = {
+  epa: EpaNumber;
+  who: "sup" | "reg";
+  status: "requested" | "done";
+  level?: SupervisionLevel;
+};
+
+export type AssessmentsState = {
+  now: number;
+  self: AssessmentForm;
+  sup: AssessmentForm;
+  request: { sent: boolean; sentOn: number; message: string; registrar: boolean };
+  share: { epa: boolean; mid: boolean; log: boolean };
+  booking: { day: number; time: string } | null;
+  meetingDay: number | null;
+  avail: Record<number, string[]>;
+  sigs: { sup: Signature | null; doc: Signature | null };
+  epaRequests: EpaRequest[];
+  sentToMeu: boolean;
+  remindWhenOpen: boolean;
+  addToMyDay: boolean;
+  remindDayBefore: boolean;
+  disagreeDraft: string;
+};
+
+export function blankForm(): AssessmentForm {
+  return {
+    status: "new",
+    step: 0,
+    sources: [],
+    other: "",
+    ticks: { 1: [], 2: [], 3: [], 4: [] },
+    ratings: { 1: null, 2: null, 3: null, 4: null },
+    feedback: { 1: "", 2: "", 3: "", 4: "" },
+    global: null,
+    strengths: "",
+    areas: "",
+    ipap: false,
+    fullWording: false,
+  };
+}
+
+export function initialAssessmentsState(): AssessmentsState {
+  const avail: Record<number, string[]> = {};
+  for (const [day, times] of Object.entries(INITIAL_AVAILABILITY)) avail[Number(day)] = [...times];
+  return {
+    now: -1,
+    self: blankForm(),
+    sup: blankForm(),
+    request: { sent: false, sentOn: -1, message: "", registrar: false },
+    share: { epa: true, mid: true, log: false },
+    booking: null,
+    meetingDay: null,
+    avail,
+    sigs: { sup: null, doc: null },
+    epaRequests: [],
+    sentToMeu: false,
+    remindWhenOpen: false,
+    addToMyDay: true,
+    remindDayBefore: true,
+    disagreeDraft: "",
+  };
+}
+
+/* ---------------- Dates ---------------- */
+
+export function dayLabel(day: number): string {
+  const d = WINDOW_DAYS[day];
+  return d ? `${d[0]} ${d[1]} ${d[2]}` : "Mon 5 Oct";
+}
+
+export const todayLabel = (s: AssessmentsState) => (s.now < 0 ? "Mon 5 Oct" : dayLabel(s.now));
+export const windowOpen = (s: AssessmentsState) => s.now >= 0;
+export const termWeek = (s: AssessmentsState) => (s.now < 0 ? 6 : WINDOW_DAYS[s.now]![3]);
+/** Weeks of the 47-week year done: three 10-week terms, plus this term's full weeks so far. */
+export const weeksDone = (s: AssessmentsState) => 30 + termWeek(s) - 1;
+export const YEAR_WEEKS = 47;
+
+export function bookingLabel(booking: { day: number; time: string }): string {
+  return `${dayLabel(booking.day)}, ${booking.time}`;
+}
+
+export function bookableDay(s: AssessmentsState, day: number): boolean {
+  return windowOpen(s) && day >= s.now && !NIGHT_DAYS.has(day) && (s.avail[day]?.length ?? 0) > 0;
+}
+
+export function dayStatus(s: AssessmentsState, day: number): string {
+  if (day < Math.max(0, s.now)) return "Past";
+  if (NIGHT_DAYS.has(day)) return "Nights";
+  const n = s.avail[day]?.length ?? 0;
+  return n ? `${n} time${n > 1 ? "s" : ""}` : "None";
+}
+
+/* ---------------- The end-of-term story ---------------- */
+
+export type Stage =
+  "start" | "self-draft" | "self-done" | "requested" | "sup-draft" | "ready" | "met" | "sup-signed" | "doc-signed";
+
+export const selfDone = (s: AssessmentsState) => s.self.status === "done";
+export const supReady = (s: AssessmentsState) => s.sup.status === "done";
+export const meetingHeld = (s: AssessmentsState) => s.meetingDay !== null;
+export const meetingDate = (s: AssessmentsState) => (s.meetingDay === null ? null : dayLabel(s.meetingDay));
+/** The doctor's self-assessment locks once the supervisor has seen it. */
+export const selfLocked = (s: AssessmentsState) => supReady(s);
+export const supLocked = (s: AssessmentsState) => s.sigs.sup !== null;
+
+export function stage(s: AssessmentsState): Stage {
+  if (s.sigs.doc) return "doc-signed";
+  if (s.sigs.sup) return "sup-signed";
+  if (meetingHeld(s)) return "met";
+  if (supReady(s)) return "ready";
+  if (s.request.sent) return s.sup.status === "draft" ? "sup-draft" : "requested";
+  if (selfDone(s)) return "self-done";
+  if (s.self.status === "draft") return "self-draft";
+  return "start";
+}
+
+export function epaRecords(s: AssessmentsState): EpaRecord[] {
+  const done = s.epaRequests
+    .filter((r) => r.status === "done" && r.level)
+    .map<EpaRecord>((r) => ({
+      term: "t4",
+      epa: r.epa,
+      by: r.who === "sup" ? SAMPLE_SUPERVISOR.name : SAMPLE_REGISTRAR.name,
+      role: r.who === "sup" ? "term supervisor" : "registrar",
+      level: r.level!,
+    }));
+  return [...SAMPLE_EPA_RECORDS, ...done];
+}
+
+export const epasInTerm = (s: AssessmentsState, term: TermId) => epaRecords(s).filter((r) => r.term === term);
+export const epa1ThisTerm = (s: AssessmentsState) => epasInTerm(s, "t4").some((r) => r.epa === 1);
+export const pendingEpaRequest = (s: AssessmentsState, epa: EpaNumber) =>
+  s.epaRequests.find((r) => r.epa === epa && r.status === "requested");
+
+export function epaCounts(s: AssessmentsState): Record<EpaNumber, number> {
+  const by: Record<EpaNumber, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  for (const r of epaRecords(s)) by[r.epa]++;
+  return by;
+}
+
+/**
+ * EPAs still needed this year, from the rules: at least 10 a year, EPA 1 in each of
+ * the 5 terms, and at least 2 of each other EPA. Terms 1 to 3 each have an EPA 1, so
+ * EPA 1 is still owed for this term (if not done) and for term 5.
+ */
+export function epaNeedMore(s: AssessmentsState): number {
+  const by = epaCounts(s);
+  const epa1Owed = epa1ThisTerm(s) ? 1 : 2;
+  const others = ([2, 3, 4] as const).reduce((sum, k) => sum + Math.max(0, 2 - by[k]), 0);
+  return Math.max(10 - epaRecords(s).length, epa1Owed + others);
+}
+
+/** Only things the doctor must do now count on the tab. */
+export function doctorActions(s: AssessmentsState): number {
+  let n = 0;
+  const st = stage(s);
+  if (!epa1ThisTerm(s) && !pendingEpaRequest(s, 1)) n++;
+  if (st === "start" || st === "self-draft" || st === "self-done") n++;
+  else if (st === "sup-signed") n++;
+  else if (st === "doc-signed" && !s.sentToMeu) n++;
+  else if (st === "ready" && windowOpen(s) && !s.booking) n++;
+  return n;
+}
+
+/** What the supervisor has to finish: two made-up requests, Sam's form and any EPA asked of them. */
+export function supervisorTodo(s: AssessmentsState): number {
+  let n = 2;
+  if (s.request.sent && !s.sigs.sup) n++;
+  n += s.epaRequests.filter((r) => r.status === "requested" && r.who === "sup").length;
+  return n;
+}
+
+const SUP = SAMPLE_SUPERVISOR.short;
+
+export function endOfTermLine(s: AssessmentsState): string {
+  switch (stage(s)) {
+    case "start":
+      return `Rate yourself first (optional), then ask ${SUP}`;
+    case "self-draft":
+      return `Self-assessment saved at step ${s.self.step + 1} of 8`;
+    case "self-done":
+      return `Self-assessment done. Ask ${SUP} next.`;
+    case "requested":
+    case "sup-draft":
+      return `Sent to ${SUP}. She's preparing her view.`;
+    case "ready":
+      if (s.booking) return `${SUP}'s draft is done. Meeting ${bookingLabel(s.booking)}.`;
+      return windowOpen(s)
+        ? `${SUP}'s draft is done. Book your meeting.`
+        : `${SUP}'s draft is done. Booking opens Mon 26 Oct.`;
+    case "met":
+      return `Discussed on ${meetingDate(s)}. ${SUP} signs next.`;
+    case "sup-signed":
+      return `${SUP} has signed. Read your report and sign.`;
+    case "doc-signed":
+      return s.sentToMeu
+        ? "Emailed to your MEU. The DCT countersigns next."
+        : "Signed by you both. Email the PDF to your MEU by Fri 20 Nov.";
+  }
+}
+
+export type PillTone = "neutral" | "accent" | "warm" | "ok" | "bad";
+export type Pill = { label: string; tone: PillTone };
+
+export function endOfTermPill(s: AssessmentsState): Pill {
+  switch (stage(s)) {
+    case "doc-signed":
+      return s.sentToMeu
+        ? { label: "Awaiting DCT countersign", tone: "neutral" }
+        : { label: "Not sent yet", tone: "warm" };
+    case "sup-signed":
+      return { label: "Your turn to sign", tone: "warm" };
+    case "start":
+      return { label: "Not started", tone: "accent" };
+    case "self-draft":
+    case "self-done":
+      return { label: "In progress", tone: "accent" };
+    case "ready":
+      if (s.booking) return { label: "Meeting booked", tone: "neutral" };
+      return windowOpen(s)
+        ? { label: "Book your meeting", tone: "accent" }
+        : { label: "Booking opens Mon 26 Oct", tone: "neutral" };
+    case "met":
+      return { label: `Waiting for ${SUP} to sign`, tone: "neutral" };
+    default:
+      return { label: `Waiting for ${SUP}'s draft`, tone: "neutral" };
+  }
+}
+
+export type StepState = "ok" | "now" | "lock";
+export type Step = { state: StepState; title: string; detail: string };
+
+/** True when the supervisor's draft is still not done on Thu 5 Nov (window day 8) or later. */
+export const supervisorLate = (s: AssessmentsState) => s.request.sent && !supReady(s) && s.now >= 8;
+
+/** The eight end-of-term steps, in order. */
+export function endOfTermSteps(s: AssessmentsState): Step[] {
+  const sent = s.request.sent;
+  const late = supervisorLate(s);
+  const step = (state: StepState, title: string, detail: string): Step => ({ state, title, detail });
+  return [
+    selfDone(s)
+      ? step("ok", "Rate yourself (optional)", "Saved")
+      : selfLocked(s)
+        ? step("lock", "Rate yourself (optional)", s.self.status === "draft" ? "Not finished" : "Skipped")
+        : step(
+            "now",
+            "Rate yourself (optional)",
+            s.self.status === "draft" ? `Saved at step ${s.self.step + 1} of 8` : "About 10 minutes",
+          ),
+    sent
+      ? step("ok", `Ask ${SUP}`, `Sent ${dayLabel(s.request.sentOn)}`)
+      : step("now", `Ask ${SUP}`, "Due to the MEU Fri 20 Nov"),
+    supReady(s)
+      ? step("ok", `${SUP} prepares her view`, "Draft done")
+      : sent
+        ? step("now", `${SUP} prepares her view`, late ? "Not finished yet" : "In progress")
+        : step("lock", `${SUP} prepares her view`, "After you ask"),
+    meetingHeld(s)
+      ? step("ok", "Meet and discuss", meetingDate(s)!)
+      : s.booking
+        ? step("now", "Meet and discuss", `${bookingLabel(s.booking)} · Ward 4 office`)
+        : windowOpen(s)
+          ? step("now", "Book and meet", "Open until Fri 6 Nov")
+          : step("lock", "Book and meet", "Booking opens Mon 26 Oct"),
+    s.sigs.sup
+      ? step("ok", `${SUP} signs`, s.sigs.sup.date)
+      : meetingHeld(s)
+        ? step("now", `${SUP} signs`, "Next")
+        : step("lock", `${SUP} signs`, "After the meeting"),
+    s.sigs.doc
+      ? step("ok", "You sign", s.sigs.doc.date)
+      : s.sigs.sup
+        ? step("now", "You sign", "Read your report first")
+        : step("lock", "You sign", `After ${SUP}`),
+    s.sentToMeu
+      ? step("ok", "Email the PDF to your MEU", "Marked as sent (made-up)")
+      : s.sigs.doc
+        ? step("now", "Email the PDF to your MEU", "By Fri 20 Nov. PsychSift doesn't send it for you.")
+        : step("lock", "Email the PDF to your MEU", "By Fri 20 Nov"),
+    step("lock", "DCT countersigns", "Your MEU tells you when it's done"),
+  ];
+}
+
+/** "Step n of 8": the first step that is neither done nor skipped. */
+export function currentStepNumber(steps: readonly Step[]): number {
+  // A step left behind by a later done step (a skipped self-rating) is not the current one.
+  const i = steps.findIndex((x, n) => x.state !== "ok" && !steps.slice(n + 1).some((y) => y.state === "ok"));
+  return i < 0 ? steps.length : i + 1;
+}
+
+/** The made-up date can't move before anything already recorded on it. */
+function earliestNow(s: AssessmentsState): number {
+  return Math.max(
+    -1,
+    s.request.sent ? s.request.sentOn : -1,
+    s.meetingDay ?? -1,
+    s.sigs.sup?.day ?? -1,
+    s.sigs.doc?.day ?? -1,
+  );
+}
+
+/* ---------------- The form ---------------- */
+
+export const lowDomains = (f: { ratings: Ratings | Record<DomainNumber, Rating> }) =>
+  DOMAIN_NUMBERS.filter((k) => {
+    const r = f.ratings[k];
+    return r !== null && r <= 2;
+  });
+
+export const needsImprovementPlan = (f: AssessmentForm) =>
+  lowDomains(f).length > 0 || f.global === "cond" || f.global === "unsat";
+
+/**
+ * A partial check for patient details: URNs, dates of birth, long numbers, a title
+ * and a name, a date, or a bed number. It deliberately says it catches only some.
+ */
+export function looksLikePatientDetails(text: string): boolean {
+  return (
+    /\b(URN|UMRN|MRN)\b/.test(text) ||
+    /\bD\.?O\.?B\.?\b/.test(text) ||
+    /date of birth/i.test(text) ||
+    /\b\d{7,}\b/.test(text) ||
+    /\b(Mr|Mrs|Ms|Miss|Mstr)\.? [A-Z][a-z]+/.test(text) ||
+    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(text) ||
+    /\bbed \d+/i.test(text)
+  );
+}
+
+export const formMentionsPatient = (f: AssessmentForm) =>
+  [f.strengths, f.areas, f.other, ...Object.values(f.feedback)].some(looksLikePatientDetails);
+
+/** What still stops the form being finished, in plain words. Empty means it can be saved. */
+export function formBlockers(f: AssessmentForm, who: Who): string[] {
+  const reasons: string[] = [];
+  const missing = DOMAIN_NUMBERS.filter((k) => !f.ratings[k]);
+  if (missing.length) reasons.push(`Rate domain ${missing.join(", ")}.`);
+  if (who === "sup") {
+    if (!f.global) reasons.push("Choose a global rating.");
+    const lowNoFeedback = lowDomains(f).filter((k) => !f.feedback[k].trim());
+    if (lowNoFeedback.length) reasons.push(`Add feedback for domain ${lowNoFeedback.join(", ")}.`);
+    if (needsImprovementPlan(f) && !f.ipap) reasons.push("Tick to notify the MEU.");
+  }
+  return reasons;
+}
+
+/* ---------------- Reports ---------------- */
+
+export type ComparisonRow = {
+  domain: DomainNumber;
+  title: string;
+  self: Rating | null;
+  sup: Rating;
+  message: string;
+};
+
+/**
+ * Self against supervisor, domain by domain. `view` is whose screen it is: the
+ * doctor reads "Dr Nair: 1 higher", the supervisor reads "You: 1 higher".
+ */
+export function compareRatings(
+  selfRatings: Ratings | Record<DomainNumber, Rating> | null,
+  supRatings: Ratings | Record<DomainNumber, Rating>,
+  view: "doc" | "sup",
+  doctorFirst: string,
+): ComparisonRow[] {
+  return DOMAINS.map((d) => {
+    const a = selfRatings?.[d.n] ?? null;
+    const b = (supRatings[d.n] ?? 1) as Rating;
+    let message: string;
+    if (!a) message = "No self-rating";
+    else if (a === b) message = "Same rating";
+    else {
+      const gap = b - a;
+      message =
+        view === "sup"
+          ? gap > 0
+            ? `You: ${gap} higher`
+            : `${doctorFirst}: ${-gap} higher`
+          : gap > 0
+            ? `${SUP}: ${gap} higher`
+            : `You: ${-gap} higher`;
+    }
+    return { domain: d.n, title: d.title, self: a, sup: b, message };
+  });
+}
+
+type ReportForm = { ratings: Ratings | Record<DomainNumber, Rating>; ticks: Ticks };
+
+/** The one-paragraph summary under the doctor's comparison chart. */
+export function reportSummary(self: ReportForm | null, sup: ReportForm): string {
+  if (!self) return "You didn't rate yourself this time, so there's nothing to compare.";
+  let under = 0;
+  let over = 0;
+  let agree = 0;
+  let supTicks = 0;
+  for (const k of DOMAIN_NUMBERS) {
+    const diff = (sup.ratings[k] ?? 0) - (self.ratings[k] ?? 0);
+    if (diff > 0) under++;
+    else if (diff < 0) over++;
+    agree += sup.ticks[k].filter((t) => self.ticks[k].includes(t)).length;
+    supTicks += sup.ticks[k].length;
+  }
+  const plural = (n: number) => `${n} domain${n > 1 ? "s" : ""}`;
+  if (!under && !over)
+    return `You and ${SUP} gave the same rating in every domain. You both ticked ${agree} of the ${supTicks} outcomes she observed.`;
+  return [
+    under ? `You rated yourself lower than ${SUP} in ${plural(under)}. Ask her what she saw.` : "",
+    over ? `You rated yourself higher in ${plural(over)}. Ask for an example.` : "",
+    `You both ticked ${agree} of the ${supTicks} outcomes ${SUP} observed.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** Talking points for the supervisor's meeting, biggest gap first. */
+export function talkingPoints(
+  self: { ratings: Ratings } | null,
+  sup: { ratings: Ratings },
+  doctorFirst: string,
+): string[] {
+  if (!self)
+    return [`${doctorFirst} didn't rate themselves. Ask how they think the term went before sharing your view.`];
+  const gaps = DOMAIN_NUMBERS.map((k) => ({ k, g: (sup.ratings[k] ?? 0) - (self.ratings[k] ?? 0) }))
+    .filter((x) => x.g)
+    .sort((a, b) => Math.abs(b.g) - Math.abs(a.g));
+  if (!gaps.length) return ["You gave the same rating in every domain. Use the meeting to set goals for next term."];
+  return gaps.map((x) =>
+    x.g > 0
+      ? `Domain ${x.k}: ${doctorFirst} rated themselves ${x.g} lower than you. Say what you've seen them do well.`
+      : `Domain ${x.k}: ${doctorFirst} rated themselves ${-x.g} higher. Talk through one example together.`,
+  );
+}
+
+/** Two suggested goals from the two lowest-rated domains (ties go to the earlier domain). */
+export function suggestedGoals(ratings: Ratings | Record<DomainNumber, Rating>): string[] {
+  return [...DOMAIN_NUMBERS]
+    .sort((a, b) => (ratings[a] ?? 0) - (ratings[b] ?? 0) || a - b)
+    .slice(0, 2)
+    .map((k) => GOAL_SUGGESTIONS[k]);
+}
+
+/* ---------------- Reducer ---------------- */
+
+export type AssessmentsAction =
+  | { type: "set-now"; now: number }
+  | { type: "form-step"; who: Who; step: number }
+  | { type: "form-save-exit"; who: Who }
+  | { type: "form-finish"; who: Who }
+  | { type: "form-example"; who: Who }
+  | { type: "toggle-source"; who: Who; source: string }
+  | { type: "set-other"; who: Who; value: string }
+  | { type: "toggle-tick"; who: Who; domain: DomainNumber; outcome: string }
+  | { type: "tick-all"; who: Who; domain: DomainNumber }
+  | { type: "toggle-wording"; who: Who }
+  | { type: "set-rating"; who: Who; domain: DomainNumber; rating: Rating }
+  | { type: "set-feedback"; who: Who; domain: DomainNumber; value: string }
+  | { type: "set-global"; who: Who; rating: GlobalRating }
+  | { type: "set-text"; who: Who; field: "strengths" | "areas"; value: string }
+  | { type: "toggle-ipap"; who: Who }
+  | { type: "toggle-registrar" }
+  | { type: "toggle-share"; key: "epa" | "mid" | "log" }
+  | { type: "set-request-message"; value: string }
+  | { type: "send-request" }
+  | { type: "toggle-remind-open" }
+  | { type: "toggle-my-day" }
+  | { type: "toggle-remind-day" }
+  | { type: "book"; day: number; time: string }
+  | { type: "cancel-booking" }
+  | { type: "meeting-held" }
+  | { type: "sign"; who: Who; typed: string; image: SignatureInk | null }
+  | { type: "sent-to-meu" }
+  | { type: "request-epa"; epa: EpaNumber; who: "sup" | "reg" }
+  | { type: "record-epa"; index: number; level: SupervisionLevel }
+  | { type: "toggle-availability"; day: number; time: string }
+  | { type: "set-disagree-draft"; value: string };
+
+/** A form that is locked rejects every edit. */
+function editForm(s: AssessmentsState, who: Who, change: (f: AssessmentForm) => AssessmentForm): AssessmentsState {
+  if (who === "self" ? selfLocked(s) : supLocked(s)) return s;
+  const current = s[who];
+  const next = change(current);
+  // A finished form that is changed into one with gaps goes back to a draft.
+  const status =
+    next.status === "new" || (next.status === "done" && formBlockers(next, who).length) ? "draft" : next.status;
+  return { ...s, [who]: { ...next, status } };
+}
+
+const toggle = (list: readonly string[], item: string) =>
+  list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
+
+export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): AssessmentsState {
+  switch (a.type) {
+    case "set-now":
+      if (!Number.isInteger(a.now)) return s;
+      return { ...s, now: Math.max(earliestNow(s), Math.min(WINDOW_DAYS.length - 1, a.now)) };
+    case "form-step": {
+      if (!Number.isInteger(a.step)) return s;
+      const step = Math.max(0, Math.min(LAST_FORM_STEP, a.step));
+      return { ...s, [a.who]: { ...s[a.who], step } };
+    }
+    case "form-save-exit":
+      return editForm(s, a.who, (f) => f);
+    case "form-finish": {
+      if (formBlockers(s[a.who], a.who).length) return s;
+      // The supervisor's view starts only once the doctor has asked for it.
+      if (a.who === "sup" && !s.request.sent) return s;
+      return editForm(s, a.who, (f) => ({ ...f, status: "done" }));
+    }
+    case "form-example": {
+      const ex = EXAMPLE_ANSWERS[a.who];
+      return editForm(s, a.who, (f) => ({
+        ...f,
+        sources: [...ex.sources],
+        ticks: { 1: [...ex.ticks[1]], 2: [...ex.ticks[2]], 3: [...ex.ticks[3]], 4: [...ex.ticks[4]] },
+        ratings: { ...ex.ratings },
+        feedback: { ...ex.feedback },
+        global: ex.global,
+        strengths: ex.strengths,
+        areas: ex.areas,
+      }));
+    }
+    case "toggle-source":
+      if (!(EVIDENCE_SOURCES as readonly string[]).includes(a.source)) return s;
+      return editForm(s, a.who, (f) => ({ ...f, sources: toggle(f.sources, a.source) }));
+    case "set-other":
+      return editForm(s, a.who, (f) => ({ ...f, other: a.value }));
+    case "toggle-tick":
+      return editForm(s, a.who, (f) => ({
+        ...f,
+        ticks: { ...f.ticks, [a.domain]: toggle(f.ticks[a.domain], a.outcome) },
+      }));
+    case "tick-all":
+      return editForm(s, a.who, (f) => ({
+        ...f,
+        ticks: { ...f.ticks, [a.domain]: domain(a.domain).outcomes.map((o) => o.id) },
+      }));
+    case "toggle-wording":
+      return { ...s, [a.who]: { ...s[a.who], fullWording: !s[a.who].fullWording } };
+    case "set-rating":
+      return editForm(s, a.who, (f) => ({ ...f, ratings: { ...f.ratings, [a.domain]: a.rating } }));
+    case "set-feedback":
+      return editForm(s, a.who, (f) => ({ ...f, feedback: { ...f.feedback, [a.domain]: a.value } }));
+    case "set-global":
+      // The doctor's own overall rating is optional: tapping it again clears it.
+      return editForm(s, a.who, (f) => ({
+        ...f,
+        global: a.who === "self" && f.global === a.rating ? null : a.rating,
+      }));
+    case "set-text":
+      return editForm(s, a.who, (f) => ({ ...f, [a.field]: a.value }));
+    case "toggle-ipap":
+      return editForm(s, a.who, (f) => ({ ...f, ipap: !f.ipap }));
+    case "toggle-registrar":
+      return s.request.sent ? s : { ...s, request: { ...s.request, registrar: !s.request.registrar } };
+    case "toggle-share":
+      return s.request.sent ? s : { ...s, share: { ...s.share, [a.key]: !s.share[a.key] } };
+    case "set-request-message":
+      return s.request.sent ? s : { ...s, request: { ...s.request, message: a.value } };
+    case "send-request":
+      return s.request.sent ? s : { ...s, request: { ...s.request, sent: true, sentOn: s.now } };
+    case "toggle-remind-open":
+      return { ...s, remindWhenOpen: !s.remindWhenOpen };
+    case "toggle-my-day":
+      return { ...s, addToMyDay: !s.addToMyDay };
+    case "toggle-remind-day":
+      return { ...s, remindDayBefore: !s.remindDayBefore };
+    case "book":
+      if (!supReady(s) || !bookableDay(s, a.day) || !s.avail[a.day]?.includes(a.time) || meetingHeld(s)) return s;
+      return { ...s, booking: { day: a.day, time: a.time } };
+    case "cancel-booking":
+      return meetingHeld(s) ? s : { ...s, booking: null };
+    case "meeting-held":
+      if (!s.booking || s.now < s.booking.day || !supReady(s)) return s;
+      return { ...s, meetingDay: s.booking.day };
+    case "sign": {
+      if (!a.typed.trim() && !a.image) return s;
+      const sig: Signature = { typed: a.typed.trim(), image: a.image, date: todayLabel(s), day: s.now };
+      if (a.who === "sup") {
+        const ok = meetingHeld(s) && !s.sigs.sup && !formBlockers(s.sup, "sup").length;
+        return ok ? { ...s, sigs: { ...s.sigs, sup: sig } } : s;
+      }
+      return s.sigs.sup && !s.sigs.doc ? { ...s, sigs: { ...s.sigs, doc: sig } } : s;
+    }
+    case "sent-to-meu":
+      return s.sigs.doc ? { ...s, sentToMeu: true } : s;
+    case "request-epa":
+      if (![1, 2, 3, 4].includes(a.epa) || (a.who !== "sup" && a.who !== "reg") || pendingEpaRequest(s, a.epa))
+        return s;
+      return { ...s, epaRequests: [...s.epaRequests, { epa: a.epa, who: a.who, status: "requested" }] };
+    case "record-epa": {
+      const r = s.epaRequests[a.index];
+      if (!r || r.status !== "requested" || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
+      const epaRequests = s.epaRequests.map((x, i) =>
+        i === a.index ? { ...x, status: "done" as const, level: a.level } : x,
+      );
+      return { ...s, epaRequests };
+    }
+    case "toggle-availability": {
+      const booked = s.booking?.day === a.day && s.booking.time === a.time;
+      if (booked) return s;
+      return { ...s, avail: { ...s.avail, [a.day]: toggle(s.avail[a.day] ?? [], a.time) } };
+    }
+    case "set-disagree-draft":
+      return { ...s, disagreeDraft: a.value };
+  }
+}
+
+/** Kinds of experience (A to D) from terms already countersigned. */
+export function kindsDone(terms: readonly { status: string; category: string }[]): number {
+  return new Set(terms.filter((t) => t.status === "done").map((t) => t.category)).size;
+}

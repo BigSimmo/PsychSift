@@ -209,6 +209,7 @@
         "src/app/(search-app)/sources/publishers/page.tsx",
         "src/app/(search-app)/sources/search/page.tsx",
         "src/app/(search-app)/sources/topics/page.tsx",
+        "src/app/(search-app)/teaching/assessments/page.tsx",
         "src/app/(search-app)/teaching/c/[token]/page.tsx",
         "src/app/(search-app)/teaching/c/complete/page.tsx",
         "src/app/(search-app)/teaching/exam-prep/page.tsx",

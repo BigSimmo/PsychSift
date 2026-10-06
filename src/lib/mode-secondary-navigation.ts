@@ -195,6 +195,7 @@ export const modeSecondaryNavigationRegistry = {
     { id: "logbook", label: "Logbook", href: "/teaching/logbook" },
     { id: "teach", label: "Teach", href: "/teaching/teach" },
     { id: "supervision", label: "Supervision", href: "/teaching/supervision" },
+    { id: "assessments", label: "Assessments", href: "/teaching/assessments" },
     { id: "organise", label: "Organise", href: "/teaching/organise" },
   ],
   // Psychiatry's home is itself the list of sections it gathers, and each
@@ -474,6 +475,7 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/teaching/resources" || pathname.startsWith("/teaching/resources/")) return "resources";
     if (pathname === "/teaching/teach") return "teach";
     if (pathname === "/teaching/supervision") return "supervision";
+    if (pathname === "/teaching/assessments") return "assessments";
     if (pathname === "/teaching/review" || pathname === "/teaching/feedback" || pathname === "/teaching/term")
       return "logbook";
     if (pathname === "/teaching/exam-prep") return "resources";
