@@ -50,7 +50,8 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
 
   const criterionKey = (label: string, index: number) => label || String(index + 1);
 
-  const isDirty = Object.keys(statuses).length > 0 || specifiers.length > 0 || specifierText.trim().length > 0 || excluded.length > 0;
+  const isDirty =
+    Object.keys(statuses).length > 0 || specifiers.length > 0 || specifierText.trim().length > 0 || excluded.length > 0;
   useDirtyStateGuard(isDirty);
 
   useEffect(() => {
@@ -65,12 +66,15 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
         if (parsed.includeCriterionText !== undefined) setIncludeCriterionText(parsed.includeCriterionText);
       }
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record.icdCode]);
 
   useEffect(() => {
     if (isDirty || !includeCriterionText) {
-      sessionStorage.setItem(`psychsift_dsm_draft_${record.icdCode}`, JSON.stringify({ statuses, specifiers, specifierText, excluded, includeCriterionText }));
+      sessionStorage.setItem(
+        `psychsift_dsm_draft_${record.icdCode}`,
+        JSON.stringify({ statuses, specifiers, specifierText, excluded, includeCriterionText }),
+      );
     }
   }, [record.icdCode, isDirty, statuses, specifiers, specifierText, excluded, includeCriterionText]);
 

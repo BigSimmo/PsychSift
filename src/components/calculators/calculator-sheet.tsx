@@ -73,7 +73,7 @@ export function CalculatorSheet({
     } catch {
       // Ignore
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calc.id]);
 
   useEffect(() => {

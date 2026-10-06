@@ -227,7 +227,6 @@ export function resolveDsmCompareIds(slugs: readonly (string | null | undefined)
   return { diagnoses, selectedIds };
 }
 
-
 /**
  * Criteria text plus the key-feature fallback, for SEARCH RANKING ONLY.
  *
@@ -242,7 +241,6 @@ export function resolveDsmCompareIds(slugs: readonly (string | null | undefined)
 function dsmRankingCriteriaText(diagnosis: DsmDiagnosis) {
   return diagnosis.criteria_display.length > 0 ? diagnosis.criteria_display : diagnosis.key_features;
 }
-
 
 export function dsmDiagnosisSummary(diagnosis: DsmDiagnosis): DsmDiagnosisSummary {
   const view = dsmCriteriaView(diagnosis);

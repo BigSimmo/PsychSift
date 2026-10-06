@@ -521,7 +521,7 @@ describe("safety findings are counted once per passage", () => {
       label: "Monitoring",
       text: "Monitor ANC weekly.",
       href: "",
-      citation: undefined as any
+      citation: undefined as any,
     };
     const finding2 = {
       id: "red_flag:chunk-2",
@@ -529,13 +529,13 @@ describe("safety findings are counted once per passage", () => {
       label: "Red flag",
       text: "Monitor ANC weekly. Urgent review if fever develops.",
       href: "",
-      citation: null as any
+      citation: null as any,
     };
-    
+
     // Should not throw TypeError when computing passageKey
     const findings = collapseDuplicateSafetyFindings([finding1, finding2]);
-    
-    // They shouldn't match on sameChunk or passageKey, so they won't be merged 
+
+    // They shouldn't match on sameChunk or passageKey, so they won't be merged
     // unless cross-chunk logic applies, but their passage keys differ (undefined:? vs null:?)
     // But importantly, it shouldn't crash.
     expect(findings).toBeDefined();

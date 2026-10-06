@@ -18,18 +18,17 @@ export const dynamic = "force-dynamic";
 
 const namedEntitySchema = z.object({ name: z.string().max(200).optional() });
 
-const railwayWebhookSchema = z
-  .object({
-    type: z.string().max(200).optional(),
-    status: z.string().max(200).optional(),
-    timestamp: z.string().max(200).optional(),
-    project: namedEntitySchema.optional(),
-    environment: namedEntitySchema.optional(),
-    service: namedEntitySchema.optional(),
-    deployment: z
-      .object({ id: z.string().max(200).optional(), meta: z.record(z.string().max(200), z.unknown()).optional() })
-      .optional(),
-  });
+const railwayWebhookSchema = z.object({
+  type: z.string().max(200).optional(),
+  status: z.string().max(200).optional(),
+  timestamp: z.string().max(200).optional(),
+  project: namedEntitySchema.optional(),
+  environment: namedEntitySchema.optional(),
+  service: namedEntitySchema.optional(),
+  deployment: z
+    .object({ id: z.string().max(200).optional(), meta: z.record(z.string().max(200), z.unknown()).optional() })
+    .optional(),
+});
 
 // Only forward status changes worth a ping; transient build/deploy phases are
 // dropped to keep the channel quiet.

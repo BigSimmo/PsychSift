@@ -1,11 +1,5 @@
 import { Search } from "lucide-react";
-import {
-  DropdownNavigator,
-  PhoneFrame,
-  PriorityDock,
-  ProgressNavigator,
-  ScrollRail,
-} from "./phone-inpage-nav-widgets";
+import { DropdownNavigator, PhoneFrame, PriorityDock, ProgressNavigator, ScrollRail } from "./phone-inpage-nav-widgets";
 
 export default function PhoneInPageNavigationMockup() {
   return (

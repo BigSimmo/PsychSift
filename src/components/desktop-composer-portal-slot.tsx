@@ -36,12 +36,6 @@ export function DesktopComposerPortalSlot({
   }, []);
 
   return (
-    <div
-      id={id}
-      ref={ref}
-      className={className}
-      data-composer-reserve={dataComposerReserve ?? undefined}
-      {...rest}
-    />
+    <div id={id} ref={ref} className={className} data-composer-reserve={dataComposerReserve ?? undefined} {...rest} />
   );
 }

@@ -129,13 +129,7 @@ export type DocumentViewerProps = {
   initialError?: string;
 };
 
-function DocumentViewerContent({
-  documentId,
-  initialPage,
-  chunkId,
-  initialDetail,
-  initialError,
-}: DocumentViewerProps) {
+function DocumentViewerContent({ documentId, initialPage, chunkId, initialDetail, initialError }: DocumentViewerProps) {
   const router = useRouter();
   const { activePage, activeChunkId, navigateToPage } = useDocumentViewerRoute({
     documentId,

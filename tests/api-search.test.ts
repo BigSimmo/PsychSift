@@ -419,7 +419,7 @@ describe("/api/search route defensive hardening (Task #342)", () => {
     mockRuntime({ demoMode: false });
     const { POST } = await import("../src/app/api/search/route");
     const { consumeSubjectApiRateLimit, rateLimitJsonResponse } = await import("@/lib/api-rate-limit");
-    
+
     vi.mocked(consumeSubjectApiRateLimit).mockResolvedValueOnce({
       limited: true,
       limit: 100,
@@ -427,10 +427,12 @@ describe("/api/search route defensive hardening (Task #342)", () => {
       retryAfterSeconds: 60,
       resetAt: new Date(Date.now() + 60_000).toISOString(),
     } as any);
-    vi.mocked(rateLimitJsonResponse).mockImplementationOnce(() => Response.json({ error: "Rate limit exceeded" }, { status: 429 }) as any);
+    vi.mocked(rateLimitJsonResponse).mockImplementationOnce(
+      () => Response.json({ error: "Rate limit exceeded" }, { status: 429 }) as any,
+    );
 
     const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));
-    
+
     expect(response.status).toBe(429);
   });
 });

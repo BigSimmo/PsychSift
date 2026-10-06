@@ -245,7 +245,10 @@ export function FormulationBuilderPage({
   const completedQuality = formulationQualityPrompts.filter((prompt) => qualityNotes[prompt.id]?.trim()).length;
   const activeIndex = builderSteps.findIndex((step) => step.id === activeStep);
 
-  const isDirty = Object.values(sectionNotes).some((n) => n.trim().length > 0) || Object.values(qualityNotes).some((n) => n.trim().length > 0) || editedDraft !== null;
+  const isDirty =
+    Object.values(sectionNotes).some((n) => n.trim().length > 0) ||
+    Object.values(qualityNotes).some((n) => n.trim().length > 0) ||
+    editedDraft !== null;
   useDirtyStateGuard(isDirty);
 
   useEffect(() => {
@@ -260,12 +263,15 @@ export function FormulationBuilderPage({
         if (parsed.editedDraft !== undefined) setEditedDraft(parsed.editedDraft);
       }
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (isDirty || selectedIds.length > 0) {
-      sessionStorage.setItem("psychsift_formulation_draft", JSON.stringify({ sectionNotes, qualityNotes, selectedIds, templateId, editedDraft }));
+      sessionStorage.setItem(
+        "psychsift_formulation_draft",
+        JSON.stringify({ sectionNotes, qualityNotes, selectedIds, templateId, editedDraft }),
+      );
     }
   }, [isDirty, sectionNotes, qualityNotes, selectedIds, templateId, editedDraft]);
 

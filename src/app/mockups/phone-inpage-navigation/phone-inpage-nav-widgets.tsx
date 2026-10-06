@@ -255,15 +255,7 @@ export function ClinicalContent({ active }: { active: SectionLabel }) {
   );
 }
 
-export function PhoneFrame({
-  children,
-  title,
-  kicker,
-}: {
-  children: React.ReactNode;
-  title: string;
-  kicker: string;
-}) {
+export function PhoneFrame({ children, title, kicker }: { children: React.ReactNode; title: string; kicker: string }) {
   return (
     <article className="space-y-3">
       <div className="px-1">
