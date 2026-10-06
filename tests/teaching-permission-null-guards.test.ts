@@ -13,6 +13,11 @@ function definition(sql: string, name: string, replacement = false): string {
   return close < 0 ? "" : sql.slice(start, close + "\nend $$;".length);
 }
 
+// 20261006060000 raised the feedback release threshold from 3 to 5 answers.
+function laterChanges(name: string, sql: string): string {
+  return name === "teaching_depth_command" ? sql.replace("or v_count < 3 then", "or v_count < 5 then") : sql;
+}
+
 const repairs = [
   {
     name: "teaching_depth_command",
@@ -44,7 +49,8 @@ describe("Teaching permission null guards", () => {
           .replace(`create function public.${name}`, `create or replace function public.${name}`)
           .replace(old, next),
       );
-      expect(mirror).toBe(before.replace(old, next));
+      // schema.sql also carries later, separately tested changes to the same function.
+      expect(mirror).toBe(laterChanges(name, before.replace(old, next)));
       expect(after).toContain("security invoker set search_path = public, pg_catalog, pg_temp");
       expect(repair).toContain(
         `revoke all on function public.${name}(uuid, uuid, text, jsonb) from public, anon, authenticated;`,
