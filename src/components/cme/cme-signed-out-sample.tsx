@@ -29,6 +29,13 @@ import {
   DEMO_CME_YEAR,
 } from "@/lib/cme/demo-year";
 import { parseCmeLearningPrefill } from "@/lib/cme/learning-source";
+import { trainingExampleView } from "@/lib/cme/training-assessments";
+import {
+  SAMPLE_TRAINING_MILESTONES,
+  SAMPLE_TRAINING_NOW_ISO,
+  SAMPLE_TRAINING_PERIODS,
+  sampleTrainingAssessments,
+} from "@/lib/cme/training-assessments-sample";
 import { cmeCategories, type CmeCategory } from "@/lib/cme/types";
 
 /**
@@ -129,8 +136,19 @@ function SampleBody({ pathname, query }: { readonly pathname: string; readonly q
     return <CmeAnnualSummary set={SET} entries={ENTRIES} demoMode close={null} now={DEMO_CME_INSTANT} />;
   }
   if (pathname === "/cme/training") {
-    // The demo year has no training record, so the sample shows the empty timeline.
-    return <CmeTrainingPage nowIso={NOW_ISO} initialPeriods={[]} initialMilestones={[]} demoMode />;
+    // The mock-up's invented registrar (or, with ?example=intern, junior doctor),
+    // on the mock-up's own "today" so its dates read as drawn.
+    const view = trainingExampleView(query.get("example"));
+    return (
+      <CmeTrainingPage
+        key={view}
+        nowIso={SAMPLE_TRAINING_NOW_ISO}
+        initialPeriods={SAMPLE_TRAINING_PERIODS}
+        initialMilestones={SAMPLE_TRAINING_MILESTONES}
+        demoMode
+        assessments={sampleTrainingAssessments(view)}
+      />
+    );
   }
   if (pathname === "/cme/plan") {
     return <CmePlanPage key={SET.year} set={SET} goals={GOALS} entries={ENTRIES} demoMode now={DEMO_CME_INSTANT} />;

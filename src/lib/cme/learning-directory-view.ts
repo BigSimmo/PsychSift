@@ -100,6 +100,47 @@ export function groupLearningByMonth(items: readonly LearningDirectoryItem[]): L
   }));
 }
 
+/** Whole calendar days from `todayPerth` to `startsOn`; a start already passed counts as 0. */
+export function daysUntilLearningStart(startsOn: string, todayPerth: string): number {
+  const days = (Date.parse(`${startsOn}T00:00:00Z`) - Date.parse(`${todayPerth}T00:00:00Z`)) / MS_PER_DAY;
+  return Math.max(0, Math.round(days));
+}
+
+/** "On now" (started before today and still listed), "Today", "Tomorrow" or "In 20 days" for the countdown chip. */
+export function learningCountdownLabel(startsOn: string, todayPerth: string): string {
+  if (startsOn < todayPerth) return "On now";
+  const days = daysUntilLearningStart(startsOn, todayPerth);
+  if (days === 0) return "Today";
+  return days === 1 ? "Tomorrow" : `In ${days} days`;
+}
+
+export type LearningUpcomingSections = {
+  /** The next two with a confirmed date; these carry the countdown chip. */
+  readonly next: readonly LearningDirectoryItem[];
+  /** After the next two, starting in the same calendar year as today. */
+  readonly laterThisYear: readonly LearningDirectoryItem[];
+  /** Later calendar years, plus undated recorded items ("any time"). */
+  readonly nextYearAndAnyTime: readonly LearningDirectoryItem[];
+};
+
+/** Splits a date-sorted upcoming list so a later year never reads as this year. */
+export function splitUpcomingLearning(
+  upcoming: readonly LearningDirectoryItem[],
+  todayPerth: string,
+): LearningUpcomingSections {
+  const next = upcoming.filter((item) => item.startsOn !== null).slice(0, 2);
+  const rest = upcoming.filter((item) => !next.includes(item));
+  const thisYear = todayPerth.slice(0, 4);
+  // Something already running (it started before today, perhaps last year) belongs with this year.
+  const isThisYear = (item: LearningDirectoryItem) =>
+    item.startsOn !== null && (item.startsOn < todayPerth || item.startsOn.slice(0, 4) === thisYear);
+  return {
+    next,
+    laterThisYear: rest.filter(isThisYear),
+    nextYearAndAnyTime: rest.filter((item) => !isThisYear(item)),
+  };
+}
+
 /** True when the list was last checked more than 45 days before today's Perth date. */
 export function isDirectoryStale(lastCheckedOn: string, todayPerth: string): boolean {
   const days = (Date.parse(`${todayPerth}T00:00:00Z`) - Date.parse(`${lastCheckedOn}T00:00:00Z`)) / MS_PER_DAY;
