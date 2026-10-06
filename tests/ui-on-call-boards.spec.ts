@@ -755,9 +755,10 @@ test.describe("08 Referrals — freshness says something or says nothing", () =>
     await expect(row.getByTestId("on-call-freshness-badge")).toHaveCount(0);
 
     await expandReferral(page, "Community mental health team");
-    await expect(
-      page.getByTestId("on-call-referral-panel-demo-community-team").getByTestId("on-call-freshness-badge"),
-    ).toBeVisible();
+    // The fresh badge is a sibling of ReferralPanel, not inside
+    // `on-call-referral-panel-*` (that test id is Accepts / exclusions only).
+    const expanded = page.getByRole("region", { name: "Community mental health team" });
+    await expect(expanded.getByTestId("on-call-freshness-badge")).toBeVisible();
   });
 });
 
