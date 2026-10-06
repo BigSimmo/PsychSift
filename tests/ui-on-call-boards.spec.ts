@@ -523,24 +523,15 @@ test.describe("02 More — the second row is about the page you are on", () => {
     await expect(page.getByText(/Filed by role first/)).toHaveCount(0);
     await expect(page.getByTestId("on-call-contacts-filters")).toHaveCount(0);
     const firstGroup = page.getByTestId("on-call-contacts-group-needs-checking");
-    const header = page.getByTestId("on-call-section-detail-header");
-    // The mode header band (C4, locked 5 Oct 2026) sits between this bar and
-    // the list by design, so the gap is measured from whichever ends lower.
-    const band = page.getByTestId("mode-band");
-    const [groupBox, sectionBox, bandBox] = [
-      await firstGroup.boundingBox(),
-      await header.boundingBox(),
-      await band.boundingBox(),
-    ];
-    const headerBox =
-      bandBox && sectionBox && bandBox.y + bandBox.height > sectionBox.y + sectionBox.height ? bandBox : sectionBox;
-    // The threshold is the height of a control band, not a design opinion: a
-    // chip row or a toolbar is a 48px control plus its gaps, so anything that
-    // reappears between the header and the list pushes this well past 72. The
-    // shell's own top padding accounts for the ~48 that is there.
+    // Page tools live on in-page More (the old header ellipsis). That one
+    // labelled control is allowed above the list; a chip row or second toolbar
+    // is not.
+    const more = page.getByTestId("on-call-page-menu-trigger");
+    await expect(more).toBeVisible();
+    const [groupBox, moreBox] = [await firstGroup.boundingBox(), await more.boundingBox()];
     expect(
-      groupBox!.y - (headerBox!.y + headerBox!.height),
-      "a band of controls has reappeared between the header and the list",
+      groupBox!.y - (moreBox!.y + moreBox!.height),
+      "a second band of controls has reappeared between More and the list",
     ).toBeLessThan(72);
     await expect(page.getByRole("button", { name: "Start a new chat" })).toHaveCount(0);
   });
