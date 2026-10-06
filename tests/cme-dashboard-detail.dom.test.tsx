@@ -81,7 +81,8 @@ describe("Today figure details", () => {
   it("opens the total from saved, unarchived activities and links to the year Log", async () => {
     const user = userEvent.setup();
     renderDashboard();
-    await user.click(within(screen.getByTestId("cme-hero-summary")).getByRole("button"));
+    // What's left's "Hours in total" row opens what makes up the figure.
+    await user.click(within(screen.getByTestId("cme-requirements")).getByRole("button", { name: /Hours in total/ }));
     const sheet = screen.getByTestId("cme-today-detail-sheet");
     expect(within(sheet).getByTestId("cme-today-detail-total")).toHaveTextContent("3 h from 1 saved activity");
     expect(within(sheet).getByText(/College CPD guide/)).toBeInTheDocument();
