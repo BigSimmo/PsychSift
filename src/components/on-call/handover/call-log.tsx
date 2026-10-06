@@ -70,8 +70,8 @@ const SNAPSHOT_SEPARATOR = "\u0000";
 /** The log and the shift's expiry stamp, joined into one primitive snapshot. */
 function readRaw(): string {
   try {
-    const log = window.sessionStorage.getItem(onCallCallLogStorageKey) ?? "";
-    const stamp = window.sessionStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY) ?? "";
+    const log = window.localStorage.getItem(onCallCallLogStorageKey) ?? "";
+    const stamp = window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY) ?? "";
     return `${log}${SNAPSHOT_SEPARATOR}${stamp}`;
   } catch {
     return SNAPSHOT_SEPARATOR;

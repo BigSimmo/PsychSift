@@ -106,7 +106,6 @@ const config = {
           environment: "node",
           include: liveProviderTests ? ["tests/**/*.live.test.ts"] : ["tests/**/*.test.ts"],
           exclude: liveProviderTests ? [] : ["tests/**/*.live.test.ts"],
-          setupFiles: ["tests/setup/node.setup.ts"],
         },
       },
       ...(!liveProviderTests

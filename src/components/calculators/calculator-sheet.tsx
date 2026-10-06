@@ -51,10 +51,6 @@ export function CalculatorSheet({
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
-  const startedRef = useRef(derived.started);
-  useEffect(() => {
-    startedRef.current = derived.started;
-  }, [derived.started]);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -103,11 +99,7 @@ export function CalculatorSheet({
   // named close rather than leaving the click silently inert.
   const dismissFromBackdrop = () => {
     if (derived.started) {
-      if (window.confirm("Discard unsaved calculator inputs?")) {
-        onClose();
-      } else {
-        closeRef.current?.focus();
-      }
+      closeRef.current?.focus();
       return;
     }
     onClose();
@@ -121,13 +113,7 @@ export function CalculatorSheet({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isTopmostSheet(effectiveSheetId)) {
         event.preventDefault();
-        if (startedRef.current) {
-          if (window.confirm("Discard unsaved calculator inputs?")) {
-            onCloseRef.current();
-          }
-        } else {
-          onCloseRef.current();
-        }
+        onCloseRef.current();
       }
     };
 

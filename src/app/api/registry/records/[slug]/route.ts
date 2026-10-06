@@ -57,14 +57,10 @@ function publicRegistryDetailPayload(kind: "service" | "form", slug: string) {
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
-    const parsedSlug = z
-      .string()
-      .trim()
-      .min(1)
-      .max(120)
-      .regex(/^[a-z0-9_-]+$/)
-      .parse(slug);
-    const normalizedSlug = normalizeRegistrySlug(parsedSlug);
+    const normalizedSlug = normalizeRegistrySlug(slug ?? "");
+    if (!normalizedSlug || !/^[a-z0-9_-]+$/.test(normalizedSlug) || normalizedSlug.length > 120) {
+      return notFoundResponse(normalizedSlug || "unknown");
+    }
     const { kind } = parseRequestQuery(request, registryDetailQuerySchema, "Invalid registry detail query.");
 
     if (isDemoMode() || isLocalNoAuthMode()) {

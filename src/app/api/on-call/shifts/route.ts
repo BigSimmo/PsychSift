@@ -13,18 +13,6 @@ import { deleteOwnerShifts } from "@/lib/roster/shifts/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseJsonBody } from "@/lib/validation/body";
-import { onCallShiftInputSchema, ON_CALL_SHIFT_IMPORT_MAX } from "@/lib/roster/shifts/model";
-
-const perthDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const legacyOnCallShiftImportSchema = z
-  .object({
-    format: z.enum(["ics", "csv", "xlsx", "pdf", "link"]),
-    windowStart: perthDate,
-    windowEnd: perthDate,
-    shifts: z.array(onCallShiftInputSchema).max(ON_CALL_SHIFT_IMPORT_MAX),
-  })
-  .strict()
-  .refine((body) => body.windowEnd >= body.windowStart, { message: "The roster dates are the wrong way round." });
 /**
  * My shifts moved to Roster. This path stays live so a page opened before the
  * move keeps working, on the terms it was written for: a save without a
@@ -60,7 +48,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function POST(request: Request) {
   let body: unknown;
   try {
-    body = await parseJsonBody(request, legacyOnCallShiftImportSchema, "That roster could not be saved.");
+    body = await parseJsonBody(request, z.unknown(), "That roster could not be saved.");
   } catch (error) {
     return jsonError(error);
   }
