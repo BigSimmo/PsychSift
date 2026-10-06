@@ -374,7 +374,7 @@ function TaughtBefore({ taught, demoMode }: { taught: readonly SessionRef[]; dem
         </>
       ) : (
         <T5Empty>
-          Talks you have given show here. Feedback totals show 7 days after a talk, once at least 3 people have
+          Talks you have given show here. Feedback totals show 7 days after a talk, once at least 5 people have
           answered.
         </T5Empty>
       )}
@@ -421,7 +421,7 @@ function FeedbackBlock({
         <ModeModuleSkeleton rows={1} />
       ) : !summary ? (
         <p className="text-sm text-[color:var(--text-muted)]">
-          No totals yet. They show 7 days after the talk, once at least 3 people have answered.
+          No totals yet. They show 7 days after the talk, once at least 5 people have answered.
         </p>
       ) : (
         <>
