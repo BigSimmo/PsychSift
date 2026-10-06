@@ -6,8 +6,7 @@ import { desktopComposerSlotReadyAttr, desktopComposerSlotReadyValue } from "@/l
 
 type DesktopComposerPortalSlotProps = {
   id: string;
-  "data-composer-reserve"?: string | null;
-} & Omit<ComponentPropsWithoutRef<"div">, "id" | "children" | "data-composer-reserve">;
+} & Omit<ComponentPropsWithoutRef<"div">, "id" | "children">;
 
 /**
  * Page-owned host for the desktop/hero search composer portal.
@@ -18,12 +17,7 @@ type DesktopComposerPortalSlotProps = {
  * injects a `display:contents` host into still-unhydrated RSC HTML and trips
  * React #418 on mode homes.
  */
-export function DesktopComposerPortalSlot({
-  id,
-  className,
-  "data-composer-reserve": dataComposerReserve = null,
-  ...rest
-}: DesktopComposerPortalSlotProps) {
+export function DesktopComposerPortalSlot({ id, className, ...rest }: DesktopComposerPortalSlotProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +29,5 @@ export function DesktopComposerPortalSlot({
     };
   }, []);
 
-  return (
-    <div id={id} ref={ref} className={className} data-composer-reserve={dataComposerReserve ?? undefined} {...rest} />
-  );
+  return <div id={id} ref={ref} className={className} {...rest} />;
 }

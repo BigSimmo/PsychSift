@@ -395,7 +395,7 @@ describe("/api/search route defensive hardening (Task #342)", () => {
 
     expect(response.status).toBe(500);
     expect(body).toMatchObject({
-      error: "Search request failed.",
+      error: "Search failed. Retry with a narrower question.",
       code: "internal_error",
     });
     expect(body).not.toHaveProperty("sqlState");

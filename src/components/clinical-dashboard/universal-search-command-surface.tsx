@@ -558,27 +558,6 @@ export function UniversalSearchCommandSurface({
   const listboxId = useId();
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(-1);
-
-  const syncComboboxInputAttributes = useCallback((container: HTMLDivElement | null) => {
-    if (!container) return;
-    const input = container.querySelector<HTMLInputElement>(
-      'input[data-testid="global-search-input"], input[role="combobox"]',
-    );
-    if (input) {
-      if (!input.id) input.id = "global-search-input";
-      if (!input.name) input.name = "q";
-    }
-  }, []);
-
-  useEffect(() => {
-    const input = document.querySelector<HTMLInputElement>(
-      'input[data-testid="global-search-input"], input[role="combobox"]',
-    );
-    if (input) {
-      if (!input.id) input.id = "global-search-input";
-      if (!input.name) input.name = "q";
-    }
-  }, []);
   // The dropdown is a fine-pointer desktop enhancement. Width-only checks let
   // wide, zoomed, or desktop-mode phones open it over the page.
   const dropdownMinimumWidthQuery = commandDropdownMinimumWidthMediaQuery(placement);
@@ -1237,7 +1216,6 @@ export function UniversalSearchCommandSurface({
         />
       )}
       <div
-        ref={syncComboboxInputAttributes}
         className="relative w-full"
         onKeyDownCapture={(event) => {
           if (event.target instanceof HTMLInputElement && event.target.dataset.testid === "global-search-input") {

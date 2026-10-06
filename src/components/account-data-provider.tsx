@@ -57,25 +57,20 @@ function readDemoFavourites(): FavouritesByType {
   };
 }
 
-export type AccountStatusContextValue = {
-  isAuthenticated: boolean;
+type AccountDataContextValue = {
+  favourites: FavouritesByType;
+  favouriteItems: AccountFavourite[];
+  favouriteSets: AccountFavouriteSet[];
   ready: boolean;
   /** Failure of GET /api/account/favourites (initial load or reload). */
   loadError: string | null;
   /** Failure of a save/clear mutation after the library was already loaded. */
   error: string | null;
-  reload: () => void;
-};
-
-export type AccountFavouritesDataContextValue = {
-  favourites: FavouritesByType;
-  favouriteItems: AccountFavourite[];
-  favouriteSets: AccountFavouriteSet[];
+  isAuthenticated: boolean;
   isSaved: (contentType: FavouriteContentType, contentKey: string) => boolean;
-};
-
-export type AccountFavouritesActionsContextValue = {
-  /** Re-issue the account favourites request for the current identity. */
+  /** Re-issue the account favourites request for the current identity. A failed
+      load clears every saved slug, so without this a Retry offered by a
+      favourites surface has nothing left to re-request and cannot recover. */
   reload: () => void;
   setFavourite: (contentType: FavouriteContentType, contentKey: string, saved: boolean) => Promise<boolean>;
   createFavouriteSet: (name: FavouriteSetName) => Promise<AccountFavouriteSet | null>;
@@ -100,14 +95,7 @@ export type AccountFavouritesActionsContextValue = {
   clearFavourites: () => Promise<boolean>;
 };
 
-export type AccountDataContextValue = AccountStatusContextValue &
-  AccountFavouritesDataContextValue &
-  AccountFavouritesActionsContextValue;
-
-export const AccountStatusContext = createContext<AccountStatusContextValue | null>(null);
-export const AccountFavouritesDataContext = createContext<AccountFavouritesDataContextValue | null>(null);
-export const AccountFavouritesActionsContext = createContext<AccountFavouritesActionsContextValue | null>(null);
-export const AccountDataContext = createContext<AccountDataContextValue | null>(null);
+const AccountDataContext = createContext<AccountDataContextValue | null>(null);
 
 function favouritesByType(rows: AccountFavourite[]): FavouritesByType {
   const result: FavouritesByType = { service: [], form: [], differential: [], therapy: [] };
@@ -626,51 +614,40 @@ export function AccountDataProvider({ children }: { children: ReactNode }) {
     return request;
   }, [auth, replaceFavouriteItems, replaceFavourites]);
 
-  const isSaved = useCallback(
-    (contentType: FavouriteContentType, contentKey: string) => favourites[contentType].includes(contentKey),
-    [favourites],
-  );
-
-  const statusValue = useMemo<AccountStatusContextValue>(
-    () => ({
-      isAuthenticated: auth.status === "authenticated",
-      ready,
-      loadError,
-      error,
-      reload,
-    }),
-    [auth.status, error, loadError, ready, reload],
-  );
-
-  const favouritesDataValue = useMemo<AccountFavouritesDataContextValue>(
+  const value = useMemo<AccountDataContextValue>(
     () => ({
       favourites,
       favouriteItems,
       favouriteSets,
-      isSaved,
-    }),
-    [favouriteItems, favouriteSets, favourites, isSaved],
-  );
-
-  const favouritesActionsValue = useMemo<AccountFavouritesActionsContextValue>(
-    () => ({
-      reload,
+      ready,
+      loadError,
+      error,
+      isAuthenticated: auth.status === "authenticated",
+      isSaved: (contentType, contentKey) => favourites[contentType].includes(contentKey),
       setFavourite,
       createFavouriteSet,
       renameFavouriteSet,
       deleteFavouriteSet,
-      moveFavourite,
       setFavouriteOrder,
+      moveFavourite,
       reorderFavourite,
       recordFavouriteOpen,
       setFavouritePinned,
       clearFavourites,
+      reload,
     }),
     [
+      auth.status,
       clearFavourites,
       createFavouriteSet,
       deleteFavouriteSet,
+      error,
+      favouriteItems,
+      favouriteSets,
+      favourites,
+      loadError,
       moveFavourite,
+      ready,
       recordFavouriteOpen,
       reload,
       renameFavouriteSet,
@@ -681,42 +658,7 @@ export function AccountDataProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  const accountDataValue = useMemo<AccountDataContextValue>(
-    () => ({
-      ...statusValue,
-      ...favouritesDataValue,
-      ...favouritesActionsValue,
-    }),
-    [statusValue, favouritesDataValue, favouritesActionsValue],
-  );
-
-  return (
-    <AccountStatusContext.Provider value={statusValue}>
-      <AccountFavouritesDataContext.Provider value={favouritesDataValue}>
-        <AccountFavouritesActionsContext.Provider value={favouritesActionsValue}>
-          <AccountDataContext.Provider value={accountDataValue}>{children}</AccountDataContext.Provider>
-        </AccountFavouritesActionsContext.Provider>
-      </AccountFavouritesDataContext.Provider>
-    </AccountStatusContext.Provider>
-  );
-}
-
-export function useAccountStatus() {
-  const context = useContext(AccountStatusContext);
-  if (!context) throw new Error("useAccountStatus must be used within AccountDataProvider.");
-  return context;
-}
-
-export function useAccountFavouritesData() {
-  const context = useContext(AccountFavouritesDataContext);
-  if (!context) throw new Error("useAccountFavouritesData must be used within AccountDataProvider.");
-  return context;
-}
-
-export function useAccountFavouritesActions() {
-  const context = useContext(AccountFavouritesActionsContext);
-  if (!context) throw new Error("useAccountFavouritesActions must be used within AccountDataProvider.");
-  return context;
+  return <AccountDataContext.Provider value={value}>{children}</AccountDataContext.Provider>;
 }
 
 export function useAccountData() {

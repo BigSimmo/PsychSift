@@ -14,7 +14,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { documentDisplayTitle } from "@/components/DocumentOrganizationBadges";
 import { ContextualBackLink } from "@/components/contextual-back-link";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
@@ -88,10 +88,8 @@ import type {
   TableFactRow,
 } from "@/components/document-viewer/types";
 import { IndexedTextPanel, PinnedSourceEvidence } from "@/components/document-viewer/source-panels";
-import { DocumentViewerRail as RawDocumentViewerRail } from "@/components/document-viewer/document-rail-panels";
+import { DocumentViewerRail } from "@/components/document-viewer/document-rail-panels";
 import { DocumentVisualsPanel } from "@/components/document-viewer/document-visuals-panel";
-
-const DocumentViewerRail = memo(RawDocumentViewerRail);
 import { DocumentOverviewLanding } from "@/components/document-viewer/document-overview-landing";
 import { DocumentClinicalSummary } from "@/components/document-viewer/document-clinical-summary";
 import {
@@ -121,15 +119,19 @@ const secondaryButton = floatingControl;
  * @param chunkId - An optional indexed passage to pin as a cited excerpt above the PDF.
  * @returns The document viewer interface.
  */
-export type DocumentViewerProps = {
+export function DocumentViewer({
+  documentId,
+  initialPage,
+  chunkId,
+  initialDetail,
+  initialError,
+}: {
   documentId: string;
   initialPage: number;
   chunkId?: string;
   initialDetail?: DocumentDetailPayload;
   initialError?: string;
-};
-
-function DocumentViewerContent({ documentId, initialPage, chunkId, initialDetail, initialError }: DocumentViewerProps) {
+}) {
   const router = useRouter();
   const { activePage, activeChunkId, navigateToPage } = useDocumentViewerRoute({
     documentId,
@@ -182,6 +184,13 @@ function DocumentViewerContent({ documentId, initialPage, chunkId, initialDetail
   // reveal from a prior deep-link must not survive into the next landing.
   const citationLandingKey = `${documentId}::${activeChunkId ?? ""}`;
   const [inspectRevealKey, setInspectRevealKey] = useState<string | null>(null);
+  const [prevCitationLandingKey, setPrevCitationLandingKey] = useState(citationLandingKey);
+  if (citationLandingKey !== prevCitationLandingKey) {
+    setPrevCitationLandingKey(citationLandingKey);
+    // Chunk/document identity changed: drop any prior inspect latch so a
+    // revisit to the same citation does not auto-reopen the indexed dump.
+    if (inspectRevealKey !== null) setInspectRevealKey(null);
+  }
   const inspectIndexedText = inspectRevealKey === citationLandingKey;
   const [composerChromeFocused, setComposerChromeFocused] = useState(false);
   const [shellScrollContainer, setShellScrollContainer] = useState<HTMLElement | null>(null);
@@ -961,7 +970,7 @@ function DocumentViewerContent({ documentId, initialPage, chunkId, initialDetail
     }
     return undefined;
   }, [selectedChunk, images]);
-  const { clinicalImages, auditImages } = useMemo(() => partitionViewerImages(images), [images]);
+  const { clinicalImages, auditImages } = partitionViewerImages(images);
   // Built on every render rather than memoised: it is seven objects from values
   // already in hand, and `clinicalImages` is a fresh array each render, so a
   // manual dependency list would only be memoization the compiler cannot verify.
@@ -1700,8 +1709,4 @@ function DocumentViewerContent({ documentId, initialPage, chunkId, initialDetail
       )}
     </main>
   );
-}
-
-export function DocumentViewer(props: DocumentViewerProps) {
-  return <DocumentViewerContent key={props.documentId} {...props} />;
 }
