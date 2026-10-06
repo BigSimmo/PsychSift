@@ -3,9 +3,12 @@
 import { HospitalShiftUpdates } from "@/components/on-call/now/hospital-shift-updates";
 import { currentCover, handbookLadders } from "@/lib/on-call/service-availability";
 import { ChevronRight } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
+import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { focusRing } from "@/components/card-recipes";
@@ -100,7 +103,48 @@ function StateModule({ id, label, children }: { id: string; label: string; child
   );
 }
 
-export function OnCallHome({ now: pinnedNow }: { now?: Date } = {}) {
+/**
+ * The made-up example a signed-out visitor sees below the crisis lines.
+ * Downloaded only when a signed-out visitor opens Now, so it never counts
+ * towards a signed-in reader's first load.
+ */
+const OnCallNowSignedOutExample = dynamic(() => import("@/components/on-call/now/signed-out-example"), {
+  ssr: false,
+});
+
+/**
+ * Now for a signed-out visitor (owner decision, 6 Oct 2026): the "Made-up
+ * example" banner with its Sign in, then the real public crisis lines, first
+ * and unchanged, then the mock-up's Now drawn from invented, text-only data.
+ * None of the live page's hooks run here, so nothing is fetched from the
+ * server, read from or written to the device, and no made-up number can be
+ * rung. The On Call layout leaves its own sample box off this page, so the
+ * visitor sees one banner, not two.
+ */
+function OnCallHomeSignedOutExample() {
+  return (
+    <InformationPageShell testId="on-call-home-main">
+      <h1 className="sr-only">Now</h1>
+      <SignedOutSampleNotice title="Made-up example" testId="on-call-now-example-banner">
+        Everything below the public crisis lines is invented to show how On Call works: Example Hospital, its staff and
+        its 0000 numbers. The made-up numbers are text only and cannot be called, and nothing is saved. Sign in to see
+        your own hospital&apos;s numbers.
+      </SignedOutSampleNotice>
+      <NowCrisisLines />
+      <OnCallNowSignedOutExample />
+    </InformationPageShell>
+  );
+}
+
+export function OnCallHome(props: { now?: Date } = {}) {
+  // Decided before any live hook mounts, so a signed-out visitor's page never
+  // starts the entries, handbook or roster reads.
+  const signedOutExample = useSignedOutSample();
+  if (signedOutExample) return <OnCallHomeSignedOutExample />;
+  return <OnCallHomeLive {...props} />;
+}
+
+function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);

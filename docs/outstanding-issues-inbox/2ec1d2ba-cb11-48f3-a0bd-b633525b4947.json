@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "2ec1d2ba-cb11-48f3-a0bd-b633525b4947",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#61GQYY",
+    "detail": "Publishers resolved for CCI, Phoenix Australia, and Monash in PR #2880; 34 sources held with named blockers.",
+    "source": "PR #2880 review",
+    "baseRowFingerprint": "d04ab7ae7f4af2a7e9f27be635bba96f6afac714e2759783b8e1ba13dc4bed6f"
+  }
+}

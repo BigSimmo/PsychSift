@@ -499,6 +499,7 @@ describe("the My shifts API", () => {
     expect(writes.map((call) => `${call.op} ${call.table}`)).toEqual([
       "delete roster_calendar_links",
       "delete web_push_subscriptions",
+      "delete alert_reminder_times",
       "delete roster_leave",
       "update user_preferences",
       "delete on_call_shifts",

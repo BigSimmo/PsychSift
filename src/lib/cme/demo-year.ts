@@ -568,7 +568,7 @@ export const DEMO_CME_YEAR: CmeRequirementSet = {
   // as a real regulatory citation the app had made on its own authority — the one
   // thing this mode exists to never do.
   confirmedOn: "2026-01-08",
-  confirmedSource: "Demo CPD standard (synthetic — not a real regulatory source)",
+  confirmedSource: "Example CPD standard (synthetic — not a real regulatory source)",
   totalHours: 50,
   requirements: [
     {
@@ -632,7 +632,7 @@ export const DEMO_CME_YEAR: CmeRequirementSet = {
 export const DEMO_CME_ROUTINES: readonly CmeRoutine[] = [
   {
     id: "00000000-0000-4000-8000-000000000101",
-    title: "Demo journal club",
+    title: "Journal club",
     cadence: "monthly",
     usualHours: 1,
     usualAllocations: [{ category: "educational", hours: 1 }],
@@ -643,6 +643,6 @@ export const DEMO_CME_ROUTINES: readonly CmeRoutine[] = [
 
 /** Synthetic demonstration only: an obviously invented plan for the demo year. */
 export const DEMO_CME_PLAN_GOALS: readonly CmePlanGoal[] = [
-  { id: "00000000-0000-4000-8000-000000000201", goal: "Demo goal: keep up with a demo topic", sortOrder: 0 },
-  { id: "00000000-0000-4000-8000-000000000202", goal: "Demo goal: review my own demo outcomes", sortOrder: 1 },
+  { id: "00000000-0000-4000-8000-000000000201", goal: "Goal: keep up with a topic", sortOrder: 0 },
+  { id: "00000000-0000-4000-8000-000000000202", goal: "Goal: review my own outcomes", sortOrder: 1 },
 ];

@@ -10,7 +10,12 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/psychiatry" }));
+let pageParam = "";
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => "/psychiatry",
+  useSearchParams: () => new URLSearchParams(pageParam ? { page: pageParam } : {}),
+}));
 
 import { PsychiatryHome, type PsychiatrySectionCounts } from "@/components/psychiatry/psychiatry-home";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
@@ -32,6 +37,7 @@ beforeEach(() => {
   window.localStorage.clear();
   clearPsychiatryVisits();
   push.mockReset();
+  pageParam = "";
 });
 afterEach(cleanup);
 
@@ -138,5 +144,21 @@ describe("PsychiatryHome", () => {
     } finally {
       onLine.mockRestore();
     }
+  });
+
+  it("draws no tab row of its own: the band's Ask, Tools and Saved tabs switch the page by ?page=", () => {
+    render(<PsychiatryHome counts={counts} now={now} />);
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.getByTestId("psychiatry-ask-input")).toBeTruthy();
+  });
+
+  it("opens the page named by ?page=, and falls back to Ask for anything else", () => {
+    pageParam = "saved";
+    const { unmount } = render(<PsychiatryHome counts={counts} now={now} />);
+    expect(screen.queryByTestId("psychiatry-ask-input")).toBeNull();
+    unmount();
+    pageParam = "nonsense";
+    render(<PsychiatryHome counts={counts} now={now} />);
+    expect(screen.getByTestId("psychiatry-ask-input")).toBeTruthy();
   });
 });

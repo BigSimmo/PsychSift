@@ -263,7 +263,7 @@ describe("the made-up demo (master plan R8)", () => {
   function expectMadeUp(items: ResourceRow[]) {
     const demoLibrary = new Set(demoDocuments.map((document) => document.id));
     for (const item of items) {
-      expect(item.title.startsWith("Demo ")).toBe(true);
+      expect(item.title.startsWith("Demo ")).toBe(false);
       if (item.url) expect(new URL(item.url).origin).toBe("https://example.org");
       if (item.libraryDocumentId) expect(demoLibrary.has(item.libraryDocumentId)).toBe(true);
     }
@@ -280,9 +280,7 @@ describe("the made-up demo (master plan R8)", () => {
     expect(new Set(open.map((session) => session.serviceId))).toEqual(
       new Set([DEMO_OLDER_ADULT_SERVICE_ID, DEMO_YOUTH_SERVICE_ID]),
     );
-    expect(new Set(open.map((session) => session.teamName))).toEqual(
-      new Set(["Demo older adult service", "Demo youth service"]),
-    );
+    expect(new Set(open.map((session) => session.teamName))).toEqual(new Set(["Older adult service", "Youth service"]));
     for (const session of open) expect(session.inMyWeek).toBe(false);
     const own = read.sessions.filter((session) => session.own);
     expect(own.length).toBeGreaterThan(0);
@@ -291,7 +289,7 @@ describe("the made-up demo (master plan R8)", () => {
       expect(session.inMyWeek).toBe(true);
     }
     for (const session of read.sessions) {
-      expect(session.title.startsWith("Demo ")).toBe(true);
+      expect(session.title.startsWith("Demo ")).toBe(false);
       expect(session.startsAt >= "2026-09-27T16:00:00.000Z" && session.startsAt < "2026-10-04T16:00:00.000Z").toBe(
         true,
       );
@@ -321,10 +319,10 @@ describe("the made-up demo (master plan R8)", () => {
     // The v5 mock-up's four materials, each on one of the week's own sessions, plus the ended conference's recording.
     const materials = read.forThisWeek.filter((item) => item.kind !== "recording");
     expect(materials.map((item) => item.title).sort()).toEqual([
-      "Demo case presentation handout",
-      "Demo journal club slides",
-      "Demo psychotherapy reading",
-      "Demo workshop checklist",
+      "Case presentation handout",
+      "Journal club slides",
+      "Psychotherapy reading",
+      "Workshop checklist",
     ]);
     for (const item of materials) {
       expect(item.occurrenceId).not.toBeNull();
@@ -386,10 +384,7 @@ describe("the made-up demo (master plan R8)", () => {
       await (await resourcesGet(get("/api/teaching/resources?action=collection.read&builtIn=saved"))).json(),
     );
     expect(saved.collection).toBeNull();
-    expect(saved.items.map((item) => item.title)).toEqual([
-      "Demo formulation seminar slides",
-      "Demo exam tips handout",
-    ]);
+    expect(saved.items.map((item) => item.title)).toEqual(["Formulation seminar slides", "Exam tips handout"]);
     const recordings = collectionReadResultSchema.parse(
       await (await resourcesGet(get("/api/teaching/resources?action=collection.read&builtIn=recordings"))).json(),
     );

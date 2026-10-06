@@ -64,7 +64,7 @@ function compactClinicalTableCaption(item: VisualEvidenceCard) {
     .replace(/\s{2,}/g, " ")
     .trim();
   const caption = cleaned || "Clinical table";
-  return caption.length <= 72 ? caption : `${caption.slice(0, 69).trim()}...`;
+  return caption.length <= 72 ? caption : `${caption.slice(0, 69).trim()}…`;
 }
 
 function visualEvidenceHeader(item: VisualEvidenceCard) {

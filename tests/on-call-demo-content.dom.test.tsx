@@ -235,8 +235,8 @@ describe("what the loader claims to own", () => {
     // So the copy is pinned here rather than trusted. If this fails, the
     // corpus changed size and `on-call-demo-content-control.tsx` needs the
     // new number written out in the load sentence.
-    expect(ON_CALL_DEMO_ENTRY_COUNT, "the load button says 'Ninety-four example entries' — update that copy too").toBe(
-      94,
+    expect(ON_CALL_DEMO_ENTRY_COUNT, "the load button's count changed — check the load sentence still reads well").toBe(
+      105,
     );
     expect(new Set(ON_CALL_DEMO_SLUGS)).toEqual(new Set(DEMO_ON_CALL_ENTRIES.map((entry) => entry.slug)));
   });

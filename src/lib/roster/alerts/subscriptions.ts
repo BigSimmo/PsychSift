@@ -83,6 +83,9 @@ export async function removeOwnerSubscription(
     .eq("owner_id", ownerId)
     .eq("endpoint", endpoint);
   if (error) throw storageError(error);
+  // Sign-out and "off" end here: the device's queued Remind me times go too (the sender
+  // would find no device to buzz anyway, but nothing is kept that has no use).
+  await client.from("alert_reminder_times").delete().eq("owner_id", ownerId).eq("endpoint", endpoint);
 }
 
 /** The browser having an endpoint does not prove that this signed-in owner receives it. */
@@ -105,6 +108,8 @@ export async function ownerHasSubscription(
 export async function removeAllOwnerSubscriptions(client: RosterAdminClient, ownerId: string): Promise<void> {
   const { error } = await client.from("web_push_subscriptions").delete().eq("owner_id", ownerId);
   if (error) throw storageError(error);
+  const times = await client.from("alert_reminder_times").delete().eq("owner_id", ownerId);
+  if (times.error) throw storageError(times.error);
 }
 
 export async function subscriptionsForOwners(

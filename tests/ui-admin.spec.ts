@@ -43,8 +43,8 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     await page.goto("/on-call/compliance");
     await expect(page).toHaveURL(/\/admin\/renewals$/);
     await expect(page.getByRole("heading", { level: 1, name: "Renewals" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Checklist" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Personal" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Checklist" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Personal" })).toBeVisible();
     // CI runs this in demo mode. The demo corpus links seven rows to catalogue
     // items (`src/lib/on-call/demo-entries.ts`), so the Registration and
     // Checks groups both hold a recorded row.
@@ -107,7 +107,7 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     await gotoPhone(page, "/admin/renewals");
     // Production browser CI serves synthetic demo rows and refuses writes.
     await expect(page.getByTestId("admin-renewals-add")).toHaveCount(0);
-    await page.getByRole("tab", { name: "Personal" }).click();
+    await page.getByRole("radio", { name: "Personal" }).click();
     await expect(page.getByTestId("admin-renewals-personal-empty-add")).toHaveCount(0);
   });
 });

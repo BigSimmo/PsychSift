@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ef8fd441-e897-462e-9630-5d9c55038be0",
+  "createdOn": "2026-10-06",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Teaching Assessments: Supabase schema and persistence for registrar assessment forms and supervisor bookings",
+    "detail": "PR #3302 introduced /teaching/assessments on made-up records. Real use requires Supabase tables, RLS policies, and endpoints for storing assessment ratings, feedback, and meeting availability.",
+    "source": "PR #3302 post-merge audit",
+    "issueUlid": "01M484CAS64KQGXZ93MR4ZSQCM"
+  }
+}

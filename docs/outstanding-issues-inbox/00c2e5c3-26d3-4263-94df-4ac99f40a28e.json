@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "00c2e5c3-26d3-4263-94df-4ac99f40a28e",
+  "createdOn": "2026-10-06",
+  "action": "cancel",
+  "payload": {
+    "requestId": "8427c51f-ec72-4dae-9111-ec4c3794b789",
+    "reason": "The queued close was fingerprinted against an older ledger row. A fresh close from the current row replaces it."
+  }
+}

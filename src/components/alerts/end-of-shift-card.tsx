@@ -3,6 +3,7 @@
 import { Clock } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
+import { AlertsButtonRow } from "@/components/alerts/alerts-rows";
 import { ModeRow } from "@/components/mode-kit/grouped-list";
 import { modeInsetHairline, modeRaisedCard } from "@/components/mode-kit/recipes";
 import { cn, eyebrowText } from "@/components/ui-primitives";
@@ -24,7 +25,15 @@ function readLabelExpiry(): number | null {
  * end) and offers the one reflection worth catching before going home. It
  * names the shift, never a patient.
  */
-export function EndOfShiftCard({ shift }: { readonly shift: EndOfShift }) {
+export function EndOfShiftCard({
+  shift,
+  pendingReminders,
+  onOpenReminders,
+}: {
+  readonly shift: EndOfShift;
+  readonly pendingReminders?: number;
+  readonly onOpenReminders?: () => void;
+}) {
   const labelsClearAt = useSyncExternalStore(subscribePatientLabelsCleared, readLabelExpiry, () => null);
   const ends = remindMeClock(Date.parse(shift.endsAt));
   return (
@@ -50,6 +59,14 @@ export function EndOfShiftCard({ shift }: { readonly shift: EndOfShift }) {
           ) : null}
         </div>
         <ul role="list" className={cn(modeInsetHairline, "before:left-0")}>
+          {pendingReminders !== undefined && pendingReminders > 0 && onOpenReminders ? (
+            <AlertsButtonRow
+              title="Review pending reminders"
+              subtitle={`${pendingReminders} ${pendingReminders === 1 ? "reminder" : "reminders"} on this device`}
+              onSelect={onOpenReminders}
+              testId="end-of-shift-reminders"
+            />
+          ) : null}
           <ModeRow
             title="One thing you learnt today"
             subtitle="Saves to CPD as a reflection"

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "c7c7eb21-fad7-4871-a6a9-05798906bc29",
+  "createdOn": "2026-10-06",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Alerts: place Remind Me sheet and end-of-shift card into My Day frame",
+    "detail": "Commit a3e506962c built RemindMeSheet and EndOfShiftCard but explicitly noted they are 'not yet placed in My Day'. Mount them in MyDayFrame so doctors leaving a shift are prompted to review pending reminders.",
+    "source": "Alerts review commit a3e506962c",
+    "issueUlid": "01M484CB5JBA41Z84QA0CSQ2GX"
+  }
+}

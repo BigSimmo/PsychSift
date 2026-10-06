@@ -159,7 +159,7 @@ describe("MyDayPage", () => {
     expect(screen.getByTestId("my-day-sample-line").textContent).toBe("Everything below is a made-up sample.");
     expect(within(screen.getByTestId("my-day-signed-out")).getByText("Sample")).toBeTruthy();
     const dashboard = await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
-    expect(within(dashboard).getAllByText("Demo journal club").length).toBeGreaterThan(0);
+    expect(within(dashboard).getAllByText("Journal club").length).toBeGreaterThan(0);
     // "Later" on a sample row lasts only while the page is open, and stores nothing.
     const before = window.localStorage.length;
     fireEvent.click(within(dashboard).getAllByRole("button", { name: /Later/ })[0]!);
@@ -170,7 +170,7 @@ describe("MyDayPage", () => {
     setState({});
     render(<MyDayPage now={NOW} />);
     expect(screen.queryByTestId("my-day-sample")).toBeNull();
-    expect(screen.queryByText("Demo journal club")).toBeNull();
+    expect(screen.queryByText("Journal club")).toBeNull();
   });
 
   it("leaves the device-only quick note out of the signed-out sample", async () => {

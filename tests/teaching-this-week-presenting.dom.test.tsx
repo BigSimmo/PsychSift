@@ -17,7 +17,16 @@ vi.mock("@/components/on-call/on-call-entry-editor", () => ({
 import { TeachingPresenting } from "@/components/teaching/teaching-presenting";
 import { TeachingThisWeek } from "@/components/teaching/teaching-this-week";
 
-import { DURING, OCC, TEAM_A, json, serveFetch, useTeachingTestClock, week } from "./helpers/teaching-fixtures";
+import {
+  DURING,
+  OCC,
+  TEAM_A,
+  json,
+  serveFetch,
+  session,
+  useTeachingTestClock,
+  week,
+} from "./helpers/teaching-fixtures";
 
 // A shared fixture, not a component hook: it only registers Vitest's `beforeEach`/`afterEach`.
 // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -51,6 +60,30 @@ describe("This week", () => {
     fireEvent.click(within(hero).getByRole("button", { name: "Check in" }));
     await waitFor(() => expect(posts).toEqual([{ action: "attendance.self", occurrenceId: OCC }]));
     expect(await within(hero).findByRole("status")).toHaveTextContent("Checked in.");
+  });
+
+  it("puts Mine first and selected when the reader presents, and Whole service when they do not", async () => {
+    vi.setSystemTime(DURING);
+    const other = session({ occurrenceId: "99999999-9999-4999-8999-999999999999", title: "Grand rounds" });
+    serveFetch((url) =>
+      url.startsWith("/api/teaching?view=week")
+        ? json(200, week({ sessions: [session({ isPresenter: true }), other] }))
+        : sideReads(url),
+    );
+    const first = render(<TeachingThisWeek demoMode={false} />);
+    const list = await screen.findByTestId("teaching-week-list");
+    const buttons = screen.getAllByRole("button", { name: /^(Mine|Whole service)$/ });
+    expect(buttons.map((b) => b.textContent)).toEqual(["Mine", "Whole service"]);
+    expect(buttons[0]).toHaveAttribute("aria-pressed", "true");
+    expect(within(list).queryByText("Grand rounds")).toBeNull();
+    fireEvent.click(buttons[1]);
+    expect(within(screen.getByTestId("teaching-week-list")).getByText("Grand rounds")).toBeInTheDocument();
+    first.unmount();
+
+    serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? json(200, week()) : sideReads(url)));
+    render(<TeachingThisWeek demoMode={false} />);
+    await screen.findByTestId("teaching-week-list");
+    expect(screen.getByRole("button", { name: "Whole service" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("offers only the code in the 15 minutes before the start, when the server refuses one tap", async () => {

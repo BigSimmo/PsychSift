@@ -2127,6 +2127,7 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/admin/admin-compliance-export-page.tsx",
+        "src/components/admin/admin-renewals-page.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
@@ -2152,6 +2153,7 @@
       ],
       "productImportFiles": [
         "src/components/admin/admin-compliance-export-page.tsx",
+        "src/components/admin/admin-renewals-page.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
@@ -2776,13 +2778,11 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
-        "src/components/admin/admin-renewals-page.tsx",
         "src/components/therapy-compass/screens/brief-screen.tsx",
         "src/components/therapy-compass/screens/compare-screen.tsx",
         "src/components/work-profile/work-profile-page.tsx"
       ],
       "productImportFiles": [
-        "src/components/admin/admin-renewals-page.tsx",
         "src/components/therapy-compass/screens/brief-screen.tsx",
         "src/components/therapy-compass/screens/compare-screen.tsx",
         "src/components/work-profile/work-profile-page.tsx"
@@ -3328,6 +3328,7 @@
         "src/app/(search-app)/roster/shifts/page.tsx",
         "src/app/(search-app)/roster/swaps/page.tsx",
         "src/app/(search-app)/roster/team/page.tsx",
+        "src/app/(search-app)/roster/today/page.tsx",
         "src/app/(search-app)/services/[slug]/page.tsx",
         "src/app/(search-app)/services/page.tsx",
         "src/app/(search-app)/services/search/page.tsx",
@@ -4324,7 +4325,7 @@
           "literalCkbV2": false,
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
-          "sanctionedPatternsPresent": []
+          "sanctionedPatternsPresent": ["ModeHome"]
         },
         {
           "file": "src/app/(search-app)/roster/calendar/page.tsx",
@@ -4408,6 +4409,16 @@
         },
         {
           "file": "src/app/(search-app)/roster/team/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/roster/today/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5888,6 +5899,7 @@
       "src/app/(search-app)/roster/shifts/page.tsx",
       "src/app/(search-app)/roster/swaps/page.tsx",
       "src/app/(search-app)/roster/team/page.tsx",
+      "src/app/(search-app)/roster/today/page.tsx",
       "src/app/(search-app)/services/[slug]/page.tsx",
       "src/app/(search-app)/services/page.tsx",
       "src/app/(search-app)/services/search/page.tsx",
@@ -6064,6 +6076,7 @@
       "src/app/(search-app)/roster/shifts/page.tsx",
       "src/app/(search-app)/roster/swaps/page.tsx",
       "src/app/(search-app)/roster/team/page.tsx",
+      "src/app/(search-app)/roster/today/page.tsx",
       "src/app/(search-app)/services/[slug]/page.tsx",
       "src/app/(search-app)/services/page.tsx",
       "src/app/(search-app)/services/search/page.tsx",
@@ -6120,7 +6133,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 181,
+    "inheritedCkbV2RootCount": 182,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6129,8 +6142,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 182,
-    "productionRouteCount": 174,
-    "nextUiEntryCount": 275
+    "rootCount": 183,
+    "productionRouteCount": 175,
+    "nextUiEntryCount": 276
   }
 }

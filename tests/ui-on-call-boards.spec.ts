@@ -352,8 +352,10 @@ test.describe("02 More, 03 All modes — the pill owns page switching", () => {
       // owner locked on 5 Oct 2026 for every mode, On Call included). It is
       // the only "On Call pages" bar allowed; nothing else may repeat it.
       // Some pages show the band without tabs, so the bar is at most that one.
-      expect(await page.getByRole("navigation", { name: "On Call pages" }).count()).toBeLessThanOrEqual(1);
-      expect(await page.getByTestId("mode-band-tabs").count()).toBeLessThanOrEqual(1);
+      await expect
+        .poll(async () => page.getByRole("navigation", { name: "On Call pages" }).count())
+        .toBeLessThanOrEqual(1);
+      await expect.poll(async () => page.getByTestId("mode-band-tabs").count()).toBeLessThanOrEqual(1);
     }
   });
 });
@@ -731,14 +733,14 @@ test.describe("08 Referrals", () => {
   test("expands a service in place rather than routing away", async ({ page }) => {
     await openBoard(page, ROUTES.referrals);
     const before = page.url();
-    await expandReferral(page, "Demo community mental health team");
+    await expandReferral(page, "Community mental health team");
     await expect(page.getByTestId("on-call-referral-panel-demo-community-team")).toBeVisible();
     expect(page.url()).toBe(before);
   });
 
   test("labels what a service accepts and does not accept, never colour alone", async ({ page }) => {
     await openBoard(page, ROUTES.referrals);
-    await expandReferral(page, "Demo community mental health team");
+    await expandReferral(page, "Community mental health team");
     const panel = page.getByTestId("on-call-referral-panel-demo-community-team");
     await expect(panel).toContainText("Accepts");
     await expect(panel).toContainText("Does not accept");
@@ -748,13 +750,14 @@ test.describe("08 Referrals", () => {
 test.describe("08 Referrals — freshness says something or says nothing", () => {
   test("keeps a current service's checked date out of the collapsed row", async ({ page }) => {
     await openBoard(page, ROUTES.referrals);
-    const row = page.getByRole("button", { name: /Demo community/ }).first();
+    const row = page.getByRole("button", { name: "Community mental health team", exact: true });
     await expect(row).toBeVisible();
     // "Checked <date>" on a row where nothing is wrong is a pill wider than
     // the service's own name; the name truncated to make room for it.
     await expect(row.getByTestId("on-call-freshness-badge")).toHaveCount(0);
 
-    await row.click();
+    await expandReferral(page, "Community mental health team");
+    // Expanded, the checked date shows (as it did before the sample names changed).
     await expect(page.getByTestId("on-call-freshness-badge").first()).toBeVisible();
   });
 });
@@ -837,9 +840,9 @@ test.describe("11 Admin: Help", () => {
     // 2026-10-04), so retype until the filter has visibly applied.
     await expect(async () => {
       await filter.fill("payslip");
-      await expect(guides.getByText("Demo sick leave, and who to tell first")).toHaveCount(0, { timeout: 2_000 });
+      await expect(guides.getByText("Sick leave, and who to tell first")).toHaveCount(0, { timeout: 2_000 });
     }).toPass({ timeout: 20_000 });
-    await expect(guides.getByText("Demo payslips and pay queries")).toBeVisible();
+    await expect(guides.getByText("Payslips and pay queries")).toBeVisible();
     // Crisis lines are never filtered (spec): they render above this check.
     await expect(page.getByTestId("admin-help-crisis")).toBeVisible();
   });
@@ -848,7 +851,7 @@ test.describe("11 Admin: Help", () => {
     await openBoard(page, ROUTES.logistics);
     const guides = page.getByTestId("admin-help-guides-list");
     await showAll(page, "admin-help-guides-list");
-    const row = guides.locator("li", { hasText: "Demo payslips and pay queries" });
+    const row = guides.locator("li", { hasText: "Payslips and pay queries" });
     // The demo corpus has no other account, so every row here is the reader's
     // own — "Shared by another doctor" only ever appears once a second
     // account's guide exists, which board 30's long-name case exercises.
@@ -859,9 +862,9 @@ test.describe("11 Admin: Help", () => {
     await openBoard(page, ROUTES.logistics);
     const onSite = page.getByTestId("admin-help-on-site-list");
     await showAll(page, "admin-help-on-site-list");
-    await expect(onSite.locator("li", { hasText: "Demo security escort" })).toBeVisible();
-    await expect(onSite.locator("li", { hasText: "Demo after-hours entry" })).toBeVisible();
-    await expect(onSite.locator("li", { hasText: "Demo locked wards" })).toBeVisible();
+    await expect(onSite.locator("li", { hasText: "Security escort" })).toBeVisible();
+    await expect(onSite.locator("li", { hasText: "After-hours entry" })).toBeVisible();
+    await expect(onSite.locator("li", { hasText: "Locked wards" })).toBeVisible();
 
     // Read in the reader's own zone (spec), so this mirrors the app's own
     // rule rather than pinning a time of day the suite happens to run at.
@@ -877,10 +880,10 @@ test.describe("11 Admin: Help", () => {
 
   test("keeps New job's login rows off Help entirely", async ({ page }) => {
     await openBoard(page, ROUTES.logistics);
-    // "Demo logins, paging and remote access" is category Access with a login
+    // "Logins, paging and remote access" is category Access with a login
     // title, so `adminPlacementForEntry` files it at New job, not here — Help
     // must never show a row New job already owns.
-    await expect(page.getByText("Demo logins, paging and remote access")).toHaveCount(0);
+    await expect(page.getByText("Logins, paging and remote access")).toHaveCount(0);
   });
 
   test("shows a workforce role explainer in Contacts, not the desk number New job already shows", async ({ page }) => {
@@ -891,7 +894,7 @@ test.describe("11 Admin: Help", () => {
     await expect(explainer).toBeVisible();
     await expect(explainer).toContainText("No date recorded");
     // The workforce desk's own number is reused, not duplicated, on New job.
-    await expect(page.getByTestId("admin-help-contacts-list").getByText("Demo medical workforce unit")).toHaveCount(0);
+    await expect(page.getByTestId("admin-help-contacts-list").getByText("Medical workforce unit")).toHaveCount(0);
   });
 });
 
@@ -956,17 +959,17 @@ test.describe("Compliance — the view the boards never drew", () => {
 
   test("keeps Checklist and Personal tabs, and Personal holds only the reader's own renewals", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
-    await expect(page.getByRole("tab", { name: "Checklist" })).toBeVisible();
-    await page.getByRole("tab", { name: "Personal" }).click();
+    await expect(page.getByRole("radio", { name: "Checklist" })).toBeVisible();
+    await page.getByRole("radio", { name: "Personal" }).click();
 
     const personal = visibleByTestId(page, "admin-renewals-personal");
     await expect(personal).toBeVisible();
     // A demo compliance row that matches no catalogue item.
-    await expect(personal).toContainText("Demo fire and evacuation module");
+    await expect(personal).toContainText("Fire and evacuation module");
     // Never a row from another On Call section: offering "Renewed" on a
     // contact or a guide would plant compliance keys that hide it from every
     // colleague's shared read.
-    await expect(personal.getByText("Demo Ward One")).toHaveCount(0);
+    await expect(personal.getByText("Ward One")).toHaveCount(0);
     await expect(personal).not.toContainText("Medical registration renewal");
   });
 });

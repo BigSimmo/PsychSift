@@ -30,6 +30,8 @@
  * test is a probe nobody can trust.
  */
 
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+
 const allowProviderFlag = "--allow-provider";
 const allowProviderEnv = "ALLOW_ANSWER_TIMING_PROBE";
 
@@ -238,7 +240,7 @@ async function main() {
   console.log(renderAnswerTimingReport(summary));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(`Answer timing probe failed: ${error.message}`);
     process.exitCode = 1;

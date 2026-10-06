@@ -1,3 +1,6 @@
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +9,8 @@ import {
   renderAnswerTimingReport,
   summariseAnswerTiming,
 } from "../scripts/probe-answer-timing.mjs";
+
+const SCRIPT_PATH = path.resolve(fileURLToPath(import.meta.url), "../../scripts/probe-answer-timing.mjs");
 
 /**
  * Pins the operator probe against the ways a Server-Timing header actually arrives, and against
@@ -131,5 +136,13 @@ describe("providerAccessAuthorized", () => {
     expect(providerAccessAuthorized([], { ALLOW_ANSWER_TIMING_PROBE: "true" })).toBe(true);
     expect(providerAccessAuthorized([], { ALLOW_ANSWER_TIMING_PROBE: "1" })).toBe(false);
     expect(providerAccessAuthorized([], { ALLOW_ANSWER_TIMING_PROBE: "yes" })).toBe(false);
+  });
+});
+
+describe("direct execution", () => {
+  it("exits with status 1 and provider refusal when invoked directly without --allow-provider", () => {
+    const result = spawnSync(process.execPath, [SCRIPT_PATH], { encoding: "utf8" });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Refusing to probe the live site without confirmation");
   });
 });

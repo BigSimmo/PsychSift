@@ -243,7 +243,7 @@ export function PhoneComposer({ query = "" }: { query?: string }) {
             query ? "text-[color:var(--text-heading)]" : "text-[color:var(--text-placeholder)]",
           )}
         >
-          {query || "Search favourites..."}
+          {query || "Search favourites…"}
         </span>
         {query ? <span className="h-4 w-px bg-[color:var(--clinical-accent)]" aria-hidden /> : null}
         <Search className="size-icon-md shrink-0 text-[color:var(--text-soft)]" aria-hidden />

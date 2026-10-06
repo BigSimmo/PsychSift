@@ -374,7 +374,7 @@ test("carries the compact result pill alone from sm up, like every other catalog
     // Exactly one composer on the page, and the page-owned slot is the only
     // element carrying that id — the shell must not emit a second one.
     await expect(page.getByTestId("global-search-input")).toHaveCount(1);
-    expect(await page.locator("#desktop-page-search-composer-slot").count()).toBe(1);
+    await expect(page.locator("#desktop-page-search-composer-slot")).toHaveCount(1);
     await expect(page.locator("#mode-home-desktop-composer-slot")).toHaveCount(0);
 
     // The home-only helpers stay off a results page.

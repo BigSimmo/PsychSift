@@ -7,7 +7,7 @@ import { fetchRosterSettings } from "@/lib/roster/settings";
 import type { RosterAdminClient } from "@/lib/roster/team/api";
 
 import type { RosterAlertType } from "./messages";
-import { ownerSubscriptionFor, removeGoneSubscription, subscriptionsForOwners } from "./subscriptions";
+import { ownerSubscriptionFor, removeGoneSubscription, subscriptionsForOwners, type PushRow } from "./subscriptions";
 
 export function webPushConfigured(): boolean {
   return !!(env.WEB_PUSH_PUBLIC_KEY && env.WEB_PUSH_PRIVATE_KEY && env.WEB_PUSH_SUBJECT);
@@ -23,7 +23,6 @@ export async function sendRosterAlerts(
   const totals = { sent: 0, skipped: 0, failed: 0 };
   if (!webPushConfigured() || !recipientIds.length) return totals;
   const unique = [...new Set(recipientIds)].slice(0, 500);
-  webpush.setVapidDetails(env.WEB_PUSH_SUBJECT!, env.WEB_PUSH_PUBLIC_KEY!, env.WEB_PUSH_PRIVATE_KEY!);
   const enabled = new Set<string>();
   for (const ownerId of unique) {
     try {
@@ -39,22 +38,59 @@ export async function sendRosterAlerts(
     }
   }
   if (!enabled.size) return totals;
-  const rows = await subscriptionsForOwners(client, [...enabled]);
+  const pushed = await pushCodeToOwners(client, [...enabled], type, 6 * 60 * 60);
+  return { sent: pushed.sent, skipped: totals.skipped, failed: totals.failed + pushed.failed };
+}
+
+/**
+ * One `{t: code}` push to every device these owners linked. The service worker
+ * owns the words, so only the code travels. A gone device is removed.
+ */
+export async function pushCodeToOwners(
+  client: RosterAdminClient,
+  ownerIds: readonly string[],
+  code: string,
+  ttlSeconds: number,
+): Promise<{ sent: number; failed: number }> {
+  const totals = { sent: 0, failed: 0 };
+  if (!webPushConfigured() || !ownerIds.length) return totals;
+  webpush.setVapidDetails(env.WEB_PUSH_SUBJECT!, env.WEB_PUSH_PUBLIC_KEY!, env.WEB_PUSH_PRIVATE_KEY!);
+  const rows = await subscriptionsForOwners(client, [...new Set(ownerIds)].slice(0, 500));
   for (const row of rows) {
-    try {
-      await webpush.sendNotification(
-        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-        JSON.stringify({ t: type }),
-        { TTL: 6 * 60 * 60 },
-      );
-      totals.sent += 1;
-    } catch (error) {
-      const status = (error as { statusCode?: number })?.statusCode;
-      if (status === 404 || status === 410) await removeGoneSubscription(client, row).catch(() => {});
-      totals.failed += 1;
-    }
+    if (await pushOne(client, row, code, ttlSeconds)) totals.sent += 1;
+    else totals.failed += 1;
   }
   return totals;
+}
+
+/** One `{t: code}` push to one device, only if this owner still owns it. */
+export async function pushCodeToOwnerDevice(
+  client: RosterAdminClient,
+  ownerId: string,
+  endpoint: string,
+  code: string,
+  ttlSeconds: number,
+): Promise<boolean> {
+  if (!webPushConfigured()) return false;
+  const row = await ownerSubscriptionFor(client, ownerId, endpoint);
+  if (!row) return false;
+  webpush.setVapidDetails(env.WEB_PUSH_SUBJECT!, env.WEB_PUSH_PUBLIC_KEY!, env.WEB_PUSH_PRIVATE_KEY!);
+  return pushOne(client, row, code, ttlSeconds);
+}
+
+async function pushOne(client: RosterAdminClient, row: PushRow, code: string, ttlSeconds: number): Promise<boolean> {
+  try {
+    await webpush.sendNotification(
+      { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+      JSON.stringify({ t: code }),
+      { TTL: ttlSeconds },
+    );
+    return true;
+  } catch (error) {
+    const status = (error as { statusCode?: number })?.statusCode;
+    if (status === 404 || status === 410) await removeGoneSubscription(client, row).catch(() => {});
+    return false;
+  }
 }
 
 export type TestAlertResult =

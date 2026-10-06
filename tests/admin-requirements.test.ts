@@ -9,6 +9,8 @@ import {
   requirementsRecordedCount,
   type AdminRequirementCatalogueItem,
 } from "@/lib/admin/requirements";
+import { complianceBucket, complianceBucketCounts } from "@/lib/admin/compliance-overview";
+import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
 import { onCallDetailsSchemaFor } from "@/lib/on-call/entry-model";
 import { complianceFixture } from "./helpers/on-call-entry-fixture";
@@ -278,5 +280,16 @@ describe("the demo corpus (what CI's demo-mode browser journeys see)", () => {
       ]),
     );
     expect(rows.some((row) => row.state === "not-recorded")).toBe(true);
+  });
+
+  it("fills the sample Renewals checklist as the mock-up does: 20 items, 1 passed, 3 to start, 2 not recorded, 14 recorded", () => {
+    const rows = requirementChecklistRows(ADMIN_REQUIREMENTS_CATALOGUE, DEMO_ON_CALL_ENTRIES);
+    const today = perthCalendarDate(new Date());
+    const counts = complianceBucketCounts(rows.map((row) => complianceBucket(row, today)));
+    expect(rows).toHaveLength(20);
+    expect(counts).toEqual({ "date-passed": 1, "start-renewing": 3, "not-recorded": 2, recorded: 14 });
+    // Enough dated rows inside twelve months to fill the timeline's eight.
+    const dated = rows.filter((row) => row.state === "needs-action" && row.expiresOn);
+    expect(dated.length).toBeGreaterThanOrEqual(8);
   });
 });

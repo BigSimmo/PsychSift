@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CircleAlert, Clock3, ExternalLink, FileText, FolderOpen, RefreshCw, Search, Activity } from "lucide-react";
 import { type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useSharedHomeDocumentTitle } from "@/components/clinical-dashboard/use-shared-home-document-title";
-import { type DocumentDeleteResult } from "@/components/DocumentManagementActions";
+import { useDashboardDocumentActions } from "@/components/clinical-dashboard/use-dashboard-document-actions";
 import { useIndexingAdminDesktopLayout } from "@/components/clinical-dashboard/use-indexing-admin-desktop-layout";
 import { extractSafetyFindings } from "@/lib/clinical-safety";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
@@ -81,9 +81,7 @@ import {
 } from "@/components/clinical-dashboard/use-dashboard-chrome-coordinator";
 import { SearchCommandProvider } from "@/components/clinical-dashboard/search-command-context";
 import {
-  answerReferencesDocument,
   resultUsable,
-  applyRenamedDocumentToAnswer,
   compactScopeFilters,
   hasActiveIndexingWork,
   hasNonProductionSupabaseApiKeyFallback,
@@ -102,7 +100,6 @@ import {
   type DocumentDrawerMode,
   type DocumentDrawerStatusFilter,
   type DocumentPagination,
-  type LabelReviewMutationBody,
 } from "@/components/clinical-dashboard/dashboard-contracts";
 import {
   activeIndexingPollFallbackMs,
@@ -206,12 +203,7 @@ import {
 } from "@/components/clinical-dashboard/use-persisted-answer-thread";
 import { buildAnswerClipboardText } from "@/components/clinical-dashboard/answer-copy-payload";
 import { buildAnswerRenderModel } from "@/lib/answer-render-policy";
-import type {
-  ClientDocumentLabel,
-  ClientDocumentMatch,
-  ClientQuoteCard,
-  ClientSearchResult,
-} from "@/lib/answer-client-payload";
+import type { ClientDocumentMatch, ClientQuoteCard, ClientSearchResult } from "@/lib/answer-client-payload";
 import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import {
   frontendSourceGovernanceWarnings,
@@ -229,7 +221,6 @@ import type {
   SearchResult,
   SearchScopeSummary,
   ClinicalQueryMode,
-  DocumentLabel,
 } from "@/lib/types";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import { DashboardDesktopResultComposerSlot } from "@/components/clinical-dashboard/dashboard-desktop-result-composer-slot";
@@ -1119,226 +1110,31 @@ function ClinicalDashboardContent({
     markSessionExpired,
   ]);
 
-  const retryJob = useCallback(
-    async (jobId: string) => {
-      setIndexingActionId(jobId);
-      try {
-        const { response, requestEpoch } = await authBoundFetch(`/api/ingestion/jobs/${jobId}/retry`, {
-          method: "POST",
-          headers: authorizationHeader,
-        });
-        if (response.status === 401) {
-          markSessionExpired();
-          return;
-        }
-        const payload = await response.json().catch(() => ({}));
-        if (!isAuthEpochCurrent(requestEpoch)) return;
-        if (!response.ok) {
-          throw new Error(typeof payload.error === "string" ? payload.error : "Job retry could not be started.");
-        }
-        setUserStartedIngestion(true);
-        setIndexingActive(true);
-        setActionNotice({
-          tone: "success",
-          message: "Ingestion job retry queued.",
-        });
-        await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
-      } catch (error) {
-        if (isAbortError(error)) return;
-        setActionNotice({
-          tone: "warning",
-          message: error instanceof Error ? error.message : "Job retry could not be started.",
-        });
-      } finally {
-        setIndexingActionId(null);
-      }
-    },
-    [authBoundFetch, authorizationHeader, isAuthEpochCurrent, markSessionExpired, refresh],
-  );
-
-  const reindexDocument = useCallback(
-    async (documentId: string, mode: "full" | "enrichment" = "full") => {
-      setIndexingActionId(documentId);
-      try {
-        const { response, requestEpoch } = await authBoundFetch(`/api/documents/${documentId}/reindex`, {
-          method: "POST",
-          headers: {
-            ...authorizationHeader,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ mode }),
-        });
-        if (response.status === 401) {
-          markSessionExpired();
-          return;
-        }
-        const payload = await response.json().catch(() => ({}));
-        if (!isAuthEpochCurrent(requestEpoch)) return;
-        if (!response.ok) {
-          throw new Error(
-            typeof payload.error === "string"
-              ? payload.error
-              : mode === "enrichment"
-                ? "Document enrichment could not be started."
-                : "Document reindex could not be started.",
-          );
-        }
-        setUserStartedIngestion(true);
-        setIndexingActive(true);
-        setActionNotice({
-          tone: "success",
-          message: mode === "enrichment" ? "Document enrichment refreshed." : "Document reindex queued.",
-        });
-        await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
-      } catch (error) {
-        if (isAbortError(error)) return;
-        setActionNotice({
-          tone: "warning",
-          message: error instanceof Error ? error.message : "Document reindex could not be started.",
-        });
-      } finally {
-        setIndexingActionId(null);
-      }
-    },
-    [authBoundFetch, authorizationHeader, isAuthEpochCurrent, markSessionExpired, refresh],
-  );
-  const enrichDocument = useCallback(
-    (documentId: string) => reindexDocument(documentId, "enrichment"),
-    [reindexDocument],
-  );
-
-  const handleDocumentRenamed = useCallback((updatedDocument: ClinicalDocument) => {
-    setDocuments((current) =>
-      current.map((document) => (document.id === updatedDocument.id ? { ...document, ...updatedDocument } : document)),
-    );
-    setSources((current) =>
-      current.map((source) =>
-        source.document_id === updatedDocument.id ? { ...source, title: updatedDocument.title } : source,
-      ),
-    );
-    setDocumentMatches((current) =>
-      current.map((document) =>
-        document.document_id === updatedDocument.id ? { ...document, title: updatedDocument.title } : document,
-      ),
-    );
-    setAnswer((current) => applyRenamedDocumentToAnswer(current, updatedDocument));
-  }, []);
-
-  const handleDocumentLabelsUpdated = useCallback((documentId: string, labels: DocumentLabel[]) => {
-    setDocuments((current) =>
-      current.map((document) => (document.id === documentId ? { ...document, labels } : document)),
-    );
-    setDocumentMatches((current) =>
-      current.map((document) => (document.document_id === documentId ? { ...document, labels } : document)),
-    );
-    setSources((current) =>
-      current.map((source) => (source.document_id === documentId ? { ...source, document_labels: labels } : source)),
-    );
-  }, []);
-
-  const handleDocumentLabelPatched = useCallback((documentId: string, label: DocumentLabel) => {
-    function mergeLabel<T extends ClientDocumentLabel>(labels: T[] | null | undefined): (T | DocumentLabel)[] {
-      const current = labels ?? [];
-      let replaced = false;
-      const next = current.map((item) => {
-        if (!("id" in item) || item.id !== label.id) return item;
-        replaced = true;
-        return label;
-      });
-      // Public answer labels have no mutation identity. The normal full-array
-      // response reconciles them; this compatibility fallback must not append
-      // a renamed label alongside its unidentified previous value.
-      return replaced || current.some((item) => !("id" in item)) ? next : [label, ...next];
-    }
-
-    setDocuments((current) =>
-      current.map((document) =>
-        document.id === documentId ? { ...document, labels: mergeLabel(document.labels) } : document,
-      ),
-    );
-    setDocumentMatches((current) =>
-      current.map((document) =>
-        document.document_id === documentId ? { ...document, labels: mergeLabel(document.labels) } : document,
-      ),
-    );
-    setSources((current) =>
-      current.map((source) =>
-        source.document_id === documentId ? { ...source, document_labels: mergeLabel(source.document_labels) } : source,
-      ),
-    );
-  }, []);
-
-  const mutateDocumentLabel = useCallback(
-    async (documentId: string, method: "POST" | "PATCH", body: LabelReviewMutationBody) => {
-      if (!canUsePrivateApis) return false;
-      try {
-        const { response, requestEpoch } = await authBoundFetch(`/api/documents/${documentId}/labels`, {
-          method,
-          headers: {
-            "Content-Type": "application/json",
-            ...(clientDemoMode ? {} : authorizationHeader),
-          },
-          body: JSON.stringify(body),
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!isAuthEpochCurrent(requestEpoch)) return false;
-        if (response.status === 401) {
-          markSessionExpired();
-          return false;
-        }
-        if (!response.ok) {
-          setActionNotice({
-            tone: "warning",
-            message: typeof payload?.error === "string" ? payload.error : "Label update failed.",
-          });
-          return false;
-        }
-        if (Array.isArray(payload.labels)) {
-          handleDocumentLabelsUpdated(documentId, payload.labels as DocumentLabel[]);
-        } else if (payload.label && typeof payload.label === "object") {
-          handleDocumentLabelPatched(documentId, payload.label as DocumentLabel);
-        }
-        setActionNotice({ tone: "success", message: "Document label review updated." });
-        return true;
-      } catch (error) {
-        if (isAbortError(error)) return false;
-        setActionNotice({ tone: "warning", message: "Label update failed." });
-        return false;
-      }
-    },
-    [
-      authBoundFetch,
-      authorizationHeader,
-      canUsePrivateApis,
-      clientDemoMode,
-      handleDocumentLabelPatched,
-      handleDocumentLabelsUpdated,
-      isAuthEpochCurrent,
-      markSessionExpired,
-    ],
-  );
-
-  const handleDocumentDeleted = useCallback(
-    (result: DocumentDeleteResult) => {
-      setDocuments((current) => current.filter((document) => document.id !== result.documentId));
-      setSelectedDocumentIds((current) => current.filter((documentId) => documentId !== result.documentId));
-      setSources((current) => current.filter((source) => source.document_id !== result.documentId));
-      setDocumentMatches((current) => current.filter((document) => document.document_id !== result.documentId));
-      setAnswer((current) => (answerReferencesDocument(current, result.documentId) ? null : current));
-      if (result.storageWarnings.length > 0) {
-        setActionNotice({
-          tone: "warning",
-          message: `Document deleted. Storage cleanup needs review: ${result.storageWarnings.join("; ")}`,
-        });
-      } else {
-        setActionNotice({ tone: "success", message: "Document deleted." });
-      }
-      void refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false }).catch(
-        () => undefined,
-      );
-    },
-    [refresh],
-  );
+  const {
+    retryJob,
+    reindexDocument,
+    enrichDocument,
+    handleDocumentRenamed,
+    mutateDocumentLabel,
+    handleDocumentDeleted,
+  } = useDashboardDocumentActions({
+    authBoundFetch,
+    authorizationHeader,
+    canUsePrivateApis,
+    clientDemoMode,
+    isAuthEpochCurrent,
+    markSessionExpired,
+    refresh,
+    setActionNotice,
+    setAnswer,
+    setDocumentMatches,
+    setDocuments,
+    setIndexingActionId,
+    setIndexingActive,
+    setSelectedDocumentIds,
+    setSources,
+    setUserStartedIngestion,
+  });
 
   useEffect(() => {
     if (actionNotice?.tone !== "success") return undefined;
@@ -3233,7 +3029,7 @@ function ClinicalDashboardContent({
           showPhoneSuggestionTickerOnHome={heroOwnsPhoneComposer}
           sharedHomeIdentity={showSharedHome}
           searchComposerVisible={!toolsDirectoryWithoutComposer}
-          composerPlaceholder={searchMode === "answer" && latestAnswerQuery ? "Ask a follow-up..." : undefined}
+          composerPlaceholder={searchMode === "answer" && latestAnswerQuery ? "Ask a follow-up…" : undefined}
           mobileSearchPlacement={hasMobileBottomSearch ? "bottom" : "default"}
           // Every phone dock is the compact single-row pill so content keeps
           // maximum screen space (mode homes and result views alike).

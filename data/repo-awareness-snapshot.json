@@ -839,6 +839,11 @@
         "area": "product"
       },
       {
+        "path": "/roster/today",
+        "file": "src/app/(search-app)/roster/today/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/differentials/diagnoses",
         "file": "src/app/(search-app)/differentials/diagnoses/page.tsx",
         "area": "product"
@@ -1916,6 +1921,10 @@
       {
         "path": "/api/teaching/checkin/complete",
         "file": "src/app/api/teaching/checkin/complete/route.ts"
+      },
+      {
+        "path": "/api/alerts/reminders",
+        "file": "src/app/api/alerts/reminders/route.ts"
       },
       {
         "path": "/api/calendar/feed",

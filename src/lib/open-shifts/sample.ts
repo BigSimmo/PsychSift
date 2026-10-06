@@ -79,9 +79,10 @@ const ROWS: readonly SampleRow[] = [
   { day: 11, start: "17:00", end: "23:00", kind: "evening", code: "E", site: "northgate" },
   { day: 11, start: "21:30", end: "08:00", kind: "night", code: "N", site: "riverside" },
   { day: 12, start: "08:00", end: "18:00", kind: "day", code: "L", site: "northgate" },
-  { day: 12, start: "16:00", end: "22:00", kind: "evening", code: "E", site: "lakeside" },
   { day: 5, start: "17:00", end: "23:00", kind: "evening", code: "E", site: "riverside", claim: "claimed" },
   { day: 9, start: "08:00", end: "16:30", kind: "day", code: "D", site: "northgate", claim: "approved" },
+  // A second shift for today, so the first view shows two with different roster-check labels.
+  { day: 0, start: "16:00", end: "22:00", kind: "evening", code: "E", site: "lakeside" },
 ];
 
 function instant(date: string, time: string): string {

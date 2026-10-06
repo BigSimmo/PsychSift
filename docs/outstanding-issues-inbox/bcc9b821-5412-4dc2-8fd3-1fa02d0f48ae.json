@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "bcc9b821-5412-4dc2-8fd3-1fa02d0f48ae",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#SBKXZ7",
+    "detail": "104 of 205 records signed off by owner in PR #3143; outstanding dropped from 205 to 101 records.",
+    "source": "PR #3143 review",
+    "baseRowFingerprint": "eae798b6eb4c416cfd882987b3ef5b2c9c43337a4533bd4a5523f1d5d0cdcf7a"
+  }
+}

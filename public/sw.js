@@ -331,6 +331,13 @@ const ROSTER_PUSH = {
   offer: { body: "A shift is open in your team. Open Roster to see it.", path: "/roster/swaps" },
   manage: { body: "Something in Manage is waiting for you.", path: "/roster/manage" },
   test: { title: "PsychSift", body: "Test alert. Phone alerts are working on this device.", path: "/my-day/alerts" },
+  // The timed sender. A reminder's words stay on the phone, so the lock screen never shows them.
+  brief: { title: "PsychSift", body: "Your morning brief is ready.", path: "/my-day" },
+  reminder: {
+    title: "PsychSift",
+    body: "A reminder you set is due. Open PsychSift to see it.",
+    path: "/my-day/alerts",
+  },
 };
 
 // Open PsychSift pages hear which kind of alert arrived (the code only), so the

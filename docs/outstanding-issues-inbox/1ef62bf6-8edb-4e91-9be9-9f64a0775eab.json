@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "1ef62bf6-8edb-4e91-9be9-9f64a0775eab",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#TCT5ZM",
+    "outcome": "Stale premise: superseded by migrations 20260926041000 and 20260926041100 retiring old ingestion worker and retaining cron_ingestion_jwt in Vault for indexing.",
+    "baseRowFingerprint": "06b64cb77967272b08f36248b6a96f54340c04b3ac7b405b84723f21d579c883"
+  }
+}

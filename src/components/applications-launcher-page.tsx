@@ -96,7 +96,7 @@ const toolsLauncherCopy = {
   emptyTitle: "No tools match",
   emptyBody: "Clear the search or try another clinical workflow, tool name, or category.",
   searchAriaLabel: "Search tools",
-  searchPlaceholder: "Search tools...",
+  searchPlaceholder: "Search tools…",
   openSelectedAriaLabel: "Open selected tool",
 };
 
