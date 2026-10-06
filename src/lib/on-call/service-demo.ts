@@ -88,6 +88,37 @@ export const demoServiceDetail: ServiceDetail = {
       },
       { reviewedBy: DEMO_REVIEWER_ID, reviewedAt: "2026-09-20T04:00:00.000Z" },
     ),
+    // Unnamed psychiatry cover, so "Also on tonight" has rows after hours, as the mock-up draws it.
+    demoEntry(
+      "61000000-0000-4000-8000-000000000024",
+      {
+        siteId: DEMO_SITE_ID,
+        section: "cover",
+        kind: "clinical",
+        title: "Psychiatry: Consultant on call",
+        body: "Synthetic example only.",
+        phone: "5550 0024",
+        sources: [{ label: "Synthetic roster", url: "https://example.org/roster" }],
+        orientationPhase: "first_shift",
+        cover: { grade: "consultant", team: "Psychiatry", window: { start: "17:00", end: "08:00" } },
+      },
+      { reviewedBy: DEMO_REVIEWER_ID, reviewedAt: "2026-09-20T04:00:00.000Z" },
+    ),
+    demoEntry(
+      "61000000-0000-4000-8000-000000000025",
+      {
+        siteId: DEMO_SITE_ID,
+        section: "cover",
+        kind: "clinical",
+        title: "Psychiatry: Registrar on call",
+        body: "Synthetic example only.",
+        phone: "5550 0042",
+        sources: [{ label: "Synthetic roster", url: "https://example.org/roster" }],
+        orientationPhase: "first_shift",
+        cover: { grade: "registrar", team: "Psychiatry", window: { start: "17:00", end: "08:00" } },
+      },
+      { reviewedBy: DEMO_REVIEWER_ID, reviewedAt: "2026-09-20T04:00:00.000Z" },
+    ),
     demoEntry(
       "61000000-0000-4000-8000-000000000020",
       {
@@ -202,6 +233,8 @@ export const demoServiceDetail: ServiceDetail = {
     hospitalRow("61000000-0000-4000-8000-000000000008", "contacts", "Switchboard", "5550 0000"),
     hospitalRow("61000000-0000-4000-8000-000000000009", "contacts", "Medicine: Registrar on call", "5550 0000, 4455"),
     hospitalRow("61000000-0000-4000-8000-000000000010", "contacts", "ICU: Registrar", "4456"),
+    // The psychiatry nurse in charge, beside the psychiatry cover rows above.
+    hospitalRow("61000000-0000-4000-8000-000000000023", "contacts", "Psychiatry: Nurse in charge", "4000"),
     hospitalRow("61000000-0000-4000-8000-000000000011", "contacts", "Ward: Synthetic ward 4B", "5550 0012"),
     hospitalRow(
       "61000000-0000-4000-8000-000000000012",
