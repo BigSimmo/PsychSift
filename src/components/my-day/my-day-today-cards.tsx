@@ -472,16 +472,19 @@ const BAR_TONE = {
   day: "fill-[color:var(--dash-line-strong)]",
   night: "fill-[color:var(--dash-night)]",
   call: "fill-[color:var(--dash-blue)]",
-  due: "fill-[color:var(--dash-amber)]",
+  // Grey while the date is still ahead; amber only once it has passed, the
+  // dashboard's rule that amber means passed or failed.
+  due: "fill-[color:var(--dash-muted)]",
+  passed: "fill-[color:var(--dash-amber)]",
 } as const;
 type BarTone = keyof typeof BAR_TONE;
 
-function dayBars(kinds: readonly ShiftKind[], due: boolean): BarTone[] {
+function dayBars(kinds: readonly ShiftKind[], due: boolean, passed: boolean): BarTone[] {
   const bars: BarTone[] = [];
   if (kinds.includes("on_call")) bars.push("call");
   if (kinds.includes("night")) bars.push("night");
   if (kinds.some((kind) => kind === "day" || kind === "evening" || kind === "other")) bars.push("day");
-  if (due) bars.push("due");
+  if (due) bars.push(passed ? "passed" : "due");
   return bars.slice(0, 3);
 }
 
@@ -606,7 +609,7 @@ function MonthView({
                     >
                       <span aria-hidden="true">{Number(date.slice(8, 10))}</span>
                       <svg aria-hidden="true" width="34" height="4" viewBox="0 0 34 4" className="block">
-                        {dayBars(kindsByDate?.get(date) ?? [], (dueByDate.get(date) ?? 0) > 0).map(
+                        {dayBars(kindsByDate?.get(date) ?? [], (dueByDate.get(date) ?? 0) > 0, date < today).map(
                           (tone, index, all) => (
                             <rect
                               key={tone}
@@ -727,7 +730,14 @@ export function StripDay({
       >
         {Number(date.slice(8, 10))}
         {due ? (
-          <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-[color:var(--dash-amber)] ring-2 ring-[color:var(--dash-page)] forced-colors:bg-[CanvasText]" />
+          <span
+            data-testid={`dash-week-due-${date}`}
+            data-passed={date < today ? "" : undefined}
+            className={cn(
+              "absolute -top-0.5 -right-0.5 size-2 rounded-full ring-2 ring-[color:var(--dash-page)] forced-colors:bg-[CanvasText]",
+              date < today ? "bg-[color:var(--dash-amber)]" : "bg-[color:var(--dash-muted)]",
+            )}
+          />
         ) : null}
       </span>
       <span
@@ -998,7 +1008,9 @@ export function CpdSummary({
       <span className="sr-only">
         {`${hoursText(loggedHours)} of ${hoursText(targetHours)} CPD hours logged this year: ${cmeCategories
           .map((category) => `${CPD_LABEL[category]} ${hoursText(byCategory[category])}`)
-          .join(", ")}. ${left > 0 ? `${hoursText(left)} hours to go by 31 December.` : "Target reached."}`}
+          .join(
+            ", ",
+          )}. ${left > 0 ? `${hoursText(left)} hours to go by 31 December.` : "Your target hours are logged."}`}
       </span>
       <QuietRing fraction={loggedHours / Math.max(1, targetHours)} mode="cme" testId="my-day-cpd-ring">
         <span className="text-base font-dash-title text-[color:var(--dash-ink)] nums">{`${hoursText(loggedHours)} h`}</span>
@@ -1010,7 +1022,7 @@ export function CpdSummary({
         ))}
         <QuietKeyValue
           total
-          label={left > 0 ? "To go by 31 Dec" : "Target reached"}
+          label={left > 0 ? "To go by 31 Dec" : "Target hours logged"}
           value={left > 0 ? `${hoursText(left)} h` : ""}
         />
       </span>
