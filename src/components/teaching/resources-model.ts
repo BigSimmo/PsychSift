@@ -1,6 +1,8 @@
+import { withUnit } from "@/components/teaching/teaching-number";
 import { ApiClientError } from "@/lib/api-client-error";
 import { teachingErrorMessage } from "@/lib/teaching/client";
 import type { ResourceKind, ResourceRow } from "@/lib/teaching/model";
+import { daysBetween, studyPlanWeek, studyStreak, type ExamPrepState } from "@/lib/teaching/term-tracker";
 
 export type ResourceType = "all" | "recordings" | "reading";
 
@@ -12,6 +14,48 @@ export const RESOURCE_KIND_WORDS: Record<ResourceKind, string> = {
   link: "Link",
   library: "Library document",
 };
+
+/**
+ * The type in words, as the v5 Resources rows show it: "PDF" when the link itself ends in .pdf (read from the
+ * address, never guessed), otherwise the kind the presenter chose. A recording and a library document keep
+ * their own words.
+ */
+export function resourceTypeWords(item: Pick<ResourceRow, "kind" | "url">): string {
+  if (item.kind !== "recording" && item.kind !== "library" && item.url) {
+    try {
+      if (new URL(item.url).pathname.toLowerCase().endsWith(".pdf")) return "PDF";
+    } catch {
+      // Not a parseable link: fall back to the kind.
+    }
+  }
+  return RESOURCE_KIND_WORDS[item.kind];
+}
+
+/** "today", or the weekday in full ("Wednesday"), for a Perth date key in this week. */
+export function weekDayWord(dateKey: string, today: string): string {
+  if (dateKey === today) return "today";
+  return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString("en-AU", { weekday: "long", timeZone: "UTC" });
+}
+
+/**
+ * A "For this week" row's second line: "PDF · today", "Link · today · yours", "Slides · Monday · catch-up".
+ * The day comes from the session the material belongs to; "yours" only when the reader presents it. Nothing
+ * here knows a file's page count, so none is shown.
+ */
+export function thisWeekMeta(
+  item: Pick<ResourceRow, "kind" | "url"> & { catchUp?: boolean },
+  session: { dateKey: string; isPresenter: boolean } | null,
+  today: string,
+): string {
+  return [
+    resourceTypeWords(item),
+    session ? weekDayWord(session.dateKey, today) : null,
+    session?.isPresenter ? "yours" : null,
+    item.catchUp ? "catch-up" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /** What the add sheet offers. A library document is chosen from the library, never typed, so it is not here. */
 export const ADD_KINDS = ["slides", "reading", "link"] as const;
@@ -71,4 +115,26 @@ export function resourceWriteError(cause: unknown): string {
   if (cause instanceof ApiClientError && cause.code === "demo_mode_unavailable")
     return "The demo doesn't save changes.";
   return teachingErrorMessage(cause);
+}
+
+/**
+ * The My exam prep row on Resources: "Written exam in 111 days" over "Study plan week 6 of 22 · 9 days in
+ * a row". Reads only what the doctor typed on this device; with no exam set it simply says what the page is.
+ */
+export function examPrepRow(state: ExamPrepState | null, today: string): { title: string; meta: string } {
+  const exam = state?.exam;
+  if (!state || !exam) return { title: "My exam prep", meta: "Countdown, study days and topics" };
+  const days = daysBetween(today, exam.on);
+  if (days < 0) return { title: "My exam prep", meta: `${exam.name} has passed · set your next exam` };
+  const plan = studyPlanWeek(exam, today);
+  const streak = studyStreak(state.study, today);
+  return {
+    title: days === 0 ? `${exam.name} today` : `${exam.name} in ${days} ${days === 1 ? "day" : "days"}`,
+    meta: [
+      `Study plan week ${withUnit(plan.week, "of")} ${plan.total}`,
+      streak > 0 ? `${streak} ${streak === 1 ? "day" : "days"} in a row` : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  };
 }

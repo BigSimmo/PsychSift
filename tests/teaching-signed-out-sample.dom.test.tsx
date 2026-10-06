@@ -3,7 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ pathname: "/teaching" }));
-vi.mock("next/navigation", async (original) => ({ ...(await original<object>()), usePathname: () => state.pathname }));
+vi.mock("next/navigation", async (original) => ({
+  ...(await original<object>()),
+  usePathname: () => state.pathname,
+  useRouter: () => ({ push: () => undefined, replace: () => undefined, prefetch: () => undefined }),
+}));
 vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="sign-in-dialog" /> : null),
@@ -79,8 +83,10 @@ describe("signed-out Teaching sample, the default", () => {
   it("builds Resources, a collection and What's on in the browser and refuses saves locally", async () => {
     const { fetchMock } = signedOutWith();
     const resources = render(<TeachingResources demoMode={false} />);
-    const save = await screen.findAllByRole("button", { name: /^Save / });
-    fireEvent.click(save[0]);
+    // The sample offers New collection, as the mock-up does, and refuses to create it locally.
+    fireEvent.click(await screen.findByRole("button", { name: "New collection" }));
+    fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Reading list" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create collection" }));
     expect(await screen.findByText("The sample doesn’t save changes.")).toBeInTheDocument();
     resources.unmount();
     render(<TeachingCollection collection="saved" demoMode={false} />);

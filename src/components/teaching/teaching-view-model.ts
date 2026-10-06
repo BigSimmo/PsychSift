@@ -171,7 +171,8 @@ export function heroModel(session: SessionSummaryRead | null, input: HeroInput):
   const checkinOpen = href !== null && isToday && phase === "checkin" && !mark;
 
   let actions: TeachingAction[];
-  if (href === null) actions = [{ id: "week", label: "See it in Week", href: "/teaching/week", emphasis: "primary" }];
+  if (href === null)
+    actions = [{ id: "week", label: "See it in This week", href: "/teaching/week", emphasis: "primary" }];
   else if (checkinOpen)
     actions = [
       { id: "scan", label: "Check in with code", href: `${href}?check-in=scan`, emphasis: "primary" },

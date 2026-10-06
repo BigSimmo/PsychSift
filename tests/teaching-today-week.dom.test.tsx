@@ -195,14 +195,14 @@ describe("the view model", () => {
     ]);
   });
 
-  it("offers one action, See it in Week, for a relocated On Call session", () => {
+  it("offers one action, See it in This week, for a relocated On Call session", () => {
     const relocated = session({
       occurrenceId: `${ENTRY}@2026-09-30`,
       serviceId: "on-call",
       source: "on_call_relocated",
     });
     const hero = heroModel(relocated, heroInput);
-    expect(hero.actions.map((a) => [a.label, a.href])).toEqual([["See it in Week", "/teaching/week"]]);
+    expect(hero.actions.map((a) => [a.label, a.href])).toEqual([["See it in This week", "/teaching/week"]]);
     expect(hero.meta).toBe("Seminar room 1 · From On Call");
   });
 

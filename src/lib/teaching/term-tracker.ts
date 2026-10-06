@@ -421,25 +421,28 @@ export function sampleTermTracker(today: string): TermTrackerState {
 
 /** A fictional exam year: a written exam a few months away, nine days of study in a row, five topics. */
 export function sampleExamPrep(today: string): ExamPrepState {
+  // Matches the approved v5 mock-up: 111 days to go, week 6 of a 22-week plan, nine days in a row (the day
+  // before them left empty) and 55.5 h across the 12-week heatmap.
   const study: Record<string, number> = {};
-  const pattern = [60, 0, 90, 45, 0, 120, 30, 0, 75, 60, 0, 0, 90, 150];
-  for (let back = 83; back >= 9; back -= 1) {
+  const pattern = [60, 0, 60, 30, 0, 90, 30, 0, 60, 45, 0, 0, 60, 120];
+  for (let back = 83; back >= 10; back -= 1) {
     const minutes = pattern[back % pattern.length];
     if (minutes) study[addDays(today, -back)] = minutes;
   }
   for (let back = 8; back >= 0; back -= 1) study[addDays(today, -back)] = [45, 60, 90, 30, 120, 60, 45, 90, 60][back];
-  const examOn = addDays(today, 113);
+  const examOn = addDays(today, 111);
   return {
     version: 1,
-    exam: { name: "Written exam", on: examOn, planStartsOn: addDays(examOn, -22 * 7) },
+    exam: { name: "Written exam", on: examOn, planStartsOn: addDays(today, -40) },
     study,
+    // Made-up topic names, shown as one doctor's own list, not a college syllabus.
     topics: [
-      { id: "t1", name: "Topic A (from your syllabus)", percent: 85 },
-      { id: "t2", name: "Topic B", percent: 60 },
-      { id: "t3", name: "Topic C", percent: 45 },
-      { id: "t4", name: "Topic D", percent: 20 },
-      { id: "t5", name: "Topic E", percent: 0 },
+      { id: "t1", name: "Past papers", percent: 60 },
+      { id: "t2", name: "Critical appraisal", percent: 45 },
+      { id: "t3", name: "Psychotherapy", percent: 30 },
+      { id: "t4", name: "Old age psychiatry", percent: 20 },
+      { id: "t5", name: "Child and adolescent", percent: 0 },
     ],
-    group: { title: "Practice questions", on: addDays(today, 2), time: "19:00", place: "Library room" },
+    group: { title: "Practice questions", on: addDays(today, 2), time: "19:00", place: "" },
   };
 }

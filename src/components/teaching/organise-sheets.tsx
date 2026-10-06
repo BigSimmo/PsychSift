@@ -18,6 +18,7 @@ import {
   type OrganiseRead,
   type SeriesRow,
 } from "@/components/teaching/organise-model";
+import { T5List, T5Row } from "@/components/teaching/t5-kit";
 import { perthDateKey, shortDayLabel, timeRange } from "@/components/teaching/teaching-dates";
 import { TeachingSwitch } from "@/components/teaching/teaching-modules";
 import { withUnit } from "@/components/teaching/teaching-number";
@@ -200,12 +201,15 @@ export function SeriesSheet({
   organise,
   onClose,
   onSaved,
+  demo = false,
 }: {
   serviceId: string;
   series: SeriesRow | null;
   organise: OrganiseRead;
   onClose: () => void;
   onSaved: () => void;
+  /** The made-up demo service: the form checks itself, then closes with nothing sent or saved. */
+  demo?: boolean;
 }) {
   const [form, setForm] = useState<SeriesForm>(() => ({
     title: series?.title ?? "",
@@ -235,6 +239,10 @@ export function SeriesSheet({
     }
     if (!Number.isInteger(minutes) || minutes < 10 || minutes > 480) {
       setError("A session runs for 10 to 480 minutes.");
+      return;
+    }
+    if (demo) {
+      onSaved();
       return;
     }
     setBusy(true);
@@ -389,12 +397,15 @@ export function GroupSheet({
   organise,
   onClose,
   onSaved,
+  demo = false,
 }: {
   serviceId: string;
   group: GroupRow | null;
   organise: OrganiseRead;
   onClose: () => void;
   onSaved: () => void;
+  /** The made-up demo service: closes with nothing sent or saved. */
+  demo?: boolean;
 }) {
   const [name, setName] = useState(group?.name ?? "");
   const [userIds, setUserIds] = useState<string[]>(group?.userIds ?? []);
@@ -405,6 +416,10 @@ export function GroupSheet({
   async function save() {
     if (!name.trim()) {
       setError("Give the group a name.");
+      return;
+    }
+    if (demo) {
+      onSaved();
       return;
     }
     setBusy(true);
@@ -491,13 +506,27 @@ export function MembersSheet({ organise, onClose }: { organise: OrganiseRead; on
 }
 
 /** The invitation code is shown once; the invitee redeems it under On Call's "Join with invitation" (R12). */
-export function InviteSheet({ serviceId, onClose }: { serviceId: string; onClose: () => void }) {
+export function InviteSheet({
+  serviceId,
+  onClose,
+  demo = false,
+}: {
+  serviceId: string;
+  onClose: () => void;
+  /** The made-up demo service: no invitation is created and no code is shown. */
+  demo?: boolean;
+}) {
   const [email, setEmail] = useState("");
   const [made, setMade] = useState<{ code: string; expiresAt: string; email: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [demoDone, setDemoDone] = useState(false);
   async function create() {
+    if (demo) {
+      setDemoDone(true);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -523,7 +552,12 @@ export function InviteSheet({ serviceId, onClose }: { serviceId: string; onClose
   return (
     <Sheet open onClose={onClose} title="Invite a member">
       <div className="grid gap-2">
-        {made ? (
+        {demoDone ? (
+          <p className={cn("text-sm", textMuted)}>
+            Demo only. No invitation was created or sent. In a real service the invitee gets a one-time code to enter
+            under Join with invitation.
+          </p>
+        ) : made ? (
           <>
             <p className={cn(modeNumberText, "text-base-minus break-all text-[color:var(--text-heading)] select-all")}>
               {made.code}
@@ -549,6 +583,33 @@ export function InviteSheet({ serviceId, onClose }: { serviceId: string; onClose
               Create invitation
             </Button>
           </>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
+/** "New change": choose which coming session to move or cancel, then the change sheet opens. */
+export function PickSessionSheet({
+  sessions,
+  onPick,
+  onClose,
+}: {
+  sessions: readonly SessionSummary[];
+  onPick: (session: SessionSummary) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Sheet open onClose={onClose} title="New change">
+      <div className="grid gap-2">
+        {sessions.length > 0 ? (
+          <T5List ruled testId="teaching-organise-pick">
+            {sessions.map((s) => (
+              <T5Row key={s.occurrenceId} title={s.title} meta={describe(s)} onClick={() => onPick(s)} />
+            ))}
+          </T5List>
+        ) : (
+          <p className={cn("text-sm", textMuted)}>No coming sessions to change this week.</p>
         )}
       </div>
     </Sheet>

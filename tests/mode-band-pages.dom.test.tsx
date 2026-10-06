@@ -75,11 +75,11 @@ describe("mode band on each mode's pages", () => {
     nav.pathname = "/teaching/teach";
     view.rerender(
       <ModeBand modeId="teaching">
-        <TeachingDepthPage title="Teach" demoMode resource={ready} ready>
+        <TeachingDepthPage title="Presenting" demoMode resource={ready} ready>
           body
         </TeachingDepthPage>
       </ModeBand>,
     );
-    expect(screen.getByRole("heading", { level: 1, name: "Teach" })).toHaveClass("sr-only");
+    expect(screen.getByRole("heading", { level: 1, name: "Presenting" })).toHaveClass("sr-only");
   });
 });
