@@ -30,7 +30,7 @@ describe("buildMyDaySample", () => {
   it("orders overdue first and puts a passed date and an old routine there", () => {
     expect(sample.items[0]?.severity).toBe("overdue");
     const overdue = sample.items.filter((item) => item.severity === "overdue").map((item) => item.title);
-    expect(overdue).toEqual(expect.arrayContaining(["Demo journal club", "Demo life support course"]));
+    expect(overdue).toEqual(expect.arrayContaining(["Journal club", "Life support course"]));
   });
 
   it("keeps calls to counts and never offers a phone link", () => {

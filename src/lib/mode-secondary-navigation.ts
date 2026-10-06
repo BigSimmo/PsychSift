@@ -224,12 +224,13 @@ export const modeSecondaryNavigationRegistry = {
   // in-page navigation header either: the mode pill's section sheet is how a
   // reader moves between its pages.
   roster: [
-    { id: "today", label: "Today", href: "/roster" },
-    { id: "shifts", label: "Shifts", href: "/roster/shifts" },
+    // Roster opens on Shifts, as in its mock-up. Requests sits under
+    // "Swaps & leave" (the Swaps page links to it); Today stays, last.
+    { id: "shifts", label: "Shifts", href: "/roster" },
+    { id: "swaps", label: "Swaps & leave", href: "/roster/swaps" },
     { id: "team", label: "Team", href: "/roster/team" },
-    { id: "swaps", label: "Swaps", href: "/roster/swaps" },
-    { id: "requests", label: "Requests", href: "/roster/requests" },
     { id: "settings", label: "Settings", href: "/roster/settings" },
+    { id: "today", label: "Today", href: "/roster/today" },
   ],
   // First Nations, spec §3 order. The pages sheet's group headings ("At the
   // bedside", "During the stay", "Leaving hospital") wait for the shared pages
@@ -513,15 +514,13 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     return null;
   }
   if (modeId === "roster") {
-    if (pathname === "/roster/shifts") return "shifts";
+    // Exact matches only, for the same reason On Call's and CME's homes are: a
+    // prefix test on "/roster" would mark Shifts current on every Roster route.
+    if (pathname === "/roster" || pathname === "/roster/shifts") return "shifts";
     if (pathname === "/roster/team") return "team";
-    if (pathname === "/roster/swaps") return "swaps";
-    if (pathname === "/roster/requests") return "requests";
+    if (pathname === "/roster/swaps" || pathname === "/roster/requests") return "swaps";
     if (pathname === "/roster/settings") return "settings";
-    // Exact match only, for the same reason On Call's and CME's homes are: a
-    // prefix test here would mark Today current on every Roster route as well
-    // as its own.
-    if (pathname === "/roster") return "today";
+    if (pathname === "/roster/today") return "today";
     return null;
   }
   if (modeId === "open-shifts") {
@@ -598,9 +597,14 @@ export function isModeSecondaryNavigationRoute(params: {
   }
   if (modeId === "my-day") return pathname === "/my-day/week" || pathname === "/my-day/hours";
   if (modeId === "roster") {
-    return ["/roster/shifts", "/roster/team", "/roster/swaps", "/roster/requests", "/roster/settings"].includes(
-      pathname,
-    );
+    return [
+      "/roster/shifts",
+      "/roster/team",
+      "/roster/swaps",
+      "/roster/requests",
+      "/roster/settings",
+      "/roster/today",
+    ].includes(pathname);
   }
   if (modeId === "open-shifts") {
     return ["/open-shifts/mine", "/open-shifts/alerts", "/open-shifts/post"].includes(pathname);

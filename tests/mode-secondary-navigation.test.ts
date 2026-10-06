@@ -56,7 +56,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
   psychiatry: [],
   medicines: [],
   "my-work": ["Renewals", "Compliance", "New job", "Help"],
-  roster: ["Today", "Shifts", "Team", "Swaps", "Requests", "Settings"],
+  roster: ["Shifts", "Swaps & leave", "Team", "Settings", "Today"],
   "first-nations": [
     "Bedside",
     "Contacts",
@@ -613,7 +613,7 @@ describe("mode secondary navigation registry", () => {
     expect(visible("teaching")).toHaveLength(6);
     // Compliance joined Admin with the 5 Oct mock-up (Renewals · Compliance · New job · Help).
     expect(visible("my-work")).toHaveLength(4);
-    expect(visible("roster")).toHaveLength(6);
+    expect(visible("roster")).toHaveLength(5);
     expect(visible("first-nations")).toHaveLength(9);
     expect(visible("my-day")).toHaveLength(3);
     expect(visible("on-call").filter((entry) => entry.group === "more")).toHaveLength(5);
@@ -768,8 +768,10 @@ describe("differentials mode secondary navigation active destinations", () => {
 });
 
 describe("Roster mode secondary navigation active destinations", () => {
-  it("marks Today, Shifts and Settings, and nothing else", () => {
-    expect(activeModeSecondaryNavigationId("roster", "/roster")).toBe("today");
+  it("marks Shifts (Roster's home), Today and Settings, and nothing else", () => {
+    expect(activeModeSecondaryNavigationId("roster", "/roster")).toBe("shifts");
+    expect(activeModeSecondaryNavigationId("roster", "/roster/today")).toBe("today");
+    expect(activeModeSecondaryNavigationId("roster", "/roster/requests")).toBe("swaps");
     expect(activeModeSecondaryNavigationId("roster", "/roster/shifts")).toBe("shifts");
     expect(activeModeSecondaryNavigationId("roster", "/roster/settings")).toBe("settings");
     expect(activeModeSecondaryNavigationId("roster", "/roster/swaps")).toBe("swaps");

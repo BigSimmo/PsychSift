@@ -29,7 +29,7 @@ describe("Help's items (spec review 1 and 6)", () => {
   });
 
   it("leaves login rows to New job, and gives New job both own and shared login rows", () => {
-    const login = demo("Demo logins, paging and remote access");
+    const login = demo("Logins, paging and remote access");
     expect(buildAdminHelpItems({ own: [], shared: [login], statewide: [] })).toEqual([]);
     expect(selectNewJobRows({ own: [], shared: [login] }).logins).toEqual([{ entry: login, source: "shared" }]);
   });
@@ -37,8 +37,8 @@ describe("Help's items (spec review 1 and 6)", () => {
 
 describe("old #anchors land (spec review 8)", () => {
   it("sends a login row's old Help anchor on to New job, and leaves every other anchor alone", () => {
-    const login = demo("Demo logins, paging and remote access");
-    const room = demo("Demo on-call room");
+    const login = demo("Logins, paging and remote access");
+    const room = demo("On-call room");
     expect(adminHelpForwardHref(`#on-call-entry-${login.id}`, [login, room])).toBe(
       `/admin/new-job#on-call-entry-${login.id}`,
     );

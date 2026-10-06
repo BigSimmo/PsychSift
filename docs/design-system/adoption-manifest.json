@@ -3322,6 +3322,7 @@
         "src/app/(search-app)/roster/shifts/page.tsx",
         "src/app/(search-app)/roster/swaps/page.tsx",
         "src/app/(search-app)/roster/team/page.tsx",
+        "src/app/(search-app)/roster/today/page.tsx",
         "src/app/(search-app)/services/[slug]/page.tsx",
         "src/app/(search-app)/services/page.tsx",
         "src/app/(search-app)/services/search/page.tsx",
@@ -4402,6 +4403,16 @@
         },
         {
           "file": "src/app/(search-app)/roster/team/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/roster/today/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5882,6 +5893,7 @@
       "src/app/(search-app)/roster/shifts/page.tsx",
       "src/app/(search-app)/roster/swaps/page.tsx",
       "src/app/(search-app)/roster/team/page.tsx",
+      "src/app/(search-app)/roster/today/page.tsx",
       "src/app/(search-app)/services/[slug]/page.tsx",
       "src/app/(search-app)/services/page.tsx",
       "src/app/(search-app)/services/search/page.tsx",
@@ -6058,6 +6070,7 @@
       "src/app/(search-app)/roster/shifts/page.tsx",
       "src/app/(search-app)/roster/swaps/page.tsx",
       "src/app/(search-app)/roster/team/page.tsx",
+      "src/app/(search-app)/roster/today/page.tsx",
       "src/app/(search-app)/services/[slug]/page.tsx",
       "src/app/(search-app)/services/page.tsx",
       "src/app/(search-app)/services/search/page.tsx",
@@ -6114,7 +6127,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 181,
+    "inheritedCkbV2RootCount": 182,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6123,8 +6136,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 182,
-    "productionRouteCount": 174,
-    "nextUiEntryCount": 275
+    "rootCount": 183,
+    "productionRouteCount": 175,
+    "nextUiEntryCount": 276
   }
 }

@@ -17,15 +17,14 @@ import { searchCommandSurfaceConfig } from "@/lib/search-command-surface";
 import { sharedHomePresentation } from "@/lib/ui-copy";
 
 describe("Roster mode registration", () => {
-  it("is a mode with six pages in Release 2", () => {
+  it("is a mode with five pages, opening on Shifts", () => {
     expect(appModeIds).toContain("roster");
     expect(modeSecondaryNavigationEntries("roster").map((entry) => entry.label)).toEqual([
-      "Today",
       "Shifts",
+      "Swaps & leave",
       "Team",
-      "Swaps",
-      "Requests",
       "Settings",
+      "Today",
     ]);
   });
 

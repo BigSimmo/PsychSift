@@ -13,7 +13,6 @@ import {
   CalendarCheck,
   CalendarDays,
   CalendarRange,
-  CalendarX2,
   ClipboardCheck,
   ClipboardList,
   Feather,
@@ -138,15 +137,14 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   help: LifeBuoy,
   // Roster. Today is the mode home a shift opens to; Shifts reuses the mode's
   // own CalendarRange mark (`category-identity.ts`); Team is the people on the
-  // roster; Swaps is the swap arrows; Requests is the crossed-out day, since
-  // dates you can't work and leave are what it holds; Settings gets the generic
+  // roster; Swaps & leave is the swap arrows (Requests now lives under it);
+  // Settings gets the generic
   // gear, matched to nothing else in this rail so it cannot be mistaken for a
   // section.
   today: CalendarClock,
   shifts: CalendarRange,
   team: UsersRound,
   swaps: ArrowLeftRight,
-  requests: CalendarX2,
   settings: Settings,
   // My Day. Today wears the mode's own Sunrise (as Admin's Today does), Week the
   // seven-day range, Hours the clock.

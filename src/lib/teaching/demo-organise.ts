@@ -115,20 +115,20 @@ export function demoOrganise(now: Date = new Date()): DemoOrganise {
   let workshopStart = Date.parse(perthInstant(plusDays(today, 2), "12:00"));
   if (workshopStart >= at + 48 * HOUR) workshopStart -= 24 * HOUR;
 
-  const casePresentation = session(1, "Demo case presentation", slot, 60, "Demo seminar room", 12);
-  const journalClub = session(2, "Demo journal club", slot + 90 * MINUTE, 60, null);
-  const workshop = session(3, "Demo clinical skills workshop", workshopStart, 120, "Demo simulation suite");
+  const casePresentation = session(1, "Case presentation", slot, 60, "Seminar room", 12);
+  const journalClub = session(2, "Journal club", slot + 90 * MINUTE, 60, null);
+  const workshop = session(3, "Clinical skills workshop", workshopStart, 120, "Simulation suite");
 
   const members: DemoOrganiseMember[] = [
     ...Array.from({ length: REGISTRARS }, (_, i) => ({
       userId: uuid("e000", i + 1),
-      name: `Demo registrar ${i + 1}`,
+      name: `Registrar ${i + 1}`,
       role: "doctor" as const,
       joinedAt: "2026-02-02T00:00:00.000Z",
     })),
     ...Array.from({ length: CONSULTANTS }, (_, i) => ({
       userId: uuid("e000", REGISTRARS + i + 1),
-      name: `Demo consultant ${i + 1}`,
+      name: `Consultant ${i + 1}`,
       role: "doctor" as const,
       joinedAt: "2026-02-02T00:00:00.000Z",
     })),
@@ -157,7 +157,7 @@ export function demoOrganise(now: Date = new Date()): DemoOrganise {
         title: workshop.title,
         date: plusDays(workshopDate, 35),
         status: "moved",
-        venue: "Demo simulation suite B",
+        venue: "Simulation suite B",
         reason: "room clash",
       },
       {
