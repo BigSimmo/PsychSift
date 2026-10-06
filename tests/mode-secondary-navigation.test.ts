@@ -68,7 +68,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Going home",
     "End of life",
   ],
-  "my-day": ["Today", "Week", "Hours"],
+  "my-day": ["Today", "Work", "Me"],
   "open-shifts": ["Browse", "My shifts", "Alerts", "Post"],
 };
 
@@ -793,15 +793,15 @@ describe("My Day mode secondary navigation", () => {
   it("registers Today, Week and Hours with unique ids and their own addresses", () => {
     expect(modeSecondaryNavigationRegistry["my-day"]).toEqual([
       { id: "my-day-today", label: "Today", href: "/my-day" },
-      { id: "my-day-week", label: "Week", href: "/my-day/week" },
-      { id: "my-day-hours", label: "Hours", href: "/my-day/hours" },
+      { id: "my-day-work", label: "Work", href: "/my-day?page=work" },
+      { id: "my-day-me", label: "Me", href: "/my-day?page=me" },
     ]);
   });
 
   it("marks each page current by exact match only", () => {
     expect(activeModeSecondaryNavigationId("my-day", "/my-day")).toBe("my-day-today");
-    expect(activeModeSecondaryNavigationId("my-day", "/my-day/week")).toBe("my-day-week");
-    expect(activeModeSecondaryNavigationId("my-day", "/my-day/hours")).toBe("my-day-hours");
+    expect(activeModeSecondaryNavigationId("my-day", "/my-day/week")).toBe("my-day-today");
+    expect(activeModeSecondaryNavigationId("my-day", "/my-day/hours")).toBe("my-day-me");
     expect(activeModeSecondaryNavigationId("my-day", "/my-day/other")).toBeNull();
   });
 
