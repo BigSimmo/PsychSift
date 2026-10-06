@@ -738,7 +738,7 @@ describe("review-clinical-record CLI", () => {
     const report = spawnSync(process.execPath, [SCRIPT], { cwd: ROOT, encoding: "utf8" });
     expect(report.status).toBe(0);
     expect(report.stdout).toContain("Forms");
-    expect(report.stdout).toContain("Waiting (1): 2");
+    expect(report.stdout).toContain("54 of 54 signed off");
     expect(report.stdout).toContain("Report only");
     expect(readFileSync(join(ROOT, "data", "forms-content-review.json"), "utf8")).toBe(before);
   });

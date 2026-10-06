@@ -21,10 +21,10 @@ async function loadRoute(envOverrides: Record<string, unknown>) {
   return { route, postChatNotification, logger };
 }
 
-function post(url: string, body: unknown) {
+function post(url: string, body: unknown, headers: Record<string, string> = {}) {
   return new Request(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
 }
@@ -36,16 +36,26 @@ describe("POST /api/webhooks/railway", () => {
     expect(response.status).toBe(503);
   });
 
-  it("returns 401 on a bad token", async () => {
+  it("returns 401 on a bad token header", async () => {
     const { route } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
-    const response = await route.POST(post("http://localhost/api/webhooks/railway?token=wrong", { status: "SUCCESS" }));
+    const response = await route.POST(
+      post("http://localhost/api/webhooks/railway", { status: "SUCCESS" }, { "x-webhook-secret": "wrong" }),
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects query token authentication when header authentication is enforced", async () => {
+    const { route } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
+    const response = await route.POST(
+      post(`http://localhost/api/webhooks/railway?token=${SECRET}`, { status: "SUCCESS" }),
+    );
     expect(response.status).toBe(401);
   });
 
   it("skips transient statuses without notifying", async () => {
     const { route, postChatNotification } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
     const response = await route.POST(
-      post(`http://localhost/api/webhooks/railway?token=${SECRET}`, { status: "BUILDING" }),
+      post("http://localhost/api/webhooks/railway", { status: "BUILDING" }, { "x-webhook-secret": SECRET }),
     );
     const body = await response.json();
     expect(response.status).toBe(200);
@@ -56,13 +66,17 @@ describe("POST /api/webhooks/railway", () => {
   it("forwards a notable deploy status to chat", async () => {
     const { route, postChatNotification } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
     const response = await route.POST(
-      post(`http://localhost/api/webhooks/railway?token=${SECRET}`, {
-        type: "DEPLOY",
-        status: "FAILED",
-        project: { name: "Database" },
-        environment: { name: "production" },
-        service: { name: "worker" },
-      }),
+      post(
+        "http://localhost/api/webhooks/railway",
+        {
+          type: "DEPLOY",
+          status: "FAILED",
+          project: { name: "Database" },
+          environment: { name: "production" },
+          service: { name: "worker" },
+        },
+        { "x-webhook-secret": SECRET },
+      ),
     );
     const body = await response.json();
     expect(response.status).toBe(200);
@@ -80,7 +94,7 @@ describe("POST /api/webhooks/railway", () => {
  * On 2026-09-13 this endpoint answered 401 to eighteen consecutive Railway deliveries — three
  * retries each across six deploy events, including both failed production deploys — and recorded
  * nothing. The deploy alert was never dropped for want of a Slack URL, which is where the
- * investigation first looked; it was refused at authentication, because the `?token=` on the
+ * investigation first looked; it was refused at authentication, because the header on the
  * Railway-side webhook no longer matched RAILWAY_WEBHOOK_SECRET on the service. The only trace
  * was a row in Railway's HTTP proxy log, which is not a place anyone watches.
  *
@@ -92,7 +106,9 @@ describe("a delivery this receiver turns away", () => {
   it("records a mismatched token, and says one was presented", async () => {
     const { route, logger } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
 
-    const response = await route.POST(post("http://localhost/api/webhooks/railway?token=wrong", { status: "FAILED" }));
+    const response = await route.POST(
+      post("http://localhost/api/webhooks/railway", { status: "FAILED" }, { "x-webhook-secret": "wrong" }),
+    );
 
     expect(response.status).toBe(401);
     expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -125,7 +141,9 @@ describe("a delivery this receiver turns away", () => {
   it("stays quiet on an accepted delivery", async () => {
     const { route, logger } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
 
-    await route.POST(post(`http://localhost/api/webhooks/railway?token=${SECRET}`, { status: "FAILED" }));
+    await route.POST(
+      post("http://localhost/api/webhooks/railway", { status: "FAILED" }, { "x-webhook-secret": SECRET }),
+    );
 
     expect(logger.warn).not.toHaveBeenCalled();
     expect(logger.error).not.toHaveBeenCalled();

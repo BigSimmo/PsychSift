@@ -81,15 +81,27 @@ describe("preferBundledFormRecord", () => {
    * `locally_reviewed` badge on text nobody has signed off, which is the one thing the
    * awaiting-review caveat exists to prevent.
    */
-  it("narrows a release sign-off to unverified when the bundled form still awaits review", () => {
-    const bundled = formRecords.find((row) => (row.verification?.notes ?? []).includes(FORMS_AWAITING_REVIEW_NOTE));
-    expect(bundled, "expected at least one drafted form in the bundled catalogue").toBeTruthy();
+  it("narrows a release sign-off to unverified when the bundled form still awaits review", async () => {
+    // Every shipped form is signed off, so the drafted branch cannot be reached from the
+    // catalogue. The helper re-reads the bundled record, so stand one in.
+    const base = formRecords[0]!;
+    const drafted = {
+      ...base,
+      verification: {
+        ...base.verification,
+        notes: [...new Set([...(base.verification?.notes ?? []), FORMS_AWAITING_REVIEW_NOTE])],
+      },
+    } as ServiceRecord;
+
+    vi.resetModules();
+    vi.doMock("@/lib/forms", () => ({ getFormRecord: () => drafted, formRecords: [drafted] }));
+    const { preferBundledFormRecord: scoped } = await import("@/lib/site-content/prefer-bundled-form-record");
 
     for (const claimed of ["approved", "locally_reviewed", "unverified"]) {
-      const synced = preferBundledFormRecord(
+      const synced = scoped(
         "form",
         {
-          record: { ...bundled!, subtitle: "stale" },
+          record: { ...drafted, subtitle: "stale" },
           governance: { sourceStatus: "current", validationStatus: claimed },
         },
         { activeReleaseId: RETAINED_BOOTSTRAP_RELEASE_ID },
@@ -97,39 +109,27 @@ describe("preferBundledFormRecord", () => {
       expect(synced.governance?.validationStatus, claimed).toBe("unverified");
       expect(synced.governance?.sourceStatus, claimed).toBe("current");
     }
+
+    vi.doUnmock("@/lib/forms");
+    vi.resetModules();
   });
 
-  it("leaves a signed-off release claim alone once the bundled form is reviewed", async () => {
-    // The helper always re-reads the real bundled record, so the reviewed branch cannot be
-    // reached by editing the record passed in. Every shipped form is currently drafted, so
-    // the only way to exercise it is to stand in a reviewed bundle.
-    const bundled = formRecords.find((row) => (row.verification?.notes ?? []).includes(FORMS_AWAITING_REVIEW_NOTE))!;
-    const reviewed = {
-      ...bundled,
-      verification: {
-        ...bundled.verification,
-        notes: (bundled.verification?.notes ?? []).filter((note) => note !== FORMS_AWAITING_REVIEW_NOTE),
-      },
-    } as ServiceRecord;
+  it("leaves a signed-off release claim alone once the bundled form is reviewed", () => {
+    const bundled = formRecords.find((row) => !(row.verification?.notes ?? []).includes(FORMS_AWAITING_REVIEW_NOTE));
+    expect(bundled, "expected a reviewed form in the bundled catalogue").toBeTruthy();
 
-    vi.resetModules();
-    vi.doMock("@/lib/forms", () => ({ getFormRecord: () => reviewed, formRecords: [reviewed] }));
-    const { preferBundledFormRecord: scoped } = await import("@/lib/site-content/prefer-bundled-form-record");
-
-    const synced = scoped(
+    const synced = preferBundledFormRecord(
       "form",
       {
-        record: reviewed,
+        record: { ...bundled!, subtitle: "stale" },
         governance: { sourceStatus: "current", validationStatus: "locally_reviewed" },
       },
       { activeReleaseId: RETAINED_BOOTSTRAP_RELEASE_ID },
     );
 
     // The swap itself never downgrades; only an unreviewed payload does.
+    expect(synced.record).toEqual(bundled);
     expect(synced.governance?.validationStatus).toBe("locally_reviewed");
-
-    vi.doUnmock("@/lib/forms");
-    vi.resetModules();
   });
 
   it("does not invent governance for a caller that passes none", () => {
@@ -150,7 +150,9 @@ describe("preferBundledFormRecord", () => {
 
   it("keeps every drafted form's awaiting-review caveat in the bundled population the API prefers", () => {
     const drafted = loadFormCatalogDetails().filter((row) => row.contentReviewStatus === "drafted");
-    expect(drafted.length).toBeGreaterThan(0);
+    // Measured 2026-10-06: every form is signed off. A later drafted form still has to
+    // carry the caveat, which is what the loop below checks.
+    expect(drafted).toEqual([]);
     for (const details of drafted) {
       const resolved =
         formRecords.find((row) => (row.catalogPayload as { form?: string } | undefined)?.form === details.form) ?? null;

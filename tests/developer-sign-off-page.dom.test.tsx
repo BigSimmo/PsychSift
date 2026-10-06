@@ -39,8 +39,10 @@ describe("clinical sign-off queue page", () => {
     // of rendered rows is the count of transferred rows.
     render(<SignOffQueuePageContent />);
 
-    const rows = within(screen.getByTestId(`developer-sign-off-rows-${first.id}`)).getAllByRole("listitem");
-    expect(rows).toHaveLength(Math.min(SIGN_OFF_PAGE_SIZE, first.rows.length));
+    // Forms are fully signed, so the default family is an empty list rather than
+    // a missing section. Other families stay off this response.
+    const formsList = screen.getByTestId(`developer-sign-off-rows-${first.id}`);
+    expect(within(formsList).queryAllByRole("listitem")).toHaveLength(0);
     expect(screen.queryByTestId(`developer-sign-off-rows-${dictionary.id}`)).toBeNull();
   });
 
@@ -50,7 +52,8 @@ describe("clinical sign-off queue page", () => {
 
     const summary = screen.getByTestId("developer-sign-off-summary");
     for (const family of queue.families) {
-      expect(within(summary).getByText(String(family.rows.length))).toBeInTheDocument();
+      const link = within(summary).getByRole("link", { name: `${family.rows.length}${family.name}` });
+      expect(link).toHaveTextContent(String(family.rows.length));
     }
     expect(screen.getByTestId("developer-sign-off-count-total-value")).toHaveTextContent(String(queue.total));
   });

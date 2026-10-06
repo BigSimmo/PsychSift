@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "c233c1fb-7000-426f-aba3-058b11bce0a0",
+  "createdOn": "2026-10-06",
+  "action": "cancel",
+  "payload": {
+    "requestId": "bcc9b821-5412-4dc2-8fd3-1fa02d0f48ae",
+    "reason": "Superseded by the completion request. The clinical sign-off close should land."
+  }
+}

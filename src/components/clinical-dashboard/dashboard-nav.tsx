@@ -244,12 +244,9 @@ export function MobileSectionFab({
         aria-controls={panelId}
         className={cn(
           "fixed z-40 grid h-14 w-14 place-items-center rounded-full border border-[color:var(--command)] bg-[color:var(--command)] text-[color:var(--command-contrast)] shadow-[var(--shadow-elevated)] transition motion-safe:duration-[var(--duration-quick)] hover:-translate-y-0.5 hover:bg-[color:var(--command-hover)] active:translate-y-px",
+          "right-[max(0.75rem,var(--safe-area-right))] bottom-[max(0.75rem,var(--safe-area-bottom))]",
           open && "bg-[color:var(--command-hover)]",
         )}
-        style={{
-          right: "max(0.75rem, env(safe-area-inset-right))",
-          bottom: "max(0.75rem, env(safe-area-inset-bottom))",
-        }}
         onClick={() => setOpen((current) => !current)}
       >
         {open ? <X aria-hidden="true" className="h-6 w-6" /> : <ActiveIcon aria-hidden="true" className="h-6 w-6" />}
@@ -275,13 +272,7 @@ export function MobileSectionFab({
         aria-hidden={!open}
         inert={!open}
         hidden={!open}
-        className="fixed z-40 overflow-hidden rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] text-[color:var(--text)] shadow-[var(--shadow-lux)] backdrop-blur-md"
-        style={{
-          right: "max(0.75rem, env(safe-area-inset-right))",
-          bottom: "calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.5rem)",
-          maxHeight: "min(25rem, calc(100dvh - 7rem))",
-          width: "min(20rem, calc(100vw - 1.5rem))",
-        }}
+        className="fixed z-40 overflow-hidden rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] text-[color:var(--text)] shadow-[var(--shadow-lux)] backdrop-blur-md right-[max(0.75rem,var(--safe-area-right))] bottom-[calc(max(0.75rem,var(--safe-area-bottom))+4.5rem)] max-h-[min(25rem,calc(100dvh-7rem))] w-[min(20rem,calc(100vw-1.5rem))]"
         onPointerDown={(event) => event.stopPropagation()}
       >
         <div className="border-b border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2.5 shadow-[var(--shadow-inset)]">

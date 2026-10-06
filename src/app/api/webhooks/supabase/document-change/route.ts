@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { env, isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { readBoundedJson } from "@/lib/validation/body";
 import { logger } from "@/lib/logger";
 import { enqueueDocumentReindexJob, type EnqueueableDocument } from "@/lib/ingestion-enqueue";
 import { checkIngestionMutationSafety } from "@/lib/ingestion-mutation-safety";
@@ -26,29 +27,25 @@ export const dynamic = "force-dynamic";
 //   - checkIngestionMutationSafety refuses while a job is already active, and the
 //     enqueue reports "already_active" instead of erroring on a lost race.
 
-const documentRecordSchema = z
-  .object({
-    id: z.string().uuid(),
-    owner_id: z.string().uuid().nullable().optional(),
-    status: z.string().nullable().optional(),
-    error_message: z.string().nullable().optional(),
-    page_count: z.number().nullable().optional(),
-    chunk_count: z.number().nullable().optional(),
-    image_count: z.number().nullable().optional(),
-    import_batch_id: z.string().nullable().optional(),
-    metadata: z.record(z.string(), z.unknown()).nullable().optional(),
-  })
-  .passthrough();
+const documentRecordSchema = z.object({
+  id: z.string().uuid(),
+  owner_id: z.string().uuid().nullable().optional(),
+  status: z.string().max(200).nullable().optional(),
+  error_message: z.string().max(200).nullable().optional(),
+  page_count: z.number().nullable().optional(),
+  chunk_count: z.number().nullable().optional(),
+  image_count: z.number().nullable().optional(),
+  import_batch_id: z.string().max(200).nullable().optional(),
+  metadata: z.record(z.string().max(200), z.unknown()).nullable().optional(),
+});
 
-const supabaseWebhookSchema = z
-  .object({
-    type: z.enum(["INSERT", "UPDATE", "DELETE"]),
-    table: z.string(),
-    schema: z.string().optional(),
-    record: documentRecordSchema.nullable().optional(),
-    old_record: z.record(z.string(), z.unknown()).nullable().optional(),
-  })
-  .passthrough();
+const supabaseWebhookSchema = z.object({
+  type: z.enum(["INSERT", "UPDATE", "DELETE"]),
+  table: z.string().max(200),
+  schema: z.string().max(200).optional(),
+  record: documentRecordSchema.nullable().optional(),
+  old_record: z.record(z.string().max(200), z.unknown()).nullable().optional(),
+});
 
 function skip(reason: string, extra: Record<string, unknown> = {}) {
   return NextResponse.json({ skipped: true, reason, ...extra });
@@ -82,7 +79,10 @@ export async function POST(request: Request) {
 
     let rawBody: unknown;
     try {
-      rawBody = await request.json();
+      rawBody = await readBoundedJson(request);
+      if (rawBody === null && request.body) {
+        return publicErrorResponse("Invalid JSON body.", 400, { code: "invalid_json" });
+      }
     } catch {
       return publicErrorResponse("Invalid JSON body.", 400, { code: "invalid_json" });
     }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { readBoundedJson } from "@/lib/validation/body";
 import { logger } from "@/lib/logger";
 import { postChatNotification, type ChatSeverity } from "@/lib/webhooks/chat-notify";
 import { presentedWebhookSecret, verifyWebhookSecret } from "@/lib/webhooks/secret-auth";
@@ -16,22 +17,19 @@ export const dynamic = "force-dynamic";
 // Slack/Discord — the piece GitHub cannot report, since it does not know Railway's
 // deploy outcome. See docs/webhooks.md for setup.
 
-const namedEntitySchema = z.object({ name: z.string().optional() }).passthrough();
+const namedEntitySchema = z.object({ name: z.string().max(200).optional() });
 
-const railwayWebhookSchema = z
-  .object({
-    type: z.string().optional(),
-    status: z.string().optional(),
-    timestamp: z.string().optional(),
-    project: namedEntitySchema.optional(),
-    environment: namedEntitySchema.optional(),
-    service: namedEntitySchema.optional(),
-    deployment: z
-      .object({ id: z.string().optional(), meta: z.record(z.string(), z.unknown()).optional() })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
+const railwayWebhookSchema = z.object({
+  type: z.string().max(200).optional(),
+  status: z.string().max(200).optional(),
+  timestamp: z.string().max(200).optional(),
+  project: namedEntitySchema.optional(),
+  environment: namedEntitySchema.optional(),
+  service: namedEntitySchema.optional(),
+  deployment: z
+    .object({ id: z.string().max(200).optional(), meta: z.record(z.string().max(200), z.unknown()).optional() })
+    .optional(),
+});
 
 // Only forward status changes worth a ping; transient build/deploy phases are
 // dropped to keep the channel quiet.
@@ -54,7 +52,7 @@ function serviceName(payload: z.infer<typeof railwayWebhookSchema>): string {
 
 export async function POST(request: Request) {
   try {
-    const auth = verifyWebhookSecret(request, env.RAILWAY_WEBHOOK_SECRET, { allowQueryToken: true });
+    const auth = verifyWebhookSecret(request, env.RAILWAY_WEBHOOK_SECRET, { allowQueryToken: false });
     if (!auth.ok) {
       if (auth.reason === "misconfigured") {
         logger.error("Railway webhook rejected: RAILWAY_WEBHOOK_SECRET is not set on this service");
@@ -74,17 +72,20 @@ export async function POST(request: Request) {
       // surfaces without a scanner being able to raise an error-level alert.
       //
       // `tokenPresented` is the field that separates the two cases — a scanner sends nothing, a
-      // Railway webhook whose `?token=` has drifted from the service variable sends something
+      // Railway webhook whose header has drifted from the service variable sends something
       // that does not match. The token itself is never logged.
       logger.warn("Railway webhook rejected: presented secret did not match RAILWAY_WEBHOOK_SECRET", {
-        tokenPresented: Boolean(presentedWebhookSecret(request, { allowQueryToken: true })),
+        tokenPresented: Boolean(presentedWebhookSecret(request, { allowQueryToken: false })),
       });
       return publicErrorResponse("Unauthorized.", 401);
     }
 
     let rawBody: unknown;
     try {
-      rawBody = await request.json();
+      rawBody = await readBoundedJson(request);
+      if (rawBody === null && request.body) {
+        return publicErrorResponse("Invalid JSON body.", 400, { code: "invalid_json" });
+      }
     } catch {
       return publicErrorResponse("Invalid JSON body.", 400, { code: "invalid_json" });
     }

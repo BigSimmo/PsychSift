@@ -349,10 +349,7 @@ function ClaimWithChip({
 function UserTurn({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <p
-        style={{ maxWidth: "85%", borderBottomRightRadius: 6 }}
-        className="rounded-2xl bg-[color:var(--clinical-accent-soft)] px-3.5 py-2 text-sm font-medium leading-6 text-[color:var(--text-heading)]"
-      >
+      <p className="max-w-[85%] rounded-2xl rounded-br-[var(--radius-sm)] bg-[color:var(--clinical-accent-soft)] px-3.5 py-2 text-sm font-medium leading-6 text-[color:var(--text-heading)]">
         {text}
       </p>
     </div>

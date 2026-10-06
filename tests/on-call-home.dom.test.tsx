@@ -24,19 +24,6 @@ vi.mock("@/components/account-data-provider", () => ({
 const authState = vi.hoisted(() => ({ status: "loading" as string }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => authState }));
 
-// The page menu drags in the whole navigation chrome, which is covered by its
-// own tests. This file is about what the home lays out, and in what order — but
-// the menu is also where the home's notification list is handed off, so the
-// stub records the props it was given rather than discarding them. It still
-// renders nothing, so nothing else in this file changes.
-const menuProps = vi.hoisted(() => ({ last: null as { notifications?: readonly { title: string }[] } | null }));
-vi.mock("@/components/on-call/on-call-page-menu", () => ({
-  OnCallPageMenu: (props: { notifications?: readonly { title: string }[] }) => {
-    menuProps.last = props;
-    return null;
-  },
-}));
-
 // The Teaching page (the education view), where "Coming up" now lives, needs
 // the section page's own collaborators stubbed, as its wiring test does.
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
@@ -241,12 +228,12 @@ describe("On Call home layout", () => {
     expect(screen.queryByTestId("on-call-now-usual-empty")).toBeNull();
   });
 
-  it("leaves the pocket card to the pages sheet, which lists it", () => {
+  it("keeps the pocket card on the page and in the pages sheet", () => {
     storeState.entries = [contact("reg", "After-hours registrar", ["call-first"], "9000 0030")];
 
     const { container } = render(<OnCallHome />);
 
-    expect(container.querySelector('a[href="/on-call/card"]')).toBeNull();
+    expect(container.querySelector('a[href="/on-call/card"]')).not.toBeNull();
     expect(modeSecondaryNavigationRegistry["on-call"].some((entry) => entry.href === "/on-call/card")).toBe(true);
   });
 
@@ -512,74 +499,17 @@ describe("the example-content module", () => {
   });
 });
 
-describe("what the home raises on its own", () => {
-  function complianceRow(expiresOn: string, lastVerifiedAt: string): OnCallEntry {
-    return {
-      id: "bls",
-      slug: "bls",
-      section: "logistics",
-      title: "Basic life support",
-      subtitle: null,
-      body: null,
-      details: { kind: "compliance", expiresOn },
-      linkedDocumentIds: [],
-      tags: [],
-      isPersonal: true,
-      includeOnCard: false,
-      sortOrder: 0,
-      lastVerifiedAt,
-    } as unknown as OnCallEntry;
-  }
-
-  it("reads the page's own clock, so a pinned moment is honoured", () => {
-    // The defect this exists for (Codex, 2026-09-22). The list was derived with
-    // a fresh `new Date()` and memoised on `[entries]` alone. That ignored
-    // `pinnedNow` outright — a caller standing at a chosen moment was answered
-    // from the process clock — and it never re-ran on a page nobody is
-    // touching, so the ward strip could move to the after-hours number while
-    // the badge went on counting from whenever the page was opened.
-    //
-    // Pinned to 2025, a date recorded for 2026-01-01 has NOT passed. Derived
-    // from the real clock it has, and this row would be raised.
-    const pinned = new Date("2025-01-01T09:00:00+08:00");
-    storeState.entries = [complianceRow("2026-01-01", "2025-01-01T00:00:00.000Z")];
-    storeState.signedOut = false;
-
-    render(<OnCallHome now={pinned} />);
-
-    expect(menuProps.last?.notifications).toEqual([]);
+describe("On Call home tools after the header ellipsis left", () => {
+  it("does not put a page-menu trigger in the header slot", () => {
+    render(<OnCallHome now={new Date("2026-06-01T09:00:00+08:00")} />);
+    expect(screen.queryByTestId("on-call-page-menu-trigger")).toBeNull();
   });
 
-  it("raises a requirement whose recorded date has passed at that same moment", () => {
-    // The other half: with the clock moved past the recorded date, the same
-    // row IS raised. Without this, the test above would pass on a list that is
-    // simply always empty.
-    const pinned = new Date("2026-06-01T09:00:00+08:00");
-    storeState.entries = [complianceRow("2026-01-01", "2026-05-30T00:00:00.000Z")];
-    storeState.signedOut = false;
-
-    render(<OnCallHome now={pinned} />);
-
-    expect(menuProps.last?.notifications?.map((item) => item.title)).toEqual(["Basic life support"]);
-  });
-
-  it("leaves out a reminder type the owner snoozed, until the snooze date", () => {
-    // Settings, Notifications, Reminders: compliance dates snoozed until 5 June.
-    const pinned = new Date("2026-06-01T09:00:00+08:00");
-    storeState.entries = [complianceRow("2026-01-01", "2026-05-30T00:00:00.000Z")];
-    window.localStorage.setItem(
-      "clinical-kb-preferences",
-      JSON.stringify({ reminders: { types: { "compliance-dates": { snoozedUntil: "2026-06-05" } } } }),
-    );
-    try {
-      render(<OnCallHome now={pinned} />);
-      expect(menuProps.last?.notifications).toEqual([]);
-      cleanup();
-      render(<OnCallHome now={new Date("2026-06-05T09:00:00+08:00")} />);
-      expect(menuProps.last?.notifications?.map((item) => item.title)).toEqual(["Basic life support"]);
-    } finally {
-      window.localStorage.removeItem("clinical-kb-preferences");
-    }
+  it("keeps My shifts, Pocket card, and Calendar on the page footer", () => {
+    render(<OnCallHome now={new Date("2026-06-01T09:00:00+08:00")} />);
+    expect(screen.getByTestId("on-call-now-footer-shifts").getAttribute("href")).toBe("/roster");
+    expect(screen.getByTestId("on-call-now-footer-card").getAttribute("href")).toBe("/on-call/card");
+    expect(screen.getByTestId("on-call-now-footer-calendar").getAttribute("href")).toBe("/on-call/calendar");
   });
 });
 

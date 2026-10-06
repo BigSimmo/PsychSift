@@ -170,6 +170,8 @@
     "src/lib/rag/rag-answer-support.ts": "4250f30017789f6c5d75e84e7a291f163f08abb95d615fb2368e904956841dd5",
     "src/lib/rag/rag-claim-support.ts": "7cdcfc84e8b5516588f6ac08163330eb8fbd52d6c6750dc63955110516ab345c",
     "src/lib/rag/rag-source-block.ts": "984b3f655b468aabbf2d1f489eb6df66273fe7c9e85ea88df63affa986654ad2",
+    "src/lib/service-ranker.ts": "bbdbe3629520a22104194fc727530c05614dfba5528d9b9d8d5743acbfa9ea44",
+    "src/lib/service-urgent-routing.ts": "663b0d131fa4457a4df9875fb200efe1520c9ebda75b552a8bbd68eb66264a7f",
     "src/lib/source-authority-registry.ts": "e82b2f1aeaf053a321f76576da71a2c54f7fb4db485fbf6c4caf686ac6f2267c",
     "src/lib/source-governance.ts": "e3e1c09b0a7e446b7055f894088c771f1a5cc160a0f20f026f3cc291af5804fa",
     "src/lib/source-text-sanitizer.ts": "8d7a2bba424096b6334494a7c5760d4fc74381d8806b117d3d801e6b19e8138f",
@@ -182,6 +184,9 @@
     "tests/rag-retrieval-row-contract.test.ts": "4da5fe01a76dfa5b4e06e02303f136ff3fb0a1a1219cfe09ec158a1eae074fb6",
     "tests/rag-score.test.ts": "5a298ae040e7110d89fd1f68ad1d52b16994c035845a38b4db72ef9800c2b17f",
     "tests/rag-trust.test.ts": "416568e19e6ab8e67267ca53183b86a1703193543b4253269162d28736606eae",
+    "tests/services-catalog.test.ts": "b66181ab8226aff658dc7d8f97d851e822b5389a3722a6ec90560ec6a50e77ff",
+    "tests/services-safety-regressions.test.ts": "0515a77320cf9abc0b26ed3320f07d4b8e05b0eaed79ba031840b000735fb9df",
+    "tests/services-safety-routing.test.ts": "e54f0a0f0f11810848de0b178c5398e9ac158b90a814d2005986d9e0b3853f33",
     "tests/source-governance.test.ts": "0e9e126370a5500dbb72c722610fe1268c7e2f32e6b20b0a4f3ea401c54a645d",
     "tests/ward-output.test.ts": "bb9f417d63c769b8e059f41fe2c9a5c52f772cedd13e6352408b4a7716e00222"
   },
@@ -255,6 +260,13 @@
       "recordedBy": "BigSimmo (owner), decision 2026-09-26 (\"record the two step 1 files as changed and awaiting my review\"). Engineering, not a clinical review; the owner must re-review.",
       "recordedOn": "2026-09-26",
       "expiresOn": "2026-11-09"
+    },
+    {
+      "path": "docs/clinical-governance.md",
+      "reason": "This combined change replaces the 2026-09-17 name-them-never-score-them rule with the 2026-10-03 transparent reference aid wording. The cited file drifted after the 2026-08-23 review and has not had a new clinical review.",
+      "recordedBy": "Engineering, combined-PR session 2026-10-06. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-10-06",
+      "expiresOn": "2026-11-20"
     }
   ]
 }

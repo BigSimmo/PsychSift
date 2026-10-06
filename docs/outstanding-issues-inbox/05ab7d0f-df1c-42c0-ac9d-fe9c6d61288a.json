@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "05ab7d0f-df1c-42c0-ac9d-fe9c6d61288a",
+  "createdOn": "2026-10-06",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Therapy catalogue: add clinical references for 47 unsourced records to enable clinician sign-off",
+    "detail": "158 of 205 therapies were signed off by owner in #SBKXZ7. 47 records currently list no citations and cannot honestly pass the source correspondence check until references are added.",
+    "source": "Owner sign-off batch 2026-10-06",
+    "issueUlid": "01M488JH90NZ4X41FZT2339F40"
+  }
+}

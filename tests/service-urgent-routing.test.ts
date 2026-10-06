@@ -10,20 +10,28 @@ function titles(query: string, limit = 8) {
 
 describe("service urgent routing — Requirement R2", () => {
   describe("general crisis queries pin 000, MHERL, and Lifeline without demographic or location constraints", () => {
-    it.each(["crisis", "suicide", "suicidal", "mental health emergency", "self harm"])(
-      "pins Emergency services, MHERL, and Lifeline for %j",
-      (query) => {
-        const intents = detectServiceUrgentIntents(query);
-        expect(intents).toEqual(["emergency", "adult_metro_crisis"]);
+    it.each([
+      "crisis",
+      "suicide",
+      "suicidal",
+      "mental health emergency",
+      "self harm",
+      "kill myself",
+      "end my life",
+      "take my own life",
+      "hang myself",
+      "bottle of pills",
+    ])("pins Emergency services, MHERL, and Lifeline for %j", (query) => {
+      const intents = detectServiceUrgentIntents(query);
+      expect(intents).toEqual(["emergency", "adult_metro_crisis"]);
 
-        const resultTitles = titles(query, 8);
-        expect(resultTitles.slice(0, 3)).toEqual([
-          "Emergency services",
-          "Mental Health Emergency Response Line (MHERL)",
-          "Lifeline WA",
-        ]);
-      },
-    );
+      const resultTitles = titles(query, 8);
+      expect(resultTitles.slice(0, 3)).toEqual([
+        "Emergency services",
+        "Mental Health Emergency Response Line (MHERL)",
+        "Lifeline WA",
+      ]);
+    });
   });
 
   describe("preserves youth crisis priorities", () => {
@@ -44,7 +52,15 @@ describe("service urgent routing — Requirement R2", () => {
     });
 
     it("pins CAMHS Crisis Connect alone for explicit under-18 crisis queries", () => {
-      for (const query of ["child crisis", "teen suicidal", "16 year old self harm", "kids suicidal"]) {
+      for (const query of [
+        "child crisis",
+        "teen suicidal",
+        "16 year old self harm",
+        "kids suicidal",
+        "under 18 crisis",
+        "<18 crisis",
+        "minor crisis",
+      ]) {
         expect(detectServiceUrgentIntents(query)).toEqual(["camhs_crisis"]);
         expect(titles(query, 8)[0]).toBe("CAMHS Crisis Connect");
       }
@@ -81,6 +97,24 @@ describe("service urgent routing — Requirement R2", () => {
       expect(intents).not.toContain("regional_daytime");
       expect(titles("Busselton crisis 11pm", 8)[0]).toBe("Rurallink");
     });
+
+    it("pins Rurallink and retains emergency 000 for generic regional crisis queries", () => {
+      const intents = detectServiceUrgentIntents("regional WA crisis");
+      expect(intents).toContain("emergency");
+      expect(intents).toContain("regional_after_hours");
+      expect(intents).toContain("adult_metro_crisis");
+    });
+  });
+
+  describe("immediate danger phrases pin adult metro crisis alongside emergency", () => {
+    it.each(["overdose", "life-threatening severe injury", "actively suicidal"])(
+      "pins emergency and adult_metro_crisis for %j",
+      (query) => {
+        const intents = detectServiceUrgentIntents(query);
+        expect(intents).toContain("emergency");
+        expect(intents).toContain("adult_metro_crisis");
+      },
+    );
   });
 });
 

@@ -100,10 +100,11 @@ export const ON_CALL_SECTION_HEADER_TEST_IDS = {
  * put the word twice in one 96px block — the duplication the owner flagged
  * three times across this redesign.
  *
- * NO ACTIONS EITHER. They moved back to `OnCallPageMenu`, which portals an
- * ellipsis into the universal header's trailing slot beside the pill. With the
- * title gone there was nothing left for a header row to hold, and a row drawn
- * for one ellipsis costs the 48px this redesign spent three passes recovering.
+ * NO ACTIONS EITHER. Page tools (add, bulk verify, pocket card, order) live
+ * in the in-page More control beside the list. The universal header trailing
+ * slot is Search my work, and on the home a Needs you bell — not a second
+ * ellipsis. A row drawn for one ellipsis costs the 48px this redesign spent
+ * three passes recovering.
  *
  * NO BACK CONTROL, also deliberately. Every page in this mode is a destination
  * in the mode pill's own list — the hub included, as "Tonight" — so an arrow

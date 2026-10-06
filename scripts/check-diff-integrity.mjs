@@ -227,6 +227,39 @@ export function countTestCases(source, fileName = "spec.ts") {
 }
 
 /**
+ * Count `expect(` assertion calls in a TypeScript/JavaScript source string via the AST.
+ *
+ * Counted: `expect(...)`, `expect.soft(...)`, `expect.poll(...)`.
+ * Not counted: `expect` in comments, strings, or property names.
+ *
+ * @param {string} source
+ * @param {string} [fileName]
+ * @returns {number}
+ */
+export function countAssertions(source, fileName = "spec.ts") {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    fileName.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  let assertions = 0;
+  /** @param {ts.Node} node */
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const chain = calleeChain(node.expression);
+      if (chain && chain[0] === "expect" && chain.length <= 2) {
+        assertions += 1;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return assertions;
+}
+
+/**
  * @typedef {object} DiffIntegrityConfig
  * @property {number} maxRemovedFraction
  * @property {number} minRemovedCases
@@ -300,10 +333,23 @@ const approvalHint = (path, before, after) =>
  * @param {{ path: string, before: number, after: number, exists?: boolean, config: DiffIntegrityConfig }} input
  * @returns {{ path: string, before: number, after: number, removed: number, fraction: number, exists: boolean, ok: boolean, approved: boolean, message?: string }}
  */
-export function assessTestFile({ path, before, after, exists = true, config }) {
+export function assessTestFile({
+  path,
+  before,
+  after,
+  exists = true,
+  config,
+  assertionsBefore = 0,
+  assertionsAfter = 0,
+}) {
   const removed = before - after;
   const fraction = before === 0 ? 0 : removed / before;
-  const base = { path, before, after, removed, fraction, exists };
+  const assertions = {
+    before: assertionsBefore,
+    after: assertionsAfter,
+    removed: assertionsBefore - assertionsAfter,
+  };
+  const base = { path, before, after, removed, fraction, exists, assertions };
   if (!exists) return { ...base, ok: true, approved: false };
   if (removed < config.perFileMinRemovedCases) return { ...base, ok: true, approved: false };
   if (fraction <= config.perFileMaxRemovedFraction) return { ...base, ok: true, approved: false };
@@ -508,11 +554,15 @@ export function evaluate({ base, git = NODE_GIT, config, readWorkingFile }) {
     const afterSource = afterIsTestFile ? readAfter(/** @type {string} */ (afterPath)) : null;
     const before = countTestCases(beforeSource, beforePath);
     const after = afterSource === null ? 0 : countTestCases(afterSource, afterPath ?? beforePath);
+    const assertionsBefore = countAssertions(beforeSource, beforePath);
+    const assertionsAfter = afterSource === null ? 0 : countAssertions(afterSource, afterPath ?? beforePath);
     verdicts.push(
       assessTestFile({
         path: afterPath ?? beforePath,
         before,
         after,
+        assertionsBefore,
+        assertionsAfter,
         exists: afterSource !== null,
         config,
       }),
@@ -529,12 +579,19 @@ export function evaluate({ base, git = NODE_GIT, config, readWorkingFile }) {
   for (const path of [...addedPaths, ...untrackedTestFiles(git)]) {
     const addedSource = readAfter(path);
     if (addedSource === null) continue;
+    const addedCases = countTestCases(addedSource, path);
+    const addedAssertions = countAssertions(addedSource, path);
     verdicts.push({
       path,
       before: 0,
-      after: countTestCases(addedSource, path),
+      after: addedCases,
       removed: 0,
       fraction: 0,
+      assertions: {
+        before: 0,
+        after: addedAssertions,
+        removed: -addedAssertions,
+      },
       exists: true,
       ok: true,
       approved: false,
@@ -613,6 +670,10 @@ export function selfTest(log = console.log) {
   check("counts test.each once", countTestCases(`test.each([1, 2, 3])("case %i", () => {});`) === 1);
   check("ignores in-body test.skip()", countTestCases(`test("a", () => { test.skip(); });`) === 1);
   check("counts vitest it()", countTestCases(`it("a", () => {});\nit.only("b", () => {});`) === 2);
+  check(
+    "counts expect assertions via AST",
+    countAssertions('expect(1).toBe(1);\nexpect.soft(2).toBe(2);\n// expect(3).toBe(3);\nconst s = "expect(4)";') === 2,
+  );
 
   const config = parseConfig(readFileSync(CONFIG_PATH, "utf8"));
   const approve = (path, before, after) => ({

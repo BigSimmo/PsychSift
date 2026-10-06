@@ -106,8 +106,17 @@ describe("the real queue", () => {
   const real = loadSignOffQueue();
   const today = pickSignOffToday(real);
 
-  it("offers a command for every row it lists, and only from ordered families", () => {
-    expect(today.rows.length).toBeGreaterThan(0);
+  it("offers a command for every signable row, and only from ordered families", () => {
+    const signable = real.families
+      .filter((family) => SIGN_OFF_TODAY_FAMILY_ORDER.includes(family.id))
+      .flatMap((family) => family.rows)
+      .filter((item) => item.signOff !== null);
+    // Measured 2026-10-06. Statutory forms are signed, and every record still
+    // waiting is an Indigenous governance hold or has no sign-off tool. A new
+    // signable record should update this pin rather than silently stay at zero.
+    expect(signable).toEqual([]);
+    expect(today.signable).toBe(signable.length);
+    expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {
       expect(SIGN_OFF_TODAY_FAMILY_ORDER).toContain(item.family);
       expect(item.command).toContain("--write");
@@ -152,14 +161,29 @@ describe("every printed command names a record the tool would accept", () => {
       if (item.signOff?.script !== "clinical:review") continue;
       byKind.set(item.signOff.kind, [...(byKind.get(item.signOff.kind) ?? []), item.signOff.code]);
     }
-    expect(byKind.size).toBeGreaterThan(0);
-    for (const [kind, codes] of byKind) {
+    // Compare every kind the tool can sign, including kinds the queue currently
+    // offers nothing for. Both sides empty is agreement. A command the tool
+    // would refuse, or a waiting record the queue forgot to offer, still fails.
+    const kinds = [
+      "form",
+      "formulation-mechanism",
+      "formulation-concept",
+      "formulation-guide",
+      "differential",
+      "dictionary-rewrite",
+      "source",
+      ...byKind.keys(),
+    ];
+    for (const kind of new Set(kinds)) {
+      const codes = byKind.get(kind) ?? [];
       const loaded = tool.loadKindDocument(kind);
       expect(loaded.status, kind).toBe("ok");
       const records = contract.collectionOf(kind, loaded.document);
       const waiting: string[] = contract.signOffQueue(kind, records, await tool.loadContext(kind, process.cwd()));
       const refused = codes.filter((code) => !waiting.some((id) => contract.sameRecordId(id, code)));
+      const missed = waiting.filter((id) => !codes.some((code) => contract.sameRecordId(id, code)));
       expect(refused, `${kind} rows the tool would not offer`).toEqual([]);
+      expect(missed, `${kind} rows the tool would offer but the queue does not`).toEqual([]);
     }
   });
 

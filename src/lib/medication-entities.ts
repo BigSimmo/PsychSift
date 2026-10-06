@@ -526,6 +526,23 @@ export function hasForeignMedicationClinicalValueBinding(query: string, evidence
   if (valueSpans.length === 0 || queryMatches.length === 0) return true;
 
   return foreignMatches.some((medication) =>
-    valueSpans.some((value) => explicitlyBindsEntityToClinicalValue(medication, value, evidenceText)),
+    valueSpans.some((value) => {
+      if (!explicitlyBindsEntityToClinicalValue(medication, value, evidenceText)) return false;
+      const boundQueryMatches = queryMatches.filter((queryMedication) =>
+        explicitlyBindsEntityToClinicalValue(queryMedication, value, evidenceText),
+      );
+      if (boundQueryMatches.length === 0) return true;
+      // A value already tied to the medication being asked about is not stolen by a
+      // co-medication that merely sits nearby ("lithium at 0.6 mmol/L with aspirin").
+      const foreignDistance = textSpanDistance(medication, value);
+      const nearestQueryDistance = Math.min(
+        ...boundQueryMatches.map((queryMedication) => textSpanDistance(queryMedication, value)),
+      );
+      return foreignDistance < nearestQueryDistance;
+    }),
   );
+}
+
+function textSpanDistance(entity: { start: number; end: number }, value: { start: number; end: number }) {
+  return Math.max(0, Math.max(entity.start, value.start) - Math.min(entity.end, value.end));
 }
