@@ -30,7 +30,7 @@ describe("the demo teaching programme", () => {
   it("is one demo team that accepts only made-up data", () => {
     expect(DEMO_TEACHING_TEAM).toEqual({
       id: DEMO_TEACHING_SERVICE_ID,
-      name: "Demo teaching service",
+      name: "Example teaching service",
       role: "doctor",
       acceptsRealData: true,
       isDemo: true,
@@ -47,23 +47,23 @@ describe("the demo teaching programme", () => {
     expect(
       all.map((session) => `${perthDate(session.startsAt)} ${perthTime(session.startsAt)} ${session.title}`),
     ).toEqual([
-      "2026-10-05 08:00 Demo morning report",
-      "2026-10-05 12:30 Demo education meeting",
-      "2026-10-06 12:30 Demo case presentation",
-      "2026-10-06 14:00 Demo journal club",
-      "2026-10-06 16:00 Demo registrar teaching",
-      "2026-10-06 17:00 Demo grand rounds",
-      "2026-10-07 09:00 Demo psychotherapy seminar",
-      "2026-10-07 13:00 Demo supervision group",
-      "2026-10-08 08:30 Demo research meeting",
-      "2026-10-08 12:00 Demo clinical skills workshop",
-      "2026-10-08 15:00 Demo case discussion",
-      "2026-10-09 10:00 Demo mental health update",
+      "2026-10-05 08:00 Morning report",
+      "2026-10-05 12:30 Education meeting",
+      "2026-10-06 12:30 Case presentation",
+      "2026-10-06 14:00 Journal club",
+      "2026-10-06 16:00 Registrar teaching",
+      "2026-10-06 17:00 Grand rounds",
+      "2026-10-07 09:00 Psychotherapy seminar",
+      "2026-10-07 13:00 Supervision group",
+      "2026-10-08 08:30 Research meeting",
+      "2026-10-08 12:00 Clinical skills workshop",
+      "2026-10-08 15:00 Case discussion",
+      "2026-10-09 10:00 Mental health update",
     ]);
     for (const session of own) {
-      expect(session.title.startsWith("Demo ")).toBe(true);
+      expect(session.title.startsWith("Demo ")).toBe(false);
       // A room is either still to confirm (or online only) or plainly made up.
-      if (session.venue !== null) expect(session.venue.startsWith("Demo ")).toBe(true);
+      if (session.venue !== null) expect(session.venue.startsWith("Demo ")).toBe(false);
       expect(session.serviceId).toBe(DEMO_TEACHING_SERVICE_ID);
     }
     // The registrar teaching comes from On Call, so it carries no Teaching page.
@@ -71,11 +71,11 @@ describe("the demo teaching programme", () => {
       expect.objectContaining({
         source: "on_call_relocated",
         serviceId: RELOCATED_SERVICE_ID,
-        venue: "Demo seminar room",
+        venue: "Seminar room",
       }),
     ]);
     // The viewer presents at this week's journal club, and only that one.
-    expect(own.filter((session) => session.isPresenter).map((session) => session.title)).toEqual(["Demo journal club"]);
+    expect(own.filter((session) => session.isPresenter).map((session) => session.title)).toEqual(["Journal club"]);
     expect(demoTeachingSessions({ from: "2026-10-12", to: "2026-10-18" }, at).some((s) => s.isPresenter)).toBe(false);
   });
 
@@ -91,7 +91,7 @@ describe("the demo teaching programme", () => {
     const titles = result.attendance.map(
       (mark) => result.sessions.find((session) => session.occurrenceId === mark.occurrenceId)?.title,
     );
-    expect(titles).toEqual(["Demo morning report"]);
+    expect(titles).toEqual(["Morning report"]);
     // Two days on, more of the week has been attended, still never a session that has not ended.
     const later = new Date("2026-10-08T01:00:00Z");
     const after = demoTeachingWeek({ from: "2026-10-05", to: "2026-10-11" }, later);
@@ -99,7 +99,7 @@ describe("the demo teaching programme", () => {
     for (const mark of after.attendance) {
       const session = after.sessions.find((candidate) => candidate.occurrenceId === mark.occurrenceId);
       expect(session && Date.parse(session.endsAt) <= later.getTime()).toBe(true);
-      expect(session?.title).not.toBe("Demo education meeting");
+      expect(session?.title).not.toBe("Education meeting");
     }
   });
 
@@ -119,9 +119,9 @@ describe("the demo teaching programme", () => {
     const result = demoTeachingWeek(week, now);
     const moved = result.sessions.filter((session) => session.status === "moved");
     expect(moved).toHaveLength(1);
-    expect(moved[0].title).toBe("Demo education meeting");
+    expect(moved[0].title).toBe("Education meeting");
     expect(moved[0].startsAt).toBe("2026-10-05T04:30:00.000Z");
-    expect(moved[0].venue).toBe("Demo seminar room 1");
+    expect(moved[0].venue).toBe("Seminar room 1");
     expect(result.notices).toEqual([
       expect.objectContaining({
         occurrenceId: moved[0].occurrenceId,
@@ -135,7 +135,7 @@ describe("the demo teaching programme", () => {
     const [first] = demoTeachingSessions(term, now);
     const detail = sessionDetailSchema.parse(demoTeachingSessionDetail(first.occurrenceId, now));
     expect(detail.occurrenceId).toBe(first.occurrenceId);
-    expect([null, "Demo presenter"]).toContain(detail.presenterName);
+    expect([null, "Presenter"]).toContain(detail.presenterName);
     for (const url of [detail.joinUrl, ...detail.materials.map((material) => material.url)]) {
       if (url) expect(new URL(url).hostname).toBe("example.org");
     }
@@ -154,16 +154,16 @@ describe("the demo teaching programme", () => {
     for (let index = 1; index < rows.length; index++)
       expect(rows[index - 1].startsAt > rows[index].startsAt).toBe(true);
     for (const row of rows) expect(Date.parse(row.endsAt) <= at.getTime()).toBe(true);
-    // None in the week of 7 September; this week so far, Monday's morning report.
+    // None in the week of 7 September; this week so far, Monday's mMorning report.
     expect(
       rows.some((row) => row.startsAt >= "2026-09-06T16:00:00.000Z" && row.startsAt < "2026-09-13T16:00:00.000Z"),
     ).toBe(false);
-    expect(rows[0].title).toBe("Demo morning report");
+    expect(rows[0].title).toBe("Morning report");
     expect(rows[0].cpdEntryId).not.toBeNull();
     expect(rows.filter((row) => row.cpdEntryId === null).map((row) => row.title)).toEqual([
-      "Demo mental health update",
-      "Demo case discussion",
-      "Demo psychotherapy seminar",
+      "Mental health update",
+      "Case discussion",
+      "Psychotherapy seminar",
     ]);
     // Any other day it is still a full record.
     expect(demoTeachingLogbook(new Date("2026-10-08T01:00:00Z")).length).toBeGreaterThan(30);
@@ -172,8 +172,8 @@ describe("the demo teaching programme", () => {
   it("owes feedback on the latest case presentation and case discussion, oldest first", () => {
     const owed = demoTeachingFeedbackOwed(new Date("2026-10-06T04:35:00Z"));
     expect(owed.map((session) => [session.title, perthDate(session.startsAt)])).toEqual([
-      ["Demo case presentation", "2026-09-29"],
-      ["Demo case discussion", "2026-10-01"],
+      ["Case presentation", "2026-09-29"],
+      ["Case discussion", "2026-10-01"],
     ]);
   });
 });

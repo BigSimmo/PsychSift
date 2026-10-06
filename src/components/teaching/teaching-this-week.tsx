@@ -37,6 +37,8 @@ import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import {
   dayHeading,
+  defaultWeekFilter,
+  mineSessions,
   nextForYou,
   nextForYouMeta,
   nowPanel,
@@ -87,9 +89,11 @@ import type { TeachingWeekResponse, WhatsOnRow } from "@/lib/teaching/model";
  * check in off, rather than pretending to be current.
  */
 
+// "Mine" comes first. Sessions carry no training-level field (only What's on rows do), so Mine is the
+// sessions the reader presents; see `mineSessions`.
 const FILTERS = [
+  { value: "presenting", label: "Mine" },
   { value: "all", label: "Whole service" },
-  { value: "presenting", label: "Presenting" },
 ] as const;
 
 function subscribeOnline(onChange: () => void) {
@@ -171,7 +175,6 @@ function ThisWeekScreen({ demoMode }: { demoMode: boolean }) {
             whatsOn={whatsOn.status === "ready" ? whatsOn.data : null}
             whatsOnFailed={whatsOn.status === "error" || whatsOn.status === "offline" || whatsOn.status === "setup"}
             retryWhatsOn={whatsOn.retry}
-            signedOut={signedOut}
           />
         ) : (
           <ModeModuleSkeleton rows={4} twoLine eyebrow />
@@ -192,7 +195,6 @@ function ThisWeekBody({
   whatsOn,
   whatsOnFailed,
   retryWhatsOn,
-  signedOut,
 }: {
   view: TeachingWeekState;
   loaded: Loaded | null;
@@ -204,10 +206,9 @@ function ThisWeekBody({
   whatsOn: WhatsOnRead | null;
   whatsOnFailed: boolean;
   retryWhatsOn: () => void;
-  signedOut: boolean;
 }) {
   const [team, setTeam] = useState(ALL_TEAMS);
-  const [filter, setFilter] = useState<WeekFilter>("all");
+  const [chosenFilter, setFilter] = useState<WeekFilter | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [editor, setEditor] = useState<{ entry: OnCallEntry | null } | null>(null);
   const live = view.demo === "off";
@@ -255,7 +256,8 @@ function ThisWeekBody({
   const teamValue = team === ALL_TEAMS || week.teams.some((t) => t.id === team) ? team : ALL_TEAMS;
   const showTeam = teamValue === ALL_TEAMS && week.teams.length > 1;
   const everything = sessionsForTeam([...week.sessions, ...week.relocated], teamValue);
-  const sessions = filter === "presenting" ? everything.filter((s) => s.isPresenter) : everything;
+  const filter = chosenFilter ?? defaultWeekFilter(everything);
+  const sessions = filter === "presenting" ? mineSessions(everything) : everything;
   const context = { teams: week.teams, attendance: week.attendance, showTeam, now, today };
   const panel = current ? nowPanel(everything, context) : null;
   const next = current ? nextForYou(everything, panel?.session.occurrenceId ?? null, now) : null;
@@ -302,7 +304,6 @@ function ThisWeekBody({
           key={panel.session.occurrenceId}
           panel={panel}
           live={live}
-          signedOut={signedOut}
           offlineAt={offlineAt}
           today={today}
           now={now}
@@ -605,7 +606,6 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
 function OnNowPanel({
   panel,
   live,
-  signedOut,
   offlineAt,
   today,
   now,
@@ -613,7 +613,6 @@ function OnNowPanel({
 }: {
   panel: NowPanel;
   live: boolean;
-  signedOut: boolean;
   offlineAt: string | null;
   today: string;
   now: Date;
@@ -649,7 +648,8 @@ function OnNowPanel({
     }
   }
 
-  const unavailable = signedOut || offlineAt !== null;
+  // Signed out, the sample still shows the real controls; tapping Check in says the demo saves nothing.
+  const unavailable = offlineAt !== null;
   return (
     <T5Panel label={panel.live ? "On now" : "Next up"} className="mt-3.5" testId="teaching-hero">
       <T5Kicker live={panel.live}>{panel.kicker}</T5Kicker>
@@ -672,8 +672,6 @@ function OnNowPanel({
             </Button>
             {offlineAt ? (
               <T5Link onClick={onCheckedIn}>Try again</T5Link>
-            ) : signedOut ? (
-              <T5Meta>Check in after you sign in</T5Meta>
             ) : href ? (
               <T5Link href={`${href}?check-in=scan`}>Type the code instead</T5Link>
             ) : null}

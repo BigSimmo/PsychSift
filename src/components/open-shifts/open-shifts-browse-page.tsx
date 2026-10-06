@@ -1,6 +1,15 @@
 "use client";
 
-import { CalendarDays, ChevronDown, CircleHelp, Info, ListFilter, Shield, TriangleAlert } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  CircleHelp,
+  Info,
+  ListFilter,
+  Shield,
+  TriangleAlert,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -36,8 +45,6 @@ const chip =
 const chipOff = `${chip} border-[color:var(--border-strong)] text-[color:var(--text-heading)]`;
 const chipOn = `${chip} border-[color:var(--mode-identity)] bg-[color:var(--mode-identity-soft)] text-[color:var(--text-heading)] forced-colors:border-2 forced-colors:border-[Highlight]`;
 
-const SHOW_EVERY_SHIFT: BrowseFilters = { ...DEFAULT_FILTERS, hideClashes: false, includeLowerLevels: true };
-
 export function OpenShiftsBrowsePage() {
   const state = useOpenShifts();
   const now = useRosterNow();
@@ -54,15 +61,14 @@ export function OpenShiftsBrowsePage() {
   const [chosenDay, setChosenDay] = useState<string | null>(null);
   const [showHidden, setShowHidden] = useState(false);
 
-  // The made-up examples show every shift: their filter chips are hidden, so nothing may be filtered out unseen.
-  const shownFilters = state.sample ? SHOW_EVERY_SHIFT : filters;
+  // The made-up examples are filtered like real ones, against the made-up example roster in the sample data.
   const summary = useMemo(
-    () => summariseBrowse(state.listings, state.roster, shownFilters, now, state.rosterStatus),
-    [state.listings, state.roster, shownFilters, now, state.rosterStatus],
+    () => summariseBrowse(state.listings, state.roster, filters, now, state.rosterStatus),
+    [state.listings, state.roster, filters, now, state.rosterStatus],
   );
   const rosteredDays = useMemo(
-    () => new Set(state.sample ? [] : (state.roster ?? []).map((shift) => perthDateOf(shift.startsAt))),
-    [state.roster, state.sample],
+    () => new Set((state.roster ?? []).map((shift) => perthDateOf(shift.startsAt))),
+    [state.roster],
   );
   const coveredUntil = state.roster ? rosterCoveredUntil(state.roster) : null;
   const myGrade = state.listings.find((listing) => listing.myGrade)?.myGrade ?? null;
@@ -87,6 +93,22 @@ export function OpenShiftsBrowsePage() {
         Open shifts
       </PageTitleUnderBand>
       <ModeBandStatus value={openShiftsStatus(state)} testId="open-shifts-status" />
+      {sample && state.status === "ready" ? (
+        <div
+          className="flex flex-wrap items-center gap-x-3 px-3 pt-1 text-sm text-[color:var(--text-muted)]"
+          data-testid="open-shifts-sample-context"
+        >
+          <Link
+            href="/my-day"
+            aria-label="Back to My Day"
+            className="inline-flex min-h-12 items-center gap-0.5 font-medium text-[color:var(--mode-identity)]"
+          >
+            <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
+            My Day
+          </Link>
+          <span>{`Example list updated ${perthTimeOf(now.toISOString())} · example roster as of ${formatDayShort(today)}`}</span>
+        </div>
+      ) : null}
 
       {state.status === "no-team" ? (
         <NoTeam />
@@ -96,87 +118,85 @@ export function OpenShiftsBrowsePage() {
         <ListSkeleton rows={4} />
       ) : (
         <>
-          {!sample ? (
-            <div className="relative">
-              <div
-                className="flex gap-2 overflow-x-auto px-3 pt-3 pb-1 [scrollbar-width:none]"
-                role="group"
-                aria-label="Quick filters"
+          <div className="relative">
+            <div
+              className="flex gap-2 overflow-x-auto px-3 pt-3 pb-1 [scrollbar-width:none]"
+              role="group"
+              aria-label="Quick filters"
+            >
+              <button
+                type="button"
+                className={filterCount ? chipOn : chipOff}
+                aria-haspopup="dialog"
+                onClick={openSheet}
               >
+                <ListFilter aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
+                Filters
+                {filterCount ? <span className="nums text-xs">{filterCount}</span> : null}
+              </button>
+              <button
+                type="button"
+                aria-pressed={filters.hideClashes}
+                className={filters.hideClashes ? chipOn : chipOff}
+                onClick={() => setFilters({ ...filters, hideClashes: !filters.hideClashes })}
+              >
+                <Shield aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
+                No clashes
+              </button>
+              {summary.sites.length > 1 ? (
                 <button
                   type="button"
-                  className={filterCount ? chipOn : chipOff}
+                  className={filters.siteIds.length ? chipOn : chipOff}
                   aria-haspopup="dialog"
                   onClick={openSheet}
                 >
-                  <ListFilter aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
-                  Filters
-                  {filterCount ? <span className="nums text-xs">{filterCount}</span> : null}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={filters.hideClashes}
-                  className={filters.hideClashes ? chipOn : chipOff}
-                  onClick={() => setFilters({ ...filters, hideClashes: !filters.hideClashes })}
-                >
-                  <Shield aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
-                  No clashes
-                </button>
-                {summary.sites.length > 1 ? (
-                  <button
-                    type="button"
-                    className={filters.siteIds.length ? chipOn : chipOff}
-                    aria-haspopup="dialog"
-                    onClick={openSheet}
-                  >
-                    Sites
-                    {filters.siteIds.length ? <span className="nums text-xs">{filters.siteIds.length}</span> : null}
-                    <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className={filters.includeLowerLevels ? chipOn : chipOff}
-                  aria-haspopup="dialog"
-                  onClick={openSheet}
-                >
-                  {filters.includeLowerLevels ? "All levels" : gradeLabel(myGrade)}
+                  Sites
+                  {filters.siteIds.length ? <span className="nums text-xs">{filters.siteIds.length}</span> : null}
                   <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
                 </button>
-                <button
-                  type="button"
-                  className={filters.starts.length ? chipOn : chipOff}
-                  aria-haspopup="dialog"
-                  onClick={openSheet}
-                >
-                  {startsLabel}
-                  <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
-                </button>
-              </div>
-              {/* A fade at the edge says more chips sit off-screen; the row scrolls without a scrollbar. */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute top-3 right-0 h-12 w-8 bg-gradient-to-l from-[color:var(--background)] to-transparent forced-colors:hidden"
-              />
-              <div className="flex min-h-10 items-center justify-between px-3 text-sm text-[color:var(--text-muted)]">
-                <span>
-                  <span className="font-semibold text-[color:var(--text-heading)] nums">
-                    {`${partial ? "At least " : ""}${summary.matching.length} of ${summary.total}`}
-                  </span>{" "}
-                  open shifts match · next 14 days
-                </span>
-                {filterCount ? (
-                  <button
-                    type="button"
-                    onClick={() => setFilters(DEFAULT_FILTERS)}
-                    className="inline-flex min-h-12 items-center font-medium text-[color:var(--mode-identity)]"
-                  >
-                    Reset
-                  </button>
-                ) : null}
-              </div>
+              ) : null}
+              <button
+                type="button"
+                className={filters.includeLowerLevels ? chipOn : chipOff}
+                aria-haspopup="dialog"
+                onClick={openSheet}
+              >
+                {filters.includeLowerLevels ? "All levels" : gradeLabel(myGrade)}
+                <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
+              </button>
+              <button
+                type="button"
+                className={filters.starts.length ? chipOn : chipOff}
+                aria-haspopup="dialog"
+                onClick={openSheet}
+              >
+                {startsLabel}
+                <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
+              </button>
             </div>
-          ) : null}
+            {/* A fade at the edge says more chips sit off-screen; the row scrolls without a scrollbar. */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute top-3 right-0 h-12 w-8 bg-gradient-to-l from-[color:var(--background)] to-transparent forced-colors:hidden"
+            />
+            <div className="flex min-h-10 items-center justify-between px-3 text-sm text-[color:var(--text-muted)]">
+              <span>
+                <span className="font-semibold text-[color:var(--text-heading)] nums">
+                  {`${partial ? "At least " : ""}${summary.matching.length} of ${summary.total}`}
+                </span>{" "}
+                open shifts match · next 14 days
+              </span>
+              {filterCount ? (
+                <button
+                  type="button"
+                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  className="inline-flex min-h-12 items-center font-medium text-[color:var(--mode-identity)]"
+                >
+                  Reset
+                </button>
+              ) : null}
+            </div>
+          </div>
 
           <OpenShiftsCalendar
             today={today}
@@ -191,9 +211,7 @@ export function OpenShiftsBrowsePage() {
             rosteredDays={rosteredDays}
           />
           <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 pt-2 text-xs text-[color:var(--text-muted)]">
-            <span>
-              {sample ? "Number under a date: open shifts" : "Number under a date: shifts that match your filters"}
-            </span>
+            <span>Number under a date: shifts that match your filters</span>
             <span className="inline-flex items-center gap-1">
               <TriangleAlert
                 aria-hidden="true"
@@ -253,19 +271,14 @@ export function OpenShiftsBrowsePage() {
           <div className="mt-4 flex items-baseline justify-between px-3">
             <h2 className="text-base font-semibold text-[color:var(--text-heading)]">{formatDayLong(selected)}</h2>
             <span className="text-xs text-[color:var(--text-muted)] nums">
-              {sample ? `${day.shown.length} open` : `${partial ? "at least " : ""}${day.shown.length} match`}
+              {`${partial ? "at least " : ""}${day.shown.length} match`}
             </span>
           </div>
 
           {day.shown.length > 0 ? (
             <FlatList label={`Open shifts on ${formatDayLong(selected)}`}>
               {day.shown.map((row) => (
-                <ShiftRow
-                  key={row.listing.id}
-                  listing={row.listing}
-                  check={sample ? null : row.check}
-                  href={advertHref(row.listing)}
-                />
+                <ShiftRow key={row.listing.id} listing={row.listing} check={row.check} href={advertHref(row.listing)} />
               ))}
             </FlatList>
           ) : (
@@ -303,7 +316,7 @@ export function OpenShiftsBrowsePage() {
             </div>
           )}
 
-          {day.hidden.length > 0 && !sample ? (
+          {day.hidden.length > 0 ? (
             <>
               <div className="mx-3 mt-2 flex min-h-12 items-center justify-between gap-3 border-t border-[color:var(--border)] text-sm text-[color:var(--text-muted)]">
                 <span>

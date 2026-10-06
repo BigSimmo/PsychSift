@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
+import { ModeHomeRouteLoading } from "@/components/mode-home-page-skeleton";
 import { PsychiatryHome, type PsychiatrySectionCounts } from "@/components/psychiatry/psychiatry-home";
 import { differentialStaticParams, presentationStaticParams } from "@/lib/differentials";
 import { dsmStaticParams } from "@/lib/dsm";
@@ -35,5 +37,10 @@ export default function PsychiatryHomeRoute() {
     therapy: therapySlugs().length,
     forms: formRecords.length,
   };
-  return <PsychiatryHome counts={counts} />;
+  // The hub reads ?page= through `useSearchParams`, which needs a Suspense boundary.
+  return (
+    <Suspense fallback={<ModeHomeRouteLoading />}>
+      <PsychiatryHome counts={counts} />
+    </Suspense>
+  );
 }

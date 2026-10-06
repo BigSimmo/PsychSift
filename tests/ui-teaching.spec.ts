@@ -61,12 +61,12 @@ test("This week at 200% text keeps every time clear of its title and never scrol
     expect(clear, "time does not overlap the title").toBe(true);
   }
   await expectNoSidewaysScroll(page, "This week at 200%");
-  const presenting = visibleByTestId(page, "teaching-this-week").getByRole("button", {
-    name: "Presenting",
+  const mine = visibleByTestId(page, "teaching-this-week").getByRole("button", {
+    name: "Mine",
     exact: true,
   });
-  await presenting.scrollIntoViewIfNeeded();
-  await expect(presenting).toBeInViewport({ ratio: 1 });
+  await mine.scrollIntoViewIfNeeded();
+  await expect(mine).toBeInViewport({ ratio: 1 });
   await testInfo.attach("teaching-this-week-200", {
     body: await page.screenshot({ fullPage: true }),
     contentType: "image/png",

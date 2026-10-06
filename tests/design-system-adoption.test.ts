@@ -1503,7 +1503,8 @@ describe("design-system adoption manifest", () => {
     // 164 -> 165: Admin's Compliance export (`/admin/compliance/export`).
     // The owner-only developer panel remains outside production route coverage.
     // 165 -> 174: Open shifts mode (`/open-shifts` and its eight pages).
-    expect(manifest.routeCoverage.discovered).toHaveLength(174);
+    // 174 -> 175: Roster opens on Shifts; its Today page moved to `/roster/today`.
+    expect(manifest.routeCoverage.discovered).toHaveLength(175);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);
