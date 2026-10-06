@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   Bell,
   BookOpen,
+  BriefcaseBusiness,
   Check,
   ChevronRight,
   CloudOff,
@@ -83,7 +84,7 @@ import {
   type SettingsSectionId,
 } from "@/components/clinical-dashboard/settings-sections";
 import { type OAuthProvider, useAuthSession } from "@/lib/supabase/client";
-import type { AppPreferences } from "@/lib/account-preferences";
+import { workStageLabel, type AppPreferences } from "@/lib/account-preferences";
 import type { ThemePreference } from "@/lib/theme";
 
 const APPEARANCE_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string; icon: LucideIcon }> = [
@@ -929,7 +930,9 @@ export function SettingsDialog({
                         <p className="text-sm font-medium leading-5 text-[color:var(--text-muted)]">
                           {signedOutAccount
                             ? "Sign in or create an account"
-                            : `Consultant psychiatrist · ${jurisdictionLabel}`}
+                            : [workStageLabel(preferences.workStage, preferences.ranzcpStage), jurisdictionLabel]
+                                .filter(Boolean)
+                                .join(" · ")}
                         </p>
                       </div>
                       {signedOutAccount ? (
@@ -1072,6 +1075,17 @@ export function SettingsDialog({
                         <LogOut aria-hidden="true" className="h-4 w-4" />
                         Sign out
                       </button>
+                    )}
+                    {signedOutAccount ? null : (
+                      <Link
+                        href="/my-day/profile"
+                        onClick={onClose}
+                        className={cn(floatingControl, "mt-2 w-full gap-2 rounded-lg text-sm md:w-auto md:px-4")}
+                        data-testid="settings-row-work-profile"
+                      >
+                        <BriefcaseBusiness aria-hidden="true" className="h-4 w-4" />
+                        Work profile
+                      </Link>
                     )}
                   </section>
                 )}

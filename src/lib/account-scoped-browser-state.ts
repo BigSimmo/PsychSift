@@ -105,6 +105,28 @@ export const TEACHING_TERM_TRACKER_STORAGE_KEY = "psychsift:teaching:term-tracke
  */
 export const TEACHING_EXAM_PREP_STORAGE_KEY = "psychsift:teaching:exam-prep-v1";
 
+/**
+ * The app preferences (`use-app-preferences.ts`). Display settings in it are the
+ * device's and stay; only the doctor's self-chosen work stage is a person's, so
+ * only those fields go at a transition.
+ */
+export const APP_PREFERENCES_STORAGE_KEY = "clinical-kb-preferences";
+export const ACCOUNT_SCOPED_PREFERENCE_KEYS = ["workStage", "ranzcpStage"] as const;
+
+function stripAccountScopedPreferences(): void {
+  try {
+    const raw = window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
+    if (!raw) return;
+    const stored = JSON.parse(raw) as Record<string, unknown> | null;
+    if (!stored || typeof stored !== "object") return;
+    if (!ACCOUNT_SCOPED_PREFERENCE_KEYS.some((key) => key in stored)) return;
+    for (const key of ACCOUNT_SCOPED_PREFERENCE_KEYS) delete stored[key];
+    window.localStorage.setItem(APP_PREFERENCES_STORAGE_KEY, JSON.stringify(stored));
+  } catch {
+    // Storage blocked or the value unreadable: the preferences store treats it as defaults anyway.
+  }
+}
+
 function removeQuietly(storage: () => Storage, key: string): void {
   try {
     storage().removeItem(key);
@@ -154,6 +176,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
+  stripAccountScopedPreferences();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 

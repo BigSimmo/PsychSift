@@ -129,6 +129,31 @@ describe("account preference bootstrap and write serialisation", () => {
     expect(mayRecordRecentSearches()).toBe(false);
   });
 
+  it("never copies a shared device's work stage into a new account", async () => {
+    window.localStorage.setItem(
+      PREFERENCES_KEY,
+      JSON.stringify({ ...DEFAULT_PREFERENCES, workStage: "registrar", ranzcpStage: 2 }),
+    );
+    const putBodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const method = (init?.method ?? "GET").toUpperCase();
+        if (method === "GET") return Promise.resolve(Response.json({ preferences: null, updatedAt: null }));
+        const patch = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        putBodies.push(patch);
+        return Promise.resolve(Response.json({ preferences: { ...DEFAULT_PREFERENCES, ...patch } }));
+      }),
+    );
+
+    const { getByTestId } = render(<PreferencesProbe />);
+
+    await waitFor(() => expect(getByTestId("sync")).toHaveTextContent("synced"));
+    expect(putBodies).toHaveLength(1);
+    expect(putBodies[0]).not.toHaveProperty("workStage");
+    expect(putBodies[0]).not.toHaveProperty("ranzcpStage");
+  });
+
   it("preserves an account opt-out when an unrelated setting changes after bootstrap fails", async () => {
     const putBodies: Array<Record<string, unknown>> = [];
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {

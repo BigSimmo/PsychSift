@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-05"
+    "committed_at": "2026-10-06"
   },
   "routes": {
     "modes": [
@@ -530,6 +530,11 @@
       {
         "path": "/formulation/builder",
         "file": "src/app/(search-app)/formulation/builder/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/my-day/profile",
+        "file": "src/app/(search-app)/my-day/profile/page.tsx",
         "area": "product"
       },
       {

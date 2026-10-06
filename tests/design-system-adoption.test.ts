@@ -1499,8 +1499,9 @@ describe("design-system adoption manifest", () => {
     // 160 -> 161: Teaching Assessments (`/teaching/assessments`).
     // 161 -> 162: the Sources Currency check (`/sources/currency`).
     // 162 -> 163: My Day › Alerts (`/my-day/alerts`).
+    // 163 -> 164: My Day's Work profile (`/my-day/profile`).
     // The owner-only developer panel remains outside production route coverage.
-    expect(manifest.routeCoverage.discovered).toHaveLength(163);
+    expect(manifest.routeCoverage.discovered).toHaveLength(164);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);
