@@ -133,7 +133,11 @@ describe("roster check", () => {
 
   it("checks only clashes while the rules are unsigned", () => {
     const roster = [rostered("2026-10-06", "08:00", "16:30"), rostered("2026-10-09", "08:00", "16:30")];
-    expect(rosterCheck(candidate, roster, NOW, UNSIGNED)).toEqual({ state: "clash-only", coveredUntil: "2026-10-09" });
+    expect(rosterCheck(candidate, roster, NOW, UNSIGNED)).toEqual({
+      state: "clash-only",
+      coveredUntil: "2026-10-09",
+      nothingNearby: false,
+    });
   });
 
   it("gives breaks and the busiest 14 days when the signed rules find nothing", () => {
@@ -162,6 +166,17 @@ describe("roster check", () => {
       state: "beyond",
       coveredUntil: "2026-10-06",
     });
+  });
+
+  it("asks for a roster check when nothing is saved within three days of the shift", () => {
+    const far = [rostered("2026-10-01", "08:00", "16:30"), rostered("2026-10-20", "08:00", "16:30")];
+    const check = rosterCheck(candidate, far, NOW, signed, signers);
+    expect(check.state === "ok" && check.nothingNearby).toBe(true);
+    const unsigned = rosterCheck(candidate, far, NOW, UNSIGNED);
+    expect(unsigned.state === "clash-only" && unsigned.nothingNearby).toBe(true);
+    const near = [rostered("2026-10-10", "08:00", "16:30"), rostered("2026-10-20", "08:00", "16:30")];
+    const nearCheck = rosterCheck(candidate, near, NOW, signed, signers);
+    expect(nearCheck.state === "ok" && nearCheck.nothingNearby).toBe(false);
   });
 
   it("reports how far the saved roster reaches", () => {
