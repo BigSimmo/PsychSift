@@ -59,13 +59,34 @@ describe("year check", () => {
     expect(total.action?.href).toBe("/cme/new?year=2026");
   });
 
+  it("words each target as the mock-up does: a figure, the empty domain, a task's day without its year", () => {
+    const set = {
+      ...SET,
+      requirements: SET.requirements.map((r) =>
+        r.id === "plan"
+          ? { ...r, completedOn: "2026-02-03" }
+          : r.id === "self-evaluation"
+            ? { ...r, completedOn: "2025-12-20" }
+            : r,
+      ),
+    };
+    const check = buildCmeYearCheck(set, [
+      entry({ id: "a", allocations: [{ category: "reviewing", hours: 3 }], buckets: ["Professionalism"] }),
+    ]);
+    const row = (id: string) => check.rows.find((item) => item.id === `requirement-${id}`)!;
+    expect(row("combined")).toMatchObject({ summary: "3 of 25 h", condition: "at least 5 h in each" });
+    expect(row("domains").summary).toBe("3 of 4 have nothing yet");
+    expect(row("plan").summary).toBe("Done 3 February");
+    expect(row("self-evaluation").summary).toBe("Done 20 December 2025");
+  });
+
   it("says Reached, with the hours logged, once the total is reached", () => {
     const check = buildCmeYearCheck(SET, [entry({ id: "a", allocations: [{ category: "educational", hours: 52.5 }] })]);
     const total = check.rows.find((row) => row.id === "total")!;
     expect(total.ready).toBe(true);
     expect(total.summary).toBe("Reached · 52.5 h logged");
     expect(total.action).toBeNull();
-    expect(check.rows.find((row) => row.id === "requirement-educational")!.summary).toBe("Reached");
+    expect(check.rows.find((row) => row.id === "requirement-educational")!.summary).toBe("52.5 of 12.5 h · reached");
   });
 
   it("flags missing evidence, reflections and copies, and links to the filtered log", () => {
@@ -153,7 +174,7 @@ describe("CME calendar events", () => {
     const october = expandEvents(shown, { start: "2026-10-01", end: "2026-10-31" });
     expect(october.find((event) => event.title === "Journal club")?.date).toBe("2026-10-15");
     expect(exported.map((event) => event.date)).toEqual(
-      expect.arrayContaining(["2026-12-18", "2026-12-31", "2027-03-01"]),
+      expect.arrayContaining(["2026-12-17", "2026-12-31", "2027-03-01"]),
     );
   });
 });

@@ -148,11 +148,11 @@ describe("copy to your CPD home, one at a time", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ transcribed: true });
     const finished = await within(sheet).findByTestId("cme-log-copy-finished");
     // One was skipped, so the sheet does not claim everything is copied.
-    expect(finished).toHaveTextContent("1 activity not yet copied");
+    expect(finished).toHaveTextContent("1 activity not marked copied yet");
     expect(within(sheet).getByTestId("cme-log-copy-last")).toHaveTextContent("Grand round");
     await user.click(within(sheet).getByTestId("cme-log-copy-close"));
     await waitFor(() => expect(screen.queryByTestId("cme-log-copy-sheet")).toBeNull());
-    expect(screen.getByTestId("cme-log-copy-done")).toHaveTextContent("Marked as copied.");
+    expect(screen.getByTestId("cme-log-copy-done")).toHaveTextContent("Marked copied.");
   });
 
   it("says every activity is copied when none remain", async () => {
@@ -162,7 +162,7 @@ describe("copy to your CPD home, one at a time", () => {
     await within(sheet).findByText("2 of 2");
     await user.click(within(sheet).getByTestId("cme-log-copy-mark"));
     expect(await within(sheet).findByTestId("cme-log-copy-finished")).toHaveTextContent(
-      "Every activity is marked as copied.",
+      "Every activity is marked copied.",
     );
   });
 
@@ -170,7 +170,7 @@ describe("copy to your CPD home, one at a time", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 500 }));
     const { user, sheet } = await openSheet();
     await user.click(within(sheet).getByTestId("cme-log-copy-mark"));
-    expect(await within(sheet).findByTestId("cme-log-copy-error")).toHaveTextContent("could not be marked as copied");
+    expect(await within(sheet).findByTestId("cme-log-copy-error")).toHaveTextContent("could not be marked copied");
     expect(within(sheet).getByText("1 of 2")).toBeInTheDocument();
   });
 
@@ -205,25 +205,65 @@ describe("copy to your CPD home, one at a time", () => {
 });
 
 describe("log page structure", () => {
-  it("puts the three status chips in one sideways-scrolling row", () => {
+  it("wraps the category chip and the three status chips, in the mock-up's order, each with its count", () => {
     render(<CmeLogPage entries={ENTRIES} set={SET} today="2026-09-26" />);
     const chips = screen.getByTestId("cme-log-attention");
-    expect(chips.className).toMatch(/\bflex-nowrap\b/);
-    expect(chips.className).toMatch(/\boverflow-x-auto\b/);
-    expect(within(chips).getAllByRole("button")).toHaveLength(3);
+    expect(chips.parentElement?.className).toMatch(/\bflex-wrap\b/);
+    expect(within(chips.parentElement!).getByTestId("cme-log-category-chip")).toHaveTextContent("All categories");
+    expect(
+      within(chips)
+        .getAllByRole("button")
+        .map((chip) => chip.textContent),
+    ).toEqual(["Not marked copied2", "No reflection2", "No evidence0"]);
   });
 
   it("draws a twelve-month strip whose logged months jump to their section", () => {
     render(<CmeLogPage entries={ENTRIES} set={SET} today="2026-09-26" />);
     const strip = screen.getByRole("navigation", { name: "Jump to month" });
     expect(within(strip).getAllByRole("listitem")).toHaveLength(12);
-    const september = within(strip).getByRole("link", { name: "September, 1.5 hours" });
+    const september = within(strip).getByRole("link", { name: "September, 1.5 hours, jump to month" });
     expect(september).toHaveAttribute("href", "#cme-log-month-anchor-2026-09");
     expect(september).toHaveAttribute("aria-current", "date");
     expect(document.getElementById("cme-log-month-anchor-2026-09")).toBe(screen.getByTestId("cme-log-month-2026-09"));
-    // An empty month is never a dead link.
-    expect(within(strip).queryByRole("link", { name: /^October/ })).toBeNull();
-    expect(strip).toHaveTextContent("October, 0.0 hours");
+    // An empty month is never a dead link; a month still to come shows no figure.
+    expect(within(strip).queryByRole("link", { name: /^June/ })).toBeNull();
+    expect(strip).toHaveTextContent("June, 0 hours");
+    expect(screen.getByTestId("cme-log-month-hours-2026-06")).toHaveTextContent("0");
+    expect(strip).toHaveTextContent("October, still to come");
+    expect(screen.getByTestId("cme-log-month-hours-2026-10")).toHaveTextContent("");
+    expect(within(strip).getByRole("heading", { name: "Hours by month · tap to jump" })).toBeInTheDocument();
+    // The bars add up to the year total at the right of the label.
+    const bars = [...strip.querySelectorAll("[data-month-bar]")];
+    expect(bars).toHaveLength(12);
+    const sum = bars.reduce((acc, bar) => acc + Number(bar.getAttribute("data-hours")), 0);
+    expect(screen.getByTestId("cme-log-month-total").querySelector("[aria-hidden]")?.textContent).toBe(`${sum}\u00a0h`);
+    expect(screen.getByTestId("cme-log-month-total")).toHaveTextContent(`${sum} hours in 2026`);
+    expect(screen.getByTestId("cme-log-month-hours-2026-09")).toHaveTextContent("1.5");
+    // Grey bars, the current month the one indigo mark.
+    expect(strip.querySelector('[data-month-bar="2026-09"]')?.className).toContain("var(--clinical-accent)");
+    expect(strip.querySelector('[data-month-bar="2026-08"]')?.className).toContain("var(--border-strong)");
+  });
+
+  it("offers the next uncopied activity from a plain note, naming MyCPD only for a RANZCP year", () => {
+    const { unmount } = render(<CmeLogPage entries={ENTRIES} set={SET} today="2026-09-26" />);
+    const note = screen.getByTestId("cme-log-copy-help");
+    expect(note).toHaveTextContent("2 activities not marked copied to your CPD home");
+    expect(note).toHaveTextContent("PsychSift sends nothing to your college.");
+    expect(note).not.toHaveTextContent(/MyCPD|RANZCP/);
+    expect(within(note).getByRole("button", { name: "Copy the next one" })).toBeInTheDocument();
+    unmount();
+    render(
+      <CmeLogPage
+        entries={ENTRIES}
+        set={{ ...SET, confirmedSource: "au-ranzcp-2026-v1; https://example.org/guide" }}
+        today="2026-09-26"
+      />,
+    );
+    const ranzcp = screen.getByTestId("cme-log-copy-help");
+    expect(ranzcp).toHaveTextContent("2 activities not marked copied to MyCPD");
+    expect(ranzcp).toHaveTextContent(
+      "Copy one, paste it into MyCPD, then mark it copied. PsychSift sends nothing to RANZCP.",
+    );
   });
 
   it("pins each month header within its month on a surface token", () => {

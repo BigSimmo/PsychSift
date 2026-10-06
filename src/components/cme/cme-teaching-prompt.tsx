@@ -1,16 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
-import { cn, textMuted } from "@/components/ui-primitives";
-
-/** A quiet handoff: Teaching remains the owner of its unlogged count. */
-export function CmeTeachingPrompt() {
+/**
+ * Teaching's own count of sessions given but not yet logged as CPD, or null
+ * when it is unknown (not asked, the endpoint failed, or nothing is waiting).
+ * Teaching remains the owner of the count; CPD only reads it.
+ */
+export function useCmeTeachingUnloggedCount(enabled = true): number | null {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     async function loadCount() {
       try {
@@ -37,26 +38,7 @@ export function CmeTeachingPrompt() {
     }
     void loadCount();
     return () => controller.abort();
-  }, []);
+  }, [enabled]);
 
-  if (count === null) return null;
-
-  return (
-    <section
-      className={cn(cardSurface, "mt-3 p-4")}
-      aria-label="Teaching sessions to log"
-      data-testid="cme-teaching-prompt"
-    >
-      <p className="text-sm font-semibold text-[color:var(--text)]">Next to log: Teaching</p>
-      <p className={cn("mt-1 text-sm", textMuted)}>
-        {count} {count === 1 ? "teaching session" : "teaching sessions"} to review in Teaching.
-      </p>
-      <Link
-        href="/teaching/review"
-        className="mt-2 inline-flex min-h-tap items-center text-sm font-semibold text-[color:var(--clinical-accent)] underline underline-offset-2"
-      >
-        Review & log
-      </Link>
-    </section>
-  );
+  return count;
 }
