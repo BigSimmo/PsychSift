@@ -3487,7 +3487,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const composer = visibleQuestionInput(page);
     await expect(composer).toHaveValue("");
-    await expect(composer).toHaveAttribute("placeholder", "Ask a follow-up...");
+    await expect(composer).toHaveAttribute("placeholder", "Ask a follow-up…");
 
     const followUp = "what about renal impairment?";
     await fillVisibleQuestionInput(page, followUp);

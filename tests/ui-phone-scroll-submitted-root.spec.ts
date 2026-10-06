@@ -64,6 +64,6 @@ test("submitted root search keeps its query and hides the phone suggestion ticke
   const composer = page.locator('[data-testid="global-search-input"]:visible');
   await expect(composer).toHaveCount(1);
   await expect(composer).toHaveValue("");
-  await expect(composer).toHaveAttribute("placeholder", "Ask a follow-up...");
+  await expect(composer).toHaveAttribute("placeholder", "Ask a follow-up…");
   await expect(page.getByTestId("smart-search-phone-ticker")).toBeHidden();
 });
