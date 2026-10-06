@@ -53,14 +53,17 @@ export type CmeLogFilterPanelProps = {
   readonly hasAllYears: boolean;
   readonly categoryFilter: CategoryFilter;
   readonly onCategory: (value: CategoryFilter) => void;
+  /** Counts read active or archived records, matching the list. */
   readonly showArchived: boolean;
-  readonly onToggleArchived: () => void;
+  /** Which part to show: the year picker's sheet, the category chip's sheet, or both (the `lg+` side column). */
+  readonly section?: "year" | "category" | "all";
 };
 
 /**
- * Everything that narrows the log but is not needed on every visit: the year,
- * another year by number, the category and archived records. One body, shown
- * in the filter sheet on a phone and as a side column at `lg+`.
+ * The year (with another year by number) and the category: what narrows the
+ * log but is not needed on every visit. On a phone the year button and the
+ * category chip each open a sheet holding their own part; at `lg+` both sit
+ * in a side column. Archived records are a link at the foot of the log.
  */
 export function CmeLogFilterPanel({
   availableYears,
@@ -76,7 +79,7 @@ export function CmeLogFilterPanel({
   categoryFilter,
   onCategory,
   showArchived,
-  onToggleArchived,
+  section = "all",
 }: CmeLogFilterPanelProps) {
   const yearInputId = useId();
   const years = navigationYears
@@ -89,105 +92,99 @@ export function CmeLogFilterPanel({
 
   return (
     <div className="grid gap-5 text-sm">
-      <nav aria-label="Select year" data-testid="cme-log-year-tabs" className="grid gap-2">
-        <p aria-hidden="true" className={eyebrowText}>
-          Year
-        </p>
-        {hasAllYears ? (
-          <button
-            type="button"
-            aria-pressed={allYears}
-            onClick={() => onAllYears(true)}
-            className={cn(choiceRow, allYears ? choicePressed : choiceIdle)}
-          >
-            All years · {visibleEntries.filter((entry) => Boolean(entry.archivedAt) === showArchived).length}
-          </button>
-        ) : null}
-        <div className="grid grid-cols-2 gap-2">
-          {years.map((year) => {
-            const count = countFor(year);
-            const selected = !allYears && effectiveYear === year;
-            return navigationYears && year !== effectiveYear ? (
-              <Link key={year} href={`/cme/log?year=${year}${categoryQuery}`} className={cn(choiceRow, choiceIdle)}>
-                <span>{year}</span> <span className={countText}>{count || "Open"}</span>
-              </Link>
-            ) : (
+      {section !== "category" ? (
+        <nav aria-label="Select year" data-testid="cme-log-year-tabs" className="grid gap-2">
+          <p aria-hidden="true" className={eyebrowText}>
+            Year
+          </p>
+          {hasAllYears ? (
+            <button
+              type="button"
+              aria-pressed={allYears}
+              onClick={() => onAllYears(true)}
+              className={cn(choiceRow, allYears ? choicePressed : choiceIdle)}
+            >
+              All years · {visibleEntries.filter((entry) => Boolean(entry.archivedAt) === showArchived).length}
+            </button>
+          ) : null}
+          <div className="grid grid-cols-2 gap-2">
+            {years.map((year) => {
+              const count = countFor(year);
+              const selected = !allYears && effectiveYear === year;
+              return navigationYears && year !== effectiveYear ? (
+                <Link key={year} href={`/cme/log?year=${year}${categoryQuery}`} className={cn(choiceRow, choiceIdle)}>
+                  <span>{year}</span> <span className={countText}>{count || "Open"}</span>
+                </Link>
+              ) : (
+                <button
+                  key={year}
+                  type="button"
+                  aria-pressed={selected}
+                  aria-current={navigationYears && selected ? "page" : undefined}
+                  onClick={() => {
+                    onAllYears(false);
+                    if (!navigationYears) onSelectYear(year);
+                  }}
+                  className={cn(choiceRow, selected ? choicePressed : choiceIdle)}
+                >
+                  <span>{year}</span> <span className={countText}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          {navigationYears ? (
+            <form action="/cme/log" method="get" className="flex items-end gap-2" data-testid="cme-log-year-jump">
+              <label className="grid min-w-0 flex-1 gap-1 font-medium text-[color:var(--text)]" htmlFor={yearInputId}>
+                Open another year
+                <input
+                  key={setYear}
+                  id={yearInputId}
+                  name="year"
+                  type="number"
+                  inputMode="numeric"
+                  min="2000"
+                  max="2100"
+                  defaultValue={setYear}
+                  className="block min-h-tap w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 nums font-normal"
+                />
+              </label>
               <button
-                key={year}
-                type="button"
-                aria-pressed={selected}
-                aria-current={navigationYears && selected ? "page" : undefined}
-                onClick={() => {
-                  onAllYears(false);
-                  if (!navigationYears) onSelectYear(year);
-                }}
-                className={cn(choiceRow, selected ? choicePressed : choiceIdle)}
+                type="submit"
+                className="inline-flex min-h-tap shrink-0 items-center rounded-lg border border-[color:var(--border)] px-4 font-medium text-[color:var(--text)]"
               >
-                <span>{year}</span> <span className={countText}>{count}</span>
+                Open year
+              </button>
+            </form>
+          ) : null}
+        </nav>
+      ) : null}
+
+      {section !== "year" ? (
+        <fieldset className="grid gap-2" data-testid="cme-log-filter">
+          <legend className={cn(eyebrowText, "mb-2")}>Category</legend>
+          {CATEGORY_OPTIONS.map((option) => {
+            const pressed = categoryFilter === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={pressed}
+                onClick={() => onCategory(option.value)}
+                className={cn(choiceRow, pressed ? choicePressed : choiceIdle)}
+              >
+                <span>{option.label}</span>{" "}
+                <span className={countText}>
+                  {option.value === "all"
+                    ? yearEntries.length
+                    : yearEntries.filter((entry) =>
+                        entry.allocations.some((allocation) => allocation.category === option.value),
+                      ).length}
+                </span>
               </button>
             );
           })}
-        </div>
-        {navigationYears ? (
-          <form action="/cme/log" method="get" className="flex items-end gap-2" data-testid="cme-log-year-jump">
-            <label className="grid min-w-0 flex-1 gap-1 font-medium text-[color:var(--text)]" htmlFor={yearInputId}>
-              Open another year
-              <input
-                key={setYear}
-                id={yearInputId}
-                name="year"
-                type="number"
-                inputMode="numeric"
-                min="2000"
-                max="2100"
-                defaultValue={setYear}
-                className="block min-h-tap w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 nums font-normal"
-              />
-            </label>
-            <button
-              type="submit"
-              className="inline-flex min-h-tap shrink-0 items-center rounded-lg border border-[color:var(--border)] px-4 font-medium text-[color:var(--text)]"
-            >
-              Open year
-            </button>
-          </form>
-        ) : null}
-      </nav>
-
-      <fieldset className="grid gap-2" data-testid="cme-log-filter">
-        <legend className={cn(eyebrowText, "mb-2")}>Category</legend>
-        {CATEGORY_OPTIONS.map((option) => {
-          const pressed = categoryFilter === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={pressed}
-              onClick={() => onCategory(option.value)}
-              className={cn(choiceRow, pressed ? choicePressed : choiceIdle)}
-            >
-              <span>{option.label}</span>{" "}
-              <span className={countText}>
-                {option.value === "all"
-                  ? yearEntries.length
-                  : yearEntries.filter((entry) =>
-                      entry.allocations.some((allocation) => allocation.category === option.value),
-                    ).length}
-              </span>
-            </button>
-          );
-        })}
-      </fieldset>
-
-      <button
-        type="button"
-        aria-pressed={showArchived}
-        data-testid="cme-log-show-archived"
-        onClick={onToggleArchived}
-        className={cn(choiceRow, showArchived ? choicePressed : choiceIdle)}
-      >
-        {showArchived ? "Showing archived activities" : "Show archived activities"}
-      </button>
+        </fieldset>
+      ) : null}
     </div>
   );
 }
