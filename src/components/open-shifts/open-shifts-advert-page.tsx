@@ -113,6 +113,9 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
   } else {
     items.push("There's no PsychSift roster to compare this shift with.");
   }
+  if ((check.state === "ok" || check.state === "flag" || check.state === "clash-only") && check.nothingNearby) {
+    items.push("Your roster has nothing saved around this date. Check it's complete.");
+  }
   return (
     <section
       aria-label="Roster check"
@@ -226,7 +229,8 @@ export function RequestSheet({
           />
           <label htmlFor="os-fit" className="flex cursor-pointer flex-col">
             <span className="text-base-minus font-medium text-[color:var(--text-heading)]">
-              I&apos;m fit to work this shift, and it keeps me within the agreement&apos;s hours limits (clause 15)
+              I&apos;m fit to work this shift, and I&apos;ve checked it against the agreement&apos;s hours and break
+              limits (clause 15)
             </span>
             <span className="text-xs text-[color:var(--text-muted)]">
               Including work that isn&apos;t on my PsychSift roster
