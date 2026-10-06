@@ -34,6 +34,14 @@ const srcRoot = path.join(repoRoot, "src");
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
   [
+    "/my-day/week",
+    "Reached from the 'Open week' QuietTextLink (a next/link wrapper) on My Day's This week card, which this Link-only scan does not model. The header tabs are My Day's own Today, Work and Me pages.",
+  ],
+  [
+    "/my-day/hours",
+    "Reached from the 'All hours' QuietTextLink (a next/link wrapper) on My Day's Hours worked card, which this Link-only scan does not model. The header tabs are My Day's own Today, Work and Me pages.",
+  ],
+  [
     "/admin/compliance/export",
     "Reached from the 'Export a copy for yourself' ModeRow on Admin Compliance (ADMIN_PAGE_HREFS.complianceExport), which this Link-only scan does not model.",
   ],
