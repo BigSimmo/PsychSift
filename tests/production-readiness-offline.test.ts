@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   clinicalAskReadinessFindings,
+  clinicalAskReadinessProfile,
+  clinicalAskFindingIsBlocking,
   isProviderFreeCodexCloud,
   developerAccessKeyProductionRisk,
   mockupsGateProductionRisk,
@@ -106,6 +108,79 @@ describe("programme static readiness", () => {
 });
 
 describe("production readiness provider policy", () => {
+  it("validates the opt-in disabled profile using runtime disabled defaults without launch evidence", () => {
+    const findings = clinicalAskReadinessFindings(
+      {},
+      () => false,
+      () => undefined,
+      "disabled",
+    );
+    expect(findings.filter(({ status }) => status === "blocked")).toEqual([]);
+    expect(findings.filter(({ status }) => status === "config_present").map(({ area }) => area)).toEqual([
+      "master flag",
+      "external flag",
+    ]);
+    expect(findings.filter(({ status }) => status === "not_applicable")).toHaveLength(9);
+    expect(findings.every((finding) => !clinicalAskFindingIsBlocking(finding, {}, "disabled"))).toBe(true);
+  });
+
+  it.each(["CLINICAL_ASK_ENABLED", "CLINICAL_ASK_EXTERNAL_SEARCH_ENABLED"])(
+    "rejects enabled or malformed %s in the disabled profile even in CI or offline Cloud",
+    (flag) => {
+      for (const value of ["true", "", "FALSE", " false ", "invalid"]) {
+        const environment = { [flag]: value };
+        const findings = clinicalAskReadinessFindings(
+          environment,
+          () => false,
+          () => undefined,
+          "disabled",
+        );
+        expect(
+          findings.some((finding) => clinicalAskFindingIsBlocking(finding, environment, "disabled", true, true)),
+        ).toBe(true);
+      }
+    },
+  );
+
+  it("accepts explicit disabled flags without reading hosted launch artefacts", () => {
+    const findings = clinicalAskReadinessFindings(
+      { CLINICAL_ASK_ENABLED: "false", CLINICAL_ASK_EXTERNAL_SEARCH_ENABLED: "false" },
+      () => {
+        throw new Error("disabled profile must not probe launch files");
+      },
+      () => {
+        throw new Error("disabled profile must not read launch evidence");
+      },
+      "disabled",
+    );
+    expect(findings.some(({ status }) => status === "blocked")).toBe(false);
+  });
+
+  it("keeps the default launch profile strict and treats all missing active-launch evidence as blocking", () => {
+    const defaultFindings = clinicalAskReadinessFindings({}, () => false);
+    expect(defaultFindings.filter(({ status }) => status === "blocked")).toHaveLength(5);
+    const active = { CLINICAL_ASK_ENABLED: "true" };
+    const findings = clinicalAskReadinessFindings(active, () => false);
+    expect(
+      findings
+        .filter(({ status }) => status !== "config_present")
+        .every((finding) => clinicalAskFindingIsBlocking(finding, active, "launch", true, true)),
+    ).toBe(true);
+  });
+
+  it("defaults to launch validation and rejects unknown or ambiguous profile arguments", () => {
+    expect(clinicalAskReadinessProfile([])).toBe("launch");
+    expect(clinicalAskReadinessProfile(["--ci", "--clinical-ask-profile=disabled"])).toBe("disabled");
+    expect(clinicalAskReadinessProfile(["--clinical-ask-profile=launch"])).toBe("launch");
+    for (const args of [
+      ["--clinical-ask-profile=invalid"],
+      ["--clinical-ask-profile"],
+      ["--clinical-ask-profile=disabled", "--clinical-ask-profile=launch"],
+    ]) {
+      expect(() => clinicalAskReadinessProfile(args)).toThrow("Clinical Ask profile");
+    }
+  });
+
   it("separates Clinical Ask code configuration from approval-gated live evidence", () => {
     const existing = new Set([
       "supabase/migrations/20260822120000_expand_answer_feedback_for_clinical_ask.sql",

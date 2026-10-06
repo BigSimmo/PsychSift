@@ -267,3 +267,33 @@ describe("PUT /api/account/preferences reminders", () => {
     expect(database.update).not.toHaveBeenCalled();
   });
 });
+
+describe("PUT /api/account/preferences work stage", () => {
+  function put(body: unknown) {
+    return new Request("http://local.test/api/account/preferences", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("saves the self-reported stage and RANZCP stage, and clears them with null", async () => {
+    const database = mockPreferencesRoute({ ...DEFAULT_PREFERENCES });
+    const { PUT } = await import("@/app/api/account/preferences/route");
+    expect((await PUT(put({ workStage: "registrar", ranzcpStage: 2 }))).status).toBe(200);
+    expect(database.currentPreferences()).toMatchObject({ workStage: "registrar", ranzcpStage: 2 });
+    expect((await PUT(put({ workStage: null, ranzcpStage: null }))).status).toBe(200);
+    expect(database.currentPreferences()).toMatchObject({ workStage: null, ranzcpStage: null });
+  });
+
+  it.each([
+    ["an unknown stage", { workStage: "chief" }],
+    ["a RANZCP stage out of range", { ranzcpStage: 4 }],
+    ["a RANZCP stage as text", { ranzcpStage: "2" }],
+  ])("rejects %s", async (_label, body) => {
+    const database = mockPreferencesRoute({ ...DEFAULT_PREFERENCES });
+    const { PUT } = await import("@/app/api/account/preferences/route");
+    expect((await PUT(put(body))).status).toBe(400);
+    expect(database.update).not.toHaveBeenCalled();
+  });
+});

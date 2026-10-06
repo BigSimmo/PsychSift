@@ -6,6 +6,7 @@ import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import type { AskAnswerData } from "@/lib/roster/ask/answer";
 import type { AskContext, AskPerson } from "@/lib/roster/ask/parse";
+import { fortnightFor, type HoursExtra } from "@/lib/roster/hours";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 
 /** All reads use existing roster endpoints. The question is never an argument to this hook. */
@@ -15,7 +16,10 @@ export function useRosterAskContext(): {
   readonly teamChoices: readonly { id: string; name: string }[];
   readonly selectedTeamId: string | null;
   readonly selectTeam: (id: string) => void;
+  /** Personal shifts and the team list — enough for nights, hours, leave. */
   readonly loading: boolean;
+  /** Team overview and assignments — needed for who-is-on and swaps. */
+  readonly teamLoading: boolean;
 } {
   const today = perthDateOf(new Date());
   const range = { from: addDaysToDate(today, -7), to: addDaysToDate(today, 54) };
@@ -23,6 +27,7 @@ export function useRosterAskContext(): {
   const teams = useRosterTeams();
   const [chosenTeamId, selectTeam] = useState<string | null>(null);
   const [leave, setLeave] = useState<AskAnswerData["leave"]>(undefined);
+  const [extras, setExtras] = useState<readonly HoursExtra[]>([]);
   useEffect(() => {
     const controller = new AbortController();
     void fetch("/api/roster/leave", { cache: "no-store", signal: controller.signal })
@@ -41,6 +46,21 @@ export function useRosterAskContext(): {
   const selectedTeam = availableTeams.find((team) => team.serviceId === selectedTeamId);
   const overview = useRosterRead(selectedTeamId, "overview");
   const assignments = useRosterRead(selectedTeamId, "assignments", range);
+  const payFortnightAnchor = overview.status === "ready" ? (overview.data?.settings?.payFortnightAnchor ?? null) : null;
+  const fortnight = fortnightFor(today, payFortnightAnchor);
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`/api/roster/extra-time?from=${fortnight.start}&to=${fortnight.end}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => (response.ok ? ((await response.json()) as { records?: HoursExtra[] }) : null))
+      .then((payload) => {
+        if (!controller.signal.aborted && Array.isArray(payload?.records)) setExtras(payload.records);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [fortnight.start, fortnight.end]);
   const loadedAssignments =
     assignments.status === "ready" && Array.isArray(assignments.data?.assignments) ? assignments.data.assignments : [];
   // The member-facing assignments read already contains visible names. The
@@ -72,9 +92,10 @@ export function useRosterAskContext(): {
     teamName: selectedTeam?.name ?? null,
     loadedRange,
     publication,
-    payFortnightAnchor: overview.status === "ready" ? (overview.data?.settings?.payFortnightAnchor ?? null) : null,
+    payFortnightAnchor,
     rotationEndsOn: overview.status === "ready" ? (overview.data?.me?.rotationEndsOn ?? null) : null,
     leave,
+    extras,
   };
   return {
     parser,
@@ -82,9 +103,7 @@ export function useRosterAskContext(): {
     teamChoices,
     selectedTeamId,
     selectTeam,
-    loading:
-      shifts.status === "loading" ||
-      teams.status === "loading" ||
-      Boolean(selectedTeamId && (overview.status === "loading" || assignments.status === "loading")),
+    loading: shifts.status === "loading" || teams.status === "loading",
+    teamLoading: Boolean(selectedTeamId && (overview.status === "loading" || assignments.status === "loading")),
   };
 }

@@ -13,9 +13,10 @@ import { visibleByTestId } from "./playwright-settlement";
  * 18:48Z approval (see `.superpowers/sdd/plan-update-1/lane-rules.md`'s
  * "Efficiency" note and lane-b-ui-report.md) rebuilt Renewals as the
  * final-design Requirements checklist before this spec was written, and that
- * page groups its rows by state ("Soonest first", "No end date", "Not
- * recorded yet"), never by the old band words — nothing in the shipped app
- * renders them (`git grep` confirms). This spec asserts what actually ships.
+ * page groups its rows by the catalogue's own groups (Registration, Checks,
+ * Health, Training, Job — the 5 Oct mock-up v2), never by the old band words —
+ * nothing in the shipped app renders them (`git grep` confirms). This spec
+ * asserts what actually ships.
  */
 
 const PHONE_WIDTH = 390;
@@ -30,10 +31,12 @@ async function gotoPhone(page: Page, path: string) {
 }
 
 test.describe("Admin mode — redirects, pill identity and shared chrome", () => {
-  test("/my-work lands on /admin, and the pill names Admin's Today page", async ({ page }) => {
+  // Admin opens on Renewals now (modes review, phase 2b: My Day is the one
+  // Today). `/admin` still serves the old Today page for bookmarks, with no tab.
+  test("/my-work lands on /admin/renewals, and the pill names Admin without a Today page", async ({ page }) => {
     await page.goto("/my-work");
-    await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole("button", { name: "Mode Admin, page Today" })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/renewals$/);
+    await expect(page.getByRole("button", { name: "Mode Admin, page Renewals", exact: true })).toBeVisible();
   });
 
   test("/on-call/compliance lands on /admin/renewals, keeping the checklist's own groups", async ({ page }) => {
@@ -42,12 +45,12 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     await expect(page.getByRole("heading", { level: 1, name: "Renewals" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Checklist" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Personal" })).toBeVisible();
-    // CI runs this in demo mode. The demo corpus links three rows to catalogue
-    // items (`src/lib/on-call/demo-entries.ts`), so "Soonest first" holds them
-    // and the rest of the catalogue waits under "Not recorded yet".
+    // CI runs this in demo mode. The demo corpus links seven rows to catalogue
+    // items (`src/lib/on-call/demo-entries.ts`), so the Registration and
+    // Checks groups both hold a recorded row.
     // `tests/admin-requirements.test.ts` pins that corpus property offline.
-    await expect(page.getByRole("heading", { name: "Soonest first" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Not recorded yet" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Registration · \d+$/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Checks · \d+$/ })).toBeVisible();
     await expect(visibleByTestId(page, "admin-renewals-checklist-row-medical-registration-renewal")).toBeVisible();
   });
 

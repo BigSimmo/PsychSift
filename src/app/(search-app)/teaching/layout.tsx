@@ -1,14 +1,18 @@
 import type { ReactNode } from "react";
 
-import { TeachingSampleBanner } from "@/components/teaching/teaching-sample-banner";
+import { TeachingSampleChrome } from "@/components/teaching/teaching-sample-notice";
 import { teachingSampleOn } from "@/lib/teaching/sample";
+import { ModeBand } from "@/components/mode-band/mode-band";
 
-/** While this browser is in the Teaching sample, every Teaching page says so and offers the way out. */
+/**
+ * Every Teaching page starts with the sample notice for a visitor who is not signed in (decided in the
+ * browser), or the older sample banner while this browser still holds the sample cookie.
+ */
 export default async function TeachingLayout({ children }: { children: ReactNode }) {
   return (
-    <>
-      {(await teachingSampleOn()) ? <TeachingSampleBanner /> : null}
+    <ModeBand modeId="teaching" hiddenOn={["/teaching/resources/"]}>
+      <TeachingSampleChrome cookieSample={await teachingSampleOn()} />
       {children}
-    </>
+    </ModeBand>
   );
 }

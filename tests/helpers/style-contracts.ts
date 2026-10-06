@@ -343,6 +343,16 @@ export const STYLE_EFFECT_CONTRACTS: readonly StyleEffectContract[] = [
 export const STYLE_CONTRACT_EXEMPTIONS: Readonly<Record<string, string>> = {
   // Not component effects.
   dark: "theme root selector, not a component class; token values are asserted by the dark-mode journeys",
+  "dash-surface":
+    "My Day dashboard token scope: sets the --dash-* variables and base ink colour only; the look is checked by the My Day capture in ui-visual-artifacts",
+  "my-day-quiet":
+    "My Day quieter look: token overrides plus flat avatar/wallet fills on My Day only; the look is checked by the My Day capture in ui-visual-artifacts",
+  "dash-avatar-amber": "flattened only under .my-day-quiet; see the my-day-quiet exemption",
+  "dash-avatar-blue": "flattened only under .my-day-quiet; see the my-day-quiet exemption",
+  "dash-avatar-green": "flattened only under .my-day-quiet; see the my-day-quiet exemption",
+  "dash-wallet-amber": "flattened only under .my-day-quiet; see the my-day-quiet exemption",
+  "dash-wallet-blue": "flattened only under .my-day-quiet; see the my-day-quiet exemption",
+  "dash-wallet-green": "flattened only under .my-day-quiet; see the my-day-quiet exemption",
   "touch-card": "sets outline/touch-action only; the shared focus treatment is asserted by ui-accessibility",
   "clinical-ask-field": "Clinical Ask clarification fields are covered by ui-clinical-ask",
   "clinical-ask-output-actions": "Clinical Ask output controls are covered by ui-clinical-ask",

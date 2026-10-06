@@ -37,6 +37,9 @@ const preferredDomainsByMode: Record<AppModeId, readonly UniversalSearchDomain[]
   // Psychiatry is a landing page for the modes it gathers; each of those keeps
   // its own domains, so the hub contributes none of its own.
   psychiatry: [],
+  // Medicines & tools, like Psychiatry, is a landing page for the modes it
+  // gathers, each of which keeps its own domains.
+  medicines: [],
   // Admin (formerly My Work) keeps the owner's own records and sends nothing to
   // search; it contributes no search domains either.
   "my-work": [],
@@ -46,6 +49,11 @@ const preferredDomainsByMode: Record<AppModeId, readonly UniversalSearchDomain[]
   // First Nations owns its own in-page search box on every page (standard
   // §13), not the cross-entity universal search, so it contributes no domains.
   "first-nations": [],
+  // My Day searches nothing; it only gathers the owner's own items.
+  "my-day": [],
+  // Open shifts lists adverts from the reader's own Roster teams; it
+  // contributes no cross-entity universal-search domain.
+  "open-shifts": [],
 };
 
 const modeByDomain: Record<UniversalSearchDomain, AppModeId> = {

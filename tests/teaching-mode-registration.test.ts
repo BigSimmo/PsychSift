@@ -34,7 +34,7 @@ afterEach(() => setTeachingRoles([]));
 
 describe("Teaching mode registration", () => {
   it("sits right after CPD with no results surface and titles-only search", () => {
-    expect(appModeIds).toHaveLength(23);
+    expect(appModeIds).toHaveLength(26);
     expect(appModeIds.indexOf("teaching")).toBe(appModeIds.indexOf("cme") + 1);
     expect(appModeDefinition("teaching")).toMatchObject({ label: "Teaching", href: "/teaching" });
     const search = appModeSearchConfig("teaching");
@@ -62,28 +62,48 @@ describe("Teaching mode registration", () => {
 
   it("registers all first-build pages with their icons, and adopts no shared bar", () => {
     expect(modeSecondaryNavigationRegistry.teaching.map(({ id, href }) => [id, href])).toEqual([
+      // Teaching v5 (5 Oct mock-up): This week, Presenting, My record, Resources, Organise. The ids stay, so
+      // bookmarks and icons keep working; Week, What's on and Supervision now sit behind those tabs.
       ["today", "/teaching"],
-      ["week", "/teaching/week"],
-      ["whats-on", "/teaching/whats-on"],
-      ["resources", "/teaching/resources"],
-      ["logbook", "/teaching/logbook"],
       ["teach", "/teaching/teach"],
-      ["supervision", "/teaching/supervision"],
+      ["assessments", "/teaching/assessments"],
+      ["logbook", "/teaching/logbook"],
+      ["resources", "/teaching/resources"],
       ["organise", "/teaching/organise"],
     ]);
+    expect(modeSecondaryNavigationRegistry.teaching.map(({ label }) => label)).toEqual([
+      "This week",
+      "Presenting",
+      "Assessments",
+      "My record",
+      "Resources",
+      "Organise",
+    ]);
     expect(activeModeSecondaryNavigationId("teaching", "/teaching/logbook")).toBe("logbook");
+    for (const [pathname, id] of [
+      ["/teaching/week", "today"],
+      ["/teaching/whats-on", "today"],
+      ["/teaching/supervision", "teach"],
+      ["/teaching/assessments", "assessments"],
+      ["/teaching/feedback", "logbook"],
+      ["/teaching/review", "logbook"],
+      ["/teaching/term", "logbook"],
+      ["/teaching/exam-prep", "resources"],
+      ["/teaching/import", "organise"],
+    ])
+      expect(activeModeSecondaryNavigationId("teaching", pathname)).toBe(id);
     expect(activeModeSecondaryNavigationId("teaching", `/teaching/session/${OCC}`)).toBeNull();
     expect(modeUsesHeaderModeNav("teaching")).toBe(false);
-    expect(["today", "week", "logbook", "organise"].map((id) => modeSectionIcon(id)?.displayName)).toEqual([
-      "CalendarClock",
+    expect(["today", "logbook", "organise"].map((id) => modeSectionIcon(id)?.displayName)).toEqual([
       "CalendarClock",
       "NotebookText",
       "SlidersHorizontal",
     ]);
   });
 
-  it("preserves the legacy teaching list until a service approves transfer", () => {
+  it("maps the legacy education bookmark path to Teaching while More opens /teaching", () => {
     expect(modeSecondaryNavigationRegistry["on-call"].map((entry) => entry.id)).toContain("teaching");
+    expect(modeSecondaryNavigationRegistry["on-call"].find((entry) => entry.id === "teaching")?.href).toBe("/teaching");
     expect(activeModeSecondaryNavigationId("on-call", "/on-call/education")).toBe("teaching");
   });
 
@@ -91,8 +111,12 @@ describe("Teaching mode registration", () => {
     expect(modePageVisible("teaching", "organise", [])).toBe(false);
     expect(modePageVisible("teaching", "organise", ["doctor"])).toBe(false);
     expect(modePageVisible("teaching", "organise", ["doctor", "organiser"])).toBe(true);
-    expect(modePageVisible("teaching", "week", [])).toBe(true);
+    expect(modePageVisible("teaching", "today", [])).toBe(true);
     expect(modePageVisible("cme", "organise", [])).toBe(true);
+    expect(modePageVisible("roster", "team", [], null)).toBe(false);
+    expect(modePageVisible("roster", "swaps", [], false)).toBe(false);
+    expect(modePageVisible("roster", "team", [], true)).toBe(true);
+    expect(modePageVisible("roster", "shifts", [], null)).toBe(true);
     const { result } = renderHook(() => useTeachingRoles());
     expect(result.current).toEqual([]);
     act(() => setTeachingRoles(["admin", "doctor", "admin"]));
@@ -117,10 +141,13 @@ describe("Teaching mode registration", () => {
     expect(APP_MODE_ICON.teaching).toBe("presentation");
     expect(APP_MODE_ACCENT.teaching).toBe("rose");
     expect(sharedHomePresentation.teaching.suggestions).toEqual(["grand round", "journal club", "case conference"]);
-    expect(phoneModeGroups.find((group) => group.id === "cpd")).toMatchObject({
-      label: "CPD and teaching",
-      modeIds: ["cme", "teaching"],
+    // Behind the My Day door, beside CPD (modes review, phase 1).
+    expect(phoneModeGroups.find((group) => group.id === "my-day")?.modeIds).toEqual(
+      expect.arrayContaining(["teaching", "cme"]),
+    );
+    expect(siteContentModeExclusions.find((entry) => entry.modeId === "teaching")).toMatchObject({
+      modeId: "teaching",
+      reason: "private_user_state",
     });
-    expect(siteContentModeExclusions.at(-1)).toMatchObject({ modeId: "teaching", reason: "private_user_state" });
   });
 });

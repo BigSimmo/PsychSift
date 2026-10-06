@@ -7,7 +7,7 @@ import { ServiceStructuredFields, emptyCover } from "@/components/on-call/servic
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { TextField } from "@/components/ui/text-field";
-import { onCallDot } from "@/components/on-call/kit/recipes";
+import { modeDot } from "@/components/mode-kit/recipes";
 import { InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import { handbookEditorWarnings, handbookPlacementLine } from "@/lib/on-call/handbook-editor-checks";
 import {
@@ -334,11 +334,7 @@ export function ServiceEntryEditor({
               {warnings.map((warning) => (
                 <li key={warning.id} className="flex items-baseline gap-2" data-warning={warning.id}>
                   {DOTTED_WARNINGS.has(warning.id) ? (
-                    <span
-                      aria-hidden="true"
-                      data-warning-dot=""
-                      className={cn(onCallDot, "bg-[color:var(--warning)]")}
-                    />
+                    <span aria-hidden="true" data-warning-dot="" className={cn(modeDot, "bg-[color:var(--warning)]")} />
                   ) : null}
                   <span className="min-w-0 break-words">{warning.text}</span>
                 </li>

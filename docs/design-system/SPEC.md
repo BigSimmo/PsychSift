@@ -234,6 +234,10 @@ tranche that retires the step.
 Weight roles: body 400 · label 500 · heading 600 · value 650. **Display type uses the heading
 weight; the value weight belongs to quantities.**
 
+_Exception:_ the personal My Day dashboard uses 700 for card titles and 800 for figures
+(`font-dash-title`, `font-dash-figure`), inside `.dash-surface` only — owner-approved,
+TOKENS §7.2. No clinical surface may use them.
+
 4px base scale; **semantic tokens only in markup** (`--gap-*`, `--pad-*`). **Heading inset
 convention:** a panel's first child is its heading and carries no top margin; the panel's
 padding provides the space. _A compensating margin is always a symptom of a missing padding

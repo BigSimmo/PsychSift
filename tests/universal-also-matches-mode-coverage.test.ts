@@ -76,6 +76,7 @@ const MOUNTS: Record<AppModeId, { file: string; mounts: true } | { file: string;
   teaching: { file: "src/components/teaching/teaching-today.tsx", mounts: false, because: NO_RESULTS_SURFACE },
   // Psychiatry, for the same reason: its home is a dashboard of links.
   psychiatry: { file: "src/components/psychiatry/psychiatry-home.tsx", mounts: false, because: NO_RESULTS_SURFACE },
+  medicines: { file: "src/components/medicines/medicines-home.tsx", mounts: false, because: NO_RESULTS_SURFACE },
   // Admin (mode id `my-work`), likewise: Today is a dashboard of what is due and links.
   "my-work": { file: "src/components/admin/admin-today-page.tsx", mounts: false, because: NO_RESULTS_SURFACE },
   // Roster, for On Call's reason exactly: no result list, resultsSurface "none".
@@ -85,6 +86,13 @@ const MOUNTS: Record<AppModeId, { file: string; mounts: true } | { file: string;
   // renders through one page renderer.
   "first-nations": {
     file: "src/components/first-nations/page-renderer.tsx",
+    mounts: false,
+    because: NO_RESULTS_SURFACE,
+  }, // My Day, likewise: one merged list with no result list of its own.
+  "my-day": { file: "src/components/my-day/my-day-page.tsx", mounts: false, because: NO_RESULTS_SURFACE },
+  // The file named here is Browse, the list the reader lands on at `/open-shifts`.
+  "open-shifts": {
+    file: "src/components/open-shifts/open-shifts-browse-page.tsx",
     mounts: false,
     because: NO_RESULTS_SURFACE,
   },

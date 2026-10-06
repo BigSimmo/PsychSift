@@ -114,7 +114,11 @@ jobs:
         with:
           node-version-file: ".nvmrc"
           cache: npm
-          cache-dependency-path: package-lock.json
+          # Same key as .github/actions/setup-node-cached (lockfile + .nvmrc): reuse the ~/.npm that
+          # CI's npm ci jobs save, never the lockfile-only key a bare setup-node step can fill empty.
+          cache-dependency-path: |
+            package-lock.json
+            .nvmrc
 
       - name: Install dependencies
         id: install

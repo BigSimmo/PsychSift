@@ -97,7 +97,9 @@ export function searchShellPropsForPathname(pathname: string): SearchShellPathPr
     return {
       initialMode: "sources",
       desktopSearchPlacement: "hero",
-      ...(pathname === "/sources/method" || isDetail ? { searchComposerVisible: false } : {}),
+      ...(pathname === "/sources/method" || pathname === "/sources/currency" || isDetail
+        ? { searchComposerVisible: false }
+        : {}),
     };
   }
 
@@ -109,8 +111,12 @@ export function searchShellPropsForPathname(pathname: string): SearchShellPathPr
     return { initialMode: "cme", desktopSearchPlacement: "hero" };
   }
 
-  if (pathname === "/psychiatry") {
+  if (pathname === "/psychiatry" || pathname.startsWith("/psychiatry/")) {
     return { initialMode: "psychiatry", desktopSearchPlacement: "hero" };
+  }
+
+  if (pathname === "/medicines" || pathname.startsWith("/medicines/")) {
+    return { initialMode: "medicines", desktopSearchPlacement: "hero" };
   }
 
   // Admin has no search surface, and its pages never wear the shared composer or its
@@ -121,6 +127,15 @@ export function searchShellPropsForPathname(pathname: string): SearchShellPathPr
 
   if (pathname.startsWith("/roster")) {
     return { initialMode: "roster", desktopSearchPlacement: "hero" };
+  }
+
+  if (pathname === "/open-shifts" || pathname.startsWith("/open-shifts/")) {
+    return { initialMode: "open-shifts", desktopSearchPlacement: "hero" };
+  }
+
+  // My Day searches nothing, so like Admin it never wears the shared composer.
+  if (pathname === "/my-day" || pathname.startsWith("/my-day/")) {
+    return { initialMode: "my-day", desktopSearchPlacement: "hero", searchComposerVisible: false };
   }
 
   if (pathname === "/first-nations" || pathname.startsWith("/first-nations/")) {

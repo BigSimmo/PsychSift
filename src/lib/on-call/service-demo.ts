@@ -65,7 +65,8 @@ function hospitalRow(
 export const demoServiceDetail: ServiceDetail = {
   service: { id: DEMO_SERVICE_ID, name: "Synthetic Metro Psychiatry Service" },
   membership: { role: "admin", clinicalReviewer: true },
-  sites: [{ id: DEMO_SITE_ID, name: "Demonstration Hospital" }],
+  // After-hours times so the local demo shows Right now's period and track.
+  sites: [{ id: DEMO_SITE_ID, name: "Demonstration Hospital", afterHoursStart: "17:00", afterHoursEnd: "08:00" }],
   entries: [
     demoEntry(
       "61000000-0000-4000-8000-000000000019",
@@ -84,6 +85,37 @@ export const demoServiceDetail: ServiceDetail = {
           team: "Medicine",
           window: { start: "00:00", end: "23:59" },
         },
+      },
+      { reviewedBy: DEMO_REVIEWER_ID, reviewedAt: "2026-09-20T04:00:00.000Z" },
+    ),
+    // Unnamed psychiatry cover, so "Also on tonight" has rows after hours, as the mock-up draws it.
+    demoEntry(
+      "61000000-0000-4000-8000-000000000024",
+      {
+        siteId: DEMO_SITE_ID,
+        section: "cover",
+        kind: "clinical",
+        title: "Psychiatry: Consultant on call",
+        body: "Synthetic example only.",
+        phone: "5550 0024",
+        sources: [{ label: "Synthetic roster", url: "https://example.org/roster" }],
+        orientationPhase: "first_shift",
+        cover: { grade: "consultant", team: "Psychiatry", window: { start: "17:00", end: "08:00" } },
+      },
+      { reviewedBy: DEMO_REVIEWER_ID, reviewedAt: "2026-09-20T04:00:00.000Z" },
+    ),
+    demoEntry(
+      "61000000-0000-4000-8000-000000000025",
+      {
+        siteId: DEMO_SITE_ID,
+        section: "cover",
+        kind: "clinical",
+        title: "Psychiatry: Registrar on call",
+        body: "Synthetic example only.",
+        phone: "5550 0042",
+        sources: [{ label: "Synthetic roster", url: "https://example.org/roster" }],
+        orientationPhase: "first_shift",
+        cover: { grade: "registrar", team: "Psychiatry", window: { start: "17:00", end: "08:00" } },
       },
       { reviewedBy: DEMO_REVIEWER_ID, reviewedAt: "2026-09-20T04:00:00.000Z" },
     ),
@@ -201,6 +233,8 @@ export const demoServiceDetail: ServiceDetail = {
     hospitalRow("61000000-0000-4000-8000-000000000008", "contacts", "Switchboard", "5550 0000"),
     hospitalRow("61000000-0000-4000-8000-000000000009", "contacts", "Medicine: Registrar on call", "5550 0000, 4455"),
     hospitalRow("61000000-0000-4000-8000-000000000010", "contacts", "ICU: Registrar", "4456"),
+    // The psychiatry nurse in charge, beside the psychiatry cover rows above.
+    hospitalRow("61000000-0000-4000-8000-000000000023", "contacts", "Psychiatry: Nurse in charge", "4000"),
     hospitalRow("61000000-0000-4000-8000-000000000011", "contacts", "Ward: Synthetic ward 4B", "5550 0012"),
     hospitalRow(
       "61000000-0000-4000-8000-000000000012",
@@ -271,3 +305,12 @@ export const demoServiceSummary: ServiceSummary = {
   clinicalReviewer: true,
   sites: demoServiceDetail.sites,
 };
+
+/**
+ * The signed-out sample hospital: the same synthetic service with its reserved
+ * `5550` numbers swapped for the `0000` placeholders, which are shown as text
+ * and never linked to a dialler. Built in memory; nothing is stored.
+ */
+export const sampleServiceDetail: ServiceDetail = JSON.parse(
+  JSON.stringify(demoServiceDetail).replace(/\b5550 (\d{4})\b/g, "0000 $1"),
+) as ServiceDetail;

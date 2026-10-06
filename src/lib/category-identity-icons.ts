@@ -6,6 +6,8 @@ import {
   BrainCircuit,
   Calculator,
   CalendarRange,
+  Sunrise,
+  PillBottle,
   ClipboardCheck,
   ClipboardList,
   Compass,
@@ -13,6 +15,7 @@ import {
   FileSignature,
   FileText,
   GraduationCap,
+  Hand,
   Heart,
   LibraryBig,
   MessagesSquare,
@@ -75,6 +78,9 @@ const categoryIcons: Record<CategoryIconKey, LucideIcon> = {
   brain: Brain,
   presentation: Presentation,
   calendarRange: CalendarRange,
+  sunrise: Sunrise,
+  pillBottle: PillBottle,
+  hand: Hand,
 };
 
 /** Component form, for the call sites that still take a `LucideIcon` prop. */

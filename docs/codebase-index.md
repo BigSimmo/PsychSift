@@ -54,9 +54,10 @@ plugins/          plugins/clinical-kb/ Codex plugin manifest and workflow skill
 
 Never commit: `.next/`, `node_modules/`, `coverage/`, `.env*`, `sample-documents/`, logs.
 
-The product surface is **20 app modes** (`src/lib/app-modes.ts`, counted 2026-09-26) sharing one search shell:
+The product surface is **26 app modes** (`src/lib/app-modes.ts`, counted 2026-10-05) sharing one search shell:
 answer, documents, services, forms, favourites, differentials, dsm, specifiers, formulation,
-prescribing, tools, calculators, therapy-compass, factsheets, dictionary, sources, on-call, cme.
+prescribing, tools, calculators, therapy-compass, factsheets, dictionary, sources, on-call, cme,
+teaching, psychiatry, my-work, roster, first-nations, my-day, medicines, open-shifts.
 
 ### The two flows that matter
 
@@ -160,9 +161,9 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 - **Home:** `src/app/(search-app)/page.tsx` — dashboard rendered by shell; the shared home for every mode as `/?mode=<id>`
 - **Consolidated mode homes:** bare mode paths (`/documents`, `/dsm`, `/dictionary`, `/factsheets`, `/services`, `/forms`, `/calculators`, `/specifiers`, `/formulation`, `/differentials`, `/therapy-compass`, `/sources`) 307 to `/?mode=<id>`, and submitted queries (`?q=…&run=1`) to `/<mode>/search` — `src/lib/consolidated-mode-home-redirect.ts`, applied in `src/proxy.ts`, with each page's own `redirect()` as a backstop. `/medications` goes to `/?mode=prescribing`. Only `/tools`, `/favourites`, `/on-call`, `/cme`, `/psychiatry`, `/my-work`, `/roster` and `/first-nations` render their own home.
 - **Dashboard:** `src/components/ClinicalDashboard.tsx` + `src/components/clinical-dashboard/`
-- **Modes (22, counted 2026-09-27):** `src/lib/app-modes.ts` — answer, documents, services, forms, favourites, differentials, DSM-5 diagnosis, specifiers, formulation, prescribing, tools, calculators, Therapy, Factsheets, Dictionary, Sources, On Call, CPD (mode id `cme`), Psychiatry, My Work (mode id `my-work`), Roster (mode id `roster`), First Nations (mode id `first-nations`)
+- **Modes (26, counted 2026-10-05):** `src/lib/app-modes.ts` — answer, documents, services, forms, favourites, differentials, DSM-5 diagnosis, specifiers, formulation, prescribing, tools, calculators, Therapy, Factsheets, Dictionary, Sources, On Call, CPD (mode id `cme`), Teaching, Psychiatry, Admin (mode id `my-work`), Roster (mode id `roster`), First Nations (mode id `first-nations`), My Day (mode id `my-day`), Medicines & tools (mode id `medicines`), Open shifts (mode id `open-shifts`)
 
-  - **Sources catalogue:** `/sources/search` (bare `/sources` redirects to the shared home) provides a read-only, quality-banded catalogue with Topics, Publishers, Method and source-detail traceability; `/dictionary/sources` redirects into its Dictionary-filtered view. Method (`/sources/method`) and the Guide Centre's Source rating topic both render `src/components/reference/source-method-reference-content.tsx` — one component, `variant: "page" | "guide"`, the same arrangement `colour-coding-reference-content.tsx` uses for `/reference/colour-coding`.
+  - **Sources catalogue:** `/sources/search` (bare `/sources` redirects to the shared home) provides a read-only, quality-banded catalogue with Topics, Publishers, Currency, Method and source-detail traceability; Currency (`/sources/currency`, `src/components/sources/sources-currency-page.tsx` over `src/lib/sources/currency-check.ts`) is a server-rendered check of source status counts, recorded review or expiry dates in the next six months, superseded sources and the needs-review-first list, built only from dates the catalogue already records; `/dictionary/sources` redirects into its Dictionary-filtered view. Method (`/sources/method`) and the Guide Centre's Source rating topic both render `src/components/reference/source-method-reference-content.tsx` — one component, `variant: "page" | "guide"`, the same arrangement `colour-coding-reference-content.tsx` uses for `/reference/colour-coding`.
   - **Therapy review disclosure.** Therapy was `devOnly` while its 205-record catalogue awaited qualified-clinician sign-off. That hid the mode from production navigation, 404'd `/therapy-compass` in the route layout, and made `therapyRecordsForEnvironment` filter every record out — so all 205 detail/brief/sheet routes and every universal-search therapy hit 404'd for real users while working locally. The owner's decision (2026-08-19) replaced the gate with disclosure: reachability is no longer conditioned on review status anywhere, and the caveat is stated per record instead, by the `reviewStatus` badge on every card, detail page, brief, sheet, comparison, pathway, and universal-search result. A catalogue-wide banner (`TherapyReviewNotice`, counts from the generated `THERAPY_CATALOGUE_SUMMARY.needsReviewCount`) sat above the search band until 2026-09-06, when the owner removed it: a caveat repeated above every search is read past, while the per-record badge sits where the decision is actually made. `therapyNeedsReview` survives as the label source only. Pinned by `tests/app-modes.test.ts` (reachability), `tests/therapy-review-regressions.test.ts` (the per-record badges, and the banner's absence), and `tests/therapy-pr-unblocking-contract.test.ts` (the retired `PLAYWRIGHT_OFFLINE_MODE` bypass that existed only to reach the gated route).
 
 ### Product pages (`src/app/`)
@@ -178,7 +179,7 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 | `/documents/search`, `/documents/[id]` (`/documents/source` and `/documents/source/evidence` redirect to `/documents/[id]`)                                                                             | `src/app/(search-app)/documents/`                                                                                               |
 | `/factsheets`, `/factsheets/search`, `/factsheets/topics`, `/factsheets/[slug]`                                                                                                                         | `src/app/(search-app)/factsheets/`                                                                                              |
 | `/dictionary/search` (Terms, one catalogue — `/browse` redirects to it), `/dictionary/topics`, `/dictionary/topics/[slug]`, `/dictionary/[slug]`, `/dictionary/compare`                                 | `src/app/(search-app)/dictionary/`                                                                                              |
-| `/sources/search`, `/sources/topics`, `/sources/publishers`, `/sources/method`, `/sources/[sourceId]`                                                                                                   | `src/app/(search-app)/sources/`                                                                                                 |
+| `/sources/search`, `/sources/topics`, `/sources/publishers`, `/sources/currency`, `/sources/method`, `/sources/[sourceId]`                                                                              | `src/app/(search-app)/sources/`                                                                                                 |
 | `/favourites`                                                                                                                                                                                           | `src/app/(search-app)/favourites/page.tsx`                                                                                      |
 | `/forms/search`, `/forms/[slug]`                                                                                                                                                                        | `src/app/(search-app)/forms/`                                                                                                   |
 | `/medications/[slug]` (bare `/medications` redirects to `/?mode=prescribing`)                                                                                                                           | `src/app/(search-app)/medications/`                                                                                             |
@@ -209,7 +210,7 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 | `/documents/search`, `/documents/[id]` (`/documents/source` and `/documents/source/evidence` redirect to `/documents/[id]`)                                                                             | `src/app/(search-app)/documents/`                                                                                               |
 | `/factsheets`, `/factsheets/search`, `/factsheets/topics`, `/factsheets/[slug]`                                                                                                                         | `src/app/(search-app)/factsheets/`                                                                                              |
 | `/dictionary/search` (Terms, one catalogue — `/browse` redirects to it), `/dictionary/topics`, `/dictionary/topics/[slug]`, `/dictionary/[slug]`, `/dictionary/compare`                                 | `src/app/(search-app)/dictionary/`                                                                                              |
-| `/sources/search`, `/sources/topics`, `/sources/publishers`, `/sources/method`, `/sources/[sourceId]`                                                                                                   | `src/app/(search-app)/sources/`                                                                                                 |
+| `/sources/search`, `/sources/topics`, `/sources/publishers`, `/sources/currency`, `/sources/method`, `/sources/[sourceId]`                                                                              | `src/app/(search-app)/sources/`                                                                                                 |
 | `/favourites`                                                                                                                                                                                           | `src/app/(search-app)/favourites/page.tsx`                                                                                      |
 | `/forms/search`, `/forms/[slug]`                                                                                                                                                                        | `src/app/(search-app)/forms/`                                                                                                   |
 | `/medications/[slug]` (bare `/medications` redirects to `/?mode=prescribing`)                                                                                                                           | `src/app/(search-app)/medications/`                                                                                             |
@@ -250,6 +251,7 @@ Legacy On Call bookmarks `/on-call/shifts` and `/on-call/calendar` now redirect 
 | On Call          | `/api/on-call/entries`, `/api/on-call/entries/[id]`, `/api/on-call/entries/[id]/verify` (owner-scoped hospital contact/orientation entries); `/api/on-call/services`, `/api/on-call/services/[serviceId]`, `/api/on-call/services/join` (shared service handbooks, via `service-api.withServiceApi`); `/api/on-call/demo-content`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `on-call/`                                                      |
 | Teaching         | `/api/teaching` (week, logbook, unlogged count, one session); `/api/teaching/services/[serviceId]`; `/api/teaching/checkin/open` (signed in or out; sets the claim cookie), `/api/teaching/checkin/complete`; `/api/teaching/display/[token]` (no session); `/api/teaching/cpd` (Log to CPD via `cme_save_teaching_entry`); `/api/teaching/whats-on`, `/api/teaching/resources`, `/api/teaching/resources/services/[serviceId]` (What's on and Resources via `teaching_whats_on_command`); `/api/teaching/depth` (the reader's supervision, confirm list, Teach page, open feedback and weekly CPD review), `/api/teaching/services/[serviceId]/depth` (supervision, readiness, feedback and the term import via `teaching_depth_command`), `/api/teaching/cpd/review` (the weekly review's one save, a row at a time) | `teaching/`                                                     |
 | Roster           | `/api/roster/shifts`, imports/manual shifts; `/api/roster/team` and per-team requests, invitations, manager export and publication; `/api/roster/leave`, `/api/roster/alerts`, owner team confirmation. Team publishing requires the atomic follow-up database contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `roster/`                                                       |
+| Alerts           | `/api/alerts/test`: one test phone alert to the device that asked, after an ownership check.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `alerts/`, `roster/alerts/`                                     |
 | CME              | `/api/cme/entries`, `/api/cme/entries/[id]`, `/api/cme/entries/[id]/evidence`, `/api/cme/entries/[id]/evidence/[evidenceId]`, `/api/cme/routines`, `/api/cme/routines/[id]`, `/api/cme/export`, `/api/cme/year` (owner-scoped continuing-education record; demo mode branches here, never in the repository)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `cme/`                                                          |
 | Calendar         | `/api/calendar/feed` (signed in: report, make or turn off the private link); `/api/calendar/feed/[token]` (no session; the private `.ics` subscription feed)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `calendar/`                                                     |
 | Images           | `/api/images/[id]/signed-url`, `/api/images/signed-urls` (batch); `/api/documents/images/batch` re-exports the batch handler                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `images/`, `documents/images/batch/route.ts`                    |
@@ -386,6 +388,17 @@ to ring, the display formatter, desk-only and pause-dial numbers), `handbook-tit
 `clearOnCallDeviceState()`). The API is `/api/on-call/entries`, `[id]`, and `[id]/verify` — the last
 being the one-tap "still correct today" action that resets the freshness clock.
 
+**Handover and Shift pulse** (5 Oct 2026, linked from Now's footer). `/on-call/handover`
+(`src/components/on-call/handover/handover-page.tsx` over `src/lib/on-call/handover.ts`) is the
+psychiatry handover form: one record per patient (bed or initials, ward, legal, impression, story,
+referrals, requires review, plan), a table, Copy as table and Print. It is kept only through
+`src/lib/patient-label-storage.ts`, so it is wiped at shift end and at sign-out, and no work-search
+file may import it. `/on-call/pulse` (`src/components/on-call/pulse/shift-pulse-page.tsx`) draws
+calls by hour from `src/lib/on-call/call-counts.ts` (counts only, fed by the call log, a sign-out
+device store) and, while the signed fatigue rules are on, the rest before the next rostered shift.
+"Who do I call now?" (`/on-call/now`) can start the ladder: it times each call on screen and saves
+nothing.
+
 **Storage.** `on_call_entries` is owner-scoped with RLS enabled and revoked from `anon` and
 `authenticated`; reads and writes go through the service-role client at the API layer, the same
 application-layer ownership model as `clinical_registry_records`.
@@ -397,6 +410,45 @@ The separate `on_call_service_*` tables enforce service/site membership, editor
 publishing, independent clinical/legal review, revision conflicts, correction reports
 and owner-private orientation completion. They never pool legacy entries or personal
 CME/compliance. `handbook-resources` holds linked official WA starting points.
+
+**My Day.** `src/lib/my-day/` holds My Day's item shape (`model.ts`) and the pure merge rules
+(`merge.ts`: Perth severity from a due date, overdue → due soon → later ordering, de-duplication by
+id, due-time wording). It derives nothing itself: per-mode adapters in `src/components/my-day/sources/`
+map each mode's existing selectors (Admin's `today-selectors`, On Call notifications, Roster swap
+progress, CPD routines and drafts, Teaching's needs-you counts) onto items, and
+`use-my-day-items.ts` merges them for the `/my-day` page and the home card. Read-only; nothing stored.
+
+**Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
+modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
+records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto
+one `WorkItem` shape; `search.ts` ranks word matches (On Call entries through On Call's own search)
+and builds "Coming up"; `answers.ts` holds the built-in answers (next nights, what's due, CPD
+targets, next leave, presenting), worked out in the browser with no AI. The screen
+(`src/components/work-search/`) is a lazy chunk; its loaders call each area's existing routes when
+it opens and keep the records in tab memory only. It never reads the patient-label store.
+
+**Psychiatry hub history.** `src/lib/psychiatry-hub/` (`visits.ts`) is the `/psychiatry` hub's
+on-device record of psychiatry records the reader opened (not the query-driven tools) (path, page title, section,
+time; no patient detail), written by `src/components/psychiatry/psychiatry-visit-recorder.tsx` in
+the search-app layout only while "Save recent searches" is on. It feeds the hub's Continue list,
+"Your week" figures and most-opened forms, is cleared with recent searches and at account transitions,
+and expires after 90 days.
+
+**MHA clock.** `/psychiatry/mha-clock` (`src/components/psychiatry/mha-clock-page.tsx`) lists every
+Mental Health Act form the reader is holding, from `src/lib/psychiatry-hub/mha-clocks.ts`: a form
+code, the time it was made and an opaque id, under its own localStorage key
+(`PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY`), kept until the reader removes it or the account changes; never
+wiped at shift end, because a Form 3A detention can outlast a shift (owner decisions, 5 October
+2026: no shift-end wipe, no patient label). Clocks from the old patient-label store are moved across
+once. An unreadable store says "Clocks could not be read on this phone" rather than "No clocks yet".
+Limits come only from `mhaTimers` (`src/lib/on-call/mha-timers.ts`), so a countdown shows only while
+the signed switch is on (a passed limit is red); otherwise the owner-approved quote-only lines from
+the form-page Timeline. Every limit, countdown or not, carries the Act's own words and a
+section-labelled link to the Act (the hazard-analysis control). `/psychiatry/*` are information
+pages, so the clock page has no shared composer. The page also copies the running clocks for handover (form and made-at time
+only) and offers Undo after a removal. Linked from the hub's "For a shift" list on Ask and Tools.
+The hub and the clock page are drawn with the flat list parts in
+`src/components/psychiatry/psychiatry-flat.tsx`.
 
 **My shifts moved to Roster.** The doctor's own roster now lives in **`src/lib/roster/`**
 (`src/lib/roster/shifts/`, moved from the old On Call shifts folder, plus `shift-kind.ts` for the
@@ -434,6 +486,15 @@ in `src/lib/roster/` (the import folder, `calendar-link-fetch`, `calendar-links`
 - Roster shifts reach the calendar feed only when the doctor turns that on.
 - Nothing about shifts is stored offline, and Roster uses no AI. The On Call home still shows the
   shift on now or the next one, linking to `/roster`.
+
+**Open shifts mode.** Extra shifts advertised inside the doctor's Roster teams (mode id
+`open-shifts`, no search surface, like Roster). Tabs: `/open-shifts` (Browse), `/open-shifts/mine`,
+`/open-shifts/alerts` and `/open-shifts/post`; Post shows only once `setOpenShiftsIsPoster(true)`
+(`src/lib/teaching/page-visibility.ts`) confirms the reader manages a team, as Roster hides Team and
+Swaps. Sub-pages with their own header, outside the mode band: `/open-shifts/shift/[serviceId]/[openShiftId]`
+(one advert), `/open-shifts/post/new`, `/open-shifts/post/[serviceId]/[openShiftId]`, `/open-shifts/board`
+and `/open-shifts/log`. Pages in `src/components/open-shifts/`, logic in `src/lib/open-shifts/`;
+registration is pinned by `tests/open-shifts-mode-registration.test.ts`.
 
 ### Admin mode
 
@@ -567,6 +628,20 @@ The owner-scoped calendar consent read enriches `week.read` from `teaching_calen
 failed reads never display a false opt-out. Legacy On Call teaching remains available until
 an approved service transfer; new recording resources remain deferred.
 
+The term tracker and exam prep (`/teaching/term`, opened from Logbook's Term card, and
+`/teaching/exam-prep`, opened from Resources and from Term) keep the doctor's own records on the
+device only: `term-tracker.ts` holds the model, validation, date arithmetic and the made-up
+signed-out sample, and `term-tracker-store.ts` reads and writes two account-scoped localStorage
+keys that the auth provider clears at sign-out. No API, no table. Term assessments are signed in
+the CLA ePortfolio, which the page links to; EPA targets apply only once the doctor confirms them.
+
+`/teaching/assessments` (`src/components/teaching/assessments/`, logic in
+`src/lib/teaching/assessments/`) walks a prevocational doctor and their term supervisor through
+term assessments and EPAs, one route switched by `?view=` and `?as=supervisor`. It runs only on
+made-up records held in page memory: nothing is fetched, saved or sent, and signed-in readers see
+an honest "can't be kept yet" notice with an opt-in to the made-up records. The printable form
+(`assessments-pdf.tsx`) is lazy-loaded.
+
 `api.ts` and `repository.ts` wrap every database call and map its errors to plain words;
 `request.ts` parses request bodies while keeping Teaching's own plain messages, and
 `checkin-claim.ts` is the single-use claim cookie a scan leaves, scoped to `/api/teaching/checkin`
@@ -605,6 +680,13 @@ calendar pages.
 feeds them produce it from their own selectors; it carries no patient identifiers and is never
 stored on a server.
 
+**Work profile.** `src/lib/work-profile/model.ts` turns each Work area's read into the row
+`/my-day/profile` shows (`src/components/work-profile/`): a read that failed or is still loading says
+"Not checked", Admin never shows a tick (dates are self-entered, not checked with Ahpra), and the rest
+rules are quoted from the one signed fatigue source with the same gate Roster's Hours check uses. The
+doctor's self-chosen stage (`workStage`, `ranzcpStage`) lives in account preferences and is never
+copied from a shared device into a new account.
+
 **Reminder controls.** `src/lib/reminders/settings.ts` is a settings layer over the reminders that
 already exist; it never decides when anything is due. Five types (compliance dates, On Call checks,
 CPD year-end, CPD routines, teaching — in that priority order) each have "Show in the app", a snooze
@@ -615,6 +697,15 @@ cap, and `ics.ts` writes a VALARM only when one is set. The calendar link reads 
 the downloads read the preferences hook. The CME dashboard and On Call notifications filter on
 `showsReminderInApp` and offer "Snooze for a week"; Settings → Notifications holds the Reminders card
 (`settings-reminders.tsx`). The defaults show everything in the app and add no alarms.
+
+**Alerts page.** `/my-day/alerts` (`src/components/alerts/`) is the one place for every alert:
+by-area rows whose subtitles `src/lib/alerts/areas.ts` builds from the stored reminder and Roster
+settings, quiet hours, the calendar daily limit, and this device's phone alerts
+(`src/lib/alerts/phone-state.ts` orders the states: Home Screen step, blocked, off, on). Phone alerts
+reuse Roster's web-push subscription (`web_push_subscriptions`); `src/app/api/alerts/test` sends one
+`{t:"test"}` push to the asking device, and `public/sw.js` owns its words. Sign-out removes this
+device's subscription (`src/lib/alerts/device-push.ts`), and a device marked shared
+(`src/lib/alerts/shared-device.ts`, browser-only) keeps none. Renewal dates always show in My Day.
 
 ### First Nations mode
 

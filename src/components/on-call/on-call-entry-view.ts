@@ -5,8 +5,8 @@ import {
   onCallViewStorageSection as libOnCallViewStorageSection,
 } from "@/lib/on-call/view";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
-import { ON_CALL_VIEW_HREFS } from "@/components/on-call/on-call-section-identity";
-import { ADMIN_PAGE_HREFS } from "@/components/admin/admin-page-sections";
+import { ON_CALL_VIEW_HREFS } from "@/lib/on-call/view-hrefs";
+import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { adminPlacementForEntry, isAdminWorkforceExplainer } from "@/lib/admin/placement";
 
 export type { OnCallPageView };

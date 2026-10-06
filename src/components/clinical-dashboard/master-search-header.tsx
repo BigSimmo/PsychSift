@@ -69,9 +69,11 @@ import {
 import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/universal-search-command-surface";
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
+import { WorkSearchButton } from "@/components/work-search/work-search-button";
 import {
   appModeDefinition,
   appModeDefinitions,
+  appModeHasWorkSearch,
   appModeSelectionHref,
   appModeSearchConfig,
   factsheetsTopicsHref,
@@ -107,7 +109,12 @@ import {
   visibleModeSecondaryNavigationEntries,
 } from "@/lib/mode-secondary-navigation";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
-import { modePageVisible, useTeachingRoles } from "@/lib/teaching/page-visibility";
+import {
+  modePageVisible,
+  useOpenShiftsIsPoster,
+  useRosterHasEnabledTeam,
+  useTeachingRoles,
+} from "@/lib/teaching/page-visibility";
 import { orderByPhoneModeGroups, phoneModeGroups } from "@/lib/phone-mode-groups";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import type { CommandSurfacePlacement } from "@/lib/search-command-surface";
@@ -583,14 +590,16 @@ export function MasterSearchHeader({
    * and a composer the pill must keep pointing at.
    */
   const teachingRoles = useTeachingRoles();
+  const rosterHasTeam = useRosterHasEnabledTeam();
+  const openShiftsPoster = useOpenShiftsIsPoster();
   const modeOwnPages = useMemo(
     () =>
       selectedAppMode.search.resultsSurface === "none"
         ? modeSecondaryNavigationEntries(selectedAppMode.id).filter((entry) =>
-            modePageVisible(selectedAppMode.id, entry.id, teachingRoles),
+            modePageVisible(selectedAppMode.id, entry.id, teachingRoles, rosterHasTeam, openShiftsPoster),
           )
         : [],
-    [selectedAppMode, teachingRoles],
+    [selectedAppMode, teachingRoles, rosterHasTeam, openShiftsPoster],
   );
   const modeOwnPagesAvailable = modeOwnPages.length > 0;
   /**
@@ -2915,6 +2924,13 @@ export function MasterSearchHeader({
               <span className="hidden whitespace-nowrap xl:inline">New chat</span>
             </button>
           ) : null}
+          {/* "Search my work" on the staff work modes (Josh, 2026-10-04: top right on
+              every staff page). Declared on the mode as `workSearch`, never a mode-id
+              branch here. It is the one deliberate second control in this region: on
+              On Call it sits right of the page menu in the slot, and the staff modes
+              have no new-chat button to stand beside. The icon is all the header
+              loads; the search itself is a lazy chunk fetched on tap. */}
+          {appModeHasWorkSearch(selectedAppMode.id) ? <WorkSearchButton modeId={selectedAppMode.id} /> : null}
         </div>
       </div>
 

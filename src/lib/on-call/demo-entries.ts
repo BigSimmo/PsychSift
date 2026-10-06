@@ -538,7 +538,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(21),
     section: "playbook",
     slug: "demo-escalation-second",
-    title: "Demo escalation — system unavailable",
+    title: "Systems unavailable",
     subtitle: null,
     body: null,
     details: {
@@ -566,7 +566,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(22),
     section: "playbook",
     slug: "demo-escalation-registrar-unreachable",
-    title: "Demo escalation — the registrar is not answering",
+    title: "Registrar not answering",
     subtitle: "Do not sit on this one",
     body: null,
     details: {
@@ -603,7 +603,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(23),
     section: "playbook",
     slug: "demo-escalation-no-bed",
-    title: "Demo escalation — no bed available after hours",
+    title: "No bed after hours",
     subtitle: null,
     body: null,
     details: {
@@ -630,7 +630,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(24),
     section: "playbook",
     slug: "demo-escalation-security-incident",
-    title: "Demo escalation — a safety incident on the ward",
+    title: "Safety incident on the ward",
     subtitle: "Security first, then the people who have to know",
     body: null,
     details: {
@@ -653,7 +653,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(25),
     section: "playbook",
     slug: "demo-escalation-complaint-overnight",
-    title: "Demo escalation — a complaint raised overnight",
+    title: "Complaint overnight",
     subtitle: "A ladder with no phone numbers on it, which is allowed",
     body: null,
     // Deliberately numberless: an escalation step is a person and a moment,
@@ -1790,11 +1790,12 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
   // of the flag (the route never reaches the shared-read predicate), so the
   // page still fills for a visitor with no account.
   //
-  // Three rows carry a `requirementId`, linking them to their item on Admin's
+  // Seven rows carry a `requirementId`, linking them to their item on Admin's
   // statewide Requirements catalogue (`src/lib/admin/requirements.ts`), so the
-  // demo Renewals checklist shows recorded rows under "Soonest first" rather
-  // than twenty "Not recorded yet" slots. The others match no catalogue item
-  // and show on Renewals' Personal tab.
+  // demo Renewals checklist fills the way the Admin mock-up does (a passed
+  // date, items to start renewing, recorded rows) rather than showing twenty
+  // "Not recorded yet" slots. The fire and evacuation module matches no
+  // catalogue item and shows on Renewals' Personal tab.
   //
   // Because the whole page is private by construction, the page states it once
   // in `ComplianceScopeNote` instead of hanging a "Private" pill off all eight
@@ -1860,6 +1861,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     details: {
       category: "Credentialing",
       kind: "compliance",
+      requirementId: "credentialing-and-scope",
       consequence: "stops-part",
       expiresOn: demoDateKey(240),
       leadTimeDays: 90,
@@ -1909,6 +1911,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     details: {
       category: "Training",
       kind: "compliance",
+      requirementId: "resuscitation-competence",
       consequence: "chased",
       expiresOn: demoDateKey(-12),
       leadTimeDays: 14,
@@ -1955,6 +1958,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     details: {
       category: "CPD",
       kind: "compliance",
+      requirementId: "cpd-home-and-hours",
       consequence: "chased",
       expiresOn: demoDateKey(95),
       leadTimeDays: 30,
@@ -1981,6 +1985,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     details: {
       category: "Clearances",
       kind: "compliance",
+      requirementId: "criminal-record-screening",
       expiresOn: demoDateKey(400),
       leadTimeDays: 150,
       issuingBody: "Demo screening provider",

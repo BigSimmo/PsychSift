@@ -31,7 +31,7 @@ function helpItem(title: string, phone: string | null): AdminHelpItem {
   };
 }
 
-const security = helpItem("Security escort", "0000 000 003");
+const security = helpItem("Security escort", "9000 0003");
 const parking = helpItem("Parking permit", null);
 
 afterEach(() => {

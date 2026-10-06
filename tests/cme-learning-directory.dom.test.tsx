@@ -44,8 +44,9 @@ describe("CME learning directory page", () => {
     const cards = within(main).getAllByTestId("cme-learning-item");
     expect(cards.map((card) => within(card).getByRole("heading").textContent)).toEqual(["Soon event", "Later course"]);
     expect(screen.queryByText("Past event")).toBeNull();
-    expect(within(cards[1]).getByText("2 Nov to 3 November 2026")).toBeInTheDocument();
-    expect(main).toHaveTextContent("List last checked on 20 September 2026");
+    expect(cards[1]).toHaveTextContent("Mon 2 Nov to Tue 3 Nov · Perth · Free for members");
+    expect(cards[0]).toHaveTextContent("Thu 1 Oct, all day · Online · Free for members");
+    expect(main).toHaveTextContent("Western Australia. Checked Sunday 20 September.");
     expect(main).toHaveTextContent(/not an endorsement/i);
     expect(main).toHaveTextContent(/confirm .* with the organiser/i);
     expect(screen.queryByTestId("cme-learning-stale")).toBeNull();
@@ -64,10 +65,11 @@ describe("CME learning directory page", () => {
     const add = within(card).getByRole("button", { name: "Add to calendar" });
     expect(add.className).toContain("min-h-12");
     expect(add.className).toContain("min-w-12");
-    expect(within(card).queryByRole("link", { name: "Log as CPD" })).toBeNull();
+    const upcomingLog = within(card).getByRole("link", { name: "Log as CPD" });
+    expect(upcomingLog.getAttribute("href")).toContain("/cme/new?");
   });
 
-  it("offers Log as CPD only in Past, carrying the public event title and source", () => {
+  it("offers Log as CPD from Past, carrying the public event title and source", () => {
     render(
       <CmeLearningPage
         items={[item({ title: "A & B", startsOn: "2026-09-01" })]}
@@ -129,42 +131,45 @@ describe("CME learning directory page", () => {
         homeSource="au-ranzcp-2026-v1; https://example.org"
       />,
     );
-    const specialty = screen.getByRole("radiogroup", { name: "Specialty" });
-    expect(within(specialty).getByRole("radio", { name: "Psychiatry" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getAllByTestId("cme-learning-item")).toHaveLength(2);
     expect(screen.getByText("Every specialty")).toBeInTheDocument();
-    // "All" is the first option, always on screen: one tap back to every specialty.
-    await user.click(within(specialty).getByRole("radio", { name: "All" }));
-    expect(within(specialty).getByRole("radio", { name: "All" })).toHaveAttribute("aria-checked", "true");
+    // One quiet link says how many the preset hides and brings them back in one tap.
+    const widen = screen.getByTestId("cme-learning-all-specialties");
+    expect(widen).toHaveTextContent("Show 1 from other specialties");
+    await user.click(widen);
     expect(screen.getAllByTestId("cme-learning-item")).toHaveLength(3);
+    await user.click(screen.getByTestId("cme-learning-psychiatry-only"));
+    expect(screen.getAllByTestId("cme-learning-item")).toHaveLength(2);
   });
 
-  it("filters format and groups visible events by month", async () => {
-    const user = userEvent.setup();
+  it("writes 24-hour times and every date with its weekday, and offers no specialty link when nothing is hidden", () => {
     render(
       <CmeLearningPage
         items={[
-          item({ id: "october", title: "October online", mode: "online", startsOn: "2026-10-01" }),
-          item({ id: "november", title: "November in person", mode: "in-person", startsOn: "2026-11-01" }),
+          item({ id: "timed", title: "Timed update", startsOn: "2026-10-24", startsAt: "08:30", endsAt: "16:30" }),
+          item({ id: "evening", title: "Evening talk", startsOn: "2026-10-28", startsAt: "18:00" }),
+          item({ id: "next-year", title: "Next year symposium", startsOn: "2027-02-13", costNote: null }),
         ]}
         lastCheckedOn="2026-09-26"
         nowIso={NOW_ISO}
       />,
     );
-    expect(screen.getByRole("heading", { name: "October 2026" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "November 2026" })).toBeInTheDocument();
-    await user.click(within(screen.getByRole("radiogroup", { name: "Format" })).getByRole("radio", { name: "Online" }));
-    expect(screen.getAllByTestId("cme-learning-item")).toHaveLength(1);
-    expect(screen.queryByText("November in person")).toBeNull();
+    const [timed, evening, nextYear] = screen.getAllByTestId("cme-learning-item");
+    expect(timed).toHaveTextContent("Sat 24 Oct, 08:30 to 16:30 · Perth · Free for members");
+    expect(evening).toHaveTextContent("Wed 28 Oct, from 18:00");
+    expect(nextYear).toHaveTextContent("Sat 13 Feb 2027, all day · Perth");
+    expect(screen.queryByTestId("cme-learning-all-specialties")).toBeNull();
   });
 
   it("shows hospital teaching only when a destination is supplied", () => {
     const { rerender } = render(<CmeLearningPage items={[]} lastCheckedOn="2026-09-26" nowIso={NOW_ISO} />);
-    expect(screen.queryByRole("link", { name: "Your hospital's teaching" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Your hospital's teaching/ })).toBeNull();
     rerender(
       <CmeLearningPage items={[]} lastCheckedOn="2026-09-26" nowIso={NOW_ISO} hospitalTeachingHref="/teaching" />,
     );
-    expect(screen.getByRole("link", { name: "Your hospital's teaching" })).toHaveAttribute("href", "/teaching");
+    const teaching = screen.getByRole("link", { name: /Your hospital's teaching/ });
+    expect(teaching).toHaveAttribute("href", "/teaching");
+    expect(teaching).toHaveTextContent("In Teaching");
   });
 
   it("does not warn at exactly 45 days", () => {
@@ -185,16 +190,17 @@ describe("CME learning directory page", () => {
       />,
     );
     const section = screen.getByTestId("cme-learning-unconfirmed");
-    expect(within(section).getByRole("heading", { name: "Dates to confirm" })).toBeInTheDocument();
-    expect(section).toHaveTextContent(
-      "We couldn't confirm the date for these. Check the organiser's page before planning around them.",
-    );
+    expect(within(section).getByRole("heading", { name: "Date not confirmed · 2" })).toBeInTheDocument();
+    expect(section).toHaveTextContent("No date yet. Check the organiser's page before you plan.");
+    // Details only: no Log as CPD or calendar for a date nobody has confirmed.
+    expect(within(section).queryByRole("link", { name: "Log as CPD" })).toBeNull();
+    expect(within(section).queryByRole("button", { name: "Add to calendar" })).toBeNull();
     expect(
       within(section)
         .getAllByTestId("cme-learning-item")
         .map((card) => within(card).getByRole("heading").textContent),
     ).toEqual(["Old guess", "Undated event"]);
-    expect(within(section).getByText("Date not confirmed")).toBeInTheDocument();
+    expect(within(section).getAllByText("Date not confirmed")).toHaveLength(2);
     expect(screen.getAllByTestId("cme-learning-item")).toHaveLength(3);
   });
 
@@ -208,5 +214,32 @@ describe("CME learning directory page", () => {
     );
     expect(screen.getByTestId("cme-learning-empty")).toBeInTheDocument();
     expect(screen.getByTestId("cme-learning-unconfirmed")).toBeInTheDocument();
+  });
+
+  it("chips the next two, then splits this year from next year with the year shown", () => {
+    render(
+      <CmeLearningPage
+        items={[
+          item({ id: "a", title: "A", startsOn: "2026-09-27" }),
+          item({ id: "b", title: "B", startsOn: "2026-10-16" }),
+          item({ id: "c", title: "C", startsOn: "2026-12-01" }),
+          item({ id: "d", title: "D", startsOn: "2027-02-03" }),
+          item({ id: "e", title: "E", kind: "recorded", startsOn: null, endsOn: null }),
+        ]}
+        lastCheckedOn="2026-09-26"
+        nowIso={NOW_ISO}
+      />,
+    );
+    const chips = screen.getAllByTestId("cme-learning-countdown");
+    expect(chips.map((chip) => chip.textContent)).toEqual(["Tomorrow", "In 20 days"]);
+    const later = screen.getByTestId("cme-learning-later-this-year");
+    expect(later).toHaveTextContent("Later this year · 1");
+    expect(within(later).queryByTestId("cme-learning-countdown")).toBeNull();
+    const nextYear = screen.getByTestId("cme-learning-next-year");
+    expect(nextYear).toHaveTextContent("Next year and any time · 2");
+    expect(nextYear).toHaveTextContent("Wed 3 Feb 2027");
+    expect(nextYear).toHaveTextContent("Online · watch any time");
+    expect(screen.getByTestId("cme-learning-next")).toHaveTextContent("Sun 27 Sep, all day");
+    expect(within(nextYear).getAllByRole("link", { name: "Log as CPD" })).toHaveLength(2);
   });
 });

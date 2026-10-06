@@ -33,6 +33,14 @@
  * the required gate uses their majority so neither one noisy spike nor one lucky
  * recheck decides the result.
  *
+ * Build reuse: when LIGHTHOUSE_REUSE_BUILD_ROOT_ID names a `.next-playwright/<id>`
+ * build root that already holds a finished build (CI downloads the same run's shared
+ * `playwright-next-build-<run id>` artifact there, built from the same checkout), this
+ * runner serves that build instead of compiling its own copy. Both are the isolated
+ * offline/demo `next build --webpack` with the same environment overrides
+ * (tests/check-lighthouse-budget.test.ts pins the parity). A missing build fails
+ * closed rather than silently rebuilding, and a reused root is never deleted here.
+ *
  * Flags: --dry-run (print the plan and exit), --update (refresh the baseline),
  *        --keep (leave reports in place), --dir <path>.
  */
@@ -89,7 +97,12 @@ const reportDirectory = path.resolve(projectRoot, dirIndex >= 0 ? (argv[dirIndex
 // widened for this runner: the prefix means "isolated ephemeral build output", which
 // is exactly what this is. The run id carries `lighthouse-` so a stray directory is
 // still attributable to the runner that made it, and `[a-z0-9-]+` accepts it.
-const runId = `lighthouse-${process.pid}-${Date.now()}`;
+const reuseBuildRootId = process.env.LIGHTHOUSE_REUSE_BUILD_ROOT_ID?.trim() || null;
+if (reuseBuildRootId && !/^[A-Za-z0-9-]+$/.test(reuseBuildRootId)) {
+  console.error("LIGHTHOUSE_REUSE_BUILD_ROOT_ID must contain only letters, numbers, and hyphens.");
+  process.exit(1);
+}
+const runId = reuseBuildRootId ?? `lighthouse-${process.pid}-${Date.now()}`;
 const relativeRunRoot = `.next-playwright/${runId}`;
 const absoluteRunRoot = path.join(projectRoot, relativeRunRoot);
 const relativeDistDir = `${relativeRunRoot}/dist`;
@@ -317,10 +330,14 @@ function cleanup() {
       /* already gone */
     }
   }
-  try {
-    removePathSync(absoluteRunRoot, { recursive: true });
-  } catch {
-    /* best effort */
+  // A reused build root belongs to whoever produced it (the CI artifact download, or
+  // a developer's kept Playwright build); only a root this runner created is removed.
+  if (!reuseBuildRootId) {
+    try {
+      removePathSync(absoluteRunRoot, { recursive: true });
+    } catch {
+      /* best effort */
+    }
   }
   lock?.release();
 }
@@ -374,6 +391,7 @@ if (dryRun) {
   console.log(`  reports       ${path.relative(projectRoot, reportDirectory)}/<strategy>-<slug>.json`);
   console.log(`  enforce       ${Boolean(budget.enforce)}`);
   console.log(`  baseline      ${budget.baseline ? `${Object.keys(budget.baseline).length} run(s)` : "none recorded"}`);
+  console.log(`  build         ${reuseBuildRootId ? `reuse ${relativeDistDir}` : `isolated ${relativeDistDir}`}`);
   for (const strategy of strategies) {
     for (const route of routes)
       console.log(`  measure       ${strategy} ${route} -> ${strategy}-${slugFor(route)}.json`);
@@ -401,33 +419,55 @@ try {
   // treat the evidence as complete — or bake it into a refreshed baseline.
   removePathSync(reportDirectory, { recursive: true });
   mkdirSync(reportDirectory, { recursive: true });
+  if (reuseBuildRootId) {
+    // Fail closed: a requested reuse that finds no finished build must not quietly
+    // measure something else or spend the build time it was meant to save.
+    for (const required of [
+      path.join(absoluteRunRoot, "dist", "BUILD_ID"),
+      path.join(absoluteRunRoot, "tsconfig.json"),
+    ]) {
+      if (!existsSync(required)) {
+        throw new Error(
+          `LIGHTHOUSE_REUSE_BUILD_ROOT_ID=${reuseBuildRootId} but ${path.relative(projectRoot, required)} is missing; ` +
+            "download the shared Playwright Next build first or unset it to build here.",
+        );
+      }
+    }
+  }
   // The isolated build needs its own tsconfig for the same reason the Playwright
   // runner writes one: `@/*` must still resolve from the repository root while the
   // build output lives under the run root.
-  writeFileSync(
-    path.join(absoluteRunRoot, "tsconfig.json"),
-    `${JSON.stringify(
-      {
-        // The root config explicitly includes `.next/types`. An isolated build
-        // must not inherit stale route validators from an earlier root build;
-        // Next still validates the generated types in this run's dist tree.
-        extends: "../../tsconfig.typecheck.json",
-        compilerOptions: {
-          // TypeScript 6 deprecates baseUrl (TS5101). Next 16.3+ typechecks this
-          // isolated config during `next build`, so silence until paths migrate.
-          ignoreDeprecations: "6.0",
-          baseUrl: "../..",
-          paths: { "@/*": ["src/*"] },
+  if (!reuseBuildRootId)
+    writeFileSync(
+      path.join(absoluteRunRoot, "tsconfig.json"),
+      `${JSON.stringify(
+        {
+          // The root config explicitly includes `.next/types`. An isolated build
+          // must not inherit stale route validators from an earlier root build;
+          // Next still validates the generated types in this run's dist tree.
+          extends: "../../tsconfig.typecheck.json",
+          compilerOptions: {
+            // TypeScript 6 deprecates baseUrl (TS5101). Next 16.3+ typechecks this
+            // isolated config during `next build`, so silence until paths migrate.
+            ignoreDeprecations: "6.0",
+            baseUrl: "../..",
+            paths: { "@/*": ["src/*"] },
+          },
         },
-      },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
 
   const offlineEnv = offlineTestEnvironment(lock.environment ?? process.env, {
     PORT: String(port),
+    // Same local-http flag the Playwright runner sets (src/lib/security-headers.ts
+    // drops HSTS/upgrade-insecure-requests on http://localhost). It is baked into the
+    // static headers at build time, so setting it here keeps this runner's own build
+    // identical to the shared Playwright build it reuses in CI, and a baseline refresh
+    // (which builds here) comparable with the gate (which reuses that build).
+    PLAYWRIGHT_BASE_URL: baseUrl,
     NEXT_DIST_DIR: relativeDistDir,
     NEXT_TSCONFIG_PATH: relativeTsConfigPath,
     NODE_ENV: "production",
@@ -439,15 +479,19 @@ try {
     platform: process.platform,
     ci: process.env.CI !== undefined,
   });
-  console.log(`Building isolated production app for Lighthouse (${relativeRunRoot})`);
-  const build = spawnSync(process.execPath, ["--max-old-space-size=8192", nextBin, "build", "--webpack"], {
-    cwd: projectRoot,
-    env: offlineEnv,
-    stdio: "inherit",
-    timeout: buildTimeoutMs,
-  });
-  if (childProcessExitCode(build) !== 0) {
-    throw new Error(`Lighthouse production build failed (${childProcessFailureSummary(build)}).`);
+  if (reuseBuildRootId) {
+    console.log(`Reusing the shared production build for Lighthouse (${relativeRunRoot})`);
+  } else {
+    console.log(`Building isolated production app for Lighthouse (${relativeRunRoot})`);
+    const build = spawnSync(process.execPath, ["--max-old-space-size=8192", nextBin, "build", "--webpack"], {
+      cwd: projectRoot,
+      env: offlineEnv,
+      stdio: "inherit",
+      timeout: buildTimeoutMs,
+    });
+    if (childProcessExitCode(build) !== 0) {
+      throw new Error(`Lighthouse production build failed (${childProcessFailureSummary(build)}).`);
+    }
   }
 
   console.log(`Starting isolated production server at ${baseUrl}`);

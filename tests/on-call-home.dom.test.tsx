@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
@@ -269,16 +270,21 @@ describe("On Call home layout", () => {
     expect(usualCallHref("bed-manager")).toMatch(/90000011$/);
   });
 
-  it("dials the after-hours number at 22:00, which is when this page is read", () => {
+  it("dials the after-hours number at 22:00, which is when this page is read", async () => {
     storeState.entries = [dualLineContact()];
 
     // The same Wednesday at 22:00 local.
     render(<OnCallHome now={new Date(2026, 8, 16, 22, 0, 0)} />);
 
     expect(usualCallHref("bed-manager")).toMatch(/90000012$/);
-    // Named for what it is, so the screen never shows a number under the wrong
-    // label.
-    expect(screen.getByTestId("on-call-now-usual-bed-manager")).toHaveTextContent(/after hours/i);
+    // The round tile prints no number, so it can never show one under the
+    // wrong label: the call link names the digits it actually rings.
+    const tile = screen.getByTestId("on-call-now-usual-bed-manager");
+    expect(within(tile).getByRole("link")).toHaveAccessibleName("Call Bed manager, 9 0 0 0, 0 0 1 2");
+    expect(tile).not.toHaveTextContent(/9000 0011/);
+    // Its dialling details show the same after-hours number.
+    await userEvent.click(within(tile).getByRole("button", { name: /Dialling details/ }));
+    expect(screen.getByTestId("on-call-now-usual-bed-manager-sheet-number")).toHaveTextContent("9000 0012");
   });
 
   it("rolls a weekly session forward on the Teaching page rather than going blank once its date passes", () => {
@@ -337,7 +343,9 @@ describe("On Call home layout", () => {
       }
 
       expect(usualCallHref("bed-manager")).toMatch(/90000012$/);
-      expect(screen.getByTestId("on-call-now-usual-bed-manager")).toHaveTextContent(/after hours/i);
+      const tile = screen.getByTestId("on-call-now-usual-bed-manager");
+      expect(within(tile).getByRole("link")).toHaveAccessibleName("Call Bed manager, 9 0 0 0, 0 0 1 2");
+      expect(tile).not.toHaveTextContent(/9000 0011/);
     } finally {
       vi.useRealTimers();
     }
@@ -431,21 +439,17 @@ describe("the example-content module", () => {
     expect(screen.queryByText("Example content")).toBeNull();
   });
 
-  it("offers a signed-out reader the on-device preview, because that is most readers", () => {
-    // Changed deliberately on 2026-09-22 (owner request). This module used to
-    // render nothing at all when signed out, which meant the overwhelmingly
-    // common case — someone opening the site without an account — saw an empty
-    // hub and no way to see what a filled one looks like. The preview needs no
-    // account and writes nothing to the server, so there is no reason to
-    // withhold it.
+  it("offers a signed-out reader no example-content control, because the page shows the sample itself", () => {
+    // Changed 2026-10-04. Signed out, the hook now supplies an invented sample
+    // from memory, so the "Preview with example content" control (which wrote
+    // the corpus into this device's cache) is gone, and the account-writing
+    // controls would only 401.
     storeState.entries = [];
     storeState.signedOut = true;
 
     render(<OnCallHome />);
 
-    expect(screen.getByTestId("on-call-home-example-content")).toBeInTheDocument();
-    expect(screen.getByTestId("on-call-demo-preview-start")).toBeVisible();
-    // And it must not offer the account-writing controls, which would 401.
+    expect(screen.queryByTestId("on-call-demo-preview-start")).toBeNull();
     expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
     expect(screen.queryByTestId("on-call-demo-content-remove")).toBeNull();
   });
@@ -580,7 +584,7 @@ describe("what the home raises on its own", () => {
 });
 
 describe("the example-content module when the entries request fails", () => {
-  it("still offers the preview, because the browser knows there is no session", () => {
+  it("still offers no control when the browser knows there is no session", () => {
     // The defect this exists for, found while Josh could not see the block on
     // the live site. `useOnCallEntries().signedOut` starts false and is only
     // ever set by a SUCCESSFUL response, so a request that fails — no signal, a
@@ -599,8 +603,8 @@ describe("the example-content module when the entries request fails", () => {
 
     render(<OnCallHome />);
 
-    expect(screen.getByTestId("on-call-home-example-content")).toBeInTheDocument();
-    expect(screen.getByTestId("on-call-demo-preview-start")).toBeVisible();
+    expect(screen.queryByTestId("on-call-demo-preview-start")).toBeNull();
+    expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
   });
 
   it("treats an expired session the same way", () => {
@@ -610,7 +614,7 @@ describe("the example-content module when the entries request fails", () => {
 
     render(<OnCallHome />);
 
-    expect(screen.getByTestId("on-call-demo-preview-start")).toBeVisible();
+    expect(screen.queryByTestId("on-call-demo-preview-start")).toBeNull();
   });
 
   it("does NOT guess while the session is still being resolved", () => {

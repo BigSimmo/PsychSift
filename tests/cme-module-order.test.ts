@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   cmeDashboardModuleIds,
   defaultCmeModuleOrder,
+  canMoveModule,
   moveModuleId,
   readCmeModuleOrder,
   toggleModuleId,
@@ -30,13 +31,25 @@ describe("CME dashboard module order", () => {
 
   it("moves a module up or down by one position", () => {
     const order = [...defaultCmeModuleOrder];
-    const originalIndex = order.indexOf("audited-today");
+    const originalIndex = order.indexOf("year-dates");
 
-    const movedUp = moveModuleId(order, "audited-today", -1);
-    expect(movedUp.indexOf("audited-today")).toBe(originalIndex - 1);
+    const movedUp = moveModuleId(order, "year-dates", -1);
+    expect(movedUp.indexOf("year-dates")).toBe(originalIndex - 1);
 
-    const movedDown = moveModuleId(order, "audited-today", 1);
-    expect(movedDown.indexOf("audited-today")).toBe(originalIndex + 1);
+    const movedDown = moveModuleId(order, "year-dates", 1);
+    expect(movedDown.indexOf("year-dates")).toBe(originalIndex + 1);
+  });
+
+  it("only moves a module past another in the same Today section", () => {
+    const order = [...defaultCmeModuleOrder];
+    // "What's left" (Needs you) and "Routines due" (Coming up) are in different sections.
+    expect(moveModuleId(order, "requirements", 1)).toEqual(order);
+    expect(canMoveModule(order, "requirements", 1)).toBe(false);
+    expect(canMoveModule(order, "routines-due", -1)).toBe(false);
+    // A same-section module further along is reachable even with another section's module between.
+    const interleaved = ["audited-today", "routines-due", "year-dates"] as const;
+    expect(moveModuleId(interleaved, "audited-today", 1)).toEqual(["year-dates", "routines-due", "audited-today"]);
+    expect(canMoveModule(interleaved, "routines-due", 1)).toBe(false);
   });
 
   it("refuses to move a module past either end of the order", () => {

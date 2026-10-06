@@ -1,14 +1,14 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { OnCallHospitalPhoneSwitch } from "@/components/on-call/call/hospital-phone-switch";
-import { OnCallActionButton } from "@/components/on-call/kit/action-button";
+import { ModeActionButton } from "@/components/mode-kit/action-button";
 import { OnCallDialRow } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
-import { onCallInsetHairline, onCallPressable, onCallRowHeight } from "@/components/on-call/kit/recipes";
-import { onCallNameText, onCallSecondaryText } from "@/components/on-call/kit/type";
+import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
+import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { OnCallUpdatedLine } from "@/components/on-call/kit/updated-line";
 import { focusRing } from "@/components/card-recipes";
 import { Sheet } from "@/components/ui/sheet";
@@ -49,6 +49,9 @@ export function handbookFirstLine(body: string): string | null {
  * The sheet holds the body in the hospital's own words (`whitespace-pre-line`,
  * never rewritten), the "Also known as" names, the number again, and the
  * Updated line with sources. Titles wrap and are never truncated (#8RWKA0).
+ *
+ * `listOnly` keeps a numbered item as a chevron row too (Refer), so its
+ * `meta` line can sit under the text; the call link is then in the sheet.
  */
 export function OnCallHandbookItemRow({
   item,
@@ -57,9 +60,21 @@ export function OnCallHandbookItemRow({
   hospitalPhone,
   detailTestId,
   testId,
+  leading,
+  meta,
+  listOnly = false,
 }: {
   readonly item: HandbookItem;
   readonly secondary: string | null;
+  /** A muted glyph or badge before the text (mock-up v10). */
+  readonly leading?: ReactNode;
+  /** A third line under the secondary one, such as Refer's "Updated" line. */
+  readonly meta?: ReactNode;
+  /**
+   * Draw a chevron row even when the item has a number: the number and its
+   * call link then live in the detail sheet (Refer, mock-up v10 s-3).
+   */
+  readonly listOnly?: boolean;
   readonly hospitalName: string | null;
   readonly hospitalPhone: boolean;
   readonly detailTestId: string;
@@ -79,7 +94,7 @@ export function OnCallHandbookItemRow({
           <p className="whitespace-pre-line break-words text-base-minus text-[color:var(--text)]">{body}</p>
         ) : null}
         {item.aliases.length > 0 ? (
-          <p className={cn(onCallSecondaryText, "break-words")}>Also known as {item.aliases.join(", ")}</p>
+          <p className={cn(modeSecondaryText, "break-words")}>Also known as {item.aliases.join(", ")}</p>
         ) : null}
         {hasNumber ? (
           <OnCallGroupedList>
@@ -109,7 +124,7 @@ export function OnCallHandbookItemRow({
     </Sheet>
   );
 
-  if (hasNumber) {
+  if (hasNumber && !listOnly) {
     return (
       <>
         <OnCallDialRow
@@ -125,8 +140,9 @@ export function OnCallHandbookItemRow({
           lastConfirmedAt={item.lastConfirmedAt}
           sources={item.sources}
           hospitalName={hospitalName}
+          leading={leading}
           trailingAction={
-            <OnCallActionButton
+            <ModeActionButton
               icon={ChevronRight}
               label={`Details: ${label}`}
               onClick={() => setOpen(true)}
@@ -141,23 +157,29 @@ export function OnCallHandbookItemRow({
   }
 
   return (
-    <li className={cn(onCallInsetHairline, "min-w-0")} data-testid={testId}>
+    <li className={cn(modeInsetHairline, "min-w-0")} data-testid={testId}>
       <button
         type="button"
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
         className={cn(
-          secondary ? onCallRowHeight.double : onCallRowHeight.single,
-          onCallPressable,
+          secondary || meta ? modeRowHeight.double : modeRowHeight.single,
+          modePressable,
           focusRing,
           "flex w-full min-w-0 items-center gap-3 pl-3 pr-2 text-left",
         )}
       >
-        <span className="grid min-w-0 flex-1 gap-0.5">
-          <span className={cn(onCallNameText, "break-words text-base-minus text-[color:var(--text-heading)]")}>
+        {leading ? (
+          <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
+            {leading}
+          </span>
+        ) : null}
+        <span className="grid min-w-0 flex-1 gap-0.5 py-1.5">
+          <span className={cn(modeNameText, "break-words text-base-minus text-[color:var(--text-heading)]")}>
             {label}
           </span>
-          {secondary ? <span className={cn(onCallSecondaryText, "break-words")}>{secondary}</span> : null}
+          {secondary ? <span className={cn(modeSecondaryText, "break-words")}>{secondary}</span> : null}
+          {meta}
         </span>
         <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
       </button>

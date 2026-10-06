@@ -1,4 +1,4 @@
-import { ADMIN_PAGE_HREFS } from "@/components/admin/admin-page-sections";
+import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import type { RenewalsShowFilter } from "@/lib/admin/renewals-filters";
 
 /**

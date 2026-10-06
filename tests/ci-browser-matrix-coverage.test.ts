@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { sourceFrom } from "./helpers/source-contract";
 import { projectsForPrUiShard } from "../scripts/playwright-pr-shards.mjs";
+import { RELEASE_SHARDED_PROJECTS } from "../scripts/playwright-release-shards.mjs";
 
 /*
  * `release-browser-matrix` partitions Firefox and each WebKit project independently.
@@ -164,7 +165,15 @@ describe("release-browser-matrix engine coverage", () => {
     expect(releaseJob).toContain('webkit)   PROJECTS="--project=$BROWSER_PROJECT"');
     expect(releaseJob).toContain("SHARD: ${{ matrix.shard }}");
     expect(releaseJob).toContain("SHARD_TOTAL: ${{ matrix.total }}");
-    expect(releaseJob).toContain('npm run test:e2e -- $PROJECTS --shard="$SHARD/$SHARD_TOTAL"');
+    // Split legs take a duration-balanced file group (tests/playwright-release-shards.test.ts
+    // proves every spec lands on exactly one leg) and still run through scripts/run-playwright.mjs.
+    expect(releaseJob).toContain('node scripts/playwright-release-shards.mjs $PROJECTS --shard="$SHARD/$SHARD_TOTAL"');
+    expect(releaseJob).not.toContain("npm run test:e2e -- $PROJECTS --shard=");
+    for (const job of jobs.filter((leg) => leg.total > 1)) {
+      expect(RELEASE_SHARDED_PROJECTS, `${job.project} is split but has no measured shard timings`).toContain(
+        job.project,
+      );
+    }
     expect(releaseJob).toContain("--global-timeout=1800000");
   });
 

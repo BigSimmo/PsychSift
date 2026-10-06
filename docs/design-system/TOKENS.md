@@ -170,6 +170,7 @@ they will diverge when the legacy notches retire. **Do not mix `text-sm` and
 | Space/type/radius                                                             | Semantic tokens in markup                                                               | Raw scale values or literals in components; `--measure` on non-prose                                        |
 | Quantity/spine/status-mark                                                    | Their named components only                                                             | Reuse as generic decoration                                                                                 |
 | Mode identity (`--mode-identity*`)                                            | A mode's OWN chrome — its switcher pill, its in-page bar — via `data-mode-identity`     | Page content; clinical state; a semantic hue; a mode without a §7.1 row                                     |
+| Dashboard style (`--dash-*`, `font-dash-*`)                                   | Inside `.dash-surface` only — My Day and the Psychiatry hub, per §7.2                   | Clinical pages; source or clinical state; any surface outside `.dash-surface`                               |
 
 ### 7.1 · Mode identity — the owner decision, 2026-09-13
 
@@ -199,6 +200,51 @@ Rules, all enforced by `tests/design-token-contract.test.ts`:
   bar's `<nav>`. Tinting a whole mode is a separate, deliberate decision.
 - **Nothing semantic, ever.** A mode's hue must not repaint clinical state, source state, or a
   category chip. It says which mode you are in and nothing else.
+
+### 7.2 · Dashboard style — an owner-approved exception, 2026-10-03
+
+The personal My Day dashboard (`/my-day`, its Today, Work and Me pages) is drawn in a
+dashboard style that the owner approved from the v13 design review mock-up (concept D) and
+asked to match closely: "fix it up for me so it almost completely matches the mockup with the
+polished perfected style". It is an **exception for that one personal page**, not a new house
+style. Clinical pages, answers, sources and every source-status meaning are untouched.
+
+What the exception allows, all scoped to the `.dash-surface` wrapper in
+`src/app/globals.css`, with light, dark (`.dark .dash-surface`) and forced-colors values:
+
+- **Its own palette** (`--dash-page`, `--dash-card`, `--dash-raised`, `--dash-line*`,
+  `--dash-ink`, `--dash-muted`, `--dash-faint`, `--dash-blue*`, `--dash-green*`,
+  `--dash-amber*`, `--dash-night*`, `--dash-flag`, `--dash-hero-*`), copied from the mock-up.
+  The flag card is green, the CPD rings are blue, green and amber (one per CPD type), and the
+  mode chips and colleague avatars are tinted, as in the mock-up.
+- **Heavier type**: `--font-weight-dash-title: 700` and `--font-weight-dash-figure: 800` in
+  `@theme` (utilities `font-dash-title`, `font-dash-figure`), for card titles and figures only.
+  SPEC §4.6's weight roles still hold everywhere else.
+- **A blue hero gradient** (`.dash-hero`), wallet and avatar gradients, chart bar gradients.
+- **A 16–20px card corner** (`rounded-2xl`) and tinted icon chips, from `dashboard-kit`.
+
+What it never allows:
+
+- **Colour as state.** On this dashboard a colour is decoration or a category (a CPD type, a
+  mode chip, a colleague). Amber marks only a recorded date that has passed, and always with
+  the words "Date passed" or "Overdue" beside it. No `--dash-*` colour may stand for a source's
+  validation status, a clinical risk, or any `--danger*`/`--warning`/`--success` meaning.
+- **Use outside `.dash-surface`.** The tokens resolve only inside that wrapper; a clinical
+  page that borrowed a `--dash-*` name would get nothing.
+- **Smaller tap targets.** The 48px rule (`min-h-12`) stands on every control; compact faces
+  sit inside a 48px hit area.
+
+Components live in `src/components/dashboard-kit/` (hero/flag/default card, icon chip, stat
+tile, progress ring and ring stack, item row, pill, segmented switch, week tiles, quick
+actions). A second page wanting this style is a new owner decision, not a reuse of this one.
+
+**Second owner decision, 2026-10-03: the Psychiatry hub (`/psychiatry`).** The owner rejected a
+plain clinical hub ("the psych hub is poorly designed… I want it where possible designed like the
+personal hub") and approved the v2 mock-up in this style. The hub is a front door of links into
+the psychiatry sections, not clinical content, so it may use `.dash-surface` with these limits:
+blues and neutrals only (no `--dash-green*` or `--dash-amber*`, because on clinical pages those
+hues read as source status); every figure real or absent; and the sections it links to keep the
+mode kit. Any other page still needs its own owner decision.
 
 ## 8 · Naming rules going forward
 

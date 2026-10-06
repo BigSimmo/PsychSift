@@ -7,7 +7,10 @@ import type { AppModeId } from "@/lib/app-modes";
 
 export const SIDEBAR_PINS_STORAGE_KEY = "clinical-kb-sidebar-pins";
 
+// My Day leads the default shortcuts (design review 2026-10-03, item 4), so the
+// phone menu reaches it in one tap instead of under "More modes".
 export const defaultSidebarPinnedModeIds = [
+  "my-day",
   "answer",
   "documents",
   "services",
@@ -32,7 +35,9 @@ export const pinnableSidebarModeIds = [
   "psychiatry",
   "my-work",
   "roster",
+  "open-shifts",
   "first-nations",
+  "medicines",
 ] as const satisfies readonly AppModeId[];
 
 const changeEvent = "clinical-kb-sidebar-pins-change";

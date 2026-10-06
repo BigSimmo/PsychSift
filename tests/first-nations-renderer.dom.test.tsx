@@ -29,6 +29,11 @@ vi.mock("@/components/first-nations/page-menu", () => ({
   FirstNationsMenuActions: () => null,
 }));
 vi.mock("@/components/first-nations/primer", () => ({ Primer: () => null, PRIMER_EVENT: "x" }));
+vi.mock("@/components/first-nations/reading-trust-sheet", () => ({
+  ReadingTrustSheet: () => null,
+  READING_TRUST_EVENT: "x",
+  openReadingTrustSheet: () => {},
+}));
 vi.mock("next/navigation", () => ({ usePathname: () => "/first-nations" }));
 
 resetAfterEach();
@@ -45,15 +50,15 @@ function contactsPage(input: ContentInput) {
 }
 
 describe("Bedside", () => {
-  it("composes example line, hero, crisis strip, search, Situation, tools and Acknowledgement in that order", () => {
+  it("composes example line, crisis strip, hero, Situation, tools, search and Acknowledgement in the Today order", () => {
     render(<BedsideHomeView model={buildBedsideModel(testInputs({ profile, approvals: [ack] }))} />);
-    expect(parts().filter((p) => p !== "plan-panel")).toEqual([
+    expect(parts().filter((p) => p !== "plan-panel" && p !== "review-stamp")).toEqual([
       "example",
-      "hero",
       "crisis",
-      "search",
+      "hero",
       "situation",
       "tools",
+      "search",
       "acknowledgement",
     ]);
   });

@@ -152,7 +152,7 @@ describe("favourites auth gate DOM", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("keeps the six canonical navigation entries separate from conditional Favourites", () => {
+  it("keeps the seven canonical navigation entries separate from conditional Favourites", () => {
     const { rerender } = render(<ClinicalSidebarContent {...sidebarProps(false)} />);
 
     expect(screen.queryByRole("navigation", { name: "Your library" })).toBeNull();
@@ -160,6 +160,8 @@ describe("favourites auth gate DOM", () => {
     expect(
       navigation.getAllByRole("link").map((link) => ({ name: link.textContent, href: link.getAttribute("href") })),
     ).toEqual([
+      // Design review 2026-10-03, item 4: My Day leads the default shortcuts.
+      { name: "My Day", href: "/my-day" },
       { name: "Answer", href: "/?mode=answer" },
       { name: "Documents", href: "/?mode=documents" },
       { name: "Services", href: "/?mode=services" },
@@ -188,15 +190,16 @@ describe("favourites auth gate DOM", () => {
     ).not.toContain("favourites");
   });
 
-  it("gates the favourites library and opens signup with save-favourites copy when signed out", () => {
+  it("shows a signed-out visitor the sample library instead of the signup gate", async () => {
     authSession.status = "signed_out";
     render(<FavouritesCommandLibraryPage query="" demoMode={false} />);
 
     expect(screen.getByRole("heading", { name: "Favourites" })).toBeVisible();
-    expect(screen.getByText(/Sign up to save favourites and access them across devices/i)).toBeVisible();
-    expect(screen.getByTestId("favourites-open-account-setup")).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Sign up to save favourites" })).toBeVisible();
+    expect(screen.getByTestId("favourites-signed-out-sample")).toBeVisible();
+    expect(screen.getByText("Sign in to see your favourites")).toBeVisible();
+    expect(screen.queryByTestId("favourites-open-account-setup")).toBeNull();
     expect(screen.getByTestId("favourites-command-library")).toBeInTheDocument();
+    expect((await screen.findAllByText("Major depressive disorder", {}, { timeout: 15000 })).length).toBeGreaterThan(0);
   });
 
   it("keeps the interactive library available in demo mode without the signup gate", () => {

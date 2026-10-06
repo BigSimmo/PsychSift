@@ -32,8 +32,12 @@ const MODE_HOME_LOADING_ROUTES = [
   "cme",
   // Psychiatry's dashboard, a standalone mode home for the same reason.
   "psychiatry",
+  // The Medicines & tools dashboard, Psychiatry's twin.
+  "medicines",
   // Admin's Today (mode id `my-work`), likewise.
   "admin",
+  // Renewals, where Admin now opens (modes review, phase 2b).
+  "admin/renewals",
   // Roster's dashboard, a standalone mode home for the same reason.
   "roster",
   // First Nations' home: static skeleton plus the real crisis strip (spec §5),
@@ -41,6 +45,10 @@ const MODE_HOME_LOADING_ROUTES = [
   "first-nations",
   // Teaching's dashboard, likewise.
   "teaching",
+  // My Day's merged list, likewise.
+  "my-day",
+  // Open shifts' Browse list, which shares Roster's narrow skeleton shape.
+  "open-shifts",
 ] as const;
 
 /**
@@ -54,6 +62,7 @@ const OWN_SKELETON: Partial<Record<(typeof MODE_HOME_LOADING_ROUTES)[number], st
   "first-nations": "FirstNationsLoading",
   // Roster's narrow, top-aligned pages: identity tile, title, then modules.
   roster: "RosterLoadingSkeleton",
+  "open-shifts": "OpenShiftsLoadingSkeleton",
 };
 
 describe("mode-home loading contract", () => {

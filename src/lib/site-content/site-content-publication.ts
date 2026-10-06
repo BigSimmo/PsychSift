@@ -529,7 +529,13 @@ export async function readCanonicalSiteContentRecords<T>(input: {
    * so an operator always sees their own change immediately.
    */
   cache?: boolean;
-  /** Search-only medication projection. Full list reads still need canonicalRecord for governance. */
+  /**
+   * Search-only projection: `initialized,render_payload,snapshot`, without the `record` column.
+   * Search never reads `record` when a render payload is present (the full read falls back to it
+   * only when one is missing, and a projected read refuses that case below instead), so the rows it
+   * ranks are identical and the payload roughly halves. Full list reads still need canonicalRecord
+   * for governance.
+   */
   renderOnly?: boolean;
   mapRecord?: (representation: {
     canonicalRecord: Record<string, unknown>;
@@ -568,7 +574,7 @@ export async function readCanonicalSiteContentRecords<T>(input: {
         );
       })
     ) {
-      throw new Error("Canonical medication search read failed: missing or invalid render payload.");
+      throw new Error(`Canonical ${input.kind} search read failed: missing or invalid render payload.`);
     }
     return data as Array<Record<string, unknown>>;
   };

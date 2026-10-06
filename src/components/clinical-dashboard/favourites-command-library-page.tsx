@@ -28,6 +28,7 @@ import {
   type FavouriteSetName,
   useOptionalAccountData,
 } from "@/components/account-data-provider";
+import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { SidebarAccountSetupDialog as AccountSetupDialog } from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
 import { cn, EmptyState } from "@/components/ui-primitives";
 import { Chip, type ChipAppearance } from "@/components/ui/chip";
@@ -42,6 +43,7 @@ import {
   favouriteTabs,
   type FavouriteItem as PrototypeFavouriteItem,
 } from "@/components/clinical-dashboard/favourites-prototype-data";
+import type { FavouritesSample } from "@/components/clinical-dashboard/favourites-sample-data";
 import { useSavedRegistryFavourites } from "@/components/clinical-dashboard/use-saved-registry-favourites";
 import {
   formatLastOpened,
@@ -629,10 +631,15 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   // still the one and only composer on the route, so the one-composer contract
   // in docs/search-chrome-behaviour.md is untouched.
   const activeQuery = hydrated ? (searchCommand?.query ?? query) : query;
-  const favouritesAccessible = canAccessFavouritesMode({
-    authenticated: auth.status === "authenticated",
-    demoMode,
-  });
+  // A signed-out visitor sees the real screen filled with a few sample items
+  // that live in this page's memory only: nothing is read, saved or stored.
+  const sampleMode = !demoMode && (auth.status === "signed_out" || auth.status === "expired");
+  const favouritesAccessible =
+    sampleMode ||
+    canAccessFavouritesMode({
+      authenticated: auth.status === "authenticated",
+      demoMode,
+    });
   const authSettled = auth.status !== "loading";
   const accountIdentity = auth.status === "authenticated" ? (auth.session?.user?.id ?? "signed-in") : "signed-out";
   const [accountSetupDismissed, setAccountSetupDismissed] = useState(false);
@@ -647,7 +654,28 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     loadFavouriteLastOpened,
     getEmptyLastOpenedSnapshot,
   );
-  const pinnedIds = useSyncExternalStore(subscribeFavouritesStorage, loadFavouritePinnedIds, getEmptyPinnedSnapshot);
+  const storedPinnedIds = useSyncExternalStore(
+    subscribeFavouritesStorage,
+    loadFavouritePinnedIds,
+    getEmptyPinnedSnapshot,
+  );
+  const [sampleFavourites, setSampleFavourites] = useState<FavouritesSample | null>(null);
+  const [samplePinnedIds, setSamplePinnedIds] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    if (!sampleMode) return undefined;
+    let active = true;
+    void import("@/components/clinical-dashboard/favourites-sample-data").then((module) => {
+      if (!active) return;
+      const sample = module.buildFavouritesSample();
+      setSampleFavourites(sample);
+      setSamplePinnedIds(new Set(sample.pinnedIds));
+    });
+    return () => {
+      active = false;
+    };
+  }, [sampleMode]);
+  // The sample never reads the browser's saved pins, and never writes them.
+  const pinnedIds = sampleMode ? samplePinnedIds : storedPinnedIds;
   const favouriteMetadata = useMemo(
     () =>
       new Map(
@@ -667,11 +695,24 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       ...(demoMode ? prototypeFavouriteItems : []).map((item) =>
         toCommandItem(item, lastOpenedMap, pinnedIds, favouriteMetadata, setById, now, true),
       ),
+      ...(sampleMode ? (sampleFavourites?.items ?? []) : []).map((item) =>
+        toCommandItem(item, EMPTY_LAST_OPENED_SNAPSHOT, pinnedIds, favouriteMetadata, setById, now, true),
+      ),
       ...savedRegistryFavourites.map((item) =>
         toCommandItem(item, lastOpenedMap, pinnedIds, favouriteMetadata, setById, now),
       ),
     ],
-    [demoMode, savedRegistryFavourites, lastOpenedMap, pinnedIds, favouriteMetadata, setById, now],
+    [
+      demoMode,
+      sampleMode,
+      sampleFavourites,
+      savedRegistryFavourites,
+      lastOpenedMap,
+      pinnedIds,
+      favouriteMetadata,
+      setById,
+      now,
+    ],
   );
 
   // Remove is held back until its Undo message closes, so a removed row hides
@@ -901,6 +942,8 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   );
 
   function handleOpen(item: FavouriteItem) {
+    // The sample keeps no "last opened" record, in this browser or the account.
+    if (sampleMode) return;
     recordFavouriteOpened(item.id);
     if (!item.example && item.contentType && item.contentKey) {
       void accountData?.recordFavouriteOpen(item.contentType, item.contentKey);
@@ -923,6 +966,16 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       // Clear an older browser-only pin only once the account has confirmed.
       if (saved && !pinned && pinnedIds.has(item.id)) toggleFavouritePinnedId(item.id);
       return saved;
+    }
+    if (sampleMode) {
+      // Pinning in the sample lasts only while the page is open.
+      setSamplePinnedIds((current) => {
+        const next = new Set(current);
+        if (pinned) next.add(item.id);
+        else next.delete(item.id);
+        return next;
+      });
+      return true;
     }
     // Examples, and items the account cannot hold, pin in this browser only.
     if (pinnedIds.has(item.id) !== pinned) toggleFavouritePinnedId(item.id);
@@ -1374,7 +1427,12 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
               className="mode-home-composer-slot favourites-composer-slot -mt-1 block w-full max-w-3xl min-h-0 data-[composer-reserve=pending]:min-h-[var(--spacing-mode-home-composer-phone)] sm:data-[composer-reserve=pending]:min-h-[var(--spacing-mode-home-composer-wide)] [&:not(:empty)]:min-h-[var(--spacing-mode-home-composer-phone)] sm:[&:not(:empty)]:min-h-[var(--spacing-mode-home-composer-wide)]"
             />
 
-            {!demoMode && auth.status !== "authenticated" && auth.status !== "loading" ? (
+            {sampleMode ? (
+              <SignedOutSampleNotice title="Sign in to see your favourites" testId="favourites-signed-out-sample">
+                Below is a sample made of real entries from the app, so you can see how Favourites works. Pinning works
+                here, but the sample doesn&apos;t save. Signed in, it shows the items you save. Nothing is shared.
+              </SignedOutSampleNotice>
+            ) : !demoMode && auth.status !== "authenticated" && auth.status !== "loading" ? (
               <p
                 role="status"
                 className="rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-4 py-3 text-sm font-semibold text-[color:var(--text)]"
@@ -1547,7 +1605,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
 
             {libraryItems.some((item) => item.example) ? (
               <p className="rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-3 py-2 text-xs text-[color:var(--text-muted)]">
-                {FAVOURITE_EXAMPLES_NOTICE}
+                {sampleMode ? "Sample favourites. The sample doesn't save." : FAVOURITE_EXAMPLES_NOTICE}
               </p>
             ) : null}
 

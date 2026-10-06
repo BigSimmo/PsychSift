@@ -221,8 +221,34 @@ export async function verifyCrossTenantDeploymentIdentity(config: HarnessConfig)
       `Staging deployment SHA ${deployedCommitSha} does not match checkout SHA ${config.checkoutCommitSha}.`,
     );
   }
+  // Prove the provider mode here, not from the answer's reason code. /api/health reports
+  // openaiConfig "skipped" only when RAG_PROVIDER_MODE=offline and no OpenAI key is set
+  // (src/lib/health-response.ts), which is exactly the staging profile this harness needs.
+  const checks = body.checks && typeof body.checks === "object" ? (body.checks as Record<string, unknown>) : {};
+  if (checks.openaiConfig !== "skipped") {
+    throw new Error(
+      `Staging app must run with RAG_PROVIDER_MODE=offline and no OpenAI key for this harness ` +
+        `(GET /api/health checks.openaiConfig is ${JSON.stringify(checks.openaiConfig ?? null)}, expected "skipped").`,
+    );
+  }
   return deployedCommitSha;
 }
+
+/**
+ * Reason codes a provider-free, source-only answer may carry. The answer layer reports the most
+ * specific reason it stopped at, and the evidence gates rank ahead of provider status: the
+ * synthetic fixture cannot support a clinical answer, so an offline staging app answers it with
+ * low_signal or coverage_gap rather than provider_offline. Every code that means a model call
+ * was attempted (provider_auth, provider_quota, provider_rate_limit, provider_timeout,
+ * provider_failure) or that a key was expected (provider_missing_key) stays a failure.
+ */
+export const CROSS_TENANT_OFFLINE_ANSWER_CODES: ReadonlySet<string> = new Set([
+  "provider_offline",
+  "low_signal",
+  "coverage_gap",
+  "no_candidates",
+  "unsupported",
+]);
 
 async function requestJson(
   config: HarnessConfig,
@@ -518,9 +544,12 @@ async function exerciseTenancyBoundary(args: {
     "user B source-only answer",
   );
   assertCondition(answerA.answerQualityTier === "source_only", "Staging app is not returning a source-only answer.");
+  // Offline mode itself is proven by verifyCrossTenantDeploymentIdentity. Here, check only that
+  // the source-only answer came from the evidence path, never from an attempted model call.
   assertCondition(
-    answerA.fallbackReasonCode === "provider_offline",
-    "Staging app must run with RAG_PROVIDER_MODE=offline for this harness.",
+    typeof answerA.fallbackReasonCode === "string" && CROSS_TENANT_OFFLINE_ANSWER_CODES.has(answerA.fallbackReasonCode),
+    `Staging source-only answer reported fallbackReasonCode ${JSON.stringify(answerA.fallbackReasonCode ?? null)}, ` +
+      "which is not a provider-free source-only reason.",
   );
   assertCondition(
     crossTenantDocumentIds(answerA.sources, "user A answer sources").includes(fixtureA.documentId),

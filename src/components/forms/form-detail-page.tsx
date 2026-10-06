@@ -477,7 +477,7 @@ function PathwayContextCard({
               <dd className={textMuted}>{displayText(form.source?.label)}</dd>
             </div>
             <div>
-              <dt className="font-bold uppercase text-[color:var(--text-muted)]">Reviewed</dt>
+              <dt className="font-bold uppercase text-[color:var(--text-muted)]">Source checked</dt>
               <dd className={textMuted}>{displayText(form.source?.reviewed ?? details?.officialTitleCheckedAt)}</dd>
             </div>
             <div>

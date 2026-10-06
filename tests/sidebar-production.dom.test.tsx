@@ -78,6 +78,7 @@ describe("production PsychSift sidebar", () => {
 
     const navigation = within(screen.getByRole("navigation", { name: "Pinned shortcuts" }));
     expect(navigation.getAllByRole("link").map((link) => link.textContent?.trim())).toEqual([
+      "My Day",
       "Answer",
       "Documents",
       "Services",
@@ -107,6 +108,7 @@ describe("production PsychSift sidebar", () => {
     await user.click(within(editor).getByRole("button", { name: "Move Forms up" }));
 
     expect(JSON.parse(window.localStorage.getItem(SIDEBAR_PINS_STORAGE_KEY) ?? "[]")).toEqual([
+      "my-day",
       "answer",
       "services",
       "prescribing",
@@ -120,6 +122,7 @@ describe("production PsychSift sidebar", () => {
     const navigation = within(screen.getByRole("navigation", { name: "Pinned shortcuts" }));
     expect(navigation.queryByRole("link", { name: "Documents" })).not.toBeInTheDocument();
     expect(navigation.getAllByRole("link").map((link) => link.textContent?.trim())).toEqual([
+      "My Day",
       "Answer",
       "Services",
       "Medication",

@@ -91,6 +91,13 @@ async function expectDocumentOwnerFillsFrame(page: Page, owner: Locator) {
 }
 
 async function revealPhoneHeaderControl(page: Page, control: Locator) {
+  // A sheet that just closed returns focus in a frame callback, and PhoneFocusClearance
+  // re-checks the restored control one frame after that, scrolling it back into view if it
+  // is off screen. WebKit can run those frames up to a second late, so a scroll made before
+  // them is undone. Two frames queued now run after both, whatever the frame rate.
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
   const { scrollTop } = await readPrimaryScrollGeometry(page);
   // Exercise the same upward scroll that reveals the phone header to a reader.
   // Programmatic scrollTop=0 can briefly report zero in WebKit, then snap back
@@ -822,6 +829,8 @@ async function openMobileClinicalGuideMenu(page: Page) {
       .getByRole("link")
       .evaluateAll((links) => links.map((link) => ({ name: link.textContent, href: link.getAttribute("href") }))),
   ).toEqual([
+    // Design review 2026-10-03, item 4: My Day leads the default shortcuts.
+    { name: "My Day", href: "/my-day" },
     { name: "Answer", href: "/?mode=answer" },
     // Owner decision 2026-08-27: Documents joins the other consolidated modes and
     // links at the shared home. `/documents` still exists and still paints its
@@ -1508,6 +1517,7 @@ test.describe("PsychSift UI smoke coverage", () => {
           links.map((link) => ({ name: link.getAttribute("aria-label"), href: link.getAttribute("href") })),
         ),
     ).toEqual([
+      { name: "My Day", href: "/my-day" },
       { name: "Answer", href: "/?mode=answer" },
       { name: "Documents", href: "/?mode=documents" },
       { name: "Services", href: "/?mode=services" },
@@ -1540,7 +1550,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await moreModesSheet.getByRole("button", { name: "Close more modes" }).click();
     expect(
       await navigation.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("aria-label"))),
-    ).toEqual(["Answer", "Documents", "Services", "Medication", "Factsheets", "Forms", "Tools"]);
+    ).toEqual(["My Day", "Answer", "Documents", "Services", "Medication", "Factsheets", "Forms", "Tools"]);
     await expect(rail.getByTestId("sidebar-more-modes")).toBeVisible();
     await expect(rail.getByTestId("sidebar-more-modes")).toBeFocused();
 
@@ -1815,7 +1825,14 @@ test.describe("PsychSift UI smoke coverage", () => {
     const setupScrollPort = setup.locator(".polished-scroll");
     // WebKit scrolls the dialog to the focused email field on open. Prove the
     // autofocus first, then reset that scroll before checking top safe-area layout.
+    // A bare blur() does not stick: for its first seconds an open sheet hands focus
+    // back to its autofocus field whenever focus drops to the page, and only a real
+    // key press or tap ends that. WebKit then keeps the refocused field in view on
+    // every resize, so the body sat 224px down and the workspace mark at -140
+    // (CI 2026-10-04, recorded at the failure). Press a key first, as a reader would.
+    await page.keyboard.press("Shift");
     await setup.getByLabel("Email address").blur();
+    await expect(setup.getByLabel("Email address")).not.toBeFocused();
     await setupScrollPort.evaluate((element) => {
       element.scrollTop = 0;
     });
@@ -1990,25 +2007,32 @@ test.describe("PsychSift UI smoke coverage", () => {
     ]);
 
     // The full catalogue remains in one radio menu, but the phone presentation
-    // now groups it into the three clinical jobs clinicians scan for first, then
-    // On Call and CPD as areas of their own.
+    // now groups it into five doors: My Day (with the work areas), On Call,
+    // then the three clinical doors (modes review, phase 1).
     const modeOptions = appModeMenu.getByRole("menuitemradio");
     const modeCount = await modeOptions.count();
     expect(modeCount).toBeGreaterThanOrEqual(10);
-    await expect(appModeMenu.getByRole("heading", { name: "Find" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Care" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "CPD" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
     // Sources reached the desktop menu (built from `appModeDefinitions`) but not
     // this one, which renders `phoneModeGroups` and drops any mode no group names.
     // `tests/phone-mode-groups.test.ts` guards the constant; this is the rendered proof.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toBeAttached();
-    await expect(modeOptions.first()).toBeInViewport();
-    await expect(modeOptions.first()).toHaveAttribute("aria-checked", "true");
-    await expect(modeOptions.first()).toContainText("Source-backed clinical answer");
+    // My Day leads the list (design review 2026-10-03, item 4), so the first
+    // option is My Day and the active Answer option is checked under Search.
+    // The sheet opens scrolled to the checked option, so on a phone whose
+    // My Day group runs past the fold it is Answer, not My Day, that starts
+    // in view.
+    await expect(modeOptions.first()).toContainText("My Day");
+    const answerOption = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
+    await expect(answerOption).toHaveAttribute("aria-checked", "true");
+    await expect(answerOption).toBeInViewport();
+    await expect(answerOption).toContainText("Source-backed clinical answer");
 
     // Icon tiles and glyphs use one optical scale even though the canonical
     // Lucide drawings have different silhouettes.
@@ -4280,12 +4304,41 @@ test.describe("PsychSift UI smoke coverage", () => {
         timeout: 30_000,
       });
 
+      // A page flip rewrites the URL, and Next then fetches the page's server payload for
+      // the new URL. Tapping Back while that fetch is in flight makes Firefox cancel it,
+      // and Next answers a cancelled fetch with a hard reload of the page-2 URL, which
+      // overrides the Back (CI 2026-10-04: still on ?page=2 after 30 s). Let the flip
+      // settle first, as a reader's tap after reading the page would.
+      const pendingPayloads = new Set<Request>();
+      let payloadsStarted = 0;
+      const isPagePayload = (request: Request) =>
+        new URL(request.url()).pathname === `/documents/${documentId}` && request.headers()["rsc"] === "1";
+      const trackStart = (request: Request) => {
+        if (!isPagePayload(request)) return;
+        payloadsStarted += 1;
+        pendingPayloads.add(request);
+      };
+      const trackEnd = (request: Request) => pendingPayloads.delete(request);
+      page.on("request", trackStart);
+      page.on("requestfinished", trackEnd);
+      page.on("requestfailed", trackEnd);
+
       const historyLength = await page.evaluate(() => window.history.length);
+      const flippedAt = Date.now();
       await page.getByLabel("Next page").first().click();
       await expect(page).toHaveURL(
         (url) => url.pathname === `/documents/${documentId}` && url.searchParams.get("page") === "2",
       );
       expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
+      await expect
+        .poll(() => pendingPayloads.size === 0 && (payloadsStarted > 0 || Date.now() - flippedAt > 2_000), {
+          message: "the page flip's server payload must finish before Back is tapped",
+          timeout: 15_000,
+        })
+        .toBe(true);
+      page.off("request", trackStart);
+      page.off("requestfinished", trackEnd);
+      page.off("requestfailed", trackEnd);
 
       await page.getByRole("link", { name: "Back to documents" }).click();
       await expect(page).toHaveURL(
@@ -4582,38 +4635,41 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(modeDialog).toBeVisible();
     await expect(appModeMenu).toBeVisible();
     await expect(modeSearch).toBeFocused();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(23);
-    await expect(appModeMenu.getByRole("heading", { name: "Find" })).toBeAttached();
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(26);
+    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Care" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Admin" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "First Nations" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "CPD and teaching", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(5);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toBeAttached();
 
     await modeSearch.fill("d");
-    await expect(modeDialog.getByRole("status")).toHaveText("7 matches");
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(7);
+    await expect(modeDialog.getByRole("status")).toHaveText("9 matches");
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(9);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Differentials\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^DSM-5 Diagnosis\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
+    // "Medicines & tools", the hub that leads its group, carries a "d" too.
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines & tools\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     // "CPD" carries a "d" too (the mode's label was "CME" before the RANZCP rename).
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Admin\b/ })).toBeAttached();
+    // "My Day" carries a "d" too.
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
     await modeDialog.getByRole("button", { name: "Clear mode search" }).click();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(23);
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(26);
 
     const answerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await answerMode.focus();
     await expect(answerMode).toBeFocused();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Evidence\b/ })).toHaveCount(0);
-    // Arrow Down follows the drawn order, group by group: the end of Find
-    // steps into Psychiatry, and the end of Psychiatry steps into Care.
+    // Arrow Down follows the drawn order, group by group: the end of Search
+    // steps into Psychiatry, and the end of Psychiatry steps into Medicines & tools.
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
@@ -4636,6 +4692,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Therapy\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^First Nations\b/ })).toBeFocused();
+    // Medicines & tools is led by its hub, as Psychiatry is.
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines & tools\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeFocused();
     await page.keyboard.press("Escape");
@@ -5729,11 +5790,20 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(documentActions).toBeVisible();
     const composerBox = await composer.boundingBox();
     expect(composerBox).not.toBeNull();
-    const sheetOwnsComposerPoint = await documentActions.evaluate(
-      (dialog, point) => dialog.contains(document.elementFromPoint(point.x, point.y)),
-      { x: composerBox!.x + composerBox!.width / 2, y: composerBox!.y + composerBox!.height / 2 },
-    );
-    expect(sheetOwnsComposerPoint).toBe(true);
+    // Polled, not read once: the sheet slides up as it opens, so a single read
+    // straight after it turns visible can land before it covers the composer
+    // (Production UI on #3270, 2026-10-04).
+    const composerPoint = { x: composerBox!.x + composerBox!.width / 2, y: composerBox!.y + composerBox!.height / 2 };
+    await expect
+      .poll(
+        () =>
+          documentActions.evaluate(
+            (dialog, point) => dialog.contains(document.elementFromPoint(point.x, point.y)),
+            composerPoint,
+          ),
+        { message: "the open actions sheet must cover the composer", timeout: 5_000 },
+      )
+      .toBe(true);
     await tapOutsideActiveSurface(page);
     await expect(documentActions).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);
@@ -5842,6 +5912,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(prioritiesSheet).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(prioritiesSheet).toHaveCount(0);
+    // The sheet hands focus back to its trigger; WebKit can do so up to a second
+    // after the sheet unmounts (see revealPhoneHeaderControl).
+    await expect(clinicalSummary.getByTestId("open-clinical-priorities")).toBeFocused();
     const indexedText = page.locator("#source-text");
     const summary = page.getByTestId("high-yield-summary");
     const images = page.locator("#source-images");
@@ -5887,6 +5960,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(indexedText).toHaveJSProperty("open", false);
     await page.keyboard.press("Escape");
     await expect(densitySheet).toHaveCount(0);
+    await expect(sectionTrigger).toBeFocused();
     for (const disclosure of [summary, images, indexingDetails]) {
       await expect(disclosure).toHaveJSProperty("open", false);
     }

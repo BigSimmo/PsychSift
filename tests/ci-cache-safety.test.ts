@@ -17,6 +17,7 @@ const lighthouseChromiumSetup = readFileSync(
 );
 const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 const prShardRunner = readFileSync(new URL("../scripts/playwright-pr-shards.mjs", import.meta.url), "utf8");
+const releaseShardRunner = readFileSync(new URL("../scripts/playwright-release-shards.mjs", import.meta.url), "utf8");
 const liveWebVitalsWorkflow = readFileSync(
   new URL("../.github/workflows/live-web-vitals.yml", import.meta.url),
   "utf8",
@@ -161,10 +162,45 @@ describe("CI cache safety", () => {
 
   it("uses npm's download cache but recreates node_modules on every job", () => {
     expect(nodeSetup).toContain("cache: npm");
-    expect(nodeSetup).toContain("cache-dependency-path: package-lock.json");
     expect(nodeSetup).toContain("run: npm ci --include=dev");
     expect(nodeSetup).not.toContain("path: node_modules");
     expect(nodeSetup).not.toContain("cache-hit");
+  });
+
+  it("keys the npm download cache apart from setup-node's automatic package-manager cache", () => {
+    // package.json declares "packageManager", so every bare actions/setup-node step (for
+    // example CI's Change scope job) also saves ~/.npm under node-cache-…-npm-<lock hash>
+    // without ever running npm ci. Change scope finishes first, so that key held an empty
+    // 686-byte entry, and a primary-key hit is never re-saved. Hashing .nvmrc as well gives
+    // this action a key only a job that has just run npm ci can write.
+    expect(nodeSetup).toMatch(/cache-dependency-path: \|\n\s+package-lock\.json\n\s+\.nvmrc\n/);
+    const installStep = nodeSetup.indexOf("run: npm ci --include=dev");
+    expect(installStep).toBeGreaterThan(nodeSetup.indexOf("cache: npm"));
+  });
+
+  it("keys every workflow's own npm cache exactly like setup-node-cached", () => {
+    // A workflow that runs npm ci behind its own `cache: npm` step must hash the same files as the
+    // shared action, so the six scheduled workflows restore the ~/.npm CI's npm ci jobs saved
+    // instead of the lockfile-only key that setup-node's automatic cache may have filled empty.
+    const yaml = createRequire(import.meta.url)("js-yaml");
+    const dir = new URL("../.github/workflows/", import.meta.url);
+    const keyed: string[] = [];
+    for (const file of readdirSync(dir).filter((name) => /\.ya?ml$/.test(name))) {
+      const parsed = yaml.load(readFileSync(new URL(file, dir), "utf8")) as {
+        jobs?: Record<string, { steps?: Array<{ uses?: string; with?: Record<string, unknown> }> }>;
+      };
+      for (const [jobId, job] of Object.entries(parsed.jobs ?? {})) {
+        for (const step of job.steps ?? []) {
+          if (!step.uses?.startsWith("actions/setup-node@") || step.with?.cache !== "npm") continue;
+          keyed.push(`${file}#${jobId}`);
+          expect(String(step.with?.["cache-dependency-path"]).trim().split(/\s+/), `${file} ${jobId}`).toEqual([
+            "package-lock.json",
+            ".nvmrc",
+          ]);
+        }
+      }
+    }
+    expect(keyed.length).toBeGreaterThanOrEqual(6);
   });
 
   it("keeps quarantined and mockup UI specs in one advisory lane", () => {
@@ -449,7 +485,11 @@ describe("CI cache safety", () => {
     });
     expect(releaseJob).not.toContain("path: .next/cache");
     expect(releaseJob).not.toContain("run: npm run build");
-    expect(releaseJob).toContain("npm run test:e2e");
+    // The legs run through scripts/playwright-release-shards.mjs, which only chooses the leg's
+    // spec files and then hands everything to the same wrapper `npm run test:e2e` runs.
+    expect(releaseJob).toContain("node scripts/playwright-release-shards.mjs");
+    expect(releaseShardRunner).toContain('"run-playwright.mjs"');
+    expect(releaseShardRunner).not.toContain("next build");
 
     // Until 2026-09-07 this pinned the single-job command
     // `npm run test:e2e -- --project=chromium-mockups --project=firefox --project=webkit`.
@@ -585,6 +625,8 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
     DB_CHANGED: "false",
     BUILD_CHANGED: "false",
     PERF_CHANGED: "false",
+    // Mirrors lighthouse-budget's lockfile-only push arm in the Lighthouse requirement.
+    LOCKFILE_CHANGED: "false",
     /*
      * Read only by the draft report at the end of the script, which decides whether
      * `lighthouse-budget` belongs in the list of jobs a draft did not run. Added to `ci.yml` and
@@ -623,6 +665,11 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
     UI_RESULT: "skipped",
     LIGHTHOUSE_RESULT: "skipped",
     DB_RESULT: "skipped",
+    // Main tree proof outputs: empty on every event except a proven main push. Bound here for
+    // the same `set -u` reason as the Lighthouse labels above.
+    TREE_PROVEN_COVERAGE: "",
+    TREE_PROVEN_UI: "",
+    TREE_PROVEN_LIGHTHOUSE: "",
   };
 
   function runAggregate(overrides: Record<string, string> = {}) {
@@ -654,6 +701,76 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
 
   it("passes when every in-scope job succeeded", () => {
     expect(runAggregate().status).toBe(0);
+  });
+
+  it("accepts a PR-update skip of both browser lanes only when an earlier run of the PR proved them", () => {
+    const prUpdate = {
+      EVENT_NAME: "pull_request",
+      UI_CHANGED: "true",
+      UI_BUILD_RESULT: "success",
+      UI_FAST_RESULT: "skipped",
+      UI_RESULT: "skipped",
+    };
+    const proven = runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true" });
+    expect(proven.status).toBe(0);
+    expect(proven.output).toContain("Proven on the identical tree");
+    expect(runAggregate(prUpdate).output).toContain("production-ui-critical result was skipped");
+    expect(runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true", UI_FAST_RESULT: "failure" }).status).not.toBe(0);
+    expect(runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true", UI_FAST_RESULT: "cancelled" }).status).not.toBe(0);
+  });
+
+  it("accepts a main-push skip only for jobs the merged PR proved on the identical tree", () => {
+    const heavyMainPush = {
+      EVENT_NAME: "push",
+      COVERAGE_CHANGED: "true",
+      UI_CHANGED: "true",
+      PERF_CHANGED: "true",
+      UI_BUILD_RESULT: "success",
+      UI_FAST_RESULT: "skipped",
+      COVERAGE_RESULT: "skipped",
+      UI_RESULT: "skipped",
+      LIGHTHOUSE_RESULT: "skipped",
+    };
+    const proven = runAggregate({
+      ...heavyMainPush,
+      TREE_PROVEN_COVERAGE: "true",
+      TREE_PROVEN_UI: "true",
+      TREE_PROVEN_LIGHTHOUSE: "true",
+    });
+    expect(proven.status).toBe(0);
+    expect(proven.output).toContain("Proven on the identical tree");
+    expect(proven.output).toContain("coverage production-ui lighthouse-budget");
+
+    // Without proof the same skips stay red - one group at a time, so no proof leaks across jobs.
+    expect(runAggregate(heavyMainPush).status).not.toBe(0);
+    expect(runAggregate({ ...heavyMainPush, TREE_PROVEN_UI: "true", TREE_PROVEN_LIGHTHOUSE: "true" }).output).toContain(
+      "coverage result was skipped",
+    );
+    expect(
+      runAggregate({ ...heavyMainPush, TREE_PROVEN_COVERAGE: "true", TREE_PROVEN_LIGHTHOUSE: "true" }).status,
+    ).not.toBe(0);
+    expect(runAggregate({ ...heavyMainPush, TREE_PROVEN_COVERAGE: "true", TREE_PROVEN_UI: "true" }).status).not.toBe(0);
+
+    // Proof never excuses a failure: a proven job that somehow ran and failed is still red.
+    expect(
+      runAggregate({
+        ...heavyMainPush,
+        TREE_PROVEN_COVERAGE: "true",
+        TREE_PROVEN_UI: "true",
+        TREE_PROVEN_LIGHTHOUSE: "true",
+        UI_RESULT: "failure",
+      }).status,
+    ).not.toBe(0);
+    // The shared Next build is never proof-skipped, so it stays required.
+    expect(
+      runAggregate({
+        ...heavyMainPush,
+        TREE_PROVEN_COVERAGE: "true",
+        TREE_PROVEN_UI: "true",
+        TREE_PROVEN_LIGHTHOUSE: "true",
+        UI_BUILD_RESULT: "skipped",
+      }).status,
+    ).not.toBe(0);
   });
 
   it("requires safety for heavy scope and accepts a skip only for recognised light scope", () => {
@@ -1054,5 +1171,30 @@ describe("Lighthouse budget routing", () => {
     expect(refreshJob).toContain("uses: ./.github/actions/setup-lighthouse-chromium");
     expect(lighthouseJob).not.toContain("playwright install");
     expect(refreshJob).not.toContain("playwright install");
+  });
+});
+
+describe("setup-node automatic npm cache", () => {
+  it("never lets a setup-node step without an npm install save an npm cache", () => {
+    // package.json declares "packageManager", so setup-node turns its npm cache on by default.
+    // A job that never runs npm ci would save an empty ~/.npm under the lockfile key, and a
+    // primary-key hit is never re-saved.
+    const yaml = createRequire(import.meta.url)("js-yaml");
+    const dir = new URL("../.github/workflows/", import.meta.url);
+    let checked = 0;
+    for (const file of readdirSync(dir).filter((name) => /\.ya?ml$/.test(name))) {
+      const parsed = yaml.load(readFileSync(new URL(file, dir), "utf8")) as {
+        jobs?: Record<string, { steps?: Array<{ uses?: string; with?: Record<string, unknown> }> }>;
+      };
+      for (const [jobId, job] of Object.entries(parsed.jobs ?? {})) {
+        for (const step of job.steps ?? []) {
+          if (!step.uses?.startsWith("actions/setup-node@")) continue;
+          checked += 1;
+          if (step.with?.cache === "npm") continue;
+          expect(step.with?.["package-manager-cache"], `${file} ${jobId}`).toBe(false);
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 });

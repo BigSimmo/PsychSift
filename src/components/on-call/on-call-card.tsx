@@ -14,6 +14,7 @@ import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { BrowserPrintButton, PrintOutput, PrintSection } from "@/components/ui/print-output";
+import { OnCallCardQr } from "@/components/on-call/on-call-card-qr";
 import { formatClinicalDate } from "@/lib/source-metadata";
 import { selectCardEntries } from "@/lib/on-call/card-selection";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
@@ -193,6 +194,13 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
             printedAt={formatPrintedAt(now)}
             provenance="PsychSift On Call — pocket card. Confirm against the live app before relying on a printed copy; paper cannot show its own age."
           >
+            <div className="mb-4 flex items-start justify-between gap-3 print:mb-3">
+              <div className="grid min-w-0 gap-0.5">
+                <p className="text-sm font-semibold text-[color:var(--text-heading)]">On Call pocket card</p>
+                <p className={cn(textMuted, "text-2xs")}>Scan for the live list</p>
+              </div>
+              <OnCallCardQr />
+            </div>
             <div className="grid gap-5 sm:grid-cols-2 print:grid-cols-2 print:gap-4">
               {groups.map((group) => (
                 <PrintSection

@@ -155,6 +155,8 @@ const routeDescriptions: Record<string, string> = {
   "/sources/[sourceId]": "Clinical source traceability record: identity, rating, canonical locations and usage.",
   "/sources/method": "How the catalogue rates, reviews and traces a source, and its stated limitations.",
   "/sources/publishers": "Publishing bodies grouped by jurisdiction scope.",
+  "/sources/currency":
+    "Currency check: which sources are current or due for review, and recorded review dates in the next six months.",
   "/sources/search":
     "The ranked clinical source catalogue: filter and sort by quality band, jurisdiction, source type, publisher, topic, lifecycle and application usage.",
   "/sources/topics": "Clinical topics derived from registered source metadata.",
@@ -183,16 +185,42 @@ const routeDescriptions: Record<string, string> = {
   "/on-call/who-is-who": "What each on-call role does, when to call them, and the acronyms this service uses.",
   "/psychiatry":
     "Psychiatry dashboard: one card each for DSM-5 Diagnosis, Differentials, Specifiers, Formulation, Therapy and Forms, linking to those modes at their own addresses. A dashboard, not a redirect to the shared search home — Psychiatry has no search results surface.",
+  "/medicines":
+    "Medicines & tools dashboard: one card each for Medication, Calculators, Tools, Factsheets and Dictionary, linking to those modes at their own addresses. A dashboard, not a redirect to the shared search home — it has no search results surface.",
   "/admin":
     "Admin Today: the next renewal to act on, what needs you, statewide requirements recorded and new-job progress. Admin has no search results surface.",
   "/admin/renewals":
     "Statewide requirements alongside the doctor's own recorded dates and personal renewals; dates are not verified with an issuing body.",
+  "/admin/compliance":
+    "The statewide requirements grouped as a health service asks for them, with the doctor's own recorded dates, what to do before the next job, and an Excel export saved on the device; dates are not verified with an issuing body.",
+  "/admin/compliance/export":
+    "A personal Excel copy of the doctor's own compliance record, with chosen columns and an optional next-60-days range, built in the page and saved on the device; nothing is uploaded.",
   "/admin/new-job": "Starting and leaving a job, with the doctor's own progress and service contacts.",
   "/admin/new-job/records": "The doctor's own Admin records to copy or print.",
   "/admin/help": "Crisis lines, support, guides, contacts and on-site detail with in-page search.",
   "/my-work": "Compatibility redirect to `/admin`, carrying the query string.",
+  "/my-day/week":
+    "My Day Week: the next seven Perth days, one list per day, gathering your roster shifts, teaching sessions, CPD routines and dated My Day items. No search surface.",
+  "/my-day/hours":
+    "My Day Hours: your rostered hours this week and this fortnight and your next leave, from Roster's own hours helpers. No search surface.",
+  "/my-day/profile":
+    "Work profile: your stage, where you work, each area's set-up state, the agreement rules Roster checks, a link to alerts, and what is kept where. Reached from Settings. No search surface.",
+  "/my-day":
+    "My Day: one time-ordered list of what needs you across On Call, Roster, CPD, Teaching and Admin — overdue first, then due soon, then the rest — each row linking to the page that resolves it. My Day has no search results surface.",
+  "/open-shifts":
+    "Open shifts Browse: extra shifts advertised in your Roster teams, with filter chips. Open shifts has no search results surface.",
+  "/open-shifts/shift/[serviceId]/[openShiftId]":
+    "One extra-shift advert in your Roster team, where you put your hand up.",
+  "/open-shifts/mine": "Open shifts My shifts: extra shifts you have applied for or been given.",
+  "/open-shifts/alerts": "Open shifts Alerts: choose which new extra shifts you hear about.",
+  "/open-shifts/post": "Open shifts Post: the extra shifts a Roster team manager has posted.",
+  "/open-shifts/post/new": "Post an extra shift to a Roster team you manage.",
+  "/open-shifts/post/[serviceId]/[openShiftId]": "One extra shift you posted, with its applicants.",
+  "/open-shifts/board": "Open shifts Board: every open shift in the Roster teams you manage at a glance.",
+  "/open-shifts/log": "Open shifts Log: what has happened to the extra shifts in the Roster teams you manage.",
   "/on-call/compliance": "Compatibility redirect to `/admin/renewals`, carrying the query string.",
   "/on-call/logistics": "Compatibility redirect to `/admin/help`, carrying the query string.",
+  "/on-call/education": "Compatibility redirect to `/teaching/week`, carrying the query string.",
   "/first-nations":
     "First Nations Bedside page: the Aboriginal liaison figure for the chosen hospital, the crisis strip (000 and 13YARN), what to do first and links to the eight section pages. A dashboard, not a redirect to the shared search home — First Nations has no search results surface.",
   "/first-nations/contacts":
@@ -344,6 +372,7 @@ const routeOwnershipRows = [
   ["On Call", "src/app/(search-app)/on-call, src/components/on-call"],
   ["CPD", "src/app/(search-app)/cme, src/components/cme"],
   ["Psychiatry", "src/app/(search-app)/psychiatry, src/components/psychiatry"],
+  ["Medicines & tools", "src/app/(search-app)/medicines, src/components/medicines"],
   ["Admin", "src/app/(search-app)/admin, src/components/admin, src/lib/admin"],
   ["First Nations", "src/app/(search-app)/first-nations, src/components/first-nations, src/lib/first-nations"],
   ["Teaching", "src/app/(search-app)/teaching, src/app/(display)/teaching, src/components/teaching"],
@@ -535,6 +564,9 @@ function renderModeRoutes() {
     roster: appModeHomeHref("roster"),
     "first-nations": appModeHomeHref("first-nations"),
     teaching: appModeHomeHref("teaching"),
+    "my-day": appModeHomeHref("my-day"),
+    medicines: appModeHomeHref("medicines"),
+    "open-shifts": appModeHomeHref("open-shifts"),
   };
 
   return appModeDefinitions.map((mode) => {
@@ -659,7 +691,7 @@ function renderModePageIndex() {
       home: appModeHomeHref("sources"),
       search: appModeHomeHref("sources", { query: "RANZCP", focus: true, run: true }),
       detail:
-        "`/sources` redirects to the shared home, which carries a `Browse catalogue` chip; `/sources/search` is the filterable catalogue, and a submitted or filter-carrying deep link to `/sources` forwards there. Also `/sources/topics`, `/sources/publishers`, `/sources/method`, and `/sources/[sourceId]` traceability records.",
+        "`/sources` redirects to the shared home, which carries a `Browse catalogue` chip; `/sources/search` is the filterable catalogue, and a submitted or filter-carrying deep link to `/sources` forwards there. Also `/sources/topics`, `/sources/publishers`, `/sources/currency`, `/sources/method`, and `/sources/[sourceId]` traceability records.",
     },
     {
       mode: "Therapy Compass",
@@ -673,7 +705,7 @@ function renderModePageIndex() {
       home: appModeHomeHref("on-call"),
       search: appModeHomeHref("on-call"),
       detail:
-        'No results page — `resultsSurface: "none"`. `/on-call` is a shift dashboard; section pages include `/on-call/now`, `/on-call/call`, `/on-call/refer`, `/on-call/find`, `/on-call/whos-on`, `/on-call/compliance`, `/on-call/contacts`, and `/on-call/who-is-who`.',
+        'No results page — `resultsSurface: "none"`. `/on-call` is a shift dashboard; section pages include `/on-call/now`, `/on-call/call`, `/on-call/refer`, `/on-call/find`, `/on-call/whos-on`, `/on-call/contacts`, and `/on-call/who-is-who`. `/on-call/education` redirects to Teaching Week; `/on-call/compliance` and `/on-call/logistics` redirect to Admin.',
     },
     {
       mode: "CPD",
@@ -690,11 +722,18 @@ function renderModePageIndex() {
         'No results page — `resultsSurface: "none"`, like On Call and CPD. `/psychiatry` is a dashboard of links; the six modes it gathers keep their own routes and searches.',
     },
     {
+      mode: "Medicines & tools",
+      home: appModeHomeHref("medicines"),
+      search: appModeHomeHref("medicines"),
+      detail:
+        'No results page — `resultsSurface: "none"`, like Psychiatry. `/medicines` is a dashboard of links; the five modes it gathers keep their own routes and searches.',
+    },
+    {
       mode: "Admin",
       home: appModeHomeHref("my-work"),
       search: appModeHomeHref("my-work"),
       detail:
-        'No results page — `resultsSurface: "none"`, like Psychiatry. `/admin` is Today; `/my-work`, `/on-call/compliance` and `/on-call/logistics` redirect to Admin pages.',
+        'No results page — `resultsSurface: "none"`, like Psychiatry. `/admin` is Today; `/my-work`, `/on-call/compliance` and `/on-call/logistics` redirect to Admin pages. `/on-call/education` redirects to Teaching Week.',
     },
     {
       mode: "Roster",
@@ -702,6 +741,13 @@ function renderModePageIndex() {
       search: appModeHomeHref("roster"),
       detail:
         'No results page — `resultsSurface: "none"`, like On Call. `/roster` Today dashboard, `/roster/shifts` full schedule and month calendar, `/roster/calendar` feed subscribe, and `/roster/settings`.',
+    },
+    {
+      mode: "Open shifts",
+      home: appModeHomeHref("open-shifts"),
+      search: appModeHomeHref("open-shifts"),
+      detail:
+        'No results page — `resultsSurface: "none"`, like Roster. `/open-shifts` Browse, `/open-shifts/mine`, `/open-shifts/alerts`, and `/open-shifts/post` for Roster team managers (with `/post/new`, `/post/[serviceId]/[openShiftId]`, `/board` and `/log`); `/open-shifts/shift/[serviceId]/[openShiftId]` is one advert.',
     },
     {
       mode: "First Nations",
@@ -716,6 +762,13 @@ function renderModePageIndex() {
       search: appModeHomeHref("teaching"),
       detail:
         'No results page — `resultsSurface: "none"`, like CPD. `/teaching` is Today; Week, Logbook and Organise are its other pages; `/teaching/session/[id]` is one session with `/check-in`; `/teaching/c/[token]` is the scan landing; `/teaching/display/[token]` is the chrome-free shared screen.',
+    },
+    {
+      mode: "My Day",
+      home: appModeHomeHref("my-day"),
+      search: appModeHomeHref("my-day"),
+      detail:
+        'No results page — `resultsSurface: "none"`, like Admin. `/my-day` is one list merging what needs you from On Call, Roster, CPD, Teaching and Admin; each row links to the page that resolves it. `/my-day/week` is the next seven Perth days, one list per day, and `/my-day/hours` is rostered hours this week and fortnight with the next leave.',
     },
   ]);
 }

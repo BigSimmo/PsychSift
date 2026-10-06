@@ -154,6 +154,35 @@ npm run clinical:review -- --write --walk --kind timeframe --reviewed-by "Dr <yo
 After you sign off a deadline, tell Claude: the offline page (the one the app shows with no
 internet) keeps its own copy of signed-off deadlines, and Claude must rebuild it.
 
+## Signing off the Today rule engines
+
+Three Today-page features stay switched off until you sign them: roster fatigue warnings, CPD
+category coaching and the Mental Health Act countdowns. One guided command does all three.
+
+1. See where things stand (this changes nothing):
+
+   ```bash
+   npm run rules:sign
+   ```
+
+2. Start the guided sign-off:
+
+   ```bash
+   npm run rules:sign -- --write
+   ```
+
+3. The first time, it adds you as the approved signer. It prints where to find your account ID
+   in the Supabase dashboard (Authentication, then Users, then the UID column on your row); paste
+   it, then type your given name and surname, then type `ADD`.
+4. For each feature it shows every quoted rule and its source. Answer the three questions, type
+   the sign-off code it shows, then choose whether to switch it on now.
+5. The countdowns also ask for the date you re-checked the medical-device ruling and where that
+   decision is written down. A countdown runs only for a deadline that a named clinician signed.
+6. Re-reviewing a feature that is already signed: answering No to any question revokes its
+   sign-off and switches it off. Skipping the review or mistyping the code changes nothing.
+7. It saves `src/lib/admin/today-rule-sign-offs.json`. Tell Claude it is signed so the file can
+   be committed.
+
 ## Signing off the differential overlays
 
 Ten differentials carry assessment steps, safety facts and "how to tell it apart" rows that
@@ -197,9 +226,9 @@ record's badge changes from "Awaiting clinical review" to "Clinically reviewed" 
 
 ## Signing off Therapy
 
-Therapy records can be reviewed either in batch via an HTML review pack (recommended) or one-by-one in the terminal.
+Therapy records can be reviewed either in batch via an HTML review pack (recommended) or one-by-one in the terminal. Both paths ask the same seven checks per record: clinical accuracy, source correspondence, evidence appraisal, safety and cautions, the patient-facing explanation, proofreading, and Australian English.
 
-### Visual HTML Review Pack & Batch Sign-off (Recommended)
+### Visual HTML review pack and batch sign-off (recommended)
 
 Instead of answering questions 205 times in the terminal, generate a visual HTML review pack to read in your browser:
 
@@ -214,15 +243,15 @@ Instead of answering questions 205 times in the terminal, generate a visual HTML
    ```
    If any specific record needs revision before sign-off, exclude it by short name: `--exclude <slug1>,<slug2>`.
 
-### Terminal Walk-Through (One-by-One)
+### Terminal walk-through (one by one)
 
-The interactive walk-through steps through records in the terminal with seven clinical questions per record:
+The walk-through goes through all 205 in catalogue order. Confirm each one by typing `REVIEW` and its short name, which the tool shows.
 
 ```bash
 npm run therapy:review -- --write --walk --reviewed-by "Dr <your surname>"
 ```
 
-47 Therapy records list no references yet. The tool leaves them out until sources are adopted; they stay awaiting review. Type `skip` at any question to skip a record.
+47 Therapy records list no references yet. The tool leaves them out, because the source correspondence question cannot be answered yes without a source; they stay awaiting review until one is adopted. Type `skip` at any question to move on to the next record without saving the one on screen.
 
 ## Indigenous content is never signed off here
 

@@ -6,8 +6,11 @@ import { CrisisStrip } from "@/components/first-nations/crisis";
 import { FirstNationsSearch } from "@/components/first-nations/first-nations-search";
 import { LiaisonHero } from "@/components/first-nations/liaison-hero";
 import { FnModule } from "@/components/first-nations/module-header";
+import { TodayShell } from "@/components/mode-kit/today/today-shell";
+import { ReviewStamp } from "@/components/first-nations/review-stamp";
 import { OfflineState } from "@/components/first-nations/offline-state";
 import { FirstNationsHomeMenu } from "@/components/first-nations/page-menu";
+import { openReadingTrustSheet } from "@/components/first-nations/reading-trust-sheet";
 import { SituationModule, SituationProvider, SituationSidePanel } from "@/components/first-nations/situation-module";
 import { StateModule } from "@/components/first-nations/state-module";
 import { AcknowledgementText } from "@/components/first-nations/voice";
@@ -19,14 +22,24 @@ export const EXAMPLE_LINE = "Example only · wording awaiting approval";
 
 export type Training = { label: string; href: string } | null;
 
+/** Tappable cue into the reading-trust sheet; keeps the same visible wording. */
 export function ExampleLine({ className }: { className?: string }) {
   return (
-    <p
+    <button
+      type="button"
       data-fn-part="example"
-      className={cn("px-1 text-2xs text-[color:var(--text-muted)] [text-wrap:balance]", className)}
+      onClick={() => openReadingTrustSheet()}
+      aria-haspopup="dialog"
+      aria-label={`What am I reading? ${EXAMPLE_LINE}`}
+      className={cn(
+        "px-1 text-left text-2xs text-[color:var(--text-muted)] underline-offset-2 [text-wrap:balance]",
+        "hover:underline",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+        className,
+      )}
     >
       {EXAMPLE_LINE}
-    </p>
+    </button>
   );
 }
 
@@ -58,68 +71,80 @@ export function BedsideHomeView({
       />
       <div className="mx-auto grid w-full max-w-[80rem] lg:grid-cols-[minmax(0,1fr)_22.5rem]">
         <div className="grid min-w-0 content-start gap-3 px-3 pb-6 pt-3 lg:px-5">
-          {model.showExampleLine ? <ExampleLine /> : null}
-          <OfflineState />
-          {model.hospitals.length > 1 ? (
-            <label className="grid gap-1 text-sm-minus text-[color:var(--text-muted)]">
-              Your workplace hospital
-              <select
-                value={hospital?.id ?? ""}
-                onChange={(event) => chooseHospital(event.target.value)}
-                className="min-h-12 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-[color:var(--text-heading)]"
-              >
-                {model.hospitals.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          <div className="grid gap-3 md:grid-cols-[1.1fr_1fr] md:items-start">
-            <div className="grid min-w-0 gap-3 md:col-start-1 md:row-start-1">
-              {hospital ? (
+          <TodayShell
+            mode="first-nations"
+            modeName="First Nations"
+            status={
+              <>
+                {model.showExampleLine ? <ExampleLine /> : null}
+                <OfflineState />
+                {model.hospitals.length > 1 ? (
+                  <label className="grid gap-1 text-sm-minus text-[color:var(--text-muted)]">
+                    Your workplace hospital
+                    <select
+                      value={hospital?.id ?? ""}
+                      onChange={(event) => chooseHospital(event.target.value)}
+                      className="min-h-12 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-[color:var(--text-heading)]"
+                    >
+                      {model.hospitals.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {h.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </>
+            }
+            safety={<CrisisStrip />}
+            now={
+              hospital ? (
                 <LiaisonHero hospital={hospital} />
               ) : (
                 <StateModule kind="not-set-up" href={model.missingNumberHref ?? undefined} />
-              )}
-              <CrisisStrip />
-              <FirstNationsSearch entries={model.search} />
-            </div>
-            <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-1">
-              <SituationModule />
-            </div>
-            <div data-fn-part="tools" className="grid grid-cols-2 gap-2 md:col-start-1 md:row-start-2">
-              <BeforeYouGoIn steps={model.beforeYouGoIn} />
-              <WhereIsHomeTile
-                regions={model.regions}
-                map={model.map}
-                interpreter={model.interpreter}
-                mapSource={mapSource}
-              />
-            </div>
-          </div>
-          {model.topMistakes.length ? (
-            <FnModule id="fn-top-mistakes" icon="shield" title="Common mistakes" className="hidden lg:grid">
-              <ul className="grid">
-                {model.topMistakes.map((m) => (
-                  <li
-                    key={m.id}
-                    className="grid grid-cols-2 gap-3 border-t border-[color:var(--border)] px-3 py-2.5 first:border-t-0"
-                  >
-                    <span className="text-sm-minus text-[color:var(--text-muted)]">
-                      <span className="sr-only">Avoid: </span>
-                      {m.avoid}
-                    </span>
-                    <span className="text-sm-minus text-[color:var(--text-heading)]">
-                      <span className="sr-only">Instead: </span>
-                      {m.instead}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </FnModule>
-          ) : null}
+              )
+            }
+            nowSurface="own"
+            comingUp={<SituationModule />}
+            atAGlance={
+              <>
+                <div data-fn-part="tools" className="grid grid-cols-2 gap-2">
+                  <BeforeYouGoIn steps={model.beforeYouGoIn} />
+                  <WhereIsHomeTile
+                    regions={model.regions}
+                    map={model.map}
+                    interpreter={model.interpreter}
+                    mapSource={mapSource}
+                  />
+                </div>
+                {model.topMistakes.length ? (
+                  <FnModule id="fn-top-mistakes" icon="shield" title="Common mistakes" className="hidden lg:grid">
+                    <ul className="grid">
+                      {model.topMistakes.map((m) => (
+                        <li
+                          key={m.id}
+                          className="grid grid-cols-2 gap-3 border-t border-[color:var(--border)] px-3 py-2.5 first:border-t-0"
+                        >
+                          <span className="text-sm-minus text-[color:var(--text-muted)]">
+                            <span className="sr-only">Avoid: </span>
+                            {m.avoid}
+                          </span>
+                          <span className="text-sm-minus text-[color:var(--text-heading)]">
+                            <span className="sr-only">Instead: </span>
+                            {m.instead}
+                          </span>
+                          <span className="col-span-2">
+                            <ReviewStamp stamp={m.review} />
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </FnModule>
+                ) : null}
+              </>
+            }
+            shortcuts={<FirstNationsSearch entries={model.search} />}
+          />
           {model.acknowledgement ? <AcknowledgementText>{model.acknowledgement}</AcknowledgementText> : null}
         </div>
         <SituationSidePanel />

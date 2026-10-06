@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { CmeDateField, useCmeDateChecks } from "@/components/cme/cme-date-field";
+import { useCmeOneTapRoutineLog } from "@/components/cme/cme-one-tap-routine-log";
 import { cmeRoutineLogHref } from "@/components/cme/cme-route-navigation";
 import { CmeRoutinesPage } from "@/components/cme/cme-routines-page";
 import { cardSurface } from "@/components/card-recipes";
@@ -56,6 +57,7 @@ export function CmeRoutinesRoute({
   readonly demoMode: boolean;
 }) {
   const router = useRouter();
+  const oneTap = useCmeOneTapRoutineLog({ demoMode });
   const [routines, setRoutines] = useState<CmeRoutine[]>(() => [...initialRoutines]);
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [draft, setDraft] = useState<RoutineDraft>(emptyDraft);
@@ -227,7 +229,8 @@ export function CmeRoutinesRoute({
               onChange={(nextDue) => setDraft((current) => ({ ...current, nextDue: nextDue || null }))}
             />
             <p className={cn(textMuted, "text-xs")}>
-              Logging this routine opens a pre-filled activity. Nothing is recorded until you review and save it.
+              When this routine is due, Log saves the usual hours and category split straight away (with Undo). Without
+              a usual split, or when you tap Log now, the entry form opens first.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" variant="primary" busy={saving} busyLabel="Saving…">
@@ -245,9 +248,16 @@ export function CmeRoutinesRoute({
           </form>
         </section>
       ) : null}
+      {oneTap.notice}
       <CmeRoutinesPage
         routines={routines}
         now={new Date(nowIso)}
+        loggingDue={oneTap.logging}
+        onLogDueRoutine={(prefill) => {
+          void oneTap.logDueRoutine(prefill).then((result) => {
+            if (result === "form") router.push(cmeRoutineLogHref(prefill));
+          });
+        }}
         onLogRoutine={(prefill) => router.push(cmeRoutineLogHref(prefill))}
         onNewRoutine={openNew}
         onEditRoutine={openEdit}

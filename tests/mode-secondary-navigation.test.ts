@@ -32,17 +32,17 @@ const expectedLabels: Record<AppModeId, string[]> = {
   "therapy-compass": ["Search", "Recommend", "Compare", "Pathways", "Review"],
   factsheets: ["Search", "Topics"],
   dictionary: ["Terms", "Topics", "Compare", "Sources"],
-  sources: ["Catalogue", "Topics", "Publishers", "Method"],
+  sources: ["Catalogue", "Topics", "Publishers", "Currency", "Method"],
   // Six shift pages, two tools, then the pages moving out to their own modes
   // (kit 1.7). "Teaching" and "Admin" stay label-only: their ids, route
   // segments and check constraints stay "education" and "logistics".
   "on-call": [
     "Now",
-    "Who's on",
-    "Call",
-    "Playbook",
+    "People",
     "Refer",
-    "Find",
+    "Handbook",
+    "Playbook",
+    "Who's on",
     "Pocket card",
     "Manage service",
     "Compliance",
@@ -51,10 +51,11 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Who's who",
     "Orientation checklists",
   ],
-  cme: ["Today", "Log", "Plan", "Learning", "Set up"],
-  teaching: ["Today", "Week", "What's on", "Resources", "Logbook", "Teach", "Supervision", "Organise"],
+  cme: ["Year", "Log", "Plan", "Courses", "Report"],
+  teaching: ["This week", "Presenting", "Assessments", "My record", "Resources", "Organise"],
   psychiatry: [],
-  "my-work": ["Today", "Renewals", "New job", "Help"],
+  medicines: [],
+  "my-work": ["Renewals", "Compliance", "New job", "Help"],
   roster: ["Today", "Shifts", "Team", "Swaps", "Requests", "Settings"],
   "first-nations": [
     "Bedside",
@@ -67,6 +68,8 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Going home",
     "End of life",
   ],
+  "my-day": ["Today", "Work", "Me"],
+  "open-shifts": ["Browse", "My shifts", "Alerts", "Post"],
 };
 
 const cleanLandingPath: Record<AppModeId, string> = {
@@ -90,9 +93,12 @@ const cleanLandingPath: Record<AppModeId, string> = {
   cme: "/cme",
   teaching: "/teaching",
   psychiatry: "/psychiatry",
-  "my-work": "/admin",
+  medicines: "/medicines",
+  "my-work": "/admin/renewals",
   roster: "/roster",
   "first-nations": "/first-nations",
+  "my-day": "/my-day",
+  "open-shifts": "/open-shifts",
 };
 
 /**
@@ -122,12 +128,13 @@ const emptyRegistryModes = [
   "tools",
   "calculators",
   "psychiatry",
+  "medicines",
 ] as const satisfies readonly AppModeId[];
 
 describe("mode secondary navigation registry", () => {
-  it("covers all 23 modes with the approved destinations and no Home item", () => {
+  it("covers all 26 modes with the approved destinations and no Home item", () => {
     expect(Object.keys(modeSecondaryNavigationRegistry).sort()).toEqual([...appModeIds].sort());
-    expect(appModeIds).toHaveLength(23);
+    expect(appModeIds).toHaveLength(26);
 
     for (const modeId of appModeIds) {
       const labels = modeSecondaryNavigationRegistry[modeId].map((item) => item.label);
@@ -156,15 +163,15 @@ describe("mode secondary navigation registry", () => {
 
   it("keeps every older CPD address under one of the five current pages", () => {
     expect(modeSecondaryNavigationRegistry.cme.map(({ label }) => label)).toEqual([
-      "Today",
+      "Year",
       "Log",
       "Plan",
-      "Learning",
-      "Set up",
+      "Courses",
+      "Report",
     ]);
     for (const [pathname, page] of [
       ["/cme", "year"],
-      ["/cme/check", "year"],
+      ["/cme/check", "setup"],
       ["/cme/log", "log"],
       ["/cme/log/example", "log"],
       ["/cme/routines", "log"],
@@ -230,7 +237,13 @@ describe("mode secondary navigation registry", () => {
         hasSubmittedSearch: false,
       }),
     ).toBe(false);
-    for (const pathname of ["/sources/search", "/sources/topics", "/sources/publishers", "/sources/method"]) {
+    for (const pathname of [
+      "/sources/search",
+      "/sources/topics",
+      "/sources/publishers",
+      "/sources/currency",
+      "/sources/method",
+    ]) {
       expect(isModeSecondaryNavigationRoute({ modeId: "sources", pathname, hasSubmittedSearch: false })).toBe(true);
     }
     expect(
@@ -513,10 +526,12 @@ describe("mode secondary navigation registry", () => {
     expect(MODE_NAV_ADOPTED_MODES).not.toContain("on-call");
   });
 
-  it("groups On Call into six shift pages, two tools and the pages moving out", () => {
+  it("groups On Call into four tabs, the shift tools and the pages moving out", () => {
+    // Owner choice, 5 Oct: four tabs (Now, People, Refer, Handbook); Playbook,
+    // Who's on and Pocket card move under tools.
     const { main, tools, more } = groupModeSecondaryNavigationEntries(modeSecondaryNavigationRegistry["on-call"]);
-    expect(main.map((entry) => entry.label)).toEqual(["Now", "Who's on", "Call", "Playbook", "Refer", "Find"]);
-    expect(tools.map((entry) => entry.label)).toEqual(["Pocket card", "Manage service"]);
+    expect(main.map((entry) => entry.label)).toEqual(["Now", "People", "Refer", "Handbook"]);
+    expect(tools.map((entry) => entry.label)).toEqual(["Playbook", "Who's on", "Pocket card", "Manage service"]);
     expect(more.map((entry) => entry.label)).toEqual([
       "Compliance",
       "Admin",
@@ -591,6 +606,19 @@ describe("mode secondary navigation registry", () => {
     expect(more.teaching).toBe("/teaching");
   });
 
+  it("does not grow the mode menus past their current pages", () => {
+    const visible = (modeId: AppModeId) =>
+      modeSecondaryNavigationEntries(modeId).filter((entry) => entry.href && !entry.hidden);
+    // Teaching v5 (5 Oct mock-up): five tabs plus Assessments; What's on, Supervision, Feedback, Term and Exam prep sit behind them.
+    expect(visible("teaching")).toHaveLength(6);
+    // Compliance joined Admin with the 5 Oct mock-up (Renewals · Compliance · New job · Help).
+    expect(visible("my-work")).toHaveLength(4);
+    expect(visible("roster")).toHaveLength(6);
+    expect(visible("first-nations")).toHaveLength(9);
+    expect(visible("my-day")).toHaveLength(3);
+    expect(visible("on-call").filter((entry) => entry.group === "more")).toHaveLength(5);
+  });
+
   it("does not mark Find/Search current on record routes that match no destination", () => {
     expect(activeModeSecondaryNavigationId("specifiers", "/specifiers/with-anxious-distress")).toBeNull();
     expect(activeModeSecondaryNavigationId("formulation", "/formulation/avoidance")).toBeNull();
@@ -629,6 +657,7 @@ describe("mode secondary navigation registry", () => {
     expect(activeModeSecondaryNavigationId("sources", "/sources/search")).toBe("catalogue");
     expect(activeModeSecondaryNavigationId("sources", "/sources/topics")).toBe("topics");
     expect(activeModeSecondaryNavigationId("sources", "/sources/publishers")).toBe("publishers");
+    expect(activeModeSecondaryNavigationId("sources", "/sources/currency")).toBe("currency");
     expect(activeModeSecondaryNavigationId("sources", "/sources/method")).toBe("method");
     expect(activeModeSecondaryNavigationId("sources", "/sources/src_detail")).toBeNull();
 
@@ -693,6 +722,7 @@ describe("information page classification", () => {
     "/sources",
     "/sources/topics",
     "/sources/publishers",
+    "/sources/currency",
     "/sources/method",
   ])("does not classify workflow route %s as an information page", (pathname) => {
     expect(isInformationPage(pathname)).toBe(false);
@@ -754,6 +784,32 @@ describe("Roster mode secondary navigation active destinations", () => {
       isModeSecondaryNavigationRoute({ modeId: "roster", pathname: "/roster/settings", hasSubmittedSearch: false }),
     ).toBe(true);
     expect(isModeSecondaryNavigationRoute({ modeId: "roster", pathname: "/roster", hasSubmittedSearch: false })).toBe(
+      false,
+    );
+  });
+});
+
+describe("My Day mode secondary navigation", () => {
+  it("registers Today, Week and Hours with unique ids and their own addresses", () => {
+    expect(modeSecondaryNavigationRegistry["my-day"]).toEqual([
+      { id: "my-day-today", label: "Today", href: "/my-day" },
+      { id: "my-day-work", label: "Work", href: "/my-day?page=work" },
+      { id: "my-day-me", label: "Me", href: "/my-day?page=me" },
+    ]);
+  });
+
+  it("marks each page current by exact match only", () => {
+    expect(activeModeSecondaryNavigationId("my-day", "/my-day")).toBe("my-day-today");
+    expect(activeModeSecondaryNavigationId("my-day", "/my-day/week")).toBe("my-day-today");
+    expect(activeModeSecondaryNavigationId("my-day", "/my-day/hours")).toBe("my-day-me");
+    expect(activeModeSecondaryNavigationId("my-day", "/my-day/other")).toBeNull();
+  });
+
+  it("opens the mode bar on the sub-pages but not on the Today home", () => {
+    for (const pathname of ["/my-day/week", "/my-day/hours"]) {
+      expect(isModeSecondaryNavigationRoute({ modeId: "my-day", pathname, hasSubmittedSearch: false })).toBe(true);
+    }
+    expect(isModeSecondaryNavigationRoute({ modeId: "my-day", pathname: "/my-day", hasSubmittedSearch: false })).toBe(
       false,
     );
   });

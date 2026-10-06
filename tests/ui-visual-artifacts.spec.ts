@@ -54,4 +54,30 @@ test.describe("PsychSift visual QA artifacts", () => {
       await attachViewportScreenshot(page, testInfo, name, { width: 390, height: 820 }, path);
     }
   });
+
+  /**
+   * The My Day dashboard (design review v13): a look check for the owner, not
+   * a pixel gate. Each page at phone width, light and dark, attached for a
+   * person to compare with the mock-up; nothing here fails when a card moves.
+   * The clock is fixed for the same reason as the CME capture above, and the
+   * local demo build supplies the data, so no provider is touched.
+   */
+  test("captures My Day", async ({ page }, testInfo) => {
+    test.setTimeout(90_000);
+    await page.clock.setFixedTime(new Date("2026-10-03T04:40:00Z"));
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      for (const tab of ["today", "work", "me"] as const) {
+        await attachViewportScreenshot(
+          page,
+          testInfo,
+          `my-day-${tab}-${scheme}-mobile`,
+          { width: 390, height: 844 },
+          tab === "today" ? "/my-day" : `/my-day?page=${tab}`,
+        );
+      }
+    }
+    await page.emulateMedia({ colorScheme: "light" });
+    await attachViewportScreenshot(page, testInfo, "my-day-today-desktop", { width: 1366, height: 900 }, "/my-day");
+  });
 });

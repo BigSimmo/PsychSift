@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ruleContentSha256, type RuleSignOff } from "@/lib/admin/rule-sign-off";
+import { ruleContentSha256, UNSIGNED, type RuleSignOff } from "@/lib/admin/rule-sign-off";
 import { cpdCategoryCoaching, cpdCategoryCoachingUngated, cpdStandardMismatches } from "@/lib/cme/category-coaching";
-import { CPD_CATEGORY_RULE_SET, CPD_CATEGORY_RULES_SIGN_OFF } from "@/lib/cme/category-rules-source";
+import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
 import { createAustralianRanzcpPreset } from "@/lib/cme/presets";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 
@@ -39,9 +39,11 @@ function entry(hours: Partial<Record<CmeCategory, number>>, extra: Partial<CmeEn
 const preset = createAustralianRanzcpPreset(2026, "2026-01-05");
 
 describe("CPD category rule source", () => {
-  it("ships unsigned and off", () => {
-    expect(CPD_CATEGORY_RULES_SIGN_OFF.enabled).toBe(false);
-    expect(cpdCategoryCoaching(preset, [])).toEqual({ gate: { on: false, reason: "unsigned" }, coaching: null });
+  it("stays off while unsigned, whatever the committed store holds", () => {
+    expect(cpdCategoryCoaching(preset, [], UNSIGNED)).toEqual({
+      gate: { on: false, reason: "unsigned" },
+      coaching: null,
+    });
   });
 
   it("every quote states the figure the engine uses", () => {

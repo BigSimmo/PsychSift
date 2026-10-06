@@ -96,6 +96,67 @@ export function assessSearchProbe({ domain, status, body }) {
   return { ok: true, domain, code: "ok", message: `${domain}: ${total} result(s) in ${group.latencyMs}ms.` };
 }
 
+/**
+ * ONE RE-PROBE FOR A DEGRADED DOMAIN, and why it does not hide an outage.
+ *
+ * Since 2026-10-06 a canonical read that misses the 1200 ms search budget is no longer cancelled:
+ * the reader gets seeds, the read finishes in the background, fills the process cache, and lifts
+ * the seed-fallback cooldown (`catalogue-seed-fallback.ts`). So the first search after a long idle
+ * can still be answered from seeds once, by design, and a second search moments later is canonical.
+ * This monitor probes every six hours, which is always after idle, so it would report that one
+ * designed miss as an outage.
+ *
+ * The re-probe waits longer than the app's background-fill ceiling, so a healthy cold read has
+ * finished, and well inside the 30 s cooldown a GENUINE failure opens, so a catalogue that really
+ * cannot be read is still answering from seeds when it is asked again and still fails here. The
+ * defect this was written alongside (the read cancelled at the budget, so the cache never filled)
+ * also still fails: nothing lifts its cooldown. `tests/live-search-results.test.ts` pins both
+ * bounds against the app's own constants.
+ *
+ * Only `degraded` is re-probed. Zero results, an errored group, or an HTTP failure is never the
+ * designed cold path, and is reported on the first sight as before.
+ */
+export const degradedReprobeDelayMs = 12_000;
+
+/**
+ * Probe every domain in turn, re-probing a degraded one once after `reprobeDelayMs`.
+ *
+ * @param {object} input
+ * @param {(domain: string, query: string) => Promise<{ok: boolean, domain: string, code: string, message: string}>} input.probe
+ * @param {(ms: number) => Promise<void>} input.sleep
+ * @param {number} [input.reprobeDelayMs]
+ */
+export async function runSearchProbes({ probe, sleep, reprobeDelayMs = degradedReprobeDelayMs }) {
+  const attempt = async (domain, query) => {
+    try {
+      return await probe(domain, query);
+    } catch (error) {
+      return { ok: false, domain, code: "unreachable", message: `${domain}: ${error.message}` };
+    }
+  };
+
+  const results = [];
+  for (const { domain, query } of liveSearchProbes) {
+    const first = await attempt(domain, query);
+    if (first.code !== "degraded") {
+      results.push(first);
+      continue;
+    }
+    await sleep(reprobeDelayMs);
+    const second = await attempt(domain, query);
+    results.push(
+      second.ok
+        ? {
+            ...second,
+            healedAfterColdRead: true,
+            message: `${domain}: served seeds on a cold read, then answered canonically ${reprobeDelayMs / 1000}s later (${second.message.replace(`${domain}: `, "")})`,
+          }
+        : second,
+    );
+  }
+  return results;
+}
+
 /** @param {Array<{ok: boolean, message: string}>} results */
 export function summariseSearchProbes(results) {
   const failed = results.filter((result) => !result.ok);
@@ -121,16 +182,16 @@ async function main() {
   if (!domainUrl) throw new Error("LIVE_DOMAIN_URL is required.");
   const timeoutMs = Number(process.env.SEARCH_PROBE_TIMEOUT_MS || 30_000);
 
-  const results = [];
-  for (const { domain, query } of liveSearchProbes) {
-    try {
-      results.push(await probe(domain, query, domainUrl, timeoutMs));
-    } catch (error) {
-      results.push({ ok: false, domain, code: "unreachable", message: `${domain}: ${error.message}` });
-    }
-  }
+  const results = await runSearchProbes({
+    probe: (domain, query) => probe(domain, query, domainUrl, timeoutMs),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  });
 
-  for (const result of results) console.log(result.ok ? result.message : `::error::${result.message}`);
+  for (const result of results) {
+    // A healed cold read passes, but stays visible: it is still a reader who was served seeds.
+    if (result.ok && result.healedAfterColdRead) console.log(`::warning::${result.message}`);
+    else console.log(result.ok ? result.message : `::error::${result.message}`);
+  }
 
   const summary = summariseSearchProbes(results);
   if (summary.ok) {

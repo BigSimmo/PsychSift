@@ -20,34 +20,34 @@
   },
   "baseline": {
     "desktop-documents-search": {
-      "lcpMs": 892.2460999999996,
+      "lcpMs": 960.866,
       "cls": 0,
-      "tbtMs": 21,
-      "fcpMs": 342.7487,
+      "tbtMs": 6.5,
+      "fcpMs": 380.2165,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
     },
     "desktop-root": {
-      "lcpMs": 1062.16995,
+      "lcpMs": 1073.2604500000002,
       "cls": 0,
-      "tbtMs": 32.5,
-      "fcpMs": 352.8723,
+      "tbtMs": 42,
+      "fcpMs": 343.7887,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
     },
     "mobile-documents-search": {
-      "lcpMs": 2355.283,
+      "lcpMs": 2865.602,
       "cls": 0,
-      "tbtMs": 622.3120000000013,
-      "fcpMs": 2355.283,
+      "tbtMs": 559.8449999999993,
+      "fcpMs": 2865.602,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
     },
     "mobile-root": {
-      "lcpMs": 2336,
+      "lcpMs": 2514.476,
       "cls": 0,
-      "tbtMs": 617.9280000000003,
-      "fcpMs": 2336,
+      "tbtMs": 741.9059999999995,
+      "fcpMs": 2514.476,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
     }
   },
-  "updatedAt": "2026-09-26T08:34:44.757Z",
+  "updatedAt": "2026-10-06T02:43:20.444Z",
   "$routes": "Only surfaces that still render. `/therapy-compass`, `/dsm` and `/forms` were removed when home consolidation turned them into redirect stubs: Lighthouse followed the 307 and graded `/?mode=<id>` against a baseline captured on the retired detailed home, which the checker reports as \"measured a different page than requested\". All three now render the same shared home as `/`, so removing them costs duplication rather than coverage. Restoring per-mode coverage means measuring the `<mode>/search` results routes, and those need baseline rows the dispatch-only refresh job records — do that rather than hand-writing numbers."
 }

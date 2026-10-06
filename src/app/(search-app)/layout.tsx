@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { SharedSearchAppShell } from "@/components/clinical-dashboard/shared-search-app-shell";
+import { PsychiatryVisitRecorder } from "@/components/psychiatry/psychiatry-visit-recorder";
 import { clinicalAskModeEnabled } from "@/lib/clinical-ask/authority-registry";
 import { projectClinicalAskAvailableModeIds } from "@/lib/clinical-ask/capabilities";
 
@@ -12,6 +13,9 @@ import { projectClinicalAskAvailableModeIds } from "@/lib/clinical-ask/capabilit
 export default function SearchAppLayout({ children }: { children: ReactNode }) {
   const clinicalAskAvailableModeIds = projectClinicalAskAvailableModeIds(clinicalAskModeEnabled);
   return (
-    <SharedSearchAppShell clinicalAskAvailableModeIds={clinicalAskAvailableModeIds}>{children}</SharedSearchAppShell>
+    <SharedSearchAppShell clinicalAskAvailableModeIds={clinicalAskAvailableModeIds}>
+      {children}
+      <PsychiatryVisitRecorder />
+    </SharedSearchAppShell>
   );
 }

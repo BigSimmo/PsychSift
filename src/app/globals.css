@@ -8,6 +8,9 @@
    Production mounts that class on `<html>` (`src/app/layout.tsx`), so the
    layer is opted in at the document root rather than per subtree. */
 @import "./ckb-v2-tokens.css";
+/* The mode page header band (C4). Its own sheet keeps the block out of this
+   file, which every mode build edits. */
+@import "./mode-band.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant pointer-fine (@media (pointer: fine));
@@ -112,6 +115,12 @@
   /* Fully-round role (chips, pills, avatars). Call sites carried a bare
      `, 9999px` fallback before this was declared. */
   --radius-pill: 9999px;
+
+  /* Dashboard style weights (owner decision, 3 October 2026; TOKENS.md §7.2).
+     Only inside `.dash-surface`: titles and buttons at 700, display figures and
+     chip glyphs at 800. Clinical pages keep the 600 heading ceiling. */
+  --font-weight-dash-title: 700;
+  --font-weight-dash-figure: 800;
 
   /* Minimum interactive target (WCAG 2.5.5 / 2.5.8) — 48px, and the design
      system's ONE tap knob (SPEC §4.10, DECISIONS §C2). It is declared here in
@@ -1146,6 +1155,15 @@ body {
   --clinical-accent-soft: var(--mode-identity-soft);
   --clinical-accent-border: var(--mode-identity-border);
   --clinical-accent-contrast: var(--mode-identity-contrast);
+
+  /* CPD's three categories as shades of its indigo, darkest first. Colour only
+     helps: every use names the category in text beside it. */
+  --cme-cat-1: var(--mode-identity);
+  /* The one filled button per CPD page (5 Oct mock-up): indigo in light, a quiet indigo fill in dark. */
+  --cme-filled: var(--mode-identity);
+  --cme-filled-text: var(--mode-identity-contrast);
+  --cme-cat-2: color-mix(in oklab, var(--mode-identity) 58%, var(--surface-raised));
+  --cme-cat-3: color-mix(in oklab, var(--mode-identity) 30%, var(--surface-raised));
 }
 
 .dark [data-mode-identity="cme"] {
@@ -1153,6 +1171,11 @@ body {
   --mode-identity-soft: #1b2340;
   --mode-identity-border: #333c52;
   --mode-identity-contrast: #0b1019;
+
+  --cme-cat-2: color-mix(in oklab, var(--mode-identity) 70%, var(--surface-raised));
+  --cme-cat-3: color-mix(in oklab, var(--mode-identity) 46%, var(--surface-raised));
+  --cme-filled: color-mix(in oklab, var(--mode-identity) 38%, var(--surface-raised));
+  --cme-filled-text: var(--text-heading);
 }
 
 @media (forced-colors: active) {
@@ -1226,6 +1249,41 @@ body {
   /* Declared as its own rule, as On Call's and CME's are, so a grouped
      selector cannot stop this from matching an exact-selector read. */
   [data-mode-identity="roster"] {
+    --mode-identity: LinkText;
+    --mode-identity-soft: Canvas;
+    --mode-identity-border: ButtonBorder;
+    --mode-identity-contrast: ButtonText;
+  }
+}
+
+/* Open shifts: a deeper violet than Roster's, its parent team mode, so the
+   two read as related but distinct. Light #5b3f8f, dark #bba5e8 with a
+   declared dark contrast partner, as Roster's is. Same delivery mechanism:
+   the local `--clinical-accent` remap, scoped to the elements carrying the
+   attribute. */
+[data-mode-identity="open-shifts"] {
+  --mode-identity: #5b3f8f;
+  --mode-identity-soft: #f1ecf9;
+  --mode-identity-border: #dcd0ef;
+  --mode-identity-contrast: #ffffff;
+
+  --clinical-accent: var(--mode-identity);
+  --clinical-accent-soft: var(--mode-identity-soft);
+  --clinical-accent-border: var(--mode-identity-border);
+  --clinical-accent-contrast: var(--mode-identity-contrast);
+}
+
+.dark [data-mode-identity="open-shifts"] {
+  --mode-identity: #bba5e8;
+  --mode-identity-soft: #251c3c;
+  --mode-identity-border: #3d3158;
+  --mode-identity-contrast: #170f26;
+}
+
+@media (forced-colors: active) {
+  /* Its own rule, as Roster's is, so a grouped selector cannot stop this from
+     matching an exact-selector read. */
+  [data-mode-identity="open-shifts"] {
     --mode-identity: LinkText;
     --mode-identity-soft: Canvas;
     --mode-identity-border: ButtonBorder;
@@ -1319,6 +1377,255 @@ body {
     --surface-summary-ink: CanvasText;
     --surface-summary-muted: CanvasText;
     --surface-summary-line: CanvasText;
+  }
+}
+
+/* Dashboard style (owner decision, 3 October 2026).
+   ------------------------------------------------------------------
+   The look of the personal and operational dashboards (My Day first), kept
+   apart from the clinical kit on purpose. Every value here is scoped to
+   `.dash-surface` and its children, so no clinical page, answer, dose or
+   source label can pick one up by accident: a page opts in by wrapping its
+   dashboard in `.dash-surface`. Rules: docs/design-system/TOKENS.md §7.2.
+
+   The owner asked for the approved mock-up's colours, so the dashboard has
+   its own green and amber. They are decoration and category here (a CPD
+   type, the flag card, an icon chip), never source state: `--success`,
+   `--warning` and `--danger` keep their reserved meaning everywhere, and a
+   dashboard component must not use them. Amber text is kept for things whose
+   date has genuinely passed.
+
+   Contrast (light): ink 17.6:1 on the card, muted 5.6:1, blue 5.6:1, amber
+   5.0:1, green 4.7:1 on their tints; hero ink white on #1d67b0 5.6:1.
+   Dark: ink 14.9:1, muted 7.0:1, blue 7.3:1, amber 8.1:1, green 8.5:1. */
+.dash-surface {
+  --dash-page: #ffffff;
+  --dash-card: #f6f8fb;
+  --dash-raised: #ffffff;
+  --dash-line: #e1e6ee;
+  --dash-line-strong: #c7d0dc;
+  --dash-ink: #0e1726;
+  --dash-muted: #5d687a;
+  --dash-faint: #8a94a5;
+  --dash-blue: #1d67b0;
+  --dash-blue-2: #4f8fd6;
+  --dash-blue-tint: #e9f1fb;
+  --dash-blue-tint-2: #d6e6f8;
+  --dash-amber: #a35a00;
+  --dash-amber-tint: #fbf0e1;
+  --dash-green: #24804f;
+  --dash-green-tint: #e4f4ea;
+  --dash-green-line: color-mix(in srgb, var(--dash-green) 30%, transparent);
+  --dash-flag: #d6efdf;
+  --dash-green-solid: #1c6e43;
+  --dash-green-solid-ink: #ffffff;
+  --dash-night: #273449;
+  --dash-night-2: #5a6b85;
+  --dash-shadow: 0 1px 2px rgb(14 23 38 / 0.06), 0 8px 24px rgb(14 23 38 / 0.06);
+  --dash-hero-1: #2f7fd0;
+  --dash-hero-2: #1d67b0;
+  --dash-hero-3: #14467a;
+  --dash-hero-ink: #ffffff;
+  --dash-hero-glass: rgb(255 255 255 / 0.12);
+  --dash-hero-glass-line: rgb(255 255 255 / 0.18);
+  --dash-hero-track: rgb(255 255 255 / 0.16);
+  --dash-hero-ribbon-other: #ffd28a;
+  --dash-hero-button-ink: #12406e;
+  --dash-green-deep: #1c5e3c;
+  --dash-green-light: #3c9b68;
+  --dash-amber-deep: #7a4200;
+  --dash-amber-light: #c67a1c;
+  color: var(--dash-ink);
+}
+
+.dark .dash-surface {
+  --dash-page: #0b0f15;
+  --dash-card: #19212c;
+  --dash-raised: #131a23;
+  --dash-line: #26303d;
+  --dash-line-strong: #364252;
+  --dash-ink: #e7ecf3;
+  --dash-muted: #9ba7b8;
+  --dash-faint: #6f7b8c;
+  --dash-blue: #6caef0;
+  --dash-blue-2: #8fc1f5;
+  --dash-blue-tint: #14243a;
+  --dash-blue-tint-2: #1b3150;
+  --dash-amber: #e8a751;
+  --dash-amber-tint: #2e2312;
+  --dash-green: #63c891;
+  --dash-green-tint: #13281d;
+  --dash-flag: #173826;
+  --dash-green-solid: #63c891;
+  --dash-green-solid-ink: #0b0f15;
+  --dash-night: #c9d4e3;
+  --dash-night-2: #8b9ab0;
+  --dash-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+@media (forced-colors: active) {
+  .dash-surface,
+  .dark .dash-surface {
+    --dash-page: Canvas;
+    --dash-card: Canvas;
+    --dash-raised: Canvas;
+    --dash-line: CanvasText;
+    --dash-line-strong: CanvasText;
+    --dash-ink: CanvasText;
+    --dash-muted: CanvasText;
+    --dash-faint: CanvasText;
+    --dash-blue: LinkText;
+    --dash-blue-2: CanvasText;
+    --dash-blue-tint: Canvas;
+    --dash-blue-tint-2: Canvas;
+    --dash-amber: CanvasText;
+    --dash-amber-tint: Canvas;
+    --dash-green: CanvasText;
+    --dash-green-tint: Canvas;
+    --dash-green-line: CanvasText;
+    --dash-flag: Canvas;
+    --dash-green-solid: ButtonText;
+    --dash-green-solid-ink: ButtonFace;
+    --dash-night: CanvasText;
+    --dash-night-2: CanvasText;
+    --dash-hero-1: Canvas;
+    --dash-hero-2: Canvas;
+    --dash-hero-3: Canvas;
+    --dash-hero-ink: CanvasText;
+    --dash-hero-glass: Canvas;
+    --dash-hero-glass-line: CanvasText;
+    --dash-hero-track: CanvasText;
+    --dash-hero-ribbon-other: CanvasText;
+    --dash-hero-button-ink: CanvasText;
+  }
+}
+
+/* The gradients have no utility form, so they are named classes. Layered, so
+   a utility on the element still wins. */
+@layer components {
+  .dash-hero {
+    background: radial-gradient(
+      120% 140% at 0% 0%,
+      var(--dash-hero-1) 0%,
+      var(--dash-hero-2) 45%,
+      var(--dash-hero-3) 100%
+    );
+    color: var(--dash-hero-ink);
+  }
+  .dash-bar-blue {
+    background: linear-gradient(180deg, var(--dash-blue-2), var(--dash-blue));
+  }
+  .dash-bar-night {
+    background: linear-gradient(180deg, var(--dash-night-2), var(--dash-night));
+  }
+  .dash-avatar-blue,
+  .dash-wallet-blue {
+    background: linear-gradient(135deg, var(--dash-hero-3), var(--dash-hero-1));
+  }
+  .dash-avatar-green,
+  .dash-wallet-green {
+    background: linear-gradient(135deg, var(--dash-green-deep), var(--dash-green-light));
+  }
+  .dash-avatar-amber,
+  .dash-wallet-amber {
+    background: linear-gradient(135deg, var(--dash-amber-deep), var(--dash-amber-light));
+  }
+}
+
+/* My Day's quieter look (owner decision, 5 October 2026: the Work search v12
+   style). Scoped to My Day, so every other dashboard keeps the 3 October style:
+   semi-bold at most, one flat hero colour, no shadows, a neutral flag card and
+   flat wallet cards. Nested `.dash-surface` scopes (the signed-out sample)
+   re-declare the tokens, so they are listed too. */
+.dash-surface.my-day-quiet,
+.my-day-quiet .dash-surface {
+  --font-weight-dash-title: 600;
+  --font-weight-dash-figure: 600;
+  --dash-ink: #141920;
+  --dash-muted: #4f5967;
+  --dash-faint: #5c6676;
+  --dash-shadow: none;
+  --dash-flag: var(--dash-raised);
+  --dash-green-line: var(--dash-line);
+  --dash-hero-1: #1a5f9f;
+  --dash-hero-2: #1a5f9f;
+  --dash-hero-3: #1a5f9f;
+  --dash-hero-glass: rgb(255 255 255 / 0.1);
+  --dash-hero-glass-line: rgb(255 255 255 / 0.16);
+  --dash-hero-muted: #f0f6fc;
+  --dash-line: #e4e8ee;
+  --dash-line-strong: #cfd6df;
+  --dash-blue: #1d6fb8;
+  --dash-warn-line: #e3c590;
+}
+
+.dark .dash-surface.my-day-quiet,
+.dark .my-day-quiet .dash-surface {
+  --dash-page: #121519;
+  --dash-card: #181c22;
+  --dash-raised: #1f242b;
+  --dash-line: #272d36;
+  --dash-line-strong: #353c47;
+  --dash-ink: #e6e8eb;
+  --dash-muted: #a3a9b2;
+  --dash-faint: #8f96a0;
+  --dash-blue-tint: #1c2836;
+  --dash-blue-tint-2: #22303f;
+  --dash-hero-1: #21364a;
+  --dash-hero-2: #21364a;
+  --dash-hero-3: #21364a;
+  --dash-hero-muted: #b9c9d8;
+  --dash-blue: #78bdf0;
+  --dash-warn-line: #5a4524;
+}
+
+/* Grey icons on My Day's quick actions: colour is kept for meaning. */
+.my-day-quiet .my-day-quiet-icons {
+  --dash-blue-tint: var(--dash-card);
+  --dash-blue: var(--dash-muted);
+}
+
+/* Initials as quiet grey discs rather than coloured gradients. */
+.my-day-quiet .dash-avatar-blue,
+.my-day-quiet .dash-avatar-green,
+.my-day-quiet .dash-avatar-amber {
+  background: var(--dash-card);
+  color: var(--dash-muted);
+  outline: 1px solid var(--dash-line);
+  outline-offset: -1px;
+}
+
+.my-day-quiet .dash-wallet-blue,
+.my-day-quiet .dash-wallet-green,
+.my-day-quiet .dash-wallet-amber {
+  background: var(--dash-hero-2);
+}
+
+@media (forced-colors: active) {
+  .dash-surface.my-day-quiet,
+  .my-day-quiet .dash-surface,
+  .dark .dash-surface.my-day-quiet,
+  .dark .my-day-quiet .dash-surface {
+    --dash-page: Canvas;
+    --dash-card: Canvas;
+    --dash-raised: Canvas;
+    --dash-line: CanvasText;
+    --dash-line-strong: CanvasText;
+    --dash-ink: CanvasText;
+    --dash-muted: CanvasText;
+    --dash-faint: CanvasText;
+    --dash-blue: LinkText;
+    --dash-flag: Canvas;
+    --dash-green-line: CanvasText;
+    --dash-blue-tint: Canvas;
+    --dash-blue-tint-2: Canvas;
+    --dash-warn-line: CanvasText;
+    --dash-hero-muted: CanvasText;
+    --dash-hero-1: Canvas;
+    --dash-hero-2: Canvas;
+    --dash-hero-3: Canvas;
+    --dash-hero-glass: Canvas;
+    --dash-hero-glass-line: CanvasText;
   }
 }
 

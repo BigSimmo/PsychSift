@@ -25,6 +25,9 @@ const routeOwnedSubmittedSearchModes = new Set<AppModeId>([
   "my-work",
   "roster",
   "first-nations",
+  "my-day",
+  "medicines",
+  "open-shifts",
 ]);
 
 /**
@@ -58,8 +61,12 @@ export const standaloneModeHomePaths = [
   "/cme",
   // Psychiatry's dashboard of section links, for the same reason again.
   "/psychiatry",
-  // Admin's Today page, for the same reason again.
+  // The Medicines & tools dashboard, Psychiatry's twin, for the same reason.
+  "/medicines",
+  // Admin's Today page (kept for bookmarks) and Renewals, where Admin now
+  // opens, for the same reason again.
   "/admin",
+  "/admin/renewals",
   // Roster's dashboard (Today), for the same reason: it declares no search
   // surface, so without it the mode pill would retarget a composer Roster has
   // nowhere to send.
@@ -69,6 +76,10 @@ export const standaloneModeHomePaths = [
   "/first-nations",
   // Teaching's dashboard, for the same reason again.
   "/teaching",
+  // My Day's merged list, for the same reason again: no results surface.
+  "/my-day",
+  // Open shifts' Browse list, for Roster's reason: no results surface.
+  "/open-shifts",
 ] as const;
 
 /**
@@ -124,9 +135,13 @@ export function standaloneModeHomeHref(mode: AppModeId): string | null {
     // page of links to the sections it gathers, with no results surface.
     case "psychiatry":
       return "/psychiatry";
-    // Admin's Today page has no search results surface.
+    // The Medicines & tools dashboard, Psychiatry's twin.
+    case "medicines":
+      return "/medicines";
+    // Admin opens on Renewals, its working page (modes review, phase 2b); it
+    // has no search results surface.
     case "my-work":
-      return "/admin";
+      return "/admin/renewals";
     // The Roster dashboard (Today) at `/roster`, on the same reasoning as On
     // Call above: no results surface, so a retargeted composer would accept a
     // query and land the reader on a page that ignores it.
@@ -140,6 +155,12 @@ export function standaloneModeHomeHref(mode: AppModeId): string | null {
     // The Teaching dashboard at `/teaching`, likewise with no results surface.
     case "teaching":
       return "/teaching";
+    // My Day's merged list at `/my-day`, likewise with no results surface.
+    case "my-day":
+      return "/my-day";
+    // Open shifts' Browse list at `/open-shifts`, likewise with no results surface.
+    case "open-shifts":
+      return "/open-shifts";
     default:
       return null;
   }
@@ -205,10 +226,13 @@ const alwaysStandaloneShellPathPrefixes = [
   "/on-call",
   "/cme",
   "/psychiatry",
+  "/medicines",
   "/admin",
   "/roster",
   "/first-nations",
   "/teaching",
+  "/my-day",
+  "/open-shifts",
 ] as const;
 
 /**

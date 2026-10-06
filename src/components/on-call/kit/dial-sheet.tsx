@@ -1,18 +1,18 @@
 "use client";
 
 import { Phone, Share2 } from "lucide-react";
-import { useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { OnCallActionButton } from "@/components/on-call/kit/action-button";
+import { ModeActionButton } from "@/components/mode-kit/action-button";
 import {
-  onCallCallDiscShape,
-  onCallInsetHairline,
-  onCallModuleSurface,
-  onCallRowHeight,
-  onCallTapArea,
-} from "@/components/on-call/kit/recipes";
-import { onCallDisplayNumberText, onCallNameText, onCallNumberText } from "@/components/on-call/kit/type";
+  modeCallDiscShape,
+  modeInsetHairline,
+  modeModuleSurface,
+  modeRowHeight,
+  modeTapArea,
+} from "@/components/mode-kit/recipes";
+import { modeDisplayNumberText, modeNameText, modeNumberText } from "@/components/mode-kit/type";
 import { OnCallUpdatedLine } from "@/components/on-call/kit/updated-line";
 import { OnCallCopyNumber } from "@/components/on-call/on-call-copy-number";
 import { Sheet } from "@/components/ui/sheet";
@@ -38,6 +38,8 @@ export function onCallMobileRoute(dial: HandbookDial, mobileDial?: HandbookDial 
  */
 export function onCallExtensionRoute(dial: HandbookDial): HandbookDial | null {
   if (dial.kind !== "extension") return null;
+  // "000…" is the sample's placeholder range, and keying it can reach Triple Zero: never a call link.
+  if (/^000/.test(dial.extension)) return null;
   return { kind: "direct", display: dial.display, tel: `tel:${dial.extension}`, copy: dial.copy, route: "any-phone" };
 }
 
@@ -52,6 +54,28 @@ export function onCallCallRoute(
 ): HandbookDial | null {
   const extension = hospitalPhone ? onCallExtensionRoute(dial) : null;
   return extension ?? onCallMobileRoute(dial, mobileDial);
+}
+
+/** What a row's own page adds to its dial sheet, given a way to close the sheet. */
+export type OnCallDialSheetActionsRender = (sheet: { readonly close: () => void }) => ReactNode;
+
+const OnCallDialSheetActionsContext = createContext<OnCallDialSheetActionsRender | null>(null);
+
+/**
+ * Extra actions for every dial sheet opened inside it, such as People's
+ * "Didn't connect" mark (mock-up v10: the mark is made from the number's
+ * sheet, not from a button on every row). A context rather than a prop, so the
+ * shared dial row needs no new prop to carry it; it reaches the portalled sheet
+ * because React context follows the component tree, not the DOM.
+ */
+export function OnCallDialSheetActions({
+  render,
+  children,
+}: {
+  readonly render: OnCallDialSheetActionsRender;
+  readonly children: ReactNode;
+}) {
+  return <OnCallDialSheetActionsContext.Provider value={render}>{children}</OnCallDialSheetActionsContext.Provider>;
 }
 
 const noSubscription = () => () => {};
@@ -106,6 +130,7 @@ export function OnCallDialSheet({
   readonly testId?: string;
 }) {
   const canShare = useSyncExternalStore(noSubscription, canShareNow, () => false);
+  const extraActions = useContext(OnCallDialSheetActionsContext);
   const hospitalText = onCallHospitalPhoneText(dial);
   const mobile = onCallMobileRoute(dial, mobileDial);
   const extensionCall = hospitalPhone ? onCallExtensionRoute(dial) : null;
@@ -120,9 +145,13 @@ export function OnCallDialSheet({
 
   return (
     <Sheet open={open} onClose={onClose} title={title} testId={testId}>
-      <div className="grid min-w-0 gap-4" data-testid={testId ? `${testId}-body` : undefined}>
+      <div
+        data-mode-identity="on-call"
+        className="grid min-w-0 gap-4"
+        data-testid={testId ? `${testId}-body` : undefined}
+      >
         {hospitalName ? (
-          <p className={cn(onCallNameText, "break-words text-base-minus text-[color:var(--text-muted)]")}>
+          <p className={cn(modeNameText, "break-words text-base-minus text-[color:var(--text-muted)]")}>
             {hospitalName}
           </p>
         ) : null}
@@ -135,7 +164,7 @@ export function OnCallDialSheet({
               ) : null}
               <span
                 data-testid={testId ? `${testId}-number` : undefined}
-                className={cn(onCallDisplayNumberText, "break-words text-hero text-[color:var(--text-heading)]")}
+                className={cn(modeDisplayNumberText, "break-words text-hero text-[color:var(--text-heading)]")}
               >
                 {hospitalText}
               </span>
@@ -146,9 +175,9 @@ export function OnCallDialSheet({
                 onClick={onCall}
                 aria-label={`Call ${title} from this hospital phone, ${spokenOnCallNumber(extensionCall.display)}`}
                 data-testid={testId ? `${testId}-extension-call` : undefined}
-                className={cn(onCallTapArea, focusRing, "ml-auto rounded-full")}
+                className={cn(modeTapArea, focusRing, "ml-auto rounded-full")}
               >
-                <span aria-hidden="true" className={onCallCallDiscShape.neutral}>
+                <span aria-hidden="true" className={modeCallDiscShape.neutral}>
                   <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-md" />
                 </span>
               </a>
@@ -156,18 +185,18 @@ export function OnCallDialSheet({
           </div>
         )}
 
-        <ul role="list" className={onCallModuleSurface}>
+        <ul role="list" className={modeModuleSurface}>
           <li
             className={cn(
-              onCallInsetHairline,
-              onCallRowHeight.double,
+              modeInsetHairline,
+              modeRowHeight.double,
               "flex min-w-0 flex-wrap items-center gap-x-3 py-1.5 pl-3 pr-1",
             )}
           >
             <span className="grid min-w-0 flex-1 gap-0.5">
               <span className="text-sm text-[color:var(--text-muted)]">From your mobile</span>
               {mobile ? (
-                <span className={cn(onCallNumberText, "break-words text-base-minus text-[color:var(--text)]")}>
+                <span className={cn(modeNumberText, "break-words text-base-minus text-[color:var(--text)]")}>
                   {mobile.display}
                 </span>
               ) : (
@@ -179,9 +208,9 @@ export function OnCallDialSheet({
                 href={mobile.tel}
                 onClick={onCall}
                 aria-label={`Call ${title} from your mobile, ${spokenOnCallNumber(mobile.display)}`}
-                className={cn(onCallTapArea, focusRing, "ml-auto rounded-full")}
+                className={cn(modeTapArea, focusRing, "ml-auto rounded-full")}
               >
-                <span aria-hidden="true" className={onCallCallDiscShape.neutral}>
+                <span aria-hidden="true" className={modeCallDiscShape.neutral}>
                   <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-md" />
                 </span>
               </a>
@@ -196,7 +225,7 @@ export function OnCallDialSheet({
             <OnCallCopyNumber value={dial.copy} label={copyLabel} testId={testId ? `${testId}-copy` : undefined} />
           ) : null}
           {canShare ? (
-            <OnCallActionButton
+            <ModeActionButton
               icon={Share2}
               label={`Share ${title}`}
               onClick={share}
@@ -204,6 +233,8 @@ export function OnCallDialSheet({
             />
           ) : null}
         </div>
+
+        {extraActions ? extraActions({ close: onClose }) : null}
 
         <OnCallUpdatedLine
           updatedAt={updatedAt ?? null}

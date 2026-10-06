@@ -1,23 +1,16 @@
 "use client";
 
-import { Check, NotebookPen, Pencil, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { BookOpen, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
+import { focusRing } from "@/components/card-recipes";
+import { CmeFlatList, CmeFlatRow, CmeGroup, CmeNote, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
+import { cmeFilledButton } from "@/components/cme/cme-log-shared";
 import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
-import { Button } from "@/components/ui/button";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
-import {
-  cn,
-  controlDisabled,
-  eyebrowText,
-  floatingControl,
-  InlineNotice,
-  primaryControl,
-  textMuted,
-} from "@/components/ui-primitives";
+import { cn, controlDisabled, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
 import { formatCalendarDateLong } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
 import {
@@ -29,17 +22,19 @@ import {
 } from "@/lib/cme/plan-goals";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { canCarryCmeGoals, carryableCmeGoals } from "@/lib/cme/year-close-actions";
-import { CmeFractionBar } from "@/components/cme/cme-progress-visuals";
+import { CmePlanGoalSplit, formatSourceMonth } from "@/components/cme/cme-plan-goal-split";
 
 /**
  * DEVELOPMENT PLAN — the year's goals, written once near the start of the
  * year and checked against as it goes.
  *
- * Three parts: the goals themselves (edited as a list and saved in one step),
- * whether the plan is marked written for the year's requirement, and at the
- * bottom how the year's hours have fallen across the goals. Each activity
- * names its goal on its own page, so the tally fills in as activities are
- * linked.
+ * Laid out as the 5 Oct mock-up (screen 03): whether the plan is marked
+ * written (with its date), then one quiet card with the goals split bar and a
+ * row per goal (hours and activity count, "Not linked to a goal" grey as the
+ * gap). "Add a goal" and "Edit" open the same editor, saved in one step by
+ * "Save plan", the page's one filled button. Each activity names its goal on
+ * its own page, so the split fills in as activities are linked. Rotations
+ * live on Training, not here.
  *
  * The goals are the owner's own words. The app suggests nothing.
  */
@@ -90,8 +85,11 @@ export function CmePlanPage({
   // read, so an editable year opens straight into the editor.
   const [editing, setEditing] = useState(() => !readOnly && goals.length === 0);
   const planRequirement = set.requirements.find((requirement) => requirement.id === "plan");
-  const tally = hoursByGoal(goals, entries);
-  const tallyMax = Math.max(0, ...tally.map((row) => row.hours));
+  // From the goals as last saved here, so a just-saved wording shows at once rather than after a refresh.
+  const tally = hoursByGoal(
+    savedGoals.map((goal, index) => ({ ...goal, sortOrder: index })),
+    entries,
+  );
   const filled = drafts.filter((draft) => draft.goal.trim().length > 0);
   const tooShort = filled.some((draft) => draft.goal.trim().length < CME_PLAN_GOAL_MIN_LENGTH);
   const offerCarry = canCarryCmeGoals(set, now) && goals.length > 0;
@@ -174,8 +172,19 @@ export function CmePlanPage({
     }
   }
 
+  /** "Add a goal": opens the editor if it is closed, then adds one empty goal (up to the maximum). */
+  function addGoal() {
+    setEditing(true);
+    setDrafts((current) =>
+      current.length >= CME_PLAN_GOAL_MAX ? current : [...current, { key: nextKey(), goal: "" }],
+    );
+  }
+
+  const planWrittenOn = planRequirement?.completedOn ?? null;
+  const canAddGoal = !readOnly && drafts.length < CME_PLAN_GOAL_MAX;
+
   return (
-    <main data-testid="cme-plan" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
+    <main data-testid="cme-plan" data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
       <p className={eyebrowText}>{set.year}</p>
       <h1 className={cn(cmePageTitle, "mt-1")}>Development plan</h1>
       <p className={cn(textMuted, "mt-1 text-sm")}>
@@ -183,93 +192,109 @@ export function CmePlanPage({
         activity&rsquo;s page, and the hours add up below.
       </p>
 
-      {demoMode ? (
-        <div className="mt-4">
-          <InlineNotice tone="neutral">Demo mode is read-only; the plan is shown for inspection.</InlineNotice>
-        </div>
-      ) : null}
-      {set.closedAt ? (
-        <div className="mt-4">
-          <InlineNotice tone="neutral">This CPD year is closed. Its plan is view-only.</InlineNotice>
-        </div>
-      ) : null}
+      <div className="mt-5 grid gap-6">
+        {demoMode ? <CmeNote>Demo mode is read-only; the plan is shown for inspection.</CmeNote> : null}
+        {set.closedAt ? <CmeNote>This CPD year is closed. Its plan is view-only.</CmeNote> : null}
 
-      <section className={cn(cardSurface, "mt-5 p-4")} aria-labelledby="cme-plan-goals">
-        <div className="flex items-center justify-between gap-2">
-          <h2 id="cme-plan-goals" className="text-base font-semibold text-[color:var(--text)]">
-            Goals
-          </h2>
-          {!readOnly && !editing ? (
-            <Button variant="secondary" size="sm" icon={Pencil} onClick={() => setEditing(true)} testId="cme-plan-edit">
-              Edit goals
-            </Button>
-          ) : null}
-        </div>
-        {!editing ? (
-          savedGoals.length > 0 ? (
-            <ol className="mt-3 flex flex-col gap-2" data-testid="cme-plan-goals-read">
-              {savedGoals.map((goal, index) => (
-                <li key={goal.id} className="flex items-start gap-2 text-sm text-[color:var(--text)]">
-                  <span className={cn(textMuted, "nums w-5 shrink-0 font-normal")}>{index + 1}.</span>
-                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{goal.goal}</span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className={cn(textMuted, "mt-3 text-sm")} data-testid="cme-plan-goals-read">
-              No goals written for {set.year}.
-            </p>
-          )
-        ) : null}
-        {editing ? (
-          <ol className="mt-3 flex flex-col gap-3" data-testid="cme-plan-goals">
-            {drafts.map((draft, index) => (
-              <li key={draft.key} className="flex items-start gap-2">
-                <span className={cn(textMuted, "nums mt-3 w-5 shrink-0 text-sm")}>{index + 1}.</span>
-                <label className="min-w-0 flex-1">
-                  <span className="sr-only">Goal {index + 1}</span>
-                  <textarea
-                    value={draft.goal}
-                    readOnly={readOnly}
-                    maxLength={CME_PLAN_GOAL_MAX_LENGTH}
-                    rows={2}
-                    placeholder="For example: improve how I document capacity assessments"
-                    onChange={(event) =>
-                      setDrafts((current) =>
-                        current.map((item) => (item.key === draft.key ? { ...item, goal: event.target.value } : item)),
-                      )
-                    }
-                    className="block min-h-tap w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text)]"
-                  />
-                </label>
-                {!readOnly ? (
-                  <button
-                    type="button"
-                    aria-label={`Remove goal ${index + 1}`}
-                    onClick={() => setDrafts((current) => current.filter((item) => item.key !== draft.key))}
-                    className="grid size-12 shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]"
-                  >
-                    <Trash2 aria-hidden="true" className="size-icon-sm" />
-                  </button>
+        <CmeFlatList label="Plan status">
+          <CmeFlatRow
+            testId="cme-plan-status"
+            lead={<CmeRowMark state={planWrittenOn ? "done" : "open"} />}
+            title={planWrittenOn ? "Plan marked written" : "Plan not marked written yet"}
+            subtitle={
+              planWrittenOn
+                ? `Done ${formatCalendarDateLong(planWrittenOn)}`
+                : "Once your goals are in, record the date in Set up"
+            }
+            end={
+              <CmeTextLink href="/cme/setup#cme-setup-steps" testId="cme-plan-status-link">
+                {planWrittenOn ? "Change" : "Record it"}
+              </CmeTextLink>
+            }
+          />
+        </CmeFlatList>
+
+        <CmeGroup
+          testId="cme-plan-goals-group"
+          label={`Goals · ${savedGoals.length}`}
+          end={
+            readOnly ? null : (
+              <span className="flex items-baseline gap-4">
+                {!editing && savedGoals.length > 0 ? (
+                  <CmeTextLink onClick={() => setEditing(true)} testId="cme-plan-edit">
+                    Edit
+                  </CmeTextLink>
                 ) : null}
-              </li>
-            ))}
-          </ol>
-        ) : null}
+                {canAddGoal ? (
+                  <CmeTextLink onClick={addGoal} testId="cme-plan-add-goal">
+                    Add a goal
+                  </CmeTextLink>
+                ) : null}
+              </span>
+            )
+          }
+        >
+          <div className="grid min-w-0 gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4 forced-colors:border-[CanvasText]">
+            {!editing ? (
+              savedGoals.length > 0 ? (
+                <div data-testid="cme-plan-goals-read">
+                  <CmePlanGoalSplit tally={tally} />
+                </div>
+              ) : (
+                <p className={cn(textMuted, "text-sm")} data-testid="cme-plan-goals-read">
+                  No goals written for {set.year}.
+                </p>
+              )
+            ) : (
+              <ol className="grid gap-3" data-testid="cme-plan-goals">
+                {drafts.map((draft, index) => (
+                  <li key={draft.key} className="flex items-start gap-2">
+                    <span className={cn(textMuted, "nums mt-3 w-5 shrink-0 text-sm")}>{index + 1}.</span>
+                    <label className="min-w-0 flex-1">
+                      <span className="sr-only">Goal {index + 1}</span>
+                      <textarea
+                        value={draft.goal}
+                        maxLength={CME_PLAN_GOAL_MAX_LENGTH}
+                        rows={2}
+                        placeholder="For example: improve how I document capacity assessments"
+                        onChange={(event) =>
+                          setDrafts((current) =>
+                            current.map((item) =>
+                              item.key === draft.key ? { ...item, goal: event.target.value } : item,
+                            ),
+                          )
+                        }
+                        className="block min-h-12 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text)]"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      aria-label={`Remove goal ${index + 1}`}
+                      onClick={() => setDrafts((current) => current.filter((item) => item.key !== draft.key))}
+                      className={cn(
+                        focusRing,
+                        "grid size-12 shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]",
+                      )}
+                    >
+                      <Trash2 aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {editing && tooShort ? (
+              <p className={cn(textMuted, "text-sm")}>
+                Each goal needs at least {CME_PLAN_GOAL_MIN_LENGTH} characters.
+              </p>
+            ) : null}
+          </div>
+        </CmeGroup>
+
         {!readOnly && editing ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="grid gap-1">
             <button
               type="button"
-              className={floatingControl}
-              disabled={drafts.length >= CME_PLAN_GOAL_MAX}
-              onClick={() => setDrafts((current) => [...current, { key: nextKey(), goal: "" }])}
-            >
-              <Plus aria-hidden="true" className="size-icon-sm" />
-              Add a goal
-            </button>
-            <button
-              type="button"
-              className={primaryControl}
+              className={cn(focusRing, cmeFilledButton, "w-full", controlDisabled)}
               disabled={saving || tooShort || saveConflict}
               onClick={() => void save()}
               data-testid="cme-plan-save"
@@ -277,152 +302,89 @@ export function CmePlanPage({
               {saving ? "Saving…" : "Save plan"}
             </button>
             {savedGoals.length > 0 ? (
-              <button
-                type="button"
-                className={floatingControl}
-                disabled={saving}
-                onClick={() => {
-                  setDrafts(savedGoals.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal })));
-                  setEditing(false);
-                }}
-              >
-                Cancel
-              </button>
+              <span className="flex justify-center">
+                <CmeTextLink
+                  onClick={() => {
+                    if (saving) return;
+                    setDrafts(savedGoals.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal })));
+                    setEditing(false);
+                  }}
+                >
+                  Cancel
+                </CmeTextLink>
+              </span>
             ) : null}
           </div>
         ) : null}
-        {tooShort ? (
-          <p className={cn(textMuted, "mt-2 text-sm")}>
-            Each goal needs at least {CME_PLAN_GOAL_MIN_LENGTH} characters.
-          </p>
-        ) : null}
-        <p role="status" className="mt-2 text-sm font-semibold text-[color:var(--text)]" data-testid="cme-plan-message">
+        <p role="status" className="-mt-4 text-sm text-[color:var(--text)] empty:hidden" data-testid="cme-plan-message">
           {message}
         </p>
-      </section>
 
-      {offerCarry ? (
-        <section id="cme-carry-goals" className={cn(cardSurface, "mt-4 p-4")} aria-labelledby="cme-carry-heading">
-          <h2 id="cme-carry-heading" className="text-base font-semibold text-[color:var(--text)]">
-            Carry goals into {set.year + 1}
-          </h2>
-          <p className={cn(textMuted, "mt-1 text-sm")}>
-            Choose any goal you are still working on. Nothing carries forward automatically.
-          </p>
-          {nextYearConfirmed === false ? (
-            <p className="mt-2 text-sm">
-              <Link
-                href={`/cme/setup?year=${set.year + 1}`}
-                className="inline-flex min-h-tap items-center font-semibold underline underline-offset-2"
-              >
-                Confirm {set.year + 1} targets first
-              </Link>
-            </p>
-          ) : nextYearConfirmed === null ? (
-            <p className={cn(textMuted, "mt-2 text-sm")}>Next year’s targets have not been checked here yet.</p>
-          ) : null}
-          {availableToCarry.length === 0 ? (
-            <p className={cn(textMuted, "mt-2 text-sm")}>No goals left to carry.</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-[color:var(--border)]">
-              {availableToCarry.map((goal) => (
-                <li key={goal.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span className="min-w-0 flex-1 text-sm text-[color:var(--text)]">{goal.goal}</span>
-                  <button
-                    type="button"
-                    disabled={!targetReady || targetFull || carryingId !== null || demoMode}
-                    onClick={() => void carryGoal(goal)}
-                    className={cn(
-                      "min-h-tap rounded-lg border border-[color:var(--border)] px-3 text-sm font-semibold text-[color:var(--text)]",
-                      controlDisabled,
-                    )}
-                  >
-                    {carryingId === goal.id ? "Carrying…" : `Carry into ${set.year + 1}`}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {targetFull ? (
-            <p className={cn(textMuted, "mt-2 text-sm")}>
-              {set.year + 1} already has the maximum of {CME_PLAN_GOAL_MAX} goals.
-            </p>
-          ) : null}
-          {nextYearConfirmed && !targetReady && !targetFull ? (
-            <p className={cn(textMuted, "mt-2 text-sm")}>
-              Carry is unavailable until next year’s goals have been loaded.
-            </p>
-          ) : null}
-          <p role="status" className="mt-2 text-sm" data-testid="cme-carry-message">
-            {carryMessage}
-          </p>
-        </section>
-      ) : null}
-
-      <section className={cn(cardSurface, "mt-4 flex items-start gap-3 p-4")} data-testid="cme-plan-status">
-        {planRequirement?.completedOn ? (
-          <Check aria-hidden="true" className="mt-0.5 size-icon-md shrink-0 text-[color:var(--text)]" />
-        ) : (
-          <NotebookPen aria-hidden="true" className={cn("mt-0.5 size-icon-md shrink-0", textMuted)} />
-        )}
-        <div className="min-w-0 text-sm">
-          {planRequirement?.completedOn ? (
-            <p className="font-semibold text-[color:var(--text)]">
-              Plan written {formatCalendarDateLong(planRequirement.completedOn)}.
-            </p>
-          ) : (
-            <>
-              <p className="font-semibold text-[color:var(--text)]">Not yet marked as written.</p>
-              <p className={textMuted}>
-                Once your goals are in, record the date on{" "}
-                <Link
-                  href="/cme/setup#cme-setup-steps"
-                  className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)]"
-                >
-                  the setup page
-                </Link>{" "}
-                so the year counts it as done.
+        {offerCarry ? (
+          <CmeGroup label={`Carry goals into ${set.year + 1}`}>
+            <div id="cme-carry-goals" className="grid scroll-mt-24 gap-2">
+              <p className={cn(textMuted, "text-sm-minus")}>
+                Choose any goal you are still working on. Nothing carries forward automatically.
               </p>
-            </>
-          )}
-          <Link
-            href={`/cme/new?title=${encodeURIComponent("Writing my professional development plan")}`}
-            className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)]"
-          >
-            Log the time you spent on it
-          </Link>
-        </div>
-      </section>
+              {nextYearConfirmed === false ? (
+                <p>
+                  <CmeTextLink href={`/cme/setup?year=${set.year + 1}`}>
+                    Confirm {set.year + 1} targets first
+                  </CmeTextLink>
+                </p>
+              ) : nextYearConfirmed === null ? (
+                <p className={cn(textMuted, "text-sm-minus")}>Next year’s targets have not been checked here yet.</p>
+              ) : null}
+              {availableToCarry.length === 0 ? (
+                <p className={cn(textMuted, "text-sm-minus")}>No goals left to carry.</p>
+              ) : (
+                <CmeFlatList label={`Goals to carry into ${set.year + 1}`}>
+                  {availableToCarry.map((goal) => (
+                    <CmeFlatRow
+                      key={goal.id}
+                      title={goal.goal}
+                      end={
+                        <button
+                          type="button"
+                          disabled={!targetReady || targetFull || carryingId !== null || demoMode}
+                          onClick={() => void carryGoal(goal)}
+                          className={cn(
+                            focusRing,
+                            "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] hover:underline disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:no-underline",
+                          )}
+                        >
+                          {carryingId === goal.id ? "Carrying…" : `Carry into ${set.year + 1}`}
+                        </button>
+                      }
+                    />
+                  ))}
+                </CmeFlatList>
+              )}
+              {targetFull ? (
+                <p className={cn(textMuted, "text-sm-minus")}>
+                  {set.year + 1} already has the maximum of {CME_PLAN_GOAL_MAX} goals.
+                </p>
+              ) : null}
+              {nextYearConfirmed && !targetReady && !targetFull ? (
+                <p className={cn(textMuted, "text-sm-minus")}>
+                  Carry is unavailable until next year’s goals have been loaded.
+                </p>
+              ) : null}
+              <p role="status" className="text-sm empty:hidden" data-testid="cme-carry-message">
+                {carryMessage}
+              </p>
+            </div>
+          </CmeGroup>
+        ) : null}
 
-      {goals.length > 0 ? (
-        <section className="mt-6" aria-labelledby="cme-plan-tally">
-          <h2 id="cme-plan-tally" className={cn(eyebrowText, "mb-2")}>
-            Hours by goal
-          </h2>
-          <ul className="flex flex-col gap-2" data-testid="cme-plan-tally">
-            {tally.map((row) => (
-              <li key={row.goal?.id ?? "none"} className={cn(cardSurface, "flex flex-col gap-2 p-3")}>
-                <div className="flex items-start justify-between gap-3">
-                  <span className={cn("min-w-0 text-sm", row.goal ? "text-[color:var(--text)]" : textMuted)}>
-                    {row.goal ? row.goal.goal : "Not linked to a goal"}
-                  </span>
-                  <span className="nums shrink-0 text-sm font-normal text-[color:var(--text)]">
-                    {`${row.hours} h from ${row.entryCount} ${row.entryCount === 1 ? "activity" : "activities"}`}
-                  </span>
-                </div>
-                {/* A thin share-of-the-year bar: each goal's hours against the
-                    largest goal's, so the rows compare at a glance. Decorative —
-                    the sentence above carries the figure. */}
-                <CmeFractionBar
-                  testId="cme-plan-tally-bar"
-                  fraction={tallyMax > 0 ? row.hours / tallyMax : 0}
-                  className="h-1"
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+        <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-plan-source">
+          Your plan is for you and your CPD home. The Medical Board asks for a written plan before you start the year.{" "}
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <BookOpen aria-hidden="true" strokeWidth={1.6} className="size-3.5" />
+            {`Medical Board · checked ${formatSourceMonth(CPD_CATEGORY_RULE_SET.source.checkedOn)}`}
+          </span>
+        </p>
+      </div>
     </main>
   );
 }

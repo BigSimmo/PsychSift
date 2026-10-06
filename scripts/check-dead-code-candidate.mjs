@@ -306,6 +306,43 @@ export function daysSince(isoDate, today = new Date()) {
   return Math.floor((today.getTime() - then) / 86_400_000);
 }
 
+const STAR_REEXPORT_PREFIX = "* from ";
+
+/**
+ * Names a re-export statement (`export ... from "..."`) publishes. Handles `export { a, b as c } from`,
+ * `export type { T } from`, `export * as ns from` and `export * from`. A bare `export *` publishes an
+ * unknowable set of names, so it yields one placeholder candidate that assess() always refuses.
+ */
+export function reexportedNames(statement) {
+  const text = statement.replace(/\s+/g, " ").trim();
+  const named = /^export\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/.exec(text);
+  if (named) {
+    return named[1]
+      .split(",")
+      .map((part) => part.trim().replace(/^type\s+/, ""))
+      .filter(Boolean)
+      .map((part) =>
+        part
+          .split(/\s+as\s+/)
+          .pop()
+          .trim(),
+      )
+      .filter((name) => /^[A-Za-z_$][\w$]*$/.test(name));
+  }
+  const namespaced = /^export\s+(?:type\s+)?\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s*["']/.exec(text);
+  if (namespaced) return [namespaced[1]];
+  const star = /^export\s+(?:type\s+)?\*\s*from\s*["']([^"']+)["']/.exec(text);
+  if (star) return [`${STAR_REEXPORT_PREFIX}${star[1]}`];
+  return [];
+}
+
+/** Re-export statements in a body, including ones split across lines. */
+function reexportStatements(body) {
+  return (
+    body.match(/(?:^|\n)\s*export\s+(?:type\s+)?(?:\*(?:\s+as\s+[\w$]+)?|\{[^}]*\})\s*from\s*["'][^"']+["']/g) ?? []
+  );
+}
+
 /** Deleting a whole file is only safe when NOTHING else in it is still exported. */
 export function otherLiveExports(file, symbol, { root = process.cwd(), fileSystem = NODE_FILE_SYSTEM } = {}) {
   let body;
@@ -319,6 +356,7 @@ export function otherLiveExports(file, symbol, { root = process.cwd(), fileSyste
     ...body.matchAll(/^export\s+(?:async\s+)?(?:function|const|class|type|interface)\s+([A-Za-z_$][\w$]*)/gm),
   ]
     .map((match) => match[1])
+    .concat(reexportStatements(body).flatMap(reexportedNames))
     .filter((name) => name !== symbol);
   return [...new Set(names)];
 }
@@ -339,6 +377,13 @@ export function assess(
   const warnings = [];
   const searchOptions = { root, fileSystem, contentIndex };
   let completeHistory = null;
+
+  if (symbol.startsWith(STAR_REEXPORT_PREFIX)) {
+    refusals.push(
+      `removed \`export ${symbol.replace(STAR_REEXPORT_PREFIX, '* from "')}"\` re-exports an unknown set of names — restore it, or delete the names individually`,
+    );
+    return { symbol, file: normalizedFile, refusals, warnings, ok: false };
+  }
 
   try {
     completeHistory = historyIsComplete({ root, runGit });
@@ -440,6 +485,8 @@ export function removedDeclarationsInDiff(base, { root = process.cwd(), runGit =
   );
   const removed = [];
   const added = new Set();
+  const removedBlocks = [];
+  const addedBlocks = [];
   let file = null;
   let readingHeaders = false;
   let oldHeaderSeen = false;
@@ -453,8 +500,24 @@ export function removedDeclarationsInDiff(base, { root = process.cwd(), runGit =
     return normalizeRepoPath(path.slice(prefix.length));
   };
 
+  // Consecutive changed lines are joined so a multi-line `export { ... } from` is read as one statement.
+  let blockFile = null;
+  let removedBlock = [];
+  let addedBlock = [];
+  const flushBlocks = () => {
+    if (blockFile) {
+      if (removedBlock.length) removedBlocks.push({ file: blockFile, text: removedBlock.join("\n") });
+      if (addedBlock.length) addedBlocks.push({ file: blockFile, text: addedBlock.join("\n") });
+    }
+    removedBlock = [];
+    addedBlock = [];
+    blockFile = file;
+  };
+
   for (const line of diff.split(/\r?\n/)) {
+    if (line.startsWith("@@")) flushBlocks();
     if (line.startsWith("diff --git ")) {
+      flushBlocks();
       file = null;
       readingHeaders = true;
       oldHeaderSeen = false;
@@ -478,11 +541,44 @@ export function removedDeclarationsInDiff(base, { root = process.cwd(), runGit =
       readingHeaders = false;
     }
     if (!file) continue;
+    blockFile = file;
+    if (line.startsWith("-") && !line.startsWith("---")) removedBlock.push(line.slice(1));
+    else if (line.startsWith("+") && !line.startsWith("+++")) addedBlock.push(line.slice(1));
     const declaration =
       /^([-+])(?:export\s+)?(?:async\s+)?(?:function|const|class|type|interface)\s+([A-Za-z_$][\w$]*)/.exec(line);
     if (!declaration) continue;
     if (declaration[1] === "+") added.add(`${file}:${declaration[2]}`);
     else removed.push({ symbol: declaration[2], file });
+  }
+  flushBlocks();
+  // `-U0` hides the framing of a multi-line `export { a, b } from`, so deleting one member leaves only a bare
+  // `a,` line. For each file with removed lines, compare the full re-export surface at the base and now.
+  const touched = new Set(removedBlocks.map((block) => block.file));
+  for (const touchedFile of touched) {
+    let oldBody;
+    let newBody;
+    try {
+      oldBody = runGit(["show", `${resolvedBase}:${touchedFile}`], root);
+      newBody = NODE_FILE_SYSTEM.readFileSync(absoluteRepoPath(root, touchedFile), "utf8");
+    } catch {
+      continue; // deleted/renamed file or unavailable object: the block-based read above still applies
+    }
+    const surface = (body) => new Set(reexportStatements(body).flatMap((statement) => reexportedNames(statement)));
+    const before = surface(oldBody);
+    const after = surface(newBody);
+    for (const name of before) {
+      if (!after.has(name)) removed.push({ symbol: name, file: touchedFile });
+    }
+  }
+  for (const { file: blockOwner, text } of addedBlocks) {
+    for (const statement of reexportStatements(text)) {
+      for (const name of reexportedNames(statement)) added.add(`${blockOwner}:${name}`);
+    }
+  }
+  for (const { file: blockOwner, text } of removedBlocks) {
+    for (const statement of reexportStatements(text)) {
+      for (const name of reexportedNames(statement)) removed.push({ symbol: name, file: blockOwner });
+    }
   }
   // A signature change shows up as a removed line AND an added line for the same
   // symbol. That is a modification, not a deletion, and assessing it produced a

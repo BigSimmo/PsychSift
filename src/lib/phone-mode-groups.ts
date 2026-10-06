@@ -14,32 +14,16 @@ import type { AppModeId } from "@/lib/app-modes";
  * check that now fails instead: every mode id must appear in exactly one group.
  */
 export const phoneModeGroups = [
+  // Five doors (modes review, phase 1, approved 2026-10-04). My Day leads:
+  // one list of what needs you, with the work areas behind it. On Call comes
+  // second, on its own, so the urgent screen is never below the clinical list.
+  // Then the three clinical doors: Search, Psychiatry, Medicines & tools.
   {
-    id: "find",
-    label: "Find",
-    hint: "Answers, sources, services",
-    modeIds: ["answer", "documents", "services", "favourites", "sources"],
+    id: "my-day",
+    label: "My Day",
+    hint: "Your day, roster, teaching, CPD and admin",
+    modeIds: ["my-day", "roster", "open-shifts", "teaching", "cme", "my-work"],
   },
-  // Psychiatry is a mode of its own (a dashboard at `/psychiatry`) that
-  // gathers these sections. It leads the group, and the sections stay listed
-  // under it so each keeps its own search. It replaced the "Diagnose" group,
-  // and took Forms from Find and Therapy from Care.
-  {
-    id: "psychiatry",
-    label: "Psychiatry",
-    hint: "Diagnosis, formulation, therapy, forms",
-    modeIds: ["psychiatry", "dsm", "differentials", "specifiers", "formulation", "therapy-compass", "forms"],
-  },
-  {
-    id: "care",
-    label: "Care",
-    hint: "Medication, calculators, reference",
-    modeIds: ["prescribing", "calculators", "tools", "factsheets", "dictionary"],
-  },
-  // The groups above are the Clinical area. On Call, Admin, First Nations and
-  // CPD are areas of their own rather than the tail of "Care", so the urgent
-  // screen is not buried at the bottom of the clinical list, and the paperwork
-  // that used to crowd it has a home of its own.
   {
     id: "on-call",
     label: "On Call",
@@ -47,30 +31,38 @@ export const phoneModeGroups = [
     modeIds: ["on-call"],
   },
   {
-    id: "roster",
-    label: "Roster",
-    hint: "Your own shifts",
-    modeIds: ["roster"],
+    id: "find",
+    label: "Search",
+    hint: "Answers, sources, services",
+    modeIds: ["answer", "documents", "services", "favourites", "sources"],
   },
+  // Psychiatry is a mode of its own (a dashboard at `/psychiatry`) that
+  // gathers these sections. It leads the group, and the sections stay listed
+  // under it so each keeps its own search. First Nations culturally safe care
+  // joined it from the work areas: it is used with a patient, beside diagnosis
+  // and formulation.
   {
-    id: "my-work",
-    label: "Admin",
-    hint: "Paperwork, deadlines and checks",
-    modeIds: ["my-work"],
+    id: "psychiatry",
+    label: "Psychiatry",
+    hint: "Diagnosis, formulation, therapy, forms",
+    modeIds: [
+      "psychiatry",
+      "dsm",
+      "differentials",
+      "specifiers",
+      "formulation",
+      "therapy-compass",
+      "forms",
+      "first-nations",
+    ],
   },
-  // Teaching sits beside CPD: the sessions a doctor attends and the record
-  // they log them to are one area of work (spec §5).
+  // Medicines & tools, like Psychiatry, is a dashboard (`/medicines`) that
+  // gathers these sections and leads its group (modes review, phase 3).
   {
-    id: "first-nations",
-    label: "First Nations",
-    hint: "Culturally safe care",
-    modeIds: ["first-nations"],
-  },
-  {
-    id: "cpd",
-    label: "CPD and teaching",
-    hint: "Learning, teaching and evidence",
-    modeIds: ["cme", "teaching"],
+    id: "care",
+    label: "Medicines & tools",
+    hint: "Medication, calculators, reference",
+    modeIds: ["medicines", "prescribing", "calculators", "tools", "factsheets", "dictionary"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;

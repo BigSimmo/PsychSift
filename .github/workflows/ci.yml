@@ -17,6 +17,15 @@ on:
           machine. Nothing is committed or pushed by this run.
         type: boolean
         default: false
+      scope:
+        description: >
+          browser-matrix (default) runs the Firefox/WebKit/iPhone release matrix — the one lane pull
+          requests never run — plus the static checks, Playwright build and production Chromium it
+          builds on. full also runs unit coverage, build, Lighthouse, migration replay and the rest,
+          which a PR or push to main already ran. Ignored when refresh_lighthouse_baseline is set.
+        type: choice
+        options: [browser-matrix, full]
+        default: browser-matrix
   schedule:
     - cron: "0 18 * * 0"
 
@@ -70,6 +79,12 @@ jobs:
     name: Change scope
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # actions/pull-requests read only for the main tree proof below (find the merged PR and its
+    # CI run). Nothing here writes; every other job keeps the workflow-level `contents: read`.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
     # Export only signals consumed by job/step routing. Unknown non-document
     # paths fail closed to static_heavy_changed in ci-change-scope.mjs.
     outputs:
@@ -88,6 +103,10 @@ jobs:
       lockfile_changed: ${{ steps.scope.outputs.lockfile_changed }}
       pr_policy_body_changed: ${{ steps.scope.outputs.pr_policy_body_changed }}
       site_content_changed: ${{ steps.scope.outputs.site_content_changed }}
+      # Main-push only; empty (= not proven) on every other event. See the tree-proof step.
+      tree_proven_coverage: ${{ steps.tree-proof.outputs.coverage }}
+      tree_proven_ui: ${{ steps.tree-proof.outputs.ui }}
+      tree_proven_lighthouse: ${{ steps.tree-proof.outputs.lighthouse }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -99,6 +118,8 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: ".nvmrc"
+          # No npm ci in this job: do not let setup-node save an empty ~/.npm (see setup-node-cached).
+          package-manager-cache: false
 
       - name: Classify changed files
         id: scope
@@ -110,12 +131,21 @@ jobs:
           # same as interpolating a blank ${{ }} into the script, without putting
           # GitHub context into a shell.
           REFRESH_LIGHTHOUSE_BASELINE: ${{ github.event.inputs.refresh_lighthouse_baseline }}
+          DISPATCH_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.scope || '' }}
         run: |
           if [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ]; then
             # A baseline refresh is a focused measurement operation, not a
             # synthetic full repository change. Keep the trusted workflow/perf
             # contracts without starting unrelated build, UI, DB or container jobs.
             node scripts/ci-change-scope.mjs --files .github/actions/setup-lighthouse-chromium/action.yml
+          elif [ "$DISPATCH_SCOPE" = "browser-matrix" ]; then
+            # A manual run asks for the cross-browser matrix, which pull requests never run.
+            # 12 of 13 manual runs in the week to 6 Oct 2026 were agents dispatching CI on
+            # their own branches for Firefox/WebKit results, and each also re-ran unit
+            # coverage, build, Lighthouse and migration replay (~50 job-minutes) that the
+            # branch's PR already runs. UI scope alone keeps static-pr, the shared Playwright
+            # build, production Chromium and the full matrix. `scope: full` is the old run.
+            node scripts/ci-change-scope.mjs --files .github/actions/setup-ui-e2e/action.yml
           else
             node scripts/ci-change-scope.mjs
           fi
@@ -127,6 +157,44 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           PR_DRAFT: ${{ github.event.pull_request.draft == true }}
         run: node scripts/browser-test-plan.mjs --ci-summary
+
+      # Don't re-test on main what the merged PR already proved on the IDENTICAL tree. Strict
+      # up-to-date merges mean main's new tree equals the PR head tree its pull_request CI run
+      # passed; scripts/ci-main-tree-proof.mjs checks that (single merged PR, head contains the
+      # previous tip, identical tree, green PR run under 24h old, every leg of the job green)
+      # and emits per-job proof. Any mismatch, error or missing evidence emits nothing proven,
+      # so the push runs the full job set exactly as before. Only tree-determined jobs are
+      # eligible (unit coverage, Chromium production UI, Lighthouse budget); static checks,
+      # safety, Build + deployment boot smoke, visual baselines and the Firefox/WebKit
+      # release-browser-matrix still run on every main push, and the weekly schedule and
+      # dispatches never take this path — they are the scheduled full run for drift.
+      # Every run records the commit and tree it actually tested (this job's checkout is the run's
+      # GITHUB_SHA, as is every other job's). A later main push only skips work when the proving
+      # PR run's own record matches its tree; the API's head_sha is the PR head, not the
+      # refs/pull/N/merge checkout a pull_request run tests.
+      - name: Record tested tree
+        run: node scripts/ci-main-tree-proof.mjs --record-tested-tree
+
+      #
+      # PR branch updates (same-repo PRs, `synchronize`) reuse an earlier green run of the SAME PR
+      # through the same record: identical tested tree -> coverage, UI and Lighthouse carry; a
+      # delta made only of paths outside every build/browser/Lighthouse input -> UI and Lighthouse
+      # carry, while lint, typecheck, unit coverage and security gates still run. Anything else,
+      # or any doubt, is the full run. opened/reopened/ready_for_review never take this path.
+      - name: Main tree proof
+        id: tree-proof
+        if: >
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'pull_request' && github.event.action == 'synchronize')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: node scripts/ci-main-tree-proof.mjs
 
   sync-pr-policy-body:
     name: Sync PR policy body
@@ -629,7 +697,12 @@ jobs:
   coverage-shards:
     name: Unit coverage partition
     needs: changes
-    if: needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true
+    # `tree_proven_coverage` is only ever true when a recorded green run already passed both
+    # partitions and the merged thresholds on the IDENTICAL tested tree: the merged PR's run for a
+    # main push, or an earlier run of the same PR for a branch update (see Main tree proof).
+    if: >
+      needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true &&
+      needs.changes.outputs.tree_proven_coverage != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -683,7 +756,8 @@ jobs:
     # of `skipped` exactly as it fails `failure`.
     if: >
       !cancelled() && needs.changes.result == 'success' &&
-      needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true
+      needs.changes.outputs.coverage_changed == 'true' && github.event.pull_request.draft != true &&
+      needs.changes.outputs.tree_proven_coverage != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -796,6 +870,11 @@ jobs:
           # build); the incremental .next/cache above is the real speedup. Kept as
           # a tunable so the local default stays cpus:1 (WasmHash-crash-safe).
           NEXT_BUILD_CPUS: "4"
+          # build:internal already passes --max-old-space-size=8192 to the next
+          # binary, but Next's TypeScript check runs in a child that only inherits
+          # NODE_OPTIONS. Without this, that child stays near the ~4 GB default and
+          # OOMs on the large mode-batch type graph (PR #3329, ubuntu-24.04 ~7 GB).
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: npm run build
 
       # Step timeout (not job timeout): a stuck exit must fail this step quickly
@@ -896,7 +975,8 @@ jobs:
     if: >
       needs.changes.outputs.ui_changed == 'true' &&
       (github.event_name == 'pull_request' || github.event_name == 'merge_group') &&
-      github.event.pull_request.draft != true
+      github.event.pull_request.draft != true &&
+      needs.changes.outputs.tree_proven_ui != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -960,9 +1040,13 @@ jobs:
     needs: [changes, static-pr, ui-playwright-build]
     # Start alongside the fail-fast subset. The suites stay disjoint on PR and
     # merge-queue events, and PR required independently demands both results.
+    # Skipped (main push or PR update) only when a recorded green run already passed the
+    # @critical subset AND every PR shard (together the full production project) and nothing
+    # those journeys read has changed since (see Main tree proof).
     if: >
       needs.changes.outputs.ui_changed == 'true' &&
-      github.event.pull_request.draft != true
+      github.event.pull_request.draft != true &&
+      needs.changes.outputs.tree_proven_ui != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -1172,7 +1256,10 @@ jobs:
   # Supabase values, exactly like the Playwright runner.
   lighthouse-budget:
     name: Lighthouse budget
-    needs: changes
+    # ui-playwright-build is waited on only to reuse its build (~131 s of `next build`
+    # per run otherwise). When it is out of scope (skipped) this job builds its own
+    # copy exactly as before; `!cancelled()` keeps that skip from skipping this job.
+    needs: [changes, ui-playwright-build]
     # Runs when the diff can plausibly move LCP/TBT/CLS on the five budgeted routes,
     # and when the run is one whose result someone will act on. It used to key off
     # `ui_changed || build_changed`, which put every dependabot lockfile bump (#1668)
@@ -1192,8 +1279,11 @@ jobs:
     #                       the subsequent push to main and leave only the weekly schedule.
     #   schedule          – weekly; resolves to the full-run sentinel, which trips perf
     #                       scope (asserted in ci-change-scope.mjs's self-tests).
-    #   workflow_dispatch – always, except a run dispatched to refresh the baseline
-    #                       (that belongs to lighthouse-baseline-refresh below).
+    #   workflow_dispatch – `scope: full` only. Not a baseline refresh (that belongs to
+    #                       lighthouse-baseline-refresh below) and not the default
+    #                       `scope: browser-matrix` run. `inputs.scope` (not
+    #                       github.event.inputs) because only the inputs context is
+    #                       guaranteed to carry the default; it is null off-dispatch.
     #
     # Labels mirror the codex-review / skip-codex-review convention; an explicit skip
     # always wins. `on.pull_request.types` has no `labeled`, so the opt-in label takes
@@ -1208,6 +1298,9 @@ jobs:
     #     `draft != true` is true there. Do NOT write `== false`: that is false on
     #     every non-PR event and would silently kill the push and schedule arms.
     if: >
+      !cancelled() &&
+      needs.changes.result == 'success' &&
+      (needs.ui-playwright-build.result == 'success' || needs.ui-playwright-build.result == 'skipped') &&
       (
         github.event_name == 'schedule' ||
         github.event_name == 'workflow_dispatch' ||
@@ -1224,7 +1317,9 @@ jobs:
         )
       ) &&
       !contains(github.event.pull_request.labels.*.name, 'skip-lighthouse-budget') &&
-      github.event.inputs.refresh_lighthouse_baseline != 'true'
+      needs.changes.outputs.tree_proven_lighthouse != 'true' &&
+      github.event.inputs.refresh_lighthouse_baseline != 'true' &&
+      inputs.scope != 'browser-matrix'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -1239,7 +1334,18 @@ jobs:
       - name: Setup pinned Chromium
         uses: ./.github/actions/setup-lighthouse-chromium
 
+      # The same mockups-disabled, offline/demo `next build --webpack` this job used to
+      # compile for itself (tests/check-lighthouse-budget.test.ts pins the parity).
+      - name: Download shared Playwright Next build
+        if: needs.ui-playwright-build.result == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: playwright-next-build-${{ github.run_id }}
+          path: .next-playwright/ci-${{ github.run_id }}
+
       - name: Measure routes and grade against the baseline
+        env:
+          LIGHTHOUSE_REUSE_BUILD_ROOT_ID: ${{ needs.ui-playwright-build.result == 'success' && format('ci-{0}', github.run_id) || '' }}
         run: npm run verify:lighthouse -- --keep --dir lighthouse
 
       - name: Upload Lighthouse reports
@@ -1498,6 +1604,8 @@ jobs:
           DB_CHANGED: ${{ needs.changes.outputs.db_changed }}
           BUILD_CHANGED: ${{ needs.changes.outputs.build_changed }}
           PERF_CHANGED: ${{ needs.changes.outputs.perf_changed }}
+          # lighthouse-budget's push arm also runs on lockfile-only pushes; mirrored below.
+          LOCKFILE_CHANGED: ${{ needs.changes.outputs.lockfile_changed }}
           # lighthouse-budget is the one draft-suppressed job whose own `if:` is decided by
           # labels as well as scope, so the draft report needs both to avoid naming a job
           # that actually ran.
@@ -1505,6 +1613,8 @@ jobs:
           SKIP_LIGHTHOUSE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'skip-lighthouse-budget') }}
           # Bound through env (never interpolated into run:) — untrusted dispatch input.
           REFRESH_LIGHTHOUSE_BASELINE: ${{ github.event.inputs.refresh_lighthouse_baseline }}
+          # `scope: browser-matrix` dispatch skips lighthouse-budget by its own `if:`; mirrored below.
+          DISPATCH_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.scope || '' }}
           CONTAINER_CHANGED: ${{ needs.changes.outputs.container_changed }}
           PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           EVENT_NAME: ${{ github.event_name }}
@@ -1520,6 +1630,11 @@ jobs:
           UI_RESULT: ${{ needs.ui-critical.result }}
           LIGHTHOUSE_RESULT: ${{ needs.lighthouse-budget.result }}
           DB_RESULT: ${{ needs.db-reset-verify.result }}
+          # Main push or PR synchronize only: the job was skipped because a recorded green run already
+          # passed it and nothing it reads has changed since (Main tree proof). Empty otherwise.
+          TREE_PROVEN_COVERAGE: ${{ needs.changes.outputs.tree_proven_coverage }}
+          TREE_PROVEN_UI: ${{ needs.changes.outputs.tree_proven_ui }}
+          TREE_PROVEN_LIGHTHOUSE: ${{ needs.changes.outputs.tree_proven_lighthouse }}
         run: |
           set -euo pipefail
 
@@ -1601,7 +1716,9 @@ jobs:
             require_skipped_or_success "safety" "$SAFETY_RESULT"
           fi
 
-          if [ "$COVERAGE_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; then
+          if [ "$TREE_PROVEN_COVERAGE" = "true" ]; then
+            require_skipped_or_success "coverage" "$COVERAGE_RESULT"
+          elif [ "$COVERAGE_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; then
             require_success "coverage" "$COVERAGE_RESULT"
           else
             require_skipped_or_success "coverage" "$COVERAGE_RESULT"
@@ -1637,26 +1754,40 @@ jobs:
             echo "::notice title=Browser tests deferred::static-pr did not pass, so the browser" \
               "lanes were skipped for this head. They run on the push that fixes static-pr."
           elif [ "$UI_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; then
-            if [ "$EVENT_NAME" = "pull_request" ] || [ "$EVENT_NAME" = "merge_group" ]; then
+            if [ "$TREE_PROVEN_UI" = "true" ]; then
+              # Carried from an earlier green run of this PR (Main tree proof, PR update path).
+              require_skipped_or_success "production-ui-critical" "$UI_FAST_RESULT"
+            elif [ "$EVENT_NAME" = "pull_request" ] || [ "$EVENT_NAME" = "merge_group" ]; then
               require_success "production-ui-critical" "$UI_FAST_RESULT"
             else
               require_skipped_or_success "production-ui-critical" "$UI_FAST_RESULT"
             fi
-            require_success "production-ui" "$UI_RESULT"
+            if [ "$TREE_PROVEN_UI" = "true" ]; then
+              require_skipped_or_success "production-ui" "$UI_RESULT"
+            else
+              require_success "production-ui" "$UI_RESULT"
+            fi
           else
             require_skipped_or_success "production-ui-critical" "$UI_FAST_RESULT"
             require_skipped_or_success "production-ui" "$UI_RESULT"
           fi
 
-          # Mirror lighthouse-budget's own `if:` for PR/merge_group: when perf is in
-          # scope (or opt-in label) and skip label is absent, require success. The skip
-          # label remains an explicit escape hatch. Drafts without the opt-in label stay
-          # skipped-ok (job itself does not run on drafts unless labeled).
-          # Baseline-refresh dispatch forces PERF_CHANGED=true while intentionally
-          # skipping lighthouse-budget (refresh job runs instead) — accept that skip.
-          if [ "$SKIP_LIGHTHOUSE_LABEL" = "true" ] || [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ]; then
+          # Mirror lighthouse-budget's own `if:` for EVERY event: whenever the producer is
+          # expected to run, only its success passes - including schedule, ordinary dispatch and
+          # lockfile-only pushes, which previously accepted a skipped or missing measurement.
+          # Skipped is accepted only where the producer itself would not run:
+          #   - the explicit `skip-lighthouse-budget` label (escape hatch);
+          #   - baseline-refresh dispatch (lighthouse-baseline-refresh runs instead);
+          #   - a main push whose identical tree already passed it on the merged PR
+          #     (TREE_PROVEN_LIGHTHOUSE, Main tree proof);
+          #   - a `scope: browser-matrix` dispatch (cross-browser run only; DISPATCH_SCOPE);
+          #   - drafts without the opt-in label, and out-of-scope changes.
+          if [ "$SKIP_LIGHTHOUSE_LABEL" = "true" ] || [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ] || [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ] ||
+            [ "${DISPATCH_SCOPE:-}" = "browser-matrix" ]; then
             require_skipped_or_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
-          elif [ "$LIGHTHOUSE_LABEL" = "true" ] || { [ "$PERF_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; }; then
+          elif [ "$EVENT_NAME" = "schedule" ] || [ "$EVENT_NAME" = "workflow_dispatch" ] ||
+            [ "$LIGHTHOUSE_LABEL" = "true" ] ||
+            { { [ "$PERF_CHANGED" = "true" ] || { [ "$EVENT_NAME" = "push" ] && [ "$LOCKFILE_CHANGED" = "true" ]; }; } && [ "$PR_DRAFT" != "true" ]; }; then
             require_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
           else
             require_skipped_or_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
@@ -1740,6 +1871,16 @@ jobs:
             fi
           fi
 
+          proven=()
+          if [ "$TREE_PROVEN_COVERAGE" = "true" ]; then proven+=("coverage"); fi
+          if [ "$TREE_PROVEN_UI" = "true" ]; then proven+=("production-ui"); fi
+          if [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ]; then proven+=("lighthouse-budget"); fi
+          if [ ${#proven[@]} -gt 0 ]; then
+            echo "::notice title=Proven on the identical tree::Not re-run because an earlier green run" \
+              "already passed them on the tree it recorded testing, and nothing they read has changed" \
+              "since: ${proven[*]}. The proving run is linked in the Change scope job summary."
+          fi
+
           echo "Required in-scope PR checks passed."
 
   # Firefox/WebKit matrix must not wait on pr-required: a blocking weekly
@@ -1792,6 +1933,23 @@ jobs:
         # Shard each WebKit project independently. Passing three equal-sized
         # projects to --shard=1/3 gives one entire project to each runner.
         # Keep every test, one worker, zero retries, and the existing timeout.
+        #
+        # Split legs run scripts/playwright-release-shards.mjs, which deals each
+        # project's spec files by measured duration (longest first onto the
+        # lightest leg) instead of Playwright's count-based `--shard`. The count
+        # split cut alphabetically and, with `fullyParallel: false`, a whole file
+        # went to the shard its first test fell in, so the adjacent phone-scroll
+        # family and ui-smoke piled onto one leg: on main runs 37357747260 to
+        # 37392532551 (5-6 Oct 2026) mobile-webkit legs ran 7.3/4.5/27.0/2.4/7.5
+        # min, mobile-pwa-standalone 9.1/3.9/18.9/2.6/5.6 and webkit 24.6/15.0.
+        # The same measured per-file times give, with the SAME leg counts:
+        # mobile-webkit 11.2 max (its slowest single file, ui-smoke, is 11.2),
+        # mobile-pwa-standalone 9.2, webkit 2 x 18.8 and firefox 3 x 8.2. Every
+        # test still runs, one worker, zero retries, the same timeouts; the
+        # script fails closed if the spec list and its timing table disagree.
+        # Before iPhone legs were five, two and three both timed out (runs
+        # 36156676861, 36210366372, 36214387379); refresh the table from the
+        # release-ui-timings artifacts before changing any count.
         include:
           - { engine: chromium, project: chromium-mockups, shard: 1, total: 1 }
           - { engine: firefox, project: firefox, shard: 1, total: 3 }
@@ -1799,20 +1957,6 @@ jobs:
           - { engine: firefox, project: firefox, shard: 3, total: 3 }
           - { engine: webkit, project: webkit, shard: 1, total: 2 }
           - { engine: webkit, project: webkit, shard: 2, total: 2 }
-          # The iPhone projects run FIVE shards. At two, shard 2 took 29-30 min
-          # against the 30-minute --global-timeout (run 36156676861), and
-          # mobile-pwa-standalone left 146 tests unrun. At three it still timed
-          # out (runs 36210366372, 36214387379): 55 min of iPhone tests split
-          # 14.6 / 29.9 / 10.5 min, because `--shard` cuts by test COUNT in
-          # alphabetical file order and, with `fullyParallel: false`, a whole file
-          # goes to the shard its first test falls in. The adjacent phone-scroll
-          # family (~13.4 min) and ui-smoke (~10.8 min) landed together.
-          # Four shards leaves them together (26 min); five separates them
-          # (max ~16 min from the same per-file timings, ~22 min worst case when
-          # the suite grows or shrinks by 40-60 tests). Six is worse than five.
-          # Re-measure from the release-ui-timings artifacts before changing
-          # this; a duration-aware split like scripts/playwright-pr-shards.mjs is
-          # the durable fix. Every test still runs, one worker, zero retries.
           - { engine: webkit, project: mobile-webkit, shard: 1, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 2, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 3, total: 5 }
@@ -1893,6 +2037,9 @@ jobs:
           # includes mockups, whose public flag is baked in, so it builds its own.
           # If the producer was out of scope, the wrapper also builds normally.
           PLAYWRIGHT_REUSE_BUILD: ${{ matrix.engine != 'chromium' && needs.ui-playwright-build.result == 'success' }}
+          # "true" only when this main push skipped Production UI because the identical tree already
+          # passed it on the merged PR (Main tree proof) — the same proof the primary path relies on.
+          UI_PROVEN_BY_PR: ${{ needs.changes.outputs.tree_proven_ui }}
         run: |
           # Both paths below are exhaustive across playwright.config.ts projects
           # for their own path, and disjoint between engines. The fail-safe union
@@ -1900,9 +2047,10 @@ jobs:
           # vanish from CI silently, so
           # `tests/ci-browser-matrix-coverage.test.ts` re-derives both unions from
           # this file plus playwright.config.ts and fails closed on any drift.
-          if [ "${{ needs.changes.outputs.ui_changed }}" = "true" ] && [ "${{ needs.ui-critical.result }}" = "success" ]; then
-            # Production Chromium already passed in this run. Keep mockup
-            # Chromium plus the cross-browser backstop without repeating it.
+          if [ "${{ needs.changes.outputs.ui_changed }}" = "true" ] && { [ "${{ needs.ui-critical.result }}" = "success" ] || [ "$UI_PROVEN_BY_PR" = "true" ]; }; then
+            # Production Chromium already passed — in this run, or on the merged PR's
+            # byte-identical tree. Keep mockup Chromium plus the cross-browser
+            # backstop without repeating it.
             case "$ENGINE" in
               chromium) PROJECTS="--project=chromium-mockups" ;;
               firefox)  PROJECTS="--project=firefox" ;;
@@ -1925,7 +2073,10 @@ jobs:
           # shellcheck disable=SC2086
           # Finish inside the job cap so Playwright can write its failure report
           # and the following upload steps can preserve timeout diagnostics.
-          npm run test:e2e -- $PROJECTS --shard="$SHARD/$SHARD_TOTAL" --global-timeout=1800000
+          # The shard script runs this leg's duration-balanced file group through
+          # scripts/run-playwright.mjs (the test:e2e runner); a one-leg project
+          # passes straight through and runs whole.
+          node scripts/playwright-release-shards.mjs $PROJECTS --shard="$SHARD/$SHARD_TOTAL" --global-timeout=1800000
 
       - name: Upload UI diagnostics
         if: failure()

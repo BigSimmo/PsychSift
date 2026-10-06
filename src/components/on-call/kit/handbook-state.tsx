@@ -7,13 +7,8 @@ import { useRef, useState } from "react";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { focusRing } from "@/components/card-recipes";
 import { OnCallModuleSkeleton } from "@/components/on-call/kit/module-skeleton";
-import {
-  onCallInsetHairline,
-  onCallModuleSurface,
-  onCallPressable,
-  onCallRowHeight,
-} from "@/components/on-call/kit/recipes";
-import { onCallNameText, onCallSecondaryText } from "@/components/on-call/kit/type";
+import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
+import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { ON_CALL_HUB_PAGE_ICONS, type OnCallHubPage } from "@/components/on-call/on-call-section-identity";
 import type {
   HospitalHandbookOption,
@@ -188,7 +183,7 @@ export function OnCallHospitalChooser({
   };
 
   return (
-    <div role="listbox" aria-label="Hospital" className={onCallModuleSurface} data-testid={testId}>
+    <div role="listbox" aria-label="Hospital" className={modeModuleSurface} data-testid={testId}>
       {handbook.hospitals.map((option) => {
         const key = optionKey(option);
         const selected = key === handbook.hospitalKey;
@@ -214,18 +209,18 @@ export function OnCallHospitalChooser({
               onChosen?.();
             }}
             className={cn(
-              onCallInsetHairline,
+              modeInsetHairline,
               focusRing,
-              onCallPressable,
-              detail ? onCallRowHeight.double : onCallRowHeight.single,
+              modePressable,
+              detail ? modeRowHeight.double : modeRowHeight.single,
               "flex w-full min-w-0 items-center gap-3 px-3 text-left",
             )}
           >
             <span className="grid min-w-0 flex-1 content-center gap-0.5">
-              <span className={cn(onCallNameText, "break-words text-base-minus text-[color:var(--text-heading)]")}>
+              <span className={cn(modeNameText, "break-words text-base-minus text-[color:var(--text-heading)]")}>
                 {name}
               </span>
-              {detail ? <span className={cn(onCallSecondaryText, "break-words")}>{detail}</span> : null}
+              {detail ? <span className={cn(modeSecondaryText, "break-words")}>{detail}</span> : null}
             </span>
             {selected ? (
               <Check

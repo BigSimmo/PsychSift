@@ -53,6 +53,79 @@ export const CME_NEW_ENTRY_DRAFT_KEY = "cme-entry-draft:new";
 export const FIRST_NATIONS_HOSPITAL_STORAGE_KEY = "first-nations:hospital-v1";
 /** localStorage — personal doctor credentials (Ahpra, prescriber, provider numbers) saved on-device. */
 export const DOCTOR_CREDENTIALS_STORAGE_KEY = "psychsift:admin:doctor-credentials";
+/** localStorage — which My Day dashboard cards the reader hid (card ids only). */
+export const MY_DAY_HIDDEN_CARDS_STORAGE_KEY = "psychsift:my-day:hidden-cards-v1";
+/**
+ * localStorage — My Day items the reader moved to tomorrow: item id to the Perth
+ * date it comes back. Ids are `<mode>:<kind>:<record id>`; no title, no patient detail.
+ */
+export const MY_DAY_SNOOZED_ITEMS_STORAGE_KEY = "psychsift:my-day:snoozed-v1";
+/**
+ * localStorage — My Day's quick note: free text the reader types, kept on this
+ * device for this account only. The card says "No patient names or details
+ * here"; it is cleared at sign-out, session expiry and account switch.
+ */
+export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
+/**
+ * localStorage — Remind me notes: short text and a due time, kept on this
+ * device only. The sheet refuses initials, bed and record numbers and names,
+ * and a shared device keeps none; cleared at every account transition.
+ */
+export const REMIND_ME_STORAGE_KEY = "psychsift:alerts:remind-me-v1";
+/**
+ * localStorage — the Psychiatry hub's recently opened records: path, the page's
+ * own title (a diagnosis, therapy or form name), section and time.
+ * Reference records only, never patient detail; kept 90 days, recorded only
+ * while "Save recent searches" is on, cleared with recent searches.
+ */
+export const PSYCHIATRY_VISITS_STORAGE_KEY = "psychsift:psychiatry:visits-v1";
+/**
+ * localStorage — the Psychiatry MHA clock: which Mental Health Act forms the
+ * reader is holding (form code, when it was made, a random id). No patient
+ * label. Kept until the reader removes a clock or the account changes, because
+ * a detention can outlast a shift (owner decision, 5 October 2026).
+ */
+export const PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY = "psychsift:psychiatry:mha-clocks-v1";
+/**
+ * localStorage — the Medicines hub's recently opened medicine pages: slug,
+ * catalogue name and time (time used for order only, never shown). Reference
+ * records only, never patient detail; recorded only while "Save recent
+ * searches" is on, cleared with recent searches.
+ */
+export const MEDICINES_RECENT_STORAGE_KEY = "psychsift:medicines:recent-v1";
+/**
+ * localStorage — Teaching's term tracker: the doctor's own term dates, assessment due dates, EPA
+ * counts, learning goals and "to raise" notes. Kept on this device only; the screen says no patient
+ * details. Cleared at sign-out, session expiry and account switch.
+ */
+export const TEACHING_TERM_TRACKER_STORAGE_KEY = "psychsift:teaching:term-tracker-v1";
+/**
+ * localStorage — Teaching's exam prep: exam name and date the doctor set, study minutes by day, topic
+ * progress and the next study group. Kept on this device only.
+ */
+export const TEACHING_EXAM_PREP_STORAGE_KEY = "psychsift:teaching:exam-prep-v1";
+
+/**
+ * The app preferences (`use-app-preferences.ts`). Display settings in it are the
+ * device's and stay; only the doctor's self-chosen work stage is a person's, so
+ * only those fields go at a transition.
+ */
+export const APP_PREFERENCES_STORAGE_KEY = "clinical-kb-preferences";
+export const ACCOUNT_SCOPED_PREFERENCE_KEYS = ["workStage", "ranzcpStage"] as const;
+
+function stripAccountScopedPreferences(): void {
+  try {
+    const raw = window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
+    if (!raw) return;
+    const stored = JSON.parse(raw) as Record<string, unknown> | null;
+    if (!stored || typeof stored !== "object") return;
+    if (!ACCOUNT_SCOPED_PREFERENCE_KEYS.some((key) => key in stored)) return;
+    for (const key of ACCOUNT_SCOPED_PREFERENCE_KEYS) delete stored[key];
+    window.localStorage.setItem(APP_PREFERENCES_STORAGE_KEY, JSON.stringify(stored));
+  } catch {
+    // Storage blocked or the value unreadable: the preferences store treats it as defaults anyway.
+  }
+}
 
 function removeQuietly(storage: () => Storage, key: string): void {
   try {
@@ -94,6 +167,16 @@ export function clearAccountScopedBrowserStorage(): void {
 
   removeQuietly(() => window.localStorage, FIRST_NATIONS_HOSPITAL_STORAGE_KEY);
   removeQuietly(() => window.localStorage, DOCTOR_CREDENTIALS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, MY_DAY_HIDDEN_CARDS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, MY_DAY_SNOOZED_ITEMS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
+  stripAccountScopedPreferences();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 

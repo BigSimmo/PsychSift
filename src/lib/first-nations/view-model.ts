@@ -17,9 +17,12 @@ import {
   type Page,
   type ServiceProfile,
   type SituationId,
+  type Section,
   type Source,
   type WaMap,
 } from "@/lib/first-nations/content-schema";
+import { buildReviewStamp } from "@/lib/first-nations/review-stamp";
+import type { ReviewStamp } from "@/lib/first-nations/review-stamp-text";
 import type { SearchEntry } from "@/lib/first-nations/search";
 
 export type ModelInputs = {
@@ -49,6 +52,7 @@ export type StepView = {
   awaiting: boolean;
   checkedAt: string;
   source: SourceView;
+  review?: ReviewStamp;
 };
 export type PhraseView = { say: string; why: string; checkedAt: string; source: SourceView };
 export type SituationView = {
@@ -70,8 +74,15 @@ export type RegionView = {
   checkedAt: string;
   source: SourceView;
 };
-export type AvoidView = { id: string; avoid: string; instead: string; checkedAt: string; source: SourceView };
-export type BlockView = { block: Block; source: SourceView; contact: ContactView | null };
+export type AvoidView = {
+  id: string;
+  avoid: string;
+  instead: string;
+  checkedAt: string;
+  source: SourceView;
+  review?: ReviewStamp;
+};
+export type BlockView = { block: Block; source: SourceView; contact: ContactView | null; review?: ReviewStamp };
 export type ModuleView = { id: string; title: string; icon: ModuleIcon; layout: ModuleLayout; blocks: BlockView[] };
 export type SectionView = { id: string; tab: string; awaiting: boolean; modules: ModuleView[] };
 
@@ -137,30 +148,47 @@ function contactView(c: ContactBlock, inputs: ModelInputs): ContactView {
   };
 }
 
-type Indexed = { block: Block; awaiting: boolean };
+type Indexed = { block: Block; awaiting: boolean; section: Section | null };
+
+function reviewOf(inputs: ModelInputs, block: Block, section: Section | null): ReviewStamp {
+  const subjects: { subjectId: string; content: unknown }[] = [{ subjectId: block.id, content: block }];
+  if (section) subjects.push({ subjectId: section.id, content: section });
+  return buildReviewStamp(sourceView(inputs, block.sourceId).title, inputs.approvals, subjects);
+}
 
 function indexBlocks(inputs: ModelInputs): Map<string, Indexed> {
   const index = new Map<string, Indexed>();
   for (const page of inputs.content.pages)
     for (const section of page.sections) {
       const awaiting = sectionApprovalState(section, inputs.approvals) !== "approved";
-      for (const mod of section.modules) for (const block of mod.blocks) index.set(block.id, { block, awaiting });
+      for (const mod of section.modules)
+        for (const block of mod.blocks) index.set(block.id, { block, awaiting, section });
     }
-  for (const c of inputs.content.statewideContacts) index.set(c.id, { block: c, awaiting: false });
+  for (const c of inputs.content.statewideContacts) index.set(c.id, { block: c, awaiting: false, section: null });
   return index;
 }
 
 function stepView(ref: string, index: Map<string, Indexed>, inputs: ModelInputs): StepView {
   const hit = index.get(ref);
   if (!hit) throw new Error(`Unknown First Nations step ${ref}`);
-  const { block, awaiting } = hit;
+  const { block, awaiting, section } = hit;
   const source = sourceView(inputs, block.sourceId);
   const { checkedAt } = block;
+  const review = reviewOf(inputs, block, section);
   switch (block.kind) {
     case "tip":
-      return { id: block.id, title: block.do, detail: block.why, contact: null, awaiting, checkedAt, source };
+      return { id: block.id, title: block.do, detail: block.why, contact: null, awaiting, checkedAt, source, review };
     case "note":
-      return { id: block.id, title: block.heading, detail: block.text, contact: null, awaiting, checkedAt, source };
+      return {
+        id: block.id,
+        title: block.heading,
+        detail: block.text,
+        contact: null,
+        awaiting,
+        checkedAt,
+        source,
+        review,
+      };
     case "contact":
       return {
         id: block.id,
@@ -170,6 +198,7 @@ function stepView(ref: string, index: Map<string, Indexed>, inputs: ModelInputs)
         awaiting,
         checkedAt,
         source,
+        review,
       };
     default:
       throw new Error(`Step ${ref} is a ${block.kind}; steps name a tip, note or contact`);
@@ -273,6 +302,7 @@ function sectionViews(p: Page, inputs: ModelInputs): SectionView[] {
             block: b,
             source: sourceView(inputs, b.sourceId),
             contact: b.kind === "contact" ? contactView(b, inputs) : null,
+            review: reviewOf(inputs, b, section),
           })),
       })),
     };
@@ -361,6 +391,7 @@ export function buildBedsideModel(inputs: ModelInputs): BedsideModel {
     instead: b.instead,
     checkedAt: b.checkedAt,
     source: sourceView(inputs, b.sourceId),
+    review: reviewOf(inputs, b, index.get(b.id)?.section ?? null),
   }));
   return {
     showExampleLine: situations.some((s) => s.awaiting) || beforeYouGoIn.some((s) => s.awaiting) || mistakesAwaiting,

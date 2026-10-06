@@ -1,5 +1,9 @@
 "use client";
+import { Clock } from "lucide-react";
+
 import { focusRing } from "@/components/card-recipes";
+import { onCallActionLink, onCallLeadingIcon } from "@/components/on-call/kit/calm";
+import { cn } from "@/components/ui-primitives";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +41,7 @@ export function HospitalShiftUpdates({
     <>
       {mismatch && dismissed !== promptKey ? (
         <section className="grid gap-2 px-3" data-testid="on-call-roster-site-prompt">
-          <p>
+          <p className="text-sm text-[color:var(--text-heading)]">
             Your roster says {workplace}; you are viewing {current}. Check the hospital before calling.
           </p>
           <OnCallHospitalChooser handbook={handbook} />
@@ -47,20 +51,29 @@ export function HospitalShiftUpdates({
         </section>
       ) : null}
       {changed.length ? (
-        <section className="grid gap-2 px-3" data-testid="on-call-published-changes">
-          <h2 className="text-sm font-normal">What changed since your last shift</h2>
-          <ul className="grid gap-2">
-            {changed.map((item) => (
-              <li key={item.id}>
-                <Link
-                  className={`${focusRing} inline-flex min-h-tap items-center text-[color:var(--clinical-accent)]`}
-                  href={`/on-call/service#on-call-entry-${item.id}`}
-                >
-                  {item.section === "cover" ? "Role cover updated" : item.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <section
+          className="flex min-w-0 items-center gap-3 px-3"
+          aria-label="What changed since your last shift"
+          data-testid="on-call-published-changes"
+        >
+          <Clock aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <p className="min-w-0 flex-1 break-words text-sm text-[color:var(--text-muted)]">
+            <span className="font-semibold text-[color:var(--text-heading)]">
+              {changed.some((item) => item.section === "cover") ? "Cover changed" : "Changed"}
+            </span>
+            {` since your last shift: ${changed
+              .slice(0, 2)
+              .map((item) => (item.section === "cover" ? "role cover" : item.title))
+              .join(", ")}${changed.length > 2 ? ` and ${changed.length - 2} more` : ""}`}
+          </p>
+          {/* One "See" for the list: the first change's entry in Service. */}
+          <Link
+            className={cn(onCallActionLink, focusRing)}
+            href={`/on-call/service#on-call-entry-${changed[0]!.id}`}
+            aria-label="See what changed since your last shift"
+          >
+            See
+          </Link>
         </section>
       ) : null}
     </>

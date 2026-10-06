@@ -34,6 +34,18 @@ const srcRoot = path.join(repoRoot, "src");
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
   [
+    "/my-day/week",
+    "Reached from the 'Open week' QuietTextLink (a next/link wrapper) on My Day's This week card, which this Link-only scan does not model. The header tabs are My Day's own Today, Work and Me pages.",
+  ],
+  [
+    "/my-day/hours",
+    "Reached from the 'All hours' QuietTextLink (a next/link wrapper) on My Day's Hours worked card, which this Link-only scan does not model. The header tabs are My Day's own Today, Work and Me pages.",
+  ],
+  [
+    "/admin/compliance/export",
+    "Reached from the 'Export a copy for yourself' ModeRow on Admin Compliance (ADMIN_PAGE_HREFS.complianceExport), which this Link-only scan does not model.",
+  ],
+  [
     "/roster/join",
     "Invite-link landing page reached from shared invite URLs; in-app entry is a ModeRow on Roster Today/Team, which this Link-only scan does not model.",
   ],
@@ -79,7 +91,7 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
   ],
   [
     "/on-call/education",
-    "Retained On Call Teaching page until the Education → Teaching transfer is approved. More › Teaching and product CTAs now open /teaching directly; this route stays reachable for bookmarks and the relocation backstop (no hard redirect in this tranche).",
+    "Retired On Call teaching calendar. It redirects to /teaching/week (proxy fast path plus a page backstop), so in-app navigation links Teaching Week directly; the page stays only for existing bookmarks.",
   ],
 ]);
 
@@ -221,6 +233,13 @@ function declareDirectBindings(statements: unknown[], scope: Scope, includeImpor
           source.value === "@/components/ui/link" &&
           specifier.type === "ImportSpecifier" &&
           importedName(asNode(specifier.imported)) === "TextLink"
+        ) {
+          kind = "next-link";
+        } else if (
+          // Teaching v5 rows and links render next/link with the same href (src/components/teaching/t5-kit.tsx).
+          source.value === "@/components/teaching/t5-kit" &&
+          specifier.type === "ImportSpecifier" &&
+          ["T5Row", "T5Link"].includes(importedName(asNode(specifier.imported)) ?? "")
         ) {
           kind = "next-link";
         } else if (source.value === "next/navigation" && specifier.type === "ImportSpecifier") {

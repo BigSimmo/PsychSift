@@ -37,11 +37,15 @@ const packageScripts: Record<string, string> = JSON.parse(readFileSync(join(repo
  * trailing `:*` (or ` --*`) makes it a prefix match. Anything else is not a Bash rule.
  */
 function bashRuleMatches(rule: string, command: string): boolean {
-  const parsed = /^Bash\((.*)\)$/.exec(rule);
+  // PowerShell rules (Josh's Windows sessions) carry the same commands, so they are held to the
+  // same provider boundary. Their prefix form is `<command> *`.
+  const parsed = /^(?:Bash|PowerShell)\((.*)\)$/.exec(rule);
   if (!parsed) return false;
   const pattern = parsed[1];
   if (pattern.endsWith(":*")) return command.startsWith(pattern.slice(0, -2));
+  if (pattern.endsWith(" *")) return command.startsWith(pattern.slice(0, -2));
   if (pattern.endsWith(" --*")) return command.startsWith(pattern.slice(0, -4));
+  if (pattern.endsWith("*")) return command.startsWith(pattern.slice(0, -1));
   return command === pattern;
 }
 
@@ -72,12 +76,37 @@ describe("claude code permissions", () => {
     ).toEqual([]);
   });
 
-  it.each(providerScripts)("npm run %s carries an explicit ask rule", (script) => {
-    const command = `npm run ${script}`;
-    const asked = (settings.permissions.ask as string[]).filter((rule) => bashRuleMatches(rule, command));
-    expect(asked.length, `${command} is provider-backed but has no ask rule in .claude/settings.json`).toBeGreaterThan(
-      0,
+  // Each shell tool needs its own ask rule: a Bash rule never matches a PowerShell invocation.
+  it.each(providerScripts.flatMap((script) => [["Bash", script] as const, ["PowerShell", script] as const]))(
+    "%s: npm run %s carries an explicit ask rule",
+    (tool, script) => {
+      const command = `npm run ${script}`;
+      const asked = (settings.permissions.ask as string[]).filter(
+        (rule) => rule.startsWith(`${tool}(`) && bashRuleMatches(rule, command),
+      );
+      expect(asked.length, `${command} is provider-backed but has no ${tool} ask rule`).toBeGreaterThan(0);
+    },
+  );
+
+  // Commands that look read-only but can write files, read ignored secrets, run a program or
+  // install packages. Review of PR #3243 reproduced each one.
+  it.each([
+    "git grep --no-index secret -- .env.local",
+    "git fetch --force origin main:main",
+    "git reflog expire --all",
+    "npm run check:organisation -- --fix",
+    "npm run check:worker-python-lock",
+    "npm run check:worker-python-cloud-lock",
+  ])("PowerShell: %s is not auto-allowed", (command) => {
+    const reachedBy = (settings.permissions.allow as string[]).filter(
+      (rule) => rule.startsWith("PowerShell(") && bashRuleMatches(rule, command),
     );
+    expect(reachedBy).toEqual([]);
+  });
+
+  it("denies the file-writing --output form of git log, diff and show in PowerShell", () => {
+    const deny = settings.permissions.deny as string[];
+    for (const sub of ["log", "diff", "show"]) expect(deny).toContain(`PowerShell(git ${sub} *--output*)`);
   });
 
   it("denies reading local env files", () => {

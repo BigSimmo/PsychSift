@@ -7,8 +7,10 @@ import {
 } from "@/components/clinical-dashboard/use-sidebar-pins";
 
 describe("sidebar pin persistence", () => {
-  it("uses the six product defaults for missing or malformed preferences", () => {
-    expect(defaultSidebarPinnedModeIds).toHaveLength(6);
+  it("uses the seven product defaults, My Day first, for missing or malformed preferences", () => {
+    // Design review 2026-10-03, item 4: My Day joined the default shortcuts, first.
+    expect(defaultSidebarPinnedModeIds).toHaveLength(7);
+    expect(defaultSidebarPinnedModeIds[0]).toBe("my-day");
     expect(defaultSidebarPinnedModeIds).not.toContain("sources");
     expect(pinnableSidebarModeIds).toContain("sources");
     expect(readSidebarPinnedModes(null)).toEqual(defaultSidebarPinnedModeIds);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ruleContentSha256, type RuleSignOff } from "@/lib/admin/rule-sign-off";
+import { ruleContentSha256, UNSIGNED, type RuleSignOff } from "@/lib/admin/rule-sign-off";
 import { fatigueWarnings, fatigueWarningsUngated, type FatigueShift } from "@/lib/roster/fatigue-rules";
-import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF } from "@/lib/roster/fatigue-rules-source";
+import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { addDaysToDate, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 import type { ShiftKind } from "@/lib/roster/shift-kind";
 
@@ -30,10 +30,8 @@ function run(firstDate: string, count: number, from: string, to: string, kind: S
 const rules = (shifts: FatigueShift[]) => fatigueWarningsUngated(shifts).map((warning) => warning.rule);
 
 describe("fatigue rule source", () => {
-  it("ships unsigned and off", () => {
-    expect(FATIGUE_RULES_SIGN_OFF.enabled).toBe(false);
-    expect(FATIGUE_RULES_SIGN_OFF.signedBy).toBeNull();
-    const result = fatigueWarnings(run("2026-10-05", 6, "21:00", "09:00", "night"));
+  it("stays off while unsigned, whatever the committed store holds", () => {
+    const result = fatigueWarnings(run("2026-10-05", 6, "21:00", "09:00", "night"), UNSIGNED);
     expect(result).toEqual({ gate: { on: false, reason: "unsigned" }, warnings: [] });
   });
 

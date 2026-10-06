@@ -1,0 +1,482 @@
+"use client";
+
+import { ChevronLeft, Sunrise, TriangleAlert } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+
+import { InformationPageShell } from "@/components/information-page-shell";
+import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
+import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { ModeNotice } from "@/components/mode-kit/notice";
+import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
+import { listNames, MyDayItemRow, myDayModeLabel, useMyDayNow } from "@/components/my-day/my-day-page-parts";
+import { QuietNote, quietLink } from "@/components/my-day/my-day-quiet";
+import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
+import { useMyDayItems } from "@/components/my-day/use-my-day-items";
+import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { Button } from "@/components/ui/button";
+import { perthCalendarDate } from "@/lib/cme/cpd-year";
+import { perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import {
+  myDayEnabledForAuth,
+  myDayNeedsSignIn,
+  myDaySourceModes,
+  type MyDayItem,
+  type MyDayState,
+} from "@/lib/my-day/model";
+import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
+import { myDayPageIds, parseMyDayPage, type MyDayPageId } from "@/lib/my-day/dashboard";
+import type { RenewalRow } from "@/lib/my-day/figures";
+import type { AdminHelpItem } from "@/lib/admin/help-items";
+import { focusRing } from "@/components/card-recipes";
+import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
+import { dashSurface } from "@/components/dashboard-kit/recipes";
+import { cn } from "@/components/ui-primitives";
+
+const NO_RENEWALS: readonly RenewalRow[] = [];
+const NO_HELP: readonly AdminHelpItem[] = [];
+import { useAuthSession } from "@/lib/supabase/client";
+import {
+  ModeBandAction,
+  PageTitleUnderBand,
+  useModeBandCurrentTab,
+  WithoutModeBand,
+} from "@/components/mode-band/mode-band";
+
+/**
+ * The signed-out sample: invented data, downloaded only when a signed-out
+ * visitor opens My Day, so it never counts towards anyone's first load.
+ */
+const MyDaySampleDashboard = dynamic(
+  () => import("@/components/my-day/my-day-sample").then((module) => module.MyDaySampleDashboard),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid gap-3" data-testid="my-day-sample-loading" aria-hidden="true">
+        <ModeModuleSkeleton rows={2} twoLine eyebrow />
+        <ModeModuleSkeleton rows={3} twoLine eyebrow />
+      </div>
+    ),
+  },
+);
+
+const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6 lg:max-w-5xl";
+
+/**
+ * Invented sample data is shown only in a local demo build with no sign-in
+ * configured. For a signed-in reader, any source that answered with sample
+ * data contributes nothing, so no invented item is ever shown as theirs.
+ */
+function myDayShownItems(state: MyDayState, allowSample: boolean): readonly MyDayItem[] {
+  if (allowSample) return state.items;
+  const sampleModes = new Set(state.sources.filter((source) => source.sample === true).map((source) => source.mode));
+  return sampleModes.size ? state.items.filter((item) => !sampleModes.has(item.mode)) : state.items;
+}
+
+/**
+ * True once "All N" pushed the full list's address in this tab, so "Back to
+ * dashboard" can step back through history (the same as the phone's Back)
+ * rather than stacking a second dashboard entry. A direct load of the full
+ * list's address has nothing of ours behind it, so it replaces instead.
+ */
+let fullListPushed = false;
+
+/** Open the full list at its own address, `/my-day?view=all`. Next's router follows a native pushState. */
+function openFullList() {
+  fullListPushed = true;
+  window.history.pushState(null, "", MY_DAY_ALL_VIEW_HREF);
+}
+
+function closeFullList() {
+  if (fullListPushed) {
+    fullListPushed = false;
+    window.history.back();
+    return;
+  }
+  window.history.replaceState(null, "", MY_DAY_PATH);
+}
+
+/** The full list ("All N"): every item, grouped by urgency, as My Day first shipped it. */
+function MyDayFullList({
+  items,
+  now,
+  checked,
+  onBack,
+  onRetry,
+}: {
+  readonly items: readonly MyDayItem[];
+  readonly now: Date;
+  readonly checked: readonly string[];
+  readonly onBack: () => void;
+  readonly onRetry: () => void;
+}) {
+  const backRef = useRef<HTMLButtonElement>(null);
+  // Opened from the dashboard (not a direct load): put focus, and so the view, at the top of the list.
+  useEffect(() => {
+    if (fullListPushed) backRef.current?.focus();
+  }, []);
+  const sections = [
+    { key: "overdue", eyebrow: "Needs you now", items: items.filter((item) => item.severity === "overdue") },
+    { key: "soon", eyebrow: "Due soon", items: items.filter((item) => item.severity === "soon") },
+    { key: "later", eyebrow: "Later", items: items.filter((item) => item.severity === "info") },
+  ].filter((section) => section.items.length > 0);
+  return (
+    <div className="grid gap-5" data-testid="my-day-full-list">
+      <div>
+        <Button ref={backRef} variant="ghost" icon={ChevronLeft} onClick={onBack} data-testid="my-day-back">
+          Back to dashboard
+        </Button>
+      </div>
+      {sections.length === 0 ? (
+        <div data-testid="my-day-empty">
+          {checked.length > 0 ? (
+            <EmptyState icon={Sunrise} title="Nothing needs you right now" body={`Checked ${listNames(checked)}.`} />
+          ) : (
+            <EmptyState
+              icon={Sunrise}
+              title="Couldn't check your day"
+              body="No source could be checked just now."
+              actions={
+                <Button variant="secondary" onClick={onRetry}>
+                  Retry
+                </Button>
+              }
+            />
+          )}
+        </div>
+      ) : (
+        sections.map((section) => (
+          <ModeGroupedList key={section.key} eyebrow={section.eyebrow} testId={`my-day-section-${section.key}`}>
+            {section.items.map((item) => (
+              <MyDayItemRow key={item.id} item={item} now={now} />
+            ))}
+          </ModeGroupedList>
+        ))
+      )}
+    </div>
+  );
+}
+
+/** The dashboard's own reads, mounted only for an enabled reader and remounted per sign-in. */
+function MyDayDashboardView({
+  allowSample,
+  ...props
+}: Omit<MyDayDashboardProps, "sources"> & { readonly allowSample: boolean }) {
+  const sources = useMyDayDashboardSources({ today: props.today, now: props.now, allowSample });
+  return <MyDayDashboard {...props} sources={sources} />;
+}
+
+const LONG_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+const LONG_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+/** "Saturday 3 October" for a Perth date. */
+function longDate(date: string): string {
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return `${LONG_WEEKDAYS[weekday]} ${Number(date.slice(8, 10))} ${LONG_MONTHS[Number(date.slice(5, 7)) - 1]}`;
+}
+
+/** Switch page by replacing the address, so Back still leaves My Day rather than stepping through tabs. */
+function showPage(page: MyDayPageId) {
+  const url = page === "today" ? MY_DAY_PATH : `${MY_DAY_PATH}?page=${page}`;
+  window.history.replaceState(null, "", url);
+}
+
+/** True when the touch began inside something that scrolls sideways (quick actions, the wallet). */
+function insideHorizontalScroller(target: EventTarget | null, stop: Element): boolean {
+  let node = target instanceof Element ? target : null;
+  while (node && node !== stop) {
+    if (node.scrollWidth > node.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(node).overflowX)) return true;
+    node = node.parentElement;
+  }
+  return false;
+}
+
+/** The page body; a sideways swipe on it moves to the next or previous page (the header tabs name it). */
+function MyDaySwipePanel({
+  page,
+  onChange,
+  children,
+}: {
+  readonly page: MyDayPageId;
+  readonly onChange: (page: MyDayPageId) => void;
+  readonly children: ReactNode;
+}) {
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeRef = useRef<HTMLDivElement>(null);
+  return (
+    <div
+      ref={swipeRef}
+      id="my-day-panel"
+      onTouchStart={(event) => {
+        const touch = event.touches[0];
+        touchStart.current =
+          touch && swipeRef.current && !insideHorizontalScroller(event.target, swipeRef.current)
+            ? { x: touch.clientX, y: touch.clientY }
+            : null;
+      }}
+      onTouchEnd={(event) => {
+        const start = touchStart.current;
+        const touch = event.changedTouches[0];
+        touchStart.current = null;
+        if (!start || !touch) return;
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+        const index = myDayPageIds.indexOf(page);
+        const next = myDayPageIds[index + (dx < 0 ? 1 : -1)];
+        if (next) onChange(next);
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
+  const { status: authStatus, authEpoch } = useAuthSession();
+  const enabled = myDayEnabledForAuth(authStatus);
+  // Only a local demo build with no sign-in may show invented examples.
+  const allowSample = authStatus === "unconfigured";
+  const now = useMyDayNow(nowProp);
+  const today = perthCalendarDate(now);
+  const state = useMyDayItems({ enabled, now });
+  // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
+  // answer changes, never on the minute tick.
+  // A plain-text summary of what answered, so a re-read that changes nothing keeps the time.
+  const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}`;
+  const [loaded, setLoaded] = useState<{ readonly key: string; readonly at: string | null }>(() => ({
+    key: loadedKey,
+    at: state.status === "ready" ? perthTimeOf(now) : null,
+  }));
+  if (loaded.key !== loadedKey) setLoaded({ key: loadedKey, at: state.status === "ready" ? perthTimeOf(now) : null });
+  // The full list has its own address, so the phone's Back returns to the dashboard.
+  const searchParams = useSearchParams();
+  const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
+  const page = parseMyDayPage(searchParams?.get("page"));
+  // The header's Today / Work / Me tabs: ?page= is not part of the path, so the page names its own tab.
+  useModeBandCurrentTab(view === "dashboard" ? `my-day-${page}` : null);
+  const changePage = (next: MyDayPageId) => {
+    if (next !== page) showPage(next);
+  };
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    // Back on the dashboard (by either Back): nothing of ours is left to step back over.
+    if (view === "dashboard") fullListPushed = false;
+  }, [view]);
+
+  // Every link out of My Day carries the "from My Day" marker, so the page it opens offers "‹ My Day".
+  const items = useMemo(
+    () => myDayShownItems(state, allowSample).map((item) => ({ ...item, href: withMyDayReturn(item.href) })),
+    [state, allowSample],
+  );
+  const failed = state.sources
+    .filter((source) => source.status === "failed")
+    .map((source) => myDayModeLabel(source.mode));
+  const rosterUnavailable = state.sources.some((source) => source.mode === "roster" && source.status === "unavailable");
+  const otherUnavailable = state.sources
+    .filter((source) => source.status === "unavailable" && source.mode !== "roster")
+    .map((source) => myDayModeLabel(source.mode));
+  const checked = myDaySourceModes
+    .filter((mode) => state.sources.some((source) => source.mode === mode && source.status === "ready"))
+    .map(myDayModeLabel);
+  const myWorkSample = state.sources.some((source) => source.mode === "my-work" && source.sample === true);
+  // Admin's dates and numbers: dropped whole for a signed-in reader if they are invented examples.
+  const adminReal = allowSample || !myWorkSample;
+  const renewals = adminReal ? (state.renewals ?? NO_RENEWALS) : NO_RENEWALS;
+  const helpItems = adminReal ? (state.helpItems ?? NO_HELP) : NO_HELP;
+  const demoNote = allowSample && state.demoMode;
+  // Roster's "unavailable" is its team data (swaps); the others are whole modes not offered yet.
+  const notYet = [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
+  const ready = enabled && state.status === "ready";
+  // Signed out: My Day shows a sample day of invented examples, with a sign-in prompt above it.
+  const sampleView = myDayNeedsSignIn(authStatus);
+  const showAll = () => {
+    setEditing(false);
+    openFullList();
+  };
+  const fullList = (shown: readonly MyDayItem[], shownChecked: readonly string[]) => (
+    <MyDayFullList items={shown} now={now} checked={shownChecked} onBack={closeFullList} onRetry={state.retry} />
+  );
+
+  return (
+    <InformationPageShell testId="my-day-main">
+      <div className={cn(PAGE_WIDTH, dashSurface, "my-day-quiet")}>
+        <header className="flex min-w-0 items-end justify-between gap-3" data-testid="my-day-header">
+          <div className="grid min-w-0 gap-0.5">
+            <WithoutModeBand>
+              <p className="text-sm text-[color:var(--dash-muted)]">{longDate(today)}</p>
+            </WithoutModeBand>
+            <PageTitleUnderBand className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
+              My Day
+            </PageTitleUnderBand>
+          </div>
+          {ready && view === "dashboard" ? (
+            <ModeBandAction>
+              {(underBand) => (
+                <button
+                  type="button"
+                  onClick={() => setEditing((value) => !value)}
+                  data-testid="my-day-edit"
+                  aria-pressed={editing}
+                  className={
+                    underBand
+                      ? "mode-band__customise"
+                      : cn(
+                          focusRing,
+                          "-mr-2 inline-flex min-h-12 items-center rounded-md px-2 font-dash-title text-base-minus text-[color:var(--dash-blue)]",
+                        )
+                  }
+                >
+                  {editing ? "Done" : "Edit"}
+                </button>
+              )}
+            </ModeBandAction>
+          ) : null}
+        </header>
+
+        {authStatus === "loading" || (enabled && state.status === "loading") ? (
+          <>
+            <span role="status" className="sr-only">
+              Loading My Day
+            </span>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="my-day-loading" aria-hidden="true">
+              <div className="col-span-2">
+                <ModeModuleSkeleton rows={2} twoLine eyebrow />
+              </div>
+              <ModeModuleSkeleton rows={2} eyebrow />
+              <ModeModuleSkeleton rows={2} eyebrow />
+              <div className="col-span-2">
+                <ModeModuleSkeleton rows={3} twoLine eyebrow />
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {authStatus === "error" ? (
+          <div className="grid gap-2" data-testid="my-day-auth-error">
+            <ModeNotice tone="warning">Couldn&apos;t check your sign-in. Try again.</ModeNotice>
+            <div>
+              <Button variant="secondary" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {sampleView ? (
+          <div className="grid gap-5" data-testid="my-day-sample">
+            <div className="grid gap-2">
+              <SignedOutSampleNotice
+                title="Sign in to see your own day"
+                testId="my-day-signed-out"
+                noticeTestId="my-day-sample-notice"
+              >
+                Your shifts, on call, CPD and renewals appear here once you sign in. Nothing is shared.
+              </SignedOutSampleNotice>
+              <p className="px-1 text-sm text-[color:var(--dash-muted)]" data-testid="my-day-sample-line">
+                Everything below is a made-up sample.
+              </p>
+            </div>
+            {view === "all" ? (
+              <MyDaySampleDashboard
+                now={now}
+                today={today}
+                page={page}
+                view="all"
+                onShowAll={showAll}
+                renderFullList={fullList}
+              />
+            ) : (
+              <MyDaySwipePanel page={page} onChange={changePage}>
+                <MyDaySampleDashboard
+                  now={now}
+                  today={today}
+                  page={page}
+                  view="dashboard"
+                  onShowAll={showAll}
+                  renderFullList={fullList}
+                />
+              </MyDaySwipePanel>
+            )}
+          </div>
+        ) : null}
+
+        {ready ? (
+          <div className="grid gap-5" data-testid="my-day-ready">
+            {failed.length > 0 ? (
+              <QuietNote
+                icon={TriangleAlert}
+                warn
+                role="alert"
+                testId="my-day-failed-notice"
+                title={`Couldn't load: ${failed.join(", ")}.`}
+                body={
+                  checked.length > 0
+                    ? "Needs you may be incomplete. Showing the rest."
+                    : "Nothing here can be relied on until it loads."
+                }
+                action={
+                  checked.length > 0 ? (
+                    <button type="button" onClick={state.retry} className={quietLink}>
+                      Try again
+                    </button>
+                  ) : null
+                }
+              />
+            ) : null}
+            {view === "all" ? (
+              fullList(items, checked)
+            ) : (
+              <MyDaySwipePanel page={page} onChange={changePage}>
+                <MyDayDashboardView
+                  key={authEpoch}
+                  allowSample={allowSample}
+                  now={now}
+                  today={today}
+                  items={items}
+                  renewals={renewals}
+                  helpItems={helpItems}
+                  checked={checked}
+                  checkedAt={loaded.at}
+                  incomplete={failed.length > 0}
+                  editing={editing}
+                  onToggleEditing={() => setEditing((value) => !value)}
+                  page={page}
+                  onShowAll={showAll}
+                  onRetry={state.retry}
+                />
+              </MyDaySwipePanel>
+            )}
+
+            {/* One notice at the top at most; the quieter context is one line of small print here. */}
+            {demoNote || notYet.length > 0 ? (
+              <p className="max-w-reading px-3 text-sm text-[color:var(--text-muted)]" data-testid="my-day-small-print">
+                {demoNote ? <span data-testid="my-day-demo-notice">Demo data: invented examples.</span> : null}
+                {demoNote && notYet.length > 0 ? " " : null}
+                {notYet.length > 0 ? (
+                  <span data-testid="my-day-unavailable-notice">
+                    {`${listNames(notYet)} ${notYet.length > 1 || rosterUnavailable ? "aren't" : "isn't"} available yet.`}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </InformationPageShell>
+  );
+}

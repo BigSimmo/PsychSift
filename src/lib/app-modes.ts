@@ -27,6 +27,9 @@ export const appModeIds = [
   "my-work",
   "roster",
   "first-nations",
+  "my-day",
+  "medicines",
+  "open-shifts",
 ] as const;
 
 export type AppModeId = (typeof appModeIds)[number];
@@ -89,6 +92,11 @@ export type AppModeDefinition = {
   description: string;
   devOnly?: boolean;
   href?: string;
+  /** Staff work modes show the "Search my work" icon in the header, which searches
+      all of them at once. Declared here rather than as a list of mode ids in the
+      header, for the same reason `resultsSurface` is: the header must not grow a
+      `searchMode === "…"` branch. */
+  workSearch?: true;
   search: AppModeSearchConfig;
 };
 
@@ -502,6 +510,7 @@ export const appModeDefinitions = [
   },
   {
     id: "on-call",
+    workSearch: true,
     label: "On Call",
     description: "Your service's contacts, escalation, orientation and teaching",
     href: "/on-call",
@@ -531,6 +540,7 @@ export const appModeDefinitions = [
   },
   {
     id: "cme",
+    workSearch: true,
     label: "CPD",
     description: "Your continuing education: what you have done, and what is still short",
     href: "/cme",
@@ -561,6 +571,7 @@ export const appModeDefinitions = [
   },
   {
     id: "teaching",
+    workSearch: true,
     label: "Teaching",
     description: "Your hospital's teaching: this week's sessions, check-in and your attendance record",
     href: "/teaching",
@@ -617,10 +628,41 @@ export const appModeDefinitions = [
     },
   },
   {
+    id: "medicines",
+    label: "Medicines & tools",
+    description: "Medication, calculators, clinical tools, factsheets and the dictionary in one place",
+    href: "/medicines",
+    search: {
+      // Like Psychiatry, a landing page that gathers existing modes, each of
+      // which keeps its own search; it borrows the benign "tools" kind.
+      kind: "tools",
+      placeholder: "Open a medicines or tools section...",
+      inputAriaLabel: "Open a medicines or tools section",
+      submitIdleLabel: "Medicines",
+      submitBusyLabel: "Medicines",
+      submitAriaLabel: "Open a medicines or tools section",
+      emptyTitle: "Choose a section",
+      readyTitle: "Medication, calculators, tools and reference",
+      progressLabel: "Opening the section.",
+      resultKind: "tools",
+      resultHeading: "Medicines & tools",
+      // No results page. `/medicines` is a dashboard of links to the sections
+      // it gathers, as `/psychiatry` is.
+      resultsSurface: "none",
+      statusLabel: "Medicines",
+      nextStep: "Open a section",
+      badgeLabel: null,
+    },
+  },
+  {
     id: "my-work",
+    workSearch: true,
     label: "Admin",
     description: "The paperwork around hospital work: renewals, starting and leaving a job, and where to get help",
-    href: "/admin",
+    // Opens on Renewals, Admin's working page (modes review, phase 2b): My Day is
+    // the one Today. `/admin` still serves the old Today page for bookmarks until
+    // it can be retired.
+    href: "/admin/renewals",
     search: {
       // Admin has no catalogue of its own; it borrows the benign "tools" kind, as Psychiatry does.
       kind: "tools",
@@ -643,6 +685,7 @@ export const appModeDefinitions = [
   },
   {
     id: "roster",
+    workSearch: true,
     label: "Roster",
     description: "Your own shifts: imported, or added by hand, with Today, Shifts and Settings",
     href: "/roster",
@@ -668,6 +711,35 @@ export const appModeDefinitions = [
       resultsSurface: "none",
       statusLabel: "Roster",
       nextStep: "Open Today, Shifts or Settings",
+      badgeLabel: null,
+    },
+  },
+  {
+    id: "open-shifts",
+    label: "Open shifts",
+    description: "Extra shifts advertised in your Roster teams: browse, apply, get alerts and post",
+    href: "/open-shifts",
+    search: {
+      // Open shifts lists adverts from the reader's own Roster teams, already in
+      // the browser, so it borrows the benign "tools" command kind as Roster
+      // does. Filter chips on the Browse page do the narrowing.
+      kind: "tools",
+      placeholder: "Search open shifts...",
+      inputAriaLabel: "Search open shifts",
+      submitIdleLabel: "Open shifts",
+      submitBusyLabel: "Open shifts",
+      submitAriaLabel: "Search open shifts",
+      emptyTitle: "Find an extra shift",
+      readyTitle: "Extra shifts in your Roster teams",
+      progressLabel: "Opening the page.",
+      resultKind: "tools",
+      resultHeading: "Open shifts",
+      // No results page. `/open-shifts` is the Browse list, and there is no
+      // `/open-shifts/search`: a retargeted composer would accept a query and
+      // land the reader on a page that ignores it.
+      resultsSurface: "none",
+      statusLabel: "Open shifts",
+      nextStep: "Open Browse, My shifts or Alerts",
       badgeLabel: null,
     },
   },
@@ -699,10 +771,44 @@ export const appModeDefinitions = [
       badgeLabel: null,
     },
   },
+  {
+    id: "my-day",
+    workSearch: true,
+    label: "My Day",
+    description: "One list of what needs you today across On Call, Roster, CPD, Teaching and Admin",
+    href: "/my-day",
+    search: {
+      // My Day reads the owner's own records from the modes it gathers, already
+      // in the browser, and searches nothing; it borrows the benign "tools"
+      // command kind, as Admin and Roster do. Nothing from My Day goes to search.
+      kind: "tools",
+      placeholder: "Open My Day...",
+      inputAriaLabel: "Open My Day",
+      submitIdleLabel: "My Day",
+      submitBusyLabel: "My Day",
+      submitAriaLabel: "Open My Day",
+      emptyTitle: "What needs you today",
+      readyTitle: "Overdue, due soon, then the rest",
+      progressLabel: "Opening My Day.",
+      resultKind: "tools",
+      resultHeading: "My Day",
+      // No results page. `/my-day` is one merged list; each row links to the
+      // page in its own mode where the item is resolved.
+      resultsSurface: "none",
+      statusLabel: "My Day",
+      nextStep: "Open an item",
+      badgeLabel: null,
+    },
+  },
 ] as const satisfies readonly AppModeDefinition[];
 
 export function appModeDefinition(modeId: AppModeId) {
   return appModeDefinitions.find((mode) => mode.id === modeId) ?? appModeDefinitions[0];
+}
+
+/** Whether this mode shows the "Search my work" header icon. */
+export function appModeHasWorkSearch(modeId: AppModeId): boolean {
+  return (appModeDefinition(modeId) as AppModeDefinition).workSearch === true;
 }
 
 export function isAppModeId(value: string | null | undefined): value is AppModeId {
@@ -744,6 +850,9 @@ const namespaceIsolatedModes = new Set<AppModeId>([
   "my-work",
   "roster",
   "first-nations",
+  "my-day",
+  "medicines",
+  "open-shifts",
 ]);
 
 export function appModeHomeHref(modeId: AppModeId, options: SearchNavigationOptions = {}) {

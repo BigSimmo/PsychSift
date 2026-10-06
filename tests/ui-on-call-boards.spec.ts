@@ -49,15 +49,15 @@ const DESKTOP = 1280;
 /** This repository's production tap floor, in CSS pixels. */
 const TAP_FLOOR = 48;
 
-// Now carries no search (ruling F6): the one search box lives on Call.
-test("Call search narrows to the exact contact on a narrow phone", async ({ page }) => {
+// Now carries no search (ruling F6): the one search box lives on People.
+test("People search narrows to the exact contact on a narrow phone", async ({ page }) => {
   await page.setViewportSize({ width: NARROW, height: BOARD_HEIGHT });
   await page.goto("/on-call/call");
   const main = page.getByTestId("on-call-call-main");
   const status = main.getByRole("status").filter({ hasText: /result/ });
   // Text typed before hydration is dropped (mobile WebKit, release matrix 2026-09-25).
   await expect(async () => {
-    await main.getByRole("searchbox", { name: "Search Call" }).fill("coordination");
+    await main.getByRole("searchbox", { name: "Search People" }).fill("coordination");
     await expect(status).toHaveText("1 result", { timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
   await expect(main).toContainText("Example after-hours coordination extension");
@@ -71,7 +71,9 @@ const ROUTES = {
   playbook: "/on-call/playbook",
   referrals: "/on-call/referrals",
   orientation: "/on-call/orientation",
-  teaching: "/on-call/education",
+  // On Call's parallel teaching calendar redirects to Teaching Week; Teaching
+  // boards live in ui-teaching.spec.ts. Do not keep a ROUTES.teaching entry here
+  // — the chrome loop would open a non-On-Call mode under On Call's board suite.
   // On Call's Admin (`logistics`) rows and Compliance moved to the Admin mode on
   // 2026-09-26 (Admin update 1): Admin > Help and Admin > Renewals. The keys keep
   // their old names so every board that opens them still does.
@@ -92,7 +94,6 @@ const SECTION_LIST_TEST_IDS: Record<string, string> = {
   [ROUTES.playbook]: "on-call-playbook-section",
   [ROUTES.referrals]: "on-call-referrals-section",
   [ROUTES.orientation]: "on-call-orientation-section",
-  [ROUTES.teaching]: "on-call-education-section",
   [ROUTES.logistics]: "admin-help-main",
   [ROUTES.compliance]: "admin-renewals-main",
   [ROUTES.whoIsWho]: "on-call-who-is-who-section",
@@ -280,15 +281,17 @@ test.describe("01 Home", () => {
     await expectTapFloor(allRoles, "Right now's All roles link");
   });
 
-  test("keeps First night and Who do I call now live in the footer group", async ({ page }) => {
+  test("keeps First night in the footer group and the escalation ladder under Who do I call now", async ({ page }) => {
     await openBoard(page, ROUTES.home);
     const footer = visibleByTestId(page, "on-call-now-footer");
     const firstNight = footer.getByTestId("on-call-home-first-night");
     await expect(firstNight).toHaveAttribute("href", "/on-call/first-night");
     await expectTapFloor(firstNight, "First night row");
-    // The literal href the route-reachability guard reads; the click test
-    // above proves the destination actually renders.
-    await expect(footer.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
+    // Mock-up v10: "Who do I call now?" is its own group with the ladder link
+    // at its right. The literal href is what the route-reachability guard reads;
+    // the click test above proves the destination actually renders.
+    const who = visibleByTestId(page, "on-call-now-who");
+    await expect(who.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
   });
 
   test("puts the page menu in the universal header, and offers no chat there", async ({ page }) => {
@@ -312,18 +315,10 @@ test.describe("01 Home", () => {
 });
 
 test.describe("Coming up — moved off Home to Teaching (plan C25)", () => {
-  test("dates the next teaching session with a weekday, as drawn", async ({ page }) => {
-    // Now (v6) drops the tile grid and, with it, the Coming up module: teaching
-    // sessions now surface only on the Teaching page (`/on-call/education`),
-    // which is where this same corpus and the same weekday assertion now live.
-    await openBoard(page, ROUTES.teaching);
-    // The row became a date-card strip when recurring sessions landed, so the
-    // card test id moved from `on-call-home-upcoming-` to `on-call-home-teaching-`.
-    // The module id around it is unchanged, and so is what this test is really
-    // asserting: a date a reader can check against a roster, never a countdown.
-    const card = page.getByTestId("on-call-home-upcoming").locator('[data-testid^="on-call-home-teaching-"]').first();
-    await expect(card).toBeVisible();
-    await expect(card).toContainText(/Mon|Tue|Wed|Thu|Fri|Sat|Sun/);
+  test("legacy /on-call/education hard-redirects to Teaching Week", async ({ page }) => {
+    await page.goto("/on-call/education", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/teaching\/week/);
+    await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
   });
 });
 
@@ -353,7 +348,12 @@ test.describe("02 More, 03 All modes — the pill owns page switching", () => {
     for (const route of [ROUTES.home, ROUTES.contacts, ROUTES.playbook, ROUTES.logistics, ROUTES.compliance]) {
       await openBoard(page, route);
       await expect(page.getByTestId("mode-nav")).toHaveCount(0);
-      await expect(page.getByRole("navigation", { name: "On Call pages" })).toHaveCount(0);
+      // The one exception is the mode header band's tab row (the C4 header the
+      // owner locked on 5 Oct 2026 for every mode, On Call included). It is
+      // the only "On Call pages" bar allowed; nothing else may repeat it.
+      // Some pages show the band without tabs, so the bar is at most that one.
+      expect(await page.getByRole("navigation", { name: "On Call pages" }).count()).toBeLessThanOrEqual(1);
+      expect(await page.getByTestId("mode-band-tabs").count()).toBeLessThanOrEqual(1);
     }
   });
 });
@@ -395,10 +395,10 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // The pill's accessible name still opens `Mode …` — twelve test files and
     // the shared helper find this control by that prefix — and now says the
     // page as well.
-    // Contacts is the editor behind Call (kit 1.7), so the pill names Call.
-    const pill = page.getByRole("button", { name: "Mode On Call, page Call" });
+    // Contacts is the editor behind People (kit 1.7), so the pill names People.
+    const pill = page.getByRole("button", { name: "Mode On Call, page People" });
     await expect(pill).toBeVisible();
-    await expect(pill).toContainText("Call");
+    await expect(pill).toContainText("People");
     await expect(pill).toContainText("On Call");
 
     // And nothing else on the page paints the name. Measured, not counted by
@@ -419,6 +419,14 @@ test.describe("02 More — the second row is about the page you are on", () => {
 
   test("carries the mode's own colour on the pill and the bar, and only there", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
+    // openBoard settles on the list, but the bar mounts a frame or more later: it renders
+    // only once the page has resolved two or more groups from the list. WebKit reaches
+    // this read before that, found no bar, and compared the pill's teal against null.
+    // Wait for both elements this test compares, then read them.
+    // Contacts is the editor behind People (kit 1.7), so the pill names People — same as
+    // the assertion in "names the page once, in the pill, with the mode beneath it".
+    await expect(await sectionBar(page)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode On Call, page People" })).toBeVisible();
     const identity = await page.evaluate(() => {
       const read = (selector: string) => {
         const element = document.querySelector(selector);
@@ -519,7 +527,16 @@ test.describe("02 More — the second row is about the page you are on", () => {
     await expect(page.getByTestId("on-call-contacts-filters")).toHaveCount(0);
     const firstGroup = page.getByTestId("on-call-contacts-group-needs-checking");
     const header = page.getByTestId("on-call-section-detail-header");
-    const [groupBox, headerBox] = [await firstGroup.boundingBox(), await header.boundingBox()];
+    // The mode header band (C4, locked 5 Oct 2026) sits between this bar and
+    // the list by design, so the gap is measured from whichever ends lower.
+    const band = page.getByTestId("mode-band");
+    const [groupBox, sectionBox, bandBox] = [
+      await firstGroup.boundingBox(),
+      await header.boundingBox(),
+      await band.boundingBox(),
+    ];
+    const headerBox =
+      bandBox && sectionBox && bandBox.y + bandBox.height > sectionBox.y + sectionBox.height ? bandBox : sectionBox;
     // The threshold is the height of a control band, not a design opinion: a
     // chip row or a toolbar is a 48px control plus its gaps, so anything that
     // reappears between the header and the list pushes this well past 72. The
@@ -529,18 +546,6 @@ test.describe("02 More — the second row is about the page you are on", () => {
       "a band of controls has reappeared between the header and the list",
     ).toBeLessThan(72);
     await expect(page.getByRole("button", { name: "Start a new chat" })).toHaveCount(0);
-  });
-
-  test("renders no header at all on a page with nothing to move between", async ({ page }) => {
-    // Teaching has no facet to file by — its sessions are dated, not tagged —
-    // so it is one flat list. One group is a heading, not navigation, and with
-    // the title and the actions both gone there is nothing left for a header
-    // to hold. It is absent rather than drawn as an empty 48px band.
-    await openBoard(page, ROUTES.teaching);
-    await expect(page.getByTestId("on-call-section-detail-header")).toHaveCount(0);
-    // The page is still named, and still has its actions — both one level up.
-    await expect(page.getByRole("button", { name: "Mode On Call, page Teaching" })).toBeVisible();
-    await expect(page.getByTestId("on-call-page-menu-trigger")).toBeVisible();
   });
 
   test("gives a page that lost its chips real groups instead", async ({ page }) => {
@@ -644,12 +649,15 @@ test.describe("06 Contacts", () => {
     await expect(page.getByTestId("on-call-contact-row-demo-interpreter-line")).toHaveCount(1);
   });
 
-  test("rings the number from anywhere on the row, and shows the call disc", async ({ page }) => {
+  test("never offers an invented 0000 number to the dialler, and keeps the row one target", async ({ page }) => {
+    // Every example number starts "0000", and a phone keying "000…" can reach
+    // Triple Zero, so example rows show their number as text with no call link.
     await openBoard(page, ROUTES.contacts);
     const row = page.getByTestId("on-call-contact-row-demo-nurse-manager");
-    await expect(row).toHaveAttribute("href", /^tel:/);
+    await expect(row).toContainText("0000 000 001");
+    await expect(row.locator('a[href^="tel:"]')).toHaveCount(0);
+    expect((await row.getAttribute("href")) ?? "").not.toMatch(/^tel:/);
     await expectTapFloor(row, "contact row");
-    // The disc is decoration inside the link: one target for one action.
     await expect(row.locator("button")).toHaveCount(0);
   });
 
@@ -824,10 +832,14 @@ test.describe("11 Admin: Help", () => {
     // No microphone on this box: it is a filter over what is already on the
     // page, never the shared search composer (spec).
     const filter = page.getByRole("textbox", { name: "Find in Help" });
-    await filter.fill("payslip");
     const guides = page.getByTestId("admin-help-guides-list");
+    // Text typed before hydration is dropped (mobile WebKit, release matrix
+    // 2026-10-04), so retype until the filter has visibly applied.
+    await expect(async () => {
+      await filter.fill("payslip");
+      await expect(guides.getByText("Demo sick leave, and who to tell first")).toHaveCount(0, { timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
     await expect(guides.getByText("Demo payslips and pay queries")).toBeVisible();
-    await expect(guides.getByText("Demo sick leave, and who to tell first")).toHaveCount(0);
     // Crisis lines are never filtered (spec): they render above this check.
     await expect(page.getByTestId("admin-help-crisis")).toBeVisible();
   });
@@ -890,31 +902,38 @@ test.describe("11 Admin: Help", () => {
  * (Admin update 1) it moved again: `/on-call/compliance` redirects to
  * `/admin/renewals`, which is rebuilt as a checklist of the statewide
  * Requirements catalogue crossed with the doctor's own recorded dates. It has
- * no section rail and no consequence bands any more; rows are grouped by
- * state ("Soonest first", "No end date", "Not recorded yet").
+ * no section rail and no consequence bands any more; rows are grouped by the
+ * catalogue's own groups (Registration, Checks, Health, Training, Job — the
+ * 5 Oct mock-up v2), and inside each group a recorded date comes before the
+ * slots nobody has filled in yet.
  *
- * With no artboard to check it against, this block checks what ships: the
- * groups in that order with the demo corpus's recorded rows in the first, the
+ * This block checks what ships: the groups in catalogue order with the demo
+ * corpus's recorded rows first in their group, the
  * "not a check" line above the list, and a Personal tab that holds only the
  * reader's own off-catalogue renewals — never a contact or a guide.
  */
 test.describe("Compliance — the view the boards never drew", () => {
-  test("files the requirements under state groups, soonest first", async ({ page }) => {
+  test("files the requirements under the catalogue's groups, recorded dates first", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
 
-    // The demo corpus links three rows to catalogue items (registration,
-    // indemnity, Working with Children Check), so both groups have rows.
-    const soonest = visibleByTestId(page, "admin-renewals-checklist-group-Soonest first");
-    const notRecorded = visibleByTestId(page, "admin-renewals-checklist-group-Not recorded yet");
-    await expect(soonest, "the demo corpus's recorded rows do not render").toBeVisible();
-    await expect(notRecorded).toBeVisible();
-    await expect(soonest).toContainText("Medical registration renewal");
-    await expect(soonest).toContainText("Working with Children Check");
+    // The demo corpus links seven rows to catalogue items (registration and
+    // indemnity, Working with Children Check and police clearance, among
+    // others), so these groups have rows.
+    const registration = visibleByTestId(page, "admin-renewals-checklist-group-registration");
+    const checks = visibleByTestId(page, "admin-renewals-checklist-group-checks");
+    await expect(registration, "the demo corpus's recorded rows do not render").toBeVisible();
+    await expect(checks).toBeVisible();
+    await expect(registration).toContainText("Medical registration renewal");
+    await expect(checks).toContainText("Working with Children Check");
 
-    // Order is the page's argument: a recorded date to act on comes before
-    // the slots nobody has filled in yet.
-    const [soonestBox, notRecordedBox] = [await soonest.boundingBox(), await notRecorded.boundingBox()];
-    expect(notRecordedBox!.y, "Not recorded yet is above Soonest first").toBeGreaterThan(soonestBox!.y);
+    // Groups follow the catalogue's order.
+    const [registrationBox, checksBox] = [await registration.boundingBox(), await checks.boundingBox()];
+    expect(checksBox!.y, "Checks is above Registration").toBeGreaterThan(registrationBox!.y);
+
+    // Inside a group, a recorded date to act on comes before the slots nobody
+    // has filled in yet.
+    const firstCheck = checks.getByRole("listitem").first();
+    await expect(firstCheck).toContainText("Working with Children Check");
   });
 
   test("says on the page that these are dates the reader entered, not a check", async ({ page }) => {
@@ -930,7 +949,7 @@ test.describe("Compliance — the view the boards never drew", () => {
     // sentence in this position is the control that keeps it rejected.
     const [summaryBox, firstGroup] = [
       await summary.boundingBox(),
-      await visibleByTestId(page, "admin-renewals-checklist-group-Soonest first").boundingBox(),
+      await visibleByTestId(page, "admin-renewals-checklist-group-registration").boundingBox(),
     ];
     expect(summaryBox!.y, "the 'not a check' line has slipped below the list").toBeLessThan(firstGroup!.y);
   });
@@ -943,7 +962,7 @@ test.describe("Compliance — the view the boards never drew", () => {
     const personal = visibleByTestId(page, "admin-renewals-personal");
     await expect(personal).toBeVisible();
     // A demo compliance row that matches no catalogue item.
-    await expect(personal).toContainText("Demo basic life support module");
+    await expect(personal).toContainText("Demo fire and evacuation module");
     // Never a row from another On Call section: offering "Renewed" on a
     // contact or a guide would plant compliance keys that hide it from every
     // colleague's shared read.

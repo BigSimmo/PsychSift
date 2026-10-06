@@ -109,8 +109,14 @@ export async function performHealthCheck(): Promise<HealthResponse> {
 
   // Check 1: Supabase connectivity
   try {
-    await probeSupabaseHealth(createAdminClient());
-    checks.supabase = { status: "ok" };
+    const health = await probeSupabaseHealth(createAdminClient());
+    // The probe returns an unhealthy result for query/network failures rather
+    // than throwing. Honour that result so Railway cannot promote a worker
+    // whose database check failed. Keep provider details out of this endpoint.
+    if (!health.ok) {
+      checks.supabase = { status: "error", message: "Supabase health check failed." };
+      hasErrors = true;
+    }
   } catch (error) {
     checks.supabase = {
       status: "error",

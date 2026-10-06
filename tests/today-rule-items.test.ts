@@ -29,8 +29,36 @@ describe("today rule items", () => {
     const result: MhaTimersResult = {
       gate: { on: true },
       items: [
-        { kind: "countdown", timerId: "t1", entry, deadline, remainingMs: 1, expired: false },
-        { kind: "countdown", timerId: "t2", entry, deadline, remainingMs: -1, expired: true },
+        {
+          kind: "countdown",
+          timerId: "t1",
+          entry,
+          deadline,
+          remainingMs: 1,
+          expired: false,
+          occurrence: 1,
+          repeatsEveryHours: null,
+        },
+        {
+          kind: "countdown",
+          timerId: "t2",
+          entry,
+          deadline,
+          remainingMs: -1,
+          expired: true,
+          occurrence: 1,
+          repeatsEveryHours: null,
+        },
+        {
+          kind: "countdown",
+          timerId: "t4",
+          entry,
+          deadline,
+          remainingMs: 1,
+          expired: false,
+          occurrence: 3,
+          repeatsEveryHours: 24,
+        },
         { kind: "quote-only", timerId: "t3", entry, reason: "not-calculable" },
       ],
     };
@@ -38,7 +66,9 @@ describe("today rule items", () => {
     expect(items.map((item) => [item.id, item.severity, item.due])).toEqual([
       ["on-call:mha-timer:t1:invented", "soon", "2026-10-04T06:00:00.000Z"],
       ["on-call:mha-timer:t2:invented", "overdue", "2026-10-04T06:00:00.000Z"],
+      ["on-call:mha-timer:t4:invented:3", "soon", "2026-10-04T06:00:00.000Z"],
     ]);
+    expect(items[2]?.detail).toContain("Repeats every 24 hours while the order is in force.");
     expect(items[0]).toMatchObject({ mode: "on-call", href: "/on-call", title: "Form ZZ: Invented trigger" });
   });
 

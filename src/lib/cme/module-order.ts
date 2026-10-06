@@ -83,8 +83,8 @@ export function moveModuleId(
   direction: -1 | 1,
 ): CmeDashboardModuleId[] {
   const currentIndex = order.indexOf(moduleId);
-  const nextIndex = currentIndex + direction;
-  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= order.length) return [...order];
+  const nextIndex = adjacentSameSlotIndex(order, moduleId, direction);
+  if (currentIndex < 0 || nextIndex < 0) return [...order];
   const next = [...order];
   const current = next[currentIndex];
   const adjacent = next[nextIndex];
@@ -92,6 +92,44 @@ export function moveModuleId(
   next[currentIndex] = adjacent;
   next[nextIndex] = current;
   return next;
+}
+
+/**
+ * The Today screen places each module in a fixed section, so a saved order only
+ * changes what the owner sees among modules in the same section. A module can
+ * therefore only be moved past another module in its own section; a move that
+ * would cross a section boundary would save but show no change.
+ */
+export const cmeDashboardModuleSlots: Record<CmeDashboardModuleId, "needs-you" | "coming-up" | "at-a-glance"> = {
+  requirements: "needs-you",
+  "routines-due": "coming-up",
+  "audited-today": "at-a-glance",
+  "year-dates": "at-a-glance",
+  provenance: "at-a-glance",
+};
+
+/** Index of the nearest module in `direction` that shares `moduleId`'s section, or -1 when there is none. */
+function adjacentSameSlotIndex(
+  order: readonly CmeDashboardModuleId[],
+  moduleId: CmeDashboardModuleId,
+  direction: -1 | 1,
+) {
+  const currentIndex = order.indexOf(moduleId);
+  if (currentIndex < 0) return -1;
+  for (let index = currentIndex + direction; index >= 0 && index < order.length; index += direction) {
+    const candidate = order[index];
+    if (candidate && cmeDashboardModuleSlots[candidate] === cmeDashboardModuleSlots[moduleId]) return index;
+  }
+  return -1;
+}
+
+/** Whether a move would change what Today shows — used to disable a control rather than let it no-op silently. */
+export function canMoveModule(
+  order: readonly CmeDashboardModuleId[],
+  moduleId: CmeDashboardModuleId,
+  direction: -1 | 1,
+): boolean {
+  return adjacentSameSlotIndex(order, moduleId, direction) >= 0;
 }
 
 /**

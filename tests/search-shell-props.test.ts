@@ -10,6 +10,12 @@ describe("searchShellPropsForPathname", () => {
     }
   });
 
+  it("gives every My Day page the my-day mode and no shared composer", () => {
+    for (const path of ["/my-day", "/my-day/week", "/my-day/hours"]) {
+      expect(searchShellPropsForPathname(path)).toMatchObject({ initialMode: "my-day", searchComposerVisible: false });
+    }
+  });
+
   it("keeps documents composer visible only on the search route", () => {
     expect(searchShellPropsForPathname("/documents/search")).toMatchObject({
       initialMode: "documents",
@@ -91,6 +97,7 @@ describe("searchShellPropsForPathname", () => {
     expect(searchShellPropsForPathname("/sources/topics")).toEqual(visible);
     expect(searchShellPropsForPathname("/sources/publishers")).toEqual(visible);
     expect(searchShellPropsForPathname("/sources/method")).toEqual({ ...visible, searchComposerVisible: false });
+    expect(searchShellPropsForPathname("/sources/currency")).toEqual({ ...visible, searchComposerVisible: false });
     expect(searchShellPropsForPathname("/sources/src_example")).toEqual({ ...visible, searchComposerVisible: false });
   });
 
@@ -101,12 +108,23 @@ describe("searchShellPropsForPathname", () => {
       const props = searchShellPropsForPathname(entry.href);
       expect(props.initialMode).toBe("sources");
       expect(props.desktopSearchPlacement).toBe("hero");
-      if (entry.id === "method") {
+      if (entry.id === "method" || entry.id === "currency") {
         expect(props.searchComposerVisible).toBe(false);
       } else {
         expect(props.searchComposerVisible).not.toBe(false);
         expect(props).toEqual(visible);
       }
     }
+  });
+
+  it("keeps Psychiatry and Medicines sub-pages in their own mode, not Answer", () => {
+    const psychiatry = { initialMode: "psychiatry", desktopSearchPlacement: "hero" } as const;
+    expect(searchShellPropsForPathname("/psychiatry")).toEqual(psychiatry);
+    expect(searchShellPropsForPathname("/psychiatry/mha-clock")).toEqual(psychiatry);
+    expect(searchShellPropsForPathname("/psychiatryx").initialMode).not.toBe("psychiatry");
+    expect(searchShellPropsForPathname("/medicines/anything")).toEqual({
+      initialMode: "medicines",
+      desktopSearchPlacement: "hero",
+    });
   });
 });

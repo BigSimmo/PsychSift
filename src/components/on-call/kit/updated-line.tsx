@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 
 import { focusRing } from "@/components/card-recipes";
-import { onCallNumberText } from "@/components/on-call/kit/type";
+import { modeNumberText } from "@/components/mode-kit/type";
 import { cn } from "@/components/ui-primitives";
 import { formatOnCallDate, onCallAgo } from "@/lib/on-call/display-dates";
 
@@ -34,13 +34,13 @@ export function OnCallUpdatedLine({
   return (
     <span className="grid min-w-0 gap-0.5 text-xs text-[color:var(--text-muted)]" data-testid={testId}>
       {date ? (
-        <span className={cn(onCallNumberText, "break-words")}>
+        <span className={cn(modeNumberText, "break-words")}>
           Updated {date}
           <span className="text-[color:var(--text-muted)]">{` · ${onCallAgo(updatedAt ?? "", now)}`}</span>
         </span>
       ) : null}
       {lastConfirmedAt && formatOnCallDate(lastConfirmedAt) ? (
-        <span className={onCallNumberText}>Confirmed {formatOnCallDate(lastConfirmedAt)}</span>
+        <span className={modeNumberText}>Confirmed {formatOnCallDate(lastConfirmedAt)}</span>
       ) : null}
       {sources?.length || reviewedAt ? (
         <span className="flex min-w-0 flex-wrap items-center gap-x-3 text-[color:var(--text-muted)]">

@@ -1,6 +1,7 @@
 // Tick list: controlled; the parent owns the ticks, which live in component state only.
 import { useId } from "react";
 import { ModeUpdatedLine } from "@/components/first-nations/kit";
+import { ReviewStamp } from "@/components/first-nations/review-stamp";
 import type { StepView } from "@/lib/first-nations/view-model";
 
 export function TickList({
@@ -45,6 +46,7 @@ export function TickList({
                 verb="Checked"
                 sources={[{ label: step.source.title, url: step.source.url }]}
               />
+              <ReviewStamp stamp={step.review} />
             </div>
           </li>
         );

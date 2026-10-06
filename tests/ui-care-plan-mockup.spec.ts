@@ -12,6 +12,7 @@ import {
   TEAM_WRITTEN_HEADINGS,
   TEAM_WRITTEN_LEAD_INS,
 } from "./helpers/care-plan-patient-copy-claims";
+import { visibleByTestId } from "./playwright-settlement";
 
 /**
  * The Care Plan prototype's only browser proof.
@@ -1408,7 +1409,8 @@ test.describe("@mockup Care Plan synthetic prototype", () => {
     // pointer events, so a click aimed at the input itself is intercepted — a
     // repository-wide shape, not a Care Plan defect, and the label is how a
     // reader activates it anyway.
-    await page.locator('label[for="care-plan-presentation-form-suggestReview"]').click();
+    // Scoped to the visible copy: a hidden streamed twin can share the DOM (#093).
+    await page.locator('label[for="care-plan-presentation-form-suggestReview"]').filter({ visible: true }).click();
     await expect(page.getByLabel("Suggest a plan review")).toBeChecked();
     await page
       .getByLabel("Why is review suggested?")
@@ -1587,10 +1589,11 @@ test.describe("@mockup Care Plan synthetic prototype", () => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 1440, height: 1000 });
     await gotoRoute(page, routes.history, "History");
-    await expect(page.getByTestId("care-plan-history-list")).toBeVisible();
-    await expect(page.getByTestId("care-plan-history-filter-note")).toBeVisible();
+    // Scoped to the visible copy: a hidden streamed twin can share the DOM (#093).
+    await expect(visibleByTestId(page, "care-plan-history-list")).toBeVisible();
+    await expect(visibleByTestId(page, "care-plan-history-filter-note")).toBeVisible();
     // An intent is never rendered as a delivery.
-    await expect(page.getByTestId("care-plan-history-list")).not.toContainText(/\b(delivered|read by|replied)\b/i);
+    await expect(visibleByTestId(page, "care-plan-history-list")).not.toContainText(/\b(delivered|read by|replied)\b/i);
   });
 
   test("every degraded specimen renders its stated reason rather than a blank screen", async ({ page }) => {

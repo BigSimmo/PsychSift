@@ -1,32 +1,40 @@
 import { addDays } from "@/lib/calendar/calendar-event";
 import { nextTeachingOccurrence, type RecurringSessionFrequency } from "@/lib/dates/recurring-session";
-import type {
-  LogbookRow,
-  Notice,
-  SeriesAudience,
-  SessionDetail,
-  SessionSummary,
-  TeachingWeek,
-  TeamSummary,
-  WhatsOnRow,
+import type { SessionRef } from "@/lib/teaching/depth-model";
+import {
+  RELOCATED_SERVICE_ID,
+  type AttendanceMark,
+  type LogbookRow,
+  type Notice,
+  type SeriesAudience,
+  type SessionDetail,
+  type SessionSummary,
+  type TeachingWeek,
+  type TeamSummary,
+  type WhatsOnRow,
 } from "@/lib/teaching/model";
 import { perthInstant, perthToday } from "@/lib/teaching/time";
 
 /**
- * The demo service's programme: the seven On Call demo education entries
- * (`src/lib/on-call/demo-entries.ts`, ids 50 to 56) as Teaching series.
+ * The demo service's programme, shaped to the Teaching v5 mock-up's week: eleven weekly
+ * sessions of the demo service's own, Monday to Friday, plus the weekly registrar teaching
+ * that comes across from On Call (twelve in all), so This week, My record and Presenting
+ * read as a real, busy term rather than three lonely rows.
  *
  * Everything here must stay obviously made up: every title and room starts "Demo",
  * the only presenter is "Demo presenter", and every link is example.org. Shown in
  * demo mode and to signed-out visitors, never mixed with a real team.
  *
  * Recurring series hang off fixed 2026 anchors, so a week view is a real timetable
- * and a session keeps its id from one day to the next. The one-off simulation
- * afternoon is always forty days away, as it was in On Call's demo.
+ * and a session keeps its id from one day to the next. The made-up record (who attended
+ * what, what is in CPD, what still wants feedback) is worked out from "now", so the
+ * screens look the same on any day: twelve weeks of check-ins with one empty week, the
+ * last three check-ins not yet in CPD, and feedback owed on the latest case presentation
+ * and case discussion.
  *
  * What's on (master plan R8) adds two more made-up services in the made-up "Demo health
- * service", each opening its weekly sessions to it: five open sessions every week. The
- * demo viewer is a visitor there, so those sessions open read-only.
+ * service", which open three weekly sessions to it between them. The demo viewer is a
+ * visitor there, so those sessions open read-only.
  */
 
 export const DEMO_TEACHING_SERVICE_ID = "00000000-0000-4000-9000-000000000001";
@@ -48,7 +56,8 @@ type DemoSeries = {
   readonly frequency: RecurringSessionFrequency | null;
   readonly startTime: string;
   readonly minutes: number;
-  readonly venue: string;
+  /** Null when the room is still to be confirmed (or the session is online only). */
+  readonly venue: string | null;
   readonly presenter: boolean;
   readonly joinLink: boolean;
   /** Master plan R4: which level the series is for. Left out, it is for all doctors. */
@@ -60,89 +69,137 @@ type DemoOpenSeries = DemoSeries & { readonly serviceId: string; readonly teamNa
 
 const DEMO_SERIES: readonly DemoSeries[] = [
   {
-    key: 1,
-    title: "Demo registrar teaching",
-    anchor: "2026-01-07",
+    key: 21,
+    title: "Demo morning report",
+    anchor: "2026-01-05",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "08:00",
     minutes: 60,
-    venue: "Demo seminar room",
-    presenter: true,
-    joinLink: true,
-    audience: "registrars",
-  },
-  {
-    key: 2,
-    title: "Demo journal club",
-    anchor: "2026-01-15",
-    anchorOffsetDays: 0,
-    frequency: "monthly",
-    startTime: "13:00",
-    minutes: 60,
-    venue: "Demo seminar room",
+    venue: "Demo room 4",
     presenter: false,
     joinLink: false,
   },
   {
     key: 3,
-    title: "Demo case conference",
+    title: "Demo education meeting",
     anchor: "2026-01-05",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "12:30",
-    minutes: 60,
-    venue: "Demo seminar room",
+    minutes: 50,
+    venue: "Demo lecture theatre",
     presenter: true,
-    joinLink: true,
+    joinLink: false,
   },
   {
-    key: 4,
-    title: "Demo exam preparation group",
-    anchor: "2026-01-08",
+    key: 22,
+    title: "Demo case presentation",
+    anchor: "2026-01-06",
     anchorOffsetDays: 0,
-    frequency: "fortnightly",
-    startTime: "17:00",
-    minutes: 90,
-    venue: "Demo tutorial room",
-    presenter: false,
+    frequency: "weekly",
+    startTime: "12:30",
+    minutes: 60,
+    venue: "Demo seminar room 2",
+    presenter: true,
+    joinLink: false,
+  },
+  {
+    key: 2,
+    title: "Demo journal club",
+    anchor: "2026-01-06",
+    anchorOffsetDays: 0,
+    frequency: "weekly",
+    startTime: "14:00",
+    minutes: 60,
+    venue: null,
+    presenter: true,
     joinLink: false,
     audience: "registrars",
   },
   {
     key: 5,
     title: "Demo grand rounds",
-    anchor: "2026-01-22",
+    anchor: "2026-01-06",
     anchorOffsetDays: 0,
-    frequency: "monthly",
-    startTime: "12:00",
+    frequency: "weekly",
+    startTime: "17:00",
     minutes: 60,
     venue: "Demo lecture theatre",
     presenter: true,
-    joinLink: true,
+    joinLink: false,
   },
   {
-    key: 6,
-    title: "Demo simulation afternoon",
-    anchor: null,
-    anchorOffsetDays: 40,
-    frequency: null,
-    startTime: "13:00",
-    minutes: 180,
-    venue: "Demo simulation suite",
+    key: 23,
+    title: "Demo psychotherapy seminar",
+    anchor: "2026-01-07",
+    anchorOffsetDays: 0,
+    frequency: "weekly",
+    startTime: "09:00",
+    minutes: 60,
+    venue: "Demo seminar room 1",
     presenter: true,
     joinLink: false,
   },
   {
     key: 7,
-    title: "Demo supervision hour",
+    title: "Demo supervision group",
+    anchor: "2026-01-07",
+    anchorOffsetDays: 0,
+    frequency: "weekly",
+    startTime: "13:00",
+    minutes: 60,
+    venue: "Demo room 4",
+    presenter: false,
+    joinLink: false,
+  },
+  {
+    key: 24,
+    title: "Demo research meeting",
+    anchor: "2026-01-08",
+    anchorOffsetDays: 0,
+    frequency: "weekly",
+    startTime: "08:30",
+    minutes: 60,
+    venue: null,
+    presenter: false,
+    joinLink: true,
+  },
+  {
+    key: 6,
+    title: "Demo clinical skills workshop",
+    anchor: "2026-01-08",
+    anchorOffsetDays: 0,
+    frequency: "weekly",
+    startTime: "12:00",
+    minutes: 60,
+    venue: "Demo simulation suite",
+    presenter: true,
+    joinLink: false,
+    audience: "registrars",
+  },
+  {
+    key: 25,
+    title: "Demo case discussion",
+    anchor: "2026-01-08",
+    anchorOffsetDays: 0,
+    frequency: "weekly",
+    startTime: "15:00",
+    minutes: 60,
+    venue: "Demo room 4",
+    presenter: true,
+    joinLink: false,
+  },
+  {
+    key: 26,
+    title: "Demo mental health update",
     anchor: "2026-01-09",
     anchorOffsetDays: 0,
     frequency: "weekly",
-    startTime: "16:00",
+    startTime: "10:00",
     minutes: 60,
-    venue: "Demo meeting room",
-    presenter: false,
+    venue: "Demo lecture theatre",
+    presenter: true,
     joinLink: false,
   },
 ];
@@ -152,7 +209,7 @@ export const DEMO_YOUTH_SERVICE_ID = "00000000-0000-4000-9000-000000000003";
 const OLDER_ADULT = { serviceId: DEMO_OLDER_ADULT_SERVICE_ID, teamName: "Demo older adult service" } as const;
 const YOUTH = { serviceId: DEMO_YOUTH_SERVICE_ID, teamName: "Demo youth service" } as const;
 
-/** Keys 11 to 15, so their occurrence ids never meet the demo service's own (1 to 7). */
+/** Keys 11 to 14, so their occurrence ids never meet the demo service's own (2 to 7 and 21 to 26). */
 const DEMO_OPEN_SERIES: readonly DemoOpenSeries[] = [
   {
     ...OLDER_ADULT,
@@ -167,20 +224,7 @@ const DEMO_OPEN_SERIES: readonly DemoOpenSeries[] = [
     presenter: true,
     joinLink: true,
   },
-  {
-    ...OLDER_ADULT,
-    key: 12,
-    title: "Demo ECT journal club",
-    anchor: "2026-01-07",
-    anchorOffsetDays: 0,
-    frequency: "weekly",
-    startTime: "13:00",
-    minutes: 60,
-    venue: "Demo older adult unit, also on Teams",
-    presenter: false,
-    joinLink: true,
-    audience: "registrars",
-  },
+
   {
     ...OLDER_ADULT,
     key: 13,
@@ -209,28 +253,14 @@ const DEMO_OPEN_SERIES: readonly DemoOpenSeries[] = [
     joinLink: true,
     audience: "consultants",
   },
-  {
-    ...YOUTH,
-    key: 15,
-    title: "Demo early psychosis seminar",
-    anchor: "2026-01-08",
-    anchorOffsetDays: 0,
-    frequency: "weekly",
-    startTime: "15:00",
-    minutes: 60,
-    venue: "Demo seminar room 4",
-    presenter: false,
-    joinLink: false,
-    audience: "residents",
-  },
 ];
 
 const DEMO_PRESENTER = "Demo presenter";
 const DEMO_JOIN_URL = "https://example.org/demo-teaching-join";
 const DEMO_MATERIAL = { label: "Demo reading list", url: "https://example.org/demo-reading" };
-/** The next case conference is shown moved, so the change notice has something to show. */
+/** The next education meeting is shown moved, so the change notice has something to show. */
 const MOVED_SERIES_KEY = 3;
-const MOVED_VENUE = "Demo lecture theatre";
+const MOVED_VENUE = "Demo seminar room 1";
 const MAX_DEMO_OCCURRENCES = 60;
 const ID_PATTERN = /^00000000-0000-4000-9(\d{3})-(\d{8})0000$/;
 
@@ -280,7 +310,8 @@ function demoSummary(series: DemoSeries | DemoOpenSeries, date: string, today: s
     venue: moved ? MOVED_VENUE : series.venue,
     hasJoinLink: series.joinLink,
     status: moved ? "moved" : "scheduled",
-    isPresenter: false,
+    // The demo viewer presents at this week's journal club, so Presenting and "Next for you" have a talk.
+    isPresenter: series.key === PRESENTING_KEY && mondayOfDate(date) === mondayOfDate(today),
     source: "teaching",
   };
 }
@@ -303,7 +334,7 @@ export function demoTeachingWeek(range: { from: string; to: string }, now: Date 
       kind: "moved" as const,
       createdAt: now.toISOString(),
     }));
-  return { teams: [DEMO_TEACHING_TEAM], sessions, notices, attendance: [] };
+  return { teams: [DEMO_TEACHING_TEAM], sessions, notices, attendance: demoAttendanceIn(range, now) };
 }
 
 function whatsOnRow(series: DemoSeries | DemoOpenSeries, date: string, today: string): WhatsOnRow {
@@ -369,24 +400,168 @@ export function demoTeachingSessionDetail(occurrenceId: string, now: Date = new 
   };
 }
 
-/** The two most recent past registrar teaching sessions: one self-declared, one checked in by code. */
+/** The weekday a Perth date falls on, Monday 0 to Sunday 6. */
+function weekdayIndex(date: string): number {
+  return (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+}
+
+function mondayOfDate(date: string): string {
+  return addDays(date, -weekdayIndex(date));
+}
+
+/** The journal club key: the demo viewer presents at this week's one. */
+const PRESENTING_KEY = 2;
+const CASE_PRESENTATION_KEY = 22;
+const CASE_DISCUSSION_KEY = 25;
+
+/**
+ * Check-ins per week, this week first and then back eleven weeks. This week's count comes from
+ * {@link THIS_WEEK_ATTENDS} as sessions end; the eleven full weeks hold 31 between them (an
+ * average of 2.8 a week), with none in the week four weeks back.
+ */
+const PAST_WEEK_COUNTS = [4, 2, 3, 0, 5, 3, 3, 4, 2, 3, 2] as const;
+/** Last week: the case presentation, the psychotherapy seminar, the case discussion and the update. */
+const LAST_WEEK_ATTENDS = [CASE_PRESENTATION_KEY, 23, CASE_DISCUSSION_KEY, 26] as const;
+/** Older weeks take the first few of this rotation, starting one further along each week. */
+const ROTATION = [21, CASE_PRESENTATION_KEY, 23, CASE_DISCUSSION_KEY, 26, 5, 7, PRESENTING_KEY] as const;
+/**
+ * This week the viewer goes to everything they can once it has ended, except the education meeting
+ * (missed, so it has a recording to watch), the clinical skills workshop and today's case presentation
+ * (which the on-now panel offers to check in to).
+ */
+const THIS_WEEK_ATTENDS = new Set<number>([21, PRESENTING_KEY, 5, 23, 7, 24, CASE_DISCUSSION_KEY, 26]);
+/** The newest check-in is already in CPD; the three before it are not, so the weekly review has three. */
+const UNLOGGED_AFTER_NEWEST = 3;
+/** Feedback is open for seven days after a session the viewer checked in to. */
+const FEEDBACK_OPEN_DAYS = 7;
+
+function seriesByKey(key: number): DemoSeries | undefined {
+  return DEMO_SERIES.find((candidate) => candidate.key === key);
+}
+
+function demoCpdEntryId(key: number, date: string): string {
+  return `00000000-0000-4000-8${String(key).padStart(3, "0")}-${date.replace(/-/g, "")}0000`;
+}
+
+type Attended = { series: DemoSeries; date: string };
+
+/** Every session the demo viewer checked in to, oldest first, all ended by `now`. */
+function demoAttended(now: Date): Attended[] {
+  const today = perthToday(now);
+  const monday = mondayOfDate(today);
+  const picked: Attended[] = [];
+  const add = (key: number, weekMonday: string) => {
+    const series = seriesByKey(key);
+    if (!series) return;
+    const [date] = datesBetween(series, weekMonday, addDays(weekMonday, 6), today);
+    if (date) picked.push({ series, date });
+  };
+  PAST_WEEK_COUNTS.forEach((count, index) => {
+    const weekMonday = addDays(monday, -7 * (index + 1));
+    const keys =
+      index === 0
+        ? LAST_WEEK_ATTENDS.slice(0, count)
+        : Array.from({ length: count }, (_, step) => ROTATION[(index * 3 + step) % ROTATION.length]);
+    for (const key of keys) add(key, weekMonday);
+  });
+  for (const series of DEMO_SERIES) if (THIS_WEEK_ATTENDS.has(series.key)) add(series.key, monday);
+  return picked
+    .filter(({ series, date }) => Date.parse(demoSummary(series, date, today).endsAt) <= now.getTime())
+    .sort((a, b) =>
+      demoSummary(a.series, a.date, today).startsAt.localeCompare(demoSummary(b.series, b.date, today).startsAt),
+    );
+}
+
+/**
+ * Twelve weeks of the demo viewer's check-ins, most recent first (logbook.read's order): about 32
+ * sessions with one empty week. The newest is already in CPD and the three before it are not.
+ */
 export function demoTeachingLogbook(now: Date = new Date()): LogbookRow[] {
   const today = perthToday(now);
-  const series = DEMO_SERIES[0];
-  const dates = datesBetween(series, addDays(today, -21), addDays(today, -1), today).slice(-2);
-  return dates
-    .map((date, index): LogbookRow => {
-      const session = demoSummary(series, date, today);
-      return {
-        occurrenceId: session.occurrenceId,
-        method: index === 0 ? "self" : "code_room",
-        recordedAt: session.startsAt,
-        title: session.title,
-        startsAt: session.startsAt,
-        endsAt: session.endsAt,
-        serviceName: DEMO_TEACHING_TEAM.name,
-        cpdEntryId: null,
-      };
+  const newestFirst = demoAttended(now).reverse();
+  return newestFirst.map(({ series, date }, index): LogbookRow => {
+    const session = demoSummary(series, date, today);
+    const logged = index === 0 || index > UNLOGGED_AFTER_NEWEST;
+    return {
+      occurrenceId: session.occurrenceId,
+      // Mostly by the code in the room, now and then without it.
+      method: index % 4 === 2 ? "self" : "code_room",
+      recordedAt: new Date(Date.parse(session.startsAt) + 5 * 60_000).toISOString(),
+      title: session.title,
+      startsAt: session.startsAt,
+      endsAt: session.endsAt,
+      serviceName: DEMO_TEACHING_TEAM.name,
+      serviceId: DEMO_TEACHING_SERVICE_ID,
+      cpdEntryId: logged ? demoCpdEntryId(series.key, date) : null,
+    };
+  });
+}
+
+/** The check-ins that fall in one week, for This week's attended and missed rows. */
+function demoAttendanceIn(range: { from: string; to: string }, now: Date): AttendanceMark[] {
+  return demoTeachingLogbook(now)
+    .filter((row) => {
+      const date = parseDemoOccurrenceId(row.occurrenceId)?.date ?? "";
+      return date >= range.from && date <= range.to;
     })
-    .reverse();
+    .map(({ occurrenceId, method, recordedAt }) => ({ occurrenceId, method, recordedAt }));
+}
+
+/**
+ * Feedback the demo viewer still owes: the latest case presentation and case discussion they went
+ * to, oldest first, while still inside the seven days feedback stays open. The presenter sees
+ * answers, never names.
+ */
+export function demoTeachingFeedbackOwed(now: Date = new Date()): SessionRef[] {
+  const open = now.getTime() - FEEDBACK_OPEN_DAYS * 86_400_000;
+  const rows = demoTeachingLogbook(now).filter((row) => Date.parse(row.endsAt) >= open);
+  return [CASE_PRESENTATION_KEY, CASE_DISCUSSION_KEY]
+    .map((key) => rows.find((row) => parseDemoOccurrenceId(row.occurrenceId)?.key === key))
+    .filter((row): row is LogbookRow => row !== undefined)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    .map(({ occurrenceId, title, startsAt, endsAt }) => ({
+      occurrenceId,
+      serviceId: DEMO_TEACHING_SERVICE_ID,
+      title,
+      startsAt,
+      endsAt,
+    }));
+}
+
+/**
+ * The registrar teaching the demo viewer keeps in On Call, shown in This week as "From On Call":
+ * every Tuesday at 16:00. Its id is the On Call demo entry's own (`demo-entries.ts`, id 50) and the
+ * date, the shape `relocatedOnCallSessions` gives a real reader's entries.
+ */
+const ON_CALL_REGISTRAR_ENTRY_ID = "00000000-0000-4000-8000-000000000050";
+const ON_CALL_REGISTRAR: DemoSeries = {
+  key: 0,
+  title: "Demo registrar teaching",
+  anchor: "2026-01-06",
+  anchorOffsetDays: 0,
+  frequency: "weekly",
+  startTime: "16:00",
+  minutes: 60,
+  venue: "Demo seminar room",
+  presenter: false,
+  joinLink: false,
+};
+
+export function demoRelocatedTeaching(range: { from: string; to: string }, now: Date = new Date()): SessionSummary[] {
+  const today = perthToday(now);
+  return datesBetween(ON_CALL_REGISTRAR, range.from, range.to, today).map((date) => {
+    const startsAt = perthInstant(date, ON_CALL_REGISTRAR.startTime);
+    return {
+      occurrenceId: `${ON_CALL_REGISTRAR_ENTRY_ID}@${date}`,
+      serviceId: RELOCATED_SERVICE_ID,
+      title: ON_CALL_REGISTRAR.title,
+      startsAt,
+      endsAt: new Date(Date.parse(startsAt) + ON_CALL_REGISTRAR.minutes * 60_000).toISOString(),
+      venue: ON_CALL_REGISTRAR.venue,
+      hasJoinLink: false,
+      status: "scheduled",
+      isPresenter: false,
+      source: "on_call_relocated",
+    };
+  });
 }

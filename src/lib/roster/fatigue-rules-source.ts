@@ -1,4 +1,4 @@
-import { UNSIGNED, type RuleSignOff } from "@/lib/admin/rule-sign-off";
+import { TODAY_RULE_SIGN_OFFS, type RuleSignOff } from "@/lib/admin/rule-sign-off";
 
 /**
  * The roster limits the fatigue warnings check against, each quoted verbatim from the WA public
@@ -15,7 +15,7 @@ import { UNSIGNED, type RuleSignOff } from "@/lib/admin/rule-sign-off";
  * the 2024 agreement says 10, which is why the source and its date are pinned here.
  *
  * Shipped unsigned and off. A named clinician compares every quote with the agreement, then fills
- * in `FATIGUE_RULES_SIGN_OFF` with `ruleContentSha256(FATIGUE_RULE_SET)`.
+ * in `FATIGUE_RULES_SIGN_OFF` (stored in `src/lib/admin/today-rule-sign-offs.json`, written by `npm run rules:sign`) with `ruleContentSha256(FATIGUE_RULE_SET)`.
  */
 
 export type FatigueRuleId =
@@ -112,5 +112,5 @@ export const FATIGUE_RULE_SET = {
   },
 } as const;
 
-/** Shipped unsigned and off. Only a named clinician fills this in; agents never do. */
-export const FATIGUE_RULES_SIGN_OFF: RuleSignOff = UNSIGNED;
+/** Shipped unsigned and off. Only the owner, with `npm run rules:sign`, fills this in; agents never do. */
+export const FATIGUE_RULES_SIGN_OFF: RuleSignOff = TODAY_RULE_SIGN_OFFS.fatigue;

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -135,9 +135,13 @@ describe("Team calendar", () => {
     render(<RosterTeamPage now={NOW} />);
     await screen.findByRole("button", { name: /Dr Sam Example/ });
     const reads = fetchMock.mock.calls.map(([input]) => String(input)).filter((item) => item.includes("assignments"));
-    expect(reads).toHaveLength(1);
-    expect(reads[0]).toContain("from=2026-10-14");
-    expect(reads[0]).toContain("to=2026-10-16");
+    // The "On with you tomorrow" list reads its own small window (Thu 15 to Sat 17 Oct); the calendar reads one.
+    const tomorrow = reads.filter((item) => item.includes("from=2026-10-15") && item.includes("to=2026-10-17"));
+    expect(tomorrow).toHaveLength(1);
+    const calendar = reads.filter((item) => !tomorrow.includes(item));
+    expect(calendar).toHaveLength(1);
+    expect(calendar[0]).toContain("from=2026-10-14");
+    expect(calendar[0]).toContain("to=2026-10-16");
   });
 
   it("jumps the Day view to a chosen date", async () => {
@@ -173,7 +177,9 @@ describe("Team calendar", () => {
     mockFetch("fail");
     url.set("view=day&date=2026-10-15");
     render(<RosterTeamPage now={NOW} />);
-    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy();
+    // Both the tomorrow list and the calendar say their read failed, each with its own retry.
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Try again" })).toHaveLength(2));
+    expect(screen.getByText(/Couldn't load who's on tomorrow/)).toBeTruthy();
     expect(screen.queryByText("Appears once your manager adds you.")).toBeNull();
   });
 

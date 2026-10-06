@@ -22,6 +22,8 @@ const ADMIN_VERDICTS: readonly VerdictPattern[] = [
 const STATUS_TICK_ICONS = /\b(BadgeCheck|CheckCircle2?|CircleCheck(?:Big)?|ShieldCheck|SquareCheck(?:Big)?)\b/;
 
 const ADMIN_ROOTS = ["src/components/admin", "src/lib/admin", "src/app/(search-app)/admin"];
+/** My Day shows Admin's dates, so its wording is held to the same rules. It also reads CPD, so only the wording checks cover it. */
+const WORDING_ROOTS = [...ADMIN_ROOTS, "src/components/my-day"];
 
 function filesUnder(root: string): string[] {
   return readdirSync(root).flatMap((name) => {
@@ -31,6 +33,7 @@ function filesUnder(root: string): string[] {
   });
 }
 const adminFiles = ADMIN_ROOTS.flatMap(filesUnder);
+const wordingFiles = WORDING_ROOTS.flatMap(filesUnder);
 
 describe("Admin never renders a verdict", () => {
   it("has Admin surfaces to read", () => {
@@ -38,11 +41,11 @@ describe("Admin never renders a verdict", () => {
   });
 
   it("puts none of the banned words in anything a reader sees", () => {
-    expect(verdictsIn(adminFiles.flatMap(readerFacingStrings), ADMIN_VERDICTS)).toEqual([]);
+    expect(verdictsIn(wordingFiles.flatMap(readerFacingStrings), ADMIN_VERDICTS)).toEqual([]);
   });
 
   it("draws no status tick", () => {
-    for (const file of adminFiles) expect(readFileSync(file, "utf8"), file).not.toMatch(STATUS_TICK_ICONS);
+    for (const file of wordingFiles) expect(readFileSync(file, "utf8"), file).not.toMatch(STATUS_TICK_ICONS);
   });
 });
 

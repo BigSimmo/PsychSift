@@ -27,6 +27,9 @@ export type SiteContentProducerDefinition = {
     | "roster"
     | "first-nations"
     | "teaching"
+    | "my-day"
+    | "medicines"
+    | "open-shifts"
   >;
   corpusScope: SiteContentCorpusScope;
   domain: SiteContentDomain;
@@ -344,6 +347,35 @@ export const siteContentModeExclusions = [
     // Teaching holds each service's programme and each doctor's own attendance.
     // It publishes nothing and must never become a retrieval corpus.
     modeId: "teaching",
+    reason: "private_user_state",
+    permanent: true,
+    reviewed: true,
+    reviewOwner: "clinical_content_governance",
+  },
+  {
+    // My Day only gathers the owner's own items from On Call, Roster, CPD,
+    // Teaching and Admin. It publishes nothing and must never become a
+    // retrieval corpus.
+    modeId: "my-day",
+    reason: "private_user_state",
+    permanent: true,
+    reviewed: true,
+    reviewOwner: "clinical_content_governance",
+  },
+  {
+    // Medicines & tools, like Psychiatry, is a landing page of links to other
+    // modes. It holds no content of its own, so there is nothing to publish.
+    modeId: "medicines",
+    reason: "operational_chrome",
+    permanent: true,
+    reviewed: true,
+    reviewOwner: "clinical_content_governance",
+  },
+  {
+    // Open shifts holds extra-shift adverts and applications inside the
+    // owner's Roster teams. It publishes nothing: the records are private user
+    // state and must never become a retrieval corpus.
+    modeId: "open-shifts",
     reason: "private_user_state",
     permanent: true,
     reviewed: true,

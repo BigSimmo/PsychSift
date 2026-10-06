@@ -115,6 +115,7 @@ export const modeSecondaryNavigationRegistry = {
     { id: "catalogue", label: "Catalogue", href: "/sources/search" },
     { id: "topics", label: "Topics", href: "/sources/topics" },
     { id: "publishers", label: "Publishers", href: "/sources/publishers" },
+    { id: "currency", label: "Currency", href: "/sources/currency" },
     { id: "method", label: "Method", href: SOURCE_METHOD_ROUTE },
   ],
   // On Call's destinations, restored. They were removed once, and the reason is
@@ -126,9 +127,8 @@ export const modeSecondaryNavigationRegistry = {
   // does. `docs/superpowers/specs/2026-09-04-on-call-mode-design.md` §8.3 always
   // intended this ("On Call joins the adopted-nav set with a density profile").
   //
-  // The six shift pages lead (kit 1.7): Now is the mode home and the page a
-  // shift opens; Who's on, Call, Playbook, Refer and Find follow in the order a
-  // night uses them. Two tools sit under their own heading, and the pages that
+  // The four shift pages lead: Now is the mode home and the page a shift
+  // opens. The tools sit under their own heading, and the pages that
   // are moving out to their own modes sit under More until each sibling mode's
   // build removes its row with a redirect.
   //
@@ -139,13 +139,17 @@ export const modeSecondaryNavigationRegistry = {
   // route with a real URL, and a `ModeNavItem` takes an href by design so deep
   // links, back and prefetch keep working.
   "on-call": [
+    // Four tabs (owner, 5 Oct 2026, mock-up v10): Now, People, Refer,
+    // Handbook. People is the Call page and Handbook the Find page, renamed in
+    // place so every address and bookmark keeps working; Playbook and Who's on
+    // stay one tap away under Tools.
     { id: "now", label: "Now", href: "/on-call" },
-    // Routed and built, but left out of the sheet until the owner turns it on.
-    { id: "whoson", label: "Who's on", href: "/on-call/whos-on", hidden: !ON_CALL_WHOS_ON_ENABLED },
-    { id: "call", label: "Call", href: "/on-call/call" },
-    { id: "playbook", label: "Playbook", href: "/on-call/playbook" },
+    { id: "call", label: "People", href: "/on-call/call" },
     { id: "refer", label: "Refer", href: "/on-call/refer" },
-    { id: "find", label: "Find", href: "/on-call/find" },
+    { id: "find", label: "Handbook", href: "/on-call/find" },
+    { id: "playbook", label: "Playbook", href: "/on-call/playbook", group: "tools" },
+    // Routed and built, but left out of the sheet until the owner turns it on.
+    { id: "whoson", label: "Who's on", href: "/on-call/whos-on", group: "tools", hidden: !ON_CALL_WHOS_ON_ENABLED },
     { id: "card", label: "Pocket card", href: "/on-call/card", group: "tools" },
     // The invited multi-clinician service handbook, shown to editors only (F24).
     { id: "service", label: "Manage service", href: "/on-call/service", group: "tools", audience: "editors" },
@@ -155,7 +159,7 @@ export const modeSecondaryNavigationRegistry = {
     // labels only: the stored section ids and database check constraints stay
     // `logistics` and `education`. More goes straight to Admin / Teaching homes;
     // `/on-call/compliance`, `/on-call/logistics` and `/on-call/education` stay
-    // as bookmarks (compliance/logistics redirect; education page is retained).
+    // as bookmarks that hard-redirect (Admin Renewals / Help, Teaching Week).
     { id: "compliance", label: "Compliance", href: "/admin/renewals", group: "more" },
     { id: "logistics", label: "Admin", href: ON_CALL_ADMIN_ROWS_HREF, group: "more" },
     { id: "teaching", label: "Teaching", href: "/teaching", group: "more" },
@@ -173,33 +177,42 @@ export const modeSecondaryNavigationRegistry = {
   // Year check, Routines, Calendar, Training and Programme are tabs reached
   // from their parent pages. Customise and the annual summary stay secondary.
   cme: [
-    { id: "year", label: "Today", href: "/cme" },
+    // The year overview, named Year rather than Today: My Day is the one Today
+    // (modes review, phase 2b).
+    { id: "year", label: "Year", href: "/cme" },
     { id: "log", label: "Log", href: "/cme/log" },
     { id: "plan", label: "Plan", href: "/cme/plan" },
-    { id: "learning", label: "Learning", href: "/cme/learning" },
-    { id: "setup", label: "Set up", href: "/cme/setup" },
+    // Named as the mock-up names them (Josh, 5 Oct 2026): Courses lists the
+    // learning on offer; Report is the year check, and Set up opens from it.
+    { id: "learning", label: "Courses", href: "/cme/learning" },
+    { id: "setup", label: "Report", href: "/cme/check" },
   ],
   // Teaching's pages, for the mode pill's page list, like CME's. Teaching is
   // absent from `MODE_NAV_ADOPTED_MODES`: the pill already opens these, so no
   // page mounts the shared bar. Organise is hidden from the pill for anyone
   // who is not an organiser or admin (`src/lib/teaching/page-visibility.ts`);
+  // Mock-up v5 (5 Oct 2026) folds the eight first-build pages into five: This
+  // week (Today, Week, What's on), Presenting (Teach, Supervision) and My
+  // record (Logbook, Feedback, Weekly CPD review). The folded pages' routes stay,
+  // so bookmarks keep working; /teaching/week renders This week itself.
+  // Assessments (5 Oct assessments build) sits after Presenting (Josh, 6 Oct).
   teaching: [
-    { id: "today", label: "Today", href: "/teaching" },
-    { id: "week", label: "Week", href: "/teaching/week" },
-    { id: "whats-on", label: "What's on", href: "/teaching/whats-on" },
+    { id: "today", label: "This week", href: "/teaching" },
+    { id: "teach", label: "Presenting", href: "/teaching/teach" },
+    { id: "assessments", label: "Assessments", href: "/teaching/assessments" },
+    { id: "logbook", label: "My record", href: "/teaching/logbook" },
     { id: "resources", label: "Resources", href: "/teaching/resources" },
-    { id: "logbook", label: "Logbook", href: "/teaching/logbook" },
-    { id: "teach", label: "Teach", href: "/teaching/teach" },
-    { id: "supervision", label: "Supervision", href: "/teaching/supervision" },
     { id: "organise", label: "Organise", href: "/teaching/organise" },
   ],
   // Psychiatry's home is itself the list of sections it gathers, and each
   // section keeps its own navigation, so the hub registers no destinations.
   psychiatry: [],
+  medicines: [],
   // Admin keeps the internal mode id for existing preferences and links.
   "my-work": [
-    { id: "admin-today", label: "Today", href: "/admin" },
+    // No Today tab: My Day is the one Today (modes review, phase 2b).
     { id: "renewals", label: "Renewals", href: "/admin/renewals" },
+    { id: "admin-compliance", label: "Compliance", href: "/admin/compliance" },
     { id: "new-job", label: "New job", href: "/admin/new-job" },
     { id: "help", label: "Help", href: "/admin/help" },
   ],
@@ -231,6 +244,30 @@ export const modeSecondaryNavigationRegistry = {
     { id: "first-nations-mistakes", label: "Common mistakes", href: "/first-nations/mistakes" },
     { id: "first-nations-going-home", label: "Going home", href: "/first-nations/going-home" },
     { id: "first-nations-end-of-life", label: "End of life", href: "/first-nations/end-of-life" },
+  ],
+  // My Day is one page: the merged list is itself the navigation, and each row
+  // links into the mode that owns the item, so it registers no destinations.
+  // My Day's pages, registered so the mode pill's section sheet can open them.
+  // Like Roster, it is absent from `MODE_NAV_ADOPTED_MODES` and its pages carry
+  // no in-page navigation header: the section sheet is how a reader moves
+  // between them. Ids are prefixed so they stay unique across modes.
+  "my-day": [
+    // My Day's own three pages, which it switches with ?page= (and by swipe).
+    // Week opens from Today's This week card and Hours from Me's hours card, so
+    // each keeps its parent tab current.
+    { id: "my-day-today", label: "Today", href: "/my-day" },
+    { id: "my-day-work", label: "Work", href: "/my-day?page=work" },
+    { id: "my-day-me", label: "Me", href: "/my-day?page=me" },
+  ],
+  // Open shifts' pages. Post is for Roster team managers only: the registry is
+  // the same for everyone, so `modePageVisible` hides it until an Open shifts
+  // read confirms poster rights (`setOpenShiftsIsPoster`), as Roster hides Team
+  // and Swaps. Ids are prefixed so they stay unique across modes.
+  "open-shifts": [
+    { id: "open-shifts-browse", label: "Browse", href: "/open-shifts" },
+    { id: "open-shifts-mine", label: "My shifts", href: "/open-shifts/mine" },
+    { id: "open-shifts-alerts", label: "Alerts", href: "/open-shifts/alerts" },
+    { id: "open-shifts-post", label: "Post", href: "/open-shifts/post" },
   ],
 } as const satisfies Record<AppModeId, readonly ModeSecondaryNavigationEntry[]>;
 
@@ -412,6 +449,7 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/sources/search") return "catalogue";
     if (pathname === "/sources/topics") return "topics";
     if (pathname === "/sources/publishers") return "publishers";
+    if (pathname === "/sources/currency") return "currency";
     if (pathname === SOURCE_METHOD_ROUTE) return "method";
     return null;
   }
@@ -430,36 +468,48 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
       pathname === "/cme/new"
     )
       return "log";
-    if (pathname === "/cme/check") return "year";
     if (pathname === "/cme/training" || pathname === "/cme/calendar" || pathname === "/cme/plan") return "plan";
     if (pathname === "/cme/learning") return "learning";
-    if (pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
+    if (pathname === "/cme/check" || pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
     // Exact match only, for the same reason On Call's home is: a prefix test
-    // here would mark Today current on every CPD route as well as its own.
+    // here would mark Year current on every CPD route as well as its own.
     if (pathname === "/cme") return "year";
     return null;
   }
   if (modeId === "teaching") {
     // Exact match only, as for On Call and CME: a prefix test would mark
-    // Today current on every Teaching route as well as its own.
-    if (pathname === "/teaching") return "today";
-    if (pathname === "/teaching/week") return "week";
-    if (pathname === "/teaching/whats-on") return "whats-on";
+    // This week current on every Teaching route as well as its own.
+    if (pathname === "/teaching" || pathname === "/teaching/week" || pathname === "/teaching/whats-on") return "today";
     if (pathname === "/teaching/resources" || pathname.startsWith("/teaching/resources/")) return "resources";
-    if (pathname === "/teaching/teach") return "teach";
-    if (pathname === "/teaching/supervision") return "supervision";
-    if (pathname === "/teaching/review" || pathname === "/teaching/feedback") return "logbook";
-    if (pathname === "/teaching/import") return "organise";
-    if (pathname === "/teaching/logbook") return "logbook";
-    if (pathname === "/teaching/organise") return "organise";
+    if (pathname === "/teaching/assessments") return "assessments";
+    if (pathname === "/teaching/exam-prep") return "resources";
+    if (pathname === "/teaching/teach" || pathname === "/teaching/supervision") return "teach";
+    if (
+      pathname === "/teaching/logbook" ||
+      pathname === "/teaching/review" ||
+      pathname === "/teaching/feedback" ||
+      pathname === "/teaching/term"
+    )
+      return "logbook";
+    if (pathname === "/teaching/import" || pathname === "/teaching/organise") return "organise";
     return null;
   }
   if (modeId === "my-work") {
     if (pathname === "/admin/renewals") return "renewals";
+    if (pathname === "/admin/compliance" || pathname === "/admin/compliance/export") return "admin-compliance";
     if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records" || pathname === "/admin/new-job/pack")
       return "new-job";
     if (pathname === "/admin/help") return "help";
-    if (pathname === "/admin") return "admin-today";
+    return null;
+  }
+  if (modeId === "my-day") {
+    // Exact matches only, for the same reason Roster's are: a prefix test would
+    // mark Today current on every My Day route as well as its own.
+    // The address carries no ?page= here, so on /my-day the page itself names
+    // Work or Me through useModeBandCurrentTab.
+    if (pathname === "/my-day/week") return "my-day-today";
+    if (pathname === "/my-day/hours") return "my-day-me";
+    if (pathname === "/my-day") return "my-day-today";
     return null;
   }
   if (modeId === "roster") {
@@ -472,6 +522,14 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     // prefix test here would mark Today current on every Roster route as well
     // as its own.
     if (pathname === "/roster") return "today";
+    return null;
+  }
+  if (modeId === "open-shifts") {
+    // Exact matches only, for Roster's reason.
+    if (pathname === "/open-shifts/mine") return "open-shifts-mine";
+    if (pathname === "/open-shifts/alerts") return "open-shifts-alerts";
+    if (pathname === "/open-shifts/post") return "open-shifts-post";
+    if (pathname === "/open-shifts") return "open-shifts-browse";
     return null;
   }
   // Every mode with destinations has a branch above; the rest register none, so
@@ -530,12 +588,22 @@ export function isModeSecondaryNavigationRoute(params: {
     );
   }
   if (modeId === "sources") {
-    return ["/sources/search", "/sources/topics", "/sources/publishers", SOURCE_METHOD_ROUTE].includes(pathname);
+    return [
+      "/sources/search",
+      "/sources/topics",
+      "/sources/publishers",
+      "/sources/currency",
+      SOURCE_METHOD_ROUTE,
+    ].includes(pathname);
   }
+  if (modeId === "my-day") return pathname === "/my-day/week" || pathname === "/my-day/hours";
   if (modeId === "roster") {
     return ["/roster/shifts", "/roster/team", "/roster/swaps", "/roster/requests", "/roster/settings"].includes(
       pathname,
     );
+  }
+  if (modeId === "open-shifts") {
+    return ["/open-shifts/mine", "/open-shifts/alerts", "/open-shifts/post"].includes(pathname);
   }
   return false;
 }
@@ -737,7 +805,7 @@ export function modeSecondaryNavigationHref(params: {
   }
 
   if (modeId === "sources") {
-    if (itemId === "method") return href;
+    if (itemId === "method" || itemId === "currency") return href;
     const entries: Array<readonly [string, string]> = [];
     if (query) entries.push(["q", query]);
     for (const usage of currentSearchParams.getAll("usedBy")) entries.push(["usedBy", usage]);

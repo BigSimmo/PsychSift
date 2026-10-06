@@ -297,6 +297,43 @@ const searchCommandSurfaceByMode: Partial<Record<AppModeId, SearchCommandSurface
     crossModes: ["on-call", "services", "forms"],
     remoteSearchEnabled: false,
   },
+  "my-day": {
+    // My Day gathers the owner's own records from other modes, already in the
+    // browser, so its command panel must not query the remote index.
+    examples: [...sharedHomePresentation["my-day"].suggestions],
+    suggestions: [
+      { text: "overdue", meta: "My Day" },
+      { text: "due soon", meta: "My Day" },
+      { text: "coming up", meta: "My Day" },
+    ],
+    crossModes: ["on-call", "roster", "my-work"],
+    remoteSearchEnabled: false,
+  },
+  medicines: {
+    // Like Psychiatry, a dashboard of links to the sections it gathers, each of
+    // which keeps its own search, so its command panel must not query the
+    // remote index; the cross-modes are those sections.
+    examples: [...sharedHomePresentation.medicines.suggestions],
+    suggestions: [
+      { text: "lithium monitoring", meta: "Medication" },
+      { text: "clozapine", meta: "Medication" },
+      { text: "valproate", meta: "Medication" },
+    ],
+    crossModes: ["prescribing", "calculators", "tools"],
+    remoteSearchEnabled: false,
+  },
+  "open-shifts": {
+    // Open shifts lists adverts from the reader's own Roster teams, already in
+    // the browser, so its command panel must not query the remote index.
+    examples: [...sharedHomePresentation["open-shifts"].suggestions],
+    suggestions: [
+      { text: "this weekend", meta: "Browse" },
+      { text: "night shifts", meta: "Browse" },
+      { text: "my applications", meta: "My shifts" },
+    ],
+    crossModes: ["roster", "my-day", "on-call"],
+    remoteSearchEnabled: false,
+  },
 };
 
 export function searchCommandSurfaceConfig(modeId: AppModeId): SearchCommandSurfaceConfig | null {

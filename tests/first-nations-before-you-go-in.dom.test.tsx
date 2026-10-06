@@ -26,8 +26,8 @@ describe("BeforeYouGoIn", () => {
   it("shows each step's source and checked date outside its tick", () => {
     const sheet = openSheet();
     const first = within(sheet).getAllByRole("listitem")[0];
-    const source = within(first).getByText(model.beforeYouGoIn[0].source.title, { exact: false });
-    expect(source.closest("label")).toBeNull();
+    const source = within(first).getAllByText(model.beforeYouGoIn[0].source.title, { exact: false });
+    for (const el of source) expect(el.closest("label")).toBeNull();
   });
   it("clears at once with Undo for about six seconds, never 'Are you sure?'", () => {
     vi.useFakeTimers();

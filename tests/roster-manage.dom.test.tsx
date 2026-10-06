@@ -31,6 +31,25 @@ it("never fetches manager data or renders controls for an ordinary member", asyn
   expect(screen.queryByText("Approve")).toBeNull();
 });
 
+it("opens the team named by ?team= when the reader manages more than one", async () => {
+  window.history.replaceState(null, "", "/roster/manage?team=second");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      Response.json({
+        actorId: "alex",
+        teams: [
+          { serviceId: "first", name: "First team", enabled: true, role: "manager", grade: null },
+          { serviceId: "second", name: "Second team", enabled: true, role: "manager", grade: null },
+        ],
+      }),
+    ),
+  );
+  render(<RosterManagePage />);
+  expect(await screen.findByText(/Second team · Cover, publishing and team settings\./)).toBeTruthy();
+  window.history.replaceState(null, "", "/");
+});
+
 const overview: RosterOverview = {
   service: { id: "team", name: "Example team" },
   me: { role: "manager", grade: null, rotationEndsOn: null },

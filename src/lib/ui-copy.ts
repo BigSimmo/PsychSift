@@ -157,6 +157,22 @@ export const sharedHomePresentation = {
     subtitle: "Culturally safe care for Aboriginal and Torres Strait Islander patients.",
     suggestions: ["Call Aboriginal liaison", "Common mistakes", "Mental Health Act s 81"],
   },
+  "my-day": {
+    title: "My Day",
+    subtitle: "What needs you today, across On Call, Roster, CPD, Teaching and Admin.",
+    // Section words only: nothing personal is ever suggested into a search.
+    suggestions: ["overdue", "due soon", "coming up"],
+  },
+  medicines: {
+    title: "Medicines & tools",
+    subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
+    suggestions: ["lithium monitoring", "clozapine", "valproate"],
+  },
+  "open-shifts": {
+    title: "Open shifts",
+    subtitle: "Extra shifts in your Roster teams.",
+    suggestions: ["this weekend", "night shifts", "my applications"],
+  },
 } as const satisfies Record<AppModeId, SharedHomePresentation>;
 
 /** Browser/assistive-technology title for the mode selected on the shared home. */

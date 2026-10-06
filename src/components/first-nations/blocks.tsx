@@ -3,7 +3,15 @@ import { ArrowUpRight, Ban, Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { CopyNoteWording } from "@/components/first-nations/copy-note-wording";
 import { ContactReviewLine } from "@/components/first-nations/review-line";
-import { ModeDialRow, ModeFactTile, ModeFactTiles, ModeUpdatedLine } from "@/components/first-nations/kit";
+import { ReviewStamp } from "@/components/first-nations/review-stamp";
+import type { ReviewStamp as ReviewStampData } from "@/lib/first-nations/review-stamp-text";
+import {
+  ModeDialRow,
+  ModeFactTile,
+  ModeFactTiles,
+  ModeStateLabel,
+  ModeUpdatedLine,
+} from "@/components/first-nations/kit";
 import { FnModule } from "@/components/first-nations/module-header";
 import { ContactActions, NumberTile } from "@/components/first-nations/number-button";
 import { dialNumber } from "@/lib/first-nations/contact-format";
@@ -12,6 +20,7 @@ import { StateModule } from "@/components/first-nations/state-module";
 import { QuotedLaw, SpokenWords } from "@/components/first-nations/voice";
 import { WhereIsHomePanel } from "@/components/first-nations/where-is-home";
 import { telHref } from "@/lib/first-nations/contact-format";
+import { isOverdue } from "@/lib/first-nations/hours";
 import type {
   BlockView,
   ContactView,
@@ -30,17 +39,29 @@ const row =
 /** A contact the phone can ring. "See website" and other words are never handed to the dialler. */
 export const isDialable = (contact: ContactView): boolean => Boolean(telHref(contact.number));
 
-function Source({ source, checkedAt, days = 365 }: { source: SourceView; checkedAt: string; days?: number }) {
+function Source({
+  source,
+  checkedAt,
+  days = 365,
+  review,
+}: {
+  source: SourceView;
+  checkedAt: string;
+  days?: number;
+  review?: ReviewStampData | undefined;
+}) {
   return (
     <>
       <ModeUpdatedLine updatedAt={checkedAt} verb="Checked" sources={[{ label: source.title, url: source.url }]} />
       <ContactReviewLine checkedAt={checkedAt} days={days} />
+      <ReviewStamp stamp={review} />
     </>
   );
 }
 
 function ContactRow({ contact }: { contact: ContactView }) {
   if (isDialable(contact)) {
+    const overdue = isOverdue(contact.checkedAt, new Date());
     return (
       <ModeDialRow
         label={contact.name}
@@ -48,6 +69,7 @@ function ContactRow({ contact }: { contact: ContactView }) {
         number={dialNumber(contact)}
         source={{ label: contact.source.title, url: contact.source.url }}
         checkedAt={contact.checkedAt}
+        meta={overdue ? <ModeStateLabel tone="warning">Due for a check</ModeStateLabel> : undefined}
         testId={`fn-contact-${contact.id}`}
         sheetFooter={<ContactActions contact={contact} />}
       />
@@ -79,7 +101,7 @@ function BlockItem({ view }: { view: BlockView }) {
           <p className={title}>{block.do}</p>
           <p className={body}>{block.why}</p>
           {block.say ? <SpokenWords size="md">{block.say}</SpokenWords> : null}
-          <Source source={source} checkedAt={block.checkedAt} />
+          <Source source={source} checkedAt={block.checkedAt} review={view.review} />
         </Item>
       );
     case "avoid":
@@ -99,7 +121,7 @@ function BlockItem({ view }: { view: BlockView }) {
               {block.instead}
             </span>
           </p>
-          <Source source={source} checkedAt={block.checkedAt} />
+          <Source source={source} checkedAt={block.checkedAt} review={view.review} />
         </Item>
       );
     case "contact":
@@ -111,7 +133,7 @@ function BlockItem({ view }: { view: BlockView }) {
             <QuotedLaw>{block.text}</QuotedLaw>
             <figcaption className="text-2xs text-[color:var(--text-muted)]">{block.heading}</figcaption>
           </figure>
-          <Source source={source} checkedAt={block.checkedAt} />
+          <Source source={source} checkedAt={block.checkedAt} review={view.review} />
         </li>
       );
     case "steps":
@@ -129,7 +151,7 @@ function BlockItem({ view }: { view: BlockView }) {
               </li>
             ))}
           </ol>
-          <Source source={source} checkedAt={block.checkedAt} />
+          <Source source={source} checkedAt={block.checkedAt} review={view.review} />
         </Item>
       );
     case "linkList":
@@ -154,7 +176,7 @@ function BlockItem({ view }: { view: BlockView }) {
               </li>
             ))}
           </ul>
-          <Source source={source} checkedAt={block.checkedAt} />
+          <Source source={source} checkedAt={block.checkedAt} review={view.review} />
         </Item>
       );
     case "note":
@@ -162,7 +184,7 @@ function BlockItem({ view }: { view: BlockView }) {
         <Item>
           <p className={title}>{block.heading}</p>
           <p className={body}>{block.text}</p>
-          <Source source={source} checkedAt={block.checkedAt} />
+          <Source source={source} checkedAt={block.checkedAt} review={view.review} />
         </Item>
       );
     case "noteWording":
@@ -171,7 +193,7 @@ function BlockItem({ view }: { view: BlockView }) {
         <Item>
           <p className={title}>{block.heading}</p>
           <CopyNoteWording template={block.template} />
-          <Source source={source} checkedAt={block.checkedAt} />
+          <Source source={source} checkedAt={block.checkedAt} review={view.review} />
         </Item>
       );
   }

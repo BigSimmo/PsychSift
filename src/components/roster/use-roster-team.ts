@@ -21,6 +21,7 @@ import {
   type RosterRules,
   type RosterTeam,
 } from "@/lib/roster/team/model";
+import { setRosterHasEnabledTeam } from "@/lib/teaching/page-visibility";
 
 /**
  * The team client every Roster screen reads through. Answers live in React
@@ -118,11 +119,16 @@ export function useRosterTeams(): RosterReadState<RosterTeamsPayload> {
   const auth = useAuthSessionIfAvailable();
   const signedOut = auth?.status === "signed_out";
   const url = signedOut ? null : "/api/roster/team";
-  const loaded = useLoaded<RosterTeamsPayload>(url, "teams");
+  const state = useLoaded<RosterTeamsPayload>(url, "teams");
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    const enabled = Array.isArray(state.data?.teams) ? state.data.teams.some((team) => team.enabled) : false;
+    setRosterHasEnabledTeam(enabled);
+  }, [state.status, state.data]);
   if (signedOut) {
-    return { status: "signed-out", data: null, message: SIGNED_OUT_MESSAGE, readAt: null, reload: loaded.reload };
+    return { status: "signed-out", data: null, message: SIGNED_OUT_MESSAGE, readAt: null, reload: state.reload };
   }
-  return loaded;
+  return state;
 }
 
 /** Rules remain scoped to their team; changing membership discards the previous answers. */

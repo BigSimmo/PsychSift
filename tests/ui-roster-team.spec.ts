@@ -265,7 +265,10 @@ test("Roster Requests keeps the phone New pill clear of the last row", async ({ 
   await page.goto("/roster/requests");
 
   const shell = page.getByTestId("roster-requests-page");
-  await expect(page.getByTestId("roster-new")).toBeVisible();
+  // Scope to the phone footer host: RosterNewButton portals the pill there on
+  // phones. A bare getByTestId("roster-new") can strict-mode-fail when the
+  // in-header mount and the portaled pill overlap for a frame (seen on #3329).
+  await expect(page.getByTestId("phone-footer-layer-host").getByTestId("roster-new")).toBeVisible();
   await expect.poll(() => shell.evaluate((el) => getComputedStyle(el).paddingBottom)).toBe("80px");
 });
 

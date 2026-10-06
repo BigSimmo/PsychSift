@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminNewJobPage } from "@/components/admin/admin-new-job-page";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
-import { onCallEntryFixture } from "./helpers/on-call-entry-fixture";
+import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
+import { complianceFixture, onCallEntryFixture } from "./helpers/on-call-entry-fixture";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin/new-job",
@@ -174,12 +175,13 @@ describe("AdminNewJobPage", () => {
     expect(screen.queryByText(loginOwn.title)).toBeNull();
   });
 
-  it("says the reader's records go with them, and ends with a link to Your Admin records (M16)", () => {
+  it("lists what to take for a site or job change, and ends with a link to Your Admin records (M16)", () => {
     render(<AdminNewJobPage now={NOW} />);
-    // There is no Leaving list on this page, so it must not talk about ticks it does not show.
     const notice = screen.getByTestId("admin-new-job-leaving-notice");
-    expect(notice).toHaveTextContent("When you leave, your records go with you.");
-    expect(notice.textContent).not.toMatch(/tick/i);
+    expect(notice).toHaveTextContent("Changing site or starting a new job?");
+    expect(screen.getByTestId("admin-new-job-leaving-checklist")).toHaveTextContent(
+      "Registration numbers and renewal dates",
+    );
     const link = screen.getByTestId("admin-new-job-records-link");
     expect(link.getAttribute("href")).toBe("/admin/new-job/records");
   });
@@ -236,10 +238,71 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
     render(<AdminNewJobPage now={NOW} />);
     const link = screen.getByTestId("admin-new-job-records-link");
     expect(link).toContainElement(screen.getByTestId("admin-new-job-leaving-notice"));
-    expect(link).toHaveTextContent(
-      "When you leave, your records go with you. Open Your Admin records to copy or print them.",
-    );
+    expect(link).toHaveTextContent("Changing site or starting a new job?");
     expect(link).toHaveTextContent("Your Admin records");
-    expect(link).toHaveTextContent("Renewals, history and New job ticks");
+    expect(link).toHaveTextContent("Registration numbers and renewal dates");
+  });
+
+  it("signposts the paperwork still to do before the start date, from the same pass Compliance reads", () => {
+    entryState.entries = [
+      { ...loginOwn, details: { category: "Logins", jobStartsOn: "2026-11-02" } } as OnCallEntry,
+      complianceFixture("Fit test", { requirementId: "respirator-fit-testing", expiresOn: "2026-10-20" }),
+    ];
+    render(<AdminNewJobPage now={NOW} />);
+    const signpost = screen.getByTestId("admin-new-job-paperwork");
+    expect(signpost.getAttribute("href")).toBe("/admin/compliance");
+    expect(signpost).toHaveTextContent("Paperwork for your next job");
+    expect(screen.getByTestId("admin-new-job-paperwork-count").textContent).toMatch(
+      /^\d+ to do before you start, in Compliance$/,
+    );
+    expect(screen.getByTestId("admin-new-job-paperwork-names")).toHaveTextContent(/^Before 2 Nov 2026: /);
+    expect(signpost).toHaveTextContent("Dates you entered, not a check. Your service's list may differ.");
+  });
+
+  it("never says nothing to do: an open renewal window after the start still counts", () => {
+    // Start 10 Nov; registration ends 20 Nov, so its window is open but it runs past the start.
+    entryState.entries = [
+      { ...loginOwn, details: { category: "Logins", jobStartsOn: "2026-11-10" } } as OnCallEntry,
+      ...ADMIN_REQUIREMENTS_CATALOGUE.map((item) =>
+        complianceFixture(item.title, {
+          requirementId: item.id,
+          expiresOn: item.id === "medical-registration-renewal" ? "2026-11-20" : "2028-01-01",
+        }),
+      ),
+    ];
+    render(<AdminNewJobPage now={new Date("2026-10-25T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent(
+      "Nothing due before you start, on the dates you recorded",
+    );
+    expect(screen.getByTestId("admin-new-job-paperwork-also")).toHaveTextContent(
+      "1 needs action in Compliance overall.",
+    );
+    expect(document.body.textContent).not.toMatch(/Nothing to do/);
+  });
+
+  it("says one item needs action in the singular, and never shows a zero count", () => {
+    // No start date recorded: the signpost counts what needs action now.
+    entryState.entries = ADMIN_REQUIREMENTS_CATALOGUE.map((item) =>
+      complianceFixture(item.title, {
+        requirementId: item.id,
+        expiresOn: item.id === "medical-registration-renewal" ? "2026-11-20" : "2028-01-01",
+      }),
+    );
+    const { unmount } = render(<AdminNewJobPage now={new Date("2026-10-25T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent("1 needs action, in Compliance");
+    unmount();
+    entryState.entries = ADMIN_REQUIREMENTS_CATALOGUE.map((item) =>
+      complianceFixture(item.title, { requirementId: item.id, expiresOn: "2028-01-01" }),
+    );
+    render(<AdminNewJobPage now={new Date("2026-10-25T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent(
+      "Nothing needs action on the dates you recorded",
+    );
+  });
+
+  it("keeps the credential pack as a quiet text link under Leaving", () => {
+    render(<AdminNewJobPage now={NOW} />);
+    expect(screen.queryByTestId("admin-new-job-credential-pack-link")).toBeNull();
+    expect(screen.getByTestId("admin-new-job-leaving-pack-link").getAttribute("href")).toBe("/admin/new-job/pack");
   });
 });

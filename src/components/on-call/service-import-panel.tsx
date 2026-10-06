@@ -4,8 +4,8 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 
 import { focusRing } from "@/components/card-recipes";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
-import { OnCallNotice } from "@/components/on-call/kit/notice";
-import { onCallHeadingText, onCallNameText, onCallNumberText } from "@/components/on-call/kit/type";
+import { ModeNotice } from "@/components/mode-kit/notice";
+import { modeHeadingText, modeNameText, modeNumberText } from "@/components/mode-kit/type";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { FormField } from "@/components/ui/form-field";
@@ -124,16 +124,16 @@ function PreviewRow({
           onChange={onToggle}
         />
       </td>
-      <td className={cn(onCallNumberText, textMuted, "px-2 py-3.5")}>{row.line}</td>
+      <td className={cn(modeNumberText, textMuted, "px-2 py-3.5")}>{row.line}</td>
       <td className="min-w-40 px-2 py-3.5">
-        <span className={cn(onCallNameText, "block break-words text-[color:var(--text-heading)]")}>{title}</span>
+        <span className={cn(modeNameText, "block break-words text-[color:var(--text-heading)]")}>{title}</span>
         {row.notes ? (
           <span className={cn(textMuted, "block whitespace-pre-wrap break-words text-sm")}>
             {notesChanged && existing ? <Changed from={existing.body} to={row.notes} /> : row.notes}
           </span>
         ) : null}
       </td>
-      <td className={cn(onCallNumberText, "min-w-32 break-words px-2 py-3.5")}>
+      <td className={cn(modeNumberText, "min-w-32 break-words px-2 py-3.5")}>
         {phoneChanged && existing ? <Changed from={numberText(existing.phone)} to={newNumber} /> : newNumber}
       </td>
       <td className="px-2 py-3.5">{dialsLabel(row.dial)}</td>
@@ -170,14 +170,14 @@ function PublishRow({
       aria-label={`Call ${title}, ${spokenOnCallNumber(dial.display)}`}
       className={cn(
         focusRing,
-        onCallNumberText,
+        modeNumberText,
         "inline-flex min-h-12 items-center rounded-sm text-[color:var(--text)] underline underline-offset-2",
       )}
     >
       {dial.display}
     </a>
   ) : dial.kind === "none" ? null : (
-    <span className={onCallNumberText}>
+    <span className={modeNumberText}>
       {dial.display}
       {dial.route === "hospital-phone" ? " · From a hospital phone" : ""}
     </span>
@@ -360,13 +360,13 @@ export function ServiceImportPanel({
   return (
     <section aria-labelledby={headingId} className="grid min-w-0 gap-5" data-testid="service-import">
       <div className="grid gap-3">
-        <h2 id={headingId} className={cn(onCallHeadingText, "text-lg-minus text-[color:var(--text-heading)]")}>
+        <h2 id={headingId} className={cn(modeHeadingText, "text-lg-minus text-[color:var(--text-heading)]")}>
           Import from a spreadsheet
         </h2>
-        <OnCallNotice>
+        <ModeNotice>
           Only numbers, roles, wards and locations. Do not include patient details or staff names. On-site items
           (access, food, taxi) belong in Admin.
-        </OnCallNotice>
+        </ModeNotice>
         <SegmentedControl
           label="Import as"
           value={section}
@@ -378,7 +378,7 @@ export function ServiceImportPanel({
           options={SECTION_OPTIONS}
         />
         <p className="text-sm text-[color:var(--text)]">
-          Goes to <span className={onCallNameText}>{siteName ?? "Service-wide"}</span>
+          Goes to <span className={modeNameText}>{siteName ?? "Service-wide"}</span>
         </p>
         <p className={cn(textMuted, "text-sm")}>Rows are saved as drafts. Nobody sees them until you publish below.</p>
         <FormField
@@ -404,10 +404,10 @@ export function ServiceImportPanel({
       {parsed ? (
         <div className="grid min-w-0 gap-3" data-testid="service-import-preview">
           {parsed.missingTitleColumn ? (
-            <OnCallNotice>No title column. Name one column title, role, service, ward or contact.</OnCallNotice>
+            <ModeNotice>No title column. Name one column title, role, service, ward or contact.</ModeNotice>
           ) : null}
           {parsed.truncated ? (
-            <OnCallNotice>Only the first 200 rows are shown. Import the rest as a second file.</OnCallNotice>
+            <ModeNotice>Only the first 200 rows are shown. Import the rest as a second file.</ModeNotice>
           ) : null}
           {parsed.rows.length > 0 ? (
             <>
@@ -494,7 +494,7 @@ export function ServiceImportPanel({
 
       {progress ? (
         <div className="flex flex-wrap items-center gap-3">
-          <p role="status" className={cn(onCallNumberText, "text-sm text-[color:var(--text)]")}>
+          <p role="status" className={cn(modeNumberText, "text-sm text-[color:var(--text)]")}>
             {progress.verb} {Math.min(progress.done + 1, progress.total)} of {progress.total}…
           </p>
           <Button variant="secondary" size="sm" onClick={() => run.current?.abort()}>

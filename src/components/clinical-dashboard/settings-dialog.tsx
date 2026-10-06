@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   Bell,
   BookOpen,
+  BriefcaseBusiness,
   Check,
   ChevronRight,
   CloudOff,
@@ -63,6 +64,8 @@ import {
   type PreferenceSyncState,
 } from "@/components/clinical-dashboard/use-app-preferences";
 import { useScrollHideReporter } from "@/components/clinical-dashboard/use-hide-on-scroll";
+import { clearMedicineVisits, countMedicineVisits } from "@/lib/medicines-recent";
+import { clearPsychiatryVisits, countPsychiatryVisits } from "@/lib/psychiatry-hub/visits";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { cn, floatingControl, InlineNotice, primaryControl, toggleThumbSurface } from "@/components/ui-primitives";
 import { ProviderBrandMark, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
@@ -81,7 +84,7 @@ import {
   type SettingsSectionId,
 } from "@/components/clinical-dashboard/settings-sections";
 import { type OAuthProvider, useAuthSession } from "@/lib/supabase/client";
-import type { AppPreferences } from "@/lib/account-preferences";
+import { workStageLabel, type AppPreferences } from "@/lib/account-preferences";
 import type { ThemePreference } from "@/lib/theme";
 
 const APPEARANCE_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string; icon: LucideIcon }> = [
@@ -172,7 +175,8 @@ type PinnedSection = { id: SettingsSectionId; offset: number; distance: number; 
 
 function readRecentQueryCount(): number {
   if (typeof window === "undefined") return 0;
-  return countRecentQueries();
+  // The Psychiatry and Medicines hubs' recently opened records ride on the same switch and the same Clear.
+  return countRecentQueries() + countPsychiatryVisits() + countMedicineVisits();
 }
 
 /**
@@ -609,6 +613,8 @@ export function SettingsDialog({
 
   function handleClearRecent() {
     clearRecentQueries();
+    clearPsychiatryVisits();
+    clearMedicineVisits();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches cleared.");
   }
@@ -626,6 +632,8 @@ export function SettingsDialog({
       return;
     }
     clearRecentQueries();
+    clearPsychiatryVisits();
+    clearMedicineVisits();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches turned off and existing ones cleared.");
   }
@@ -922,7 +930,9 @@ export function SettingsDialog({
                         <p className="text-sm font-medium leading-5 text-[color:var(--text-muted)]">
                           {signedOutAccount
                             ? "Sign in or create an account"
-                            : `Consultant psychiatrist · ${jurisdictionLabel}`}
+                            : [workStageLabel(preferences.workStage, preferences.ranzcpStage), jurisdictionLabel]
+                                .filter(Boolean)
+                                .join(" · ")}
                         </p>
                       </div>
                       {signedOutAccount ? (
@@ -1065,6 +1075,17 @@ export function SettingsDialog({
                         <LogOut aria-hidden="true" className="h-4 w-4" />
                         Sign out
                       </button>
+                    )}
+                    {signedOutAccount ? null : (
+                      <Link
+                        href="/my-day/profile"
+                        onClick={onClose}
+                        className={cn(floatingControl, "mt-2 w-full gap-2 rounded-lg text-sm md:w-auto md:px-4")}
+                        data-testid="settings-row-work-profile"
+                      >
+                        <BriefcaseBusiness aria-hidden="true" className="h-4 w-4" />
+                        Work profile
+                      </Link>
                     )}
                   </section>
                 )}
@@ -1276,7 +1297,7 @@ export function SettingsDialog({
                   <SettingsToggleField
                     icon={History}
                     label="Save recent searches"
-                    description="Off stops this device recording your questions at all. Use it on a shared computer."
+                    description="Off stops this device recording your questions, and what you open in Psychiatry, at all. Use it on a shared computer."
                     checked={preferences.saveRecentSearches}
                     onChange={handleSaveRecentSearches}
                   />

@@ -1,4 +1,4 @@
-import { onCallDot } from "@/components/on-call/kit/recipes";
+import { modeDot } from "@/components/mode-kit/recipes";
 import { ON_CALL_WITHDRAWN_MESSAGE } from "@/components/on-call/use-hospital-handbook";
 import { cn } from "@/components/ui-primitives";
 import { formatOnCallTime } from "@/lib/on-call/display-dates";
@@ -41,7 +41,7 @@ export function OnCallStateLabel({ state }: { readonly state: OnCallRowState }) 
       <span
         aria-hidden="true"
         data-state-dot=""
-        className={cn(onCallDot, warning ? "bg-[color:var(--warning)]" : "bg-[color:var(--border-strong)]")}
+        className={cn(modeDot, warning ? "bg-[color:var(--warning)]" : "bg-[color:var(--border-strong)]")}
       />
       <span className="break-words">{words(state)}</span>
     </span>

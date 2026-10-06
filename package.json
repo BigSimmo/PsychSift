@@ -23,7 +23,7 @@
     "check:base-freshness": "node scripts/check-base-freshness.mjs",
     "ensure": "node scripts/ensure-local-server.mjs",
     "build": "node scripts/run-heavy.mjs --npm-script build:internal",
-    "build:internal": "node scripts/guard-next-build.mjs && npm run check:upload-limit-parity && node scripts/stamp-service-worker.mjs && node --max-old-space-size=8192 ./node_modules/next/dist/bin/next build --webpack && node scripts/check-client-bundle-secrets.mjs",
+    "build:internal": "node scripts/guard-next-build.mjs && npm run check:upload-limit-parity && node scripts/stamp-service-worker.mjs && NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=8192}\" node --max-old-space-size=8192 ./node_modules/next/dist/bin/next build --webpack && node scripts/check-client-bundle-secrets.mjs",
     "build:analyze": "node scripts/build-analyze.mjs",
     "generate:worker-python-lock": "node scripts/generate-worker-python-lock.mjs",
     "generate:worker-python-cloud-lock": "node scripts/generate-worker-python-lock.mjs --target cloud",
@@ -53,7 +53,7 @@
     "test:coverage": "node scripts/run-vitest.mjs run --coverage",
     "test:coverage:node": "node scripts/run-vitest.mjs run --project=node --coverage",
     "test:coverage:ui": "node scripts/run-vitest.mjs run --project=jsdom --coverage",
-    "test:ci-workflows": "node scripts/run-vitest.mjs run tests/ci-cache-safety.test.ts tests/organisation-weekly-workflow.test.ts tests/ci-main-failure-routing.test.ts tests/staging-tenancy-workflow.test.ts tests/site-content-freshness-workflow.test.ts tests/ci-audit-contracts.test.ts tests/ci-browser-matrix-coverage.test.ts tests/branch-review-index.test.ts tests/authenticated-live-workflow.test.ts tests/browser-test-plan.test.ts tests/chain-mirror-parity.test.ts tests/pr-batch-github.test.ts tests/pr-mergeability-workflow-guard.test.ts tests/pr-policy-merge-queue.test.ts tests/eval-canary-workflow.test.ts tests/live-drift-workflow.test.ts tests/live-domain-monitor-workflow.test.ts tests/ops-digest.test.ts tests/container-ci-contract.test.ts tests/test-runner-safety.test.ts tests/installed-lock-parity.test.ts tests/railway-config.test.ts tests/ingestion-autopilot.test.ts tests/ingestion-autopilot-workflow.test.ts tests/reindex-reaper-workflow.test.ts tests/check-lighthouse-budget.test.ts tests/claude-review-workflow.test.ts tests/live-web-vitals-inputs.test.ts tests/offline-release-profile.test.ts tests/bundle-budget-refresh-workflow.test.ts tests/dependency-report-workflow.test.ts tests/eval-canary-case-summary.test.ts",
+    "test:ci-workflows": "node scripts/run-vitest.mjs run tests/ci-cache-safety.test.ts tests/organisation-weekly-workflow.test.ts tests/ci-main-failure-routing.test.ts tests/ci-main-tree-proof.test.ts tests/staging-tenancy-workflow.test.ts tests/site-content-freshness-workflow.test.ts tests/ci-audit-contracts.test.ts tests/secret-scan-merge-group.test.ts tests/ci-browser-matrix-coverage.test.ts tests/branch-review-index.test.ts tests/authenticated-live-workflow.test.ts tests/browser-test-plan.test.ts tests/chain-mirror-parity.test.ts tests/pr-batch-github.test.ts tests/pr-mergeability-workflow-guard.test.ts tests/pr-policy-merge-queue.test.ts tests/eval-canary-workflow.test.ts tests/live-drift-workflow.test.ts tests/live-domain-monitor-workflow.test.ts tests/ops-digest.test.ts tests/container-ci-contract.test.ts tests/test-runner-safety.test.ts tests/installed-lock-parity.test.ts tests/railway-config.test.ts tests/ingestion-autopilot.test.ts tests/ingestion-autopilot-workflow.test.ts tests/reindex-reaper-workflow.test.ts tests/check-lighthouse-budget.test.ts tests/claude-review-workflow.test.ts tests/live-web-vitals-inputs.test.ts tests/offline-release-profile.test.ts tests/bundle-budget-refresh-workflow.test.ts tests/dependency-report-workflow.test.ts tests/eval-canary-case-summary.test.ts",
     "test:e2e": "node scripts/run-playwright.mjs",
     "test:e2e:all": "node scripts/run-playwright.mjs",
     "test:e2e:accessibility": "node scripts/run-playwright.mjs tests/ui-accessibility.spec.ts --project=chromium",
@@ -143,6 +143,7 @@
     "brand:check": "node scripts/run-tsx.mjs scripts/generate-brand-assets.ts --check",
     "therapy:review": "node scripts/review-therapy.mjs",
     "clinical:review": "node scripts/review-clinical-record.mjs",
+    "rules:sign": "node scripts/run-tsx.mjs scripts/sign-today-rules.ts",
     "dictionary:apply-rewrites": "node scripts/run-tsx.mjs scripts/apply-dictionary-rewrites.ts",
     "check:therapy-data-index": "node scripts/build-therapies-index.mjs --check",
     "check:cross-mode-index": "node scripts/build-cross-mode-differentials-index.mjs --check",
@@ -330,17 +331,17 @@
     "migrations:reseal": "node scripts/check-migration-immutability.mjs --write --allow-reseal"
   },
   "dependencies": {
-    "@next/env": "16.3.6",
+    "@next/env": "16.3.8",
     "@sentry/nextjs": "^11.0.0",
     "@sentry/node": "^11.0.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "exceljs": "^4.4.0",
     "jszip": "^3.10.2",
-    "lucide-react": "^1.48.0",
-    "mammoth": "^1.12.3",
-    "next": "16.3.6",
-    "openai": "^7.23.0",
+    "lucide-react": "^1.49.0",
+    "mammoth": "^1.13.0",
+    "next": "16.3.8",
+    "openai": "^7.27.0",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^6.3.289",
     "pdfkit": "^0.20.2",
@@ -349,7 +350,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "tailwind-merge": "^3.7.0",
     "web-push": "^3.6.7",
     "zod": "^4.6.5"
@@ -357,7 +358,7 @@
   "overrides": {
     "postcss": "^8.5.18",
     "esbuild": "0.28.2",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "tmp": "^0.2.7",
     "uuid": "^11.1.1",
     "brace-expansion@1": "^1.1.21",
@@ -373,7 +374,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@babel/parser": "^8.0.5",
-    "@next/bundle-analyzer": "16.3.6",
+    "@next/bundle-analyzer": "16.3.8",
     "@sentry/core": "^11.1.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
@@ -390,7 +391,7 @@
     "@vitest/coverage-v8": "^5.0.2",
     "esbuild": "0.28.2",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "16.3.8",
     "fast-check": "^4.10.2",
     "jsdom": "^30.1.1",
     "knip": "^6.38.0",
@@ -409,6 +410,6 @@
     "@eslint/eslintrc@3.3.6": true,
     "@humanwhocodes/module-importer@1.0.1": true,
     "@humanfs/node@0.16.8": true,
-    "sharp@0.35.4": true
+    "sharp@0.35.5": true
   }
 }

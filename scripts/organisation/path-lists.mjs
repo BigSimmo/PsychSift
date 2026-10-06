@@ -193,6 +193,64 @@ function listVariables(names) {
   return names.map((name) => describeList(name).variable).join(" and ");
 }
 
+function blobsByHash(root, revision) {
+  /** @type {Map<string, string[]>} */
+  const byHash = new Map();
+  for (const record of git(root, ["ls-tree", "-r", "-z", revision]).stdout.split("\0")) {
+    if (!record) continue;
+    const tab = record.indexOf("\t");
+    if (tab < 0) continue;
+    const hash = record.slice(0, tab).split(" ")[2];
+    const file = record.slice(tab + 1);
+    if (!hash || !file) continue;
+    const paths = byHash.get(hash);
+    if (paths) paths.push(file);
+    else byHash.set(hash, [file]);
+  }
+  return byHash;
+}
+
+/**
+ * Exact copies git's `-C` leaves unpaired. Copy detection only considers a source
+ * that also changed in the same diff, unless `--find-copies-harder` scans the
+ * whole tree. That scan is too expensive here. Blob hashes answer the unmodified
+ * case exactly: the new file's blob equals a file that already existed at base.
+ * @param {string} root
+ * @param {string} base
+ * @param {string} head
+ * @param {readonly string[]} addedPaths
+ * @returns {{ from: string, path: string }[]}
+ */
+function unmodifiedExactCopies(root, base, head, addedPaths) {
+  if (addedPaths.length === 0) return [];
+  const byHash = blobsByHash(root, base);
+  /** @type {{ from: string, path: string }[]} */
+  const copies = [];
+  for (const file of addedPaths) {
+    const hash = git(root, ["rev-parse", `${head}:${file}`]).stdout.trim();
+    for (const from of byHash.get(hash) ?? []) {
+      if (from !== file) copies.push({ from, path: file });
+    }
+  }
+  return copies;
+}
+
+function coverageLostFinding({ path, from, how, lost }) {
+  const details = lost.map((name) => {
+    const list = describeList(name);
+    return `${list.label} (${list.variable}): ${list.effect}`;
+  });
+  const copyNote =
+    how === "copied from" ? " The original stays protected; this matters when the copy takes over its job." : "";
+  return warning({
+    key: `coverage-lost:${path}`,
+    subject: path,
+    about: from,
+    loud: true,
+    message: `${how} \`${from}\`, and the new path has lost its safety protection. It is not on ${details.join("; and not on ")}.${copyNote} To restore it, add \`${path}\` to ${listVariables(lost)} in ${POLICY_FILE}.`,
+  });
+}
+
 function filesAt(root, revision) {
   return git(root, ["ls-tree", "-r", "-z", "--name-only", revision]).stdout.split("\0").filter(Boolean);
 }
@@ -248,6 +306,8 @@ function listEditFindings(root, base, head) {
  *
  * - A rename, or a copy, whose new path is missing a list the old path was on gives one `loud`
  *   warning keyed `coverage-lost:<new>`, naming each lost list and how to restore it.
+ *   Git's `-C` pairs a copy only when the source also changed in the same diff. An exact
+ *   copy of an unmodified safety-listed file is still flagged, by blob hash.
  * - A deleted file that was on a list gives a plain warning keyed `coverage-deleted:<old>`:
  *   deletion is not lost protection. It becomes `loud` when the same change adds a file with the
  *   same name that is missing one of those lists, because that is what an undetected move looks
@@ -298,7 +358,9 @@ export function coverageLossFindings({ root, base, head = "HEAD", classify }) {
   if (policyEdited && !classify) findings.push(...listEditFindings(root, base, head));
   const moved = entries.filter((entry) => entry.status === "R" || entry.status === "C");
   const deleted = entries.filter((entry) => entry.status === "D");
-  if (moved.length === 0 && deleted.length === 0) return findings;
+  const pureAdds = entries.filter((entry) => entry.status === "A").map((entry) => entry.path);
+  const blobCopies = unmodifiedExactCopies(root, base, head, pureAdds);
+  if (moved.length === 0 && deleted.length === 0 && blobCopies.length === 0) return findings;
   const added = entries.filter((entry) => entry.status === "A" || entry.status === "C").map((entry) => entry.path);
   // A deleted safety-listed file is a suspected move when the same change adds an unlisted file
   // with its name anywhere, or any unlisted file in its folder (a split or a heavy rewrite).
@@ -314,8 +376,16 @@ export function coverageLossFindings({ root, base, head = "HEAD", classify }) {
     classifyOld = classify;
     classifyNew = classify;
   } else {
-    const oldPaths = [...moved.map((entry) => entry.from), ...deleted.map((entry) => entry.path)];
-    const newPaths = [...moved.map((entry) => entry.path), ...deleted.flatMap((entry) => suspects(entry.path))];
+    const oldPaths = [
+      ...moved.map((entry) => entry.from),
+      ...deleted.map((entry) => entry.path),
+      ...blobCopies.map((entry) => entry.from),
+    ];
+    const newPaths = [
+      ...moved.map((entry) => entry.path),
+      ...deleted.flatMap((entry) => suspects(entry.path)),
+      ...blobCopies.map((entry) => entry.path),
+    ];
     const loaded = classifyWithPolicyCopies(root, {
       base: { revision: base, files: [...new Set(oldPaths)] },
       head: { revision: head, files: [...new Set(newPaths)] },
@@ -339,20 +409,12 @@ export function coverageLossFindings({ root, base, head = "HEAD", classify }) {
     const after = new Set(classifyNew(entry.path));
     const lost = classifyOld(from).filter((name) => !after.has(name));
     if (lost.length === 0) continue;
-    const details = lost.map((name) => {
-      const list = describeList(name);
-      return `${list.label} (${list.variable}): ${list.effect}`;
-    });
-    const how = entry.status === "C" ? "copied from" : "renamed from";
-    const copyNote =
-      entry.status === "C" ? " The original stays protected; this matters when the copy takes over its job." : "";
     findings.push(
-      warning({
-        key: `coverage-lost:${entry.path}`,
-        subject: entry.path,
-        about: from,
-        loud: true,
-        message: `${how} \`${from}\`, and the new path has lost its safety protection. It is not on ${details.join("; and not on ")}.${copyNote} To restore it, add \`${entry.path}\` to ${listVariables(lost)} in ${POLICY_FILE}.`,
+      coverageLostFinding({
+        path: entry.path,
+        from,
+        how: entry.status === "C" ? "copied from" : "renamed from",
+        lost,
       }),
     );
   }
@@ -385,6 +447,19 @@ export function coverageLossFindings({ root, base, head = "HEAD", classify }) {
         message: `was on ${listLabels(lists)} and has been deleted. Deleting a file is not lost protection, but if its content moved to a new file, add the new path to the same list in ${POLICY_FILE}.`,
       }),
     );
+  }
+
+  const reported = new Set(
+    findings.filter((finding) => finding.key.startsWith("coverage-lost:")).map((finding) => finding.key),
+  );
+  for (const copy of blobCopies) {
+    const key = `coverage-lost:${copy.path}`;
+    if (reported.has(key)) continue;
+    const after = new Set(classifyNew(copy.path));
+    const lost = classifyOld(copy.from).filter((name) => !after.has(name));
+    if (lost.length === 0) continue;
+    findings.push(coverageLostFinding({ path: copy.path, from: copy.from, how: "copied from", lost }));
+    reported.add(key);
   }
   return findings;
 }

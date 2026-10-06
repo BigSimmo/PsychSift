@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { OnCallActionButton } from "@/components/on-call/kit/action-button";
+import { ModeActionButton } from "@/components/mode-kit/action-button";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
-import { onCallHeadingText } from "@/components/on-call/kit/type";
+import { modeHeadingText } from "@/components/mode-kit/type";
 import { OnCallUpdatedLine } from "@/components/on-call/kit/updated-line";
 import { OnCallFilterChips } from "@/components/on-call/on-call-filter-chips";
 import { Button } from "@/components/ui/button";
@@ -100,7 +100,7 @@ export function ServiceCheckingPanel({
 
   return (
     <section aria-labelledby={headingId} className="grid min-w-0 gap-3" data-testid="service-checking">
-      <h2 id={headingId} className={cn(onCallHeadingText, "text-lg-minus text-[color:var(--text-heading)]")}>
+      <h2 id={headingId} className={cn(modeHeadingText, "text-lg-minus text-[color:var(--text-heading)]")}>
         What needs checking
       </h2>
       <OnCallFilterChips
@@ -144,7 +144,7 @@ export function ServiceCheckingPanel({
                   </>
                 }
                 trailing={
-                  <OnCallActionButton icon={Pencil} label={`Edit ${content.title}`} onClick={() => onEdit(entry)} />
+                  <ModeActionButton icon={Pencil} label={`Edit ${content.title}`} onClick={() => onEdit(entry)} />
                 }
               />
             );

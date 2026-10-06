@@ -50,6 +50,17 @@ export const onCallUsualOrderStorageKey = "clinical-kb-on-call-usual-order";
 export const onCallDidntConnectStorageKey = "clinical-kb-on-call-didnt-connect";
 /** "I'm on a hospital phone": a yes about this phone only, off by default. */
 export const onCallHospitalPhoneStorageKey = "clinical-kb-on-call-hospital-phone";
+/**
+ * Shift pulse: `{ v: 1, hours: { "2026-10-05T21": 3 } }` — how many calls were
+ * noted in each Perth hour, for the last week. Counts only: never a bed, a
+ * caller, a note or anything else from the call itself.
+ */
+export const onCallCallCountsStorageKey = "clinical-kb-on-call-call-counts";
+/**
+ * Shift pulse's breaks: `{ v: 1, breaks: [{ startedAt, endedAt }] }` — start
+ * and end times only, each dropped 16 hours after it started.
+ */
+export const onCallBreaksStorageKey = "clinical-kb-on-call-breaks";
 
 /**
  * Fired once after `clearOnCallDeviceState` (the sign-out wipe), so mounted
@@ -74,6 +85,8 @@ export const ON_CALL_DEVICE_STATE_KEYS: readonly string[] = [
   onCallUsualOrderStorageKey,
   onCallDidntConnectStorageKey,
   onCallHospitalPhoneStorageKey,
+  onCallCallCountsStorageKey,
+  onCallBreaksStorageKey,
 ];
 
 /**

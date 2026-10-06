@@ -6,16 +6,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => ({ status: "signed_out", authEpoch: 1 }) }));
 
-import { OnCallActionButton } from "@/components/on-call/kit/action-button";
+import { ModeActionButton } from "@/components/mode-kit/action-button";
 import { OnCallDialRow, toHandbookDial } from "@/components/on-call/kit/dial-row";
 import { OnCallDialSheet } from "@/components/on-call/kit/dial-sheet";
-import { OnCallFactTile } from "@/components/on-call/kit/fact-tile";
+import { ModeFactTile } from "@/components/mode-kit/fact-tile";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
 import { OnCallHandbookState, OnCallHospitalChooser } from "@/components/on-call/kit/handbook-state";
 import { OnCallHeroLink } from "@/components/on-call/kit/hero-link";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallModuleSkeleton } from "@/components/on-call/kit/module-skeleton";
-import { OnCallNotice } from "@/components/on-call/kit/notice";
+import { ModeNotice } from "@/components/mode-kit/notice";
 import { OnCallStateLabel } from "@/components/on-call/kit/state-label";
 import { OnCallUpdatedLine } from "@/components/on-call/kit/updated-line";
 import type { HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
@@ -76,7 +76,14 @@ describe("OnCallDialRow", () => {
     const call = within(screen.getByTestId("row")).getByRole("link", { name: "Call Switchboard, 9 0 0 0, 0 0 0 0" });
     expect(call).toHaveAttribute("href", "tel:0890000000");
     expect(call.className).toMatch(/min-h-12/);
-    const number = within(screen.getByTestId("row")).getByRole("button", { name: /9000 0000/ });
+    expect(call.className).toMatch(/min-w-12/);
+    // The name and number are one button that opens the dialling details.
+    const opener = within(screen.getByTestId("row")).getByRole("button", { name: /9000 0000/ });
+    expect(opener).toHaveAttribute("aria-haspopup", "dialog");
+    expect(opener.className).toMatch(/\bmin-h-12\b/);
+    expect(opener.className).not.toMatch(/truncate/);
+    const number = opener.querySelector("[data-dial-row-number]") as HTMLElement;
+    expect(number).toHaveTextContent("9000 0000");
     expect(number.className).toMatch(/font-normal/);
     expect(number.className).not.toMatch(/font-(bold|extrabold|black|semibold)/);
     expect(number.className).not.toMatch(/truncate/);
@@ -108,9 +115,15 @@ describe("OnCallDialRow", () => {
       <OnCallDialRow id="h3" source="handbook" title="Ward 4B" dial={resolveHandbookPhone("4456")} testId="row" />,
     );
     expect(screen.queryByRole("link")).toBeNull();
+    expect(document.querySelector('a[href^="tel:"]')).toBeNull();
     expect(screen.getByText("From a hospital phone")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /ext 4456/ }));
-    expect(await screen.findByRole("button", { name: /copy/i })).toBeInTheDocument();
+    // Its disc is a copy control that opens the sheet, never a call link.
+    const copyDisc = screen.getByRole("button", { name: "Copy Ward 4B, ext 4456" });
+    expect(copyDisc).toHaveAttribute("aria-haspopup", "dialog");
+    expect(copyDisc.className).toMatch(/min-h-12/);
+    await userEvent.click(copyDisc);
+    expect(await screen.findByRole("button", { name: /^Copy extension for Ward 4B/ })).toBeInTheDocument();
+    expect(document.querySelector('a[href^="tel:"]')).toBeNull();
   });
 
   it("offers the recorded mobile route as the only call link beside a short code", () => {
@@ -156,35 +169,46 @@ describe("OnCallDialRow", () => {
 describe("OnCallDialRow geometry (review B1, S2)", () => {
   const VERTICAL_PADDING = /(^|\s)(p|py|pt|pb)-\S+/;
 
-  it("is exactly 48px with one line and 52px with two, with no vertical padding anywhere in the row", () => {
+  it("is 48px with a title alone and 52px with a number line, with no vertical padding outside the name button", () => {
     render(
       <ul>
+        <OnCallDialRow id="g1" source="handbook" title="Bed manager" dial={null} testId="one" />
         <OnCallDialRow
-          id="g1"
+          id="g2"
           source="handbook"
           title="Switchboard"
           dial={resolveHandbookPhone("9000 0000")}
-          testId="one"
+          testId="two"
         />
-        <OnCallDialRow id="g2" source="handbook" title="Ward 4B" dial={resolveHandbookPhone("4456")} testId="two" />
+        <OnCallDialRow id="g3" source="handbook" title="Ward 4B" dial={resolveHandbookPhone("4456")} testId="three" />
       </ul>,
     );
     const one = screen.getByTestId("one");
-    const two = screen.getByTestId("two");
     expect(one.className).toMatch(/\bmin-h-12\b/);
     expect(one.className).not.toMatch(/\bmin-h-13\b/);
-    expect(two.className).toMatch(/\bmin-h-13\b/);
-    // The 48px number button defines the height; padding around it would push
-    // the row past the skeleton's 48/52 and shift the list when it loads.
-    for (const row of [one, two]) {
-      for (const element of [row, ...Array.from(row.querySelectorAll("*"))]) {
+    // A number always leads a secondary line, so a row with one is 52px.
+    for (const row of [screen.getByTestId("two"), screen.getByTestId("three")]) {
+      expect(row.className).toMatch(/\bmin-h-13\b/);
+    }
+    for (const row of [one, screen.getByTestId("two"), screen.getByTestId("three")]) {
+      const title = row.querySelector("[data-dial-row-title]") as HTMLElement;
+      expect(title.className).toMatch(/\bmin-h-12\b/);
+      // Padding outside the name button would push the row past the
+      // skeleton's 48/52 and shift the list when it loads.
+      const outside = [row, ...Array.from(row.querySelectorAll("*"))].filter(
+        (element) => element !== title && !title.contains(element),
+      );
+      for (const element of outside) {
         expect(element.getAttribute("class") ?? "", element.outerHTML.slice(0, 80)).not.toMatch(VERTICAL_PADDING);
       }
-      expect(within(row).getByRole("button").className).toMatch(/\bmin-h-12\b/);
+      // Every control in the row meets the 48px floor.
+      for (const control of Array.from(row.querySelectorAll("a, button"))) {
+        expect(control.className, control.outerHTML.slice(0, 80)).toMatch(/\bmin-h-12\b/);
+      }
     }
   });
 
-  it("puts the number in a fixed right-hand column so digits line up down a list", () => {
+  it("leads the secondary line under the name with the number, in tabular digits, and lets it wrap", () => {
     render(
       <ul>
         <OnCallDialRow
@@ -201,29 +225,48 @@ describe("OnCallDialRow geometry (review B1, S2)", () => {
     const numberColumn = row.querySelector("[data-dial-row-number]");
     expect(titleColumn).not.toBeNull();
     expect(numberColumn).not.toBeNull();
-    expect(within(titleColumn as HTMLElement).queryByText(/9000 0000/)).toBeNull();
-    expect(within(numberColumn as HTMLElement).getByText("9000 0000")).toBeInTheDocument();
-    expect(numberColumn?.className).toMatch(/\bw-30\b/);
-    expect(numberColumn?.className).toMatch(/\btext-right\b/);
+    // The number sits inside the name button, first on the line under the name.
+    expect(titleColumn?.contains(numberColumn as Node)).toBe(true);
+    // Each part carries its own (clipped at line start) dot, so the number's part is the line's first.
+    const numberPart = numberColumn?.parentElement;
+    expect(numberPart?.parentElement?.firstElementChild).toBe(numberPart);
+    expect(numberColumn).toHaveTextContent("9000 0000");
+    expect(numberColumn?.className).toMatch(/\bnums\b/);
+    // No fixed right-hand column any more: no width and no right alignment.
+    expect(numberColumn?.className).not.toMatch(/\bw-\d+\b|\btext-right\b|\btruncate\b/);
+    // Only the call disc sits to the right of the name button.
+    expect(row.querySelectorAll('a[href^="tel:"]')).toHaveLength(1);
   });
 
-  it("keeps a desk-only number's column aligned with a spacer where the disc would be", () => {
+  it("keeps a desk-only number's column aligned with a copy control where the disc would be", () => {
     render(
       <ul>
         <OnCallDialRow id="g4" source="handbook" title="Ward 4B" dial={resolveHandbookPhone("4456")} testId="row" />
       </ul>,
     );
-    expect(screen.getByTestId("row").querySelector("[data-dial-row-disc-spacer]")).not.toBeNull();
+    const spacer = screen.getByTestId("row").querySelector("[data-dial-row-disc-spacer]");
+    expect(spacer).not.toBeNull();
+    expect(spacer?.tagName).toBe("BUTTON");
+    expect(spacer).toHaveAccessibleName("Copy Ward 4B, ext 4456");
   });
 
-  it("draws a row with no number as plain text, never a dimmed button", () => {
+  it("draws a row with no number with nothing to call, copy or open", async () => {
     render(
       <ul>
         <OnCallDialRow id="g5" source="handbook" title="Bed manager" dial={null} testId="row" />
       </ul>,
     );
-    expect(within(screen.getByTestId("row")).queryByRole("button")).toBeNull();
+    const row = screen.getByTestId("row");
     expect(screen.getByText("Bed manager")).toBeInTheDocument();
+    expect(within(row).queryByRole("link")).toBeNull();
+    expect(row.querySelector("[data-dial-row-number], [data-dial-row-disc-spacer]")).toBeNull();
+    // The name is not an enabled control: tapping it opens no sheet.
+    for (const button of within(row).queryAllByRole("button")) {
+      expect(button).toBeDisabled();
+      expect(button).not.toHaveAttribute("aria-label");
+    }
+    await userEvent.click(screen.getByText("Bed manager"));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("names the emergency tone in words on the call link, not only in red", () => {
@@ -352,23 +395,52 @@ describe("labels a reader can trust", () => {
 });
 
 describe("modules", () => {
-  it("draws a grouped list with one teal header icon, hidden from screen readers, and 48/52 rows", () => {
-    render(
-      <OnCallGroupedList eyebrow="Emergency" headerIcon={Siren} testId="group">
+  it("draws a grouped list flat, with an eyebrow and its count, no header icon tile, and 48/52 rows", () => {
+    const { rerender } = render(
+      <OnCallGroupedList eyebrow="Emergency" count={2} headerIcon={Siren} testId="group">
         <OnCallRow title="Switchboard" testId="row-1" />
         <OnCallRow title="Registrar" subtitle="Medicine" testId="row-2" />
       </OnCallGroupedList>,
     );
-    const tile = screen.getByTestId("group-icon");
-    expect(tile).toHaveAttribute("aria-hidden", "true");
-    expect(tile).toHaveAttribute("data-mode-identity", "on-call");
-    expect(tile.className).toMatch(/--mode-identity-soft/);
-    expect(tile.className).toMatch(/--mode-identity-border/);
-    expect(tile.querySelector("svg")?.getAttribute("class")).toMatch(/--mode-identity\)/);
-    expect(screen.getByRole("heading", { name: "Emergency" })).toBeInTheDocument();
+    // The calm look draws no icon tile beside the eyebrow, even when a caller passes one.
+    expect(screen.queryByTestId("group-icon")).toBeNull();
+    expect(screen.getByTestId("group").querySelector("svg")).toBeNull();
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading).toHaveTextContent(/^Emergency · 2$/);
+    expect(screen.getByTestId("group")).toHaveAttribute("aria-labelledby", heading.id);
+    // Flat on the page: the list itself carries no raised card.
+    expect(screen.getByRole("list").className).not.toMatch(/rounded|shadow|surface-raised/);
     expect(screen.getByTestId("row-1").className).toMatch(/min-h-12/);
+    expect(screen.getByTestId("row-1").className).not.toMatch(/min-h-13/);
     expect(screen.getByTestId("row-2").className).toMatch(/min-h-13/);
     expect(screen.getByTestId("row-1").querySelector("svg")).toBeNull();
+    rerender(
+      <OnCallGroupedList eyebrow="Emergency" surface="card" testId="group">
+        <OnCallRow title="Switchboard" testId="row-1" />
+      </OnCallGroupedList>,
+    );
+    expect(screen.getByRole("list").className).toMatch(/surface-raised/);
+  });
+
+  it("puts one teal action at the eyebrow's right, at the 48px floor", async () => {
+    const onClick = vi.fn();
+    render(
+      <OnCallGroupedList eyebrow="Your usual" action={{ label: "Edit", onClick, testId: "edit" }} testId="group">
+        <OnCallRow title="Switchboard" leading={<span>SW</span>} testId="row-1" />
+      </OnCallGroupedList>,
+    );
+    const edit = screen.getByTestId("edit");
+    expect(edit).toHaveTextContent("Edit");
+    expect(edit.className).toMatch(/--mode-identity/);
+    expect(edit.className).toMatch(/\bmin-h-12\b/);
+    await userEvent.click(edit);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    // A leading badge sits before the text and is hidden from screen readers.
+    const lead = screen.getByText("SW").parentElement as HTMLElement;
+    expect(lead).toHaveAttribute("aria-hidden", "true");
+    expect(
+      lead.compareDocumentPosition(screen.getByText("Switchboard")) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("features one hero link in the soft mode tint, and otherwise keeps it a raised hairline card", () => {
@@ -386,7 +458,7 @@ describe("modules", () => {
   });
 
   it("draws a compact action shape inside a 48px tap area", () => {
-    render(<OnCallActionButton icon={Siren} label="Share" onClick={() => {}} testId="action" />);
+    render(<ModeActionButton icon={Siren} label="Share" onClick={() => {}} testId="action" />);
     const button = screen.getByRole("button", { name: "Share" });
     expect(button.className).toMatch(/min-h-12/);
     expect(button.className).toMatch(/min-w-12/);
@@ -395,14 +467,14 @@ describe("modules", () => {
   });
 
   it("writes a fact tile's value at 400 and lets it wrap", () => {
-    render(<OnCallFactTile label="Switchboard" value="9000 0000" testId="tile" />);
+    render(<ModeFactTile label="Switchboard" value="9000 0000" testId="tile" />);
     const value = within(screen.getByTestId("tile")).getByText("9000 0000");
     expect(value.className).toMatch(/font-normal/);
     expect(value.className).not.toMatch(/truncate/);
   });
 
   it("keeps a notice to one calm line", () => {
-    render(<OnCallNotice testId="notice">Switchboard number changed.</OnCallNotice>);
+    render(<ModeNotice testId="notice">Switchboard number changed.</ModeNotice>);
     expect(screen.getByTestId("notice")).toHaveTextContent("Switchboard number changed.");
     expect(screen.getByTestId("notice")).toHaveAttribute("role", "status");
   });

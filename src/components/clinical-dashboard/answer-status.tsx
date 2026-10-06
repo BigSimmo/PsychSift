@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
-import { History, Square } from "lucide-react";
+import { Check, History, Square } from "lucide-react";
 
 import {
   answerProgressDisplayMessage,
   answerProgressPreviewMessage,
+  answerProgressStepIndex,
   answerProgressTookUnusualRoute,
   type TimedAnswerProgressUpdate,
 } from "@/components/clinical-dashboard/answer-progress";
@@ -17,6 +18,7 @@ import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import { AnswerSuggestionChips } from "@/components/clinical-dashboard/answer-suggestion-chips";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ModeHomeTemplate } from "@/components/mode-home-template";
+import { LazyMyDayHomeCard } from "@/components/my-day/my-day-home-card-lazy";
 import { ShowAllChip } from "@/components/show-all-chip";
 import { cn } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -93,6 +95,10 @@ export function SharedHomeEmptyState({
       actions={[]}
       footer={
         <div className="grid w-full gap-3">
+          {/* My Day sits under the composer, never above it: the composer
+              stays the first thing on the home screen (one owner, no shift),
+              and the card renders nothing at all until it has items. */}
+          <LazyMyDayHomeCard />
           {recents.length > 0 && (
             <AnswerSuggestionChips
               testId="shared-home-recent-queries"
@@ -329,6 +335,69 @@ function useProgressiveReveal(total: number, preview: VerifiedEvidencePreviewUni
  * marks a hazard, and a search in flight is not one, so it is now the same quiet
  * line the answer surface uses.
  */
+/**
+ * The five steps every answer goes through, named as the reader would say them.
+ *
+ * These are the same clauses the status line already prints for each stage
+ * (`answerProgressDisplayMessage`), so the list adds no new vocabulary: it shows
+ * the reader where the line is in a sequence that is the same on every run.
+ * Requested by the owner on 2026-10-04 after a slow search left the screen
+ * effectively blank; the index comes from `answerProgressStepIndex`, so a step
+ * is ticked only after the stream has actually moved past it.
+ */
+const answerProgressSteps = [
+  "Reading your question",
+  "Searching your documents",
+  "Choosing the most relevant passages",
+  "Writing the answer",
+  "Checking citations and clinical numbers",
+] as const;
+
+function AnswerProgressSteps({ current }: { current: number }) {
+  return (
+    <ol aria-label="Search steps" data-slot="answer-progress-steps" className="grid gap-1.5">
+      {answerProgressSteps.map((label, index) => {
+        const state = index < current ? "done" : index === current ? "current" : "upcoming";
+        return (
+          <li
+            key={label}
+            data-step-state={state}
+            aria-current={state === "current" ? "step" : undefined}
+            className={cn(
+              "flex items-start gap-2 text-xs leading-5",
+              state === "done" && "text-[color:var(--text-muted)]",
+              state === "current" && "font-semibold text-[color:var(--text-heading)]",
+              state === "upcoming" && "text-[color:var(--text-muted)] opacity-80",
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                "mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border-[1.5px]",
+                state === "done" &&
+                  "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] text-[color:var(--primary-contrast)]",
+                state === "current" && "border-2 border-[color:var(--clinical-accent)]",
+                state === "upcoming" && "border-[color:var(--border-strong)]",
+              )}
+            >
+              {state === "done" ? <Check aria-hidden="true" className="size-2.5" strokeWidth={3.5} /> : null}
+              {state === "current" ? (
+                <span className="block size-1.5 rounded-full bg-[color:var(--clinical-accent)] forced-colors:bg-[Highlight]" />
+              ) : null}
+            </span>
+            <span className="min-w-0">
+              {label}
+              <span className="sr-only">
+                {state === "done" ? ", done" : state === "current" ? ", in progress" : ", not started"}
+              </span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function SearchProgressBanner({ message, onStop }: { message: string; onStop: () => void }) {
   return (
     <p
@@ -391,7 +460,9 @@ export function AnswerProgress({
   active,
   onStop,
   evidencePreview = null,
+  question = null,
 }: {
+  question?: string | null;
   events: TimedAnswerProgressUpdate[];
   startedAt: number | null;
   active: boolean;
@@ -403,6 +474,7 @@ export function AnswerProgress({
   const running = active && !finished;
   const slow = useSlowNotice(running, startedAt);
   const unusualRoute = answerProgressTookUnusualRoute(events);
+  const stepIndex = latest ? answerProgressStepIndex(latest.stage) : 0;
   // The only number the wait prints, and it counts the cards directly below it — which is
   // why it is the rail's visible cap, not the unit's length. A unit may carry up to twelve
   // sources while the rail draws six, and a line reading "8 sources found" above six cards
@@ -433,24 +505,82 @@ export function AnswerProgress({
         </span>
       ) : (
         <>
-          <p
-            aria-live="polite"
-            data-testid="answer-progress-line"
-            className="flex items-start gap-2 text-xs leading-5 text-[color:var(--text-muted)]"
+          <div
+            data-slot="answer-progress-card"
+            className="grid gap-2.5 rounded-2xl bg-[color:var(--clinical-accent-soft)] px-3.5 py-3 forced-colors:border forced-colors:border-[CanvasText]"
           >
-            <ProgressDot />
-            <span className="min-w-0 flex-1">
-              {currentMessage}
-              {slow ? <span> &middot; taking longer than usual</span> : null}
-            </span>
-            {running ? <StopControl onStop={onStop} /> : null}
-          </p>
+            {question ? (
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-3xs font-bold tracking-eyebrow text-[color:var(--text-muted)] uppercase">
+                    Your question
+                  </p>
+                  <p
+                    data-testid="answer-progress-question"
+                    className="text-base leading-snug font-semibold break-words text-[color:var(--text-heading)]"
+                  >
+                    {question}
+                  </p>
+                </div>
+                {running ? <StopControl onStop={onStop} /> : null}
+              </div>
+            ) : null}
+            <div className="flex items-start gap-2">
+              <p
+                aria-live="polite"
+                data-testid="answer-progress-line"
+                className="flex min-w-0 flex-1 items-start gap-2 text-xs leading-5 font-semibold text-[color:var(--text-heading)]"
+              >
+                <ProgressDot />
+                <span className="min-w-0 flex-1">
+                  {currentMessage}
+                  {slow ? (
+                    <span className="font-normal text-[color:var(--text-muted)]">
+                      {" "}
+                      &middot; taking longer than usual
+                    </span>
+                  ) : null}
+                </span>
+              </p>
+              {/* Outside the live line on purpose: the line prints no number the reader
+                  cannot reconcile, and this one counts the list directly beneath it. */}
+              <span aria-hidden="true" className="nums shrink-0 text-2xs leading-5 text-[color:var(--text-muted)]">
+                Step {stepIndex + 1} of {answerProgressSteps.length}
+              </span>
+              {running && !question ? <StopControl onStop={onStop} /> : null}
+            </div>
+            <AnswerProgressSteps current={stepIndex} />
+          </div>
 
-          <AnswerProseSkeleton />
+          <div
+            data-slot="answer-progress-answer"
+            className="grid gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3.5 py-3"
+          >
+            <p className="text-3xs font-bold tracking-eyebrow text-[color:var(--text-muted)] uppercase">Answer</p>
+            <p className="text-xs text-[color:var(--text-muted)]">Your cited answer will appear here.</p>
+            <AnswerProseSkeleton />
+          </div>
 
-          {evidencePreview ? (
-            <AnswerEvidencePreview preview={evidencePreview} revealedCount={revealedSourceCount} />
-          ) : null}
+          <div data-slot="answer-progress-sources" className="grid gap-1.5">
+            <p className="flex items-baseline justify-between text-3xs font-bold tracking-eyebrow text-[color:var(--text-muted)] uppercase">
+              <span>Sources</span>
+              <span className="nums text-2xs font-semibold tracking-normal normal-case">
+                {revealedSourceCount > 0 ? `${revealedSourceCount} found` : "None chosen yet"}
+              </span>
+            </p>
+            {evidencePreview && revealedSourceCount > 0 ? (
+              <AnswerEvidencePreview preview={evidencePreview} revealedCount={revealedSourceCount} />
+            ) : (
+              <div aria-hidden="true" data-slot="answer-progress-source-slots" className="flex gap-1.5 overflow-hidden">
+                {[0, 1, 2].map((slot) => (
+                  <span
+                    key={slot}
+                    className="h-12 w-32 shrink-0 rounded-xl border-[1.5px] border-dashed border-[color:var(--border-strong)]"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </>
       )}
 

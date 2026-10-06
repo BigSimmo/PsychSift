@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 
-import { TeachingWeekWithPanel } from "@/components/teaching/teaching-week-panel";
+import { TeachingThisWeek } from "@/components/teaching/teaching-this-week";
 import { teachingDemoMode } from "@/lib/teaching/sample";
 
 export const metadata: Metadata = {
-  title: "Week | Teaching | PsychSift",
-  description: "This week's teaching, day by day, with the sessions you present and your On Call teaching list.",
+  title: "This week | Teaching | PsychSift",
+  description: "The teaching session on now with one-tap check in, then every session this week, day by day.",
 };
 
-/* Demo mode is read on the server. On a wide screen a tapped session opens beside the list (U4 Step 9). */
+/*
+ * Week folded into This week (mock-up v5). The address keeps rendering the same page rather than
+ * redirecting, so links from My Day, On Call and work search keep their #on-call-entry anchors on a
+ * client-side navigation too. The tab bar marks it as This week.
+ */
 export default async function TeachingWeekRoute() {
-  return <TeachingWeekWithPanel demoMode={await teachingDemoMode()} />;
+  return <TeachingThisWeek demoMode={await teachingDemoMode()} />;
 }

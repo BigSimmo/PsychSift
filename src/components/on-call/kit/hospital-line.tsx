@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { OnCallHospitalChooser } from "@/components/on-call/kit/handbook-state";
-import { onCallNameText } from "@/components/on-call/kit/type";
+import { modeNameText } from "@/components/mode-kit/type";
 import type { HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
@@ -28,9 +28,7 @@ export function OnCallHospitalLine({
   const canChange = handbook.hospitals.length > 1;
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-3 px-3" data-testid={testId}>
-      <p className={cn(onCallNameText, "min-w-0 break-words text-base-minus text-[color:var(--text-heading)]")}>
-        {name}
-      </p>
+      <p className={cn(modeNameText, "min-w-0 break-words text-base-minus text-[color:var(--text-heading)]")}>{name}</p>
       {canChange ? (
         <>
           <button
@@ -47,7 +45,9 @@ export function OnCallHospitalLine({
             Change
           </button>
           <Sheet open={open} onClose={() => setOpen(false)} title="Choose hospital" testId={`${testId}-sheet`}>
-            <OnCallHospitalChooser handbook={handbook} onChosen={() => setOpen(false)} />
+            <div data-mode-identity="on-call" className="min-w-0">
+              <OnCallHospitalChooser handbook={handbook} onChosen={() => setOpen(false)} />
+            </div>
           </Sheet>
         </>
       ) : null}

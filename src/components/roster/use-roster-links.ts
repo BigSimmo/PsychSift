@@ -123,13 +123,32 @@ export function describeLinkFailure(code: string | null): string | null {
   return REFRESH_ERRORS[code] ?? "The last refresh did not work.";
 }
 
+/** Whether one link refreshed without error within the last six hours. */
+export function isLinkFresh(link: RosterCalendarLink, now: Date): boolean {
+  if (link.lastError || !link.lastFetchedAt) return false;
+  const age = now.getTime() - Date.parse(link.lastFetchedAt);
+  return age >= 0 && age <= ROSTER_LINK_FRESH_MS;
+}
+
 /** Whether any link refreshed without error within the last six hours. */
 export function hasFreshLink(links: readonly RosterCalendarLink[], now: Date): boolean {
-  return links.some((link) => {
-    if (link.lastError || !link.lastFetchedAt) return false;
-    const age = now.getTime() - Date.parse(link.lastFetchedAt);
-    return age >= 0 && age <= ROSTER_LINK_FRESH_MS;
-  });
+  return links.some((link) => isLinkFresh(link, now));
+}
+
+/**
+ * When a calendar link exists but none are fresh, the one Today offers Refresh
+ * for: never-fetched or oldest first. Null when there are no links, or while
+ * any link is still within the six-hour window.
+ */
+export function staleRosterLink(links: readonly RosterCalendarLink[], now: Date): RosterCalendarLink | null {
+  if (links.length === 0 || hasFreshLink(links, now)) return null;
+  return (
+    [...links].sort((a, b) => {
+      const aTime = a.lastFetchedAt ? Date.parse(a.lastFetchedAt) : 0;
+      const bTime = b.lastFetchedAt ? Date.parse(b.lastFetchedAt) : 0;
+      return aTime - bTime;
+    })[0] ?? null
+  );
 }
 
 type LoadedLinks = RosterCalendarLink[] | "signed-out" | "error" | "aborted";

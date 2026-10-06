@@ -1,6 +1,8 @@
 import {
+  UserRound,
   BedDouble,
   Ban,
+  Bell,
   ArrowLeftRight,
   BookOpenText,
   Brain,
@@ -8,6 +10,7 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarClock,
+  CalendarCheck,
   CalendarDays,
   CalendarRange,
   CalendarX2,
@@ -32,6 +35,7 @@ import {
   Settings,
   Sparkles,
   SlidersHorizontal,
+  SquarePlus,
   Stethoscope,
   Sunrise,
   Scale,
@@ -74,6 +78,7 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   sources: BookMarked,
   catalogue: LibraryBig,
   publishers: Landmark,
+  currency: CalendarClock,
   method: Scale,
   // On Call. READ from the identity maps, never restated: a section must wear
   // one mark in the rail, on its own page header and in the home's tile grid,
@@ -126,8 +131,9 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   learning: Presentation,
   setup: ListChecks,
   // Admin's page destinations in the mode picker.
-  "admin-today": Sunrise,
   renewals: ON_CALL_VIEW_ICONS.compliance,
+  // Compliance groups every requirement a health service asks for: a checklist on a clipboard.
+  "admin-compliance": ClipboardCheck,
   "new-job": BriefcaseBusiness,
   help: LifeBuoy,
   // Roster. Today is the mode home a shift opens to; Shifts reuses the mode's
@@ -142,6 +148,11 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   swaps: ArrowLeftRight,
   requests: CalendarX2,
   settings: Settings,
+  // My Day. Today wears the mode's own Sunrise (as Admin's Today does), Week the
+  // seven-day range, Hours the clock.
+  "my-day-today": Sunrise,
+  "my-day-work": BriefcaseBusiness,
+  "my-day-me": UserRound,
   // First Nations. Prefixed ids, so On Call's "contacts" icon is not shared —
   // each mode's rail slots wear their own mark even where the idea overlaps.
   "first-nations-bedside": LayoutGrid,
@@ -153,14 +164,18 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   "first-nations-mistakes": Ban,
   "first-nations-going-home": House,
   "first-nations-end-of-life": Feather,
+  // Open shifts. Browse is the search glass, My shifts the ticked day (shifts
+  // you applied for or were given), Alerts the bell, Post the plus box.
+  "open-shifts-browse": Search,
+  "open-shifts-mine": CalendarCheck,
+  "open-shifts-alerts": Bell,
+  "open-shifts-post": SquarePlus,
   // Teaching shares the Today calendar icon with Roster.
-  week: CalendarClock,
   logbook: NotebookText,
   organise: SlidersHorizontal,
-  "whats-on": CalendarDays,
   resources: LibraryBig,
   teach: Presentation,
-  supervision: Users,
+  assessments: ClipboardCheck,
 };
 
 /**

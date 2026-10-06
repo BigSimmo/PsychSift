@@ -22,7 +22,7 @@
     },
     {
       "name": "Clinical and app",
-      "skills": ["clinical", "ui", "rag", "sources", "ingest", "reindex", "documents"]
+      "skills": ["clinical", "ui", "rag", "source-governance", "ingest", "reindex", "documents"]
     },
     {
       "name": "Database, API, and security",

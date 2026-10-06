@@ -9,6 +9,7 @@ import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
 import { cn, eyebrowText, IconButton, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
   cmeDashboardModuleIds,
+  canMoveModule,
   cmeDashboardModuleLabels,
   useCmeModuleOrder,
   type CmeDashboardModuleId,
@@ -37,14 +38,15 @@ export function CmeCustomisePage() {
           where the new order shows. */}
       <CmeDetailNavHeader
         title="Customise"
-        back={{ href: "/cme", label: "Today" }}
+        back={{ href: "/cme", label: "Year" }}
         primaryAction={{ label: "Done", icon: Check, onClick: () => router.push("/cme") }}
         testIdPrefix="cme-customise"
       />
       <main className={cn(cmePageWidth, "px-4 py-6 sm:px-6")}>
         <h1 className={cmePageTitle}>Customise your dashboard</h1>
         <p className={cn(textMuted, "mt-1 text-sm")}>
-          Choose what shows below your hours, your pace and your next action, and put it in the order you want.
+          Choose what shows below your hours, your pace and your next action, and put it in the order you want. Order
+          applies within each section of Today, so a module can only move past others in its own section.
         </p>
 
         <section aria-labelledby="cme-module-order-heading" className="mt-6">
@@ -57,7 +59,7 @@ export function CmeCustomisePage() {
             </p>
           ) : (
             <ul data-testid="cme-module-order" className="mt-2 space-y-2">
-              {moduleIds.map((moduleId, index) => {
+              {moduleIds.map((moduleId) => {
                 const label = cmeDashboardModuleLabels[moduleId];
                 return (
                   <li key={moduleId} className={cn(cardSurface, "flex items-center justify-between gap-2 p-3")}>
@@ -66,14 +68,14 @@ export function CmeCustomisePage() {
                       <IconButton
                         icon={ArrowUp}
                         label={`Move ${label} up`}
-                        disabled={index === 0}
+                        disabled={!canMoveModule(moduleIds, moduleId, -1)}
                         onClick={() => moveModule(moduleId, -1)}
                         className={toolbarButton}
                       />
                       <IconButton
                         icon={ArrowDown}
                         label={`Move ${label} down`}
-                        disabled={index === moduleIds.length - 1}
+                        disabled={!canMoveModule(moduleIds, moduleId, 1)}
                         onClick={() => moveModule(moduleId, 1)}
                         className={toolbarButton}
                       />

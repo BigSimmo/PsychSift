@@ -100,7 +100,7 @@ describe("worker health HTTP status mapping", () => {
 
   beforeEach(() => {
     resetHealthStateForTests();
-    mocks.probe.mockReset().mockResolvedValue(undefined);
+    mocks.probe.mockReset().mockResolvedValue({ ok: true, checkedAt: new Date().toISOString() });
     mocks.execFile.mockReset().mockImplementation((_bin, _args, _opts, cb) => cb(null));
   });
 
@@ -124,6 +124,24 @@ describe("worker health HTTP status mapping", () => {
     expect(code).toBe(503);
     expect(body.status).toBe("error");
     expect(body.checks.supabase.status).toBe("error");
+  });
+
+  it.each(["unavailable", "query"])("returns 503 when the Supabase probe returns a %s failure", async (failureKind) => {
+    mocks.probe.mockResolvedValue({
+      ok: false,
+      checkedAt: new Date().toISOString(),
+      failureKind,
+      message: "Supabase is temporarily unavailable: private provider detail",
+      rawMessage: "private provider detail",
+    });
+    setLastClaimProcessedAtForTests(new Date(Date.now() - 10 * 60 * 1000));
+
+    const { code, body } = await requestHealth();
+
+    expect(code).toBe(503);
+    expect(body.status).toBe("error");
+    expect(body.checks.supabase.status).toBe("error");
+    expect(JSON.stringify(body)).not.toContain("private provider detail");
   });
 
   it("returns 503 error when the Python venv is unavailable", async () => {

@@ -3,12 +3,60 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { PhoneHeaderCollapsePortal } from "@/components/clinical-dashboard/phone-header-collapse-portal";
+import { focusRing } from "@/components/card-recipes";
+import { cmePageWidth } from "@/components/cme/cme-page-frame";
 import { cn } from "@/components/ui-primitives";
 
-type CmeTab = { label: string; href: string; active: boolean };
+export type CmeSegment = { readonly label: string; readonly href: string; readonly active: boolean };
 
-/** The old addresses stay real pages; these links make their five-page ownership visible. */
+/**
+ * The 5 Oct mock-up's segmented control: a sunk track with the current page
+ * raised in it. Each part is a link (these are pages, not panels), the current
+ * one marked `aria-current`. The face is 40px; each link's tap area is 48px.
+ */
+export function CmeSegmentedTabs({
+  label,
+  segments,
+  testId = "cme-page-tabs",
+  className,
+}: {
+  readonly label: string;
+  readonly segments: readonly CmeSegment[];
+  readonly testId?: string;
+  readonly className?: string;
+}) {
+  return (
+    <nav aria-label={label} data-testid={testId} className={className}>
+      <div className="flex gap-0.5 rounded-md bg-[color:var(--surface-inset)] p-0.75 forced-colors:border forced-colors:border-[CanvasText]">
+        {segments.map((segment) => (
+          <Link
+            key={segment.label}
+            href={segment.href}
+            aria-current={segment.active ? "page" : undefined}
+            className={cn(
+              focusRing,
+              // Labels wrap rather than overlap when there is no room (200% zoom on a phone).
+              "relative inline-flex min-w-0 flex-1 items-center justify-center rounded-sm border border-transparent px-1.5 py-3.25 text-center text-sm-minus leading-5 no-underline",
+              "after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
+              segment.active
+                ? "border-[color:var(--border)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] forced-colors:border-[Highlight]"
+                : "font-medium text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
+            )}
+          >
+            {segment.label}
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+/**
+ * The switch at the top of Log and Plan, which span more than one address
+ * (Log: activities, to finish, routines; Plan: goals and training). Courses
+ * draws its own, because its Upcoming count comes from the page's list. Year
+ * and Report have none: the mode header's tabs cover them.
+ */
 export function CmePageTabs() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -17,64 +65,28 @@ export function CmePageTabs() {
     year ? `${href}${href.includes("?") ? "&" : "?"}year=${encodeURIComponent(year)}` : href;
 
   let label: string;
-  let tabs: CmeTab[];
-  if (pathname === "/cme" || pathname === "/cme/check") {
-    label = "Today";
-    tabs = [
-      { label: "Overview", href: withYear("/cme"), active: pathname === "/cme" },
-      { label: "Year check", href: withYear("/cme/check"), active: pathname === "/cme/check" },
-    ];
-  } else if (pathname === "/cme/log" || pathname === "/cme/routines") {
+  let segments: CmeSegment[];
+  if (pathname === "/cme/log" || pathname === "/cme/routines") {
     label = "Log";
     const finish = pathname === "/cme/log" && searchParams.get("tab") === "finish";
-    tabs = [
+    segments = [
       { label: "Activities", href: withYear("/cme/log"), active: pathname === "/cme/log" && !finish },
       { label: "To finish", href: withYear("/cme/log?tab=finish"), active: finish },
       { label: "Routines", href: withYear("/cme/routines"), active: pathname === "/cme/routines" },
     ];
   } else if (pathname === "/cme/plan" || pathname === "/cme/calendar" || pathname === "/cme/training") {
+    // CPD dates (`/cme/calendar`) is reached from the Year page's "CPD dates" row,
+    // so the switch holds only the mock-up's two parts and marks neither there.
     label = "Plan";
-    tabs = [
+    segments = [
       { label: "Goals", href: withYear("/cme/plan"), active: pathname === "/cme/plan" },
-      { label: "Calendar", href: withYear("/cme/calendar"), active: pathname === "/cme/calendar" },
       { label: "Training", href: withYear("/cme/training"), active: pathname === "/cme/training" },
-    ];
-  } else if (pathname === "/cme/learning") {
-    label = "Learning";
-    const past = searchParams.get("view") === "past";
-    tabs = [
-      { label: "Upcoming", href: "/cme/learning", active: !past },
-      { label: "Past", href: "/cme/learning?view=past", active: past },
     ];
   } else {
     return null;
   }
 
   return (
-    <PhoneHeaderCollapsePortal>
-      <nav
-        aria-label={`${label} tabs`}
-        data-testid="cme-page-tabs"
-        className="w-full border-b border-[color:var(--border)] bg-[color:var(--surface)]"
-      >
-        <div className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 sm:px-6">
-          {tabs.map((tab) => (
-            <Link
-              key={tab.label}
-              href={tab.href}
-              aria-current={tab.active ? "page" : undefined}
-              className={cn(
-                "inline-flex min-h-tap shrink-0 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium",
-                tab.active
-                  ? "border-[color:var(--clinical-accent)] text-[color:var(--text)]"
-                  : "border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
-              )}
-            >
-              {tab.label}
-            </Link>
-          ))}
-        </div>
-      </nav>
-    </PhoneHeaderCollapsePortal>
+    <CmeSegmentedTabs label={`${label} pages`} segments={segments} className={cn(cmePageWidth, "px-4 pt-4 sm:px-6")} />
   );
 }
