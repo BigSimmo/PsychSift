@@ -7,6 +7,7 @@ import { isDemoMode } from "@/lib/env";
 import { jsonError, PublicApiError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
+import { parseJsonBody } from "@/lib/validation/body";
 
 export const runtime = "nodejs";
 export async function GET(request: Request, { params }: { params: Promise<{ id: string; evidenceId: string }> }) {
@@ -65,7 +66,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       allowInMemoryFallbackOnUnavailable: false,
     });
     if (rate.limited) return rateLimitJsonResponse("Evidence changes are temporarily rate limited.", rate);
-    const body = cmeEvidenceRemovalSchema.safeParse(await request.json().catch(() => null));
+    const body = cmeEvidenceRemovalSchema.safeParse(await parseJsonBody(request).catch(() => null));
     if (!body.success) throw new PublicApiError("Say why the file is being removed (3 to 500 characters).", 400);
     const evidence = await removeCmeEvidence(client, user.id, parsed.id, parsed.evidenceId, body.data.reason);
     return NextResponse.json({ evidence }, { headers: { "Cache-Control": "private, no-store" } });

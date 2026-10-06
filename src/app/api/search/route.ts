@@ -1103,11 +1103,8 @@ export async function POST(request: Request) {
         });
       }
       return jsonError(
-        new PublicApiError("Search failed. Retry with a narrower question.", 500, {
-          code,
-          causeName: error.name,
-          causeMessage: error.message,
-          sqlState: extractSqlState(error),
+        new PublicApiError("Search request failed.", 500, {
+          code: "internal_error",
         }),
         500,
       );

@@ -70,8 +70,8 @@ const SNAPSHOT_SEPARATOR = "\u0000";
 /** The log and the shift's expiry stamp, joined into one primitive snapshot. */
 function readRaw(): string {
   try {
-    const log = window.localStorage.getItem(onCallCallLogStorageKey) ?? "";
-    const stamp = window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY) ?? "";
+    const log = window.sessionStorage.getItem(onCallCallLogStorageKey) ?? "";
+    const stamp = window.sessionStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY) ?? "";
     return `${log}${SNAPSHOT_SEPARATOR}${stamp}`;
   } catch {
     return SNAPSHOT_SEPARATOR;
@@ -139,7 +139,9 @@ function NoteArea({
           rows={2}
           placeholder={placeholder}
           autoComplete="off"
-          spellCheck
+          spellCheck={false}
+          data-gramm="false"
+          data-enable-grammarly="false"
           onChange={(event) => onChange(event.target.value)}
           data-testid={testId}
           className={cn(fieldControlPlain, "min-h-20 py-2")}
