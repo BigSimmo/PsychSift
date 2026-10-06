@@ -241,6 +241,8 @@
         "src/app/(search-app)/roster/requests/page.tsx",
         "src/app/(search-app)/roster/manage/page.tsx",
         "src/app/(search-app)/roster/join/page.tsx",
+        "src/app/(search-app)/roster/sick/page.tsx",
+        "src/app/(search-app)/roster/staffing/page.tsx",
         "src/app/(search-app)/open-shifts/page.tsx",
         "src/app/(search-app)/open-shifts/shift/[serviceId]/[openShiftId]/page.tsx",
         "src/app/(search-app)/open-shifts/mine/page.tsx",
