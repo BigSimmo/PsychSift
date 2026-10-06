@@ -24445,7 +24445,7 @@ begin
     if not found then raise exception 'teaching_not_found'; end if;
     if (v_occ.presenter_id = p_actor_id or v_role = 'organiser') is not true then raise exception 'teaching_role_denied'; end if;
     select count(*) into v_count from public.teaching_feedback_answers where occurrence_id = v_occ.id;
-    if now() < v_occ.ends_at + interval '7 days' or v_count < 3 then
+    if now() < v_occ.ends_at + interval '7 days' or v_count < 5 then
       return jsonb_build_object('released', false);
     end if;
     perform public.teaching_audit(p_service_id, p_actor_id, 'feedback.totals', v_occ.id);
