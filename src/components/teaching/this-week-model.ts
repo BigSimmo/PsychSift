@@ -258,3 +258,16 @@ export function nextForYouMeta(session: SessionSummaryRead, today: string): stri
 export function openFromOtherServices(rows: readonly { own: boolean; inMyWeek: boolean; status: string }[]): number {
   return rows.filter((row) => !row.own && !row.inMyWeek && row.status !== "cancelled").length;
 }
+
+/**
+ * "Mine" on This week. Teaching sessions carry no training-level field (only What's on rows do, and
+ * they are a separate read), so Mine is the sessions the reader presents.
+ */
+export function mineSessions<T extends { isPresenter: boolean }>(sessions: readonly T[]): T[] {
+  return sessions.filter((session) => session.isPresenter);
+}
+
+/** Mine is selected first; a week where the reader presents nothing opens on Whole service, never empty. */
+export function defaultWeekFilter(sessions: readonly { isPresenter: boolean }[]): "presenting" | "all" {
+  return sessions.some((session) => session.isPresenter) ? "presenting" : "all";
+}
