@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { env, isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { readBoundedJson } from "@/lib/validation/body";
 import { logger } from "@/lib/logger";
 import { enqueueDocumentReindexJob, type EnqueueableDocument } from "@/lib/ingestion-enqueue";
 import { checkIngestionMutationSafety } from "@/lib/ingestion-mutation-safety";
@@ -78,7 +79,10 @@ export async function POST(request: Request) {
 
     let rawBody: unknown;
     try {
-      rawBody = await request.json();
+      rawBody = await readBoundedJson(request);
+      if (rawBody === null && request.body) {
+        return publicErrorResponse("Invalid JSON body.", 400, { code: "invalid_json" });
+      }
     } catch {
       return publicErrorResponse("Invalid JSON body.", 400, { code: "invalid_json" });
     }

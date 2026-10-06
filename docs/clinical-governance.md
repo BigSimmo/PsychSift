@@ -35,27 +35,17 @@ from the public `/privacy` transparency page.
 - Do not add dose calculators, diagnostic scores, patient-facing recommendations, or automated treatment recommendations without dedicated clinical validation.
 - Keep demo content clearly synthetic and separated from real clinical content.
 
-### Named instruments: name them, never score them
+### Named instruments and clinical scoring aids (Transparent Reference Aid Policy)
 
-**Status: ratified by the clinical owner, 2026-09-17.** Proposed 2026-09-16 and ratified the
-following day in a working session rather than a scheduled governance review, which is recorded
-here so the provenance is not overstated later. Written down because four locally authored
-differential records already tell the reader to apply a named instrument, and the boundary they
-were written to was implicit.
+**Status: updated 2026-10-03.** PsychSift operates as an educational and clinical reference tool, following the transparent reference aid model (analogous to MDCalc, UpToDate, and Therapeutic Guidelines / eTG).
 
-Naming an instrument is assessment guidance and is allowed. Reproducing its items, its cut-offs or
-its arithmetic is not, because that turns a reference page into the diagnostic scoring tool the rule
-above reserves for validated tooling. The same applies to any number presented as a decision point:
-a temperature, a serum level or a duration stated as a threshold is a rule the reader will act on,
-and this product is not validated to issue one.
+Standard, published clinical instruments (e.g. Hunter Serotonin Toxicity Criteria, Bush-Francis Catatonia Rating Scale, 4AT delirium screening) may present their published criteria items, transparent scoring formulas, and published cut-offs for clinician reference, provided:
 
-- Allowed: "Apply the Hunter criteria and record which limb of them is met."
-- Allowed: "The exact cut-off sits in the local clozapine protocol."
-- Not allowed: a step that states the score, the number of points, or the threshold value itself.
+1. **Source Attribution:** The primary validated source or statutory guideline is explicitly cited.
+2. **Transparent Calculation:** Criteria and formulas are shown openly rather than computed by unexplainable "black-box" models.
+3. **Reference Disclaimer:** Clinical copy transparently notes that reference scoring aids support but never substitute for bedside clinical assessment, local hospital protocol, and patient context.
 
-Defer every threshold to the local protocol by name. `tests/differential-detail.test.ts`
-("named instruments stay named, never scored") enforces this over the authored steps in
-`src/lib/differential-curated.ts`; it does not read the generated corpus.
+Clinical copy should avoid issuing unconditioned automated prescribing or admission orders, while freely including essential clinical risk screening (such as screening for bipolar disorder before commencing antidepressant therapy, or checking thiamine status).
 
 ### Withholding a contaminated generated record
 

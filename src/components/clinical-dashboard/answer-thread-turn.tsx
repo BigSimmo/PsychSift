@@ -1,7 +1,7 @@
 // A completed Q&A exchange kept on screen after a newer answer arrives (the
 // answer-thread turn) and its collapsible read-only surface. Extracted from
 // ClinicalDashboard.tsx (maturity X3) as a pure move.
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { ChevronDown, CircleAlert } from "lucide-react";
 import { buildAnswerRenderModel } from "@/lib/answer-render-policy";
 import {
@@ -52,7 +52,7 @@ export const maxVisiblePriorTurns = 10;
  * @param onToggleCollapsed - Called when the answer visibility is toggled
  * @param onCopy - Called with the answer text when copying is requested
  */
-export function PriorAnswerTurnSurface({
+export const PriorAnswerTurnSurface = memo(function PriorAnswerTurnSurface({
   turn,
   copied,
   collapsed,
@@ -196,4 +196,4 @@ export function PriorAnswerTurnSurface({
       </div>
     </div>
   );
-}
+});

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "da029600-88f1-4359-ad40-d51693ac1a4a",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#TSSF3G",
+    "outcome": "Resolved: 28 definition rewrites approved and applied in PR #3143; 333 unpublished sense drafts separated to future editorial backlog.",
+    "baseRowFingerprint": "22a700c1c4dc09cfbee5f0cea7e3bd1fb5a292280967f3dab655ee6f3ab8bab2"
+  }
+}

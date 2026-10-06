@@ -207,4 +207,9 @@ function main() {
   );
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main();
+if (
+  process.argv[1] &&
+  import.meta.url ===
+    pathToFileURL(existsSync(process.argv[1]) ? realpathSync(resolve(process.argv[1])) : resolve(process.argv[1])).href
+)
+  main();

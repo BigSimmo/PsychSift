@@ -345,6 +345,12 @@ describe("medication action tone", () => {
     );
     expect(firstClinicalSentence("Start 1.5 mg NOCTE. Titrate weekly.")).toBe("Start 1.5 mg NOCTE");
     expect(firstClinicalSentence("Rash, nausea, etc. may occur. Stop if severe.")).toBe("Rash, nausea, etc. may occur");
+    expect(firstClinicalSentence("Give 5 mg p.r.n. for agitation. Max 20 mg/day.")).toBe(
+      "Give 5 mg p.r.n. for agitation",
+    );
+    expect(firstClinicalSentence("Dose 10 mg b.i.d. with meals. Monitor renal function.")).toBe(
+      "Dose 10 mg b.i.d. with meals",
+    );
     expect(firstClinicalSentence("No trailing period")).toBe("No trailing period");
   });
 

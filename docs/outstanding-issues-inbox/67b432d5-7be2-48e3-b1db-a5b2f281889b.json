@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "67b432d5-7be2-48e3-b1db-a5b2f281889b",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#W4E78P",
+    "outcome": "Resolved: PR #3083 merged closing CVE-2026-69112; lockfiles clean; transitive advisories assessed.",
+    "baseRowFingerprint": "fdf9041db9cfd00e0825c961d8055ef4cbd3f275f65d6aff0872ca89418f2f22"
+  }
+}

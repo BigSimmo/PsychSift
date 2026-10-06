@@ -16,10 +16,14 @@ export function normalizeQueryText(query: string) {
 // deployment. Without the secret, the legacy unsalted digest is kept so
 // existing stored rows still join/dedup; set the secret in any environment
 // where real clinical queries are logged.
+const NON_PRODUCTION_QUERY_HASH_SALT = "psychsift-non-production-query-hash-salt";
+
 export function hashQueryText(query: string) {
   const normalized = normalizeQueryText(query);
-  if (env.RAG_QUERY_HASH_SECRET) {
-    return createHmac("sha256", env.RAG_QUERY_HASH_SECRET).update(normalized).digest("hex");
+  const secret =
+    env.RAG_QUERY_HASH_SECRET || (process.env.NODE_ENV !== "production" ? NON_PRODUCTION_QUERY_HASH_SALT : undefined);
+  if (secret) {
+    return createHmac("sha256", secret).update(normalized).digest("hex");
   }
   return createHash("sha256").update(normalized).digest("hex");
 }

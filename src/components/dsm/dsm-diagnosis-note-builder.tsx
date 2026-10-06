@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageSquareText, RotateCcw } from "lucide-react";
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
@@ -96,12 +96,79 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
     return list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
   }
 
+  const storageKey = `psychsift:draft:dsm-note:${record.icdCode || record.title}`;
+
+  const isDirty = useMemo(
+    () =>
+      Object.keys(statuses).length > 0 ||
+      specifiers.length > 0 ||
+      specifierText.trim().length > 0 ||
+      excluded.length > 0,
+    [statuses, specifiers, specifierText, excluded],
+  );
+
+  // Restore draft from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(storageKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      queueMicrotask(() => {
+        if (parsed.statuses) setStatuses(parsed.statuses);
+        if (Array.isArray(parsed.specifiers)) setSpecifiers(parsed.specifiers);
+        if (typeof parsed.specifierText === "string") setSpecifierText(parsed.specifierText);
+        if (Array.isArray(parsed.excluded)) setExcluded(parsed.excluded);
+        if (typeof parsed.includeCriterionText === "boolean") setIncludeCriterionText(parsed.includeCriterionText);
+      });
+    } catch {
+      // Ignore corrupted session storage
+    }
+  }, [storageKey]);
+
+  // Prevent accidental navigation when form is dirty
+  useEffect(() => {
+    if (!isDirty) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  // Persist draft to sessionStorage on state changes
+  useEffect(() => {
+    try {
+      if (isDirty) {
+        window.sessionStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            statuses,
+            specifiers,
+            specifierText,
+            excluded,
+            includeCriterionText,
+          }),
+        );
+      } else {
+        window.sessionStorage.removeItem(storageKey);
+      }
+    } catch {
+      // Ignore quota errors
+    }
+  }, [isDirty, storageKey, statuses, specifiers, specifierText, excluded, includeCriterionText]);
+
   function resetBuilder() {
     setStatuses({});
     setSpecifiers([]);
     setSpecifierText("");
     setExcluded([]);
     setIncludeCriterionText(true);
+    try {
+      window.sessionStorage.removeItem(storageKey);
+    } catch {
+      // Ignore storage errors
+    }
   }
 
   async function copyNote() {

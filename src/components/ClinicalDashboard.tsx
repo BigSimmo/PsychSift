@@ -4,29 +4,8 @@ import { isPdfDocument } from "@/lib/pdf-documents";
 import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-submitted-mode-search";
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  CircleAlert,
-  BookOpen,
-  Clock3,
-  ExternalLink,
-  FileText,
-  FolderOpen,
-  ListChecks,
-  RefreshCw,
-  Search,
-  ShieldAlert,
-  Activity,
-} from "lucide-react";
-import {
-  type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { CircleAlert, Clock3, ExternalLink, FileText, FolderOpen, RefreshCw, Search, Activity } from "lucide-react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useSharedHomeDocumentTitle } from "@/components/clinical-dashboard/use-shared-home-document-title";
 import { useDashboardDocumentActions } from "@/components/clinical-dashboard/use-dashboard-document-actions";
 import { useIndexingAdminDesktopLayout } from "@/components/clinical-dashboard/use-indexing-admin-desktop-layout";
@@ -37,15 +16,7 @@ import { incrementalEvidencePreviewRenderingEnabled, isLocalNoAuthMode, resolveC
 import { isAdministratorUser } from "@/lib/authorization";
 import { readLocalProjectIdentity, unsafeLocalProjectMessage } from "@/lib/local-project-identity";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
-import {
-  appBackdrop,
-  cn,
-  EmptyState,
-  floatingControl,
-  InlineNotice,
-  primaryControl,
-  textMuted,
-} from "@/components/ui-primitives";
+import { appBackdrop, cn, EmptyState, floatingControl, InlineNotice, primaryControl } from "@/components/ui-primitives";
 import { useAuthSession } from "@/lib/supabase/client";
 import {
   clinicalAskWorkspaceVisible,
@@ -57,7 +28,6 @@ import { ClinicalAskDashboardBoundary } from "@/components/clinical-dashboard/cl
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
 import { useScopeFilterRelax } from "@/components/clinical-dashboard/use-scope-filter-relax";
 import { useApplyFilters } from "@/components/clinical-dashboard/use-apply-filters";
-import { AuthPanel } from "@/components/clinical-dashboard/auth-panel";
 import { buildMobileSectionFabState, MobileSectionFab, ToolsHub } from "@/components/clinical-dashboard/dashboard-nav";
 import {
   buildDashboardBottomNavItems,
@@ -78,8 +48,7 @@ import {
   type SetupCheck,
   type IngestionQualityReviewItem,
 } from "@/components/clinical-dashboard/document-manager-contracts";
-import { LibraryHealthStrip } from "@/components/clinical-dashboard/library-health-strip";
-import { GuideTrigger, UtilityDrawer } from "@/components/clinical-dashboard/dashboard-shell";
+import { GuideTrigger } from "@/components/clinical-dashboard/dashboard-shell";
 import { LazyGuideDialog, loadGuideDialog } from "@/components/clinical-dashboard/lazy-guide-dialog";
 import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboard/dashboard-notices";
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
@@ -147,23 +116,17 @@ import {
   type SetupStatusPayload,
   type SourceLibrarySearchMode,
 } from "@/components/clinical-dashboard/clinical-dashboard-payloads";
-import {
-  type IndexingMonitorFilter,
-  type LibraryHealthTarget,
-  type IndexingAdministrationTab,
-} from "@/components/clinical-dashboard/document-admin";
+import { type IndexingMonitorFilter, type LibraryHealthTarget } from "@/components/clinical-dashboard/document-admin";
+import { IndexingAdminDrawer } from "@/components/clinical-dashboard/indexing-admin-drawer";
+import { DashboardDocumentsDrawer } from "@/components/clinical-dashboard/dashboard-documents-drawer";
 import { useHomeModeSeed } from "@/components/clinical-dashboard/use-home-mode-seed";
 import {
   DifferentialsHome,
-  DocumentDrawer,
   DocumentSearchResultsPanel,
   FavouritesHub,
-  IndexingMonitor,
-  IngestionQualityConsole,
   loadStagedAnswerResultSurface,
   MedicationPrescribingWorkspace,
   RelatedDocumentsPanel,
-  SetupChecklist,
   StagedAnswerResultSurface,
 } from "@/components/clinical-dashboard/clinical-dashboard-lazy";
 
@@ -551,7 +514,6 @@ function ClinicalDashboardContent({
   // go. Capture the real opener before opening instead.
   const indexingAdminReturnFocusRef = useRef<HTMLElement | null>(null);
   const indexingAdminUsesDesktopRegions = useIndexingAdminDesktopLayout();
-  const indexingAdminTabRefs = useRef(new Map<IndexingAdministrationTab, HTMLButtonElement>());
   const [documentDrawerStatusFilter, setDocumentDrawerStatusFilter] = useState<DocumentDrawerStatusFilter>("indexed");
   const [indexingMonitorFilter, setIndexingMonitorFilter] = useState<IndexingMonitorFilter>("all");
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
@@ -2746,18 +2708,32 @@ function ClinicalDashboardContent({
       }),
     [answer, answerRenderModel, groupedGovernanceWarningCount, searchMode, sources.length, weakEvidence],
   );
-  const bottomNavItems = buildDashboardBottomNavItems({
-    activeModeResultKind,
-    activeModeSearch,
-    answer,
-    documentMatchCount: documentMatches.length,
-    query,
-    quoteCount: answerRenderModel?.quoteCards.length ?? 0,
-    reviewSourceCount: answerRenderModel?.reviewSources.length ?? 0,
-    toolCatalogCount: toolCatalogRecords.length,
-    visualEvidenceCount: visualEvidence.length,
-    weakEvidence,
-  });
+  const bottomNavItems = useMemo(
+    () =>
+      buildDashboardBottomNavItems({
+        activeModeResultKind,
+        activeModeSearch,
+        answer,
+        documentMatchCount: documentMatches.length,
+        query,
+        quoteCount: answerRenderModel?.quoteCards.length ?? 0,
+        reviewSourceCount: answerRenderModel?.reviewSources.length ?? 0,
+        toolCatalogCount: toolCatalogRecords.length,
+        visualEvidenceCount: visualEvidence.length,
+        weakEvidence,
+      }),
+    [
+      activeModeResultKind,
+      activeModeSearch,
+      answer,
+      documentMatches.length,
+      query,
+      answerRenderModel?.quoteCards.length,
+      answerRenderModel?.reviewSources.length,
+      visualEvidence.length,
+      weakEvidence,
+    ],
+  );
   const answerProgressCompleted = answerProgressEvents.at(-1)?.stage === "complete";
   const {
     showAuthPanel,
@@ -2814,69 +2790,6 @@ function ClinicalDashboardContent({
   // back when the shared home stops owning it, or the last mode title written
   // here strands itself on the next route (#3CJPX5).
   useSharedHomeDocumentTitle(showSharedHome, searchMode);
-  const setupReadyCount = setupChecks.filter((check) => check.status === "ready").length;
-  const setupCheckCount = setupChecks.length || fallbackSetupChecks.length;
-  const activeIndexingWorkCount =
-    jobs.filter((job) => job.status === "pending" || job.status === "processing").length +
-    batches.filter((batch) => batch.status === "queued" || batch.status === "processing").length;
-  const failedIndexingWorkCount =
-    jobs.filter((job) => job.status === "failed").length + batches.filter((batch) => batch.status === "failed").length;
-  const indexingAdminTabs: Array<{
-    id: IndexingAdministrationTab;
-    label: string;
-    summary: string;
-    tabId: string;
-    panelId: string;
-    icon: typeof Activity;
-  }> = [
-    {
-      id: "setup",
-      label: "Setup",
-      summary: `${setupReadyCount}/${setupCheckCount} ready`,
-      tabId: "dashboard-indexing-admin-tab-setup",
-      panelId: "dashboard-setup-section",
-      icon: ListChecks,
-    },
-    {
-      id: "jobs",
-      label: "Jobs",
-      summary: activeIndexingWorkCount
-        ? `${activeIndexingWorkCount} active`
-        : failedIndexingWorkCount
-          ? `${failedIndexingWorkCount} failed`
-          : "Idle",
-      tabId: "dashboard-indexing-admin-tab-jobs",
-      panelId: "dashboard-indexing-section",
-      icon: RefreshCw,
-    },
-    {
-      id: "quality",
-      label: "Quality",
-      summary: qualityItems.length ? `${qualityItems.length} review` : "Clear",
-      tabId: "dashboard-indexing-admin-tab-quality",
-      panelId: "dashboard-quality-section",
-      icon: ShieldAlert,
-    },
-  ];
-
-  function handleIndexingAdminTabKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
-    const order = indexingAdminTabs.map((tab) => tab.id);
-    const index = order.indexOf(settingsState.indexingAdminMobileTab);
-    const next =
-      event.key === "ArrowRight"
-        ? order[(index + 1) % order.length]
-        : event.key === "ArrowLeft"
-          ? order[(index - 1 + order.length) % order.length]
-          : event.key === "Home"
-            ? order[0]
-            : event.key === "End"
-              ? order[order.length - 1]
-              : null;
-    if (!next) return;
-    event.preventDefault();
-    if (next !== settingsState.indexingAdminMobileTab) settingsState.setIndexingAdminMobileTab(next);
-    indexingAdminTabRefs.current.get(next)?.focus();
-  }
   const documentsDrawerIsAdmin = settingsState.documentsDrawerMode === "admin" && canUseAdministrativeApis;
   const documentsDrawerTitle =
     settingsState.documentsDrawerMode === "recent"
@@ -3621,215 +3534,63 @@ function ClinicalDashboardContent({
                   <p className="px-1 pt-1 text-2xs font-bold uppercase tracking-kicker text-[color:var(--text-muted)]">
                     {drawerGroupTitle}
                   </p>
-                  {settingsState.documentsDrawerOpen ? (
-                    <UtilityDrawer
-                      id="dashboard-documents-drawer"
-                      icon={BookOpen}
-                      title={documentsDrawerTitle}
-                      summary={documentsDrawerSummary}
-                      mobileSummary={documentsDrawerMobileSummary}
-                      open={settingsState.documentsDrawerOpen}
-                      onOpenChange={handleDocumentsDrawerOpenChange}
-                      sheetBreakpoint={documentsDrawerIsAdmin ? "lg" : "all"}
-                      sheetReturnFocusRef={documentsDrawerReturnFocusRef}
-                      sheetHeaderLeading={
-                        <span className="grid h-10 w-10 place-items-center rounded-xl border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]">
-                          <DocumentsDrawerIcon className="h-5 w-5" aria-hidden="true" />
-                        </span>
-                      }
-                      sheetTitleAccessory={
-                        documentsDrawerIsAdmin ? (
-                          <span className="nums hidden rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-1 text-2xs font-bold text-[color:var(--text-muted)] sm:inline-flex">
-                            {indexedDocumentTotal.toLocaleString()} indexed
-                          </span>
-                        ) : null
-                      }
-                      sheetDescription={documentsDrawerSummary}
-                      sheetHeaderClassName="bg-[color:var(--surface-raised)] px-4 py-3 sm:px-5 sm:py-4"
-                      sheetCloseButtonClassName="grid h-tap w-tap shrink-0 place-items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-                      sheetContentClassName="max-h-[min(82dvh,40rem)] sm:max-h-[min(88dvh,46rem)] sm:max-w-2xl lg:max-w-3xl"
-                      sheetBodyClassName="bg-[color:var(--surface-subtle)] p-3 sm:p-4"
-                      sheetChildrenClassName="space-y-3"
-                    >
-                      {documentsDrawerIsAdmin ? (
-                        <LibraryHealthStrip
-                          documents={documents}
-                          jobs={jobs}
-                          batches={batches}
-                          checks={setupChecks}
-                          loading={dashboardDataLoading}
-                          onSelectTarget={openLibraryHealthTarget}
-                        />
-                      ) : null}
-                      <DocumentDrawer
-                        documents={documentsDrawerIsAdmin ? documents : libraryPdfDocuments}
-                        pagination={documentsPagination}
-                        loadingMoreDocuments={loadingMoreDocuments}
-                        mode={documentsDrawerIsAdmin ? "admin" : settingsState.documentsDrawerMode}
-                        selectedDocumentIds={selectedDocumentIds}
-                        statusFilter={documentDrawerStatusFilter}
-                        onToggleScope={toggleDocumentScope}
-                        onLoadMoreDocuments={loadMoreDocuments}
-                        onDocumentRenamed={handleDocumentRenamed}
-                        onDocumentDeleted={handleDocumentDeleted}
-                        onBulkReindex={bulkReindexSelected}
-                        onBulkAssignCollection={bulkAssignCollection}
-                        onBulkMetadataUpdate={bulkUpdateMetadata}
-                        bulkActionStatus={bulkActionStatus}
-                        bulkActionBusy={bulkActionBusy}
-                        canManageDocuments={canUseAdministrativeApis}
-                        onTagSearch={handleTagSearch}
-                        onMutateLabel={mutateDocumentLabel}
-                      />
-                    </UtilityDrawer>
-                  ) : null}
+                  <DashboardDocumentsDrawer
+                    open={settingsState.documentsDrawerOpen}
+                    onOpenChange={handleDocumentsDrawerOpenChange}
+                    title={documentsDrawerTitle}
+                    summary={documentsDrawerSummary}
+                    mobileSummary={documentsDrawerMobileSummary}
+                    isAdmin={documentsDrawerIsAdmin}
+                    returnFocusRef={documentsDrawerReturnFocusRef}
+                    icon={DocumentsDrawerIcon}
+                    indexedDocumentTotal={indexedDocumentTotal}
+                    documents={documents}
+                    libraryPdfDocuments={libraryPdfDocuments}
+                    jobs={jobs}
+                    batches={batches}
+                    setupChecks={setupChecks}
+                    dashboardDataLoading={dashboardDataLoading}
+                    openLibraryHealthTarget={openLibraryHealthTarget}
+                    documentsPagination={documentsPagination}
+                    loadingMoreDocuments={loadingMoreDocuments}
+                    documentsDrawerMode={settingsState.documentsDrawerMode}
+                    selectedDocumentIds={selectedDocumentIds}
+                    documentDrawerStatusFilter={documentDrawerStatusFilter}
+                    toggleDocumentScope={toggleDocumentScope}
+                    loadMoreDocuments={loadMoreDocuments}
+                    handleDocumentRenamed={handleDocumentRenamed}
+                    handleDocumentDeleted={handleDocumentDeleted}
+                    bulkReindexSelected={bulkReindexSelected}
+                    bulkAssignCollection={bulkAssignCollection}
+                    bulkUpdateMetadata={bulkUpdateMetadata}
+                    bulkActionStatus={bulkActionStatus}
+                    bulkActionBusy={bulkActionBusy}
+                    canManageDocuments={canUseAdministrativeApis}
+                    handleTagSearch={handleTagSearch}
+                    mutateDocumentLabel={mutateDocumentLabel}
+                  />
 
                   {settingsState.indexingAdminDrawerOpen && canUseAdministrativeApis ? (
-                    <UtilityDrawer
-                      id="dashboard-indexing-admin-drawer"
-                      icon={Activity}
-                      title="Indexing administration"
-                      summary="Documents are added through the administrator backend. Monitor setup, jobs, and ingestion quality here."
-                      mobileSummary="Indexing admin"
+                    <IndexingAdminDrawer
                       open={settingsState.indexingAdminDrawerOpen}
                       onOpenChange={settingsState.setIndexingAdminDrawerOpen}
-                      sheetReturnFocusRef={indexingAdminReturnFocusRef}
-                    >
-                      <LibraryHealthStrip
-                        documents={documents}
-                        jobs={jobs}
-                        batches={batches}
-                        checks={setupChecks}
-                        loading={dashboardDataLoading}
-                        onSelectTarget={openLibraryHealthTarget}
-                      />
-                      <div
-                        role="tablist"
-                        aria-label="Indexing administration sections"
-                        onKeyDown={handleIndexingAdminTabKeyDown}
-                        className="grid grid-cols-3 gap-2 lg:hidden"
-                      >
-                        {indexingAdminTabs.map((tab) => {
-                          const active = settingsState.indexingAdminMobileTab === tab.id;
-                          const Icon = tab.icon;
-                          return (
-                            <button
-                              key={tab.id}
-                              ref={(element) => {
-                                if (element) indexingAdminTabRefs.current.set(tab.id, element);
-                                else indexingAdminTabRefs.current.delete(tab.id);
-                              }}
-                              type="button"
-                              role="tab"
-                              id={tab.tabId}
-                              aria-selected={active}
-                              aria-controls={tab.panelId}
-                              aria-label={tab.label}
-                              aria-describedby={`${tab.tabId}-summary`}
-                              tabIndex={active ? 0 : -1}
-                              onClick={() => settingsState.setIndexingAdminMobileTab(tab.id)}
-                              className={cn(
-                                "min-h-[56px] rounded-lg border px-2.5 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] active:translate-y-px",
-                                active
-                                  ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--glow-soft)]"
-                                  : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]",
-                              )}
-                            >
-                              <span className="flex items-center gap-1.5 text-xs font-bold">
-                                <Icon aria-hidden="true" className="h-3.5 w-3.5" />
-                                {tab.label}
-                              </span>
-                              <span
-                                id={`${tab.tabId}-summary`}
-                                className="mt-1 block truncate text-2xs font-semibold opacity-80"
-                              >
-                                {tab.summary}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        <div
-                          id="dashboard-setup-section"
-                          role={indexingAdminUsesDesktopRegions ? "region" : "tabpanel"}
-                          aria-labelledby={
-                            indexingAdminUsesDesktopRegions
-                              ? "dashboard-setup-section-heading"
-                              : "dashboard-indexing-admin-tab-setup"
-                          }
-                          className={cn(
-                            "space-y-3 scroll-mt-4 lg:col-start-1 lg:row-start-1",
-                            settingsState.indexingAdminMobileTab !== "setup" && "hidden lg:block",
-                          )}
-                        >
-                          <p
-                            id="dashboard-setup-section-heading"
-                            className={cn("text-xs font-bold uppercase tracking-eyebrow", textMuted)}
-                          >
-                            Developer setup status
-                          </p>
-                          <SetupChecklist checks={setupChecks} />
-                          {showAuthPanel && <AuthPanel />}
-                        </div>
-                        <div
-                          id="dashboard-indexing-section"
-                          role={indexingAdminUsesDesktopRegions ? "region" : "tabpanel"}
-                          aria-labelledby={
-                            indexingAdminUsesDesktopRegions
-                              ? "dashboard-indexing-section-heading"
-                              : "dashboard-indexing-admin-tab-jobs"
-                          }
-                          className={cn(
-                            "space-y-3 scroll-mt-4 lg:col-start-2 lg:row-start-1",
-                            settingsState.indexingAdminMobileTab !== "jobs" && "hidden lg:block",
-                          )}
-                        >
-                          <p
-                            id="dashboard-indexing-section-heading"
-                            className={cn("text-xs font-bold uppercase tracking-eyebrow", textMuted)}
-                          >
-                            Indexing progress
-                          </p>
-                          <IndexingMonitor
-                            jobs={jobs}
-                            batches={batches}
-                            filter={indexingMonitorFilter}
-                            actionId={indexingActionId}
-                            onRetry={retryJob}
-                            onReindex={reindexDocument}
-                            onEnrich={enrichDocument}
-                          />
-                        </div>
-                        <div
-                          id="dashboard-quality-section"
-                          role={indexingAdminUsesDesktopRegions ? "region" : "tabpanel"}
-                          aria-labelledby={
-                            indexingAdminUsesDesktopRegions
-                              ? "dashboard-quality-section-heading"
-                              : "dashboard-indexing-admin-tab-quality"
-                          }
-                          className={cn(
-                            "space-y-3 scroll-mt-4 lg:col-span-2 lg:row-start-2",
-                            settingsState.indexingAdminMobileTab !== "quality" && "hidden lg:block",
-                          )}
-                        >
-                          <p
-                            id="dashboard-quality-section-heading"
-                            className={cn("text-xs font-bold uppercase tracking-eyebrow", textMuted)}
-                          >
-                            Ingestion quality console
-                          </p>
-                          <IngestionQualityConsole
-                            items={qualityItems}
-                            actionId={indexingActionId}
-                            onRetry={retryJob}
-                            onReindex={reindexDocument}
-                            onEnrich={enrichDocument}
-                          />
-                        </div>
-                      </div>
-                    </UtilityDrawer>
+                      returnFocusRef={indexingAdminReturnFocusRef}
+                      documents={documents}
+                      jobs={jobs}
+                      batches={batches}
+                      setupChecks={setupChecks}
+                      qualityItems={qualityItems}
+                      dashboardDataLoading={dashboardDataLoading}
+                      settingsState={settingsState}
+                      indexingAdminUsesDesktopRegions={indexingAdminUsesDesktopRegions}
+                      indexingMonitorFilter={indexingMonitorFilter}
+                      indexingActionId={indexingActionId}
+                      retryJob={retryJob}
+                      reindexDocument={reindexDocument}
+                      enrichDocument={enrichDocument}
+                      openLibraryHealthTarget={openLibraryHealthTarget}
+                      showAuthPanel={showAuthPanel}
+                    />
                   ) : null}
                 </section>
               )}

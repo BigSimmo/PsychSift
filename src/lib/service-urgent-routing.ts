@@ -14,12 +14,13 @@ export type ServiceUrgentIntent =
   | "suicide_postvention";
 
 // `self[- ]?harm\w*` so "self harming", "self-harmed" and "selfharm" are all crisis wording.
-const CRISIS = /\b(?:suicid\w*|crisis|acute|unsafe|self[- ]?harm\w*|mental health emergency)\b/i;
+const CRISIS =
+  /\b(?:suicid\w*|crisis|acute|unsafe|self[- ]?harm\w*|mental health emergency|kill (?:myself|oneself|themselves|himself|herself)|end (?:my|one['’]?s|their|his|her) life|take (?:my|one['’]?s|their|his|her) own life|hang (?:myself|oneself|themselves|himself|herself)|bottle of pills)\b/i;
 const IMMEDIATE_DANGER =
   /\b(?:actively suicidal|immediate danger|life[- ]?threatening|severe injury|overdose|about to (?:kill|harm)|cannot keep (?:myself|them|him|her|the patient) safe|emergency (?:now|in progress)|strangl\w*|chok(?:ing|ed)?|can[’']?t breathe|cannot breathe)\b/i;
 // Wording that says the person is under 18: CAMHS Crisis Connect alone.
 const CHILD =
-  /\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old)\b/i;
+  /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old)\b|<\s*18\b)/i;
 // Owner decision 15 (Josh, 2026-09-25): plain youth wording does not say whether the person is
 // under or over 18, so a youth crisis pins both CAMHS Crisis Connect and the adult MHERL line,
 // CAMHS first. Explicit under-18 wording (CHILD) in the same query settles the age: CAMHS alone.
@@ -176,29 +177,46 @@ export function detectServiceUrgentIntents(query: string): ServiceUrgentIntent[]
   const youthAnyAge = !child && YOUTH.test(clean);
   const acuteCrisis = crisis && !postvention && !AFTERCARE.test(clean);
 
-  if (immediateDanger || (acuteCrisis && !child && !youthAnyAge && !REGIONAL_WA.test(clean))) {
-    intents.push("emergency");
+  const isRegional = REGIONAL_WA.test(clean);
+  const region = isRegional ? detectWaRegionForDaytime(clean) : undefined;
+  const isAfterHours = queryIndicatesAfterHours(clean);
+  const isDaytime = detectClockTimeUrgency(clean) === "daytime";
+
+  // Regional routing:
+  // After-hours pins Rurallink first while retaining emergency (000) below.
+  // Daytime or unstated clinic hours for a recognized region pin the regional clinic first, then Rurallink.
+  if (acuteCrisis && isRegional && isAfterHours && !immediateDanger) {
+    intents.push("regional_after_hours");
+  } else if (crisis && isRegional && region && !isAfterHours) {
+    intents.push("regional_daytime");
+    intents.push("regional_after_hours");
   }
+
+  // Emergency (000): immediate danger, or acute crisis (adult/youth) where a local daytime clinic is not handling it
+  if (immediateDanger || (acuteCrisis && !child && !youthAnyAge && !(isRegional && region && !isAfterHours))) {
+    if (!intents.includes("emergency")) {
+      intents.push("emergency");
+    }
+  }
+
   if (crisis && (child || youthAnyAge)) intents.push("camhs_crisis");
   if (ABORIGINAL.test(clean) && crisis) intents.push("aboriginal_crisis");
   if (FAMILY_VIOLENCE_NAMED.test(clean) || FAMILY_VIOLENCE_DESCRIBED.test(clean)) intents.push("family_violence");
   if (SEXUAL_ASSAULT.test(clean)) intents.push("sexual_assault");
-  if (crisis && REGIONAL_WA.test(clean) && (queryIndicatesAfterHours(clean) || immediateDanger)) {
-    intents.push("regional_after_hours");
-  } else if (crisis && REGIONAL_WA.test(clean)) {
-    // The place is named and the query is urgent, but nothing marks it as
-    // after-hours — the system has no notion of what time it actually is, so
-    // pin the region's own daytime clinic first and keep RuralLink pinned
-    // as a second, always-available fallback rather than assume either way.
-    const region = detectWaRegionForDaytime(clean);
-    if (region) {
-      intents.push("regional_daytime");
+
+  if (crisis && isRegional) {
+    if (!intents.includes("regional_after_hours") && !isDaytime) {
       intents.push("regional_after_hours");
     }
   }
-  if (acuteCrisis && !child) {
-    intents.push("adult_metro_crisis");
+
+  // IMMEDIATE_DANGER phrases always pin adult_metro_crisis (MHERL / Lifeline WA) alongside emergency (000)
+  if ((acuteCrisis && !child) || immediateDanger) {
+    if (!intents.includes("adult_metro_crisis")) {
+      intents.push("adult_metro_crisis");
+    }
   }
+
   if (AOD_TERMS.test(clean) && AOD_URGENCY.test(clean)) intents.push("aod_urgent");
   if (!immediateDanger && !postvention && AFTERCARE.test(clean)) intents.push("suicide_aftercare");
   if (postvention) intents.push("suicide_postvention");

@@ -343,4 +343,22 @@ describe("MasterSearchHeader DOM", () => {
       expect(slot.hasAttribute(modeHomeComposerReserveAttr)).toBe(false);
     });
   });
+
+  describe("client-side PHI detection warning", () => {
+    it("renders role=alert PHI warning when query contains identifier shapes", () => {
+      render(
+        <MasterSearchHeader {...defaultHeaderProps()} query="Patient Jane Citizen MRN: 12345678 DOB: 01/01/1980" />,
+      );
+
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent("Remove identifiable patient details before searching.");
+      expect(alert).toHaveAttribute("id", "composer-phi-warning");
+    });
+
+    it("does not render PHI warning for generic clinical queries", () => {
+      render(<MasterSearchHeader {...defaultHeaderProps()} query="clozapine neutropenia monitoring guidelines" />);
+
+      expect(screen.queryByTestId("composer-phi-warning")).toBeNull();
+    });
+  });
 });

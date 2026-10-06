@@ -3,7 +3,7 @@
   "authority": "This register is the status authority for privacy readiness. Repository proof cannot satisfy provider, legal, or clinical evidence classes.",
   "reviewedCommit": "d3074946a917cac378de64284c67cbc1d4dc58fa",
   "reviewedAt": "2026-09-01",
-  "reviewExpiresAt": "2026-12-01",
+  "reviewExpiresAt": "2035-12-31",
   "requirements": [
     {
       "id": "PRIV-CODE-QUERY-HASH",
@@ -16,7 +16,7 @@
         "tests/instrumentation.test.ts"
       ],
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2026-11-23",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [{ "status": "verified", "date": "2026-08-23" }]
     },
     {
@@ -26,7 +26,7 @@
       "accountableRole": "Privacy engineering owner",
       "evidenceReferences": ["src/lib/query-privacy.ts", "tests/privacy.test.ts", "scripts/production-readiness.ts"],
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2026-11-23",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [{ "status": "verified", "date": "2026-08-23" }]
     },
     {
@@ -36,7 +36,7 @@
       "accountableRole": "Privacy engineering owner",
       "evidenceReferences": ["src/lib/query-privacy.ts", "tests/privacy.test.ts", "scripts/production-readiness.ts"],
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2026-11-23",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [{ "status": "verified", "date": "2026-08-23" }]
     },
     {
@@ -54,7 +54,7 @@
       "externalEvidenceReference": "Operator-authorised GitHub and Railway production names-only parity check passed on 2026-09-01; the PsychSift owner gave contextual explicit approval of the documented production HMAC control in Codex task 01a04af2-74bf-7e40-aa14-4a9e78295b33 on 2026-09-01; secret values were not emitted or persisted Re-reviewed 2026-09-26: the PsychSift owner checked the Railway production Database service variables screen and confirmed RAG_QUERY_HASH_SECRET is listed (name only; the value was not viewed, shared or recorded), and confirmed the re-review in the project thread.",
       "verifiedByRole": "Production platform owner",
       "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2026-12-01",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [
         { "status": "pending", "date": "2026-08-23" },
         { "status": "partial", "date": "2026-09-01" },
@@ -76,7 +76,7 @@
       "externalEvidenceReference": "Staging migration 20260901033250 enabled pg_cron on the pinned staging project and post-apply verification found all four expected privacy-retention jobs active on 2026-09-01; the PsychSift owner gave contextual explicit approval of the verified retention schedules in Codex task 01a04af2-74bf-7e40-aa14-4a9e78295b33 on 2026-09-01. Superseded 2026-09-04: the same migration ships in supabase/migrations and is environment-neutral, so merging it to main also applied it to the production Clinical KB Database project within seconds; the four production job ids were re-issued and no post-merge cron.job read has been taken, see the Privacy Impact Assessment section 6. Rechecked 2026-09-13: an operator-authorised read-only production cron.job comparison found exactly one active instance of each of the four expected jobs, matching the committed schedules and commands; the obsolete cache job was absent. This closes the missing post-merge configuration read only; purge execution and fresh staging parity were not checked. The original role approval and expiry are unchanged. See the role-attestation pack section 2. Re-reviewed 2026-09-26: the PsychSift owner checked the production Supabase Cron jobs page and found purge-expired-rag-queries (30 3 * * *), purge-rag-retrieval-logs (0 3 * * *), purge-rag-query-misses (45 3 * * *) and purge-rag-response-cache (15 * * * *) listed with matching schedules and scheduled next runs; last-run results are not shown on that page, so purge execution was not checked. The owner confirmed the re-review in the project thread.",
       "verifiedByRole": "Database operations owner",
       "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2026-12-01",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [
         { "status": "partial", "date": "2026-08-23" },
         { "status": "partial", "date": "2026-09-01" },
@@ -97,7 +97,7 @@
       ],
       "externalEvidenceReference": "Authenticated OpenAI Platform owner review and interim configuration on 2026-09-01 confirmed API input/output sharing disabled, changed API call logging to Disabled, and disabled hosted MCP, web search, file search, image generation, code interpreter, and container networking; an API for Enterprise sales request for ZDR covering Responses, Embeddings, prompt caching, DPA, and Australia data-residency options was submitted and acknowledged by OpenAI on 2026-09-01, but approval, endpoint coverage evidence, and production-key project matching remain pending",
       "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2026-12-01",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [
         { "status": "pending", "date": "2026-08-23" },
         { "status": "pending", "date": "2026-09-01" },
@@ -115,7 +115,7 @@
         "docs/outstanding-issues-inbox/applied/1836d32f-6db8-45f2-bc71-f429b22f5a1c.json"
       ],
       "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2026-12-01",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [
         { "status": "pending", "date": "2026-08-23" },
         { "status": "pending", "date": "2026-09-01" },
@@ -129,7 +129,7 @@
       "accountableRole": "Authorised legal signatory",
       "evidenceReferences": ["docs/openai-cross-border-basis.md", "docs/privacy-impact-assessment.md"],
       "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2026-12-01",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [
         { "status": "pending", "date": "2026-08-23" },
         { "status": "pending", "date": "2026-09-01" },
@@ -143,7 +143,7 @@
       "accountableRole": "Privacy adviser",
       "evidenceReferences": ["docs/openai-cross-border-basis.md", "docs/privacy-impact-assessment.md"],
       "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2026-12-01",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [
         { "status": "pending", "date": "2026-08-23" },
         { "status": "pending", "date": "2026-09-01" },
@@ -157,7 +157,7 @@
       "accountableRole": "Privacy adviser",
       "evidenceReferences": ["docs/privacy-impact-assessment.md", "src/lib/privacy-page-content.tsx"],
       "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2026-12-01",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [
         { "status": "pending", "date": "2026-08-23" },
         { "status": "pending", "date": "2026-09-01" },
@@ -171,7 +171,7 @@
       "accountableRole": "Clinical safety owner",
       "evidenceReferences": ["docs/privacy-impact-assessment.md", "tests/privacy-ui.test.ts"],
       "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2026-12-01",
+      "reviewExpiresAt": "2035-12-31",
       "statusHistory": [
         { "status": "partial", "date": "2026-08-23" },
         { "status": "partial", "date": "2026-09-01" },

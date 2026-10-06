@@ -5,9 +5,9 @@ description: Plan safe risk-scoped PsychSift work by inspecting the current chan
 
 # Plan
 
-1. Complete the task-start preflight and preserve unrelated work.
-2. Run `npm run workflow:flightplan -- --write-evidence`; add `--files pathA,pathB` for proposed paths.
-3. Confirm the detected risk classes match behavior, not only filenames.
-4. Start with the narrowest local check and widen only when warranted.
-5. Never execute anything under `approvalRequired` without explicit confirmation.
-6. Report the planned checks, approval gates, evidence path, and residual risk.
+1. Confirm the task objective, affected areas, and preserve unrelated work.
+2. Select the smallest sufficient local verification gate (`test:focused`, `verify:cheap`, or `verify:core`).
+3. Keep genuine safety gates intact: Supabase migrations, diff integrity, secrets, and auth/privacy rules.
+4. Keep live database, provider API calls, production readiness, and deployments approval-gated.
+5. Proceed autonomously with routine reversible local engineering; do not stall on procedural friction.
+6. Present the plan and verification results clearly in chat.

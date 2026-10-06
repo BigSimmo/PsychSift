@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
 import {
   allowRateLimitInMemoryFallbackOnUnavailable,
   consumeSubjectApiRateLimit,
@@ -43,10 +45,18 @@ function publicMedicationDetailPayload(slug: string) {
   };
 }
 
+const medicationSlugSchema = z.string().trim().min(1).max(128);
+
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
-    const normalizedSlug = normalizeMedicationSlug(slug ?? "");
+    const parsedSlug = medicationSlugSchema.safeParse(slug);
+    if (!parsedSlug.success) {
+      return publicErrorResponse("Invalid medication slug parameter.", 400, {
+        code: "invalid_medication_slug",
+      });
+    }
+    const normalizedSlug = normalizeMedicationSlug(parsedSlug.data);
     if (!normalizedSlug || !/^[a-z0-9_-]+$/.test(normalizedSlug) || normalizedSlug.length > 120) {
       return notFoundResponse(normalizedSlug || "unknown");
     }
