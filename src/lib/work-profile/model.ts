@@ -132,6 +132,43 @@ export function cpdArea(loaded: Loaded<{ configured: boolean; routines: number }
   return { id: "cpd", title: "CPD", subtitle, state: "ready", label: "Ready" };
 }
 
+export type TeamMembership = {
+  readonly id: string;
+  readonly name: string;
+  readonly subtitle: string;
+  /** Roster teams open the roster; a teaching-only team opens the teaching week. */
+  readonly href: "/roster" | "/teaching/week";
+};
+
+/**
+ * One row per team the doctor belongs to, joining the roster and teaching
+ * lists on their shared service id, so a team in both reads "Roster and
+ * teaching" once rather than twice.
+ */
+export function teamMemberships(
+  roster: ReadonlyArray<{ readonly serviceId: string; readonly name: string; readonly enabled: boolean }>,
+  teaching: ReadonlyArray<{ readonly id: string; readonly name: string }>,
+): TeamMembership[] {
+  const teachingIds = new Set(teaching.map((team) => team.id));
+  const rows: TeamMembership[] = roster.map((team) => {
+    const teaches = teachingIds.has(team.serviceId);
+    const subtitle = team.enabled
+      ? teaches
+        ? "Roster and teaching"
+        : "Roster"
+      : teaches
+        ? "Teaching · roster switched off"
+        : "Roster · switched off";
+    return { id: team.serviceId, name: team.name, subtitle, href: "/roster" };
+  });
+  const rosterIds = new Set(roster.map((team) => team.serviceId));
+  for (const team of teaching) {
+    if (!rosterIds.has(team.id))
+      rows.push({ id: team.id, name: team.name, subtitle: "Teaching only", href: "/teaching/week" });
+  }
+  return rows;
+}
+
 const SETUP_DATES: ReadonlyArray<{ kind: SetupRequirement; label: string }> = [
   { kind: "registration", label: "Medical registration renewal" },
   { kind: "indemnity", label: "Indemnity insurance" },

@@ -203,4 +203,15 @@ describe("Work profile page", () => {
     render(<WorkProfilePage />);
     expect(screen.getByTestId("work-profile-area-teaching").closest("a")?.getAttribute("href")).toBe("/teaching/week");
   });
+
+  it("Privacy lists teaching-only teams too, opening the teaching week", () => {
+    nav.search = "tab=privacy";
+    data.current = readyData({
+      teaching: { status: "ready", value: { teams: 1, list: [{ id: "t1", name: "Psychiatry teaching" }] } },
+    });
+    render(<WorkProfilePage />);
+    const row = screen.getByText("Psychiatry teaching").closest("a");
+    expect(row?.getAttribute("href")).toBe("/teaching/week");
+    expect(row?.textContent).toContain("Teaching only");
+  });
 });

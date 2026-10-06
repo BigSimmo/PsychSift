@@ -67,7 +67,8 @@ export type WorkProfileData = {
   readonly roster: Loaded<{ workplaces: number; rowName: string | null }>;
   readonly workplaces: Loaded<readonly string[]>;
   readonly teams: Loaded<readonly RosterTeam[]>;
-  readonly teaching: Loaded<{ teams: number }>;
+  /** `list` names the teams (absent in older fixtures, which count only). */
+  readonly teaching: Loaded<{ teams: number; list?: ReadonlyArray<{ id: string; name: string }> }>;
   readonly cpd: Loaded<CpdStatus>;
   readonly admin: Loaded<AdminSummary>;
   readonly hospitalPhone: boolean;
@@ -127,9 +128,13 @@ export function useWorkProfileData(now: Date): WorkProfileData {
             ? { status: "ready", value: [] }
             : { status: "failed" };
 
-  const teaching: Loaded<{ teams: number }> =
+  const teachingTeams = (teachingWeek.week?.teams ?? []).filter((team) => !team.isDemo);
+  const teaching: WorkProfileData["teaching"] =
     teachingWeek.status === "ready"
-      ? { status: "ready", value: { teams: (teachingWeek.week?.teams ?? []).filter((team) => !team.isDemo).length } }
+      ? {
+          status: "ready",
+          value: { teams: teachingTeams.length, list: teachingTeams.map(({ id, name }) => ({ id, name })) },
+        }
       : teachingWeek.status === "idle" || teachingWeek.status === "loading"
         ? { status: "loading" }
         : teachingWeek.status === "signed-out"

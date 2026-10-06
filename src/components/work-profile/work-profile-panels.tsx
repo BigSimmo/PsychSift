@@ -46,6 +46,7 @@ import {
   restRulesProvenance,
   rosterArea,
   teachingArea,
+  teamMemberships,
   type AreaRow,
 } from "@/lib/work-profile/model";
 
@@ -385,7 +386,10 @@ export function PrivacyPanel({
 }) {
   const { signOut } = useAuthSession();
   const [cleared, setCleared] = useState<string | null>(null);
-  const teams = data.teams.status === "ready" ? data.teams.value : [];
+  const teams = teamMemberships(
+    data.teams.status === "ready" ? data.teams.value : [],
+    data.teaching.status === "ready" ? (data.teaching.value.list ?? []) : [],
+  );
 
   const clearSearches = () => {
     const count = countRecentQueries();
@@ -429,13 +433,7 @@ export function PrivacyPanel({
       {teams.length > 0 ? (
         <WorkProfileSection label="Your teams">
           {teams.map((team) => (
-            <WorkProfileRow
-              key={team.serviceId}
-              icon={Users}
-              title={team.name}
-              subtitle={team.enabled ? "Roster" : "Roster · switched off"}
-              href="/roster"
-            />
+            <WorkProfileRow key={team.id} icon={Users} title={team.name} subtitle={team.subtitle} href={team.href} />
           ))}
         </WorkProfileSection>
       ) : null}

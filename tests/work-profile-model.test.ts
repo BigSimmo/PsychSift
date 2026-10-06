@@ -16,6 +16,7 @@ import {
   rosterArea,
   summariseAdmin,
   teachingArea,
+  teamMemberships,
   workplaceNames,
 } from "@/lib/work-profile/model";
 import { complianceFixture, onCallEntryFixture } from "./helpers/on-call-entry-fixture";
@@ -208,5 +209,28 @@ describe("tabs, stage, rules and helpers", () => {
         "Royal Perth": {},
       }),
     ).toEqual(["Fiona Stanley", "Royal Perth"]);
+  });
+
+  it("Your teams joins roster and teaching on the service id, one row per team", () => {
+    const rows = teamMemberships(
+      [
+        { serviceId: "a", name: "Gen Psych 2", enabled: true },
+        { serviceId: "b", name: "Old ward", enabled: false },
+        { serviceId: "c", name: "Night cover", enabled: true },
+      ],
+      [
+        { id: "a", name: "Gen Psych 2" },
+        { id: "d", name: "Psychiatry teaching" },
+      ],
+    );
+    expect(rows.map((row) => [row.name, row.subtitle, row.href])).toEqual([
+      ["Gen Psych 2", "Roster and teaching", "/roster"],
+      ["Old ward", "Roster · switched off", "/roster"],
+      ["Night cover", "Roster", "/roster"],
+      ["Psychiatry teaching", "Teaching only", "/teaching/week"],
+    ]);
+    expect(
+      teamMemberships([{ serviceId: "a", name: "A", enabled: false }], [{ id: "a", name: "A" }])[0]!.subtitle,
+    ).toBe("Teaching · roster switched off");
   });
 });
