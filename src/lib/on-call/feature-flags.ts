@@ -34,8 +34,10 @@ export const ON_CALL_ADMIN_ROWS_HREF = "/admin/help";
 export const ON_CALL_HANDOVER_SHARE_ENABLED = false;
 
 /**
- * The two plain legal statuses ("Voluntary", "Not under the Act") offered above
- * the forms register in the handover's Legal sheet. Off until their wording has
- * clinical sign-off; the sheet still takes any status typed as written.
+ * The plain legal status ("Voluntary") offered above the forms register in the
+ * handover's Legal sheet. The owner chose to offer it on 6 Oct 2026; its exact
+ * wording still needs his clinical sign-off before this ships. "Not under the
+ * Act" is deliberately never offered: a patient on a referral or detention order
+ * is not involuntary but is under the Act. Any status can still be typed.
  */
-export const ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED = false;
+export const ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED = true;

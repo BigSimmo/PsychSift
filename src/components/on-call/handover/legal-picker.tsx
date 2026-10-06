@@ -19,8 +19,8 @@ import {
  * LEGAL: a field that opens a bottom sheet of every form in the app's official
  * forms register (codes, titles and groups copied from it, nothing shortened),
  * and the values already used this shift. Searching also offers the words as
- * typed, so any status can be written. The two plain statuses wait for clinical
- * sign-off (`ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED`). One tap picks and closes.
+ * typed, so any status can be written. "Voluntary" sits above the register as a
+ * plain status (`ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED`). One tap picks and closes.
  */
 
 /** The groups shown open first, as the owner's design does; every other category folds under "More forms". */
