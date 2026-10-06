@@ -1,8 +1,11 @@
 "use client";
 
 import { LogIn } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
+import { EndOfShiftCard } from "@/components/alerts/end-of-shift-card";
+import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
+import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -11,6 +14,8 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { useMyDayNow } from "@/components/my-day/my-day-page-parts";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
+import { useRosterShifts } from "@/components/roster/use-roster-shifts";
+import { endOfShiftCard, type ShiftWindow } from "@/lib/alerts/end-of-shift";
 import { myDayEnabledForAuth, myDayNeedsSignIn } from "@/lib/my-day/model";
 import { useAuthSession } from "@/lib/supabase/client";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
@@ -119,8 +124,52 @@ export function MyDayFrame({
           </div>
         ) : null}
 
-        {enabled ? children(now) : null}
+        {enabled ? <MyDayFrameBody now={now}>{children}</MyDayFrameBody> : null}
       </div>
     </InformationPageShell>
+  );
+}
+
+function MyDayFrameBody({ now, children }: { readonly now: Date; readonly children: (now: Date) => ReactNode }) {
+  const shiftsState = useRosterShifts();
+  const { reminders } = useRemindMe();
+  const [sheet, setSheet] = useState<"reminders" | "remind-me" | null>(null);
+
+  const shiftWindows: readonly ShiftWindow[] = useMemo(
+    () =>
+      shiftsState.shifts.map((s) => ({
+        label: s.title || (s as { label?: string }).label || "Rostered shift",
+        startsAt: s.startsAt,
+        endsAt: s.endsAt,
+      })),
+    [shiftsState.shifts],
+  );
+
+  const endOfShift = useMemo(() => endOfShiftCard(now, shiftWindows), [now, shiftWindows]);
+  const openReminders = useMemo(() => reminders.filter((item) => !item.doneAt), [reminders]);
+
+  return (
+    <>
+      {endOfShift ? (
+        <EndOfShiftCard
+          shift={endOfShift}
+          pendingReminders={openReminders.length}
+          onOpenReminders={() => setSheet("reminders")}
+        />
+      ) : null}
+      {children(now)}
+      <YourRemindersSheet
+        open={sheet === "reminders"}
+        onClose={() => setSheet(null)}
+        now={now}
+        onAdd={() => setSheet("remind-me")}
+      />
+      <RemindMeSheet
+        open={sheet === "remind-me"}
+        onClose={() => setSheet("reminders")}
+        now={now}
+        shiftEndsAt={endOfShift?.endsAt ?? null}
+      />
+    </>
   );
 }
