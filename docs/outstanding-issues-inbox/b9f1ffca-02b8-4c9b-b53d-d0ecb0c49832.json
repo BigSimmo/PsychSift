@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b9f1ffca-02b8-4c9b-b53d-d0ecb0c49832",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#W7W94G",
+    "detail": "Drafts and supervisor waiting states landed in PR #3078 (1c4c4f73fb).",
+    "source": "PR #3078 review",
+    "baseRowFingerprint": "24594637e06cd5f2d47f6e959028416e764f6668e713ca5520b439d63f678cf3"
+  }
+}

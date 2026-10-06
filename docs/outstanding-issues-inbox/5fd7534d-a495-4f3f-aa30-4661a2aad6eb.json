@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "5fd7534d-a495-4f3f-aa30-4661a2aad6eb",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#HPPMXH",
+    "outcome": "Converted all single-read count assertions in Playwright specs to retry polling (toHaveCount / expect.poll). Zero single-read count assertions remain in tests/.",
+    "baseRowFingerprint": "fdf7d49a0c98d95d0f50b598390ba2abb8d43bcaafd281382bb6b058fe24eb57"
+  }
+}
