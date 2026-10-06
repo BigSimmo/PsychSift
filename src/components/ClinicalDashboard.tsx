@@ -3769,7 +3769,7 @@ function ClinicalDashboardContent({
                     bulkUpdateMetadata={bulkUpdateMetadata}
                     bulkActionStatus={bulkActionStatus}
                     bulkActionBusy={bulkActionBusy}
-                    canUseAdministrativeApis={canUseAdministrativeApis}
+                    canManageDocuments={canUseAdministrativeApis}
                     handleTagSearch={handleTagSearch}
                     mutateDocumentLabel={mutateDocumentLabel}
                   />

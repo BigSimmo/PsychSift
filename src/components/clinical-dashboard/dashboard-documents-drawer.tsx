@@ -6,12 +6,13 @@ import { UtilityDrawer } from "@/components/clinical-dashboard/dashboard-shell";
 import { DocumentDrawer } from "@/components/clinical-dashboard/clinical-dashboard-lazy";
 import { LibraryHealthStrip, type LibraryHealthTarget } from "@/components/clinical-dashboard/library-health-strip";
 import type { SetupCheck } from "@/components/clinical-dashboard/document-manager-contracts";
-import type { DocumentPagination, DocumentDeleteResult } from "@/components/clinical-dashboard/document-admin";
+import type { DocumentDeleteResult } from "@/components/DocumentManagementActions";
 import type {
+  DocumentPagination,
   DocumentDrawerMode,
   DocumentDrawerStatusFilter,
   LabelReviewMutationBody,
-} from "@/components/clinical-dashboard/clinical-dashboard-payloads";
+} from "@/components/clinical-dashboard/dashboard-contracts";
 import type { SmartDocumentTag } from "@/lib/document-tags";
 import type { ClinicalDocument, ImportBatch, IngestionJob } from "@/lib/types";
 
