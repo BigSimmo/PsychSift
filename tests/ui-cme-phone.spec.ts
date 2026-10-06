@@ -128,7 +128,7 @@ test.describe("CME core screens at phone widths", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/cme/routines");
     await expect(page).toHaveURL(/\/cme\/routines/);
-    await page.getByRole("button", { name: "Log 1.0 h for Demo journal club", exact: true }).click();
+    await page.getByRole("button", { name: "Log 1.0 h for Journal club", exact: true }).click();
     // Demo mode is read-only: the tap is handled as a one-tap log attempt, not a silent form open.
     await expect(page.getByTestId("cme-one-tap-log-error")).toContainText("Demo mode is read-only");
     await expect(page).toHaveURL(/\/cme\/routines/);
