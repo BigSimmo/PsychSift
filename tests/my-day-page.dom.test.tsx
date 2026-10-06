@@ -37,6 +37,11 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
+const currentTab = vi.hoisted(() => vi.fn());
+vi.mock("@/components/mode-band/mode-band", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/mode-band/mode-band")>()),
+  useModeBandCurrentTab: currentTab,
+}));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="account-dialog" /> : null),
 }));
@@ -153,7 +158,6 @@ describe("MyDayPage", () => {
     expect(screen.getByTestId("my-day-sample-notice").textContent).toContain("appear here once you sign in");
     expect(screen.getByTestId("my-day-sample-line").textContent).toBe("Everything below is a made-up sample.");
     expect(within(screen.getByTestId("my-day-signed-out")).getByText("Sample")).toBeTruthy();
-    expect(screen.getByTestId("my-day-tabs")).toBeTruthy();
     const dashboard = await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
     expect(within(dashboard).getAllByText("Demo journal club").length).toBeGreaterThan(0);
     // "Later" on a sample row lasts only while the page is open, and stores nothing.
@@ -333,32 +337,24 @@ describe("MyDayPage", () => {
     expect(screen.getByTestId("my-day-dashboard")).toBeTruthy();
   });
 
-  // Design review v13: Today, Work and Me pages at `?page=`, switched by
-  // replacing the address so Back still leaves My Day in one step.
-  it("opens the page named in the address, and switches tab without adding history", () => {
+  // Design review v13: Today, Work and Me pages at `?page=`. The header's tabs
+  // switch them; the page names the current one, since ?page= is not in the path.
+  it("opens the page named in the address and names it as the header's current tab", () => {
     window.history.replaceState(null, "", "/my-day?page=work");
-    const { rerender } = render(<MyDayPage now={NOW} />);
+    render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-dashboard").getAttribute("data-page")).toBe("work");
-    expect(screen.getByRole("tab", { name: "Work" }).getAttribute("aria-selected")).toBe("true");
-    const before = window.history.length;
-    fireEvent.click(screen.getByRole("tab", { name: "Me" }));
-    expect(window.location.pathname + window.location.search).toBe("/my-day?page=me");
-    expect(window.history.length).toBe(before);
-    rerender(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-dashboard").getAttribute("data-page")).toBe("me");
-    // Today is the plain address.
-    fireEvent.click(screen.getByRole("tab", { name: "Today" }));
-    expect(window.location.pathname + window.location.search).toBe("/my-day");
+    expect(currentTab).toHaveBeenLastCalledWith("my-day-work");
+    expect(screen.queryByRole("tablist")).toBeNull();
   });
 
-  it("moves between tabs with the arrow keys, wrapping at the ends", () => {
+  it("moves to the next page with a sideways swipe, without adding history", () => {
     render(<MyDayPage now={NOW} />);
-    const today = screen.getByRole("tab", { name: "Today" });
-    expect(today.getAttribute("tabindex")).toBe("0");
-    fireEvent.keyDown(today, { key: "ArrowLeft" });
-    expect(window.location.search).toBe("?page=me");
-    fireEvent.keyDown(today, { key: "ArrowRight" });
+    const before = window.history.length;
+    const panel = document.getElementById("my-day-panel")!;
+    fireEvent.touchStart(panel, { touches: [{ clientX: 300, clientY: 100 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 100, clientY: 110 }] });
     expect(window.location.search).toBe("?page=work");
+    expect(window.history.length).toBe(before);
   });
 
   it("falls back to Today for an unknown page", () => {
