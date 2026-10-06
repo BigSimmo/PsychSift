@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { OnCallHospitalPhoneSwitch } from "@/components/on-call/call/hospital-phone-switch";
 import { ModeActionButton } from "@/components/mode-kit/action-button";
@@ -49,6 +49,9 @@ export function handbookFirstLine(body: string): string | null {
  * The sheet holds the body in the hospital's own words (`whitespace-pre-line`,
  * never rewritten), the "Also known as" names, the number again, and the
  * Updated line with sources. Titles wrap and are never truncated (#8RWKA0).
+ *
+ * `listOnly` keeps a numbered item as a chevron row too (Refer), so its
+ * `meta` line can sit under the text; the call link is then in the sheet.
  */
 export function OnCallHandbookItemRow({
   item,
@@ -57,9 +60,21 @@ export function OnCallHandbookItemRow({
   hospitalPhone,
   detailTestId,
   testId,
+  leading,
+  meta,
+  listOnly = false,
 }: {
   readonly item: HandbookItem;
   readonly secondary: string | null;
+  /** A muted glyph or badge before the text (mock-up v10). */
+  readonly leading?: ReactNode;
+  /** A third line under the secondary one, such as Refer's "Updated" line. */
+  readonly meta?: ReactNode;
+  /**
+   * Draw a chevron row even when the item has a number: the number and its
+   * call link then live in the detail sheet (Refer, mock-up v10 s-3).
+   */
+  readonly listOnly?: boolean;
   readonly hospitalName: string | null;
   readonly hospitalPhone: boolean;
   readonly detailTestId: string;
@@ -109,7 +124,7 @@ export function OnCallHandbookItemRow({
     </Sheet>
   );
 
-  if (hasNumber) {
+  if (hasNumber && !listOnly) {
     return (
       <>
         <OnCallDialRow
@@ -125,6 +140,7 @@ export function OnCallHandbookItemRow({
           lastConfirmedAt={item.lastConfirmedAt}
           sources={item.sources}
           hospitalName={hospitalName}
+          leading={leading}
           trailingAction={
             <ModeActionButton
               icon={ChevronRight}
@@ -147,17 +163,23 @@ export function OnCallHandbookItemRow({
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
         className={cn(
-          secondary ? modeRowHeight.double : modeRowHeight.single,
+          secondary || meta ? modeRowHeight.double : modeRowHeight.single,
           modePressable,
           focusRing,
           "flex w-full min-w-0 items-center gap-3 pl-3 pr-2 text-left",
         )}
       >
-        <span className="grid min-w-0 flex-1 gap-0.5">
+        {leading ? (
+          <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
+            {leading}
+          </span>
+        ) : null}
+        <span className="grid min-w-0 flex-1 gap-0.5 py-1.5">
           <span className={cn(modeNameText, "break-words text-base-minus text-[color:var(--text-heading)]")}>
             {label}
           </span>
           {secondary ? <span className={cn(modeSecondaryText, "break-words")}>{secondary}</span> : null}
+          {meta}
         </span>
         <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
       </button>

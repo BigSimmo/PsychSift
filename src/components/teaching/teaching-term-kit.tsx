@@ -7,6 +7,7 @@ import { focusRing } from "@/components/card-recipes";
 import { modeTapArea } from "@/components/mode-kit/recipes";
 import { modeNumberText } from "@/components/mode-kit/type";
 import { cn, textMuted } from "@/components/ui-primitives";
+import { T5Note } from "@/components/teaching/t5-kit";
 import { dayOfMonth, monthShort } from "@/lib/teaching/term-tracker";
 
 /*
@@ -94,7 +95,11 @@ export function TermRing({
 
 /** The quiet reminder beside every free-text field on these pages. */
 export function NoPatientDetailsMark() {
-  return <p className={cn("text-xs", textMuted)}>No patient details here. This stays on this device.</p>;
+  return (
+    <T5Note icon="shield" className="mt-3">
+      Do not add patient details. Stays on this device and is not backed up; you choose what to share.
+    </T5Note>
+  );
 }
 
 /** Pips for a count: up to `max` dots, then "+n". */
@@ -147,13 +152,13 @@ export function TermAddItem({
           disabled={disabled}
           onChange={(event) => setText(event.target.value)}
           className={cn(
-            "min-h-12 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-base-minus text-[color:var(--text)] placeholder:text-[color:var(--text-muted)]",
+            "h-10 w-full rounded-md bg-[color:var(--surface-inset)] px-3 text-sm text-[color:var(--text-heading)] placeholder:text-[color:var(--text-muted)]",
             focusRing,
           )}
         />
       </label>
       <button type="submit" disabled={disabled} className={cn(modeTapArea, "rounded-full", focusRing)}>
-        <span className="grid size-8.5 place-items-center rounded-full bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]">
+        <span className="grid size-10 place-items-center rounded-md border border-[color:var(--border-strong)] text-[color:var(--text-heading)]">
           <Plus aria-hidden="true" className="size-icon-md" />
         </span>
         <span className="sr-only">{label}</span>

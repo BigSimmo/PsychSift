@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -78,10 +78,13 @@ describe("On Call hub routes", () => {
 
   it("keeps the two personal editors reachable from Call and Refer", () => {
     render(<OnCallCallRoute />);
+    // People keeps the reader's own numbers under its Mine switch.
+    act(() => screen.getByRole("radio", { name: "Mine" }).click());
     expect(screen.getByRole("link", { name: "Your own numbers" })).toHaveAttribute("href", "/on-call/contacts");
     cleanup();
     render(<OnCallReferRoute />);
-    expect(screen.getByRole("link", { name: "Your own referrals" })).toHaveAttribute("href", "/on-call/referrals");
+    // Refer keeps the reader's own referrals behind the Add action on its "Your notes" group.
+    expect(screen.getByTestId("on-call-refer-mine-link")).toHaveAttribute("href", "/on-call/referrals");
   });
 });
 

@@ -109,7 +109,7 @@ export function TeachingSessionScreen({
       <TeachingNavHeader
         title="Session"
         testIdPrefix="teaching-session"
-        back={{ href: "/teaching/week", label: "Week" }}
+        back={{ href: "/teaching/week", label: "This week" }}
       />
       <InformationPageShell width="narrow" gap={false} testId="teaching-session">
         {content}

@@ -90,6 +90,12 @@ const MOUNTS: Record<AppModeId, { file: string; mounts: true } | { file: string;
     because: NO_RESULTS_SURFACE,
   }, // My Day, likewise: one merged list with no result list of its own.
   "my-day": { file: "src/components/my-day/my-day-page.tsx", mounts: false, because: NO_RESULTS_SURFACE },
+  // The file named here is Browse, the list the reader lands on at `/open-shifts`.
+  "open-shifts": {
+    file: "src/components/open-shifts/open-shifts-browse-page.tsx",
+    mounts: false,
+    because: NO_RESULTS_SURFACE,
+  },
 };
 
 function hasNoResultsSurface(modeId: AppModeId) {

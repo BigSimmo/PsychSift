@@ -30,17 +30,9 @@ export const MY_DAY_PAGE_LABELS: Readonly<Record<MyDayPageId, string>> = {
 
 export const MY_DAY_PAGE_CARDS = {
   today: ["up-next", "next-up", "flag", "quick-actions", "this-week", "needs-you", "cpd", "renewals"],
-  work: ["calls", "pinned-numbers", "whos-on", "next-talk"],
-  me: [
-    "cpd-hours",
-    "renew-next",
-    "renewals-timeline",
-    "hours",
-    "month-glance",
-    "credentials",
-    "cpd-month",
-    "quick-note",
-  ],
+  // During on call: the calls panel, then the team, numbers and next talk. On an ordinary day "Coming up" leads.
+  work: ["calls", "coming-up", "whos-on", "pinned-numbers", "next-talk"],
+  me: ["glance", "hours", "cpd-month", "credentials", "quick-note"],
 } as const satisfies Readonly<Record<MyDayPageId, readonly string[]>>;
 
 export const myDayCardIds = [...MY_DAY_PAGE_CARDS.today, ...MY_DAY_PAGE_CARDS.work, ...MY_DAY_PAGE_CARDS.me] as const;
@@ -59,13 +51,11 @@ export const MY_DAY_CARD_LABELS: Readonly<Record<MyDayCardId, string>> = {
   "pinned-numbers": "Pinned numbers",
   "whos-on": "Who's on now",
   "next-talk": "Next talk",
-  "cpd-hours": "CPD hours",
-  "renew-next": "Renew next",
-  "renewals-timeline": "Renewals timeline",
+  "coming-up": "Coming up",
+  glance: "At a glance",
   hours: "Hours worked",
-  "month-glance": "Month at a glance",
-  credentials: "Credentials wallet",
-  "cpd-month": "CPD by month",
+  credentials: "Credentials",
+  "cpd-month": "CPD this year, by month",
   "quick-note": "Quick note",
 };
 

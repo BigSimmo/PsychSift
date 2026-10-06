@@ -25,3 +25,17 @@ export const ON_CALL_YOU_CALLED_ENABLED = true;
  * Help; `/on-call/logistics` remains a bookmark redirect to the same place.
  */
 export const ON_CALL_ADMIN_ROWS_HREF = "/admin/help";
+
+/**
+ * Handover "Share to another app" (mock-up v10). Off until the owner decides:
+ * the handover's recorded rule is that it leaves the phone only by Copy or
+ * Print, and sharing sends bed, legal status and plan to any app on the phone.
+ */
+export const ON_CALL_HANDOVER_SHARE_ENABLED = false;
+
+/**
+ * The two plain legal statuses ("Voluntary", "Not under the Act") offered above
+ * the forms register in the handover's Legal sheet. Off until their wording has
+ * clinical sign-off; the sheet still takes any status typed as written.
+ */
+export const ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED = false;

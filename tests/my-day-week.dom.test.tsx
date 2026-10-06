@@ -204,12 +204,59 @@ describe("MyDayWeekPage", () => {
     const saturday = screen.getByTestId("my-day-week-day-2026-10-03");
     const row = within(saturday).getByTestId("my-day-week-shift-night-1");
     expect(row.textContent).toContain("Night");
-    expect(row.textContent).toContain("21:00–07:30 +1");
+    expect(row.textContent).toContain("21:00");
+    expect(row.textContent).toContain("Roster · until Sun 07:30");
     expect(row.getAttribute("href")).toBe("/roster/shifts");
     expect(
       within(screen.getByTestId("my-day-week-day-2026-10-04")).queryByTestId("my-day-week-shift-night-1"),
     ).toBeNull();
-    expect(within(screen.getByTestId("my-day-week-day-2026-10-04")).getByText("Nothing on")).toBeTruthy();
+    // The next day is otherwise empty, so it says when the night ends.
+    expect(screen.getByTestId("my-day-week-empty-2026-10-04").textContent).toBe(
+      "Night shift ends 07:30 · nothing else on",
+    );
+  });
+
+  it("says a passed Admin date once", () => {
+    setItems({ items: [item("bls", "2026-10-01", { severity: "overdue", detail: "Date has passed" })] });
+    render(<MyDayWeekPage now={NOW} />);
+    const row = screen.getByTestId("my-day-week-day-2026-10-03");
+    expect(row.textContent).toContain("Date passed");
+    expect(row.textContent).not.toContain("Date has passed");
+  });
+
+  it("keeps a shift that ends at midnight on its own day", () => {
+    // 16:00 to 24:00 Sat 3 Oct in Perth.
+    setShifts({ shifts: [shift("late", "2026-10-03T08:00:00Z", "2026-10-03T16:00:00Z", "evening")] });
+    render(<MyDayWeekPage now={NOW} />);
+    expect(screen.getByTestId("my-day-week-empty-2026-10-04").textContent).toBe("Nothing on");
+  });
+
+  it("draws no false day off and says why when the roster did not load", () => {
+    setShifts({ status: "error" });
+    render(<MyDayWeekPage now={NOW} />);
+    const strip = screen.getByTestId("my-day-week-strip");
+    expect(strip.querySelectorAll('[data-kind="off"]')).toHaveLength(0);
+    expect(screen.getByTestId("my-day-week-empty-2026-10-05").textContent).toBe(
+      "Roster not loaded, so shifts are not shown",
+    );
+  });
+
+  it("greys what is over today and draws the now line before what is still to come", () => {
+    // Now is 09:00 Sat 3 Oct in Perth.
+    setShifts({
+      shifts: [
+        shift("early", "2026-10-02T22:00:00Z", "2026-10-03T00:30:00Z", "day"),
+        shift("late", "2026-10-03T06:00:00Z", "2026-10-03T09:00:00Z", "evening"),
+      ],
+    });
+    render(<MyDayWeekPage now={NOW} />);
+    const saturday = screen.getByTestId("my-day-week-day-2026-10-03");
+    expect(within(saturday).getByTestId("my-day-week-shift-early").hasAttribute("data-done")).toBe(true);
+    expect(within(saturday).getByTestId("my-day-week-shift-late").hasAttribute("data-done")).toBe(false);
+    const order = [...saturday.querySelectorAll("[data-testid]")].map((node) => node.getAttribute("data-testid"));
+    expect(order.indexOf("my-day-week-now")).toBeGreaterThan(order.indexOf("my-day-week-shift-early"));
+    expect(order.indexOf("my-day-week-now")).toBeLessThan(order.indexOf("my-day-week-shift-late"));
+    expect(screen.getAllByTestId("my-day-week-now")).toHaveLength(1);
   });
 
   it("leaves out shifts that start outside the seven days", () => {
@@ -230,7 +277,7 @@ describe("MyDayWeekPage", () => {
     const monday = screen.getByTestId("my-day-week-day-2026-10-05");
     const row = within(monday).getByTestId("my-day-week-session-s1");
     expect(row.textContent).toContain("Session s1");
-    expect(row.textContent).toContain("Teaching · 11:00–12:00 · Room 2");
+    expect(row.textContent).toBe("11:00Session s1Teaching · Room 2");
     expect(row.getAttribute("href")).toBe("/teaching/session/s1");
   });
 

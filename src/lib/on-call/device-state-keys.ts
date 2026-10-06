@@ -56,6 +56,11 @@ export const onCallHospitalPhoneStorageKey = "clinical-kb-on-call-hospital-phone
  * caller, a note or anything else from the call itself.
  */
 export const onCallCallCountsStorageKey = "clinical-kb-on-call-call-counts";
+/**
+ * Shift pulse's breaks: `{ v: 1, breaks: [{ startedAt, endedAt }] }` — start
+ * and end times only, each dropped 16 hours after it started.
+ */
+export const onCallBreaksStorageKey = "clinical-kb-on-call-breaks";
 
 /**
  * Fired once after `clearOnCallDeviceState` (the sign-out wipe), so mounted
@@ -81,6 +86,7 @@ export const ON_CALL_DEVICE_STATE_KEYS: readonly string[] = [
   onCallDidntConnectStorageKey,
   onCallHospitalPhoneStorageKey,
   onCallCallCountsStorageKey,
+  onCallBreaksStorageKey,
 ];
 
 /**

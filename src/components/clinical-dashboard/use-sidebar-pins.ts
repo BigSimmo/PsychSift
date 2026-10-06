@@ -35,6 +35,7 @@ export const pinnableSidebarModeIds = [
   "psychiatry",
   "my-work",
   "roster",
+  "open-shifts",
   "first-nations",
   "medicines",
 ] as const satisfies readonly AppModeId[];

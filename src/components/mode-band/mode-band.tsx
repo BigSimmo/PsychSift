@@ -26,8 +26,14 @@ import {
   modeSecondaryNavigationEntries,
   visibleModeSecondaryNavigationEntries,
 } from "@/lib/mode-secondary-navigation";
-import { modePageVisible, useRosterHasEnabledTeam, useTeachingRoles } from "@/lib/teaching/page-visibility";
+import {
+  modePageVisible,
+  useOpenShiftsIsPoster,
+  useRosterHasEnabledTeam,
+  useTeachingRoles,
+} from "@/lib/teaching/page-visibility";
 import { useClientTime } from "@/lib/use-client-time";
+import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
 
 /**
  * Modes that carry their own identity colour (`data-mode-identity` in
@@ -37,6 +43,7 @@ import { useClientTime } from "@/lib/use-client-time";
 const IDENTITY_MODES: ReadonlySet<AppModeId> = new Set([
   "cme",
   "roster",
+  "open-shifts",
   "teaching",
   "my-work",
   "on-call",
@@ -88,7 +95,6 @@ export type ModeBandProps = {
   children?: ReactNode;
 };
 
-const ModeBandShownContext = createContext(false);
 const ModeBandCountContext = createContext<(tabId: string, count: number | null) => void>(() => {});
 const ModeBandStatusKindContext = createContext<(kind: ModeBandStatusValue["kind"] | null) => void>(() => {});
 
@@ -116,15 +122,7 @@ export function useModeBandCount(tabId: string, count: number | null) {
   }, [setCount, tabId, count]);
 }
 
-/**
- * Whether this page sits under a mode band. Decided from the address alone, so
- * the server and the browser agree on the first paint. Pages use it to drop
- * their own copy of something the band now carries (a visible title, a
- * Customise button), so nothing shows twice, and keep it where no band is.
- */
-export function useModeBandShown(): boolean {
-  return useContext(ModeBandShownContext);
-}
+export { useModeBandShown };
 
 function greetingFor(now: Date): string {
   const hour = Number(
@@ -335,6 +333,7 @@ function ModeBandHeader({
   const [band, setBand] = useState<HTMLElement | null>(null);
   const teachingRoles = useTeachingRoles();
   const rosterHasTeam = useRosterHasEnabledTeam();
+  const openShiftsPoster = useOpenShiftsIsPoster();
 
   // The same pages the top bar's page list offers this reader, in its order:
   // flagged-off and editor-only pages, and the "tools" and "more" groups, stay
@@ -343,12 +342,12 @@ function ModeBandHeader({
     if (!tabs) return [];
     const visible = visibleModeSecondaryNavigationEntries(
       modeSecondaryNavigationEntries(modeId).filter((entry) =>
-        modePageVisible(modeId, entry.id, teachingRoles, rosterHasTeam),
+        modePageVisible(modeId, entry.id, teachingRoles, rosterHasTeam, openShiftsPoster),
       ),
       { isEditor: false },
     );
     return groupModeSecondaryNavigationEntries(visible).main.filter((entry) => entry.href);
-  }, [tabs, modeId, teachingRoles, rosterHasTeam]);
+  }, [tabs, modeId, teachingRoles, rosterHasTeam, openShiftsPoster]);
 
   usePublishBandSurface(band, modeId);
   const tabRow = useCurrentTabInView(activeId, tabEntries.map((entry) => entry.id).join(" "));

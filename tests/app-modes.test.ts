@@ -220,7 +220,7 @@ describe("app mode search contract", () => {
     const config = appModeSearchConfig("sources");
     const mode = appModeDefinitions.find((definition) => definition.id === "sources");
 
-    expect(appModeIds).toHaveLength(25);
+    expect(appModeIds).toHaveLength(26);
     expect(mode).toMatchObject({
       label: "Sources",
       description: "Ranked clinical source catalogue and traceability",
@@ -493,6 +493,8 @@ describe("app mode search contract", () => {
       "my-day": "/my-day?q=clozapine&run=1",
       // Medicines & tools, like Psychiatry: a dashboard with no search route.
       medicines: "/medicines?q=clozapine&run=1",
+      // Open shifts, Roster's reason exactly: no search route, no composer.
+      "open-shifts": "/open-shifts?q=clozapine&run=1",
     });
   });
 

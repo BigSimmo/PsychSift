@@ -102,6 +102,12 @@
         "dev_only": false
       },
       {
+        "id": "open-shifts",
+        "label": "Open shifts",
+        "home": "/open-shifts",
+        "dev_only": false
+      },
+      {
         "id": "prescribing",
         "label": "Medication",
         "home": "/medications",
@@ -191,6 +197,11 @@
         "path": "/mockups/care-plan/system-states",
         "file": "src/app/mockups/care-plan/system-states/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/open-shifts/alerts",
+        "file": "src/app/(search-app)/open-shifts/alerts/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/supervision",
@@ -378,6 +389,11 @@
         "area": "product"
       },
       {
+        "path": "/open-shifts",
+        "file": "src/app/(search-app)/open-shifts/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/settings-search-privacy",
         "file": "src/app/mockups/settings-search-privacy/page.tsx",
         "area": "mockup"
@@ -490,6 +506,11 @@
       {
         "path": "/first-nations/mental-health",
         "file": "src/app/(search-app)/first-nations/mental-health/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/open-shifts/post/[serviceId]/[openShiftId]",
+        "file": "src/app/(search-app)/open-shifts/post/[serviceId]/[openShiftId]/page.tsx",
         "area": "product"
       },
       {
@@ -803,6 +824,11 @@
         "area": "product"
       },
       {
+        "path": "/open-shifts/log",
+        "file": "src/app/(search-app)/open-shifts/log/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/factsheets/[slug]",
         "file": "src/app/(search-app)/factsheets/[slug]/page.tsx",
         "area": "product"
@@ -815,6 +841,11 @@
       {
         "path": "/differentials/diagnoses",
         "file": "src/app/(search-app)/differentials/diagnoses/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/open-shifts/post/new",
+        "file": "src/app/(search-app)/open-shifts/post/new/page.tsx",
         "area": "product"
       },
       {
@@ -1058,6 +1089,11 @@
         "area": "mockup"
       },
       {
+        "path": "/open-shifts/mine",
+        "file": "src/app/(search-app)/open-shifts/mine/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/pinned-plus-menu",
         "file": "src/app/mockups/pinned-plus-menu/page.tsx",
         "area": "mockup"
@@ -1208,6 +1244,11 @@
         "area": "product"
       },
       {
+        "path": "/open-shifts/shift/[serviceId]/[openShiftId]",
+        "file": "src/app/(search-app)/open-shifts/shift/[serviceId]/[openShiftId]/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/admin/new-job",
         "file": "src/app/(search-app)/admin/new-job/page.tsx",
         "area": "product"
@@ -1215,6 +1256,11 @@
       {
         "path": "/dsm/search",
         "file": "src/app/(search-app)/dsm/search/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/open-shifts/post",
+        "file": "src/app/(search-app)/open-shifts/post/page.tsx",
         "area": "product"
       },
       {
@@ -1436,6 +1482,11 @@
         "path": "/mockups/therapy-scenario-popup-intake",
         "file": "src/app/mockups/therapy-scenario-popup-intake/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/open-shifts/board",
+        "file": "src/app/(search-app)/open-shifts/board/page.tsx",
+        "area": "product"
       },
       {
         "path": "/specifiers/search",

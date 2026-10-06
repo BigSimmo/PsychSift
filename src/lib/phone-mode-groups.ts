@@ -22,7 +22,7 @@ export const phoneModeGroups = [
     id: "my-day",
     label: "My Day",
     hint: "Your day, roster, teaching, CPD and admin",
-    modeIds: ["my-day", "roster", "teaching", "cme", "my-work"],
+    modeIds: ["my-day", "roster", "open-shifts", "teaching", "cme", "my-work"],
   },
   {
     id: "on-call",

@@ -38,11 +38,11 @@ const expectedLabels: Record<AppModeId, string[]> = {
   // segments and check constraints stay "education" and "logistics".
   "on-call": [
     "Now",
-    "Who's on",
-    "Call",
-    "Playbook",
+    "People",
     "Refer",
-    "Find",
+    "Handbook",
+    "Playbook",
+    "Who's on",
     "Pocket card",
     "Manage service",
     "Compliance",
@@ -52,7 +52,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Orientation checklists",
   ],
   cme: ["Year", "Log", "Plan", "Courses", "Report"],
-  teaching: ["Today", "Week", "What's on", "Resources", "Logbook", "Teach", "Supervision", "Assessments", "Organise"],
+  teaching: ["This week", "Presenting", "Assessments", "My record", "Resources", "Organise"],
   psychiatry: [],
   medicines: [],
   "my-work": ["Renewals", "Compliance", "New job", "Help"],
@@ -69,6 +69,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "End of life",
   ],
   "my-day": ["Today", "Week", "Hours"],
+  "open-shifts": ["Browse", "My shifts", "Alerts", "Post"],
 };
 
 const cleanLandingPath: Record<AppModeId, string> = {
@@ -97,6 +98,7 @@ const cleanLandingPath: Record<AppModeId, string> = {
   roster: "/roster",
   "first-nations": "/first-nations",
   "my-day": "/my-day",
+  "open-shifts": "/open-shifts",
 };
 
 /**
@@ -130,9 +132,9 @@ const emptyRegistryModes = [
 ] as const satisfies readonly AppModeId[];
 
 describe("mode secondary navigation registry", () => {
-  it("covers all 25 modes with the approved destinations and no Home item", () => {
+  it("covers all 26 modes with the approved destinations and no Home item", () => {
     expect(Object.keys(modeSecondaryNavigationRegistry).sort()).toEqual([...appModeIds].sort());
-    expect(appModeIds).toHaveLength(25);
+    expect(appModeIds).toHaveLength(26);
 
     for (const modeId of appModeIds) {
       const labels = modeSecondaryNavigationRegistry[modeId].map((item) => item.label);
@@ -524,10 +526,12 @@ describe("mode secondary navigation registry", () => {
     expect(MODE_NAV_ADOPTED_MODES).not.toContain("on-call");
   });
 
-  it("groups On Call into six shift pages, two tools and the pages moving out", () => {
+  it("groups On Call into four tabs, the shift tools and the pages moving out", () => {
+    // Owner choice, 5 Oct: four tabs (Now, People, Refer, Handbook); Playbook,
+    // Who's on and Pocket card move under tools.
     const { main, tools, more } = groupModeSecondaryNavigationEntries(modeSecondaryNavigationRegistry["on-call"]);
-    expect(main.map((entry) => entry.label)).toEqual(["Now", "Who's on", "Call", "Playbook", "Refer", "Find"]);
-    expect(tools.map((entry) => entry.label)).toEqual(["Pocket card", "Manage service"]);
+    expect(main.map((entry) => entry.label)).toEqual(["Now", "People", "Refer", "Handbook"]);
+    expect(tools.map((entry) => entry.label)).toEqual(["Playbook", "Who's on", "Pocket card", "Manage service"]);
     expect(more.map((entry) => entry.label)).toEqual([
       "Compliance",
       "Admin",
@@ -605,8 +609,8 @@ describe("mode secondary navigation registry", () => {
   it("does not grow the mode menus past their current pages", () => {
     const visible = (modeId: AppModeId) =>
       modeSecondaryNavigationEntries(modeId).filter((entry) => entry.href && !entry.hidden);
-    // Assessments joined Teaching with the 5 Oct assessments build (made-up records only).
-    expect(visible("teaching")).toHaveLength(9);
+    // Teaching v5 (5 Oct mock-up): five tabs plus Assessments; What's on, Supervision, Feedback, Term and Exam prep sit behind them.
+    expect(visible("teaching")).toHaveLength(6);
     // Compliance joined Admin with the 5 Oct mock-up (Renewals · Compliance · New job · Help).
     expect(visible("my-work")).toHaveLength(4);
     expect(visible("roster")).toHaveLength(6);

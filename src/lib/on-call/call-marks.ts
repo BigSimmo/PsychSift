@@ -12,7 +12,8 @@ import { onCallCallMarksStorageKey, onCallDeviceStoreChangedEvent } from "@/lib/
  * sign-out with every other On Call store.
  *
  * Lane B's "Didn't connect" marks share this key's 12-hour rule; they add their
- * own reader beside this one.
+ * own reader beside this one. Now's "They answered" is one more mark here, under
+ * an `answered:<ladder id>` id: a ladder id and a time, still nothing about a patient.
  */
 
 export const ON_CALL_YOU_CALLED_HOURS = 12;
