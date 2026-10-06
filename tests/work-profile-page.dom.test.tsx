@@ -73,10 +73,13 @@ afterEach(() => {
 });
 
 describe("Work profile page", () => {
-  it("signed out: says nothing is saved and offers Sign in, with no reads", () => {
+  it("signed out: shows the made-up example and offers Sign in, with no reads", () => {
     auth.status = "signed_out";
     render(<WorkProfilePage />);
     expect(screen.getByTestId("work-profile-status").textContent).toContain("Signed out · nothing saved here");
+    expect(screen.getByText("Made-up example. Sign in to set up your own")).toBeTruthy();
+    expect(screen.getByTestId("work-profile-example-identity").textContent).toContain("Dr Alex Example");
+    expect(within(screen.getByTestId("work-profile-example-areas")).getByText("Roster")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(screen.getByTestId("account-dialog")).toBeTruthy();
     expect(screen.queryByRole("tablist")).toBeNull();
