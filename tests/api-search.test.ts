@@ -406,7 +406,7 @@ describe("/api/search route defensive hardening (Task #342)", () => {
     mockRuntime({ demoMode: false });
     const { POST } = await import("../src/app/api/search/route");
     const { searchChunksWithTelemetry } = await import("@/lib/rag/rag");
-    vi.mocked(searchChunksWithTelemetry).mockResolvedValueOnce({ results: [], telemetry: {} });
+    vi.mocked(searchChunksWithTelemetry).mockResolvedValueOnce({ results: [], telemetry: {} as any });
 
     const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));
     const body = await payload(response);

@@ -2,14 +2,17 @@ import dsmClinicalContent from "@/data/dsm-clinical-content.json";
 import { normalizeSearchText, rankCatalogRecords } from "@/lib/catalog-search";
 import { smartSearchExpansions } from "@/lib/smart-search-intent";
 
-export type { DsmDiagnosis, DsmLabeledText, DsmSpecifier } from "@/lib/dsm-types";
-export {
+import type { DsmDiagnosis, DsmLabeledText, DsmSpecifier } from "@/lib/dsm-types";
+import {
   dsmCriteriaView,
   dsmSpecifierSplit,
   type DsmCriteriaProvenance,
   type DsmCriteriaView,
   type DsmSpecifierSplit,
 } from "@/lib/dsm-view";
+
+export type { DsmDiagnosis, DsmLabeledText, DsmSpecifier };
+export { dsmCriteriaView, dsmSpecifierSplit, type DsmCriteriaProvenance, type DsmCriteriaView, type DsmSpecifierSplit };
 
 /**
  * A DSM-5 category as this app consumes it.
