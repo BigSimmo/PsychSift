@@ -96,7 +96,7 @@ export function OpenShiftsCalendar({
       <div className="grid grid-cols-7 gap-y-1 text-center">
         <div aria-hidden="true" className="contents">
           {DOW.map((letter, index) => (
-            <div key={DOW_FULL[index]} className="py-1 text-2xs font-medium text-[color:var(--text-muted)]">
+            <div key={DOW_FULL[index]} className="py-1 text-2xs font-semibold text-[color:var(--text-muted)]">
               {letter}
             </div>
           ))}
