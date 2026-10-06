@@ -4,6 +4,7 @@ import { Check, Copy } from "lucide-react";
 import { useState, type RefObject } from "react";
 
 import { cpdHomeFields } from "@/components/cme/cme-log-copy-fields";
+import { cmeCpdHomeWords } from "@/components/cme/cme-log-shared";
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
@@ -103,14 +104,14 @@ export function CmeLogCopySheet({
     try {
       await onMark(current.id);
     } catch {
-      const message = "This record could not be marked as copied. Try again.";
+      const message = "This record could not be marked copied. Try again.";
       setError(message);
       announce(message);
       setBusy(false);
       return;
     }
     setBusy(false);
-    announce(`${current.title} marked as copied`);
+    announce(`${current.title} marked copied`);
     moveTo(index + 1);
   }
 
@@ -122,14 +123,14 @@ export function CmeLogCopySheet({
     try {
       await onUndo();
     } catch {
-      const message = "Could not undo the copied status. Try again.";
+      const message = "Could not undo the marked-copied status. Try again.";
       setError(message);
       announce(message);
       setBusy(false);
       return;
     }
     setBusy(false);
-    announce("Copied status undone");
+    announce("Marked copied undone");
     const position = queue.indexOf(undoneId);
     if (position >= 0) moveTo(position);
   }
@@ -162,7 +163,7 @@ export function CmeLogCopySheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Copy to your CPD home"
+      title={`Copy to ${cmeCpdHomeWords(set).name}`}
       description={finished ? undefined : `${index + 1} of ${queue.length}`}
       placement="responsive-right"
       mobilePlacement="bottom"
@@ -184,7 +185,7 @@ export function CmeLogCopySheet({
         {lastMarked && !demoMode ? (
           <div data-testid="cme-log-copy-last" className="flex flex-wrap items-center gap-x-2">
             <span className={textMuted}>
-              Marked as copied: <span className="text-[color:var(--text)]">{lastMarked.title}</span>
+              Marked copied: <span className="text-[color:var(--text)]">{lastMarked.title}</span>
             </span>
             <button
               type="button"
@@ -200,8 +201,8 @@ export function CmeLogCopySheet({
         {finished ? (
           <p data-testid="cme-log-copy-finished" className="text-base-minus text-[color:var(--text)]">
             {stillNotCopied === 0
-              ? "Every activity is marked as copied."
-              : `${stillNotCopied} ${stillNotCopied === 1 ? "activity" : "activities"} not yet copied. Skipped ones stay on your list.`}
+              ? "Every activity is marked copied."
+              : `${stillNotCopied} ${stillNotCopied === 1 ? "activity" : "activities"} not marked copied yet. Skipped ones stay on your list.`}
           </p>
         ) : (
           <>

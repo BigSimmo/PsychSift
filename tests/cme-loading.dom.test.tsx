@@ -16,17 +16,19 @@ import EntryLoading from "@/app/(search-app)/cme/log/[id]/loading";
 const CLEARANCE = "pb-[calc(max(1rem,env(safe-area-inset-bottom))+6rem)]";
 
 describe("CPD loading state", () => {
-  it("draws Today's shapes in Today's order: header, hero at the panel radius, card, two tiles, 52 px rows", () => {
+  it("draws the Year page's shapes in its order: header, summary card, the button, chips, 52 px rows", () => {
     const { container } = render(<Loading />);
     const status = screen.getByRole("status", { name: "Loading your CPD record" });
     expect(status.className).toContain(CLEARANCE);
     expect(status.className).toContain("max-w-5xl");
-    expect(screen.getByTestId("cme-loading-lead").className).toContain("lg:grid-cols-2");
+    expect(screen.getByTestId("cme-loading-lead").className).toContain("lg:grid-cols-");
     expect(screen.getByTestId("cme-loading-header").className).toMatch(/\bh-12\b/);
+    // A plain outlined card at the container radius, like the loaded summary: no dark panel.
     const hero = screen.getByTestId("cme-loading-hero");
-    expect(hero.className).toMatch(/\brounded-xl\b/);
-    expect(hero.className).toContain("bg-[color:var(--surface-summary)]");
-    expect(screen.getAllByTestId("cme-loading-tile")).toHaveLength(2);
+    expect(hero.className).toMatch(/\brounded-lg\b/);
+    expect(hero.className).not.toContain("--surface-summary");
+    expect(screen.getByTestId("cme-loading-card").className).toMatch(/\bh-12\b/);
+    expect(screen.getAllByTestId("cme-loading-chip")).toHaveLength(2);
     const rows = container.querySelectorAll<HTMLElement>('[data-testid="cme-loading-rows"] [data-skeleton-row]');
     expect(rows).toHaveLength(3);
     for (const row of rows) expect(row.className).toMatch(/\bmin-h-13\b/);
