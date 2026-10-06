@@ -8,7 +8,6 @@ import {
   readSiteContentRecordsCached,
   siteContentRecordCacheFlightTimeoutMs,
   siteContentRecordCacheMaxEntries,
-  siteContentRecordCacheRefreshTimeoutMs,
   siteContentRecordCacheStaleMs,
   siteContentRecordCacheTtlMs,
   type SiteContentRecordRows,
@@ -337,7 +336,7 @@ describe("readSiteContentRecordsCached", () => {
       await readSiteContentRecordsCached({ kind: "form", slug: null, read, now: time.now });
       expect(refreshSignal?.aborted).toBe(false);
 
-      vi.advanceTimersByTime(siteContentRecordCacheRefreshTimeoutMs);
+      vi.advanceTimersByTime(siteContentRecordCacheFlightTimeoutMs);
       expect(refreshSignal?.aborted).toBe(true);
       expect((refreshSignal?.reason as DOMException).name).toBe("TimeoutError");
     } finally {

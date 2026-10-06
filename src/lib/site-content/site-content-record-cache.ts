@@ -135,9 +135,6 @@ export const siteContentRecordCacheMaxEntries = 32;
  */
 export const siteContentRecordCacheFlightTimeoutMs = 10_000;
 
-/** The original name, from when only background refreshes carried a deadline. */
-export const siteContentRecordCacheRefreshTimeoutMs = siteContentRecordCacheFlightTimeoutMs;
-
 export type SiteContentRecordRows = Array<Record<string, unknown>>;
 
 /** Which of the three ages answered this call. Reported for tests and telemetry, not policy. */
