@@ -109,7 +109,7 @@ describe("Admin writes no record content to browser storage (spec review 5)", ()
     // Neither fixture's title matches a catalogue item, so both live on the
     // Personal tab; opening each one's item sheet and then its "Renewed" date
     // sheet is Renewals' own edit path, replacing the old On Call Edit button.
-    fireEvent.click(screen.getByRole("tab", { name: "Personal" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Personal" }));
     for (const entry of [REGISTRATION, CLEARANCE]) {
       fireEvent.click(screen.getByTestId(`admin-renewals-personal-row-${entry.slug}`));
       fireEvent.click(screen.getByTestId("admin-renewals-item-sheet-renew"));

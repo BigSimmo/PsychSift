@@ -109,7 +109,7 @@ const page = (title: string) => ({ url: `https://example.org/${slug(title)}` });
 /** A numbered run of plain made-up items, so a large collection really holds as many as its tile says. */
 function numbered(first: number, collectionId: string, label: string, count: number, kind: ResourceRow["kind"]) {
   return Array.from({ length: count }, (_, at) => {
-    const title = `Demo ${label} ${at + 1}`;
+    const title = `${label} ${at + 1}`;
     return collectionItem(first + at, collectionId, title, kind, kind === "link" ? page(title) : pdf(title));
   });
 }
@@ -118,64 +118,64 @@ function numbered(first: number, collectionId: string, label: string, count: num
 function collectionItems(today: string): ResourceRow[] {
   const savedAt = (daysBack: number) => `${addDays(today, -daysBack)}T02:00:00.000Z`;
   return [
-    collectionItem(1, EXAM_PREP_ID, "Demo MCQ technique", "link", page("Demo MCQ technique"), {
+    collectionItem(1, EXAM_PREP_ID, "MCQ technique", "link", page("MCQ technique"), {
       sectionId: WRITTEN_SECTION_ID,
     }),
-    collectionItem(2, EXAM_PREP_ID, "Demo past paper walkthrough", "link", page("Demo past paper walkthrough"), {
+    collectionItem(2, EXAM_PREP_ID, "Past paper walkthrough", "link", page("Past paper walkthrough"), {
       sectionId: WRITTEN_SECTION_ID,
     }),
-    collectionItem(3, EXAM_PREP_ID, "Demo exam syllabus", "link", page("Demo exam syllabus"), {
+    collectionItem(3, EXAM_PREP_ID, "Exam syllabus", "link", page("Exam syllabus"), {
       sectionId: WRITTEN_SECTION_ID,
     }),
     collectionItem(
       4,
       EXAM_PREP_ID,
-      "Demo guideline",
+      "Guideline",
       "library",
       { libraryDocumentId: DEMO_LIBRARY_LITHIUM },
       {
         sectionId: WRITTEN_SECTION_ID,
       },
     ),
-    collectionItem(5, EXAM_PREP_ID, "Demo critical appraisal practice", "reading", pdf("Demo critical appraisal"), {
+    collectionItem(5, EXAM_PREP_ID, "Critical appraisal practice", "reading", pdf("Critical appraisal"), {
       sectionId: WRITTEN_SECTION_ID,
     }),
-    collectionItem(6, EXAM_PREP_ID, "Demo essay planning guide", "reading", pdf("Demo essay planning guide"), {
+    collectionItem(6, EXAM_PREP_ID, "Essay planning guide", "reading", pdf("Essay planning guide"), {
       sectionId: WRITTEN_SECTION_ID,
     }),
-    collectionItem(7, EXAM_PREP_ID, "Demo observed interview practice", "link", page("Demo observed interview"), {
+    collectionItem(7, EXAM_PREP_ID, "Observed interview practice", "link", page("Observed interview"), {
       sectionId: CLINICAL_SECTION_ID,
     }),
-    collectionItem(8, EXAM_PREP_ID, "Demo formulation template", "reading", pdf("Demo formulation template"), {
+    collectionItem(8, EXAM_PREP_ID, "Formulation template", "reading", pdf("Formulation template"), {
       sectionId: CLINICAL_SECTION_ID,
     }),
-    collectionItem(9, EXAM_PREP_ID, "Demo clinical exam stations", "reading", pdf("Demo clinical exam stations"), {
+    collectionItem(9, EXAM_PREP_ID, "Clinical exam stations", "reading", pdf("Clinical exam stations"), {
       sectionId: CLINICAL_SECTION_ID,
     }),
     ...numbered(20, CASE_SERIES_ID, "case series", 14, "reading"),
     ...numbered(40, JOURNAL_CLUB_ID, "journal club paper", 22, "link"),
-    collectionItem(70, SUPERVISION_ID, "Demo formulation seminar slides", "link", pdf("Demo formulation seminar"), {
+    collectionItem(70, SUPERVISION_ID, "Formulation seminar slides", "link", pdf("Formulation seminar"), {
       saved: true,
       addedAt: savedAt(8),
     }),
-    collectionItem(71, SUPERVISION_ID, "Demo supervision agreement", "reading", pdf("Demo supervision agreement")),
-    collectionItem(72, SUPERVISION_ID, "Demo reflective practice log", "reading", pdf("Demo reflective practice log")),
-    collectionItem(73, SUPERVISION_ID, "Demo learning plan", "reading", pdf("Demo learning plan")),
-    collectionItem(74, SUPERVISION_ID, "Demo supervision record", "reading", pdf("Demo supervision record")),
-    collectionItem(75, SUPERVISION_ID, "Demo feedback form", "reading", pdf("Demo feedback form")),
-    collectionItem(80, HANDOUTS_ID, "Demo exam tips handout", "reading", pdf("Demo exam tips handout"), {
+    collectionItem(71, SUPERVISION_ID, "Supervision agreement", "reading", pdf("Supervision agreement")),
+    collectionItem(72, SUPERVISION_ID, "Reflective practice log", "reading", pdf("Reflective practice log")),
+    collectionItem(73, SUPERVISION_ID, "Learning plan", "reading", pdf("Learning plan")),
+    collectionItem(74, SUPERVISION_ID, "Supervision record", "reading", pdf("Supervision record")),
+    collectionItem(75, SUPERVISION_ID, "Feedback form", "reading", pdf("Feedback form")),
+    collectionItem(80, HANDOUTS_ID, "Exam tips handout", "reading", pdf("Exam tips handout"), {
       saved: true,
       addedAt: savedAt(22),
     }),
-    collectionItem(81, HANDOUTS_ID, "Demo risk assessment handout", "library", {
+    collectionItem(81, HANDOUTS_ID, "Risk assessment handout", "library", {
       libraryDocumentId: DEMO_LIBRARY_RISK,
     }),
     ...numbered(82, HANDOUTS_ID, "handout", 29, "reading"),
-    collectionItem(120, WORKSHOPS_ID, "Demo interview skills workshop", "reading", pdf("Demo interview skills")),
-    collectionItem(121, WORKSHOPS_ID, "Demo risk assessment workshop", "reading", pdf("Demo risk workshop")),
-    collectionItem(122, WORKSHOPS_ID, "Demo teaching skills workshop", "reading", pdf("Demo teaching skills")),
-    collectionItem(123, WORKSHOPS_ID, "Demo mental state examination workshop", "reading", pdf("Demo MSE workshop")),
-    collectionItem(124, WORKSHOPS_ID, "Demo simulation workshop notes", "reading", pdf("Demo simulation notes")),
+    collectionItem(120, WORKSHOPS_ID, "Interview skills workshop", "reading", pdf("Interview skills")),
+    collectionItem(121, WORKSHOPS_ID, "Risk assessment workshop", "reading", pdf("Risk workshop")),
+    collectionItem(122, WORKSHOPS_ID, "Teaching skills workshop", "reading", pdf("Teaching skills")),
+    collectionItem(123, WORKSHOPS_ID, "Mental state examination workshop", "reading", pdf("MSE workshop")),
+    collectionItem(124, WORKSHOPS_ID, "Simulation workshop notes", "reading", pdf("Simulation notes")),
   ];
 }
 
@@ -188,9 +188,9 @@ function earlierRecordings(today: string): ResourceRow[] {
     collectionId: null,
   });
   return [
-    recording(130, "Demo research meeting", 5),
-    recording(131, "Demo registrar teaching", 7),
-    recording(132, "Demo grand rounds", 14),
+    recording(130, "Research meeting", 5),
+    recording(131, "Registrar teaching", 7),
+    recording(132, "Grand rounds", 14),
   ];
 }
 
@@ -198,10 +198,10 @@ type WeekItem = ResourceRow & { catchUp: boolean; firstStart: string };
 
 /** This week's four materials, each matched to a session by name when the programme has one. */
 const WEEK_MATERIALS: readonly { title: string; kind: ResourceRow["kind"]; match: RegExp; pdf: boolean }[] = [
-  { title: "Demo case presentation handout", kind: "reading", match: /case presentation/i, pdf: true },
-  { title: "Demo journal club slides", kind: "link", match: /journal club/i, pdf: false },
-  { title: "Demo psychotherapy reading", kind: "reading", match: /psychotherapy/i, pdf: true },
-  { title: "Demo workshop checklist", kind: "reading", match: /workshop|simulation/i, pdf: true },
+  { title: "Case presentation handout", kind: "reading", match: /case presentation/i, pdf: true },
+  { title: "Journal club slides", kind: "link", match: /journal club/i, pdf: false },
+  { title: "Psychotherapy reading", kind: "reading", match: /psychotherapy/i, pdf: true },
+  { title: "Workshop checklist", kind: "reading", match: /workshop|simulation/i, pdf: true },
 ];
 
 /** The session resources of one week, [from, from + 6], as the database would list them. */

@@ -233,6 +233,7 @@
         "src/app/(search-app)/teaching/week/page.tsx",
         "src/app/(search-app)/teaching/whats-on/page.tsx",
         "src/app/(search-app)/roster/page.tsx",
+        "src/app/(search-app)/roster/today/page.tsx",
         "src/app/(search-app)/roster/shifts/page.tsx",
         "src/app/(search-app)/roster/settings/page.tsx",
         "src/app/(search-app)/roster/team/page.tsx",

@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
   usePathname: () => "/psychiatry/mha-clock",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 import { MHA_TIMELINE_REFERENCE_NOTE } from "@/components/forms/mha-timeline-panel";
