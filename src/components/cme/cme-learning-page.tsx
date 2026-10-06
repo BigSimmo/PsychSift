@@ -1,13 +1,15 @@
 "use client";
 
+import { ArrowUpRight, Clock, GraduationCap } from "lucide-react";
 import Link from "next/link";
-import { CalendarPlus, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
+import { focusRing } from "@/components/card-recipes";
+import { CmeFlatList, CmeFlatRow, CmeGroup, CmeNote, CmeTextLink } from "@/components/cme/cme-flat-list";
+import { CmeSegmentedTabs } from "@/components/cme/cme-page-tabs";
 import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
-import { SegmentedControl } from "@/components/ui/segmented-control";
-import { EmptyState, cn, eyebrowText, raisedCard, textMuted, toneWarning } from "@/components/ui-primitives";
-import { formatCalendarDateLong, formatCalendarDateShort, perthCalendarDate } from "@/lib/cme/cpd-year";
+import { EmptyState, cn } from "@/components/ui-primitives";
+import { formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { canAddLearningToCalendar, learningCalendarEventIcs, learningCalendarFileName } from "@/lib/cme/calendar-event";
 import {
   LEARNING_DIRECTORY_STALE_AFTER_DAYS,
@@ -15,11 +17,12 @@ import {
   filterLearningItems,
   groupLearningByMonth,
   isDirectoryStale,
+  learningCountdownLabel,
   learningItemLogHref,
   pastLearningItems,
+  splitUpcomingLearning,
   unconfirmedLearningItems,
   upcomingLearningItems,
-  type LearningFormat,
 } from "@/lib/cme/learning-directory-view";
 import type { LearningDirectoryItem } from "@/lib/cme/learning-directory";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
@@ -30,19 +33,44 @@ const KIND_LABEL: Record<LearningDirectoryItem["kind"], string> = {
   recorded: "Recorded",
 };
 
-function dateLabel(item: LearningDirectoryItem): string {
-  const { startsOn, endsOn } = item;
-  if (startsOn === null) return item.kind === "recorded" ? "Watch any time" : "Date not confirmed";
-  if (endsOn === null || endsOn === startsOn) return formatCalendarDateLong(startsOn);
-  if (startsOn.slice(0, 4) === endsOn.slice(0, 4)) {
-    return `${formatCalendarDateShort(startsOn)} to ${formatCalendarDateLong(endsOn)}`;
-  }
-  return `${formatCalendarDateLong(startsOn)} to ${formatCalendarDateLong(endsOn)}`;
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+/** "Thursday 1 October", with the year only when it is not this year. */
+function longDateWithWeekday(dateOnly: string, today: string): string {
+  const date = new Date(`${dateOnly}T00:00:00Z`);
+  const weekday = new Intl.DateTimeFormat("en-AU", { weekday: "long", timeZone: "UTC" }).format(date);
+  const dayMonth = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "long", timeZone: "UTC" }).format(date);
+  return dateOnly.slice(0, 4) === today.slice(0, 4)
+    ? `${weekday} ${dayMonth}`
+    : `${weekday} ${dayMonth} ${dateOnly.slice(0, 4)}`;
 }
 
-function modeLabel(item: LearningDirectoryItem): string {
-  const where = item.mode === "online" ? "Online" : item.mode === "in-person" ? "In person" : "Online and in person";
-  return item.location && item.mode !== "online" ? `${where}, ${item.location}` : where;
+/**
+ * When, as one phrase: every date with its weekday (the year only when it is
+ * not this year), and Perth 24-hour times or "all day".
+ */
+function whenLabel(item: LearningDirectoryItem, today: string): string {
+  const { startsOn, endsOn, startsAt, endsAt } = item;
+  if (startsOn === null) return item.kind === "recorded" ? "Watch any time" : "Date not confirmed";
+  const start = formatCmeRowDate(startsOn, today);
+  if (endsOn !== null && endsOn !== startsOn) return `${start} to ${formatCmeRowDate(endsOn, today)}`;
+  if (startsAt && endsAt) return `${start}, ${startsAt} to ${endsAt}`;
+  if (startsAt) return `${start}, from ${startsAt}`;
+  return `${start}, all day`;
+}
+
+/** Where: the venue for an in-person event, otherwise how to attend. */
+function whereLabel(item: LearningDirectoryItem): string {
+  if (item.mode === "online") return "Online";
+  if (item.mode === "both") return item.location ? `Online and in person, ${item.location}` : "Online and in person";
+  return item.location ?? "In person";
+}
+
+/** When · Where · Cost, the one grey line under the title. */
+function whenWhereCost(item: LearningDirectoryItem, today: string): string {
+  const when = item.startsOn === null && item.kind === "recorded" ? null : whenLabel(item, today);
+  const where = item.startsOn === null && item.kind === "recorded" ? "Online · watch any time" : whereLabel(item);
+  return [when, where, item.costNote].filter(Boolean).join(" · ");
 }
 
 function downloadCalendarEvent(item: LearningDirectoryItem): void {
@@ -58,73 +86,130 @@ function downloadCalendarEvent(item: LearningDirectoryItem): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-function LearningItemCard({
+/** The date column: the day large and the month small; "?" when the date is not confirmed; a clock for any time. */
+function DateColumn({ item }: { item: LearningDirectoryItem }) {
+  let face: ReactNode;
+  if (item.startsOn === null) {
+    face =
+      item.kind === "recorded" ? (
+        <Clock aria-hidden="true" strokeWidth={1.6} className="size-5 text-[color:var(--text-muted)]" />
+      ) : (
+        <span className="text-base font-semibold text-[color:var(--text-heading)]">?</span>
+      );
+  } else {
+    face = (
+      <>
+        <span className="nums text-base font-normal text-[color:var(--text-heading)]">
+          {Number(item.startsOn.slice(8, 10))}
+        </span>
+        <span className="text-2xs text-[color:var(--text-muted)]">
+          {SHORT_MONTHS[Number(item.startsOn.slice(5, 7)) - 1]}
+        </span>
+      </>
+    );
+  }
+  return (
+    <span aria-hidden="true" className="grid w-10 shrink-0 justify-items-center pt-2.5 leading-tight">
+      {face}
+    </span>
+  );
+}
+
+/** A quiet accent text link with a 48 px tap area; the external Details link opens the organiser's page. */
+const actionLink = cn(
+  focusRing,
+  "inline-flex min-h-12 min-w-12 items-center gap-1 whitespace-nowrap rounded-md text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
+);
+
+function DetailsLink({ item }: { item: LearningDirectoryItem }) {
+  return (
+    <a href={item.url} target="_blank" rel="noopener noreferrer" className={actionLink}>
+      Details
+      <ArrowUpRight aria-hidden="true" strokeWidth={1.6} className="size-4" />
+      <span className="sr-only">(opens the organiser&apos;s page in a new tab)</span>
+    </a>
+  );
+}
+
+/**
+ * One course as a flat row (mock-up screen 06): the date column, an optional
+ * "In N days" above the title, the kind and organiser, then When · Where ·
+ * Cost on one grey line, and the actions as spaced text links. An item whose
+ * date is not confirmed says so in words and offers only Details.
+ */
+function LearningRow({
   item,
   phase,
+  countdown,
+  today,
 }: {
   item: LearningDirectoryItem;
   phase: "upcoming" | "past" | "unconfirmed";
+  /** "In N days" text, for the next two dated courses only. */
+  countdown?: string;
+  today: string;
 }) {
+  const unconfirmed = phase === "unconfirmed";
   return (
-    <li data-testid="cme-learning-item" className={cn(raisedCard, "p-4")}>
-      <p className={cn(textMuted, "text-xs font-semibold")}>
-        {KIND_LABEL[item.kind]} · {item.provider}
-      </p>
-      <h3 className="mt-1 text-base font-semibold text-[color:var(--text)]">{item.title}</h3>
-      <dl className="mt-2 grid gap-1 text-sm text-[color:var(--text)]">
-        <div className="flex gap-2">
-          <dt className={textMuted}>When</dt>
-          <dd>{dateLabel(item)}</dd>
+    <li
+      data-testid="cme-learning-item"
+      className="relative flex min-w-0 items-start gap-3 border-t border-[color:var(--border)] py-1 first:border-t-0"
+    >
+      <DateColumn item={item} />
+      <div className="grid min-w-0 flex-1 gap-px pt-2">
+        {countdown ? (
+          <p data-testid="cme-learning-countdown" className="mb-0.5 text-xs text-[color:var(--text-muted)]">
+            {countdown}
+          </p>
+        ) : null}
+        <h3 className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">{item.title}</h3>
+        <p className="break-words text-sm-minus text-[color:var(--text-muted)]">
+          {KIND_LABEL[item.kind]} · {item.provider}
+        </p>
+        <p className="break-words text-sm-minus text-[color:var(--text-muted)]">
+          {unconfirmed ? (
+            <>
+              <span className="sr-only">Date not confirmed</span>
+              <span className="sr-only">. </span>
+              No date yet. Check the organiser&apos;s page before you plan.
+            </>
+          ) : (
+            whenWhereCost(item, today)
+          )}
+        </p>
+        <div className="flex flex-wrap gap-x-5">
+          <DetailsLink item={item} />
+          {phase === "past" || phase === "upcoming" ? (
+            <Link href={learningItemLogHref(item)} className={actionLink}>
+              Log as CPD
+            </Link>
+          ) : null}
+          {phase === "upcoming" && canAddLearningToCalendar(item) ? (
+            <button type="button" onClick={() => downloadCalendarEvent(item)} className={actionLink}>
+              Add to calendar
+            </button>
+          ) : null}
         </div>
-        <div className="flex gap-2">
-          <dt className={textMuted}>Where</dt>
-          <dd>{modeLabel(item)}</dd>
-        </div>
-        {item.costNote ? (
-          <div className="flex gap-2">
-            <dt className={textMuted}>Cost</dt>
-            <dd>{item.costNote}</dd>
-          </div>
-        ) : null}
-      </dl>
-      <div className="mt-3 flex flex-wrap gap-x-4">
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-tap items-center gap-1.5 text-sm font-semibold text-[color:var(--clinical-accent)]"
-        >
-          Details
-          <ExternalLink aria-hidden="true" className="h-4 w-4" />
-          <span className="sr-only">(opens the organiser&apos;s page in a new tab)</span>
-        </a>
-        {phase === "past" || phase === "upcoming" ? (
-          <Link
-            href={learningItemLogHref(item)}
-            className="inline-flex min-h-tap items-center text-sm font-semibold text-[color:var(--clinical-accent)]"
-          >
-            Log as CPD
-          </Link>
-        ) : null}
-        {phase === "upcoming" && canAddLearningToCalendar(item) ? (
-          <button
-            type="button"
-            onClick={() => downloadCalendarEvent(item)}
-            className="inline-flex min-h-12 min-w-12 items-center gap-1.5 rounded-lg text-sm font-semibold text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-          >
-            <CalendarPlus aria-hidden="true" className="size-icon-sm" />
-            Add to calendar
-          </button>
-        ) : null}
       </div>
     </li>
   );
 }
 
+function LearningList({ children, label }: { children: ReactNode; label?: string }) {
+  return (
+    <ul role="list" aria-label={label} className="grid min-w-0">
+      {children}
+    </ul>
+  );
+}
+
 /**
- * LEARNING — a curated list of WA courses and events. Confirmed events move to
- * Past after their end date; unconfirmed dates stay visible in their own
- * section. The component receives public directory rows only.
+ * COURSES — a curated list of WA courses and events (mock-up screen 06, live
+ * route `/cme/learning`). Upcoming: the next two with "In N days", then
+ * "Later this year", "Next year and any time" and "Date not confirmed", each a
+ * flat list under a small label with its count. Confirmed events move to Past
+ * after their end date; unconfirmed dates never drop off. The component
+ * receives public directory rows only.
  */
 export function CmeLearningPage({
   items,
@@ -144,165 +229,153 @@ export function CmeLearningPage({
   hospitalTeachingHref?: string;
 }) {
   const today = perthCalendarDate(new Date(nowIso));
-  const [specialty, setSpecialty] = useState(() => defaultLearningSpecialty(homeSource));
-  const [format, setFormat] = useState<LearningFormat>("any");
-  const specialties = [...new Set(["psychiatry", ...items.flatMap((item) => item.specialties ?? [])])].sort();
-  const filters = { specialty, format };
+  const defaultSpecialty = defaultLearningSpecialty(homeSource);
+  const [specialty, setSpecialty] = useState(defaultSpecialty);
+  const filters = { specialty, format: "any" as const };
   const upcoming = upcomingLearningItems(items, today);
   const past = pastLearningItems(items, today);
   const unconfirmed = unconfirmedLearningItems(items);
   const visibleUpcoming = filterLearningItems(upcoming, filters);
   const visiblePast = filterLearningItems(past, filters);
   const visibleUnconfirmed = filterLearningItems(unconfirmed, filters);
+  const sections = splitUpcomingLearning(visibleUpcoming, today);
   const stale = isDirectoryStale(lastCheckedOn, today);
+  const shownCount = view === "past" ? visiblePast.length : visibleUpcoming.length + visibleUnconfirmed.length;
+  const totalCount = view === "past" ? past.length : upcoming.length + unconfirmed.length;
+  const hiddenBySpecialty = totalCount - shownCount;
 
   return (
-    <main data-testid="cme-learning" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
-      <PageTitleUnderBand className={cmePageTitle}>Learning</PageTitleUnderBand>
-      <p className={cn(textMuted, "mt-1 text-sm")}>
-        {view === "past"
-          ? "Earlier courses and events in Western Australia."
-          : "Upcoming courses and events in Western Australia."}
-      </p>
-      <p className={cn(textMuted, "mt-2 text-sm")}>
-        This is a curated list, not an endorsement. Confirm dates, cost and CPD eligibility with the organiser.
-      </p>
-      <p className={cn(textMuted, "mt-2 text-sm")}>List last checked on {formatCalendarDateLong(lastCheckedOn)}.</p>
-      {stale ? (
-        <p
-          data-testid="cme-learning-stale"
-          className={cn(toneWarning, "mt-3 rounded-xl border p-3 text-sm font-medium")}
-        >
-          This list may be out of date. It was last checked more than {LEARNING_DIRECTORY_STALE_AFTER_DAYS} days ago, so
-          check each organiser&apos;s page before planning around it.
-        </p>
-      ) : null}
-
-      {/* Two short one-of-N choices over a short list: chip-sized radiogroups
-          that show every option at once, not two full-width dropdowns. "All"
-          is the first Specialty option, so going back to every specialty is
-          one tap. */}
-      <div className="mt-5 flex flex-col gap-3" data-testid="cme-learning-filters">
-        <div className="flex flex-col gap-1.5">
-          <p id="cme-learning-specialty-label" className={eyebrowText}>
-            Specialty
+    <main data-testid="cme-learning" data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
+      <PageTitleUnderBand className={cmePageTitle}>Courses</PageTitleUnderBand>
+      <div className="mt-3 grid gap-6">
+        <CmeSegmentedTabs
+          label="Courses pages"
+          segments={[
+            {
+              label: `Upcoming · ${visibleUpcoming.length + visibleUnconfirmed.length}`,
+              href: "/cme/learning",
+              active: view !== "past",
+            },
+            { label: "Past", href: "/cme/learning?view=past", active: view === "past" },
+          ]}
+        />
+        <div className="grid gap-1">
+          <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-learning-checked">
+            Western Australia. Checked {longDateWithWeekday(lastCheckedOn, today)}. A curated list, not an endorsement:
+            confirm dates, cost and CPD eligibility with the organiser.
           </p>
-          <SegmentedControl
-            ariaLabelledBy="cme-learning-specialty-label"
-            value={specialty}
-            onChange={setSpecialty}
-            options={[
-              { value: "all", label: "All" },
-              ...specialties.map((name) => ({ value: name, label: name.charAt(0).toUpperCase() + name.slice(1) })),
-            ]}
-            className="w-auto self-start"
-          />
+          {/* The RANZCP preset starts at psychiatry; one quiet link widens it, and says how many it hides. */}
+          {specialty !== "all" && hiddenBySpecialty > 0 ? (
+            <p className="flex flex-wrap items-center gap-x-2 text-xs text-[color:var(--text-muted)]">
+              <span>Showing psychiatry and courses open to every specialty.</span>
+              <CmeTextLink wrap onClick={() => setSpecialty("all")} testId="cme-learning-all-specialties">
+                Show {hiddenBySpecialty} from other specialties
+              </CmeTextLink>
+            </p>
+          ) : null}
+          {specialty === "all" && defaultSpecialty !== "all" ? (
+            <p className="flex flex-wrap items-center gap-x-2 text-xs text-[color:var(--text-muted)]">
+              <span>Showing every specialty.</span>
+              <CmeTextLink onClick={() => setSpecialty(defaultSpecialty)} testId="cme-learning-psychiatry-only">
+                Psychiatry only
+              </CmeTextLink>
+            </p>
+          ) : null}
         </div>
-        <div className="flex flex-col gap-1.5">
-          <p id="cme-learning-format-label" className={eyebrowText}>
-            Format
-          </p>
-          <SegmentedControl<LearningFormat>
-            ariaLabelledBy="cme-learning-format-label"
-            value={format}
-            onChange={setFormat}
-            options={[
-              { value: "any", label: "Any" },
-              { value: "online", label: "Online" },
-              { value: "in-person", label: "In person" },
-            ]}
-            className="w-auto self-start"
-          />
-        </div>
-      </div>
+        {stale ? (
+          <CmeNote tone="warn" testId="cme-learning-stale" role="status" title="This list may be out of date">
+            It was last checked more than {LEARNING_DIRECTORY_STALE_AFTER_DAYS} days ago, so check each organiser&apos;s
+            page before planning around it.
+          </CmeNote>
+        ) : null}
 
-      {view === "past" ? (
-        <section aria-labelledby="cme-learning-past-heading" className="mt-6" data-testid="cme-learning-past">
-          <h2 id="cme-learning-past-heading" className="text-base font-semibold text-[color:var(--text)]">
-            Past
-          </h2>
-          {visiblePast.length === 0 ? (
-            <div className="mt-3">
+        {view === "past" ? (
+          <section aria-label="Past" className="grid gap-6" data-testid="cme-learning-past">
+            {visiblePast.length === 0 ? (
               <EmptyState title="No past events are listed yet." body="Only events with confirmed dates appear here." />
-            </div>
-          ) : (
-            <div className="mt-3 space-y-6">
-              {groupLearningByMonth(visiblePast).map((group) => (
-                <section key={group.key} aria-label={group.label}>
-                  <h3 className={cn(textMuted, "text-sm font-semibold")}>{group.label}</h3>
-                  <ul className="mt-2 grid gap-3">
-                    {group.items.map((item) => (
-                      <LearningItemCard key={item.id} item={item} phase="past" />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )}
-        </section>
-      ) : (
-        <>
-          <section aria-labelledby="cme-learning-upcoming-heading" className="mt-6">
-            <h2 id="cme-learning-upcoming-heading" className="text-base font-semibold text-[color:var(--text)]">
-              Upcoming
-            </h2>
-            {visibleUpcoming.length === 0 ? (
-              <div className="mt-3">
-                <EmptyState
-                  testId="cme-learning-empty"
-                  title="No upcoming courses or events are listed right now."
-                  body="The list is checked about once a month. Past events appear in Past."
-                />
-              </div>
             ) : (
-              <div className="mt-3 space-y-6">
-                {groupLearningByMonth(visibleUpcoming).map((group) => (
-                  <section key={group.key} aria-label={group.label}>
-                    <h3 className={cn(textMuted, "text-sm font-semibold")}>{group.label}</h3>
-                    <ul className="mt-2 grid gap-3">
-                      {group.items.map((item) => (
-                        <LearningItemCard key={item.id} item={item} phase="upcoming" />
-                      ))}
-                    </ul>
-                  </section>
-                ))}
-              </div>
+              groupLearningByMonth(visiblePast).map((group) => (
+                <CmeGroup key={group.key} label={group.label}>
+                  <LearningList>
+                    {group.items.map((item) => (
+                      <LearningRow key={item.id} item={item} phase="past" today={today} />
+                    ))}
+                  </LearningList>
+                </CmeGroup>
+              ))
             )}
           </section>
+        ) : (
+          <>
+            {visibleUpcoming.length === 0 ? (
+              <EmptyState
+                testId="cme-learning-empty"
+                title="No upcoming courses or events are listed right now."
+                body="The list is checked about once a month. Past events appear in Past."
+              />
+            ) : sections.next.length > 0 ? (
+              <CmeGroup label="Next" testId="cme-learning-next">
+                <LearningList>
+                  {sections.next.map((item) => (
+                    <LearningRow
+                      key={item.id}
+                      item={item}
+                      phase="upcoming"
+                      today={today}
+                      countdown={item.startsOn ? learningCountdownLabel(item.startsOn, today) : undefined}
+                    />
+                  ))}
+                </LearningList>
+              </CmeGroup>
+            ) : null}
 
-          {visibleUnconfirmed.length > 0 ? (
-            <section
-              data-testid="cme-learning-unconfirmed"
-              aria-labelledby="cme-learning-unconfirmed-heading"
-              className="mt-8"
-            >
-              <h2 id="cme-learning-unconfirmed-heading" className="text-base font-semibold text-[color:var(--text)]">
-                Dates to confirm
-              </h2>
-              <p className={cn(textMuted, "mt-1 text-sm")}>
-                We couldn&apos;t confirm the date for these. Check the organiser&apos;s page before planning around
-                them.
-              </p>
-              <ul className="mt-3 grid gap-3">
-                {visibleUnconfirmed.map((item) => (
-                  <LearningItemCard key={item.id} item={item} phase="unconfirmed" />
-                ))}
-              </ul>
-            </section>
-          ) : null}
-        </>
-      )}
-      {hospitalTeachingHref ? (
-        <Link
-          href={hospitalTeachingHref}
-          className={cn(
-            raisedCard,
-            "mt-6 flex min-h-12 items-center px-4 text-sm font-medium text-[color:var(--text)]",
-          )}
-        >
-          Your hospital&apos;s teaching
-        </Link>
-      ) : null}
+            {[
+              {
+                id: "later-this-year",
+                testId: "cme-learning-later-this-year",
+                title: "Later this year",
+                items: sections.laterThisYear,
+              },
+              {
+                id: "next-year",
+                testId: "cme-learning-next-year",
+                title: "Next year and any time",
+                items: sections.nextYearAndAnyTime,
+              },
+            ].map((section) =>
+              section.items.length > 0 ? (
+                <CmeGroup key={section.id} testId={section.testId} label={`${section.title} · ${section.items.length}`}>
+                  <LearningList>
+                    {section.items.map((item) => (
+                      <LearningRow key={item.id} item={item} phase="upcoming" today={today} />
+                    ))}
+                  </LearningList>
+                </CmeGroup>
+              ) : null,
+            )}
+
+            {visibleUnconfirmed.length > 0 ? (
+              <CmeGroup testId="cme-learning-unconfirmed" label={`Date not confirmed · ${visibleUnconfirmed.length}`}>
+                <LearningList>
+                  {visibleUnconfirmed.map((item) => (
+                    <LearningRow key={item.id} item={item} phase="unconfirmed" today={today} />
+                  ))}
+                </LearningList>
+              </CmeGroup>
+            ) : null}
+          </>
+        )}
+        {hospitalTeachingHref ? (
+          <CmeFlatList>
+            <CmeFlatRow
+              href={hospitalTeachingHref}
+              lead={<GraduationCap aria-hidden="true" strokeWidth={1.6} />}
+              title="Your hospital's teaching"
+              subtitle="In Teaching"
+            />
+          </CmeFlatList>
+        ) : null}
+      </div>
     </main>
   );
 }

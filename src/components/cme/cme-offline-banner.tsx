@@ -35,10 +35,10 @@ export function CmeOfflineBanner() {
       <div
         data-testid="cme-offline-banner"
         className={cn(
-          "flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--warning)]",
+          "flex min-h-tap items-center gap-2.5 rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--surface-raised)] px-3 py-2.5 text-sm-minus text-[color:var(--text-muted)]",
         )}
       >
-        <CloudOff className="size-icon-sm shrink-0" aria-hidden="true" />
+        <CloudOff className="size-4 shrink-0 text-[color:var(--warning)]" strokeWidth={1.6} aria-hidden="true" />
         <span>Offline — viewing loaded records. Reconnect to save new activities or changes.</span>
       </div>
       <span data-testid="cme-offline-banner-announcement" role="status" aria-live="polite" className="sr-only">
