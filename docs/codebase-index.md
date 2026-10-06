@@ -616,6 +616,13 @@ signed-out sample, and `term-tracker-store.ts` reads and writes two account-scop
 keys that the auth provider clears at sign-out. No API, no table. Term assessments are signed in
 the CLA ePortfolio, which the page links to; EPA targets apply only once the doctor confirms them.
 
+`/teaching/assessments` (`src/components/teaching/assessments/`, logic in
+`src/lib/teaching/assessments/`) walks a prevocational doctor and their term supervisor through
+term assessments and EPAs, one route switched by `?view=` and `?as=supervisor`. It runs only on
+made-up records held in page memory: nothing is fetched, saved or sent, and signed-in readers see
+an honest "can't be kept yet" notice with an opt-in to the made-up records. The printable form
+(`assessments-pdf.tsx`) is lazy-loaded.
+
 `api.ts` and `repository.ts` wrap every database call and map its errors to plain words;
 `request.ts` parses request bodies while keeping Teaching's own plain messages, and
 `checkin-claim.ts` is the single-use claim cookie a scan leaves, scoped to `/api/teaching/checkin`
