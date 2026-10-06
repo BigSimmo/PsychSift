@@ -1344,7 +1344,10 @@ export function MasterSearchHeader({
    * shadow alias alive in this file for no design reason.
    */
   const modeMenuPopoverShell =
-    "absolute left-0 top-[calc(100%+0.5rem)] z-[60] w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-xl bg-[color:var(--surface-lux)] text-[color:var(--text)] shadow-[var(--shadow-lux)]";
+    "absolute left-0 top-[calc(100%+0.5rem)] z-[60] w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-xl bg-[color-mix(in_srgb,var(--surface-lux)_84%,transparent)] text-[color:var(--text)] shadow-[var(--shadow-lux)]";
+  /** A group of modes, inset inside the glass so the list reads as nested cards. */
+  const modeMenuGroupCard =
+    "rounded-lg border border-[color:var(--border-lux)] bg-[color-mix(in_srgb,var(--surface-raised)_92%,transparent)] p-1 shadow-[var(--shadow-inset)] ring-1 ring-inset ring-[color:var(--surface-highlight)]";
 
   /**
    * The row treatment the mode menu uses, shared by the mode options and the
@@ -1359,13 +1362,11 @@ export function MasterSearchHeader({
     return cn(
       "relative grid w-full items-center text-left transition-[background-color,color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
       usesPhoneSearchLayout
-        ? "min-h-14 grid-cols-[2.5rem_minmax(0,1fr)_1.5rem] gap-2.5 rounded-xl px-2 py-2"
-        : "min-h-12 grid-cols-[2rem_minmax(0,1fr)_auto] gap-2 rounded-md px-2.5 py-1.5",
+        ? "min-h-14 grid-cols-[2.5rem_minmax(0,1fr)_1.5rem] gap-2 rounded-md px-2 py-1"
+        : "min-h-12 grid-cols-[2rem_minmax(0,1fr)_auto] gap-2 rounded-md px-2 py-1",
       active
-        ? usesPhoneSearchLayout
-          ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)] shadow-[var(--shadow-inset)] ring-1 ring-inset ring-[color:var(--clinical-accent-border)]"
-          : "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)]"
-        : "text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
+        ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)] shadow-[var(--shadow-inset)] ring-1 ring-inset ring-[color:var(--clinical-accent-border)]"
+        : "text-[color:var(--text)] hover:bg-[color-mix(in_srgb,var(--surface-subtle)_80%,transparent)]",
     );
   }
 
@@ -1388,17 +1389,11 @@ export function MasterSearchHeader({
   }) {
     return (
       <>
-        {active && !usesPhoneSearchLayout ? (
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-1 left-0 w-0.5 rounded-r-full bg-[color:var(--clinical-accent)]"
-          />
-        ) : null}
         <span
           data-mode-icon={modeIconId}
           className={cn(
-            "grid place-items-center border transition-colors duration-[var(--duration-fast)] motion-reduce:transition-none",
-            usesPhoneSearchLayout ? "h-10 w-10 rounded-xl" : "h-8 w-8 rounded-lg",
+            "grid place-items-center border shadow-[var(--shadow-inset)] transition-colors duration-[var(--duration-fast)] motion-reduce:transition-none",
+            usesPhoneSearchLayout ? "h-10 w-10 rounded-sm" : "h-8 w-8 rounded-sm",
             active
               ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)]"
               : "border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]",
@@ -1415,7 +1410,12 @@ export function MasterSearchHeader({
             {label}
           </span>
           {(showDescription || usesPhoneSearchLayout) && description ? (
-            <span className="mt-0.5 line-clamp-2 text-xs font-medium leading-4 text-[color:var(--text-muted)]">
+            <span
+              className={cn(
+                "mt-0.5 font-medium text-[color:var(--text-muted)]",
+                usesPhoneSearchLayout ? "line-clamp-2 text-xs leading-4" : "line-clamp-1 text-2xs leading-4",
+              )}
+            >
               {description}
             </span>
           ) : null}
@@ -1581,7 +1581,7 @@ export function MasterSearchHeader({
       });
       if (groupModes.length === 0) return null;
       const rows = (
-        <div className={cn("grid gap-0.5", group.showHeading && "pt-1")}>
+        <div className="grid gap-px">
           {groupModes.map((mode) =>
             renderModeMenuOption(
               mode,
@@ -1590,14 +1590,17 @@ export function MasterSearchHeader({
           )}
         </div>
       );
-      if (!group.showHeading) return <div key={group.id}>{rows}</div>;
+      if (!group.showHeading) {
+        return (
+          <div key={group.id} className={modeMenuGroupCard}>
+            {rows}
+          </div>
+        );
+      }
       const headingId = `desktop-app-mode-group-${group.id}`;
       return (
-        <section key={group.id} role="group" aria-labelledby={headingId} className="pt-2 first:pt-0">
-          <h3
-            id={headingId}
-            className="sticky top-0 z-[5] border-b border-[color:var(--border)] bg-[color:var(--surface-lux)]/96 px-2 py-1.5 text-2xs font-black uppercase tracking-kicker text-[color:var(--text-muted)] backdrop-blur-md"
-          >
+        <section key={group.id} role="group" aria-labelledby={headingId} className={modeMenuGroupCard}>
+          <h3 id={headingId} className={cn(eyebrowText, "px-2 pb-0.5 pt-1")}>
             {group.label}
           </h3>
           {rows}
@@ -1606,10 +1609,10 @@ export function MasterSearchHeader({
     });
   }
 
-  function renderModeMenuSideSwitch(controlsId: string) {
+  function renderModeMenuSideSwitch(controlsId: string, showHint = true) {
     const side = modeMenuSides.find((entry) => entry.id === modeMenuSide) ?? modeMenuSides[0];
     return (
-      <div className="grid gap-2">
+      <div className="grid gap-1.5">
         <SegmentedControl
           label="Clinical or Work"
           layout="equal"
@@ -1617,15 +1620,18 @@ export function MasterSearchHeader({
           onChange={selectModeMenuSide}
           ariaControls={controlsId}
           ariaDescribedBy="app-mode-side-hint"
+          className="rounded-lg"
           options={modeMenuSides.map((entry) => ({
             value: entry.id,
             label: entry.label,
             icon: entry.id === "clinical" ? Stethoscope : Briefcase,
           }))}
         />
-        <p id="app-mode-side-hint" className="px-1 text-xs font-medium leading-4 text-[color:var(--text-muted)]">
-          {side.hint}
-        </p>
+        {showHint ? (
+          <p id="app-mode-side-hint" className="px-1 text-xs font-medium leading-4 text-[color:var(--text-muted)]">
+            {side.hint}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -2836,7 +2842,7 @@ export function MasterSearchHeader({
               aria-label={`${selectedAppMode.label} pages`}
               className={cn(glassOverlaySurface, modeMenuPopoverShell)}
             >
-              <div className="flex items-center gap-1.5 border-b border-[color:var(--border)] px-2 py-2">
+              <div className="m-1.5 mb-0 flex items-center gap-1.5 rounded-lg border border-[color:var(--border-lux)] bg-[color-mix(in_srgb,var(--surface-inset)_78%,transparent)] px-1.5 py-1 shadow-[var(--shadow-inset)]">
                 <button
                   type="button"
                   onClick={() => setModeSheetView("modes")}
@@ -2850,7 +2856,7 @@ export function MasterSearchHeader({
                   {`${selectedAppMode.label} pages`}
                 </h2>
               </div>
-              <div className="p-2">{renderModeSectionLevel()}</div>
+              <div className="p-1.5">{renderModeSectionLevel()}</div>
             </div>
           ) : null}
 
@@ -2861,71 +2867,85 @@ export function MasterSearchHeader({
               aria-label="Choose app mode"
               className={cn(glassOverlaySurface, modeMenuPopoverShell)}
             >
-              <div className="border-b border-[color:var(--border)] p-3 pb-2.5">
-                {renderModeMenuSideSwitch("app-mode-options")}
-                <div className="search-shell mt-2.5 grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] px-3 shadow-[var(--shadow-inset)] transition-[border-color,box-shadow]">
-                  <Search aria-hidden="true" className="size-icon-md text-[color:var(--text-muted)]" strokeWidth={2} />
-                  <input
-                    ref={desktopModeMenuSearchRef}
-                    type="text"
-                    value={modeMenuQuery}
-                    onChange={(event) => {
-                      setModeMenuQuery(event.target.value);
-                      setModeMenuFocusIndex(0);
-                    }}
-                    onKeyDown={handleModeMenuSearchKeyDown}
-                    placeholder="Find a mode"
-                    aria-label="Find a mode"
-                    aria-controls="app-mode-options"
-                    autoComplete="off"
-                    spellCheck={false}
-                    className="search-shell-input min-w-0 bg-transparent text-sm font-semibold text-[color:var(--text-heading)] outline-none placeholder:font-medium placeholder:text-[color:var(--text-muted)]"
-                  />
-                  {modeMenuQuery ? (
+              <div className="p-1.5 pb-0">
+                <div className="rounded-lg border border-[color:var(--border-lux)] bg-[color-mix(in_srgb,var(--surface-inset)_78%,transparent)] p-2 shadow-[var(--shadow-inset)]">
+                  {renderModeMenuSideSwitch("app-mode-options", false)}
+                  <div className="search-shell mt-2 grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-[color:var(--border-lux)] bg-[color:var(--surface)] px-3 shadow-[var(--shadow-inset)] transition-[border-color,box-shadow]">
+                    <Search
+                      aria-hidden="true"
+                      className="size-icon-md text-[color:var(--text-muted)]"
+                      strokeWidth={2}
+                    />
+                    <input
+                      ref={desktopModeMenuSearchRef}
+                      type="text"
+                      value={modeMenuQuery}
+                      onChange={(event) => {
+                        setModeMenuQuery(event.target.value);
+                        setModeMenuFocusIndex(0);
+                      }}
+                      onKeyDown={handleModeMenuSearchKeyDown}
+                      placeholder="Find a mode"
+                      aria-label="Find a mode"
+                      aria-controls="app-mode-options"
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="search-shell-input min-w-0 bg-transparent text-sm font-semibold text-[color:var(--text-heading)] outline-none placeholder:font-medium placeholder:text-[color:var(--text-muted)]"
+                    />
+                    {modeMenuQuery ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModeMenuQuery("");
+                          setModeMenuFocusIndex(selectedModeIndex);
+                          desktopModeMenuSearchRef.current?.focus();
+                        }}
+                        aria-label="Clear mode search"
+                        className="grid size-8 place-items-center rounded-sm text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
+                      >
+                        <X aria-hidden="true" className="size-icon-md" />
+                      </button>
+                    ) : (
+                      <span aria-hidden="true" className="size-8" />
+                    )}
+                  </div>
+                  <div className="mt-1.5 flex items-baseline justify-between gap-3 px-1">
+                    <p
+                      id="app-mode-side-hint"
+                      className="min-w-0 truncate text-xs font-medium leading-4 text-[color:var(--text-muted)]"
+                    >
+                      {modeMenuSides.find((entry) => entry.id === modeMenuSide)?.hint}
+                    </p>
+                    <p
+                      role="status"
+                      className="nums shrink-0 text-2xs font-semibold tracking-kicker text-[color:var(--text-muted)]"
+                    >
+                      {normalizedModeMenuQuery
+                        ? `${desktopModeMenuOptions.length} ${desktopModeMenuOptions.length === 1 ? "match" : "matches"}`
+                        : `${desktopModeMenuOptions.length} in ${modeMenuSides.find((entry) => entry.id === modeMenuSide)?.label ?? "Clinical"}`}
+                    </p>
+                  </div>
+                  {normalizedModeMenuQuery && otherSideMatchCount > 0 ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        setModeMenuQuery("");
-                        setModeMenuFocusIndex(selectedModeIndex);
-                        desktopModeMenuSearchRef.current?.focus();
-                      }}
-                      aria-label="Clear mode search"
-                      className="grid size-8 place-items-center rounded-md text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
+                      onClick={() => selectModeMenuSide(otherModeMenuSide)}
+                      aria-label={`Show ${otherSideMatchCount} ${otherSideMatchCount === 1 ? "match" : "matches"} in ${modeMenuSides.find((entry) => entry.id === otherModeMenuSide)?.label ?? "Work"}`}
+                      className="mt-1.5 flex min-h-12 w-full items-center rounded-md border border-[color:var(--clinical-accent-border)] bg-[color-mix(in_srgb,var(--clinical-accent-soft)_72%,transparent)] px-2.5 text-left text-sm font-semibold text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)] transition-colors hover:bg-[color:var(--clinical-accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                     >
-                      <X aria-hidden="true" className="size-icon-md" />
+                      {otherSideMatchCount} in {modeMenuSides.find((entry) => entry.id === otherModeMenuSide)?.label}
                     </button>
-                  ) : (
-                    <span aria-hidden="true" className="size-8" />
-                  )}
+                  ) : null}
                 </div>
-                <p
-                  role="status"
-                  className="nums mt-2 px-1 text-2xs font-bold uppercase tracking-kicker text-[color:var(--text-muted)]"
-                >
-                  {normalizedModeMenuQuery
-                    ? `${desktopModeMenuOptions.length} ${desktopModeMenuOptions.length === 1 ? "match" : "matches"}`
-                    : `${desktopModeMenuOptions.length} in ${modeMenuSides.find((entry) => entry.id === modeMenuSide)?.label ?? "Clinical"}`}
-                </p>
-                {normalizedModeMenuQuery && otherSideMatchCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => selectModeMenuSide(otherModeMenuSide)}
-                    aria-label={`Show ${otherSideMatchCount} ${otherSideMatchCount === 1 ? "match" : "matches"} in ${modeMenuSides.find((entry) => entry.id === otherModeMenuSide)?.label ?? "Work"}`}
-                    className="mt-1 flex min-h-12 w-full items-center rounded-lg px-2 text-left text-sm font-semibold text-[color:var(--clinical-accent)] transition-colors hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-                  >
-                    {otherSideMatchCount} in {modeMenuSides.find((entry) => entry.id === otherModeMenuSide)?.label}
-                  </button>
-                ) : null}
               </div>
 
-              <div className="polished-scroll max-h-[min(34rem,calc(100dvh-13rem))] overflow-y-auto p-1.5">
-                <div id="app-mode-options" role="menu" aria-label="Choose app mode">
+              <div className="polished-scroll max-h-[min(32rem,calc(100dvh-14rem))] overflow-y-auto px-1.5 pb-1.5 pt-1.5">
+                <div id="app-mode-options" role="menu" aria-label="Choose app mode" className="grid gap-1.5">
                   {desktopModeMenuOptions.length === 0 ? (
-                    <p className="px-3 py-8 text-center text-sm font-medium text-[color:var(--text-muted)]">
+                    <p className="rounded-lg border border-[color:var(--border-lux)] px-3 py-6 text-center text-sm font-medium text-[color:var(--text-muted)]">
                       No modes match that search.
                     </p>
                   ) : normalizedModeMenuQuery ? (
-                    <div className="grid gap-0.5">{renderModeMenuOptions()}</div>
+                    <div className={cn(modeMenuGroupCard, "grid gap-px")}>{renderModeMenuOptions()}</div>
                   ) : (
                     renderGroupedDesktopModeMenuOptions()
                   )}
@@ -2934,7 +2954,7 @@ export function MasterSearchHeader({
 
               <div
                 aria-hidden="true"
-                className="flex items-center justify-center gap-3 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)]/70 px-3 py-2 text-2xs font-medium text-[color:var(--text-muted)]"
+                className="flex items-center justify-center gap-3 border-t border-[color:var(--border-lux)] px-3 py-1.5 text-2xs font-medium text-[color:var(--text-muted)]"
               >
                 <span>↑↓ Navigate</span>
                 <span>Enter Select</span>
@@ -3037,8 +3057,8 @@ export function MasterSearchHeader({
           mobileHeaderSafeArea="padding"
           testId="app-mode-menu-sheet"
           contentClassName="max-h-[calc(100dvh-0.75rem)] rounded-t-3xl bg-[color:var(--surface-lux)] sm:max-w-md sm:rounded-2xl"
-          bodyClassName="bg-[color:var(--surface-lux)] px-2.5 pb-2 pt-0.5"
-          headerClassName="bg-[color:var(--surface-lux)] px-4 pb-3 pt-1.5"
+          bodyClassName="bg-[color-mix(in_srgb,var(--surface-inset)_46%,var(--surface-lux))] px-2 pb-2 pt-1.5"
+          headerClassName="border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] px-4 pb-2.5 pt-1.5"
           titleClassName={
             modeSheetView === "sections" ? modePagesSheetTitleClass : "tracking-[var(--tracking-display)]"
           }
@@ -3048,8 +3068,16 @@ export function MasterSearchHeader({
             renderModeSectionLevel()
           ) : (
             <>
-              <div className="px-1 pb-2 pt-1">{renderModeMenuSideSwitch("app-mode-menu")}</div>
-              <div ref={phoneModeMenuListRef} id="app-mode-menu" role="menu" aria-label="Choose app mode">
+              <div className="rounded-lg border border-[color:var(--border-lux)] bg-[color-mix(in_srgb,var(--surface-inset)_78%,transparent)] p-2 shadow-[var(--shadow-inset)]">
+                {renderModeMenuSideSwitch("app-mode-menu")}
+              </div>
+              <div
+                ref={phoneModeMenuListRef}
+                id="app-mode-menu"
+                role="menu"
+                aria-label="Choose app mode"
+                className="mt-1.5 grid gap-1.5"
+              >
                 {phoneModeGroupsForSide(modeMenuSide).map((group) => {
                   const groupModes = group.modeIds.flatMap((modeId) => {
                     const mode = activeModeMenuOptions.find((candidate) => candidate.id === modeId);
@@ -3057,7 +3085,7 @@ export function MasterSearchHeader({
                   });
                   if (groupModes.length === 0) return null;
                   const rows = (
-                    <div className="mt-1.5 grid gap-1">
+                    <div className="grid gap-px">
                       {groupModes.map((mode) =>
                         renderModeMenuOption(
                           mode,
@@ -3068,7 +3096,7 @@ export function MasterSearchHeader({
                   );
                   if (!group.showHeading) {
                     return (
-                      <div key={group.id} className="pt-1">
+                      <div key={group.id} className={modeMenuGroupCard}>
                         {rows}
                       </div>
                     );
@@ -3080,20 +3108,15 @@ export function MasterSearchHeader({
                       role="group"
                       aria-labelledby={headingId}
                       data-mode-group={group.id}
-                      className="pt-3 first:pt-1"
+                      className={modeMenuGroupCard}
                     >
-                      <div className="sticky top-0 z-[5] -mx-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-lux)]/96 px-3 py-1.5 backdrop-blur-md">
-                        <div className="flex min-w-0 items-baseline gap-2">
-                          <h3
-                            id={headingId}
-                            className="shrink-0 text-2xs font-black uppercase tracking-kicker text-[color:var(--text-muted)]"
-                          >
-                            {group.label}
-                          </h3>
-                          <p className="min-w-0 truncate text-2xs font-medium text-[color:var(--text-muted)]">
-                            {group.hint}
-                          </p>
-                        </div>
+                      <div className="flex min-w-0 items-baseline gap-2 px-2 pb-0.5 pt-1">
+                        <h3 id={headingId} className={cn(eyebrowText, "shrink-0")}>
+                          {group.label}
+                        </h3>
+                        <p className="min-w-0 truncate text-2xs font-medium text-[color:var(--text-muted)]">
+                          {group.hint}
+                        </p>
                       </div>
                       {rows}
                     </section>
