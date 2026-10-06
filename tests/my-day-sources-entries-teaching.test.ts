@@ -205,6 +205,18 @@ describe("teachingMyDayItems", () => {
     expect(items[2]).toMatchObject({ title: `Give feedback on ${withUnit(2, "sessions")}`, severity: "info" });
   });
 
+  it("adds the catch-up row for this week's ended sessions with no check-in", () => {
+    const [item] = teachingMyDayItems({ unloggedCount: 0, teach: null, feedbackOpen: null, catchUp: 2 }, NOW);
+    expect(item).toMatchObject({
+      id: "teaching:catch-up",
+      title: `Catch up on ${withUnit(2, "sessions")}`,
+      detail: "This week, no check-in recorded",
+      severity: "info",
+      href: "/teaching/resources#catch-up",
+    });
+    expect(teachingMyDayItems({ unloggedCount: 0, teach: null, feedbackOpen: null, catchUp: 0 }, NOW)).toEqual([]);
+  });
+
   it("uses the plural for several unlogged sessions", () => {
     const [item] = teachingMyDayItems({ unloggedCount: 4, teach: null, feedbackOpen: null }, NOW);
     expect(item.title).toBe(`Review & log ${withUnit(4, "sessions")}`);
