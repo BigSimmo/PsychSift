@@ -161,10 +161,20 @@ describe("CI cache safety", () => {
 
   it("uses npm's download cache but recreates node_modules on every job", () => {
     expect(nodeSetup).toContain("cache: npm");
-    expect(nodeSetup).toContain("cache-dependency-path: package-lock.json");
     expect(nodeSetup).toContain("run: npm ci --include=dev");
     expect(nodeSetup).not.toContain("path: node_modules");
     expect(nodeSetup).not.toContain("cache-hit");
+  });
+
+  it("keys the npm download cache apart from setup-node's automatic package-manager cache", () => {
+    // package.json declares "packageManager", so every bare actions/setup-node step (for
+    // example CI's Change scope job) also saves ~/.npm under node-cache-…-npm-<lock hash>
+    // without ever running npm ci. Change scope finishes first, so that key held an empty
+    // 686-byte entry, and a primary-key hit is never re-saved. Hashing .nvmrc as well gives
+    // this action a key only a job that has just run npm ci can write.
+    expect(nodeSetup).toMatch(/cache-dependency-path: \|\n\s+package-lock\.json\n\s+\.nvmrc\n/);
+    const installStep = nodeSetup.indexOf("run: npm ci --include=dev");
+    expect(installStep).toBeGreaterThan(nodeSetup.indexOf("cache: npm"));
   });
 
   it("keeps quarantined and mockup UI specs in one advisory lane", () => {
