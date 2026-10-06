@@ -29,6 +29,7 @@ export const appModeIds = [
   "first-nations",
   "my-day",
   "medicines",
+  "open-shifts",
 ] as const;
 
 export type AppModeId = (typeof appModeIds)[number];
@@ -714,6 +715,35 @@ export const appModeDefinitions = [
     },
   },
   {
+    id: "open-shifts",
+    label: "Open shifts",
+    description: "Extra shifts advertised in your Roster teams: browse, apply, get alerts and post",
+    href: "/open-shifts",
+    search: {
+      // Open shifts lists adverts from the reader's own Roster teams, already in
+      // the browser, so it borrows the benign "tools" command kind as Roster
+      // does. Filter chips on the Browse page do the narrowing.
+      kind: "tools",
+      placeholder: "Search open shifts...",
+      inputAriaLabel: "Search open shifts",
+      submitIdleLabel: "Open shifts",
+      submitBusyLabel: "Open shifts",
+      submitAriaLabel: "Search open shifts",
+      emptyTitle: "Find an extra shift",
+      readyTitle: "Extra shifts in your Roster teams",
+      progressLabel: "Opening the page.",
+      resultKind: "tools",
+      resultHeading: "Open shifts",
+      // No results page. `/open-shifts` is the Browse list, and there is no
+      // `/open-shifts/search`: a retargeted composer would accept a query and
+      // land the reader on a page that ignores it.
+      resultsSurface: "none",
+      statusLabel: "Open shifts",
+      nextStep: "Open Browse, My shifts or Alerts",
+      badgeLabel: null,
+    },
+  },
+  {
     id: "first-nations",
     label: "First Nations",
     description: "Culturally safe care for Aboriginal and Torres Strait Islander patients",
@@ -822,6 +852,7 @@ const namespaceIsolatedModes = new Set<AppModeId>([
   "first-nations",
   "my-day",
   "medicines",
+  "open-shifts",
 ]);
 
 export function appModeHomeHref(modeId: AppModeId, options: SearchNavigationOptions = {}) {

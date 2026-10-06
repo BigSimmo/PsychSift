@@ -255,6 +255,16 @@ export const modeSecondaryNavigationRegistry = {
     { id: "my-day-week", label: "Week", href: "/my-day/week" },
     { id: "my-day-hours", label: "Hours", href: "/my-day/hours" },
   ],
+  // Open shifts' pages. Post is for Roster team managers only: the registry is
+  // the same for everyone, so `modePageVisible` hides it until an Open shifts
+  // read confirms poster rights (`setOpenShiftsIsPoster`), as Roster hides Team
+  // and Swaps. Ids are prefixed so they stay unique across modes.
+  "open-shifts": [
+    { id: "open-shifts-browse", label: "Browse", href: "/open-shifts" },
+    { id: "open-shifts-mine", label: "My shifts", href: "/open-shifts/mine" },
+    { id: "open-shifts-alerts", label: "Alerts", href: "/open-shifts/alerts" },
+    { id: "open-shifts-post", label: "Post", href: "/open-shifts/post" },
+  ],
 } as const satisfies Record<AppModeId, readonly ModeSecondaryNavigationEntry[]>;
 
 type RegistryEntry = (typeof modeSecondaryNavigationRegistry)[AppModeId][number];
@@ -507,6 +517,14 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/roster") return "today";
     return null;
   }
+  if (modeId === "open-shifts") {
+    // Exact matches only, for Roster's reason.
+    if (pathname === "/open-shifts/mine") return "open-shifts-mine";
+    if (pathname === "/open-shifts/alerts") return "open-shifts-alerts";
+    if (pathname === "/open-shifts/post") return "open-shifts-post";
+    if (pathname === "/open-shifts") return "open-shifts-browse";
+    return null;
+  }
   // Every mode with destinations has a branch above; the rest register none, so
   // nothing can be current. This used to be
   // `modeSecondaryNavigationRegistry[modeId][0]?.id ?? null`, which existed only
@@ -570,6 +588,9 @@ export function isModeSecondaryNavigationRoute(params: {
     return ["/roster/shifts", "/roster/team", "/roster/swaps", "/roster/requests", "/roster/settings"].includes(
       pathname,
     );
+  }
+  if (modeId === "open-shifts") {
+    return ["/open-shifts/mine", "/open-shifts/alerts", "/open-shifts/post"].includes(pathname);
   }
   return false;
 }

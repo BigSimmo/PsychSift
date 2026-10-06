@@ -47,6 +47,8 @@ const MODE_HOME_LOADING_ROUTES = [
   "teaching",
   // My Day's merged list, likewise.
   "my-day",
+  // Open shifts' Browse list, which shares Roster's narrow skeleton shape.
+  "open-shifts",
 ] as const;
 
 /**
@@ -60,6 +62,7 @@ const OWN_SKELETON: Partial<Record<(typeof MODE_HOME_LOADING_ROUTES)[number], st
   "first-nations": "FirstNationsLoading",
   // Roster's narrow, top-aligned pages: identity tile, title, then modules.
   roster: "RosterLoadingSkeleton",
+  "open-shifts": "OpenShiftsLoadingSkeleton",
 };
 
 describe("mode-home loading contract", () => {

@@ -1,6 +1,7 @@
 import {
   BedDouble,
   Ban,
+  Bell,
   ArrowLeftRight,
   BookOpenText,
   Brain,
@@ -8,6 +9,7 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarClock,
+  CalendarCheck,
   CalendarDays,
   CalendarRange,
   CalendarX2,
@@ -33,6 +35,7 @@ import {
   Settings,
   Sparkles,
   SlidersHorizontal,
+  SquarePlus,
   Stethoscope,
   Sunrise,
   Scale,
@@ -160,6 +163,12 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   "first-nations-mistakes": Ban,
   "first-nations-going-home": House,
   "first-nations-end-of-life": Feather,
+  // Open shifts. Browse is the search glass, My shifts the ticked day (shifts
+  // you applied for or were given), Alerts the bell, Post the plus box.
+  "open-shifts-browse": Search,
+  "open-shifts-mine": CalendarCheck,
+  "open-shifts-alerts": Bell,
+  "open-shifts-post": SquarePlus,
   // Teaching shares the Today calendar icon with Roster.
   logbook: NotebookText,
   organise: SlidersHorizontal,

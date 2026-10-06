@@ -54,9 +54,10 @@ plugins/          plugins/clinical-kb/ Codex plugin manifest and workflow skill
 
 Never commit: `.next/`, `node_modules/`, `coverage/`, `.env*`, `sample-documents/`, logs.
 
-The product surface is **20 app modes** (`src/lib/app-modes.ts`, counted 2026-09-26) sharing one search shell:
+The product surface is **26 app modes** (`src/lib/app-modes.ts`, counted 2026-10-05) sharing one search shell:
 answer, documents, services, forms, favourites, differentials, dsm, specifiers, formulation,
-prescribing, tools, calculators, therapy-compass, factsheets, dictionary, sources, on-call, cme.
+prescribing, tools, calculators, therapy-compass, factsheets, dictionary, sources, on-call, cme,
+teaching, psychiatry, my-work, roster, first-nations, my-day, medicines, open-shifts.
 
 ### The two flows that matter
 
@@ -160,7 +161,7 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 - **Home:** `src/app/(search-app)/page.tsx` — dashboard rendered by shell; the shared home for every mode as `/?mode=<id>`
 - **Consolidated mode homes:** bare mode paths (`/documents`, `/dsm`, `/dictionary`, `/factsheets`, `/services`, `/forms`, `/calculators`, `/specifiers`, `/formulation`, `/differentials`, `/therapy-compass`, `/sources`) 307 to `/?mode=<id>`, and submitted queries (`?q=…&run=1`) to `/<mode>/search` — `src/lib/consolidated-mode-home-redirect.ts`, applied in `src/proxy.ts`, with each page's own `redirect()` as a backstop. `/medications` goes to `/?mode=prescribing`. Only `/tools`, `/favourites`, `/on-call`, `/cme`, `/psychiatry`, `/my-work`, `/roster` and `/first-nations` render their own home.
 - **Dashboard:** `src/components/ClinicalDashboard.tsx` + `src/components/clinical-dashboard/`
-- **Modes (22, counted 2026-09-27):** `src/lib/app-modes.ts` — answer, documents, services, forms, favourites, differentials, DSM-5 diagnosis, specifiers, formulation, prescribing, tools, calculators, Therapy, Factsheets, Dictionary, Sources, On Call, CPD (mode id `cme`), Psychiatry, My Work (mode id `my-work`), Roster (mode id `roster`), First Nations (mode id `first-nations`)
+- **Modes (26, counted 2026-10-05):** `src/lib/app-modes.ts` — answer, documents, services, forms, favourites, differentials, DSM-5 diagnosis, specifiers, formulation, prescribing, tools, calculators, Therapy, Factsheets, Dictionary, Sources, On Call, CPD (mode id `cme`), Teaching, Psychiatry, Admin (mode id `my-work`), Roster (mode id `roster`), First Nations (mode id `first-nations`), My Day (mode id `my-day`), Medicines & tools (mode id `medicines`), Open shifts (mode id `open-shifts`)
 
   - **Sources catalogue:** `/sources/search` (bare `/sources` redirects to the shared home) provides a read-only, quality-banded catalogue with Topics, Publishers, Method and source-detail traceability; `/dictionary/sources` redirects into its Dictionary-filtered view. Method (`/sources/method`) and the Guide Centre's Source rating topic both render `src/components/reference/source-method-reference-content.tsx` — one component, `variant: "page" | "guide"`, the same arrangement `colour-coding-reference-content.tsx` uses for `/reference/colour-coding`.
   - **Therapy review disclosure.** Therapy was `devOnly` while its 205-record catalogue awaited qualified-clinician sign-off. That hid the mode from production navigation, 404'd `/therapy-compass` in the route layout, and made `therapyRecordsForEnvironment` filter every record out — so all 205 detail/brief/sheet routes and every universal-search therapy hit 404'd for real users while working locally. The owner's decision (2026-08-19) replaced the gate with disclosure: reachability is no longer conditioned on review status anywhere, and the caveat is stated per record instead, by the `reviewStatus` badge on every card, detail page, brief, sheet, comparison, pathway, and universal-search result. A catalogue-wide banner (`TherapyReviewNotice`, counts from the generated `THERAPY_CATALOGUE_SUMMARY.needsReviewCount`) sat above the search band until 2026-09-06, when the owner removed it: a caveat repeated above every search is read past, while the per-record badge sits where the decision is actually made. `therapyNeedsReview` survives as the label source only. Pinned by `tests/app-modes.test.ts` (reachability), `tests/therapy-review-regressions.test.ts` (the per-record badges, and the banner's absence), and `tests/therapy-pr-unblocking-contract.test.ts` (the retired `PLAYWRIGHT_OFFLINE_MODE` bypass that existed only to reach the gated route).
@@ -476,6 +477,15 @@ in `src/lib/roster/` (the import folder, `calendar-link-fetch`, `calendar-links`
 - Roster shifts reach the calendar feed only when the doctor turns that on.
 - Nothing about shifts is stored offline, and Roster uses no AI. The On Call home still shows the
   shift on now or the next one, linking to `/roster`.
+
+**Open shifts mode.** Extra shifts advertised inside the doctor's Roster teams (mode id
+`open-shifts`, no search surface, like Roster). Tabs: `/open-shifts` (Browse), `/open-shifts/mine`,
+`/open-shifts/alerts` and `/open-shifts/post`; Post shows only once `setOpenShiftsIsPoster(true)`
+(`src/lib/teaching/page-visibility.ts`) confirms the reader manages a team, as Roster hides Team and
+Swaps. Sub-pages with their own header, outside the mode band: `/open-shifts/shift/[serviceId]/[openShiftId]`
+(one advert), `/open-shifts/post/new`, `/open-shifts/post/[serviceId]/[openShiftId]`, `/open-shifts/board`
+and `/open-shifts/log`. Pages in `src/components/open-shifts/`, logic in `src/lib/open-shifts/`;
+registration is pinned by `tests/open-shifts-mode-registration.test.ts`.
 
 ### Admin mode
 

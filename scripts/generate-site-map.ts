@@ -201,6 +201,17 @@ const routeDescriptions: Record<string, string> = {
     "My Day Hours: your rostered hours this week and this fortnight and your next leave, from Roster's own hours helpers. No search surface.",
   "/my-day":
     "My Day: one time-ordered list of what needs you across On Call, Roster, CPD, Teaching and Admin — overdue first, then due soon, then the rest — each row linking to the page that resolves it. My Day has no search results surface.",
+  "/open-shifts":
+    "Open shifts Browse: extra shifts advertised in your Roster teams, with filter chips. Open shifts has no search results surface.",
+  "/open-shifts/shift/[serviceId]/[openShiftId]":
+    "One extra-shift advert in your Roster team, where you put your hand up.",
+  "/open-shifts/mine": "Open shifts My shifts: extra shifts you have applied for or been given.",
+  "/open-shifts/alerts": "Open shifts Alerts: choose which new extra shifts you hear about.",
+  "/open-shifts/post": "Open shifts Post: the extra shifts a Roster team manager has posted.",
+  "/open-shifts/post/new": "Post an extra shift to a Roster team you manage.",
+  "/open-shifts/post/[serviceId]/[openShiftId]": "One extra shift you posted, with its applicants.",
+  "/open-shifts/board": "Open shifts Board: every open shift in the Roster teams you manage at a glance.",
+  "/open-shifts/log": "Open shifts Log: what has happened to the extra shifts in the Roster teams you manage.",
   "/on-call/compliance": "Compatibility redirect to `/admin/renewals`, carrying the query string.",
   "/on-call/logistics": "Compatibility redirect to `/admin/help`, carrying the query string.",
   "/on-call/education": "Compatibility redirect to `/teaching/week`, carrying the query string.",
@@ -549,6 +560,7 @@ function renderModeRoutes() {
     teaching: appModeHomeHref("teaching"),
     "my-day": appModeHomeHref("my-day"),
     medicines: appModeHomeHref("medicines"),
+    "open-shifts": appModeHomeHref("open-shifts"),
   };
 
   return appModeDefinitions.map((mode) => {
@@ -723,6 +735,13 @@ function renderModePageIndex() {
       search: appModeHomeHref("roster"),
       detail:
         'No results page — `resultsSurface: "none"`, like On Call. `/roster` Today dashboard, `/roster/shifts` full schedule and month calendar, `/roster/calendar` feed subscribe, and `/roster/settings`.',
+    },
+    {
+      mode: "Open shifts",
+      home: appModeHomeHref("open-shifts"),
+      search: appModeHomeHref("open-shifts"),
+      detail:
+        'No results page — `resultsSurface: "none"`, like Roster. `/open-shifts` Browse, `/open-shifts/mine`, `/open-shifts/alerts`, and `/open-shifts/post` for Roster team managers (with `/post/new`, `/post/[serviceId]/[openShiftId]`, `/board` and `/log`); `/open-shifts/shift/[serviceId]/[openShiftId]` is one advert.',
     },
     {
       mode: "First Nations",
