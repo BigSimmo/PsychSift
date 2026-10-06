@@ -53,7 +53,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
   ],
   cme: ["Year", "Log", "Plan", "Courses", "Report"],
   teaching: ["This week", "Presenting", "Assessments", "My record", "Resources", "Organise"],
-  psychiatry: [],
+  psychiatry: ["Ask", "Tools", "Saved"],
   medicines: [],
   "my-work": ["Renewals", "Compliance", "New job", "Help"],
   roster: ["Shifts", "Swaps & leave", "Team", "Settings", "Today"],
@@ -102,8 +102,8 @@ const cleanLandingPath: Record<AppModeId, string> = {
 };
 
 /**
- * The modes that register nothing. Psychiatry's home is
- * itself the list of pages it gathers.
+ * The modes that register nothing. Psychiatry left this list when its
+ * hub pages became the band tabs.
  *
  * Each used to carry one `action: "search"` entry rendering a lone <button>
  * inside its own <nav> landmark, whose only effect was focusing a composer
@@ -127,7 +127,6 @@ const emptyRegistryModes = [
   "prescribing",
   "tools",
   "calculators",
-  "psychiatry",
   "medicines",
 ] as const satisfies readonly AppModeId[];
 
@@ -185,6 +184,16 @@ describe("mode secondary navigation registry", () => {
     ] as const) {
       expect(activeModeSecondaryNavigationId("cme", pathname)).toBe(page);
     }
+  });
+
+  it("registers Psychiatry's Ask, Tools and Saved as the band's tabs, Ask current on the hub", () => {
+    expect(modeSecondaryNavigationRegistry.psychiatry.map(({ id, href }) => [id, href])).toEqual([
+      ["psychiatry-ask", "/psychiatry"],
+      ["psychiatry-tools", "/psychiatry?page=tools"],
+      ["psychiatry-saved", "/psychiatry?page=saved"],
+    ]);
+    expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry")).toBe("psychiatry-ask");
+    expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry/mha-clock")).toBeNull();
   });
 
   it("suppresses clean landing pages, and still opens the bar after a submitted search", () => {

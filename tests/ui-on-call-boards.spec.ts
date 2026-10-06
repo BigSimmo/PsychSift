@@ -956,8 +956,8 @@ test.describe("Compliance — the view the boards never drew", () => {
 
   test("keeps Checklist and Personal tabs, and Personal holds only the reader's own renewals", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
-    await expect(page.getByRole("tab", { name: "Checklist" })).toBeVisible();
-    await page.getByRole("tab", { name: "Personal" }).click();
+    await expect(page.getByRole("radio", { name: "Checklist" })).toBeVisible();
+    await page.getByRole("radio", { name: "Personal" }).click();
 
     const personal = visibleByTestId(page, "admin-renewals-personal");
     await expect(personal).toBeVisible();

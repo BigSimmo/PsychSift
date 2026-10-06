@@ -204,9 +204,14 @@ export const modeSecondaryNavigationRegistry = {
     { id: "resources", label: "Resources", href: "/teaching/resources" },
     { id: "organise", label: "Organise", href: "/teaching/organise" },
   ],
-  // Psychiatry's home is itself the list of sections it gathers, and each
-  // section keeps its own navigation, so the hub registers no destinations.
-  psychiatry: [],
+  // Psychiatry's hub has three pages, switched with ?page= (like My Day). The
+  // band draws them as its underline tabs; each section the hub gathers keeps
+  // its own navigation.
+  psychiatry: [
+    { id: "psychiatry-ask", label: "Ask", href: "/psychiatry" },
+    { id: "psychiatry-tools", label: "Tools", href: "/psychiatry?page=tools" },
+    { id: "psychiatry-saved", label: "Saved", href: "/psychiatry?page=saved" },
+  ],
   medicines: [],
   // Admin keeps the internal mode id for existing preferences and links.
   "my-work": [
@@ -501,6 +506,12 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records" || pathname === "/admin/new-job/pack")
       return "new-job";
     if (pathname === "/admin/help") return "help";
+    return null;
+  }
+  if (modeId === "psychiatry") {
+    // The address carries no ?page= here, so the page itself names Tools or
+    // Saved through useModeBandCurrentTab.
+    if (pathname === "/psychiatry") return "psychiatry-ask";
     return null;
   }
   if (modeId === "my-day") {

@@ -7,6 +7,7 @@ import {
   BookOpenText,
   Brain,
   BookMarked,
+  Bookmark,
   BriefcaseBusiness,
   Building2,
   CalendarClock,
@@ -42,6 +43,7 @@ import {
   Users,
   UsersRound,
   Waypoints,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -151,6 +153,10 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   "my-day-today": Sunrise,
   "my-day-work": BriefcaseBusiness,
   "my-day-me": UserRound,
+  // Psychiatry's three hub pages.
+  "psychiatry-ask": Search,
+  "psychiatry-tools": Wrench,
+  "psychiatry-saved": Bookmark,
   // First Nations. Prefixed ids, so On Call's "contacts" icon is not shared —
   // each mode's rail slots wear their own mark even where the idea overlaps.
   "first-nations-bedside": LayoutGrid,
