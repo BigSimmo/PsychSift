@@ -595,6 +595,8 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
     DB_CHANGED: "false",
     BUILD_CHANGED: "false",
     PERF_CHANGED: "false",
+    // Mirrors lighthouse-budget's lockfile-only push arm in the Lighthouse requirement.
+    LOCKFILE_CHANGED: "false",
     /*
      * Read only by the draft report at the end of the script, which decides whether
      * `lighthouse-budget` belongs in the list of jobs a draft did not run. Added to `ci.yml` and

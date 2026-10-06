@@ -1542,6 +1542,8 @@ jobs:
           DB_CHANGED: ${{ needs.changes.outputs.db_changed }}
           BUILD_CHANGED: ${{ needs.changes.outputs.build_changed }}
           PERF_CHANGED: ${{ needs.changes.outputs.perf_changed }}
+          # lighthouse-budget's push arm also runs on lockfile-only pushes; mirrored below.
+          LOCKFILE_CHANGED: ${{ needs.changes.outputs.lockfile_changed }}
           # lighthouse-budget is the one draft-suppressed job whose own `if:` is decided by
           # labels as well as scope, so the draft report needs both to avoid naming a job
           # that actually ran.
@@ -1703,15 +1705,20 @@ jobs:
             require_skipped_or_success "production-ui" "$UI_RESULT"
           fi
 
-          # Mirror lighthouse-budget's own `if:` for PR/merge_group: when perf is in
-          # scope (or opt-in label) and skip label is absent, require success. The skip
-          # label remains an explicit escape hatch. Drafts without the opt-in label stay
-          # skipped-ok (job itself does not run on drafts unless labeled).
-          # Baseline-refresh dispatch forces PERF_CHANGED=true while intentionally
-          # skipping lighthouse-budget (refresh job runs instead) — accept that skip.
+          # Mirror lighthouse-budget's own `if:` for EVERY event: whenever the producer is
+          # expected to run, only its success passes - including schedule, ordinary dispatch and
+          # lockfile-only pushes, which previously accepted a skipped or missing measurement.
+          # Skipped is accepted only where the producer itself would not run:
+          #   - the explicit `skip-lighthouse-budget` label (escape hatch);
+          #   - baseline-refresh dispatch (lighthouse-baseline-refresh runs instead);
+          #   - a main push whose identical tree already passed it on the merged PR
+          #     (TREE_PROVEN_LIGHTHOUSE, Main tree proof);
+          #   - drafts without the opt-in label, and out-of-scope changes.
           if [ "$SKIP_LIGHTHOUSE_LABEL" = "true" ] || [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ] || [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ]; then
             require_skipped_or_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
-          elif [ "$LIGHTHOUSE_LABEL" = "true" ] || { [ "$PERF_CHANGED" = "true" ] && [ "$PR_DRAFT" != "true" ]; }; then
+          elif [ "$EVENT_NAME" = "schedule" ] || [ "$EVENT_NAME" = "workflow_dispatch" ] ||
+            [ "$LIGHTHOUSE_LABEL" = "true" ] ||
+            { { [ "$PERF_CHANGED" = "true" ] || { [ "$EVENT_NAME" = "push" ] && [ "$LOCKFILE_CHANGED" = "true" ]; }; } && [ "$PR_DRAFT" != "true" ]; }; then
             require_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
           else
             require_skipped_or_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
