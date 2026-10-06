@@ -77,6 +77,6 @@ describe("the dashboard To finish list", () => {
 
   it("says nothing about drafts when there are none", () => {
     render(<CmeDashboard set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={now} />);
-    expect(screen.queryByRole("link", { name: /Drafts to finish/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Drafts? to finish/ })).toBeNull();
   });
 });

@@ -30,7 +30,7 @@ export function cmeDeadlineEvents(set: CmeRequirementSet): CalendarEvent[] {
     {
       id: `cme-${set.year}-close-window`,
       title: `You can close your ${set.year} CPD year from today`,
-      date: addDays(`${set.year}-12-31`, -(CME_CLOSE_WINDOW_DAYS - 1)),
+      date: addDays(`${set.year}-12-31`, -CME_CLOSE_WINDOW_DAYS),
       kind: "deadline",
       reminderType: "cpd-year-end",
       href: `/cme/summary?year=${set.year}`,
