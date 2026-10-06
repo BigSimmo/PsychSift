@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { logger } from "@/lib/logger";
 import {
+  catalogueBackgroundFillBudgetMs,
   catalogueDegradedNotice,
   catalogueListFallbackBudgetMs,
   catalogueListScope,
@@ -14,7 +15,13 @@ import {
   readCatalogueWithSeedFallback,
   withCatalogueDegradedNotice,
 } from "@/lib/site-content/catalogue-seed-fallback";
-import { siteContentRecordCacheStaleMs } from "@/lib/site-content/site-content-record-cache";
+import {
+  clearSiteContentRecordCache,
+  readSiteContentRecordsCached,
+  siteContentRecordCacheFlightTimeoutMs,
+  siteContentRecordCacheStaleMs,
+  type SiteContentRecordRows,
+} from "@/lib/site-content/site-content-record-cache";
 
 type CatalogueRecord = { slug: string };
 
@@ -98,7 +105,10 @@ describe("readCatalogueWithSeedFallback", () => {
     await expect(pending).resolves.toEqual({ records: seeds, degraded: true });
   });
 
-  it("aborts the read it gave up on rather than leaving it running", async () => {
+  // Inverted on 2026-10-06. This used to assert the read WAS aborted at the budget. That abort
+  // reached the process cache and killed the query, so a read slower than the budget could never
+  // fill the cache, and the domain stayed on seeds until the process restarted.
+  it("leaves the read it gave up on running, and cuts it off only at the background ceiling", async () => {
     await warm("form");
     vi.useFakeTimers();
     const time = clock();
@@ -110,10 +120,26 @@ describe("readCatalogueWithSeedFallback", () => {
 
     const pending = readCatalogueWithSeedFallback({ kind: "form", seeds, read, now: time.now });
     await vi.advanceTimersByTimeAsync(catalogueSeedFallbackBudgetMs);
-    await pending;
+    await expect(pending).resolves.toEqual({ records: seeds, degraded: true });
+    expect(readSignal?.aborted).toBe(false);
 
+    await vi.advanceTimersByTimeAsync(catalogueBackgroundFillBudgetMs - catalogueSeedFallbackBudgetMs);
     expect(readSignal?.aborted).toBe(true);
     expect((readSignal?.reason as DOMException).name).toBe("TimeoutError");
+  });
+
+  it("treats a read that throws synchronously as a failed read, leaving no timer behind", async () => {
+    await warm("form");
+    vi.useFakeTimers();
+    const time = clock();
+    const read = vi.fn((): Promise<CatalogueRecord[]> => {
+      throw new Error("thrown before returning a promise");
+    });
+
+    const outcome = await readCatalogueWithSeedFallback({ kind: "form", seeds, read, now: time.now });
+    expect(outcome).toEqual({ records: seeds, degraded: true });
+    // Nothing left to fire into an abandoned race (that would surface as an unhandled rejection).
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   // Without this, every keystroke pays the budget before falling back, which is still slow search.
@@ -786,5 +812,143 @@ describe("concurrent cold catalogue reads are serialised across kinds", () => {
       { records: seeds, degraded: true },
       { records: seeds, degraded: true },
     ]);
+  });
+});
+
+/**
+ * THE 2026-10 LIVE DEFECT, end to end through the real process cache.
+ *
+ * Services and medications search on psychiatry.tools served the in-bundle catalogue on 25 of the
+ * last 29 live-monitor runs. The read from Railway takes longer than the 1200 ms budget; the budget
+ * aborted it; the abort reached the cache and cancelled the query; nothing was stored; the 30 s
+ * cooldown served seeds; and the next probe started the same doomed read from scratch. These cases
+ * use the real `readSiteContentRecordsCached` beneath the fallback, because the defect lived in the
+ * hand-off between the two and neither module's own tests could see it.
+ */
+describe("a read that misses the search budget still fills the cache", () => {
+  const slowReadMs = 1_500;
+
+  function cachedRows(slug: string): SiteContentRecordRows {
+    return [
+      {
+        initialized: true,
+        render_payload: { slug },
+        snapshot: { state: "current", changeEpoch: "7", releaseId: "11111111-1111-5111-8111-111111111111" },
+      },
+    ];
+  }
+
+  /** The same layering production has: fallback -> process cache -> one slow RPC. */
+  function slowCachedRead(database: { calls: number; delayMs: number; signals: AbortSignal[] }) {
+    return async (signal: AbortSignal) => {
+      const { rows } = await readSiteContentRecordsCached({
+        kind: "service",
+        slug: null,
+        projection: "render",
+        signal,
+        read: (flightSignal) => {
+          database.calls += 1;
+          if (flightSignal) database.signals.push(flightSignal);
+          return new Promise<SiteContentRecordRows>((resolve, reject) => {
+            const timer = setTimeout(() => resolve(cachedRows("canonical-a")), database.delayMs);
+            flightSignal?.addEventListener(
+              "abort",
+              () => {
+                clearTimeout(timer);
+                reject(flightSignal.reason);
+              },
+              { once: true },
+            );
+          });
+        },
+      });
+      return rows.map((row) => row.render_payload as CatalogueRecord);
+    };
+  }
+
+  beforeEach(() => {
+    clearSiteContentRecordCache();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    clearSiteContentRecordCache();
+  });
+
+  it("answers the timed-out search from seeds, then serves the next one from the filled cache", async () => {
+    await warm("service");
+    const database = { calls: 0, delayMs: slowReadMs, signals: [] as AbortSignal[] };
+    const read = slowCachedRead(database);
+    const info = vi.spyOn(logger, "info").mockImplementation(() => {});
+    vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    const first = readCatalogueWithSeedFallback({ kind: "service", seeds, read });
+    await vi.advanceTimersByTimeAsync(catalogueSeedFallbackBudgetMs);
+    await expect(first).resolves.toEqual({ records: seeds, degraded: true });
+
+    // The query was not cancelled, finishes, and is stored.
+    await vi.advanceTimersByTimeAsync(slowReadMs - catalogueSeedFallbackBudgetMs);
+    expect(database.signals[0]?.aborted).toBe(false);
+
+    // Well inside the 30 s cooldown, and yet canonical: the late success lifted it.
+    const second = await readCatalogueWithSeedFallback({ kind: "service", seeds, read });
+    expect(second).toEqual({ records: [{ slug: "canonical-a" }], degraded: false });
+    expect(database.calls).toBe(1);
+    expect(info).toHaveBeenCalledWith(
+      "Canonical catalogue read finished after the search budget; cache filled and search recovered",
+      { catalogue_kind: "service" },
+    );
+  });
+
+  it("is not vacuous: when the read genuinely fails, the cooldown holds and seeds are served", async () => {
+    await warm("service");
+    vi.spyOn(logger, "error").mockImplementation(() => {});
+    const database = { calls: 0, delayMs: siteContentRecordCacheFlightTimeoutMs * 2, signals: [] as AbortSignal[] };
+    const read = slowCachedRead(database);
+
+    const first = readCatalogueWithSeedFallback({ kind: "service", seeds, read });
+    await vi.advanceTimersByTimeAsync(catalogueSeedFallbackBudgetMs);
+    await expect(first).resolves.toMatchObject({ degraded: true });
+
+    // Past the cache's flight deadline the query is cut off, and nothing heals.
+    await vi.advanceTimersByTimeAsync(siteContentRecordCacheFlightTimeoutMs);
+    expect(database.signals[0]?.aborted).toBe(true);
+    const second = await readCatalogueWithSeedFallback({ kind: "service", seeds, read });
+    expect(second).toEqual({ records: seeds, degraded: true });
+    expect(database.calls).toBe(1);
+  });
+
+  // The monitor's own shape: one probe, after idle, on a cold key. The cold retry now waits on the
+  // query already in flight instead of starting a second cold one, so a 1.5 s read is answered
+  // canonically inside the 1200 + 1000 ms the cold path allows.
+  it("lets a cold first search's retry join the slow read instead of starting another", async () => {
+    const database = { calls: 0, delayMs: slowReadMs, signals: [] as AbortSignal[] };
+    const read = slowCachedRead(database);
+    vi.spyOn(logger, "info").mockImplementation(() => {});
+
+    const pending = readCatalogueWithSeedFallback({ kind: "service", seeds, read });
+    await vi.advanceTimersByTimeAsync(slowReadMs);
+
+    await expect(pending).resolves.toEqual({ records: [{ slug: "canonical-a" }], degraded: false });
+    expect(database.calls).toBe(1);
+  });
+
+  it("still stops waiting on a caller abort, and does not mistake that for recovery", async () => {
+    await warm("service");
+    const database = { calls: 0, delayMs: slowReadMs, signals: [] as AbortSignal[] };
+    const read = vi.fn(slowCachedRead(database));
+    const caller = new AbortController();
+
+    const pending = readCatalogueWithSeedFallback({ kind: "service", seeds, read, signal: caller.signal });
+    const outcome = expect(pending).rejects.toThrow();
+    caller.abort();
+    await outcome;
+
+    // The query itself carries on and fills the cache for whoever searches next.
+    await vi.advanceTimersByTimeAsync(slowReadMs);
+    expect(database.signals[0]?.aborted).toBe(false);
+    const next = await readCatalogueWithSeedFallback({ kind: "service", seeds, read });
+    expect(next).toEqual({ records: [{ slug: "canonical-a" }], degraded: false });
+    expect(database.calls).toBe(1);
   });
 });

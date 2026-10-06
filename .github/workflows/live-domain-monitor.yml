@@ -145,6 +145,11 @@ jobs:
       #
       # It probes only the catalogue domains, never `documents`, so the monitor triggers no
       # embedding call and stays inside this file's no-providers contract.
+      #
+      # A degraded domain is re-probed once, 12 s later. Since 2026-10-06 a cold read that misses
+      # the search budget finishes in the background and heals itself, so one seed answer after
+      # idle is by design; a catalogue that is really unreadable is still degraded on the re-probe
+      # and still fails. See `degradedReprobeDelayMs` in the script for the bounds.
       - name: Catalogue search returns live results
         id: catalogue_search
         run: node scripts/check-live-search-results.mjs

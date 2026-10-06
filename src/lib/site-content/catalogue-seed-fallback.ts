@@ -25,6 +25,13 @@
  * immediate. It re-probes after the cooldown, so the moment the database is fixed this heals itself
  * with no deploy.
  *
+ * THE BUDGET BOUNDS THE WAIT, NOT THE READ (2026-10-06). A read that misses the budget is left to
+ * finish, up to `catalogueBackgroundFillBudgetMs`, so it still fills the process cache, and if it
+ * succeeds it lifts the cooldown at once. Before this the budget cancelled the read, the cancel
+ * reached the cache, and a catalogue whose read took longer than the budget from Railway (services
+ * and medications, routinely) could never be cached at all: it stayed on seeds until the process
+ * restarted, which is what the live domain monitor reported on 25 of 29 runs.
+ *
  * CLINICAL CAVEAT, and the reason `degraded` is returned rather than swallowed. Seeds can lag behind
  * anything published since the last release. That is acceptable for a search index whose entries all
  * link to a detail page that reads canonically, and it is bounded by the cooldown, but a caller must
@@ -40,7 +47,10 @@
  */
 
 import { logger } from "@/lib/logger";
-import { siteContentRecordCacheStaleMs } from "@/lib/site-content/site-content-record-cache";
+import {
+  siteContentRecordCacheFlightTimeoutMs,
+  siteContentRecordCacheStaleMs,
+} from "@/lib/site-content/site-content-record-cache";
 
 /** How long one canonical read may take before the reader is served seeds instead. */
 export const catalogueSeedFallbackBudgetMs = 1_200;
@@ -55,6 +65,13 @@ export const catalogueSeedFallbackBudgetMs = 1_200;
  * matter to someone waiting for the page.
  */
 export const catalogueListFallbackBudgetMs = 6_000;
+
+/**
+ * How long a read that has missed its budget may keep running so it can still fill the process
+ * cache. Equal to the cache's own flight deadline: the read below this layer is cut off then
+ * anyway, so waiting longer could never observe a success.
+ */
+export const catalogueBackgroundFillBudgetMs = siteContentRecordCacheFlightTimeoutMs;
 
 /** How long to skip the canonical read entirely after it fails, before probing again. */
 export const catalogueSeedFallbackCooldownMs = 30_000;
@@ -268,6 +285,17 @@ function reportColdRetry(kind: string, error: unknown, retryBudgetMs: number) {
   });
 }
 
+/**
+ * The other half of `reportFallback`. A fallback that heals itself a second later is still worth a
+ * line: the reader who triggered it was served seeds, and the gap between the two lines is how
+ * long the cold read really took.
+ */
+function reportBackgroundFill(kind: string) {
+  logger.info("Canonical catalogue read finished after the search budget; cache filled and search recovered", {
+    catalogue_kind: kind,
+  });
+}
+
 function reportRecovery(kind: string) {
   logger.info("Canonical catalogue read recovered; search is no longer degraded", {
     catalogue_kind: kind,
@@ -316,34 +344,94 @@ export async function readCatalogueWithSeedFallback<T>(input: {
   }
 
   const attempt = async (attemptBudgetMs: number): Promise<T[]> => {
-    const budget = new AbortController();
-    const forwardCallerAbort = () => budget.abort(input.signal?.reason);
+    // TWO SIGNALS, and keeping them apart is the fix for the 2026-10 monitor failures.
+    //
+    // The BUDGET bounds how long this request waits: when it fires, the reader is answered from
+    // seeds at once, exactly as before. It does NOT cancel the read. Until 2026-10-06 it did, and
+    // the cancellation travelled down into the process cache and killed the query, so a read that
+    // needed 1.5 s from Railway was abandoned at 1.2 s on every probe and the cache never filled.
+    // The domain stayed on seeds indefinitely, because the next probe started the same doomed read
+    // from scratch.
+    //
+    // `reading` is the read's own signal. It follows a genuine CALLER abort while this request is
+    // still waiting (navigation, parent cancel), and a hard ceiling of
+    // `catalogueBackgroundFillBudgetMs`, so a read left running cannot run forever. If it finishes
+    // inside that ceiling after the budget, `healAfterBudget` lifts the cooldown, so the very next
+    // search reads the rows it just stored instead of serving seeds for the rest of the 30 s.
+    const reading = new AbortController();
+    const forwardCallerAbort = () => reading.abort(input.signal?.reason);
     if (input.signal?.aborted) forwardCallerAbort();
     else input.signal?.addEventListener("abort", forwardCallerAbort, { once: true });
-    const timer = setTimeout(() => {
-      budget.abort(new DOMException(`Canonical ${input.kind} read exceeded ${attemptBudgetMs}ms.`, "TimeoutError"));
-    }, attemptBudgetMs);
-    (timer as { unref?: () => void }).unref?.();
 
-    // RACE, do not merely signal. Aborting `budget` only asks the read to stop; a read that ignores
-    // the signal, or is wedged below the layer that honours it, would otherwise hold this await open
-    // past the budget and hand the domain the same empty group this helper exists to prevent. The
-    // budget has to be enforced here, by whoever is waiting, or it is not a budget.
-    let rejectOnAbort: ((reason: Error) => void) | undefined;
+    // RACE, do not merely signal. A read that ignores its signal, or is wedged below the layer that
+    // honours it, would otherwise hold this await open past the budget and hand the domain the same
+    // empty group this helper exists to prevent. The budget has to be enforced here, by whoever is
+    // waiting, or it is not a budget.
+    let rejectWaiting: ((reason: Error) => void) | undefined;
     const abandoned = new Promise<never>((_resolve, reject) => {
-      rejectOnAbort = reject;
+      rejectWaiting = reject;
     });
-    const onAbort = () => rejectOnAbort?.(abortReason(budget.signal));
-    budget.signal.addEventListener("abort", onAbort, { once: true });
-    if (budget.signal.aborted) onAbort();
+    let lostToBudget = false;
+    const budgetTimer = setTimeout(() => {
+      lostToBudget = true;
+      rejectWaiting?.(new DOMException(`Canonical ${input.kind} read exceeded ${attemptBudgetMs}ms.`, "TimeoutError"));
+    }, attemptBudgetMs);
+    (budgetTimer as { unref?: () => void }).unref?.();
+    const fillTimer = setTimeout(() => {
+      reading.abort(
+        new DOMException(
+          `Canonical ${input.kind} read exceeded its ${catalogueBackgroundFillBudgetMs}ms background ceiling.`,
+          "TimeoutError",
+        ),
+      );
+    }, catalogueBackgroundFillBudgetMs);
+    (fillTimer as { unref?: () => void }).unref?.();
+    const onReadingAbort = () => rejectWaiting?.(abortReason(reading.signal));
+    reading.signal.addEventListener("abort", onReadingAbort, { once: true });
+    if (reading.signal.aborted) onReadingAbort();
+
+    // A read that throws synchronously must still reach the `finally` below, or the budget timer
+    // would fire later into a race nobody is listening to.
+    let pending: Promise<T[]>;
+    try {
+      pending = input.read(reading.signal);
+    } catch (error) {
+      pending = Promise.reject(error);
+    }
+    // Observed for the whole of the read's life, not just this request's. Only a read that lost to
+    // the BUDGET and then succeeded heals anything; a caller abort aborts `reading`, so that read
+    // rejects and is ignored here, and a read that won the race was already handled by `succeed`.
+    pending.then(
+      () => {
+        clearTimeout(fillTimer);
+        if (lostToBudget) healAfterBudget();
+      },
+      () => clearTimeout(fillTimer),
+    );
 
     try {
-      return await Promise.race([input.read(budget.signal), abandoned]);
+      return await Promise.race([pending, abandoned]);
     } finally {
-      clearTimeout(timer);
+      clearTimeout(budgetTimer);
+      // From here the reader has been answered. Its later aborts (the 2500 ms domain timeout, the
+      // whole search being discarded) are no reason to stop a read whose only remaining job is to
+      // fill the cache, so they stop being forwarded.
       input.signal?.removeEventListener("abort", forwardCallerAbort);
-      budget.signal.removeEventListener("abort", onAbort);
+      reading.signal.removeEventListener("abort", onReadingAbort);
     }
+  };
+
+  /**
+   * A read that missed the budget finished anyway, inside its background ceiling, and the process
+   * cache now holds its rows. Lift the cooldown so the next search reads them, and record the
+   * key as warm, which is true: the database just answered.
+   */
+  const healAfterBudget = () => {
+    const wasCooling = cooldownUntil.has(key);
+    cooldownUntil.delete(key);
+    warmedAt.set(key, now());
+    markProcessConnectionWarmedAt(now());
+    if (wasCooling) reportBackgroundFill(input.kind);
   };
 
   const succeed = (records: T[]): Outcome<T> => {

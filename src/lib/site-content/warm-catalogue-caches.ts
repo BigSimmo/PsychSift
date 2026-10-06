@@ -10,8 +10,11 @@
  * real search still has the serialisation gate and the one-shot retry.
  *
  * KINDS ARE READ SERIALLY ON PURPOSE. Parallel warm would recreate the bug this exists to prevent.
- * A narrowed search projection (keeping ranker render fields) remains the right efficiency follow-up
- * but needs a migration; this helper is deliberately app-side only and does not raise `budget_ms`.
+ *
+ * The search kinds are warmed in the SAME projection search reads (`renderOnly`, no `record`
+ * column), or the warm would fill a cache key no search ever looks up. The full projection the
+ * Services and Forms list routes read is warmed afterwards, as part of the list kinds, so those
+ * pages keep the warm first load they had when search and list shared one full read.
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -26,8 +29,11 @@ export const catalogueSearchWarmKinds = ["form", "service", "medication"] as con
  * scope), but nothing warmed them, so the first visitor after every restart paid both reads. The
  * server restarts on every merge, so that was many visitors a day. Warmed after the search kinds,
  * so the search path is never kept waiting behind them.
+ *
+ * `form` and `service` here are the FULL projection `/api/registry/records` reads for governance.
+ * Search now reads its own slimmer projection, so these are no longer warmed as a side effect.
  */
-export const catalogueListWarmKinds = ["differential", "presentation"] as const;
+export const catalogueListWarmKinds = ["differential", "presentation", "form", "service"] as const;
 
 /**
  * Bound each boot warm read. Without a deadline a never-settling RPC is retained as a blocking
@@ -39,7 +45,11 @@ export const catalogueSearchWarmBudgetMs = 10_000;
 export async function warmCanonicalCatalogueSearchCaches(
   supabase: ReturnType<typeof createAdminClient> = createAdminClient(),
 ): Promise<void> {
-  for (const kind of [...catalogueSearchWarmKinds, ...catalogueListWarmKinds]) {
+  const plan = [
+    ...catalogueSearchWarmKinds.map((kind) => ({ kind, renderOnly: true })),
+    ...catalogueListWarmKinds.map((kind) => ({ kind, renderOnly: false })),
+  ];
+  for (const { kind, renderOnly } of plan) {
     const controller = new AbortController();
     const timer = setTimeout(() => {
       controller.abort(
@@ -53,7 +63,7 @@ export async function warmCanonicalCatalogueSearchCaches(
         kind,
         slug: null,
         cache: true,
-        renderOnly: kind === "medication",
+        renderOnly,
         // Seeds are unused on a successful RPC; an empty list is enough for warm-only.
         seeds: [],
         signal: controller.signal,
