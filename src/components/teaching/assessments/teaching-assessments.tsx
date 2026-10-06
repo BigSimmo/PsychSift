@@ -160,7 +160,11 @@ function AssessmentsApp() {
     const heading =
       root.current?.querySelector<HTMLElement>("[data-screen-heading]") ??
       root.current?.querySelector<HTMLElement>("h2");
-    if (heading && !heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+    if (heading && !heading.hasAttribute("tabindex")) {
+      heading.setAttribute("tabindex", "-1");
+      // A title focused for screen readers is not a control, so it gets no focus ring.
+      heading.classList.add("outline-none");
+    }
     heading?.focus({ preventScroll: true });
   }, [place]);
   return (
