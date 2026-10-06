@@ -270,7 +270,7 @@ function collapseSafetyFindingsOnce(findings: SafetyFinding[]): SafetyFinding[] 
   const kept: SafetyFinding[] = [];
   const normalized = new Map<SafetyFinding, string>();
   const passageKey = (finding: SafetyFinding) =>
-    `${finding.citation.document_id}:${finding.citation.page_number ?? "?"}`;
+    `${finding.citation?.document_id}:${finding.citation?.page_number ?? "?"}`;
 
   for (const finding of findings) {
     const text = normalizeText(finding.text).toLowerCase();
@@ -287,7 +287,7 @@ function collapseSafetyFindingsOnce(findings: SafetyFinding[]): SafetyFinding[] 
       // 40 characters double-count against its own parent — the exact defect
       // this function was written for.
       const sameChunk =
-        Boolean(candidate.citation.chunk_id) && candidate.citation.chunk_id === finding.citation.chunk_id;
+        Boolean(candidate.citation?.chunk_id) && candidate.citation?.chunk_id === finding.citation?.chunk_id;
       if (sameChunk) return true;
       if (passageKey(candidate) !== passageKey(finding)) return false;
       // Across chunks, containment only counts when the shorter side is long
@@ -314,7 +314,7 @@ function collapseSafetyFindingsOnce(findings: SafetyFinding[]): SafetyFinding[] 
         ? fuller
         : {
             ...fuller,
-            id: `${severest.kind}:${fuller.citation.chunk_id}`,
+            id: `${severest.kind}:${fuller.citation?.chunk_id ?? fuller.id}`,
             kind: severest.kind,
             label: severest.label,
           };

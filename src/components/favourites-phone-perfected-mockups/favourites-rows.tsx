@@ -154,10 +154,9 @@ export function ContinueStrip({ row, onOpen }: { row: FavouriteRow; onOpen: (row
       type="button"
       onClick={() => onOpen(row)}
       className={cn(
-        "flex w-full min-h-18 items-center gap-3 border-b border-[color:var(--border)] bg-[color:var(--clinical-accent-soft)] py-3 pl-3 pr-2 text-left hover:brightness-[0.98]",
+        "flex w-full min-h-18 items-center gap-3 border-b border-[color:var(--border)] bg-[color:var(--clinical-accent-soft)] py-3 pl-3 pr-2 text-left shadow-[var(--rule-accent)] hover:brightness-[0.98]",
         focusRing,
       )}
-      style={{ boxShadow: "inset 3px 0 0 0 var(--clinical-accent)" }}
     >
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-1.5 text-3xs font-extrabold uppercase tracking-kicker text-[color:var(--clinical-accent)]">
@@ -205,8 +204,7 @@ export function ContinueCard({ row, onOpen }: { row: FavouriteRow; onOpen: (row:
   return (
     <section
       aria-label="Continue where you left off"
-      className="overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3 shadow-[var(--e1)]"
-      style={{ boxShadow: "inset 3px 0 0 0 var(--clinical-accent)" }}
+      className="overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3 shadow-[var(--e1),var(--rule-accent)]"
     >
       <div className="flex min-w-0 items-start gap-2 pl-1.5">
         <Glyph className="mt-px size-icon-md shrink-0" style={{ color: identity.ink }} aria-hidden />

@@ -7,6 +7,9 @@ export function readExpiringCacheEntry<K, V extends ExpiringCacheEntry>(cache: M
     cache.delete(key);
     return null;
   }
+  // True LRU: re-insert the key to refresh its position to most-recently used.
+  cache.delete(key);
+  cache.set(key, cached);
   return cached;
 }
 

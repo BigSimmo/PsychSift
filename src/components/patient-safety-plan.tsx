@@ -21,7 +21,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { NavigationBackButton } from "@/components/navigation-back-button";
 import { appModeHomeHref } from "@/lib/app-modes";
@@ -255,17 +255,22 @@ function planContainsSeedEntries(entries: Record<StepKey, Entry[]>, reasons: Ent
 
 function AddRow({
   kind,
+  namePrefix,
   primaryPlaceholder,
   secondaryPlaceholder,
   onAdd,
   onDraftDirtyChange,
 }: {
   kind: StepKind;
+  namePrefix?: string;
   primaryPlaceholder: string;
   secondaryPlaceholder?: string;
   onAdd: (primary: string, secondary?: string) => void;
   onDraftDirtyChange?: (dirty: boolean) => void;
 }) {
+  const autoId = useId();
+  const primaryId = namePrefix ? `spg-${namePrefix}-primary` : `spg-primary-${autoId}`;
+  const secondaryId = namePrefix ? `spg-${namePrefix}-secondary` : `spg-secondary-${autoId}`;
   const [primary, setPrimary] = useState("");
   const [secondary, setSecondary] = useState("");
   const draftIsDirty = useCallback(
@@ -285,6 +290,8 @@ function AddRow({
   return (
     <div className={cn("grid gap-2", kind === "contact" && "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]")}>
       <input
+        id={primaryId}
+        name={primaryId}
         value={primary}
         onChange={(event) => {
           const nextPrimary = event.target.value;
@@ -303,6 +310,8 @@ function AddRow({
       />
       {kind === "contact" ? (
         <input
+          id={secondaryId}
+          name={secondaryId}
           value={secondary}
           onChange={(event) => {
             const nextSecondary = event.target.value;
@@ -428,6 +437,7 @@ function StepBuilderCard({
 
       <AddRow
         kind={def.kind}
+        namePrefix={def.key}
         primaryPlaceholder={def.primaryPlaceholder}
         secondaryPlaceholder={def.secondaryPlaceholder}
         onAdd={onAdd}
@@ -738,7 +748,7 @@ export function PatientSafetyPlan() {
               type="button"
               onClick={() => setFinalised(true)}
               disabled={!ready}
-              className={cn(primaryControl, "min-h-tap disabled:opacity-50")}
+              className={cn(primaryControl, "min-h-tap")}
             >
               {finalised ? (
                 <Check className="size-icon-md" aria-hidden="true" />
@@ -829,6 +839,7 @@ export function PatientSafetyPlan() {
               </label>
               <input
                 id="spg-date"
+                name="planDate"
                 value={planDate}
                 onChange={(event) => {
                   setPlanDate(event.target.value);
@@ -898,6 +909,7 @@ export function PatientSafetyPlan() {
             ) : null}
             <AddRow
               kind="list"
+              namePrefix="reasons"
               primaryPlaceholder="e.g. Finishing my apprenticeship"
               onDraftDirtyChange={(dirty) => setDraftDirty("reason", dirty)}
               onAdd={(primary) => {

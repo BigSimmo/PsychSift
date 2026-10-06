@@ -139,7 +139,9 @@ function NoteArea({
           rows={2}
           placeholder={placeholder}
           autoComplete="off"
-          spellCheck
+          spellCheck={false}
+          data-gramm="false"
+          data-enable-grammarly="false"
           onChange={(event) => onChange(event.target.value)}
           data-testid={testId}
           className={cn(fieldControlPlain, "min-h-20 py-2")}

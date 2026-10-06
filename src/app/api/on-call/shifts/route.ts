@@ -13,7 +13,6 @@ import { deleteOwnerShifts } from "@/lib/roster/shifts/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseJsonBody } from "@/lib/validation/body";
-
 /**
  * My shifts moved to Roster. This path stays live so a page opened before the
  * move keeps working, on the terms it was written for: a save without a

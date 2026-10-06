@@ -235,7 +235,8 @@ export function firstClinicalSentence(value: string): string {
     const next = text[match.index + 1];
     if (next !== undefined && !/\s/.test(next)) continue;
     const before = text.slice(0, match.index);
-    if (/(?:^|[\s(])(?:e\.g|i\.e|etc|vs|approx)$/i.test(before)) continue;
+    if (/(?:^|[\s(])(?:e\.g|i\.e|etc|vs|approx|p\.r\.n|b\.i\.d|t\.i\.d|q\.i\.d|q\.d|prn|bid|tid|qid|qd)$/i.test(before))
+      continue;
     // Genus abbreviations ("H. pylori", "E. coli", "C. difficile") are a lone
     // letter followed by a lowercase species — not a sentence end; splitting
     // there would drop the rest of the clause. Restrict the skip to that shape

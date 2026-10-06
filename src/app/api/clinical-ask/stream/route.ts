@@ -144,7 +144,15 @@ function clinicalAskStream(
             type: "final",
             payload: { response, feedback: feedbackPayload(interactionId, response) },
           });
-        } catch {
+        } catch (error) {
+          if (
+            signal.aborted ||
+            (error instanceof DOMException && error.name === "AbortError") ||
+            (error as { name?: string })?.name === "AbortError"
+          ) {
+            // Client cleanly aborted or navigated away — do not emit internal_error frame.
+            return;
+          }
           send({ type: "error", code: "internal_error", retryable: true, message: "Clinical Ask failed safely." });
         } finally {
           clearInterval(heartbeat);

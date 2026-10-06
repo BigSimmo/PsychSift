@@ -617,6 +617,11 @@ function seal() {
     stdio: "ignore",
   });
   const count = Object.keys(sealed.reviewedPathDigests).length;
+  if (manifest.driftExceptions?.length) {
+    console.log(
+      `CLINICAL_HAZARD_CONTROLS_SEALED: cleared ${manifest.driftExceptions.length} lapsed driftExceptions as cited paths were resealed.`,
+    );
+  }
   console.log(`CLINICAL_HAZARD_CONTROLS_SEALED paths=${count} commit=${sealed.reviewedCommit}`);
 }
 

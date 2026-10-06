@@ -688,7 +688,7 @@ describe("RAG request site-content snapshot", () => {
     );
     expect(ragCacheModule.scopedAnswerCacheKey({ ...legacy, query: "Clozapine titration" })).not.toBe(answerKey);
     expect(ragCacheModule.retrievalPlanCacheQuery(legacy, "table_threshold", ["clozapine anc"])).toBe(
-      "redacted-cache:c7a7dfee47480cd75d49226bd14cd3c0deaad1411a59298a0bd7f457725d3aba",
+      "redacted-cache:ac0a000b2b7eaebe915cea1214223993fa69e710d69a577d8634b977e42edcd3",
     );
     const cache = ragCacheModule as CacheModule;
     expect(cache.sharedAnswerNormalizedQuery).toBeTypeOf("function");

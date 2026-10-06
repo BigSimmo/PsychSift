@@ -29,7 +29,7 @@ import {
   useOptionalAccountData,
 } from "@/components/account-data-provider";
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
+import { SidebarAccountSetupDialog as AccountSetupDialog } from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
 import { cn, EmptyState } from "@/components/ui-primitives";
 import { Chip, type ChipAppearance } from "@/components/ui/chip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -88,6 +88,7 @@ import {
 } from "@/components/clinical-dashboard/result-filter-control";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
 import { appModeIcons } from "@/lib/app-mode-icons";
+import { maxFavouriteSetsPerAccount } from "@/lib/favourite-set-name";
 import { canAccessFavouritesMode } from "@/lib/app-modes";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
 import { modeHomeComposerReservePendingValue, modeHomeDesktopComposerSlotId } from "@/lib/mode-home-composer";
@@ -885,8 +886,10 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   const canMutate = (item: FavouriteItem) =>
     Boolean(item.contentType && item.contentKey && accountData?.isAuthenticated && !item.example);
   const mutableCount = libraryItems.filter(canMutate).length;
-  const availableSetNames = favouriteSetNames.filter((name) => !accountSets.some((set) => set.name === name));
-  const canCreateSet = Boolean(accountData?.isAuthenticated) && availableSetNames.length > 0;
+  const availableSetNames = favouriteSetNames.filter(
+    (name) => !accountSets.some((set) => set.name.toLowerCase() === name.toLowerCase()),
+  );
+  const canCreateSet = Boolean(accountData?.isAuthenticated) && accountSets.length < maxFavouriteSetsPerAccount;
   const accountSetForChip = singleSetName ? accountSets.find((set) => set.name === singleSetName) : undefined;
   const singleSetMutableCount = singleSetName
     ? filteredItems.filter((item) => item.set === singleSetName && canMutate(item)).length
@@ -1524,9 +1527,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
                     : undefined
                 }
                 onRename={
-                  accountSetForChip && availableSetNames.length > 0
-                    ? () => openSheet({ kind: "rename-set", set: accountSetForChip })
-                    : undefined
+                  accountSetForChip ? () => openSheet({ kind: "rename-set", set: accountSetForChip }) : undefined
                 }
                 onDelete={accountSetForChip ? () => setConfirmDeleteSet(accountSetForChip) : undefined}
               />
@@ -1682,10 +1683,13 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       ) : null}
       {sheetContent?.kind === "new-set" || sheetContent?.kind === "rename-set" ? (
         <FavouriteSetNameSheet
+          key={sheetContent.kind === "rename-set" ? sheetContent.set.id : "new-set"}
           mode={sheetContent.kind === "new-set" ? "create" : "rename"}
           open={sheetOpen}
           returnFocusTarget={returnFocusToOrigin}
-          availableNames={availableSetNames}
+          currentName={sheetContent.kind === "rename-set" ? sheetContent.set.name : undefined}
+          existingNames={accountSets.map((set) => set.name)}
+          suggestedNames={availableSetNames}
           movingCount={sheetContent.kind === "new-set" ? sheetContent.items.length : 0}
           onClose={() => closeSheet()}
           onChoose={(name) => void chooseSetName(name)}

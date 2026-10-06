@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { checkFavouriteSetName, isValidFavouriteSetName } from "@/lib/favourite-set-name";
+
 export const favouritesContractVersion = 1 as const;
 export const maxFavouritesPerAccount = 2000 as const;
 export const favouriteContentTypeSchema = z.enum(["service", "form", "differential", "therapy"]);
@@ -17,7 +19,18 @@ export const favouriteSetNames = [
   "Teaching",
   "Reference",
 ] as const;
-export const favouriteSetNameSchema = z.enum(favouriteSetNames);
+/** Stored names: any name that passes the set-name rules, including the six suggestions. */
+export const favouriteSetNameSchema = z.string().refine(isValidFavouriteSetName, "Invalid favourite set name.");
+/** Typed names: normalised first, then held to the same rules with a readable refusal. */
+export const favouriteSetNameInputSchema = z
+  .string()
+  .max(200)
+  .transform((value, context) => {
+    const check = checkFavouriteSetName(value);
+    if (check.ok) return check.name;
+    context.addIssue({ code: "custom", message: check.message });
+    return z.NEVER;
+  });
 export const favouriteSetIdSchema = z.uuid();
 export const favouriteSortOrderSchema = z.number().int().min(0).max(1_000_000);
 export const favouriteSetSortOrderSchema = z.number().int().min(0).max(10_000);
@@ -67,6 +80,6 @@ export const favouritesClearResponseSchema = z
   .strict();
 
 export type FavouriteContentType = z.infer<typeof favouriteContentTypeSchema>;
-export type FavouriteSetName = z.infer<typeof favouriteSetNameSchema>;
+export type FavouriteSetName = string;
 export type AccountFavourite = z.infer<typeof accountFavouriteSchema>;
 export type AccountFavouriteSet = z.infer<typeof accountFavouriteSetSchema>;

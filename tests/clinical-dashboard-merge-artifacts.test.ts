@@ -44,6 +44,10 @@ const dashboardChromeCoordinatorSource = readFileSync(
   "utf8",
 );
 const documentViewerSource = readFileSync(resolve(process.cwd(), "src/components/DocumentViewer.tsx"), "utf8");
+const documentSearchComposerSource = readFileSync(
+  resolve(process.cwd(), "src/components/document-viewer/document-viewer-search-composer.tsx"),
+  "utf8",
+);
 const globalStylesSource = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
 const uiPrimitivesSource = readPrimitiveRecipeSources();
 const differentialsHomeSource = readFileSync(
@@ -246,8 +250,8 @@ describe("ClinicalDashboard merge-artifact guards", () => {
     expect(documentViewerSource).toContain("max-sm:pb-[calc(9rem+var(--safe-area-bottom)+var(--keyboard-height,0px))]");
     // Hidden document content must not reintroduce Safari toolbar inset padding.
     expect(documentViewerSource).not.toMatch(/composerScrollHidden\s*\?\s*["']max-sm:pb-\[calc\([^"']*safe-area/);
-    expect(documentViewerSource).toContain("max-sm:duration-[var(--duration-slow)]");
-    expect(documentViewerSource).toContain("max-sm:ease-[var(--ease-chrome-hide)]");
+    expect(documentSearchComposerSource).toContain("max-sm:duration-[var(--duration-slow)]");
+    expect(documentSearchComposerSource).toContain("max-sm:ease-[var(--ease-chrome-hide)]");
     expect(globalStylesSource).toContain("@media (max-width: 639px) and (prefers-reduced-motion: reduce)");
     expect(globalStylesSource).toContain('#main-content[data-reserve-transitioning="true"]');
     expect(globalStylesSource).toContain('[data-testid="mobile-composer-reserve-pad"]');

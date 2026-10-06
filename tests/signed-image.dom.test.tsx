@@ -178,6 +178,7 @@ describe("SignedImage failure/retry (jsdom)", () => {
   });
 
   it("honours Retry-After before automatically retrying a rate limit", async () => {
+    vi.useFakeTimers();
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -191,11 +192,23 @@ describe("SignedImage failure/retry (jsdom)", () => {
 
     render(<SignedImage endpoint={ENDPOINT} alt="Rate recovered diagram" />);
 
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const img = await screen.findByRole("img", { name: "Rate recovered diagram" }, { timeout: 1_500 });
-    expect(img.getAttribute("src")?.endsWith("/demo/rate-recovered.png")).toBe(true);
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const img = screen.getByRole("img", { name: "Rate recovered diagram" });
+    expect(img.getAttribute("src")?.endsWith("/demo/rate-recovered.png")).toBe(true);
   });
 
   it("automatically refreshes the signed URL when the image download fails", async () => {

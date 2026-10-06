@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "5dd9fb11-a4a9-4ca6-bd1c-e5229e7af2a7",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#TDCZJB",
+    "outcome": "Resolved by owner decision: Ward Flow retired and deleted; historical commits accepted as synthetic test data with no git history rewrite required.",
+    "baseRowFingerprint": "f0974c5ef64e13bfcbd1df7d5e91ce4746158c725652c0eb0a88299f31fd9960"
+  }
+}

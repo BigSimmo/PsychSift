@@ -29,6 +29,7 @@ const read = (relativePath: string) => readFileSync(new URL(`../${relativePath}`
 const railSource = read("src/components/document-viewer/document-rail-panels.tsx");
 const visualsSource = read("src/components/document-viewer/document-visuals-panel.tsx");
 const viewerSource = read("src/components/DocumentViewer.tsx");
+const contentPanelsSource = read("src/components/document-viewer/document-viewer-content-panels.tsx");
 const sourcePanelsSource = read("src/components/document-viewer/source-panels.tsx");
 const demoDataSource = read("src/lib/demo-data.ts");
 
@@ -58,7 +59,7 @@ describe("document viewer phone layout", () => {
     // "Tables and diagrams" moved out of the rail and under the indexed source
     // text, so the blowout hazard moved with it: this inner column is a grid, and
     // without an explicit base track it is the same implicit min-content column.
-    const columnClass = viewerSource.match(/"grid min-w-0 grid-cols-1 gap-4[^"]*"/)?.[0];
+    const columnClass = contentPanelsSource.match(/"grid min-w-0 grid-cols-1 gap-4[^"]*"/)?.[0];
     expect(columnClass, "main reading column grid class list not found — update this contract").toBeTruthy();
     expect(columnClass).toMatch(/\bgrid-cols-1\b/);
     expect(columnClass).toMatch(/\bmin-w-0\b/);

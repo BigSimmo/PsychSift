@@ -853,10 +853,7 @@ function V2DrawerPanel({
                   : "Related to the question — this page does not state the claim."}
           </p>
 
-          <blockquote
-            style={{ borderLeft: "2px solid var(--clinical-accent)" }}
-            className="mt-3 pl-3 text-base-minus leading-prose text-[color:var(--text-heading)]"
-          >
+          <blockquote className="mt-3 border-l-2 border-[color:var(--clinical-accent)] pl-3 text-base-minus leading-prose text-[color:var(--text-heading)]">
             {source.quote}
           </blockquote>
 

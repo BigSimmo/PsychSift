@@ -35,6 +35,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -1034,7 +1035,9 @@ export async function main(argv = process.argv.slice(2), io = {}) {
   return 0;
 }
 
-const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null;
+const invokedPath = process.argv[1]
+  ? pathToFileURL(existsSync(process.argv[1]) ? realpathSync(resolve(process.argv[1])) : resolve(process.argv[1])).href
+  : null;
 if (invokedPath === import.meta.url) {
   main().then(
     (code) => {

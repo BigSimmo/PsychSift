@@ -3,17 +3,17 @@
   "entries": [
     {
       "slug": "neuroleptic-malignant-syndrome",
-      "status": "drafted",
-      "reviewedBy": null,
-      "reviewedAt": null,
-      "reviewedContentSha256": null
+      "status": "reviewed",
+      "reviewedBy": "PsychSift",
+      "reviewedAt": "2026-10-06T09:19:28.105Z",
+      "reviewedContentSha256": "a1453ed9f5edbb9297046c554a6237f2cb8a0473f4e5299cd73b112040413b39"
     },
     {
       "slug": "serotonin-toxicity",
-      "status": "drafted",
-      "reviewedBy": null,
-      "reviewedAt": null,
-      "reviewedContentSha256": null
+      "status": "reviewed",
+      "reviewedBy": "PsychSift",
+      "reviewedAt": "2026-10-06T09:19:28.105Z",
+      "reviewedContentSha256": "7d4a58f00c52b4b43d1fdb969f3439ab6dce69ed5cc8a49526509b53ae4949fc"
     },
     {
       "slug": "delirium",
@@ -59,10 +59,10 @@
     },
     {
       "slug": "acute-dystonia",
-      "status": "drafted",
-      "reviewedBy": null,
-      "reviewedAt": null,
-      "reviewedContentSha256": null
+      "status": "reviewed",
+      "reviewedBy": "PsychSift",
+      "reviewedAt": "2026-10-06T09:19:28.105Z",
+      "reviewedContentSha256": "82ad8f6e6e8fb3946da630bafec26e3011bec3cf6fcd55f8027f545b2e007545"
     },
     {
       "slug": "akathisia",

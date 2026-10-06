@@ -39,6 +39,15 @@ import {
 
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
+import { identifierShapeWarning } from "@/lib/clinical-ask/context";
+import {
+  splitFilterText,
+  filterText,
+  labelScopeFilterFields,
+  documentScopeTitle,
+  documentScopeMeta,
+  type TextScopeFilterKey,
+} from "@/components/clinical-dashboard/master-search-scope-helpers";
 import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-dismissable-layer";
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
@@ -71,7 +80,7 @@ import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/u
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { WorkSearchButton } from "@/components/work-search/work-search-button";
+import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
 import {
   appModeDefinition,
   appModeDefinitions,
@@ -141,63 +150,6 @@ const scopeSheetMediaQuery = "(max-width: 1023px)";
 const desktopPageComposerMediaQuery = "(min-width: 640px)";
 const modeHomeComposerMediaQuery = "(min-width: 0px)";
 const modeHomeComposerSmUpMediaQuery = "(min-width: 640px)";
-
-function splitFilterText(value: string) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function filterText(values?: string[]) {
-  return (values ?? []).join(", ");
-}
-
-type TextScopeFilterKey =
-  | "medications"
-  | "topics"
-  | "sites"
-  | "documentTypes"
-  | "services"
-  | "settings"
-  | "populations"
-  | "risks"
-  | "workflows"
-  | "clinicalActions"
-  | "carePhases"
-  | "documentIntents"
-  | "contentFeatures"
-  | "collections";
-
-const labelScopeFilterFields: Array<{ key: TextScopeFilterKey; label: string; placeholder: string }> = [
-  { key: "medications", label: "Medication", placeholder: "Lithium, clozapine" },
-  { key: "topics", label: "Topic", placeholder: "ECT, safety plan" },
-  { key: "sites", label: "Site", placeholder: "FSH, RPBG, CAMHS" },
-  { key: "documentTypes", label: "Type", placeholder: "Guideline, policy" },
-  { key: "services", label: "Service", placeholder: "Mental health, pharmacy" },
-  { key: "settings", label: "Setting", placeholder: "Inpatient, ED" },
-  { key: "populations", label: "Population", placeholder: "Youth, older adult" },
-  { key: "risks", label: "Risk", placeholder: "High-risk medication" },
-  { key: "workflows", label: "Workflow", placeholder: "Referral, discharge" },
-  { key: "clinicalActions", label: "Action", placeholder: "Assess, monitor" },
-  { key: "carePhases", label: "Phase", placeholder: "Acute management" },
-  { key: "documentIntents", label: "Intent", placeholder: "Decision support" },
-  { key: "contentFeatures", label: "Feature", placeholder: "Contains table" },
-  { key: "collections", label: "Collection", placeholder: "Local policy set" },
-];
-
-function documentScopeTitle(document: ClinicalDocument) {
-  return cleanDisplayTitle(document.title);
-}
-
-function documentScopeMeta(document: ClinicalDocument) {
-  const title = documentScopeTitle(document).toLowerCase();
-  const fileName = document.file_name;
-  const fileBase = fileName.replace(/\.pdf$/i, "").toLowerCase();
-  const pages = document.page_count === 1 ? "1 page" : `${document.page_count ?? "?"} pages`;
-  if (fileBase === title || fileBase.startsWith(title)) return pages;
-  return `${fileName} · ${pages}`;
-}
 
 export function MasterSearchHeader({
   demoMode,
@@ -388,6 +340,8 @@ export function MasterSearchHeader({
     demoMode: false,
   });
   const trimmedQuery = query.trim();
+  const hasPhiWarning = Boolean(query && identifierShapeWarning(query));
+  const composerPhiWarningId = "composer-phi-warning";
   const selectedSearch = appModeSearchConfig(searchMode);
   // The trigger names the route the user is viewing. Session filtering still
   // keeps gated modes out of the selectable menu below.
@@ -2486,6 +2440,8 @@ export function MasterSearchHeader({
               <input
                 type="search"
                 ref={bindQueryInputRef}
+                id="global-search-input"
+                name="query"
                 data-testid="global-search-input"
                 autoFocus={queryInputAutoFocus}
                 disabled={searchSetupNotReady}
@@ -2501,7 +2457,13 @@ export function MasterSearchHeader({
                 aria-controls={commandDropdownOpen ? commandListboxId : undefined}
                 aria-autocomplete="list"
                 aria-activedescendant={commandDropdownOpen ? (commandActiveItemId ?? undefined) : undefined}
-                aria-describedby={showsComposerPrivacyNotice ? composerPrivacyWarningId : undefined}
+                aria-describedby={
+                  hasPhiWarning
+                    ? composerPhiWarningId
+                    : showsComposerPrivacyNotice
+                      ? composerPrivacyWarningId
+                      : undefined
+                }
                 // React's onChange already fires on every input event; a duplicate
                 // onInput called onQueryChange twice per keystroke, doubling the
                 // controlled-state work on a large parent tree.
@@ -2564,6 +2526,16 @@ export function MasterSearchHeader({
               returnMode={searchMode === "answer" ? undefined : searchMode}
             />
           </div>
+        ) : null}
+        {hasPhiWarning ? (
+          <p
+            id={composerPhiWarningId}
+            role="alert"
+            data-testid={composerPhiWarningId}
+            className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
+          >
+            Remove identifiable patient details before searching.
+          </p>
         ) : null}
         {/* Scope popover is a form sibling so the "+" menu's "Set scope" action can
             open it even when the footer chip row is not shown. */}
@@ -2977,8 +2949,9 @@ export function MasterSearchHeader({
               row grows a second grammar. `PhoneHeaderCollapsePortal` uses the same
               mechanism for the collapse row directly below.
 
-              On Call is the first and only occupant: it has no "new chat" to
-              start, and its page menu is the control a shift actually needs. */}
+              On Call no longer occupies this slot: its home uses the Needs you
+              bell beside Search my work. First Nations still portals an
+              ellipsis here. */}
           <div id={universalHeaderTrailingSlotId} className="contents" />
           {/* A mode with no results surface has no conversation to start, so the
               button would open nothing. Gated on that declaration rather than on
@@ -3005,13 +2978,7 @@ export function MasterSearchHeader({
               <span className="hidden whitespace-nowrap xl:inline">New chat</span>
             </button>
           ) : null}
-          {/* "Search my work" on the staff work modes (Josh, 2026-10-04: top right on
-              every staff page). Declared on the mode as `workSearch`, never a mode-id
-              branch here. It is the one deliberate second control in this region: on
-              On Call it sits right of the page menu in the slot, and the staff modes
-              have no new-chat button to stand beside. The icon is all the header
-              loads; the search itself is a lazy chunk fetched on tap. */}
-          {appModeHasWorkSearch(selectedAppMode.id) ? <WorkSearchButton modeId={selectedAppMode.id} /> : null}
+          {appModeHasWorkSearch(selectedAppMode.id) ? <StaffWorkHeaderControls modeId={selectedAppMode.id} /> : null}
         </div>
       </div>
 

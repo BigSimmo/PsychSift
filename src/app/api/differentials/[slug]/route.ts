@@ -50,10 +50,21 @@ function notFoundResponse(slug: string) {
   });
 }
 
+const differentialSlugSchema = z.string().trim().min(1).max(128);
+
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
-    const normalizedSlug = normalizeDifferentialSlug(slug);
+    const parsedSlug = differentialSlugSchema.safeParse(slug);
+    if (!parsedSlug.success) {
+      return publicErrorResponse("Invalid differential slug parameter.", 400, {
+        code: "invalid_differential_slug",
+      });
+    }
+    const normalizedSlug = normalizeDifferentialSlug(parsedSlug.data);
+    if (!normalizedSlug || !/^[a-z0-9_-]+$/.test(normalizedSlug) || normalizedSlug.length > 120) {
+      return notFoundResponse(normalizedSlug || "unknown");
+    }
     const { kind } = parseRequestQuery(request, differentialDetailQuerySchema, "Invalid differential detail query.");
 
     if (isDemoMode() || isLocalNoAuthMode()) {

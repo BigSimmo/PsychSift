@@ -22,6 +22,7 @@ import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
+import { readBoundedJson } from "@/lib/validation/body";
 import { parseRouteParams } from "@/lib/validation/params";
 
 export const runtime = "nodejs";
@@ -60,7 +61,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     //    edit cannot silently blank reflection/cost/links via create-schema defaults.
     let rawBody: unknown;
     try {
-      rawBody = await request.json();
+      rawBody = await readBoundedJson(request);
     } catch {
       return publicErrorResponse("Invalid CPD entry.", 400);
     }

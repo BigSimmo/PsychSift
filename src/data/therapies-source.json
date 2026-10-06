@@ -393,14 +393,14 @@
     "evidenceNotes": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation guidance for complex psychosis, used for the broader rehabilitation and support context. (NICE)",
     "limitations": "It is not a substitute for acute treatment, medication optimisation, or diagnosis-specific psychotherapy. It is also weak if the clinician focuses on advocacy language without practical follow-through, or if the main clinical driver is acute illness severity rather than external barriers. (RANZCP)",
     "references": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation guidance for complex psychosis, used for the broader rehabilitation and support context. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -410,10 +410,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -440,14 +437,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "b41568ec5909f16875cb57f1344eacd31016bb79d6a873000367fb39af58cef3"
   },
   {
     "slug": "app-supported-therapy",
@@ -479,14 +479,14 @@
     "evidenceNotes": "NICE guidance on guided self-help digital CBT technologies, including apps used with regular support. (Dept of Health, Disability & Ageing) Australian Government page on MindSpot as a therapist-guided digital mental health clinic. (Dept of Health, Disability & Ageing) MindSpot service pages describing online treatment with therapist support and digital psychology delivery. (MindSpot)",
     "limitations": "Poor fit for high-risk states, severe depression, active psychosis or mania, severe dissociation, severe personality crisis, or patients who cannot engage reliably with digital tools. It is also a poor fit when the app is being used as a substitute for a clearly indicated higher-intensity therapy. (Dept of Health, Disability & Ageing)",
     "references": "NICE guidance on guided self-help digital CBT technologies, including apps used with regular support. (Dept of Health, Disability & Ageing) Australian Government page on MindSpot as a therapist-guided digital mental health clinic. (Dept of Health, Disability & Ageing) MindSpot service pages describing online treatment with therapist support and digital psychology delivery. (MindSpot)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -502,10 +502,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -532,14 +529,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "e9d520c999e313de2275317da9067849703a273e26dc7e9dcec772e196dede6e"
   },
   {
     "slug": "applied-relaxation-relaxation-based-therapy",
@@ -1192,14 +1192,14 @@
     "evidenceNotes": "NICE depression guidance on low-intensity psychosocial interventions. (NICE) NICE definition of low-intensity intervention in perinatal mental health guidance. (NICE) Australian Government announcements and service description for Medicare Mental Health Check In and low-intensity CBT rollout in 2026. (Dept of Health, Disability & Ageing) RANZCP psychotherapy position statement. (RANZCP)",
     "limitations": "Poor fit for severe depression, high suicide risk, psychosis, mania, marked complexity, severe personality dysfunction, severe OCD, or PTSD requiring dedicated trauma-focused work. Low-intensity CBT should not be presented as universally interchangeable with full CBT or other diagnosis-specific treatments. (NICE)",
     "references": "NICE depression guidance on low-intensity psychosocial interventions. (NICE) NICE definition of low-intensity intervention in perinatal mental health guidance. (NICE) Australian Government announcements and service description for Medicare Mental Health Check In and low-intensity CBT rollout in 2026. (Dept of Health, Disability & Ageing) RANZCP psychotherapy position statement. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -1212,10 +1212,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -1242,14 +1239,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "16a4334916423c6b2d1d59135af2551adf990e335c91421f75026dfe732f1dc4"
   },
   {
     "slug": "brief-supportive-psychotherapy",
@@ -1373,14 +1373,14 @@
     "evidenceNotes": "2024/2025 JAMA Psychiatry systematic review and meta-analysis of BLT for nonseasonal depressive disorders. (JAMA Network) 2024 Asian Journal of Psychiatry systematic review/meta-analysis on BLT in major depressive disorder. (ScienceDirect) 2024 systematic review/meta-analysis of BLT in perinatal depression, used cautiously for subgroup adaptation. (Sage Journals)",
     "limitations": "It is not a replacement for clearly indicated psychotherapy, antidepressants, ECT, or other primary treatments in severe or urgent illness. Evidence is supportive but still based on relatively modest trial numbers and heterogeneous protocols. Perinatal evidence is even smaller. (JAMA Network)",
     "references": "2024/2025 JAMA Psychiatry systematic review and meta-analysis of BLT for nonseasonal depressive disorders. (JAMA Network) 2024 Asian Journal of Psychiatry systematic review/meta-analysis on BLT in major depressive disorder. (ScienceDirect) 2024 systematic review/meta-analysis of BLT in perinatal depression, used cautiously for subgroup adaptation. (Sage Journals)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Sleep",
@@ -1392,10 +1392,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -1422,14 +1419,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "23e000b1fa1292cb69e0e4728d49f57007d74ed7a95e2fedf8a7a261e96f460e"
   },
   {
     "slug": "carer-groups",
@@ -1461,14 +1461,14 @@
     "evidenceNotes": "NICE quality statement on carer-focused education and support for psychosis and schizophrenia. (NICE) NICE guideline on supporting adult carers. (NICE)",
     "limitations": "Carer groups are usually insufficient alone when carers themselves have major untreated mental illness, severe burnout, safeguarding concerns, or need intensive individual intervention. They also do not replace family therapy when the main treatment target is the family system itself, or formal patient therapy when the main treatment target is the patient’s syndrome. (NICE)",
     "references": "NICE quality statement on carer-focused education and support for psychosis and schizophrenia. (NICE) NICE guideline on supporting adult carers. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Psychosis",
       "Eating/body image",
@@ -1477,10 +1477,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -1507,14 +1504,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "d9c689cd0bf50c912078c3f6e9869fc88b2e8a1291fe82bcfbe94588f67042ee"
   },
   {
     "slug": "carer-interventions",
@@ -2708,14 +2708,14 @@
     "evidenceNotes": "Phoenix Australia PTSD guidelines give a strong recommendation for CPT in adults with PTSD and describe it as a 12-session manualised treatment focused on trauma themes including safety, trust, power and control, self-esteem, and intimacy, with a smaller exposure component than imaginal exposure therapy. NICE PTSD guidance includes cognitive processing therapy within the individual trauma-focused CBT interventions recommended for adults with PTSD and says these treatments should be manual-based, supervised, and typically 8 to 12 sessions, with more if clinically indicated. RANZCP’s psychotherapy position statement supports trauma-focused psychotherapies within core psychiatric treatment.",
     "limitations": "Usually not enough if the patient is too dissociated, psychotic, intoxicated, cognitively impaired, or behaviourally unstable for structured trauma-focused cognitive work. It may also be a weaker fit if the dominant problem is primarily exposure avoidance rather than stuck-point-dominated cognitive processing.",
     "references": "Phoenix Australia PTSD guidelines give a strong recommendation for CPT in adults with PTSD and describe it as a 12-session manualised treatment focused on trauma themes including safety, trust, power and control, self-esteem, and intimacy, with a smaller exposure component than imaginal exposure therapy. NICE PTSD guidance includes cognitive processing therapy within the individual trauma-focused CBT interventions recommended for adults with PTSD and says these treatments should be manual-based, supervised, and typically 8 to 12 sessions, with more if clinically indicated. RANZCP’s psychotherapy position statement supports trauma-focused psychotherapies within core psychiatric treatment.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -2726,10 +2726,7 @@
       "Micro skill"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [
       "CPT"
@@ -2758,14 +2755,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "5f9e8ef553d1a926cbe0ea4c27cbe8c358124d02024a2f0f19ebfe48a1105554"
   },
   {
     "slug": "cognitive-remediation-therapy-crt",
@@ -3333,14 +3333,14 @@
     "evidenceNotes": "Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation for adults with complex psychosis. (NICE) RANZCP *Recovery and the psychiatrist* for the broader recovery-oriented context. (RANZCP)",
     "limitations": "It is not a substitute for acute psychiatric treatment, medication optimisation, or disorder-specific psychotherapy. It is also limited when the patient is too acutely unwell to use community supports safely, or when psychosocial work is offered without adequate clinical coordination. (Dept of Health, Disability & Ageing)",
     "references": "Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation for adults with complex psychosis. (NICE) RANZCP *Recovery and the psychiatrist* for the broader recovery-oriented context. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -3351,10 +3351,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -3381,14 +3378,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "a8a64452adc671ee22a7f240d38f917c084c2be688c0e7fd0c07aeac1ae6504e"
   },
   {
     "slug": "compassion-focused-therapy",
@@ -3420,14 +3420,14 @@
     "evidenceNotes": "2023 systematic review and meta-analysis of CFT with clinical populations. (PubMed) 2020 systematic review of CFT effectiveness and acceptability. (PubMed) 2025 systematic review focused on compassion flows, self-criticism, and shame. (PubMed) RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP)",
     "limitations": "Poor fit when the patient is too acutely disorganised, psychotic, manic, or cognitively unable to use the model, or when a more specific active treatment such as ERP or trauma-focused therapy clearly has priority. It is also limited by a still-maturing evidence base and variable intervention fidelity across studies. (PubMed)",
     "references": "2023 systematic review and meta-analysis of CFT with clinical populations. (PubMed) 2020 systematic review of CFT effectiveness and acceptability. (PubMed) 2025 systematic review focused on compassion flows, self-criticism, and shame. (PubMed) RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -3442,10 +3442,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -3472,14 +3469,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "db78a2de9b4fd0b09c475a7b2af5e8c61002b88595cfbea5048edf5b80629175"
   },
   {
     "slug": "constructivist-therapies",
@@ -3511,14 +3511,14 @@
     "evidenceNotes": "Classic appraisal of constructivist psychotherapies outlining major constructivist clinical lineages and their postmodern epistemic base. (PubMed) Systematic review and meta-analysis of personal construct psychotherapy in clinical practice, showing advantage over no treatment but no clear superiority to active treatment, with important quality limitations. (NCBI) Comprehensive review of personal construct therapy efficacy, used cautiously because it is older but still one of the more central evidence summaries for this psychotherapy family. (PubMed) RANZCP *Psychotherapy conducted by psychiatrists* for contemporary psychiatric positioning of more guideline-prominent psychotherapies. (RANZCP)",
     "limitations": "Poor fit when the person is too acutely unsafe, disorganised, psychotic, manic, or cognitively unable to engage in reflective meaning-based work. It is also limited when the main problem is better addressed by a more specific active ingredient such as exposure, trauma processing, or behavioural skills training.",
     "references": "Classic appraisal of constructivist psychotherapies outlining major constructivist clinical lineages and their postmodern epistemic base. (PubMed) Systematic review and meta-analysis of personal construct psychotherapy in clinical practice, showing advantage over no treatment but no clear superiority to active treatment, with important quality limitations. (NCBI) Comprehensive review of personal construct therapy efficacy, used cautiously because it is older but still one of the more central evidence summaries for this psychotherapy family. (PubMed) RANZCP *Psychotherapy conducted by psychiatrists* for contemporary psychiatric positioning of more guideline-prominent psychotherapies. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -3530,10 +3530,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -3560,14 +3557,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "bbe50f1103e83456cc88d9e3354ac2fc45c99547114e380568e76109876267f7"
   },
   {
     "slug": "contingency-management-cm",
@@ -4133,14 +4133,14 @@
     "evidenceNotes": "RANZCP psychotherapy position statement. (RANZCP) NICE borderline personality disorder guideline. (NICE) RANZCP group psychotherapies training page, used to support the importance of structured, supervised group psychotherapy delivery. (RANZCP)",
     "limitations": "Poor fit as the only intervention when risk is high, engagement is chaotic, substance use is uncontrolled, psychosis or mania is active, cognition is too impaired for skills learning, or the service cannot provide adequate coordination. Skills groups do not replace a full DBT programme when the patient needs individual prioritisation, crisis coaching, or broader case management. (NICE)",
     "references": "RANZCP psychotherapy position statement. (RANZCP) NICE borderline personality disorder guideline. (NICE) RANZCP group psychotherapies training page, used to support the importance of structured, supervised group psychotherapy delivery. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -4155,10 +4155,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -4185,14 +4182,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "57795860ad2e306dc64c779b314d53336389468dbe4edb001739f942de40dd15"
   },
   {
     "slug": "dbt-informed-adjunctive-emotion-regulation-work-for-eating-disorders",
@@ -5120,14 +5120,14 @@
     "evidenceNotes": "RANZCP *Electroconvulsive therapy (ECT)* position statement. (RANZCP) NICE TA59 ECT guidance for catatonia and prolonged/severe mania, plus consent, risk assessment, training, and monitoring requirements. (NICE)",
     "limitations": "ECT is not a universal replacement for psychotherapy or medication and is usually reserved for severe illness or urgent clinical need. Important limitations include cognitive adverse effects, especially memory impairment, anaesthetic considerations, and the need for careful consent and legal/ethical review. NICE also advises particular caution in pregnancy, older people with cognitive impairment, and children and young people. (NICE)",
     "references": "RANZCP *Electroconvulsive therapy (ECT)* position statement. (RANZCP) NICE TA59 ECT guidance for catatonia and prolonged/severe mania, plus consent, risk assessment, training, and monitoring requirements. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Psychosis",
@@ -5137,10 +5137,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -5167,14 +5164,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "346706dd33e02fd652fb47b924a2d9b1777d575ba8f27b64e0f16945f87552d3"
   },
   {
     "slug": "emotion-focused-therapy",
@@ -5206,14 +5206,14 @@
     "evidenceNotes": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) Meta-analysis of emotionally focused couples therapy and behavioural couples therapy. (PubMed) Systematic review of emotionally focused couples therapy effectiveness. (PubMed) Review of the therapeutic relationship in emotion-focused therapy. (PubMed) Comparison paper on cognitive-behavioural and emotion-focused couple therapy. (PubMed)",
     "limitations": "Poor fit when the patient is too disorganised, manic, psychotic, severely cognitively impaired, highly dissociative, or clearly needs a more specific evidence-based treatment such as ERP, trauma-focused CBT, or comprehensive DBT. In couples forms, it is also a poor fit if safety cannot be established. The broader psychiatric evidence base remains less dominant than for CBT-family therapies. (RANZCP)",
     "references": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) Meta-analysis of emotionally focused couples therapy and behavioural couples therapy. (PubMed) Systematic review of emotionally focused couples therapy effectiveness. (PubMed) Review of the therapeutic relationship in emotion-focused therapy. (PubMed) Comparison paper on cognitive-behavioural and emotion-focused couple therapy. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -5228,10 +5228,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -5258,14 +5255,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "eba699d35f40508aa461cf51294d0f25d2ac974de5c0ba6300aa1a639b3648a7"
   },
   {
     "slug": "empowerment-focused-practice",
@@ -5297,14 +5297,14 @@
     "evidenceNotes": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) RANZCP statement on recovery-oriented practice within mental health legislation and treatment planning. (RANZCP) NICE rehabilitation guidance on strengths, hope, goals, self-management, positive risk-taking, and support networks. (NICE) RANZCP trauma-informed practice statement, which explicitly links strengths-based work to empowerment and recovery. (RANZCP)",
     "limitations": "It is not a substitute for acute treatment, involuntary care when legally required, or syndrome-specific therapy. It can also be undermined by severe disorganisation, intoxication, acute mania, severe psychosis, or cognitive impairment that temporarily limit the person’s capacity to participate fully. (RANZCP)",
     "references": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) RANZCP statement on recovery-oriented practice within mental health legislation and treatment planning. (RANZCP) NICE rehabilitation guidance on strengths, hope, goals, self-management, positive risk-taking, and support networks. (NICE) RANZCP trauma-informed practice statement, which explicitly links strengths-based work to empowerment and recovery. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -5315,10 +5315,7 @@
       "Micro skill"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -5345,14 +5342,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "77204b5690615676e0f5766acc739ae86e3a4ade5ab99038fcf027a0f810a6f0"
   },
   {
     "slug": "existential-psychotherapy",
@@ -5384,14 +5384,14 @@
     "evidenceNotes": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) Review on existential issues in psychotherapy. (PubMed) Narrative review of existential therapy within palliative care. (PMC) Review of existential issues and psychosocial interventions in palliative care. (PMC)",
     "limitations": "Poor fit when the patient is too disorganised, acutely unsafe, highly concrete and unable to use reflective work, or clearly needs a more active syndrome-specific treatment such as ERP, TF-CBT, IPT, or DBT. Outside selected serious-illness contexts, the evidence base is less operationalised and less guideline-driven than for major structured psychotherapies. (RANZCP)",
     "references": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) Review on existential issues in psychotherapy. (PubMed) Narrative review of existential therapy within palliative care. (PMC) Review of existential issues and psychosocial interventions in palliative care. (PMC)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -5404,10 +5404,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -5434,14 +5431,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "b18f35ccb1aef0fd4cd2f79c4c07b329403ef7196fe569ed32a6bd6b43fd91da"
   },
   {
     "slug": "experiential-therapies",
@@ -5473,14 +5473,14 @@
     "evidenceNotes": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) 2025 systematic review and meta-analysis update on experiential dynamic therapies. (PMC) Earlier meta-analysis of experiential dynamic therapy for psychiatric conditions. (PubMed) Qualitative meta-analysis of client experiences of emotion-focused therapy, used to support the experiential-process description. (PubMed)",
     "limitations": "Poor fit when the patient is too acutely unsafe, manic, psychotic, severely dissociative, cognitively unable to engage, or clearly needs a more specific active treatment such as ERP, trauma-focused therapy, or comprehensive DBT first. Evidence across the whole umbrella is also more heterogeneous than for the major structured psychotherapies. (RANZCP)",
     "references": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) 2025 systematic review and meta-analysis update on experiential dynamic therapies. (PMC) Earlier meta-analysis of experiential dynamic therapy for psychiatric conditions. (PubMed) Qualitative meta-analysis of client experiences of emotion-focused therapy, used to support the experiential-process description. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -5496,10 +5496,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -5526,14 +5523,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "20bc18e19010c75578c2e588a467752c63f88c82381a47cddb3b383f7aff025f"
   },
   {
     "slug": "exposure-and-response-prevention-erp",
@@ -6791,14 +6791,14 @@
     "evidenceNotes": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) NCBI/StatPearls overview of Gestalt therapy for current descriptive framing. (PubMed) Older meta-analysis of Gestalt therapy effectiveness, used cautiously because of age and language limitations. (PubMed) Recent case-based Gestalt psychotherapy paper for contemporary clinical process framing. (PubMed)",
     "limitations": "Poor fit when the patient is too disorganised, psychotic, manic, cognitively impaired, highly dissociative, or clearly needs a more specific evidence-based treatment such as ERP, trauma-focused therapy, or comprehensive DBT. Evidence for Gestalt therapy is also much less contemporary and less operationally robust than for the major structured psychotherapies. (RANZCP)",
     "references": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) NCBI/StatPearls overview of Gestalt therapy for current descriptive framing. (PubMed) Older meta-analysis of Gestalt therapy effectiveness, used cautiously because of age and language limitations. (PubMed) Recent case-based Gestalt psychotherapy paper for contemporary clinical process framing. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -6812,10 +6812,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -6842,14 +6839,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "eca1dfc491783dbfe013fce42e29738088233d050d1be67a86baf3804fbe683b"
   },
   {
     "slug": "good-psychiatric-management",
@@ -7060,14 +7060,14 @@
     "evidenceNotes": "NICE anxiety disorder guidelines (CBT and exposure-based treatment positioning) RANZCP psychotherapy and anxiety disorder frameworks Standard CBT/exposure therapy evidence base (high consensus clinical practice)",
     "limitations": "Poor fit if exposure is unsafe, if severe dissociation or trauma destabilisation risk is high, if psychosis or mania is active, or if the patient refuses exposure rationale. Also insufficient alone for OCD without ERP, or PTSD without trauma-focused protocols.",
     "references": "NICE anxiety disorder guidelines (CBT and exposure-based treatment positioning) RANZCP psychotherapy and anxiety disorder frameworks Standard CBT/exposure therapy evidence base (high consensus clinical practice)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -7080,10 +7080,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -7110,14 +7107,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "11732af289b1ae6b71a7559487ad17f4d01324e50301471c6b43b330f507f961"
   },
   {
     "slug": "group-psychoeducation",
@@ -7149,14 +7149,14 @@
     "evidenceNotes": "RANZCP psychotherapy position statement. (RANZCP) Systematic review of psychoeducation in bipolar disorder. (PMC) Systematic review of RCTs of psychoeducation modalities in bipolar disorder. (PubMed)",
     "limitations": "Usually insufficient alone for active severe depression, acute mania, acute psychosis, OCD, PTSD, severe personality pathology, or high-risk states needing more intensive individual or disorder-specific treatment. Psychoeducation can support care in these conditions, but it does not replace the primary active treatment. (RANZCP)",
     "references": "RANZCP psychotherapy position statement. (RANZCP) Systematic review of psychoeducation in bipolar disorder. (PMC) Systematic review of RCTs of psychoeducation modalities in bipolar disorder. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -7170,10 +7170,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -7200,14 +7197,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "b86a41c6c337cb3162a108dd5b6f5df96469cad1e9784a29111fa88ff3727b61"
   },
   {
     "slug": "group-psychoeducation-for-bipolar-disorder",
@@ -7326,14 +7326,14 @@
     "evidenceNotes": "NICE depression quality statement on preventing relapse. (NICE) NICE depression in adults guideline overview and relapse-prevention framework. (NICE) RANZCP psychotherapy position statement for psychotherapy as a core part of psychiatric maintenance care. (RANZCP)",
     "limitations": "Poor fit when the person is still acutely unwell, highly suicidal, manic, psychotically disorganised, intoxicated, or needs a disorder-specific acute treatment first. Also limited when the programme is too generic for the illness mechanism, such as using a broad relapse group when the patient really needs ERP, trauma-focused work, DBT, or specialist addiction treatment. (NICE)",
     "references": "NICE depression quality statement on preventing relapse. (NICE) NICE depression in adults guideline overview and relapse-prevention framework. (NICE) RANZCP psychotherapy position statement for psychotherapy as a core part of psychiatric maintenance care. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -7345,10 +7345,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -7375,14 +7372,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "d752f8d89048bb46adba5b734390bcaefca8d4f241bd18eded64fadcbdce64d4"
   },
   {
     "slug": "group-social-skills-training",
@@ -7502,14 +7502,14 @@
     "evidenceNotes": "NICE depression guidance on guided self-help and low-intensity CBT-based interventions. (NICE) NICE HealthTech guidance on guided self-help digital CBT and its role as an initial option for mild to moderate symptoms, with explicit safety monitoring requirements. (NICE) RANZCP psychotherapy position statement for psychotherapy as a core psychiatric treatment modality. (RANZCP)",
     "limitations": "Poor fit for high suicide risk, severe depression, marked complexity, psychosis, mania, severe cognitive impairment, or situations where the patient cannot reliably self-direct. It is usually insufficient alone when the indicated treatment is more specific or intensive, such as ERP, trauma-focused therapy, comprehensive DBT, or specialist psychosis care. (NICE)",
     "references": "NICE depression guidance on guided self-help and low-intensity CBT-based interventions. (NICE) NICE HealthTech guidance on guided self-help digital CBT and its role as an initial option for mild to moderate symptoms, with explicit safety monitoring requirements. (NICE) RANZCP psychotherapy position statement for psychotherapy as a core psychiatric treatment modality. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -7524,10 +7524,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -7554,14 +7551,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "2a81dc6d5bef5af9c64bf7a893d2efa6a4ebe507cb0c680783c1749955ed77b7"
   },
   {
     "slug": "guided-self-help-for-binge-eating-disorder",
@@ -8120,14 +8120,14 @@
     "evidenceNotes": "Review of humanistic psychotherapy research and outcomes. (PubMed) Review of psychotherapy of depressive disorders noting less robust evidence for client-centred psychotherapy than CBT/IPT. (PubMed) RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP)",
     "limitations": "Poor fit when the patient clearly needs a disorder-specific active ingredient, such as ERP for OCD, trauma-focused therapy for PTSD, or more structured treatment for recurrent self-harm and behavioural dysregulation. The evidence base is also less operationally clear than for major structured psychotherapies in many psychiatric presentations. (RANZCP)",
     "references": "Review of humanistic psychotherapy research and outcomes. (PubMed) Review of psychotherapy of depressive disorders noting less robust evidence for client-centred psychotherapy than CBT/IPT. (PubMed) RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -8138,10 +8138,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -8168,14 +8165,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "387093b2a6723db80bd7ca3bb5b2933714f291d4c62ea8a17c27cbc11d85a175"
   },
   {
     "slug": "illness-management-and-recovery-style-interventions-imr-style-interventions",
@@ -8829,14 +8829,14 @@
     "evidenceNotes": "Australian Government Department of Health page on MindSpot. (Dept of Health, Disability & Ageing) NICE guidance on guided self-help digital CBT technologies for mild to moderate anxiety or low mood in young people. (NICE) NICE safety and monitoring requirements for digital CBT technologies. (NICE) RANZCP psychotherapy position statement. (RANZCP)",
     "limitations": "Poor fit for high-risk states, severe complexity, unstable psychosis, mania, severe personality crisis, marked dissociation, or patients unable to engage digitally. It should not be presented as interchangeable with higher-intensity face-to-face treatment in all cases. (NICE)",
     "references": "Australian Government Department of Health page on MindSpot. (Dept of Health, Disability & Ageing) NICE guidance on guided self-help digital CBT technologies for mild to moderate anxiety or low mood in young people. (NICE) NICE safety and monitoring requirements for digital CBT technologies. (NICE) RANZCP psychotherapy position statement. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -8850,10 +8850,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -8880,14 +8877,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "30b60a6caea6ca9ff27145072b76c524ce4d4c003b62928e028b8a7953af11c1"
   },
   {
     "slug": "interoceptive-exposure",
@@ -9099,14 +9099,14 @@
     "evidenceNotes": "NICE depression guideline NG222, last reviewed 30 January 2026, lists interpersonal psychotherapy (IPT) as a treatment option for both less severe and more severe depression. It describes IPT as focusing on how interpersonal relationships or circumstances are related to depression and states it is usually 8 to 16 sessions for less severe depression and 16 sessions for more severe depression. RANZCP PS #54 identifies psychotherapy as core psychiatric practice and explicitly names interpersonal therapy among the structured psychotherapies used by psychiatrists.",
     "limitations": "Usually not enough when the main syndrome is severe psychosis, mania, delirium, severe OCD, severe PTSD needing trauma-focused therapy, or a primarily behavioural or compulsive maintenance loop better addressed by another treatment. It is also less suitable for patients who are unwilling or unable to discuss significant relationships.",
     "references": "NICE depression guideline NG222, last reviewed 30 January 2026, lists interpersonal psychotherapy (IPT) as a treatment option for both less severe and more severe depression. It describes IPT as focusing on how interpersonal relationships or circumstances are related to depression and states it is usually 8 to 16 sessions for less severe depression and 16 sessions for more severe depression. RANZCP PS #54 identifies psychotherapy as core psychiatric practice and explicitly names interpersonal therapy among the structured psychotherapies used by psychiatrists.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -9121,8 +9121,7 @@
       "Micro skill"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [
       "IPT"
@@ -9151,14 +9150,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "0639d829772101e7c076af0557e56a66dc062e72e36db565d4604a96b7cebbc6"
   },
   {
     "slug": "life-review-therapy-reminiscence-therapy",
@@ -9277,14 +9279,14 @@
     "evidenceNotes": "NICE depression relapse-prevention quality statement. (NICE) NICE depression guideline recommendations on preventing relapse, including group CBT or MBCT and typical course length. (NICE) NICE rationale and impact section noting good evidence for antidepressants, group CBT and MBCT, and limited evidence for brief psychotherapy courses. (NICE)",
     "limitations": "Poor fit when the patient is currently severely depressed, suicidal, manic, psychotically unwell, or too cognitively disorganised to use maintenance planning. NICE also notes there was little evidence for brief courses of psychotherapy specifically in preventing relapse, so claims about very brief generic psychotherapy relapse programmes should stay cautious. (NICE)",
     "references": "NICE depression relapse-prevention quality statement. (NICE) NICE depression guideline recommendations on preventing relapse, including group CBT or MBCT and typical course length. (NICE) NICE rationale and impact section noting good evidence for antidepressants, group CBT and MBCT, and limited evidence for brief psychotherapy courses. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Psychosis",
@@ -9296,10 +9298,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -9326,14 +9325,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "fdda18046591e81756dffac7626bb96ab8619826807a0296f2a5820d4733a3cf"
   },
   {
     "slug": "matrix-model",
@@ -9538,14 +9540,14 @@
     "evidenceNotes": "Meaning-centered psychotherapy: a form of psychotherapy for patients with cancer. (PubMed) Meaning-Centered Psychotherapy and Cancer: Finding Meaning in the Face of Suffering. (PubMed) Individual meaning-centered psychotherapy RCT in advanced cancer. (PubMed) Pilot palliative-care adaptation of MCP. (PubMed)",
     "limitations": "Poor fit when the person is too cognitively impaired, delirious, acutely unsafe, severely psychotic, or clearly needs a different primary treatment first. Outside serious-illness settings, evidence is much thinner than for major structured psychotherapies in psychiatry. (PubMed)",
     "references": "Meaning-centered psychotherapy: a form of psychotherapy for patients with cancer. (PubMed) Meaning-Centered Psychotherapy and Cancer: Finding Meaning in the Face of Suffering. (PubMed) Individual meaning-centered psychotherapy RCT in advanced cancer. (PubMed) Pilot palliative-care adaptation of MCP. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -9557,10 +9559,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -9587,14 +9586,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "51f8cab015ab78d78190cd207b338b8431f2f64e0dbcceac9af7f1fc701c8098"
   },
   {
     "slug": "mentalisation-based-therapy-mbt",
@@ -9993,14 +9995,14 @@
     "evidenceNotes": "2023 meta-analysis on MBSR and depressive symptoms. (Sage Journals) 2024 systematic review/meta-analysis of MBSR in veterans for depression, PTSD, and mindfulness. (PubMed) 2025 meta-analysis of mindfulness-based interventions reducing depressive symptoms across mental disorders, used to keep current psychiatric positioning grounded. (PubMed)",
     "limitations": "Poor fit when the patient is acutely psychotic, manic, highly dissociative, severely unsafe, or unable to engage consistently in structured practice. It is also limited when a more specific therapy is clearly indicated, because MBSR is a broad mindfulness programme rather than a targeted psychiatric protocol.",
     "references": "2023 meta-analysis on MBSR and depressive symptoms. (Sage Journals) 2024 systematic review/meta-analysis of MBSR in veterans for depression, PTSD, and mindfulness. (PubMed) 2025 meta-analysis of mindfulness-based interventions reducing depressive symptoms across mental disorders, used to keep current psychiatric positioning grounded. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -10013,10 +10015,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -10043,14 +10042,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "3618ae56826648846e4708d63535015001d17e4a444b7b1d1ab31af65a739a8c"
   },
   {
     "slug": "mindfulness-based-therapies-not-primarily-cbt-anchored",
@@ -10082,14 +10084,14 @@
     "evidenceNotes": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) 2025 meta-analysis of mindfulness-based interventions across mental disorders. (RANZCP) Prior MBSR-focused evidence already used in this sequence for mindfulness-based intervention positioning. (RANZCP)",
     "limitations": "Poor fit when the patient is acutely psychotic, manic, severely unsafe, highly dissociative, or unable to engage consistently in practice. It is also limited when a more specific treatment is clearly indicated, because generic non-CBT mindfulness therapies are broad transdiagnostic approaches rather than first-line syndrome-specific protocols. (RANZCP)",
     "references": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) 2025 meta-analysis of mindfulness-based interventions across mental disorders. (RANZCP) Prior MBSR-focused evidence already used in this sequence for mindfulness-based intervention positioning. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -10103,10 +10105,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -10133,14 +10132,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "3b86e68a9586a2b120d75062312d51b7c473a370eb5570936bbfbc8526bb4059"
   },
   {
     "slug": "mindfulness-based-therapy-for-insomnia-mbti",
@@ -10965,14 +10967,14 @@
     "evidenceNotes": "RANZCP *Psychotherapy conducted by psychiatrists* for current psychiatric positioning of major psychotherapies and the absence of narrative therapy as a guideline-dominant structured modality. (RANZCP) 2026 systematic review of narrative therapy in cancer, which describes narrative therapy as a postmodern constructivist approach and outlines its core therapeutic sequence while also noting high risk of bias across included studies. (PMC) Recent general overview and review literature on narrative therapy, used cautiously for broad psychotherapy framing rather than guideline authority. (PMC)",
     "limitations": "Poor fit when the person is too disorganised, highly unsafe, severely psychotic, manic, or cognitively unable to use reflective narrative work. It is also limited when the patient clearly needs a more specific active treatment such as ERP, trauma-focused CBT, or DBT first.",
     "references": "RANZCP *Psychotherapy conducted by psychiatrists* for current psychiatric positioning of major psychotherapies and the absence of narrative therapy as a guideline-dominant structured modality. (RANZCP) 2026 systematic review of narrative therapy in cancer, which describes narrative therapy as a postmodern constructivist approach and outlines its core therapeutic sequence while also noting high risk of bias across included studies. (PMC) Recent general overview and review literature on narrative therapy, used cautiously for broad psychotherapy framing rather than guideline authority. (PMC)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -10983,10 +10985,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -11013,14 +11012,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "2ba7782958b412d22de6c8c5f59373a96441fcfafa25bea9c212694647f4d002"
   },
   {
     "slug": "narrative-informed-community-work",
@@ -11052,14 +11054,14 @@
     "evidenceNotes": "RANZCP *Recovery and the psychiatrist*. (RANZCP) RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) NICE rehabilitation for adults with complex psychosis. (NICE) NICE person-centred and recovery-focused transition guidance. (NICE)",
     "limitations": "Poor fit when the patient is too acutely unwell, highly disorganised, or at such high risk that acute containment is the primary task. It is also limited if clinicians use narrative language without practical community linkage or when the real need is a more specific therapy such as ERP, TF-CBT, or DBT. The latter is an inference. (RANZCP)",
     "references": "RANZCP *Recovery and the psychiatrist*. (RANZCP) RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) NICE rehabilitation for adults with complex psychosis. (NICE) NICE person-centred and recovery-focused transition guidance. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -11069,10 +11071,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -11099,14 +11098,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "2791bada3aa0127a2c7f24d723338c3840fa7b88416d407c9d2b37a570b3a3a5"
   },
   {
     "slug": "neurodevelopmentally-adapted-psychosocial-interventions",
@@ -11920,14 +11922,14 @@
     "evidenceNotes": "2024 umbrella review of peer support approaches for mental health. (SpringerLink) Systematic review and meta-analysis of group peer support interventions for mental health conditions. (SpringerLink)",
     "limitations": "Usually insufficient alone for acute severe syndromes, high-risk states, active psychosis with major behavioural dyscontrol, acute mania, severe OCD, or conditions where a more specific evidence-based therapy is clearly indicated. Peer-led groups can complement care, but they should not be mistaken for a substitute for structured treatment when the latter is needed. (SpringerLink)",
     "references": "2024 umbrella review of peer support approaches for mental health. (SpringerLink) Systematic review and meta-analysis of group peer support interventions for mental health conditions. (SpringerLink)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Psychosis",
@@ -11938,10 +11940,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -11968,14 +11967,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "6e74f073d2ca5997b763c8abca892e1157db30bbd4bf7248867f7ad8419d1dcc"
   },
   {
     "slug": "person-centred-rogerian-therapy",
@@ -12007,14 +12009,14 @@
     "evidenceNotes": "NICE depression in adults guideline recommendations, especially the counselling sections. (NICE) RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) NICE behaviour change guidance for person-centred approach principles. (NICE)",
     "limitations": "Poor fit when the person clearly needs a more structured or diagnosis-specific active ingredient, such as ERP for OCD, trauma-focused therapy for PTSD, or comprehensive DBT for recurrent self-harm and emotion dysregulation. It may also be less suitable for people who do not want to focus on feelings or who need a highly structured skills-based approach. The first limitation is a clinical inference; the second is partly supported by NICE’s contrasts between therapies. (NICE)",
     "references": "NICE depression in adults guideline recommendations, especially the counselling sections. (NICE) RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) NICE behaviour change guidance for person-centred approach principles. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -12027,10 +12029,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -12057,14 +12056,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "a77cd357c4e2f779116f1ab9d8032408394ec68c4a03584ba37a32db0af1ab92"
   },
   {
     "slug": "phase-oriented-trauma-therapy",
@@ -12456,14 +12458,14 @@
     "evidenceNotes": "RANZCP group psychotherapies training requirements. (RANZCP) RANZCP psychotherapy position statement. (RANZCP) RANZCP psychotherapies certificate overview. (RANZCP) Psychodynamic group psychotherapy review used cautiously for descriptive process-group features. (PMC)",
     "limitations": "Poor fit in acute mania, severe psychotic disorganisation, severe intoxication, major behavioural dyscontrol, very high suicidality needing tighter containment, or when a more disorder-specific treatment clearly has priority. Also poor fit if the patient wants only advice, skills teaching, or symptom coaching. (RANZCP)",
     "references": "RANZCP group psychotherapies training requirements. (RANZCP) RANZCP psychotherapy position statement. (RANZCP) RANZCP psychotherapies certificate overview. (RANZCP) Psychodynamic group psychotherapy review used cautiously for descriptive process-group features. (PMC)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -12477,10 +12479,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -12507,14 +12506,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "09a327aee48ec3f5ef1baadddfce56f8fe603c391fd3db5d9ccdd1895e6ce566"
   },
   {
     "slug": "prolonged-exposure-pe",
@@ -12546,14 +12548,14 @@
     "evidenceNotes": "Phoenix Australia PTSD guideline materials, including the interventions chapter, patient guide, and executive summary, which give a strong recommendation for PE in adult PTSD and describe its core components and typical session structure. NICE PTSD guidance, which includes prolonged exposure within recommended individual trauma-focused CBT interventions for adults and describes the general treatment dose as typically 8 to 12 sessions, with more when clinically indicated. RANZCP PS #54, which provides the Australian umbrella position that psychotherapy is core psychiatric treatment.",
     "limitations": "Usually not enough or not first-line when acute instability, severe dissociation, psychosis, major substance dysregulation, or other major safety issues make direct trauma-memory work unsafe. It may also be a poorer fit when the dominant maintaining process is not avoidance but another mechanism better suited to CPT, CT-PTSD, or EMDR.",
     "references": "Phoenix Australia PTSD guideline materials, including the interventions chapter, patient guide, and executive summary, which give a strong recommendation for PE in adult PTSD and describe its core components and typical session structure. NICE PTSD guidance, which includes prolonged exposure within recommended individual trauma-focused CBT interventions for adults and describes the general treatment dose as typically 8 to 12 sessions, with more when clinically indicated. RANZCP PS #54, which provides the Australian umbrella position that psychotherapy is core psychiatric treatment.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -12564,10 +12566,7 @@
       "Micro skill"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [
       "PE"
@@ -12596,14 +12595,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "dd31e1f7974ff9ef047badc68853298046cb1fbefc2368c43ff87db37240bd4d"
   },
   {
     "slug": "psychoanalysis",
@@ -12988,14 +12990,14 @@
     "evidenceNotes": "SAMHSA Illness Management and Recovery EBP toolkit. (SAMHSA) Review of the IMR literature. (PMC) Earlier review of illness management and recovery research. (PubMed) One active-control RCT, used to keep claims appropriately cautious. (PubMed)",
     "limitations": "Usually insufficient alone for acute severe syndromes, immediate high-risk states, severe mania, major behavioural dyscontrol, or conditions needing more specific active psychotherapy. It should not be mistaken for the primary treatment of OCD, PTSD, or acute personality crisis when a more targeted therapy is indicated. (PubMed)",
     "references": "SAMHSA Illness Management and Recovery EBP toolkit. (SAMHSA) Review of the IMR literature. (PMC) Earlier review of illness management and recovery research. (PubMed) One active-control RCT, used to keep claims appropriately cautious. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -13006,10 +13008,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -13036,14 +13035,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "c5b102259581df1f1f5257ba5c888cdbed6e3bc08f4297d5885308c082e90b66"
   },
   {
     "slug": "psychosis-specific-self-management-programmes",
@@ -13163,14 +13165,14 @@
     "evidenceNotes": "Australian Government psychosocial support pages and Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) RANZCP *Recovery and the psychiatrist* position statement. (RANZCP)",
     "limitations": "It is not a substitute for diagnosis-specific treatment, acute risk management, or medication optimisation. It is also weak when it becomes paperwork without follow-through, when goals are imposed rather than shared, or when the plan ignores illness severity. These implementation failures are clinical inferences but are strongly consistent with the recovery-oriented literature. (RANZCP)",
     "references": "Australian Government psychosocial support pages and Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) RANZCP *Recovery and the psychiatrist* position statement. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -13180,10 +13182,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -13210,14 +13209,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "7bec9d20d4032aa23b6ad2d31001b5ce4055aafacf80a9942cb33fb2f6854a38"
   },
   {
     "slug": "recovery-groups",
@@ -13249,14 +13251,14 @@
     "evidenceNotes": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) RANZCP psychotherapy position statement. (RANZCP) SAMHSA Illness Management and Recovery EBP toolkit, used cautiously because it is not Australian guidance but is a major implementation reference for recovery-oriented group work. (SAMHSA)",
     "limitations": "Usually insufficient alone for acute severe syndromes, high-risk states, active mania, marked psychotic disorganisation, severe OCD, or conditions where a more specific evidence-based treatment is clearly needed. Recovery orientation complements evidence-based care but does not replace it. (RANZCP)",
     "references": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) RANZCP psychotherapy position statement. (RANZCP) SAMHSA Illness Management and Recovery EBP toolkit, used cautiously because it is not Australian guidance but is a major implementation reference for recovery-oriented group work. (SAMHSA)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Substance use",
@@ -13266,10 +13268,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -13296,14 +13295,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "b150bbbd223da0ee989e7d82cc043463775e397ac80cf71d40386f261d918531"
   },
   {
     "slug": "recovery-planning-for-addiction",
@@ -13426,14 +13428,14 @@
     "evidenceNotes": "Australian Government psychosocial support pages and Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) RANZCP *Recovery and the psychiatrist* position statement. (RANZCP)",
     "limitations": "It is not a substitute for acute psychiatric treatment, medication optimisation, or specialist psychotherapy when those are clearly indicated. It is also limited when case management is too low-intensity, overly administrative, or not meaningfully linked to recovery goals and community opportunities. (RANZCP)",
     "references": "Australian Government psychosocial support pages and Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) RANZCP *Recovery and the psychiatrist* position statement. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -13443,10 +13445,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -13473,14 +13472,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "2cdb721ddbfa434557311e1f4790981918e55a1e55162c2784d39bf92fd465cc"
   },
   {
     "slug": "recovery-oriented-psychosocial-interventions",
@@ -13868,14 +13870,14 @@
     "evidenceNotes": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) 2026 review on relational-cultural theory in therapy. (ScienceDirect) Outcome study of brief relational-cultural therapy in a women’s mental health centre. (PubMed)",
     "limitations": "Poor fit when the person is too acutely unsafe, disorganised, manic, psychotic, or cognitively unable to use reflective relational work. It is also limited when the main active mechanism is better treated with a more specific therapy such as ERP, TF-CBT, or DBT. This limitation is partly empirical and partly clinical inference. (RANZCP)",
     "references": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) 2026 review on relational-cultural theory in therapy. (ScienceDirect) Outcome study of brief relational-cultural therapy in a women’s mental health centre. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -13887,10 +13889,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -13917,14 +13916,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "af815771567582c53d53be4ee45e175a806b2e0024fbea5482f73da7038e1bd4"
   },
   {
     "slug": "relationship-focused-therapy",
@@ -14046,14 +14048,14 @@
     "evidenceNotes": "Australian Government psychosocial support overview. (Dept of Health, Disability & Ageing) Commonwealth Psychosocial Support Program description. (Dept of Health, Disability & Ageing) NICE rehabilitation for adults with complex psychosis. (NICE) RANZCP *Recovery and the psychiatrist*. (RANZCP)",
     "limitations": "It is not a substitute for acute treatment, medication optimisation, or diagnosis-specific psychotherapy. It is also weak when clinicians mistake referral-making for real coordination, or when the main driver is acute illness severity rather than unmet resource linkage. The second clause is a clinical inference. (RANZCP)",
     "references": "Australian Government psychosocial support overview. (Dept of Health, Disability & Ageing) Commonwealth Psychosocial Support Program description. (Dept of Health, Disability & Ageing) NICE rehabilitation for adults with complex psychosis. (NICE) RANZCP *Recovery and the psychiatrist*. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -14063,10 +14065,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -14093,14 +14092,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "20257767cf85c84d1bbfacce21da546dadf028ca20de7de0b5b0b7bdf821006f"
   },
   {
     "slug": "rtms",
@@ -14132,14 +14134,14 @@
     "evidenceNotes": "RANZCP Repetitive Transcranial Magnetic Stimulation position statement. (RANZCP) NICE Repetitive transcranial magnetic stimulation for depression guidance. (NICE) RANZCP rTMS credentialling for psychiatrists page for current Australian MBS/training context. (RANZCP)",
     "limitations": "It is not the fastest option for life-threatening depressive states and is not a substitute for ECT when extremely rapid response is required. It is also limited by the need for repeated attendance and by variable individual response. For non-depression psychiatric indications, RANZCP advises use should generally be restricted or research-based unless evidence is stronger. (RANZCP)",
     "references": "RANZCP Repetitive Transcranial Magnetic Stimulation position statement. (RANZCP) NICE Repetitive transcranial magnetic stimulation for depression guidance. (NICE) RANZCP rTMS credentialling for psychiatrists page for current Australian MBS/training context. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Psychosis",
@@ -14148,10 +14150,7 @@
       "Micro skill"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -14178,14 +14177,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "d85d432c2b861e9875c28ca8395512f1312658941273e7ea2502418c2d6e9b5e"
   },
   {
     "slug": "schema-therapy",
@@ -14756,14 +14758,14 @@
     "evidenceNotes": "RANZCP psychotherapy position statement. (RANZCP) NICE psychosis and schizophrenia guideline, especially the recommendation not to routinely offer social skills training as a specific intervention. (NICE) NICE rehabilitation for adults with complex psychosis guideline, especially structured group activities aimed at improving interpersonal skills. (NICE)",
     "limitations": "Poor fit when the problem is primarily acute mood disorder, active psychosis, severe suicidality, OCD, PTSD, or severe personality instability that needs a more specific treatment. Also weak when the group is too generic, poorly targeted, or divorced from real-world practice. In psychosis, routine stand-alone social skills training is not generally recommended as a specific intervention. (NICE)",
     "references": "RANZCP psychotherapy position statement. (RANZCP) NICE psychosis and schizophrenia guideline, especially the recommendation not to routinely offer social skills training as a specific intervention. (NICE) NICE rehabilitation for adults with complex psychosis guideline, especially structured group activities aimed at improving interpersonal skills. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -14776,10 +14778,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -14806,14 +14805,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "16f27f4636c12c45aecd0cccdeb396b8dce5a81247a6fec2d0005a8cdb09e641"
   },
   {
     "slug": "sleep-compression-therapy-for-insomnia",
@@ -15284,14 +15286,14 @@
     "evidenceNotes": "RANZCP *Recovery and the psychiatrist*. (RANZCP) NICE rehabilitation for adults with complex psychosis. (NICE) Australian Government psychosocial support overview and CPSP description. (Dept of Health, Disability & Ageing)",
     "limitations": "Poor fit when the person is too acutely unwell, unsafe, or disorganised to attempt role restoration, or when the main active need is acute treatment rather than rehabilitation. It is also limited if services push role goals without enough scaffolding, skills work, or community support. The second clause is a clinical inference. (NICE)",
     "references": "RANZCP *Recovery and the psychiatrist*. (RANZCP) NICE rehabilitation for adults with complex psychosis. (NICE) Australian Government psychosocial support overview and CPSP description. (Dept of Health, Disability & Ageing)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -15303,10 +15305,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -15333,14 +15332,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "b2e38000ed933f0ce51f9db109398d6187f09c1c8c9719a18eb25eea9b946136"
   },
   {
     "slug": "solution-focused-brief-therapy",
@@ -15372,14 +15374,14 @@
     "evidenceNotes": "RANZCP psychotherapy position statement for how SFBT sits relative to more established structured psychotherapies in psychiatric practice. (RANZCP) 2024 umbrella review of systematic reviews and meta-analyses on SFBT effectiveness. (PubMed) Earlier systematic review commentary noting variable evidence quality and caution against overstating benefits. (NCBI)",
     "limitations": "Poor fit when the patient needs a clearly indicated disorder-specific therapy such as ERP for OCD, trauma-focused therapy for PTSD, or a more intensive treatment for high-risk personality dysfunction, psychosis, mania, or severe depression. Review-level evidence also remains heterogeneous, so claims of broad superiority should be avoided. (RANZCP)",
     "references": "RANZCP psychotherapy position statement for how SFBT sits relative to more established structured psychotherapies in psychiatric practice. (RANZCP) 2024 umbrella review of systematic reviews and meta-analyses on SFBT effectiveness. (PubMed) Earlier systematic review commentary noting variable evidence quality and caution against overstating benefits. (NCBI)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -15391,10 +15393,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -15421,14 +15420,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "d7732331d7aae674682f92df98afcc91de5a031386447e01f18e4f857e59c2e7"
   },
   {
     "slug": "specialist-supportive-clinical-management-sscm",
@@ -15732,14 +15734,14 @@
     "evidenceNotes": "Meta-analysis of strengths-based approaches in severe mental illness. (PubMed) Randomised controlled trial of strengths model case management versus standard care. (PubMed) Study linking strengths-model fidelity with outcomes. (PubMed) NICE rehabilitation guidance for the broader recovery-oriented rehabilitation context. (NICE)",
     "limitations": "Poor fit if it is used as a substitute for needed acute treatment, if staffing is too thin to provide real follow-through, or if the service uses strengths language without changing practice. Evidence is encouraging but not uniformly strong across all clinical and social outcomes, so it should not be oversold as a proven superior replacement for every other case-management model. (PubMed)",
     "references": "Meta-analysis of strengths-based approaches in severe mental illness. (PubMed) Randomised controlled trial of strengths model case management versus standard care. (PubMed) Study linking strengths-model fidelity with outcomes. (PubMed) NICE rehabilitation guidance for the broader recovery-oriented rehabilitation context. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Substance use",
       "Crisis/risk",
@@ -15747,10 +15749,7 @@
       "Single session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -15777,14 +15776,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "628c67afc3f3745086258ae22e6ff4927837c200e43268908c8017dafd58a80b"
   },
   {
     "slug": "strengths-based-practice",
@@ -15816,14 +15818,14 @@
     "evidenceNotes": "NICE rehabilitation for adults with complex psychosis, especially recommendations on recovery-oriented rehabilitation, strengths, goals, support networks, self-management, and assessment domains. (NICE) NICE rationale and impact section on recovery-oriented rehabilitation and service success. (NICE) RANZCP *Recovery and the psychiatrist* position statement. (RANZCP)",
     "limitations": "Poor fit when used as a slogan without structure, or when it is misused to avoid diagnosis-specific treatment, medication optimisation, risk management, or assertive intervention in severe illness. It is a care philosophy and practice orientation, not a substitute for ERP, trauma-focused therapy, acute mania treatment, or psychosis management. (RANZCP)",
     "references": "NICE rehabilitation for adults with complex psychosis, especially recommendations on recovery-oriented rehabilitation, strengths, goals, support networks, self-management, and assessment domains. (NICE) NICE rationale and impact section on recovery-oriented rehabilitation and service success. (NICE) RANZCP *Recovery and the psychiatrist* position statement. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -15833,10 +15835,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -15863,14 +15862,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "8d70767218cfc63957a03a88eab193d778ec884cb57b60b58a3f1d1eab78e693"
   },
   {
     "slug": "structured-clinical-management",
@@ -15993,14 +15995,14 @@
     "evidenceNotes": "NICE quality statement on carer-focused education and support for psychosis/schizophrenia. (NICE) NICE quality statement on support for carers in youth bipolar disorder, psychosis, and schizophrenia. (NICE) Systematic review and meta-analysis of group peer support interventions for mental health conditions. (SpringerLink) RANZCP psychotherapy position statement for psychotherapy-versus-support distinctions in psychiatric care. (RANZCP)",
     "limitations": "Usually insufficient alone for active severe syndromes needing disorder-specific therapy, high suicide risk, acute psychosis, acute mania, severe OCD, major trauma processing, or unstable personality pathology. Support groups can help alongside treatment, but they rarely replace the primary therapy when a specific evidence-based intervention is indicated. (RANZCP)",
     "references": "NICE quality statement on carer-focused education and support for psychosis/schizophrenia. (NICE) NICE quality statement on support for carers in youth bipolar disorder, psychosis, and schizophrenia. (NICE) Systematic review and meta-analysis of group peer support interventions for mental health conditions. (SpringerLink) RANZCP psychotherapy position statement for psychotherapy-versus-support distinctions in psychiatric care. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -16013,10 +16015,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -16043,14 +16042,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "39485e06d9471f52ee101b7da78dcf7edd1683bab1f33047dff273847e6b9bbc"
   },
   {
     "slug": "supported-digital-cbt",
@@ -16082,14 +16084,14 @@
     "evidenceNotes": "Australian Government Department of Health page on MindSpot. (Dept of Health, Disability & Ageing) Australian Government page on digital mental health services. (Dept of Health, Disability & Ageing) NICE HTG660 on guided self-help digital CBT technologies, including the technology description and recommendations. (NICE) NICE evidence-generation safety and monitoring material. (NICE)",
     "limitations": "Poor fit for high suicide risk, severe depression, mania, unstable psychosis, severe dissociation, severe personality crisis, marked cognitive impairment, or cases needing high-intensity individual therapy from the outset. NICE’s current positive recommendation is also conditional and evidence-generating in youth rather than a blanket endorsement for all digital CBT models. (NICE)",
     "references": "Australian Government Department of Health page on MindSpot. (Dept of Health, Disability & Ageing) Australian Government page on digital mental health services. (Dept of Health, Disability & Ageing) NICE HTG660 on guided self-help digital CBT technologies, including the technology description and recommendations. (NICE) NICE evidence-generation safety and monitoring material. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -16103,10 +16105,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -16133,14 +16132,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "6ffa771e122b25ddd8056e8f7bdac20bcea1bf2ad13627f2dbf116e90954485b"
   },
   {
     "slug": "supported-digital-trauma-focused-cbt",
@@ -16261,14 +16263,14 @@
     "evidenceNotes": "Systematic review and meta-analysis of internet-delivered CBT for PTSD. (PubMed) RCT of internet-based trauma-focused CBT for PTSD with and without exposure components. (PubMed) Child and adolescent internet-delivered CBT meta-analysis, used cautiously for adaptation framing rather than PTSD-specific claims. (PubMed) Face-to-face youth TF-CBT evidence, used to keep youth digital-trauma claims appropriately cautious. (PubMed)",
     "limitations": "Poor fit for ongoing trauma exposure without safety planning, severe dissociation, major behavioural instability, very high suicide risk, unstable psychosis or mania, or cases where the patient cannot complete trauma work privately and safely. Evidence is also less mature than for face-to-face trauma-focused CBT or EMDR, and long-term maintenance data remain limited. (PubMed)",
     "references": "Systematic review and meta-analysis of internet-delivered CBT for PTSD. (PubMed) RCT of internet-based trauma-focused CBT for PTSD with and without exposure components. (PubMed) Child and adolescent internet-delivered CBT meta-analysis, used cautiously for adaptation framing rather than PTSD-specific claims. (PubMed) Face-to-face youth TF-CBT evidence, used to keep youth digital-trauma claims appropriately cautious. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -16281,10 +16283,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [
       "Supported digital trauma-focused CBT"
@@ -16313,14 +16312,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "ca50ebf31f58d06467df9509a8dc7cdd2da6d5c797a4643f17c050f7a9bd5c31"
   },
   {
     "slug": "supported-education",
@@ -16794,14 +16796,14 @@
     "evidenceNotes": "RANZCP recovery-oriented practice statement, which supports collaborative, person-centred, empowering psychiatric work rather than deficit-only care. (RANZCP) NICE rehabilitation guidance, which supports goal-focused, strengths-based, practical rehabilitation work tied to meaningful occupation, skills, self-management, and support networks. (NICE)",
     "limitations": "Poor fit when the main maintaining mechanism is not a practical problem but a syndrome needing a more specific active treatment, such as ERP, trauma-focused therapy, acute mania treatment, or psychosis-focused care. It is also weak when goals are too vague or when environmental barriers are overwhelming.",
     "references": "RANZCP recovery-oriented practice statement, which supports collaborative, person-centred, empowering psychiatric work rather than deficit-only care. (RANZCP) NICE rehabilitation guidance, which supports goal-focused, strengths-based, practical rehabilitation work tied to meaningful occupation, skills, self-management, and support networks. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -16814,10 +16816,7 @@
       "Single session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -16844,14 +16843,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "9998d8561bc9eca325551133f74fe97324fd201bf929db52849a37e9e19cd3ef"
   },
   {
     "slug": "telehealth-delivered-psychotherapy",
@@ -16883,14 +16885,14 @@
     "evidenceNotes": "RANZCP telehealth in psychiatry page. (RANZCP) RANZCP psychotherapy conducted by psychiatrists position statement. (RANZCP) Australian Government Better Access information, including permanent telehealth arrangements. (Dept of Health, Disability & Ageing)",
     "limitations": "Poor fit when privacy cannot be secured, risk is too high for remote management, severe behavioural dyscontrol or major cognitive impairment makes telehealth unsafe, or the therapy depends heavily on in-room containment or detailed nonverbal observation that cannot be reproduced remotely. The first three limitations are directly grounded in telehealth standards; the last is a cautious clinical inference. (RANZCP)",
     "references": "RANZCP telehealth in psychiatry page. (RANZCP) RANZCP psychotherapy conducted by psychiatrists position statement. (RANZCP) Australian Government Better Access information, including permanent telehealth arrangements. (Dept of Health, Disability & Ageing)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -16904,10 +16906,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -16934,14 +16933,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "172662c3928bb8107cb1de531ce4ea85ed6fe3e27afc12bdf67f8b039d1788eb"
   },
   {
     "slug": "telephone-delivered-cbt",
@@ -16973,14 +16975,14 @@
     "evidenceNotes": "Australian Government digital mental health services page. (Dept of Health, Disability & Ageing) MindSpot service pages describing online and telephone delivery and brief teletherapy. (MindSpot) RANZCP psychotherapy position statement. (RANZCP)",
     "limitations": "Poor fit for high-risk states, severe complexity, unstable psychosis or mania, marked dissociation, severe cognitive impairment, or cases where the patient cannot engage well without visual structure or in-person containment. It also should not be treated as interchangeable with full higher-intensity face-to-face CBT in all cases. (Dept of Health, Disability & Ageing)",
     "references": "Australian Government digital mental health services page. (Dept of Health, Disability & Ageing) MindSpot service pages describing online and telephone delivery and brief teletherapy. (MindSpot) RANZCP psychotherapy position statement. (RANZCP)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -16996,10 +16998,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -17026,14 +17025,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "ce2209a18a42bea0c0f416a825e86b614b967d83d3aaa9aaaeec4dfbfd4ad42e"
   },
   {
     "slug": "transference-focused-psychotherapy-tfp",
@@ -17424,14 +17426,14 @@
     "evidenceNotes": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) Review of ACT as a psychotherapy centred on psychological flexibility and core life values. (PubMed) Review on values as a core process in ACT/behaviour-analytic intervention. (PubMed) Values-based CBT example trial, used cautiously for applied values-based protocol framing. (PubMed)",
     "limitations": "Poor fit when the person is too acutely unwell, disorganised, psychotic, manic, or cognitively impaired to use abstract values work, or when a more specific active treatment is clearly needed first. As a broad label, “values-based therapies” has a weaker evidence identity than ACT itself, so overclaiming should be avoided. (RANZCP)",
     "references": "RANZCP *Psychotherapy conducted by psychiatrists*. (RANZCP) Review of ACT as a psychotherapy centred on psychological flexibility and core life values. (PubMed) Review on values as a core process in ACT/behaviour-analytic intervention. (PubMed) Values-based CBT example trial, used cautiously for applied values-based protocol framing. (PubMed)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -17441,10 +17443,7 @@
       "Group programme"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -17471,14 +17470,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "39411ceb4614f2f1a5352902e64cc7e99bb3934219daaa5b76c819aaf7976a83"
   },
   {
     "slug": "vocational-rehabilitation",
@@ -17595,14 +17597,14 @@
     "evidenceNotes": "2024 RCT on brief waitlist interventions and treatment retention/outcomes. (PubMed) Web-based depression intervention during psychotherapy waiting time, used cautiously because it is a protocol and highlights both rationale and uncertainty. (PMC) Feasibility study of a monitored digital problem-solving intervention for patients on psychiatric waiting lists. (PMC) Australian Government information on Medicare Mental Health Check In as a current low-intensity early-support pathway. (Dept of Health, Disability & Ageing)",
     "limitations": "Poor fit for high-risk states, severe complexity, rapidly worsening illness, or presentations needing urgent specialist care. Evidence for waitlist-bridging interventions is still limited, and not all studies show clear superiority over usual waiting conditions or active controls. (PubMed)",
     "references": "2024 RCT on brief waitlist interventions and treatment retention/outcomes. (PubMed) Web-based depression intervention during psychotherapy waiting time, used cautiously because it is a protocol and highlights both rationale and uncertainty. (PMC) Feasibility study of a monitored digital problem-solving intervention for patients on psychiatric waiting lists. (PMC) Australian Government information on Medicare Mental Health Check In as a current low-intensity early-support pathway. (Dept of Health, Disability & Ageing)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -17614,10 +17616,7 @@
       "Single session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -17644,14 +17643,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "96adc62e2455185fabc4f05a07ad9ed0ce70e0892e70bfa93dc2f0a8de495a63"
   },
   {
     "slug": "wake-therapy-sleep-deprivation-chronotherapy",
@@ -17772,14 +17774,14 @@
     "evidenceNotes": "NICE depression guidance on guided self-help and structured self-help materials. (Dept of Health, Disability & Ageing) MindSpot service information, used indirectly to support structured guided self-help and online course models rather than workbook-only claims. (MindSpot)",
     "limitations": "Poor fit for severe depression, high suicide risk, psychosis, mania, marked cognitive impairment, severe personality dysfunction, or presentations needing more intensive or specialised therapy such as ERP or trauma-focused therapy. Workbook-based therapy is also weak when literacy or concentration barriers are substantial. (Dept of Health, Disability & Ageing)",
     "references": "NICE depression guidance on guided self-help and structured self-help materials. (Dept of Health, Disability & Ageing) MindSpot service information, used indirectly to support structured guided self-help and online course models rather than workbook-only claims. (MindSpot)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -17793,10 +17795,7 @@
       "Multi-session"
     ],
     "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
+      "No explicit patient-facing explanation in uploaded record"
     ],
     "aliases": [],
     "sources": [
@@ -17823,14 +17822,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-10-06T09:19:29.756Z",
+    "reviewedContentSha256": "f3762f7e4c471aa5b7591154cc7c2f9af1a12b0ab3780877e2fe768b4f9e0158"
   },
   {
     "slug": "worry-focused-cbt",

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   consumeSubjectApiRateLimit,
   durableRateLimitDenyCacheSizeForTests,
@@ -8,8 +8,20 @@ import {
 import type { createAdminClient } from "@/lib/supabase/admin";
 
 describe("api rate limiter dual-bucket & deny cache batching", () => {
+  const originalEnv = process.env.ALLOW_DURABLE_RATE_LIMIT_DENY_CACHE_IN_TESTS;
+
   beforeEach(() => {
     process.env.ALLOW_DURABLE_RATE_LIMIT_DENY_CACHE_IN_TESTS = "1";
+    resetDurableRateLimitDenyCacheForTests();
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.ALLOW_DURABLE_RATE_LIMIT_DENY_CACHE_IN_TESTS;
+    } else {
+      process.env.ALLOW_DURABLE_RATE_LIMIT_DENY_CACHE_IN_TESTS = originalEnv;
+    }
+    resetDurableRateLimitDenyCacheForTests();
   });
   it("short-circuits when global deny cache is active without calling database RPC", async () => {
     const mockRpc = vi.fn();

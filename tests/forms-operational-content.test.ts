@@ -85,8 +85,9 @@ describe("forms catalogue operational content", () => {
         .filter((entry) => entry.status === "drafted")
         .map((entry) => entry.code.trim().toLowerCase()),
     );
-    // Josh confirmed the submitted sign-offs on 2026-10-02; Form 2 was subsequently revised.
-    expect([...drafted]).toEqual(["2"]);
+    // Josh confirmed the submitted sign-offs on 2026-10-02. Form 2 was revised and
+    // then signed on 2026-10-06, so no form remains drafted.
+    expect([...drafted]).toEqual([]);
 
     for (const record of formRecords) {
       const details = formCatalogDetails(record);
@@ -216,7 +217,7 @@ describe("forms catalogue operational content", () => {
     const sheet = buildSheet();
     expect(sheet.match(/\*\*Sign-off pin\*\*/g)?.length).toBe(formsContentReview.forms.length);
     expect(sheet).toContain("npm run clinical:review");
-    expect(sheet).toContain("**53 of 54 forms have clinician sign-off.**");
+    expect(sheet).toContain("**54 of 54 forms have clinician sign-off.**");
     expect(sheet).not.toContain("None of it carries");
   });
 });

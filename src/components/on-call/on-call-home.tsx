@@ -5,12 +5,11 @@ import { currentCover, handbookLadders } from "@/lib/on-call/service-availabilit
 import { ChevronRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
-import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { toHandbookDial } from "@/components/on-call/kit/dial-row";
@@ -29,7 +28,6 @@ import { OnCallDemoContentControl, useOnCallDemoContentState } from "@/component
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
-import { OnCallPageMenu } from "@/components/on-call/on-call-page-menu";
 import { ON_CALL_HOME_ICON, ON_CALL_SECTION_HREFS } from "@/components/on-call/on-call-section-identity";
 import { ON_CALL_SERVER_ANCHOR } from "@/components/on-call/on-call-dates";
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
@@ -42,7 +40,6 @@ import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { pinnedEmergencyEntries } from "@/lib/on-call/handbook-items";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
 import { useOnCallMyTeam } from "@/lib/on-call/my-team-storage";
-import { deriveOnCallNotifications, visibleOnCallNotifications } from "@/lib/on-call/notifications";
 import {
   handbookTeams,
   onCallDialKey,
@@ -54,7 +51,6 @@ import {
 import { msUntilOnCallPeriodChange, resolveOnCallNumber, type OnCallNumberFields } from "@/lib/on-call/number-resolver";
 import { useOnCallUsual } from "@/lib/on-call/recent-storage";
 import { msUntilOnCallShiftContextChange, onCallShiftContext, useOnCallShiftPick } from "@/lib/on-call/shift-context";
-import { perthDateKey, snoozeReminder, type ReminderType } from "@/lib/reminders/settings";
 
 /**
  * Now, the On Call mode home (v6 figure "Now"): who to ring, at this hospital,
@@ -265,20 +261,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   // this file is scanned for words a compliance page may never say.
   const exampleContent = useOnCallDemoContentState(signedOut, demoMode);
 
-  // What the hub raises on its own, from the page's own clock and the owner's
-  // reminder settings, so the list and the badge count can never disagree.
-  const { preferences, setPreference } = useAppPreferences();
-  const reminders = preferences.reminders;
-  const reminderToday = perthDateKey(now);
-  const notifications = useMemo(
-    () => visibleOnCallNotifications(deriveOnCallNotifications(entries, now), reminders, reminderToday),
-    [entries, now, reminders, reminderToday],
-  );
-  const snoozeNotifications = useCallback(
-    (type: ReminderType) => setPreference("reminders", snoozeReminder(reminders, type, reminderToday)),
-    [reminders, reminderToday, setPreference],
-  );
-
   const hasEntries = entries.length > 0;
   // The handbook's own sign-in states (signed out, or a session that ended)
   // already ask the reader to sign in, under the hospital line; the first-run
@@ -304,7 +286,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
 
   return (
     <>
-      <OnCallPageMenu view="home" notifications={notifications} onSnoozeNotifications={snoozeNotifications} />
       <InformationPageShell testId="on-call-home-main">
         <h1 className="sr-only">Now</h1>
         {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
