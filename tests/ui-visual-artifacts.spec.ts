@@ -15,9 +15,21 @@ async function attachViewportScreenshot(
   await expect(page.locator("body")).toBeVisible();
 
   await testInfo.attach(name, {
-    body: await page.screenshot({ fullPage: false }),
+    body: await captureViewport(page),
     contentType: "image/png",
   });
+}
+
+/** Chromium sometimes refuses one viewport capture (`Unable to capture screenshot`) on an otherwise healthy page. One retry, not a Playwright test retry. */
+async function captureViewport(page: Page) {
+  try {
+    return await page.screenshot({ fullPage: false });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("Unable to capture screenshot")) throw error;
+    await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 5_000 });
+    return await page.screenshot({ fullPage: false });
+  }
 }
 
 test.describe("PsychSift visual QA artifacts", () => {
