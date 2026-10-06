@@ -169,6 +169,7 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   resources: LibraryBig,
   teach: Presentation,
   supervision: Users,
+  assessments: ClipboardCheck,
 };
 
 /**
