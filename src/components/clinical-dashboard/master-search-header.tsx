@@ -1560,13 +1560,10 @@ export function MasterSearchHeader({
   }
 
   const restoreActionMenuFocusRef = useRef(false);
-  const closeScope = useCallback(
-    (restoreFocus = false) => {
-      restoreActionMenuFocusRef.current = restoreFocus;
-      setScopeOpen(false);
-    },
-    [setScopeOpen],
-  );
+  const closeScope = useCallback((restoreFocus = false) => {
+    restoreActionMenuFocusRef.current = restoreFocus;
+    setScopeOpen(false);
+  }, []);
 
   useEffect(() => {
     if (scopeOpen || !restoreActionMenuFocusRef.current) return;
@@ -1581,7 +1578,7 @@ export function MasterSearchHeader({
     window.requestAnimationFrame(() => {
       restoreFocusUnlessMoved(actionMenuTriggerRef.current);
     });
-  }, [setScopeSheetOpen]);
+  }, []);
   const handleFocusSearchInput = useEventCallback(() => {
     queryInputRef?.current?.focus();
   });
@@ -2141,44 +2138,6 @@ export function MasterSearchHeader({
   const collapsesAtEveryWidth = wideCollapseBehaviour === "collapse";
   const sticksAbovePhones = wideCollapseBehaviour === "sticky";
 
-  const handlePickRecent = useCallback(
-    (recent: string) => {
-      onQueryChange(recent);
-      if (onPickRecent) {
-        onPickRecent(recent);
-        return;
-      }
-      onAsk();
-    },
-    [onAsk, onPickRecent, onQueryChange],
-  );
-
-  const handleCrossMode = useCallback(
-    (targetMode: AppModeId, crossQuery: string) => {
-      if (targetMode === "favourites" && !canAccessFavourites) {
-        onRequestAccountSetup?.();
-        return;
-      }
-      if (onCrossModeSearch) {
-        onCrossModeSearch(targetMode, crossQuery);
-        return;
-      }
-      onQueryChange(crossQuery);
-      onSearchModeChange(targetMode);
-      onAsk();
-    },
-    [canAccessFavourites, onAsk, onCrossModeSearch, onQueryChange, onRequestAccountSetup, onSearchModeChange],
-  );
-
-  const handleComposerInputKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLInputElement>) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && canAsk) {
-        onAsk();
-      }
-    },
-    [canAsk, onAsk],
-  );
-
   function renderSearchComposer(placement: "default" | "desktop-home" | "desktop-page") {
     const isDesktopHomeComposer = placement === "desktop-home";
     const isDesktopPageComposer = placement === "desktop-page";
@@ -2354,8 +2313,27 @@ export function MasterSearchHeader({
           onDropdownOpenChange={setCommandDropdownOpen}
           onQueryChange={onQueryChange}
           onSearch={onAsk}
-          onPickRecent={handlePickRecent}
-          onCrossMode={handleCrossMode}
+          onPickRecent={(recent) => {
+            onQueryChange(recent);
+            if (onPickRecent) {
+              onPickRecent(recent);
+              return;
+            }
+            onAsk();
+          }}
+          onCrossMode={(targetMode, crossQuery) => {
+            if (targetMode === "favourites" && !canAccessFavourites) {
+              onRequestAccountSetup?.();
+              return;
+            }
+            if (onCrossModeSearch) {
+              onCrossModeSearch(targetMode, crossQuery);
+              return;
+            }
+            onQueryChange(crossQuery);
+            onSearchModeChange(targetMode);
+            onAsk();
+          }}
           onRunModeAction={runModeAction}
           onListboxIdReady={setCommandListboxId}
           onActiveItemIdChange={setCommandActiveItemId}
@@ -2451,7 +2429,9 @@ export function MasterSearchHeader({
                 // onInput called onQueryChange twice per keystroke, doubling the
                 // controlled-state work on a large parent tree.
                 onChange={(event) => onQueryChange(event.target.value)}
-                onKeyDown={handleComposerInputKeyDown}
+                onKeyDown={(event) => {
+                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && canAsk) onAsk();
+                }}
                 aria-label={`Search indexed guidelines by question or keyword - ${selectedSearch.inputAriaLabel}`}
                 placeholder={queryPlaceholder}
                 className={cn(chatComposerInput, "w-full min-w-0", "answer-footer-search-input")}
