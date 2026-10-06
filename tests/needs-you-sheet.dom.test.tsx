@@ -117,6 +117,31 @@ describe("Needs you sheet", () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
+  it("sends an unconfirmed compliance requirement to Renewals, not Admin Help", () => {
+    // Kind is never-verified because nobody confirmed it, but the row is still a
+    // compliance requirement. Routing from kind used to land on Admin Help,
+    // which filters those rows out.
+    onCall.notifications = [
+      {
+        id: "mand:never-verified",
+        kind: "never-verified",
+        title: "Mandatory training",
+        detail: "Nobody has confirmed this in a year.",
+        entry: {
+          ...entry(),
+          id: "mand",
+          slug: "mand",
+          title: "Mandatory training",
+          details: { kind: "compliance", expiresOn: "2099-01-01" },
+        },
+      },
+    ];
+    render(<NeedsYouSheet open onClose={close} returnFocusRef={returnFocusRef} />);
+    expect(screen.getByTestId("on-call-notification-never-verified").getAttribute("href")).toMatch(
+      /^\/admin\/renewals#on-call-entry-/,
+    );
+  });
+
   it("says nothing needs you when the lists are empty", () => {
     render(<NeedsYouSheet open onClose={close} returnFocusRef={returnFocusRef} />);
     expect(screen.getByTestId("needs-you-empty").textContent).toBe("Nothing needs you right now.");
