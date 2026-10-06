@@ -99,6 +99,11 @@ describe("container delivery contract", () => {
   it("does not fail image verification when the optional GitHub cache export is unavailable", () => {
     const workflow = read(".github/workflows/docker-image.yml");
     expect(workflow.match(/cache-to:.*ignore-error=true/g)).toHaveLength(2);
+    // Layer export is main-only, so PR builds cannot fill the repository's Actions cache.
+    for (const line of workflow.match(/^\s*cache-to:.*$/gm) ?? []) {
+      expect(line).toContain("github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'type=gha,");
+      expect(line).toContain("|| ''");
+    }
     expect(workflow.match(/cache-(?:from|to):.*timeout=2m/g)).toHaveLength(4);
   });
 

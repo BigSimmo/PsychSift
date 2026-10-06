@@ -109,7 +109,10 @@ jobs:
             NEXT_PUBLIC_MAX_UPLOAD_MB=50
             ALLOW_LOW_RAM_BUILD=1
           cache-from: type=gha,scope=clinical-kb-app,timeout=2m
-          cache-to: type=gha,scope=clinical-kb-app,mode=max,timeout=2m,ignore-error=true
+          # Only main writes layers. PR builds read main's cache but never export their own:
+          # mode=max PR exports were 8.7 GB of the 10 GB Actions cache and evicted npm,
+          # Playwright and Next caches within hours. An empty cache-to disables export.
+          cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'type=gha,scope=clinical-kb-app,mode=max,timeout=2m,ignore-error=true' || '' }}
 
       - name: Build worker image (load, no push)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
@@ -120,7 +123,10 @@ jobs:
           push: false
           load: true
           cache-from: type=gha,scope=clinical-kb-worker,timeout=2m
-          cache-to: type=gha,scope=clinical-kb-worker,mode=max,timeout=2m,ignore-error=true
+          # Only main writes layers. PR builds read main's cache but never export their own:
+          # mode=max PR exports were 8.7 GB of the 10 GB Actions cache and evicted npm,
+          # Playwright and Next caches within hours. An empty cache-to disables export.
+          cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'type=gha,scope=clinical-kb-worker,mode=max,timeout=2m,ignore-error=true' || '' }}
 
       - name: Verify image content contract
         run: node scripts/check-image-content-contract.mjs
