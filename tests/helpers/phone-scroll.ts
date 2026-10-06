@@ -151,7 +151,7 @@ export const standalonePageOwnedFooterRoutes = [
     route: "/documents/11111111-1111-4111-8111-111111111111?page=1",
     selector: "form.document-viewer-composer",
     openViaDocumentActions: true,
-    focusSelector: 'input[placeholder="Search within this document..."]',
+    focusSelector: 'input[placeholder="Search within this document…"]',
     reserveSelector: '[data-testid="document-viewer-content"]',
     flushBottom: false,
   },

@@ -629,7 +629,7 @@ test("the wait stands where the answer will, so arrival swaps content in place",
 
   // And exactly one prose placeholder on the page — the dashboard must not also
   // render AnswerSkeleton beside this one.
-  expect(await page.locator('[role="status"][aria-label="Loading answer"]').count()).toBe(0);
+  await expect(page.locator('[role="status"][aria-label="Loading answer"]')).toHaveCount(0);
 });
 
 test("the sources arrive during the wait and hand over to the answer's own rail", async ({ page }) => {

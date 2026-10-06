@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "480b39c7-2ed1-434e-a6ef-7ea3c15335ab",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#7CJGY6",
+    "outcome": "Fixed probe-answer-timing.mjs direct entrypoint check on Windows using isDirectEntrypoint and added unit test.",
+    "baseRowFingerprint": "e71e3c4f1463ebb579db6cda3fbf8e15834e7f37eac105d81cbb6da035a7a9cc"
+  }
+}

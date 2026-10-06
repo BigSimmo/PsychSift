@@ -1764,7 +1764,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     const formsSearchInput = page.locator('input[placeholder="Search forms..."]:visible').first();
     await expect(formsSearchInput).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText("Loading your forms registry...")).toBeHidden({ timeout: 30_000 });
+    await expect(page.getByText("Loading your forms registry…")).toBeHidden({ timeout: 30_000 });
     const formsSearchButton = page.getByRole("button", { name: "Search forms" });
     await formsSearchInput.fill("transport forms");
     await expect(formsSearchButton).toBeEnabled();

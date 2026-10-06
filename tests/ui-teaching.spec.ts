@@ -53,7 +53,7 @@ test("This week at 200% text keeps every time clear of its title and never scrol
   await expect(list).toBeVisible({ timeout: 20_000 });
   await largeText(page);
   const rows = list.locator("li:has([data-row-time])");
-  expect(await rows.count()).toBeGreaterThan(0);
+  await expect.poll(async () => rows.count()).toBeGreaterThan(0);
   for (const row of await rows.all()) {
     const time = await row.locator("[data-row-time]").boundingBox();
     const body = await row.locator("[data-row-body]").boundingBox();

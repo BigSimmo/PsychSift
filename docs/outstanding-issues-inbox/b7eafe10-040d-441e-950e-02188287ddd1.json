@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b7eafe10-040d-441e-950e-02188287ddd1",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#A6WAES",
+    "detail": "53 of 54 form guidance records signed off in PR #3143; only Form 2 remains pending.",
+    "source": "PR #3143 review",
+    "baseRowFingerprint": "34f1bf239db24e8016bb2e668cda80591f3f4ebc0a09fa748cb5fa1dd1a1793f"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "7297348b-c236-438a-82c1-1791c1930893",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#2CRP5C",
+    "outcome": "Resolved in PR #3152: next.config.ts imports withSentryConfig from @sentry/nextjs/config; verified clean under Sentry 11 upgrade PR #3222.",
+    "baseRowFingerprint": "3fdd6d95ee4717a2ffcc3da324e7c8717f783b7c676ac22c9b7005c329252ca9"
+  }
+}

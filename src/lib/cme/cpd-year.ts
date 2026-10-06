@@ -11,8 +11,9 @@
  * `en-CA` is not a locale choice: it is the one built-in locale whose short date
  * format is already `YYYY-MM-DD`, so no reassembly is needed.
  */
-import { addDaysToDate, PERTH_TIME_ZONE } from "@/lib/perth-time";
+import { addDaysToDate, PERTH_TIME_ZONE, perthCalendarDate } from "@/lib/perth-time";
 
+export { perthCalendarDate };
 export const CPD_TIME_ZONE = PERTH_TIME_ZONE;
 
 /**
@@ -23,18 +24,7 @@ export const CPD_TIME_ZONE = PERTH_TIME_ZONE;
  */
 export const CPD_PACE_MINIMUM_ELAPSED_DAYS = 28;
 
-const perthDateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: CPD_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
 const MS_PER_DAY = 86_400_000;
-
-export function perthCalendarDate(instant: Date): string {
-  return perthDateFormatter.format(instant);
-}
 
 export function cpdYearOf(instant: Date): number {
   return Number.parseInt(perthCalendarDate(instant).slice(0, 4), 10);

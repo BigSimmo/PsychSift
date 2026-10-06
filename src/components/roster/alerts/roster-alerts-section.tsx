@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeftRight, Bell, ShieldCheck, Smartphone, Users } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { managerWaiting, RosterWaitingBadge } from "@/components/roster/manage/roster-manage-waiting";
 import {
@@ -17,117 +17,7 @@ import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-te
 import { useRosterSettings } from "@/components/roster/use-roster-settings";
 import { formatPerthDay } from "@/lib/roster/shifts/perth-time";
 import type { RosterTeam } from "@/lib/roster/team/model";
-
-function isIosNotInstalled(): boolean {
-  if (typeof navigator === "undefined" || !/iPhone|iPad|iPod/i.test(navigator.userAgent)) return false;
-  return !(
-    (navigator as Navigator & { standalone?: boolean }).standalone ||
-    window.matchMedia?.("(display-mode: standalone)").matches
-  );
-}
-
-function publicKeyBytes(value: string): Uint8Array<ArrayBuffer> {
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const bytes = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="));
-  return Uint8Array.from(bytes, (character) => character.charCodeAt(0));
-}
-
-function usePhoneAlerts() {
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [configured, setConfigured] = useState(false);
-  const [enabled, setEnabled] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    let current = true;
-    void fetch("/api/roster/alerts", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Could not check alerts");
-        const payload = (await response.json()) as { configured?: boolean; publicKey?: string | null };
-        if (!current) return;
-        setConfigured(payload.configured === true && !!payload.publicKey);
-        setPublicKey(payload.publicKey ?? null);
-        if (payload.configured && "serviceWorker" in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-          const subscription = await registration.pushManager?.getSubscription();
-          if (subscription) {
-            const check = await fetch("/api/roster/alerts/check", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ endpoint: subscription.endpoint }),
-              cache: "no-store",
-            });
-            if (!check.ok) throw new Error("Could not verify alert owner");
-            const ownership = (await check.json()) as { owned?: boolean };
-            if (current) setEnabled(ownership.owned === true);
-          } else if (current) setEnabled(false);
-        }
-      })
-      .catch(() => {
-        if (current) setMessage("Phone alerts couldn't be checked.");
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
-
-  async function toggle() {
-    if (!configured || !publicKey || busy) return;
-    if (isIosNotInstalled()) {
-      setMessage("On iPhone, add PsychSift to your home screen first.");
-      return;
-    }
-    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
-      setMessage("Phone alerts aren't available on this browser.");
-      return;
-    }
-    setBusy(true);
-    setMessage(null);
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      if (!registration.pushManager) throw new Error("Push unavailable");
-      let subscription = await registration.pushManager.getSubscription();
-      if (enabled) {
-        if (subscription) {
-          await subscription.unsubscribe();
-          const response = await fetch("/api/roster/alerts", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ endpoint: subscription.endpoint }),
-          });
-          if (!response.ok) throw new Error("Could not remove alerts");
-        }
-        setEnabled(false);
-        return;
-      }
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setMessage("Alerts are blocked on this phone. Turn them on in the phone's settings.");
-        return;
-      }
-      subscription ??= await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: publicKeyBytes(publicKey),
-      });
-      const keys = subscription.toJSON().keys;
-      if (!keys?.p256dh || !keys.auth) throw new Error("Missing subscription keys");
-      const response = await fetch("/api/roster/alerts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: subscription.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } }),
-      });
-      if (!response.ok) throw new Error("Could not save alerts");
-      setEnabled(true);
-    } catch {
-      setMessage("Phone alerts couldn't be changed. Try again shortly.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return { configured, enabled, busy, message, toggle };
-}
+import { usePhoneAlerts } from "@/components/alerts/use-phone-alerts";
 
 /** Can appear on the join screen as well as Settings. */
 export function RosterAlertsSwitch() {

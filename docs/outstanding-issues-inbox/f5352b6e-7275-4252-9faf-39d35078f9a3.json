@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "f5352b6e-7275-4252-9faf-39d35078f9a3",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#W7W94G",
+    "outcome": "Drafts and supervisor waiting states landed in PR #3078 (1c4c4f73fb).",
+    "baseRowFingerprint": "3e14d17c58d4a2683432199ad2a4c539084b360cbae53d1effa4df20ff050980"
+  }
+}

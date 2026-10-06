@@ -340,7 +340,7 @@ test.describe("PsychSift accessibility coverage", () => {
     await expect
       .poll(async () => (await readState()).marked, { message: "inert markers must be released on close" })
       .toBe(0);
-    expect(await page.locator("[inert]").count()).toBe(0);
+    await expect(page.locator("[inert]")).toHaveCount(0);
     await expect(modeButton).toBeFocused();
     expect((await readState()).overflow).toBe("");
   });

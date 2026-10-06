@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "1b5108e8-b95f-4140-9029-fa9666d53eb2",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#DXJ70P",
+    "detail": "46 of 52 imported records signed off in PR #3143; only 6 imported + 12 mechanisms remain drafted.",
+    "source": "PR #3143 review",
+    "baseRowFingerprint": "05611a7a91af64a9cb8fb13cce43406bcaee6834df9413217b76a13869529d72"
+  }
+}

@@ -35,11 +35,17 @@ function pushSupported(): boolean {
 
 // Some embedded browsers define Notification but leave it empty; treat that as unsupported.
 function hasNotificationApi(): boolean {
-  return typeof window !== "undefined" && typeof window.Notification === "function";
+  return (
+    typeof window !== "undefined" &&
+    (typeof window.Notification === "function" ||
+      (typeof window.Notification === "object" && window.Notification !== null))
+  );
 }
 
 function currentPermission(): "default" | "granted" | "denied" | "unsupported" {
-  return hasNotificationApi() ? Notification.permission : "unsupported";
+  return hasNotificationApi() && "permission" in window.Notification
+    ? (window.Notification.permission as "default" | "granted" | "denied")
+    : "unsupported";
 }
 
 function publicKeyBytes(value: string): Uint8Array<ArrayBuffer> {
@@ -150,7 +156,10 @@ export function usePhoneAlerts(): PhoneAlerts {
           return;
         }
         // Not `ready`: it never settles when no service worker is registered, which would leave "Checking…" up for good.
-        const registration = await navigator.serviceWorker.getRegistration();
+        const registration =
+          typeof navigator.serviceWorker.getRegistration === "function"
+            ? await navigator.serviceWorker.getRegistration()
+            : await navigator.serviceWorker.ready;
         const subscription = await registration?.pushManager?.getSubscription();
         if (!subscription) {
           if (current) setSubscribed(false);
@@ -219,7 +228,7 @@ export function usePhoneAlerts(): PhoneAlerts {
     if (!configured || !publicKey || busy) return;
     setTestSentAt(null);
     if (isIosNotInstalled()) {
-      setMessage("On iPhone, add PsychSift to your Home Screen first.");
+      setMessage("On iPhone, add PsychSift to your home screen first.");
       return;
     }
     if (!pushSupported()) {

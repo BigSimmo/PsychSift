@@ -118,7 +118,7 @@ export function CatalogueToolbar({
                   icon={Search}
                   value={search.query}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => search.onQueryChange(e.target.value)}
-                  placeholder={search.placeholder ?? `Search ${pluralNoun}...`}
+                  placeholder={search.placeholder ?? `Search ${pluralNoun}…`}
                   disabled={search.disabled}
                   className={cn("font-semibold", search.className)}
                 />

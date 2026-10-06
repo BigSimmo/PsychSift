@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "c9025f77-ff22-4149-b1e1-25c698c28872",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#8CKX6F",
+    "detail": "Lifeline WA boosted in PR #3157; national crisis lines remain unpinned for generic youth queries.",
+    "source": "PR #3157 review",
+    "baseRowFingerprint": "bbd90834e56bc43e7b8afd6de150deb7f3954077ad27b858866594833cb5a2e8"
+  }
+}

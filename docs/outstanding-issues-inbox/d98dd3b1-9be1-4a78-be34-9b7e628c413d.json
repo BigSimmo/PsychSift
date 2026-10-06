@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "d98dd3b1-9be1-4a78-be34-9b7e628c413d",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#HWYCPF",
+    "detail": "<ToastProvider> root mounted in layout.tsx in PR #3150; component migration is progressive polish.",
+    "source": "PR #3150 review",
+    "baseRowFingerprint": "870acb2cc7c656b97e3188657268fb2e0f893e36418714909e34562d36e08668"
+  }
+}

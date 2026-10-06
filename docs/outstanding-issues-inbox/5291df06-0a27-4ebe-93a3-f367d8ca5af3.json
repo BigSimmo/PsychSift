@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "5291df06-0a27-4ebe-93a3-f367d8ca5af3",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#D2M0NW",
+    "outcome": "Unified perthCalendarDate in cpd-year.ts and source-review.ts to re-export/import from canonical perth-time.ts.",
+    "baseRowFingerprint": "d0f2353e3f26065c94076b0dee905fc74aae49f4b7edb7cd1ebae4a27e5a4493"
+  }
+}
