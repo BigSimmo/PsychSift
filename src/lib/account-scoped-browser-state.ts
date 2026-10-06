@@ -74,6 +74,13 @@ export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
  */
 export const PSYCHIATRY_VISITS_STORAGE_KEY = "psychsift:psychiatry:visits-v1";
 /**
+ * localStorage — the Psychiatry MHA clock: which Mental Health Act forms the
+ * reader is holding (form code, when it was made, a random id). No patient
+ * label. Kept until the reader removes a clock or the account changes, because
+ * a detention can outlast a shift (owner decision, 5 October 2026).
+ */
+export const PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY = "psychsift:psychiatry:mha-clocks-v1";
+/**
  * localStorage — Teaching's term tracker: the doctor's own term dates, assessment due dates, EPA
  * counts, learning goals and "to raise" notes. Kept on this device only; the screen says no patient
  * details. Cleared at sign-out, session expiry and account switch.
@@ -129,6 +136,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_SNOOZED_ITEMS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));

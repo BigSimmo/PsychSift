@@ -12,6 +12,7 @@ import { clearOnCallChecklists } from "@/lib/on-call/checklist-storage-keys";
 import { clearOnCallDeviceState } from "@/lib/on-call/device-state-keys";
 import { clearOnCallRecent } from "@/lib/on-call/recent-storage-keys";
 import { clearPatientLabels, watchPatientLabelExpiry } from "@/lib/patient-label-storage";
+import { clearMhaClocks } from "@/lib/psychiatry-hub/mha-clocks";
 import { clearPatientProfile } from "@/lib/patient-profile-storage";
 import { clearRecentQueries } from "@/lib/recent-query-storage";
 import { clearSignedUrlCache } from "@/lib/signed-url-cache";
@@ -329,7 +330,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // A stored session the auth server rejected on boot is a session that
           // expired while the page was closed. Patient labels must not outlive it,
           // even before the shift ends; the guest stores above are kept as before.
-          if (sessionResult.data.session && !resolved.session) clearPatientLabels("account-transition");
+          if (sessionResult.data.session && !resolved.session) {
+            clearPatientLabels("account-transition");
+            // MHA clocks (form codes and times) live in their own store, outside the label namespace.
+            clearMhaClocks();
+          }
           if (callbackError) {
             setError(callbackError);
             setNotice(null);
