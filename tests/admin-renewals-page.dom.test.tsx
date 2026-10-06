@@ -71,7 +71,12 @@ const INDEMNITY = complianceFixture(
 );
 const REGISTRATION = complianceFixture(
   "Medical registration renewal",
-  { category: "registration", expiresOn: "2027-08-30", requirementId: "medical-registration-renewal" },
+  {
+    category: "registration",
+    expiresOn: "2027-08-30",
+    requirementId: "medical-registration-renewal",
+    expiryHistory: ["2026-08-30"],
+  },
   { slug: "med-reg" },
 );
 
@@ -102,10 +107,8 @@ function renderPage() {
   render(<AdminRenewalsPage now={NOW} />);
 }
 
-/** "Not recorded yet" shows its first five rows; open the rest. */
-function showAllNotRecorded() {
-  fireEvent.click(screen.getByTestId("admin-renewals-checklist-group-Not recorded yet-show-all"));
-}
+/** Every row now shows in its kind group (5 Oct mock-up v2); kept so the older tests read the same. */
+function showAllNotRecorded() {}
 
 describe("AdminRenewalsPage — the checklist", () => {
   it("offers no write controls for demo entries", () => {
@@ -124,22 +127,59 @@ describe("AdminRenewalsPage — the checklist", () => {
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));
     expect(screen.getByTestId("admin-renewals-calendar-all")).toBeDisabled();
   });
-  it("groups by state under All: soonest first, then not recorded yet", () => {
+  it("groups by kind under All, each with its count, dated rows before unrecorded ones", () => {
     renderPage();
     const groups = screen.getByTestId("admin-renewals-checklist");
-    const soonest = within(groups).getByTestId("admin-renewals-checklist-group-Soonest first");
-    // WWC's date has passed and ALS is inside its own renewing window, so both
-    // are "needs-action" rows; the catalogue's not-recorded items (no entry
-    // above matches them) land in their own group.
-    expect(within(soonest).getByText("Working with Children Check")).toBeInTheDocument();
-    expect(within(soonest).getByText("ALS course certification")).toBeInTheDocument();
-    expect(screen.getByTestId("admin-renewals-checklist-group-Not recorded yet")).toBeInTheDocument();
+    const checks = within(groups).getByTestId("admin-renewals-checklist-group-checks");
+    const training = within(groups).getByTestId("admin-renewals-checklist-group-training");
+    expect(within(checks).getByText("Working with Children Check")).toBeInTheDocument();
+    expect(within(training).getByText("ALS course certification")).toBeInTheDocument();
+    // The dated row leads its group; unrecorded rows follow.
+    const titles = within(checks)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent ?? "");
+    expect(titles[0]).toMatch(/Working with Children Check/);
+    expect(within(checks).getAllByText("Not recorded yet").length).toBeGreaterThan(0);
+  });
+
+  it("puts the item to act on first in Renew next, with what comes after it", () => {
+    renderPage();
+    const card = screen.getByTestId("admin-renew-next");
+    // WWC's date passed on 3 Sep, so it leads; ALS is inside its renewing window.
+    expect(within(card).getByRole("heading", { name: "Working with Children Check" })).toBeInTheDocument();
+    expect(screen.getByTestId("admin-renew-next-status")).toHaveTextContent("Date passed");
+    expect(screen.getByTestId("admin-renew-next-date")).toHaveTextContent("Date passed 3 Sep 2026");
+    expect(screen.getByTestId("admin-renew-next-then")).toHaveTextContent("ALS course certification");
+  });
+
+  it("says how many items have no date beside Nothing to renew right now", () => {
+    storeState.entries = [
+      complianceFixture("Registration", { requirementId: "medical-registration-renewal", expiresOn: "2028-09-30" }),
+    ];
+    renderPage();
+    expect(screen.getByTestId("admin-renew-next-nothing-due")).toHaveTextContent("Nothing to renew right now");
+    expect(screen.getByTestId("admin-renew-next-not-recorded").textContent).toMatch(
+      /^\d+ items have no date recorded yet\.$/,
+    );
+  });
+
+  it("filters the list from an at-a-glance count row, and a second tap clears it", () => {
+    renderPage();
+    const passed = screen.getByTestId("admin-renewals-summary-count-date-passed");
+    expect(passed).toHaveTextContent("1");
+    fireEvent.click(passed);
+    expect(passed).toHaveAttribute("aria-pressed", "true");
+    const list = within(screen.getByTestId("admin-renewals-checklist"));
+    expect(list.getByText("Working with Children Check")).toBeInTheDocument();
+    expect(list.queryByText("ALS course certification")).toBeNull();
+    fireEvent.click(passed);
+    expect(list.getByText("ALS course certification")).toBeInTheDocument();
   });
 
   it("draws urgency as grey shapes and words, with no red or amber anywhere on the page", () => {
     renderPage();
-    expect(screen.getByText("Date passed")).toBeInTheDocument();
-    expect(screen.getByText("Start renewing")).toBeInTheDocument();
+    expect(screen.getAllByText("Date passed").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Start renewing").length).toBeGreaterThan(0);
     expect(document.body.innerHTML).not.toMatch(/--danger|--warning/);
   });
 
@@ -154,12 +194,46 @@ describe("AdminRenewalsPage — the checklist", () => {
     expect(timeline.querySelector("svg.lucide-triangle")).not.toBeNull();
   });
 
+  it("charts the soonest dates within twelve months, never pinning a later date to the edge", () => {
+    const later = complianceFixture(
+      "Code of Conduct",
+      { category: "job", expiresOn: "2028-03-01", requirementId: "code-of-conduct" },
+      { slug: "conduct" },
+    );
+    storeState.entries = [later, ...ALL];
+    renderPage();
+    const timeline = screen.getByTestId("admin-renewals-summary-timeline");
+    const listed = within(timeline).getByRole("list", { name: "Coming up in the next twelve months" });
+    const names = within(listed)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent?.split(":")[0]);
+    // Soonest first (WWC passed 3 Sep, then ALS, indemnity, registration); 2028 is beyond the chart.
+    expect(names).toEqual([
+      "Working with Children Check",
+      "ALS course certification",
+      "Indemnity insurance declaration",
+      "Medical registration renewal",
+    ]);
+  });
+
   it("filters the checklist to one kind", () => {
     renderPage();
     fireEvent.click(screen.getByTestId("admin-renewals-kind-checks"));
     const list = within(screen.getByTestId("admin-renewals-checklist"));
     expect(list.getByText("Working with Children Check")).toBeInTheDocument();
     expect(list.queryByText("ALS course certification")).toBeNull();
+  });
+
+  it("orders the sheet: issuer check, then history, then the rule", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-medical-registration-renewal"));
+    const sheet = within(screen.getByTestId("admin-renewals-item-sheet"));
+    const issuer = sheet.getByTestId("admin-renewals-item-sheet-issuer-check");
+    const history = sheet.getByTestId("admin-renewals-item-sheet-history");
+    const rule = sheet.getByTestId("admin-renewals-item-sheet-rule");
+    expect(history).toHaveTextContent("Recorded before: 30 Aug 2026");
+    expect(issuer.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(history.compareDocumentPosition(rule) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("shows the confirmed rule and the source link", () => {
@@ -173,6 +247,9 @@ describe("AdminRenewalsPage — the checklist", () => {
     );
     expect(sheet.textContent ?? "").not.toMatch(/\bverified\b/i);
     expect(sheet.textContent ?? "").not.toMatch(/\bcompliant\b/i);
+    // WWC's date (3 Sep) has passed: the sheet names it as passed everywhere, never "Renew by".
+    expect(sheet.textContent ?? "").toMatch(/Date passed/);
+    expect(sheet.textContent ?? "").not.toMatch(/Renew by/);
   });
 
   it("records and clears the issuer-check stamp without Renewed setting it", async () => {
@@ -222,7 +299,7 @@ describe("AdminRenewalsPage — the checklist", () => {
     renderPage();
     fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-professional-indemnity-insurance"));
     const sheet = screen.getByTestId("admin-renewals-item-sheet");
-    expect(within(sheet).getByText("Check with your service")).toBeInTheDocument();
+    expect(within(sheet).getByText("Rule to confirm")).toBeInTheDocument();
     expect(within(sheet).queryByText(/^Registration for medical practitioners/)).toBeNull();
   });
 
@@ -430,6 +507,19 @@ describe("AdminRenewalsPage — a deep link to one entry (I3)", () => {
     expect(within(sheet).getByTestId("admin-renewals-item-sheet-renew").textContent).toBe("Renewed");
   });
 
+  it("scrolls to a group when Compliance links to it, once the list has drawn", async () => {
+    const scrolled: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    window.history.replaceState(null, "", "/admin/renewals#admin-renewals-group-training");
+    renderPage();
+    await waitFor(() => expect(scrolled).toContain("admin-renewals-group-training"));
+    Element.prototype.scrollIntoView = original;
+    window.history.replaceState(null, "", "/admin/renewals");
+  });
+
   it("opens a personal renewal on the Personal tab", () => {
     const car = complianceFixture("A car I lease for work", { category: "Personal", expiresOn: "2027-01-01" });
     storeState.entries = [...ALL, car];
@@ -588,31 +678,13 @@ describe("AdminRenewalsPage — readable timeline, wrapping chips, short Not rec
     expect(chips.className).not.toContain("overflow-x-auto");
   });
 
-  it("puts the count beside the Not recorded yet heading, shows five rows, then Show all", () => {
+  it("marks unconfirmed rules with Rule to confirm in the list", () => {
     renderPage();
-    const group = screen.getByTestId("admin-renewals-checklist-group-Not recorded yet");
-    expect(within(group).getByRole("heading", { name: "Not recorded yet" })).toBeInTheDocument();
-    expect(screen.getByTestId("admin-renewals-checklist-group-Not recorded yet-count")).toHaveTextContent(
-      String(NOT_RECORDED_COUNT),
-    );
-    // The heading already says it, so rows do not repeat "Not recorded yet".
-    expect(within(group).getAllByText("Not recorded yet")).toHaveLength(1);
-    expect(within(group).getAllByRole("listitem")).toHaveLength(5);
-    const showAll = within(group).getByRole("button", { name: `Show all ${NOT_RECORDED_COUNT}` });
-    fireEvent.click(showAll);
-    expect(within(group).getAllByRole("listitem")).toHaveLength(NOT_RECORDED_COUNT);
-    expect(within(group).queryByRole("button", { name: /Show all/ })).toBeNull();
-  });
-
-  it("keeps Check with your service lines in the Not recorded group", () => {
-    renderPage();
-    showAllNotRecorded();
-    const group = screen.getByTestId("admin-renewals-checklist-group-Not recorded yet");
-    const needsChecking = ADMIN_REQUIREMENTS_CATALOGUE.filter(
-      (item) => item.status === "needs-checking" && !ALL.some((entry) => entry.title === item.title),
-    );
+    const needsChecking = ADMIN_REQUIREMENTS_CATALOGUE.filter((item) => item.status === "needs-checking");
     if (needsChecking.length > 0) {
-      expect(within(group).getAllByText("Check with your service").length).toBeGreaterThan(0);
+      const list = within(screen.getByTestId("admin-renewals-checklist"));
+      expect(list.getAllByText("Rule to confirm").length).toBeGreaterThan(0);
+      expect(list.queryByText("Check with your service")).toBeNull();
     }
   });
 
