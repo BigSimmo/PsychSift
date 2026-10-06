@@ -115,6 +115,7 @@
     "scripts/playwright-base-url.ts",
     "scripts/playwright-browser-preflight.mjs",
     "scripts/playwright-pr-shards.mjs",
+    "scripts/playwright-release-shards.mjs",
     "scripts/pr-batch-core.mjs",
     "scripts/pr-batch-github.mjs",
     "scripts/pr-batch-policy.mjs",
