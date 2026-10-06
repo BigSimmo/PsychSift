@@ -132,6 +132,7 @@ import {
 } from "@/components/clinical-dashboard/clinical-dashboard-payloads";
 import { type IndexingMonitorFilter, type LibraryHealthTarget } from "@/components/clinical-dashboard/document-admin";
 import { IndexingAdminDrawer } from "@/components/clinical-dashboard/indexing-admin-drawer";
+import { DashboardDocumentsDrawer } from "@/components/clinical-dashboard/dashboard-documents-drawer";
 import { useHomeModeSeed } from "@/components/clinical-dashboard/use-home-mode-seed";
 import {
   DifferentialsHome,
@@ -3749,68 +3750,41 @@ function ClinicalDashboardContent({
                   <p className="px-1 pt-1 text-2xs font-bold uppercase tracking-kicker text-[color:var(--text-muted)]">
                     {drawerGroupTitle}
                   </p>
-                  {settingsState.documentsDrawerOpen ? (
-                    <UtilityDrawer
-                      id="dashboard-documents-drawer"
-                      icon={BookOpen}
-                      title={documentsDrawerTitle}
-                      summary={documentsDrawerSummary}
-                      mobileSummary={documentsDrawerMobileSummary}
-                      open={settingsState.documentsDrawerOpen}
-                      onOpenChange={handleDocumentsDrawerOpenChange}
-                      sheetBreakpoint={documentsDrawerIsAdmin ? "lg" : "all"}
-                      sheetReturnFocusRef={documentsDrawerReturnFocusRef}
-                      sheetHeaderLeading={
-                        <span className="grid h-10 w-10 place-items-center rounded-xl border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]">
-                          <DocumentsDrawerIcon className="h-5 w-5" aria-hidden="true" />
-                        </span>
-                      }
-                      sheetTitleAccessory={
-                        documentsDrawerIsAdmin ? (
-                          <span className="nums hidden rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-1 text-2xs font-bold text-[color:var(--text-muted)] sm:inline-flex">
-                            {indexedDocumentTotal.toLocaleString()} indexed
-                          </span>
-                        ) : null
-                      }
-                      sheetDescription={documentsDrawerSummary}
-                      sheetHeaderClassName="bg-[color:var(--surface-raised)] px-4 py-3 sm:px-5 sm:py-4"
-                      sheetCloseButtonClassName="grid h-tap w-tap shrink-0 place-items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-                      sheetContentClassName="max-h-[min(82dvh,40rem)] sm:max-h-[min(88dvh,46rem)] sm:max-w-2xl lg:max-w-3xl"
-                      sheetBodyClassName="bg-[color:var(--surface-subtle)] p-3 sm:p-4"
-                      sheetChildrenClassName="space-y-3"
-                    >
-                      {documentsDrawerIsAdmin ? (
-                        <LibraryHealthStrip
-                          documents={documents}
-                          jobs={jobs}
-                          batches={batches}
-                          checks={setupChecks}
-                          loading={dashboardDataLoading}
-                          onSelectTarget={openLibraryHealthTarget}
-                        />
-                      ) : null}
-                      <DocumentDrawer
-                        documents={documentsDrawerIsAdmin ? documents : libraryPdfDocuments}
-                        pagination={documentsPagination}
-                        loadingMoreDocuments={loadingMoreDocuments}
-                        mode={documentsDrawerIsAdmin ? "admin" : settingsState.documentsDrawerMode}
-                        selectedDocumentIds={selectedDocumentIds}
-                        statusFilter={documentDrawerStatusFilter}
-                        onToggleScope={toggleDocumentScope}
-                        onLoadMoreDocuments={loadMoreDocuments}
-                        onDocumentRenamed={handleDocumentRenamed}
-                        onDocumentDeleted={handleDocumentDeleted}
-                        onBulkReindex={bulkReindexSelected}
-                        onBulkAssignCollection={bulkAssignCollection}
-                        onBulkMetadataUpdate={bulkUpdateMetadata}
-                        bulkActionStatus={bulkActionStatus}
-                        bulkActionBusy={bulkActionBusy}
-                        canManageDocuments={canUseAdministrativeApis}
-                        onTagSearch={handleTagSearch}
-                        onMutateLabel={mutateDocumentLabel}
-                      />
-                    </UtilityDrawer>
-                  ) : null}
+                  <DashboardDocumentsDrawer
+                    open={settingsState.documentsDrawerOpen}
+                    onOpenChange={handleDocumentsDrawerOpenChange}
+                    title={documentsDrawerTitle}
+                    summary={documentsDrawerSummary}
+                    mobileSummary={documentsDrawerMobileSummary}
+                    isAdmin={documentsDrawerIsAdmin}
+                    returnFocusRef={documentsDrawerReturnFocusRef}
+                    icon={DocumentsDrawerIcon}
+                    indexedDocumentTotal={indexedDocumentTotal}
+                    documents={documents}
+                    libraryPdfDocuments={libraryPdfDocuments}
+                    jobs={jobs}
+                    batches={batches}
+                    setupChecks={setupChecks}
+                    dashboardDataLoading={dashboardDataLoading}
+                    openLibraryHealthTarget={openLibraryHealthTarget}
+                    documentsPagination={documentsPagination}
+                    loadingMoreDocuments={loadingMoreDocuments}
+                    documentsDrawerMode={settingsState.documentsDrawerMode}
+                    selectedDocumentIds={selectedDocumentIds}
+                    documentDrawerStatusFilter={documentDrawerStatusFilter}
+                    toggleDocumentScope={toggleDocumentScope}
+                    loadMoreDocuments={loadMoreDocuments}
+                    handleDocumentRenamed={handleDocumentRenamed}
+                    handleDocumentDeleted={handleDocumentDeleted}
+                    bulkReindexSelected={bulkReindexSelected}
+                    bulkAssignCollection={bulkAssignCollection}
+                    bulkUpdateMetadata={bulkUpdateMetadata}
+                    bulkActionStatus={bulkActionStatus}
+                    bulkActionBusy={bulkActionBusy}
+                    canUseAdministrativeApis={canUseAdministrativeApis}
+                    handleTagSearch={handleTagSearch}
+                    mutateDocumentLabel={mutateDocumentLabel}
+                  />
 
                   {settingsState.indexingAdminDrawerOpen && canUseAdministrativeApis ? (
                     <IndexingAdminDrawer

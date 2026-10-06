@@ -38,6 +38,14 @@ import {
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
+import {
+  splitFilterText,
+  filterText,
+  labelScopeFilterFields,
+  documentScopeTitle,
+  documentScopeMeta,
+  type TextScopeFilterKey,
+} from "@/components/clinical-dashboard/master-search-scope-helpers";
 import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-dismissable-layer";
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
@@ -133,63 +141,6 @@ const scopeSheetMediaQuery = "(max-width: 1023px)";
 const desktopPageComposerMediaQuery = "(min-width: 640px)";
 const modeHomeComposerMediaQuery = "(min-width: 0px)";
 const modeHomeComposerSmUpMediaQuery = "(min-width: 640px)";
-
-function splitFilterText(value: string) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function filterText(values?: string[]) {
-  return (values ?? []).join(", ");
-}
-
-type TextScopeFilterKey =
-  | "medications"
-  | "topics"
-  | "sites"
-  | "documentTypes"
-  | "services"
-  | "settings"
-  | "populations"
-  | "risks"
-  | "workflows"
-  | "clinicalActions"
-  | "carePhases"
-  | "documentIntents"
-  | "contentFeatures"
-  | "collections";
-
-const labelScopeFilterFields: Array<{ key: TextScopeFilterKey; label: string; placeholder: string }> = [
-  { key: "medications", label: "Medication", placeholder: "Lithium, clozapine" },
-  { key: "topics", label: "Topic", placeholder: "ECT, safety plan" },
-  { key: "sites", label: "Site", placeholder: "FSH, RPBG, CAMHS" },
-  { key: "documentTypes", label: "Type", placeholder: "Guideline, policy" },
-  { key: "services", label: "Service", placeholder: "Mental health, pharmacy" },
-  { key: "settings", label: "Setting", placeholder: "Inpatient, ED" },
-  { key: "populations", label: "Population", placeholder: "Youth, older adult" },
-  { key: "risks", label: "Risk", placeholder: "High-risk medication" },
-  { key: "workflows", label: "Workflow", placeholder: "Referral, discharge" },
-  { key: "clinicalActions", label: "Action", placeholder: "Assess, monitor" },
-  { key: "carePhases", label: "Phase", placeholder: "Acute management" },
-  { key: "documentIntents", label: "Intent", placeholder: "Decision support" },
-  { key: "contentFeatures", label: "Feature", placeholder: "Contains table" },
-  { key: "collections", label: "Collection", placeholder: "Local policy set" },
-];
-
-function documentScopeTitle(document: ClinicalDocument) {
-  return cleanDisplayTitle(document.title);
-}
-
-function documentScopeMeta(document: ClinicalDocument) {
-  const title = documentScopeTitle(document).toLowerCase();
-  const fileName = document.file_name;
-  const fileBase = fileName.replace(/\.pdf$/i, "").toLowerCase();
-  const pages = document.page_count === 1 ? "1 page" : `${document.page_count ?? "?"} pages`;
-  if (fileBase === title || fileBase.startsWith(title)) return pages;
-  return `${fileName} · ${pages}`;
-}
 
 export function MasterSearchHeader({
   demoMode,
