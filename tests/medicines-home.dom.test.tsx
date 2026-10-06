@@ -5,7 +5,7 @@
 // the hub must list exactly the sections the menu's Medicines & tools group
 // lists, and the find box runs the medication search.
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const push = vi.fn();
@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: ()
 
 import { MedicinesHome, type MedicinesSectionCounts } from "@/components/medicines/medicines-home";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
+import { clearMedicineVisits, recordMedicineVisit } from "@/lib/medicines-recent";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
 
 const counts: MedicinesSectionCounts = { medications: 120, calculators: 14, tools: 19, factsheets: 1, dictionary: 300 };
@@ -82,5 +83,64 @@ describe("MedicinesHome", () => {
   it("shows the Perth date in the header", () => {
     render(<MedicinesHome counts={counts} now={now} />);
     expect(screen.getByTestId("medicines-header")).toHaveTextContent("Saturday 3 October");
+  });
+});
+
+describe("MedicinesHome mock-up v6", () => {
+  afterEach(() => {
+    clearMedicineVisits();
+    vi.restoreAllMocks();
+  });
+
+  it("titles the groups as the mock-up does, with the real chart count", () => {
+    render(<MedicinesHome counts={counts} now={now} />);
+    expect(screen.getByRole("heading", { level: 2, name: "Which medicine are you checking?" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "This month" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Outside references" })).toBeTruthy();
+    const charts = screen.getByTestId("medicines-card-charts");
+    expect(within(charts).getByRole("heading", { name: "WA statewide charts" })).toBeTruthy();
+    expect(charts).toHaveTextContent(/WA statewide charts3/);
+  });
+
+  it("hides Recent until a medicine page has been opened, then lists the last three by name with Clear", () => {
+    render(<MedicinesHome counts={counts} now={now} />);
+    expect(screen.queryByTestId("medicines-recent")).toBeNull();
+
+    const at = Date.now();
+    act(() => {
+      ["Lithium", "Clozapine", "Valproate", "Sertraline"].forEach((name, index) =>
+        recordMedicineVisit({ slug: name.toLowerCase(), name, at: at + index }),
+      );
+    });
+    const recent = screen.getByRole("list", { name: "Recently opened medicines" });
+    const links = within(recent).getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual([
+      "SertralineMedication",
+      "ValproateMedication",
+      "ClozapineMedication",
+    ]);
+    expect(links[0]?.getAttribute("href")).toBe("/medications/sertraline");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear recent medicines" }));
+    expect(screen.queryByTestId("medicines-recent")).toBeNull();
+  });
+
+  it("says so when offline, and outside links say they need a connection", () => {
+    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    render(<MedicinesHome counts={counts} now={now} />);
+    expect(screen.getByTestId("medicines-offline")).toHaveTextContent(
+      "No connectionSearch, sections and outside links need a connection. They open again when you reconnect.",
+    );
+    expect(within(screen.getByTestId("medicines-card-charts")).getAllByText("Needs a connection")).toHaveLength(3);
+    expect(screen.getByTestId("medicines-card-pbs")).toHaveTextContent("Needs a connection");
+    // Still links: the browser's signal is only a hint, so nothing is blocked.
+    for (const link of within(screen.getByTestId("medicines-card-charts")).getAllByRole("link")) {
+      expect(link.getAttribute("href")).toMatch(/^https:\/\//);
+    }
+  });
+
+  it("shows no offline note while connected", () => {
+    render(<MedicinesHome counts={counts} now={now} />);
+    expect(screen.queryByTestId("medicines-offline")).toBeNull();
   });
 });

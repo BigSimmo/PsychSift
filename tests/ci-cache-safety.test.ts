@@ -17,6 +17,7 @@ const lighthouseChromiumSetup = readFileSync(
 );
 const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 const prShardRunner = readFileSync(new URL("../scripts/playwright-pr-shards.mjs", import.meta.url), "utf8");
+const releaseShardRunner = readFileSync(new URL("../scripts/playwright-release-shards.mjs", import.meta.url), "utf8");
 const liveWebVitalsWorkflow = readFileSync(
   new URL("../.github/workflows/live-web-vitals.yml", import.meta.url),
   "utf8",
@@ -175,6 +176,31 @@ describe("CI cache safety", () => {
     expect(nodeSetup).toMatch(/cache-dependency-path: \|\n\s+package-lock\.json\n\s+\.nvmrc\n/);
     const installStep = nodeSetup.indexOf("run: npm ci --include=dev");
     expect(installStep).toBeGreaterThan(nodeSetup.indexOf("cache: npm"));
+  });
+
+  it("keys every workflow's own npm cache exactly like setup-node-cached", () => {
+    // A workflow that runs npm ci behind its own `cache: npm` step must hash the same files as the
+    // shared action, so the six scheduled workflows restore the ~/.npm CI's npm ci jobs saved
+    // instead of the lockfile-only key that setup-node's automatic cache may have filled empty.
+    const yaml = createRequire(import.meta.url)("js-yaml");
+    const dir = new URL("../.github/workflows/", import.meta.url);
+    const keyed: string[] = [];
+    for (const file of readdirSync(dir).filter((name) => /\.ya?ml$/.test(name))) {
+      const parsed = yaml.load(readFileSync(new URL(file, dir), "utf8")) as {
+        jobs?: Record<string, { steps?: Array<{ uses?: string; with?: Record<string, unknown> }> }>;
+      };
+      for (const [jobId, job] of Object.entries(parsed.jobs ?? {})) {
+        for (const step of job.steps ?? []) {
+          if (!step.uses?.startsWith("actions/setup-node@") || step.with?.cache !== "npm") continue;
+          keyed.push(`${file}#${jobId}`);
+          expect(String(step.with?.["cache-dependency-path"]).trim().split(/\s+/), `${file} ${jobId}`).toEqual([
+            "package-lock.json",
+            ".nvmrc",
+          ]);
+        }
+      }
+    }
+    expect(keyed.length).toBeGreaterThanOrEqual(6);
   });
 
   it("keeps quarantined and mockup UI specs in one advisory lane", () => {
@@ -459,7 +485,11 @@ describe("CI cache safety", () => {
     });
     expect(releaseJob).not.toContain("path: .next/cache");
     expect(releaseJob).not.toContain("run: npm run build");
-    expect(releaseJob).toContain("npm run test:e2e");
+    // The legs run through scripts/playwright-release-shards.mjs, which only chooses the leg's
+    // spec files and then hands everything to the same wrapper `npm run test:e2e` runs.
+    expect(releaseJob).toContain("node scripts/playwright-release-shards.mjs");
+    expect(releaseShardRunner).toContain('"run-playwright.mjs"');
+    expect(releaseShardRunner).not.toContain("next build");
 
     // Until 2026-09-07 this pinned the single-job command
     // `npm run test:e2e -- --project=chromium-mockups --project=firefox --project=webkit`.
@@ -1141,5 +1171,30 @@ describe("Lighthouse budget routing", () => {
     expect(refreshJob).toContain("uses: ./.github/actions/setup-lighthouse-chromium");
     expect(lighthouseJob).not.toContain("playwright install");
     expect(refreshJob).not.toContain("playwright install");
+  });
+});
+
+describe("setup-node automatic npm cache", () => {
+  it("never lets a setup-node step without an npm install save an npm cache", () => {
+    // package.json declares "packageManager", so setup-node turns its npm cache on by default.
+    // A job that never runs npm ci would save an empty ~/.npm under the lockfile key, and a
+    // primary-key hit is never re-saved.
+    const yaml = createRequire(import.meta.url)("js-yaml");
+    const dir = new URL("../.github/workflows/", import.meta.url);
+    let checked = 0;
+    for (const file of readdirSync(dir).filter((name) => /\.ya?ml$/.test(name))) {
+      const parsed = yaml.load(readFileSync(new URL(file, dir), "utf8")) as {
+        jobs?: Record<string, { steps?: Array<{ uses?: string; with?: Record<string, unknown> }> }>;
+      };
+      for (const [jobId, job] of Object.entries(parsed.jobs ?? {})) {
+        for (const step of job.steps ?? []) {
+          if (!step.uses?.startsWith("actions/setup-node@")) continue;
+          checked += 1;
+          if (step.with?.cache === "npm") continue;
+          expect(step.with?.["package-manager-cache"], `${file} ${jobId}`).toBe(false);
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 });

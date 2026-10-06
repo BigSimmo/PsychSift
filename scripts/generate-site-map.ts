@@ -155,6 +155,8 @@ const routeDescriptions: Record<string, string> = {
   "/sources/[sourceId]": "Clinical source traceability record: identity, rating, canonical locations and usage.",
   "/sources/method": "How the catalogue rates, reviews and traces a source, and its stated limitations.",
   "/sources/publishers": "Publishing bodies grouped by jurisdiction scope.",
+  "/sources/currency":
+    "Currency check: which sources are current or due for review, and recorded review dates in the next six months.",
   "/sources/search":
     "The ranked clinical source catalogue: filter and sort by quality band, jurisdiction, source type, publisher, topic, lifecycle and application usage.",
   "/sources/topics": "Clinical topics derived from registered source metadata.",
@@ -191,6 +193,8 @@ const routeDescriptions: Record<string, string> = {
     "Statewide requirements alongside the doctor's own recorded dates and personal renewals; dates are not verified with an issuing body.",
   "/admin/compliance":
     "The statewide requirements grouped as a health service asks for them, with the doctor's own recorded dates, what to do before the next job, and an Excel export saved on the device; dates are not verified with an issuing body.",
+  "/admin/compliance/export":
+    "A personal Excel copy of the doctor's own compliance record, with chosen columns and an optional next-60-days range, built in the page and saved on the device; nothing is uploaded.",
   "/admin/new-job": "Starting and leaving a job, with the doctor's own progress and service contacts.",
   "/admin/new-job/records": "The doctor's own Admin records to copy or print.",
   "/admin/help": "Crisis lines, support, guides, contacts and on-site detail with in-page search.",
@@ -199,6 +203,8 @@ const routeDescriptions: Record<string, string> = {
     "My Day Week: the next seven Perth days, one list per day, gathering your roster shifts, teaching sessions, CPD routines and dated My Day items. No search surface.",
   "/my-day/hours":
     "My Day Hours: your rostered hours this week and this fortnight and your next leave, from Roster's own hours helpers. No search surface.",
+  "/my-day/profile":
+    "Work profile: your stage, where you work, each area's set-up state, the agreement rules Roster checks, a link to alerts, and what is kept where. Reached from Settings. No search surface.",
   "/my-day":
     "My Day: one time-ordered list of what needs you across On Call, Roster, CPD, Teaching and Admin — overdue first, then due soon, then the rest — each row linking to the page that resolves it. My Day has no search results surface.",
   "/on-call/compliance": "Compatibility redirect to `/admin/renewals`, carrying the query string.",
@@ -673,7 +679,7 @@ function renderModePageIndex() {
       home: appModeHomeHref("sources"),
       search: appModeHomeHref("sources", { query: "RANZCP", focus: true, run: true }),
       detail:
-        "`/sources` redirects to the shared home, which carries a `Browse catalogue` chip; `/sources/search` is the filterable catalogue, and a submitted or filter-carrying deep link to `/sources` forwards there. Also `/sources/topics`, `/sources/publishers`, `/sources/method`, and `/sources/[sourceId]` traceability records.",
+        "`/sources` redirects to the shared home, which carries a `Browse catalogue` chip; `/sources/search` is the filterable catalogue, and a submitted or filter-carrying deep link to `/sources` forwards there. Also `/sources/topics`, `/sources/publishers`, `/sources/currency`, `/sources/method`, and `/sources/[sourceId]` traceability records.",
     },
     {
       mode: "Therapy Compass",

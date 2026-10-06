@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 describe("warmCanonicalCatalogueSearchCaches", () => {
-  it("warms form, service and medication, then the differentials lists, serially", async () => {
+  it("warms form, service and medication for search, then the list reads, serially", async () => {
     const order: string[] = [];
     readCanonicalSiteContentRecords.mockImplementation(async ({ kind }: { kind: string }) => {
       order.push(`start:${kind}`);
@@ -52,12 +52,22 @@ describe("warmCanonicalCatalogueSearchCaches", () => {
     await warmCanonicalCatalogueSearchCaches({} as never);
 
     expect(catalogueSearchWarmKinds).toEqual(["form", "service", "medication"]);
-    expect(catalogueListWarmKinds).toEqual(["differential", "presentation"]);
+    expect(catalogueListWarmKinds).toEqual(["differential", "presentation", "form", "service"]);
+    // Each read is warmed in the projection its consumer looks up, or the warm fills a cache key
+    // nobody reads: search reads render-only for all three kinds, the list routes read full rows.
     expect(
-      readCanonicalSiteContentRecords.mock.calls.find(([input]) => input.kind === "medication")?.[0],
-    ).toMatchObject({
-      renderOnly: true,
-    });
+      readCanonicalSiteContentRecords.mock.calls.map(
+        ([input]) => `${input.kind}:${input.renderOnly ? "render" : "full"}`,
+      ),
+    ).toEqual([
+      "form:render",
+      "service:render",
+      "medication:render",
+      "differential:full",
+      "presentation:full",
+      "form:full",
+      "service:full",
+    ]);
     expect(order).toEqual([
       "start:form",
       "end:form",
@@ -69,8 +79,12 @@ describe("warmCanonicalCatalogueSearchCaches", () => {
       "end:differential",
       "start:presentation",
       "end:presentation",
+      "start:form",
+      "end:form",
+      "start:service",
+      "end:service",
     ]);
-    expect(markCatalogueProcessConnectionWarmed).toHaveBeenCalledTimes(5);
+    expect(markCatalogueProcessConnectionWarmed).toHaveBeenCalledTimes(7);
   });
 
   it("continues through a failed kind rather than aborting the warm", async () => {
@@ -81,8 +95,8 @@ describe("warmCanonicalCatalogueSearchCaches", () => {
 
     await warmCanonicalCatalogueSearchCaches({} as never);
 
-    expect(readCanonicalSiteContentRecords).toHaveBeenCalledTimes(5);
-    expect(markCatalogueProcessConnectionWarmed).toHaveBeenCalledTimes(4);
+    expect(readCanonicalSiteContentRecords).toHaveBeenCalledTimes(7);
+    expect(markCatalogueProcessConnectionWarmed).toHaveBeenCalledTimes(6);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });

@@ -1,8 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { MedicationRecordPage } from "@/components/clinical-dashboard/medication-record-page";
+import { appModeHomeHref } from "@/lib/app-modes";
 import type { MedicationRecord } from "@/lib/medications";
 
 vi.mock("next/navigation", () => ({
@@ -71,6 +72,7 @@ describe("MedicationRecordPage content-first states", () => {
   it("renders the error panel when nothing renderable exists", () => {
     mockDetail({ data: null, loading: false, error: "Network unavailable" });
     render(<MedicationRecordPage slug="test-med" />);
+    expect(screen.getByRole("heading", { name: "This medicine page didn\u2019t load" })).toBeInTheDocument();
     expect(screen.getByText("Network unavailable")).toBeInTheDocument();
   });
 
@@ -208,5 +210,152 @@ describe("MedicationRecordPage confirmed source links (#05WXHX step 2)", () => {
     expect(screen.queryByText(/does not yet link to its own sources/)).not.toBeInTheDocument();
     expect(screen.getByText(/against this record’s linked sources/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Search the TGA Product Information/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("MedicationRecordPage mock-up v6 states", () => {
+  const statDrug: MedicationRecord = {
+    ...fallbackDrug,
+    stats: [
+      { label: "Target range", value: "0.6-0.8" },
+      { label: "Half-life", value: "24 h", cls: "good" },
+      { label: "Toxicity risk", value: "High", cls: "hi" },
+      { label: "Renal adj.", value: "Mandatory", flag: "warn" },
+    ],
+  };
+
+  it("keeps a high-risk figure red and spoken, and makes caution and reassurance figures neutral", () => {
+    mockDetail({ data: { record: statDrug }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={statDrug} />);
+    const figures = screen.getAllByTestId("medication-figure");
+    expect(figures.map((figure) => figure.getAttribute("data-flag"))).toEqual([null, null, "high", "caution"]);
+    expect(figures[2]?.className).toContain("danger");
+    for (const figure of [figures[0], figures[1], figures[3]]) {
+      expect(figure?.className).not.toMatch(/danger|warning|success/);
+    }
+    expect(figures.map((figure) => figure.querySelectorAll("svg").length)).toEqual([0, 0, 1, 1]);
+    // The cue is spoken too, not only drawn.
+    expect(figures[2]).toHaveTextContent("High risk: Toxicity risk");
+    expect(figures[3]).toHaveTextContent("Caution: Renal adj.");
+    expect(figures[0]).not.toHaveTextContent(/Caution|High risk/);
+  });
+
+  it("lets an odd last figure span the phone row so the hairlines close cleanly", () => {
+    const three = { ...statDrug, stats: statDrug.stats.slice(0, 3), schedule: "", category: "" };
+    mockDetail({ data: { record: three }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={three} />);
+    const figures = screen.getAllByTestId("medication-figure");
+    expect(figures.length % 2).toBe(1);
+    expect(figures.at(-1)?.className).toContain("last:odd:col-span-2");
+    expect(figures[0]?.parentElement?.className).toContain(`xl:grid-cols-${figures.length}`);
+  });
+
+  it("says plainly when the record has no source linked, and not when it has one", () => {
+    const withNotes = { ...fallbackDrug, sections: [{ title: "Sources", type: "src", rows: [] }] };
+    mockDetail({ data: { record: withNotes }, loading: false, error: null });
+    const { unmount } = render(<MedicationRecordPage slug="test-med" fallbackRecord={withNotes} />);
+    expect(screen.getByTestId("medication-no-source")).toHaveTextContent(
+      "No source link confirmed for this record yet. Its own source notes are under Additional.",
+    );
+    unmount();
+    render(
+      <MedicationRecordPage
+        slug="test-med"
+        fallbackRecord={fallbackDrug}
+        sourceLinks={[{ id: "x", title: "PI", publisher: "TGA", href: "https://www.tga.gov.au/" }]}
+      />,
+    );
+    expect(screen.queryByTestId("medication-no-source")).not.toBeInTheDocument();
+  });
+
+  it("does not point to Additional for source notes when the record has none", () => {
+    const noNotes = { ...fallbackDrug, sections: fallbackDrug.sections.filter((section) => section.type !== "src") };
+    mockDetail({ data: { record: noNotes }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={noNotes} />);
+    expect(screen.getByTestId("medication-no-source")).toHaveTextContent(
+      "No source link confirmed for this record yet, and no source notes are recorded for it.",
+    );
+  });
+
+  it("says nothing is linked from this page yet and offers the reader's own PDFs", () => {
+    mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
+    const from = screen.getByTestId("medication-from-page");
+    expect(from).toHaveTextContent(
+      "No calculator, monitoring schedule or factsheet is linked to this medicine page yet.",
+    );
+    expect(within(from).getByRole("link", { name: /Browse factsheets/ })).toHaveAttribute(
+      "href",
+      appModeHomeHref("factsheets"),
+    );
+    expect(within(from).getByRole("link", { name: /Search your PDFs for Fallback Drug/ })).toHaveAttribute(
+      "href",
+      appModeHomeHref("documents", { query: "Fallback Drug", run: true }),
+    );
+  });
+
+  it("adds a plain 'Still loading' line after eight seconds, and shows nothing clinical", () => {
+    vi.useFakeTimers();
+    try {
+      mockDetail({ data: null, loading: true, error: null });
+      render(<MedicationRecordPage slug="owner-only" />);
+      expect(screen.queryByTestId("medication-slow-load")).not.toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(8_000);
+      });
+      expect(screen.getByTestId("medication-slow-load")).toHaveTextContent(
+        "Still loadingTaking longer than usual. Nothing is shown until the record arrives.",
+      );
+      expect(screen.queryByTestId("medication-figure")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("offers Try again and two ways forward when the record fails to load", async () => {
+    const retry = vi.fn();
+    useMedicationDetail.mockReturnValue({
+      data: null,
+      loading: false,
+      error: "Request failed (503)",
+      notFound: false,
+      retry,
+    });
+    render(<MedicationRecordPage slug="lithium-carbonate" />);
+    const failed = screen.getByTestId("medication-load-failed");
+    // A server error is not called a connection problem; its own reason is shown.
+    expect(failed).toHaveTextContent("Try again in a moment. If it keeps happening, the reason is below.");
+    expect(failed).toHaveTextContent("Details: Request failed (503)");
+    await userEvent.setup().click(within(failed).getByRole("button", { name: "Try again" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(within(failed).getByRole("link", { name: /Search your PDFs for lithium carbonate/ })).toBeInTheDocument();
+    expect(within(failed).getByRole("link", { name: "Back to all medicines" })).toHaveAttribute(
+      "href",
+      appModeHomeHref("prescribing"),
+    );
+  });
+
+  it("blames the connection only when offline, and promises no reason when there is none", () => {
+    const retry = vi.fn();
+    useMedicationDetail.mockReturnValue({
+      data: null,
+      loading: false,
+      error: "You are offline. Connect to view this medication.",
+      notFound: false,
+      retry,
+    });
+    const { unmount } = render(<MedicationRecordPage slug="lithium-carbonate" />);
+    expect(screen.getByTestId("medication-load-failed")).toHaveTextContent(
+      "The server didn\u2019t answer. Check the connection, then try again.",
+    );
+    // Only the message is announced, not the button and links.
+    expect(screen.getByRole("alert")).not.toContainElement(screen.getByTestId("medication-retry"));
+    unmount();
+
+    useMedicationDetail.mockReturnValue({ data: null, loading: false, error: null, notFound: false, retry });
+    render(<MedicationRecordPage slug="lithium-carbonate" />);
+    const failed = screen.getByTestId("medication-load-failed");
+    expect(failed).toHaveTextContent("Try again in a moment.");
+    expect(failed).not.toHaveTextContent("reason is below");
   });
 });

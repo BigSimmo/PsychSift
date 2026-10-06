@@ -22,6 +22,12 @@ describe("information pages and the search composer", () => {
     }
   });
 
+  it("treats the Psychiatry dashboard and its own pages as information pages, with no composer", () => {
+    for (const path of ["/psychiatry", "/psychiatry/mha-clock"]) {
+      expect(isInformationPage(path)).toBe(true);
+    }
+  });
+
   it("leaves catalogue result docks out, so a submitted search keeps its composer", () => {
     expect(isInformationPage("/services/search")).toBe(false);
     expect(isInformationPage("/forms/search")).toBe(false);

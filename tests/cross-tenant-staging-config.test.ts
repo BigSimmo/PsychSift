@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  CROSS_TENANT_OFFLINE_ANSWER_CODES,
   crossTenantDocumentIds,
   crossTenantFixtureMarker,
   crossTenantStagingFetch,
@@ -110,9 +111,13 @@ describe("cross-tenant staging configuration safety", () => {
     stubConfig();
     const config = readCrossTenantStagingConfig();
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ deploymentCommitSha: validConfig.CROSS_TENANT_CHECKOUT_COMMIT_SHA }), {
-        status: 200,
-      }),
+      new Response(
+        JSON.stringify({
+          deploymentCommitSha: validConfig.CROSS_TENANT_CHECKOUT_COMMIT_SHA,
+          checks: { openaiConfig: "skipped" },
+        }),
+        { status: 200 },
+      ),
     );
     await expect(verifyCrossTenantDeploymentIdentity(config)).resolves.toBe(
       validConfig.CROSS_TENANT_CHECKOUT_COMMIT_SHA,
@@ -124,6 +129,42 @@ describe("cross-tenant staging configuration safety", () => {
       }),
     );
     await expect(verifyCrossTenantDeploymentIdentity(config)).rejects.toThrow(/does not match checkout SHA/);
+  });
+
+  it("requires /api/health to report the offline, keyless provider profile", async () => {
+    stubConfig();
+    const config = readCrossTenantStagingConfig();
+    for (const openaiConfig of ["ok", "missing", undefined]) {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            deploymentCommitSha: validConfig.CROSS_TENANT_CHECKOUT_COMMIT_SHA,
+            checks: openaiConfig === undefined ? {} : { openaiConfig },
+          }),
+          { status: 200 },
+        ),
+      );
+      await expect(verifyCrossTenantDeploymentIdentity(config)).rejects.toThrow(/RAG_PROVIDER_MODE=offline/);
+    }
+  });
+
+  it("accepts evidence-gate reasons on the offline answer but never a provider-call reason", () => {
+    // The synthetic fixture cannot support a clinical answer, so offline staging answers it with
+    // an evidence-gate code (low_signal for the lithium anchor), not provider_offline.
+    for (const code of ["provider_offline", "low_signal", "coverage_gap", "no_candidates", "unsupported"]) {
+      expect(CROSS_TENANT_OFFLINE_ANSWER_CODES.has(code)).toBe(true);
+    }
+    for (const code of [
+      "provider_missing_key",
+      "provider_auth",
+      "provider_quota",
+      "provider_rate_limit",
+      "provider_timeout",
+      "provider_failure",
+      "unknown",
+    ]) {
+      expect(CROSS_TENANT_OFFLINE_ANSWER_CODES.has(code)).toBe(false);
+    }
   });
 
   it("rejects missing or malformed deployment identity metadata", async () => {

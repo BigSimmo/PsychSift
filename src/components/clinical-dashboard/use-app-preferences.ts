@@ -8,6 +8,11 @@ import {
   type LandingPreference,
 } from "@/lib/account-preferences";
 import { useAuthSession } from "@/lib/supabase/client";
+import {
+  ACCOUNT_SCOPED_PREFERENCE_KEYS,
+  APP_PREFERENCES_STORAGE_KEY,
+  subscribeAccountTransition,
+} from "@/lib/account-scoped-browser-state";
 
 export {
   ANSWER_STYLE_OPTIONS,
@@ -68,9 +73,12 @@ async function readAuthoritativePreferences(response: Response): Promise<AppPref
  * safe to send because it narrows retention.
  */
 function bootstrapPreferencePatch(preferences: AppPreferences): PreferencePatch {
-  if (!preferences.saveRecentSearches) return preferences;
   const patch: PreferencePatch = { ...preferences };
-  delete patch.saveRecentSearches;
+  // The work stage describes a person, not this device: a shared phone's copy
+  // may be the previous doctor's, so a new account never inherits it.
+  delete patch.workStage;
+  delete patch.ranzcpStage;
+  if (preferences.saveRecentSearches) delete patch.saveRecentSearches;
   return patch;
 }
 
@@ -90,7 +98,7 @@ function useAuthSessionIfAvailable() {
  * stays in sync between open tabs. Nothing here is PHI; values are plain enums.
  */
 
-const storageKey = "clinical-kb-preferences";
+const storageKey = APP_PREFERENCES_STORAGE_KEY;
 const changeEvent = "clinical-kb-preferences-change";
 
 // In-memory fallback when localStorage is unavailable (private mode, quota).
@@ -139,13 +147,24 @@ function getServerSnapshot(): AppPreferences {
   return DEFAULT_PREFERENCES;
 }
 
+// The auth provider strips the stored work stage at an account transition; the
+// in-memory fallback (storage blocked) is dropped the same way.
+subscribeAccountTransition(() => {
+  if (!inMemoryFallback) return;
+  const next = { ...inMemoryFallback };
+  for (const key of ACCOUNT_SCOPED_PREFERENCE_KEYS) next[key] = DEFAULT_PREFERENCES[key] as never;
+  inMemoryFallback = next;
+});
+
 function subscribe(onChange: () => void) {
   if (typeof window === "undefined") return () => undefined;
   window.addEventListener("storage", onChange);
   window.addEventListener(changeEvent, onChange);
+  const stopTransition = subscribeAccountTransition(onChange);
   return () => {
     window.removeEventListener("storage", onChange);
     window.removeEventListener(changeEvent, onChange);
+    stopTransition();
   };
 }
 

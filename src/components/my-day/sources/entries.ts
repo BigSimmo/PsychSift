@@ -22,12 +22,7 @@ import { isComplianceEntry } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { deriveOnCallNotifications, visibleOnCallNotifications } from "@/lib/on-call/notifications";
-import {
-  DEFAULT_REMINDER_SETTINGS,
-  perthDateKey,
-  showsReminderInApp,
-  type ReminderSettings,
-} from "@/lib/reminders/settings";
+import { perthDateKey, type ReminderSettings } from "@/lib/reminders/settings";
 
 /**
  * Admin ("my-work") and On Call share one read of the reader's On Call entries,
@@ -37,22 +32,18 @@ import {
  * Wording follows the compliance rule: a recorded date is "Recorded date" or
  * "Date has passed", never a statement about the reader's standing.
  *
- * Deliberate decision: My Day gates Admin items on the "compliance-dates"
- * reminder, unlike Admin's own pages, which always show the reader's dates.
- * My Day is a nudge surface, so the reader's reminder choice decides whether
- * it nudges.
+ * Owner decision (5 Oct 2026, Alerts plan): renewal dates ALWAYS stay in My
+ * Day, like Admin's own pages. The "compliance-dates" reminder's Show in the
+ * app and snooze still quieten On Call's own nudges, but they never hide a
+ * date from My Day, because a renewal that silently drops off the one to-do
+ * list is the failure alerts exist to prevent.
  */
 
 function plural(count: number, singular: string, pluralForm: string): string {
   return count === 1 ? singular : pluralForm;
 }
 
-export function adminMyDayItems(
-  own: readonly OnCallEntry[],
-  now: Date,
-  reminders: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
-): MyDayItem[] {
-  if (!showsReminderInApp(reminders, "compliance-dates", perthDateKey(now))) return [];
+export function adminMyDayItems(own: readonly OnCallEntry[], now: Date): MyDayItem[] {
   const items: MyDayItem[] = [];
   const today = perthCalendarDate(now);
   const entryById = new Map(own.map((entry) => [entry.id, entry]));
@@ -208,10 +199,10 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
     () => ({
       mode: "my-work",
       status,
-      items: ready ? adminMyDayItems(own, now, reminders) : [],
+      items: ready ? adminMyDayItems(own, now) : [],
       sample: enabled && demoMode,
     }),
-    [status, ready, own, now, reminders, enabled, demoMode],
+    [status, ready, own, now, enabled, demoMode],
   );
   const onCall = useMemo<MyDaySourceResult>(
     () => ({

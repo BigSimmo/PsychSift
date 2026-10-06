@@ -67,7 +67,7 @@ export function isInformationPage(pathname: string): boolean {
   if (isSlugDetail(pathname, "/formulation")) return true;
   if (isSlugDetail(pathname, "/factsheets", ["search", "topics"])) return true;
   if (isSlugDetail(pathname, "/dictionary", ["search", "browse", "topics", "compare", "sources"])) return true;
-  if (isSlugDetail(pathname, "/sources", ["topics", "publishers", "method"])) return true;
+  if (isSlugDetail(pathname, "/sources", ["topics", "publishers", "currency", "method"])) return true;
   // Every On Call route, the mode home included. The mode declares no search
   // surface: it has no composer on any page, filter chips inside a page do the
   // narrowing, and this is what keeps the shell from mounting one. Its pages
@@ -95,10 +95,11 @@ export function isInformationPage(pathname: string): boolean {
   if (isSlugDetail(pathname, "/cme")) return true;
   if (pathname === "/cme") return true;
   if (pathname.startsWith("/cme/log/") && !pathname.slice("/cme/log/".length).includes("/")) return true;
-  // The Psychiatry dashboard, for On Call's reason: the mode declares no search
-  // surface, so its home must not wear a composer. The sections it links to
-  // keep their own routes and their own composers.
-  if (pathname === "/psychiatry") return true;
+  // The Psychiatry dashboard and its own pages (the MHA clock), for On Call's
+  // reason: the mode declares no search surface, so none of them may wear a
+  // composer. The sections it links to keep their own routes and their own
+  // composers.
+  if (pathname === "/psychiatry" || pathname.startsWith("/psychiatry/")) return true;
   // The Medicines & tools dashboard, Psychiatry's twin, on the same reasoning.
   if (pathname === "/medicines") return true;
   // Every Admin page owns its in-page navigation and has no search composer.

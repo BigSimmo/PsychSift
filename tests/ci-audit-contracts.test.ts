@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 
@@ -415,5 +415,64 @@ describe("L20: Dependabot cannot move @types/node across a major on its own", ()
     // The types line must track engines.node (24.x); a major bump from
     // Dependabot #549 is how the current 26.x mismatch arrived.
     expect(ignore).toMatch(/dependency-name:\s*"@types\/node"\n\s+update-types:\s*\["version-update:semver-major"\]/);
+  });
+});
+
+const dispatchCi = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+
+function dispatchJob(name: string): string {
+  const match = new RegExp(`\\n  ${name}:\\n([\\s\\S]*?)(?=\\n  [a-z0-9-]+:\\n)`).exec(dispatchCi);
+  expect(match, `${name} job`).not.toBeNull();
+  return match?.[1] ?? "";
+}
+
+function classifyScope(file: string): Record<string, string> {
+  const output = execFileSync("node", ["scripts/ci-change-scope.mjs", "--files", file], { encoding: "utf8" });
+  return Object.fromEntries(
+    output
+      .trim()
+      .split("\n")
+      .map((line) => line.split("=") as [string, string]),
+  );
+}
+
+describe("manual CI dispatch scope", () => {
+  it("defaults a manual run to the browser matrix and keeps the full run one choice away", () => {
+    expect(dispatchCi).toMatch(
+      /\n {6}scope:\n {8}description: >[\s\S]*?\n {8}type: choice\n {8}options: \[browser-matrix, full\]\n {8}default: browser-matrix\n/,
+    );
+  });
+
+  it("classifies a browser-matrix dispatch as UI scope only", () => {
+    const changes = dispatchJob("changes");
+    expect(changes).toContain("DISPATCH_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.scope || '' }}");
+    // The baseline refresh keeps precedence over the scope choice.
+    expect(changes).toMatch(
+      /if \[ "\$REFRESH_LIGHTHOUSE_BASELINE" = "true" \]; then[\s\S]*?elif \[ "\$DISPATCH_SCOPE" = "browser-matrix" \]; then[\s\S]*?node scripts\/ci-change-scope\.mjs --files \.github\/actions\/setup-ui-e2e\/action\.yml\n\s+else\n\s+node scripts\/ci-change-scope\.mjs\n/,
+    );
+
+    const scope = classifyScope(".github/actions/setup-ui-e2e/action.yml");
+    expect(scope.ui_changed).toBe("true");
+    for (const output of [
+      "static_heavy_changed",
+      "coverage_changed",
+      "build_changed",
+      "perf_changed",
+      "db_changed",
+      "container_changed",
+      "ingestion_sast_changed",
+      "lockfile_changed",
+    ]) {
+      expect(scope[output], output).toBe("false");
+    }
+  });
+
+  it("still runs the release matrix on that dispatch, and skips Lighthouse", () => {
+    expect(dispatchJob("release-browser-matrix")).toContain(
+      "(github.event_name == 'workflow_dispatch' && github.event.inputs.refresh_lighthouse_baseline != 'true')",
+    );
+    expect(dispatchJob("lighthouse-budget")).toMatch(
+      /github\.event\.inputs\.refresh_lighthouse_baseline != 'true' &&\n\s+inputs\.scope != 'browser-matrix'\n/,
+    );
   });
 });
