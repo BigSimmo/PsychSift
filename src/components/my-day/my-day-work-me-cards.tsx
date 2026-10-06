@@ -547,6 +547,9 @@ export function HoursCard({
           From your roster, not pay. On call and leave are not counted. Rest and fatigue warnings stay off until the
           rules are signed off.
         </QuietFoot>
+        <QuietTextLink href="/my-day/hours" testId="my-day-hours-open">
+          All hours
+        </QuietTextLink>
       </QuietSection>
     </div>
   );

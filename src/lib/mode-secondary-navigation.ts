@@ -252,9 +252,12 @@ export const modeSecondaryNavigationRegistry = {
   // no in-page navigation header: the section sheet is how a reader moves
   // between them. Ids are prefixed so they stay unique across modes.
   "my-day": [
+    // My Day's own three pages, which it switches with ?page= (and by swipe).
+    // Week opens from Today's This week card and Hours from Me's hours card, so
+    // each keeps its parent tab current.
     { id: "my-day-today", label: "Today", href: "/my-day" },
-    { id: "my-day-week", label: "Week", href: "/my-day/week" },
-    { id: "my-day-hours", label: "Hours", href: "/my-day/hours" },
+    { id: "my-day-work", label: "Work", href: "/my-day?page=work" },
+    { id: "my-day-me", label: "Me", href: "/my-day?page=me" },
   ],
   // Open shifts' pages. Post is for Roster team managers only: the registry is
   // the same for everyone, so `modePageVisible` hides it until an Open shifts
@@ -502,8 +505,10 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
   if (modeId === "my-day") {
     // Exact matches only, for the same reason Roster's are: a prefix test would
     // mark Today current on every My Day route as well as its own.
-    if (pathname === "/my-day/week") return "my-day-week";
-    if (pathname === "/my-day/hours") return "my-day-hours";
+    // The address carries no ?page= here, so on /my-day the page itself names
+    // Work or Me through useModeBandCurrentTab.
+    if (pathname === "/my-day/week") return "my-day-today";
+    if (pathname === "/my-day/hours") return "my-day-me";
     if (pathname === "/my-day") return "my-day-today";
     return null;
   }
