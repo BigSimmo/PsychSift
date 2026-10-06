@@ -2,6 +2,61 @@
 
 See also [continuous-integration.md](continuous-integration.md) for pre-push safety controls and Guard 2 in-flight CI push guard details.
 
+## Efficiency changes, October 2026
+
+These changes came out of the 6 October 2026 CI-efficiency review and its handover. They change
+which runs repeat work. They don't change tests, assertions, thresholds, budgets, browser
+projects, shard counts, required check names, security gates or `main` concurrency.
+
+| Change                                      | PR                                 | What it does                                                                                                                                                                                                                                                                                | What still always runs                                                                                                                                                                                      |
+| ------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Proven-tree skip on `main`                  | #3313                              | On a push to `main` whose tree equals the tree the merged PR's own `pull_request` run **recorded testing**, skips unit coverage, Production UI and Lighthouse if every leg of that job passed there.                                                                                        | Static checks, safety, Build + deployment boot smoke, Playwright build, visual baselines, the Firefox/WebKit `release-browser-matrix`, failure routing; the weekly schedule and every dispatch run in full. |
+| Lighthouse requirement matches its producer | `ci/lighthouse-required-condition` | `PR required` demands a `Lighthouse budget` success on every event where that job is expected to run (schedule, ordinary dispatch and lockfile-only pushes included). A skip is accepted only for the skip label, baseline-refresh dispatch, drafts/out-of-scope changes, or a proven skip. | The producer, budget, baseline and thresholds are unchanged.                                                                                                                                                |
+| PR branch-update reuse                      | `ci/pr-update-proof`               | On `synchronize` of a same-repo PR, reuses an earlier green run of the **same PR**. If the newly tested tree is identical, coverage, UI and Lighthouse carry. If the delta lies entirely outside the build/browser/Lighthouse inputs, UI and Lighthouse carry.                              | Lint, typecheck, unit coverage (unless the tree is identical), safety, secret scanning, SAST, Build.                                                                                                        |
+| Scheduled npm cache keys                    | #3318                              | Six scheduled workflows hash `package-lock.json` + `.nvmrc`, the key CI's `npm ci` jobs populate, instead of the lockfile-only key a bare `setup-node` can fill empty.                                                                                                                      | Every `npm ci`.                                                                                                                                                                                             |
+| Merge-queue Gitleaks                        | #3322                              | `merge_group` scans the full immutable `base_sha..head_sha` range with the pinned binary and fails closed on a missing, zero, absent or non-ancestor base.                                                                                                                                  | Push/PR/schedule/dispatch scans, `contents: read`, no persisted credentials.                                                                                                                                |
+
+### How a skip is proven (`scripts/ci-main-tree-proof.mjs`)
+
+- **Tested-tree record.** The `Change scope` job of every CI run writes a `CI tested tree`
+  notice (`event=… sha=… tree=…`) from its checkout of the run's `GITHUB_SHA`. Every job that can
+  be skipped also checks out `GITHUB_SHA`; a test pins this. A proof matches that record. It
+  never uses the API's `head_sha`, which for a `pull_request` run is the PR head rather than the
+  `refs/pull/N/merge` commit the run actually tested.
+- **Rejected:**
+  - fork PRs;
+  - runs that are cancelled, failed, older than 24h or from a different PR;
+  - a job list that is incomplete or still in progress, or any skipped, cancelled or missing leg;
+  - a missing, duplicated or non-`pull_request` record;
+  - a multi-commit or branch-creation push, or a checkout that is not the expected merge commit;
+  - any API or git error.
+
+  In every case all outputs are false and the run does the full job set. A result carried
+  forward (a skipped leg) is never used as proof for the next update.
+
+- **Delta between actually tested trees.** For a PR update, the earlier run's recorded tree is
+  rebuilt locally by its exact hash (its head's tree, or `git merge-tree` of its head with one of
+  the last 40 `main` commits). The file delta is then `git diff` between the two tested trees, so
+  lockfile, runtime, workflow, config, helper and generated-file changes are all included.
+- **Unrelated inputs.** `UNRELATED_INPUT_RULES` is limited to:
+  - root `*.md`;
+  - the PR template;
+  - non-code files under `worker/` and `eval/` (`.py`, `.txt`, `.toml`, `.cfg`, `.ini`, `.lock`, plus `.md` in `eval/`).
+
+  Nothing under `docs/` qualifies: `prebuild` reads `docs/outstanding-issues.md`, `src` imports
+  `docs/**/*.json`, and specs read docs files. No code file qualifies either, because `tsconfig.json`
+  puts every `*.ts` file in `next build`'s type check. `tests/ci-main-tree-proof.test.ts` scans every code input, with comments stripped,
+  and fails if any of them references an allowlisted root. The scanned inputs are `src`, `public`,
+  specs, helpers, fixtures, setup actions, `package.json` scripts, configs, and the import closure
+  of every script the build and browser/Lighthouse jobs run.
+
+- **Drift backstops.** The weekly scheduled full run and every dispatch never take a proof path.
+  Proofs expire after 24h.
+
+Inspect a decision in the `Change scope` job summary ("Tree proof") of the run concerned. To
+disable everything, delete the `Main tree proof` step: its outputs go empty and every gate returns
+to the full run.
+
 ## Overview and Concurrency Architecture
 
 In PR #2209 (merged `af2075a`), GitHub Actions workflow concurrency for base-branch (`main`, `release/**`) pushes was changed to key on `github.run_id`:

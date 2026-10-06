@@ -625,6 +625,8 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
     DB_CHANGED: "false",
     BUILD_CHANGED: "false",
     PERF_CHANGED: "false",
+    // Mirrors lighthouse-budget's lockfile-only push arm in the Lighthouse requirement.
+    LOCKFILE_CHANGED: "false",
     /*
      * Read only by the draft report at the end of the script, which decides whether
      * `lighthouse-budget` belongs in the list of jobs a draft did not run. Added to `ci.yml` and
@@ -663,6 +665,11 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
     UI_RESULT: "skipped",
     LIGHTHOUSE_RESULT: "skipped",
     DB_RESULT: "skipped",
+    // Main tree proof outputs: empty on every event except a proven main push. Bound here for
+    // the same `set -u` reason as the Lighthouse labels above.
+    TREE_PROVEN_COVERAGE: "",
+    TREE_PROVEN_UI: "",
+    TREE_PROVEN_LIGHTHOUSE: "",
   };
 
   function runAggregate(overrides: Record<string, string> = {}) {
@@ -694,6 +701,76 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
 
   it("passes when every in-scope job succeeded", () => {
     expect(runAggregate().status).toBe(0);
+  });
+
+  it("accepts a PR-update skip of both browser lanes only when an earlier run of the PR proved them", () => {
+    const prUpdate = {
+      EVENT_NAME: "pull_request",
+      UI_CHANGED: "true",
+      UI_BUILD_RESULT: "success",
+      UI_FAST_RESULT: "skipped",
+      UI_RESULT: "skipped",
+    };
+    const proven = runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true" });
+    expect(proven.status).toBe(0);
+    expect(proven.output).toContain("Proven on the identical tree");
+    expect(runAggregate(prUpdate).output).toContain("production-ui-critical result was skipped");
+    expect(runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true", UI_FAST_RESULT: "failure" }).status).not.toBe(0);
+    expect(runAggregate({ ...prUpdate, TREE_PROVEN_UI: "true", UI_FAST_RESULT: "cancelled" }).status).not.toBe(0);
+  });
+
+  it("accepts a main-push skip only for jobs the merged PR proved on the identical tree", () => {
+    const heavyMainPush = {
+      EVENT_NAME: "push",
+      COVERAGE_CHANGED: "true",
+      UI_CHANGED: "true",
+      PERF_CHANGED: "true",
+      UI_BUILD_RESULT: "success",
+      UI_FAST_RESULT: "skipped",
+      COVERAGE_RESULT: "skipped",
+      UI_RESULT: "skipped",
+      LIGHTHOUSE_RESULT: "skipped",
+    };
+    const proven = runAggregate({
+      ...heavyMainPush,
+      TREE_PROVEN_COVERAGE: "true",
+      TREE_PROVEN_UI: "true",
+      TREE_PROVEN_LIGHTHOUSE: "true",
+    });
+    expect(proven.status).toBe(0);
+    expect(proven.output).toContain("Proven on the identical tree");
+    expect(proven.output).toContain("coverage production-ui lighthouse-budget");
+
+    // Without proof the same skips stay red - one group at a time, so no proof leaks across jobs.
+    expect(runAggregate(heavyMainPush).status).not.toBe(0);
+    expect(runAggregate({ ...heavyMainPush, TREE_PROVEN_UI: "true", TREE_PROVEN_LIGHTHOUSE: "true" }).output).toContain(
+      "coverage result was skipped",
+    );
+    expect(
+      runAggregate({ ...heavyMainPush, TREE_PROVEN_COVERAGE: "true", TREE_PROVEN_LIGHTHOUSE: "true" }).status,
+    ).not.toBe(0);
+    expect(runAggregate({ ...heavyMainPush, TREE_PROVEN_COVERAGE: "true", TREE_PROVEN_UI: "true" }).status).not.toBe(0);
+
+    // Proof never excuses a failure: a proven job that somehow ran and failed is still red.
+    expect(
+      runAggregate({
+        ...heavyMainPush,
+        TREE_PROVEN_COVERAGE: "true",
+        TREE_PROVEN_UI: "true",
+        TREE_PROVEN_LIGHTHOUSE: "true",
+        UI_RESULT: "failure",
+      }).status,
+    ).not.toBe(0);
+    // The shared Next build is never proof-skipped, so it stays required.
+    expect(
+      runAggregate({
+        ...heavyMainPush,
+        TREE_PROVEN_COVERAGE: "true",
+        TREE_PROVEN_UI: "true",
+        TREE_PROVEN_LIGHTHOUSE: "true",
+        UI_BUILD_RESULT: "skipped",
+      }).status,
+    ).not.toBe(0);
   });
 
   it("requires safety for heavy scope and accepts a skip only for recognised light scope", () => {
