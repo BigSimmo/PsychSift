@@ -209,8 +209,10 @@ describe("handover helpers (mock-up v10)", () => {
     const byWords = onCallHandoverLegalGroups("detention order").flatMap((group) => group.forms.map((f) => f.code));
     expect(byWords).toContain("3A");
     expect(onCallHandoverLegalGroups("zzzz")).toEqual([]);
-    // Held until the wording is signed off (ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED).
+    // "Voluntary" is the one plain status; "Not under the Act" is never offered.
+    expect(onCallHandoverLegalStatusesMatching("volun")).toEqual(["Voluntary"]);
     expect(onCallHandoverLegalStatusesMatching("not under")).toEqual([]);
+    expect(onCallHandoverLegalStatusesMatching("3a")).toEqual([]);
   });
 
   it("titles a register code and leaves a plain status untitled", () => {
