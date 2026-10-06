@@ -1790,11 +1790,12 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
   // of the flag (the route never reaches the shared-read predicate), so the
   // page still fills for a visitor with no account.
   //
-  // Three rows carry a `requirementId`, linking them to their item on Admin's
+  // Seven rows carry a `requirementId`, linking them to their item on Admin's
   // statewide Requirements catalogue (`src/lib/admin/requirements.ts`), so the
-  // demo Renewals checklist shows recorded rows under "Soonest first" rather
-  // than twenty "Not recorded yet" slots. The others match no catalogue item
-  // and show on Renewals' Personal tab.
+  // demo Renewals checklist fills the way the Admin mock-up does (a passed
+  // date, items to start renewing, recorded rows) rather than showing twenty
+  // "Not recorded yet" slots. The fire and evacuation module matches no
+  // catalogue item and shows on Renewals' Personal tab.
   //
   // Because the whole page is private by construction, the page states it once
   // in `ComplianceScopeNote` instead of hanging a "Private" pill off all eight
@@ -1860,6 +1861,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     details: {
       category: "Credentialing",
       kind: "compliance",
+      requirementId: "credentialing-and-scope",
       consequence: "stops-part",
       expiresOn: demoDateKey(240),
       leadTimeDays: 90,
@@ -1909,6 +1911,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     details: {
       category: "Training",
       kind: "compliance",
+      requirementId: "resuscitation-competence",
       consequence: "chased",
       expiresOn: demoDateKey(-12),
       leadTimeDays: 14,
@@ -1955,6 +1958,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     details: {
       category: "CPD",
       kind: "compliance",
+      requirementId: "cpd-home-and-hours",
       consequence: "chased",
       expiresOn: demoDateKey(95),
       leadTimeDays: 30,
@@ -1981,6 +1985,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     details: {
       category: "Clearances",
       kind: "compliance",
+      requirementId: "criminal-record-screening",
       expiresOn: demoDateKey(400),
       leadTimeDays: 150,
       issuingBody: "Demo screening provider",

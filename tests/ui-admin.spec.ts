@@ -45,7 +45,7 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     await expect(page.getByRole("heading", { level: 1, name: "Renewals" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Checklist" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Personal" })).toBeVisible();
-    // CI runs this in demo mode. The demo corpus links three rows to catalogue
+    // CI runs this in demo mode. The demo corpus links seven rows to catalogue
     // items (`src/lib/on-call/demo-entries.ts`), so the Registration and
     // Checks groups both hold a recorded row.
     // `tests/admin-requirements.test.ts` pins that corpus property offline.

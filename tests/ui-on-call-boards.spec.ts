@@ -906,8 +906,9 @@ test.describe("Compliance — the view the boards never drew", () => {
   test("files the requirements under the catalogue's groups, recorded dates first", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
 
-    // The demo corpus links three rows to catalogue items (registration,
-    // indemnity, Working with Children Check), so these groups have rows.
+    // The demo corpus links seven rows to catalogue items (registration and
+    // indemnity, Working with Children Check and police clearance, among
+    // others), so these groups have rows.
     const registration = visibleByTestId(page, "admin-renewals-checklist-group-registration");
     const checks = visibleByTestId(page, "admin-renewals-checklist-group-checks");
     await expect(registration, "the demo corpus's recorded rows do not render").toBeVisible();
@@ -951,7 +952,7 @@ test.describe("Compliance — the view the boards never drew", () => {
     const personal = visibleByTestId(page, "admin-renewals-personal");
     await expect(personal).toBeVisible();
     // A demo compliance row that matches no catalogue item.
-    await expect(personal).toContainText("Demo basic life support module");
+    await expect(personal).toContainText("Demo fire and evacuation module");
     // Never a row from another On Call section: offering "Renewed" on a
     // contact or a guide would plant compliance keys that hide it from every
     // colleague's shared read.
