@@ -713,7 +713,8 @@ Rules:
 ## 6. Rollout and rollback
 
 - `.github/workflows/docker-image.yml` validates both container builds on
-  `main`, release branches, a weekly schedule, and manual dispatch. For
+  `main` and release-branch pushes that touch a container input (its `paths`
+  list), a daily schedule, and manual dispatch. For
   container-affecting pull requests and merge-queue commits, CI calls the same
   workflow and folds both builds into the required `pr-required` aggregate. It
   deliberately does not push to a registry; Railway builds the
