@@ -1312,9 +1312,9 @@ jobs:
         )
       ) &&
       !contains(github.event.pull_request.labels.*.name, 'skip-lighthouse-budget') &&
+      needs.changes.outputs.tree_proven_lighthouse != 'true' &&
       github.event.inputs.refresh_lighthouse_baseline != 'true' &&
-      inputs.scope != 'browser-matrix' &&
-      needs.changes.outputs.tree_proven_lighthouse != 'true'
+      inputs.scope != 'browser-matrix'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -1608,6 +1608,8 @@ jobs:
           SKIP_LIGHTHOUSE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'skip-lighthouse-budget') }}
           # Bound through env (never interpolated into run:) — untrusted dispatch input.
           REFRESH_LIGHTHOUSE_BASELINE: ${{ github.event.inputs.refresh_lighthouse_baseline }}
+          # `scope: browser-matrix` dispatch skips lighthouse-budget by its own `if:`; mirrored below.
+          DISPATCH_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.scope || '' }}
           CONTAINER_CHANGED: ${{ needs.changes.outputs.container_changed }}
           PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           EVENT_NAME: ${{ github.event_name }}
@@ -1773,8 +1775,10 @@ jobs:
           #   - baseline-refresh dispatch (lighthouse-baseline-refresh runs instead);
           #   - a main push whose identical tree already passed it on the merged PR
           #     (TREE_PROVEN_LIGHTHOUSE, Main tree proof);
+          #   - a `scope: browser-matrix` dispatch (cross-browser run only; DISPATCH_SCOPE);
           #   - drafts without the opt-in label, and out-of-scope changes.
-          if [ "$SKIP_LIGHTHOUSE_LABEL" = "true" ] || [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ] || [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ]; then
+          if [ "$SKIP_LIGHTHOUSE_LABEL" = "true" ] || [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ] || [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ] ||
+            [ "${DISPATCH_SCOPE:-}" = "browser-matrix" ]; then
             require_skipped_or_success "lighthouse-budget" "$LIGHTHOUSE_RESULT"
           elif [ "$EVENT_NAME" = "schedule" ] || [ "$EVENT_NAME" = "workflow_dispatch" ] ||
             [ "$LIGHTHOUSE_LABEL" = "true" ] ||
