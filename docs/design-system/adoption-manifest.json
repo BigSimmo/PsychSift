@@ -3362,6 +3362,7 @@
         "src/app/(search-app)/teaching/session/[id]/page.tsx",
         "src/app/(search-app)/teaching/supervision/page.tsx",
         "src/app/(search-app)/teaching/teach/page.tsx",
+        "src/app/(search-app)/teaching/term/folder/page.tsx",
         "src/app/(search-app)/teaching/term/page.tsx",
         "src/app/(search-app)/teaching/week/page.tsx",
         "src/app/(search-app)/teaching/whats-on/page.tsx"
@@ -4695,6 +4696,16 @@
           "sanctionedPatternsPresent": []
         },
         {
+          "file": "src/app/(search-app)/teaching/term/folder/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
           "file": "src/app/(search-app)/teaching/term/page.tsx",
           "exists": true,
           "imports": [],
@@ -5939,6 +5950,7 @@
       "src/app/(search-app)/teaching/session/[id]/page.tsx",
       "src/app/(search-app)/teaching/supervision/page.tsx",
       "src/app/(search-app)/teaching/teach/page.tsx",
+      "src/app/(search-app)/teaching/term/folder/page.tsx",
       "src/app/(search-app)/teaching/term/page.tsx",
       "src/app/(search-app)/teaching/week/page.tsx",
       "src/app/(search-app)/teaching/whats-on/page.tsx",
@@ -6116,6 +6128,7 @@
       "src/app/(search-app)/teaching/session/[id]/page.tsx",
       "src/app/(search-app)/teaching/supervision/page.tsx",
       "src/app/(search-app)/teaching/teach/page.tsx",
+      "src/app/(search-app)/teaching/term/folder/page.tsx",
       "src/app/(search-app)/teaching/term/page.tsx",
       "src/app/(search-app)/teaching/week/page.tsx",
       "src/app/(search-app)/teaching/whats-on/page.tsx",
@@ -6140,7 +6153,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 182,
+    "inheritedCkbV2RootCount": 183,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6149,8 +6162,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 183,
-    "productionRouteCount": 175,
-    "nextUiEntryCount": 276
+    "rootCount": 184,
+    "productionRouteCount": 176,
+    "nextUiEntryCount": 277
   }
 }

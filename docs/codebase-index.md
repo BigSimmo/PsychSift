@@ -640,6 +640,14 @@ signed-out sample, and `term-tracker-store.ts` reads and writes two account-scop
 keys that the auth provider clears at sign-out. No API, no table. Term assessments are signed in
 the CLA ePortfolio, which the page links to; EPA targets apply only once the doctor confirms them.
 
+The term evidence folder (`/teaching/term/folder`, opened from Term; `?term=<id>` opens another
+tracked term) gathers the doctor's own term from records that already exist: check-ins
+(`/api/teaching?view=logbook`), their supervision as registrar (`/api/teaching/depth?view=supervision`)
+and the term tracker. `src/lib/teaching/term-folder.ts` turns them into seven parts with a status each
+(complete, on track, to fix, not updating, not started), the meter's screen-reader sentence, the CSV, a
+Needs-you source and a page-only work-search entry; `src/components/teaching/term-folder/` renders it.
+Status and counts only, nothing new is stored, and a failed read marks only its own part as not updating.
+
 `/teaching/assessments` (`src/components/teaching/assessments/`, logic in
 `src/lib/teaching/assessments/`) walks a prevocational doctor and their term supervisor through
 term assessments and EPAs, one route switched by `?view=` and `?as=supervisor`. It runs only on

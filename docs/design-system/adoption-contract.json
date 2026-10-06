@@ -229,6 +229,7 @@
         "src/app/(search-app)/teaching/session/[id]/page.tsx",
         "src/app/(search-app)/teaching/supervision/page.tsx",
         "src/app/(search-app)/teaching/teach/page.tsx",
+        "src/app/(search-app)/teaching/term/folder/page.tsx",
         "src/app/(search-app)/teaching/term/page.tsx",
         "src/app/(search-app)/teaching/week/page.tsx",
         "src/app/(search-app)/teaching/whats-on/page.tsx",
