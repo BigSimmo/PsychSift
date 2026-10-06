@@ -4,17 +4,7 @@ import { isPdfDocument } from "@/lib/pdf-documents";
 import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-submitted-mode-search";
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  CircleAlert,
-  BookOpen,
-  Clock3,
-  ExternalLink,
-  FileText,
-  FolderOpen,
-  RefreshCw,
-  Search,
-  Activity,
-} from "lucide-react";
+import { CircleAlert, Clock3, ExternalLink, FileText, FolderOpen, RefreshCw, Search, Activity } from "lucide-react";
 import { type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useSharedHomeDocumentTitle } from "@/components/clinical-dashboard/use-shared-home-document-title";
 import { type DocumentDeleteResult } from "@/components/DocumentManagementActions";
@@ -58,8 +48,7 @@ import {
   type SetupCheck,
   type IngestionQualityReviewItem,
 } from "@/components/clinical-dashboard/document-manager-contracts";
-import { LibraryHealthStrip } from "@/components/clinical-dashboard/library-health-strip";
-import { GuideTrigger, UtilityDrawer } from "@/components/clinical-dashboard/dashboard-shell";
+import { GuideTrigger } from "@/components/clinical-dashboard/dashboard-shell";
 import { LazyGuideDialog, loadGuideDialog } from "@/components/clinical-dashboard/lazy-guide-dialog";
 import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboard/dashboard-notices";
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
@@ -136,7 +125,6 @@ import { DashboardDocumentsDrawer } from "@/components/clinical-dashboard/dashbo
 import { useHomeModeSeed } from "@/components/clinical-dashboard/use-home-mode-seed";
 import {
   DifferentialsHome,
-  DocumentDrawer,
   DocumentSearchResultsPanel,
   FavouritesHub,
   loadStagedAnswerResultSurface,

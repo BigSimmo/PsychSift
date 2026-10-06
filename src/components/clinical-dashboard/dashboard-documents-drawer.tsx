@@ -4,7 +4,15 @@ import type { ComponentType, RefObject } from "react";
 import { BookOpen, type LucideIcon } from "lucide-react";
 import { UtilityDrawer } from "@/components/clinical-dashboard/dashboard-shell";
 import { DocumentDrawer } from "@/components/clinical-dashboard/clinical-dashboard-lazy";
-import { LibraryHealthStrip } from "@/components/clinical-dashboard/library-health-strip";
+import { LibraryHealthStrip, type LibraryHealthTarget } from "@/components/clinical-dashboard/library-health-strip";
+import type { SetupCheck } from "@/components/clinical-dashboard/document-manager-contracts";
+import type { DocumentPagination, DocumentDeleteResult } from "@/components/clinical-dashboard/document-admin";
+import type {
+  DocumentDrawerMode,
+  DocumentDrawerStatusFilter,
+  LabelReviewMutationBody,
+} from "@/components/clinical-dashboard/clinical-dashboard-payloads";
+import type { SmartDocumentTag } from "@/lib/document-tags";
 import type { ClinicalDocument, ImportBatch, IngestionJob } from "@/lib/types";
 
 export interface DashboardDocumentsDrawerProps {
@@ -21,26 +29,30 @@ export interface DashboardDocumentsDrawerProps {
   libraryPdfDocuments: ClinicalDocument[];
   jobs: IngestionJob[];
   batches: ImportBatch[];
-  setupChecks: any;
+  setupChecks: SetupCheck[];
   dashboardDataLoading: boolean;
-  openLibraryHealthTarget: (target: any) => void;
-  documentsPagination: any;
+  openLibraryHealthTarget: (target: LibraryHealthTarget) => void;
+  documentsPagination: DocumentPagination | null;
   loadingMoreDocuments: boolean;
-  documentsDrawerMode: any;
-  selectedDocumentIds: any;
-  documentDrawerStatusFilter: any;
-  toggleDocumentScope: any;
+  documentsDrawerMode: DocumentDrawerMode;
+  selectedDocumentIds: string[];
+  documentDrawerStatusFilter: DocumentDrawerStatusFilter;
+  toggleDocumentScope: (documentId: string) => void;
   loadMoreDocuments: () => void;
   handleDocumentRenamed: (doc: ClinicalDocument) => void;
-  handleDocumentDeleted: (result: any) => void;
-  bulkReindexSelected: (mode: any) => Promise<void>;
+  handleDocumentDeleted: (result: DocumentDeleteResult) => void;
+  bulkReindexSelected: (mode: "enrichment" | "full" | "retry_failed") => void;
   bulkAssignCollection: (collection: string) => void;
-  bulkUpdateMetadata: (metadata: any) => void;
+  bulkUpdateMetadata: (metadata: Record<string, unknown>) => void;
   bulkActionStatus: string | null;
   bulkActionBusy: boolean;
-  canUseAdministrativeApis: boolean;
-  handleTagSearch: (tag: any) => void;
-  mutateDocumentLabel: any;
+  canManageDocuments: boolean;
+  handleTagSearch: (tag: SmartDocumentTag) => void;
+  mutateDocumentLabel: (
+    documentId: string,
+    method: "POST" | "PATCH",
+    body: LabelReviewMutationBody,
+  ) => Promise<boolean>;
 }
 
 export function DashboardDocumentsDrawer({
@@ -74,7 +86,7 @@ export function DashboardDocumentsDrawer({
   bulkUpdateMetadata,
   bulkActionStatus,
   bulkActionBusy,
-  canUseAdministrativeApis,
+  canManageDocuments,
   handleTagSearch,
   mutateDocumentLabel,
 }: DashboardDocumentsDrawerProps) {
@@ -136,7 +148,7 @@ export function DashboardDocumentsDrawer({
         onBulkMetadataUpdate={bulkUpdateMetadata}
         bulkActionStatus={bulkActionStatus}
         bulkActionBusy={bulkActionBusy}
-        canManageDocuments={canUseAdministrativeApis}
+        canManageDocuments={canManageDocuments}
         onTagSearch={handleTagSearch}
         onMutateLabel={mutateDocumentLabel}
       />
