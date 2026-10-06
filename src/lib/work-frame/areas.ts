@@ -136,7 +136,14 @@ const myDay: WorkArea = {
   identity: "my-day",
   tabs: [
     { id: "my-day-today", label: "Today", sub: "Your day", icon: "sun", href: "/my-day", title: "Today" },
-    { id: "my-day-week", label: "Week", sub: "Shifts and dates", icon: "calendar", href: "/my-day/week", title: "This week" },
+    {
+      id: "my-day-week",
+      label: "Week",
+      sub: "Shifts and dates",
+      icon: "calendar",
+      href: "/my-day/week",
+      title: "This week",
+    },
     { id: "my-day-hours", label: "Hours", sub: "Rostered, not pay", icon: "clock", href: "/my-day/hours" },
   ],
   groups: [
@@ -176,8 +183,22 @@ const myDay: WorkArea = {
     {
       label: "Set up",
       items: [
-        { id: "my-day-profile", label: "Work profile", sub: "Stage, workplaces", icon: "user", href: "/my-day/profile", band: false },
-        { id: "my-day-alerts", label: "Alerts", sub: "Brief, quiet hours", icon: "bell", href: "/my-day/alerts", band: false },
+        {
+          id: "my-day-profile",
+          label: "Work profile",
+          sub: "Stage, workplaces",
+          icon: "user",
+          href: "/my-day/profile",
+          band: false,
+        },
+        {
+          id: "my-day-alerts",
+          label: "Alerts",
+          sub: "Brief, quiet hours",
+          icon: "bell",
+          href: "/my-day/alerts",
+          band: false,
+        },
         {
           id: "my-day-privacy",
           label: "Privacy",
@@ -186,7 +207,13 @@ const myDay: WorkArea = {
           href: "/my-day/profile#privacy",
           paths: [],
         },
-        { id: "my-day-customise", label: "Customise", sub: "Cards on Today", icon: "sliders", action: "my-day-customise" },
+        {
+          id: "my-day-customise",
+          label: "Customise",
+          sub: "Cards on Today",
+          icon: "sliders",
+          action: "my-day-customise",
+        },
       ],
     },
   ],
@@ -222,8 +249,21 @@ const roster: WorkArea = {
     {
       label: "Open shifts",
       items: [
-        { id: "open-shifts-browse", label: "Browse", sub: "Shifts on offer", icon: "search", href: "/open-shifts", title: "Open shifts" },
-        { id: "open-shifts-mine", label: "My requests", sub: "Asked and booked", icon: "send", href: "/open-shifts/mine" },
+        {
+          id: "open-shifts-browse",
+          label: "Browse",
+          sub: "Shifts on offer",
+          icon: "search",
+          href: "/open-shifts",
+          title: "Open shifts",
+        },
+        {
+          id: "open-shifts-mine",
+          label: "My requests",
+          sub: "Asked and booked",
+          icon: "send",
+          href: "/open-shifts/mine",
+        },
         {
           id: "open-shifts-post",
           label: "Post a shift",
@@ -241,14 +281,34 @@ const roster: WorkArea = {
           gate: "open-shifts-poster",
           band: false,
         },
-        { id: "open-shifts-log", label: "Log a shift", sub: "Offered to you", icon: "pen", href: "/open-shifts/log", band: false },
-        { id: "open-shifts-alerts", label: "Shift alerts", sub: "When shifts appear", icon: "bell", href: "/open-shifts/alerts" },
+        {
+          id: "open-shifts-log",
+          label: "Log a shift",
+          sub: "Offered to you",
+          icon: "pen",
+          href: "/open-shifts/log",
+          band: false,
+        },
+        {
+          id: "open-shifts-alerts",
+          label: "Shift alerts",
+          sub: "When shifts appear",
+          icon: "bell",
+          href: "/open-shifts/alerts",
+        },
       ],
     },
     {
       label: "Set up",
       items: [
-        { id: "calendar", label: "Calendar sync", sub: "Phone calendar", icon: "link", href: "/roster/calendar", band: false },
+        {
+          id: "calendar",
+          label: "Calendar sync",
+          sub: "Phone calendar",
+          icon: "link",
+          href: "/roster/calendar",
+          band: false,
+        },
         { id: "join", label: "Join a team", sub: "Invite code", icon: "qr", href: "/roster/join", band: false },
         { id: "settings", label: "Settings", sub: "Alerts and data", icon: "settings", href: "/roster/settings" },
       ],
@@ -262,7 +322,14 @@ const teaching: WorkArea = {
   identity: "teaching",
   tabs: [
     { id: "today", label: "Today", sub: "What is on", icon: "sun", href: "/teaching", title: "Teaching" },
-    { id: "week", label: "Week", sub: "This week's sessions", icon: "calendar", href: "/teaching/week", title: "This week" },
+    {
+      id: "week",
+      label: "Week",
+      sub: "This week's sessions",
+      icon: "calendar",
+      href: "/teaching/week",
+      title: "This week",
+    },
     { id: "logbook", label: "Logbook", sub: "Your record", icon: "book", href: "/teaching/logbook" },
   ],
   groups: [
@@ -293,8 +360,22 @@ const teaching: WorkArea = {
       label: "Supervise and organise",
       items: [
         // These two open the Assessments sub-area, which has its own frame.
-        { id: "assessments", label: "Assessments", sub: "Forms and EPAs", icon: "file", href: "/teaching/assessments", paths: [] },
-        { id: "supervision", label: "Supervision", sub: "Hours to confirm", icon: "users", href: "/teaching/supervision", paths: [] },
+        {
+          id: "assessments",
+          label: "Assessments",
+          sub: "Forms and EPAs",
+          icon: "file",
+          href: "/teaching/assessments",
+          paths: [],
+        },
+        {
+          id: "supervision",
+          label: "Supervision",
+          sub: "Hours to confirm",
+          icon: "users",
+          href: "/teaching/supervision",
+          paths: [],
+        },
         {
           id: "organise",
           label: "Organise",
@@ -321,7 +402,14 @@ const assessments: WorkArea = {
   name: "Assessments",
   identity: "teaching",
   tabs: [
-    { id: "assess-todo", label: "To do", sub: "Forms to finish", icon: "check-list", href: "/teaching/assessments", title: "Assessments" },
+    {
+      id: "assess-todo",
+      label: "To do",
+      sub: "Forms to finish",
+      icon: "check-list",
+      href: "/teaching/assessments",
+      title: "Assessments",
+    },
     {
       id: "assess-progress",
       label: "Progress",
@@ -331,7 +419,13 @@ const assessments: WorkArea = {
       paths: ["/teaching/assessments"],
       query: { view: "progress" },
     },
-    { id: "assess-supervision", label: "Supervision", sub: "Hours to confirm", icon: "users", href: "/teaching/supervision" },
+    {
+      id: "assess-supervision",
+      label: "Supervision",
+      sub: "Hours to confirm",
+      icon: "users",
+      href: "/teaching/supervision",
+    },
   ],
   groups: [
     {
@@ -370,10 +464,38 @@ const assessments: WorkArea = {
     {
       label: "Teaching",
       items: [
-        { id: "assess-teach-week", label: "This week", sub: "Teaching sessions", icon: "calendar", href: "/teaching/week", paths: [] },
-        { id: "assess-teach-presenting", label: "Presenting", sub: "Your next talk", icon: "board", href: "/teaching/teach", paths: [] },
-        { id: "assess-teach-record", label: "My record", sub: "Logbook", icon: "book", href: "/teaching/logbook", paths: [] },
-        { id: "assess-teach-resources", label: "Resources", sub: "Slides, papers", icon: "folder", href: "/teaching/resources", paths: [] },
+        {
+          id: "assess-teach-week",
+          label: "This week",
+          sub: "Teaching sessions",
+          icon: "calendar",
+          href: "/teaching/week",
+          paths: [],
+        },
+        {
+          id: "assess-teach-presenting",
+          label: "Presenting",
+          sub: "Your next talk",
+          icon: "board",
+          href: "/teaching/teach",
+          paths: [],
+        },
+        {
+          id: "assess-teach-record",
+          label: "My record",
+          sub: "Logbook",
+          icon: "book",
+          href: "/teaching/logbook",
+          paths: [],
+        },
+        {
+          id: "assess-teach-resources",
+          label: "Resources",
+          sub: "Slides, papers",
+          icon: "folder",
+          href: "/teaching/resources",
+          paths: [],
+        },
       ],
     },
   ],
@@ -384,7 +506,15 @@ const cpd: WorkArea = {
   name: "CPD",
   identity: "cme",
   tabs: [
-    { id: "year", label: "Summary", sub: "Your year", icon: "award", href: "/cme", paths: ["/cme", "/cme/calendar"], title: "CPD" },
+    {
+      id: "year",
+      label: "Summary",
+      sub: "Your year",
+      icon: "award",
+      href: "/cme",
+      paths: ["/cme", "/cme/calendar"],
+      title: "CPD",
+    },
     { id: "log", label: "Log", sub: "Activities", icon: "list", href: "/cme/log", paths: ["/cme/log", "/cme/new"] },
     { id: "learning", label: "Learning", sub: "Courses on offer", icon: "compass", href: "/cme/learning" },
   ],
@@ -423,7 +553,14 @@ const cpd: WorkArea = {
     {
       label: "Settings",
       items: [
-        { id: "customise", label: "Customise", sub: "Summary sections", icon: "sliders", href: "/cme/customise", band: false },
+        {
+          id: "customise",
+          label: "Customise",
+          sub: "Summary sections",
+          icon: "sliders",
+          href: "/cme/customise",
+          band: false,
+        },
         {
           id: "setup-edit",
           label: "Set up",
@@ -458,7 +595,13 @@ const admin: WorkArea = {
     {
       label: "Paperwork",
       items: [
-        { id: "admin-compliance", label: "Compliance", sub: "Every requirement", icon: "shield", href: "/admin/compliance" },
+        {
+          id: "admin-compliance",
+          label: "Compliance",
+          sub: "Every requirement",
+          icon: "shield",
+          href: "/admin/compliance",
+        },
         { id: "admin-export", label: "Export", sub: "Spreadsheet", icon: "download", href: "/admin/compliance/export" },
         { id: "help", label: "Help", sub: "Crisis lines first", icon: "help", href: "/admin/help" },
       ],
@@ -487,8 +630,22 @@ const onCall: WorkArea = {
   identity: "on-call",
   tabs: [
     { id: "now", label: "Now", sub: "Your shift", icon: "pulse", href: "/on-call", title: "On Call" },
-    { id: "call", label: "People", sub: "Who to ring", icon: "phone", href: "/on-call/call", paths: ["/on-call/call", "/on-call/contacts"] },
-    { id: "refer", label: "Refer", sub: "Who takes it", icon: "refer", href: "/on-call/refer", paths: ["/on-call/refer", "/on-call/referrals"] },
+    {
+      id: "call",
+      label: "People",
+      sub: "Who to ring",
+      icon: "phone",
+      href: "/on-call/call",
+      paths: ["/on-call/call", "/on-call/contacts"],
+    },
+    {
+      id: "refer",
+      label: "Refer",
+      sub: "Who takes it",
+      icon: "refer",
+      href: "/on-call/refer",
+      paths: ["/on-call/refer", "/on-call/referrals"],
+    },
   ],
   groups: [
     {
@@ -497,7 +654,13 @@ const onCall: WorkArea = {
         { id: "find", label: "Handbook", sub: "Wards, systems", icon: "book", href: "/on-call/find" },
         { id: "playbook", label: "Playbook", sub: "What to do", icon: "clipboard", href: "/on-call/playbook" },
         { id: "whoswho", label: "Who's who", sub: "Roles and teams", icon: "users", href: "/on-call/who-is-who" },
-        { id: "orientation", label: "Orientation", sub: "Checklists", icon: "check-list", href: "/on-call/orientation" },
+        {
+          id: "orientation",
+          label: "Orientation",
+          sub: "Checklists",
+          icon: "check-list",
+          href: "/on-call/orientation",
+        },
         { id: "card", label: "Pocket card", sub: "To print", icon: "card", href: "/on-call/card" },
       ],
     },
@@ -506,26 +669,93 @@ const onCall: WorkArea = {
       items: [
         { id: "call-now", label: "Who to call now", sub: "Pick a problem", icon: "phone", href: "/on-call/now" },
         ...(ON_CALL_WHOS_ON_ENABLED
-          ? [{ id: "whoson", label: "Who's on", sub: "Tonight's team", icon: "users", href: "/on-call/whos-on" } as const]
+          ? [
+              {
+                id: "whoson",
+                label: "Who's on",
+                sub: "Tonight's team",
+                icon: "users",
+                href: "/on-call/whos-on",
+              } as const,
+            ]
           : []),
-        { id: "pulse", label: "Shift pulse", sub: "How it is going", icon: "pulse", href: "/on-call/pulse", band: false },
-        { id: "check", label: "Check these", sub: "Before you leave", icon: "check-list", href: "/on-call/check", band: false },
-        { id: "first-night", label: "First night", sub: "New to this site", icon: "star", href: "/on-call/first-night", band: false },
-        { id: "handover", label: "Handover", sub: "Kept on this phone", icon: "send", href: "/on-call/handover", band: false },
+        {
+          id: "pulse",
+          label: "Shift pulse",
+          sub: "How it is going",
+          icon: "pulse",
+          href: "/on-call/pulse",
+          band: false,
+        },
+        {
+          id: "check",
+          label: "Check these",
+          sub: "Before you leave",
+          icon: "check-list",
+          href: "/on-call/check",
+          band: false,
+        },
+        {
+          id: "first-night",
+          label: "First night",
+          sub: "New to this site",
+          icon: "star",
+          href: "/on-call/first-night",
+          band: false,
+        },
+        {
+          id: "handover",
+          label: "Handover",
+          sub: "Kept on this phone",
+          icon: "send",
+          href: "/on-call/handover",
+          band: false,
+        },
       ],
     },
     {
       label: "Other areas",
       items: [
-        { id: "teaching", label: "Teaching", sub: "This week", icon: "board", href: "/teaching", paths: [], leadsTo: "teaching" },
-        { id: "logistics", label: "Admin", sub: "Help and numbers", icon: "help", href: ON_CALL_ADMIN_ROWS_HREF, paths: [], leadsTo: "my-work" },
-        { id: "compliance", label: "Compliance", sub: "Renewals", icon: "repeat", href: "/admin/renewals", paths: [], leadsTo: "my-work" },
+        {
+          id: "teaching",
+          label: "Teaching",
+          sub: "This week",
+          icon: "board",
+          href: "/teaching",
+          paths: [],
+          leadsTo: "teaching",
+        },
+        {
+          id: "logistics",
+          label: "Admin",
+          sub: "Help and numbers",
+          icon: "help",
+          href: ON_CALL_ADMIN_ROWS_HREF,
+          paths: [],
+          leadsTo: "my-work",
+        },
+        {
+          id: "compliance",
+          label: "Compliance",
+          sub: "Renewals",
+          icon: "repeat",
+          href: "/admin/renewals",
+          paths: [],
+          leadsTo: "my-work",
+        },
       ],
     },
     {
       label: "Service",
       items: [
-        { id: "service", label: "Manage service", sub: "Editors", icon: "settings", href: "/on-call/service", gate: "on-call-editor" },
+        {
+          id: "service",
+          label: "Manage service",
+          sub: "Editors",
+          icon: "settings",
+          href: "/on-call/service",
+          gate: "on-call-editor",
+        },
       ],
     },
   ],

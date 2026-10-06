@@ -456,13 +456,7 @@ function WorkModeBandHeader({
   // The layout's own title (My Day's greeting) is the home page's; every other
   // page is named for itself.
   const baseTitle =
-    onHome && title === "greeting" ? (
-      <GreetingTitle fallback={area.name} />
-    ) : onHome && title ? (
-      title
-    ) : (
-      fallbackTitle
-    );
+    onHome && title === "greeting" ? <GreetingTitle fallback={area.name} /> : onHome && title ? title : fallbackTitle;
   const hasStatus =
     status !== undefined || (Array.isArray(statusSlot) ? statusSlot.includes(pathname) : Boolean(statusSlot));
   return (

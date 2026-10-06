@@ -25,12 +25,7 @@ import {
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
 import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";
 import type { AppModeId } from "@/lib/app-modes";
-import {
-  workFrameTabIndex,
-  type WorkArea,
-  type WorkFrameGate,
-  type WorkFrameItem,
-} from "@/lib/work-frame/areas";
+import { workFrameTabIndex, type WorkArea, type WorkFrameGate, type WorkFrameItem } from "@/lib/work-frame/areas";
 
 /** Where the top bar draws a page's back button in place of the menu button. */
 export const universalHeaderLeadingSlotId = "universal-header-leading";
@@ -257,11 +252,7 @@ function WorkMoreTile({ item, current, onClose }: { item: WorkFrameItem; current
   const Icon = workFrameIcons[item.icon];
   const body = (
     <>
-      <span
-        aria-hidden="true"
-        className="work-ic work-ic--sm"
-        data-mode-identity={item.leadsTo ?? undefined}
-      >
+      <span aria-hidden="true" className="work-ic work-ic--sm" data-mode-identity={item.leadsTo ?? undefined}>
         <Icon aria-hidden="true" strokeWidth={2} />
       </span>
       <span className="work-more-tile__text">

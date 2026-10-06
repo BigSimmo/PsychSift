@@ -203,11 +203,17 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: (id: string, rea
       <div className="min-w-0 flex-1">
         {/* Remount on announceKey so a repeated identical outcome re-enters the
             polite live region instead of staying silent while still visible. */}
-        <p key={toast.announceKey ?? 0} className="app-toast__title text-sm font-semibold text-[color:var(--text-heading)]">
+        <p
+          key={toast.announceKey ?? 0}
+          className="app-toast__title text-sm font-semibold text-[color:var(--text-heading)]"
+        >
           {toast.title}
         </p>
         {toast.body ? (
-          <p key={`body-${toast.announceKey ?? 0}`} className="app-toast__body mt-0.5 text-xs text-[color:var(--text-muted)]">
+          <p
+            key={`body-${toast.announceKey ?? 0}`}
+            className="app-toast__body mt-0.5 text-xs text-[color:var(--text-muted)]"
+          >
             {toast.body}
           </p>
         ) : null}
