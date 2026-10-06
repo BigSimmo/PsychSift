@@ -104,17 +104,32 @@ export type ReminderQuietHours = {
   readonly end: string;
 };
 
+/**
+ * The morning brief: one phone alert instead of many. It goes out at `workday`
+ * on a day with a shift and at `dayOff` otherwise, waits until 14:00 after a
+ * night shift, and moves to the end of quiet hours (owner decisions 2 and 3,
+ * 5 Oct 2026). Off by default, so nobody is buzzed who did not ask.
+ */
+export type MorningBriefSettings = {
+  readonly enabled: boolean;
+  /** Perth wall-clock `HH:MM`. */
+  readonly workday: string;
+  readonly dayOff: string;
+};
+
 export type ReminderSettings = {
   readonly types: Readonly<Record<ReminderType, ReminderTypeSettings>>;
   readonly quietHours: ReminderQuietHours;
   /** Calendar alerts a single Perth day may carry. */
   readonly maxAlertsPerDay: number;
+  readonly brief: MorningBriefSettings;
 };
 
 export type ReminderSettingsPatch = {
   readonly types?: Partial<Record<ReminderType, Partial<ReminderTypeSettings>>>;
   readonly quietHours?: Partial<ReminderQuietHours>;
   readonly maxAlertsPerDay?: number;
+  readonly brief?: Partial<MorningBriefSettings>;
 };
 
 export const MIN_ALERTS_PER_DAY = 1;
@@ -137,6 +152,7 @@ export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
   },
   quietHours: { enabled: false, start: "21:00", end: "07:00" },
   maxAlertsPerDay: 3,
+  brief: { enabled: false, workday: "07:00", dayOff: "09:00" },
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -169,6 +185,7 @@ export function normalizeReminderSettings(input: unknown): ReminderSettings {
   if (!isPlainObject(input)) return DEFAULT_REMINDER_SETTINGS;
   const types = isPlainObject(input.types) ? input.types : {};
   const quiet = isPlainObject(input.quietHours) ? input.quietHours : {};
+  const brief = isPlainObject(input.brief) ? input.brief : {};
   const defaults = DEFAULT_REMINDER_SETTINGS;
   const cap = input.maxAlertsPerDay;
   return {
@@ -185,6 +202,11 @@ export function normalizeReminderSettings(input: unknown): ReminderSettings {
       typeof cap === "number" && Number.isInteger(cap) && cap >= MIN_ALERTS_PER_DAY && cap <= MAX_ALERTS_PER_DAY
         ? cap
         : defaults.maxAlertsPerDay,
+    brief: {
+      enabled: typeof brief.enabled === "boolean" ? brief.enabled : defaults.brief.enabled,
+      workday: typeof brief.workday === "string" && isValidTime(brief.workday) ? brief.workday : defaults.brief.workday,
+      dayOff: typeof brief.dayOff === "string" && isValidTime(brief.dayOff) ? brief.dayOff : defaults.brief.dayOff,
+    },
   };
 }
 
@@ -199,6 +221,7 @@ export function mergeReminderSettings(base: ReminderSettings, patch: ReminderSet
     ),
     quietHours: { ...base.quietHours, ...(patch.quietHours ?? {}) },
     maxAlertsPerDay: patch.maxAlertsPerDay ?? base.maxAlertsPerDay,
+    brief: { ...base.brief, ...(patch.brief ?? {}) },
   });
 }
 

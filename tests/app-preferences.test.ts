@@ -46,6 +46,7 @@ describe("app preference normalisation", () => {
         },
         quietHours: { enabled: true, start: "22:00", end: "06:00" },
         maxAlertsPerDay: 5,
+        brief: { enabled: true, workday: "06:30", dayOff: "10:00" },
       },
       workStage: "registrar",
       ranzcpStage: 2,

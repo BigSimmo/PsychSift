@@ -4,7 +4,12 @@ import { useState } from "react";
 
 import { AlertsDeviceSection } from "@/components/alerts/alerts-device-section";
 import { AlertsButtonRow, AlertsQuietRow, AreaDot } from "@/components/alerts/alerts-rows";
-import { AlertsAreaSheet, AlertsDailyLimitSheet, AlertsQuietHoursSheet } from "@/components/alerts/alerts-sheets";
+import {
+  AlertsAreaSheet,
+  AlertsBriefSheet,
+  AlertsDailyLimitSheet,
+  AlertsQuietHoursSheet,
+} from "@/components/alerts/alerts-sheets";
 import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
 import { usePhoneAlerts } from "@/components/alerts/use-phone-alerts";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
@@ -14,6 +19,7 @@ import { ModeStateLabel } from "@/components/mode-kit/state-label";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { useRosterSettings } from "@/components/roster/use-roster-settings";
 import { ALERT_AREA_IDS, ALERT_AREAS, areaSummary, type AlertAreaId } from "@/lib/alerts/areas";
+import { AFTER_NIGHT_TIME } from "@/lib/alerts/morning-brief";
 import { useSharedDevice } from "@/lib/alerts/shared-device";
 import { perthDateKey, type ReminderSettings } from "@/lib/reminders/settings";
 
@@ -46,6 +52,7 @@ type OpenSheet =
   | { kind: "area"; area: AlertAreaId }
   | { kind: "quiet" }
   | { kind: "limit" }
+  | { kind: "brief" }
   | { kind: "reminders" }
   | { kind: "remind-me" }
   | null;
@@ -79,19 +86,26 @@ function AlertsBody({ now }: { now: Date }) {
   return (
     <div className="grid min-w-0 gap-5 lg:grid-cols-2 lg:gap-x-8" data-testid="my-day-alerts-ready">
       <ModeGroupedList eyebrow="Morning brief" testId="alerts-brief" className="lg:col-start-1 lg:row-start-1">
-        <AlertsQuietRow
+        <AlertsButtonRow
           title="Morning brief"
-          reason="One alert instead of many · arrives with the next update"
+          subtitle={reminders.brief.enabled ? "On · one alert instead of many" : "Off"}
+          onSelect={() => setSheet({ kind: "brief" })}
           testId="alerts-brief-row"
         />
-        <AlertsQuietRow
+        <AlertsButtonRow
           title="Time"
-          reason="Workdays and days off · arrives with the next update"
+          subtitle={`Workdays ${reminders.brief.workday} · days off ${reminders.brief.dayOff}`}
+          onSelect={() => setSheet({ kind: "brief" })}
           testId="alerts-brief-time-row"
         />
-        <AlertsQuietRow
+        <ModeRow
           title="After a night shift"
-          reason="Held until 14:00 · arrives with the next update"
+          subtitle={`Held until ${AFTER_NIGHT_TIME}`}
+          trailing={
+            <span className="pr-3">
+              <ModeStateLabel>Always on</ModeStateLabel>
+            </span>
+          }
           testId="alerts-brief-night-row"
         />
         <AlertsButtonRow
@@ -156,6 +170,15 @@ function AlertsBody({ now }: { now: Date }) {
           }
         />
         <ModeRow
+          title="Your own reminders come through"
+          subtitle="At the exact time you set, even in quiet hours"
+          trailing={
+            <span className="pr-3">
+              <ModeStateLabel>Always on</ModeStateLabel>
+            </span>
+          }
+        />
+        <ModeRow
           title="Roster changes come through"
           subtitle="Even during a night shift, so a changed shift is never missed"
           trailing={
@@ -201,6 +224,13 @@ function AlertsBody({ now }: { now: Date }) {
         onClose={() => setSheet({ kind: "reminders" })}
         now={now}
         shiftEndsAt={null}
+      />
+      <AlertsBriefSheet
+        open={sheet?.kind === "brief"}
+        onClose={() => setSheet(null)}
+        reminders={reminders}
+        onChange={setReminders}
+        phoneOn={alerts.state === "on"}
       />
       <AlertsDailyLimitSheet
         open={sheet?.kind === "limit"}

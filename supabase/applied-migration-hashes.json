@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-03T01:15:40.473Z",
+  "sealed_at": "2026-10-06T04:36:51.213Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -288,6 +288,7 @@
     "20260927202500_on_call_named_cover.sql": "fafbab97bdafda6cf71f26f112dc8a62506f95146920f1e7fe744f63b3136432",
     "20260927220000_roster_release_two.sql": "78c1c6e37a50b530f1f7f094c701e855d2d79de32b194fe681d97aa79ab3bcf5",
     "20260928091500_accept_rag_deep_memory_v2.sql": "cd1b8ba1e3e8cd0e4446b2806ba2a21846df45d1c2dbdc1a8dbbd1ba1f9b8ce4",
-    "20261003013000_roster_team_members.sql": "a12fb6aa0a5b92f97f71c0981f2a1e73b4693cd58d28cb9ba88a9512e5e58599"
+    "20261003013000_roster_team_members.sql": "a12fb6aa0a5b92f97f71c0981f2a1e73b4693cd58d28cb9ba88a9512e5e58599",
+    "20261006050000_alerts_timed_sender.sql": "580d41f6ba075bed147777e7848835adab50996ea804cc99f4cdf4e98ee55226"
   }
 }
