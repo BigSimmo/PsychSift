@@ -380,6 +380,79 @@ export function AlertsQuietHoursSheet({
   );
 }
 
+/**
+ * The morning brief: on or off, and when on workdays and days off (Perth
+ * time). After a night it waits until 14:00, and it never breaks through
+ * quiet hours (owner decisions 2 and 3, 5 Oct 2026).
+ */
+export function AlertsBriefSheet({
+  open,
+  onClose,
+  reminders,
+  onChange,
+  phoneOn,
+}: {
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly reminders: ReminderSettings;
+  readonly onChange: (next: ReminderSettings) => void;
+  readonly phoneOn: boolean;
+}) {
+  const brief = reminders.brief;
+  const setBrief = (patch: Partial<ReminderSettings["brief"]>) =>
+    onChange({ ...reminders, brief: { ...brief, ...patch } });
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Morning brief"
+      description="One alert instead of many"
+      footer={<DoneButton onClose={onClose} />}
+      testId="alerts-brief-sheet"
+    >
+      <div className="grid min-w-0 gap-4">
+        <ul role="list" className={modeModuleSurface}>
+          <ModeRow
+            title="Morning brief"
+            subtitle={brief.enabled ? "On" : "Off"}
+            trailing={
+              <ToggleSwitch
+                enabled={brief.enabled}
+                onToggle={() => setBrief({ enabled: !brief.enabled })}
+                aria-label="Morning brief"
+              />
+            }
+          />
+        </ul>
+        {brief.enabled ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Select
+              label="Workdays"
+              value={brief.workday}
+              onChange={(event) => setBrief({ workday: event.target.value })}
+              options={timeOptions(brief.workday)}
+            />
+            <Select
+              label="Days off"
+              value={brief.dayOff}
+              onChange={(event) => setBrief({ dayOff: event.target.value })}
+              options={timeOptions(brief.dayOff)}
+            />
+          </div>
+        ) : null}
+        <SheetNote>
+          A workday is a day with a shift in your roster. After a night shift the brief waits until 14:00, and in quiet
+          hours it waits until they end, so a time inside quiet hours means it comes when they finish. Your lock screen
+          only says that your brief is ready.
+        </SheetNote>
+        {brief.enabled && !phoneOn ? (
+          <SheetNote>Turn on phone alerts under This phone for the brief to reach you.</SheetNote>
+        ) : null}
+      </div>
+    </Sheet>
+  );
+}
+
 const CAP_OPTIONS = Array.from({ length: MAX_ALERTS_PER_DAY - MIN_ALERTS_PER_DAY + 1 }, (_, index) => {
   const count = String(MIN_ALERTS_PER_DAY + index);
   return { value: count, label: count };

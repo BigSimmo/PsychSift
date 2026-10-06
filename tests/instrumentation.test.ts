@@ -54,6 +54,9 @@ const warmSetupStatus = vi.hoisted(() =>
   vi.fn<(request: Request) => Promise<Response>>(async () => new Response(null)),
 );
 vi.mock("@/app/api/setup-status/route", () => ({ GET: warmSetupStatus }));
+// The timed alert sender would otherwise start a once-a-minute timer in every production case.
+const startTimedAlertSender = vi.hoisted(() => vi.fn<(createClient: () => unknown) => boolean>(() => true));
+vi.mock("@/lib/alerts/timed-sender", () => ({ startTimedAlertSender }));
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -145,6 +148,22 @@ describe("instrumentation boot guard", () => {
     const [request] = warmSetupStatus.mock.calls[0]!;
     // A loopback host on an unmanaged port would be refused by the local-origin guard.
     expect(new URL(request.url).hostname).toBe("startup-warm.invalid");
+  });
+
+  it("starts the timed alert sender once at boot with the service client", async () => {
+    const register = await loadRegister(FULLY_CONFIGURED);
+    await register();
+    expect(startTimedAlertSender).toHaveBeenCalledTimes(1);
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    expect(startTimedAlertSender).toHaveBeenCalledWith(createAdminClient);
+  });
+
+  it("does not start the timed alert sender outside production", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const register = await loadRegister({ NEXT_RUNTIME: "nodejs", NODE_ENV: "development" });
+    await register();
+    expect(startTimedAlertSender).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("is a no-op outside production, apart from the answer-feedback warning", async () => {

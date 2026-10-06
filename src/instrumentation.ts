@@ -99,6 +99,13 @@ export async function register() {
   // local-origin guard; nothing is fetched from it. Non-blocking; failures are swallowed.
   const { GET: warmSetupStatus } = await import("@/app/api/setup-status/route");
   void warmSetupStatus(new Request("https://startup-warm.invalid/api/setup-status")).catch(() => undefined);
+
+  // My Day › Alerts: once a minute, send due Remind me notes and morning briefs (owner yes, 6 Oct
+  // 2026). Does nothing without phone-alert keys; every send is claimed in the database first, so
+  // several server instances never double-send.
+  const { startTimedAlertSender } = await import("@/lib/alerts/timed-sender");
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  startTimedAlertSender(createAdminClient);
 }
 
 export { captureRequestError as onRequestError };

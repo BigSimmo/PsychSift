@@ -10,6 +10,6 @@
 
 The owner agreed all four with "Yes to all your recommendations" (5 October 2026, 14:01 UTC), answering the four decisions in the "PsychSift Alerts" mock-up (v4).
 
-Rule 4 is built in `src/components/my-day/sources/entries.ts` (PR "Alerts: one Alerts page under My Day"). Rules 1 to 3 apply to the timed sender, which is not built yet.
+Rule 4 is built in `src/components/my-day/sources/entries.ts` (PR "Alerts: one Alerts page under My Day"). Rules 1 to 3 are built in the timed sender (`src/lib/alerts/timed-sender.ts`, `src/lib/alerts/morning-brief.ts`, PR "Alerts: the timed sender"), the follow-up to #3296.
 
 If this summary and the source ever differ, the source wins.

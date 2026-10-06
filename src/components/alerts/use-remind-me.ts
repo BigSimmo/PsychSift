@@ -13,9 +13,11 @@ import {
 import { isSharedDevice, SHARED_DEVICE_CHANGE_EVENT } from "@/lib/alerts/shared-device";
 
 /**
- * Remind me notes on this device. Nothing here reaches a server or a calendar.
- * A save re-runs the patient-detail check (the sheet's check is not trusted
- * alone) and is refused on a device marked shared.
+ * Remind me notes on this device. The words never leave it: only the due time
+ * and the note's id go to the server, so the note can buzz the phone while the
+ * app is closed (owner decision 1, 5 Oct 2026). A save re-runs the
+ * patient-detail check (the sheet's check is not trusted alone) and is refused
+ * on a device marked shared.
  */
 const CHANGE_EVENT = "psychsift-remind-me-change";
 const EMPTY: readonly Reminder[] = [];
@@ -80,6 +82,41 @@ function write(list: readonly Reminder[]): boolean {
   return true;
 }
 
+/** This browser's phone-alert link, or null when phone alerts are off here. */
+async function thisDeviceEndpoint(): Promise<string | null> {
+  try {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
+    const registration = await navigator.serviceWorker.getRegistration();
+    return (await registration?.pushManager?.getSubscription())?.endpoint ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Best effort, and never the words: a note that can't be queued (phone alerts
+ * off, offline, signed out) still shows on this device at its time.
+ */
+async function tellServer(method: "POST" | "DELETE", ref: string, dueAt?: string): Promise<void> {
+  if (typeof fetch !== "function") return;
+  try {
+    let body: Record<string, string> = { ref };
+    if (method === "POST") {
+      const endpoint = await thisDeviceEndpoint();
+      if (!endpoint || !dueAt) return;
+      body = { ref, dueAt, endpoint };
+    }
+    await fetch("/api/alerts/reminders", {
+      method,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch {
+    // The note is saved on this device either way.
+  }
+}
+
 export type SaveReminderResult = "saved" | "unsafe" | "shared-device" | "full" | "failed";
 
 export function useRemindMe() {
@@ -99,16 +136,20 @@ export function useRemindMe() {
     );
     // Only "saved" when the new note really is in what was written.
     if (!next.some((item) => item.id === id)) return "failed";
-    return write(next) ? "saved" : "failed";
+    if (!write(next)) return "failed";
+    void tellServer("POST", id, dueAt);
+    return "saved";
   }, []);
 
   const markDone = useCallback((id: string) => {
     const now = new Date().toISOString();
     write(snapshot().map((item) => (item.id === id ? { ...item, doneAt: now } : item)));
+    void tellServer("DELETE", id);
   }, []);
 
   const remove = useCallback((id: string) => {
     write(snapshot().filter((item) => item.id !== id));
+    void tellServer("DELETE", id);
   }, []);
 
   return { reminders, add, markDone, remove };

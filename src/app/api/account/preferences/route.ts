@@ -47,6 +47,7 @@ const remindersPatchSchema = z
       .strict(),
     quietHours: z.object({ enabled: z.boolean(), start: wallClockSchema, end: wallClockSchema }).partial().strict(),
     maxAlertsPerDay: z.number().int().min(MIN_ALERTS_PER_DAY).max(MAX_ALERTS_PER_DAY),
+    brief: z.object({ enabled: z.boolean(), workday: wallClockSchema, dayOff: wallClockSchema }).partial().strict(),
   })
   .partial()
   .strict()
