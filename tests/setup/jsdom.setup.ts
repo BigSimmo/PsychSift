@@ -43,4 +43,10 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  try {
+    window.sessionStorage?.clear();
+    window.localStorage?.clear();
+  } catch {
+    // Ignore environments where storage is restricted
+  }
 });
