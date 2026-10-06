@@ -69,6 +69,7 @@ import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/u
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
 import { WorkSearchButton } from "@/components/work-search/work-search-button";
+import { NeedsYouButton } from "@/components/needs-you/needs-you-button";
 import {
   appModeDefinition,
   appModeDefinitions,
@@ -2875,8 +2876,9 @@ export function MasterSearchHeader({
               row grows a second grammar. `PhoneHeaderCollapsePortal` uses the same
               mechanism for the collapse row directly below.
 
-              On Call is the first and only occupant: it has no "new chat" to
-              start, and its page menu is the control a shift actually needs. */}
+              On Call no longer occupies this slot: its home uses the Needs you
+              bell beside Search my work. First Nations still portals an
+              ellipsis here. */}
           <div id={universalHeaderTrailingSlotId} className="contents" />
           {/* A mode with no results surface has no conversation to start, so the
               button would open nothing. Gated on that declaration rather than on
@@ -2903,12 +2905,13 @@ export function MasterSearchHeader({
               <span className="hidden whitespace-nowrap xl:inline">New chat</span>
             </button>
           ) : null}
+          {appModeHasWorkSearch(selectedAppMode.id) ? <NeedsYouButton modeId={selectedAppMode.id} /> : null}
           {/* "Search my work" on the staff work modes (Josh, 2026-10-04: top right on
               every staff page). Declared on the mode as `workSearch`, never a mode-id
-              branch here. It is the one deliberate second control in this region: on
-              On Call it sits right of the page menu in the slot, and the staff modes
-              have no new-chat button to stand beside. The icon is all the header
-              loads; the search itself is a lazy chunk fetched on tap. */}
+              branch here. The Needs you bell sits before it on signed-in mode homes
+              only; inner pages keep this icon alone so the row never grows a third
+              round control. The icon is all the header loads; the search itself is a
+              lazy chunk fetched on tap. */}
           {appModeHasWorkSearch(selectedAppMode.id) ? <WorkSearchButton modeId={selectedAppMode.id} /> : null}
         </div>
       </div>

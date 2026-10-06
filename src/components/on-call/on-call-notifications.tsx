@@ -52,8 +52,14 @@ export function OnCallNotificationsPanel({
   notifications,
   onNavigate,
   onSnooze,
+  heading = "Needs attention",
 }: {
   notifications: readonly OnCallNotification[];
+  /**
+   * Group heading. Pass `null` when a parent already names the group (the
+   * shared Needs you sheet).
+   */
+  heading?: string | null;
   /** Closes the sheet the list lives in, so a tap does not leave it open over
    *  the page it just navigated to. */
   onNavigate?: () => void;
@@ -68,10 +74,16 @@ export function OnCallNotificationsPanel({
     notifications.some((notification) => onCallNotificationReminderType(notification.kind) === type),
   );
   return (
-    <section aria-labelledby="on-call-notifications-heading" className="grid gap-2">
-      <h3 id="on-call-notifications-heading" className={eyebrowText}>
-        Needs attention
-      </h3>
+    <section
+      aria-labelledby={heading ? "on-call-notifications-heading" : undefined}
+      aria-label={heading ? undefined : "On Call"}
+      className="grid gap-2"
+    >
+      {heading ? (
+        <h3 id="on-call-notifications-heading" className={eyebrowText}>
+          {heading}
+        </h3>
+      ) : null}
 
       {notifications.length === 0 ? (
         <p className={cn("text-xs", textMuted)} data-testid="on-call-notifications-empty">

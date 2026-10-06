@@ -185,10 +185,9 @@ describe("the second header row is about THIS page", () => {
     expect(screen.queryAllByRole("navigation", { name: "On Call pages" })).toHaveLength(0);
   });
 
-  it("puts the page's actions in the universal header, not in a row of their own", () => {
-    // The same trigger and the same menu the mode home already portals there,
-    // so the two surfaces cannot drift into different menus — and a header row
-    // drawn to hold one ellipsis costs the 48px this redesign recovered.
+  it("puts the page's actions in-page, not in a header row of their own", () => {
+    // More sits beside the list. The universal header trailing slot is Search
+    // my work (and the home bell), not a second ellipsis.
     storeState.entries = ROUTED_CONTACTS;
     render(<OnCallSectionPage view="contacts" />);
     expect(screen.getByTestId("on-call-page-menu-trigger")).toBeTruthy();
