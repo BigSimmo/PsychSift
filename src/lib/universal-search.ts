@@ -311,6 +311,9 @@ async function searchServicesDomain(args: ResolvedSearchArgs): Promise<Universal
                 kind: "service",
                 slug: null,
                 cache: true,
+                // Search ranks and renders `render_payload` only, so it skips the `record` column:
+                // about half of the 2.6 MB service read (measured live 2026-10-06).
+                renderOnly: true,
                 seeds: serviceRecords,
                 signal,
               });
@@ -349,6 +352,8 @@ async function searchFormsDomain(args: ResolvedSearchArgs): Promise<UniversalSea
                 kind: "form",
                 slug: null,
                 cache: true,
+                // As services: `render_payload` only, about 40% smaller than the full read.
+                renderOnly: true,
                 seeds: formRecords,
                 signal,
               });

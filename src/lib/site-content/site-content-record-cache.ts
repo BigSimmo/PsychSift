@@ -88,6 +88,21 @@
  *   3. The windows are a ceiling on how long a freshly published record can stay invisible to
  *      search. Keep them short enough that an operator publishing a change does not think the
  *      publication failed.
+ *
+ * A READ THAT HAS STARTED IS ALLOWED TO FINISH, and this is what kept search on seeds for weeks.
+ * Until 2026-10-06 a blocking flight was cancelled the moment its last waiter walked away. Search
+ * waits 1200 ms (`catalogue-seed-fallback`), and from Railway the service and medication reads
+ * take longer than that, so the waiter always walked away first: the query was aborted, nothing
+ * was stored, the 30 s cooldown served seeds, and the next probe started the same doomed read
+ * from scratch. Once the warm entry passed its 10 min ceiling the process never filled the cache
+ * again until it restarted. The live domain monitor failed 25 of its last 29 runs on exactly this.
+ *
+ * So a waiter leaving no longer cancels anything. The flight carries on, stores its rows, and the
+ * next reader is served from cache. What still bounds it is `siteContentRecordCacheFlightTimeoutMs`
+ * on EVERY flight, blocking or background, so a hung query cannot be retained forever. The cost is
+ * at most one whole-catalogue read per key in flight at a time, which the single flight already
+ * guaranteed; an abandoned typeahead keystroke now finishes that one read instead of throwing it
+ * away and making the next keystroke start another.
  */
 
 import { isRetainedBootstrapReleaseId } from "@/lib/site-content/site-content-health";
@@ -110,11 +125,15 @@ export const siteContentRecordCacheStaleMs = 10 * 60_000;
 export const siteContentRecordCacheMaxEntries = 32;
 
 /**
- * Deadline on a background refresh. A blocking read is bounded by its caller's own abort signal,
- * but a refresh has no caller, so this is what stops one hung query from becoming a permanently
- * hung flight that every later reader joins.
+ * Deadline on every flight. A flight may outlive all of its callers (see "A READ THAT HAS STARTED
+ * IS ALLOWED TO FINISH" above), and a background refresh never had one, so this is what stops one
+ * hung query from becoming a permanently hung flight that every later reader joins.
+ *
+ * 10 s is far past any healthy read (the largest catalogue, medication, is ~2.7 MB) and well
+ * inside anything a reader would notice, because no reader waits on it: readers are bounded by
+ * their own signals.
  */
-export const siteContentRecordCacheRefreshTimeoutMs = 10_000;
+export const siteContentRecordCacheFlightTimeoutMs = 10_000;
 
 export type SiteContentRecordRows = Array<Record<string, unknown>>;
 
@@ -125,11 +144,8 @@ type CacheEntry = { rows: SiteContentRecordRows; storedAt: number };
 
 type Inflight = {
   promise: Promise<SiteContentRecordRows>;
+  /** Aborted only by the flight deadline. No caller can cancel a flight, by design. */
   controller: AbortController;
-  waiters: number;
-  settled: boolean;
-  /** A background refresh has no waiters by design, so last-waiter cancellation must skip it. */
-  background: boolean;
 };
 
 /**
@@ -239,34 +255,32 @@ type Read = (signal?: AbortSignal) => Promise<SiteContentRecordRows>;
  * blocking read share the same flight, so a reader arriving mid-refresh waits for that refresh
  * rather than starting a second identical query.
  */
-function startFlight(key: string, read: Read, now: () => number, background: boolean): Inflight {
+function startFlight(key: string, read: Read, now: () => number): Inflight {
   const existing = inflight.get(key);
-  // Never join a flight whose last waiter already cancelled it. Otherwise join it as it is:
-  // a blocking flight stays cancellable by its last waiter, and a background refresh stays
-  // exempt, so a reader who joins a refresh and then walks away cannot cancel it.
+  // A flight is only ever aborted by its own deadline, and it leaves the map as it settles, so an
+  // aborted one here is a dying flight: start fresh rather than join it.
   if (existing && !existing.controller.signal.aborted) return existing;
   if (existing && inflight.get(key) === existing) inflight.delete(key);
 
   const controller = new AbortController();
-  const created: Inflight = {
-    promise: Promise.resolve([]),
-    controller,
-    waiters: 0,
-    settled: false,
-    background,
-  };
-  // A background refresh has no waiter to cancel it, so without its own deadline a refresh that
-  // never settles is held in `inflight` forever: past the stale ceiling every later caller joins
-  // that hung flight and waits on it, and nothing recovers until the process restarts.
-  const refreshDeadline = background
-    ? setTimeout(() => {
-        controller.abort(new DOMException("Site-content catalogue refresh timed out.", "TimeoutError"));
-      }, siteContentRecordCacheRefreshTimeoutMs)
-    : undefined;
-  (refreshDeadline as { unref?: () => void } | undefined)?.unref?.();
+  const created: Inflight = { promise: Promise.resolve([]), controller };
+  // Every flight can outlive its callers, so every flight needs its own deadline. Without it a
+  // read that never settles is held in `inflight` forever: every later caller joins that hung
+  // flight and waits on it, and nothing recovers until the process restarts.
+  // The deadline also releases the flight itself, rather than waiting for the read to notice, so
+  // a read that ignores its signal cannot keep later callers joining it; waiters are released by
+  // racing this same signal in `readSiteContentRecordsCached`.
+  const deadline = setTimeout(() => {
+    controller.abort(new DOMException("Site-content catalogue read timed out.", "TimeoutError"));
+    if (inflight.get(key) === created) inflight.delete(key);
+  }, siteContentRecordCacheFlightTimeoutMs);
+  (deadline as { unref?: () => void }).unref?.();
 
   created.promise = (async () => {
     const rows = await read(controller.signal);
+    // A read that ignored its signal and answered after the deadline is not stored: the deadline
+    // is what callers were promised, and they have already been released (see the timer above).
+    controller.signal.throwIfAborted();
     // Rule 1: a snapshot that is no longer `current` must EVICT, not merely decline to store.
     // Leaving the previous rows in place would keep serving a catalogue the control plane is
     // deliberately suppressing mid-publication, for the rest of the stale window.
@@ -274,10 +288,12 @@ function startFlight(key: string, read: Read, now: () => number, background: boo
     else entries.delete(key);
     return rows;
   })().finally(() => {
-    created.settled = true;
-    if (refreshDeadline !== undefined) clearTimeout(refreshDeadline);
+    clearTimeout(deadline);
     if (inflight.get(key) === created) inflight.delete(key);
   });
+  // Nobody may be awaiting this any more (every waiter can leave), so a failure must not surface
+  // as an unhandled rejection. Waiters still see it through their own `await`.
+  created.promise.catch(() => {});
   inflight.set(key, created);
   return created;
 }
@@ -289,8 +305,9 @@ function startFlight(key: string, read: Read, now: () => number, background: boo
  *
  * Sharing the flight matters on a cold cache: without it the first search of a session still
  * issues one query per domain, and a burst of users on a cold container stampedes the same
- * expensive read. A blocking flight is cancelled only when its LAST waiter aborts, so one
- * abandoned typeahead request cannot cancel the query another caller is still waiting on.
+ * expensive read. A caller abort releases only that caller; the flight runs on to completion (or
+ * its deadline) and fills the cache, because a search that gave up at its budget is exactly the
+ * reader who most needs the next search to find the rows already stored.
  */
 export async function readSiteContentRecordsCached(input: {
   kind: string;
@@ -314,26 +331,18 @@ export async function readSiteContentRecordsCached(input: {
     if (age < siteContentRecordCacheStaleMs) {
       input.signal?.throwIfAborted();
       // Refresh behind the reader. A failure here deliberately leaves the entry in place: see
-      // rule 2. The rejection is consumed so it cannot surface as an unhandled rejection.
-      void startFlight(key, input.read, now, true).promise.catch(() => {});
+      // rule 2. `startFlight` already consumes the rejection.
+      startFlight(key, input.read, now);
       return { rows: cached.rows, age: "stale" };
     }
     entries.delete(key);
   }
 
-  const entry = startFlight(key, input.read, now, false);
-  entry.waiters += 1;
-  try {
-    return { rows: await awaitWithCallerSignal(entry.promise, input.signal), age: "miss" };
-  } finally {
-    entry.waiters -= 1;
-    // Drop the entry before aborting so a fresh caller cannot join a dying flight. A background
-    // refresh is exempt: it has no waiters by design and must be allowed to finish.
-    if (entry.waiters === 0 && !entry.settled && !entry.background) {
-      if (inflight.get(key) === entry) inflight.delete(key);
-      entry.controller.abort();
-    }
-  }
+  input.signal?.throwIfAborted();
+  const entry = startFlight(key, input.read, now);
+  // Released by whichever comes first: the rows, this caller's own abort, or the flight deadline.
+  const released = AbortSignal.any(input.signal ? [input.signal, entry.controller.signal] : [entry.controller.signal]);
+  return { rows: await awaitWithCallerSignal(entry.promise, released), age: "miss" };
 }
 
 /**

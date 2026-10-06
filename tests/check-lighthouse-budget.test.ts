@@ -480,6 +480,74 @@ describe("numeric breach confirmation", () => {
   });
 });
 
+describe("Lighthouse reuses the shared Playwright build", () => {
+  const read = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8");
+  const overrides = (source: string) => {
+    const call = /offlineTestEnvironment\([^,]+,\s*\{([\s\S]*?)\n\s*\}\);/.exec(source)?.[1] ?? "";
+    return Object.fromEntries(
+      [...call.matchAll(/^\s*([A-Z_]+):\s*(.+?),?\s*$/gm)].map((match) => [match[1], match[2].trim()]),
+    );
+  };
+
+  it("builds with the same command and environment as the Playwright runner it reuses", () => {
+    const lighthouse = read("scripts/run-lighthouse-budget.mjs");
+    const playwright = read("scripts/run-playwright.mjs");
+    const build = '["--max-old-space-size=8192", nextBin, "build", "--webpack"]';
+    expect(lighthouse).toContain(build);
+    expect(playwright).toContain(build);
+
+    const lighthouseEnv = overrides(lighthouse);
+    const playwrightEnv = overrides(playwright);
+    // Every build-affecting override must match; only the port differs (it is a runtime value).
+    for (const key of ["NEXT_DIST_DIR", "NEXT_TSCONFIG_PATH", "NODE_ENV", "PLAYWRIGHT_OFFLINE_MODE"]) {
+      expect(lighthouseEnv[key], key).toBe(playwrightEnv[key]);
+    }
+    expect(lighthouseEnv.PLAYWRIGHT_BASE_URL).toBe("baseUrl");
+    expect(playwrightEnv.PLAYWRIGHT_BASE_URL).toBe("baseUrl");
+    expect(lighthouseEnv.NEXT_PUBLIC_MOCKUPS_ENABLED).toBe('"false"');
+    expect(playwrightEnv.NEXT_PUBLIC_MOCKUPS_ENABLED).toBe('mockupProjectRequested ? "true" : "false"');
+    expect(Object.keys(lighthouseEnv).sort()).toEqual(Object.keys(playwrightEnv).sort());
+  });
+
+  it("downloads the mockups-disabled build only when its producer passed, and otherwise builds", () => {
+    const ci = read(".github/workflows/ci.yml");
+    const producer = /\n  ui-playwright-build:\n[\s\S]*?\n  ui-critical-fast:/.exec(ci)?.[0] ?? "";
+    expect(producer).toContain("PLAYWRIGHT_BUILD_ROOT_ID: ci-${{ github.run_id }}");
+    // --project=chromium only: the chromium-mockups project would bake mockups in.
+    expect(producer).toContain("run: node scripts/run-playwright.mjs --project=chromium\n");
+    expect(producer).toContain("name: playwright-next-build-${{ github.run_id }}");
+
+    const job = /\n  lighthouse-budget:\n[\s\S]*?\n  lighthouse-baseline-refresh:/.exec(ci)?.[0] ?? "";
+    expect(job).toContain("needs: [changes, ui-playwright-build]");
+    expect(job).toMatch(/if: >\n\s+!cancelled\(\) &&\n\s+needs\.changes\.result == 'success' &&/);
+    expect(job).toContain(
+      "(needs.ui-playwright-build.result == 'success' || needs.ui-playwright-build.result == 'skipped')",
+    );
+    expect(job).toMatch(
+      /Download shared Playwright Next build\n\s+if: needs\.ui-playwright-build\.result == 'success'[\s\S]*?name: playwright-next-build-\$\{\{ github\.run_id \}\}\n\s+path: \.next-playwright\/ci-\$\{\{ github\.run_id \}\}/,
+    );
+    expect(job).toContain(
+      "LIGHTHOUSE_REUSE_BUILD_ROOT_ID: ${{ needs.ui-playwright-build.result == 'success' && format('ci-{0}', github.run_id) || '' }}",
+    );
+
+    // Same source revision: the artifact is keyed by this run's id, so it can only come from
+    // this run's producer, and neither job overrides the checkout ref, so both build/serve the
+    // run's own github.sha (the merge ref on a PR). A `ref:` on either side would break that.
+    const checkout = (segment: string) =>
+      /- name: Checkout\n\s+uses: actions\/checkout@[^\n]+\n\s+with:\n((?:\s{10}[^\n]+\n)+)/.exec(segment)?.[1] ?? "";
+    for (const segment of [producer, job]) {
+      expect(segment).toContain("uses: actions/checkout@");
+      expect(checkout(segment)).not.toMatch(/\bref:|repository:/);
+    }
+  });
+
+  it("fails closed when a requested build is missing and never deletes a reused build root", () => {
+    const runner = read("scripts/run-lighthouse-budget.mjs");
+    expect(runner).toContain('path.join(absoluteRunRoot, "dist", "BUILD_ID")');
+    expect(runner).toMatch(/if \(!reuseBuildRootId\) \{\s*try \{\s*removePathSync\(absoluteRunRoot/);
+  });
+});
+
 describe("baselineFromRows", () => {
   it("records the graded metrics per run, sorted for a stable diff", () => {
     const baseline = baselineFromRows([row("mobile-root", { lcpMs: 1200 }), row("desktop-root", { lcpMs: 900 })]);
