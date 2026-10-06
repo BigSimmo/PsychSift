@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "02c85ac6-0573-4c16-89c4-9f7a81286fde",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#A6WAES",
+    "outcome": "Resolved: All 54 WA MHA form guidance records clinically signed off by owner (including Form 2 re-review).",
+    "baseRowFingerprint": "34f1bf239db24e8016bb2e668cda80591f3f4ebc0a09fa748cb5fa1dd1a1793f"
+  }
+}

@@ -96,7 +96,7 @@
     "name": "Advocacy-informed therapeutic work",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosocial presentations, and recovery-oriented care where progress depends on both treatment and access to practical supports.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -114,7 +114,7 @@
     "name": "App-supported therapy",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best as an adjunct to therapy or as part of structured low-intensity guided digital CBT.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -283,7 +283,7 @@
     "name": "Brief low-intensity CBT",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best as an early-intervention or stepped-care treatment for mild or emerging common mental health problems.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -328,7 +328,7 @@
     "name": "Bright-light therapy",
     "category": "Brain & Body Therapies",
     "bestUsedFor": "Best as an adjunctive treatment for depressive disorders when a low-burden somatic option is attractive, especially where circadian disruption or preference for non-drug augmentation is relevant.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -348,7 +348,7 @@
     "name": "Carer groups",
     "category": "Group IPT",
     "bestUsedFor": "Strongest guideline-backed use is in psychosis and schizophrenia, where carer-focused education and support programmes are explicitly recommended.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -794,7 +794,7 @@
     "name": "Community-based psychosocial intervention",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in severe mental illness, complex psychosis, long-term community care, step-down pathways, and cases where repeated acute treatment has not translated into stable community functioning.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -813,7 +813,7 @@
     "name": "Compassion-focused therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when shame and self-criticism are prominent, including some depression, eating-disorder, trauma-related, and transdiagnostic distress presentations.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -836,7 +836,7 @@
     "name": "Constructivist therapies",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best for identity, grief, adjustment, self-meaning, and broader distress where a meaning-construction model fits better than a symptom-protocol model.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -982,7 +982,7 @@
     "name": "DBT skills groups",
     "category": "Group CBT",
     "bestUsedFor": "Strongest psychiatric use is within a comprehensive DBT programme for borderline personality disorder or closely related chronic emotion-dysregulation presentations, especially where recurrent self-harm or severe affective instability is a major treatment target.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1223,7 +1223,7 @@
     "name": "ECT",
     "category": "Brain & Body Therapies",
     "bestUsedFor": "Strongest use is severe depressive disorder, especially where rapid response is needed, previous ECT response has been good, or other treatments have not provided adequate benefit.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1241,7 +1241,7 @@
     "name": "Emotion-focused therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best for emotionally driven distress where maladaptive emotion processing is central, and especially for couple distress in the couples form.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1264,7 +1264,7 @@
     "name": "Empowerment-focused practice",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best as a cross-cutting psychiatric practice approach in recovery-oriented care, community psychiatry, rehabilitation, trauma-informed practice, and long-term mental healthcare.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -1283,7 +1283,7 @@
     "name": "Existential psychotherapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best for patients whose suffering is strongly shaped by meaning, mortality, identity, or existential conflict, including some depressive, anxiety, adjustment, and serious-illness contexts.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1304,7 +1304,7 @@
     "name": "Experiential therapies",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when emotional processing difficulty is central, especially in mood, anxiety, personality, and somatic symptom presentations.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1602,7 +1602,7 @@
     "name": "Gestalt therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best as an experiential psychotherapy for people with depression, anxiety, interpersonal distress, self-esteem problems, or broader psychological distress when an experiential present-focused model fits the case.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1667,7 +1667,7 @@
     "name": "Group exposure programmes",
     "category": "Group IPT",
     "bestUsedFor": "Strongest use is anxiety disorders where exposure is first-line, especially social anxiety disorder, panic disorder with agoraphobia, and specific phobias (though individual exposure is often preferred for highly specific phobias).",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1688,7 +1688,7 @@
     "name": "Group psychoeducation",
     "category": "Group CBT",
     "bestUsedFor": "Strongest use is as an adjunct in bipolar disorder, especially maintenance-phase care and relapse prevention.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1729,7 +1729,7 @@
     "name": "Group relapse-prevention programmes",
     "category": "Group CBT",
     "bestUsedFor": "Strongest guideline support is for adults with depression at higher risk of relapse, where NICE recommends relapse-prevention interventions including group CBT or MBCT.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1769,7 +1769,7 @@
     "name": "Guided self-help",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best as an initial low-intensity or stepped-care treatment for milder depression and anxiety presentations, especially when symptoms are not highly complex and the patient can work independently with support.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1911,7 +1911,7 @@
     "name": "Humanistic psychotherapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best for depression and broader psychological distress where an exploratory, emotionally focused, relationship-based psychotherapy is appropriate.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2076,7 +2076,7 @@
     "name": "Internet-delivered CBT",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best for mild to moderate common mental health problems, especially depression and anxiety, when access, distance, mobility, or wait times are barriers.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2186,7 +2186,7 @@
     "name": "Low-intensity relapse-prevention programmes",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Strongest guideline-backed use is recurrent depression or depression in partial/full remission where relapse risk is higher.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2243,7 +2243,7 @@
     "name": "Meaning-centred psychotherapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best-supported use is advanced cancer, serious illness, and palliative care, where RCTs and reviews suggest benefit for meaning, spiritual well-being, and existential distress.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2358,7 +2358,7 @@
     "name": "Mindfulness-based stress reduction",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best as a structured mindfulness intervention for stress, depressive symptoms, and broader distress where mindfulness practice is acceptable and safe.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2379,7 +2379,7 @@
     "name": "Mindfulness-based therapies not primarily CBT-anchored",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best as a structured adjunct or selected primary intervention for stress, depressive symptoms, relapse vulnerability, and transdiagnostic distress where mindfulness practice is acceptable and safe.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2582,7 +2582,7 @@
     "name": "Narrative therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when identity, meaning, stigma, trauma-related self-story, family/community narratives, or chronic demoralisation are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2601,7 +2601,7 @@
     "name": "Narrative-informed community work",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in community psychiatry, psychosocial rehabilitation, trauma-informed recovery work, youth or adult community mental health, and severe mental illness where identity, belonging, and social participation are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2789,7 +2789,7 @@
     "name": "Peer-led groups",
     "category": "Group IPT",
     "bestUsedFor": "Best as an adjunctive recovery-oriented intervention, especially where connection, empowerment, and lived-experience modelling are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2808,7 +2808,7 @@
     "name": "Person-centred / Rogerian therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best for depression or distress where psychosocial, relationship, or employment problems are contributing and the person would prefer an emotionally exploratory, non-directive therapy.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2917,7 +2917,7 @@
     "name": "Process groups",
     "category": "Group IPT",
     "bestUsedFor": "Best for patients whose difficulties are strongly interpersonal or personality-pattern based, especially when they can benefit from observing how they relate to others in the moment.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3041,7 +3041,7 @@
     "name": "Psychoeducational recovery groups",
     "category": "Group IPT",
     "bestUsedFor": "Strongest use is in severe mental illness, especially schizophrenia-spectrum and other long-term psychiatric disorders where self-management and recovery functioning are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3080,7 +3080,7 @@
     "name": "Psychosocial case planning",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in severe mental illness, rehabilitation, discharge planning, community psychiatry, complex psychosis, repeated admissions, and presentations where functioning, support needs, or service coordination are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3098,7 +3098,7 @@
     "name": "Recovery groups",
     "category": "Group IPT",
     "bestUsedFor": "Best as an adjunctive intervention in longer-term psychiatric care, community recovery settings, step-down services, psychosocial rehabilitation, and chronic illness pathways where personal recovery, self-management, and community participation matter.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3139,7 +3139,7 @@
     "name": "Recovery-oriented case management",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosis, long-term support pathways, and step-down care where sustained psychosocial coordination is needed.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3243,7 +3243,7 @@
     "name": "Relational-cultural therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when the case formulation is strongly relational, especially in trauma-informed, women’s mental health, identity, marginalisation, or chronic relational-distress presentations.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3285,7 +3285,7 @@
     "name": "Resource-linkage / coordination as therapeutic intervention",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in severe mental illness, complex psychosis, recurrent admissions, step-down care, discharge planning, community psychiatry, and presentations where progress depends partly on support packages, service access, and continuity across sectors.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3303,7 +3303,7 @@
     "name": "rTMS",
     "category": "Brain & Body Therapies",
     "bestUsedFor": "Best-supported psychiatric use is major depressive disorder, particularly treatment-resistant or hard-to-treat depressive episodes.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3453,7 +3453,7 @@
     "name": "Skills-training groups",
     "category": "Group IPT",
     "bestUsedFor": "Best when there is a clear, observable skill deficit contributing to ongoing impairment.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3575,7 +3575,7 @@
     "name": "Social-role restoration work",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in severe mental illness, rehabilitation, longer-term community care, step-down settings, and recovery pathways where the main challenge is not just symptom control but re-establishing a life structure and meaningful contribution.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3595,7 +3595,7 @@
     "name": "Solution-focused brief therapy",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best as a brief pragmatic intervention for adjustment-type problems, mild to moderate distress, engagement work, or situations where a focused collaborative change conversation is clinically useful.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3683,7 +3683,7 @@
     "name": "Strengths-based case management",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in severe mental illness, especially where long-term community follow-up, rehabilitation, and recovery planning are needed.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -3699,7 +3699,7 @@
     "name": "Strengths-based practice",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best as a cross-cutting recovery-oriented approach in rehabilitation, community psychiatry, long-term care, and complex severe mental illness, especially when functional recovery, self-management, and meaningful life goals are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3740,7 +3740,7 @@
     "name": "Support groups",
     "category": "Group IPT",
     "bestUsedFor": "Best as an adjunctive intervention for people or carers who benefit from shared experience, practical coping ideas, and community connection.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3761,7 +3761,7 @@
     "name": "Supported digital CBT",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best as an initial or stepped-care treatment for mild to moderate common mental health problems, especially when access barriers, waiting lists, geography, mobility, or preference for remote care matter.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3804,7 +3804,7 @@
     "name": "Supported digital trauma-focused CBT (Self-Help & Digital Therapies)",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best as a selective option for PTSD or clinically significant post-traumatic stress symptoms when the patient is appropriate for trauma-focused work but remote or digital delivery is preferable or necessary.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3929,7 +3929,7 @@
     "name": "Task-centred practice",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best for circumscribed, practical, time-limited problems where rapid action is more useful than deeper exploratory work, such as housing, benefits, service engagement, daily-structure problems, adherence barriers, or role-function disruption.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -3950,7 +3950,7 @@
     "name": "Telehealth-delivered psychotherapy",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best when an evidence-based psychotherapy is indicated and telehealth is safe and clinically appropriate, especially for rural and remote patients, patients with travel barriers, and situations where continuity would otherwise be disrupted.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3972,7 +3972,7 @@
     "name": "Telephone-delivered CBT",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best as a lower-intensity or access-expanding CBT format for mild to moderate common mental health presentations, especially where distance, mobility, wait times, or preference for phone-based care are major barriers.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -4083,7 +4083,7 @@
     "name": "Values-based therapies",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when a values-based mechanism is clearly central, especially in ACT-informed work for transdiagnostic distress, chronic health conditions, and problems maintained by avoidance and overcontrol.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -4118,7 +4118,7 @@
     "name": "Waitlist-bridging brief interventions",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best when waits are long and the patient has mild to moderate symptoms or is suitable for a low-intensity interim intervention.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -4159,7 +4159,7 @@
     "name": "Workbook-based therapy",
     "category": "Self-Help & Digital Therapies",
     "bestUsedFor": "Best as guided self-help or low-intensity CBT for milder common mental health presentations, especially when a patient prefers written structure or when digital access is limited.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [

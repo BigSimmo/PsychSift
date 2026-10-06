@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "cbf77731-58ef-45b5-8a1e-6fd782823d4d",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#BS3SN9",
+    "detail": "OWNER REAFFIRMATION 2026-10-06: Confirmed active protective constraint through 2026-12-01. No identifiable patient data may enter the app until external provider and legal approvals close.",
+    "baseRowFingerprint": "862c78a26032bdb7df225e5fc67cc418def01d13dd3b44ade2e5cb25186b2fbc"
+  }
+}

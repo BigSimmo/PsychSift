@@ -1,5 +1,6 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import formsCatalog from "../data/forms-catalog.json";
 import formsContentReview from "../data/forms-content-review.json";
@@ -191,4 +192,7 @@ function main() {
   console.log(`Wrote ${OUT}.`);
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) main();
+const invokedPath = process.argv[1]
+  ? pathToFileURL(existsSync(process.argv[1]) ? realpathSync(resolve(process.argv[1])) : resolve(process.argv[1])).href
+  : null;
+if (invokedPath === import.meta.url) main();

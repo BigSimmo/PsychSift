@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "ecab58e5-a3fb-4fe7-9717-8d7239c971d0",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#SBKXZ7",
+    "outcome": "Resolved: 158 of 205 therapy catalogue records clinically signed off by owner (all records with references); 47 unsourced records split to backlog.",
+    "baseRowFingerprint": "eae798b6eb4c416cfd882987b3ef5b2c9c43337a4533bd4a5523f1d5d0cdcf7a"
+  }
+}

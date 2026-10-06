@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "d7ac14b8-f63e-4e75-a0c1-dc59abf8b294",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#46VNY9",
+    "detail": "UPDATE 2026-10-06: SQL migration supabase/migrations/20260926170000_repair_import_stamped_locally_reviewed.sql is written, dry-run verified, and tested offline. Awaits live Supabase execution to update the 1,935 rows. Close this and #JYH1FH once applied.",
+    "baseRowFingerprint": "013b8eefc48acbba0c7e8f1b214412e05ccae2399948a201a5644ee8ea8b6713"
+  }
+}
