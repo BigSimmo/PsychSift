@@ -79,7 +79,10 @@ class QueryBuilder implements PromiseLike<QueryResult> {
   }
 }
 
-function createSupabaseMock(resolve: QueryResolver = () => ok([]), options: { canonicalRows?: unknown[] } = {}) {
+function createSupabaseMock(
+  resolve: QueryResolver = () => ok([]),
+  options: { canonicalRows?: unknown[]; limited?: boolean } = {},
+) {
   const calls: QueryCall[] = [];
   const from = vi.fn((table: string) => {
     const call: QueryCall = { table, filters: [], inFilters: [], maybeSingle: false };
@@ -98,7 +101,15 @@ function createSupabaseMock(resolve: QueryResolver = () => ok([]), options: { ca
     },
     rpc: vi.fn(async (name: string) =>
       name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit"
-        ? ok([{ limited: false, limit_value: 120, remaining: 119, retry_after_seconds: 60 }])
+        ? ok([
+            {
+              limited: Boolean(options.limited),
+              limit_value: 120,
+              remaining: options.limited ? 0 : 119,
+              retry_after_seconds: 60,
+              reset_at: new Date(Date.now() + 60_000).toISOString(),
+            },
+          ])
         : ok(options.canonicalRows ?? [{ initialized: false, record: null, render_payload: null, snapshot: null }]),
     ),
   };
@@ -488,6 +499,18 @@ describe("differentials API routes", () => {
 
     expect(response.status).toBe(404);
     expect(consoleError).not.toHaveBeenCalled();
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits requests (429) and returns Retry-After header when consume_api_rate_limit returns limited: true", async () => {
+    const client = createSupabaseMock(() => ok([]), { limited: true });
+    mockRuntime(client);
+    const { GET } = await import("../src/app/api/differentials/route");
+
+    const response = await GET(request("/api/differentials"));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("60");
     expect(client.from).not.toHaveBeenCalled();
   });
 });

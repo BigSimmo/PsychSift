@@ -42,7 +42,7 @@ import { conceptReviewState, mechanismReviewState } from "@/lib/formulation-revi
  * else.
  */
 
-const NOW = new Date("2026-10-02T06:00:00.000Z");
+const NOW = new Date(Math.max(Date.now(), Date.parse("2026-10-07T00:00:00.000Z")));
 const REVIEWED_AT = "2026-09-25T05:00:00.000Z";
 const REVIEWER = "Dr Clinical Owner";
 const context = { curated: curatedDifferentials, sourceLibrary: formulationContent.sourceLibrary };

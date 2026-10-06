@@ -1871,8 +1871,14 @@
       "source": "src/components/ui-primitives.tsx",
       "sourceExported": true,
       "entryExported": true,
-      "directImportFiles": ["src/components/DocumentViewer.tsx", "src/components/document-viewer/source-panels.tsx"],
-      "productImportFiles": ["src/components/DocumentViewer.tsx", "src/components/document-viewer/source-panels.tsx"],
+      "directImportFiles": [
+        "src/components/document-viewer/generated-summary-panel.tsx",
+        "src/components/document-viewer/source-panels.tsx"
+      ],
+      "productImportFiles": [
+        "src/components/document-viewer/generated-summary-panel.tsx",
+        "src/components/document-viewer/source-panels.tsx"
+      ],
       "designSync": {
         "listedInSourceMap": true,
         "listedInDtsProps": true,
@@ -2031,7 +2037,6 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
-        "src/components/DocumentViewer.tsx",
         "src/components/clinical-dashboard/answer-content.tsx",
         "src/components/clinical-dashboard/answer-inline-sections.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
@@ -2039,10 +2044,10 @@
         "src/components/clinical-dashboard/output-panel.tsx",
         "src/components/document-viewer/document-clinical-summary.tsx",
         "src/components/document-viewer/document-rail-panels.tsx",
+        "src/components/document-viewer/generated-summary-panel.tsx",
         "src/components/document-viewer/source-panels.tsx"
       ],
       "productImportFiles": [
-        "src/components/DocumentViewer.tsx",
         "src/components/clinical-dashboard/answer-content.tsx",
         "src/components/clinical-dashboard/answer-inline-sections.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
@@ -2050,6 +2055,7 @@
         "src/components/clinical-dashboard/output-panel.tsx",
         "src/components/document-viewer/document-clinical-summary.tsx",
         "src/components/document-viewer/document-rail-panels.tsx",
+        "src/components/document-viewer/generated-summary-panel.tsx",
         "src/components/document-viewer/source-panels.tsx"
       ],
       "designSync": {
@@ -2129,6 +2135,7 @@
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
         "src/components/clinical-dashboard/result-filter-control.tsx",
         "src/components/clinical-dashboard/settings-dialog.tsx",
+        "src/components/cme/learning-catalogue.tsx",
         "src/components/dictionary/dictionary-catalogue-pages.tsx",
         "src/components/dsm/dsm-diagnosis-note-builder.tsx",
         "src/components/factsheets/factsheets-search-page.tsx",
@@ -2334,6 +2341,7 @@
         "src/components/in-page-nav/in-page-nav-header.tsx",
         "src/components/mode-kit/dial-sheet.tsx",
         "src/components/mode-nav/mode-nav.tsx",
+        "src/components/needs-you/needs-you-sheet.tsx",
         "src/components/on-call/call/didnt-connect.tsx",
         "src/components/on-call/call/isobar-card.tsx",
         "src/components/on-call/find/handbook-item-row.tsx",
@@ -2436,6 +2444,7 @@
         "src/components/in-page-nav/in-page-nav-header.tsx",
         "src/components/mode-kit/dial-sheet.tsx",
         "src/components/mode-nav/mode-nav.tsx",
+        "src/components/needs-you/needs-you-sheet.tsx",
         "src/components/on-call/call/didnt-connect.tsx",
         "src/components/on-call/call/isobar-card.tsx",
         "src/components/on-call/find/handbook-item-row.tsx",
@@ -5299,12 +5308,12 @@
         {
           "file": "src/components/DocumentViewer.tsx",
           "exists": true,
-          "imports": ["InlineNotice", "PanelHeading", "SafeBoldText", "Sheet"],
+          "imports": ["InlineNotice", "Sheet"],
           "importedFamilies": ["feedback", "layout"],
           "literalCkbV2": false,
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
-          "sanctionedPatternsPresent": ["DocumentViewer", "SourceEvidence"]
+          "sanctionedPatternsPresent": ["DocumentViewer"]
         }
       ]
     },

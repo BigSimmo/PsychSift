@@ -4,7 +4,7 @@ import { parseSchema } from "@/lib/validation/http";
 
 export const defaultJsonBodyLimitBytes = 256 * 1024;
 
-async function readBoundedJson(request: Request, maxBytes = defaultJsonBodyLimitBytes): Promise<unknown> {
+export async function readBoundedJson(request: Request, maxBytes = defaultJsonBodyLimitBytes): Promise<unknown> {
   const declaredLength = Number(request.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
     throw new PublicApiError("Request body is too large.", 413, { code: "payload_too_large" });

@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
+    "src/app/**/{page,layout,route,default,error,not-found}.{ts,tsx}",
     "scripts/**/*.{ts,mjs,cjs}",
     "worker/**/*.ts",
     "eslint-rules/**/*.mjs",
@@ -9,6 +10,15 @@
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs,cjs}", "worker/**/*.ts", "eslint-rules/**/*.mjs"],
   "ignore": ["src/lib/supabase/database.types.ts", "**/*mockup*", "supabase/functions/**", "docs/**"],
+  "ignoreDependencies": [
+    "mammoth",
+    "qrcode",
+    "server-only",
+    "tailwind-merge",
+    "web-push",
+    "@types/qrcode",
+    "@types/web-push"
+  ],
   "vitest": {
     "config": ["vitest.config.mts"]
   },

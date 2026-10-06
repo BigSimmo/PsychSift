@@ -4977,9 +4977,10 @@ describe("private document API access", () => {
 
     const first = searchRoute.POST(searchRequest());
     const second = searchRoute.POST(searchRequest());
-    for (let index = 0; index < 10 && searchChunksWithTelemetry.mock.calls.length === 0; index += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
+    await vi.waitFor(() => expect(searchChunksWithTelemetry).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+      interval: 20,
+    });
     expect(searchChunksWithTelemetry).toHaveBeenCalledTimes(1);
 
     releaseSearch();
@@ -5019,9 +5020,13 @@ describe("private document API access", () => {
 
     const first = searchRoute.POST(searchRequest(firstController.signal));
     const second = searchRoute.POST(searchRequest(secondController.signal));
-    for (let index = 0; index < 10 && !providerSignal; index += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
+    await vi.waitFor(
+      () => {
+        expect(searchChunksWithTelemetry).toHaveBeenCalledTimes(1);
+        expect(providerSignal).toBeDefined();
+      },
+      { timeout: 2000, interval: 20 },
+    );
     expect(searchChunksWithTelemetry).toHaveBeenCalledTimes(1);
 
     firstController.abort(new DOMException("first caller left", "AbortError"));
@@ -5079,9 +5084,7 @@ describe("private document API access", () => {
       });
 
     const first = searchRoute.POST(searchRequest(firstController.signal));
-    for (let index = 0; index < 10 && searchCalls === 0; index += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
+    await vi.waitFor(() => expect(searchCalls).toBe(1), { timeout: 2000, interval: 20 });
     expect(searchCalls).toBe(1);
 
     firstController.abort(new DOMException("sole search waiter left", "AbortError"));

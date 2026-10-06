@@ -9,4 +9,6 @@ export function GET(request: NextRequest) {
   });
 }
 
-export const HEAD = GET;
+export function HEAD(request: NextRequest) {
+  return GET(request);
+}

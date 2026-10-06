@@ -418,6 +418,11 @@ map each mode's existing selectors (Admin's `today-selectors`, On Call notificat
 progress, CPD routines and drafts, Teaching's needs-you counts) onto items, and
 `use-my-day-items.ts` merges them for the `/my-day` page and the home card. Read-only; nothing stored.
 
+**Needs you bell.** `src/lib/needs-you/` (`homes.ts`, `groups.ts`) is the signed-in staff-home
+header bell: which work homes show it, how waiting items group by mode, and the "Needs you" /
+"Something needs attention" wording. The sheet is `src/components/needs-you/`. It reuses My Day
+items plus On Call notifications; it is not OS push and it does not say "alerts".
+
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
 records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto

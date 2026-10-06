@@ -16,5 +16,6 @@ export function explicitlyBindsEntityToClinicalValue(
   if (clinicalValueClauseBoundaryPattern.test(between)) return false;
 
   const distance = Math.max(0, Math.max(entity.start, value.start) - Math.min(entity.end, value.end));
-  return (entity.end <= value.start && distance <= 12) || clinicalValueBindingPattern.test(between);
+  const adjacent = (entity.end <= value.start && distance <= 12) || (value.end <= entity.start && distance <= 12);
+  return adjacent || clinicalValueBindingPattern.test(between);
 }

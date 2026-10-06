@@ -46,7 +46,10 @@ function notFoundResponse(slug: string) {
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
-    const normalizedSlug = normalizeDifferentialSlug(slug);
+    const normalizedSlug = normalizeDifferentialSlug(slug ?? "");
+    if (!normalizedSlug || !/^[a-z0-9_-]+$/.test(normalizedSlug) || normalizedSlug.length > 120) {
+      return notFoundResponse(normalizedSlug || "unknown");
+    }
 
     if (isDemoMode() || isLocalNoAuthMode()) {
       const snapshot = loadDifferentialSnapshot();

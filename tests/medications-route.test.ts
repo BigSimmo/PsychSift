@@ -14,7 +14,12 @@ function expectPrivateCache(response: Response) {
 }
 const recordId = "11111111-1111-4111-8111-111111111111";
 
-type QueryError = { message: string };
+type QueryError = {
+  message: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+};
 type QueryResult = { data: unknown; error: QueryError | null; count?: number | null };
 type QueryFilter = { column: string; value: unknown };
 type QueryCall = {

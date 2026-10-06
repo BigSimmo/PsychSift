@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import {
-  CircleAlert,
   ArrowLeft,
   ChevronDown,
   Download,
@@ -12,25 +11,19 @@ import {
   Loader2,
   Search,
   Sparkles,
-  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { documentDisplayTitle } from "@/components/DocumentOrganizationBadges";
 import { ContextualBackLink } from "@/components/contextual-back-link";
-import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
 import { PhoneHeaderCollapsePortal } from "@/components/clinical-dashboard/phone-header-collapse-portal";
 import { useDocumentViewerChromeScroll } from "@/components/clinical-dashboard/use-document-viewer-chrome-scroll";
-import { AnswerProgress } from "@/components/clinical-dashboard/answer-status";
 import {
   appBackdrop,
   cn,
   floatingControl,
-  glassOverlaySurface,
   InlineNotice,
   panel,
-  PanelHeading,
-  searchShellInput,
   sourceCard,
   textMuted,
 } from "@/components/ui-primitives";
@@ -69,7 +62,6 @@ import { isLocalNoAuthMode } from "@/lib/client-env";
 import { isAdministratorUser } from "@/lib/authorization";
 import { authorizationIdentity } from "@/lib/authorization-header";
 import { useAuthSession } from "@/lib/supabase/client";
-import { SafeBoldText } from "@/components/SafeBoldText";
 import { DocumentManagementActions } from "@/components/DocumentManagementActions";
 import { Sheet } from "@/components/ui/sheet";
 import type { ClinicalDocument, DocumentLabel } from "@/lib/types";
@@ -87,11 +79,11 @@ import type {
   PageRow,
   TableFactRow,
 } from "@/components/document-viewer/types";
-import { IndexedTextPanel, PinnedSourceEvidence } from "@/components/document-viewer/source-panels";
 import { DocumentViewerRail } from "@/components/document-viewer/document-rail-panels";
-import { DocumentVisualsPanel } from "@/components/document-viewer/document-visuals-panel";
 import { DocumentOverviewLanding } from "@/components/document-viewer/document-overview-landing";
-import { DocumentClinicalSummary } from "@/components/document-viewer/document-clinical-summary";
+import { DocumentViewerContentPanels } from "@/components/document-viewer/document-viewer-content-panels";
+import { DocumentViewerSearchComposer } from "@/components/document-viewer/document-viewer-search-composer";
+import { GeneratedSummaryPanel } from "@/components/document-viewer/generated-summary-panel";
 import {
   DocumentViewerStateSurface,
   type DocumentViewerShellState,
@@ -1417,44 +1409,17 @@ export function DocumentViewer({
                 {downloadError}
               </InlineNotice>
             ) : null}
-            {(loadingSummary || summary || summaryError) && (
-              <div className="min-w-0 space-y-3 lg:col-span-2">
-                {summaryProgressStartedAt && summaryProgressEvents.length > 0 ? (
-                  <AnswerProgress
-                    events={summaryProgressEvents}
-                    startedAt={summaryProgressStartedAt}
-                    active={loadingSummary}
-                    onStop={stopSummary}
-                  />
-                ) : null}
-                {summary && (
-                  <section
-                    ref={generatedSummaryRef}
-                    data-testid="generated-clinical-summary"
-                    className={cn(panel, "p-4 source-print")}
-                  >
-                    <PanelHeading
-                      icon={Sparkles}
-                      title={generatedAnswerIsSummary ? "Clinical summary" : "Answer from this document"}
-                      description={
-                        generatedAnswerIsSummary
-                          ? "From indexed passages, cleaned for practical use."
-                          : "Grounded in indexed passages from this source."
-                      }
-                    />
-                    <p className="mt-3 whitespace-pre-wrap text-base-minus leading-6 text-[color:var(--text-muted)]">
-                      <SafeBoldText text={generatedSummaryText} />
-                    </p>
-                  </section>
-                )}
-                {summaryError && (
-                  <section className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] p-4 text-sm font-medium text-[color:var(--danger)]">
-                    <CircleAlert aria-hidden="true" className="mr-2 inline h-4 w-4" />
-                    {summaryError}
-                  </section>
-                )}
-              </div>
-            )}
+            <GeneratedSummaryPanel
+              loadingSummary={loadingSummary}
+              summary={summary}
+              summaryError={summaryError}
+              summaryProgressStartedAt={summaryProgressStartedAt}
+              summaryProgressEvents={summaryProgressEvents}
+              stopSummary={stopSummary}
+              generatedSummaryRef={generatedSummaryRef}
+              generatedAnswerIsSummary={generatedAnswerIsSummary}
+              generatedSummaryText={generatedSummaryText}
+            />
 
             {readyDocument ? (
               <div
@@ -1570,52 +1535,33 @@ export function DocumentViewer({
               {/* Explicit base track for the same reason as the rail and body grids:
                   an implicit `auto` column is sized by its items' min-content, and this
                   column now carries the wide table crops. */}
-              <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-5">
-                <PinnedSourceEvidence
-                  loading={effectiveLoadingDocument}
-                  chunk={selectedChunk}
-                  compact
-                  sectionId="source-evidence"
-                  onInspectIndexedText={inspectIndexedTextSection}
-                />
-                {readyDocument ? (
-                  <div id="source-summary-card" className="min-w-0 scroll-mt-[var(--document-anchor-offset,6rem)]">
-                    <DocumentClinicalSummary
-                      document={readyDocument}
-                      pageHref={usefulPageHref}
-                      onPageChange={navigateToPage}
-                      compact={compactView}
-                    />
-                  </div>
-                ) : null}
-                <IndexedTextPanel
-                  loading={effectiveLoadingDocument}
-                  selectedPage={selectedPage}
-                  chunks={chunks}
-                  search={sourceSearch}
-                  documentSearchResults={currentDocumentSearchResults}
-                  searchingDocument={documentSearchPending}
-                  documentSearchError={currentDocumentSearchError}
-                  idPrefix="source-chunk"
-                  sectionId="source-text"
-                  selectedChunkId={activeChunkId}
-                  onSearchChange={setSourceSearch}
-                  compact={compactView}
-                  revealRequest={inspectIndexedText || normalizedSourceSearch.length >= 2}
-                />
-                <DocumentVisualsPanel
-                  loading={effectiveLoadingDocument}
-                  document={document}
-                  canUseAdministrativeApis={canUseAdministrativeApis}
-                  clinicalImages={clinicalImages}
-                  auditImages={auditImages}
-                  tableFacts={tableFacts}
-                  reviewingTableFactId={reviewingTableFactId}
-                  onReviewTableFact={reviewTableFact}
-                  activePage={activePage}
-                  onSelectPage={navigateToPage}
-                />
-              </div>
+              <DocumentViewerContentPanels
+                effectiveLoadingDocument={effectiveLoadingDocument}
+                selectedChunk={selectedChunk}
+                inspectIndexedTextSection={inspectIndexedTextSection}
+                readyDocument={readyDocument}
+                usefulPageHref={usefulPageHref}
+                navigateToPage={navigateToPage}
+                compactView={compactView}
+                selectedPage={selectedPage}
+                chunks={chunks}
+                sourceSearch={sourceSearch}
+                currentDocumentSearchResults={currentDocumentSearchResults}
+                documentSearchPending={documentSearchPending}
+                currentDocumentSearchError={currentDocumentSearchError}
+                activeChunkId={activeChunkId}
+                setSourceSearch={setSourceSearch}
+                inspectIndexedText={inspectIndexedText}
+                normalizedSourceSearch={normalizedSourceSearch}
+                document={document}
+                canUseAdministrativeApis={canUseAdministrativeApis}
+                clinicalImages={clinicalImages}
+                auditImages={auditImages}
+                tableFacts={tableFacts}
+                reviewingTableFactId={reviewingTableFactId}
+                reviewTableFact={reviewTableFact}
+                activePage={activePage}
+              />
             </div>
 
             <DocumentViewerRail
@@ -1639,72 +1585,20 @@ export function DocumentViewer({
               indexHealth={indexHealth}
             />
           </section>
-          {readyDocument && documentSearchOpen ? (
-            <PhoneFooterLayerPortal>
-              <form
-                id="document-viewer-search"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  submitSourceSearch();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== "Escape") return;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  closeDocumentSearch();
-                }}
-                data-scroll-hidden={composerScrollHidden ? "true" : undefined}
-                onFocusCapture={() => setComposerChromeFocused(true)}
-                onBlurCapture={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-                    setComposerChromeFocused(false);
-                }}
-                className={cn(
-                  "search-shell",
-                  glassOverlaySurface,
-                  "phone-footer-layer document-viewer-composer floating-composer-edge dashboard-composer-edge z-40 mx-auto flex min-h-[56px] max-w-3xl items-center gap-2 rounded-full bg-[color:var(--surface-lux)] px-2 shadow-[var(--shadow-lux)] max-sm:transition-[transform,opacity] motion-reduce:transition-none sm:fixed",
-                  composerScrollHidden
-                    ? "max-sm:duration-[var(--duration-slow)] max-sm:ease-[var(--ease-chrome-hide)]"
-                    : "max-sm:duration-[var(--duration-moderate)] max-sm:ease-[var(--ease-chrome-reveal)]",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={closeDocumentSearch}
-                  className="grid h-tap w-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)]"
-                  aria-label="Close document search"
-                  title="Close document search"
-                >
-                  <X aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
-                </button>
-                <label className="relative flex min-w-0 flex-1 items-center overflow-hidden">
-                  <span className="sr-only">Search within this document</span>
-                  <input
-                    ref={sourceSearchInputRef}
-                    value={sourceSearch}
-                    onChange={(event) => setSourceSearch(event.target.value)}
-                    placeholder="Search within this document…"
-                    className={cn(
-                      searchShellInput,
-                      "min-h-tap px-2 text-base font-medium text-[color:var(--text)] placeholder:text-[color:var(--text-placeholder)]",
-                    )}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={!canViewSourceDocuments || normalizedSourceSearch.length < 2}
-                  className="grid h-tap w-tap shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--shadow-inset),var(--e1)] hover:bg-[color:var(--clinical-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Search within this document"
-                >
-                  {documentSearchPending ? (
-                    <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search aria-hidden="true" className="h-4 w-4" />
-                  )}
-                </button>
-              </form>
-            </PhoneFooterLayerPortal>
-          ) : null}
+          <DocumentViewerSearchComposer
+            className="phone-footer-layer document-viewer-composer"
+            isOpen={Boolean(readyDocument && documentSearchOpen)}
+            onClose={closeDocumentSearch}
+            onSubmit={submitSourceSearch}
+            search={sourceSearch}
+            onSearchChange={setSourceSearch}
+            searchInputRef={sourceSearchInputRef}
+            scrollHidden={composerScrollHidden}
+            onFocusChange={setComposerChromeFocused}
+            canViewSourceDocuments={canViewSourceDocuments}
+            normalizedSearch={normalizedSourceSearch}
+            isPending={documentSearchPending}
+          />
         </>
       )}
     </main>

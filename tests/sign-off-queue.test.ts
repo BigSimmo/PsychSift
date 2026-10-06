@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import formsContentReview from "../data/forms-content-review.json";
 import { loadSignOffQueue, type SignOffFamilyId } from "@/lib/developer-area/sign-off-queue";
 import { formSlug as catalogueFormSlug } from "@/lib/form-catalog";
 import { formPageHref } from "@/lib/form-register";
@@ -21,17 +22,22 @@ import { conceptReviewState } from "@/lib/formulation-review-status";
  * a changed status word, or a data file that moves would make that filter match
  * nothing — and the page would render "0 records awaiting sign-off", which reads
  * as "nothing is outstanding" rather than "the reader stopped working". So the
- * per-family counts are pinned to the numbers measured on 2026-10-02, and the
+ * per-family counts are pinned to the numbers measured on 2026-10-06, and the
  * expectations carry the measurement rather than a range.
  *
  * These numbers are expected to change as records are signed off. A count that
- * has *fallen* is a real event and updating the figure here is the correct fix;
- * a count that has fallen to zero for a whole family is the bug.
+ * has *fallen* is a real event and updating the figure here is the correct fix.
+ * A count that has fallen to zero while the source file still has unsigned
+ * rows is the bug. Forms are empty only because every review row is signed.
  */
 const EXPECTED: Record<SignOffFamilyId, number> = {
-  "wa-mha-forms": 1,
-  // 12 revised mechanisms plus six Indigenous concepts/guides held for governance review.
-  formulation: 18,
+  // Measured 2026-10-06. Form 2, the last drafted form, now has a complete
+  // sign-off, so this family is empty. The empty-family test below still fails
+  // if the review file has an unsigned form and the reader reports none.
+  "wa-mha-forms": 0,
+  // The twelve mechanisms and the non-Indigenous concepts were signed off.
+  // Six Indigenous concepts and guides remain, held for Aboriginal governance review.
+  formulation: 6,
   // 201 exported diagnosis records + 31 presentation workflows, all of which
   // derive `validation_status: unverified` from the same snapshot governance
   // block. The prior hand count of "201" covered the diagnoses only.
@@ -40,7 +46,8 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   dictionary: 401,
   // The 89 written items and universals were signed off; 514 placeholders remain.
   specifiers: 514,
-  therapy: 101,
+  // 54 records were signed off. The 47 that remain have no sign-off tool.
+  therapy: 47,
   // All 93 signable candidates were reviewed; six Indigenous sources remain held.
   sources: 6,
 };
@@ -69,8 +76,27 @@ describe("clinical sign-off queue", () => {
     ).toBe(expected);
   });
 
-  it("never reports an empty family, which would read as 'nothing outstanding'", () => {
+  it("reports an empty family only when its source file has nothing left unsigned", () => {
+    // A reader that stops matching its file reports zero while the file still
+    // has unsigned rows. Forms are the one family that can be empty: every row
+    // in the review file carries a complete sign-off. The other families still
+    // have unsigned records, so an empty list there is still the bug.
+    const reviewForms = (
+      formsContentReview as { forms: { code: string; status: string; reviewedBy?: unknown; reviewedAt?: unknown }[] }
+    ).forms;
+    expect(reviewForms).toHaveLength(54);
+    const unsigned = reviewForms.filter(
+      (entry) =>
+        entry.status !== "reviewed" ||
+        typeof entry.reviewedBy !== "string" ||
+        !entry.reviewedBy.trim() ||
+        !entry.reviewedAt,
+    );
+    const forms = queue.families.find((family) => family.id === "wa-mha-forms");
+    expect(forms?.rows.length, "the forms reader disagrees with the review file").toBe(unsigned.length);
+
     for (const family of queue.families) {
+      if (family.id === "wa-mha-forms") continue;
       expect(family.rows.length, `${family.id} is empty`).toBeGreaterThan(0);
     }
   });
@@ -141,7 +167,10 @@ describe("clinical sign-off queue", () => {
     // should be argued with first.
     const nativeStatusFor = (id: SignOffFamilyId) =>
       queue.families.find((family) => family.id === id)!.rows[0]!.nativeStatus;
-    expect(nativeStatusFor("wa-mha-forms")).toBe("drafted");
+    // Forms have no waiting row. Their vocabulary is still the review file's own word.
+    expect(
+      (formsContentReview as { forms: { status: string }[] }).forms.every((entry) => entry.status === "reviewed"),
+    ).toBe(true);
     expect(nativeStatusFor("formulation")).toBe("clinical_review_required");
     expect(nativeStatusFor("differentials")).toContain("validation_status: unverified");
     expect(nativeStatusFor("dictionary")).toContain("clinicalApproval.status: pending");
@@ -200,8 +229,8 @@ describe("clinical sign-off queue", () => {
     expect(forms, "wa-mha-forms family is missing").toBeDefined();
     expect(
       forms!.rows.map((row) => row.id),
-      "only the subsequently revised form remains unsigned",
-    ).toEqual(["form-2"]);
+      "every form, including the revised Form 2, now has a complete sign-off",
+    ).toEqual([]);
 
     const dead = forms!.rows
       .filter((row) => row.href !== null)

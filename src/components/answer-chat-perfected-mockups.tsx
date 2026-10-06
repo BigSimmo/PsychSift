@@ -374,8 +374,7 @@ export function statusLabel(status: SourceStatus) {
 export function SourceRail({ activeId, onOpen }: { activeId: string | null; onOpen: (id: string) => void }) {
   return (
     <div
-      className="flex gap-1.5 overflow-x-auto pb-1"
-      style={{ scrollbarWidth: "none" }}
+      className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]"
       role="list"
       aria-label="Sources behind this answer"
     >
@@ -404,10 +403,7 @@ export function SourceRail({ activeId, onOpen }: { activeId: string | null; onOp
               {source.index}
             </span>
             <span className="min-w-0">
-              <span
-                style={{ maxWidth: 160 }}
-                className="block truncate text-2xs font-semibold leading-4 text-[color:var(--text-heading)]"
-              >
+              <span className="block max-w-[160px] truncate text-2xs font-semibold leading-4 text-[color:var(--text-heading)]">
                 {source.short}
               </span>
               <span className="block text-3xs leading-4 text-[color:var(--text-muted)]">
@@ -693,10 +689,7 @@ function DrawerPanel({
           </p>
 
           {/* The passage is the reason the drawer exists, so it gets the room. */}
-          <blockquote
-            style={{ borderLeft: "2px solid var(--clinical-accent)" }}
-            className="mt-3 pl-3 text-base-minus leading-prose text-[color:var(--text-heading)]"
-          >
+          <blockquote className="mt-3 border-l-2 border-[color:var(--clinical-accent)] pl-3 text-base-minus leading-prose text-[color:var(--text-heading)]">
             {source.quote}
           </blockquote>
 
@@ -884,7 +877,7 @@ export function Composer({ suggestions = false }: { suggestions?: boolean }) {
   return (
     <div className="shrink-0 border-t border-[color:var(--border)] bg-[color:var(--surface-chrome)] px-3 pb-3 pt-2">
       {suggestions ? (
-        <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+        <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
           {FOLLOW_UPS.map((item) => (
             <button
               key={item}
@@ -901,9 +894,7 @@ export function Composer({ suggestions = false }: { suggestions?: boolean }) {
         </div>
       ) : null}
       <div className="flex items-center gap-2 rounded-full border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] py-1 pl-3.5 pr-1 shadow-[var(--shadow-inset)]">
-        <span style={{ color: "var(--text-placeholder)" }} className="min-w-0 flex-1 truncate text-sm">
-          Ask a follow-up…
-        </span>
+        <span className="min-w-0 flex-1 truncate text-sm text-[color:var(--text-placeholder)]">Ask a follow-up…</span>
         <button
           type="button"
           onClick={() => undefined}
@@ -945,10 +936,7 @@ function ThreadDivider() {
 export function UserTurn() {
   return (
     <div className="flex justify-end">
-      <p
-        style={{ maxWidth: "85%", borderBottomRightRadius: 6 }}
-        className="rounded-2xl bg-[color:var(--clinical-accent-soft)] px-3.5 py-2 text-sm leading-6 text-[color:var(--text-heading)]"
-      >
+      <p className="max-w-[85%] rounded-2xl rounded-br-[var(--radius-sm)] bg-[color:var(--clinical-accent-soft)] px-3.5 py-2 text-sm leading-6 text-[color:var(--text-heading)]">
         {QUESTION}
       </p>
     </div>
@@ -1368,12 +1356,7 @@ export function AnswerChatPerfectedMockupsPage() {
                 <dl className="mt-2 grid gap-1.5">
                   {REMOVED_FROM_DRAWER.map(([gone, instead]) => (
                     <div key={gone} className="grid gap-0.5 border-t border-[color:var(--border)] pt-1.5">
-                      <dt
-                        style={{ textDecoration: "line-through" }}
-                        className="text-2xs font-semibold text-[color:var(--text-muted)]"
-                      >
-                        {gone}
-                      </dt>
+                      <dt className="text-2xs font-semibold text-[color:var(--text-muted)] line-through">{gone}</dt>
                       <dd className="text-2xs leading-5 text-[color:var(--text)]">{instead}</dd>
                     </div>
                   ))}
