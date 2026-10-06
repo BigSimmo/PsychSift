@@ -128,7 +128,10 @@ The worker image build is validated in CI by
 → the **`build-and-verify`** job. It runs `docker build -f Dockerfile.worker`
 (`load: true`, `push: false`) on:
 
-- every push to `main` / `release/**`,
+- every push to `main` / `release/**` that touches a container input (the
+  workflow's `push.paths` list, a superset of the PR classifier's container scope),
+- a daily schedule (a source-only change, such as `src/lib/**`, is rebuilt there
+  and by Railway's own deploy build),
 - pull requests and merge-queue commits whose CI change classifier detects a
   container-affecting file (`Dockerfile.worker`, all `worker/python/**`,
   any other `worker/**` source, `scripts/build-worker.mjs`, dependencies, build
