@@ -104,9 +104,33 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
 });
 
 const user = () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+function setVisibility(state: "visible" | "hidden") {
+  act(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: state });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+function liveReport() {
+  return {
+    id: OPEN,
+    status: "reported",
+    urgent: true,
+    startsAt: tomorrowDay.startsAt,
+    endsAt: tomorrowDay.endsAt,
+    shiftCode: "D",
+    kind: "day",
+    minGrade: null,
+    siteId: null,
+    mine: true,
+    claimedByMe: false,
+  };
+}
 
 async function renderPage() {
   render(<RosterSickPage now={NOW} />);
@@ -143,7 +167,7 @@ it("holds the report for 10 seconds and Undo sends nothing", async () => {
   await user().click(screen.getByTestId("sick-send"));
   expect(screen.getByRole("timer", { name: "10 seconds to undo" })).toBeTruthy();
   expect(screen.getByText("Nothing has gone yet")).toBeTruthy();
-  expect(screen.getByText(/Leave this page in the next 10 seconds/)).toBeTruthy();
+  expect(screen.getByText(/Leave this page or lock your phone and it sends straight away/)).toBeTruthy();
   // The picks are fixed while held.
   expect((screen.getByLabelText(/Tonight · On call/) as HTMLInputElement).disabled).toBe(true);
   await user().click(screen.getByRole("button", { name: "Undo" }));
@@ -175,14 +199,96 @@ it("Send now skips the wait", async () => {
   expect(mocks.post).toHaveBeenCalledTimes(1);
 });
 
-it("leaving the page while held cancels the report", async () => {
+it("leaving the page while held sends it straight away, once, and Take back is offered afterwards", async () => {
   await renderPage();
   await user().click(screen.getByTestId("sick-send"));
+  // The report now exists on the server, so the next read shows it.
+  openShifts = [liveReport()];
   act(() => {
     window.dispatchEvent(new Event("pagehide"));
   });
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+  expect(mocks.post).toHaveBeenCalledWith(SERVICE, { action: "open.report", assignmentId: DAY }, { keepalive: true });
+  setVisibility("hidden");
   await act(async () => {
     vi.advanceTimersByTime(12_000);
+  });
+  // Never twice: not by the hide event, not by the 10 second timer.
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+  setVisibility("visible");
+  expect((await screen.findByTestId("sick-outcome")).textContent).toMatch(
+    /Sent at \d\d:\d\d when you left the page\. Dr Grant is told\. You can still take it back below\./,
+  );
+  const sent = await screen.findByTestId("sick-sent");
+  expect(within(sent).getByRole("button", { name: "Take back" })).toBeTruthy();
+});
+
+it("locking the phone while held sends it straight away", async () => {
+  await renderPage();
+  await user().click(screen.getByTestId("sick-send"));
+  setVisibility("hidden");
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    vi.advanceTimersByTime(12_000);
+  });
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+});
+
+it("leaving this page inside the app while held sends it", async () => {
+  const view = render(<RosterSickPage now={NOW} />);
+  await screen.findByRole("list", { name: "Which shift" });
+  await user().click(screen.getByTestId("sick-send"));
+  view.unmount();
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    vi.advanceTimersByTime(12_000);
+  });
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+});
+
+it("with no connection when it is due, it waits as Not sent yet and goes once when the signal returns", async () => {
+  await renderPage();
+  await user().click(screen.getByTestId("sick-send"));
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  act(() => {
+    window.dispatchEvent(new Event("offline"));
+    window.dispatchEvent(new Event("pagehide"));
+  });
+  expect(mocks.post).not.toHaveBeenCalled();
+  const waiting = screen.getByTestId("sick-waiting");
+  expect(waiting.textContent).toContain("Not sent yet");
+  expect(waiting.textContent).toContain("Wed 7 · Day");
+  // Nothing can be sent twice while it waits.
+  expect(screen.getByTestId("sick-send").getAttribute("aria-disabled")).toBe("true");
+  await act(async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    window.dispatchEvent(new Event("online"));
+  });
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+  expect((await screen.findByTestId("sick-outcome")).textContent).toContain("when your connection came back");
+  await act(async () => {
+    window.dispatchEvent(new Event("online"));
+    vi.advanceTimersByTime(12_000);
+  });
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+});
+
+it("a report waiting for the signal can be dropped with Don't send", async () => {
+  await renderPage();
+  await user().click(screen.getByTestId("sick-send"));
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  act(() => {
+    window.dispatchEvent(new Event("offline"));
+  });
+  await act(async () => {
+    vi.advanceTimersByTime(10_000);
+  });
+  expect(screen.getByTestId("sick-waiting")).toBeTruthy();
+  await user().click(screen.getByTestId("sick-waiting-cancel"));
+  expect(screen.queryByTestId("sick-waiting")).toBeNull();
+  await act(async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    window.dispatchEvent(new Event("online"));
   });
   expect(mocks.post).not.toHaveBeenCalled();
 });
@@ -363,13 +469,49 @@ it("lists own-roster shifts honestly: nobody can be told from here", async () =>
   expect(list.textContent).toContain("PsychSift can't tell anyone. Phone your manager.");
 });
 
-it("copies a message with the shifts only", async () => {
+it("before sending, the copied message names only the picked shift and does not claim a report", async () => {
+  ownShifts = [
+    { id: "own-1", startsAt: "2026-10-07T10:00:00Z", endsAt: "2026-10-07T14:00:00Z", title: "Clinic", workplace: null },
+  ];
   await renderPage();
+  await screen.findByTestId("sick-personal");
+  expect(screen.getByText(/Nothing is sent from here yet/)).toBeTruthy();
+  await user().click(screen.getByTestId("sick-copy"));
+  expect(mocks.copy).toHaveBeenCalledWith(
+    "Hi, I'm unwell and can't work my day shift on Wed 7 (08:00 to 16:30). It isn't reported in PsychSift Roster yet. Could you arrange cover?",
+  );
+  expect(await screen.findByText("Copied")).toBeTruthy();
+});
+
+it("offline, the copied message still does not claim a report", async () => {
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  await renderPage();
+  await user().click(screen.getByTestId("sick-copy"));
+  expect(mocks.copy.mock.calls[0]![0]).not.toMatch(/I've reported/);
+  expect(mocks.copy.mock.calls[0]![0]).toContain("Could you arrange cover?");
+});
+
+it("after the report went through, the copied message says it is reported", async () => {
+  assignments = [tomorrowDay];
+  openShifts = [liveReport()];
+  render(<RosterSickPage now={NOW} />);
+  await screen.findByTestId("sick-sent");
   await user().click(screen.getByTestId("sick-copy"));
   expect(mocks.copy).toHaveBeenCalledWith(
     "Hi, I'm unwell and can't work my day shift on Wed 7 (08:00 to 16:30). I've reported it in PsychSift Roster so it can go on Open shifts.",
   );
-  expect(await screen.findByText("Copied")).toBeTruthy();
+});
+
+it("an own-copy shift gets its own message that asks for cover", async () => {
+  ownShifts = [
+    { id: "own-1", startsAt: "2026-10-07T10:00:00Z", endsAt: "2026-10-07T14:00:00Z", title: "Clinic", workplace: null },
+  ];
+  await renderPage();
+  await user().click(await screen.findByTestId("sick-personal-copy"));
+  const text = mocks.copy.mock.calls[0]![0] as string;
+  expect(text).toContain("(18:00 to 22:00)");
+  expect(text).not.toContain("08:00 to 16:30");
+  expect(text).toContain("It isn't reported in PsychSift Roster yet. Could you arrange cover?");
 });
 
 it("with no shifts today or tomorrow it says so and links My shifts", async () => {
@@ -402,4 +544,58 @@ it("links the agreement for personal leave without stating any entitlement", asy
   const link = screen.getByRole("link", { name: /Check your agreement/ });
   expect(link.getAttribute("href")).toMatch(/^https:\/\/www\.health\.wa\.gov\.au\//);
   expect(document.body.textContent).not.toMatch(/\d+ days? (of )?(personal|sick) leave/i);
+});
+
+it("at 00:30 Wed, today's 08:00 shift is ticked, worded for today, and flagged as short notice", async () => {
+  const afterMidnight = new Date("2026-10-06T16:30:00Z"); // Wed 7 Oct, 00:30 Perth
+  vi.setSystemTime(afterMidnight);
+  const thursday = {
+    ...tomorrowDay,
+    id: "5e000000-0000-4000-8000-000000000012",
+    startsAt: "2026-10-08T00:00:00Z",
+    endsAt: "2026-10-08T08:30:00Z",
+  };
+  assignments = [tomorrowDay, thursday];
+  render(<RosterSickPage now={afterMidnight} />);
+  const picker = await screen.findByRole("list", { name: "Which shift" });
+  expect((within(picker).getByLabelText(/Today · Day/) as HTMLInputElement).checked).toBe(true);
+  expect((within(picker).getByLabelText(/Thu 8 · Day/) as HTMLInputElement).checked).toBe(false);
+  expect(screen.getByRole("heading", { name: "Sick today" })).toBeTruthy();
+  expect(screen.getByTestId("sick-send").textContent).toContain("I'm sick for today's shift");
+  expect(screen.getByTestId("sick-short-notice").textContent).toContain("Today starts in 7 h 30");
+  await user().click(screen.getByTestId("sick-send"));
+  await user().click(screen.getByRole("button", { name: "Send now" }));
+  expect(mocks.post).toHaveBeenCalledWith(SERVICE, { action: "open.report", assignmentId: DAY }, { keepalive: true });
+});
+
+it("a queued report whose shift started before the signal came back says Not sent", async () => {
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  await renderPage();
+  await user().click(screen.getByTestId("sick-queue"));
+  // Wed 08:00 has started by the time the connection returns.
+  vi.setSystemTime(new Date("2026-10-07T00:05:00Z"));
+  await act(async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    window.dispatchEvent(new Event("online"));
+  });
+  expect(screen.getByTestId("sick-outcome").textContent).toContain(
+    "Not sent. The shift has started. Phone your roster manager.",
+  );
+  expect(screen.queryByRole("timer")).toBeNull();
+  expect(mocks.post).not.toHaveBeenCalled();
+});
+
+it("offline, Take back stays reachable but explains why it can't be used", async () => {
+  assignments = [tomorrowDay];
+  openShifts = [liveReport()];
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  render(<RosterSickPage now={NOW} />);
+  const sent = await screen.findByTestId("sick-sent");
+  const button = within(sent).getByRole("button", { name: "Take back" }) as HTMLButtonElement;
+  expect(button.disabled).toBe(false);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  const reason = document.getElementById(button.getAttribute("aria-describedby")!);
+  expect(reason?.textContent).toContain("No connection");
+  await user().click(button);
+  expect(mocks.post).not.toHaveBeenCalled();
 });

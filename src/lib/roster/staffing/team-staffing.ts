@@ -1,4 +1,4 @@
-import { ROSTER_MAX_WINDOW_DAYS, type RosterAssignment } from "@/lib/roster/team/model";
+import { ROSTER_MAX_WINDOW_DAYS, type RosterAssignment, type RosterAssignmentKind } from "@/lib/roster/team/model";
 import { WEEKDAYS, addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 
@@ -7,7 +7,9 @@ import { perthDateOf } from "@/lib/roster/shifts/perth-time";
  *
  * Built from ONE team `assignments` read (at most 62 days, the read's own
  * limit). It counts how many of the team are on each day: distinct people
- * with a working shift (not leave) starting that Perth day.
+ * with a Day or Evening shift (the spec's Day and Late) starting that Perth
+ * day. Night, on call and other work are not counted as people on, and the
+ * strip says so.
  *
  * PsychSift does not hold a team's safe number (how many doctors a day needs).
  * So nothing here judges a day as safe or unsafe. It shows who is on, which day
@@ -16,12 +18,23 @@ import { perthDateOf } from "@/lib/roster/shifts/perth-time";
  * checked", never shown as fine. Nothing is kept on the device.
  */
 
+/** The shift kinds counted as people on: Day and Evening (the spec's "Day and Late by default"). */
+export const STAFFING_COUNTED_KINDS: readonly RosterAssignmentKind[] = ["day", "evening"];
+
+/** What the counts mean, shown with every strip. */
+export const STAFFING_COUNTS_WORDS =
+  "Counts Day and Evening (late) shifts only. Night, on call and other work aren't counted.";
+
+const counted = (row: RosterAssignment) => STAFFING_COUNTED_KINDS.includes(row.kind);
+
 export type StaffingDay = {
   readonly date: string;
-  /** People on, counting you if you work that day. Null when the roster does not reach this day. */
+  /** People on a counted shift, counting you if you work one that day. Null when the roster does not reach this day. */
   readonly on: number | null;
-  /** You have a working shift that day. */
+  /** You have a counted (Day or Evening) shift that day, so leave takes you off the count. */
   readonly youWork: boolean;
+  /** You have any working shift that day, counted or not (a night or on call too). */
+  readonly youRostered?: boolean;
   /** People whose roster row that day is leave. */
   readonly onLeave: number;
 };
@@ -92,10 +105,18 @@ export function staffingDays(
     const rows = byDay.get(date) ?? [];
     const known = options.knownThrough ? date <= options.knownThrough : rows.length > 0;
     const working = new Set(rows.filter((row) => row.kind !== "leave").map(personKey));
+    const on = new Set(rows.filter(counted).map(personKey));
     const leave = new Set(rows.filter((row) => row.kind === "leave").map(personKey));
     for (const person of working) leave.delete(person);
-    const youWork = !!options.actorId && working.has(options.actorId);
-    days.push({ date, on: known ? working.size : null, youWork: known && youWork, onLeave: known ? leave.size : 0 });
+    const youWork = !!options.actorId && on.has(options.actorId);
+    const youRostered = !!options.actorId && working.has(options.actorId);
+    days.push({
+      date,
+      on: known ? on.size : null,
+      youWork: known && youWork,
+      youRostered: known && youRostered,
+      onLeave: known ? leave.size : 0,
+    });
   }
   return days;
 }
@@ -124,7 +145,12 @@ export function leaveStaffing(days: readonly StaffingDay[], leave: StaffingWindo
   const lowest = Math.min(...counts);
   const lowestDays = known.filter((day) => onIfAway(day) === lowest).map((day) => day.date);
   if (unchecked > 0) return { kind: "partial", lowest, lowestDays, unchecked };
-  return { kind: "checked", lowest, lowestDays, yourShifts: known.filter((day) => day.youWork).length };
+  return {
+    kind: "checked",
+    lowest,
+    lowestDays,
+    yourShifts: known.filter((day) => day.youRostered ?? day.youWork).length,
+  };
 }
 
 export type AlternativeDates = StaffingWindow & { readonly lowest: number; readonly counts: number[] };

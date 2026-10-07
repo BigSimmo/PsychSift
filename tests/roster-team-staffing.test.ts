@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  STAFFING_COUNTED_KINDS,
+  STAFFING_COUNTS_WORDS,
   alternativeDates,
   dayCount,
   dayList,
@@ -118,6 +120,42 @@ describe("counting", () => {
       ["2026-10-24", 1, false, 0],
       ["2026-10-25", null, false, 0],
     ]);
+  });
+
+  it("counts only Day and Evening shifts as people on, never night, on call or other work", () => {
+    // Fri 23: three on Day, one on Night and the consultant on call. The spec counts Day and Late.
+    const friday = [
+      shift(person(8), "2026-10-23"),
+      shift(person(2), "2026-10-23"),
+      shift(ME, "2026-10-23", "evening"),
+      shift(person(3), "2026-10-23", "night"),
+      shift(person(5), "2026-10-23", "on_call"),
+      shift(person(6), "2026-10-23", "other"),
+    ];
+    const [day] = staffingDays(
+      friday,
+      { from: "2026-10-23", to: "2026-10-23" },
+      { actorId: ME, knownThrough: "2026-10-31" },
+    );
+    expect(day!.on).toBe(3);
+    expect(day!.youWork).toBe(true);
+    expect(onIfAway(day!)).toBe(2);
+    expect(STAFFING_COUNTED_KINDS).toEqual(["day", "evening"]);
+    expect(STAFFING_COUNTS_WORDS).toMatch(/Day and Evening/);
+    expect(STAFFING_COUNTS_WORDS).not.toMatch(/safe/i);
+  });
+
+  it("your night or on call shift is not taken off the count, but leave still names it as your shift", () => {
+    const rows = [shift(person(8), "2026-10-23"), shift(ME, "2026-10-23", "night")];
+    const days = staffingDays(
+      rows,
+      { from: "2026-10-23", to: "2026-10-23" },
+      { actorId: ME, knownThrough: "2026-10-31" },
+    );
+    expect(days[0]!.on).toBe(1);
+    expect(days[0]!.youWork).toBe(false);
+    const result = leaveStaffing(days, { from: "2026-10-23", to: "2026-10-23" });
+    expect(result).toEqual({ kind: "checked", lowest: 1, lowestDays: ["2026-10-23"], yourShifts: 1 });
   });
 
   it("with no publication, counts only days that hold roster rows", () => {

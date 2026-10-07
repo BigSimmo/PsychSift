@@ -233,7 +233,7 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                     ) : undefined
                   }
                 />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2 sm:grid-cols-2" data-testid="staffing-date-fields">
                   <label className="grid min-w-0 gap-1 text-sm text-[color:var(--text-muted)]">
                     First day
                     <input

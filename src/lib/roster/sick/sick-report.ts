@@ -19,6 +19,9 @@ import type { RosterAssignment, RosterAssignmentKind, RosterOpenShift } from "@/
 /** Below this, the page also asks the doctor to phone: the pool alone may not find cover in time. */
 export const SICK_SHORT_NOTICE_MS = 4 * 3_600_000;
 
+/** A shift starting today from this Perth time is "tonight". */
+const TONIGHT_FROM = "17:00";
+
 export type SickShift = {
   readonly assignmentId: string;
   readonly serviceId: string;
@@ -105,7 +108,7 @@ export function personalOnlyShifts(
 /** `Today`, `Tonight` (today, starting 17:00 or later) or `Wed 7`. */
 export function sickDayWord(startsAt: string, now: Date): string {
   const day = perthDateOf(startsAt);
-  if (day === perthDateOf(now)) return perthTimeOf(startsAt) >= "17:00" ? "Tonight" : "Today";
+  if (day === perthDateOf(now)) return perthTimeOf(startsAt) >= TONIGHT_FROM ? "Tonight" : "Today";
   return `${WEEKDAYS[new Date(`${day}T00:00:00Z`).getUTCDay()]} ${Number(day.slice(8, 10))}`;
 }
 
@@ -132,18 +135,53 @@ export function startsInWords(startsAt: string, now: Date): string {
   return rest === 0 ? `${hours} h` : `${hours} h ${rest}`;
 }
 
+/**
+ * Short notice: the shift starts within the existing four hours, or later the
+ * same Perth day (the spec's "same morning" case, such as 00:30 for an 08:00
+ * start). The doctor is then asked to phone as well.
+ */
 export function isShortNotice(startsAt: string, now: Date): boolean {
-  return Date.parse(startsAt) - now.getTime() < SICK_SHORT_NOTICE_MS;
+  return Date.parse(startsAt) - now.getTime() < SICK_SHORT_NOTICE_MS || perthDateOf(startsAt) === perthDateOf(now);
 }
 
-/** The main button's words for what is picked. */
+/**
+ * The shift ticked when the page opens: the next one that has not started,
+ * judged in Perth time. So between midnight and the start of today's shift,
+ * today's shift comes first (00:30 Wed picks Wed 08:00, not Thu 08:00). Once it
+ * is evening, tonight's shift is offered unticked and tomorrow's is ticked, as
+ * the spec asks, unless there is nothing tomorrow.
+ */
+export function sickDefaultPick<T extends Pick<SickShift, "startsAt">>(
+  pickable: readonly T[],
+  now: Date,
+): T | undefined {
+  const upcoming = pickable.filter((shift) => Date.parse(shift.startsAt) > now.getTime()).sort(byStart);
+  const first = upcoming[0];
+  if (!first) return undefined;
+  const today = perthDateOf(now);
+  if (perthTimeOf(now) >= TONIGHT_FROM && perthDateOf(first.startsAt) === today) {
+    const tomorrow = addDaysToDate(today, 1);
+    return upcoming.find((shift) => perthDateOf(shift.startsAt) === tomorrow) ?? first;
+  }
+  return first;
+}
+
+/** The page title, from the day of what is picked (or offered), never from the clock alone. */
+export function sickPageTitle(shifts: readonly Pick<SickShift, "startsAt">[], now: Date): string {
+  const today = perthDateOf(now);
+  return shifts.length > 0 && shifts.every((shift) => perthDateOf(shift.startsAt) === today)
+    ? "Sick today"
+    : "Sick for tomorrow";
+}
+
+/** The main button's words, matching the day actually picked. */
 export function sickButtonLabel(picked: readonly Pick<SickShift, "startsAt">[], now: Date): string {
   if (picked.length === 0) return "Pick a shift first";
   if (picked.length > 2) return `I'm sick for all ${picked.length}`;
   if (picked.length === 2) return "I'm sick for both";
   const word = sickDayWord(picked[0]!.startsAt, now);
-  if (word === "Today") return "I'm sick today";
-  if (word === "Tonight") return "I'm sick tonight";
+  if (word === "Today") return "I'm sick for today's shift";
+  if (word === "Tonight") return "I'm sick for tonight's shift";
   return "I'm sick for tomorrow";
 }
 
@@ -285,19 +323,39 @@ export const SICK_PHASE_TAG: Record<SickPhase, string> = {
   expired: "Not covered",
 };
 
-/**
- * A short message to send your manager by text if you also phone or message
- * them. It names the shift only: never a reason or any health detail.
- */
-export function sickMessage(shifts: readonly Pick<SickShift, "startsAt" | "endsAt" | "kind">[], now: Date): string {
-  if (shifts.length === 0) return "";
+export type SickMessageShift = Pick<SickShift, "startsAt" | "endsAt" | "kind"> & {
+  /** True only when this shift's report went through and is still live. */
+  readonly reported: boolean;
+};
+
+function shiftWords(shifts: readonly Pick<SickShift, "startsAt" | "endsAt" | "kind">[], now: Date): string {
   const parts = shifts.map((shift) => {
     const word = sickDayWord(shift.startsAt, now);
     const when = word === "Today" || word === "Tonight" ? word.toLowerCase() : `on ${word}`;
     return `${SHIFT_KIND_LABEL[shift.kind].toLowerCase()} shift ${when} (${sickTimes(shift)})`;
   });
-  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-  return `Hi, I'm unwell and can't work my ${list}. I've reported it in PsychSift Roster so it can go on Open shifts.`;
+  return parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+/**
+ * A short message to send your manager by text if you also phone or message
+ * them. It names only the shifts given (the ones the doctor picked or already
+ * reported), never a reason or any health detail. It says "I've reported it"
+ * only for a shift whose report actually went through: before sending, offline
+ * or for a shift that can't be reported, it asks for cover instead.
+ */
+export function sickMessage(shifts: readonly SickMessageShift[], now: Date): string {
+  if (shifts.length === 0) return "";
+  const sorted = [...shifts].sort(byStart);
+  const reported = sorted.filter((shift) => shift.reported);
+  const notYet = sorted.filter((shift) => !shift.reported);
+  const opening = `Hi, I'm unwell and can't work my ${shiftWords(sorted, now)}.`;
+  const it = (list: readonly unknown[]) => (list.length === 1 ? "it" : "them");
+  if (!reported.length)
+    return `${opening} ${notYet.length === 1 ? "It isn't" : "They aren't"} reported in PsychSift Roster yet. Could you arrange cover?`;
+  if (!notYet.length)
+    return `${opening} I've reported ${it(reported)} in PsychSift Roster so ${reported.length === 1 ? "it" : "they"} can go on Open shifts.`;
+  return `${opening} I've reported the ${shiftWords(reported, now)} in PsychSift Roster so ${reported.length === 1 ? "it" : "they"} can go on Open shifts. The ${shiftWords(notYet, now)} ${notYet.length === 1 ? "isn't" : "aren't"} reported there. Could you arrange cover for ${it(notYet)}?`;
 }
 
 // ------------------------------------------------------------------ errors
