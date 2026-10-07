@@ -19,7 +19,7 @@ import { ON_CALL_ADMIN_ROWS_HREF, ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/
  * mockup draws but the app does not have yet is simply not listed.
  */
 
-export type WorkAreaId = "day" | "rost" | "open" | "manage" | "teach" | "assess" | "cpd" | "admin" | "call";
+export type WorkAreaId = "day" | "notify" | "rost" | "open" | "manage" | "teach" | "assess" | "cpd" | "admin" | "call";
 
 /** Names the frame's icon map resolves (`work-frame-icons.ts`). */
 export type WorkFrameIconName =
@@ -82,7 +82,14 @@ export type WorkFrameGate =
   /** Open shifts posters (roster managers), once a read has said so. */
   | "open-shifts-poster"
   /** On Call handbook editors, as the pill's pages sheet decides. */
-  | "on-call-editor";
+  | "on-call-editor"
+  /**
+   * Readers on the new work mode. A link to a new-only route needs no gate (the
+   * route list hides it already); this is for an existing route shown only to them.
+   */
+  | "new-work-mode"
+  /** Readers on the classic work mode: pages the new work mode has replaced. */
+  | "classic-work-mode";
 
 /** Actions a page can register for the More sheet to run. */
 export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
@@ -176,6 +183,8 @@ const myDay: WorkArea = {
           href: "/my-day?view=all",
           paths: ["/my-day"],
           query: { view: "all" },
+          // The new work mode reads this list in Notifications (the address redirects there).
+          gate: "classic-work-mode",
         },
         {
           id: "my-day-favourites",
@@ -203,13 +212,21 @@ const myDay: WorkArea = {
           query: { page: "me" },
         },
         { id: "my-day-reminders", label: "Reminders", sub: "On this phone", icon: "alarm", action: "my-day-reminders" },
+      ],
+    },
+    {
+      label: "Inside My Day",
+      items: [
         {
-          id: "my-day-earlier-alerts",
-          label: "Earlier alerts",
-          sub: "Last 7 days",
-          icon: "history",
-          href: "/my-day/alerts/earlier",
-          band: false,
+          // A new-only route, so the route list keeps it from classic readers. It
+          // carries no gate, so AI Search still lists the Notifications pages.
+          id: "my-day-notifications",
+          label: "Notifications",
+          sub: "To do, earlier, settings",
+          icon: "bell",
+          href: "/my-day/notifications",
+          paths: [],
+          opens: "notify",
         },
       ],
     },
@@ -247,6 +264,8 @@ const myDay: WorkArea = {
           sub: "Brief, quiet hours",
           icon: "bell",
           href: "/my-day/alerts",
+          // The new work mode keeps these settings under Notifications (the address redirects there).
+          gate: "classic-work-mode",
         },
         {
           id: "my-day-privacy",
@@ -267,6 +286,44 @@ const myDay: WorkArea = {
       ],
     },
   ],
+};
+
+/**
+ * Notifications, inside My Day, for the new work mode: the bell's centre as a
+ * page (To do), the alerts that reached this phone (Earlier) and what may
+ * reach it (Settings). Its routes are new-only, so classic readers keep the
+ * bell's sheet and My Day's own Needs you and Alerts pages.
+ */
+const notifications: WorkArea = {
+  id: "notify",
+  name: "Notifications",
+  identity: "my-day",
+  parent: "day",
+  tabs: [
+    {
+      id: "notify-todo",
+      label: "To do",
+      sub: "Overdue first",
+      icon: "inbox",
+      href: "/my-day/notifications",
+      title: "Notifications",
+    },
+    {
+      id: "notify-earlier",
+      label: "Earlier",
+      sub: "Last 7 days",
+      icon: "history",
+      href: "/my-day/notifications/earlier",
+    },
+    {
+      id: "notify-settings",
+      label: "Settings",
+      sub: "Brief, quiet hours",
+      icon: "settings",
+      href: "/my-day/notifications/settings",
+    },
+  ],
+  groups: [{ label: "Help", items: [{ id: "notify-help", label: "Help", icon: "help", action: "work-help" }] }],
 };
 
 const roster: WorkArea = {
@@ -1116,6 +1173,7 @@ const onCall: WorkArea = {
 
 export const WORK_AREAS: Readonly<Record<WorkAreaId, WorkArea>> = {
   day: myDay,
+  notify: notifications,
   rost: roster,
   open: openShifts,
   manage: manageTeam,
@@ -1125,6 +1183,9 @@ export const WORK_AREAS: Readonly<Record<WorkAreaId, WorkArea>> = {
   admin,
   call: onCall,
 };
+
+/** Notifications is a sub-area of My Day: this path and those below it draw its frame. */
+const NOTIFICATIONS_PATH = "/my-day/notifications";
 
 /** Assessments is a sub-area of Teaching: these paths draw its frame, not Teaching's. */
 const ASSESSMENT_PATHS: readonly string[] = ["/teaching/assessments", "/teaching/supervision"];
@@ -1136,7 +1197,7 @@ const ASSESSMENT_PATHS: readonly string[] = ["/teaching/assessments", "/teaching
 export function workAreaFor(modeId: AppModeId, pathname: string): WorkArea | null {
   switch (modeId) {
     case "my-day":
-      return myDay;
+      return pathname === NOTIFICATIONS_PATH || pathname.startsWith(`${NOTIFICATIONS_PATH}/`) ? notifications : myDay;
     case "roster":
       return pathname === "/roster/manage" || pathname.startsWith("/roster/manage/") ? manageTeam : roster;
     case "open-shifts":

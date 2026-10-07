@@ -65,14 +65,17 @@ function useGateOpen(): (gate: WorkFrameGate | undefined) => boolean {
   const roles = useTeachingRoles();
   const poster = useOpenShiftsIsPoster();
   const editor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
+  const newWorkMode = useNewWorkMode();
   return useCallback(
     (gate) => {
       if (!gate) return true;
       if (gate === "teaching-organiser") return roles.some((role) => role === "organiser" || role === "admin");
       if (gate === "open-shifts-poster") return poster === true;
+      if (gate === "new-work-mode") return newWorkMode;
+      if (gate === "classic-work-mode") return !newWorkMode;
       return editor;
     },
-    [roles, poster, editor],
+    [roles, poster, editor, newWorkMode],
   );
 }
 

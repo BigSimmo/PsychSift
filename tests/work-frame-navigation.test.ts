@@ -33,7 +33,7 @@ describe("work frame navigation", () => {
 
   it("links every inner area from its parent's More, and back to that parent", () => {
     const inner = areas.filter((area) => area.parent);
-    expect(inner.map((area) => area.id).sort()).toEqual(["assess", "manage", "open"]);
+    expect(inner.map((area) => area.id).sort()).toEqual(["assess", "manage", "notify", "open"]);
     for (const area of inner) {
       const parent = workAreaParent(area)!;
       const entry = workAreaItems(parent).find((item) => item.opens === area.id);
@@ -55,6 +55,29 @@ describe("work frame navigation", () => {
     expect(workFrameCurrentItem(manage!, "/roster/manage", "?view=team&team=a")?.label).toBe("Team");
     expect(workAreaFor("roster", "/roster/requests")?.id).toBe("rost");
     expect(workAreaFor("open-shifts", "/open-shifts/mine")?.id).toBe("open");
+  });
+
+  // Alerts work, owner approval 7 Oct 2026: one Notifications area inside My Day
+  // (To do, Earlier, Settings) for the new work mode; classic readers keep Needs
+  // you and Alerts in My Day's More.
+  it("draws Notifications inside My Day and keeps My Day's old pages for classic readers", () => {
+    expect(workAreaFor("my-day", "/my-day/notifications")?.id).toBe("notify");
+    expect(workAreaFor("my-day", "/my-day/notifications/earlier")?.id).toBe("notify");
+    expect(workAreaFor("my-day", "/my-day/notificationsx")?.id).toBe("day");
+    expect(workAreaFor("my-day", "/my-day/alerts")?.id).toBe("day");
+    const notify = WORK_AREAS.notify;
+    expect(notify.parent).toBe("day");
+    expect(notify.tabs.map((tab) => [tab.label, tab.href])).toEqual([
+      ["To do", "/my-day/notifications"],
+      ["Earlier", "/my-day/notifications/earlier"],
+      ["Settings", "/my-day/notifications/settings"],
+    ]);
+    const day = workAreaItems(WORK_AREAS.day);
+    const byId = (id: string) => day.find((item) => item.id === id);
+    expect(byId("my-day-notifications")?.opens).toBe("notify");
+    expect(byId("my-day-all")?.gate).toBe("classic-work-mode");
+    expect(byId("my-day-alerts")?.gate).toBe("classic-work-mode");
+    expect(byId("my-day-earlier-alerts")).toBeUndefined();
   });
 
   it("offers the next plain pages from More as extra tabs for wider screens", () => {
