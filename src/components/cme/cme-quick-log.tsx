@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useCmeSample } from "@/components/cme/cme-sample-context";
+import { stillShortCategories } from "@/components/cme/cme-still-short";
 import { CmeEntryForm, type CmeEntryDraft, type CmeEntryFormProps } from "@/components/cme/cme-entry-form";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/components/cme/cme-new-entry-route";
 import { CME_SAVED_NOTICE_MS, CmeSavedLogNotice } from "@/components/cme/cme-saved-log-notice";
@@ -172,6 +173,7 @@ export function CmeQuickLog({
   const today = perthCalendarDate(now);
   const initialDate = today.startsWith(`${set.year}-`) ? today : `${set.year}-01-01`;
   const choices = logAgainChoices(routines, entries, now, initialDate);
+  const stillShort = stillShortCategories(set, entries);
 
   useEffect(() => {
     function handleOpen(event: Event) {
@@ -320,6 +322,7 @@ export function CmeQuickLog({
             existingEntries={entries}
             initialStatedHours={undefined}
             availableDomains={domains}
+            stillShort={stillShort}
             draftStorageKey={selected || sample ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
             stickySave={false}
             actionContainer={actionContainer}

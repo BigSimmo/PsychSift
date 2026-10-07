@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { WaitingOnControls, type WaitingOnValue } from "@/components/cme/cme-drafts-section";
 import { useCmeSample } from "@/components/cme/cme-sample-context";
+import { stillShortCategories } from "@/components/cme/cme-still-short";
 import { CmeEntryForm, type CmeEntryDraft } from "@/components/cme/cme-entry-form";
 import { cn, eyebrowText, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/lib/account-scoped-browser-state";
@@ -244,6 +245,7 @@ export function CmeNewEntryRoute({
           existingEntries={existingEntries}
           initialStatedHours={routine ? null : undefined}
           availableDomains={domains}
+          stillShort={stillShortCategories(set, existingEntries)}
           // A continued account draft is not also mirrored to this tab's storage.
           draftStorageKey={resumeDraft || sample ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
           initialDraft={resumeDraft?.payload}

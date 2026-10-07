@@ -151,6 +151,12 @@ export type CmeEntryFormProps = {
   /** Existing owner entries, used only to ask before a same-day repeat. */
   existingEntries?: readonly CmeEntry[];
   availableDomains?: readonly string[];
+  /**
+   * Categories an hours target this year is still short in, furthest from met
+   * first. Each gets a "Still short" tag on its chip. A hint only: nothing is
+   * preselected, and the tag is absent when the list is empty.
+   */
+  stillShort?: readonly CmeCategory[];
   submitLabel?: string;
   onDirtyChange?: (dirty: boolean) => void;
   /**
@@ -205,6 +211,7 @@ export function CmeEntryForm({
   initialStatedHours,
   existingEntries = [],
   availableDomains = [],
+  stillShort = [],
   submitLabel = "Save entry",
   onDirtyChange,
   draftStorageKey,
@@ -725,12 +732,25 @@ export function CmeEntryForm({
               key={category}
               pressed={mode === category}
               title={cmeCategoryLabels[category]}
+              ariaDescribedBy={stillShort.includes(category) ? `${formId}-still-short-${category}` : undefined}
               onPress={() => {
                 categoryChosenByUser.current = true;
                 setMode(category);
               }}
             >
               {CATEGORY_CHIP_LABELS[category]}
+              {stillShort.includes(category) ? (
+                // Described, not named: the chip is still called by its
+                // category, and a screen reader adds "Still short" after it.
+                <span
+                  aria-hidden="true"
+                  id={`${formId}-still-short-${category}`}
+                  className="work-tag"
+                  data-testid={`cme-entry-still-short-${category}`}
+                >
+                  Still short
+                </span>
+              ) : null}
             </CmeChoiceChip>
           ))}
           <CmeChoiceChip
