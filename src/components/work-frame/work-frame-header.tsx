@@ -31,6 +31,7 @@ import {
 import { useWorkTabPicks } from "@/components/work-frame/work-tab-picks";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
 import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";
+import { useAuthSession } from "@/lib/supabase/client";
 import type { AppModeId } from "@/lib/app-modes";
 import {
   WORK_TAB_PICKS_MAX,
@@ -67,6 +68,8 @@ function useGateOpen(): (gate: WorkFrameGate | undefined) => boolean {
   const poster = useOpenShiftsIsPoster();
   const editor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
   const newWorkMode = useNewWorkMode();
+  const authStatus = useAuthSession().status;
+  const signedIn = authStatus === "authenticated" || authStatus === "expired";
   return useCallback(
     (gate) => {
       if (!gate) return true;
@@ -74,9 +77,10 @@ function useGateOpen(): (gate: WorkFrameGate | undefined) => boolean {
       if (gate === "open-shifts-poster") return poster === true;
       if (gate === "new-work-mode") return newWorkMode;
       if (gate === "classic-work-mode") return !newWorkMode;
+      if (gate === "signed-out") return !signedIn;
       return editor;
     },
-    [roles, poster, editor, newWorkMode],
+    [roles, poster, editor, newWorkMode, signedIn],
   );
 }
 
