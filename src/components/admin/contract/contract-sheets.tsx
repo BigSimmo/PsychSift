@@ -413,7 +413,7 @@ export function ContractAskSheet({
       testId="admin-contract-ask"
       footer={
         <div className="grid gap-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-2 min-[360px]:grid-cols-2">
             <Button
               variant="secondary"
               icon={Copy}

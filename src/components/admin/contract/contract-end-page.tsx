@@ -488,7 +488,8 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                 />
                 <span>{contractPanelLine(status)}</span>
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              {/* Two buttons side by side from 360 px; stacked on the narrowest phones so neither label is cut. */}
+              <div className="grid gap-2 min-[360px]:grid-cols-2">
                 {status.daysLeft < 0 ? (
                   canWrite ? (
                     <Button variant="primary" onClick={() => setSheet("renew")} testId="admin-contract-renew-open">

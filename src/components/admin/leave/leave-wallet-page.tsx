@@ -418,7 +418,7 @@ function OpenCard({
             {gaps === 1 ? "1 gap to fill" : `${gaps} gaps to fill`}. You can still copy it and fill them in your email.
           </p>
         ) : null}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2 min-[360px]:grid-cols-2">
           <Button
             variant="secondary"
             icon={PenLine}

@@ -291,6 +291,12 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
   const [failure, setFailure] = useState<string | null>(null);
   const [signInOpen, setSignInOpen] = useState(false);
   const undoId = useRef(0);
+  // The entries as they are now, for an Undo that runs up to ten seconds after the save: anything changed in
+  // between (another date saved, a reload) must survive the Undo.
+  const entriesRef = useRef(state.entries);
+  useEffect(() => {
+    entriesRef.current = state.entries;
+  }, [state.entries]);
 
   // A link from search lands on the words with the word already typed.
   useEffect(() => {
@@ -312,7 +318,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
         label: starterSavedLine(title, input.date, input.leadTimeDays),
         run: async () => {
           await deleteEntry(saved.id);
-          cacheOnCallEntries(state.entries.filter((entry) => entry.id !== saved.id));
+          cacheOnCallEntries(entriesRef.current.filter((entry) => entry.id !== saved.id));
         },
       });
       return null;
@@ -366,7 +372,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
             How the hospital works, the words people use, your own dates in one place, and who to ask. General guidance:
             your hospital&apos;s orientation is the final word.
           </p>
-          <nav aria-label="On this page" className="grid grid-cols-2 gap-2">
+          <nav aria-label="On this page" className="grid gap-2 min-[360px]:grid-cols-2">
             {JUMPS.map((jump) => (
               <a
                 key={jump.href}

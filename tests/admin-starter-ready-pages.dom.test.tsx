@@ -37,7 +37,8 @@ const entryState = vi.hoisted(() => ({
 }));
 const cacheOnCallEntries = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/on-call/entry-store", () => ({
-  useOnCallEntries: () => entryState,
+  // Like the real store, each read is its own snapshot, so a closure kept from an earlier render goes stale.
+  useOnCallEntries: () => ({ ...entryState }),
   cacheOnCallEntries: (entries: OnCallEntry[]) => cacheOnCallEntries(entries),
 }));
 
@@ -136,6 +137,25 @@ describe("StarterPackPage", () => {
     expect(calls.find((call) => call.method === "POST")?.url).toBe("/api/on-call/entries");
     fireEvent.click(screen.getByTestId("admin-starter-undo-undo"));
     await waitFor(() => expect(calls.some((call) => call.method === "DELETE")).toBe(true));
+  });
+
+  it("keeps a change made during the ten seconds when Undo removes the new date", async () => {
+    const view = render(<StarterPackPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-starter-add-first"));
+    fireEvent.click(screen.getByTestId("admin-starter-kind-visa-end"));
+    fireEvent.change(screen.getByTestId("admin-starter-date-date"), { target: { value: "2027-01-14" } });
+    fireEvent.click(screen.getByTestId("admin-starter-date-save"));
+    await waitFor(() => expect(screen.getByTestId("admin-starter-undo")).toBeTruthy());
+    const firstWrite = cacheOnCallEntries.mock.calls[0]?.[0] as OnCallEntry[];
+    const saved = firstWrite[firstWrite.length - 1]!;
+    // Something else lands in the entries before Undo is pressed.
+    const other = contractRow();
+    entryState.entries = [saved, other];
+    view.rerender(<StarterPackPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-starter-undo-undo"));
+    await waitFor(() => expect(cacheOnCallEntries).toHaveBeenCalledTimes(2));
+    const afterUndo = cacheOnCallEntries.mock.calls[1]?.[0] as OnCallEntry[];
+    expect(afterUndo.map((entry) => entry.id)).toEqual([other.id]);
   });
 
   it("suggests a missing word as a copied note, after the patient-detail catch", async () => {
