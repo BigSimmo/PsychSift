@@ -92,7 +92,9 @@ export function resolveWorkModeLaunch({
   // Relaxed (dev, tests, offline browser build) has no signed-in user to check, so
   // the whole device counts as the preview audience there.
   const previewAudience = relaxed || isWorkModePreviewUser(user, environment);
-  const classicPreferred = preference === WORK_MODE_CLASSIC_PREFERENCE;
+  // A live version tester switches with the live version switch instead, and Settings hides the
+  // classic row from them, so a classic cookie left from before can never strand them.
+  const classicPreferred = preference === WORK_MODE_CLASSIC_PREFERENCE && !isLiveVersionTester(user, environment);
   const live = resolveLiveVersion({ user, environment, choice: liveVersion });
   const audienceAllowed = setting === "everyone" || (setting === "preview" && previewAudience && live.newest);
   const newWorkMode = audienceAllowed && !classicPreferred;

@@ -17,7 +17,8 @@ A tester sees **Settings, App preferences, Live version** with two choices:
 in, the account is not a tester yet. Nobody else sees the row, and a cookie set by
 hand changes nothing for them.
 
-The choice is a device cookie (`psychsift-live-version`). Changing it reloads the
+For a tester the switch replaces the older "Hide new work screens" row, and any
+classic cookie left from it is ignored. The choice is a device cookie (`psychsift-live-version`). Changing it reloads the
 page. Sign-out clears it through `clearAccountScopedBrowserStorage`.
 
 ## Landing new work behind it

@@ -57,6 +57,21 @@ describe("live version switch", () => {
     );
   });
 
+  it("never strands a tester behind an old Hide new work screens choice", () => {
+    const stale = resolveWorkModeLaunch({
+      user: admin,
+      environment: PROD,
+      preference: "classic",
+      liveVersion: "newest",
+    });
+    expect(stale).toMatchObject({ newWorkMode: true, classicPreferred: false });
+    // Everyone else keeps the classic rollback.
+    const launched = { ...PROD, WORK_MODE_LAUNCH: "everyone" };
+    expect(resolveWorkModeLaunch({ user: doctor, environment: launched, preference: "classic" }).newWorkMode).toBe(
+      false,
+    );
+  });
+
   it("keeps feature ids unique and dated", () => {
     const ids = LIVE_PREVIEW_FEATURES.map((feature) => feature.id);
     expect(new Set(ids).size).toBe(ids.length);

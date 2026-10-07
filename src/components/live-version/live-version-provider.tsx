@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, type ReactNode } from "react";
 
+import { writeClassicWorkModePreference } from "@/components/work-mode-launch/use-classic-work-mode";
 import type { LivePreviewFeatureId } from "@/lib/live-version/features";
 import {
   LIVE_VERSION_COOKIE,
@@ -64,6 +65,8 @@ export function useLiveVersionSwitch(): {
   const { available, newest } = useLiveVersion();
   const setChoice = useCallback((choice: LiveVersionChoice) => {
     writeLiveVersionChoice(choice);
+    // The older "Hide new work screens" choice is superseded for a tester: tidy it away.
+    writeClassicWorkModePreference(false);
     window.location.reload();
   }, []);
   return { available, choice: newest ? LIVE_VERSION_NEWEST : LIVE_VERSION_EVERYONE, setChoice };
