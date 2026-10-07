@@ -8,10 +8,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider } from "@/components/ui/toast";
 import { ACCOUNT_TRANSITION_EVENT } from "@/lib/account-scoped-browser-state";
-import { ADMIN_PAPERWORK_STORAGE_KEY } from "@/lib/work-screens/admin/paperwork-store";
+import { ADMIN_PAPERWORK_STORAGE_KEY, forgetAdminPaperworkOnDevice } from "@/lib/work-screens/admin/paperwork-store";
 import { complianceFixture } from "./helpers/on-call-entry-fixture";
 
 const search = vi.hoisted(() => ({ params: new URLSearchParams() }));
+const clipboard = vi.hoisted(() => ({ copy: vi.fn(async (text: string) => void text) }));
+vi.mock("@/lib/copy-to-clipboard", () => ({ copyTextToClipboard: clipboard.copy }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin/sharing",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
@@ -83,7 +85,9 @@ function stored(): Record<string, unknown> | null {
 }
 
 beforeEach(() => {
+  forgetAdminPaperworkOnDevice();
   window.localStorage.clear();
+  clipboard.copy.mockClear();
   storeState.entries = [];
   storeState.loading = false;
   storeState.isOffline = false;
@@ -97,6 +101,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 describe("Admin Sharing", () => {
@@ -295,5 +300,146 @@ describe("Admin work screens keep device storage in one module", () => {
         /\b(?:localStorage|sessionStorage|indexedDB)\b/.test(readFileSync(file, "utf8")),
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("Adversarial review fixes", () => {
+  function newRequest(title: string, note = "") {
+    fireEvent.click(screen.getByTestId("admin-requests-new"));
+    const sheet = screen.getByTestId("admin-requests-sheet");
+    fireEvent.change(within(sheet).getByTestId("admin-requests-title"), { target: { value: title } });
+    fireEvent.change(within(sheet).getByTestId("admin-requests-asked-for"), { target: { value: "2026-11-06" } });
+    if (note) fireEvent.change(within(sheet).getByTestId("admin-requests-note"), { target: { value: note } });
+    fireEvent.click(within(sheet).getByTestId("admin-requests-sheet-save"));
+  }
+
+  it("will not send a health reason to Medical Workforce, even when the To field is changed back", () => {
+    withToasts(<AdminRequestsPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-requests-new"));
+    fireEvent.change(screen.getByTestId("admin-requests-title"), { target: { value: "Fit test" } });
+    fireEvent.change(screen.getByTestId("admin-requests-asked-for"), { target: { value: "2026-11-06" } });
+    fireEvent.change(screen.getByTestId("admin-requests-email-address"), { target: { value: "mw@health.example" } });
+    fireEvent.click(screen.getByTestId("admin-requests-reason-health-reason"));
+    expect((screen.getByTestId("admin-requests-email-address") as HTMLInputElement).value).toBe("");
+    fireEvent.change(screen.getByTestId("admin-requests-to"), { target: { value: "Medical Workforce" } });
+    expect(screen.getByTestId("admin-requests-sheet").textContent).toContain(
+      "A health reason goes to Staff Health only.",
+    );
+    fireEvent.click(screen.getByTestId("admin-requests-sheet-save"));
+    expect(stored()).toBeNull();
+  });
+
+  it("keeps the note when a draft is edited", () => {
+    withToasts(<AdminRequestsPage now={NOW} />);
+    newRequest("Manual handling", "Booked for the next course");
+    fireEvent.click(screen.getByTestId("admin-requests-edit"));
+    expect((screen.getByTestId("admin-requests-note") as HTMLTextAreaElement).value).toBe("Booked for the next course");
+    fireEvent.click(screen.getByTestId("admin-requests-sheet-save"));
+    const saved = (stored()?.requests as { message: string }[])[0]!;
+    expect(saved.message).toContain("Booked for the next course");
+  });
+
+  it("Undo of a removal puts that request back without dropping one added since", () => {
+    withToasts(<AdminRequestsPage now={NOW} />);
+    newRequest("First");
+    fireEvent.click(screen.getByTestId("admin-requests-remove"));
+    newRequest("Second");
+    const toast = screen.getByText("Request removed").closest(".app-toast") as HTMLElement;
+    fireEvent.click(within(toast).getByRole("button", { name: "Undo" }));
+    expect((stored()?.requests as { title: string }[]).map((request) => request.title).sort()).toEqual([
+      "First",
+      "Second",
+    ]);
+  });
+
+  it("copies a request once on a double tap", async () => {
+    withToasts(<AdminRequestsPage now={NOW} />);
+    newRequest("Manual handling");
+    const copy = screen.getByTestId("admin-requests-copy");
+    await act(async () => {
+      fireEvent.click(copy);
+      fireEvent.click(copy);
+    });
+    expect(clipboard.copy).toHaveBeenCalledTimes(1);
+    expect((stored()?.requests as { status: string }[])[0]!.status).toBe("sent");
+  });
+
+  it("copies nothing from the signed-out sample pack, and notes no send", async () => {
+    storeState.signedOut = true;
+    withToasts(<AdminSharingPage now={NOW} />);
+    const logRows = screen.queryAllByTestId("admin-sharing-log-row").length;
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("admin-sharing-workforce-copy"));
+    });
+    expect(clipboard.copy).not.toHaveBeenCalled();
+    expect(screen.getByText(/This is an example, so nothing was copied, sent or saved/)).toBeTruthy();
+    expect(screen.queryAllByTestId("admin-sharing-log-row")).toHaveLength(logRows);
+  });
+
+  it("will not copy a pack whose renewal issuer looks like a patient detail", async () => {
+    storeState.entries = [
+      complianceFixture(
+        "Medical registration renewal",
+        {
+          category: "Registration",
+          expiresOn: "2027-09-30",
+          requirementId: "medical-registration-renewal",
+          issuingBody: "Pt John Smith",
+        },
+        { isOwn: true },
+      ),
+    ];
+    withToasts(<AdminSharingPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-sharing-switch-registration"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("admin-sharing-workforce-copy"));
+    });
+    expect(clipboard.copy).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/Nothing was copied or sent/).length).toBeGreaterThan(0);
+  });
+
+  it("keeps a change on screen and says so when the phone refuses to save", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError");
+    });
+    withToasts(<AdminDocumentsPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-documents-add"));
+    fireEvent.change(screen.getByTestId("admin-documents-title"), { target: { value: "Employment contract" } });
+    fireEvent.click(screen.getByTestId("admin-documents-save"));
+    expect(screen.getAllByTestId("admin-documents-row")).toHaveLength(1);
+    expect(screen.getByTestId("admin-documents-storage").textContent).toContain("last only until you close this page");
+  });
+
+  it("opens the doctor's own link for a document", () => {
+    withToasts(<AdminDocumentsPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-documents-add"));
+    fireEvent.change(screen.getByTestId("admin-documents-title"), { target: { value: "Contract" } });
+    fireEvent.change(screen.getByTestId("admin-documents-url"), {
+      target: { value: "https://drive.example/contract" },
+    });
+    fireEvent.click(screen.getByTestId("admin-documents-save"));
+    fireEvent.click(screen.getByTestId("admin-documents-row"));
+    const link = screen.getByTestId("admin-documents-open-link");
+    expect(link.getAttribute("href")).toBe("https://drive.example/contract");
+    expect(link.getAttribute("rel")).toContain("noopener");
+  });
+
+  it("refuses an amount with a comma as the decimal point", () => {
+    withToasts(<AdminTaxPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-tax-add"));
+    fireEvent.change(screen.getByTestId("admin-tax-title"), { target: { value: "College fee" } });
+    fireEvent.change(screen.getByTestId("admin-tax-amount"), { target: { value: "12,50" } });
+    fireEvent.click(screen.getByTestId("admin-tax-save"));
+    expect(screen.getByTestId("admin-tax-sheet").textContent).toContain("Type the amount");
+    expect(stored()).toBeNull();
+  });
+
+  it("uses flat row buttons, never glass, inside cards", () => {
+    withToasts(<AdminTaxPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-tax-add"));
+    fireEvent.change(screen.getByTestId("admin-tax-title"), { target: { value: "Textbook" } });
+    fireEvent.change(screen.getByTestId("admin-tax-amount"), { target: { value: "25" } });
+    fireEvent.click(screen.getByTestId("admin-tax-save"));
+    expect(screen.getByTestId("admin-tax-remove").className).not.toContain("work-glass-button");
   });
 });

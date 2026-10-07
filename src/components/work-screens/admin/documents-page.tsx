@@ -40,12 +40,14 @@ import {
   PaperworkFootNote,
   PaperworkOfflineNote,
   PaperworkSampleNotice,
+  PaperworkStorageNote,
   PaperworkUnsavedNote,
   usePaperworkHeading,
   usePaperworkPage,
   usePaperworkSay,
 } from "@/components/work-screens/admin/paperwork-shared";
 import { downloadTextFile } from "@/lib/admin/download-file";
+import { isOnCallHttpUrl } from "@/lib/on-call/entry-model";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import {
@@ -63,9 +65,12 @@ import {
 } from "@/lib/work-screens/admin/documents";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { documentsSample, isExampleRecord, withoutExampleRecords } from "@/lib/work-screens/admin/sample";
+import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   DOCUMENT_FOLDERS,
+  dropRecord,
   newPaperworkId,
+  putBack,
   type AdminDocument,
   type AdminPaperwork,
 } from "@/lib/work-screens/admin/paperwork-model";
@@ -110,7 +115,6 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
   }
   function save(draft: DocumentDraft, existing: AdminDocument | null) {
     const saved = documentFromDraft(draft, existing?.id ?? newPaperworkId("doc"), existing?.addedOn ?? today);
-    const before = documents;
     const ok = change((current) => ({
       ...current,
       documents: existing
@@ -119,16 +123,34 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
     }));
     if (!ok) return;
     setEditing(null);
+    // Undo touches this one document only, never a change made since.
     say(existing ? "Document saved" : `${saved.title} added`, () =>
-      change((current) => ({ ...current, documents: before })),
+      change((current) => ({
+        ...current,
+        documents: existing ? putBack(current.documents, existing) : dropRecord(current.documents, saved.id),
+      })),
     );
   }
   function remove(document: AdminDocument) {
-    const before = documents;
-    if (!change((current) => ({ ...current, documents: current.documents.filter((item) => item.id !== document.id) })))
-      return;
+    const index = documents.findIndex((item) => item.id === document.id);
+    if (!change((current) => ({ ...current, documents: dropRecord(current.documents, document.id) }))) return;
     setEditing(null);
-    say(`${document.title} removed`, () => change((current) => ({ ...current, documents: before })));
+    say(`${document.title} removed`, () =>
+      change((current) => ({ ...current, documents: putBack(current.documents, document, index) })),
+    );
+  }
+  function saveList() {
+    const own = withoutExampleRecords(documents);
+    const problem = firstAdminPatientProblem(
+      own.flatMap((document) => [document.title, document.keptAt, document.note, document.url]),
+      { allowCapitals: true },
+    );
+    if (problem) {
+      say(`${problem.title} in your list. Nothing was saved. Edit that document first.`, undefined, "warning");
+      return;
+    }
+    downloadTextFile(documentsListText(own, today), `psychsift-documents-${today}.txt`, "text/plain;charset=utf-8");
+    say("List saved. It has no files in it, only where they are");
   }
 
   return (
@@ -144,6 +166,7 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
         </PaperworkOfflineNote>
       ) : null}
       {failed ? <PaperworkUnsavedNote testId="admin-documents-unsaved" /> : null}
+      <PaperworkStorageNote store={store} testId="admin-documents-storage" />
 
       {record === null ? (
         <ModeModuleSkeleton rows={4} twoLine eyebrow testId="admin-documents-loading" />
@@ -240,15 +263,7 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
           )}
 
           {withoutExampleRecords(documents).length > 0 ? (
-            <WorkButton
-              variant="secondary"
-              icon={Download}
-              onClick={() => {
-                downloadTextFile(documentsListText(documents, today), `my-documents-${today}.txt`, "text/plain");
-                say("List saved. It has no files in it, only where they are");
-              }}
-              testId="admin-documents-download"
-            >
+            <WorkButton variant="secondary" icon={Download} onClick={saveList} testId="admin-documents-download">
               Save the list
             </WorkButton>
           ) : null}
@@ -400,6 +415,21 @@ function DocumentSheet({
           >
             Save
           </WorkButton>
+          {document?.url && isOnCallHttpUrl(document.url) ? (
+            <a
+              href={document.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="work-button"
+              data-variant="secondary"
+              data-size="wide"
+              data-testid="admin-documents-open-link"
+            >
+              <ExternalLink aria-hidden="true" strokeWidth={2} />
+              Open your copy
+              <span className="sr-only">, opens in a new tab</span>
+            </a>
+          ) : null}
           {onRemove ? (
             <WorkButton size="wide" variant="quiet" icon={Trash2} onClick={onRemove} testId="admin-documents-remove">
               Remove from the list

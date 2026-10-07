@@ -1,7 +1,7 @@
 "use client";
 
-import { CloudOff, Lock, TriangleAlert } from "lucide-react";
-import { useEffect, useId, useMemo, type ReactNode } from "react";
+import { CloudOff, Lock, TriangleAlert, type LucideIcon } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
@@ -22,6 +22,9 @@ import {
   useAdminPaperwork,
   type AdminPaperworkStore,
 } from "@/lib/work-screens/admin/paperwork-store";
+
+/** What the page says when an example record would be copied, sent or saved to a file. */
+export const EXAMPLE_NOT_SENT = "This is an example, so nothing was copied, sent or saved. Sign in to use your own.";
 
 /** Ten seconds to change your mind, Admin's standard for a reversible change. */
 export const PAPERWORK_UNDO_MS = 10_000;
@@ -122,13 +125,75 @@ export function PaperworkFootNote({ children, testId }: { readonly children: Rea
   );
 }
 
-/** Storage refused: changes last for this visit only. */
+/** A change that would not read back (too long, or a field out of range): nothing was saved. */
 export function PaperworkUnsavedNote({ testId }: { readonly testId: string }) {
   return (
     <p role="alert" data-testid={testId} className="text-sm text-[color:var(--text)]">
       That change could not be saved. Check what you typed and try again.
     </p>
   );
+}
+
+/** The browser refused to save (storage blocked or full): changes last until the page is closed. */
+export function PaperworkStorageNote({
+  store,
+  testId,
+}: {
+  readonly store: AdminPaperworkStore;
+  readonly testId: string;
+}) {
+  if (!store.unsaved) return null;
+  return (
+    <p role="alert" data-testid={testId} className="text-sm text-[color:var(--text)]">
+      This phone would not save your changes, so they last only until you close this page. Free some space or allow site
+      storage, then try again.
+    </p>
+  );
+}
+
+/** A flat 48 px icon button for a row action. Glass is for floating controls only. */
+export function PaperworkIconButton({
+  icon: Icon,
+  label,
+  onClick,
+  testId,
+}: {
+  readonly icon: LucideIcon;
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly testId: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      data-testid={testId}
+      className={cn(
+        focusRing,
+        "inline-grid size-12 shrink-0 place-items-center rounded-full text-[color:var(--text-muted)]",
+      )}
+    >
+      <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+    </button>
+  );
+}
+
+/**
+ * Runs an async action once at a time, so a double tap on Copy copies once,
+ * marks sent once and shows one toast.
+ */
+export function useSingleFlight() {
+  const busy = useRef(false);
+  return useCallback(async (action: () => Promise<void>) => {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await action();
+    } finally {
+      busy.current = false;
+    }
+  }, []);
 }
 
 /* ----------------------------------------------------------- controls */

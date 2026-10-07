@@ -39,6 +39,14 @@ import {
 } from "@/lib/work-screens/admin/sample";
 import { ATO_LINKS, financialYearKey, parseDollars, taxPackCsv } from "@/lib/work-screens/admin/tax";
 import { decideExtension, filterDoctors, WORKFORCE_SAMPLE_LABEL } from "@/lib/work-screens/admin/workforce-sample";
+import { dropRecord, putBack } from "@/lib/work-screens/admin/paperwork-model";
+import { withoutStoredExamples } from "@/lib/work-screens/admin/paperwork-store";
+import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
+import { editedRequest, isEmailAddress } from "@/lib/work-screens/admin/requests";
+import { sharePackOwnWords } from "@/lib/work-screens/admin/sharing";
+import { hoursForField } from "@/lib/work-screens/admin/pay";
+import { csvCell, CSV_BOM, taxPackFileName } from "@/lib/work-screens/admin/tax";
+import { complianceFixture } from "./helpers/on-call-entry-fixture";
 
 const NOW = new Date("2026-10-07T01:00:00Z");
 
@@ -292,5 +300,135 @@ describe("Example records", () => {
 describe("Official links", () => {
   it("points at the top-level ATO page only", () => {
     expect(ATO_LINKS.map((link) => link.href)).toEqual(["https://www.ato.gov.au/"]);
+  });
+});
+
+describe("Adversarial review fixes", () => {
+  it("keeps a health reason with Staff Health only, whatever the To field says", () => {
+    expect(validateRequestDraft(draft({ reason: "Health reason", to: "Medical Workforce" })).to).toBe(
+      "A health reason goes to Staff Health only.",
+    );
+    expect(validateRequestDraft(draft({ reason: "Health reason", to: "Dr Ada Example" })).to).toBeTruthy();
+    expect(validateRequestDraft(draft({ reason: "Health reason", to: "staff health " })).to).toBeUndefined();
+    expect(validateRequestDraft(draft({ reason: "Course full", to: "Medical Workforce" })).to).toBeUndefined();
+  });
+
+  it("checks a typed email address before it goes in a draft", () => {
+    expect(validateRequestDraft({ ...draft(), email: "workforce@" }).email).toBe("Check the email address.");
+    expect(validateRequestDraft({ ...draft(), email: "" }).email).toBeUndefined();
+    expect(isEmailAddress(" mw@health.example ")).toBe(true);
+  });
+
+  it("keeps the reason and note, so Edit rebuilds the same message, and a cleared field stays cleared", () => {
+    const first = newRequest(draft({ note: "Next course is full too" }), "req-x", "2026-10-01");
+    expect(first.reason).toBe("Course full");
+    expect(first.note).toBe("Next course is full too");
+    expect(isValidPaperwork({ ...emptyPaperwork(), requests: [first] })).toBe(true);
+    const edited = editedRequest(
+      first,
+      newRequest(draft({ reason: null, note: "", dueOn: "" }), "req-x", "2026-10-02"),
+    );
+    expect(edited.reason).toBeUndefined();
+    expect(edited.note).toBeUndefined();
+    expect(edited.dueOn).toBeUndefined();
+    expect(edited.createdOn).toBe("2026-10-01");
+  });
+
+  it("undoes one record without undoing a change made since", () => {
+    const a = { id: "a", v: 1 };
+    const b = { id: "b", v: 1 };
+    const c = { id: "c", v: 1 };
+    const afterRemove = dropRecord([a, b, c], "b");
+    const changedSince = afterRemove.map((item) => (item.id === "c" ? { ...item, v: 2 } : item));
+    expect(putBack(changedSince, b, 1)).toEqual([a, b, { id: "c", v: 2 }]);
+    expect(putBack([a, { id: "b", v: 9 }], b)).toEqual([a, b]);
+  });
+
+  it("never writes an example record to the device", () => {
+    const own = { id: "doc-own", title: "Own", folder: "contracts" as const, addedOn: "2026-10-07" };
+    const kept = withoutStoredExamples({
+      ...emptyPaperwork(),
+      requests: requestsSample().requests,
+      sharing: sharingSample().sharing,
+      documents: [...documentsSample().documents, own],
+      payslips: paySample().payslips,
+      tax: taxSample().tax,
+    });
+    expect(kept.documents.map((doc) => doc.id)).toEqual(["doc-own"]);
+    expect(kept.requests).toEqual([]);
+    expect(kept.payslips).toEqual([]);
+    expect(kept.sharing.log).toEqual([]);
+    expect(kept.tax["2026"]!.expenses).toEqual([]);
+    expect(kept.tax["2026"]!.ticks["income-statement"]).toBe(true);
+  });
+
+  it("cuts a long email draft at a whole line, never inside an emoji, and says to attach the file", () => {
+    const pack = {
+      audience: "workforce" as const,
+      to: "MW",
+      subject: "My compliance records",
+      groups: [],
+      itemCount: 1,
+      text: `${"a".repeat(MAILTO_BODY_LIMIT - 1)}\u{1F600}${"b".repeat(50)}`,
+    };
+    expect(() => shareMailtoHref(pack, undefined)).not.toThrow();
+    const lined = { ...pack, text: `line one\n${"x".repeat(MAILTO_BODY_LIMIT)}` };
+    const body = decodeURIComponent(shareMailtoHref(lined, undefined).split("body=")[1]!);
+    expect(body.startsWith("line one\n\nThe list is longer than an email draft can hold.")).toBe(true);
+    expect(body).toContain("Save the file in PsychSift and attach it.");
+  });
+
+  it("checks the doctor's own words in a pack, not its printed dates", () => {
+    const entry = complianceFixture(
+      "Medical registration renewal",
+      {
+        category: "Registration",
+        expiresOn: "2027-09-30",
+        requirementId: "medical-registration-renewal",
+        issuingBody: "Pt John Smith",
+      },
+      { isOwn: true },
+    );
+    const overview = buildComplianceOverview(ADMIN_REQUIREMENTS_CATALOGUE, [entry], NOW, null);
+    const views = shareGroupViews(overview, { groups: { registration: true }, recipient: "MW", log: [] });
+    const words = sharePackOwnWords(views, "workforce");
+    expect(words).toContain("Pt John Smith");
+    expect(firstAdminPatientProblem(words, { allowCapitals: true })).not.toBeNull();
+    expect(sharePackOwnWords(views, "staff-health")).toEqual([]);
+    expect(firstAdminPatientProblem(["Ahpra", undefined, ""], { allowCapitals: true })).toBeNull();
+  });
+
+  it("fills roster hours the field can read back", () => {
+    expect(hoursForField(22 / 3)).toBe("7.33");
+    expect(parseHours(hoursForField(22 / 3))).toBeCloseTo(7.33);
+    expect(hoursForField(80)).toBe("80");
+    expect(hoursForField(Number.NaN)).toBe("");
+  });
+
+  it("refuses a comma used as a decimal point instead of reading $1,250", () => {
+    expect(parseDollars("12,50")).toBeNull();
+    expect(parseDollars("1,03")).toBeNull();
+    expect(parseDollars("1,034.50")).toBe(103450);
+    expect(parseDollars("$ 146")).toBe(14600);
+  });
+
+  it("writes a CSV Excel reads as UTF-8, with tab and return formulas defused", () => {
+    expect(csvCell("\t=1+1")).toBe("'\t=1+1");
+    expect(csvCell("\r=1+1")).toBe('"\'\r=1+1"');
+    expect(csvCell("a\rb")).toBe('"a\rb"');
+    const csv = taxPackCsv(
+      {
+        ticks: {},
+        expenses: [
+          { id: "t1", on: "2026-09-30", kind: "books", title: "=HYPERLINK(1)", cents: 100, receiptKept: true },
+        ],
+      },
+      "2026",
+    );
+    expect(csv.startsWith(CSV_BOM)).toBe(true);
+    expect(csv).toContain("\r\n");
+    expect(csv).toContain("'=HYPERLINK(1)");
+    expect(csv).toContain("1 item,");
+    expect(taxPackFileName("2026")).toBe("psychsift-tax-pack-2026-27.csv");
   });
 });

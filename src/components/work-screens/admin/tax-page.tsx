@@ -27,7 +27,9 @@ import {
   PaperworkField,
   PaperworkFootNote,
   PaperworkOfflineNote,
+  PaperworkIconButton,
   PaperworkSampleNotice,
+  PaperworkStorageNote,
   PaperworkSwitch,
   PaperworkUnsavedNote,
   usePaperworkHeading,
@@ -38,9 +40,12 @@ import { downloadTextFile } from "@/lib/admin/download-file";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { isExampleRecord, taxSample, withoutExampleRecords } from "@/lib/work-screens/admin/sample";
+import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
+  dropRecord,
   EXPENSE_KINDS,
   newPaperworkId,
+  putBack,
   type AdminExpense,
   type AdminTaxYear,
   type ExpenseKind,
@@ -61,6 +66,7 @@ import {
   sortExpenses,
   TAX_CHECKLIST,
   taxPackCsv,
+  taxPackFileName,
 } from "@/lib/work-screens/admin/tax";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -108,11 +114,13 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
       changeYear((current) => ({ ...current, ticks: { ...current.ticks, [id]: before } })),
     );
   }
+  // Each Undo touches its own expense only, never a change made since.
   function addExpense(expense: AdminExpense) {
-    const before = year.expenses;
     if (!changeYear((current) => ({ ...current, expenses: [expense, ...current.expenses].slice(0, 500) }))) return;
     setAdding(false);
-    say(`${formatCents(expense.cents)} added`, () => changeYear((current) => ({ ...current, expenses: before })));
+    say(`${formatCents(expense.cents)} added`, () =>
+      changeYear((current) => ({ ...current, expenses: dropRecord(current.expenses, expense.id) })),
+    );
   }
   function toggleReceipt(expense: AdminExpense) {
     changeYear((current) => ({
@@ -123,10 +131,28 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
     }));
   }
   function removeExpense(expense: AdminExpense) {
-    const before = year.expenses;
-    if (!changeYear((current) => ({ ...current, expenses: current.expenses.filter((item) => item.id !== expense.id) })))
+    const index = year.expenses.findIndex((item) => item.id === expense.id);
+    if (!changeYear((current) => ({ ...current, expenses: dropRecord(current.expenses, expense.id) }))) return;
+    say(`${expense.title} removed`, () =>
+      changeYear((current) => ({ ...current, expenses: putBack(current.expenses, expense, index) })),
+    );
+  }
+  function savePack() {
+    const own = withoutExampleRecords(year.expenses);
+    const problem = firstAdminPatientProblem(
+      own.map((expense) => expense.title),
+      { allowCapitals: true },
+    );
+    if (problem) {
+      say(
+        `${problem.title} in an expense. Nothing was saved. Remove that expense and add it again.`,
+        undefined,
+        "warning",
+      );
       return;
-    say(`${expense.title} removed`, () => changeYear((current) => ({ ...current, expenses: before })));
+    }
+    downloadTextFile(taxPackCsv(year, yearKey), taxPackFileName(yearKey), "text/csv;charset=utf-8");
+    say("Tax pack saved. Open it in Excel or send it to your accountant");
   }
 
   return (
@@ -141,6 +167,7 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
         </PaperworkOfflineNote>
       ) : null}
       {failed ? <PaperworkUnsavedNote testId="admin-tax-unsaved" /> : null}
+      <PaperworkStorageNote store={store} testId="admin-tax-storage" />
 
       <WorkChips label="Financial year">
         {[thisYear, lastYear].map((key) => (
@@ -275,15 +302,12 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
                     onToggle={() => toggleReceipt(expense)}
                     testId="admin-tax-receipt"
                   />
-                  <button
-                    type="button"
-                    className="work-glass-button"
-                    aria-label={`Remove ${expense.title}`}
+                  <PaperworkIconButton
+                    icon={Trash2}
+                    label={`Remove ${expense.title}`}
                     onClick={() => removeExpense(expense)}
-                    data-testid="admin-tax-remove"
-                  >
-                    <Trash2 aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
-                  </button>
+                    testId="admin-tax-remove"
+                  />
                 </div>
               ))}
             </WorkCard>
@@ -291,6 +315,11 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
 
           {totals.byKind.length > 0 ? (
             <WorkCard padded testId="admin-tax-by-kind">
+              {year.expenses.some(isExampleRecord) ? (
+                <p className="mb-2">
+                  <WorkTag tone="neutral">Example figures</WorkTag>
+                </p>
+              ) : null}
               <dl className="grid gap-1 text-sm">
                 {totals.byKind.map((row) => (
                   <div key={row.kind} className="flex justify-between gap-3">
@@ -303,15 +332,7 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
           ) : null}
 
           {withoutExampleRecords(expenses).length > 0 ? (
-            <WorkButton
-              variant="secondary"
-              icon={Download}
-              onClick={() => {
-                downloadTextFile(taxPackCsv(year, yearKey), `tax-pack-${yearKey}.csv`, "text/csv");
-                say("Tax pack saved. Open it in Excel or send it to your accountant");
-              }}
-              testId="admin-tax-download"
-            >
+            <WorkButton variant="secondary" icon={Download} onClick={savePack} testId="admin-tax-download">
               Tax pack for your accountant
             </WorkButton>
           ) : null}

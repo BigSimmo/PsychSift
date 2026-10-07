@@ -23,6 +23,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { cn, fieldLabel } from "@/components/ui-primitives";
 import {
   anyPatientProblem,
+  EXAMPLE_NOT_SENT,
   RECIPIENT_CHECK,
   recipientProblem,
   PaperworkDemoNotice,
@@ -30,10 +31,12 @@ import {
   PaperworkFootNote,
   PaperworkOfflineNote,
   PaperworkSampleNotice,
+  PaperworkStorageNote,
   PaperworkUnsavedNote,
   usePaperworkHeading,
   usePaperworkPage,
   usePaperworkSay,
+  useSingleFlight,
 } from "@/components/work-screens/admin/paperwork-shared";
 import { buildComplianceOverview } from "@/lib/admin/compliance-overview";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
@@ -43,8 +46,11 @@ import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { isExampleRecord, requestsSample } from "@/lib/work-screens/admin/sample";
+import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
+  dropRecord,
   newPaperworkId,
+  putBack,
   REQUEST_KINDS,
   type AdminPaperwork,
   type AdminRequest,
@@ -55,7 +61,9 @@ import {
   buildRequestMessage,
   chaseMessage,
   cleanRequest,
+  editedRequest,
   hasRequestErrors,
+  isStaffHealth,
   markSeen,
   markSent,
   MORE_TIME_REASONS,
@@ -105,7 +113,12 @@ function blankDraft(overrides: Partial<Draft> = {}): Draft {
  * `admin_asked`): asks the doctor sends and tracks. They send each one
  * themselves. PsychSift writes the message and keeps the status.
  */
-const EXAMPLE_NOT_SENT = "This is an example, so nothing was copied or sent. Sign in to write your own.";
+/** The doctor's own words in a request, checked again just before it leaves the page. */
+function requestProblem(request: AdminRequest) {
+  return firstAdminPatientProblem([request.title, request.note, request.outcomeNote], { allowCapitals: true });
+}
+
+const PATIENT_NOT_SENT = "This request may hold a patient detail, so nothing was copied or sent. Edit it first.";
 
 export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   usePaperworkHeading("Requests", "You send them, PsychSift keeps track");
@@ -118,6 +131,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   const [draft, setDraft] = useState<{ value: Draft; editing: string | null } | null>(null);
   const [answering, setAnswering] = useState<AdminRequest | null>(null);
   const [failed, setFailed] = useState(false);
+  const once = useSingleFlight();
 
   const record = store.state;
   const requests = useMemo(() => record?.requests ?? [], [record]);
@@ -146,42 +160,66 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
     say(message, () => replace(before));
   }
 
-  async function sendByCopy(request: AdminRequest) {
-    if (isExampleRecord(request)) return say(EXAMPLE_NOT_SENT);
-    try {
-      await copyTextToClipboard(request.message);
-      withUndo(request, markSent(request, today), `Copied. Paste it to ${request.to}. Marked as sent`);
-    } catch {
-      say("Could not copy. Your browser blocked the clipboard. Use Email draft instead.", undefined, "warning");
-    }
+  /** Null when the request may leave the page, else what was said instead. */
+  function blockedReason(request: AdminRequest): string | null {
+    if (isExampleRecord(request)) return EXAMPLE_NOT_SENT;
+    if (requestProblem(request)) return PATIENT_NOT_SENT;
+    return null;
   }
-  function sendByEmail(request: AdminRequest) {
-    if (isExampleRecord(request)) return say(EXAMPLE_NOT_SENT);
+  function sendByCopy(request: AdminRequest) {
+    return once(async () => {
+      const blocked = blockedReason(request);
+      if (blocked) return say(blocked, undefined, "warning");
+      try {
+        await copyTextToClipboard(request.message);
+        if (request.status === "draft")
+          withUndo(request, markSent(request, today), `Copied. Paste it to ${request.to}. Marked as sent`);
+        else say(`Copied. Paste it to ${request.to}`);
+      } catch {
+        say("Could not copy. Your browser blocked the clipboard. Use Email draft instead.", undefined, "warning");
+      }
+    });
+  }
+  /** Returns false when the email draft must not open. */
+  function sendByEmail(request: AdminRequest): boolean {
+    const blocked = blockedReason(request);
+    if (blocked) {
+      say(blocked, undefined, "warning");
+      return false;
+    }
     withUndo(request, markSent(request, today), `Email draft opened. Marked as sent to ${request.to}`);
+    return true;
   }
-  async function chase(request: AdminRequest) {
-    if (isExampleRecord(request)) return say(EXAMPLE_NOT_SENT);
-    try {
-      await copyTextToClipboard(chaseMessage(request));
-      withUndo(request, { ...request, followUpOn: addDaysToDate(today, 7) }, "Follow-up copied. Next chase in a week");
-    } catch {
-      say("Could not copy. Your browser blocked the clipboard.", undefined, "warning");
-    }
+  function chase(request: AdminRequest) {
+    return once(async () => {
+      const blocked = blockedReason(request);
+      if (blocked) return say(blocked, undefined, "warning");
+      try {
+        await copyTextToClipboard(chaseMessage(request));
+        withUndo(
+          request,
+          { ...request, followUpOn: addDaysToDate(today, 7) },
+          "Follow-up copied. Next chase in a week",
+        );
+      } catch {
+        say("Could not copy. Your browser blocked the clipboard.", undefined, "warning");
+      }
+    });
   }
   function remove(request: AdminRequest) {
-    const before = requests;
-    if (!change((current) => ({ ...current, requests: current.requests.filter((item) => item.id !== request.id) })))
-      return;
-    say("Request removed", () => change((current) => ({ ...current, requests: before })));
+    const index = requests.findIndex((item) => item.id === request.id);
+    if (!change((current) => ({ ...current, requests: dropRecord(current.requests, request.id) }))) return;
+    // Undo puts this one request back, and leaves any change made since alone.
+    say("Request removed", () =>
+      change((current) => ({ ...current, requests: putBack(current.requests, request, index) })),
+    );
   }
 
   function saveDraft(value: Draft, editing: string | null, sendAfter: "copy" | "email" | null) {
     const id = editing ?? newPaperworkId("req");
     const base = newRequest(value, id, today, value.email.trim() || undefined);
     const existing = editing ? requests.find((request) => request.id === editing) : undefined;
-    const saved = cleanRequest(
-      existing ? { ...existing, ...base, status: existing.status, createdOn: existing.createdOn } : base,
-    );
+    const saved = cleanRequest(existing ? editedRequest(existing, base) : base);
     const ok = change((current) => ({
       ...current,
       requests: existing
@@ -216,6 +254,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
         </PaperworkOfflineNote>
       ) : null}
       {failed ? <PaperworkUnsavedNote testId="admin-requests-unsaved" /> : null}
+      <PaperworkStorageNote store={store} testId="admin-requests-storage" />
 
       {record === null ? (
         <ModeModuleSkeleton rows={4} twoLine eyebrow testId="admin-requests-loading" />
@@ -296,6 +335,8 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
                         to: request.to,
                         dueOn: request.dueOn ?? "",
                         askedFor: request.askedFor ?? "",
+                        reason: request.reason ?? null,
+                        note: request.note ?? "",
                         email: request.toEmail ?? "",
                       }),
                       editing: request.id,
@@ -418,7 +459,7 @@ function RequestCard({
   readonly request: AdminRequest;
   readonly today: string;
   readonly onCopy: () => void;
-  readonly onEmail: () => void;
+  readonly onEmail: () => boolean;
   readonly onSeen: () => void;
   readonly onAnswer: () => void;
   readonly onChase: () => void;
@@ -431,7 +472,7 @@ function RequestCard({
   const from =
     request.status === "draft"
       ? `To ${request.to} · draft, not sent`
-      : `To ${request.to} · sent ${request.sentOn ? formatRecordedDate(request.sentOn) : ""}`;
+      : `To ${request.to} · ${request.sentOn ? `sent ${formatRecordedDate(request.sentOn)}` : "sent"}`;
   return (
     <li className="work-card work-card--pad grid gap-2" data-testid="admin-requests-card">
       <p className="text-xs font-semibold text-[color:var(--text-muted)]">{from}</p>
@@ -480,13 +521,15 @@ function RequestCard({
               Copy and mark sent
             </WorkButton>
             {isExampleRecord(request) ? (
-              <WorkButton variant="secondary" icon={Mail} onClick={onEmail} testId="admin-requests-email">
+              <WorkButton variant="secondary" icon={Mail} onClick={() => void onEmail()} testId="admin-requests-email">
                 Email draft
               </WorkButton>
             ) : (
               <a
                 href={requestMailtoHref(request)}
-                onClick={onEmail}
+                onClick={(event) => {
+                  if (!onEmail()) event.preventDefault();
+                }}
                 className="work-button"
                 data-variant="secondary"
                 data-testid="admin-requests-email"
@@ -500,9 +543,21 @@ function RequestCard({
             </WorkButton>
           </>
         ) : request.status === "decided" ? (
-          <WorkButton variant="secondary" onClick={onReopen} testId="admin-requests-reopen">
-            Reopen
-          </WorkButton>
+          <>
+            {request.kind === "more-time" && request.outcome === "agreed" ? (
+              <WorkButton
+                variant="secondary"
+                icon={CalendarClock}
+                href={ADMIN_PAGE_HREFS.renewals}
+                testId="admin-requests-update-renewals"
+              >
+                Update the date
+              </WorkButton>
+            ) : null}
+            <WorkButton variant="secondary" onClick={onReopen} testId="admin-requests-reopen">
+              Reopen
+            </WorkButton>
+          </>
         ) : (
           <>
             <WorkButton variant={chase ? "secondary" : "primary"} onClick={onAnswer} testId="admin-requests-answer">
@@ -551,6 +606,7 @@ function RequestSheet({
   const [value, setValue] = useState<Draft>(initial);
   const [tried, setTried] = useState(false);
   const errors = validateRequestDraft(value);
+  const healthReason = value.kind === "more-time" && value.reason === "Health reason";
   const blocked = hasRequestErrors(errors) || anyPatientProblem(value.title, value.note) || recipientProblem(value.to);
   const preview = buildRequestMessage(value);
   const set = <K extends keyof Draft>(key: K, next: Draft[K]) => setValue((current) => ({ ...current, [key]: next }));
@@ -609,7 +665,7 @@ function RequestSheet({
           value={value.to}
           onChange={(next) => set("to", next)}
           maxLength={60}
-          error={tried ? errors.to : null}
+          error={tried || healthReason ? errors.to : null}
           checkPatient={RECIPIENT_CHECK}
           testId="admin-requests-to"
         />
@@ -620,7 +676,8 @@ function RequestSheet({
           value={value.email}
           onChange={(next) => set("email", next)}
           maxLength={120}
-          hint="For the email draft. Kept on this phone."
+          hint={healthReason ? "A Staff Health address only." : "For the email draft. Kept on this phone."}
+          error={tried ? errors.email : null}
           testId="admin-requests-email-address"
         />
         <PaperworkField
@@ -660,13 +717,13 @@ function RequestSheet({
                     onClick={() =>
                       setValue((current) => {
                         const next = current.reason === reason ? null : (reason as MoreTimeReason);
+                        const toHealth = next === "Health reason" && !isStaffHealth(current.to);
                         return {
                           ...current,
                           reason: next,
-                          to: recipientForReason(
-                            next,
-                            current.to === "Staff Health" ? "Medical Workforce" : current.to,
-                          ),
+                          to: recipientForReason(next, isStaffHealth(current.to) ? "Medical Workforce" : current.to),
+                          // An address typed for someone else must not carry a health reason.
+                          email: toHealth ? "" : current.email,
                         };
                       })
                     }
@@ -760,13 +817,9 @@ function AnswerSheet({
           testId="admin-requests-answer-note"
         />
         {request.kind === "more-time" && outcome === "agreed" ? (
-          <WorkIconRow
-            icon={CalendarClock}
-            title="Update the date in Renewals"
-            sub="So your reminders move with it"
-            href={ADMIN_PAGE_HREFS.renewals}
-            testId="admin-requests-answer-renewals"
-          />
+          <p className="text-sm text-[color:var(--text-muted)]" data-testid="admin-requests-answer-renewals">
+            Once saved, the request shows a link to update the date in Renewals, so your reminders move with it.
+          </p>
         ) : null}
       </div>
     </Sheet>

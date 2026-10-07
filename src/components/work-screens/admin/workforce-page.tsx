@@ -82,7 +82,6 @@ export function AdminWorkforcePage() {
   const nameOf = (id: string) => doctors.find((candidate) => candidate.id === id)?.name ?? "A doctor";
 
   function decide(extension: WorkforceExtension, decision: WorkforceExtension["decision"], to?: string) {
-    const before = extensions;
     setExtensions((current) => decideExtension(current, extension.id, decision, to));
     const words =
       decision === "granted"
@@ -90,7 +89,10 @@ export function AdminWorkforcePage() {
         : decision === "nearer"
           ? `Offered ${formatRecordedDate(to!)}`
           : "Not granted";
-    say(`${words}. Sample only, nothing was sent`, () => setExtensions(before));
+    // Undo puts back this one request only, never another decision made since.
+    say(`${words}. Sample only, nothing was sent`, () =>
+      setExtensions((current) => current.map((entry) => (entry.id === extension.id ? extension : entry))),
+    );
   }
 
   return (

@@ -33,6 +33,9 @@ export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export const REQUEST_OUTCOMES = ["agreed", "declined", "other"] as const;
 export type RequestOutcome = (typeof REQUEST_OUTCOMES)[number];
 
+export const MORE_TIME_REASONS = ["Course full", "On leave", "On nights", "Health reason", "Other"] as const;
+export type MoreTimeReason = (typeof MORE_TIME_REASONS)[number];
+
 export const requestSchema = z
   .object({
     id,
@@ -41,6 +44,9 @@ export const requestSchema = z
     to: shortText(60).min(1),
     toEmail: shortText(120).optional(),
     message: shortText(1200),
+    /** The reason chip and the note the doctor chose, kept so Edit rebuilds the same message. */
+    reason: z.enum(MORE_TIME_REASONS).optional(),
+    note: shortText(400).optional(),
     /** The date the item was due, when the ask is about one. */
     dueOn: isoDate.optional(),
     /** The new date asked for, for "more time". */
@@ -219,4 +225,19 @@ export function isValidPaperwork(state: AdminPaperwork): boolean {
 /** A short random id: no title, no date, nothing that says what the record is. */
 export function newPaperworkId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Undo for one record: puts this record back as it was, at its old place when
+ * it is missing, and leaves every other record alone. Restoring a whole list
+ * snapshot instead would also undo whatever changed since.
+ */
+export function putBack<T extends { readonly id: string }>(list: readonly T[], record: T, index = 0): T[] {
+  if (list.some((item) => item.id === record.id)) return list.map((item) => (item.id === record.id ? record : item));
+  const at = Math.max(0, Math.min(index, list.length));
+  return [...list.slice(0, at), record, ...list.slice(at)];
+}
+
+export function dropRecord<T extends { readonly id: string }>(list: readonly T[], id: string): T[] {
+  return list.filter((item) => item.id !== id);
 }

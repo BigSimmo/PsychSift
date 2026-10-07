@@ -19,3 +19,20 @@ export function adminPatientProblem(text: string, options?: PatientDetailCheckOp
   const trimmed = text.trim();
   return trimmed ? checkPatientDetail(trimmed, options) : null;
 }
+
+/**
+ * The first problem in any of the doctor's own typed texts, checked one by one
+ * just before something is copied, emailed or saved to a file. Generated lines
+ * (dates, status words) are not passed in: the shared check reads a printed date
+ * as a possible date of birth.
+ */
+export function firstAdminPatientProblem(
+  texts: readonly (string | null | undefined)[],
+  options?: PatientDetailCheckOptions,
+): AdminPatientProblem | null {
+  for (const text of texts) {
+    const problem = text ? adminPatientProblem(text, options) : null;
+    if (problem) return problem;
+  }
+  return null;
+}

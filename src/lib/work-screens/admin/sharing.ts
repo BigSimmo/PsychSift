@@ -133,13 +133,41 @@ export function buildSharePack(input: {
 /** Mail apps cut long links. The draft keeps the pack whole up to this length, then points to the file. */
 export const MAILTO_BODY_LIMIT = 1800;
 
+/** Cuts at a whole line within the limit, never inside a character, so the draft link always encodes. */
+function cutForMail(text: string, limit: number): string {
+  const characters = Array.from(text);
+  if (characters.length <= limit) return text;
+  const cut = characters.slice(0, limit).join("");
+  const lineEnd = cut.lastIndexOf("\n");
+  return lineEnd > 0 ? cut.slice(0, lineEnd) : cut;
+}
+
 export function shareMailtoHref(pack: SharePack, email: string | undefined): string {
+  const short = cutForMail(pack.text, MAILTO_BODY_LIMIT);
   const body =
-    pack.text.length > MAILTO_BODY_LIMIT
-      ? `${pack.text.slice(0, MAILTO_BODY_LIMIT)}\n\nThe full list is in the attached file.`
-      : pack.text;
+    short === pack.text
+      ? pack.text
+      : `${short}\n\nThe list is longer than an email draft can hold. Save the file in PsychSift and attach it.`;
   const address = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? encodeURIComponent(email.trim()) : "";
   return `mailto:${address}?subject=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(body)}`;
+}
+
+/**
+ * The doctor's own typed words in a pack (an issuer's name on a renewal), for
+ * the patient-detail check just before the pack leaves the page. The generated
+ * lines are left out: they hold dates, which the check reads as a possible
+ * date of birth.
+ */
+export function sharePackOwnWords(views: readonly ShareGroupView[], audience: ShareAudience): string[] {
+  return views
+    .filter((view) => view.on && view.audience === audience)
+    .flatMap((view) => view.items)
+    .flatMap((item) => {
+      const details = item.row.entry?.details;
+      const issuer =
+        details && typeof details === "object" ? (details as Record<string, unknown>).issuingBody : undefined;
+      return typeof issuer === "string" && issuer.trim() ? [issuer] : [];
+    });
 }
 
 export function sharePackFileName(pack: SharePack, now: Date): string {

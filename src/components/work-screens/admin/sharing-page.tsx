@@ -24,18 +24,22 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { WorkBody, WorkButton, WorkCard, WorkEmpty, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import {
+  EXAMPLE_NOT_SENT,
   RECIPIENT_CHECK,
   recipientProblem,
   PaperworkDemoNotice,
   PaperworkField,
   PaperworkFootNote,
   PaperworkOfflineNote,
+  PaperworkIconButton,
   PaperworkSampleNotice,
+  PaperworkStorageNote,
   PaperworkSwitch,
   PaperworkUnsavedNote,
   usePaperworkHeading,
   usePaperworkPage,
   usePaperworkSay,
+  useSingleFlight,
 } from "@/components/work-screens/admin/paperwork-shared";
 import { buildComplianceOverview } from "@/lib/admin/compliance-overview";
 import { downloadTextFile } from "@/lib/admin/download-file";
@@ -46,9 +50,11 @@ import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { sharingSample } from "@/lib/work-screens/admin/sample";
+import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   emptyPaperwork,
   newPaperworkId,
+  putBack,
   SHARE_GROUPS,
   type AdminPaperwork,
   type ShareGroup,
@@ -61,6 +67,7 @@ import {
   shareLogLine,
   shareMailtoHref,
   sharePackFileName,
+  sharePackOwnWords,
   type ShareAudience,
   type SharePack,
 } from "@/lib/work-screens/admin/sharing";
@@ -80,6 +87,7 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
   const [preview, setPreview] = useState<SharePack | null>(null);
   const [recipientOpen, setRecipientOpen] = useState(false);
   const [failed, setFailed] = useState(false);
+  const once = useSingleFlight();
 
   const record = store.state;
   const sharing = record?.sharing ?? emptyPaperwork().sharing;
@@ -155,31 +163,63 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
   }
 
   function removeLog(id: string) {
-    const before = sharing.log;
+    const index = sharing.log.findIndex((entry) => entry.id === id);
+    const removed = sharing.log[index];
     if (
+      !removed ||
       !change((current) => ({
         ...current,
         sharing: { ...current.sharing, log: current.sharing.log.filter((entry) => entry.id !== id) },
       }))
     )
       return;
-    say("Note removed", () => change((current) => ({ ...current, sharing: { ...current.sharing, log: before } })));
+    say("Note removed", () =>
+      change((current) => ({
+        ...current,
+        sharing: { ...current.sharing, log: putBack(current.sharing.log, removed, index) },
+      })),
+    );
+  }
+
+  /**
+   * Nothing leaves the page from the signed-out or demo sample, and nothing
+   * with a patient detail in the doctor's own words (an issuer's name).
+   */
+  function mayLeave(pack: SharePack): boolean {
+    if (store.sample) {
+      say(EXAMPLE_NOT_SENT, undefined, "warning");
+      return false;
+    }
+    const problem = firstAdminPatientProblem(sharePackOwnWords(views, pack.audience), { allowCapitals: true });
+    if (problem) {
+      say(
+        `${problem.title} in a renewal's issuer. Nothing was copied or sent. Fix it in Renewals first.`,
+        undefined,
+        "warning",
+      );
+      return false;
+    }
+    return true;
   }
 
   function download(pack: SharePack) {
-    downloadTextFile(pack.text, sharePackFileName(pack, now), "text/plain");
+    if (!mayLeave(pack)) return;
+    downloadTextFile(pack.text, sharePackFileName(pack, now), "text/plain;charset=utf-8");
     logShare(pack, "download");
     say(`File saved. Attach it to your message to ${pack.to}.`);
   }
 
-  async function copy(pack: SharePack) {
-    try {
-      await copyTextToClipboard(pack.text);
-      logShare(pack, "copy");
-      say(`Copied. Paste it into your message to ${pack.to}. Nothing was sent.`);
-    } catch {
-      say("Could not copy. Your browser blocked the clipboard. Save the file instead.", undefined, "warning");
-    }
+  function copy(pack: SharePack) {
+    return once(async () => {
+      if (!mayLeave(pack)) return;
+      try {
+        await copyTextToClipboard(pack.text);
+        logShare(pack, "copy");
+        say(`Copied. Paste it into your message to ${pack.to}. Nothing was sent.`);
+      } catch {
+        say("Could not copy. Your browser blocked the clipboard. Save the file instead.", undefined, "warning");
+      }
+    });
   }
 
   function sendActions(pack: SharePack, audience: ShareAudience) {
@@ -213,7 +253,10 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
           </WorkButton>
           <a
             href={shareMailtoHref(pack, email)}
-            onClick={() => logShare(pack, "email")}
+            onClick={(event) => {
+              if (mayLeave(pack)) logShare(pack, "email");
+              else event.preventDefault();
+            }}
             className="work-button"
             data-variant="secondary"
             data-testid={`admin-sharing-${audience}-email`}
@@ -254,6 +297,7 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
         </PaperworkOfflineNote>
       ) : null}
       {failed ? <PaperworkUnsavedNote testId="admin-sharing-unsaved" /> : null}
+      <PaperworkStorageNote store={store} testId="admin-sharing-storage" />
 
       <WorkSectionLabel>Share with</WorkSectionLabel>
       <WorkCard>
@@ -352,15 +396,12 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
                   <span className="work-row__title">{`${entry.to} · ${formatRecordedDate(entry.on)}`}</span>
                   <span className="work-row__sub">{shareLogLine(entry)}</span>
                 </span>
-                <button
-                  type="button"
+                <PaperworkIconButton
+                  icon={Trash2}
                   onClick={() => removeLog(entry.id)}
-                  aria-label={`Remove the note for ${entry.to}, ${formatRecordedDate(entry.on)}`}
-                  className="work-glass-button"
-                  data-testid="admin-sharing-log-remove"
-                >
-                  <Trash2 aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
-                </button>
+                  label={`Remove the note for ${entry.to}, ${formatRecordedDate(entry.on)}`}
+                  testId="admin-sharing-log-remove"
+                />
               </li>
             ))}
           </ul>

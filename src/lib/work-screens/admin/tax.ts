@@ -118,9 +118,15 @@ export function formatCents(cents: number): string {
   return `$${dollars.toLocaleString("en-AU")}.${rest}`;
 }
 
-/** Dollars as typed ("146", "146.50", "$1,034") to whole cents, or null when it is not an amount. */
+/**
+ * Dollars as typed ("146", "146.50", "$1,034") to whole cents, or null when it
+ * is not an amount. A comma counts only as a thousands mark ("1,034"), so
+ * "12,50" is refused rather than read as $1,250.
+ */
 export function parseDollars(text: string): number | null {
-  const value = text.trim().replace(/^\$/, "").replace(/,/g, "");
+  const typed = text.trim().replace(/^\$\s*/, "");
+  if (typed.includes(",") && !/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(typed)) return null;
+  const value = typed.replace(/,/g, "");
   if (!/^\d{1,7}(?:\.\d{1,2})?$/.test(value)) return null;
   const [whole, part = ""] = value.split(".");
   return Number(whole) * 100 + Number(part.padEnd(2, "0"));
@@ -162,10 +168,21 @@ export function sortExpenses(expenses: readonly AdminExpense[]): AdminExpense[] 
   return [...expenses].sort((a, b) => (a.on === b.on ? a.title.localeCompare(b.title) : a.on < b.on ? 1 : -1));
 }
 
-function csvCell(value: string): string {
-  // A leading = + - @ would run as a formula in a spreadsheet.
-  const safe = /^[=+\-@]/.test(value) ? `'${value}` : value;
-  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+export function csvCell(value: string): string {
+  // A leading = + - @, tab or carriage return would run as a formula in a spreadsheet.
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+function itemCount(count: number): string {
+  return count === 1 ? "1 item" : `${count} items`;
+}
+
+/** Excel reads a CSV as UTF-8 only when it starts with a byte order mark. */
+export const CSV_BOM = "\uFEFF";
+
+export function taxPackFileName(yearKey: string): string {
+  return `psychsift-tax-pack-${yearKey}-${String(Number(yearKey) + 1).slice(2)}.csv`;
 }
 
 /** The pack for an accountant: expenses as rows, then totals by kind. Only what the doctor typed. */
@@ -183,10 +200,10 @@ export function taxPackCsv(year: AdminTaxYear, yearKey: string): string {
   }
   const totals = expenseTotals(expenses);
   rows.push([], ["Totals by kind"]);
-  for (const row of totals.byKind) rows.push(["", row.label, `${row.count} items`, (row.cents / 100).toFixed(2), ""]);
-  rows.push(["", "All", `${totals.count} items`, (totals.total / 100).toFixed(2), ""]);
+  for (const row of totals.byKind) rows.push(["", row.label, itemCount(row.count), (row.cents / 100).toFixed(2), ""]);
+  rows.push(["", "All", itemCount(totals.count), (totals.total / 100).toFixed(2), ""]);
   rows.push([], [`${financialYearLabel(yearKey)}. Typed by me from my receipts. Not tax advice.`]);
-  return rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  return CSV_BOM + rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
 
 export function checklistProgress(year: AdminTaxYear): { done: number; total: number } {

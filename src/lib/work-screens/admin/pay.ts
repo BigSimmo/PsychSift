@@ -98,6 +98,17 @@ export function payrollMessage(check: PayslipCheck): string {
   return lines.join("\n");
 }
 
+/**
+ * Roster hours as the sheet fills them in: two decimals at most, so the field
+ * reads back through `parseHours`. A 7 h 20 min shift is 7.333… hours, which
+ * would otherwise land in the field as "7.333333333333333" and fail its check.
+ */
+export function hoursForField(hours: number): string {
+  if (!Number.isFinite(hours) || hours < 0) return "";
+  const rounded = Math.round(hours * 100) / 100;
+  return rounded > 400 ? "" : String(rounded);
+}
+
 export interface PayslipDraft {
   readonly windowIndex: 0 | 1;
   readonly paidOn: string;

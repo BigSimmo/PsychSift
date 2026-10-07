@@ -3,6 +3,7 @@ import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import type {
   AdminRequest,
+  MoreTimeReason,
   RequestKind,
   RequestOutcome,
   RequestStatus,
@@ -24,12 +25,15 @@ export const REQUEST_KIND_WORDS: Record<RequestKind, string> = {
   other: "Something else",
 };
 
-export const MORE_TIME_REASONS = ["Course full", "On leave", "On nights", "Health reason", "Other"] as const;
-export type MoreTimeReason = (typeof MORE_TIME_REASONS)[number];
+export { MORE_TIME_REASONS, type MoreTimeReason } from "@/lib/work-screens/admin/paperwork-model";
 
 /** A health reason goes to Staff Health only, the mockup's rule. */
 export function recipientForReason(reason: MoreTimeReason | null, current: string): string {
   return reason === "Health reason" ? "Staff Health" : current;
+}
+
+export function isStaffHealth(to: string): boolean {
+  return to.trim().toLowerCase() === "staff health";
 }
 
 /** Days after sending before a request with no reply shows "Chase". */
@@ -101,14 +105,25 @@ export interface RequestDraftErrors {
   to?: string;
   askedFor?: string;
   dueOn?: string;
+  email?: string;
 }
 
 const REAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function validateRequestDraft(input: RequestDraftInput): RequestDraftErrors {
+/** True when a typed address reads as an email address. Blank is allowed: the draft opens with no address. */
+export function isEmailAddress(text: string): boolean {
+  return EMAIL.test(text.trim());
+}
+
+export function validateRequestDraft(input: RequestDraftInput & { readonly email?: string }): RequestDraftErrors {
   const errors: RequestDraftErrors = {};
   if (!input.title.trim()) errors.title = "Say what the request is about.";
   if (!input.to.trim()) errors.to = "Say who it goes to.";
+  // A health reason is for Staff Health only, never Medical Workforce or a manager.
+  else if (input.kind === "more-time" && input.reason === "Health reason" && !isStaffHealth(input.to))
+    errors.to = "A health reason goes to Staff Health only.";
+  if (input.email?.trim() && !isEmailAddress(input.email)) errors.email = "Check the email address.";
   if (input.dueOn && !REAL_DATE.test(input.dueOn)) errors.dueOn = "Use the date picker.";
   if (input.kind === "more-time") {
     if (!input.askedFor) errors.askedFor = "Pick the new date you are asking for.";
@@ -155,8 +170,7 @@ export function requestSubject(request: Pick<AdminRequest, "kind" | "title">): s
 }
 
 export function requestMailtoHref(request: Pick<AdminRequest, "kind" | "title" | "message" | "toEmail">): string {
-  const email =
-    request.toEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(request.toEmail) ? encodeURIComponent(request.toEmail) : "";
+  const email = request.toEmail && isEmailAddress(request.toEmail) ? encodeURIComponent(request.toEmail.trim()) : "";
   return `mailto:${email}?subject=${encodeURIComponent(requestSubject(request))}&body=${encodeURIComponent(request.message)}`;
 }
 
@@ -178,6 +192,8 @@ export function newRequest(input: RequestDraftInput, id: string, today: string, 
     to: input.to.trim(),
     ...(toEmail ? { toEmail } : {}),
     message: buildRequestMessage(input),
+    ...(input.kind === "more-time" && input.reason ? { reason: input.reason } : {}),
+    ...(input.note.trim() ? { note: input.note.trim() } : {}),
     ...(input.dueOn ? { dueOn: input.dueOn } : {}),
     ...(input.kind === "more-time" && input.askedFor ? { askedFor: input.askedFor } : {}),
     status: "draft",
@@ -221,6 +237,17 @@ export function reopen(request: AdminRequest): AdminRequest {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropped from the reopened copy
   const { outcome: _outcome, outcomeNote: _note, decidedOn: _decided, ...rest } = request;
   return { ...rest, status: request.seenOn ? "seen" : "sent" };
+}
+
+/**
+ * A saved edit: what the sheet holds now, over the request's own history (its
+ * id, status and dates). Fields the doctor can clear in the sheet (reason,
+ * note, dates, email) come only from the new save, so clearing one sticks.
+ */
+export function editedRequest(existing: AdminRequest, next: AdminRequest): AdminRequest {
+  const history: Partial<AdminRequest> = { ...existing };
+  for (const key of ["reason", "note", "dueOn", "askedFor", "toEmail"] as const) delete history[key];
+  return { ...history, ...next, id: existing.id, status: existing.status, createdOn: existing.createdOn };
 }
 
 /** Drops undefined keys, so the strict schema reads the record back. */

@@ -42,7 +42,9 @@ import {
   PaperworkField,
   PaperworkFootNote,
   PaperworkOfflineNote,
+  PaperworkIconButton,
   PaperworkSampleNotice,
+  PaperworkStorageNote,
   PaperworkUnsavedNote,
   usePaperworkHeading,
   usePaperworkPage,
@@ -54,11 +56,18 @@ import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { isExampleRecord, paySample } from "@/lib/work-screens/admin/sample";
-import { newPaperworkId, type AdminPaperwork, type PayslipCheck } from "@/lib/work-screens/admin/paperwork-model";
+import {
+  dropRecord,
+  newPaperworkId,
+  putBack,
+  type AdminPaperwork,
+  type PayslipCheck,
+} from "@/lib/work-screens/admin/paperwork-model";
 import {
   compareLine,
   formatPayHours,
   formatPayWindow,
+  hoursForField,
   payrollMessage,
   payslipFromDraft,
   payslipResult,
@@ -144,30 +153,31 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
     setFailed(!ok);
     return ok;
   }
+  // Each Undo touches its own check only, never a change made since.
   function saveCheck(check: PayslipCheck) {
-    const before = record?.payslips ?? [];
     if (!change((current) => ({ ...current, payslips: [check, ...current.payslips].slice(0, 200) }))) return;
     setChecking(false);
     const result = payslipResult(check);
     say(result.matches ? "Saved. Hours match" : "Saved. The hours differ", () =>
-      change((current) => ({ ...current, payslips: before })),
+      change((current) => ({ ...current, payslips: dropRecord(current.payslips, check.id) })),
     );
   }
   function toggleResolved(check: PayslipCheck) {
-    const before = record?.payslips ?? [];
-    change((current) => ({
+    const ok = change((current) => ({
       ...current,
       payslips: current.payslips.map((item) => (item.id === check.id ? { ...item, resolved: !item.resolved } : item)),
     }));
+    if (!ok) return;
     say(check.resolved ? "Marked as not sorted" : "Marked as sorted", () =>
-      change((current) => ({ ...current, payslips: before })),
+      change((current) => ({ ...current, payslips: putBack(current.payslips, check) })),
     );
   }
   function remove(check: PayslipCheck) {
-    const before = record?.payslips ?? [];
-    if (!change((current) => ({ ...current, payslips: current.payslips.filter((item) => item.id !== check.id) })))
-      return;
-    say("Check removed", () => change((current) => ({ ...current, payslips: before })));
+    const index = (record?.payslips ?? []).findIndex((item) => item.id === check.id);
+    if (!change((current) => ({ ...current, payslips: dropRecord(current.payslips, check.id) }))) return;
+    say("Check removed", () =>
+      change((current) => ({ ...current, payslips: putBack(current.payslips, check, index) })),
+    );
   }
   async function copyMessage(check: PayslipCheck) {
     if (isExampleRecord(check))
@@ -196,6 +206,7 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
         </PaperworkOfflineNote>
       ) : null}
       {failed ? <PaperworkUnsavedNote testId="admin-pay-unsaved" /> : null}
+      <PaperworkStorageNote store={store} testId="admin-pay-storage" />
 
       {roster.kind === "loading" ? (
         <ModeModuleSkeleton rows={2} twoLine eyebrow testId="admin-pay-roster-loading" />
@@ -331,15 +342,12 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
                       {check.resolved ? "Sorted" : "Mark sorted"}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="work-glass-button"
-                    aria-label={`Remove the check for ${formatPayWindow({ start: check.periodStart, end: check.periodEnd })}`}
+                  <PaperworkIconButton
+                    icon={Trash2}
+                    label={`Remove the check for ${formatPayWindow({ start: check.periodStart, end: check.periodEnd })}`}
                     onClick={() => remove(check)}
-                    data-testid="admin-pay-remove"
-                  >
-                    <Trash2 aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
-                  </button>
+                    testId="admin-pay-remove"
+                  />
                 </li>
               );
             })}
@@ -433,8 +441,8 @@ function PayslipSheet({
   readonly onSave: (check: PayslipCheck) => void;
 }) {
   const filled = (index: 0 | 1) => ({
-    rostered: roster ? String(roster[index]!.rostered) : "",
-    logged: roster && roster[index]!.extra !== null ? String(roster[index]!.extra) : "",
+    rostered: roster ? hoursForField(roster[index]!.rostered) : "",
+    logged: roster && roster[index]!.extra !== null ? hoursForField(roster[index]!.extra!) : "",
   });
   // A payslip usually arrives after its fortnight ends, so the last full fortnight comes first.
   const [draft, setDraft] = useState<PayslipDraft>(() => ({
