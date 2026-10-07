@@ -69,6 +69,10 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
     "Compatibility redirect to /teaching/assessments?view=words for older links. In-app navigation (More's Help and words) links the view directly.",
   ],
   [
+    "/teaching/assessments/trainee",
+    "Redirect to the supervisor's term overview when no doctor is named. In-app links (term overview doctor detail, inbox request sheets) go to /teaching/assessments/trainee/[id].",
+  ],
+  [
     "/teaching/assessments/record",
     "Compatibility redirect to /teaching/assessments?view=record (or ?view=all) for older links. In-app navigation (More's Doctor record) links the view directly.",
   ],

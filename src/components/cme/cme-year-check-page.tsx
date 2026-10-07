@@ -8,6 +8,7 @@ import { formatSourceMonth } from "@/components/cme/cme-plan-goal-split";
 import { CmeFlatList, CmeFlatRow, CmeGroup, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
 import { CmeBandHeading } from "@/components/cme/cme-work-kit";
 import { WorkBody } from "@/components/mode-kit/work";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { cn } from "@/components/ui-primitives";
 import {
   formatCalendarDateLong,
@@ -96,6 +97,18 @@ function confirmedSetName(set: CmeRequirementSet): string {
 
 function CheckRow({ row, set }: { row: CmeYearCheckRow; set: CmeRequirementSet }) {
   const action = rowAction(row, set);
+  const actionLink = (href: string) =>
+    action ? (
+      <Link
+        href={href}
+        data-testid={`cme-check-action-${row.id}`}
+        className="work-button min-h-tap shrink-0"
+        data-variant="tinted"
+      >
+        {action.label}
+        <span className="sr-only">: {row.label}</span>
+      </Link>
+    ) : null;
   return (
     <CmeFlatRow
       testId={`cme-check-row-${row.id}`}
@@ -109,15 +122,14 @@ function CheckRow({ row, set }: { row: CmeYearCheckRow; set: CmeRequirementSet }
       subtitle={reportSummary(row)}
       end={
         action ? (
-          <Link
-            href={action.href}
-            data-testid={`cme-check-action-${row.id}`}
-            className="work-button min-h-tap shrink-0"
-            data-variant="tinted"
-          >
-            {action.label}
-            <span className="sr-only">: {row.label}</span>
-          </Link>
+          row.id === "evidence" ? (
+            // The new work mode has a page for the certificates still to add.
+            <NewWorkModeOnly fallback={actionLink(action.href)}>
+              {actionLink(`/cme/evidence?year=${set.year}`)}
+            </NewWorkModeOnly>
+          ) : (
+            actionLink(action.href)
+          )
         ) : row.ready && row.group === "targets" ? (
           <span className="work-tag" data-tone="neutral">
             Reached
@@ -307,6 +319,11 @@ export function CmeYearCheckPage({
               >
                 Download CSV
               </a>
+              <NewWorkModeOnly>
+                <CmeTextLink href={`/cme/export?year=${set.year}`} testId="cme-check-export">
+                  All export options
+                </CmeTextLink>
+              </NewWorkModeOnly>
             </div>
           </CmeGroup>
 

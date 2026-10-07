@@ -27,7 +27,9 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="account-dialog" /> : null),
 }));
 
-vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
+// The time zone step reads the real device store (subscribe and read); only the account hook is faked.
+vi.mock("@/components/clinical-dashboard/use-app-preferences", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/clinical-dashboard/use-app-preferences")>()),
   useAppPreferences: () => ({ preferences: { workStage: null, ranzcpStage: null }, setPreference: vi.fn() }),
 }));
 

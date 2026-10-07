@@ -52,6 +52,7 @@ import type { CmeRoutine } from "@/lib/cme/routines";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { cmePageTitle } from "@/components/cme/cme-page-frame";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 
 export type { CmeLogAttention } from "@/components/cme/cme-log-shared";
 
@@ -151,6 +152,8 @@ export function CmeLogPage({
   const [allYears, setAllYears] = useState(false);
   // The export route reads the account, so on a page showing example data it would hand over REAL records.
   const example = useExampleData("cpd").active;
+  // CPD Evidence (a new work mode screen) lists the certificates still to add.
+  const evidencePageShown = useWorkModeRouteVisible()("/cme/evidence");
   const [sheetSection, setSheetSection] = useState<SheetSection | null>(null);
   const yearButtonRef = useRef<HTMLButtonElement>(null);
   const categoryButtonRef = useRef<HTMLButtonElement>(null);
@@ -592,7 +595,11 @@ export function CmeLogPage({
               return (
                 <CmeFlatRow
                   key={filter.value}
-                  href={`/cme/log?year=${effectiveYear}&fix=${filter.value}`}
+                  href={
+                    filter.value === "evidence" && evidencePageShown
+                      ? `/cme/evidence?year=${effectiveYear}`
+                      : `/cme/log?year=${effectiveYear}&fix=${filter.value}`
+                  }
                   testId={`cme-finish-attention-${filter.value}`}
                   lead={lead}
                   title={filter.label}

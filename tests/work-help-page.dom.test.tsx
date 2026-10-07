@@ -22,7 +22,9 @@ vi.mock("next/navigation", () => ({
 const band = vi.hoisted(() => ({ heading: vi.fn() }));
 vi.mock("@/components/mode-band/mode-band", () => ({ useModeBandHeading: band.heading }));
 
-vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
+// The example data and time zone settings read the real device store; only the account hook is faked.
+vi.mock("@/components/clinical-dashboard/use-app-preferences", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/clinical-dashboard/use-app-preferences")>()),
   useAppPreferences: () => ({ preferences: {}, setPreference: vi.fn() }),
 }));
 

@@ -104,7 +104,7 @@ export const ANSWER_STYLE_OPTIONS: ReadonlyArray<{
 export const WORK_STAGE_OPTIONS: ReadonlyArray<{ value: WorkStagePreference; label: string; description: string }> = [
   { value: "intern", label: "Intern", description: "PGY1" },
   { value: "resident", label: "Resident", description: "PGY2 and beyond, not in training" },
-  { value: "registrar", label: "Psychiatry registrar", description: "In RANZCP training; choose your stage next" },
+  { value: "registrar", label: "Psychiatry registrar", description: "In RANZCP training. Choose your stage next" },
   { value: "consultant", label: "Consultant psychiatrist", description: "" },
   { value: "other", label: "Other", description: "" },
 ];

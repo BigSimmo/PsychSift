@@ -132,7 +132,7 @@ const EXAMPLE_AREAS = [
     id: "admin",
     mode: "admin",
     title: "Admin",
-    subtitle: "Dates you entered; not checked with Ahpra",
+    subtitle: "Dates you entered. Not checked with Ahpra",
     label: "1 not recorded",
   },
   { id: "on-call", mode: "on-call", title: "On Call", subtitle: "Hospital phone off", label: "Ready" },
