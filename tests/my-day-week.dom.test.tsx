@@ -26,6 +26,8 @@ type ItemsRead = {
   cmeRoutines: CmeRoutine[];
 };
 const itemsState = vi.hoisted(() => ({ current: undefined as unknown as ItemsRead }));
+// work-mode redesign, owner request 6 Oct 2026: My Day's pages offer More's Customise, which navigates to Today.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
 vi.mock("@/components/my-day/use-my-day-items", () => ({ useMyDayItems: () => itemsState.current }));
 
 type Shifts = {

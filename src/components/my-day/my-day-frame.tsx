@@ -19,6 +19,8 @@ import { endOfShiftCard, type ShiftWindow } from "@/lib/alerts/end-of-shift";
 import { myDayEnabledForAuth, myDayNeedsSignIn } from "@/lib/my-day/model";
 import { useAuthSession } from "@/lib/supabase/client";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useOpenMyDayCustomise } from "@/components/my-day/my-day-open-customise";
+import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
 import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 
 /** The work-mode page body: a wash background, a 12px gutter and close card spacing. */
@@ -142,6 +144,9 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
   const shiftsState = useRosterShifts();
   const { reminders } = useRemindMe();
   const [sheet, setSheet] = useState<"reminders" | "remind-me" | null>(null);
+  // More's Reminders and Customise work from every My Day page, not only Today.
+  useWorkFrameAction("my-day-reminders", () => setSheet("reminders"));
+  useWorkFrameAction("my-day-customise", useOpenMyDayCustomise());
 
   const shiftWindows: readonly ShiftWindow[] = useMemo(
     () =>

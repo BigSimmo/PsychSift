@@ -146,7 +146,6 @@ function AlertsBody({ now }: { now: Date }) {
             onSelect={() => setSheet({ kind: "reminders" })}
             testId="alerts-your-reminders"
           />
-          <AlertsQuietRow title="Open shifts" reason="Arrives with Open shifts" testId="alerts-area-open-shifts" />
           <AlertsQuietRow title="Mental Health Act timers" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="Rest-break warnings" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="CPD coaching" reason="Locked until clinical sign-off" />

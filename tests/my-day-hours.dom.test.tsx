@@ -16,6 +16,8 @@ type Shifts = {
   teamMessage?: string | null;
 };
 const shiftsState = vi.hoisted(() => ({ current: undefined as unknown as Shifts }));
+// work-mode redesign, owner request 6 Oct 2026: My Day's pages offer More's Customise, which navigates to Today.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-shifts", () => ({ useRosterShifts: () => shiftsState.current }));
 
 const overview = vi.hoisted(() => ({ anchor: null as string | null, status: "ready" as string }));

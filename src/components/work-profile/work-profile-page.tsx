@@ -10,6 +10,7 @@ import { deriveSidebarIdentity } from "@/components/clinical-dashboard/ClinicalS
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ContextualBackLink } from "@/components/contextual-back-link";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { MyDayMoreActions } from "@/components/my-day/my-day-more-actions";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import { formatModeTime } from "@/components/mode-kit/dates";
@@ -405,6 +406,11 @@ export function WorkProfileFrame({ children }: { readonly children: ReactNode })
   );
 }
 
+/** My Day's More actions, with the minute clock the reminder sheets need. */
+function ProfileMoreActions() {
+  return <MyDayMoreActions now={useNow()} />;
+}
+
 /**
  * Work profile: the one page where a doctor sets up the Work side once — who
  * they are, where they work, the rules they work under, alerts, and what is
@@ -473,6 +479,7 @@ export function WorkProfilePage() {
       ) : null}
 
       {authStatus === "authenticated" ? <SignedInBody tab={tab} onTab={setTab} email={email} /> : null}
+      {authStatus === "authenticated" ? <ProfileMoreActions /> : null}
     </WorkProfileFrame>
   );
 }
