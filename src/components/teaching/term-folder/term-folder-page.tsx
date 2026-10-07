@@ -1,13 +1,12 @@
 "use client";
 
-import { Copy, Download, ExternalLink, Folder, Printer, ShieldCheck } from "lucide-react";
+import { CalendarDays, Check, Copy, Download, ExternalLink, Folder, Printer, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { csvHref } from "@/components/teaching/organise-model";
 import { T5Link, T5List, T5Meta, T5Note, T5Page, T5Row, T5Section } from "@/components/teaching/t5-kit";
 import { withUnit } from "@/components/teaching/teaching-number";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
@@ -17,10 +16,12 @@ import {
   FolderMeter,
   FolderTag,
 } from "@/components/teaching/term-folder/term-folder-parts";
+import { TermFolderExportSheet } from "@/components/teaching/term-folder/term-folder-export-sheet";
 import { useTermFolder, type TermFolderView } from "@/components/teaching/term-folder/use-term-folder";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 import { buttonFaceClass } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
+import { useOptionalToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -31,13 +32,15 @@ import {
   folderSectionLabels,
   folderSections,
   folderStatusWords,
+  folderComingUp,
+  folderExportBlocker,
+  folderIsEarly,
   folderTermTitle,
   TERM_FOLDER_PATH,
-  termFolderCsv,
-  termFolderFileName,
   type TermFolder,
 } from "@/lib/teaching/term-folder";
-import { dayMonth } from "@/lib/teaching/term-tracker";
+import { dayMonth, weekdayDayMonth } from "@/lib/teaching/term-tracker";
+import { perthTime } from "@/lib/teaching/time";
 
 /*
  * Term evidence folder, /teaching/term/folder (feature 12, mock-up nf_teach_acc). The doctor's own term
@@ -65,20 +68,35 @@ export function folderSummaryText(folder: TermFolder): string {
     .join("\n");
 }
 
-function FolderActions({ folder, demoMode, today }: { folder: TermFolder; demoMode: boolean; today: string }) {
+function FolderActions({
+  view,
+  demoMode,
+  onExported,
+}: {
+  view: Extract<TermFolderView, { kind: "ready" }>;
+  demoMode: boolean;
+  onExported: () => void;
+}) {
+  const { folder, today, term } = view;
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
+  const [exporting, setExporting] = useState(false);
+  const blocker = folderExportBlocker(folder, term);
   return (
     <div className="grid gap-2" data-print-hide>
       <div className="grid grid-cols-2 gap-2">
-        <a
-          href={csvHref(termFolderCsv(folder, today))}
-          download={termFolderFileName(folder, demoMode)}
-          className={cn(buttonFaceClass({ variant: "primary" }), "no-underline")}
-          data-testid="term-folder-csv"
+        <button
+          type="button"
+          className={cn(buttonFaceClass({ variant: "primary" }))}
+          aria-disabled={blocker ? true : undefined}
+          aria-describedby={blocker ? "term-folder-export-why" : undefined}
+          onClick={() => {
+            if (!blocker) setExporting(true);
+          }}
+          data-testid="term-folder-export-open"
         >
           <Download aria-hidden="true" className="size-icon-sm" />
-          Download CSV
-        </a>
+          Export
+        </button>
         <button
           type="button"
           className={secondaryButton}
@@ -91,6 +109,11 @@ function FolderActions({ folder, demoMode, today }: { folder: TermFolder; demoMo
           Print
         </button>
       </div>
+      {blocker ? (
+        <p id="term-folder-export-why" className="text-center text-sm text-[color:var(--text-muted)]">
+          {blocker}
+        </p>
+      ) : null}
       <button
         type="button"
         className={cn(
@@ -104,7 +127,7 @@ function FolderActions({ folder, demoMode, today }: { folder: TermFolder; demoMo
             announce("Summary copied");
           } catch {
             setCopied("failed");
-            announce("Copy did not work. Use Download CSV instead.");
+            announce("Copy did not work. Use Export instead.");
           }
         }}
       >
@@ -113,23 +136,31 @@ function FolderActions({ folder, demoMode, today }: { folder: TermFolder; demoMo
       </button>
       {copied === "failed" ? (
         <p role="status" className="text-center text-sm text-[color:var(--text-heading)]">
-          Copy did not work on this browser. Use Download CSV instead.
+          Copy did not work on this browser. Use Export instead.
         </p>
       ) : null}
+      <TermFolderExportSheet
+        open={exporting}
+        onClose={() => setExporting(false)}
+        folder={folder}
+        today={today}
+        demoMode={demoMode}
+        onExported={() => {
+          setExporting(false);
+          onExported();
+        }}
+      />
     </div>
   );
 }
 
 /** The signature: a folder with its tab, the term, the meter and the export controls. */
-function FolderCard({
-  view,
-  demoMode,
-}: {
-  view: Extract<TermFolderView, { kind: "ready" }>;
-  demoMode: boolean;
-}) {
-  const { folder, today } = view;
+function FolderCard({ view, demoMode }: { view: Extract<TermFolderView, { kind: "ready" }>; demoMode: boolean }) {
+  const { folder } = view;
   const tab = folder.phase === "during" ? "Now" : folder.phase === "ended" ? "Ended" : "Coming up";
+  const toast = useOptionalToast();
+  // When this visit exported the folder: the footer says so, as the mock-up's "Exported 15:10".
+  const [exportedAt, setExportedAt] = useState<string | null>(null);
   return (
     <section aria-labelledby="term-folder-title" className="mt-3 grid" data-testid="term-folder-card">
       <span
@@ -152,11 +183,35 @@ function FolderCard({
           </p>
           <FolderMeter parts={folder.parts} counts={folder.counts} label={folder.meterLabel} />
         </div>
-        <FolderActions folder={folder} demoMode={demoMode} today={today} />
-        <p className="flex items-center gap-1.5 border-t border-[color:var(--border)] pt-2.5 text-xs text-[color:var(--text-muted)]">
-          <ShieldCheck aria-hidden="true" className="size-icon-xs shrink-0" />
+        <FolderActions
+          view={view}
+          demoMode={demoMode}
+          onExported={() => {
+            const at = perthTime(new Date().toISOString());
+            setExportedAt(at);
+            announce(`Folder exported at ${at}. The gaps are listed first in the file.`);
+            toast?.push({
+              tone: "success",
+              title: `${folder.title} folder exported`,
+              body: "Gaps listed first in the file.",
+            });
+          }}
+        />
+        <p
+          className="flex items-center gap-1.5 border-t border-[color:var(--border)] pt-2.5 text-xs text-[color:var(--text-muted)]"
+          data-testid="term-folder-footer"
+        >
+          {exportedAt ? (
+            <Check aria-hidden="true" className="size-icon-xs shrink-0 text-[color:var(--mode-identity)]" />
+          ) : (
+            <ShieldCheck aria-hidden="true" className="size-icon-xs shrink-0" />
+          )}
           <span className="nums font-normal">
-            {view.updatedAt ? `Fills itself · updated ${view.updatedAt}` : "Fills itself from your records"}
+            {exportedAt
+              ? `Exported ${exportedAt} · gaps listed in the file`
+              : view.updatedAt
+                ? `Fills itself · updated ${view.updatedAt}`
+                : "Fills itself from your records"}
           </span>
         </p>
       </div>
@@ -167,6 +222,8 @@ function FolderCard({
 function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: "ready" }>; demoMode: boolean }) {
   const { folder } = view;
   const sections = folderSections(folder);
+  const early = folderIsEarly(view.term, view.today);
+  const coming = folderComingUp(view.term, view.today);
   return (
     <>
       <p className="hidden text-sm print:block">{`${folder.title} evidence folder, printed ${dayMonth(view.today)}`}</p>
@@ -174,11 +231,16 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
         <T5Note tone="warning" icon={view.offline ? "offline" : "alert"} className="mt-3" testId="term-folder-failed">
           {view.offline
             ? "No connection. The parts that need it show as not updating. "
-            : `${view.failed.length === 2 ? "Check-ins and supervision logs" : view.failed[0] === "attendance" ? "Check-ins" : "Supervision logs"} did not load, so that part shows as not updating. `}
+            : `${view.failed.length === 2 ? "Check-ins and supervision logs" : view.failed[0] === "attendance" ? "Check-ins" : "Supervision logs"} did not load, so that part shows as not updating${folder.parts.some((p) => p.status === "not_updating" && p.detail.startsWith("As of ")) ? " and keeps its last good figures" : ""}. `}
           <T5Link onClick={view.retry}>Try again</T5Link>
         </T5Note>
       ) : null}
       <FolderCard view={view} demoMode={demoMode} />
+      {early && folder.counts.to_fix === 0 ? (
+        <T5Note icon="shield" className="mt-3" testId="term-folder-early">
+          Nothing to fix yet. Each part fills itself from your records as the term runs; you do not upload anything.
+        </T5Note>
+      ) : null}
       {sections.map((section) => (
         <T5Section
           key={section.status}
@@ -199,6 +261,20 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
           </T5List>
         </T5Section>
       ))}
+      {coming.length > 0 ? (
+        <T5Section label="Coming up" testId="term-folder-coming">
+          <T5List ruled>
+            {coming.map((item) => (
+              <T5Row
+                key={`${item.date}-${item.title}`}
+                title={item.title}
+                meta={`${weekdayDayMonth(item.date)} · ${item.detail}`}
+                lead={<FolderIconCircle icon={CalendarDays} status="on_track" />}
+              />
+            ))}
+          </T5List>
+        </T5Section>
+      ) : null}
       <T5Section label="Not kept here" testId="term-folder-not-kept">
         <T5List ruled>
           <T5Row
@@ -242,7 +318,7 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
         {`${FOLDER_PRIVACY_LINE} Built from your check-ins, supervision logs and the term you keep on this phone. Nothing new is saved.`}
       </T5Note>
       <T5Meta className="mt-1 text-xs">
-          {`${withUnit(folder.sessions.length, folder.sessions.length === 1 ? "session" : "sessions")} and ${withUnit(folder.supervision.length, folder.supervision.length === 1 ? "supervision entry" : "supervision entries")} go into the CSV.`}
+        {`${withUnit(folder.sessions.length, folder.sessions.length === 1 ? "session" : "sessions")} and ${withUnit(folder.supervision.length, folder.supervision.length === 1 ? "supervision entry" : "supervision entries")} go into the CSV.`}
       </T5Meta>
     </>
   );

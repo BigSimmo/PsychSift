@@ -76,13 +76,17 @@ export interface FolderPart {
   readonly icon: FolderIcon;
   /** Where the doctor fixes or adds to this part. */
   readonly href: string;
+  /** The detail with people's names left out, for an export with names off. */
+  readonly detailWithoutNames?: string;
 }
 
 /** What a remote source has given the folder so far. */
 export type FolderSource<T> =
   | { readonly status: "ready"; readonly data: T }
   | { readonly status: "loading" }
-  | { readonly status: "failed" };
+  | { readonly status: "failed" }
+  /** The latest read failed, but an earlier one on this visit worked: keep its figures, marked as of then. */
+  | { readonly status: "stale"; readonly data: T; readonly asOf: string };
 
 export interface FolderSessionRow {
   readonly date: string;
@@ -189,7 +193,15 @@ function detailsPart(term: TermRecord): FolderPart {
     detail: missing.length
       ? `Add your ${missing.join(" and ")}`
       : [term.unit, term.supervisor, term.site].filter((part) => part.trim()).join(" · "),
+    detailWithoutNames: missing.length
+      ? `Add your ${missing.join(" and ")}`
+      : [term.unit, term.site].filter((part) => part.trim()).join(" · "),
   };
+}
+
+/** A part built from last good figures: not updating, and saying as of when. */
+function staleOf(part: FolderPart, asOf: string): FolderPart {
+  return { ...part, status: "not_updating", detail: `As of ${asOf} · ${part.detail}` };
 }
 
 function attendancePart(
@@ -205,6 +217,10 @@ function attendancePart(
     };
   if (source.status === "loading")
     return { rows: [], part: { ...base, href: "/teaching/logbook", status: "not_started", detail: "Loading" } };
+  if (source.status === "stale") {
+    const kept = attendancePart(term, today, { status: "ready", data: source.data });
+    return { rows: kept.rows, part: staleOf(kept.part, source.asOf) };
+  }
   const rows = sessionsInTerm(source.data, term);
   if (rows.length === 0)
     return {
@@ -243,6 +259,10 @@ function supervisionPart(
   if (source.status === "failed")
     return { rows: [], part: { ...base, status: "not_updating", detail: "Supervision logs did not load" } };
   if (source.status === "loading") return { rows: [], part: { ...base, status: "not_started", detail: "Loading" } };
+  if (source.status === "stale") {
+    const kept = supervisionPart(term, today, { status: "ready", data: source.data });
+    return { rows: kept.rows, part: staleOf(kept.part, source.asOf) };
+  }
   const { paired, entries } = supervisionInTerm(source.data, term);
   const rows = entries.map<FolderSupervisionRow>((entry) => ({
     date: entry.date,
@@ -279,7 +299,11 @@ function milestonePart(term: TermRecord, id: MilestoneId, today: string): Folder
     case "done":
       return { ...base, status: "complete", detail: `Marked done ${weekdayDayMonth(milestone.doneOn!)}` };
     case "overdue":
-      return { ...base, status: "to_fix", detail: `Was due ${weekdayDayMonth(milestone.dueOn)}. Mark it done once signed in CLA` };
+      return {
+        ...base,
+        status: "to_fix",
+        detail: `Was due ${weekdayDayMonth(milestone.dueOn)}. Mark it done once signed in CLA`,
+      };
     case "due":
       return { ...base, status: "on_track", detail: `Due ${weekdayDayMonth(milestone.dueOn)}` };
     default:
@@ -298,7 +322,8 @@ function epaPart(state: TermTrackerState, term: TermRecord, today: string): Fold
       : { ...base, status: "not_started", detail: "None logged · no target set" };
   const ofTarget = `${unit(count, "of")} ${target} logged`;
   if (count >= target) return { ...base, status: "complete", detail: ofTarget };
-  if (folderPhase(term, today) === "ended") return { ...base, status: "to_fix", detail: `${ofTarget} by the end of term` };
+  if (folderPhase(term, today) === "ended")
+    return { ...base, status: "to_fix", detail: `${ofTarget} by the end of term` };
   return { ...base, status: count > 0 ? "on_track" : "not_started", detail: ofTarget };
 }
 
@@ -388,38 +413,109 @@ export const FOLDER_NOT_KEPT_LINE =
   "Assessment forms are not kept in PsychSift. They are completed and signed in Clinical Learning Australia (CLA), with your Medical Education Unit.";
 export const FOLDER_CLA_URL = TERM_TRACKER_SOURCES.pmcwaCla;
 
+/** What goes into an export. Gaps and the part statuses always go; names are left out unless asked for. */
+export interface FolderExportOptions {
+  readonly sessions: boolean;
+  readonly supervision: boolean;
+  /** People's names (the supervisor). Off keeps it to counts and dates. */
+  readonly names: boolean;
+}
+
+export const FOLDER_EXPORT_DEFAULTS: FolderExportOptions = { sessions: true, supervision: true, names: false };
+
+/** The parts that need action, in page order: they lead every export, never hidden. */
+export function folderGaps(folder: Pick<TermFolder, "parts">): FolderPart[] {
+  return folder.parts.filter((part) => part.status === "to_fix" || part.status === "not_updating");
+}
+
 /**
- * The folder as a spreadsheet: a header, one line per part, then the sessions and supervision entries it
- * counted. Every cell goes through `cmeCsvCell`, which quotes it and defuses a leading formula character.
+ * The folder as a spreadsheet: a header, the gaps first, one line per part, then the sessions and supervision
+ * entries it counted. Every cell goes through `cmeCsvCell`, which quotes it and defuses a leading formula
+ * character.
  */
-export function termFolderCsv(folder: TermFolder, exportedOn: string): string {
+export function termFolderCsv(
+  folder: TermFolder,
+  exportedOn: string,
+  options: FolderExportOptions = { sessions: true, supervision: true, names: true },
+): string {
   const line = (cells: (string | number | null)[]) => cells.map(cmeCsvCell).join(",");
+  const detail = (part: FolderPart) => (options.names ? part.detail : (part.detailWithoutNames ?? part.detail));
+  const gaps = folderGaps(folder);
   const lines = [
     line(["Term evidence folder"]),
     line(["Term", folder.title]),
     line(["Dates", folder.dates]),
-    line(["Supervisor", folder.supervisor || "Not added"]),
+    line(["Supervisor", options.names ? folder.supervisor || "Not added" : "Left out (names off)"]),
     line(["Hospital or service", folder.site || "Not added"]),
     line(["Exported", exportedOn]),
     line(["Summary", folder.meterLabel]),
     "",
+    line([`Gaps · ${gaps.length}`]),
+    ...(gaps.length
+      ? gaps.map((part) => line([part.label, folderStatusWords[part.status], detail(part)]))
+      : [line(["None"])]),
+    "",
     line(["Part", "Status", "Detail"]),
-    ...folder.parts.map((part) => line([part.label, folderStatusWords[part.status], part.detail])),
-    "",
-    line(["Teaching sessions this term"]),
-    line(["Date", "Session", "Service", "Hours", "Check-in", "In CPD"]),
-    ...folder.sessions.map((row) =>
-      line([row.date, row.title, row.serviceName, row.hours, row.how, row.inCpd ? "Yes" : "No"]),
-    ),
-    "",
-    line(["Supervision this term"]),
-    line(["Date", "Minutes", "Type", "Status"]),
-    ...folder.supervision.map((row) => line([row.date, row.minutes, row.type, row.status])),
+    ...folder.parts.map((part) => line([part.label, folderStatusWords[part.status], detail(part)])),
+    ...(options.sessions
+      ? [
+          "",
+          line(["Teaching sessions this term"]),
+          line(["Date", "Session", "Service", "Hours", "Check-in", "In CPD"]),
+          ...folder.sessions.map((row) =>
+            line([row.date, row.title, row.serviceName, row.hours, row.how, row.inCpd ? "Yes" : "No"]),
+          ),
+        ]
+      : []),
+    ...(options.supervision
+      ? [
+          "",
+          line(["Supervision this term"]),
+          line(["Date", "Minutes", "Type", "Status"]),
+          ...folder.supervision.map((row) => line([row.date, row.minutes, row.type, row.status])),
+        ]
+      : []),
     "",
     line([FOLDER_NOT_KEPT_LINE]),
     line([FOLDER_PRIVACY_LINE]),
   ];
   return `${lines.join("\r\n")}\r\n`;
+}
+
+/** Why the folder cannot be exported yet, or null. Before the term starts there is nothing in it. */
+export function folderExportBlocker(
+  folder: Pick<TermFolder, "phase">,
+  term: Pick<TermRecord, "startsOn">,
+): string | null {
+  return folder.phase === "before"
+    ? `Nothing to export until the term starts on ${weekdayDayMonth(term.startsOn)}.`
+    : null;
+}
+
+/** Early in the term (before it starts, or its first week): nothing can be behind yet. */
+export function folderIsEarly(term: Pick<TermRecord, "startsOn" | "endsOn">, today: string): boolean {
+  const phase = folderPhase(term, today);
+  return phase === "before" || (phase === "during" && termWeekOf(term, today) <= 1);
+}
+
+export interface FolderComingUp {
+  readonly date: string;
+  readonly title: string;
+  readonly detail: string;
+}
+
+/** The dates still ahead this term, soonest first: assessment dates not yet done, then the term's end. */
+export function folderComingUp(term: TermRecord, today: string): FolderComingUp[] {
+  const items: FolderComingUp[] = milestoneIds
+    .filter((id) => !term.milestones[id].doneOn && term.milestones[id].dueOn > today)
+    .map((id) => ({
+      date: term.milestones[id].dueOn,
+      title: `${milestoneLabels[id].long} due`,
+      detail: "Mark it done once it is signed in CLA",
+    }));
+  if (term.endsOn >= today)
+    items.push({ date: term.endsOn, title: "Term ends", detail: "The folder is ready to export after" });
+  return items.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** "term-4-psychiatry-evidence-folder.csv", safe for any file system. */

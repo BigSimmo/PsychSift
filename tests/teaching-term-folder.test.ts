@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { LogbookRow } from "@/lib/teaching/model";
 import {
+  FOLDER_EXPORT_DEFAULTS,
   buildTermFolder,
+  folderComingUp,
+  folderExportBlocker,
+  folderGaps,
+  folderIsEarly,
   folderMeterLabel,
   folderSections,
   otherTerms,
@@ -93,11 +98,22 @@ describe("term evidence folder", () => {
       attendance: ready(rows),
       supervision: ready([pairingView()]),
     });
-    expect(folder.parts.map((p) => p.id)).toEqual(["details", "attendance", "supervision", "start", "mid", "end", "epas"]);
+    expect(folder.parts.map((p) => p.id)).toEqual([
+      "details",
+      "attendance",
+      "supervision",
+      "start",
+      "mid",
+      "end",
+      "epas",
+    ]);
     const byId = Object.fromEntries(folder.parts.map((p) => [p.id, p]));
     expect(byId.details.status).toBe("complete");
     expect(byId.attendance).toMatchObject({ status: "on_track", detail: `2${NB}sessions · 2${NB}h · last Tue 6 Oct` });
-    expect(byId.supervision).toMatchObject({ status: "on_track", detail: `1${NB}h confirmed · 1${NB}awaiting confirmation` });
+    expect(byId.supervision).toMatchObject({
+      status: "on_track",
+      detail: `1${NB}h confirmed · 1${NB}awaiting confirmation`,
+    });
     expect(byId.start).toMatchObject({ status: "complete", detail: "Marked done Wed 2 Sep" });
     expect(byId.mid.status).toBe("to_fix");
     expect(byId.end.status).toBe("not_started");
@@ -156,8 +172,17 @@ describe("term evidence folder", () => {
     const t = term();
     const epas = [{ id: "e1", termId: "t4", epa: 1 as const, on: "2026-09-10" }];
     const withTarget = tracker(t, { epas, targets: { perTerm: 2, perYear: 10 } });
-    const during = buildTermFolder({ today, state: withTarget, term: t, attendance: ready([]), supervision: ready([]) });
-    expect(during.parts.find((p) => p.id === "epas")).toMatchObject({ status: "on_track", detail: `1${NB}of 2 logged` });
+    const during = buildTermFolder({
+      today,
+      state: withTarget,
+      term: t,
+      attendance: ready([]),
+      supervision: ready([]),
+    });
+    expect(during.parts.find((p) => p.id === "epas")).toMatchObject({
+      status: "on_track",
+      detail: `1${NB}of 2 logged`,
+    });
     const after = buildTermFolder({
       today: "2026-11-20",
       state: withTarget,
@@ -170,7 +195,10 @@ describe("term evidence folder", () => {
     expect(after.dates).toBe("31 Aug to 6 Nov · ended");
     const noTarget = tracker(t, { epas });
     const plain = buildTermFolder({ today, state: noTarget, term: t, attendance: ready([]), supervision: ready([]) });
-    expect(plain.parts.find((p) => p.id === "epas")).toMatchObject({ status: "on_track", detail: `1${NB}EPA logged · no target set` });
+    expect(plain.parts.find((p) => p.id === "epas")).toMatchObject({
+      status: "on_track",
+      detail: `1${NB}EPA logged · no target set`,
+    });
   });
 
   it("groups parts urgent first and drops empty groups", () => {
@@ -245,5 +273,64 @@ describe("term evidence folder", () => {
     expect(folderMeterLabel({ complete: 0, on_track: 0, to_fix: 0, not_updating: 0, not_started: 0 })).toBe(
       `0${NB}parts.`,
     );
+  });
+
+  it("keeps the last good figures when a later read fails, marked as of then", () => {
+    const folder = buildTermFolder({
+      today,
+      state: tracker(),
+      term: term(),
+      attendance: { status: "stale", data: rows, asOf: "09:00" },
+      supervision: { status: "stale", data: [pairingView()], asOf: "09:00" },
+    });
+    const attendance = folder.parts.find((p) => p.id === "attendance")!;
+    expect(attendance.status).toBe("not_updating");
+    expect(attendance.detail).toMatch(/^As of 09:00 · 2\u00a0sessions/);
+    expect(folder.sessions).toHaveLength(2);
+    expect(folder.parts.find((p) => p.id === "supervision")!.detail).toMatch(/^As of 09:00 · /);
+    expect(folderGaps(folder).map((p) => p.id)).toEqual(["attendance", "supervision", "mid"]);
+  });
+
+  it("exports gaps first, leaves names out by default, and drops the lists not asked for", () => {
+    const folder = buildTermFolder({
+      today,
+      state: tracker(),
+      term: term(),
+      attendance: ready(rows),
+      supervision: ready([pairingView()]),
+    });
+    expect(FOLDER_EXPORT_DEFAULTS).toEqual({ sessions: true, supervision: true, names: false });
+    const csv = termFolderCsv(folder, today, FOLDER_EXPORT_DEFAULTS);
+    const lines = csv.split("\r\n");
+    const gapsAt = lines.findIndex((l) => l.startsWith('"Gaps · '));
+    const partsAt = lines.indexOf('"Part","Status","Detail"');
+    expect(gapsAt).toBeGreaterThan(0);
+    expect(gapsAt).toBeLessThan(partsAt);
+    expect(lines[gapsAt + 1]).toContain('"Mid-term assessment","to fix"');
+    expect(csv).not.toContain("Dr Example");
+    expect(csv).toContain('"Supervisor","Left out (names off)"');
+    expect(termFolderCsv(folder, today, { ...FOLDER_EXPORT_DEFAULTS, names: true })).toContain("Dr Example");
+    const bare = termFolderCsv(folder, today, { sessions: false, supervision: false, names: false });
+    expect(bare).not.toContain("Teaching sessions this term");
+    expect(bare).not.toContain("Supervision this term");
+    const clean = buildTermFolder({
+      today: "2026-09-02",
+      state: tracker(),
+      term: term({ milestones: { ...term().milestones, mid: { dueOn: "2026-10-02", doneOn: null } } }),
+      attendance: ready([]),
+      supervision: ready([]),
+    });
+    expect(termFolderCsv(clean, "2026-09-02")).toContain('"Gaps · 0"\r\n"None"');
+  });
+
+  it("knows the early days, refuses an export before the term starts, and lists what is coming up", () => {
+    expect(folderIsEarly(term(), "2026-08-20")).toBe(true);
+    expect(folderIsEarly(term(), "2026-09-02")).toBe(true);
+    expect(folderIsEarly(term(), "2026-09-10")).toBe(false);
+    expect(folderExportBlocker({ phase: "before" }, term())).toMatch(/^Nothing to export until the term starts on /);
+    expect(folderExportBlocker({ phase: "during" }, term())).toBeNull();
+    const coming = folderComingUp(term(), "2026-09-20");
+    expect(coming.map((c) => c.title)).toEqual(["Mid-term assessment due", "End-of-term assessment due", "Term ends"]);
+    expect(folderComingUp(term(), "2026-11-07")).toEqual([]);
   });
 });
