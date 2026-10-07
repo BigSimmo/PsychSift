@@ -74,7 +74,10 @@ function prefetchWhenIdle(): () => void {
 /**
  * The header's "Search my work" control on the staff modes: a round magnifier-with-sparkle
  * on phones and a labelled pill on wide screens, so it is never mistaken for the clinical
- * search box. It opens a full-screen search across Roster, Teaching, CPD, Admin and On Call.
+ * search box. The pill opens only when the header's trailing column (a wide-screen container
+ * the header names `header-trailing`) has room for it beside the bell: 20.75rem is the bell,
+ * the gap and the 18rem pill, less the grid gap it may lean into. Measured in rem, so at large
+ * text sizes the control stays a round icon rather than running under the mode switcher. It opens a full-screen search across Roster, Teaching, CPD, Admin and On Call.
  * The first time it appears, a small "New" note points at it until dismissed.
  *
  * Keys (work-mode redesign, ideas list #3): "/" or Ctrl K (Command K on a Mac) opens
@@ -153,19 +156,23 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
         title="Search my work"
         data-testid="work-search-button"
         className={cn(
-          "universal-header-icon-control relative inline-flex h-tap w-tap shrink-0 items-center justify-center gap-2.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)] shadow-[var(--e2)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none lg:w-72 lg:justify-start lg:px-3.5",
+          "universal-header-icon-control relative inline-flex h-tap w-tap shrink-0 items-center justify-center gap-2.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)] shadow-[var(--e2)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none @min-[20.75rem]/header-trailing:w-72 @min-[20.75rem]/header-trailing:justify-start @min-[20.75rem]/header-trailing:px-3.5",
           className,
         )}
       >
         <WorkSearchGlyph className="size-icon-md" />
-        <span className="hidden text-sm-minus text-[color:var(--text-muted)] lg:inline">Search my work</span>
+        <span className="hidden text-sm-minus text-[color:var(--text-muted)] @min-[20.75rem]/header-trailing:inline">
+          Search my work
+        </span>
       </button>
+      {/* Below 640px the note would sit over the page title and first row, so phones get only the
+          ring above; tapping the button still marks the note as read. From 640px it shows as before. */}
       {coach ? (
         <span
           ref={coachRef}
           id="work-search-coach"
           role="note"
-          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 grid w-[min(14.75rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:color-mix(in_srgb,var(--surface-raised)_92%,transparent)] p-3.5 text-left shadow-[var(--e4)] backdrop-blur-xl"
+          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 hidden w-[min(14.75rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:color-mix(in_srgb,var(--surface-raised)_92%,transparent)] p-3.5 text-left shadow-[var(--e4)] backdrop-blur-xl sm:grid"
         >
           <span
             aria-hidden="true"

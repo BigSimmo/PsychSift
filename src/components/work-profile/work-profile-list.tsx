@@ -108,7 +108,7 @@ export function WorkProfileRow({
         <span
           className={cn(
             modeNameText,
-            "flex min-w-0 items-center gap-2 break-words text-sm-minus leading-5 font-bold",
+            "flex min-w-0 items-center gap-2 break-words text-sm leading-5 font-bold",
             titleColour,
           )}
         >
@@ -194,7 +194,7 @@ export function WorkProfileNote({
         )}
       />
       <div className="grid min-w-0 flex-1 gap-0.5">
-        <p className="text-sm-minus font-bold text-[color:var(--work-ink)]">{title}</p>
+        <p className="text-sm leading-normal font-bold text-[color:var(--work-ink)]">{title}</p>
         {children ? <div className="text-sm text-[color:var(--text-muted)]">{children}</div> : null}
       </div>
       {action ? <div className="shrink-0 self-center">{action}</div> : null}

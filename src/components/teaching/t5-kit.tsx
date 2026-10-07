@@ -196,7 +196,7 @@ export function T5Icon({
 /** A 24-hour start time at the start of a row, in the mockup's time column. */
 export function T5Time({ time, past = false }: { time: string; past?: boolean }) {
   return (
-    <span data-row-time className={cn("nums w-11 shrink-0 text-sm-minus font-bold", past ? sub : ink)}>
+    <span data-row-time className={cn("nums basis-11 shrink-0 text-sm-minus font-bold", past ? sub : ink)}>
       {time}
     </span>
   );
@@ -534,7 +534,7 @@ export function T5Segments<T extends string>({
       role="group"
       aria-label={label}
       data-no-tab-swipe=""
-      className="relative isolate grid min-h-12 auto-cols-fr grid-flow-col px-0.75 before:absolute before:inset-x-0 before:inset-y-1.5 before:-z-10 before:rounded-full before:bg-[color:var(--surface-inset)] before:content-[''] forced-colors:before:border forced-colors:before:border-[ButtonBorder]"
+      className="relative isolate grid min-h-12 auto-cols-fr grid-flow-col px-0.75 before:absolute before:inset-x-0 before:inset-y-1.5 before:[z-index:var(--work-z-under)] before:rounded-full before:bg-[color:var(--surface-inset)] before:content-[''] forced-colors:before:border forced-colors:before:border-[ButtonBorder]"
     >
       {options.map((option) => {
         const on = option.value === value;
@@ -598,7 +598,7 @@ export function T5Check({
             disabled={disabled}
             onChange={(event) => onChange(event.target.checked)}
             className={cn(
-              "peer absolute inset-0 cursor-pointer appearance-none rounded-md border-[1.5px] border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] checked:border-[color:var(--mode-identity)] checked:bg-[color:var(--mode-identity)] disabled:cursor-not-allowed disabled:opacity-50 forced-colors:appearance-auto",
+              "peer absolute inset-0 cursor-pointer appearance-none rounded-md border-[1.5px] border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] checked:border-[color:var(--mode-identity)] checked:bg-[color:var(--mode-identity)] disabled:cursor-not-allowed disabled:border-[color:var(--border)] disabled:bg-[color:var(--surface-subtle)] disabled:checked:border-[color:var(--disabled)] disabled:checked:bg-[color:var(--disabled)] forced-colors:appearance-auto",
               focusRing,
             )}
           />

@@ -113,7 +113,7 @@ export function LogToCpdSheet({
     setHours((value) => stepCpdHours(value, direction));
   };
   const round = cn(
-    "relative isolate grid size-12 shrink-0 place-items-center rounded-full text-[color:var(--text-heading)] before:absolute before:inset-1.5 before:-z-10 before:rounded-full before:bg-[color:var(--surface-wash)] before:content-[''] disabled:opacity-40",
+    "relative isolate grid size-12 shrink-0 place-items-center rounded-full text-[color:var(--text-heading)] before:absolute before:inset-1.5 before:[z-index:var(--work-z-under)] before:rounded-full before:bg-[color:var(--surface-wash)] before:content-[''] disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:before:bg-[color:var(--surface-subtle)]",
     focusRing,
   );
   return (

@@ -28,6 +28,9 @@
      `--ring-hairline` and coloured where it is used:
      `box-shadow: var(--work-edge-inset) var(--work-glass-line)`. */
   --work-edge-inset: inset 0 0 0 1px;
+  /* The heavier inside edge of a selected day or shift cell, coloured where
+     it is used, the same way: `var(--work-edge-inset-strong) var(--mode-identity)`. */
+  --work-edge-inset-strong: inset 0 0 0 1.5px;
   /* A decoration layer (glass, chip and button fills) painted under its own
      isolated control's content. Local to that control's stacking context, so
      it is not a rung on the global --z-* ladder. */

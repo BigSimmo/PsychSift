@@ -166,8 +166,9 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
             </ModeBandAction>
           ) : null}
         </div>
-        {searching && loadState !== "failed" ? (
-          <div className="grid gap-1" role="status" aria-live="polite" data-testid="admin-help-search-result">
+        {/* role="status" is already a polite live region, so no aria-live beside it (SPEC §9.2). */}
+        {loadState === "failed" || !searching ? null : (
+          <div className="grid gap-1" role="status" data-testid="admin-help-search-result">
             <p className="text-sm text-[color:var(--text)]">
               {filtered.length === 1 ? "1 result" : `${filtered.length} results`}
             </p>
@@ -182,7 +183,7 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
               </p>
             ) : null}
           </div>
-        ) : null}
+        )}
 
         {/* Pinned numbers sit under the crisis lines, never above them (owner decision 2026-10-01).
             Hidden with the sections when loading failed: a cached number is not offered as current. */}

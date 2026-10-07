@@ -34,7 +34,7 @@ export function AdminSavedUndoBar({
   }, []);
 
   return (
-    <div role="status" aria-live="polite" data-testid={testId} className={cn(adminStyles.undoBar, "print:hidden")}>
+    <div role="status" data-testid={testId} className={cn(adminStyles.undoBar, "print:hidden")}>
       <span className={adminStyles.undoText}>{label}</span>
       <button type="button" onClick={onUndo} data-testid={`${testId}-undo`} className={adminStyles.undoAction}>
         Undo

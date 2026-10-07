@@ -175,7 +175,7 @@ function DayLine({ shift, now }: { readonly shift: OnCallShift; readonly now: Da
 function ShiftTimes({ shift }: { readonly shift: OnCallShift }) {
   const { start, end, plusOne } = shiftTimes(shift);
   return (
-    <span className="nums flex flex-wrap items-baseline gap-x-1.5 text-[1.375rem] font-bold leading-tight tracking-[-0.02em]">
+    <span className="nums flex flex-wrap items-baseline gap-x-1.5 text-[1.375rem] font-bold leading-tight tracking-display">
       <span>{start}</span>
       <span className="text-sm font-semibold opacity-90">to</span>
       <span>{end}</span>

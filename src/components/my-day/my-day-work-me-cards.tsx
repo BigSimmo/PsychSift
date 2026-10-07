@@ -402,9 +402,7 @@ function NewJobRow({ job, today }: { readonly job: NewJobProgress; readonly toda
       >
         <DateBlock number={Number(job.startsOn.slice(8, 10))} word={shortMonth(job.startsOn)} mode="my-work" />
         <span className="grid min-w-0 flex-1 gap-1">
-          <span className="text-sm-minus leading-tight font-bold break-words text-[color:var(--work-ink)]">
-            {title}
-          </span>
+          <span className="text-sm leading-tight font-bold break-words text-[color:var(--work-ink)]">{title}</span>
           <span className="text-2xs break-words text-[color:var(--text-muted)]">
             {job.nextStep ? `${progress} · next: ${job.nextStep}` : progress}
           </span>
@@ -707,7 +705,7 @@ export function CredentialsCard({ rows, today }: { readonly rows: readonly Renew
                 >
                   <AreaIcon mode="my-work" icon={Shield} />
                   <span className="grid min-w-0 flex-1">
-                    <span className="text-sm-minus leading-tight font-bold break-words text-[color:var(--work-ink)]">
+                    <span className="text-sm leading-tight font-bold break-words text-[color:var(--work-ink)]">
                       {row.title}
                     </span>
                     <span

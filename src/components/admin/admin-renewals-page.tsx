@@ -572,7 +572,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
       )}
 
       {undoBar ? (
-        <div data-testid="admin-renewals-undo-bar" className={adminStyles.undoBar} role="status" aria-live="polite">
+        <div data-testid="admin-renewals-undo-bar" className={adminStyles.undoBar} role="status">
           <span className={adminStyles.undoText}>
             {undoBar.failed ? `Undo didn't save · ${undoBar.message}` : undoBar.message}
           </span>
