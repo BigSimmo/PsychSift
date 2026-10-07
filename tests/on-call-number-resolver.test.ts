@@ -13,11 +13,20 @@ import {
   spokenOnCallNumber,
 } from "@/lib/on-call/number-resolver";
 
-// Local-time constructors, as tests/on-call-home-modules.test.ts uses: the rule reads the viewer's zone.
-const WED_0900 = new Date(2026, 8, 16, 9, 0, 0);
-const WED_2200 = new Date(2026, 8, 16, 22, 0, 0);
-const SAT_MIDDAY = new Date(2026, 8, 19, 12, 0, 0);
-const KINGS_BIRTHDAY_1000 = new Date(2026, 8, 28, 10, 0, 0); // Monday 28 Sep 2026, WA public holiday
+/**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
+
+// Perth wall-clock instants, as tests/on-call-home-modules.test.ts uses: the rule reads the work zone.
+const WED_0900 = perthWall(2026, 8, 16, 9, 0, 0);
+const WED_2200 = perthWall(2026, 8, 16, 22, 0, 0);
+const SAT_MIDDAY = perthWall(2026, 8, 19, 12, 0, 0);
+const KINGS_BIRTHDAY_1000 = perthWall(2026, 8, 28, 10, 0, 0); // Monday 28 Sep 2026, WA public holiday
 const HOUR = 60 * 60 * 1000;
 
 describe("onCallPeriod: the one in-hours rule", () => {
@@ -44,18 +53,18 @@ describe("onCallPeriod: the one in-hours rule", () => {
 
 describe("msUntilOnCallPeriodChange", () => {
   it("carries a Friday evening over the weekend and the King's Birthday to Tuesday 08:00", () => {
-    const friday = new Date(2026, 8, 25, 18, 0, 0);
+    const friday = perthWall(2026, 8, 25, 18, 0, 0);
     expect(friday.getDay()).toBe(5);
     expect(msUntilOnCallPeriodChange(friday)).toBe(86 * HOUR);
   });
 
   it("crosses the Christmas run, which the old 96-hour cap could not", () => {
-    const christmasEve = new Date(2026, 11, 24, 17, 0, 0); // Thursday; 25, 26 and 28 Dec are holidays
+    const christmasEve = perthWall(2026, 11, 24, 17, 0, 0); // Thursday; 25, 26 and 28 Dec are holidays
     expect(msUntilOnCallPeriodChange(christmasEve)).toBe(111 * HOUR);
   });
 
   it("is always positive, so a timer on it cannot spin", () => {
-    for (const at of [WED_0900, new Date(2026, 8, 16, 17, 0, 0), KINGS_BIRTHDAY_1000]) {
+    for (const at of [WED_0900, perthWall(2026, 8, 16, 17, 0, 0), KINGS_BIRTHDAY_1000]) {
       expect(msUntilOnCallPeriodChange(at)).toBeGreaterThan(0);
     }
   });

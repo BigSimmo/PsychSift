@@ -6,6 +6,7 @@ import { activeCmeYearEntries, cmeCsvCell } from "@/lib/cme/export";
 import { formatCmeRowDate } from "@/lib/cme/cpd-year";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { cpdTextLooksLikePatient, cpdTitleLooksLikePatient } from "@/lib/cme/patient-detail-check";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * Send CPD to AMA CPD Home (#11).
@@ -97,10 +98,7 @@ export const CPD_HOME_TITLE_PATIENT_PROBLEM = "Title looks like a patient detail
  * because the title is in every row of every file and copy. Its row is named by date, so the
  * flagged words are not shown again.
  */
-export function cpdHomeRowProblems(
-  rows: readonly CpdHomeRow[],
-  thisYear = new Date().getFullYear(),
-): CpdHomeRowProblem[] {
+export function cpdHomeRowProblems(rows: readonly CpdHomeRow[], thisYear = currentWorkYear()): CpdHomeRowProblem[] {
   const problems: CpdHomeRowProblem[] = [];
   for (const row of rows) {
     const activity = row.activity || "Untitled activity";

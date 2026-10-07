@@ -48,6 +48,7 @@ import {
 } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
 import { useAuthSession } from "@/lib/supabase/client";
+import { useExampleData } from "@/lib/example-data/store";
 
 /* The printable form is heavy and opened rarely, so it loads only when asked for. */
 const FormPdf = dynamic(() => import("@/components/teaching/assessments/assessments-pdf").then((m) => m.FormPdf), {
@@ -324,8 +325,9 @@ function NotKeptYet({ onTry }: { onTry: () => void }) {
 }
 
 function AssessmentsPage({ demoMode }: { demoMode: boolean }) {
-  const [practice, setPractice] = useState(false);
-  const sample = demoMode || practice;
+  // "Try it with made-up records" turns on the one example data switch, so the shared banner shows and Turn off works.
+  const { active, turnOn } = useExampleData("assess");
+  const sample = demoMode || active;
   return (
     <WorkBody testId="teaching-assessments">
       <h1 className="sr-only">Assessments</h1>
@@ -334,7 +336,7 @@ function AssessmentsPage({ demoMode }: { demoMode: boolean }) {
           <AssessmentsApp />
         </Suspense>
       ) : (
-        <NotKeptYet onTry={() => setPractice(true)} />
+        <NotKeptYet onTry={turnOn} />
       )}
     </WorkBody>
   );

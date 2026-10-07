@@ -11,6 +11,15 @@ import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner
 import { onCallEntryFreshness, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { clearOnCallRecent, readOnCallRecent } from "@/lib/on-call/recent-storage";
 
+/**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
+
 afterEach(cleanup);
 
 const NOW = new Date("2026-09-04T00:00:00.000Z");
@@ -167,8 +176,8 @@ describe("OnCallOfflineBanner", () => {
  * constructor so the hour under test is the hour on the reader's own phone
  * whatever zone the test runner sits in. 16 September 2026 is a Wednesday.
  */
-const WEEKDAY_MORNING = new Date(2026, 8, 16, 9, 0, 0);
-const WEEKDAY_NIGHT = new Date(2026, 8, 16, 22, 0, 0);
+const WEEKDAY_MORNING = perthWall(2026, 8, 16, 9, 0, 0);
+const WEEKDAY_NIGHT = perthWall(2026, 8, 16, 22, 0, 0);
 
 const DAY_AND_NIGHT_BED_MANAGER = contact({
   id: "55555555-5555-5555-5555-555555555555",
@@ -176,7 +185,7 @@ const DAY_AND_NIGHT_BED_MANAGER = contact({
   title: "Bed manager",
   tags: ["Ward 4B"],
   details: { role: "Bed manager", phone: "08 9224 1111", afterHoursPhone: "0455 222 333" },
-  lastVerifiedAt: new Date(2026, 8, 10, 9, 0, 0).toISOString(),
+  lastVerifiedAt: perthWall(2026, 8, 10, 9, 0, 0).toISOString(),
 });
 
 const PERSONAL_CONSULTANT = contact({
@@ -186,7 +195,7 @@ const PERSONAL_CONSULTANT = contact({
   tags: ["Ward 4B"],
   isPersonal: true,
   details: { role: "Consultant mobile", phone: "0400 111 222" },
-  lastVerifiedAt: new Date(2026, 8, 10, 9, 0, 0).toISOString(),
+  lastVerifiedAt: perthWall(2026, 8, 10, 9, 0, 0).toISOString(),
 });
 
 describe("OnCallContactsSection", () => {

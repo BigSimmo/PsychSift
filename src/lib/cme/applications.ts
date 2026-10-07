@@ -6,6 +6,7 @@ import {
   cpdTextLooksLikePatient,
 } from "@/lib/cme/patient-detail-check";
 import { normaliseWorkText } from "@/lib/work-text/patient-detail-check";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * Job applications season (#22): the doctor's own plan for one recruitment
@@ -159,25 +160,19 @@ const PATIENT_PROBLEM: ApplicationTextProblem = {
  * services in three capitals ("OPH") are read past; two capitals are read as
  * initials.
  */
-export function applicationTextProblem(
-  text: string,
-  thisYear = new Date().getFullYear(),
-): ApplicationTextProblem | null {
+export function applicationTextProblem(text: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
   return cpdNamedPlaceTextLooksLikePatient(trimmed, thisYear) ? PATIENT_PROBLEM : null;
 }
 
 /** A referee's role: three-letter hospital and service capitals ("Consultant, OPH") are read past, two are not. */
-export function refereeRoleProblem(role: string, thisYear = new Date().getFullYear()): ApplicationTextProblem | null {
+export function refereeRoleProblem(role: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
   return applicationTextProblem(role, thisYear);
 }
 
 /** Where a date came from: an advert's link and reference number can be kept; anything else is checked. */
-export function advertSourceProblem(
-  source: string,
-  thisYear = new Date().getFullYear(),
-): ApplicationTextProblem | null {
+export function advertSourceProblem(source: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
   if (!source.trim()) return null;
   return advertSourceLooksLikePatient(source, thisYear) ? PATIENT_PROBLEM : null;
 }
@@ -190,10 +185,10 @@ const TITLES = /^(?:dr|doctor|prof|professor|a\/prof|assoc(?:iate)?\.?\s+prof(?:
  * surname, so that one finding is allowed; capitals alone ("JS"), dotted initials ("J.S.") and an
  * age with sex are not.
  */
-export function refereeNameProblem(name: string, thisYear = new Date().getFullYear()): ApplicationTextProblem | null {
+export function refereeNameProblem(name: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
   // Folded first, so a full-width digit or a hidden character cannot slip past the rules below.
   const trimmed = normaliseWorkText(name).trim();
-  if (!trimmed) return { title: "Add a name", body: "Type the referee's name, for example Dr Grant." };
+  if (!trimmed) return { title: "Add a name", body: "Type the referee's name, for example Dr Karri." };
   if (/\d/.test(trimmed))
     return {
       title: "A name has no numbers",
@@ -208,7 +203,7 @@ export function refereeNameProblem(name: string, thisYear = new Date().getFullYe
   if (cpdTextLooksLikePatient(rest, thisYear, { allowName: true }))
     return {
       title: "This looks like a patient detail",
-      body: "Only the referee's name goes here, for example Dr Grant. Leave out initials, ages and anything about a patient.",
+      body: "Only the referee's name goes here, for example Dr Karri. Leave out initials, ages and anything about a patient.",
     };
   return null;
 }
@@ -614,7 +609,7 @@ export function sampleApplications(today: string): ApplicationsState {
     referees: [
       {
         id: "sample-moss",
-        name: "Dr Moss",
+        name: "Dr Jarrah",
         role: "Consultant, Example Hospital",
         status: "agreed",
         history: [
@@ -624,12 +619,12 @@ export function sampleApplications(today: string): ApplicationsState {
       },
       {
         id: "sample-grant",
-        name: "Dr Grant",
+        name: "Dr Karri",
         role: "Consultant, Example Hospital",
         status: "asked",
         history: [{ kind: "status", status: "asked", on: shiftDays(today, -5) }],
       },
-      { id: "sample-lowe", name: "Dr Lowe", role: "Clinic B", status: "not-asked", history: [] },
+      { id: "sample-lowe", name: "Dr Banksia", role: "Clinic B", status: "not-asked", history: [] },
     ],
     statement: "",
     hiddenCvLines: [],

@@ -384,7 +384,8 @@ describe("complianceExpiresOn", () => {
 describe("recordedExpiryHasPassed", () => {
   // A local clock, always injected. Nothing here may depend on the day the
   // suite happens to run, and `now` is a parameter precisely so it need not.
-  const AT_0930 = new Date(2026, 8, 20, 9, 30);
+  // Perth wall clock (UTC+8): "today" is read in the work time zone, Perth by default.
+  const AT_0930 = new Date(Date.UTC(2026, 8, 20, 9 - 8, 30));
   const TODAY = "2026-09-20";
   const YESTERDAY = "2026-09-19";
   const TOMORROW = "2026-09-21";
@@ -406,14 +407,14 @@ describe("recordedExpiryHasPassed", () => {
     expect(recordedExpiryHasPassed(requirement({ expiresOn: TOMORROW }), AT_0930)).toBe(false);
   });
 
-  it("reads the viewer's own local day at both ends of it", () => {
-    // Two clocks that fall on the same LOCAL day but different UTC days in
-    // some zone, so the pair bites wherever the suite runs. Just after
-    // midnight catches an implementation that parsed the dates; just before
-    // it catches one that took today's key from `toISOString()`, which for
-    // anyone west of UTC is already tomorrow.
-    const justAfterMidnight = new Date(2026, 8, 20, 0, 1);
-    const justBeforeMidnight = new Date(2026, 8, 20, 23, 59);
+  it("reads the work zone's (Perth) day at both ends of it", () => {
+    // Two clocks on the same Perth day, the first on the previous UTC day, so
+    // the pair bites wherever the suite runs. Just after midnight catches an
+    // implementation that took today's key from `toISOString()` (still the
+    // 19th in UTC); just before it catches one that read the device's own day
+    // on a phone east of Perth (already the 21st in Sydney).
+    const justAfterMidnight = new Date(Date.UTC(2026, 8, 20, 0 - 8, 1));
+    const justBeforeMidnight = new Date(Date.UTC(2026, 8, 20, 23 - 8, 59));
 
     for (const now of [justAfterMidnight, justBeforeMidnight]) {
       expect(recordedExpiryHasPassed(requirement({ expiresOn: TODAY }), now), `${now.toISOString()}`).toBe(false);

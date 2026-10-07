@@ -14,6 +14,8 @@ import {
   RATING_LABELS,
   type Domain,
 } from "@/lib/teaching/assessments/content";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { blankForm, meetingDate, type AssessmentForm, type Signature } from "@/lib/teaching/assessments/model";
 import {
   CURRENT_TERM,
@@ -137,6 +139,7 @@ const signed = (s: Signature) =>
 export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
   const [zoom, setZoom] = useState(false);
   const [sentNote, setSentNote] = useState(false);
+  const example = useExampleData("assess").active;
   // A past term with no saved form, or an unknown form, opens the blank form rather than a filled-looking one.
   const asked = params.get("of");
   const pastTerm = asked === "past" ? sampleTerm(params.get("term")) : null;
@@ -355,7 +358,15 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
           Made-up records: nothing was emailed. It is marked as sent so you can see the next step.
         </p>
       ) : null}
-      <AssessButton icon={Download} variant="secondary" block onClick={() => window.print()}>
+      <AssessButton
+        icon={Download}
+        variant="secondary"
+        block
+        onClick={() => {
+          // Example records never leave the app, and printing to PDF is how this one would.
+          if (guardExampleAction(example, "export")) window.print();
+        }}
+      >
         Save a copy
       </AssessButton>
     </>

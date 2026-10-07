@@ -1,5 +1,6 @@
 import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
 import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * The one patient-detail catch for free text typed into a work page (a note, a
@@ -487,7 +488,7 @@ function problemIn(text: string, options: PatientDetailCheckOptions): PatientDet
     return { title: "This looks like a record number", body: DEFAULT_BODY, suggestion: null };
   if (PLACE_IN_WORDS.test(places))
     return { title: "This looks like a bed number", body: DEFAULT_BODY, suggestion: null };
-  if (looksLikePatientDetails(places, options.thisYear ?? new Date().getFullYear()))
+  if (looksLikePatientDetails(places, options.thisYear ?? currentWorkYear()))
     return {
       title: "This may be patient details",
       body: "It looks like a record number, a date of birth, a title and name, or a bed number. Remove it to go on.",

@@ -481,6 +481,11 @@ targets, next leave, presenting), worked out in the browser with no AI. The scre
 (`src/components/work-search/`) is a lazy chunk; its loaders call each area's existing routes when
 it opens and keep the records in tab memory only. It never reads the patient-label store.
 
+**Work screens added by the wiring pass.** `src/lib/work-screens/` holds the pure models and sample
+records for the screens the work-mode wiring pass added: `admin/` (Requests, Sharing, Documents, Pay,
+Tax, Workforce), `assessments/` (Export, a supervisor's view of a trainee), `cpd/` (Evidence, Export)
+and `my-day/` (Earlier alerts). Sample records come from the shared example data registry.
+
 **Work free-text patient-detail check.** `src/lib/work-text/patient-detail-check.ts` is the one
 check every work-mode free-text field runs before Save or Copy (CPD through
 `src/lib/cme/patient-detail-check.ts`, Admin, On Call's roster person sheet, Teaching assessments, Work

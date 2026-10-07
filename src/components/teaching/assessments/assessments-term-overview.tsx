@@ -43,6 +43,8 @@ import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { remindedKeys } from "@/lib/teaching/assessments/extras";
 import { termWeek, todayLabel, type PillTone } from "@/lib/teaching/assessments/model";
 import {
@@ -733,6 +735,8 @@ function ExportSheet({
   onDone: () => void;
 }) {
   const [options, setOptions] = useState<OverviewExportOptions>(DEFAULT_EXPORT_OPTIONS);
+  // Example records never leave the app: while they show, the button explains instead of downloading.
+  const example = useExampleData("assess").active;
   const blocker = exportBlocker(options);
   const whyId = useId();
   const toggle = (key: keyof OverviewExportOptions) => setOptions((o) => ({ ...o, [key]: !o[key] }));
@@ -760,6 +764,16 @@ function ExportSheet({
           </Button>
           <WhyNot id={whyId}>{blocker}</WhyNot>
         </>
+      ) : example ? (
+        <Button
+          variant="primary"
+          block
+          icon={Download}
+          onClick={() => guardExampleAction(true, "export")}
+          data-testid="assessments-overview-csv-example"
+        >
+          Download spreadsheet
+        </Button>
       ) : (
         <a
           href={href}

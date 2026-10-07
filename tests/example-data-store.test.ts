@@ -35,6 +35,13 @@ describe("which areas show example data", () => {
     expect(exampleActiveFor(none, "rost", "has-data", true)).toBe(false);
   });
 
+  it("auto waits for Teaching and CPD, read on the server, to report empty", () => {
+    expect(exampleActiveFor(none, "cpd", "unknown", true)).toBe(false);
+    expect(exampleActiveFor(none, "teach", "unknown", true)).toBe(false);
+    expect(exampleActiveFor(none, "cpd", "empty", true)).toBe(true);
+    expect(exampleActiveFor({ ...none, choice: "on" }, "cpd", "unknown", false)).toBe(true);
+  });
+
   it("explicit on fills every area until a real record is added there", () => {
     const on = { ...none, choice: "on" as const, addedWhileOn: ["cpd" as const] };
     expect(exampleActiveFor(on, "rost", "has-data", false)).toBe(true);

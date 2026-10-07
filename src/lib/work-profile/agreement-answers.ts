@@ -5,6 +5,7 @@ import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF, type FatigueRuleId } from "@/
 import { checkPatientDetail, looksLikePatientDetail, normaliseWorkText } from "@/lib/work-text/patient-detail-check";
 import type { WorkSearchArea } from "@/lib/work-search/model";
 import { restRulesGate } from "@/lib/work-profile/model";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * Ask the agreement, without AI.
@@ -534,7 +535,7 @@ export type AgreementQuestionCheck =
  * runs the work search's and the reminder check's readings, ages, "pt" with initials and bare record
  * numbers. Leaning towards a false alarm is deliberate: it costs one tap.
  */
-export function checkAgreementQuestion(question: string, thisYear = new Date().getFullYear()): AgreementQuestionCheck {
+export function checkAgreementQuestion(question: string, thisYear = currentWorkYear()): AgreementQuestionCheck {
   const text = question.trim();
   if (!text) return { kind: "empty" };
   const problem = checkPatientDetail(text, { thisYear });
@@ -566,7 +567,7 @@ function readsAsPatientDetail(text: string, thisYear: number): boolean {
  * inside it does, so the mark covers the detail and not the words around it. Empty when the
  * detail cannot be pinned to three words or fewer; the catch still shows, unmarked.
  */
-export function agreementPatientSpans(question: string, thisYear = new Date().getFullYear()): AgreementTextSpan[] {
+export function agreementPatientSpans(question: string, thisYear = currentWorkYear()): AgreementTextSpan[] {
   const tokens = [...question.matchAll(/\S+/g)].map((match) => {
     const word = match[0];
     const lead = word.match(/^[("'[]+/)?.[0].length ?? 0;

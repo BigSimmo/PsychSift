@@ -855,8 +855,9 @@ test.describe("11 Admin: Help", () => {
     await expect(onSite.locator("li", { hasText: "After-hours entry" })).toBeVisible();
     await expect(onSite.locator("li", { hasText: "Locked wards" })).toBeVisible();
 
-    // Read in the reader's own zone (spec), so this mirrors the app's own
-    // rule rather than pinning a time of day the suite happens to run at.
+    // Read in the work time zone (Perth with no saved choice, on both the test
+    // runner and the page), so this mirrors the app's own rule rather than
+    // pinning a time of day the suite happens to run at.
     const afterHours = page.getByTestId("admin-help-on-site-after-hours");
     if (isOnCallOutOfHours(new Date())) {
       await expect(afterHours).toContainText(

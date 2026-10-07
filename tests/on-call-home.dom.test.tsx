@@ -9,6 +9,15 @@ import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
 import { type OnCallEntry } from "@/lib/on-call/entry-model";
 import { readyHandbook } from "./helpers/on-call-handbook-fixtures";
 
+/**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/on-call",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
@@ -340,7 +349,7 @@ describe("On Call home layout", () => {
     storeState.entries = [dualLineContact()];
 
     // A Wednesday at 09:00 local.
-    render(<OnCallHome now={new Date(2026, 8, 16, 9, 0, 0)} />);
+    render(<OnCallHome now={perthWall(2026, 8, 16, 9, 0, 0)} />);
 
     expect(usualCallHref("bed-manager")).toMatch(/90000011$/);
   });
@@ -349,7 +358,7 @@ describe("On Call home layout", () => {
     storeState.entries = [dualLineContact()];
 
     // The same Wednesday at 22:00 local.
-    render(<OnCallHome now={new Date(2026, 8, 16, 22, 0, 0)} />);
+    render(<OnCallHome now={perthWall(2026, 8, 16, 22, 0, 0)} />);
 
     expect(usualCallHref("bed-manager")).toMatch(/90000012$/);
     // The round tile prints no number, so it can never show one under the
@@ -366,7 +375,7 @@ describe("On Call home layout", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {
       // Months after the stored anchor of 8 January.
-      vi.setSystemTime(new Date(2026, 8, 16, 9, 0, 0));
+      vi.setSystemTime(perthWall(2026, 8, 16, 9, 0, 0));
       storeState.entries = [recurringSession()];
 
       render(<OnCallSectionPage view="education" />);
@@ -402,7 +411,7 @@ describe("On Call home layout", () => {
     // change exists to prevent, arriving by a different route.
     vi.useFakeTimers();
     try {
-      vi.setSystemTime(new Date(2026, 8, 16, 16, 55, 0));
+      vi.setSystemTime(perthWall(2026, 8, 16, 16, 55, 0));
       storeState.entries = [dualLineContact()];
 
       render(<OnCallHome />);
@@ -429,10 +438,10 @@ describe("On Call home layout", () => {
   it("holds a clock a caller pinned, so a test or a print view is not moved under it", () => {
     vi.useFakeTimers();
     try {
-      vi.setSystemTime(new Date(2026, 8, 16, 16, 55, 0));
+      vi.setSystemTime(perthWall(2026, 8, 16, 16, 55, 0));
       storeState.entries = [dualLineContact()];
 
-      render(<OnCallHome now={new Date(2026, 8, 16, 9, 0, 0)} />);
+      render(<OnCallHome now={perthWall(2026, 8, 16, 9, 0, 0)} />);
       act(() => {
         vi.advanceTimersByTime(24 * 60 * 60 * 1000);
       });

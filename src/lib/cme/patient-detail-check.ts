@@ -3,6 +3,7 @@ import {
   normaliseWorkText,
   type PatientDetailCheckOptions,
 } from "@/lib/work-text/patient-detail-check";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * CPD's thin layer over the shared work-text check
@@ -53,7 +54,7 @@ function cpdOnlyShapes(text: string): boolean {
 /** True when the words read as holding a patient detail. Empty text is never flagged. */
 export function cpdTextLooksLikePatient(
   text: string,
-  thisYear = new Date().getFullYear(),
+  thisYear = currentWorkYear(),
   options: CpdPatientCheckOptions = {},
 ): boolean {
   if (!text.trim()) return false;
@@ -103,13 +104,13 @@ function readPastThreeCapitals(text: string): string {
  * title): three capitals are read past ("Consultant, OPH"), two are still read as initials
  * ("Supervised me with JS").
  */
-export function cpdNamedPlaceTextLooksLikePatient(text: string, thisYear = new Date().getFullYear()): boolean {
+export function cpdNamedPlaceTextLooksLikePatient(text: string, thisYear = currentWorkYear()): boolean {
   if (!text.trim()) return false;
   return looksLikePatientDetail(readPastThreeCapitals(text.normalize("NFKC")), { thisYear }) || cpdOnlyShapes(text);
 }
 
 /** A CPD activity or Teaching talk title: the shared check, with a recent date and a speaker read past. */
-export function cpdTitleLooksLikePatient(title: string, thisYear = new Date().getFullYear()): boolean {
+export function cpdTitleLooksLikePatient(title: string, thisYear = currentWorkYear()): boolean {
   if (!title.trim()) return false;
   return looksLikePatientDetail(titleForChecking(title, thisYear), { thisYear }) || cpdOnlyShapes(title);
 }
@@ -118,7 +119,7 @@ const ADVERT_LINK = /\b(?:https?:\/\/|www\.)\S+/gi;
 const ADVERT_REF = /\b(?:job\s+)?ref(?:erence)?\.?\s*(?:no\.?|number)?\s*[:#]?\s*[A-Za-z]{0,4}[-/]?\d[\w/-]*/gi;
 
 /** Where a job advert came from: its link and reference number are read past, everything else is checked. */
-export function advertSourceLooksLikePatient(text: string, thisYear = new Date().getFullYear()): boolean {
+export function advertSourceLooksLikePatient(text: string, thisYear = currentWorkYear()): boolean {
   const read = text.normalize("NFKC").replace(ADVERT_LINK, " ").replace(ADVERT_REF, " ");
   return looksLikePatientDetail(read, { thisYear }) || cpdOnlyShapes(read);
 }

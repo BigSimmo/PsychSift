@@ -17,6 +17,15 @@ import {
 import { onCallUsualOrderStorageKey } from "@/lib/on-call/device-state-keys";
 
 /**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
+
+/**
  * Recent is the one thing this mode remembers about what the reader did, and it
  * is the reason it must never leave the device: it is a list of the numbers a
  * doctor rang tonight, on a phone that may be a ward phone. The rules under test
@@ -102,6 +111,12 @@ describe("readOnCallRecent", () => {
 });
 
 describe("recordOnCallRecent", () => {
+  it("never records an example row", () => {
+    recordOnCallRecent({ id: "00000000-0000-4000-8000-000000000101", title: "Example ward" }, NOW);
+    recordOnCallRecent({ id: "example:ward", title: "Example ward" }, NOW);
+    expect(readOnCallRecent()).toEqual([]);
+  });
+
   it("keeps the newest first", () => {
     recordOnCallRecent({ id: "a", title: "Ward 4B" }, NOW);
     recordOnCallRecent({ id: "b", title: "Switchboard" }, new Date(NOW.getTime() + 60_000));
@@ -294,8 +309,8 @@ describe("Your usual", () => {
 
   it("holds one order for the whole shift: a newly frequent number joins at the end", () => {
     vi.useFakeTimers();
-    // Wednesday 23 Sep 2026, 18:00 Perth-local in the viewer's zone: an after-hours shift.
-    vi.setSystemTime(new Date(2026, 8, 23, 18, 0, 0));
+    // Wednesday 23 Sep 2026, 18:00 Perth (the work zone): an after-hours shift.
+    vi.setSystemTime(perthWall(2026, 8, 23, 18, 0, 0));
     recordOnCallRecent({ id: "a", title: "A" });
     vi.advanceTimersByTime(60_000);
     recordOnCallRecent({ id: "a", title: "A" });
@@ -305,7 +320,7 @@ describe("Your usual", () => {
 
     // Later the same night "c" is tapped three times: it is now the most used,
     // but it joins at the end and nothing above it moves.
-    vi.setSystemTime(new Date(2026, 8, 24, 2, 0, 0));
+    vi.setSystemTime(perthWall(2026, 8, 24, 2, 0, 0));
     for (let tap = 0; tap < 3; tap += 1) {
       recordOnCallRecent({ id: "c", title: "C" });
       vi.advanceTimersByTime(60_000);
@@ -316,7 +331,7 @@ describe("Your usual", () => {
 
   it("re-sorts only when a new shift starts, with pins still on top", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 8, 23, 18, 0, 0));
+    vi.setSystemTime(perthWall(2026, 8, 23, 18, 0, 0));
     recordOnCallRecent({ id: "a", title: "A" });
     recordOnCallRecent({ id: "b", title: "B" });
     expect(readOnCallUsual().map((item) => item.id)).toEqual(["b", "a"]);
@@ -326,8 +341,8 @@ describe("Your usual", () => {
     expect(readOnCallUsual().map((item) => item.id)).toEqual(["d", "b", "a", "c"]);
 
     // Thursday 08:00: the in-hours shift starts and the list re-sorts once.
-    vi.setSystemTime(new Date(2026, 8, 24, 8, 0, 0));
-    expect(onCallUsualShiftKey()).not.toBe(onCallUsualShiftKey(new Date(2026, 8, 23, 18, 0, 0)));
+    vi.setSystemTime(perthWall(2026, 8, 24, 8, 0, 0));
+    expect(onCallUsualShiftKey()).not.toBe(onCallUsualShiftKey(perthWall(2026, 8, 23, 18, 0, 0)));
     expect(readOnCallUsual().map((item) => item.id)).toEqual(["d", "c", "b", "a"]);
   });
 

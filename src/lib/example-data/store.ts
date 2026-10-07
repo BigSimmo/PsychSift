@@ -25,6 +25,7 @@ import type { WorkAreaId } from "@/lib/work-frame/areas";
  * THE DEFAULT ("auto"). A brand new account (created in the last 14 days) and
  * a signed-out visitor see example data in every area not known to hold real
  * data, and an area switches to their own data the moment it has some.
+ * Teaching and CPD, read on the server, need the area to report "empty" first.
  * Everyone else starts with it off. An explicit on or off always wins.
  *
  * EXPLICIT ON fills every area, real data or not, until the user adds a real
@@ -53,6 +54,14 @@ const AREA_IDS: readonly WorkAreaId[] = ["day", "rost", "teach", "assess", "cpd"
  * entries, so a real record in one is a real record in the other.
  */
 const LINKED: Partial<Record<WorkAreaId, WorkAreaId>> = { admin: "call", call: "admin" };
+/**
+ * Areas whose records are read on the server (Teaching, CPD), where the
+ * browser cannot see whether real data exists before the page renders. The
+ * auto default only fills them once the area has reported "empty", so a new
+ * account's real CPD year or teaching list is never covered by examples.
+ * An explicit on still fills them.
+ */
+const SERVER_READ_AREAS: readonly WorkAreaId[] = ["teach", "cpd"];
 
 function withLinked(area: WorkAreaId): WorkAreaId[] {
   const linked = LINKED[area];
@@ -102,9 +111,15 @@ function read(): Stored {
 
 let cookieValue: string | null = null;
 
-function setCookie(value: string) {
+/**
+ * `track` false writes the cookie without recording it as synced, so the
+ * banner's next sync sees the change and refreshes server-rendered areas once.
+ * That is how a toggle in Settings, or Turn off and Undo, reach Teaching and
+ * CPD without each caller refreshing (and without refreshing twice).
+ */
+function setCookie(value: string, track = true) {
   if (typeof document === "undefined") return;
-  cookieValue = value;
+  if (track) cookieValue = value;
   const secure = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
   document.cookie = value
     ? `${EXAMPLE_DATA_COOKIE}=${value}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
@@ -114,7 +129,10 @@ function setCookie(value: string) {
 /** An explicit choice sets the cookie at once. Auto mode is synced by `syncExampleCookie`, which knows the account. */
 function writeCookie(state: Stored) {
   if (state.choice === null) return;
-  setCookie(encodeExampleCookie(state.choice === "on" ? AREA_IDS.filter((a) => !state.addedWhileOn.includes(a)) : []));
+  setCookie(
+    encodeExampleCookie(state.choice === "on" ? AREA_IDS.filter((a) => !state.addedWhileOn.includes(a)) : []),
+    false,
+  );
 }
 
 /**
@@ -189,7 +207,7 @@ export function restoreExampleData(snapshot: Stored): void {
   write(snapshot);
   if (snapshot.choice === null) {
     // Auto mode's cookie is synced by the banner; clear the explicit one Turn off wrote.
-    setCookie("");
+    setCookie("", false);
   }
 }
 
@@ -264,6 +282,7 @@ export function exampleActiveFor(
   if (stored.choice === "off") return false;
   if (stored.choice === "on") return area ? !stored.addedWhileOn.includes(area) : true;
   if (!autoEligible || !area) return false;
+  if (SERVER_READ_AREAS.includes(area)) return areaState === "empty" && !stored.realAreas.includes(area);
   return areaState !== "has-data" && !stored.realAreas.includes(area);
 }
 
@@ -288,14 +307,29 @@ function getServerSnapshot() {
   return "server";
 }
 
+/**
+ * The sign-in state, or null when no sign-in provider is mounted (a screen
+ * rendered on its own, as many tests do). Null is never auto eligible, so an
+ * explicit choice still works and nothing else changes.
+ */
+export function useAuthIfAvailable(): ReturnType<typeof useAuthSession> | null {
+  try {
+    return useAuthSession();
+  } catch (error) {
+    if (error instanceof Error && error.message === "useAuthSession must be used within AuthProvider.") return null;
+    throw error;
+  }
+}
+
 /** Read and drive the example data switch. Pass the area to learn whether this screen shows examples. */
 export function useExampleData(area?: WorkAreaId): ExampleDataControl {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const { session, status } = useAuthSession();
+  const auth = useAuthIfAvailable();
   const autoEligible =
-    status === "signed_out" ||
-    status === "expired" ||
-    (status === "authenticated" && isNewAccount(session?.user?.created_at));
+    auth !== null &&
+    (auth.status === "signed_out" ||
+      auth.status === "expired" ||
+      (auth.status === "authenticated" && isNewAccount(auth.session?.user?.created_at)));
   const turnOn = useCallback(() => setExampleDataOn(true), []);
   const turnOff = useCallback(() => setExampleDataOn(false), []);
   return useMemo(() => {
