@@ -77,6 +77,13 @@ describe("work-mode launch routes", () => {
     expect(workModeRouteHidden("/cme/applications?tab=cv#top", classic)).toBe(true);
   });
 
+  it("hides a new view of an existing page by its query, and leaves the page itself alone", () => {
+    expect(workModeRouteHidden("/teaching/assessments?view=inbox&as=supervisor", classic)).toBe(true);
+    expect(workModeRouteHidden("/teaching/assessments?view=overview", classic)).toBe(true);
+    expect(workModeRouteHidden("/teaching/assessments", classic)).toBe(false);
+    expect(workModeRouteHidden("/teaching/assessments?view=inbox", launched)).toBe(false);
+  });
+
   it("keeps every entry an absolute path with no trailing slash or query in the path", () => {
     for (const entry of NEW_WORK_MODE_ROUTES) {
       expect(entry.path).toMatch(/^\/[a-z0-9/-]+[a-z0-9]$/);

@@ -28,12 +28,15 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/admin/new-job/starter", owner: "junior-features" },
   { path: "/admin/new-job/ready", owner: "junior-features" },
   { path: "/roster/sick", owner: "junior-features" },
+  { path: "/roster/staffing", owner: "junior-features" },
   { path: "/on-call/first-week", owner: "junior-features" },
   { path: "/on-call/whos-on/roster", owner: "junior-features" },
   { path: "/cme/cpd-home", owner: "junior-features" },
   { path: "/cme/applications", owner: "junior-features" },
   { path: "/my-day/profile/agreement", owner: "junior-features" },
   { path: "/teaching/term/folder", owner: "junior-features" },
+  { path: "/teaching/assessments", query: { view: "inbox" }, owner: "junior-features" },
+  { path: "/teaching/assessments", query: { view: "overview" }, owner: "junior-features" },
   // Missing screens (wiring).
   { path: "/my-day/alerts/earlier", owner: "wiring" },
   { path: "/cme/evidence", owner: "wiring" },
@@ -48,6 +51,9 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/admin/tax", owner: "wiring" },
   // Favourites.
   { path: "/my-day/favourites", owner: "favourites" },
+  // Setup walkthrough and help centre.
+  { path: "/my-day/setup", owner: "walkthrough-help" },
+  { path: "/my-day/help", owner: "walkthrough-help" },
 ];
 
 function pathMatches(pathname: string, entryPath: string): boolean {
