@@ -80,6 +80,8 @@ import { Sheet } from "@/components/ui/sheet";
 import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
 import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
 import { workAreaFor } from "@/lib/work-frame/areas";
+import { modePickerHint } from "@/lib/mode-picker-hints";
+import { ModePickerKeyHints, ModePickerRowContent, modePickerRowClass } from "@/components/mode-picker/mode-picker-row";
 import {
   appModeDefinition,
   appModeDefinitions,
@@ -1285,81 +1287,36 @@ export function MasterSearchHeader({
    * true after the next tweak to one of them.
    */
   function modeMenuRowClass(active: boolean) {
-    return cn(
-      "relative grid w-full items-center text-left transition-[background-color,color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
-      usesPhoneSearchLayout
-        ? "min-h-14 grid-cols-[2.5rem_minmax(0,1fr)_1.5rem] gap-2.5 rounded-xl px-2 py-2"
-        : "min-h-12 grid-cols-[2rem_minmax(0,1fr)_auto] gap-2 rounded-md px-2.5 py-1.5",
-      active
-        ? usesPhoneSearchLayout
-          ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)] shadow-[var(--shadow-inset)] ring-1 ring-inset ring-[color:var(--clinical-accent-border)]"
-          : "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)]"
-        : "text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
-    );
+    return modePickerRowClass(active, usesPhoneSearchLayout);
   }
 
   function renderModeMenuRowContent({
-    icon: Icon,
+    icon,
     label,
     description,
     active,
     modeIconId,
+    neutral,
   }: {
     icon: LucideIcon;
     label: string;
+    /** The one-line phone hint (`modePickerHint`), not the registry description. */
     description?: string;
     active: boolean;
     /** Only the mode list stamps this; the section list has no per-mode hook to offer. */
     modeIconId?: string;
+    neutral?: boolean;
   }) {
     return (
-      <>
-        {active && !usesPhoneSearchLayout ? (
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-1 left-0 w-0.5 rounded-r-full bg-[color:var(--clinical-accent)]"
-          />
-        ) : null}
-        <span
-          data-mode-icon={modeIconId}
-          className={cn(
-            "grid place-items-center border transition-colors duration-[var(--duration-fast)] motion-reduce:transition-none",
-            usesPhoneSearchLayout ? "h-10 w-10 rounded-xl" : "h-8 w-8 rounded-lg",
-            active
-              ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)]"
-              : "border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]",
-          )}
-        >
-          <Icon
-            aria-hidden="true"
-            className={usesPhoneSearchLayout ? "size-icon-lg" : "size-icon-md"}
-            strokeWidth={usesPhoneSearchLayout ? 1.8 : 2}
-          />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
-            {label}
-          </span>
-          {usesPhoneSearchLayout && description ? (
-            <span className="mt-0.5 line-clamp-2 text-xs font-medium leading-4 text-[color:var(--text-muted)]">
-              {description}
-            </span>
-          ) : null}
-        </span>
-        {active && usesPhoneSearchLayout ? (
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--surface)] shadow-[var(--e2)]">
-            <Check aria-hidden="true" className="size-icon-sm" strokeWidth={2.5} />
-          </span>
-        ) : active ? (
-          <Check
-            aria-hidden="true"
-            className="size-icon-md shrink-0 text-[color:var(--clinical-accent)]"
-            strokeWidth={2.5}
-          />
-        ) : (
-          <span aria-hidden="true" className={usesPhoneSearchLayout ? "h-6 w-6" : "size-icon-md"} />
-        )}
-      </>
+      <ModePickerRowContent
+        neutral={neutral}
+        icon={icon}
+        label={label}
+        hint={description}
+        active={active}
+        phone={usesPhoneSearchLayout}
+        modeIconId={modeIconId}
+      />
     );
   }
 
@@ -1382,11 +1339,13 @@ export function MasterSearchHeader({
         onKeyDown={(event) => handleModeOptionKeyDown(event, index)}
         onClick={() => selectAppMode(mode)}
         className={modeMenuRowClass(active)}
+        // Each row wears its own area's colour (tile, tick, selected tint).
+        data-mode-identity={mode.id}
       >
         {renderModeMenuRowContent({
           icon: appModeIcons[mode.id],
           label: mode.label,
-          description: mode.description,
+          description: modePickerHint(mode.id),
           active,
           modeIconId: usesPhoneSearchLayout ? mode.id : undefined,
         })}
@@ -1485,8 +1444,9 @@ export function MasterSearchHeader({
             {renderModeMenuRowContent({
               icon: LayoutGrid,
               label: "All modes",
-              description: "Answer, Documents, Services and the rest of PsychSift.",
+              description: "Switch to another mode",
               active: false,
+              neutral: true,
             })}
           </button>
         </div>
@@ -2847,9 +2807,7 @@ export function MasterSearchHeader({
                 aria-hidden="true"
                 className="flex items-center justify-center gap-3 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)]/70 px-3 py-2 text-2xs font-medium text-[color:var(--text-muted)]"
               >
-                <span>↑↓ Navigate</span>
-                <span>Enter Select</span>
-                <span>Esc Close</span>
+                <ModePickerKeyHints />
               </div>
             </div>
           ) : null}
@@ -2924,16 +2882,20 @@ export function MasterSearchHeader({
               </button>
             ) : undefined
           }
+          // "Currently <mode>" is for the mode list. One level in, the title
+          // already names the mode ("My Day pages"), so saying it twice is noise.
           descriptionContent={
-            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs leading-5 text-[color:var(--text-muted)]">
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                <SelectedAppModeIcon aria-hidden="true" className="size-icon-xs" strokeWidth={1.9} />
+            modeSheetView === "sections" ? undefined : (
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs leading-5 text-[color:var(--text-muted)]">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
+                  <SelectedAppModeIcon aria-hidden="true" className="size-icon-xs" strokeWidth={1.9} />
+                </span>
+                <span className="min-w-0 truncate">
+                  Currently{" "}
+                  <span className="font-semibold text-[color:var(--text-heading)]">{selectedAppMode.label}</span>
+                </span>
               </span>
-              <span className="min-w-0 truncate">
-                Currently{" "}
-                <span className="font-semibold text-[color:var(--text-heading)]">{selectedAppMode.label}</span>
-              </span>
-            </span>
+            )
           }
           closeLabel="Close mode menu"
           returnFocusRef={modeButtonRef}

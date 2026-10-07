@@ -2032,7 +2032,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     const answerOption = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await expect(answerOption).toHaveAttribute("aria-checked", "true");
     await expect(answerOption).toBeInViewport();
-    await expect(answerOption).toContainText("Source-backed clinical answer");
+    // The row shows a one-line hint; the full description stays its accessible name.
+    await expect(answerOption).toContainText("Source-backed answers");
+    await expect(answerOption).toHaveAttribute("aria-label", /Source-backed clinical answer/);
 
     // Icon tiles and glyphs use one optical scale even though the canonical
     // Lucide drawings have different silhouettes.
