@@ -1,7 +1,6 @@
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
-import { isAuthRetryableFetchError, type Session, type SupabaseClient } from "@supabase/supabase-js";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { clearAdminPins } from "@/lib/admin/pin-storage-keys";
@@ -111,24 +110,20 @@ function clearAccountScopedBrowserState() {
   // background, so the next person at a shared computer gets nothing of theirs.
   void removeThisDevicePushSubscription();
 }
-let browserSupabaseClient: SupabaseClient | null | undefined;
-let browserSupabaseClientConfig: string | null = null;
-
 export function isUsableBrowserSupabaseKey(key: string | null | undefined): key is string {
   const value = key?.trim();
   if (!value) return false;
   return !/<[^>]+>|^your-|replace-with|placeholder/i.test(value);
 }
 
-function createBrowserSupabaseClient() {
+type BrowserSupabaseConfig = { url: string; publishableKey: string };
+
+/** Whether browser auth is configured, decided on first render without loading the Supabase library. */
+function browserSupabaseConfig(): BrowserSupabaseConfig | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 
-  if (!url || !isUsableBrowserSupabaseKey(key)) {
-    browserSupabaseClient = null;
-    browserSupabaseClientConfig = null;
-    return null;
-  }
+  if (!url || !isUsableBrowserSupabaseKey(key)) return null;
 
   const projectCheck = checkSupabaseProjectConfig({
     NEXT_PUBLIC_SUPABASE_URL: url,
@@ -140,23 +135,30 @@ function createBrowserSupabaseClient() {
   });
   if (projectCheck.status === "mismatch") {
     console.error(formatSupabaseProjectCheck(projectCheck));
-    browserSupabaseClient = null;
-    browserSupabaseClientConfig = null;
     return null;
   }
+  return { url, publishableKey: key };
+}
 
-  const publishableKey: string = key;
-  const configKey = `${url}:${publishableKey}`;
-  if (browserSupabaseClientConfig === configKey) {
-    return browserSupabaseClient ?? null;
-  }
+/**
+ * The Supabase library is about 70 KB gzip, so it loads in its own chunk after
+ * first paint rather than with every page. Auth status stays "loading" until it
+ * has loaded and verified the session, exactly as it did while getUser() ran.
+ */
+function loadBrowserSupabaseClient(config: BrowserSupabaseConfig): Promise<SupabaseClient> {
+  return import("@/lib/supabase/browser-client").then((module) =>
+    module.browserSupabaseClientFor(config.url, config.publishableKey),
+  );
+}
 
-  browserSupabaseClientConfig = configKey;
-  // @supabase/ssr browser client persists the session in cookies shared with the
-  // server (proxy + route handlers), so logins survive refreshes and the API can
-  // read the session. PKCE code flow returns via /auth/callback.
-  browserSupabaseClient = createBrowserClient(url, publishableKey);
-  return browserSupabaseClient;
+/** Same test as auth-js isAuthRetryableFetchError, kept here so this module never loads the library. */
+function isAuthRetryableFetchError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "__isAuthError" in error &&
+    (error as { name?: unknown }).name === "AuthRetryableFetchError"
+  );
 }
 
 export function authorizationHeadersForAccessToken(accessToken: string | null | undefined): Record<string, string> {
@@ -252,9 +254,11 @@ function consumeAuthErrorParam(): string | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const client = useMemo(() => createBrowserSupabaseClient(), []);
+  const config = useMemo(() => browserSupabaseConfig(), []);
+  const [client, setClient] = useState<SupabaseClient | null>(null);
+  const clientLoadRef = useRef<Promise<SupabaseClient | null> | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [status, setStatus] = useState<AuthStatus>(client ? "loading" : "unconfigured");
+  const [status, setStatus] = useState<AuthStatus>(config ? "loading" : "unconfigured");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const callbackErrorRef = useRef<string | null | undefined>(undefined);
@@ -280,6 +284,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authRequestsRef.current.register(controller);
   }, []);
   const isAuthEpochCurrent = useCallback((epoch: number) => authRequestsRef.current.isCurrent(epoch), []);
+
+  /** One shared load of the Supabase library; a failed load is retried on the next call. */
+  const ensureClient = useCallback((): Promise<SupabaseClient | null> => {
+    if (!config) return Promise.resolve(null);
+    clientLoadRef.current ??= loadBrowserSupabaseClient(config).catch((loadError: unknown) => {
+      clientLoadRef.current = null;
+      throw loadError;
+    });
+    return clientLoadRef.current;
+  }, [config]);
+
+  useEffect(() => {
+    if (!config) return () => undefined;
+    let active = true;
+    ensureClient().then(
+      (loaded) => {
+        if (active) setClient(loaded);
+      },
+      () => {
+        if (!active) return;
+        initialSessionPublishedRef.current = true;
+        setStatus("error");
+        setError("Session could not be loaded.");
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [config, ensureClient]);
 
   // Patient labels expire at the end of the shift whether or not anyone signs
   // out, so the check runs on every page, signed in or not, auth configured or not.
@@ -411,17 +444,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [client]);
 
-  const requireClient = useCallback(() => {
-    if (client) return client;
-    setStatus("unconfigured");
+  const requireClient = useCallback(async () => {
+    const loaded = await ensureClient().catch(() => undefined);
+    if (loaded) return loaded;
     setNotice(null);
-    setError("Supabase browser authentication is not configured.");
+    if (loaded === undefined) {
+      setStatus("error");
+      setError("Sign-in could not load. Check your connection and try again.");
+    } else {
+      setStatus("unconfigured");
+      setError("Supabase browser authentication is not configured.");
+    }
     return null;
-  }, [client]);
+  }, [ensureClient]);
 
   const signInWithEmail = useCallback(
     async (email: string, next?: string) => {
-      const active = requireClient();
+      const active = await requireClient();
       if (!active) return;
       setStatus("loading");
       setError(null);
@@ -445,7 +484,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithPassword = useCallback(
     async (email: string, password: string) => {
-      const active = requireClient();
+      const active = await requireClient();
       if (!active) return;
       setStatus("loading");
       setError(null);
@@ -465,7 +504,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithPassword = useCallback(
     async (email: string, password: string) => {
-      const active = requireClient();
+      const active = await requireClient();
       if (!active) return;
       setStatus("loading");
       setError(null);
@@ -493,7 +532,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithOAuth = useCallback(
     async (provider: OAuthProvider, next?: string) => {
-      const active = requireClient();
+      const active = await requireClient();
       if (!active) return;
       setStatus("loading");
       setError(null);
@@ -591,7 +630,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       error,
       notice,
-      isConfigured: Boolean(client),
+      isConfigured: Boolean(config),
       authorizationHeader,
       authEpoch,
       registerAuthRequest,
@@ -605,6 +644,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       client,
+      config,
       session,
       status,
       error,

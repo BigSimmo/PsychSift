@@ -9,6 +9,13 @@
 // `securitypolicyviolation` on every page. Disabling JIT skips the probe entirely
 // (validation stays correct, just interpreted rather than compiled). The server
 // has no CSP, so it keeps the faster JIT path — this is client-only by design.
-import { config } from "zod/v4/core";
+//
+// Zod's `config()` only merges into `globalThis.__zod_globalConfig`, which every
+// later schema reads. Writing that object directly keeps Zod itself (about 15 KB
+// gzip) out of every page's first load. tests/instrumentation-client-zod.test.ts
+// proves `config()` sees the flag, so a Zod upgrade that moves it fails loudly.
+const zodGlobal = globalThis as { __zod_globalConfig?: Record<string, unknown> };
+zodGlobal.__zod_globalConfig ??= {};
+zodGlobal.__zod_globalConfig.jitless = true;
 
-config({ jitless: true });
+export {};
