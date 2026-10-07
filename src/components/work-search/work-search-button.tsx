@@ -205,7 +205,8 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           // The sheet unmounts on close, so focus is put back here rather than left to it.
           requestAnimationFrame(() => buttonRef.current?.focus({ preventScroll: true }));
         }}
-        currentArea={isWorkSearchArea(modeId) ? modeId : null}
+        // Open shifts lives in Roster's frame, so its search starts on Roster.
+        currentArea={modeId === "open-shifts" ? "roster" : isWorkSearchArea(modeId) ? modeId : null}
         returnFocusRef={buttonRef}
       />
       <LazyWorkSearchKeys open={keysOpen} onClose={() => setKeysOpen(false)} />
