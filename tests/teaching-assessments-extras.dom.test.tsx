@@ -598,6 +598,15 @@ describe("term overview", () => {
     expect(screen.getByTestId("assessments-overview-noah")).toBeInTheDocument();
   });
 
+  it("lets a doctor's name wrap rather than cut off, with the initials giving way on a 320 px phone", () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    const ravi = screen.getByTestId("assessments-overview-ravi");
+    const name = within(ravi).getByTestId("assessments-overview-name");
+    expect(name.className).toContain("break-words");
+    expect(ravi.querySelector(".truncate")).toBeNull();
+    expect(ravi.querySelector('[aria-hidden="true"].max-\\[359px\\]\\:hidden')).not.toBeNull();
+  });
+
   it("reminds several supervisors at once, showing the exact status-only message", async () => {
     renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
     fireEvent.click(screen.getByRole("button", { name: "Remind Dr Omar Ahmed about Dr Ravi Kaur's mid-term" }));

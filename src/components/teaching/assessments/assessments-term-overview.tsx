@@ -423,15 +423,18 @@ function OverviewHome({ s }: ScreenProps) {
                         className={cn(focusRing, GRID, "min-h-15 min-w-0 flex-1 rounded-lg py-2.5 pl-3.5 no-underline")}
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
+                          {/* Below 360 px the initials give way, so the name has room to be read in full. */}
                           <span
                             aria-hidden="true"
-                            className="grid size-9 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-semibold text-[color:var(--text-heading)]"
+                            className="grid size-9 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-semibold text-[color:var(--text-heading)] max-[359px]:hidden"
                           >
                             {row.initials}
                           </span>
                           <span className="grid min-w-0">
-                            <span className={cn(titleText, "truncate")}>{row.name}</span>
-                            <span className={cn(secondaryText, "truncate text-xs")}>
+                            <span className={cn(titleText, "break-words")} data-testid="assessments-overview-name">
+                              {row.name}
+                            </span>
+                            <span className={cn(secondaryText, "break-words text-xs")}>
                               {at ? `Reminded ${at}` : `${row.grade} · ${row.supervisor}`}
                             </span>
                           </span>
