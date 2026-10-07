@@ -394,12 +394,10 @@ test.describe("02 More — the second row is about the page you are on", () => {
   test("names the page once, in the pill, with the mode beneath it", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
     // The pill's accessible name still opens `Mode …` — twelve test files and
-    // the shared helper find this control by that prefix — and now says the
-    // page as well.
-    // Contacts is the editor behind People (kit 1.7), so the pill names People.
-    const pill = page.getByRole("button", { name: "Mode On Call, page People" });
+    // the shared helper find this control by that prefix. On a work page it
+    // names the area alone (pill 4b); the tabs underneath name the page.
+    const pill = page.getByRole("button", { name: "Mode On Call", exact: true });
     await expect(pill).toBeVisible();
-    await expect(pill).toContainText("People");
     await expect(pill).toContainText("On Call");
 
     // And nothing else on the page paints the name. Measured, not counted by
@@ -424,10 +422,10 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // only once the page has resolved two or more groups from the list. WebKit reaches
     // this read before that, found no bar, and compared the pill's teal against null.
     // Wait for both elements this test compares, then read them.
-    // Contacts is the editor behind People (kit 1.7), so the pill names People — same as
-    // the assertion in "names the page once, in the pill, with the mode beneath it".
+    // The pill names the area alone on a work page (pill 4b), the same as the
+    // assertion in "names the page once, in the pill, with the mode beneath it".
     await expect(await sectionBar(page)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Mode On Call, page People" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode On Call", exact: true })).toBeVisible();
     const identity = await page.evaluate(() => {
       const read = (selector: string) => {
         const element = document.querySelector(selector);
@@ -909,24 +907,23 @@ test.describe("Compliance — the view the boards never drew", () => {
   test("files the requirements under the catalogue's groups, recorded dates first", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
 
-    // The demo corpus links seven rows to catalogue items (registration and
-    // indemnity, Working with Children Check and police clearance, among
-    // others), so these groups have rows.
-    const registration = visibleByTestId(page, "admin-renewals-checklist-group-registration");
+    // The locked mockup leads with the rows that need action, soonest first,
+    // then folds the recorded rows into one collapsed group per catalogue kind.
+    // The demo registration falls due inside its lead time, so it needs action.
+    const needsAction = visibleByTestId(page, "admin-renewals-checklist-needs-action");
+    const recorded = visibleByTestId(page, "admin-renewals-checklist-recorded");
+    await expect(needsAction, "the demo corpus's recorded rows do not render").toBeVisible();
+    await expect(needsAction).toContainText("Medical registration renewal");
+    await expect(recorded).toBeVisible();
+
+    // A date to act on comes before the dates already settled.
+    const [needsBox, recordedBox] = [await needsAction.boundingBox(), await recorded.boundingBox()];
+    expect(recordedBox!.y, "Needs action is above Recorded").toBeGreaterThan(needsBox!.y);
+
+    // The demo corpus links a Working with Children Check, filed under Checks.
     const checks = visibleByTestId(page, "admin-renewals-checklist-group-checks");
-    await expect(registration, "the demo corpus's recorded rows do not render").toBeVisible();
     await expect(checks).toBeVisible();
-    await expect(registration).toContainText("Medical registration renewal");
     await expect(checks).toContainText("Working with Children Check");
-
-    // Groups follow the catalogue's order.
-    const [registrationBox, checksBox] = [await registration.boundingBox(), await checks.boundingBox()];
-    expect(checksBox!.y, "Checks is above Registration").toBeGreaterThan(registrationBox!.y);
-
-    // Inside a group, a recorded date to act on comes before the slots nobody
-    // has filled in yet.
-    const firstCheck = checks.getByRole("listitem").first();
-    await expect(firstCheck).toContainText("Working with Children Check");
   });
 
   test("says on the page that these are dates the reader entered, not a check", async ({ page }) => {
@@ -942,7 +939,7 @@ test.describe("Compliance — the view the boards never drew", () => {
     // sentence in this position is the control that keeps it rejected.
     const [summaryBox, firstGroup] = [
       await summary.boundingBox(),
-      await visibleByTestId(page, "admin-renewals-checklist-group-registration").boundingBox(),
+      await visibleByTestId(page, "admin-renewals-checklist-needs-action").boundingBox(),
     ];
     expect(summaryBox!.y, "the 'not a check' line has slipped below the list").toBeLessThan(firstGroup!.y);
   });

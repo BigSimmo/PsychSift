@@ -265,6 +265,8 @@ export function ChecklistAtAGlance({
           );
         })}
       </ul>
+      {/* Above the list on purpose: a clinical-governance review rejected a design that implied the app had checked these dates. */}
+      <p className="work-row__sub m-0">Dates you entered, not a check</p>
       <ChecklistTimeline rows={soonest} now={now} testId={testId ? `${testId}-timeline` : undefined} />
     </WorkCard>
   );
