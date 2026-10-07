@@ -135,7 +135,7 @@ export function ResourceRows({
                 className={cn(
                   rowControl,
                   "-mr-3",
-                  isSaved ? "text-[color:var(--mode-identity)]" : "text-[color:var(--decoration-soft)]",
+                  isSaved ? "text-[color:var(--mode-identity)]" : "text-[color:var(--text-muted)]",
                 )}
               >
                 {isSaved ? (

@@ -602,11 +602,7 @@ function DayStrip({ days, today }: { days: ReturnType<typeof stripDays>; today: 
               aria-label={`${day.weekday} ${day.day}${day.today ? ", today" : ""}: ${
                 day.count === 0 ? "no sessions" : withUnit(day.count, day.count === 1 ? "session" : "sessions")
               }`}
-              className={cn(
-                "grid min-h-12 justify-items-center gap-1 rounded-xl py-1.5",
-                past && !day.today && "opacity-55",
-                focusRing,
-              )}
+              className={cn("grid min-h-12 justify-items-center gap-1 rounded-xl py-1.5", focusRing)}
             >
               <small
                 className={cn(
@@ -618,7 +614,9 @@ function DayStrip({ days, today }: { days: ReturnType<typeof stripDays>; today: 
               </small>
               <b
                 className={cn(
-                  "nums grid size-8 place-items-center rounded-full border-[1.5px] border-transparent text-sm-minus font-bold text-[color:var(--text-heading)]",
+                  "nums grid size-8 place-items-center rounded-full border-[1.5px] border-transparent text-sm-minus font-bold",
+                  // Past days read muted by colour, never by opacity, so they keep 4.5:1.
+                  past && !day.today ? "text-[color:var(--text-muted)]" : "text-[color:var(--text-heading)]",
                   day.today && "border-[color:var(--mode-identity)] forced-colors:border-[Highlight]",
                 )}
               >

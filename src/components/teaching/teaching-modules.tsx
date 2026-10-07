@@ -442,7 +442,7 @@ export function DayRail({
               selected
                 ? "text-[color:var(--mode-identity)]"
                 : day.past
-                  ? "text-[color:var(--text-muted)] opacity-70"
+                  ? "text-[color:var(--text-muted)]"
                   : "text-[color:var(--text-heading)]",
               focusRing,
             )}
