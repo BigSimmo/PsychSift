@@ -34,7 +34,14 @@ const INSTALL_DISMISSAL_MS = 30 * 24 * 60 * 60 * 1000;
  */
 const UPDATE_DISMISSAL_KEY = "clinical-kb-pwa-update-dismissed-at";
 const UPDATE_DISMISSAL_MS = 6 * 60 * 60 * 1000;
-const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+/**
+ * How often an open app asks for a newer service worker. It was an hour, and only on a
+ * tab becoming visible or the network returning, so a ward computer left on one page, or a
+ * phone app resumed within the hour, kept running the old build after a release (the stale
+ * PWA Josh reported, 7 October 2026). Ten minutes, checked on visibility, focus, a
+ * back-forward restore and a timer while visible, costs one small no-cache fetch of sw.js.
+ */
+const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 const PWA_CACHE_PREFIX = "clinical-kb-pwa-";
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
@@ -580,6 +587,9 @@ export function PwaLifecycle() {
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
     document.addEventListener("visibilitychange", checkForUpdates);
     window.addEventListener("online", checkForUpdates);
+    window.addEventListener("focus", checkForUpdates);
+    window.addEventListener("pageshow", checkForUpdates);
+    const updateTimer = window.setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
 
     return () => {
       cancelled = true;
@@ -590,6 +600,9 @@ export function PwaLifecycle() {
       navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
       document.removeEventListener("visibilitychange", checkForUpdates);
       window.removeEventListener("online", checkForUpdates);
+      window.removeEventListener("focus", checkForUpdates);
+      window.removeEventListener("pageshow", checkForUpdates);
+      window.clearInterval(updateTimer);
       registrationRef.current = null;
       try {
         broadcastChannel?.close();
