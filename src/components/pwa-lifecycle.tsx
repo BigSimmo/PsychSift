@@ -679,27 +679,31 @@ export function PwaLifecycle() {
   return (
     <div className="pwa-notice-stack">
       {showOffline ? (
-        <section className={`${cardClassName} pwa-lifecycle-card`} role="region" aria-labelledby="pwa-offline-title">
+        <section
+          className={`${cardClassName} pwa-lifecycle-card pwa-offline-card`}
+          role="region"
+          aria-labelledby="pwa-offline-title"
+        >
           <button
             type="button"
-            className={dismissIconButtonClassName}
+            className={`${dismissIconButtonClassName} pwa-notice-dismiss`}
             aria-label="Dismiss offline notice"
             onClick={() => setOfflineNoticeDismissed(true)}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
-          <div className="flex items-start gap-3 pr-12">
+          <div className="pwa-notice-row flex items-start gap-3 pr-12">
             <NoticeIcon icon={WifiOff} tone="warning" />
-            <div className="min-w-0">
+            <div className="pwa-notice-body min-w-0">
               <p id="pwa-offline-title" className="text-sm font-bold text-[color:var(--text-heading)]">
                 You’re offline
               </p>
-              <p className="mt-1 text-sm leading-6 text-[color:var(--text-muted)]">
+              <p className="pwa-notice-copy mt-1 text-sm leading-6 text-[color:var(--text-muted)]">
                 Clinical search and private features need a connection.
               </p>
               <button
                 type="button"
-                className={`${secondaryButtonClassName} mt-3`}
+                className={`${secondaryButtonClassName} pwa-notice-retry mt-3`}
                 onClick={() => window.location.reload()}
               >
                 Try again

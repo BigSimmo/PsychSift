@@ -4321,6 +4321,53 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   padding: var(--pwa-inset-xl);
 }
 
+/* Work pages are flat (owner's decision, 6 Oct 2026). A notice floats, so on a
+   work page it takes the work glass recipe from work-mode.css (blur, a
+   hairline and the dock's one soft lift) instead of the raised card. The
+   offline notice shrinks to one row (title, Try again, dismiss) so it covers
+   as little of the page as it can. The stack already sits clear of the home
+   indicator and the dock. The transparent
+   border keeps an edge in forced colours. Clinical modes never carry
+   `data-work-frame`, so they keep the card above. */
+html[data-work-frame] .pwa-notice-card {
+  border-color: transparent;
+  background: var(--work-glass-fill);
+  box-shadow:
+    var(--work-edge-inset) var(--work-glass-line),
+    var(--work-shadow-float);
+  backdrop-filter: var(--work-glass-blur);
+}
+
+html[data-work-frame] .pwa-offline-card {
+  padding: var(--pwa-inset-xs) var(--pwa-inset-xs) var(--pwa-inset-xs) var(--pwa-inset-md);
+}
+
+html[data-work-frame] .pwa-offline-card .pwa-notice-row {
+  align-items: center;
+}
+
+html[data-work-frame] .pwa-offline-card .pwa-notice-body {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--pwa-inset-md);
+}
+
+html[data-work-frame] .pwa-offline-card .pwa-notice-copy {
+  display: none;
+}
+
+html[data-work-frame] .pwa-offline-card .pwa-notice-retry {
+  margin-top: 0;
+}
+
+html[data-work-frame] .pwa-offline-card .pwa-notice-dismiss {
+  top: 50%;
+  translate: 0 -50%;
+}
+
 .pwa-connection-restored {
   justify-self: end;
   border-color: color-mix(in srgb, var(--success) 24%, var(--border-lux));
