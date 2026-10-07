@@ -509,6 +509,9 @@ function GlobalStandaloneSearchShellBody({
   // page, so reopening the menu never fetches the feed again.
   const [workMenuOpened, setWorkMenuOpened] = useState(false);
   if (workSideNav && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
+  // The phone menu only exists below 768 px. Turning a phone to landscape past
+  // that width closes it, so its backdrop never blocks the rail layout.
+  if (workSideNav && workRailShown && mobileMenuOpen) setMobileMenuOpen(false);
   const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow || workSideNav ? true : sidebarCollapsed;
   const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "5.25rem" : "20rem") : "0px";
   const isInfoPage = isInformationPage(pathname);

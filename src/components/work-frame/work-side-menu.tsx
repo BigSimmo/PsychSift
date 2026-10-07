@@ -3,7 +3,7 @@
 import { AlarmClock, Bell, BookOpen, ChevronRight, Heart, LogOut, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { ModePickerSideToggle } from "@/components/mode-picker/mode-picker-row";
@@ -61,6 +61,15 @@ export function WorkSideMenu({
   const routeVisible = useWorkModeRouteVisible();
   const [side, setSide] = useState<ModeMenuSideId>("work");
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  // Focus follows the sign-out check: into Cancel when it opens, back to Sign out when it closes.
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const signOutRef = useRef<HTMLButtonElement>(null);
+  const checkShown = useRef(false);
+  useEffect(() => {
+    if (confirmSignOut) cancelRef.current?.focus();
+    else if (checkShown.current) signOutRef.current?.focus();
+    checkShown.current = confirmSignOut;
+  }, [confirmSignOut]);
   // The Sheet stays mounted so it can hand focus back to the menu button on
   // close; each opening starts on Work, with the sign-out check put away.
   const [wasOpen, setWasOpen] = useState(open);
@@ -210,7 +219,12 @@ export function WorkSideMenu({
             Sign out? This clears everything kept on this phone for your account, including patient labels.
           </p>
           <div className="work-side-menu__confirm-actions">
-            <button type="button" className="work-side-menu__cancel" onClick={() => setConfirmSignOut(false)}>
+            <button
+              ref={cancelRef}
+              type="button"
+              className="work-side-menu__cancel"
+              onClick={() => setConfirmSignOut(false)}
+            >
               Cancel
             </button>
             <button
@@ -244,7 +258,12 @@ export function WorkSideMenu({
             Help
           </Link>
           {identity.signedIn ? (
-            <button type="button" onClick={() => setConfirmSignOut(true)} data-testid="work-side-menu-sign-out">
+            <button
+              ref={signOutRef}
+              type="button"
+              onClick={() => setConfirmSignOut(true)}
+              data-testid="work-side-menu-sign-out"
+            >
               <LogOut aria-hidden="true" className="size-icon-md" strokeWidth={2} />
               Sign out
             </button>
