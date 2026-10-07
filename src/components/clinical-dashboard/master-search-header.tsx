@@ -1255,7 +1255,7 @@ export function MasterSearchHeader({
     "absolute left-0 top-[calc(100%+0.5rem)] z-[60] w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-xl bg-[color-mix(in_srgb,var(--surface-lux)_84%,transparent)] text-[color:var(--text)] shadow-[var(--shadow-lux)]";
   /** A group of modes, inset inside the glass so the list reads as nested cards. */
   const modeMenuGroupCard =
-    "rounded-lg border border-[color:var(--border-lux)] bg-[color-mix(in_srgb,var(--surface-raised)_92%,transparent)] p-1 shadow-[var(--shadow-inset)] ring-1 ring-inset ring-[color:var(--surface-highlight)]";
+    "rounded-lg border border-[color:var(--border-lux)] bg-[color-mix(in_srgb,var(--surface-raised)_92%,transparent)] p-1 shadow-[var(--shadow-inset)]";
 
   /**
    * The row treatment the mode menu uses, shared by the mode options and the
