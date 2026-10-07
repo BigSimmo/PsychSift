@@ -20,7 +20,8 @@ import {
   RosterSectionHead,
   rosterOutlineButton,
 } from "@/components/roster/roster-list";
-import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
+import { useRosterRead, useRosterTeams, type RosterReadState } from "@/components/roster/use-roster-team";
+import type { RosterReadResult } from "@/lib/roster/team/model";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 import { SHIFT_KIND_LABEL, SHIFT_KINDS, SHIFT_LETTER } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -66,10 +67,27 @@ function ownShiftWords(own: readonly RosterAssignment[]): string {
  * the roster holds no numbers, so the page ends with the signpost to On
  * Call's phone numbers instead. Each list hides while it has nobody in it.
  */
-function TeamToday({ team, actorId, now }: { team: RosterTeam; actorId: string | null; now: Date }) {
+type AssignmentsRead = RosterReadState<RosterReadResult<"assignments">>;
+
+/**
+ * One team read, from yesterday to the day after tomorrow, feeds On now, On
+ * with you and On tomorrow: a night that began yesterday can be on now, and a
+ * shift tomorrow can run into the next day.
+ */
+function TeamDayLists({ team, actorId, now }: { team: RosterTeam; actorId: string | null; now: Date }) {
   const today = perthDateOf(now);
-  const range = useMemo(() => ({ from: addDaysToDate(today, -1), to: addDaysToDate(today, 1) }), [today]);
+  const range = useMemo(() => ({ from: addDaysToDate(today, -1), to: addDaysToDate(today, 2) }), [today]);
   const read = useRosterRead(team.serviceId, "assignments", range);
+  return (
+    <>
+      <TeamToday read={read} actorId={actorId} now={now} />
+      <OnTomorrow read={read} actorId={actorId} now={now} />
+    </>
+  );
+}
+
+function TeamToday({ read, actorId, now }: { read: AssignmentsRead; actorId: string | null; now: Date }) {
+  const today = perthDateOf(now);
   if (read.status !== "ready") return null;
   const at = now.getTime();
   const rows = Array.isArray(read.data?.assignments) ? read.data.assignments : [];
@@ -167,12 +185,8 @@ function TeamToday({ team, actorId, now }: { team: RosterTeam; actorId: string |
  * overlap it; without one, everyone rostered to start tomorrow. Only named,
  * filled shifts are listed; an open shift is not a colleague.
  */
-function OnTomorrow({ team, actorId, now }: { team: RosterTeam; actorId: string | null; now: Date }) {
+function OnTomorrow({ read, actorId, now }: { read: AssignmentsRead; actorId: string | null; now: Date }) {
   const tomorrow = addDaysToDate(perthDateOf(now), 1);
-  const read = useRosterRead(team.serviceId, "assignments", {
-    from: addDaysToDate(tomorrow, -1),
-    to: addDaysToDate(tomorrow, 1),
-  });
   const rows = Array.isArray(read.data?.assignments) ? read.data.assignments : [];
   const startingTomorrow = rows
     .filter((row) => assignmentStartDate(row) === tomorrow)
@@ -353,8 +367,7 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
             ) : (
               <p className="px-1 text-sm text-[color:var(--text-muted)]">{selected.name}</p>
             )}
-            <TeamToday key={`today-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
-            <OnTomorrow key={`tomorrow-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
+            <TeamDayLists key={`day-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
             <Suspense fallback={<RosterNote icon={Users}>Loading the team roster…</RosterNote>}>
               <TeamCalendarSection team={selected} actorId={actorId} now={now} />
             </Suspense>

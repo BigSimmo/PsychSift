@@ -135,8 +135,9 @@ describe("Team calendar", () => {
     render(<RosterTeamPage now={NOW} />);
     await screen.findByRole("button", { name: /Dr Sam Example/ });
     const reads = fetchMock.mock.calls.map(([input]) => String(input)).filter((item) => item.includes("assignments"));
-    // The "On with you tomorrow" list reads its own small window (Thu 15 to Sat 17 Oct); the calendar reads one.
-    const tomorrow = reads.filter((item) => item.includes("from=2026-10-15") && item.includes("to=2026-10-17"));
+    // The day lists (On now, On with you, On tomorrow) share one small window, Wed 14 to Sat 17 Oct
+    // (work-mode redesign, owner request 6 Oct 2026: On now needs yesterday's night); the calendar reads one.
+    const tomorrow = reads.filter((item) => item.includes("from=2026-10-14") && item.includes("to=2026-10-17"));
     expect(tomorrow).toHaveLength(1);
     const calendar = reads.filter((item) => !tomorrow.includes(item));
     expect(calendar).toHaveLength(1);
