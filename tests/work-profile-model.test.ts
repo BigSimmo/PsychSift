@@ -90,7 +90,7 @@ describe("Admin never shows a tick and never overstates", () => {
     const row = adminArea({ status: "ready", value: summary });
     expect(row.state).toBe("count");
     expect(row.label).toBe("1 not recorded");
-    expect(row.subtitle).toBe("Dates you entered; not checked with Ahpra");
+    expect(row.subtitle).toBe("Dates you entered. Not checked with Ahpra");
   });
 
   it("with both setup dates entered, shows the recorded figure, still not a tick", () => {

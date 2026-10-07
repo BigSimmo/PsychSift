@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { workFrameForRoute } from "@/lib/work-frame/areas";
+import { WORK_AREAS, workFrameCurrentItem, workFrameForRoute } from "@/lib/work-frame/areas";
 
 // work-mode redesign, owner request 6 Oct 2026: the top bar names the page and
 // tints itself from the address before the band mounts, so it must agree with
@@ -31,5 +31,39 @@ describe("workFrameForRoute", () => {
     expect(named("teaching", "/teaching/session/0d7c2e1a-6f43-4f6b-9a5e-0c1d2e3f4a5b")).toBeNull();
     expect(named("dsm", "/dsm")).toBeNull();
     expect(named("answer", "/")).toBeNull();
+  });
+});
+
+describe("workFrameCurrentItem", () => {
+  const assess = WORK_AREAS.assess;
+  const current = (search: string) => workFrameCurrentItem(assess, "/teaching/assessments", search)?.id ?? null;
+
+  it("keeps the supervisor's Inbox and Term overview off the To do tab", () => {
+    expect(current("?view=inbox&as=supervisor")).toBe("assess-inbox");
+    expect(current("?view=overview&as=supervisor")).toBe("assess-overview");
+    expect(current("")).toBe("assess-todo");
+    expect(current("?view=home")).toBe("assess-todo");
+  });
+
+  it("ticks Privacy on the profile's privacy tab and Work profile elsewhere", () => {
+    const day = WORK_AREAS.day;
+    expect(workFrameCurrentItem(day, "/my-day/profile", "?tab=privacy")?.id).toBe("my-day-privacy");
+    expect(workFrameCurrentItem(day, "/my-day/profile", "")?.id).toBe("my-day-profile");
+  });
+
+  it("names the features' pages as their own items, not a tab", () => {
+    expect(workFrameCurrentItem(WORK_AREAS.cpd, "/cme/applications/cv", "")?.id).toBe("applications");
+    expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/new-job/ready", "")?.id).toBe("admin-ready");
+    expect(workFrameCurrentItem(WORK_AREAS.call, "/on-call/whos-on/roster", "")?.id).toBe("whoson-roster");
+    expect(workFrameCurrentItem(WORK_AREAS.teach, "/teaching/term/folder", "")?.id).toBe("term-folder");
+  });
+
+  it("keeps pages that draw their own header off the band", () => {
+    expect(workFrameForRoute("my-day", "/my-day/setup")).toBeNull();
+    expect(workFrameForRoute("my-day", "/my-day/help")).toBeNull();
+    expect(workFrameForRoute("my-day", "/my-day/alerts/earlier")).toBeNull();
+    expect(workFrameForRoute("cme", "/cme/export")).toBeNull();
+    expect(workFrameForRoute("my-work", "/admin/workforce")).toBeNull();
+    expect(workFrameForRoute("my-day", "/my-day/favourites")?.page.label).toBe("Favourites");
   });
 });

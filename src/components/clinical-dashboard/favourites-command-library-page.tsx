@@ -102,6 +102,7 @@ import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/univ
 import { maxFavouriteSetsPerAccount } from "@/lib/favourite-set-name";
 import { canAccessFavouritesMode } from "@/lib/app-modes";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { modeHomeComposerReservePendingValue, modeHomeDesktopComposerSlotId } from "@/lib/mode-home-composer";
 import { sharedHomePresentation } from "@/lib/ui-copy";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -726,6 +727,9 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   // A signed-out visitor sees the real screen filled with a few sample items
   // that live in this page's memory only: nothing is read, saved or stored.
   const sampleMode = !demoMode && (auth.status === "signed_out" || auth.status === "expired");
+  // Work pages and the My Day shelf belong to the new work mode. A reader on the classic
+  // work mode keeps the plain list: numbers, names, notes and layout.
+  const newWorkMode = useNewWorkMode();
   const favouritesAccessible =
     sampleMode ||
     canAccessFavouritesMode({
@@ -1616,7 +1620,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   const sectionOn = (id: FavouritesSectionId) => sectionsShown.includes(id);
   const allScope = scope === "all";
   const showContinue = showLaunchpad && allScope && sectionOn("continue");
-  const showShelf = showLaunchpad && allScope && sectionOn("shelf") && shelf.length > 0;
+  const showShelf = newWorkMode && showLaunchpad && allScope && sectionOn("shelf") && shelf.length > 0;
   // In Select mode numbers join the Work list, so they can be ticked like anything else.
   const numbersSectionOn = !sampleMode && scope !== "clinical" && sectionOn("numbers") && effectiveMode === "browse";
   const numberItems = numbersSectionOn ? filteredItems.filter((item) => Boolean(item.numberId)) : [];
@@ -1650,20 +1654,22 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       />
       {sampleMode ? null : (
         <ul className="work-card work-rows" aria-label="Add to Work">
-          <li>
-            <button
-              type="button"
-              onClick={openAddWorkPage}
-              className="work-row w-full text-left"
-              data-testid="favourites-work-empty-add-page"
-            >
-              <WorkIconCircle icon={Plus} tone="neutral" />
-              <span className="work-row__text">
-                <span className="work-row__title">Add a work page</span>
-                <span className="work-row__sub">A roster, teaching or admin page</span>
-              </span>
-            </button>
-          </li>
+          {newWorkMode ? (
+            <li>
+              <button
+                type="button"
+                onClick={openAddWorkPage}
+                className="work-row w-full text-left"
+                data-testid="favourites-work-empty-add-page"
+              >
+                <WorkIconCircle icon={Plus} tone="neutral" />
+                <span className="work-row__text">
+                  <span className="work-row__title">Add a work page</span>
+                  <span className="work-row__sub">A roster, teaching or admin page</span>
+                </span>
+              </button>
+            </li>
+          ) : null}
           <li>
             <button
               type="button"
@@ -2013,9 +2019,13 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
                           <WorkEmpty
                             icon={Heart}
                             title="Save what you open most"
-                            body="Tap the heart on a service, form, diagnosis or therapy. Add a work page to keep it one tap away on My Day."
+                            body={
+                              newWorkMode
+                                ? "Tap the heart on a service, form, diagnosis or therapy. Add a work page to keep it one tap away on My Day."
+                                : "Tap the heart on a service, form, diagnosis or therapy."
+                            }
                             action={
-                              sampleMode ? undefined : (
+                              sampleMode || !newWorkMode ? undefined : (
                                 <WorkButton onClick={openAddWorkPage} testId="favourites-empty-add-work-page">
                                   Add a work page
                                 </WorkButton>
@@ -2160,7 +2170,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
               </Fragment>
             ))}
 
-            {showLaunchpad && libraryItems.length > 0 && !sampleMode && scope !== "clinical" ? (
+            {newWorkMode && showLaunchpad && libraryItems.length > 0 && !sampleMode && scope !== "clinical" ? (
               <div className="work-card">
                 <button
                   type="button"
@@ -2278,11 +2288,13 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
           onChoose={(name) => void chooseSetName(name)}
         />
       ) : null}
-      <AddWorkPageSheet
-        open={addWorkPageOpen}
-        onClose={() => setAddWorkPageOpen(false)}
-        returnFocusTarget={returnFocusToOrigin}
-      />
+      {newWorkMode ? (
+        <AddWorkPageSheet
+          open={addWorkPageOpen}
+          onClose={() => setAddWorkPageOpen(false)}
+          returnFocusTarget={returnFocusToOrigin}
+        />
+      ) : null}
       <NumberActionsSheet
         item={numberActionItem}
         onClose={() => setNumberActionId(null)}

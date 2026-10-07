@@ -41,6 +41,7 @@ export type WorkFrameIconName =
   | "folder"
   | "grid"
   | "hand"
+  | "heart"
   | "help"
   | "history"
   | "inbox"
@@ -84,7 +85,7 @@ export type WorkFrameGate =
   | "on-call-editor";
 
 /** Actions a page can register for the More sheet to run. */
-export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa";
+export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
 
 export type WorkFrameItem = {
   readonly id: string;
@@ -160,6 +161,13 @@ const myDay: WorkArea = {
           query: { view: "all" },
         },
         {
+          id: "my-day-favourites",
+          label: "Favourites",
+          sub: "Saved pages and items",
+          icon: "heart",
+          href: "/my-day/favourites",
+        },
+        {
           id: "my-day-work",
           label: "On shift",
           sub: "Calls, who is on",
@@ -178,11 +186,36 @@ const myDay: WorkArea = {
           query: { page: "me" },
         },
         { id: "my-day-reminders", label: "Reminders", sub: "On this phone", icon: "alarm", action: "my-day-reminders" },
+        {
+          id: "my-day-earlier-alerts",
+          label: "Earlier alerts",
+          sub: "Last 7 days",
+          icon: "history",
+          href: "/my-day/alerts/earlier",
+          band: false,
+        },
       ],
     },
     {
       label: "Set up",
       items: [
+        {
+          id: "my-day-setup",
+          label: "Set up Work",
+          sub: "Walkthrough",
+          icon: "compass",
+          href: "/my-day/setup",
+          // The walkthrough and the help centre draw their own Back in the top bar.
+          band: false,
+        },
+        {
+          id: "my-day-help",
+          label: "Help",
+          sub: "How each area works",
+          icon: "help",
+          href: "/my-day/help",
+          band: false,
+        },
         {
           id: "my-day-profile",
           label: "Work profile",
@@ -202,8 +235,9 @@ const myDay: WorkArea = {
           label: "Privacy",
           sub: "What is kept where",
           icon: "shield",
-          href: "/my-day/profile#privacy",
-          paths: [],
+          href: "/my-day/profile?tab=privacy",
+          paths: ["/my-day/profile"],
+          query: { tab: "privacy" },
         },
         {
           id: "my-day-customise",
@@ -328,6 +362,7 @@ const roster: WorkArea = {
           band: false,
         },
         { id: "settings", label: "Settings", sub: "Alerts and data", icon: "settings", href: "/roster/settings" },
+        { id: "rost-help", label: "Help", sub: "How Roster works", icon: "help", action: "work-help" },
       ],
     },
   ],
@@ -371,6 +406,13 @@ const teaching: WorkArea = {
         { id: "feedback", label: "Feedback", sub: "Rate a session", icon: "star", href: "/teaching/feedback" },
         { id: "review", label: "Log to CPD", sub: "Weekly review", icon: "award", href: "/teaching/review" },
         { id: "exam-prep", label: "Exam prep", sub: "Your plan", icon: "pen", href: "/teaching/exam-prep" },
+        {
+          id: "term-folder",
+          label: "Evidence folder",
+          sub: "Your term in one place",
+          icon: "folder",
+          href: "/teaching/term/folder",
+        },
       ],
     },
     {
@@ -409,6 +451,7 @@ const teaching: WorkArea = {
           href: "/teaching/import",
           gate: "teaching-organiser",
         },
+        { id: "teach-help", label: "Help", sub: "How Teaching works", icon: "help", action: "work-help" },
       ],
     },
   ],
@@ -468,6 +511,24 @@ const assessments: WorkArea = {
           query: { view: "record" },
         },
         {
+          id: "assess-inbox",
+          label: "Inbox",
+          sub: "Forms to sign",
+          icon: "inbox",
+          href: "/teaching/assessments?view=inbox&as=supervisor",
+          paths: ["/teaching/assessments"],
+          query: { view: "inbox" },
+        },
+        {
+          id: "assess-overview",
+          label: "Term overview",
+          sub: "Your doctors",
+          icon: "layers",
+          href: "/teaching/assessments?view=overview&as=supervisor",
+          paths: ["/teaching/assessments"],
+          query: { view: "overview" },
+        },
+        {
           id: "assess-history",
           label: "History",
           sub: "All you signed",
@@ -493,6 +554,14 @@ const assessments: WorkArea = {
           href: "/teaching/assessments?view=help",
           paths: ["/teaching/assessments"],
           query: { view: "help" },
+        },
+        {
+          id: "assess-export",
+          label: "Export",
+          sub: "Spreadsheets and forms",
+          icon: "download",
+          href: "/teaching/assessments/export",
+          band: false,
         },
       ],
     },
@@ -576,6 +645,14 @@ const cpd: WorkArea = {
           paths: ["/cme/setup", "/cme/programme"],
         },
         { id: "training", label: "Training", sub: "Registrar record", icon: "layers", href: "/cme/training" },
+        {
+          id: "applications",
+          label: "Jobs",
+          sub: "Season dates, referees, CV",
+          icon: "flag",
+          href: "/cme/applications",
+          paths: ["/cme/applications", "/cme/applications/cv"],
+        },
       ],
     },
     {
@@ -597,6 +674,23 @@ const cpd: WorkArea = {
           icon: "repeat",
           href: "/cme/routines",
           paths: [],
+        },
+        { id: "cpd-evidence", label: "Evidence", sub: "Certificates to add", icon: "file", href: "/cme/evidence" },
+        {
+          id: "cpd-export",
+          label: "Export",
+          sub: "CSV and printable",
+          icon: "download",
+          href: "/cme/export",
+          band: false,
+        },
+        {
+          id: "cpd-home",
+          label: "AMA CPD Home",
+          sub: "Send your year",
+          icon: "send",
+          href: "/cme/cpd-home",
+          paths: ["/cme/cpd-home"],
         },
       ],
     },
@@ -620,6 +714,7 @@ const cpd: WorkArea = {
           paths: ["/cme/setup"],
           query: { edit: "1" },
         },
+        { id: "cpd-help", label: "Help", sub: "How CPD works", icon: "help", action: "work-help" },
       ],
     },
   ],
@@ -653,12 +748,58 @@ const admin: WorkArea = {
           href: "/admin/compliance",
         },
         { id: "admin-export", label: "Export", sub: "Spreadsheet", icon: "download", href: "/admin/compliance/export" },
+        { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
+        { id: "admin-sharing", label: "Sharing", sub: "Not live yet", icon: "send", href: "/admin/sharing" },
+        {
+          id: "admin-documents",
+          label: "Documents",
+          sub: "Where files are kept",
+          icon: "folder",
+          href: "/admin/documents",
+        },
         { id: "help", label: "Help", sub: "Crisis lines first", icon: "help", href: "/admin/help" },
+      ],
+    },
+    {
+      label: "Work and leave",
+      items: [
+        {
+          id: "admin-contract",
+          label: "Contract",
+          sub: "End date and reminders",
+          icon: "file",
+          href: "/admin/contract",
+        },
+        { id: "admin-leave", label: "Leave wallet", sub: "Every leave type", icon: "calendar", href: "/admin/leave" },
+        {
+          id: "admin-starter",
+          label: "Starter pack",
+          sub: "New to WA hospitals",
+          icon: "compass",
+          href: "/admin/new-job/starter",
+        },
+        {
+          id: "admin-ready",
+          label: "Ready for day one",
+          sub: "Before you start",
+          icon: "check-list",
+          href: "/admin/new-job/ready",
+        },
       ],
     },
     {
       label: "Pay and hours",
       items: [
+        { id: "admin-pay", label: "Pay", sub: "Payslip hours", icon: "clipboard", href: "/admin/pay" },
+        { id: "admin-tax", label: "Tax", sub: "Expenses checklist", icon: "file", href: "/admin/tax" },
+        {
+          id: "admin-workforce",
+          label: "Workforce",
+          sub: "Their view, sample",
+          icon: "layers",
+          href: "/admin/workforce",
+          band: false,
+        },
         // Extra time is kept in Roster's hours panel, so the tap leaves Admin.
         {
           id: "admin-overtime",
@@ -711,7 +852,16 @@ const onCall: WorkArea = {
           icon: "check-list",
           href: "/on-call/orientation",
         },
+        {
+          id: "first-week",
+          label: "First week",
+          sub: "Starting out",
+          icon: "flag",
+          href: "/on-call/first-week",
+        },
         { id: "card", label: "Pocket card", sub: "To print", icon: "card", href: "/on-call/card" },
+        // The area's last group (Service) is for editors only, so Help sits with the reference pages.
+        { id: "call-help", label: "Help", sub: "How On Call works", icon: "help", action: "work-help" },
       ],
     },
     {
@@ -729,6 +879,13 @@ const onCall: WorkArea = {
               } as const,
             ]
           : []),
+        {
+          id: "whoson-roster",
+          label: "From the roster",
+          sub: "Your team's roster",
+          icon: "calendar",
+          href: "/on-call/whos-on/roster",
+        },
         {
           id: "pulse",
           label: "Shift pulse",

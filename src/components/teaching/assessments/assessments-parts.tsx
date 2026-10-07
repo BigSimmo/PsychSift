@@ -53,6 +53,11 @@ export function viewHref(view: AssessmentsView, params: Record<string, string> =
   return query ? `${assessmentsPath}?${query}` : assessmentsPath;
 }
 
+/** One doctor as their supervisor sees them: requests, supervision to confirm, corrections. */
+export function traineeHref(doctorId: string): string {
+  return `${assessmentsPath}/trainee/${encodeURIComponent(doctorId)}?as=supervisor`;
+}
+
 export const secondaryText = "text-xs leading-snug text-[color:var(--text-muted)]";
 export const titleText = "text-sm font-bold leading-snug text-[color:var(--text-heading)]";
 export const labelText = "text-2xs font-bold uppercase tracking-label text-[color:var(--text-muted)]";

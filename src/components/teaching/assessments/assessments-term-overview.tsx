@@ -34,6 +34,7 @@ import {
   WhyNot,
   secondaryText,
   titleText,
+  traineeHref,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
@@ -930,6 +931,17 @@ function DoctorDetail({ s, doctorId }: ScreenProps & { doctorId: string }) {
           ) : null}
         </>
       )}
+      <Link
+        href={traineeHref(row.id)}
+        className={cn(
+          focusRing,
+          "inline-flex min-h-12 items-center justify-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
+        )}
+        data-testid="assessments-overview-doctor-trainee"
+      >
+        {`Requests and supervision for ${row.name}`}
+        <ChevronRight aria-hidden="true" className="size-icon-sm" />
+      </Link>
       <Link
         href={back}
         className={cn(

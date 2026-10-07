@@ -52,6 +52,7 @@ export const assessTopic: WorkHelpTopic = {
   setUp: [
     { label: "Term", href: "/teaching/term" },
     { label: "Supervision", href: "/teaching/supervision" },
+    { label: "Help and words", href: "/teaching/assessments?view=words" },
   ],
   keywords:
     "EPA entrustable professional activity mid-term end of term report CLA ePortfolio MEU DCT supervisor supervision hours PGY1 PGY2 prevocational training forms",

@@ -20,6 +20,7 @@ import {
   labelText,
   secondaryText,
   titleText,
+  traineeHref,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
@@ -58,6 +59,7 @@ import {
   type InboxSort,
 } from "@/lib/teaching/assessments/inbox";
 import type { PillTone } from "@/lib/teaching/assessments/model";
+import { overviewDoctors } from "@/lib/teaching/assessments/overview";
 
 /*
  * The consultant inbox (feature 16, mock-up nf_assess_inbox): every request waiting for the supervisor in one
@@ -147,6 +149,8 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
 
   const items = useMemo(() => inboxRequests(s, extras.answers), [s, extras.answers]);
+  // Each made-up doctor's own page (their requests and supervision), found by name.
+  const doctorIds = useMemo(() => new Map(overviewDoctors(s).map((row) => [row.name, row.id])), [s]);
   const counts = filterCounts(items);
   const waiting = sortInbox(items.filter(isWaiting), sort);
   const shown = waiting.filter((i) => matchesFilter(i, filter));
@@ -427,6 +431,13 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
             onLater={() => moveLater(open)}
             onCant={() => setSheet({ id: open.id, mode: "cant" })}
           />
+        ) : null}
+        {open && (sheet?.mode === "feedback" || sheet?.mode === "status") && doctorIds.has(open.doctor.name) ? (
+          <p className="m-0 text-center" data-testid="assessments-inbox-trainee-link">
+            <TextLink href={traineeHref(doctorIds.get(open.doctor.name)!)}>
+              {`Everything from ${open.doctor.name}`}
+            </TextLink>
+          </p>
         ) : null}
         {open && sheet?.mode === "doctor" && extras.answers[open.id] ? (
           <DoctorSheet

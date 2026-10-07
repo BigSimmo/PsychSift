@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox, LayoutGrid } from "lucide-react";
+import { Download, Inbox, LayoutGrid } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -18,6 +18,7 @@ import { PendingSends, inUndoMessage } from "@/components/teaching/assessments/p
 import { UNDO_MS } from "@/components/teaching/use-delayed-post";
 import { announce } from "@/components/ui/live-announcer";
 import { useOptionalToast } from "@/components/ui/toast";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import type { SupervisionLevel } from "@/lib/teaching/assessments/content";
 import {
   extrasReducer,
@@ -306,26 +307,39 @@ export function useOfflineSince(): string | null {
 export function AssessmentsSampleViewsNav({ s }: { s: AssessmentsState }) {
   const { extras } = useAssessmentsExtras();
   const waiting = inboxRequests(s, extras.answers).filter(isWaiting).length;
+  // These are new work mode screens: a reader on the classic work mode is not sent to them.
+  const visible = useWorkModeRouteVisible();
+  const inboxHref = viewHref("inbox", { as: "supervisor" });
+  const overviewHref = viewHref("overview", { as: "supervisor" });
+  const exportHref = "/teaching/assessments/export";
+  if (!visible(inboxHref) && !visible(overviewHref) && !visible(exportHref)) return null;
   return (
     <>
       <SectionLabel>More views</SectionLabel>
       <List>
-        <Row
-          icon={Inbox}
-          title="Inbox"
-          subtitle={
-            waiting
-              ? `${waiting} ${waiting === 1 ? "request" : "requests"} waiting · open one in a tap`
-              : "Nothing waiting"
-          }
-          href={viewHref("inbox", { as: "supervisor" })}
-        />
-        <Row
-          icon={LayoutGrid}
-          title="Term overview"
-          subtitle="Every doctor's assessments as status only · for a DCT or MEU"
-          href={viewHref("overview", { as: "supervisor" })}
-        />
+        {visible(inboxHref) ? (
+          <Row
+            icon={Inbox}
+            title="Inbox"
+            subtitle={
+              waiting
+                ? `${waiting} ${waiting === 1 ? "request" : "requests"} waiting · open one in a tap`
+                : "Nothing waiting"
+            }
+            href={inboxHref}
+          />
+        ) : null}
+        {visible(overviewHref) ? (
+          <Row
+            icon={LayoutGrid}
+            title="Term overview"
+            subtitle="Every doctor's assessments as status only · for a DCT or MEU"
+            href={overviewHref}
+          />
+        ) : null}
+        {visible(exportHref) ? (
+          <Row icon={Download} title="Export" subtitle="Spreadsheets and forms" href={exportHref} />
+        ) : null}
       </List>
     </>
   );

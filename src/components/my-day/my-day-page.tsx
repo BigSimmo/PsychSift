@@ -39,6 +39,8 @@ import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { cn } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { WorkSetupPromptCard } from "@/components/work-setup/work-setup-prompt-card";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { isSnoozed, parseMyDayPage, snoozeUntil, type MyDaySnoozes } from "@/lib/my-day/dashboard";
@@ -558,6 +560,12 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
 
         {ready ? (
           <div className="grid min-w-0 gap-2.5" data-testid="my-day-ready">
+            {/* "Set up Work": the first thing on Today, for the new work mode only. */}
+            {view === "dashboard" && page === "today" ? (
+              <NewWorkModeOnly>
+                <WorkSetupPromptCard />
+              </NewWorkModeOnly>
+            ) : null}
             {failed.length > 0 ? (
               <QuietNote
                 icon={TriangleAlert}

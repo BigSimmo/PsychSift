@@ -14,7 +14,9 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { WorkPageFavouriteButton } from "@/components/favourites/work-page-favourite-button";
 import { Sheet } from "@/components/ui/sheet";
+import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useTabSwipe } from "@/components/work-swipe/use-tab-swipe";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import {
@@ -86,6 +88,8 @@ export function WorkFrameHeader({
   const currentId = current?.id ?? null;
   const tabIndex = workFrameTabIndex(area, currentId);
   const onTab = tabIndex >= 0;
+  // Saving work pages to Favourites is part of the new work mode.
+  const newWorkMode = useNewWorkMode();
 
   useEffect(() => {
     setWorkFramePill({ modeId, area: area.name, page: current?.label ?? null });
@@ -113,7 +117,21 @@ export function WorkFrameHeader({
             {title}
           </p>
         </div>
-        {action}
+        <div className="ml-auto flex shrink-0 items-end gap-2">
+          {newWorkMode &&
+          current?.href &&
+          !current.leadsTo &&
+          current.id !== area.tabs[0].id &&
+          current.id !== "my-day-favourites" ? (
+            <WorkPageFavouriteButton
+              areaId={area.id}
+              itemId={current.id}
+              pageName={current.title ?? current.label}
+              className="work-band__action"
+            />
+          ) : null}
+          {action}
+        </div>
       </div>
       {status}
       <nav aria-label={`${area.name} pages`} className="work-band__tabs" data-testid="mode-band-tabs">
@@ -205,16 +223,19 @@ export type WorkMoreSheetProps = {
  */
 export function WorkMoreSheet({ area, currentId, open, onClose, returnFocusRef }: WorkMoreSheetProps) {
   const gateOpen = useGateOpen();
+  const routeVisible = useWorkModeRouteVisible();
   const actionsVersion = useWorkFrameActionsVersion();
   const groups = useMemo(() => {
     // Re-read when a page offers or withdraws an action.
     void actionsVersion;
+    // A new-only screen stays out of the sheet for a reader on the classic work mode.
     const visible = (item: WorkFrameItem) =>
-      gateOpen(item.gate) && (item.action ? workFrameActionHandler(item.action) !== null : Boolean(item.href));
+      gateOpen(item.gate) &&
+      (item.action ? workFrameActionHandler(item.action) !== null : Boolean(item.href) && routeVisible(item.href!));
     return [{ label: "Tabs", items: [...area.tabs] }, ...area.groups]
       .map((group) => ({ label: group.label, items: group.items.filter(visible) }))
       .filter((group) => group.items.length > 0);
-  }, [area, gateOpen, actionsVersion]);
+  }, [area, gateOpen, routeVisible, actionsVersion]);
 
   return (
     <Sheet

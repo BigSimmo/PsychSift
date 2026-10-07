@@ -20,6 +20,7 @@ import { pinnedHelpItems } from "@/components/admin/admin-pinned-numbers";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { EndOfShiftCard } from "@/components/alerts/end-of-shift-card";
 import { focusRing } from "@/components/card-recipes";
+import { MyDayFavouritesShelf } from "@/components/favourites/my-day-favourites-shelf";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { useWorkUndoToast } from "@/components/mode-kit/work";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
@@ -54,6 +55,7 @@ import {
 } from "@/components/my-day/my-day-today-cards";
 import type { PinnedNumber } from "@/components/my-day/my-day-work-me-cards";
 import type { MyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { kindOf } from "@/components/roster/roster-format";
@@ -676,31 +678,39 @@ export function MyDayDashboard({
       firstSteps ? (
         <FirstSteps />
       ) : (
-        <NeedsYouCard
-          shown={needsYou.shown}
-          waiting={needsYou.waiting}
-          total={needsYou.total}
-          checked={checked}
-          checkedAt={checkedAt}
-          incomplete={incomplete}
-          missing={missing}
-          offline={!online}
-          today={today}
-          hidden={
-            hiddenNote && snoozedCount > 0
-              ? { ...hiddenNote, until: untilWords(hiddenNote.until), count: snoozedCount }
-              : null
-          }
-          inlineUndo={toast === null}
-          onLater={later}
-          onUndo={() => {
-            if (hiddenNote) device.unsnooze(hiddenNote.id);
-            setHiddenNote(null);
-          }}
-          onRemindMe={onRemindMe}
-          onShowAll={onShowAll}
-          onRetry={retryAll}
-        />
+        <>
+          <NeedsYouCard
+            shown={needsYou.shown}
+            waiting={needsYou.waiting}
+            total={needsYou.total}
+            checked={checked}
+            checkedAt={checkedAt}
+            incomplete={incomplete}
+            missing={missing}
+            offline={!online}
+            today={today}
+            hidden={
+              hiddenNote && snoozedCount > 0
+                ? { ...hiddenNote, until: untilWords(hiddenNote.until), count: snoozedCount }
+                : null
+            }
+            inlineUndo={toast === null}
+            onLater={later}
+            onUndo={() => {
+              if (hiddenNote) device.unsnooze(hiddenNote.id);
+              setHiddenNote(null);
+            }}
+            onRemindMe={onRemindMe}
+            onShowAll={onShowAll}
+            onRetry={retryAll}
+          />
+          {/* Favourites sits straight after Needs you. The signed-out sample keeps this phone's saves out. */}
+          {page === "today" && !sample ? (
+            <NewWorkModeOnly>
+              <MyDayFavouritesShelf />
+            </NewWorkModeOnly>
+          ) : null}
+        </>
       ),
     cpd: () => (
       <CpdRingsCard

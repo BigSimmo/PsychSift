@@ -41,6 +41,8 @@ import { useHospitalHandbook, type HospitalHandbookState } from "@/components/on
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import { RosterWhosOnEntryLink } from "@/components/on-call/roster-whos-on/roster-whos-on-entry-link";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { formatOnCallTime } from "@/lib/on-call/display-dates";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
@@ -524,6 +526,10 @@ export function OnCallCallPage() {
 
       {searching ? null : (
         <div className="grid min-w-0 gap-4" data-testid="on-call-call-more">
+          {/* Who is on from the team's published roster: a new work mode screen. */}
+          <NewWorkModeOnly>
+            <RosterWhosOnEntryLink />
+          </NewWorkModeOnly>
           <ul role="list" className="work-card min-w-0">
             <OnCallIsobarRow />
             <OnCallRow

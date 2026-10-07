@@ -89,7 +89,8 @@ describe("year check page", () => {
     expect(evidence).toHaveTextContent("1 activity with no evidence attached");
     expect(within(evidence).getByRole("link", { name: "Show: Evidence kept for each activity" })).toHaveAttribute(
       "href",
-      "/cme/log?year=2026&fix=evidence",
+      // The new work mode (the test default) sends this to CPD Evidence; the classic mode keeps Log's filter.
+      "/cme/evidence?year=2026",
     );
     expect(screen.getByTestId("cme-check-row-copied")).toHaveTextContent("1 activity not marked copied");
   });

@@ -197,7 +197,7 @@ export function adminArea(loaded: Loaded<AdminSummary>): AreaRow {
   const row = { id: "admin", title: "Admin" } as const;
   const subtitle = partial
     ? "Only partly loaded · not checked with Ahpra"
-    : "Dates you entered; not checked with Ahpra";
+    : "Dates you entered. Not checked with Ahpra";
   // A partial copy with nothing in it proves nothing: it may just be the part that didn't load.
   if (recorded === 0 && partial) return { ...row, subtitle, state: "not-checked", label: NOT_CHECKED };
   if (recorded === 0) {
