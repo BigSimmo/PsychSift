@@ -128,7 +128,14 @@ describe("CPD answer", () => {
   });
 
   it("has no pace line once the total is reached", () => {
-    const done = [{ ...(entries as never[])[0]!, allocations: [{ category: "educational", hours: 52 }] }] as never;
+    const done = [
+      {
+        id: "e1",
+        date: "2026-03-02",
+        title: "Journal club",
+        allocations: [{ category: "educational" as const, hours: 52 }],
+      },
+    ] as never;
     const answer = answerWorkQuestion("cpd hours left", { ...input, cpd: { set, entries: done } });
     expect(answer?.meta).toEqual(["52 of 50 h logged"]);
     expect(answer?.ring).toMatchObject({ value: "52", unit: "h logged", fraction: 1 });

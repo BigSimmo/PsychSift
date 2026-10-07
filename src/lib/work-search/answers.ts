@@ -68,6 +68,10 @@ export interface WorkAnswer {
   readonly week?: readonly WorkAnswerDay[];
   /** A timed shift the reader can add to their calendar from the card. */
   readonly calendar?: WorkItem;
+  /** While a shift is under way: the one after it, for "Add next shift". */
+  readonly calendarNext?: WorkItem;
+  /** The day the answer is about, for the hero's date tile. */
+  readonly date?: string;
   /** What a failed area may have left out, for the notice above the card: "Your talks". */
   readonly missing?: string;
   /** A ring for the answer's hero: "17.5" over "h to go", drawn at `fraction` full. */
@@ -299,7 +303,9 @@ function nextShift(
     understood,
     source: "From your Roster",
     action: { label: "Open shift", href: first.href },
+    date: first.date,
     ...(!onNow && first.startsAt && first.endsAt ? { calendar: first } : {}),
+    ...(onNow && after?.startsAt && after.endsAt && after.date ? { calendarNext: after } : {}),
   };
 }
 
@@ -449,6 +455,7 @@ function shiftsInRange(input: WorkAnswerInput, range: Range): WorkAnswer {
     understood,
     source: "From your Roster",
     ...(first ? { action: { label: single ? "Open shift" : "Open Roster", href: first.href } } : {}),
+    ...(single ? { date: range.from } : {}),
     ...(single && ahead ? { calendar: ahead } : {}),
   };
 }
@@ -612,6 +619,7 @@ function nextLeave(input: WorkAnswerInput): WorkAnswer {
     understood,
     source: "From your Roster",
     action: { label: "Open leave", href: first.href },
+    date: first.date,
   };
 }
 
@@ -727,6 +735,8 @@ function presenting(input: WorkAnswerInput): WorkAnswer {
     understood,
     source: "From your Teaching programme",
     action: first ? { label: "Open session", href: first.href } : { label: "Open Teaching", href: "/teaching/week" },
+    ...(first?.date ? { date: first.date } : {}),
+    ...(first?.startsAt && first.endsAt ? { calendar: first } : {}),
   };
 }
 
