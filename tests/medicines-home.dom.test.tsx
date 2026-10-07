@@ -31,7 +31,7 @@ describe("MedicinesHome", () => {
     const group = phoneModeGroups.find((candidate) => candidate.id === "care");
     expect(group?.modeIds[0]).toBe("medicines");
     const sections = (group?.modeIds ?? []).filter((modeId: AppModeId) => modeId !== "medicines");
-    expect(sections).toEqual(["prescribing", "calculators", "tools", "factsheets", "dictionary"]);
+    expect(sections).toEqual(["prescribing", "tools", "calculators", "factsheets", "dictionary"]);
 
     const list = screen.getByRole("list", { name: "Medicines and tools sections" });
     const links = within(list).getAllByRole("link");

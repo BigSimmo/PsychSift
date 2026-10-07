@@ -9,7 +9,7 @@ import { MasterSearchHeader } from "@/components/clinical-dashboard/master-searc
 import { setWorkFramePill } from "@/components/work-frame/work-frame-store";
 import { LAST_APP_MODE_STORAGE_KEY } from "@/components/clinical-dashboard/use-last-app-mode";
 import { appModeSelectionHref, visibleAppModeDefinitionsForSession, type AppModeId } from "@/lib/app-modes";
-import { modesOnSide, orderByPhoneModeGroups } from "@/lib/phone-mode-groups";
+import { modeMenuSideForMode, orderModesForSide } from "@/lib/phone-mode-groups";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
 
 /**
@@ -230,9 +230,8 @@ describe("mode menu destination prefetch", () => {
 
   it("prefetches the highlighted mode when openModeMenuWithFocus targets another mode", async () => {
     const user = userEvent.setup();
-    // Arrow keys walk the modes in the order the grouped menu draws them, within
-    // the side of the Clinical and Work toggle the menu opens on (Answer: clinical).
-    const modes = modesOnSide(orderByPhoneModeGroups(guestModeHomes()), "clinical");
+    // Arrow keys walk the open side, which for Answer is Clinical, and wrap inside it.
+    const modes = orderModesForSide(guestModeHomes(), modeMenuSideForMode("answer"));
     const answerIndex = modes.findIndex((mode) => mode.id === "answer");
     expect(answerIndex).toBeGreaterThanOrEqual(0);
     const previous = modes[(answerIndex - 1 + modes.length) % modes.length];
@@ -315,6 +314,42 @@ describe("mode menu destination prefetch", () => {
     await new Promise((resolve) => setTimeout(resolve, 120));
     expect(outside).toHaveFocus();
     expect(trigger).not.toHaveFocus();
+  });
+
+  it("opens on the current side and switches the list without a search field", async () => {
+    const user = userEvent.setup();
+    render(<MasterSearchHeader {...headerProps()} />);
+
+    await user.click(screen.getByRole("button", { name: /Mode Answer/i }));
+    const dialog = await screen.findByRole("dialog", { name: "Choose app mode" });
+    expect(within(dialog).getByRole("radio", { name: "Clinical" })).toHaveAttribute("aria-checked", "true");
+    expect(within(dialog).getByText("Care, diagnosis and reference")).toBeTruthy();
+    expect(within(dialog).queryByRole("textbox", { name: "Find a mode" })).toBeNull();
+    expect(within(dialog).queryByRole("menuitemradio", { name: /^On Call\b/i })).toBeNull();
+    expect(within(dialog).getByRole("menuitemradio", { name: /^Answer\b/i })).toBeTruthy();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("18 in Clinical");
+
+    await user.click(within(dialog).getByRole("radio", { name: "Work" }));
+    expect(within(dialog).getByRole("menuitemradio", { name: /^On Call\b/i })).toBeTruthy();
+    expect(within(dialog).queryByRole("menuitemradio", { name: /^Answer\b/i })).toBeNull();
+    expect(within(dialog).getByText("Your working day")).toBeTruthy();
+    expect(within(dialog).getByText(/One list of what needs you today/i)).toBeTruthy();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("7 in Work");
+  });
+
+  it("opens On Call's pill straight on the Work list", async () => {
+    // On Call is a work area, so its pill opens on the area list rather than
+    // its own pages (Josh, 7 Oct 2026, "Area list first").
+    const user = userEvent.setup();
+    render(<MasterSearchHeader {...headerProps()} searchMode="on-call" />);
+
+    await user.click(screen.getByRole("button", { name: /Mode On Call/i }));
+    expect(screen.queryByTestId("app-mode-section-all-modes")).toBeNull();
+
+    const dialog = await screen.findByRole("dialog", { name: "Choose app mode" });
+    expect(within(dialog).getByRole("radio", { name: "Work" })).toHaveAttribute("aria-checked", "true");
+    expect(within(dialog).getByRole("menuitemradio", { name: /^On Call\b/i })).toHaveAttribute("aria-checked", "true");
+    expect(within(dialog).queryByRole("menuitemradio", { name: /^Answer\b/i })).toBeNull();
   });
 });
 

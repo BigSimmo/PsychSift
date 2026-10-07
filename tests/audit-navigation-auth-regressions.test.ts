@@ -225,8 +225,8 @@ describe("audit navigation and auth regressions", () => {
     expect(masterSearchHeaderSource).toContain(
       '{!usesPhoneSearchLayout && modeMenuOpen && modeSheetView === "modes" ? (',
     );
-    // The desktop trigger now opens a searchable grouped dialog (not a plain
-    // menu), so it always announces `dialog` regardless of phone layout.
+    // The desktop trigger opens a grouped dialog (not a plain menu), so it
+    // always announces `dialog` regardless of phone layout.
     expect(masterSearchHeaderSource).toContain('aria-haspopup="dialog"');
     expect(masterSearchHeaderSource).toContain('mobilePlacement="bottom"');
     // Near-full height on the phone, a centred dialog from `sm` up. The colour
@@ -244,10 +244,9 @@ describe("audit navigation and auth regressions", () => {
     expect(masterSearchHeaderSource).toContain(
       "const [usesPhoneSearchLayout, setUsesPhoneSearchLayout] = useState(false);",
     );
-    // The searchable desktop dialog reuses this same live matchMedia read to
-    // decide whether to reset `modeMenuQuery` before the rAF-scheduled focus
-    // (see `openModeMenuWithFocus`/`toggleModeMenu`), so it is now bound to a
-    // local first and passed to the setter rather than called inline twice.
+    // Opening the desktop menu reads matchMedia once and passes that value
+    // into state (see `openModeMenuWithFocus`/`toggleModeMenu`), rather than
+    // calling it inline twice.
     expect(masterSearchHeaderSource).toContain("const phoneLayout = currentUsesPhoneSearchLayout();");
     expect(masterSearchHeaderSource).toContain("setUsesPhoneSearchLayout(phoneLayout);");
   });
@@ -256,7 +255,7 @@ describe("audit navigation and auth regressions", () => {
     const modeOption = sourceSegment(
       masterSearchHeaderSource,
       "function renderModeMenuOption(",
-      "function renderModeMenuOptions()",
+      "function renderGroupedDesktopModeMenuOptions()",
       { label: "mode-menu option prefetch" },
     );
     const openModeMenuWithFocus = sourceSegment(
