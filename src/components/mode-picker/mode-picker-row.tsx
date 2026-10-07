@@ -1,6 +1,7 @@
 import { Check, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
+import { modeSideLabels, modeSides, type ModeSide } from "@/lib/phone-mode-groups";
 
 /**
  * One row of the mode pill's menu: the phone sheet's "Choose mode" level, the
@@ -143,5 +144,54 @@ export function ModePickerKeyHints() {
         Close
       </span>
     </>
+  );
+}
+
+/**
+ * The Clinical and Work toggle at the top of the mode list (Josh, 7 Oct 2026).
+ * It filters the list below to one side. Two pressed-state buttons rather than
+ * tabs: the list it filters is a menu, and a menu cannot sit inside a tab panel.
+ * Flat, like the rows: the chosen side is a white segment on a quiet track.
+ */
+export function ModePickerSideToggle({
+  side,
+  onChange,
+  phone,
+}: {
+  side: ModeSide;
+  onChange: (side: ModeSide) => void;
+  phone: boolean;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Show modes"
+      data-testid="app-mode-side-toggle"
+      className={cn(
+        "grid grid-cols-2 gap-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-0.5",
+        phone ? "h-11" : "h-10",
+      )}
+    >
+      {modeSides.map((option) => {
+        const pressed = option === side;
+        return (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={pressed}
+            data-mode-side={option}
+            onClick={() => onChange(option)}
+            className={cn(
+              "rounded-md text-sm font-semibold transition-[background-color,color] duration-[var(--duration-fast)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
+              pressed
+                ? "border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-heading)] forced-colors:border-[color:Highlight]"
+                : "text-[color:var(--text-muted)] hover:text-[color:var(--text-heading)]",
+            )}
+          >
+            {modeSideLabels[option]}
+          </button>
+        );
+      })}
+    </div>
   );
 }

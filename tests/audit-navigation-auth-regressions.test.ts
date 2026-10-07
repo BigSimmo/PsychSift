@@ -232,7 +232,11 @@ describe("audit navigation and auth regressions", () => {
     expect(masterSearchHeaderSource).toContain(
       'contentClassName="max-h-[calc(100dvh-0.75rem)] rounded-t-3xl bg-[color:var(--surface-lux)] sm:max-w-md sm:rounded-2xl"',
     );
-    expect(masterSearchHeaderSource).toMatch(/usesPhoneSearchLayout\s*\?\s*"min-h-14\b[\s\S]*:\s*"min-h-12\b/);
+    // Row sizes live in the shared mode-picker row; the header passes its phone layout through.
+    expect(masterSearchHeaderSource).toContain("modePickerRowClass(active, usesPhoneSearchLayout)");
+    expect(source("src/components/mode-picker/mode-picker-row.tsx")).toMatch(
+      /phone\s*\?\s*"min-h-14\b[\s\S]*:\s*"min-h-12\b/,
+    );
     expect(masterSearchHeaderSource).toContain("phoneLayoutGateRef");
     // Hydration-safe: do not read matchMedia in useState (SSR/client mismatch → React #418).
     expect(masterSearchHeaderSource).toContain(

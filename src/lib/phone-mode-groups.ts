@@ -1,6 +1,14 @@
 import type { AppModeId } from "@/lib/app-modes";
 
 /**
+ * The mode menu's top toggle (Josh, 7 Oct 2026): Clinical shows the reference
+ * groups, Work shows the clinician's own day. Each group sits on one side.
+ */
+export type ModeSide = "clinical" | "work";
+export const modeSides = ["clinical", "work"] as const satisfies readonly ModeSide[];
+export const modeSideLabels: Record<ModeSide, string> = { clinical: "Clinical", work: "Work" };
+
+/**
  * How the phone mode sheet groups the app's modes.
  *
  * A twenty-one-item flat list is unusable on a phone, so the sheet groups it,
@@ -20,18 +28,21 @@ export const phoneModeGroups = [
   // Then the three clinical doors: Search, Psychiatry, Medicines & tools.
   {
     id: "my-day",
+    side: "work",
     label: "My Day",
     hint: "Your day, roster, teaching, CPD and admin",
     modeIds: ["my-day", "roster", "open-shifts", "teaching", "cme", "my-work"],
   },
   {
     id: "on-call",
+    side: "work",
     label: "On Call",
     hint: "Who to ring, right now",
     modeIds: ["on-call"],
   },
   {
     id: "find",
+    side: "clinical",
     label: "Search",
     hint: "Answers, sources, services",
     modeIds: ["answer", "documents", "services", "favourites", "sources"],
@@ -43,6 +54,7 @@ export const phoneModeGroups = [
   // and formulation.
   {
     id: "psychiatry",
+    side: "clinical",
     label: "Psychiatry",
     hint: "Diagnosis, formulation, therapy, forms",
     modeIds: [
@@ -60,12 +72,14 @@ export const phoneModeGroups = [
   // gathers these sections and leads its group (modes review, phase 3).
   {
     id: "care",
+    side: "clinical",
     label: "Medicines & tools",
     hint: "Medication, calculators, reference",
     modeIds: ["medicines", "prescribing", "calculators", "tools", "factsheets", "dictionary"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;
+  side: ModeSide;
   label: string;
   hint: string;
   modeIds: readonly AppModeId[];
@@ -87,4 +101,18 @@ const phoneModeGroupRank = new Map<AppModeId, number>(
 export function orderByPhoneModeGroups<T extends { readonly id: AppModeId }>(modes: readonly T[]): T[] {
   const rankOf = (modeId: AppModeId) => phoneModeGroupRank.get(modeId) ?? Number.MAX_SAFE_INTEGER;
   return [...modes].sort((a, b) => rankOf(a.id) - rankOf(b.id));
+}
+
+const modeSideById = new Map<AppModeId, ModeSide>(
+  phoneModeGroups.flatMap((group) => group.modeIds.map((modeId) => [modeId, group.side] as const)),
+);
+
+/** Which side of the mode menu's toggle a mode sits on. A mode in no group reads as clinical. */
+export function modeSideOf(modeId: AppModeId): ModeSide {
+  return modeSideById.get(modeId) ?? "clinical";
+}
+
+/** `modes` kept to one side of the toggle, in the order given. */
+export function modesOnSide<T extends { readonly id: AppModeId }>(modes: readonly T[], side: ModeSide): T[] {
+  return modes.filter((mode) => modeSideOf(mode.id) === side);
 }
