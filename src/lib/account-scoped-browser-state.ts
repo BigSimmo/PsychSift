@@ -104,6 +104,18 @@ export const TEACHING_TERM_TRACKER_STORAGE_KEY = "psychsift:teaching:term-tracke
  * progress and the next study group. Kept on this device only.
  */
 export const TEACHING_EXAM_PREP_STORAGE_KEY = "psychsift:teaching:exam-prep-v1";
+/**
+ * localStorage — CPD's "Send to AMA CPD Home": the CSV files made on this device (when, row count,
+ * which activity ids) and which the doctor marked added to CPD Home. Ids only, never a title or
+ * reflection. Cleared at sign-out, session expiry and account switch.
+ */
+export const CPD_HOME_SEND_STORAGE_KEY = "psychsift:cpd:cpd-home-v1";
+/**
+ * localStorage — CPD's Job applications season: dates the doctor typed from an advert, referees
+ * (a colleague's name, role and status) and their own personal statement. Patient-detail checks run
+ * on every field. Kept on this device only; cleared at every account transition.
+ */
+export const CPD_APPLICATIONS_STORAGE_KEY = "psychsift:cpd:applications-v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -176,6 +188,8 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, CPD_HOME_SEND_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, CPD_APPLICATIONS_STORAGE_KEY);
   stripAccountScopedPreferences();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
