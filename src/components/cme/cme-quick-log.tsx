@@ -1,13 +1,14 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { useCmeSample } from "@/components/cme/cme-sample-context";
 import { stillShortCategories } from "@/components/cme/cme-still-short";
-import { CmeEntryForm, type CmeEntryDraft, type CmeEntryFormProps } from "@/components/cme/cme-entry-form";
+import type { CmeEntryDraft, CmeEntryFormProps } from "@/components/cme/cme-entry-form";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/components/cme/cme-new-entry-route";
 import { CME_SAVED_NOTICE_MS, CmeSavedLogNotice } from "@/components/cme/cme-saved-log-notice";
 import { Sheet } from "@/components/ui/sheet";
@@ -18,6 +19,10 @@ import { routinesDueOn, type CmeRoutine } from "@/lib/cme/routines";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { perthCalendarDate } from "@/lib/perth-time";
 type InitialEntry = NonNullable<CmeEntryFormProps["initialEntry"]>;
+
+/* The form only shows once "+ Log" is tapped, so it loads apart from the page (and quietly when idle). */
+const loadCmeEntryForm = () => import("@/components/cme/cme-entry-form");
+const CmeEntryForm = dynamic(() => loadCmeEntryForm().then((m) => m.CmeEntryForm), { ssr: false });
 
 /**
  * A page's own "Log an activity" button (the Year page's one filled button)
@@ -166,14 +171,31 @@ export function CmeQuickLog({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const pageHasTrigger = usePageHasElement(`[${CME_LOG_TRIGGER_ATTRIBUTE}]`, true);
-  const domains = set.requirements.flatMap((requirement) =>
-    requirement.spec.shape === "activity-count" ? [...requirement.spec.buckets] : [],
+  const domains = useMemo(
+    () =>
+      set.requirements.flatMap((requirement) =>
+        requirement.spec.shape === "activity-count" ? [...requirement.spec.buckets] : [],
+      ),
+    [set.requirements],
   );
-  const now = nowIso ? new Date(nowIso) : new Date();
+  // Read "now" afresh each time the panel opens; the choices (which sort every entry) only matter while open.
+  const now = useMemo(() => (nowIso ? new Date(nowIso) : new Date()), [nowIso, open]); // eslint-disable-line react-hooks/exhaustive-deps
   const today = perthCalendarDate(now);
   const initialDate = today.startsWith(`${set.year}-`) ? today : `${set.year}-01-01`;
-  const choices = logAgainChoices(routines, entries, now, initialDate);
+  const choices = useMemo(
+    () => (open ? logAgainChoices(routines, entries, now, initialDate) : []),
+    [open, routines, entries, now, initialDate],
+  );
   const stillShort = stillShortCategories(set, entries);
+
+  useEffect(() => {
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(() => void loadCmeEntryForm().catch(() => undefined));
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(() => void loadCmeEntryForm().catch(() => undefined), 1500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     function handleOpen(event: Event) {

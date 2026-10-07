@@ -16,9 +16,8 @@ import {
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { CalendarView } from "@/components/calendar/calendar-view";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
@@ -49,11 +48,9 @@ import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/r
 
 import { RosterAskButton } from "./ask/roster-ask-box";
 import { RosterSignInNotice } from "./invite/roster-sign-in-notice";
-import { RosterAddSheet, type RosterAddView } from "./roster-add-sheet";
+import type { RosterAddView } from "./roster-add-sheet";
 import { kindOf, useRosterNow } from "./roster-format";
 import { RosterFortnight } from "./roster-fortnight";
-import { RosterHoursPanel } from "./roster-hours-panel";
-import { RosterImportFlow } from "./roster-import-flow";
 import {
   RosterDateLead,
   RosterFootnote,
@@ -133,6 +130,35 @@ const RosterAfterNightNote = dynamic(
   () => import("./roster-shifts-checks").then((module) => module.RosterAfterNightNote).catch(() => () => null),
   { ssr: false },
 );
+
+/*
+ * The month calendar, Hours & rest, the import flow and the add sheet each show only on demand, so
+ * they load apart from the week list. The two views keep server rendering, so a direct link to
+ * `?view=month` or `?view=hours` draws the same first HTML; the flow and the sheet load in the browser.
+ * All four are fetched quietly once the page is idle, so opening one never waits.
+ */
+const loadCalendarView = () => import("@/components/calendar/calendar-view");
+const loadHoursPanel = () => import("./roster-hours-panel");
+const loadImportFlow = () => import("./roster-import-flow");
+const loadAddSheet = () => import("./roster-add-sheet");
+const CalendarView = dynamic(() => loadCalendarView().then((m) => m.CalendarView));
+const RosterHoursPanel = dynamic(() => loadHoursPanel().then((m) => m.RosterHoursPanel));
+const RosterImportFlow = dynamic(() => loadImportFlow().then((m) => m.RosterImportFlow), { ssr: false });
+const RosterAddSheet = dynamic(() => loadAddSheet().then((m) => m.RosterAddSheet), { ssr: false });
+
+function preloadOnDemandParts(): () => void {
+  const load = () => {
+    for (const loader of [loadAddSheet, loadImportFlow, loadCalendarView, loadHoursPanel]) {
+      void loader().catch(() => undefined);
+    }
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(load);
+    return () => window.cancelIdleCallback(id);
+  }
+  const timer = window.setTimeout(load, 1500);
+  return () => window.clearTimeout(timer);
+}
 
 function mondayOf(date: string): string {
   const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
@@ -328,7 +354,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   const links = useRosterLinks();
   const settings = useRosterSettings();
   const [addView, setAddView] = useState<RosterAddView | null>(null);
+  // Once opened, the add sheet stays mounted, so its open and close behave exactly as before.
+  const [addMounted, setAddMounted] = useState(false);
+  if (addView !== null && !addMounted) setAddMounted(true);
   const [importing, setImporting] = useState(false);
+  useEffect(preloadOnDemandParts, []);
   const [notice, setNotice] = useState<{ tone: "neutral" | "warning"; text: string } | null>(null);
   const [teamShift, setTeamShift] = useState<OnCallShift | null>(null);
   const [confirmSeries, setConfirmSeries] = useState<{ readonly id: string; readonly label: string } | null>(null);
@@ -853,40 +883,42 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
         ) : null}
       </Sheet>
 
-      <RosterAddSheet
-        open={addView !== null}
-        view={addView ?? "menu"}
-        onViewChange={setAddView}
-        onClose={() => setAddView(null)}
-        today={today}
-        workplaces={workplaces}
-        hasTeam={enabledTeams.length > 0}
-        onDates={() => {
-          setAddView(null);
-          router.push(datesHref);
-        }}
-        onImportFile={() => {
-          setAddView(null);
-          setImporting(true);
-        }}
-        onAddShift={async (request) => {
-          const failure = await shifts.addManual(request);
-          if (!failure) {
+      {addMounted ? (
+        <RosterAddSheet
+          open={addView !== null}
+          view={addView ?? "menu"}
+          onViewChange={setAddView}
+          onClose={() => setAddView(null)}
+          today={today}
+          workplaces={workplaces}
+          hasTeam={enabledTeams.length > 0}
+          onDates={() => {
             setAddView(null);
-            setNotice({ tone: "neutral", text: "Saved" });
-          }
-          return failure;
-        }}
-        onAddLink={async (url, workplace) => {
-          const failure = await links.add(url, workplace);
-          if (!failure) {
-            void shifts.reload();
+            router.push(datesHref);
+          }}
+          onImportFile={() => {
             setAddView(null);
-            setNotice({ tone: "neutral", text: "Saved" });
-          }
-          return failure;
-        }}
-      />
+            setImporting(true);
+          }}
+          onAddShift={async (request) => {
+            const failure = await shifts.addManual(request);
+            if (!failure) {
+              setAddView(null);
+              setNotice({ tone: "neutral", text: "Saved" });
+            }
+            return failure;
+          }}
+          onAddLink={async (url, workplace) => {
+            const failure = await links.add(url, workplace);
+            if (!failure) {
+              void shifts.reload();
+              setAddView(null);
+              setNotice({ tone: "neutral", text: "Saved" });
+            }
+            return failure;
+          }}
+        />
+      ) : null}
     </InformationPageShell>
   );
 }

@@ -3,6 +3,7 @@
 import { focusOnCallEntryFromHash } from "@/components/on-call/on-call-page-anchors";
 
 import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -18,7 +19,6 @@ import { HospitalLadders } from "@/components/on-call/hospital-ladders";
 import { OnCallPlaybookSection } from "@/components/on-call/on-call-playbook-section";
 import { OnCallReferralsSection } from "@/components/on-call/on-call-referrals-section";
 import { OnCallWhoIsWhoSection } from "@/components/on-call/on-call-who-is-who-section";
-import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import {
   ON_CALL_VIEW_ICONS,
   ON_CALL_VIEW_TITLES,
@@ -44,6 +44,15 @@ import { selectUpcomingTeachingSessions } from "@/lib/on-call/teaching-schedule"
 import { partitionLogisticsEntries } from "@/lib/on-call/compliance";
 import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
 import { isAdminWorkforceExplainer } from "@/lib/admin/placement";
+
+/**
+ * The entry editor loads on the first Add or Edit tap and then stays mounted,
+ * so a section's first paint does not carry it and its close animation still runs.
+ */
+const OnCallEntryEditor = dynamic(
+  () => import("@/components/on-call/on-call-entry-editor").then((module) => module.OnCallEntryEditor),
+  { ssr: false },
+);
 
 /**
  * Generic, non-owner-specific framing for each view. Shown to every reader,
@@ -185,6 +194,8 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
     open: false,
     entry: null,
   });
+  const [editorMounted, setEditorMounted] = useState(false);
+  if (editorState.open && !editorMounted) setEditorMounted(true);
   // The page menu's order control lives in the header portal and the list it
   // orders lives in the body, so the state belongs to their common parent
   // rather than to either of them.
@@ -512,21 +523,23 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
       {/* One editor for every view: its field map is already keyed by section.
           Who's who writes `contacts` rows, so it hands over the storage section
           rather than the view. */}
-      <OnCallEntryEditor
-        open={editorState.open}
-        onClose={() => setEditorState({ open: false, entry: null })}
-        section={onCallViewStorageSection(view)}
-        entry={editorState.entry}
-        onSaved={upsertCachedEntry}
-        onDeleted={removeCachedEntry}
-        createAsRoleExplainer={view === "who-is-who"}
-        // The `logistics` mirror of the line above, and not optional polish:
-        // both views that share a section save through that section, so
-        // without this seed "Add requirement" on the Compliance page would
-        // write an ordinary Admin row — one that disappears from the page it
-        // was added on and reappears among the parking notes.
-        createAsCompliance={view === "compliance"}
-      />
+      {editorMounted ? (
+        <OnCallEntryEditor
+          open={editorState.open}
+          onClose={() => setEditorState({ open: false, entry: null })}
+          section={onCallViewStorageSection(view)}
+          entry={editorState.entry}
+          onSaved={upsertCachedEntry}
+          onDeleted={removeCachedEntry}
+          createAsRoleExplainer={view === "who-is-who"}
+          // The `logistics` mirror of the line above, and not optional polish:
+          // both views that share a section save through that section, so
+          // without this seed "Add requirement" on the Compliance page would
+          // write an ordinary Admin row — one that disappears from the page it
+          // was added on and reappears among the parking notes.
+          createAsCompliance={view === "compliance"}
+        />
+      ) : null}
     </>
   );
 }

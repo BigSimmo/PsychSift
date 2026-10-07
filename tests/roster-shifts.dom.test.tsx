@@ -254,7 +254,8 @@ describe("Roster Shifts", () => {
     await waitFor(() => expect(fetchCalls(octoberUrl, "GET")).toHaveLength(1));
     await waitFor(() => expect(screen.queryByTestId("roster-team-shifts-loading")).toBeNull());
     expect(screen.getByRole("link", { name: "Shifts" })).toHaveAttribute("href", "/roster/shifts");
-    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    // The month calendar loads in its own chunk, so wait for it to arrive.
+    fireEvent.click(await screen.findByRole("button", { name: "Next month" }));
     await waitFor(() => expect(fetchCalls(nextUrl, "GET")).toHaveLength(1));
     await waitFor(() => expect(screen.queryByTestId("roster-team-shifts-loading")).toBeNull());
     expect(screen.getByTestId("roster-shifts-month")).toHaveTextContent("D · Day");

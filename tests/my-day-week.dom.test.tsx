@@ -401,7 +401,7 @@ describe("MyDayWeekPage", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
     fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
-    expect(screen.getByTestId("account-dialog")).toBeTruthy();
+    expect(await screen.findByTestId("account-dialog")).toBeTruthy();
     fetchSpy.mockRestore();
     setItem.mockRestore();
   });

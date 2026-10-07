@@ -1,6 +1,7 @@
 "use client";
 
 import { LifeBuoy, Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
@@ -18,7 +19,6 @@ import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { ModeBandAction, PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { WorkButton, WorkEmpty, WorkGlassButton, WorkSectionLabel } from "@/components/mode-kit/work";
-import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
@@ -29,6 +29,12 @@ import { ADMIN_STATEWIDE_SUPPORT } from "@/lib/admin/statewide-support";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry, OnCallSection } from "@/lib/on-call/entry-model";
 import { ON_CALL_IN_HOURS_END_HOUR, isOnCallOutOfHours } from "@/lib/on-call/home-modules";
+
+/** The On Call entry editor loads on first open and then stays mounted, so its Sheet still returns focus on close. */
+const OnCallEntryEditor = dynamic(
+  () => import("@/components/on-call/on-call-entry-editor").then((module) => module.OnCallEntryEditor),
+  { ssr: false },
+);
 
 const TAB_BY_SECTION_ID: Record<string, AdminHelpTab> = {
   "admin-help-support": "support",
@@ -78,6 +84,8 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
     entry: null,
     section: "logistics",
   });
+  const [editorMounted, setEditorMounted] = useState(false);
+  if (editorState.open && !editorMounted) setEditorMounted(true);
 
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const shared = useMemo(() => selectAdminSharedEntries(state), [state]);
@@ -256,14 +264,16 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
         ) : null}
       </AdminPage>
 
-      <OnCallEntryEditor
-        open={editorState.open}
-        onClose={() => setEditorState((current) => ({ ...current, open: false }))}
-        section={editorState.section}
-        entry={editorState.entry}
-        onSaved={upsertCachedEntry}
-        onDeleted={removeCachedEntry}
-      />
+      {editorMounted ? (
+        <OnCallEntryEditor
+          open={editorState.open}
+          onClose={() => setEditorState((current) => ({ ...current, open: false }))}
+          section={editorState.section}
+          entry={editorState.entry}
+          onSaved={upsertCachedEntry}
+          onDeleted={removeCachedEntry}
+        />
+      ) : null}
     </>
   );
 }

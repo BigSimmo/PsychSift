@@ -197,7 +197,8 @@ it("shows an anonymous leave overlap count", async () => {
   render(<RosterRequestsPage />);
   await user.click(screen.getByRole("button", { name: "New" }));
   await user.click(screen.getByTestId("roster-new-entry-leave"));
-  await user.type(screen.getByLabelText("From"), "2026-12-22");
+  // The leave sheet loads in its own chunk on first open.
+  await user.type(await screen.findByLabelText("From"), "2026-12-22");
   await user.type(screen.getByLabelText("To"), "2027-01-02");
   expect(await screen.findByText("2 of the team are already off these dates")).toBeTruthy();
   expect(mocks.fetchRead).toHaveBeenCalledWith(SERVICE, "leave_overlap", { from: "2026-12-22", to: "2027-01-02" });

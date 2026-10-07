@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { CalendarClock, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Network } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -8,7 +9,6 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeBandAction } from "@/components/mode-band/mode-band";
 import { WorkGlassButton, WorkTag } from "@/components/mode-kit/work";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { focusOnCallEntryFromHash, onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { clashSummary, rosterClashes, type RosterClash } from "@/components/teaching/roster-clash";
@@ -66,6 +66,12 @@ import { cn } from "@/components/ui-primitives";
 import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { useAuthSession } from "@/lib/supabase/client";
 import type { WhatsOnRow } from "@/lib/teaching/model";
+
+/** The On Call entry editor loads on first open and then stays mounted, so its Sheet still returns focus on close. */
+const OnCallEntryEditor = dynamic(
+  () => import("@/components/on-call/on-call-entry-editor").then((module) => module.OnCallEntryEditor),
+  { ssr: false },
+);
 
 /*
  * Week (work-mode redesign, owner request 6 Oct 2026): the week's calendar card (the dates with
@@ -204,6 +210,8 @@ function ThisWeekBody({
   const [chosenFilter, setChosenFilter] = useState<WeekFilter | null>(() => storedFilter());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [editor, setEditor] = useState<{ entry: OnCallEntry | null } | null>(null);
+  const [editorMounted, setEditorMounted] = useState(false);
+  if (editor !== null && !editorMounted) setEditorMounted(true);
   const live = view.demo === "off";
   const ready = live && view.status === "ready";
   const relocated = useRelocatedTeaching(ready);
@@ -477,20 +485,22 @@ function ThisWeekBody({
             teams={week.teams}
             onChanged={view.retry}
           />
-          <OnCallEntryEditor
-            open={editor !== null}
-            onClose={() => setEditor(null)}
-            section="education"
-            entry={editor?.entry ?? null}
-            onSaved={() => {
-              setEditor(null);
-              retry();
-            }}
-            onDeleted={() => {
-              setEditor(null);
-              retry();
-            }}
-          />
+          {editorMounted ? (
+            <OnCallEntryEditor
+              open={editor !== null}
+              onClose={() => setEditor(null)}
+              section="education"
+              entry={editor?.entry ?? null}
+              onSaved={() => {
+                setEditor(null);
+                retry();
+              }}
+              onDeleted={() => {
+                setEditor(null);
+                retry();
+              }}
+            />
+          ) : null}
         </>
       ) : null}
     </>

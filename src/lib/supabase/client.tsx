@@ -17,6 +17,7 @@ import { clearMhaClocks } from "@/lib/psychiatry-hub/mha-clocks";
 import { clearPatientProfile } from "@/lib/patient-profile-storage";
 import { clearRecentQueries } from "@/lib/recent-query-storage";
 import { clearSignedUrlCache } from "@/lib/signed-url-cache";
+import { resetSharedGets } from "@/lib/shared-get";
 import { checkSupabaseProjectConfig, formatSupabaseProjectCheck } from "@/lib/supabase/project";
 
 export { authorizationIdentity } from "@/lib/authorization-header";
@@ -270,6 +271,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authEpoch, setAuthEpoch] = useState(0);
 
   const invalidateAuthRequests = useCallback(() => {
+    // Reads still in flight for the previous account must never be shared
+    // with the next one (src/lib/shared-get.ts).
+    resetSharedGets();
     setAuthEpoch(authRequestsRef.current.invalidate());
   }, []);
   const registerAuthRequest = useCallback((controller: AbortController) => {

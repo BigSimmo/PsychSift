@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -35,12 +36,11 @@ import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/pe
 import { summariseToday, type TodaySummary } from "@/lib/roster/today";
 
 import { RosterSignInNotice } from "./invite/roster-sign-in-notice";
-import { RosterAddSheet, type RosterAddView } from "./roster-add-sheet";
+import type { RosterAddView } from "./roster-add-sheet";
 import { RosterNewButton, useRosterNewButtonClearance } from "./roster-new-button";
 import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
 import { RosterTodayTeam } from "./team/roster-today-team";
 import { formatDateSpan, formatDuration, kindOf, shiftTimes, useRosterNow } from "./roster-format";
-import { RosterImportFlow } from "./roster-import-flow";
 import { RosterNightDial } from "./roster-night-dial";
 import { RosterIdentityTile, RosterPageHeader, RosterSection, RosterStat, RosterStats } from "./roster-ui";
 import { RosterWeekStrip } from "./roster-week-strip";
@@ -69,6 +69,25 @@ import { RosterChangeRows } from "./roster-change-rows";
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/* The import flow and the add sheet show only on demand, so they load apart from Today, quietly once idle. */
+const loadImportFlow = () => import("./roster-import-flow");
+const loadAddSheet = () => import("./roster-add-sheet");
+const RosterImportFlow = dynamic(() => loadImportFlow().then((m) => m.RosterImportFlow), { ssr: false });
+const RosterAddSheet = dynamic(() => loadAddSheet().then((m) => m.RosterAddSheet), { ssr: false });
+
+function preloadOnDemandParts(): () => void {
+  const load = () => {
+    void loadAddSheet().catch(() => undefined);
+    void loadImportFlow().catch(() => undefined);
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(load);
+    return () => window.cancelIdleCallback(id);
+  }
+  const timer = window.setTimeout(load, 1500);
+  return () => window.clearTimeout(timer);
+}
 
 /** A stat with nothing ahead says so in words, never a bare dash. */
 function NoneYet({ children }: { readonly children: string }) {
@@ -374,6 +393,10 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const [importing, setImporting] = useState(false);
   const newButtonClearance = useRosterNewButtonClearance();
   const [addView, setAddView] = useState<RosterAddView | null>(null);
+  // Once opened, the add sheet stays mounted, so its open and close behave exactly as before.
+  const [addMounted, setAddMounted] = useState(false);
+  if (addView !== null && !addMounted) setAddMounted(true);
+  useEffect(preloadOnDemandParts, []);
   const [saved, setSaved] = useState<string | null>(null);
   const [refreshingLink, setRefreshingLink] = useState(false);
   const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
@@ -677,35 +700,37 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
         Your copy of the roster. Check official changes with your service.
       </p>
 
-      <RosterAddSheet
-        open={addView !== null}
-        view={addView ?? "shift"}
-        onViewChange={setAddView}
-        onClose={() => setAddView(null)}
-        today={today}
-        workplaces={workplaces}
-        onImportFile={() => {
-          setAddView(null);
-          setImporting(true);
-        }}
-        onAddShift={async (request) => {
-          const failure = await shifts.addManual(request);
-          if (!failure) {
+      {addMounted ? (
+        <RosterAddSheet
+          open={addView !== null}
+          view={addView ?? "shift"}
+          onViewChange={setAddView}
+          onClose={() => setAddView(null)}
+          today={today}
+          workplaces={workplaces}
+          onImportFile={() => {
             setAddView(null);
-            setSaved("Saved");
-          }
-          return failure;
-        }}
-        onAddLink={async (url, workplace) => {
-          const failure = await links.add(url, workplace);
-          if (!failure) {
-            void shifts.reload();
-            setAddView(null);
-            setSaved("Saved");
-          }
-          return failure;
-        }}
-      />
+            setImporting(true);
+          }}
+          onAddShift={async (request) => {
+            const failure = await shifts.addManual(request);
+            if (!failure) {
+              setAddView(null);
+              setSaved("Saved");
+            }
+            return failure;
+          }}
+          onAddLink={async (url, workplace) => {
+            const failure = await links.add(url, workplace);
+            if (!failure) {
+              void shifts.reload();
+              setAddView(null);
+              setSaved("Saved");
+            }
+            return failure;
+          }}
+        />
+      ) : null}
     </InformationPageShell>
   );
 }

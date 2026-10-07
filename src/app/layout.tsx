@@ -7,6 +7,7 @@ import { PhoneFocusClearance } from "@/components/phone-focus-clearance";
 import { PwaLifecycle } from "@/components/pwa-lifecycle";
 import { WebVitalsReporter } from "@/components/web-vitals-reporter";
 import { resolveMetadataBase } from "@/lib/metadata-base";
+import { GLASS_FALLBACK_SCRIPT } from "@/lib/glass-fallback";
 import { APP_THEME_COLORS, THEME_BOOTSTRAP_SCRIPT, THEME_COOKIE_NAME } from "@/lib/theme";
 import { MobileKeyboardProvider } from "@/components/use-mobile-keyboard";
 import { AppAnnouncements } from "@/components/app-announcements";
@@ -147,14 +148,16 @@ export default async function RootLayout({
             Its catch swallows deliberately (see the inline note): this runs
             before React mounts, so there is no logger or toast to report to,
             and both failure modes — storage blocked, or corrupt stored JSON —
-            mean the same thing, that the default density/motion apply. */}
+            mean the same thing, that the default density/motion apply. The
+            glass check marks weak phones so the work-mode glass becomes a
+            plain tint (src/lib/glass-fallback.ts). */}
         <script
           nonce={nonce}
           // Next.js strips the nonce from the client payload (so scripts can't
           // read it), which reads as a hydration mismatch on this attribute.
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
-            __html: `${THEME_BOOTSTRAP_SCRIPT}(function(){try{var p=JSON.parse(localStorage.getItem("clinical-kb-preferences")||"{}");if(p&&typeof p==="object"){if(p.density==="compact"||p.density==="spacious"){document.documentElement.setAttribute("data-density",p.density);}if(p.motion==="reduced"||p.motion==="full"){document.documentElement.setAttribute("data-motion",p.motion);}}}catch(e){/* storage blocked or stored preferences JSON corrupt - the default density/motion apply */}})();`,
+            __html: `${THEME_BOOTSTRAP_SCRIPT}${GLASS_FALLBACK_SCRIPT}(function(){try{var p=JSON.parse(localStorage.getItem("clinical-kb-preferences")||"{}");if(p&&typeof p==="object"){if(p.density==="compact"||p.density==="spacious"){document.documentElement.setAttribute("data-density",p.density);}if(p.motion==="reduced"||p.motion==="full"){document.documentElement.setAttribute("data-motion",p.motion);}}}catch(e){/* storage blocked or stored preferences JSON corrupt - the default density/motion apply */}})();`,
           }}
         />
         <a

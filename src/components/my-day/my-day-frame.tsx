@@ -1,12 +1,11 @@
 "use client";
 
 import { LogIn } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { EndOfShiftCard } from "@/components/alerts/end-of-shift-card";
-import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
@@ -25,6 +24,17 @@ import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 
 /** The work-mode page body: a wash background, a 12px gutter and close card spacing. */
 const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl min-w-0 grid-cols-[minmax(0,1fr)] gap-2.5 px-3 pt-3 pb-8";
+/* The sign-in dialog and the two reminder sheets are closed at first paint, so each loads only when first opened. */
+const AccountSetupDialog = dynamic(
+  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
+  { ssr: false },
+);
+const loadRemindMeSheets = () => import("@/components/alerts/remind-me-sheet");
+const RemindMeSheet = dynamic(() => loadRemindMeSheets().then((module) => module.RemindMeSheet), { ssr: false });
+const YourRemindersSheet = dynamic(() => loadRemindMeSheets().then((module) => module.YourRemindersSheet), {
+  ssr: false,
+});
+
 /** A two-column page on a computer (Alerts); the phone layout is unchanged. */
 const WIDE_PAGE_WIDTH = `${PAGE_WIDTH} lg:max-w-5xl`;
 
@@ -69,6 +79,9 @@ export function MyDayFrame({
   const eyebrow = subtitle(now);
   useModeBandHeading({ eyebrow, title });
   const bandShown = useModeBandShown();
+  // Once opened the dialog stays mounted, so it can close normally and hand focus back to the button.
+  const [signInMounted, setSignInMounted] = useState(false);
+  if (signInOpen && !signInMounted) setSignInMounted(true);
 
   return (
     <InformationPageShell testId={`${testId}-main`} width="bleed" className="bg-[color:var(--work-wash)]">
@@ -130,7 +143,7 @@ export function MyDayFrame({
                 </Button>
               }
             />
-            <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+            {signInMounted ? <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} /> : null}
           </div>
         ) : null}
 
@@ -147,6 +160,9 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
   // More's Reminders and Customise work from every My Day page, not only Today.
   useWorkFrameAction("my-day-reminders", () => setSheet("reminders"));
   useWorkFrameAction("my-day-customise", useOpenMyDayCustomise());
+  // Once a reminder sheet has opened both stay mounted, as before, so moving between them is unchanged.
+  const [sheetsMounted, setSheetsMounted] = useState(false);
+  if (sheet !== null && !sheetsMounted) setSheetsMounted(true);
 
   const shiftWindows: readonly ShiftWindow[] = useMemo(
     () =>
@@ -160,6 +176,17 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
 
   const endOfShift = useMemo(() => endOfShiftCard(now, shiftWindows), [now, shiftWindows]);
   const openReminders = useMemo(() => reminders.filter((item) => !item.doneAt), [reminders]);
+  const hasEndOfShift = endOfShift !== null;
+  useEffect(() => {
+    // The end-of-shift card is the way into the reminder sheets: fetch them quietly while it shows.
+    if (!hasEndOfShift) return;
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(() => void loadRemindMeSheets().catch(() => undefined));
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(() => void loadRemindMeSheets().catch(() => undefined), 1500);
+    return () => window.clearTimeout(timer);
+  }, [hasEndOfShift]);
 
   return (
     <>
@@ -171,18 +198,22 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
         />
       ) : null}
       {children(now)}
-      <YourRemindersSheet
-        open={sheet === "reminders"}
-        onClose={() => setSheet(null)}
-        now={now}
-        onAdd={() => setSheet("remind-me")}
-      />
-      <RemindMeSheet
-        open={sheet === "remind-me"}
-        onClose={() => setSheet("reminders")}
-        now={now}
-        shiftEndsAt={endOfShift?.endsAt ?? null}
-      />
+      {sheetsMounted ? (
+        <>
+          <YourRemindersSheet
+            open={sheet === "reminders"}
+            onClose={() => setSheet(null)}
+            now={now}
+            onAdd={() => setSheet("remind-me")}
+          />
+          <RemindMeSheet
+            open={sheet === "remind-me"}
+            onClose={() => setSheet("reminders")}
+            now={now}
+            shiftEndsAt={endOfShift?.endsAt ?? null}
+          />
+        </>
+      ) : null}
     </>
   );
 }

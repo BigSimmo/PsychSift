@@ -12,7 +12,31 @@
 // renewals runway, and the hero's class is now the dashboard hero.
 
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ComponentType } from "react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+// The Work and Me cards load in their own chunk. Load every chunk once before the tests, then draw
+// them at once, so each card (and each "hides" check) is read exactly as before.
+const dynamicLoads = vi.hoisted(() => [] as Promise<unknown>[]);
+vi.mock("next/dynamic", async () => {
+  const { createElement } = await import("react");
+  return {
+    default: (loader: () => Promise<unknown>) => {
+      let Loaded: ComponentType<Record<string, unknown>> | null = null;
+      dynamicLoads.push(
+        loader().then((loaded) => {
+          Loaded = ((loaded as { default?: unknown }).default ?? loaded) as typeof Loaded;
+        }),
+      );
+      return function Dynamic(props: Record<string, unknown>) {
+        return Loaded ? createElement(Loaded, props) : null;
+      };
+    },
+  };
+});
+beforeAll(async () => {
+  await Promise.all(dynamicLoads);
+});
 
 // The On Call call log is a patient-label store; the dashboard reads only its counts.
 const callLog = vi.hoisted(() => ({

@@ -5,7 +5,7 @@ import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { Info, Pencil } from "lucide-react";
 
 import { cardPadding, cardSurface } from "@/components/card-recipes";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
 import { OnCallGroupSection } from "@/components/on-call/on-call-group-section";
 import { allocateOnCallGroupSlug } from "@/components/on-call/on-call-page-anchors";

@@ -140,7 +140,7 @@ describe("MyDayPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("asks a signed-out reader to sign in", () => {
+  it("asks a signed-out reader to sign in", async () => {
     auth.status = "signed_out";
     setState({ status: "signed-out" });
     render(<MyDayPage now={NOW} />);
@@ -148,7 +148,7 @@ describe("MyDayPage", () => {
     expect(within(panel).getByText("Sign in to see your own day")).toBeTruthy();
     expect(screen.queryByTestId("account-dialog")).toBeNull();
     fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
-    expect(screen.getByTestId("account-dialog")).toBeTruthy();
+    expect(await screen.findByTestId("account-dialog")).toBeTruthy();
   });
 
   it("shows a signed-out visitor a sample day, labelled as invented, under the sign-in prompt", async () => {

@@ -23,10 +23,10 @@ import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore,
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
-import { OnCallHandoverTable } from "@/components/on-call/handover/handover-table";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
+import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,15 @@ import {
  * fields; the other three types say so plainly and show no form. Everything
  * here reads and writes one store on this device; nothing talks to a server.
  */
+
+/**
+ * The table only shows after "Make the table", so it stays out of first load and is
+ * fetched once there is a patient to put in it, ready before the tap.
+ */
+const handoverTable = preloadablePanel(() =>
+  import("@/components/on-call/handover/handover-table").then((module) => module.OnCallHandoverTable),
+);
+const OnCallHandoverTable = handoverTable.Panel;
 
 function subscribe(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
@@ -515,6 +524,11 @@ export function OnCallHandoverPage() {
   const patients = useMemo(() => view?.patients ?? [], [view]);
   const night = useNightShift();
   const [mode, setMode] = useState<"form" | "table">("form");
+  const hasPatients = patients.length > 0;
+  useEffect(() => {
+    // A failed prefetch is not an error: the tap that needs the table loads it again.
+    if (hasPatients) void handoverTable.preload().catch(() => undefined);
+  }, [hasPatients]);
   const [type, setType] = useState<OnCallHandoverType>("psychiatry");
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [draft, setDraft] = useState<OnCallHandoverDraft>(emptyOnCallHandoverDraft);

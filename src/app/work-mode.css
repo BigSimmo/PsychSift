@@ -99,6 +99,46 @@
   --work-primary-text: var(--text-heading);
 }
 
+/* Glass fallback. Blur is the costliest paint in the frame: on an older or
+   low-memory Android phone it re-samples the page under every glass layer on
+   each scroll frame, which is where the stutter comes from. Where blur is not
+   supported, where the person asks for reduced transparency, or where the
+   pre-paint check in src/lib/glass-fallback.ts marks a weak phone
+   (data-glass="flat"), the glass keeps its shape, hairline and colour but
+   drops the blur and wears a near-opaque tint of the same surface. Nothing
+   else changes. !important only so these two tokens beat the light and dark
+   token blocks above whatever their specificity. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-work-frame],
+  [data-work-frame],
+  .work-band,
+  .work-more-sheet,
+  .universal-header[data-work-frame] {
+    --work-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent) !important;
+    --work-glass-blur: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-work-frame],
+  [data-work-frame],
+  .work-band,
+  .work-more-sheet,
+  .universal-header[data-work-frame] {
+    --work-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent) !important;
+    --work-glass-blur: none !important;
+  }
+}
+
+html[data-glass="flat"][data-work-frame],
+html[data-glass="flat"] [data-work-frame],
+html[data-glass="flat"] .work-band,
+html[data-glass="flat"] .work-more-sheet,
+html[data-glass="flat"] .universal-header[data-work-frame] {
+  --work-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent) !important;
+  --work-glass-blur: none !important;
+}
+
 /* Work pages sit on crisp white, under the tinted band. */
 html[data-work-frame] body,
 html[data-work-frame] main {

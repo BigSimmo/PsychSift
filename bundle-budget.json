@@ -1,5 +1,5 @@
 {
-  "$comment": "Client JS bundle-size budgets captured from a known-good production build. `production` guards aggregate user-facing chunks, `routes` guards the five Lighthouse journeys against route-local growth, and `mockups` is a looser design-scratch hygiene ceiling. Refresh intentionally with `npm run check:bundle-budget -- --update`.",
+  "$comment": "Client JS bundle-size budgets captured from a known-good production build. `production` guards aggregate user-facing chunks, `routes` guards the Lighthouse journeys and the main work-mode pages (added by the work-mode speed review, 7 Oct 2026) against route-local growth, and `mockups` is a looser design-scratch hygiene ceiling. Refresh intentionally with `npm run check:bundle-budget -- --update`.",
   "enforce": true,
   "production": {
     "gzipBytes": 3602086,
@@ -27,6 +27,50 @@
     },
     "/documents/search": {
       "gzipBytes": 316660,
+      "tolerancePct": 10
+    },
+    "/my-day": {
+      "gzipBytes": 459150,
+      "tolerancePct": 10
+    },
+    "/my-day/week": {
+      "gzipBytes": 497351,
+      "tolerancePct": 10
+    },
+    "/roster": {
+      "gzipBytes": 401972,
+      "tolerancePct": 10
+    },
+    "/roster/shifts": {
+      "gzipBytes": 401972,
+      "tolerancePct": 10
+    },
+    "/open-shifts": {
+      "gzipBytes": 376996,
+      "tolerancePct": 10
+    },
+    "/on-call": {
+      "gzipBytes": 436771,
+      "tolerancePct": 10
+    },
+    "/on-call/handover": {
+      "gzipBytes": 471757,
+      "tolerancePct": 10
+    },
+    "/teaching": {
+      "gzipBytes": 398807,
+      "tolerancePct": 10
+    },
+    "/teaching/assessments": {
+      "gzipBytes": 401772,
+      "tolerancePct": 10
+    },
+    "/cme": {
+      "gzipBytes": 428222,
+      "tolerancePct": 10
+    },
+    "/admin": {
+      "gzipBytes": 396016,
       "tolerancePct": 10
     }
   },

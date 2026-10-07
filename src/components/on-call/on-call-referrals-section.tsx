@@ -11,7 +11,7 @@ import { OnCallEntryRow } from "@/components/on-call/on-call-entry-row";
 import { onCallEntryGroups } from "@/components/on-call/on-call-entry-groups";
 import { OnCallFreshnessBadge } from "@/components/on-call/on-call-freshness-badge";
 import { OnCallGroupSection } from "@/components/on-call/on-call-group-section";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import { WhoCoversThis } from "@/components/on-call/who-covers-this";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { ExternalTextLink } from "@/components/ui/link";

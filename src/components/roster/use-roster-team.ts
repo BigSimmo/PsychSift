@@ -12,6 +12,7 @@ import {
   type RosterTeam,
 } from "@/lib/roster/team/model";
 import { setRosterHasEnabledTeam } from "@/lib/teaching/page-visibility";
+import { sharedGet } from "@/lib/shared-get";
 
 /**
  * The team client every Roster screen reads through. Answers live in React
@@ -59,7 +60,7 @@ type Loaded<T> =
 
 async function load<T>(url: string, what: RosterReadWhat | "teams", signal: AbortSignal): Promise<Loaded<T>> {
   try {
-    const response = await fetch(url, { cache: "no-store", signal });
+    const response = await sharedGet(url, { signal });
     if (response.ok) return { status: "ready", data: (await response.json()) as T, readAt: new Date() };
     const payload = (await response.json().catch(() => null)) as ErrorPayload | null;
     const code = codeOf(payload);
@@ -115,6 +116,9 @@ export function useRosterTeams(): RosterReadState<RosterTeamsPayload> {
   return state;
 }
 
+/** One shared empty answer while loading, so memoised readers downstream see a stable value. */
+const NO_RULES: ReadonlyMap<string, RosterRules> = new Map();
+
 /** Rules remain scoped to their team; changing membership discards the previous answers. */
 export function useRosterTeamRules(serviceIds: readonly string[]): ReadonlyMap<string, RosterRules> {
   const key = JSON.stringify([...new Set(serviceIds)].sort());
@@ -138,7 +142,7 @@ export function useRosterTeamRules(serviceIds: readonly string[]): ReadonlyMap<s
     });
     return () => controller.abort();
   }, [key]);
-  return answer?.key === key ? answer.rules : new Map();
+  return answer?.key === key ? answer.rules : NO_RULES;
 }
 
 /** One read of one team. Pass a null `serviceId` to wait (no request is made). */

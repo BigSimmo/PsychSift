@@ -225,16 +225,25 @@ export function clearOnCallCallLog(): void {
   write([], new Date());
 }
 
+// Built once: a formatter is costly to construct and the call log formats a time per row.
+const PERTH_CLOCK_TIME = new Intl.DateTimeFormat("en-AU", {
+  timeZone: "Australia/Perth",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+const PERTH_HANDOVER_DATE = new Intl.DateTimeFormat("en-AU", {
+  timeZone: "Australia/Perth",
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+
 /** Perth wall-clock time for a note, "02:14". On Call reads in hospital time. */
 export function onCallCallLogTime(iso: string): string {
   const at = new Date(iso);
   if (!Number.isFinite(at.getTime())) return "";
-  return new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Perth",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(at);
+  return PERTH_CLOCK_TIME.format(at);
 }
 
 /** The notes the handover carries: those still open, oldest first so the story reads in order. */
@@ -262,12 +271,7 @@ export function onCallHandoverText(entries: readonly OnCallCallLogEntry[], now: 
   const items = onCallHandoverItems(entries);
   if (items.length === 0) return "";
   // Built from parts so the line reads "Sat 3 Oct" whatever punctuation this engine's locale data adds.
-  const parts = new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Perth",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  }).formatToParts(now);
+  const parts = PERTH_HANDOVER_DATE.formatToParts(now);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
   const date = [part("weekday"), part("day"), part("month")].filter(Boolean).join(" ");
   return [`On call handover, ${date}`, "", ...items.map(line).flatMap((block) => [block, ""])].join("\n").trimEnd();

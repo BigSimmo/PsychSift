@@ -185,15 +185,55 @@ function scrubPersistedOnCallCache(): void {
   }
 }
 
+// useSyncExternalStore reads the snapshot on every render of every subscriber,
+// so the JSON parse and schema check are remembered for the last raw string
+// seen. Only the shape is remembered: the seven-day age check still runs on
+// every read, and the device copy is rebuilt when the preview flag changes.
+let snapshotRaw: string | null = null;
+let snapshotShapeValid = false;
+let snapshotPayload: CachedOnCallEntries | null = null;
+let snapshotDeviceKey: string | null = null;
+let snapshotDevice: string | null = null;
+
+function snapshotPayloadFor(raw: string): CachedOnCallEntries | null {
+  if (raw !== snapshotRaw) {
+    snapshotRaw = raw;
+    snapshotDeviceKey = null;
+    snapshotDevice = null;
+    try {
+      const parsed = cachedEntriesSchema.safeParse(JSON.parse(raw));
+      snapshotShapeValid = parsed.success;
+      snapshotPayload = parsed.success ? parsed.data : null;
+    } catch {
+      snapshotShapeValid = false;
+      snapshotPayload = null;
+    }
+  }
+  if (!snapshotShapeValid || snapshotPayload === null) return null;
+  // Same rule as parseCachedPayload, re-checked on every read.
+  const age = Date.now() - Date.parse(snapshotPayload.savedAt);
+  if (!Number.isFinite(age) || age < 0 || age >= ON_CALL_CACHE_MAX_AGE_MS) return null;
+  return snapshotPayload;
+}
+
 function getCacheSnapshot(): string {
   if (sessionCacheEpoch !== peekOnCallEntrySessionEpoch()) {
     sessionCache = null;
     sessionCacheEpoch = peekOnCallEntrySessionEpoch();
   }
-  if (sessionCache !== null) return parseCachedPayload(sessionCache) ? sessionCache : "";
+  if (sessionCache !== null) return sessionCache && snapshotPayloadFor(sessionCache) ? sessionCache : "";
   try {
-    const persisted = parseCachedPayload(window.localStorage.getItem(onCallEntryCacheStorageKey));
-    return (persisted && devicePayload(persisted)) ?? "";
+    const raw = window.localStorage.getItem(onCallEntryCacheStorageKey);
+    const persisted = raw ? snapshotPayloadFor(raw) : null;
+    if (!persisted) return "";
+    // devicePayload depends on the preview flag as well as the stored row, so
+    // its string is remembered per flag value for the current raw string.
+    const deviceKey = isOnCallDemoPreviewActive() ? "preview" : "live";
+    if (snapshotDeviceKey !== deviceKey) {
+      snapshotDeviceKey = deviceKey;
+      snapshotDevice = devicePayload(persisted);
+    }
+    return snapshotDevice ?? "";
   } catch {
     return "";
   }

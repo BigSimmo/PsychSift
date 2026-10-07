@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { ClipboardList, Copy, FileText, LogIn } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
@@ -23,7 +24,6 @@ import { AdminNewJobStepRow } from "@/components/admin/new-job/admin-new-job-ste
 import { AdminSavedUndoBar } from "@/components/admin/new-job/admin-saved-undo-bar";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { WorkButton, WorkCard, WorkEmpty, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
-import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
@@ -48,6 +48,12 @@ import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
 import { StarterPackEntryLink } from "@/components/admin/starter/starter-pack-entry-link";
+
+/** The On Call entry editor loads on first open and then stays mounted, so its Sheet still returns focus on close. */
+const OnCallEntryEditor = dynamic(
+  () => import("@/components/on-call/on-call-entry-editor").then((module) => module.OnCallEntryEditor),
+  { ssr: false },
+);
 
 type UndoState = { id: number; entryId: string; restore: unknown; label: string };
 
@@ -202,6 +208,8 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
     entry: null,
     section: "logistics",
   });
+  const [editorMounted, setEditorMounted] = useState(false);
+  if (editorState.open && !editorMounted) setEditorMounted(true);
   const [undo, setUndo] = useState<UndoState | null>(null);
   const nextUndoId = useRef(0);
   const [toggleError, setToggleError] = useState<string | null>(null);
@@ -484,14 +492,16 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
         />
       ) : null}
 
-      <OnCallEntryEditor
-        open={editorState.open}
-        onClose={() => setEditorState((current) => ({ ...current, open: false }))}
-        section={editorState.section}
-        entry={editorState.entry}
-        onSaved={upsertCachedEntry}
-        onDeleted={removeCachedEntry}
-      />
+      {editorMounted ? (
+        <OnCallEntryEditor
+          open={editorState.open}
+          onClose={() => setEditorState((current) => ({ ...current, open: false }))}
+          section={editorState.section}
+          entry={editorState.entry}
+          onSaved={upsertCachedEntry}
+          onDeleted={removeCachedEntry}
+        />
+      ) : null}
     </>
   );
 }

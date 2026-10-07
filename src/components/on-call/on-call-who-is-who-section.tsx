@@ -7,7 +7,7 @@ import { Pencil, Users } from "lucide-react";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
 import { OnCallGroupSection } from "@/components/on-call/on-call-group-section";
 import { allocateOnCallGroupSlug } from "@/components/on-call/on-call-page-anchors";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cardPadding, cardSurface } from "@/components/card-recipes";
 import { cn, eyebrowText, textMuted, toolbarButton } from "@/components/ui-primitives";
