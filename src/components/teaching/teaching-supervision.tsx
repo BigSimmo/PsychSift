@@ -189,7 +189,7 @@ function TopicChips({
     <fieldset disabled={disabled} className="assess-field m-0 min-w-0 border-0 p-0">
       <legend className="assess-field__label">
         <span>{legend}</span>
-        <small className="font-semibold text-[color:var(--text-muted)] tabular-nums">{`${value.length} of ${MAX_TOPICS}`}</small>
+        <small className="shrink-0 whitespace-nowrap font-semibold text-[color:var(--text-muted)] tabular-nums">{`${value.length} of ${MAX_TOPICS}`}</small>
       </legend>
       <div className="work-chips">
         {supervisionTopics.map((topic) => {
@@ -514,7 +514,7 @@ function LogForm({ pairing, today, sender }: { pairing: SupervisionPairingView; 
     <>
       <SectionLabel>{`Log supervision · ${pairing.supervisorName}`}</SectionLabel>
       <form
-        className="work-card work-card--pad grid gap-3"
+        className="work-card work-card--pad grid grid-cols-[minmax(0,1fr)] gap-3"
         aria-label="Log supervision"
         onSubmit={(event) => {
           event.preventDefault();
@@ -550,7 +550,7 @@ function LogForm({ pairing, today, sender }: { pairing: SupervisionPairingView; 
         </AssessNote>
       </form>
       <form
-        className="work-card work-card--pad grid gap-3"
+        className="work-card work-card--pad grid grid-cols-[minmax(0,1fr)] gap-3"
         aria-label="Your personal target"
         onSubmit={(event) => {
           event.preventDefault();
@@ -609,7 +609,7 @@ function CorrectionForm({
   const id = entry.entryId;
   return (
     <form
-      className="work-card work-card--pad grid gap-3"
+      className="work-card work-card--pad grid grid-cols-[minmax(0,1fr)] gap-3"
       aria-label={`Correct ${shortDayLabel(entry.date)}`}
       onSubmit={(event) => {
         event.preventDefault();

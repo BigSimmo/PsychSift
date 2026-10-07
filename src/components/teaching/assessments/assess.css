@@ -912,12 +912,16 @@ a.assess-pair__top:focus-visible {
 }
 .assess-tg:has(:disabled) {
   cursor: default;
-  opacity: 0.55;
+}
+.assess-tg:has(:disabled) .assess-sw {
+  background: var(--work-line);
 }
 
 /* ------------------------------------------------- text areas (assess-txt) */
 .assess-field {
   display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: calc(var(--spacing) * 1.5);
 }
 .assess-field__label {
@@ -940,6 +944,7 @@ a.assess-pair__top:focus-visible {
 }
 .assess-txt {
   width: 100%;
+  min-width: 0;
   min-height: 5.5rem;
   padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 3);
   border: 0;
@@ -1044,7 +1049,7 @@ input.assess-txt {
 .assess-undo {
   position: fixed;
   right: 0.875rem;
-  bottom: max(1rem, var(--safe-area-bottom, 0px));
+  bottom: calc(max(1rem, var(--safe-area-bottom, 0px)) + var(--keyboard-height, 0px));
   left: 0.875rem;
   z-index: var(--z-toast);
   display: flex;
@@ -1124,9 +1129,6 @@ input.assess-txt {
 }
 
 /* --------------------------------------------------- dock helpers */
-.work-button[data-assess-off] {
-  opacity: 0.45;
-}
 .assess-why {
   margin: 0;
   padding: 0 calc(var(--spacing) * 1);
