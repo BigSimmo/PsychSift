@@ -484,7 +484,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
               const session = open.session;
               setOpen(null);
               if (isDemo) {
-                setNotice(`Demo only. Nothing was sent; in a real service this goes to ${membersWord(count)}.`);
+                setNotice(`Demo only. Nothing was sent. In a real service this goes to ${membersWord(count)}.`);
                 return;
               }
               setNotice(null);
@@ -535,7 +535,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
           {demoMode && demo && view.status !== "signed-out" ? (
             <>
               <T5Note className="mt-0" testId="teaching-organise-demo">
-                Made-up demo service. Try any action here; no real invitations, membership changes or records are sent.
+                Made-up demo service. Try any action here. No real invitations, membership changes or records are sent.
               </T5Note>
               <ServicePicker teams={demoTeams} value={demo.service.id} onChange={() => {}} />
             </>

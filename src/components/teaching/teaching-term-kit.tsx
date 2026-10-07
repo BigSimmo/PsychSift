@@ -97,7 +97,7 @@ export function TermRing({
 export function NoPatientDetailsMark() {
   return (
     <T5Note icon="shield" className="mt-3">
-      Do not add patient details. Stays on this device and is not backed up; you choose what to share.
+      Do not add patient details. Stays on this device and is not backed up. You choose what to share.
     </T5Note>
   );
 }

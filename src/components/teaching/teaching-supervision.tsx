@@ -542,7 +542,7 @@ function LogForm({ pairing, today, sender }: { pairing: SupervisionPairingView; 
         <MinutesField id={`sup-minutes-${id}`} label="Minutes" value={minutes} onChange={setMinutes} disabled={inert} />
         <AssessSegmented label="Type" value={type} onChange={setType} options={TYPE_OPTIONS} />
         <TopicChips
-          legend="Topics (optional, up to five; no patient details)"
+          legend="Topics (optional, up to five, no patient details)"
           value={topics}
           onChange={setTopics}
           disabled={inert}

@@ -8,6 +8,7 @@ import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkButton } from "@/components/mode-kit/work";
+import { CheckinRecorded, wasAlreadyCheckedIn } from "@/components/teaching/checkin/checkin-recorded";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { sessionPhase } from "@/components/teaching/session-phase";
 import {
@@ -32,8 +33,9 @@ import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useDelayedPost } from "@/components/teaching/use-delayed-post";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
+import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
-import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
+import { teachingErrorMessage, teachingPostTimed, teachingServiceUrl } from "@/lib/teaching/client";
 import {
   attendanceLabels,
   memberLabel,
@@ -57,6 +59,8 @@ import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 const GONE = "This session is no longer in the programme.";
 
 type Mark = { method: AttendanceMethod; recordedAt: string };
+/** A check-in made on this visit, with whether the server already had it (decided once, from its answer). */
+type Recorded = Mark & { already: boolean };
 type Props = { occurrenceId: string; demoMode: boolean; initialSheet?: "scan"; embedded?: boolean };
 
 export function TeachingSessionScreen({
@@ -155,6 +159,13 @@ function SessionBody({
   const cancelled = detail.status === "cancelled";
   const staff = detail.canShowCode && !cancelled && !visitor;
   const [mark, setMark] = useState<Mark | null>(detail.myAttendance ?? null);
+  // A check-in made on this visit gets the "Attendance recorded" card (feature 9); an earlier one keeps its label.
+  const [recorded, setRecorded] = useState<Recorded | null>(null);
+  const recordedNow = (saved: Recorded) => {
+    setMark({ method: saved.method, recordedAt: saved.recordedAt });
+    setRecorded(saved);
+    announce("Attendance recorded");
+  };
   // `?check-in=scan` (Today's hero) opens the scan sheet on arrival; it only shows while a code can be scanned.
   const [sheet, setSheet] = useState<"scan" | "cpd" | "register" | null>(initialSheet ?? null);
   const [busy, setBusy] = useState(false);
@@ -185,16 +196,20 @@ function SessionBody({
     setError(null);
     try {
       // A visitor is not a member of this service, so What's on records it (master plan R15).
-      const saved = visitor
-        ? await teachingPost<Mark>("/api/teaching/whats-on", {
+      const { data: saved, serverTime } = visitor
+        ? await teachingPostTimed<Mark>("/api/teaching/whats-on", {
             action: "whats_on.attend",
             occurrenceId: detail.occurrenceId,
           })
-        : await teachingPost<Mark>(teachingServiceUrl(detail.serviceId), {
+        : await teachingPostTimed<Mark>(teachingServiceUrl(detail.serviceId), {
             action: "attendance.self",
             occurrenceId: detail.occurrenceId,
           });
-      setMark({ method: saved.method, recordedAt: saved.recordedAt });
+      recordedNow({
+        method: saved.method,
+        recordedAt: saved.recordedAt,
+        already: wasAlreadyCheckedIn(saved.recordedAt, serverTime),
+      });
     } catch (cause) {
       setError(teachingErrorMessage(cause));
     } finally {
@@ -228,7 +243,8 @@ function SessionBody({
       external: true,
       emphasis: actions.some((action) => action.emphasis === "primary") ? "secondary" : "primary",
     });
-  if (mark && ended && live && !logged)
+  // With the recorded card on screen, its own Log to CPD button is the one to use.
+  if (mark && ended && live && !logged && !recorded)
     actions.push({
       id: "cpd",
       label: "Log to CPD",
@@ -318,6 +334,22 @@ function SessionBody({
           {registerFailed ? <p className="text-xs font-bold">The register couldn&apos;t load.</p> : null}
         </T5Panel>
       )}
+      {recorded ? (
+        <CheckinRecorded
+          title={null}
+          startsAt={detail.startsAt}
+          endsAt={detail.endsAt}
+          venue={detail.venue}
+          method={recorded.method}
+          recordedAt={recorded.recordedAt}
+          alreadyCheckedIn={recorded.already}
+          now={now}
+          logged={logged}
+          live={live}
+          showMethod={false}
+          onLogToCpd={ended && live ? () => setSheet("cpd") : undefined}
+        />
+      ) : null}
       {change ? (
         <T5Note tone="warning" icon="alert">
           {change}
@@ -354,7 +386,7 @@ function SessionBody({
           session={{ serviceId: detail.serviceId, occurrenceId: detail.occurrenceId, hasJoinLink: detail.hasJoinLink }}
           subtitle={`${detail.title} · ${sessionWhen(detail)}`}
           live={live}
-          onDone={setMark}
+          onDone={recordedNow}
         />
       ) : null}
       {mark && ended ? (

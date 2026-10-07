@@ -46,6 +46,8 @@ import { onCallEntrySchema, type OnCallEntry, type OnCallSection } from "@/lib/o
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
+import { StarterPackEntryLink } from "@/components/admin/starter/starter-pack-entry-link";
 
 type UndoState = { id: number; entryId: string; restore: unknown; label: string };
 
@@ -222,7 +224,6 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
     return typeof details === "object" && details !== null && (details as { done?: unknown }).done === true;
   }).length;
   const totalCount = ownLogins.length;
-  const leftCount = totalCount - doneCount;
   // Write to the row the date is read from, so a new or cleared date is never ignored.
   const startEntry = start?.entry ?? ownLogins[0]?.entry ?? null;
   // Why the start date cannot be set, said under the start line. Example
@@ -359,22 +360,21 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                 Before
               </h2>
 
+              {/* Ready for day one (round 2 feature 21): what is recorded and what is still to do. */}
+              <ReadyForDayOneEntryLink />
+
               <PaperworkSignpost overview={overview} />
 
               <AdminSection
                 as="h3"
                 label="Before · logins and access"
                 count={
-                  ownLogins.length > 0 ? (
-                    <span data-testid="admin-new-job-logins-left">{`${leftCount} left`}</span>
+                  // The count sits beside its own label, once: no second "Logins and access" line under it.
+                  totalCount > 0 ? (
+                    <span data-testid="admin-new-job-progress">{`${doneCount} of ${totalCount} done`}</span>
                   ) : undefined
                 }
               >
-                {totalCount > 0 ? (
-                  <p className="work-row__sub m-0 px-1" data-testid="admin-new-job-progress">
-                    {`Logins and access: ${doneCount} of ${totalCount} done`}
-                  </p>
-                ) : null}
                 {rows.logins.length === 0 ? (
                   <WorkCard padded>
                     <p className="work-row__sub m-0">
@@ -409,6 +409,9 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
               {/* The credentials wallet moved here from Today (work-mode redesign,
                   owner request 6 Oct 2026), beside the pack it feeds. */}
               {isAuthenticated && !state.demoMode ? <AdminCredentialsWallet /> : null}
+
+              {/* The starter pack (round 2 feature 14), above the contacts as the spec places it. */}
+              <StarterPackEntryLink />
 
               <AdminSection as="h3" label="Contacts for this job" count={rows.contacts.length || undefined}>
                 {rows.contacts.length === 0 ? (

@@ -9,6 +9,7 @@ import { AdminLoadAlert, AdminPage, AdminRow, AdminSkeleton, adminStyles } from 
 import { AdminQuickAddSheet } from "@/components/admin/admin-quick-add-sheet";
 import { AdminSetupSheet } from "@/components/admin/admin-setup-sheet";
 import { ADMIN_PAGE_HREFS } from "@/components/admin/admin-page-sections";
+import { AdminWorkAndLeaveGroup } from "@/components/admin/junior/work-and-leave-group";
 import { TodayAtAGlance } from "@/components/admin/today/today-at-a-glance";
 import { TodayComingUpModule } from "@/components/admin/today/today-coming-up-module";
 import { TodayNeedsYouModule } from "@/components/admin/today/today-needs-you-module";
@@ -206,6 +207,7 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
             {newJobProgress ? <TodayNewJobModule progress={newJobProgress} today={today} /> : null}
             <TodayStarred items={helpItems} testId="admin-today-pinned" />
             <TodayRequirementsModule summary={requirementsSummary} />
+            <AdminWorkAndLeaveGroup />
             <TodayOvertimeRow />
           </div>
         </div>

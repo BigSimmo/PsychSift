@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { CmeDashboard } from "@/components/cme/cme-dashboard";
+import { CPD_APPLICATIONS_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import { cmeModuleOrderStorageKey } from "@/lib/cme/module-order-keys";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
@@ -75,6 +76,22 @@ const ROUTINE: CmeRoutine = {
 beforeEach(() => window.localStorage.removeItem(cmeModuleOrderStorageKey));
 
 describe("Today", () => {
+  it("shows the Job applications Today card when a season date is coming, linking to the page", () => {
+    localStorage.setItem(
+      CPD_APPLICATIONS_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        dates: [{ stage: "close", on: "2099-10-09", time: "", source: "", remind: true, addedOn: "2026-10-01" }],
+        referees: [],
+        statement: "",
+        hiddenCvLines: [],
+      }),
+    );
+    render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
+    expect(screen.getByTestId("applications-today-card").getAttribute("href")).toBe("/cme/applications");
+    localStorage.removeItem(CPD_APPLICATIONS_STORAGE_KEY);
+  });
+
   it("is headed Year, matching its tab", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);

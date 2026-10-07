@@ -8,6 +8,7 @@ import { rosterField } from "@/components/roster/roster-ui";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { RosterLeaveStaffingCheck } from "@/components/roster/staffing/roster-leave-staffing-check";
 import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
 import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -332,6 +333,17 @@ function LeaveSession({
                 </li>
               ) : null}
             </WorkCard>
+          </section>
+        ) : null}
+        {serviceId && valid ? (
+          <section className="grid gap-2" aria-label="Team staffing on these dates" data-testid="leave-staffing-check">
+            <RosterLeaveStaffingCheck
+              serviceId={serviceId}
+              actorId={actorId || null}
+              startsOn={startsOn}
+              endsOn={endsOn}
+              today={perthDateOf(new Date())}
+            />
           </section>
         ) : null}
         {serviceId && valid && covered.length ? (

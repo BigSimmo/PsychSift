@@ -21,6 +21,7 @@
     "src/app/api/roster/**",
     "src/app/api/teaching/**",
     "src/components/admin/**",
+    "src/components/agreement-ask/**",
     "src/components/alerts/**",
     "src/components/calendar/**",
     "src/components/clinical-dashboard/saved-registry-favourites-status.ts",
@@ -56,7 +57,9 @@
     "src/lib/teaching/**",
     "src/lib/work-profile/**",
     "src/lib/work-search/**",
+    "src/lib/work-text/**",
     "tests/admin-*",
+    "tests/agreement-ask*",
     "tests/alerts-*",
     "tests/calendar-*",
     "tests/cme-*",
@@ -79,6 +82,7 @@
     "tests/ui-on-*",
     "tests/ui-teaching.spec.ts",
     "tests/work-profile*",
-    "tests/work-search*"
+    "tests/work-search*",
+    "tests/work-text*"
   ]
 }

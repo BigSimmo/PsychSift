@@ -51,7 +51,7 @@ function ReviewPage({ demoMode }: { demoMode: boolean }) {
       <T5Note tone="notice">
         <b className="block font-bold text-[color:var(--text-heading)]">You choose what counts</b>
         Choose the sessions and hours you want to log. Attendance does not award CPD credit. These entries are private
-        to you; your service cannot see your CPD figures.
+        to you. Your service cannot see your CPD figures.
       </T5Note>
       {rows?.length === 0 ? <T5Empty>No attended sessions waiting to be logged.</T5Empty> : null}
       <form
@@ -74,7 +74,7 @@ function ReviewPage({ demoMode }: { demoMode: boolean }) {
           } catch (cause) {
             // A request can fail after earlier rows saved. Retain request ids and choices for safe retry.
             setError(
-              `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Retry with the same choices; this will not add duplicates.`,
+              `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Retry with the same choices. This will not add duplicates.`,
             );
           } finally {
             setBusy(false);

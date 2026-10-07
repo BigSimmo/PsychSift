@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { cardSurface } from "@/components/card-recipes";
+import { ApplicationsEntryLink } from "@/components/cme/applications/applications-entry-link";
+import { CpdHomeEntryLink } from "@/components/cme/cpd-home/cpd-home-entry-link";
 import { CmeYearClosePanel } from "@/components/cme/cme-year-close-panel";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
@@ -113,24 +115,6 @@ export function CmeAnnualSummary({
       .cme-annual-summary .cme-print-controls { display: none !important; }
       .cme-annual-summary section { break-inside: avoid; }
     }`}</style>
-      <div className="cme-print-controls mb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href={`/cme/log?year=${set.year}`} className={buttonFaceClass({ variant: "secondary" })}>
-            Back to log
-          </Link>
-          <Button testId="cme-summary-save-pdf" onClick={() => savePdf(set.year)}>
-            Save as PDF
-          </Button>
-          <a href={`/api/cme/export?year=${set.year}`} download className={buttonFaceClass({ variant: "secondary" })}>
-            Download CSV
-          </a>
-        </div>
-        <p className={cn(textMuted, "mt-2 text-xs")}>
-          Opens your device&apos;s print screen. Choose Save as PDF, or Share on a phone, to send it to your college or
-          keep a copy.
-        </p>
-      </div>
-
       <header className="grid gap-1">
         <h1 className={cmePageTitle}>CPD annual summary — {set.year}</h1>
         {demoMode ? (
@@ -141,6 +125,30 @@ export function CmeAnnualSummary({
           {(costs / 100).toFixed(2)}
         </p>
       </header>
+      {/* Title first, then the ways on from this year, then the page's own buttons. Not printed. */}
+      <div className="cme-print-controls mt-4 mb-5 grid gap-4">
+        <nav aria-label="More from your CPD year" className="grid gap-2" data-testid="cme-summary-more">
+          <CpdHomeEntryLink year={set.year} />
+          <ApplicationsEntryLink />
+        </nav>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/cme/log?year=${set.year}`} className={buttonFaceClass({ variant: "secondary" })}>
+              Back to log
+            </Link>
+            <Button testId="cme-summary-save-pdf" onClick={() => savePdf(set.year)}>
+              Save as PDF
+            </Button>
+            <a href={`/api/cme/export?year=${set.year}`} download className={buttonFaceClass({ variant: "secondary" })}>
+              Download CSV
+            </a>
+          </div>
+          <p className={cn(textMuted, "mt-2 text-xs")}>
+            Opens your device&apos;s print screen. Choose Save as PDF, or Share on a phone, to send it to your college
+            or keep a copy.
+          </p>
+        </div>
+      </div>
 
       <section className={cn(cardSurface, "mt-4 grid gap-2 p-4 text-sm")}>
         <p>

@@ -66,7 +66,7 @@ function LinkButton({
   );
 }
 
-/** "Remind Dr Nair": the made-up records send nothing, so the button says what happened instead. */
+/** "Remind Dr Wattle": the made-up records send nothing, so the button says what happened instead. */
 function SampleOnlyButton({ children }: { children: string }) {
   const [said, setSaid] = useState(false);
   return (
@@ -328,7 +328,7 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
         <Panel>
           <Eyebrow>Booked</Eyebrow>
           <p className="text-lg font-semibold text-[color:var(--text-heading)]">{bookingLabel(s.booking)}</p>
-          <p className={secondaryText}>With {SAMPLE_SUPERVISOR.name} · Ward 4 office · 30 minutes</p>
+          <p className={secondaryText}>With {SAMPLE_SUPERVISOR.name} · Ward A office · 30 minutes</p>
         </Panel>
         <List>
           <TickRow checked={s.addToMyDay} onChange={() => dispatch({ type: "toggle-my-day" })}>

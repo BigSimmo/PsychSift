@@ -86,8 +86,8 @@ export function ComparisonChart({ rows, view }: { rows: ComparisonRow[]; view: "
 function SignatureMark({ who, mid, s }: { who: "sup" | "doc"; mid: boolean; s: ScreenProps["s"] }) {
   if (mid)
     return (
-      <span className="font-serif text-base text-[color:var(--text-heading)] italic">
-        {who === "sup" ? "Priya Nair" : "Sam Lee"}
+      <span className="text-base text-[color:var(--text-heading)] italic">
+        {who === "sup" ? "Robin Wattle" : "Sam Karri"}
       </span>
     );
   const sig = s.sigs[who];
@@ -104,7 +104,7 @@ function SignatureMark({ who, mid, s }: { who: "sup" | "doc"; mid: boolean; s: S
         <path d={sig.image.path} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" />
       </svg>
     );
-  return <span className="font-serif text-base text-[color:var(--text-heading)] italic">{sig.typed}</span>;
+  return <span className="text-base text-[color:var(--text-heading)] italic">{sig.typed}</span>;
 }
 
 function SignatureLine({ role, name, mark }: { role: string; name: string; mark: React.ReactNode }) {
@@ -181,7 +181,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
       {ipap ? (
         <Inset tone="warm" title="Under the form, these ratings mean an improvement plan (IPAP) is needed">
           It is extra support with agreed goals and a review date. It is recorded, and the Assessment Review Panel sees
-          it at the end of the year. Your DCT or MEU will contact you; you can also start the conversation.
+          it at the end of the year. Your DCT or MEU will contact you. You can also start the conversation.
         </Inset>
       ) : null}
       <SectionLabel>{`You and ${SUP}`}</SectionLabel>
@@ -216,7 +216,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
         ))}
       </List>
       <SmallPrint>
-        Your self-assessment is shared only with {SUP}. Only the supervisor&apos;s form goes to the MEU; PsychSift
+        Your self-assessment is shared only with {SUP}. Only the supervisor&apos;s form goes to the MEU. PsychSift
         doesn&apos;t send it for you.
       </SmallPrint>
       <SectionLabel>Signatures</SectionLabel>

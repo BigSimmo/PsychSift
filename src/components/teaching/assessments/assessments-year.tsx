@@ -197,7 +197,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
           title="From a term supervisor or specialist this term"
           value={
             fromSpecialist
-              ? `Done: EPA ${fromSpecialist.epa} with ${fromSpecialist.by.replace("Dr Priya Nair", SAMPLE_SUPERVISOR.short)}`
+              ? `Done: EPA ${fromSpecialist.epa} with ${fromSpecialist.by.replace("Dr Robin Wattle", SAMPLE_SUPERVISOR.short)}`
               : "None recorded here yet"
           }
           percent={fromSpecialist ? 100 : 0}
@@ -231,7 +231,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
       </List>
       <SmallPrint>
         Counts are EPAs recorded in PsychSift. Any recorded only in Clinical Learning Australia (CLA) won&apos;t show
-        here. A &quot;direct supervision&quot; result is recorded as feedback for that moment; it is not a fail on its
+        here. A &quot;direct supervision&quot; result is recorded as feedback for that moment. It is not a fail on its
         own.
       </SmallPrint>
 
@@ -433,7 +433,7 @@ function allItems(s: AssessmentsState): Item[] {
     term: t4,
     type: "mid",
     title: "Mid-term",
-    detail: "Signed Fri 2 Oct · Dr Priya Nair",
+    detail: "Signed Fri 2 Oct · Dr Robin Wattle",
     href: viewHref("report", { of: "mid" }),
   });
   for (const record of epasInTerm(s, "t4")) items.push({ term: t4, type: "epa", record });

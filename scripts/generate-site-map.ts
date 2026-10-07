@@ -197,6 +197,30 @@ const routeDescriptions: Record<string, string> = {
     "A personal Excel copy of the doctor's own compliance record, with chosen columns and an optional next-60-days range, built in the page and saved on the device; nothing is uploaded.",
   "/admin/new-job": "Starting and leaving a job, with the doctor's own progress and service contacts.",
   "/admin/new-job/records": "The doctor's own Admin records to copy or print.",
+  "/admin/contract":
+    "Contract end tracker: the doctor's own contract end date, the three-month and six-week points, and the questions to ask Medical Workforce, kept on the doctor's private record.",
+  "/admin/leave":
+    "Leave wallet: how to apply for each kind of leave, with no entitlement figures, and a confidential card that asks nothing and saves nothing.",
+  "/admin/new-job/starter":
+    "Starter pack for overseas-trained doctors: registration and visa items, a glossary of local terms and who to ask, by role.",
+  "/admin/new-job/ready":
+    "Ready for day one: the doctor's onboarding status in words, with a copy for Medical Workforce. The workforce side is a sample.",
+  "/roster/sick":
+    "Sick for the next shift: report it to the roster manager with a 10 second Undo, and what happens next.",
+  "/roster/staffing":
+    "Team staffing by day for planning leave, counting day and late shifts. No safe staffing number is set in PsychSift.",
+  "/on-call/first-week":
+    "First week pack for a new rotation: orientation, who is who, escalation and logins, from the hospital handbook.",
+  "/on-call/whos-on/roster": "Who is on today from the team roster, names and shift kind only, with no phone numbers.",
+  "/cme/cpd-home":
+    "Prepare the year's CPD log to add to AMA CPD Home by file or copy. The CPD Home import format has not been checked.",
+  "/cme/applications":
+    "Job applications season: the doctor's own applications, typed season dates and referee status, kept on the device.",
+  "/cme/applications/cv": "A CV draft built from the doctor's CPD, teaching and terms, to copy or print.",
+  "/my-day/profile/agreement":
+    "Ask the agreement: rest and hours questions answered with the verified clause 15 text of the WA Health AMA agreement, not yet signed off. Anything else is marked not checked.",
+  "/teaching/term/folder":
+    "Accreditation evidence folder for the current term: attendance, supervision and milestones, with an export that leaves names out by default.",
   "/admin/help": "Crisis lines, support, guides, contacts and on-site detail with in-page search.",
   "/my-work": "Compatibility redirect to `/admin`, carrying the query string.",
   "/my-day/week":

@@ -1504,7 +1504,12 @@ describe("design-system adoption manifest", () => {
     // The owner-only developer panel remains outside production route coverage.
     // 165 -> 174: Open shifts mode (`/open-shifts` and its eight pages).
     // 174 -> 175: Roster opens on Shifts; its Today page moved to `/roster/today`.
-    expect(manifest.routeCoverage.discovered).toHaveLength(175);
+    // 175 -> 177: Roster Sick for tomorrow (`/roster/sick`) and Team staffing (`/roster/staffing`),
+    // junior features round 2 (work-mode redesign, owner request 6 Oct 2026).
+    // 177 -> 188: the rest of junior features round 2: Admin Contract, Leave wallet, Starter pack and
+    // Ready for day one, CPD Home, Job applications and its CV, On Call First week and Who's on from the
+    // roster, Ask the agreement, and the Teaching term folder.
+    expect(manifest.routeCoverage.discovered).toHaveLength(188);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

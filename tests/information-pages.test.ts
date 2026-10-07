@@ -28,6 +28,20 @@ describe("information pages and the search composer", () => {
     }
   });
 
+  it("treats every CPD route as an information page, the CV under Job applications included", () => {
+    for (const path of [
+      "/cme",
+      "/cme/log",
+      "/cme/log/abc",
+      "/cme/cpd-home",
+      "/cme/applications",
+      "/cme/applications/cv",
+    ]) {
+      expect(isInformationPage(path)).toBe(true);
+    }
+    expect(isInformationPage("/cme/applications/cv/extra")).toBe(false);
+  });
+
   it("leaves catalogue result docks out, so a submitted search keeps its composer", () => {
     expect(isInformationPage("/services/search")).toBe(false);
     expect(isInformationPage("/forms/search")).toBe(false);

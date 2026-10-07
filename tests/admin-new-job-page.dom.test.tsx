@@ -102,6 +102,13 @@ describe("AdminNewJobPage", () => {
     expect(within(row as HTMLElement).getAllByText(loginOwn.title).length).toBeGreaterThan(0);
   });
 
+  it("leads to Ready for day one and the starter pack from Before", () => {
+    render(<AdminNewJobPage now={NOW} />);
+    const before = document.getElementById("admin-new-job-before") as HTMLElement;
+    expect(within(before).getByTestId("admin-ready-entry")).toHaveAttribute("href", "/admin/new-job/ready");
+    expect(within(before).getByTestId("admin-starter-entry")).toHaveAttribute("href", "/admin/new-job/starter");
+  });
+
   it("shows the shared login row read-only, with no edit control or tick", () => {
     render(<AdminNewJobPage now={NOW} />);
     expect(screen.getByText(/^Shared by another doctor · /)).toBeTruthy();
@@ -122,10 +129,13 @@ describe("AdminNewJobPage", () => {
     expect(screen.queryByText(/week \d/i)).toBeNull();
   });
 
-  it("shows N of M done and a matching N left for the one ticked group", () => {
+  it("shows N of M done once, beside the Logins and access label, over a framed list", () => {
     render(<AdminNewJobPage now={NOW} />);
-    expect(screen.getByTestId("admin-new-job-progress")).toHaveTextContent("0 of 1 done");
-    expect(screen.getByTestId("admin-new-job-logins-left")).toHaveTextContent("1 left");
+    expect(screen.getByTestId("admin-new-job-progress").textContent).toBe("0 of 1 done");
+    // The label is not repeated in a second progress line above it.
+    expect(screen.queryByText(/Logins and access:/)).toBeNull();
+    expect(screen.queryByTestId("admin-new-job-logins-left")).toBeNull();
+    expect(screen.getByTestId("admin-new-job-logins").className).toContain("work-card");
   });
 
   it("ticks an own step as a real saved toggle, with Undo", async () => {

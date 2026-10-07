@@ -8,10 +8,13 @@ import { T5Segments } from "@/components/teaching/t5-kit";
 import { WorkButton } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
-import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
+import { wasAlreadyCheckedIn } from "@/components/teaching/checkin/checkin-recorded";
+import { teachingErrorMessage, teachingPostTimed, teachingServiceUrl } from "@/lib/teaching/client";
 import type { AttendanceMethod, CheckinStream } from "@/lib/teaching/model";
 
 export type CodeSheetMark = { method: AttendanceMethod; recordedAt: string };
+/** What the sheet hands back: the mark, plus whether the server already had it (a repeat check-in). */
+export type CodeSheetRecorded = CodeSheetMark & { already: boolean };
 
 const STREAMS = [
   { value: "room", label: "Room" },
@@ -39,7 +42,7 @@ export function TeachingCodeSheet({
   /** "Grand rounds · 12:30 to 13:30". */
   subtitle?: string;
   live: boolean;
-  onDone: (mark: CodeSheetMark) => void;
+  onDone: (mark: CodeSheetRecorded) => void;
 }) {
   const [stream, setStream] = useState<CheckinStream>("room");
   const [typed, setTyped] = useState("");
@@ -63,13 +66,20 @@ export function TeachingCodeSheet({
     setBusy(true);
     setError(null);
     try {
-      const saved = await teachingPost<CodeSheetMark>(teachingServiceUrl(session.serviceId), {
-        action: "checkin.typed",
-        occurrenceId: session.occurrenceId,
-        stream,
-        code,
+      const { data: saved, serverTime } = await teachingPostTimed<CodeSheetMark>(
+        teachingServiceUrl(session.serviceId),
+        {
+          action: "checkin.typed",
+          occurrenceId: session.occurrenceId,
+          stream,
+          code,
+        },
+      );
+      onDone({
+        method: saved.method,
+        recordedAt: saved.recordedAt,
+        already: wasAlreadyCheckedIn(saved.recordedAt, serverTime),
       });
-      onDone({ method: saved.method, recordedAt: saved.recordedAt });
       setTyped("");
       onClose();
     } catch (cause) {

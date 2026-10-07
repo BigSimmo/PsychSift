@@ -30,6 +30,9 @@ import {
   SupervisorTimes,
   SupervisorWords,
 } from "@/components/teaching/assessments/assessments-supervisor";
+import { AssessmentsExtrasProvider } from "@/components/teaching/assessments/assessments-extras";
+import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-inbox";
+import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
 import { viewHref, type AssessmentsView } from "@/components/teaching/assessments/assessments-parts";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
@@ -61,7 +64,7 @@ export type ScreenProps = {
   role: Role;
   openSheet: (sheet: SheetState) => void;
   go: (href: string) => void;
-  /** Records an EPA and offers Undo for a few seconds ("EPA 1 saved for Dr Sam Lee"). */
+  /** Records an EPA and offers Undo for a few seconds ("EPA 1 saved for Dr Sam Karri"). */
   saveEpa: (action: EpaSave) => void;
 };
 
@@ -83,6 +86,8 @@ const VIEWS: readonly AssessmentsView[] = [
   "progress",
   "record",
   "words",
+  "inbox",
+  "overview",
 ];
 
 /** Views that are the doctor's own: they never take the supervisor's side. */
@@ -112,6 +117,9 @@ function Screen(props: ScreenProps & { view: AssessmentsView }) {
   const { view, role } = props;
   if (view === "help") return <ConcernsHelp {...props} />;
   if (view === "words") return <SupervisorWords {...props} />;
+  // The two added sample views (features 16 and 4) read the same made-up records from either role.
+  if (view === "inbox") return <AssessmentsInbox {...props} />;
+  if (view === "overview") return <AssessmentsTermOverview {...props} />;
   if (role === "supervisor") {
     if (view === "form") return <AssessmentForm {...props} who="sup" />;
     if (view === "sign") return <SignForm {...props} who="sup" />;
@@ -275,7 +283,9 @@ function AssessmentsApp() {
           ]}
         />
       ) : null}
-      <Screen {...props} view={view} />
+      <AssessmentsExtrasProvider>
+        <Screen {...props} view={view} />
+      </AssessmentsExtrasProvider>
       {view === "home" ? <TryTheStory s={s} dispatch={dispatch} /> : null}
       {savedNote ? (
         <p role="status" className="assess-note" data-center="">

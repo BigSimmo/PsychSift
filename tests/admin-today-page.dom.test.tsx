@@ -85,6 +85,17 @@ describe("AdminTodayPage", () => {
     );
   });
 
+  it("leads to Contract end, the Leave wallet and the starter pack from a Work and leave group", () => {
+    render(<AdminTodayPage now={NOW} />);
+    const group = screen.getByTestId("admin-work-and-leave");
+    expect(within(group).getByRole("heading", { name: "Work and leave" })).toBeInTheDocument();
+    expect(
+      within(group)
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["/admin/contract", "/admin/leave", "/admin/new-job/starter"]);
+  });
+
   it("does not call the reader's own dates an example", () => {
     render(<AdminTodayPage now={NOW} />);
     expect(screen.queryByTestId("admin-today-demo-notice")).toBeNull();

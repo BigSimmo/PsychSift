@@ -42,7 +42,9 @@ export type AssessmentsView =
   | "side"
   | "progress"
   | "record"
-  | "words";
+  | "words"
+  | "inbox"
+  | "overview";
 
 /** The page's own address for a screen: one route, so the phone's Back button walks back through it. */
 export function viewHref(view: AssessmentsView, params: Record<string, string> = {}): string {

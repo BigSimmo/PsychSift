@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { AssessmentsSampleViewsNav } from "@/components/teaching/assessments/assessments-extras";
 import {
   WorkButton,
   WorkChip,
@@ -103,8 +104,8 @@ const home = viewHref("home", asSup);
 const FORM_TOTAL = FORM_STEPS.length;
 
 /** The other doctors on the list are made-up names only: they have no forms in this sample. */
-const BEN = { name: "Dr Ben Ortiz", initials: "BO", grade: "PGY2", due: "Fri 16 Oct" } as const;
-const MIA = { name: "Dr Mia Chen", initials: "MC" } as const;
+const BEN = { name: "Dr Ash Zamia", initials: "AZ", grade: "PGY2", due: "Fri 16 Oct" } as const;
+const MIA = { name: "Dr Frankie Mulga", initials: "FM" } as const;
 
 const benOverdue = (s: AssessmentsState) => s.now >= 0;
 const countersigned = SAMPLE_TERMS.filter((t) => t.status === "done").length;
@@ -177,7 +178,7 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
       </>
     );
   } else if (st === "ready" && meetingIsToday(s)) {
-    eyebrow = "Today · Ward 4 office";
+    eyebrow = "Today · Ward A office";
     sub = `Meeting ${s.booking!.time} to ${plusHalfHour(s.booking!.time)}. You sign after it.`;
     actions = (
       <>
@@ -198,7 +199,7 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
     );
   } else if (st === "ready") {
     sub = s.booking
-      ? `Draft done. Meeting ${bookingLabel(s.booking)}, Ward 4 office.`
+      ? `Draft done. Meeting ${bookingLabel(s.booking)}, Ward A office.`
       : `Draft done. ${DOC.first} books a time in the window.`;
     actions = (
       <>
@@ -309,6 +310,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
       <AssessNote icon={ShieldCheck}>
         {`${BEN.name} and ${MIA.name} are made-up names to show a list. Their forms aren't built into this sample.`}
       </AssessNote>
+      <AssessmentsSampleViewsNav s={s} />
       <SectionLabel>Coming up</SectionLabel>
       <List label="Coming up">
         {s.booking ? (
@@ -317,7 +319,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
               month={windowDay(s.booking.day).month}
               day={windowDay(s.booking.day).date}
               title={`Meeting with ${DOC.name}`}
-              sub={`End-of-term · Ward 4 office · ${s.booking.time}`}
+              sub={`End-of-term · Ward A office · ${s.booking.time}`}
               end={<WorkTag tone="neutral">{meetingDate(s) ? "Held" : "Booked"}</WorkTag>}
               href={viewHref("side", asSup)}
             />
@@ -436,7 +438,7 @@ function MeetingList({ s }: { s: AssessmentsState }) {
             month={windowDay(s.booking.day).month}
             day={windowDay(s.booking.day).date}
             title="Meeting"
-            sub={`Ward 4 office · ${s.booking.time} · you sign after`}
+            sub={`Ward A office · ${s.booking.time} · you sign after`}
             end={<WorkTag tone="neutral">{meetingDate(s) ? "Held" : "Booked"}</WorkTag>}
           />
         </li>
@@ -485,7 +487,7 @@ export function SideBySide({ s, dispatch, go }: ScreenProps) {
           back={back}
         />
         <WorkHero
-          eyebrow={met ? `Met ${meetingDate(s)} · Ward 4 office` : "Today · Ward 4 office"}
+          eyebrow={met ? `Met ${meetingDate(s)} · Ward A office` : "Today · Ward A office"}
           title={met ? "Ready to sign" : "Ready for the meeting"}
           sub={time ? `${time} to ${plusHalfHour(time)} · 30 minutes` : undefined}
           footer={

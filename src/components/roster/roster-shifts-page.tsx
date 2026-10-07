@@ -68,6 +68,7 @@ import {
 import { RosterNextShift } from "./roster-next-shift";
 import { RosterRestChip } from "./roster-rest-chip";
 import { RosterShareButton } from "./roster-share-button";
+import { RosterSickEntryLink } from "./sick/roster-sick-entry";
 import { RosterWhoCanCover } from "./roster-who-can-cover";
 import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
 import { useRosterExtraTime } from "./use-roster-extra-time";
@@ -663,6 +664,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                 ))}
               </nav>
             ) : null}
+            {enabledTeams.length ? <RosterSickEntryLink /> : null}
 
             <section aria-labelledby="roster-week-heading" className="grid gap-3" data-testid="roster-shifts-week">
               <div className="mt-1 flex items-center gap-1">

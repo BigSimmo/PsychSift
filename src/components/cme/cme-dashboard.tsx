@@ -20,6 +20,7 @@ import { useState, type MouseEvent, type ReactNode } from "react";
 import { CmeCategoryLegend, CmeYearSummary } from "@/components/cme/cme-dashboard-catch-up";
 import { CmeTodayDetailSheet, type CmeTodayDetail } from "@/components/cme/cme-dashboard-detail-sheet";
 import { CmeNextStepRow, computeCmeNextStep, formatCmeHours } from "@/components/cme/cme-dashboard-next-step";
+import { ApplicationsTodayCard } from "@/components/cme/applications/applications-today-card";
 import { buildCmeYearChips, CmeTodayShortcuts } from "@/components/cme/cme-dashboard-shortcuts";
 import { CmeWhatsLeft } from "@/components/cme/cme-dashboard-whats-left";
 import { CmeFlatList, CmeFlatRow, CmeGroup } from "@/components/cme/cme-flat-list";
@@ -649,6 +650,7 @@ export function CmeDashboard({
           {toLog}
           {whatsLeft}
           {chipsNode}
+          <ApplicationsTodayCard today={today} />
           {byCategory}
           {alsoForYou}
           {about}

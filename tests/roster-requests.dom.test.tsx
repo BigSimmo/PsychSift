@@ -203,6 +203,31 @@ it("shows an anonymous leave overlap count", async () => {
   expect(mocks.fetchRead).toHaveBeenCalledWith(SERVICE, "leave_overlap", { from: "2026-12-22", to: "2027-01-02" });
 });
 
+it("offers Team staffing before the Leave list", async () => {
+  render(<RosterRequestsPage />);
+  const entry = screen.getByTestId("roster-staffing-entry");
+  expect(entry.getAttribute("href")).toBe("/roster/staffing");
+  const leaveHead = screen.getByRole("heading", { name: "Leave" });
+  expect(leaveHead.compareDocumentPosition(entry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const leaveList = await screen.findByRole("list", { name: "Leave" });
+  expect(entry.compareDocumentPosition(leaveList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("Plan leave shows the team staffing check for the picked dates, never a safe number", async () => {
+  const user = userEvent.setup();
+  reads.requests.swaps = [];
+  render(<RosterRequestsPage />);
+  await user.click(screen.getByRole("button", { name: "New" }));
+  await user.click(screen.getByTestId("roster-new-entry-leave"));
+  await user.type(screen.getByLabelText("From"), "2026-12-22");
+  await user.type(screen.getByLabelText("To"), "2026-12-23");
+  const check = await screen.findByTestId("leave-staffing-check");
+  // No published roster for these dates: not checked, never shown as fine.
+  expect(check.textContent).toContain("Can't check yet.");
+  expect(check.textContent).toContain("Counts Day and Evening (late) shifts only.");
+  expect(check.textContent).toContain("safe number isn't set in PsychSift");
+});
+
 it("checks planned leave against my team shifts: the clash, its day, and who else is off", async () => {
   // Work-mode redesign, owner request 6 Oct 2026: the Plan leave sheet's Checks card.
   const user = userEvent.setup();

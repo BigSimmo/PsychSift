@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-06"
+    "committed_at": "2026-10-07"
   },
   "routes": {
     "modes": [
@@ -334,6 +334,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/new-job/starter",
+        "file": "src/app/(search-app)/admin/new-job/starter/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/development/ledger",
         "file": "src/app/mockups/development/ledger/page.tsx",
         "area": "mockup"
@@ -342,6 +347,11 @@
         "path": "/mockups/privacy-page-directions",
         "file": "src/app/mockups/privacy-page-directions/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/cme/cpd-home",
+        "file": "src/app/(search-app)/cme/cpd-home/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/resources/[collectionId]",
@@ -424,9 +434,19 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/new-job/ready",
+        "file": "src/app/(search-app)/admin/new-job/ready/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan/reviews",
         "file": "src/app/mockups/care-plan/reviews/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/teaching/term/folder",
+        "file": "src/app/(search-app)/teaching/term/folder/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/universal-search-redesign",
@@ -529,6 +549,11 @@
         "area": "mockup"
       },
       {
+        "path": "/roster/staffing",
+        "file": "src/app/(search-app)/roster/staffing/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/",
         "file": "src/app/(search-app)/page.tsx",
         "area": "product"
@@ -572,6 +597,11 @@
         "path": "/mockups/specifier-record-directions",
         "file": "src/app/mockups/specifier-record-directions/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/admin/contract",
+        "file": "src/app/(search-app)/admin/contract/page.tsx",
+        "area": "product"
       },
       {
         "path": "/roster",
@@ -687,6 +717,11 @@
         "path": "/mockups/dictionary-browse-header",
         "file": "src/app/mockups/dictionary-browse-header/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/on-call/first-week",
+        "file": "src/app/(search-app)/on-call/first-week/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/c/complete",
@@ -854,6 +889,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/leave",
+        "file": "src/app/(search-app)/admin/leave/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/calculators-popup-sheet",
         "file": "src/app/mockups/calculators-popup-sheet/page.tsx",
         "area": "mockup"
@@ -891,6 +931,11 @@
       {
         "path": "/teaching/display/[token]",
         "file": "src/app/(display)/teaching/display/[token]/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/on-call/whos-on/roster",
+        "file": "src/app/(search-app)/on-call/whos-on/roster/page.tsx",
         "area": "product"
       },
       {
@@ -1004,6 +1049,11 @@
         "area": "product"
       },
       {
+        "path": "/cme/applications",
+        "file": "src/app/(search-app)/cme/applications/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/development/corpus-health",
         "file": "src/app/mockups/development/corpus-health/page.tsx",
         "area": "mockup"
@@ -1059,6 +1109,11 @@
         "area": "product"
       },
       {
+        "path": "/cme/applications/cv",
+        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/differentials/search",
         "file": "src/app/(search-app)/differentials/search/page.tsx",
         "area": "product"
@@ -1109,9 +1164,19 @@
         "area": "product"
       },
       {
+        "path": "/roster/sick",
+        "file": "src/app/(search-app)/roster/sick/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/tools-action-workbench",
         "file": "src/app/mockups/tools-action-workbench/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/my-day/profile/agreement",
+        "file": "src/app/(search-app)/my-day/profile/agreement/page.tsx",
+        "area": "product"
       },
       {
         "path": "/calculators/search",

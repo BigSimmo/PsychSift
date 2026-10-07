@@ -30,7 +30,8 @@ const PATIENT_PATTERNS: readonly RegExp[] = [
   /\bbed\s*\d{1,3}[a-z]?\b/i,
   /\b(?:dob|d\.o\.b\.?|d\/o\/b|date of birth|born)\b/i,
   // An age, the way notes write one: "45M", "72 F", "80 yo", "aged 64", "3 year old".
-  /\b(?:1[2-9]|[2-9]\d|1[01]\d)\s?[mf]\b/i,
+  // The letter is a capital: "45m" and "mtg 30m" are minutes.
+  /\b(?:1[2-9]|[2-9]\d|1[01]\d)\s?[MF]\b/,
   /\b\d{1,3}\s?(?:yo|y\.o\.?|y\/o|yrs?\s+old|years?[\s-]+old|year-old)(?![a-z])/i,
   /\bage[ds]?\s+\d{1,3}\b/i,
   // A Medicare-shaped number: starts 2 to 6, ten digits, often typed 4-5-1.
@@ -41,9 +42,11 @@ const PATIENT_PATTERNS: readonly RegExp[] = [
   /(?:^|[^\d\s-])\s*\b(?!0|1[38])\d{7}\b(?![\d\s-]*\d)/,
   // "pt" or "patient" with a number, and "pt" with a name.
   /\b(?:patient|pt)\.?\s*(?:no\.?|number|id)?\s*[:#-]?\s*\d{3,}/i,
-  /\bpt\.?\s+(?!(?:time|hours?|roster|shifts?|leave|days?|fte|contract|position|role|work)\b)[a-z][a-z'-]{2,}/i,
+  // "PT" in capitals is physiotherapy ("OT and PT workshop"), so only "pt" or "Pt" counts here.
+  /\b[Pp]t\.?\s+(?!(?:[Tt]ime|[Hh]ours?|[Rr]oster|[Ss]hifts?|[Ll]eave|[Dd]ays?|FTE|[Ff]te|[Cc]ontract|[Pp]osition|[Rr]ole|[Ww]ork)\b)[A-Za-z][A-Za-z'-]{2,}/,
   // A name written the way a patient list writes it: "Smith, John" or "SMITH, John".
-  /\b[A-Z][A-Za-z'-]+,\s*[A-Z][a-z'-]+\b/,
+  // Not a greeting or an ask after the comma ("URGENT, Please call").
+  /\b[A-Z][A-Za-z'-]+,\s*(?!(?:Please|Thanks|Thank|Call|Can|Could|See|Note|Hi|Hello|Dear)\b)[A-Z][a-z'-]+\b/,
   // A title and a name. Kept last: "Ms Teams" and the like skip it.
   /\b(?:mr|mrs|miss|ms|mx|master|mstr)\.?\s+[a-z][a-z'-]{1,}/i,
 ];

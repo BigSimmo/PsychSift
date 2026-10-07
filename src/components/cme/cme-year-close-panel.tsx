@@ -13,6 +13,7 @@ import { cn, eyebrowText, fieldControlPlain, InlineNotice, textMuted } from "@/c
 import { formatCalendarDateLong, perthCalendarDate } from "@/lib/cme/cpd-year";
 import type { CmePlanGoal } from "@/lib/cme/plan-goals";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import type { CmeEntry, CmeRequirementSet, CmeYearClose } from "@/lib/cme/types";
 import { buildCmeYearEndActions, canOfferCmeYearEnd } from "@/lib/cme/year-close-actions";
 import {
@@ -191,10 +192,16 @@ export function CmeYearClosePanel({
   const closable = canCloseCmeYear(now, year);
 
   async function closeYear() {
+    const trimmed = note.trim();
+    // The note is stored with the closed year, so it goes through the one shared patient-detail check first.
+    const problem = checkPatientDetail(trimmed);
+    if (problem) {
+      setError(`${problem.title}. ${problem.body}`);
+      return;
+    }
     setPending(true);
     setError(null);
     try {
-      const trimmed = note.trim();
       const response = await fetch("/api/cme/year/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
