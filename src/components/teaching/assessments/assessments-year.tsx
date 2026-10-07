@@ -53,8 +53,11 @@ import {
 } from "@/lib/teaching/assessments/sample";
 import { withUnit } from "@/components/teaching/teaching-number";
 
-/** Green only once the DCT has countersigned the term. */
-const SIGNED_PILL = <Pill pill={{ label: "Satisfactory · countersigned", tone: "ok" }} />;
+/**
+ * Green only once the DCT has countersigned the term. The row's own line says "countersigned by the DCT", so
+ * the tag stays one short word and never squeezes the row's words into a sliver at 320 px.
+ */
+const SIGNED_PILL = <Pill pill={{ label: "Satisfactory", tone: "ok" }} />;
 
 function Requirement({
   title,

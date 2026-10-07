@@ -28,6 +28,7 @@ import { cmeEntryCreateSchema } from "@/lib/cme/schemas";
 import { cmeCategoryLabels, cmeCategories, type CmeAllocation, type CmeCategory, type CmeEntry } from "@/lib/cme/types";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
+import { cpdTextPatientProblem, cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 
 /**
  * One activity, captured on one sheet: what it was, when, how many hours it
@@ -345,7 +346,13 @@ export function CmeEntryForm({
   if (initialEntry?.routineId) draft.routineId = initialEntry.routineId;
   if (initialEntry?.documentId) draft.documentId = initialEntry.documentId;
   const parsedDraft = cmeEntryCreateSchema.safeParse(draft);
-  const canSave = balanced && allocations.length > 0 && costValid && formalPeerReviewValid && parsedDraft.success;
+  // The title and reflection are stored with the account and go out in the year's CSV, so the one shared
+  // patient-detail check reads them here, the same way the export reads them (course capitals pass in a title).
+  const titleProblem = title.trim() ? cpdTitlePatientProblem(title) : null;
+  const reflectionProblem = reflection.trim() ? cpdTextPatientProblem(reflection) : null;
+  const patientProblem = titleProblem ?? reflectionProblem;
+  const canSave =
+    balanced && allocations.length > 0 && costValid && formalPeerReviewValid && parsedDraft.success && !patientProblem;
   // Save used to sit greyed out with nothing saying why. Name the first thing
   // standing in the way, in the order the fields appear on the form.
   const firstDraftIssue = parsedDraft.success ? null : parsedDraft.error.issues[0]?.path[0];
@@ -353,23 +360,25 @@ export function CmeEntryForm({
     ? null
     : !draft.title
       ? "Add what the activity was to save it."
-      : firstDraftIssue === "date"
-        ? "Choose a valid date to save it."
-        : statedHours <= 0
-          ? "Enter how many hours it took to save it."
-          : mode === null
-            ? "Choose which category the hours count toward to save it."
-            : allocations.length === 0 || !balanced
-              ? "Split every hour across the categories to save it."
-              : !formalPeerReviewValid
-                ? "Peer-review credit cannot be more than the reviewing-performance hours."
-                : firstDraftIssue === "reflection"
-                  ? "Shorten the reflection to 2000 characters to save it."
-                  : firstDraftIssue === "sourceUrl"
-                    ? "Check the learning source link, or leave it blank."
-                    : !costValid
-                      ? "Fix the cost, or leave it blank."
-                      : "Check the details above to save it.";
+      : patientProblem
+        ? "Take out the patient details to save it."
+        : firstDraftIssue === "date"
+          ? "Choose a valid date to save it."
+          : statedHours <= 0
+            ? "Enter how many hours it took to save it."
+            : mode === null
+              ? "Choose which category the hours count toward to save it."
+              : allocations.length === 0 || !balanced
+                ? "Split every hour across the categories to save it."
+                : !formalPeerReviewValid
+                  ? "Peer-review credit cannot be more than the reviewing-performance hours."
+                  : firstDraftIssue === "reflection"
+                    ? "Shorten the reflection to 2000 characters to save it."
+                    : firstDraftIssue === "sourceUrl"
+                      ? "Check the learning source link, or leave it blank."
+                      : !costValid
+                        ? "Fix the cost, or leave it blank."
+                        : "Check the details above to save it.";
   const initialFingerprint = useMemo(
     () =>
       JSON.stringify({
@@ -516,6 +525,11 @@ export function CmeEntryForm({
 
   async function handleSaveDraft() {
     if (!onSaveDraft || savingDraft || saving) return;
+    // A draft is stored with the account too, so it never keeps what the shared check flags.
+    if (patientProblem) {
+      setSubmitError("Take out the patient details to save this draft.");
+      return;
+    }
     setSubmitError(null);
     setSavingDraft(true);
     try {
@@ -808,6 +822,14 @@ export function CmeEntryForm({
       <p data-testid="cme-entry-privacy" className={cn(textMuted, "text-sm leading-5")}>
         Keep it free of patient names, initials, dates of birth, record numbers and other identifiers.
       </p>
+      {patientProblem ? (
+        <div data-testid="cme-entry-patient-detail">
+          <InlineNotice tone="warning">
+            <strong className="font-semibold">{`${titleProblem ? "What was it" : "Reflection"}: ${patientProblem.title}`}</strong>{" "}
+            {patientProblem.body}
+          </InlineNotice>
+        </div>
+      ) : null}
 
       <details
         data-testid="cme-entry-more-details"

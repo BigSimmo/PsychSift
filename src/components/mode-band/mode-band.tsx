@@ -389,6 +389,21 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
         ? workCurrent.band !== false
         : pathname === homePath
       : activeId !== null || pathname === homePath);
+  // A `band: false` page has no band to publish the frame, so sheets, toasts and
+  // the work search, which portal to <body>, lost the area's palette: primary
+  // buttons drew unfilled (found on Admin Workforce, 7 Oct 2026). Stamp <body>
+  // while such a page is open, as the band does when it is drawn.
+  const bandlessIdentity = area !== null && !shown ? area.identity : null;
+  useLayoutEffect(() => {
+    if (!bandlessIdentity) return;
+    const body = document.body;
+    body.dataset.modeIdentity = bandlessIdentity;
+    body.dataset.workFrame = "sheet";
+    return () => {
+      if (body.dataset.modeIdentity === bandlessIdentity) delete body.dataset.modeIdentity;
+      if (body.dataset.workFrame === "sheet") delete body.dataset.workFrame;
+    };
+  }, [bandlessIdentity]);
   const header = !shown ? null : area ? (
     <WorkModeBandHeader
       {...props}

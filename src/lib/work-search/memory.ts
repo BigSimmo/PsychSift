@@ -55,6 +55,17 @@ export function clearRecents(epoch: number) {
   recentMemory = { epoch, list: [] };
 }
 
+/** How many searches Recent holds now, for any account (Privacy's "Clear recent searches"). */
+export function countAllRecents(): number {
+  return recentMemory.list.length;
+}
+
+/** Forgets every recent search and the unfinished one, for any account (Privacy's "Clear recent searches"). */
+export function forgetAllRecents() {
+  recentMemory = { epoch: recentMemory.epoch, list: [] };
+  lastSearch = null;
+}
+
 /** The search to restore on reopening, if it is recent, from this account, and (checked again) safe to show. */
 export function resumableSearch(epoch: number, now: number = Date.now()): string {
   if (!lastSearch || lastSearch.epoch !== epoch || now - lastSearch.at >= RESUME_FOR_MS) return "";

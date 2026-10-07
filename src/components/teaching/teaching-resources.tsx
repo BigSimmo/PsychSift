@@ -35,6 +35,7 @@ import { cn } from "@/components/ui-primitives";
 import { teachingPost } from "@/lib/teaching/client";
 import type { CollectionRead, ResourceRow, ResourcesForWeek, TeamSummary } from "@/lib/teaching/model";
 import { sampleExamPrep } from "@/lib/teaching/term-tracker";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import {
   useSignedOutSampleRead,
@@ -370,7 +371,9 @@ function NewCollectionSheet({
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const ready = name.trim().length > 0 && (Boolean(serviceId) || sampleMode);
+  // Everyone in the service sees the name, so the shared patient-detail check reads it first.
+  const nameProblem = name.trim() ? checkPatientDetail(name, { allowCapitals: true }) : null;
+  const ready = name.trim().length > 0 && (Boolean(serviceId) || sampleMode) && !nameProblem;
 
   async function create() {
     if (!ready || busy) return;
@@ -414,6 +417,7 @@ function NewCollectionSheet({
         <TextField
           label="Name"
           hint="Everyone in the service sees this name. Do not add patient details."
+          error={nameProblem ? `${nameProblem.title} ${nameProblem.body}` : undefined}
           value={name}
           maxLength={80}
           onChange={(event) => setName(event.target.value)}

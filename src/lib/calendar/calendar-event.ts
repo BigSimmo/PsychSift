@@ -211,10 +211,8 @@ export function compareEvents(a: CalendarEvent, b: CalendarEvent): number {
   return a.title.localeCompare(b.title);
 }
 
-/** "12:30 pm" from "12:30". */
+/** "09:00" from "9:00": 24-hour, like every other work-mode time. */
 export function formatEventTime(time: string): string {
   const [hours, minutes] = time.split(":").map(Number);
-  const suffix = hours >= 12 ? "pm" : "am";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }

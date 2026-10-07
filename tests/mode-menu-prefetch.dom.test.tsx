@@ -366,9 +366,9 @@ describe("work area mode pill", () => {
     expect(areaOnly).toHaveTextContent("My Day");
     expect(areaOnly.className).toContain("text-[color:var(--clinical-accent)]");
     expect(within(trigger).queryByText("Mode")).toBeNull();
-    // No badge on phones (Josh, 7 Oct 2026): hidden below 640px, kept above.
+    // The badge shows at every width, phones included (Josh, 7 Oct 2026).
     expect(trigger).toHaveAttribute("data-area-only");
-    expect(trigger.querySelector(".universal-header-mode-badge")?.className).toContain("max-sm:hidden");
+    expect(trigger.querySelector(".universal-header-mode-badge")?.className).not.toContain("max-sm:hidden");
   });
 
   it("keeps the page over the area while the band still names a page", () => {

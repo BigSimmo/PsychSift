@@ -112,6 +112,26 @@ describe("New entry", () => {
     expect(screen.getByRole("button", { name: /save entry/i })).not.toHaveAttribute("aria-disabled");
   });
 
+  it("will not save a title or reflection that reads as holding patient details, and says which field", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<CmeEntryForm onSubmit={onSubmit} />);
+    await user.type(screen.getByLabelText(/what was it/i), "RANZCP case discussion");
+    await user.click(within(screen.getByRole("group", { name: "Hours" })).getByRole("button", { name: "1" }));
+    await user.click(screen.getByRole("button", { name: "Educational" }));
+    expect(screen.queryByTestId("cme-entry-patient-detail")).toBeNull();
+    await user.type(screen.getByLabelText("Reflection"), "Discussed UMRN A1234567 on the ward");
+    expect(screen.getByTestId("cme-entry-patient-detail")).toHaveTextContent(/^Reflection:/);
+    expect(screen.getByTestId("cme-entry-save-blocked")).toHaveTextContent(/patient details/i);
+    await user.click(screen.getByRole("button", { name: "Save entry" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    await user.clear(screen.getByLabelText("Reflection"));
+    await user.type(screen.getByLabelText("Reflection"), "Reviewed my approach to formulation");
+    expect(screen.queryByTestId("cme-entry-patient-detail")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Save entry" }));
+    expect(onSubmit).toHaveBeenCalled();
+  });
+
   it("labels the reflection without asking a question", () => {
     render(<CmeEntryForm onSubmit={vi.fn()} />);
     const reflection = screen.getByLabelText(/reflection/i);

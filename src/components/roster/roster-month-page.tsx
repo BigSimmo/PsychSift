@@ -587,88 +587,91 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   }
 
   return (
-    <WorkBody testId="roster-month-main">
-      <h1 className="sr-only">Roster, month</h1>
-      {canEdit ? (
-        <ModeBandAction>
-          {(underBand) =>
-            underBand ? (
-              <WorkGlassButton
-                icon={Plus}
-                label="Add to your roster"
-                onClick={() => setAddView("menu")}
-                testId="roster-month-add"
-              />
-            ) : (
-              <WorkButton variant="tinted" icon={Plus} onClick={() => setAddView("menu")} testId="roster-month-add">
-                Add
-              </WorkButton>
-            )
-          }
-        </ModeBandAction>
-      ) : null}
-      {importing ? (
-        <RosterImportFlow
-          shifts={shifts}
-          settings={settings}
+    // The page's main landmark, so "Skip to main content" and screen-reader landmarks land on the month.
+    <main className="min-w-0">
+      <WorkBody testId="roster-month-main">
+        <h1 className="sr-only">Roster, month</h1>
+        {canEdit ? (
+          <ModeBandAction>
+            {(underBand) =>
+              underBand ? (
+                <WorkGlassButton
+                  icon={Plus}
+                  label="Add to your roster"
+                  onClick={() => setAddView("menu")}
+                  testId="roster-month-add"
+                />
+              ) : (
+                <WorkButton variant="tinted" icon={Plus} onClick={() => setAddView("menu")} testId="roster-month-add">
+                  Add
+                </WorkButton>
+              )
+            }
+          </ModeBandAction>
+        ) : null}
+        {importing ? (
+          <RosterImportFlow
+            shifts={shifts}
+            settings={settings}
+            today={today}
+            onClose={() => setImporting(false)}
+            onSaved={() => {
+              setImporting(false);
+              setNotice("Saved");
+            }}
+          />
+        ) : (
+          body()
+        )}
+
+        <RosterDaySheet
+          date={sheetDate}
           today={today}
-          onClose={() => setImporting(false)}
-          onSaved={() => {
-            setImporting(false);
-            setNotice("Saved");
+          shifts={sheetShifts}
+          cues={cues}
+          holiday={sheetDate ? holidays.has(sheetDate) : false}
+          colleagues={colleagues}
+          teamId={oneTeamId}
+          actorId={actorId}
+          notLoaded={Boolean(sheetDate && sheetDate < loadedFrom)}
+          onClose={() => setSheetDate(null)}
+        />
+
+        <RosterAddSheet
+          open={addView !== null}
+          view={addView ?? "menu"}
+          onViewChange={setAddView}
+          onClose={() => setAddView(null)}
+          today={today}
+          workplaces={[...new Set(shifts.shifts.flatMap((shift) => (shift.workplace ? [shift.workplace] : [])))]}
+          hasTeam={enabledTeams.length > 0}
+          onDates={() => {
+            setAddView(null);
+            router.push(`/roster/requests?start=dates${oneTeamId ? `&team=${encodeURIComponent(oneTeamId)}` : ""}`);
+          }}
+          onImportFile={() => {
+            setAddView(null);
+            setImporting(true);
+          }}
+          onAddShift={async (request) => {
+            const failure = await shifts.addManual(request);
+            if (!failure) {
+              setAddView(null);
+              setNotice("Saved");
+            }
+            return failure;
+          }}
+          onAddLink={async (url, workplace) => {
+            const failure = await links.add(url, workplace);
+            if (!failure) {
+              void shifts.reload();
+              setAddView(null);
+              setNotice("Saved");
+            }
+            return failure;
           }}
         />
-      ) : (
-        body()
-      )}
-
-      <RosterDaySheet
-        date={sheetDate}
-        today={today}
-        shifts={sheetShifts}
-        cues={cues}
-        holiday={sheetDate ? holidays.has(sheetDate) : false}
-        colleagues={colleagues}
-        teamId={oneTeamId}
-        actorId={actorId}
-        notLoaded={Boolean(sheetDate && sheetDate < loadedFrom)}
-        onClose={() => setSheetDate(null)}
-      />
-
-      <RosterAddSheet
-        open={addView !== null}
-        view={addView ?? "menu"}
-        onViewChange={setAddView}
-        onClose={() => setAddView(null)}
-        today={today}
-        workplaces={[...new Set(shifts.shifts.flatMap((shift) => (shift.workplace ? [shift.workplace] : [])))]}
-        hasTeam={enabledTeams.length > 0}
-        onDates={() => {
-          setAddView(null);
-          router.push(`/roster/requests?start=dates${oneTeamId ? `&team=${encodeURIComponent(oneTeamId)}` : ""}`);
-        }}
-        onImportFile={() => {
-          setAddView(null);
-          setImporting(true);
-        }}
-        onAddShift={async (request) => {
-          const failure = await shifts.addManual(request);
-          if (!failure) {
-            setAddView(null);
-            setNotice("Saved");
-          }
-          return failure;
-        }}
-        onAddLink={async (url, workplace) => {
-          const failure = await links.add(url, workplace);
-          if (!failure) {
-            void shifts.reload();
-            setAddView(null);
-            setNotice("Saved");
-          }
-          return failure;
-        }}
-      />
-    </WorkBody>
+      </WorkBody>
+    </main>
   );
 }

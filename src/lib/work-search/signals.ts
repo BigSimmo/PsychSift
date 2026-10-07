@@ -1,18 +1,24 @@
+import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
+import { matchesPatientPatterns } from "@/lib/work-search/patient-patterns";
 import { currentWorkYear } from "@/lib/work-time/current-zone";
+
 /**
  * Two cautious readings of what was typed, used only to change what the search
  * screen does on the device. Neither sends or stores anything.
  *
- * - `looksLikePatientDetails`: a labelled hospital number (UR, URN, UMRN, MRN,
- *   however it is spaced or glued on), a bare seven-digit number, a letter and
- *   six to eight digits (a WA UMRN), a bed number, a date of birth (labelled, or
- *   a date years in the past, in figures or words), an age ("45M", "72 yo",
- *   "aged 80"), a Medicare-shaped number, an IHI, "pt" or "patient" with a
- *   number or name, a "SURNAME, Given" name, or a title and name. Phone and
- *   pager numbers are deliberately not flagged: the search finds On Call
- *   numbers. When true, the query is not looked up at all, not kept in Recent,
- *   cleared from the box if left there, and the screen reminds the reader not
- *   to type patient details.
+ * - `looksLikePatientDetails`: the search's patient gate. It reads the
+ *   search's own patterns (`matchesPatientPatterns`: a labelled hospital number,
+ *   a bare seven-digit number, a WA UMRN, a bed number, a date of birth, an age,
+ *   a Medicare-shaped number, an IHI, "pt" with a number or name, "SURNAME,
+ *   Given", a title and name) and hands the text to the one shared check every
+ *   work page uses (`looksLikePatientDetail`), so look-alike letters, hidden
+ *   characters, "Patient John", "pt js", "bed twelve" and the rest are caught here
+ *   exactly as they are on a note or a reminder. Three things a search looks up
+ *   are read past: a phone number (On Call contacts), a date within a few years
+ *   (a roster date; birth dates still count) and bare capitals ("AL", "BLS").
+ *   When true, the query is not looked up at all, not kept in Recent, cleared
+ *   from the box if left there, and the screen reminds the reader not to type
+ *   patient details.
  * - `looksClinical`: a medicine or a clinical word, so the screen offers the
  *   clinical search (which answers from guidelines) above any staff-record
  *   matches, and gives no built-in work answer.
@@ -21,81 +27,40 @@ import { currentWorkYear } from "@/lib/work-time/current-zone";
  * the reader did not already have.
  */
 
-const PATIENT_PATTERNS: readonly RegExp[] = [
-  // A labelled hospital or Medicare number, however it is spaced.
-  /\b(?:u\.?r\.?n?|u\/r|umrn|mrn|nhi|medicare|hospital\s+(?:no|number)|h\/?n)\b\.?\s*(?:no\.?\s*)?[:#-]?\s*[a-z]?\d{3,}/i,
-  // The same label typed straight onto the number: "UR4471823", "umrn12345".
-  /\b(?:ur|urn|umrn|mrn)\d{3,}/i,
-  // A WA UMRN: one letter then six to eight digits ("A1234567").
-  /\b[a-z]\d{6,8}\b/i,
-  /\bbed\s*\d{1,3}[a-z]?\b/i,
-  /\b(?:dob|d\.o\.b\.?|d\/o\/b|date of birth|born)\b/i,
-  // An age, the way notes write one: "45M", "72 F", "80 yo", "aged 64", "3 year old".
-  // The letter is a capital: "45m" and "mtg 30m" are minutes.
-  /\b(?:1[2-9]|[2-9]\d|1[01]\d)\s?[MF]\b/,
-  /\b\d{1,3}\s?(?:yo|y\.o\.?|y\/o|yrs?\s+old|years?[\s-]+old|year-old)(?![a-z])/i,
-  /\bage[ds]?\s+\d{1,3}\b/i,
-  // A Medicare-shaped number: starts 2 to 6, ten digits, often typed 4-5-1.
-  /\b[2-6]\d{3}\s?\d{5}\s?\d(?:\s?[/-]?\s?\d)?\b/,
-  // An Individual Healthcare Identifier: sixteen digits starting 800360.
-  /\b8003\s?6\d{3}\s?\d{4}\s?\d{4}\b/,
-  // A bare seven-digit hospital number. Phone numbers are eight or ten digits, or start 0, 13 or 18.
-  /(?:^|[^\d\s-])\s*\b(?!0|1[38])\d{7}\b(?![\d\s-]*\d)/,
-  // "pt" or "patient" with a number, and "pt" with a name.
-  /\b(?:patient|pt)\.?\s*(?:no\.?|number|id)?\s*[:#-]?\s*\d{3,}/i,
-  // "PT" in capitals is physiotherapy ("OT and PT workshop"), so only "pt" or "Pt" counts here.
-  /\b[Pp]t\.?\s+(?!(?:[Tt]ime|[Hh]ours?|[Rr]oster|[Ss]hifts?|[Ll]eave|[Dd]ays?|FTE|[Ff]te|[Cc]ontract|[Pp]osition|[Rr]ole|[Ww]ork)\b)[A-Za-z][A-Za-z'-]{2,}/,
-  // A name written the way a patient list writes it: "Smith, John" or "SMITH, John".
-  // Not a greeting or an ask after the comma ("URGENT, Please call"), and not a
-  // job title before a place ("Consultant, Royal Perth", "Registrar, Ward 4").
-  /\b(?!(?:Consultant|Registrar|Resident|Intern|Fellow|Director|Professor|Lecturer|Head|Lead|Manager|Supervisor|Psychiatrist|Physician|Surgeon|Psychologist|Nurse|Coordinator|Clinician)\b)[A-Z][A-Za-z'-]+,\s*(?!(?:Please|Thanks|Thank|Call|Can|Could|See|Note|Hi|Hello|Dear|Ward|Clinic|Unit|Team|Department|Dept|Hospital|Service|Level|Building|Room|Floor)\b)[A-Z][a-z'-]+\b/,
-  // A title and a name. Kept last: "Ms Teams" and the like skip it.
-  /\b(?:mr|mrs|miss|ms|mx|master|mstr)\.?\s+[a-z][a-z'-]{1,}/i,
-];
+/** Phone shapes a search looks up: mobile, landline, 13 and 1800 numbers, and a WA landline without its area code. */
+const SEARCH_PHONE =
+  /(?:\+|\b00)\s?61[\s-]?(?:\(0\)[\s-]?)?\d(?:[\s-]?\d){8}\b|(?:\(0\d\)\s?|\b0\d)(?:[\s-]?\d){8}\b|\b1[38]00(?:[\s-]?\d){6}\b|\b13(?:[\s-]?\d){4}\b|(?<![\d+])\b[69]\d{3}[\s-]?\d{4}\b/g;
+/** A pager or extension with its label ("pager 44101", "ext 61234"), which an On Call search looks up. */
+const SEARCH_EXTENSION = /\b(?:pager|page|ext|extn|extension)\.?\s*[:#-]?\s*\d{3,6}\b/gi;
+/** A full date in figures or words: "12/10/2026", "12 Oct 2026". Its year decides whether it is read past. */
+const SEARCH_DATE =
+  /\b\d{1,2}[/.-]\d{1,2}[/.-](\d{4}|\d{2})\b|\b\d{1,2}\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s(\d{4})\b/gi;
 
-/** "Ms Teams", "MS Word": software, not a person, so the title rule stands down for them. */
-const MS_SOFTWARE = /\bms\s+(?:teams|word|excel|forms|outlook|office|365|access|powerpoint|onenote|edge)\b/i;
-
-const MONTH_WORDS = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
-
-/** A two-digit year read the way a form would: "81" is 1981, "24" is 2024. */
-function fullYear(raw: string, thisYear: number): number {
-  const value = Number(raw);
-  if (raw.length !== 2) return value;
-  return value > thisYear % 100 ? 1900 + value : 2000 + value;
+/**
+ * The text with what a search looks up blanked out, for the shared check only: phone, pager and extension numbers, and dates
+ * within four years either way (a birth date is older, and `matchesPatientPatterns` still reads it).
+ */
+function withoutLookups(text: string, thisYear: number): string {
+  return text
+    .replace(SEARCH_EXTENSION, " ")
+    .replace(SEARCH_PHONE, " ")
+    .replace(SEARCH_DATE, (date, figures?: string, words?: string) => {
+      const raw = figures ?? words ?? "";
+      const year = raw.length === 2 ? 2000 + Number(raw) : Number(raw);
+      return Math.abs(year - thisYear) <= 4 ? " " : date;
+    });
 }
 
-/** A date whose year is long enough ago to be a date of birth rather than a roster date. */
-function hasBirthDate(text: string, thisYear: number): boolean {
-  const years: number[] = [];
-  for (const match of text.matchAll(/\b\d{1,2}[/.-]\d{1,2}[/.-](\d{2}|\d{4})\b/g)) {
-    years.push(fullYear(match[1]!, thisYear));
-  }
-  for (const match of text.matchAll(/\b((?:19|20)\d{2})[/.-]\d{1,2}[/.-]\d{1,2}\b/g)) years.push(Number(match[1]));
-  // "12 March 1980", "3 Apr 81", "3rd of April, 1981".
-  for (const match of text.matchAll(
-    new RegExp(
-      `\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:${MONTH_WORDS})[a-z]*,?\\s+'?((?:19|20)\\d{2}|\\d{2})\\b(?![:.]\\d)`,
-      "gi",
-    ),
-  )) {
-    years.push(fullYear(match[1]!, thisYear));
-  }
-  // "March 12, 1980", "Apr 3 1981".
-  for (const match of text.matchAll(
-    new RegExp(`\\b(?:${MONTH_WORDS})[a-z]*\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+((?:19|20)\\d{2})\\b`, "gi"),
-  )) {
-    years.push(Number(match[1]));
-  }
-  // Roster, renewal and CPD dates sit within a few years of now; birth dates do not.
-  return years.some((year) => year <= thisYear - 5);
-}
-
+/**
+ * The search's patient gate: its own patterns, then the shared patient-detail check (with bare capitals,
+ * phone numbers and roster dates read past). Everything that keeps or skips typed text calls this one.
+ */
 export function looksLikePatientDetails(query: string, thisYear = currentWorkYear()): boolean {
   const text = query.trim();
-  if (text.length < 3) return false;
-  if (MS_SOFTWARE.test(text)) return PATIENT_PATTERNS.slice(0, -1).some((pattern) => pattern.test(text));
-  return PATIENT_PATTERNS.some((pattern) => pattern.test(text)) || hasBirthDate(text, thisYear);
+  if (!text) return false;
+  if (matchesPatientPatterns(text, thisYear)) return true;
+  const rest = withoutLookups(text, thisYear);
+  return rest.trim().length > 0 && looksLikePatientDetail(rest, { allowCapitals: true, thisYear });
 }
 
 const CLINICAL_WORDS = [

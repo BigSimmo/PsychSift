@@ -10,14 +10,9 @@ import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
-import {
-  checkReminderText,
-  REMIND_ME_TEXT_LIMIT,
-  reminderWhenLabel,
-  remindMeClock,
-  remindMeWhenOptions,
-} from "@/lib/alerts/remind-me";
+import { REMIND_ME_TEXT_LIMIT, reminderWhenLabel, remindMeClock, remindMeWhenOptions } from "@/lib/alerts/remind-me";
 import { useSharedDevice } from "@/lib/alerts/shared-device";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * Screens 14 and 15: Remind me. A short note and a time, kept on this phone.
@@ -60,7 +55,9 @@ export function RemindMeSheet({
   // Null means "the default": the second choice, worked out from the time the sheet is open, not page load.
   const [when, setWhen] = useState<string | null>(null);
   const [failure, setFailure] = useState<"full" | "failed" | null>(null);
-  const problem = text.trim() ? checkReminderText(text) : null;
+  // The one shared check (look-alike letters, hidden characters, "Pt Smith", ages and the rest), not the
+  // reminder's own patterns alone.
+  const problem = text.trim() ? checkPatientDetail(text) : null;
   const chosen = options.find((option) => option.id === when) ?? options[1] ?? options[0]!;
   const canSave = Boolean(text.trim()) && !problem && !shared;
 

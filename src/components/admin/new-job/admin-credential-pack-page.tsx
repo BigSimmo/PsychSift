@@ -4,6 +4,7 @@ import { Copy, FileDown, LogIn, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { useAccountData } from "@/components/account-data-provider";
 import { AdminNote, AdminPage, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
@@ -94,6 +95,7 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
   const ready = loadState === "ready" && available;
   const nothingIncluded = included.length === 0;
 
+  const [signInOpen, setSignInOpen] = useState(false);
   useModeBandHeading({ eyebrow: "New job", title: "Credential pack" });
 
   return (
@@ -120,12 +122,31 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
         </div>
       ) : loadState === "signed-out" || !available ? (
         <WorkCard>
-          <WorkEmpty
-            icon={LogIn}
-            title="Sign in to make a credential pack"
-            body="It uses your own records and the numbers saved on this device."
-            testId="admin-credential-pack-signed-out"
-          />
+          {isAuthenticated ? (
+            // Signed in with example data showing: the pack is built from the reader's own records only.
+            <WorkEmpty
+              icon={LogIn}
+              title="Example records can't go in a pack"
+              body="Turn example data off to make a pack from your own records and the numbers saved on this device."
+              testId="admin-credential-pack-signed-out"
+            />
+          ) : (
+            <WorkEmpty
+              icon={LogIn}
+              title="Sign in to make a credential pack"
+              body="It uses your own records and the numbers saved on this device."
+              action={
+                <WorkButton
+                  icon={LogIn}
+                  onClick={() => setSignInOpen(true)}
+                  testId="admin-credential-pack-signed-out-sign-in"
+                >
+                  Sign in
+                </WorkButton>
+              }
+              testId="admin-credential-pack-signed-out"
+            />
+          )}
         </WorkCard>
       ) : ready && sections.length === 0 ? (
         <WorkCard padded>
@@ -269,6 +290,7 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
           </div>
         </>
       ) : null}
+      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
     </AdminPage>
   );
 }

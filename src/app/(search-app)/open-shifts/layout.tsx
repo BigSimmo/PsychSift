@@ -13,7 +13,8 @@ export default function OpenShiftsLayout({ children }: { children: ReactNode }) 
       statusSlot
       hiddenOn={["/open-shifts/shift/", "/open-shifts/post/", "/open-shifts/log", "/open-shifts/board"]}
     >
-      {children}
+      {/* The pages' main landmark: none of the Open shifts pages draws its own. */}
+      <main className="min-w-0">{children}</main>
     </ModeBand>
   );
 }

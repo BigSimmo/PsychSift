@@ -85,7 +85,13 @@ export function RosterPageHeader({
       {actions || ask ? (
         <div className="-my-1 -mr-1 flex shrink-0 items-center gap-1">
           {actions}
-          {ask ? <RosterAskButton /> : null}
+          {/* Under the band the Ask icon would sit alone on its own row (the mockups have none; the header's
+              AI Search and the Shifts page's Ask box stay). Page actions are the New button, which floats. */}
+          {ask ? (
+            <WithoutModeBand>
+              <RosterAskButton />
+            </WithoutModeBand>
+          ) : null}
         </div>
       ) : null}
     </header>
@@ -133,14 +139,20 @@ export function RosterStat({
   label,
   value,
   testId,
+  stacked = false,
 }: {
   readonly icon: LucideIcon;
   readonly label: string;
   readonly value: ReactNode;
   readonly testId?: string;
+  /** Icon above the words, so three tiles fit one row on a 320 px phone. */
+  readonly stacked?: boolean;
 }) {
   return (
-    <div className="work-card flex min-w-0 items-start gap-2.5 p-3" data-testid={testId}>
+    <div
+      className={cn("work-card flex min-w-0 gap-2.5 p-3", stacked ? "h-full flex-col items-start" : "items-start")}
+      data-testid={testId}
+    >
       <span
         aria-hidden="true"
         data-mode-identity="roster"

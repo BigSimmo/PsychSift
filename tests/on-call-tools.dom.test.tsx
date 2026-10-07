@@ -356,7 +356,7 @@ describe("On Call calendar", () => {
     render(<OnCallCalendarPage now={perthWall(2026, 8, 30, 9, 0)} />);
     const day = screen.getByTestId("on-call-calendar-view-day");
     expect(day).toHaveTextContent("Registrar teaching");
-    expect(day).toHaveTextContent("12:30 pm");
+    expect(day).toHaveTextContent("12:30");
     expect(day).toHaveTextContent("Every week");
   });
 

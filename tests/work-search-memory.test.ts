@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearedNoticeOwed,
+  countAllRecents,
+  forgetAllRecents,
   markKeystroke,
   measureKeystrokeToResults,
   measureOpenToFirstResult,
@@ -21,7 +23,19 @@ import { patientClinicalHandOff } from "@/lib/work-search/signals";
  * timing, and each write re-runs the check itself.
  */
 
-const PATIENT = ["UR 4471823", "Mr Smith", "dob 3/4/81", "Smith, John", "72 F with delirium", "bed 12"];
+const PATIENT = [
+  "UR 4471823",
+  "Mr Smith",
+  "dob 3/4/81",
+  "Smith, John",
+  "72 F with delirium",
+  "bed 12",
+  // Caught through the shared patient-detail check: a Cyrillic letter, a hidden character, words.
+  "\u041Cr Smith",
+  "D467\u200B8677",
+  "Patient John",
+  "bed twelve",
+];
 
 beforeEach(() => resetWorkSearchMemory());
 
@@ -36,6 +50,19 @@ describe("recent searches", () => {
     expect(rememberQuery(text, 1)).toBe(false);
     expect(rememberQuery(`leave form ${text}`, 1)).toBe(false);
     expect(recentsFor(1)).toEqual([]);
+  });
+});
+
+describe("Privacy's Clear recent searches", () => {
+  it("forgets Recent and the unfinished search for every account", () => {
+    rememberQuery("leave", 1);
+    rememberQuery("nights", 1);
+    noteClosing("night shift", 1, false, 1_000);
+    expect(countAllRecents()).toBe(2);
+    forgetAllRecents();
+    expect(countAllRecents()).toBe(0);
+    expect(recentsFor(1)).toEqual([]);
+    expect(resumableSearch(1, 2_000)).toBe("");
   });
 });
 

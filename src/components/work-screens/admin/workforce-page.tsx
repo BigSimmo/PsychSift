@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeftRight, Briefcase, CalendarClock, RotateCcw, Search, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeftRight, Briefcase, CalendarClock, Check, RotateCcw, Search, Send, Users } from "lucide-react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
 import { ExampleTag } from "@/components/example-data/example-tag";
@@ -19,6 +19,7 @@ import {
   WorkTag,
 } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
+import { focusRing } from "@/components/card-recipes";
 import { cn, fieldControlWithIcon, fieldIcon } from "@/components/ui-primitives";
 import {
   PaperworkField,
@@ -38,9 +39,11 @@ import {
   filterCount,
   filterDoctors,
   recordedCount,
+  remindableItems,
   WORKFORCE_SAMPLE_LABEL,
   WORKFORCE_STATUS_WORDS,
   workforceCohort,
+  workforceReminderMessage,
   type WorkforceDoctor,
   type WorkforceExtension,
   type WorkforceFilter,
@@ -140,6 +143,10 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
   const [doctor, setDoctor] = useState<WorkforceDoctor | null>(null);
   const [nearer, setNearer] = useState<WorkforceExtension | null>(null);
   const [showDecided, setShowDecided] = useState(false);
+  const [reminding, setReminding] = useState<WorkforceDoctor | null>(null);
+  const [bulk, setBulk] = useState(false);
+  // Who was reminded on this visit, and about what. Page memory only: nothing is sent or kept.
+  const [reminded, setReminded] = useState<Readonly<Record<string, readonly string[]>>>({});
   const say = usePaperworkSay();
 
   const doctors = data.doctors;
@@ -160,6 +167,17 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
       setExtensions((current) => current.map((entry) => (entry.id === extension.id ? extension : entry))),
     );
   }
+
+  function remind(sent: Readonly<Record<string, readonly string[]>>) {
+    const before = reminded;
+    setReminded((current) => ({ ...current, ...sent }));
+    const ids = Object.keys(sent);
+    const words = ids.length === 1 ? `Reminder to ${nameOf(ids[0]!)}` : `${ids.length} reminders`;
+    // Undo puts back exactly what was there before this send.
+    say(`${words}. Sample only, nothing was sent`, () => setReminded(before));
+  }
+
+  const remindAll = doctors.filter((entry) => remindableItems(entry).length > 0 && !reminded[entry.id]);
 
   return (
     <>
@@ -309,13 +327,25 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
                   key={entry.id}
                   icon={Users}
                   title={`${entry.name} · ${recordedCount(entry)} of ${entry.total}`}
-                  sub={`${entry.role} · ${entry.team} · ${entry.cleared ? "cleared for start" : "clearance not yet"}${doctorNeedsAction(entry) ? ` · ${doctorNeedsAction(entry)} to act on` : " · all recorded"}`}
+                  sub={`${entry.role} · ${entry.team} · ${entry.cleared ? "cleared for start" : "clearance not yet"}${doctorNeedsAction(entry) ? ` · ${doctorNeedsAction(entry)} to act on` : " · all recorded"}${reminded[entry.id] ? " · reminded" : ""}`}
                   onClick={() => setDoctor(entry)}
                   testId="admin-workforce-doctor"
                 />
               ))}
             </WorkCard>
           )}
+          {remindAll.length > 1 ? (
+            <div className="grid grid-cols-1">
+              <WorkButton
+                variant="secondary"
+                icon={Send}
+                onClick={() => setBulk(true)}
+                testId="admin-workforce-remind-all"
+              >
+                {`Remind ${remindAll.length} doctors`}
+              </WorkButton>
+            </div>
+          ) : null}
         </>
       ) : null}
 
@@ -423,24 +453,101 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
           description={`${doctor.role} · ${doctor.team} · ${WORKFORCE_SAMPLE_LABEL}`}
           testId="admin-workforce-doctor-sheet"
         >
-          <div className="grid gap-3">
-            <p className="text-sm">{`${recordedCount(doctor)} of ${doctor.total} recorded · ${doctor.cleared ? "cleared for start" : "clearance not yet"}`}</p>
-            {doctor.items.length === 0 ? (
-              <p className="text-sm">Everything recorded and shared.</p>
-            ) : (
+          <SheetFrame>
+            <div className="grid gap-3">
+              <p className="text-sm">{`${recordedCount(doctor)} of ${doctor.total} recorded · ${doctor.cleared ? "cleared for start" : "clearance not yet"}`}</p>
+              {doctor.items.length === 0 ? (
+                <p className="text-sm">Everything recorded and shared.</p>
+              ) : (
+                <WorkCard>
+                  {doctor.items.map((entry) => (
+                    <WorkIconRow
+                      key={entry.title}
+                      icon={CalendarClock}
+                      tone="neutral"
+                      title={entry.title}
+                      sub={`${WORKFORCE_STATUS_WORDS[entry.status]}${entry.date ? ` · ${formatRecordedDate(entry.date)}` : ""} · ${entry.source}${reminded[doctor.id]?.includes(entry.title) ? " · reminded" : ""}`}
+                    />
+                  ))}
+                </WorkCard>
+              )}
+              {remindableItems(doctor).length > 0 ? (
+                <div className="grid grid-cols-1">
+                  <WorkButton
+                    icon={Send}
+                    onClick={() => {
+                      setReminding(doctor);
+                      setDoctor(null);
+                    }}
+                    testId="admin-workforce-remind"
+                  >
+                    {`Remind about ${remindableItems(doctor).length}`}
+                  </WorkButton>
+                </div>
+              ) : null}
+              <p className="text-sm text-[color:var(--text-muted)]">
+                You see status only. In the live version the doctor can see this view in their log.
+              </p>
+            </div>
+          </SheetFrame>
+        </Sheet>
+      ) : null}
+
+      {reminding ? (
+        <RemindSheet
+          doctor={reminding}
+          onClose={() => setReminding(null)}
+          onSend={(titles) => {
+            remind({ [reminding.id]: titles });
+            setReminding(null);
+          }}
+        />
+      ) : null}
+
+      {bulk ? (
+        <Sheet
+          open
+          onClose={() => setBulk(false)}
+          title={`Remind ${remindAll.length} doctors`}
+          description="Each gets only their own missing items"
+          testId="admin-workforce-remind-all-sheet"
+          footer={
+            <SheetFrame>
+              <WorkButton
+                size="wide"
+                icon={Send}
+                onClick={() => {
+                  remind(
+                    Object.fromEntries(
+                      remindAll.map((entry) => [entry.id, remindableItems(entry).map((item) => item.title)]),
+                    ),
+                  );
+                  setBulk(false);
+                }}
+                testId="admin-workforce-remind-all-send"
+              >
+                {`Send ${remindAll.length} reminders`}
+              </WorkButton>
+            </SheetFrame>
+          }
+        >
+          <SheetFrame>
+            <div className="grid gap-3">
               <WorkCard>
-                {doctor.items.map((entry) => (
+                {remindAll.map((entry) => (
                   <WorkIconRow
-                    key={entry.title}
-                    icon={CalendarClock}
-                    tone="neutral"
-                    title={entry.title}
-                    sub={`${WORKFORCE_STATUS_WORDS[entry.status]}${entry.date ? ` · ${formatRecordedDate(entry.date)}` : ""} · ${entry.source}`}
+                    key={entry.id}
+                    icon={Users}
+                    title={entry.name}
+                    sub={remindableItems(entry)
+                      .map((item) => item.title)
+                      .join(", ")}
                   />
                 ))}
               </WorkCard>
-            )}
-          </div>
+              <p className="text-sm text-[color:var(--text-muted)]">Items with an extension asked are left out.</p>
+            </div>
+          </SheetFrame>
         </Sheet>
       ) : null}
 
@@ -455,6 +562,19 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Workforce has no band (areas.ts `band: false`), so the page root is not stamped with the work frame and a sheet,
+ * which renders outside the page, loses the work colours: primary buttons came out unfilled. Stamp the sheet itself,
+ * as the Favourites sheets do.
+ */
+function SheetFrame({ children }: { readonly children: ReactNode }) {
+  return (
+    <div data-work-frame="sheet" data-mode-identity="my-work" className="contents">
+      {children}
+    </div>
   );
 }
 
@@ -502,28 +622,124 @@ function NearerSheet({
       description={`${extension.item} · asked to ${formatRecordedDate(extension.askedFor)}`}
       testId="admin-workforce-nearer-sheet"
       footer={
-        <WorkButton
-          size="wide"
-          disabled={Boolean(error)}
-          onClick={() => {
-            if (!error) onSave(date);
-          }}
-          testId="admin-workforce-nearer-save"
-        >
-          Offer this date
-        </WorkButton>
+        <SheetFrame>
+          <WorkButton
+            size="wide"
+            disabled={Boolean(error)}
+            onClick={() => {
+              if (!error) onSave(date);
+            }}
+            testId="admin-workforce-nearer-save"
+          >
+            Offer this date
+          </WorkButton>
+        </SheetFrame>
       }
     >
-      <PaperworkField
-        label="New date"
-        type="date"
-        value={date}
-        onChange={setDate}
-        min={extension.dueOn}
-        max={extension.askedFor}
-        error={date ? error : null}
-        testId="admin-workforce-nearer-date"
-      />
+      <SheetFrame>
+        <PaperworkField
+          label="New date"
+          type="date"
+          value={date}
+          onChange={setDate}
+          min={extension.dueOn}
+          max={extension.askedFor}
+          error={date ? error : null}
+          testId="admin-workforce-nearer-date"
+        />
+      </SheetFrame>
+    </Sheet>
+  );
+}
+
+/** Remind one doctor (mockup `hRemind`): pick the items, read exactly what they will see, then send. */
+function RemindSheet({
+  doctor,
+  onClose,
+  onSend,
+}: {
+  readonly doctor: WorkforceDoctor;
+  readonly onClose: () => void;
+  readonly onSend: (titles: readonly string[]) => void;
+}) {
+  const remindable = remindableItems(doctor);
+  const [picked, setPicked] = useState<readonly string[]>(() => remindable.map((entry) => entry.title));
+  const asked = doctor.items.filter((entry) => entry.status === "extension");
+  const titles = remindable.map((entry) => entry.title).filter((title) => picked.includes(title));
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title={`Remind ${doctor.name}`}
+      description="Check what will be sent"
+      testId="admin-workforce-remind-sheet"
+      footer={
+        <SheetFrame>
+          <WorkButton
+            size="wide"
+            icon={Send}
+            disabled={titles.length === 0}
+            onClick={() => onSend(titles)}
+            testId="admin-workforce-remind-send"
+          >
+            Send reminder
+          </WorkButton>
+        </SheetFrame>
+      }
+    >
+      <SheetFrame>
+        <div className="grid gap-3">
+          <WorkSectionLabel as="h3">Items</WorkSectionLabel>
+          <WorkCard as="ul" aria-label="Items to remind about">
+            {remindable.map((entry) => {
+              const on = picked.includes(entry.title);
+              return (
+                <li key={entry.title}>
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={on}
+                    onClick={() =>
+                      setPicked((current) =>
+                        on ? current.filter((title) => title !== entry.title) : [...current, entry.title],
+                      )
+                    }
+                    className={cn(focusRing, "work-row w-full text-left")}
+                    data-testid="admin-workforce-remind-item"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "grid size-6 shrink-0 place-items-center rounded-full border",
+                        on
+                          ? "border-[color:var(--mode-identity)] bg-[color:var(--mode-identity)] text-[color:var(--surface-raised)]"
+                          : "border-[color:var(--border-strong)]",
+                      )}
+                    >
+                      {on ? <Check aria-hidden="true" className="size-icon-xs" strokeWidth={3} /> : null}
+                    </span>
+                    <span className="work-row__text">
+                      <span className="work-row__title">{entry.title}</span>
+                      <span className="work-row__sub">{WORKFORCE_STATUS_WORDS[entry.status]}</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+            {asked.map((entry) => (
+              <li key={entry.title}>
+                <WorkIconRow icon={CalendarClock} tone="neutral" title={entry.title} sub="Extension asked, left out" />
+              </li>
+            ))}
+          </WorkCard>
+          <WorkSectionLabel as="h3">{`What ${doctor.name} will see`}</WorkSectionLabel>
+          <WorkCard padded testId="admin-workforce-remind-preview">
+            <p className="text-sm">
+              {titles.length > 0 ? workforceReminderMessage(titles) : "Pick at least one item."}
+            </p>
+          </WorkCard>
+        </div>
+      </SheetFrame>
     </Sheet>
   );
 }
