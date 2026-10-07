@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, Moon, WifiOff } from "lucide-react";
+import { Briefcase, CalendarDays, CalendarRange, Moon, Printer, WifiOff } from "lucide-react";
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
@@ -77,20 +77,45 @@ export function NowFooter({
   const firstNight = onCallFirstNightProgress(ticked);
   return (
     <nav aria-labelledby="on-call-now-footer-heading" className="grid min-w-0 gap-1" data-testid="on-call-now-footer">
-      <h2 id="on-call-now-footer-heading" className={cn(eyebrowText, "flex min-h-12 items-center px-3")}>
+      <h2 id="on-call-now-footer-heading" className={cn(eyebrowText, "flex min-h-12 items-center px-1")}>
         More for this shift
       </h2>
-      <ul role="list" className="min-w-0">
-        <OnCallRow title="My shifts" subtitle="Your own roster" href="/roster" testId="on-call-now-footer-shifts" />
+      {/* One flat white card, every row with its icon circle (work-mode
+          redesign, owner request 6 Oct 2026). A row that leaves On Call takes
+          the colour of where it goes, as the work-mode kit does. */}
+      <ul role="list" className="work-card min-w-0">
+        <OnCallRow
+          title="My shifts"
+          subtitle="Your own roster"
+          leading={
+            <CalendarDays
+              aria-hidden="true"
+              strokeWidth={2}
+              className={onCallLeadingIcon}
+              data-mode-identity="roster"
+            />
+          }
+          href="/roster"
+          testId="on-call-now-footer-shifts"
+        />
         <OnCallRow
           title="Pocket card"
           subtitle="One printable page"
+          leading={<Printer aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           href="/on-call/card"
           testId="on-call-now-footer-card"
         />
         <OnCallRow
           title="Calendar"
           subtitle="Teaching and recorded dates"
+          leading={
+            <CalendarRange
+              aria-hidden="true"
+              strokeWidth={2}
+              className={onCallLeadingIcon}
+              data-mode-identity="roster"
+            />
+          }
           href="/on-call/calendar"
           testId="on-call-now-footer-calendar"
         />
@@ -98,7 +123,7 @@ export function NowFooter({
         <OnCallRow
           title="Systems down"
           subtitle="When computers or phones fail"
-          leading={<WifiOff aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+          leading={<WifiOff aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           href={ON_CALL_FIND_DOWNTIME_HREF}
           testId="on-call-now-systems-down"
         />
@@ -106,14 +131,14 @@ export function NowFooter({
         <OnCallRow
           title="First night"
           subtitle={`Guided path · ${firstNight.done} of ${firstNight.total} done`}
-          leading={<Moon aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+          leading={<Moon aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           href="/on-call/first-night"
           testId="on-call-home-first-night"
         />
         <OnCallRow
           title="On site"
           subtitle="Parking, food, access · in Admin"
-          leading={<Briefcase aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+          leading={<Briefcase aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           href={ON_CALL_ON_SITE_HREF}
           testId="on-call-now-on-site"
         />

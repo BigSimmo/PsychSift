@@ -116,7 +116,7 @@ export function NowNeedsYou({
       data-testid="on-call-now-needs-you"
     >
       <div className="flex min-w-0 items-start gap-3" data-testid="on-call-now-needs-you-row">
-        <Phone aria-hidden="true" strokeWidth={1.5} className={cn(onCallLeadingIcon, "mt-5")} />
+        <Phone aria-hidden="true" strokeWidth={2} className={cn(onCallLeadingIcon, "mt-5")} />
         <div className="grid min-w-0 flex-1 gap-0.5">
           <h2 id="on-call-now-needs-you-heading" className={eyebrowText}>
             {`Escalating · ${needs.ladderTitle}`}

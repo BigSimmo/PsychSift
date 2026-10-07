@@ -69,7 +69,7 @@ export function OnCallExternalLineRows({
               isTripleZero(line) ? (
                 <span className={onCallEmergencyBadge}>000</span>
               ) : (
-                <Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+                <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
               )
             }
             updatedAt={line.updatedAt}

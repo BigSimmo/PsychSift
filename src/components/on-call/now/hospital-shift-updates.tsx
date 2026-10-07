@@ -56,7 +56,7 @@ export function HospitalShiftUpdates({
           aria-label="What changed since your last shift"
           data-testid="on-call-published-changes"
         >
-          <Clock aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <Clock aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           <p className="min-w-0 flex-1 break-words text-sm text-[color:var(--text-muted)]">
             <span className="font-semibold text-[color:var(--text-heading)]">
               {changed.some((item) => item.section === "cover") ? "Cover changed" : "Changed"}

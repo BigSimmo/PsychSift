@@ -19,11 +19,7 @@ import { cn } from "@/components/ui-primitives";
 /** The hash that opens the sheet: My Day's "Log a call" lands here. */
 export const ON_CALL_LOG_A_CALL_HASH = "#log-a-call";
 
-const pairCell = cn(
-  modePressable,
-  focusRing,
-  "flex min-h-13 min-w-0 items-center gap-3 rounded-md px-3 text-left no-underline",
-);
+const pairCell = cn(modePressable, focusRing, "flex min-h-14 min-w-0 items-center gap-3 px-3 text-left no-underline");
 
 function countLine(count: number | null, one: string, many: (n: number) => string, none: string): string | null {
   if (count === null) return null;
@@ -62,7 +58,11 @@ export function NowShiftShortcuts() {
   const draftedLine = countLine(drafted, "1 drafted", (n) => `${n} drafted`, "Nothing drafted");
 
   return (
-    <div className="grid grid-cols-2 gap-2" data-testid="on-call-now-shortcuts">
+    // One flat card split in two (work-mode redesign, owner request 6 Oct 2026).
+    <div
+      className="work-card grid grid-cols-2 divide-x divide-[color:var(--border)]"
+      data-testid="on-call-now-shortcuts"
+    >
       <button
         ref={buttonRef}
         type="button"
@@ -71,7 +71,7 @@ export function NowShiftShortcuts() {
         data-testid="on-call-now-log-a-call"
         className={pairCell}
       >
-        <Plus aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+        <Plus aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
         <span className="grid min-w-0">
           <span className={cn(modeNameText, "break-words text-sm text-[color:var(--text-heading)]")}>Log a call</span>
           {callsLine ? <span className={cn(modeSecondaryText, "text-xs")}>{callsLine}</span> : null}
@@ -79,7 +79,7 @@ export function NowShiftShortcuts() {
       </button>
       {/* A literal href: the route-reachability guard reads literal hrefs only. */}
       <Link href="/on-call/handover" data-testid="on-call-home-handover" className={pairCell}>
-        <Copy aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+        <Copy aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
         <span className="grid min-w-0">
           <span className={cn(modeNameText, "break-words text-sm text-[color:var(--text-heading)]")}>Handover</span>
           {draftedLine ? <span className={cn(modeSecondaryText, "text-xs")}>{draftedLine}</span> : null}

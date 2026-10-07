@@ -43,10 +43,10 @@ export const onCallEmergencyBadge =
 
 /**
  * A leading row glyph: a flat teal tint circle (30px) drawn on the icon itself,
- * a 14px glyph with an 8px pad, so callers keep passing one Lucide icon.
+ * an 8px pad around a 14px glyph, so callers keep passing one Lucide icon.
  */
 export const onCallLeadingIcon =
-  "box-content size-icon-sm shrink-0 rounded-full bg-[color:var(--mode-identity-soft)] p-2 text-[color:var(--mode-identity)]";
+  "size-7.5 shrink-0 rounded-full bg-[color:var(--mode-identity-soft)] p-2 text-[color:var(--mode-identity)]";
 
 /** The thin progress track (shift lists, first night). */
 export const onCallTrack =

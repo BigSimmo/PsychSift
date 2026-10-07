@@ -146,7 +146,7 @@ export function OnCallFindPage() {
           <OnCallHandbookItemRow
             key={item.id}
             item={item}
-            leading={<Glyph aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+            leading={<Glyph aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
             secondary={secondaryLine(item)}
             hospitalName={hospitalName}
             hospitalPhone={hospitalPhone}
@@ -168,7 +168,7 @@ export function OnCallFindPage() {
               )}
             >
               <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
-                <BookOpen aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+                <BookOpen aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
               </span>
               <span className={cn(modeNameText, "min-w-0 flex-1 break-words text-base-minus")}>Your manuals</span>
               <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
@@ -235,7 +235,7 @@ export function OnCallFindPage() {
           )}
         >
           <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
-            <Landmark aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+            <Landmark aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           </span>
           <span className={cn(modeSecondaryText, "min-w-0 flex-1 break-words py-1.5")}>
             Parking, food and access are in Admin

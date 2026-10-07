@@ -90,7 +90,11 @@ export function NowShiftClock({ context, now }: { readonly context: OnCallShiftC
             className={cn(modeNumberText, "m-0 flex min-w-0 flex-wrap items-center gap-x-1.5 text-base-minus")}
             data-testid="on-call-now-shift-clock-line"
           >
-            <Clock aria-hidden="true" strokeWidth={2} className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
+            <Clock
+              aria-hidden="true"
+              strokeWidth={2}
+              className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]"
+            />
             <span className="font-semibold text-[color:var(--text-heading)]">{`Until ${clock.untilTime}`}</span>
             <span className="text-[color:var(--text-muted)]">{`· ${left} left`}</span>
           </p>

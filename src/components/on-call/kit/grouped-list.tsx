@@ -81,7 +81,7 @@ export function OnCallGroupedList({
       data-testid={testId}
     >
       {eyebrow ? (
-        <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-3">
+        <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-1">
           <h2 id={headingId} className={eyebrowText}>
             {eyebrow}
             {count !== undefined ? <span className="nums">{` · ${count}`}</span> : null}

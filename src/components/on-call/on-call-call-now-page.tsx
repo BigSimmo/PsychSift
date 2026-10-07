@@ -323,7 +323,7 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
               <OnCallRow
                 title="Calling a consultant"
                 subtitle="The handover headings · in People"
-                leading={<BookOpen aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+                leading={<BookOpen aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
                 href="/on-call/call"
                 testId="on-call-now-consultant-link"
               />
