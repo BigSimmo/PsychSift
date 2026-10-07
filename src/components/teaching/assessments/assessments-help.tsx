@@ -44,7 +44,7 @@ import {
   type EpaNumber,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
-import { epa1ThisTerm, pendingEpaRequest } from "@/lib/teaching/assessments/model";
+import { epa1ThisTerm, looksLikePatientDetails, pendingEpaRequest } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, SAMPLE_REGISTRAR, SAMPLE_SUPERVISOR } from "@/lib/teaching/assessments/sample";
 
 const SUP = SAMPLE_SUPERVISOR.short;
@@ -310,7 +310,8 @@ function DisagreeSheet({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
       <WorkButton
         icon={Copy}
         size="wide"
-        disabled={!s.disagreeDraft.trim()}
+        // Copied out to an email, so text the shared check flags stays here until it is taken out.
+        disabled={!s.disagreeDraft.trim() || looksLikePatientDetails(s.disagreeDraft)}
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(s.disagreeDraft);

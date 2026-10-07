@@ -90,7 +90,9 @@ describe("AdminRecordsPage", () => {
     expect(screen.queryByText(sharedGuide.title)).toBeNull();
   });
 
-  it("shows Copy and Print as visible secondary buttons at the top, with no ••• menu (Admin polish)", () => {
+  // The mockup pins Copy and Print in the dock at the foot of the screen. The dock is sticky in the page flow, so it
+  // only floats there when it is the page's last block (it sat at the top, inline, before final review).
+  it("shows Copy and Print as visible buttons in the dock at the foot of the page, with no ••• menu", () => {
     render(<AdminRecordsPage now={NOW} />);
     const copy = screen.getByRole("button", { name: "Copy" });
     const print = screen.getByRole("button", { name: "Print" });
@@ -98,7 +100,8 @@ describe("AdminRecordsPage", () => {
     expect(print.className).not.toContain("--command");
     expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
     const firstGroup = screen.getByRole("region", { name: "Renewals" });
-    expect(copy.compareDocumentPosition(firstGroup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(copy.compareDocumentPosition(firstGroup) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(copy.closest(".work-dock")).not.toBeNull();
   });
 
   it("offers the in-page rail for the groups it renders, and names each group's count in its heading", () => {

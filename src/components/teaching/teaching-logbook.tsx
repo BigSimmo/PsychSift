@@ -269,6 +269,8 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
   const now = useTeachingNow();
   // Example records never leave the app: the CSV link becomes a button that explains why.
   const { active: example } = useExampleData("teach");
+  // The shared example banner already says the records are made up, so the demo note shows only without it.
+  const exampleShown = example;
   const today = now ? perthDateKey(now) : null;
   const resource = useTeachingResource<{ attendance: LogbookRow[] }>(demoMode ? null : "/api/teaching?view=logbook");
   const feedback = useTeachingResource<{ sessions: SessionRef[] }>(
@@ -459,7 +461,9 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
     <InformationPageShell width="narrow" gap={false} testId="teaching-logbook">
       <T5Page>
         <h1 className="sr-only">Logbook</h1>
-        {demoMode ? <T5Note tone="notice">Made-up demo. Changes stay on this page and are not saved.</T5Note> : null}
+        {demoMode && !exampleShown ? (
+          <T5Note tone="notice">Made-up demo. Changes stay on this page and are not saved.</T5Note>
+        ) : null}
         {termRowEl}
         {body}
       </T5Page>

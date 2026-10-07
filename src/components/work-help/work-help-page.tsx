@@ -41,6 +41,7 @@ import {
   type WorkHelpTopic,
 } from "@/lib/work-help";
 import { workSetupCount, workSetupCountLabel } from "@/lib/work-setup/progress";
+import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 
 const subscribeNothing = () => () => undefined;
 function useHydrated(): boolean {
@@ -275,11 +276,13 @@ function HelpHome() {
   const searching = helpSearchTerms(query).length > 0;
   const announcement = useSearchAnnouncement(query);
 
-  // The search rides in the address, so Back from an answer comes back to these results.
+  // The search rides in the address, so Back from an answer comes back to these results. Words that look
+  // like a patient detail never reach the address or the browser's history.
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const current = searchParams?.get("q") ?? "";
-      const next = query.trim();
+      const typed = query.trim();
+      const next = typed && looksLikePatientDetail(typed, { allowCapitals: true }) ? "" : typed;
       if (current === next) return;
       router.replace(next ? `${WORK_HELP_HREF}?q=${encodeURIComponent(next)}` : WORK_HELP_HREF, { scroll: false });
     }, 400);

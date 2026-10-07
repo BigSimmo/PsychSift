@@ -25,6 +25,7 @@ import {
   type TermId,
   type Ticks,
 } from "@/lib/teaching/assessments/sample";
+import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /*
  * Teaching › Assessments: the end-of-term story as pure functions over one state.
@@ -373,19 +374,12 @@ export const needsImprovementPlan = (f: AssessmentForm) =>
   lowDomains(f).length > 0 || f.global === "cond" || f.global === "unsat";
 
 /**
- * A partial check for patient details: URNs, dates of birth, long numbers, a title
- * and a name, a date, or a bed number. It deliberately says it catches only some.
+ * A partial check for patient details (record numbers, dates of birth, long numbers, a title and a name,
+ * dates, beds and the rest): the one shared work-text check, so every Assessments field reads text the same
+ * way the rest of work mode does. It deliberately says it catches only some.
  */
 export function looksLikePatientDetails(text: string): boolean {
-  return (
-    /\b(URN|UMRN|MRN)\b/.test(text) ||
-    /\bD\.?O\.?B\.?\b/.test(text) ||
-    /date of birth/i.test(text) ||
-    /\b\d{7,}\b/.test(text) ||
-    /\b(Mr|Mrs|Ms|Miss|Mstr)\.? [A-Z][a-z]+/.test(text) ||
-    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(text) ||
-    /\bbed \d+/i.test(text)
-  );
+  return looksLikePatientDetail(text);
 }
 
 export const formMentionsPatient = (f: AssessmentForm) =>

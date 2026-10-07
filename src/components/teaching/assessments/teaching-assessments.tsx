@@ -293,7 +293,7 @@ function AssessmentsApp() {
           ]}
         />
       ) : null}
-      <AssessmentsExtrasProvider>
+      <AssessmentsExtrasProvider memoryKey={memoryKey}>
         <Screen {...props} view={view} />
       </AssessmentsExtrasProvider>
       {view === "home" ? <TryTheStory s={s} dispatch={dispatch} /> : null}

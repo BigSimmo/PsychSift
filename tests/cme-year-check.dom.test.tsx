@@ -172,6 +172,14 @@ describe("year check page", () => {
     expect(screen.queryByTestId("cme-check-categories")).toBeNull();
   });
 
+  it("never links the account's CSV while example records show", () => {
+    render(<CmeYearCheckPage set={SET} entries={ENTRIES} demoMode />);
+    const summary = screen.getByTestId("cme-check-summary");
+    expect(within(summary).queryByRole("link", { name: "Download CSV" })).toBeNull();
+    expect(within(summary).getByRole("button", { name: "Download CSV" })).toBeInTheDocument();
+    expect(summary.querySelector('a[href^="/api/cme/export"]')).toBeNull();
+  });
+
   it("lists covered domains first and names RANZCP as their source", () => {
     render(
       <CmeYearCheckPage

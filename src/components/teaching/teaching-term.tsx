@@ -57,6 +57,7 @@ import {
   type TermRecord,
   type TermTrackerState,
 } from "@/lib/teaching/term-tracker";
+import { useExampleData } from "@/lib/example-data/store";
 
 type Update = (change: (current: TermTrackerState) => TermTrackerState) => void;
 
@@ -676,6 +677,8 @@ function Meeting({ term, today, update }: { term: TermRecord; today: string; upd
 /* ---------- the page ---------- */
 
 function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
+  // The shared example banner already says the records are made up, so the demo note shows only without it.
+  const { active: exampleShown } = useExampleData("teach");
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const sample = useMemo(() => (demoMode && today ? sampleTermTracker(today) : null), [demoMode, today]);
@@ -741,7 +744,7 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
     <InformationPageShell width="narrow" gap={false} testId="teaching-term">
       <T5Page>
         <h1 className="sr-only">This term</h1>
-        {demoMode ? (
+        {demoMode && !exampleShown ? (
           <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {body}
