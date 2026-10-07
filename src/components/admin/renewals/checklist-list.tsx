@@ -1,62 +1,102 @@
 "use client";
 
-import { AdminRuleToConfirm } from "@/components/admin/admin-status-word";
+import {
+  Award,
+  BookOpen,
+  BriefcaseBusiness,
+  ChevronRight,
+  Plus,
+  Shield,
+  Syringe,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import { useState } from "react";
+
+import { AdminNote, AdminRow, AdminSection, adminStyles } from "@/components/admin/admin-kit";
+import { AdminRuleToConfirm, AdminStatusIcon, AdminStatusTag } from "@/components/admin/admin-status-tag";
 import { catalogueItemForEntry } from "@/components/admin/renewals/catalogue-lookup";
 import { ChecklistPressableRow, ChecklistRowActionButton } from "@/components/admin/renewals/checklist-row";
-import { ChecklistStatus } from "@/components/admin/renewals/checklist-status";
 import type { ChecklistKindFilter } from "@/components/admin/renewals/kind-chips";
 import { checklistKindLabel } from "@/components/admin/renewals/kind-chips";
-import { requirementDateLine, requirementRowUrgency } from "@/components/admin/renewals/urgency";
-import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
+import { requirementActionLine, requirementDateLine, shortDateFrom } from "@/components/admin/renewals/urgency";
+import { WorkCard, WorkIconCircle } from "@/components/mode-kit/work";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
-import { Button } from "@/components/ui/button";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import { complianceBucket, type ComplianceBucket } from "@/lib/admin/compliance-overview";
 import {
   ADMIN_REQUIREMENT_GROUPS,
   type AdminRequirementCatalogueItem,
+  type AdminRequirementGroup,
   type RequirementChecklistRow,
-  type RequirementRowState,
 } from "@/lib/admin/requirements";
+import { renewalStartOn } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 
-const STATE_ORDER: Record<RequirementRowState, number> = { "needs-action": 0, "no-end-date": 1, "not-recorded": 2 };
+const GROUP_ICONS: Record<AdminRequirementGroup, LucideIcon> = {
+  registration: Shield,
+  checks: Users,
+  health: Syringe,
+  training: BookOpen,
+  job: BriefcaseBusiness,
+};
 
-/** Within a group: dated rows soonest first, then rows with no end date, then rows not recorded yet. */
-function byStateThenDate(a: RequirementChecklistRow, b: RequirementChecklistRow): number {
-  const state = STATE_ORDER[a.state] - STATE_ORDER[b.state];
-  if (state !== 0) return state;
-  return (a.expiresOn ?? "").localeCompare(b.expiresOn ?? "");
+const NEEDS_ACTION: ReadonlySet<ComplianceBucket> = new Set(["date-passed", "start-renewing", "not-recorded"]);
+const BUCKET_ORDER: Record<ComplianceBucket, number> = {
+  "date-passed": 0,
+  "start-renewing": 1,
+  "not-recorded": 2,
+  recorded: 3,
+};
+
+/** Most urgent first: passed dates, then start renewing, each soonest first, then rows with no date. */
+function byUrgency(today: string) {
+  return (a: RequirementChecklistRow, b: RequirementChecklistRow) => {
+    const order = BUCKET_ORDER[complianceBucket(a, today)] - BUCKET_ORDER[complianceBucket(b, today)];
+    if (order !== 0) return order;
+    return (a.expiresOn ?? "~").localeCompare(b.expiresOn ?? "~");
+  };
+}
+
+/** "Medical registration to 30 Sep 2027", or the first names and "and 2 more". */
+function groupSummary(rows: readonly RequirementChecklistRow[], today: string): string {
+  if (rows.length === 1) {
+    const [row] = rows;
+    return row.expiresOn ? `${row.item.title} to ${shortDateFrom(row.expiresOn, today)}` : row.item.title;
+  }
+  const named = rows
+    .slice(0, 2)
+    .map((row) => row.item.title)
+    .join(", ");
+  return rows.length > 2 ? `${named} and ${rows.length - 2} more` : named;
+}
+
+/** A recorded row's end: when renewing starts, or plain Recorded. */
+function recordedEnd(row: RequirementChecklistRow, today: string) {
+  const startOn = row.entry && row.expiresOn ? renewalStartOn(row.entry) : undefined;
+  return startOn ? (
+    <AdminStatusTag status="plain" label={`Start ${shortDateFrom(startOn, today)}`} />
+  ) : (
+    <AdminStatusTag status="recorded" />
+  );
 }
 
 /**
- * Grouped by the catalogue's own groups (Registration, Checks, Health,
- * Training, Job), as the 5 Oct mock-up v2 lists them; a kind chip narrows the
- * rows to its one group before this runs.
- */
-function groupRows(rows: readonly RequirementChecklistRow[]) {
-  return ADMIN_REQUIREMENT_GROUPS.map((group) => ({
-    group,
-    heading: checklistKindLabel(group),
-    rows: rows.filter((row) => row.item.group === group).sort(byStateThenDate),
-  })).filter((group) => group.rows.length > 0);
-}
-
-/**
- * What the "Record dates" slot above the list offers: the button that opens
- * the step-through sheet, or — when editing is unavailable — the plain
- * reason, never a button that pretends to work.
+ * What the "Record dates" slot offers when editing is unavailable: the plain
+ * reason, never a button that pretends to work. The working button lives in
+ * the page's dock.
  */
 export type RecordDatesSlot =
   { readonly kind: "button"; readonly onOpen: () => void } | { readonly kind: "note"; readonly text: string };
 
 /**
- * The checklist's main list (5 Oct mock-up v2, screen 1): grouped by the
- * catalogue's groups, each with its count, narrowed by a kind chip or an
- * at-a-glance count row. Ends in the "Not for this job" section, always
- * last, with its own "Move back" action.
+ * The checklist (work-mode redesign, owner request 6 Oct 2026, Josh's locked
+ * mockup): "Needs action, soonest first" as status rows, then "Recorded"
+ * folded into one row per kind that opens in place, then "Not for this job"
+ * with Move back, the CPD signpost and the honesty note. A kind chip or an
+ * at-a-glance count narrows every part to its rows.
  */
 export function ChecklistList({
   rows,
@@ -79,40 +119,57 @@ export function ChecklistList({
   readonly onOpen: (item: AdminRequirementCatalogueItem, entry: OnCallEntry | null) => void;
   readonly onAddDate: (item: AdminRequirementCatalogueItem) => void;
   readonly onMoveBack: (entry: OnCallEntry) => void;
-  /** The "Record dates" slot shown above the list (under "All" only). */
   readonly recordDates?: RecordDatesSlot;
   /** An at-a-glance count row's status, narrowing the list to that status. */
   readonly bucket?: ComplianceBucket | null;
   readonly testId?: string;
 }) {
+  const [opened, setOpened] = useState<ReadonlySet<AdminRequirementGroup>>(() => new Set());
   const today = perthCalendarDate(now);
   const filtered = rows.filter(
     (row) => (filter === "all" || row.item.group === filter) && (!bucket || complianceBucket(row, today) === bucket),
   );
-  const groups = groupRows(filtered);
-  const notRecordedCount = filtered.filter((row) => row.state === "not-recorded").length;
+  const needsAction = filtered.filter((row) => NEEDS_ACTION.has(complianceBucket(row, today))).sort(byUrgency(today));
+  const recordedGroups = ADMIN_REQUIREMENT_GROUPS.map((group) => ({
+    group,
+    rows: filtered
+      .filter((row) => row.item.group === group && complianceBucket(row, today) === "recorded")
+      .sort(byUrgency(today)),
+  })).filter((group) => group.rows.length > 0);
+  const recordedCount = recordedGroups.reduce((sum, group) => sum + group.rows.length, 0);
   const filteredNotForThisJob = notForThisJob.filter((entry) => {
     if (bucket) return false;
     if (filter === "all") return true;
     return catalogueItemForEntry(entry)?.group === filter;
   });
+  const isOpen = (group: AdminRequirementGroup) => opened.has(group) || filter === group || bucket === "recorded";
 
-  const renderRow = (row: RequirementChecklistRow) => {
-    const urgency = requirementRowUrgency(row, now);
-    const showAddDate = row.state === "not-recorded";
-    // Groups mix recorded and unrecorded rows, so an unrecorded row says so on its own line.
-    const notRecordedLine = showAddDate ? "Not recorded yet" : undefined;
+  function toggle(group: AdminRequirementGroup) {
+    setOpened((current) => {
+      const next = new Set(current);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  }
+
+  const renderRow = (row: RequirementChecklistRow, recorded: boolean) => {
+    const status = complianceBucket(row, today);
+    const notRecorded = row.state === "not-recorded";
     return (
       <ChecklistPressableRow
         key={row.item.id}
+        lead={recorded ? undefined : <AdminStatusIcon status={status} />}
         title={row.item.title}
-        subtitle={requirementDateLine(row.expiresOn, now) ?? notRecordedLine}
+        subtitle={<span className="tabular-nums">{requirementActionLine(row, now)}</span>}
         meta={row.item.status === "needs-checking" ? <AdminRuleToConfirm /> : null}
-        statusTrailing={showAddDate ? undefined : <ChecklistStatus urgency={urgency} />}
+        statusTrailing={recorded ? recordedEnd(row, today) : undefined}
         actionTrailing={
-          showAddDate && canEdit ? (
+          notRecorded && canEdit ? (
             <ChecklistRowActionButton
-              label="Add date"
+              label="Add"
+              icon={Plus}
+              accessibleLabel={`Add date for ${row.item.title}`}
               onClick={() => onAddDate(row.item)}
               testId={`${testId}-add-date-${row.item.id}`}
             />
@@ -125,57 +182,94 @@ export function ChecklistList({
     );
   };
 
+  const nothing = needsAction.length === 0 && recordedGroups.length === 0 && filteredNotForThisJob.length === 0;
+
   return (
-    <div className="grid min-w-0 gap-5" data-testid={testId}>
-      {recordDates && notRecordedCount > 0 && filter === "all" && (!bucket || bucket === "not-recorded") ? (
-        <div
-          className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3"
-          data-testid={`${testId}-record-dates-slot`}
-        >
-          <span className={cn(textMuted, "text-sm")}>{`${notRecordedCount} not recorded yet`}</span>
-          {recordDates.kind === "button" ? (
-            <Button variant="secondary" size="sm" onClick={recordDates.onOpen} testId="admin-renewals-record-dates">
-              Record dates
-            </Button>
-          ) : (
-            <span className={cn(textMuted, "text-xs")} data-testid="admin-renewals-record-dates-note">
-              {recordDates.text}
-            </span>
-          )}
-        </div>
+    <div
+      className={adminStyles.column}
+      data-testid={testId}
+      id={filter !== "all" ? `admin-renewals-group-${filter}` : undefined}
+    >
+      {nothing ? (
+        <WorkCard padded testId={`${testId}-nothing`}>
+          <p className="work-row__sub m-0">Nothing in this view.</p>
+        </WorkCard>
       ) : null}
 
-      {groups.length === 0 ? (
-        <p className={cn(textMuted, "px-3 text-sm")} data-testid={`${testId}-nothing`}>
-          Nothing in this view.
-        </p>
+      {needsAction.length > 0 ? (
+        <AdminSection label="Needs action · soonest first" count={needsAction.length} testId={`${testId}-needs-action`}>
+          <WorkCard as="ul">{needsAction.map((row) => renderRow(row, false))}</WorkCard>
+        </AdminSection>
       ) : null}
 
-      {groups.map((group) => (
-        <ModeGroupedList
-          key={group.group}
-          id={`admin-renewals-group-${group.group}`}
-          eyebrow={`${group.heading} · ${group.rows.length}`}
-          testId={`${testId}-group-${group.group}`}
-        >
-          {group.rows.map(renderRow)}
-        </ModeGroupedList>
-      ))}
+      {recordedGroups.length > 0 ? (
+        <AdminSection label="Recorded" count={recordedCount} testId={`${testId}-recorded`}>
+          <WorkCard as="ul">
+            {recordedGroups.map(({ group, rows: groupRows }) => {
+              const open = isOpen(group);
+              const label = `${checklistKindLabel(group)} · ${groupRows.length}`;
+              const subId = `${testId}-group-${group}-sub`;
+              const Icon = GROUP_ICONS[group];
+              return (
+                <li
+                  key={group}
+                  id={filter === "all" ? `admin-renewals-group-${group}` : undefined}
+                  className="scroll-mt-24"
+                  data-testid={`${testId}-group-${group}`}
+                >
+                  {/* The accordion pattern: a heading that holds the disclosure button. */}
+                  <h3 className="m-0">
+                    <button
+                      type="button"
+                      className={cn("work-row", adminStyles.disclosure)}
+                      aria-expanded={open}
+                      aria-label={label}
+                      aria-describedby={subId}
+                      onClick={() => toggle(group)}
+                      data-testid={`${testId}-group-${group}-toggle`}
+                    >
+                      <WorkIconCircle icon={Icon} />
+                      <span className="work-row__text">
+                        <span className="work-row__title">{label}</span>
+                        <span className="work-row__sub" id={subId}>
+                          {groupSummary(groupRows, today)}
+                        </span>
+                      </span>
+                      <ChevronRight
+                        aria-hidden="true"
+                        className={cn("work-row__chev", adminStyles.disclosureChev)}
+                        strokeWidth={2}
+                      />
+                    </button>
+                  </h3>
+                  {open ? (
+                    <ul className={cn("work-rows", adminStyles.nested)}>
+                      {groupRows.map((row) => renderRow(row, true))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </WorkCard>
+        </AdminSection>
+      ) : null}
 
       {filteredNotForThisJob.length > 0 ? (
-        <section aria-labelledby={`${testId}-not-for-this-job-heading`} className="grid gap-2">
-          <h2 id={`${testId}-not-for-this-job-heading`} className={eyebrowText}>
-            Not for this job
-          </h2>
-          <ModeGroupedList testId={`${testId}-not-for-this-job`}>
+        <AdminSection
+          label="Not for this job"
+          count={filteredNotForThisJob.length}
+          labelId={`${testId}-not-for-this-job-heading`}
+        >
+          <WorkCard as="ul" testId={`${testId}-not-for-this-job`}>
             {filteredNotForThisJob.map((entry) => {
               const item = catalogueItemForEntry(entry);
               const expiresOn = complianceExpiresOn(entry);
               return (
                 <ChecklistPressableRow
                   key={entry.id}
+                  lead={<AdminStatusIcon status="not-for-job" />}
                   title={item?.title ?? entry.title}
-                  subtitle={requirementDateLine(expiresOn, now) ?? "Not recorded yet"}
+                  subtitle={requirementDateLine(expiresOn, now) ?? "Not for this job"}
                   meta={item?.status === "needs-checking" ? <AdminRuleToConfirm /> : null}
                   actionTrailing={
                     canEdit ? (
@@ -192,13 +286,29 @@ export function ChecklistList({
                 />
               );
             })}
-          </ModeGroupedList>
-        </section>
+          </WorkCard>
+        </AdminSection>
       ) : null}
 
-      <p className={cn(textMuted, "px-3 text-xs")}>
-        Dates you entered, not a check. Linked to your account only, not shared with your health service. Rule to
-        confirm means its source did not state it clearly: check it with your service.
+      <WorkCard as="ul">
+        <AdminRow
+          lead={<WorkIconCircle icon={Award} leadsTo="cme" />}
+          title="CPD hours are tracked in CPD"
+          sub="Your CPD year, logs and evidence"
+          href="/cme"
+          testId={`${testId}-cpd`}
+        />
+      </WorkCard>
+
+      {recordDates?.kind === "note" && rows.some((row) => row.state === "not-recorded") ? (
+        <p className="work-row__sub m-0 text-center" data-testid="admin-renewals-record-dates-note">
+          {recordDates.text}
+        </p>
+      ) : null}
+
+      <AdminNote>Dates you entered, not a check. Not shared with your health service.</AdminNote>
+      <p className="work-row__sub m-0 px-3 text-center">
+        Rule to confirm means its source did not state it clearly. Check it with your service.
       </p>
     </div>
   );

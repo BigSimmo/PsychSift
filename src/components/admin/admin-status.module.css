@@ -1,0 +1,116 @@
+/* Admin's one status mark (work-mode redesign, owner request 6 Oct 2026).
+
+   The only place in Admin that may colour a status. Red means the recorded
+   date has passed, amber means it is time to start renewing; every other
+   status stays grey. The shape and the word always travel with the colour, so
+   nothing depends on colour alone. `tests/admin-design-contract.test.ts` holds
+   every other Admin file to grey. Tokens only. */
+
+.tag,
+.icon,
+.shape {
+  --admin-status-ink: var(--text-muted);
+  --admin-status-fill: var(--surface-wash);
+}
+
+.tag[data-admin-status="date-passed"],
+.icon[data-admin-status="date-passed"],
+.shape[data-admin-status="date-passed"] {
+  --admin-status-ink: var(--danger-text);
+  --admin-status-fill: var(--danger-bg);
+}
+
+.tag[data-admin-status="start-renewing"],
+.icon[data-admin-status="start-renewing"],
+.shape[data-admin-status="start-renewing"] {
+  --admin-status-ink: var(--warning-text);
+  --admin-status-fill: var(--warning-bg, var(--surface-wash));
+}
+
+.tag[data-admin-status="recorded"],
+.icon[data-admin-status="recorded"],
+.shape[data-admin-status="recorded"] {
+  --admin-status-ink: var(--text-muted);
+}
+
+/* The small-caps word on a flat tint, with the shape first. */
+.tag {
+  display: inline-flex;
+  width: fit-content;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  background: var(--admin-status-fill);
+  color: var(--admin-status-ink);
+  font-size: 0.59375rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The round status circle that leads a row (the mockup's `sic`). */
+.icon {
+  display: grid;
+  width: 1.875rem;
+  height: 1.875rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--admin-status-fill);
+  color: var(--admin-status-ink);
+}
+
+/* The bare shape, for legends, counts and the timeline. */
+.shape {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  color: var(--admin-status-ink);
+}
+
+.mark {
+  width: 0.5625rem;
+  height: 0.5625rem;
+  flex: none;
+  fill: currentColor;
+}
+
+.mark[data-open] {
+  fill: none;
+}
+
+.icon .mark {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.shape .mark {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+/* "Rule to confirm": a dashed grey tag. Never a colour. */
+.rule {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.125rem 0.4375rem;
+  border: 1px dashed var(--border-strong, var(--border));
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.59375rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .tag,
+  .icon {
+    border: 1px solid CanvasText;
+  }
+}

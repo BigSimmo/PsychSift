@@ -1,5 +1,4 @@
-import { focusRing } from "@/components/card-recipes";
-import { cn } from "@/components/ui-primitives";
+import { WorkChip } from "@/components/mode-kit/work";
 import { ADMIN_REQUIREMENT_GROUPS, type AdminRequirementGroup } from "@/lib/admin/requirements";
 
 export type ChecklistKindFilter = "all" | AdminRequirementGroup;
@@ -19,14 +18,11 @@ export function checklistKindLabel(kind: ChecklistKindFilter): string {
 }
 
 /**
- * The kind filter row (final design, screens-v3): "All, Registration, Checks,
- * Health, Training, Job", no consequence-group labels. `aria-pressed`, not a
- * radio group — the list underneath is always fully present; a chip narrows
- * it rather than replacing it, the same choice On Call's now-withdrawn filter
- * row made (see `on-call-filter-chips.tsx`), but this row IS mounted, on the
- * owner's approval for Renewals specifically. The chips wrap onto a second
- * line on a phone rather than scrolling sideways, so none is ever hidden off
- * the edge.
+ * The kind filter row (Josh's locked mockup): "All, Registration, Checks,
+ * Health, Training, Job" as the work kit's chips. `aria-pressed`, not a radio
+ * group: a chip narrows the list rather than replacing it. The chips wrap onto
+ * a second line on a phone rather than scrolling sideways, so none is ever
+ * hidden off the edge (and a sideways drag here never fights the tab swipe).
  */
 export function ChecklistKindChips({
   active,
@@ -38,33 +34,17 @@ export function ChecklistKindChips({
   readonly testId?: string;
 }) {
   return (
-    <div
-      role="group"
-      aria-label="Filter the checklist by kind"
-      data-testid={testId}
-      className="flex min-w-0 flex-wrap gap-2"
-    >
-      {CHECKLIST_KIND_FILTERS.map((kind) => {
-        const selected = kind === active;
-        return (
-          <button
-            key={kind}
-            type="button"
-            aria-pressed={selected}
-            data-testid={testId ? `${testId}-${kind}` : undefined}
-            onClick={() => onChange(kind)}
-            className={cn(
-              focusRing,
-              "inline-flex min-h-tap shrink-0 items-center whitespace-nowrap rounded-full border px-3.5 text-sm font-medium transition-colors",
-              selected
-                ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-                : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text)] hover:border-[color:var(--border-strong)]",
-            )}
-          >
-            {checklistKindLabel(kind)}
-          </button>
-        );
-      })}
+    <div role="group" aria-label="Filter the checklist by kind" data-testid={testId} className="work-chips flex-wrap">
+      {CHECKLIST_KIND_FILTERS.map((kind) => (
+        <WorkChip
+          key={kind}
+          selected={kind === active}
+          onClick={() => onChange(kind)}
+          testId={testId ? `${testId}-${kind}` : undefined}
+        >
+          {checklistKindLabel(kind)}
+        </WorkChip>
+      ))}
     </div>
   );
 }

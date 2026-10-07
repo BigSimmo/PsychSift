@@ -57,3 +57,27 @@ export function requirementDateLine(expiresOn: string | undefined, now: Date): s
   const relative = formatRelativeDate(expiresOn, today);
   return relative ? `${absolute} · ${relative}` : absolute;
 }
+
+/** "14 Oct", with the year only when it is not this year ("12 Mar 2027"). */
+export function shortDateFrom(date: string, today: string): string {
+  const short = shortStartDate(date);
+  return date.slice(0, 4) === today.slice(0, 4) ? short : `${short} ${date.slice(0, 4)}`;
+}
+
+/**
+ * The mockup's mono line under a checklist row's name (work-mode redesign,
+ * 6 Oct 2026): "Passed 3 Sep · 3 weeks ago", "Renew by 14 Oct · in 8 days",
+ * "Renew by 30 Sep 2027", or "Not recorded yet". Dates the reader entered,
+ * said as dates, never as a verdict.
+ */
+export function requirementActionLine(row: RequirementChecklistRow, now: Date): string {
+  if (row.state === "not-recorded") return "Not recorded yet";
+  if (!row.expiresOn) return "Recorded, no end date";
+  const today = perthCalendarDate(now);
+  const relative = formatRelativeDate(row.expiresOn, today);
+  const when = shortDateFrom(row.expiresOn, today);
+  if (row.expiresOn < today) return `Passed ${when} · ${relative}`;
+  const startOn = row.entry ? renewalStartOn(row.entry) : undefined;
+  if (startOn && startOn <= today) return `Renew by ${when} · ${relative}`;
+  return `Renew by ${when}`;
+}

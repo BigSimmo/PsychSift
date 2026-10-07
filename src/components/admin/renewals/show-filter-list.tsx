@@ -1,21 +1,24 @@
+import { CalendarCheck, Plus } from "lucide-react";
+
+import { AdminNote, adminStyles } from "@/components/admin/admin-kit";
+import { AdminRuleToConfirm, AdminStatusIcon, adminStatusForWord } from "@/components/admin/admin-status-tag";
 import { ChecklistPressableRow, ChecklistRowActionButton } from "@/components/admin/renewals/checklist-row";
-import { ChecklistStatus } from "@/components/admin/renewals/checklist-status";
 import { personalStatus } from "@/components/admin/renewals/personal-list";
-import { requirementDateLine, requirementRowUrgency } from "@/components/admin/renewals/urgency";
-import { modeModuleSurface } from "@/components/mode-kit/recipes";
+import { requirementActionLine, requirementDateLine } from "@/components/admin/renewals/urgency";
+import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
-import { Button } from "@/components/ui/button";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { complianceBucket } from "@/lib/admin/compliance-overview";
 import { RENEWALS_SHOW_LABELS, type RenewalsFilterItem, type RenewalsShowFilter } from "@/lib/admin/renewals-filters";
 import type { AdminRequirementCatalogueItem } from "@/lib/admin/requirements";
+import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 
 /**
  * The Checklist narrowed by a link from Today (`?show=date-passed|due-90|
- * not-recorded`): a plain "Showing: <label> · N" line with Clear, then the
- * matching rows — catalogue items and personal renewals alike, read through
- * the same `renewalsShowMatches` Today counted with, so the count Today
- * showed and the rows here always agree.
+ * not-recorded`): a "Showing: <label> · N" card with Clear, then the matching
+ * rows, catalogue items and personal renewals alike, read through the same
+ * `renewalsShowMatches` Today counted with, so the count Today showed and the
+ * rows here always agree.
  */
 export function RenewalsShowFilterList({
   filter,
@@ -42,45 +45,47 @@ export function RenewalsShowFilterList({
   readonly testId?: string;
 }) {
   const label = RENEWALS_SHOW_LABELS[filter];
+  const today = perthCalendarDate(now);
   return (
-    <div className="grid min-w-0 gap-3" data-testid={testId}>
-      <div
-        className={cn(
-          modeModuleSurface,
-          "flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-1",
-        )}
-        data-testid={`${testId}-notice`}
-      >
-        <p className="nums text-sm font-medium text-[color:var(--text-heading)]" role="status">
-          {`Showing: ${label} · ${matches.length}`}
-        </p>
-        <span className="flex flex-wrap items-center gap-2">
-          {onRecordDates && matches.length > 0 ? (
-            <Button variant="secondary" size="sm" onClick={onRecordDates} testId={`${testId}-record-dates`}>
-              Record dates
-            </Button>
-          ) : null}
-          <Button variant="ghost" size="sm" onClick={onClear} testId={`${testId}-clear`}>
-            Clear
-          </Button>
-        </span>
-      </div>
+    <div className={adminStyles.column} data-testid={testId}>
+      <WorkCard padded testId={`${testId}-notice`}>
+        <div className={adminStyles.glanceHead}>
+          <p className="work-row__title m-0 tabular-nums" role="status">
+            {`Showing: ${label} · ${matches.length}`}
+          </p>
+          <span className="flex flex-wrap items-center justify-end gap-x-1">
+            {onRecordDates && matches.length > 0 ? (
+              <WorkButton variant="tinted" onClick={onRecordDates} testId={`${testId}-record-dates`}>
+                Record dates
+              </WorkButton>
+            ) : null}
+            <WorkButton variant="quiet" onClick={onClear} testId={`${testId}-clear`}>
+              Clear
+            </WorkButton>
+          </span>
+        </div>
+      </WorkCard>
 
       {matches.length === 0 ? (
-        <p className={cn(textMuted, "px-1 text-sm")} data-testid={`${testId}-empty`}>
-          Nothing to show here right now.
-        </p>
+        <WorkEmpty
+          icon={CalendarCheck}
+          title="Nothing to show here right now"
+          body="Clear the filter to see every renewal."
+          testId={`${testId}-empty`}
+        />
       ) : (
-        <ul role="list" className={modeModuleSurface} data-testid={`${testId}-list`}>
+        <WorkCard as="ul" testId={`${testId}-list`}>
           {matches.map((match) => {
             if (match.kind === "personal") {
               const { entry } = match;
+              const word = personalStatus(entry, now).word;
               return (
                 <ChecklistPressableRow
                   key={entry.id}
+                  lead={<AdminStatusIcon status={adminStatusForWord(word)} />}
                   title={entry.title}
                   subtitle={requirementDateLine(match.expiresOn, now) ?? undefined}
-                  statusTrailing={<ChecklistStatus urgency={personalStatus(entry, now)} />}
+                  meta={<span className="work-row__sub">Personal</span>}
                   onOpen={() => onOpenPersonal(entry)}
                   anchorId={onCallEntryAnchorId(entry.id)}
                   testId={`${testId}-personal-row-${entry.slug}`}
@@ -92,18 +97,16 @@ export function RenewalsShowFilterList({
             return (
               <ChecklistPressableRow
                 key={row.item.id}
+                lead={<AdminStatusIcon status={complianceBucket(row, today)} />}
                 title={row.item.title}
-                subtitle={requirementDateLine(row.expiresOn, now) ?? undefined}
-                meta={
-                  row.item.status === "needs-checking" ? (
-                    <span className={cn(textMuted, "text-xs")}>Check with your service</span>
-                  ) : null
-                }
-                statusTrailing={notRecorded ? undefined : <ChecklistStatus urgency={requirementRowUrgency(row, now)} />}
+                subtitle={<span className="tabular-nums">{requirementActionLine(row, now)}</span>}
+                meta={row.item.status === "needs-checking" ? <AdminRuleToConfirm /> : null}
                 actionTrailing={
                   notRecorded && canEdit ? (
                     <ChecklistRowActionButton
-                      label="Add date"
+                      label="Add"
+                      icon={Plus}
+                      accessibleLabel={`Add date for ${row.item.title}`}
                       onClick={() => onAddDate(row.item)}
                       testId={`${testId}-add-date-${row.item.id}`}
                     />
@@ -115,8 +118,9 @@ export function RenewalsShowFilterList({
               />
             );
           })}
-        </ul>
+        </WorkCard>
       )}
+      <AdminNote>Dates you entered, not a check</AdminNote>
     </div>
   );
 }
