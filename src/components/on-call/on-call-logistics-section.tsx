@@ -13,7 +13,7 @@ import { allocateOnCallGroupSlug, onCallGroupAnchorId } from "@/components/on-ca
 import { onCallAdminCategoryLabel } from "@/components/on-call/on-call-page-sections";
 import { OnCallPrivateFlag } from "@/components/on-call/on-call-private-flag";
 import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { ExternalTextLink } from "@/components/ui/link";
 import { cn, eyebrowText, metadataPillDensity, textMuted, toolbarButton } from "@/components/ui-primitives";
 import { partitionLogisticsEntries } from "@/lib/on-call/compliance";
@@ -178,7 +178,7 @@ export function OnCallLogisticsSection({
 
   if (adminEntries.length === 0) {
     return (
-      <EmptyState
+      <OnCallEmptyState
         icon={BriefcaseBusiness}
         title="No admin entries yet"
         body="Leave, rosters, pay, forms, access and facilities will appear here, filed into folders. Compliance requirements live on their own page."

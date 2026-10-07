@@ -34,7 +34,7 @@ import { ON_CALL_SERVER_ANCHOR } from "@/components/on-call/on-call-dates";
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { onCallCallNowScenarios, onCallCallNowSteps } from "@/lib/on-call/call-now";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -397,7 +397,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             {signedOut ? (
               <OnCallSignedOut icon={ON_CALL_HOME_ICON} testId="on-call-home-signed-out" />
             ) : (
-              <EmptyState
+              <OnCallEmptyState
                 icon={ON_CALL_HOME_ICON}
                 title="Your On Call hub is empty"
                 actions={

@@ -17,7 +17,7 @@ import {
   onCallOrientationCategoryFacet,
   sortOnCallEntries,
 } from "@/components/on-call/on-call-page-sections";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
   onCallDetailsSchemaFor,
@@ -172,7 +172,7 @@ export function OnCallOrientationSection({
 
   if (allOrientation.length === 0) {
     return (
-      <EmptyState
+      <OnCallEmptyState
         icon={BookOpen}
         title="No orientation manuals yet"
         body="Manuals you add will appear here as a shelf, filed into folders you name, each optionally carrying your own pinned summary above it."

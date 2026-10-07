@@ -7,7 +7,7 @@ import { GraduationCap, Pencil } from "lucide-react";
 import { cardSurface } from "@/components/card-recipes";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
 import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { ExternalTextLink } from "@/components/ui/link";
 import { cn, eyebrowText, metadataPillDensity, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
@@ -220,7 +220,7 @@ export function OnCallEducationSection({
 
   if (educationEntries.length === 0) {
     return (
-      <EmptyState
+      <OnCallEmptyState
         icon={GraduationCap}
         title="No teaching sessions yet"
         body="Sessions you add will appear here, ordered by their next occurrence."

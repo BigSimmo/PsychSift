@@ -17,7 +17,7 @@ import {
   onCallEntryAnchorId,
 } from "@/components/on-call/on-call-page-anchors";
 import { modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { eyebrowText, metadataPillDensity, toolbarButton } from "@/components/ui-primitives";
 import { cn } from "@/components/ui-primitives";
 import {
@@ -312,7 +312,7 @@ export function OnCallContactsSection({
 
   if (allContacts.length === 0) {
     return (
-      <EmptyState
+      <OnCallEmptyState
         icon={Phone}
         title="No contacts yet"
         body="Contacts you add will appear here, grouped by area, with the whole row set up to ring the number."

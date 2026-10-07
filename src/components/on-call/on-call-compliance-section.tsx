@@ -12,7 +12,7 @@ import { allocateOnCallGroupSlug } from "@/components/on-call/on-call-page-ancho
 import { ON_CALL_COMPLIANCE_BANDS } from "@/components/on-call/on-call-page-sections";
 import { OnCallPrivateFlag } from "@/components/on-call/on-call-private-flag";
 import { ON_CALL_VIEW_ICONS } from "@/components/on-call/on-call-section-identity";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { ExternalTextLink } from "@/components/ui/link";
 import { cn, metadataPillDensity, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
@@ -539,7 +539,7 @@ export function OnCallComplianceSection({
             note explains why the mark carries no tick: a shield with a tick,
             twelve lines below a sentence reading "nothing here is checked",
             is a glyph arguing with its own caption. */}
-        <EmptyState
+        <OnCallEmptyState
           icon={ON_CALL_VIEW_ICONS.compliance}
           title={isOffline ? "Personal compliance records need a connection" : "No requirements recorded yet"}
           // `onEditEntry` is passed only to a signed-in reader, and compliance
