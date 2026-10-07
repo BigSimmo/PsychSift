@@ -232,7 +232,7 @@ describe("audit navigation and auth regressions", () => {
     // Near-full height on the phone, a centred dialog from `sm` up. The colour
     // follows the level (direction B, 7 Oct 2026), so only the frame is pinned.
     expect(masterSearchHeaderSource).toContain(
-      '"max-h-[calc(100dvh-0.75rem)] rounded-t-[2rem] sm:max-w-md sm:rounded-2xl"',
+      '"max-h-[calc(100dvh-0.75rem)] rounded-t-[var(--work-radius-sheet,2rem)] sm:max-w-md sm:rounded-2xl"',
     );
     // Row sizes live in the shared mode-picker row; the header passes its phone layout through.
     expect(masterSearchHeaderSource).toContain("modePickerRowClass(active, usesPhoneSearchLayout)");
