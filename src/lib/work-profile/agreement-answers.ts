@@ -178,6 +178,12 @@ export interface UncheckedTopic {
 
 const UNCHECKED_TOPICS: ReadonlyArray<UncheckedTopic & { readonly pattern: RegExp }> = [
   {
+    id: "pay",
+    label: "Pay and allowances",
+    pattern:
+      /\bpay\b|\bpaid\b|\bsalary\b|\bwages?\b|\bpenalt(?:y|ies)\b|\ballowances?\b|\bloading\b|\bmoney\b|\bsuper(?:annuation)?\b|\brates?\b|\bhourly\b|\bearn(?:s|ing|t)?\b|\bcompensat\w*|\bextra (?:money|pay|for)\b|\breimburs\w*|\btoil\b|\blieu\b/,
+  },
+  {
     id: "overtime",
     label: "Overtime",
     pattern:
@@ -187,20 +193,18 @@ const UNCHECKED_TOPICS: ReadonlyArray<UncheckedTopic & { readonly pattern: RegEx
     id: "leave",
     label: "Leave",
     pattern:
-      /\bleave\b|\bholidays?\b(?! pay)|\bsick\b|\bcarer'?s\b|\bparental\b|\bmaternity\b|\bpaternity\b|\bbereavement\b|\bcompassionate\b|\blong service\b|\bexams?\b|\bstudy (?:leave|days?)\b|\bconference\b|\bdomestic violence\b|\btime off for\b/,
-  },
-  {
-    id: "pay",
-    label: "Pay and allowances",
-    pattern:
-      /\bpay\b|\bpaid\b|\bsalary\b|\bwages?\b|\bpenalt(?:y|ies)\b|\ballowances?\b|\bloading\b|\bmoney\b|\bsuper(?:annuation)?\b|\brates? of pay\b|\bpay rates?\b/,
+      /\bleave\b|\bholidays?\b(?! pay)|\bhols\b|\bvacation\b|\bsick\b|\bcarer'?s\b|\bparental\b|\bmaternity\b|\bpaternity\b|\bbereavement\b|\bcompassionate\b|\blong service\b|\bexams?\b|\bosces?\b|\bstudy (?:leave|days?)\b|\bconference\b|\bdomestic violence\b|\btime off for\b|\bwedding\b|\bfuneral\b|\bjury\b|\bgraduation\b|\brdos?\b|\bados?\b|\bivf\b|\bdays? off for\b|\b(?:days?|weekends?|weeks?) off (?:a|per|each|every) (?:year|month)\b|\bweeks? off\b|\bmental health days?\b|\bper (?:year|annum|month)\b|\b(?:a|each|every) year\b|\bannual(?:ly)?\b/,
   },
   {
     id: "public-holidays",
     label: "Public holidays",
     pattern: /\bpublic holidays?\b|\bchristmas\b|\beaster\b|\banzac\b/,
   },
-  { id: "on-call", label: "On-call and recall", pattern: /\bon[- ]?call\b|\brecall(?:ed)?\b|\bcalled (?:back|in)\b/ },
+  {
+    id: "on-call",
+    label: "On-call and recall",
+    pattern: /\bon[- ]?call\b|\brecall(?:ed)?\b|\bcalled (?:back|in)\b|\bpagers?\b|\bsecond on\b/,
+  },
   {
     id: "roster-notice",
     label: "Roster notice and changes",
@@ -366,6 +370,16 @@ function scoreTopics(text: string): TopicScore[] {
   return ranked.slice(0, 3);
 }
 
+/**
+ * Topics whose question is never answered by an hours or rest quote, even when a rest pattern also
+ * matches: leave, pay and recall. "Can I have 5 days off for my wedding?" is a leave question, and the
+ * 48 hours after 12 days quote does not answer it. A quote may still be shown below the
+ * "not checked" answer, labelled as possibly related, never as the answer.
+ */
+const ANSWER_FIRST_AS_NOT_CHECKED = new Set(["leave", "pay", "on-call"]);
+/** Entitlement words: what the agreement gives, which the hours and rest quotes do not set out. */
+const ENTITLEMENT_WORDS = /\bentitle(?:d|ment|ments)\b|\bowed\b|\bper (?:year|annum)\b/;
+
 function uncheckedTopicsIn(text: string): UncheckedTopic[] {
   return UNCHECKED_TOPICS.filter((topic) => topic.pattern.test(text)).map(({ id, label }) => ({ id, label }));
 }
@@ -520,6 +534,12 @@ export type AgreementAnswer =
       readonly question: string;
       readonly unchecked: readonly UncheckedTopic[];
       readonly source: AgreementSource;
+      /**
+       * Checked topics the question also touched, shown below the "not checked" answer as possibly
+       * related, never as the answer. Empty when nothing checked was touched.
+       */
+      readonly related: readonly AgreementTopic[];
+      readonly signOff: AgreementSignOffState;
     }
   | { readonly kind: "patient"; readonly question: string; readonly safer: string | null; readonly what: string }
   | { readonly kind: "empty" };
@@ -540,18 +560,30 @@ export function answerAgreementQuestion(question: string, options: AgreementAnsw
   const source = agreementSource(options.today);
   const scored = scoreTopics(text);
   const unchecked = uncheckedTopicsIn(text);
-  if (!scored.length) return { kind: "not-checked", question: trimmed, unchecked, source };
+  const signOff = agreementSignOffState(options.gate);
+  const notChecked = (related: readonly AgreementTopic[]): AgreementAnswer => ({
+    kind: "not-checked",
+    question: trimmed,
+    unchecked,
+    source,
+    related,
+    signOff,
+  });
+  if (!scored.length) return notChecked([]);
   // "Am I allowed 7 days of annual leave?": the only match is a day count, and the question is about
   // a topic PsychSift has not checked. A quote about hours would not answer it, so none is shown.
-  if (unchecked.length && !scored.some((entry) => entry.solid)) {
-    return { kind: "not-checked", question: trimmed, unchecked, source };
+  if (unchecked.length && !scored.some((entry) => entry.solid)) return notChecked([]);
+  // Leave, pay, recall and entitlement questions are answered "not checked" first, whatever else matched.
+  // A solid rest match is kept, below, as possibly related.
+  if (unchecked.some((topic) => ANSWER_FIRST_AS_NOT_CHECKED.has(topic.id)) || ENTITLEMENT_WORDS.test(text)) {
+    return notChecked(scored.filter((entry) => entry.solid).map((entry) => agreementTopic(entry.id)));
   }
   return {
     kind: "quoted",
     question: trimmed,
     topics: scored.map((entry) => agreementTopic(entry.id)),
     unchecked,
-    signOff: agreementSignOffState(options.gate),
+    signOff,
     source,
   };
 }
@@ -722,8 +754,23 @@ export function agreementAnswerCopyText(answer: AgreementAnswer): string {
     return [...lines, ...notes].join("\n");
   }
   if (answer.kind === "not-checked") {
+    const related = answer.related.length
+      ? [
+          "",
+          "Possibly related, not an answer to this question:",
+          ...answer.related.flatMap((topic) => [
+            topic.label,
+            ...topic.lines.map((item) => `"${item.text}" (clause ${item.clause})`),
+          ]),
+          answer.signOff.signedOff
+            ? `${answer.signOff.signedLine}.`
+            : "Not signed off yet: no named clinician has compared these quotes with the agreement.",
+          "",
+        ]
+      : [];
     return [
       uncheckedSentence(answer.unchecked),
+      ...related,
       `Open the agreement: ${answer.source.title}, ${answer.source.citation}: ${answer.source.url}`,
       `Not sure, or disagree? ${AGREEMENT_UNION_NAME}, your union.`,
     ].join("\n");

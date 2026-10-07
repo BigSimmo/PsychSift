@@ -135,12 +135,55 @@ describe("matching questions to the checked clauses", () => {
     expect(topicIds(answerAgreementQuestion("rostered 7 days with no break", opts))).toContain("hours-in-a-week");
   });
 
-  it("answers the checked part and names the unchecked part of a mixed question", () => {
+  it("answers a pay question as not checked first, with the hours quote below as possibly related", () => {
     const answer = answerAgreementQuestion("Am I paid for working more than 75 hours a week", opts);
-    expect(answer.kind).toBe("quoted");
-    if (answer.kind !== "quoted") return;
-    expect(answer.topics.map((topic) => topic.id)).toEqual(["hours-in-a-week"]);
+    expect(answer.kind).toBe("not-checked");
+    if (answer.kind !== "not-checked") return;
     expect(answer.unchecked.map((topic) => topic.id)).toEqual(["pay"]);
+    expect(answer.related.map((topic) => topic.id)).toEqual(["hours-in-a-week"]);
+    const copy = agreementAnswerCopyText(answer);
+    expect(copy.indexOf("PsychSift hasn’t checked")).toBeLessThan(copy.indexOf("Possibly related"));
+  });
+
+  it("still quotes a checked topic beside an unchecked one that is not leave, pay or recall", () => {
+    const answer = answerAgreementQuestion("Is there a limit on overtime hours in a week?", opts);
+    expect(answer.kind).toBe("quoted");
+    if (answer.kind === "quoted") expect(answer.unchecked.map((topic) => topic.id)).toEqual(["overtime"]);
+  });
+
+  // Every question the verifier found quoting a rest clause (verify-cpd-agreement.md, M-A).
+  it.each([
+    "Can I have 5 days off for my wedding?",
+    "Can I get 2 days off for a funeral?",
+    "Do I get days off for jury duty?",
+    "Can I get a weekend off for my graduation?",
+    "Is there a day off after my OSCE?",
+    "Two days off for the OSCE?",
+    "Do I get days off for my mental health?",
+    "How many days off do I get per year?",
+    "How many days off a month?",
+    "Do I get time in lieu after 13 days straight?",
+    "Do I get TOIL after a 14 hour shift?",
+    "What's the hourly rate for a 12 hour shift?",
+    "Am I compensated for working 14 hours straight?",
+    "Do I get paid for working 7 days in a row?",
+    "What is the pay rate for 14 hour shifts?",
+    "Do I get paid more after 75 hours a fortnight?",
+    "Is overtime paid after a long shift?",
+    "Is there extra pay for a 13 hour shift?",
+    "Do I get extra money for 7 nights in a row?",
+    "Can I take sick leave after nights?",
+    "Do I get days off after nights if I am sick?",
+    "Can I have time off between my exam and nights?",
+    "Do I get 48 hours off before my exam?",
+    "Can they recall me 2 days in a row?",
+    "How many on-call nights in a row?",
+    "Am I entitled to 48 hours off after 12 days?",
+    "Do I get an RDO after 12 days?",
+    "Can I have 3 days off for IVF?",
+  ])("answers %j as not checked first, never as a rest rule", (question) => {
+    const answer = answerAgreementQuestion(question, opts);
+    expect(answer.kind).toBe("not-checked");
   });
 
   it("reads typed shorthand", () => {
