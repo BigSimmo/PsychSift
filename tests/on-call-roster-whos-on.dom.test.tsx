@@ -32,7 +32,16 @@ vi.mock("@/components/roster/use-roster-team", () => ({
   },
 }));
 
-const { OnCallRosterWhosOnPage } = await import("@/components/on-call/roster-whos-on/on-call-roster-whos-on-page");
+const handbook = vi.hoisted(() => ({ state: null as unknown }));
+vi.mock("@/components/on-call/use-hospital-handbook", () => ({ useHospitalHandbook: () => handbook.state }));
+
+const clipboard = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("@/lib/copy-to-clipboard", () => ({ copyTextToClipboard: clipboard }));
+
+const { OnCallRosterWhosOnPage, OnCallRosterRightNow } =
+  await import("@/components/on-call/roster-whos-on/on-call-roster-whos-on-page");
+const { ToastProvider } = await import("@/components/ui/toast");
+const { handbookItems, readyHandbook } = await import("./helpers/on-call-handbook-fixtures");
 const { RosterWhosOnEntryLink } = await import("@/components/on-call/roster-whos-on/roster-whos-on-entry-link");
 
 // 21:40 Perth on Tue 6 Oct 2026.
@@ -88,11 +97,22 @@ function setTeams(teams: { serviceId: string; name: string; enabled?: boolean }[
 }
 
 function renderPage() {
-  return render(<OnCallRosterWhosOnPage now={NOW} />);
+  return render(
+    <ToastProvider>
+      <OnCallRosterWhosOnPage now={NOW} />
+    </ToastProvider>,
+  );
+}
+
+function setOnline(value: boolean) {
+  Object.defineProperty(navigator, "onLine", { configurable: true, value });
 }
 
 beforeEach(() => {
   roster.asked = [];
+  clipboard.mockClear();
+  setOnline(true);
+  handbook.state = readyHandbook(handbookItems([{ id: "sb", title: "Switchboard", phone: "9000 0000" }]));
   setTeams([{ serviceId: TEAM_A, name: "Inpatient Psychiatry" }]);
   roster.overview = ready({ latestPublication: PUBLICATION });
   roster.assignments = ready({ assignments: [NIGHT, EVENING, MINE, LEAVE, TOMORROW] });
@@ -109,14 +129,21 @@ describe("From your team roster", () => {
       expect.stringContaining("Dr Tran Nguyen"),
       expect.stringContaining("You"),
     ]);
-    expect(rows[0]).toHaveTextContent("Evening · on now");
+    expect(rows[0]).toHaveTextContent("Late registrar · on now");
     expect(rows[0]).toHaveTextContent("14:00 to 22:00 · then Dr Tran Nguyen");
-    expect(rows[1]).toHaveTextContent("Night · on now");
+    expect(rows[1]).toHaveTextContent("Night registrar · on now");
+    expect(rows[2]).toHaveTextContent("You");
+    expect(within(rows[2]!).getAllByText("You").length).toBeGreaterThan(0);
     expect(rows[1]).toHaveTextContent("21:00 to 08:30 Wed");
     expect(rows[2]).not.toHaveTextContent("on now");
     expect(list).not.toHaveTextContent("Leave");
     expect(list).not.toHaveTextContent("Dr On Leave");
-    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("From your team roster · 3");
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("From your team roster");
+    expect(screen.getByTestId("on-call-roster-whos-on").querySelector(".work-label__count")).toHaveTextContent("3");
+    // The now marker sits on today's rails only.
+    expect(screen.getAllByTestId("on-call-roster-now-mark").length).toBe(3);
+    // A full list with nobody missing needs no switchboard prompt.
+    expect(screen.queryByTestId("on-call-roster-switchboard")).toBeNull();
     // The time rail is described in words for screen readers.
     expect(within(rows[1]!).getByRole("img").getAttribute("aria-label")).toMatch(/21:00/);
   });
@@ -149,15 +176,108 @@ describe("From your team roster", () => {
     roster.assignments = ready({ assignments: [LEAVE] });
     renderPage();
     expect(screen.getByTestId("on-call-roster-nobody")).toHaveTextContent("Ring switchboard");
+    expect(screen.getByTestId("on-call-roster-switchboard")).toHaveTextContent("Switchboard");
   });
 
-  it("marks a shift with no name instead of guessing who covers it", () => {
+  it("marks a shift with nobody rostered instead of guessing who covers it, and offers switchboard", () => {
     roster.assignments = ready({ assignments: [GAP] });
     renderPage();
     const row = within(screen.getByTestId("on-call-roster-list")).getByRole("button");
-    expect(row).toHaveTextContent("Name not on the roster");
+    expect(row).toHaveTextContent("Nobody rostered");
+    expect(screen.getByTestId("on-call-roster-gap")).toHaveTextContent("1 shift with nobody rostered");
+    expect(screen.getByTestId("on-call-roster-switchboard-row")).toBeInTheDocument();
     fireEvent.click(row);
     expect(screen.getByTestId("on-call-roster-person-sheet")).toHaveTextContent("Nobody is guessed");
+  });
+
+  it("keeps the last read on screen when the connection drops, dimmed and marked not live", () => {
+    const view = renderPage();
+    expect(screen.getByTestId("on-call-roster-provenance")).toHaveTextContent("Loaded 21:35");
+    roster.assignments = { status: "error", data: null, message: "x", reload: vi.fn(), readAt: null };
+    setOnline(false);
+    act(() => {
+      window.dispatchEvent(new Event("offline"));
+    });
+    view.rerender(
+      <ToastProvider>
+        <OnCallRosterWhosOnPage now={NOW} />
+      </ToastProvider>,
+    );
+    expect(screen.getByTestId("on-call-roster-provenance")).toHaveTextContent("Offline. Roster as of 21:35");
+    expect(screen.getByTestId("on-call-roster-provenance")).toHaveTextContent("Not live");
+    expect(screen.getByTestId("on-call-roster-list")).toHaveTextContent("Dr Tran Nguyen");
+    expect(screen.queryByTestId("on-call-roster-now-mark")).toBeNull();
+    expect(screen.getByTestId("on-call-roster-stale")).toHaveTextContent("A later change would not show");
+    expect(screen.getByTestId("on-call-roster-switchboard")).toBeInTheDocument();
+  });
+
+  it("shows a change from the roster by itself, with a count on the source strip", () => {
+    const view = renderPage();
+    expect(screen.queryByTestId("on-call-roster-change-count")).toBeNull();
+    const covered = { ...EVENING, name: "Dr Ana Lowe", userId: "00000000-0000-4000-8000-0000000000fe" };
+    roster.assignments = {
+      ...ready({ assignments: [NIGHT, covered, MINE, LEAVE, TOMORROW] }),
+      readAt: new Date("2026-10-06T13:41:00Z"),
+    };
+    view.rerender(
+      <ToastProvider>
+        <OnCallRosterWhosOnPage now={NOW} />
+      </ToastProvider>,
+    );
+    expect(screen.getByTestId("on-call-roster-change-count")).toHaveTextContent("1 change");
+    expect(screen.getByTestId(`on-call-roster-changed-${EVENING.id}`)).toHaveTextContent(
+      "Changed on the roster, seen 21:41",
+    );
+    expect(screen.getByTestId("on-call-roster-list")).toHaveTextContent("Dr Ana Lowe");
+  });
+
+  it("reads the roster again every two minutes while open", () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      const reload = vi.fn();
+      roster.assignments = ready({ assignments: [NIGHT] }, reload);
+      renderPage();
+      act(() => {
+        vi.advanceTimersByTime(2 * 60_000);
+      });
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("builds a note for the roster manager, catches patient details, and never changes the list", async () => {
+    roster.overview = ready({ latestPublication: PUBLICATION, managers: [{ userId: ME, name: "Dr Grant" }] });
+    renderPage();
+    fireEvent.click(within(screen.getByTestId("on-call-roster-list")).getAllByRole("button")[1]!);
+    expect(screen.getByTestId("on-call-roster-person-manager")).toHaveTextContent("Dr Grant");
+    fireEvent.click(screen.getByTestId("on-call-roster-report"));
+    const copy = screen.getByTestId("on-call-roster-report-copy");
+    expect(copy).toBeDisabled();
+    fireEvent.click(screen.getByTestId("on-call-roster-reason-someone-else"));
+    expect(copy).not.toBeDisabled();
+    fireEvent.change(screen.getByTestId("on-call-roster-report-note"), { target: { value: "Bed 7 review ran over" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("This looks like a patient detail");
+    expect(copy).toBeDisabled();
+    fireEvent.change(screen.getByTestId("on-call-roster-report-note"), {
+      target: { value: "Dr Patel answered the page" },
+    });
+    expect(copy).not.toBeDisabled();
+    fireEvent.click(copy);
+    await screen.findByText("Note copied for Dr Grant. The list is unchanged until the roster is.");
+    const [text] = clipboard.mock.calls[0] as unknown as [string];
+    expect(text).toContain("Dr Tran Nguyen");
+    expect(text).toContain("Dr Patel answered the page");
+    expect(screen.getByTestId("on-call-roster-list")).toHaveTextContent("Dr Tran Nguyen");
+  });
+
+  it("draws the compact Right now block with only who is on at this moment", () => {
+    render(<OnCallRosterRightNow now={NOW} />);
+    const block = screen.getByTestId("on-call-roster-right-now");
+    expect(block).toHaveTextContent("Right now, from your roster");
+    expect(within(block).getByRole("link", { name: "All roles" })).toHaveAttribute("href", "/on-call/whos-on/roster");
+    expect(within(screen.getByTestId("on-call-roster-list")).getAllByRole("button")).toHaveLength(2);
+    expect(screen.queryByRole("radiogroup")).toBeNull();
   });
 
   it("asks a signed-out reader to sign in", () => {
@@ -181,11 +301,11 @@ describe("From your team roster", () => {
   it("retries a failed read when the connection comes back", () => {
     const reload = vi.fn();
     roster.teams = { status: "error", data: null, message: null, reload, readAt: null };
-    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    setOnline(false);
     renderPage();
     expect(screen.getByTestId("on-call-roster-teams-failed")).toHaveTextContent("You are offline");
     expect(reload).not.toHaveBeenCalled();
-    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    setOnline(true);
     act(() => {
       window.dispatchEvent(new Event("online"));
     });
@@ -221,10 +341,11 @@ describe("From your team roster", () => {
     ]);
     renderPage();
     const picker = screen.getByLabelText("Team");
-    expect(within(picker).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "Inpatient Psychiatry",
-      "Consultation Liaison",
-    ]);
+    expect(
+      within(picker)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Inpatient Psychiatry", "Consultation Liaison"]);
     roster.asked = [];
     fireEvent.change(picker, { target: { value: TEAM_B } });
     expect(roster.asked).toContain(TEAM_B);
@@ -235,6 +356,6 @@ describe("From your team roster", () => {
     expect(screen.getByTestId("on-call-roster-whos-on-entry")).toHaveAttribute("href", "/on-call/whos-on/roster");
     cleanup();
     renderPage();
-    expect(screen.getByRole("link", { name: /Hospital roles by team/ })).toHaveAttribute("href", "/on-call/whos-on");
+    expect(screen.getByTestId("on-call-roster-hospital-roles")).toHaveAttribute("href", "/on-call/whos-on");
   });
 });

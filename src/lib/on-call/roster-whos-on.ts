@@ -5,16 +5,17 @@ import {
   perthTimeOf,
   perthWallToIso,
 } from "@/lib/roster/shifts/perth-time";
-import type { RosterAssignment, RosterAssignmentKind } from "@/lib/roster/team/model";
+import type { RosterAssignment, RosterAssignmentKind, RosterGrade } from "@/lib/roster/team/model";
 
 /**
  * "From your team roster" (round 2 feature 22, who is on, kept up to date by
  * the department): On Call reads the PUBLISHED team roster, so nobody keeps a
  * second list. When the roster manager changes the roster, this changes.
  *
- * Names and shift kind only (and the shift's own times). Never a phone
- * number, a grade, a leave or sick reason: a leave row is dropped entirely, so
- * "away" is never shown. Nobody is ever guessed: a day with no rows says so.
+ * Names, the role the roster gives (grade and shift kind, "Registrar on
+ * call"), the site and the shift's own times. Never a phone number, a leave or
+ * sick reason: a leave row is dropped entirely, so "away" is never shown.
+ * Nobody is ever guessed: a day with no rows says so.
  *
  * Pure: no React, no storage, no network. Nothing here is written to the device.
  */
@@ -39,6 +40,38 @@ export const ROSTER_KIND_LABELS: Readonly<Record<RosterShownKind, string>> = {
   on_call: "On call",
   other: "Shift",
 };
+
+const GRADE_WORDS: Readonly<Record<RosterGrade, string | null>> = {
+  intern: "Intern",
+  resident: "Resident",
+  registrar: "Registrar",
+  fellow: "Fellow",
+  consultant: "Consultant",
+  other: null,
+};
+
+/**
+ * The role a shift stands for, from the roster's own grade and shift kind:
+ * "Registrar on call", "Night registrar", "Day consultant", "Late consultant".
+ * With no grade it is the shift kind alone ("On call").
+ */
+export function rosterRoleLabel(grade: RosterGrade | null, kind: RosterShownKind): string {
+  const word = grade ? GRADE_WORDS[grade] : null;
+  if (!word) return ROSTER_KIND_LABELS[kind];
+  const lower = word.toLowerCase();
+  switch (kind) {
+    case "on_call":
+      return `${word} on call`;
+    case "day":
+      return `Day ${lower}`;
+    case "evening":
+      return `Late ${lower}`;
+    case "night":
+      return `Night ${lower}`;
+    case "other":
+      return word;
+  }
+}
 
 /** The Perth date each day choice names. */
 export function rosterWhosOnDate(day: RosterWhosOnDay, now: Date): string {
@@ -73,6 +106,10 @@ export type RosterWhosOnRow = {
   readonly isMe: boolean;
   readonly kind: RosterShownKind;
   readonly kindLabel: string;
+  /** "Registrar on call", from the roster's grade and shift kind. */
+  readonly roleLabel: string;
+  /** The site the roster names for the shift, if any. */
+  readonly site: string | null;
   readonly startsAt: string;
   readonly endsAt: string;
   /** "21:00 to 08:30 Wed", "08:00 to 16:30", "From Mon 21:00 to 08:30". */
@@ -162,6 +199,8 @@ export function rosterWhosOnRows(
         isMe: options.actorId !== null && row.userId === options.actorId,
         kind: row.kind,
         kindLabel: ROSTER_KIND_LABELS[row.kind],
+        roleLabel: rosterRoleLabel(row.grade, row.kind),
+        site: row.siteName?.trim() ? row.siteName.trim() : null,
         startsAt: row.startsAt,
         endsAt: row.endsAt,
         span: rosterShiftSpan(row, options.date),
@@ -188,10 +227,69 @@ export function rosterNowMark(date: string, now: Date): number | null {
   return Math.round(((at - bounds.start) / (bounds.end - bounds.start)) * 1000) / 10;
 }
 
-/** The rail's screen-reader text: "Dr Nguyen, night, 21:00 to 08:30 Wed, on now". */
+/** The rail's screen-reader text: "Dr Nguyen, night registrar, 21:00 to 08:30 Wed, on now". */
 export function rosterRailLabel(row: RosterWhosOnRow): string {
-  const who = row.isMe ? "You" : (row.name ?? "Name not on the roster");
-  return `${who}, ${row.kindLabel.toLowerCase()}, ${row.span}${row.onNow ? ", on now" : ""}`;
+  const who = row.isMe ? "You" : (row.name ?? "Nobody rostered");
+  return `${who}, ${row.roleLabel.toLowerCase()}, ${row.span}${row.onNow ? ", on now" : ""}`;
+}
+
+// ------------------------------------------------------------------ changes
+
+function signature(row: RosterAssignment): string {
+  return [row.userId ?? "", row.name?.trim() ?? "", row.kind, row.startsAt, row.endsAt, row.siteId ?? ""].join("|");
+}
+
+/**
+ * What changed between two reads of the same roster window, so a swap, sick
+ * cover or a republish shows by itself: the shifts that are new or different,
+ * and how many went. Compared in memory only, never stored.
+ */
+export function rosterWhosOnChanges(
+  previous: readonly RosterAssignment[],
+  current: readonly RosterAssignment[],
+): { readonly changedIds: readonly string[]; readonly removed: number; readonly count: number } {
+  const before = new Map(previous.filter((row) => row.kind !== "leave").map((row) => [row.id, signature(row)]));
+  const shown = current.filter((row) => row.kind !== "leave");
+  const changedIds = shown.filter((row) => before.get(row.id) !== signature(row)).map((row) => row.id);
+  const kept = new Set(shown.map((row) => row.id));
+  const removed = [...before.keys()].filter((id) => !kept.has(id)).length;
+  return { changedIds, removed, count: changedIds.length + removed };
+}
+
+export const ROSTER_REPORT_REASONS = ["someone-else", "swapped", "not-here", "other"] as const;
+export type RosterReportReason = (typeof ROSTER_REPORT_REASONS)[number];
+
+export const ROSTER_REPORT_REASON_LABELS: Readonly<Record<RosterReportReason, string>> = {
+  "someone-else": "Someone else is on",
+  swapped: "They swapped",
+  "not-here": "Not here",
+  other: "Other",
+};
+
+/**
+ * A short note for the roster manager about one shift, for the doctor to copy
+ * and send. The list itself never changes from here: it changes only when the
+ * roster does. The note carries the shift, the reason and the doctor's own
+ * words (checked for patient details before this is called), nothing else.
+ */
+export function rosterReportText(input: {
+  readonly row: Pick<RosterWhosOnRow, "name" | "isMe" | "roleLabel" | "span">;
+  readonly date: string;
+  readonly teamName: string | null;
+  readonly reason: RosterReportReason;
+  readonly note: string;
+}): string {
+  const who = input.row.isMe ? "my shift" : (input.row.name ?? "a shift with no name");
+  const where = input.teamName ? ` on the ${input.teamName} roster` : " on the roster";
+  const lines = [
+    `Hello, the roster may not be right${where}.`,
+    `${formatPerthDay(input.date)}, ${input.row.roleLabel.toLowerCase()}, ${input.row.span}: ${who}.`,
+    `What I noticed: ${ROSTER_REPORT_REASON_LABELS[input.reason].toLowerCase()}.`,
+  ];
+  const note = input.note.trim();
+  if (note) lines.push(note);
+  lines.push("Could you check it and republish if it needs changing? Thank you.");
+  return lines.join("\n");
 }
 
 export type RosterPublicationSummary = {

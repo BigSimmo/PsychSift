@@ -6,7 +6,10 @@ import {
   rosterNowMark,
   rosterProvenance,
   rosterRailLabel,
+  rosterReportText,
+  rosterRoleLabel,
   rosterShiftSpan,
+  rosterWhosOnChanges,
   rosterWhosOnDate,
   rosterWhosOnRange,
   rosterWhosOnRows,
@@ -92,7 +95,7 @@ describe("rosterWhosOnRows", () => {
     expect(rows.find((row) => row.id === mine.id)).toMatchObject({ isMe: true, kindLabel: "On call" });
     expect(rows.find((row) => row.id === blank.id)).toMatchObject({ name: null, onNow: true });
     expect(rosterRailLabel(rows.find((row) => row.id === blank.id)!)).toBe(
-      "Name not on the roster, evening, 13:00 to 22:00, on now",
+      "Nobody rostered, late registrar, 13:00 to 22:00, on now",
     );
   });
 
@@ -152,6 +155,66 @@ describe("rosterWhosOnRows", () => {
         actorId: null,
       }),
     ).toEqual([]);
+  });
+});
+
+describe("roles, changes and the report note", () => {
+  it("names the role from the roster's grade and shift kind", () => {
+    expect(rosterRoleLabel("registrar", "on_call")).toBe("Registrar on call");
+    expect(rosterRoleLabel("consultant", "day")).toBe("Day consultant");
+    expect(rosterRoleLabel("consultant", "evening")).toBe("Late consultant");
+    expect(rosterRoleLabel("registrar", "night")).toBe("Night registrar");
+    expect(rosterRoleLabel("fellow", "other")).toBe("Fellow");
+    expect(rosterRoleLabel(null, "on_call")).toBe("On call");
+    expect(rosterRoleLabel("other", "night")).toBe("Night");
+    const [row] = rosterWhosOnRows(
+      [shift({ grade: "consultant", siteName: " Clinic B ", start: "2026-10-06T08:00", end: "2026-10-06T16:30" })],
+      { date: "2026-10-06", now: NOW, actorId: null },
+    );
+    expect(row).toMatchObject({ roleLabel: "Day consultant", site: "Clinic B" });
+  });
+
+  it("finds new, changed and removed shifts between two reads, ignoring leave", () => {
+    const a = shift({ name: "Dr Moss", start: "2026-10-07T08:00", end: "2026-10-07T16:30" });
+    const b = shift({ name: "Dr Grant", start: "2026-10-07T08:00", end: "2026-10-07T16:30" });
+    const c = shift({ name: "Dr Lee", start: "2026-10-07T13:00", end: "2026-10-07T21:30" });
+    const leave = shift({ name: "Dr Away", kind: "leave", start: "2026-10-07T00:00", end: "2026-10-08T00:00" });
+    expect(rosterWhosOnChanges([a, b, c], [a, b, c])).toEqual({ changedIds: [], removed: 0, count: 0 });
+    // Dr Lowe now covers Dr Moss's shift; Dr Lee's shift went; a new shift was added.
+    const covered = { ...a, name: "Dr Lowe", userId: "00000000-0000-4000-8000-0000000000ff" };
+    const added = shift({ name: "Dr New", start: "2026-10-07T21:00", end: "2026-10-08T08:30" });
+    expect(rosterWhosOnChanges([a, b, c], [covered, b, added, leave])).toEqual({
+      changedIds: [a.id, added.id],
+      removed: 1,
+      count: 3,
+    });
+  });
+
+  it("writes a note for the roster manager with the shift, the reason and the doctor's words only", () => {
+    const [row] = rosterWhosOnRows(
+      [shift({ name: "Dr Nguyen", kind: "on_call", start: "2026-10-06T21:00", end: "2026-10-07T08:30" })],
+      { date: "2026-10-06", now: NOW, actorId: null },
+    );
+    const text = rosterReportText({
+      row,
+      date: "2026-10-06",
+      teamName: "Ward 4 registrars",
+      reason: "someone-else",
+      note: "  Dr Patel answered the page  ",
+    });
+    expect(text).toContain("on the Ward 4 registrars roster");
+    expect(text).toContain("Tue 6 Oct, registrar on call, 21:00 to 08:30 Wed: Dr Nguyen.");
+    expect(text).toContain("What I noticed: someone else is on.");
+    expect(text).toContain("Dr Patel answered the page\n");
+    const mine = rosterReportText({
+      row: { ...row, isMe: true },
+      date: "2026-10-06",
+      teamName: null,
+      reason: "other",
+      note: "",
+    });
+    expect(mine).toContain(": my shift.");
+    expect(mine.split("\n")).toHaveLength(4);
   });
 });
 
