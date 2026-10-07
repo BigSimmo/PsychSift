@@ -120,9 +120,11 @@ export function WorkFrameHeader({
   const parent = workAreaParent(area);
 
   useEffect(() => {
-    setWorkFramePill({ modeId, area: area.name, page: current?.label ?? null });
+    // The pill names the area only (owner pick, 7 Oct 2026): the tab row
+    // already names the page, as an underlined tab or in More's slot.
+    setWorkFramePill({ modeId, area: area.name, page: null });
     return () => setWorkFramePill(null);
-  }, [modeId, area.name, current?.label]);
+  }, [modeId, area.name]);
 
   // Remember where you were in a top-level area, for an inner area's back arrow.
   const currentHref = current?.href ?? null;
