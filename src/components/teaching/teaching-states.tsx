@@ -45,6 +45,7 @@ export function TeachingStateNotice({
   onOpenDemo,
   demoHref,
   onSwitchService,
+  testId,
 }: {
   state: TeachingNoticeState;
   serviceName?: string;
@@ -54,6 +55,8 @@ export function TeachingStateNotice({
   /** The Teaching sample's entry link; a full navigation, because the switch is a route that sets a cookie. */
   demoHref?: string;
   onSwitchService?: () => void;
+  /** A page that pins its own id for this state (Today's failed read). */
+  testId?: string;
 }) {
   const [howOpen, setHowOpen] = useState(false);
   const actions: TeachingAction[] = [];
@@ -74,7 +77,7 @@ export function TeachingStateNotice({
   // the actions, in place of the v5 module.
   return (
     <section
-      data-testid={`teaching-state-${state}`}
+      data-testid={testId ?? `teaching-state-${state}`}
       role={state === "offline" ? "status" : undefined}
       className="work-card grid justify-items-center gap-1.5 px-4.5 pt-6.5 pb-4 text-center"
     >

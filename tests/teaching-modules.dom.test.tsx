@@ -450,16 +450,19 @@ describe("LogToCpdSheet", () => {
       />,
     );
     const dialog = screen.getByRole("dialog", { name: "Log to CPD" });
+    // Work-mode redesign, owner request 6 Oct 2026: the save button says what it logs ("Log 1 h to
+    // CPD"), falling back to "Log to CPD" while the typed hours are not valid quarter hours.
     fireEvent.change(within(dialog).getByLabelText("Hours"), { target: { value: "1.1" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save to CPD" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Log to CPD" }));
     expect(
       await within(dialog).findByText("Use quarter hours between 0.25 and 8, for example 1.25."),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText("Hours"), { target: { value: "1" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save to CPD" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Log 1\u00a0h to CPD" }));
     const link = await within(dialog).findByRole("link", { name: "Add a reflection in CPD" });
     expect(link).toHaveAttribute("href", "/cme/log/e1");
-    expect(link.className).toContain("text-[color:var(--primary)]");
+    // Work-mode redesign, owner request 6 Oct 2026: links inside Teaching take the area colour.
+    expect(link.className).toContain("text-[color:var(--mode-identity)]");
   });
 });
