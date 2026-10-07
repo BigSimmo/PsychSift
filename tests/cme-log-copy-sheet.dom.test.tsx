@@ -250,7 +250,8 @@ describe("log page structure", () => {
     const note = screen.getByTestId("cme-log-copy-help");
     // work-mode redesign, owner request 6 Oct 2026: the mock-up's "3 not marked copied" strip.
     expect(note).toHaveTextContent("2 not marked copied to your CPD home");
-    expect(note).toHaveTextContent("PsychSift sends nothing to your college.");
+    // work-mode redesign, owner request 6 Oct 2026: the mock-up's short strip line.
+    expect(note).toHaveTextContent("Copy one, paste it into your CPD home");
     expect(note).not.toHaveTextContent(/MyCPD|RANZCP/);
     expect(within(note).getByRole("button", { name: "Copy next" })).toBeInTheDocument();
     unmount();
@@ -263,9 +264,7 @@ describe("log page structure", () => {
     );
     const ranzcp = screen.getByTestId("cme-log-copy-help");
     expect(ranzcp).toHaveTextContent("2 not marked copied to MyCPD");
-    expect(ranzcp).toHaveTextContent(
-      "Copy one, paste it into MyCPD, then mark it copied. PsychSift sends nothing to RANZCP.",
-    );
+    expect(ranzcp).toHaveTextContent("Copy one, paste it into MyCPD");
   });
 
   it("pins each month header within its month on a surface token", () => {

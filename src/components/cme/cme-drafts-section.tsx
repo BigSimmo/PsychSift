@@ -300,7 +300,9 @@ export function CmeDraftsSection({
   return (
     <section className="grid gap-1.5" data-testid="cme-drafts-section" aria-labelledby="cme-drafts-heading">
       <h2 id="cme-drafts-heading" className="work-label m-0">
-        Drafts · <span className="nums font-normal">{items.length}</span>
+        <span>
+          Drafts · <span className="nums font-normal">{items.length}</span>
+        </span>
       </h2>
       <div className="grid gap-2.5">
         {sections.map((group) => (

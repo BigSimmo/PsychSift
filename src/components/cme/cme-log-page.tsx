@@ -446,9 +446,7 @@ export function CmeLogPage({
                 {` not marked copied`}
                 <span className="sr-only">{` to ${cpdHome.name}`}</span>
               </span>
-              <span className="work-row__sub">
-                {`Copy one, paste it into ${cpdHome.name}, then mark it copied. PsychSift sends nothing to ${cpdHome.college}.`}
-              </span>
+              <span className="work-row__sub">{`Copy one, paste it into ${cpdHome.name}`}</span>
             </span>
             <button
               type="button"

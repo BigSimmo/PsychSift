@@ -156,7 +156,9 @@ export function CmeRoutinesPage({
             {dueRoutines.length > 0 ? (
               <section aria-labelledby="cme-routines-due-heading" className="grid gap-1.5">
                 <h2 id="cme-routines-due-heading" className="work-label m-0">
-                  Due today · <span className="nums font-normal">{dueRoutines.length}</span>
+                  <span>
+                    Due today · <span className="nums font-normal">{dueRoutines.length}</span>
+                  </span>
                 </h2>
                 <ul role="list" className="m-0 grid gap-2 p-0">
                   {dueRoutines.map((routine) => (

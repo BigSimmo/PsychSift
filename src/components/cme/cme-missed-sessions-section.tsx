@@ -277,13 +277,15 @@ export function CmeMissedSessionsSection({
   return (
     <section data-testid="cme-missed-sessions" aria-labelledby="cme-missed-sessions-heading" className="grid gap-1.5">
       <h2 id="cme-missed-sessions-heading" className="work-label m-0">
-        Missed teaching and supervision
-        {sessions.length > 0 ? (
-          <>
-            {" · "}
-            <span className="nums font-normal">{sessions.length}</span>
-          </>
-        ) : null}
+        <span>
+          Missed teaching and supervision
+          {sessions.length > 0 ? (
+            <>
+              {" · "}
+              <span className="nums font-normal">{sessions.length}</span>
+            </>
+          ) : null}
+        </span>
       </h2>
 
       {demoMode ? (
