@@ -71,7 +71,8 @@ const staticRouteRedirects: Record<string, string> = {
   // travels, and the browser keeps a `#on-call-entry-<id>` fragment across the 307,
   // so a bookmarked row still lands on its anchor. Admin adds redirects only for
   // the pages it received (spec); Roster's PR adds its own beside these.
-  "/my-work": "/admin/renewals",
+  // Work-mode redesign (owner request 6 Oct 2026): Admin opens on Today again.
+  "/my-work": "/admin",
   "/on-call/compliance": "/admin/renewals",
   "/on-call/logistics": "/admin/help",
   // On Call's parallel teaching calendar retires to Teaching Week. The section id

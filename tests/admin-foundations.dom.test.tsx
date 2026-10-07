@@ -62,7 +62,8 @@ describe("adminLoadState", () => {
 
 describe("the old page files stay as redirect backstops (spec review 8)", () => {
   it.each([
-    ["@/app/(search-app)/my-work/page", "/admin/renewals"],
+    // Work-mode redesign, owner request 6 Oct 2026: Admin opens on Today again.
+    ["@/app/(search-app)/my-work/page", "/admin"],
     ["@/app/(search-app)/on-call/compliance/page", "/admin/renewals"],
     ["@/app/(search-app)/on-call/logistics/page", "/admin/help"],
     ["@/app/(search-app)/on-call/education/page", "/teaching/week"],
