@@ -44,3 +44,11 @@
     border-color: CanvasText;
   }
 }
+
+/* The app's filled "command" button (Sign in, Print card, Save) is On Call's
+   flat teal inside the frame, as every work-mode primary button is. */
+[data-work-frame="call"] {
+  --command: var(--mode-identity);
+  --command-hover: var(--mode-identity-deep);
+  --command-contrast: var(--mode-identity-contrast);
+}
