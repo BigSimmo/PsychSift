@@ -490,7 +490,9 @@ describe("Needs you", () => {
       "href",
       "/teaching/review",
     );
-    expect(screen.getByRole("link", { name: /^Open logbook/ })).toHaveAttribute("href", "/teaching/logbook");
+    // Work-mode redesign, owner request 6 Oct 2026: the Logbook tab is always one tap away, so
+    // Needs you no longer repeats it as an "Open logbook" row.
+    expect(screen.queryByRole("link", { name: /^Open logbook/ })).toBeNull();
   });
 
   it("renders nothing with nothing to log, and asks nothing in the demo", async () => {

@@ -1,12 +1,11 @@
 "use client";
 
+import { CalendarDays, CloudOff, LogIn, TriangleAlert, Users, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { ActionStrip, type TeachingAction } from "@/components/teaching/teaching-actions";
 import { Sheet } from "@/components/ui/sheet";
-import { cn, textMuted } from "@/components/ui-primitives";
 
 /*
  * The page states in Teaching's words (v5.2 screens 12 to 16). Each is one
@@ -27,6 +26,15 @@ const COPY: Record<TeachingNoticeState, { title: string; body: (serviceName?: st
   },
   error: { title: "Teaching couldn't load", body: () => "Nothing changed. Your records are safe." },
   setup: { title: "Teaching is being set up", body: () => "It will appear here when it's ready." },
+};
+
+const ICONS: Record<TeachingNoticeState, LucideIcon> = {
+  empty: CalendarDays,
+  "no-team": Users,
+  "signed-out": LogIn,
+  offline: CloudOff,
+  error: TriangleAlert,
+  setup: Wrench,
 };
 
 export function TeachingStateNotice({
@@ -61,15 +69,27 @@ export function TeachingStateNotice({
   if (state === "no-team")
     actions.push({ id: "how", label: "How to join a service", onClick: () => setHowOpen(true), emphasis: "secondary" });
 
+  const Icon = ICONS[state];
+  // Work-mode redesign, owner request 6 Oct 2026: a calm empty card, a flat badge, one line and
+  // the actions, in place of the v5 module.
   return (
     <section
       data-testid={`teaching-state-${state}`}
       role={state === "offline" ? "status" : undefined}
-      className={cn(modeModuleSurface, "grid gap-1 p-3")}
+      className="work-card grid justify-items-center gap-1.5 px-4.5 pt-6.5 pb-4 text-center"
     >
-      <p className="text-base-minus font-medium text-[color:var(--text-heading)]">{COPY[state].title}</p>
-      <p className={cn("text-sm", textMuted)}>{COPY[state].body(serviceName)}</p>
-      <ActionStrip layout="stack" actions={actions} className="pt-1" />
+      <span
+        aria-hidden="true"
+        className="work-ic work-ic--lg mb-1"
+        data-tone={state === "offline" || state === "error" ? "amber" : undefined}
+      >
+        <Icon aria-hidden="true" strokeWidth={2} />
+      </span>
+      <p className="text-base-minus font-bold text-[color:var(--text-heading)]">{COPY[state].title}</p>
+      <p className="max-w-[17rem] text-xs leading-normal text-[color:var(--text-muted)]">
+        {COPY[state].body(serviceName)}
+      </p>
+      <ActionStrip layout="stack" actions={actions} className="w-full max-w-[17rem] pt-1.5" />
       {state === "no-team" ? (
         <Sheet open={howOpen} onClose={() => setHowOpen(false)} title="How to join a service">
           <div className="grid gap-2 text-sm text-[color:var(--text-heading)]">

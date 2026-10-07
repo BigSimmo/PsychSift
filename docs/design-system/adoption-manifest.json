@@ -2380,6 +2380,7 @@
         "src/components/teaching/log-to-cpd-sheet.tsx",
         "src/components/teaching/organise-sheets.tsx",
         "src/components/teaching/teaching-calendar-sheet.tsx",
+        "src/components/teaching/teaching-code-sheet.tsx",
         "src/components/teaching/teaching-cpd-bridge-sheet.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
         "src/components/teaching/teaching-resources.tsx",

@@ -38,9 +38,9 @@ export function TeachingContextBar({
 }) {
   if (teams.length === 0) return null;
   return (
-    <div className="flex min-h-12 items-center justify-between gap-3 border-b border-[color:var(--border)]">
+    <div className="flex min-h-12 items-center justify-between gap-3 px-0.5">
       {teams.length === 1 ? (
-        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-[color:var(--text-heading)]">
+        <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-[color:var(--text-heading)]">
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)]" />
           <span className="truncate">{teams[0].name}</span>
         </span>
@@ -57,7 +57,11 @@ export function TeachingContextBar({
           fieldClassName="min-w-0 max-w-[70%]"
         />
       )}
-      {demoTag ? <span className={cn("shrink-0 text-xs", textMuted)}>Demo · made-up people</span> : null}
+      {demoTag ? (
+        <span className={cn("work-tag shrink-0")} data-tone="neutral">
+          Demo · made-up people
+        </span>
+      ) : null}
     </div>
   );
 }
