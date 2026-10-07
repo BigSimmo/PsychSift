@@ -2,7 +2,7 @@
 
 import { ChevronRight, CloudOff, Phone, RotateCw, ShieldHalf, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { WorkButton, WorkCard, WorkSectionLabel, type WorkSectionLabelProps } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
@@ -128,15 +128,35 @@ export function AdminRow({
   readonly disabled?: boolean;
   readonly className?: string;
 }) {
+  // A row that acts is named by its title and end status; the sub line and tags describe it,
+  // so "Copy for workforce" is the button's name, not the whole paragraph under it.
+  const baseId = useId();
+  const hasEnd = end !== undefined && end !== null;
+  const labelledBy = hasEnd ? `${baseId}-t ${baseId}-e` : `${baseId}-t`;
+  const describedBy = [sub ? `${baseId}-s` : null, tags ? `${baseId}-g` : null].filter(Boolean).join(" ") || undefined;
   const body = (
     <>
       {lead}
       <span className="work-row__text">
-        <span className="work-row__title">{title}</span>
-        {sub ? <span className="work-row__sub">{sub}</span> : null}
-        {tags ? <span className={styles.rowTags}>{tags}</span> : null}
+        <span className="work-row__title" id={`${baseId}-t`}>
+          {title}
+        </span>
+        {sub ? (
+          <span className="work-row__sub" id={`${baseId}-s`}>
+            {sub}
+          </span>
+        ) : null}
+        {tags ? (
+          <span className={styles.rowTags} id={`${baseId}-g`}>
+            {tags}
+          </span>
+        ) : null}
       </span>
-      {end !== undefined && end !== null ? <span className="work-row__end">{end}</span> : null}
+      {hasEnd ? (
+        <span className="work-row__end" id={`${baseId}-e`}>
+          {end}
+        </span>
+      ) : null}
       {(href || onClick) && !action && chevron ? (
         <ChevronRight
           aria-hidden="true"
@@ -147,7 +167,13 @@ export function AdminRow({
     </>
   );
   const control = href ? (
-    <Link href={href} className="work-row" data-testid={testId}>
+    <Link
+      href={href}
+      className="work-row"
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
+      data-testid={testId}
+    >
       {body}
     </Link>
   ) : onClick ? (
@@ -157,6 +183,8 @@ export function AdminRow({
       disabled={disabled}
       className={cn("work-row", ariaExpanded !== undefined && styles.disclosure)}
       aria-expanded={ariaExpanded}
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       data-testid={testId}
     >
       {body}

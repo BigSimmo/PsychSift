@@ -363,9 +363,9 @@ describe("header addon slot ownership", () => {
     // hooks (`useInPageSectionNav`).
     expect(claimants.sort()).toEqual([
       "src/components/DocumentViewer.tsx",
-      // Admin's Renewals, New job and Help pages share one `*-nav-header.tsx`
-      // sibling (Admin update 1), registered as the three `/admin/*` sub-routes.
-      "src/components/admin/admin-nav-header.tsx",
+      // Work-mode redesign, owner request 6 Oct 2026: Admin's section chips now sit
+      // inside the page (the shared chip row), so `admin-nav-header.tsx` no longer
+      // claims the header slot. The work frame's own tabs fill that place.
       "src/components/clinical-dashboard/medication-nav-header.tsx",
       // CME's Programme and Setup pages share one `*-nav-header.tsx` sibling
       // (`cmeSections` is a superset the header narrows per render), so the
