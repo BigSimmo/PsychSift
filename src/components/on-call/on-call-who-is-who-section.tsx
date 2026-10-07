@@ -87,6 +87,7 @@ function RoleCard({
       id={onCallEntryAnchorId(entry.id)}
       tabIndex={-1}
       className={cn(cardSurface, cardPadding.standard, "grid grid-cols-[minmax(0,1fr)] gap-2")}
+      data-on-call-entry-card=""
       data-testid={`on-call-role-${entry.slug}`}
     >
       <div className="flex items-start gap-2">

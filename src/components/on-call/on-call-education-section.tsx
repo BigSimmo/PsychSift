@@ -138,6 +138,7 @@ function EducationCard({
       // class right except `forced-colors:border`, so in Windows High Contrast
       // the card edge disappeared.
       className={cn(cardSurface, "grid grid-cols-[minmax(0,1fr)] gap-3 p-4")}
+      data-on-call-entry-card=""
       data-testid={`on-call-education-card-${entry.slug}`}
     >
       <header className="flex items-start justify-between gap-3">

@@ -252,7 +252,11 @@ export function OnCallLogisticsSection({
                 </span>
               </p>
             ) : null}
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-2" data-testid={`on-call-logistics-group-${slug}`}>
+            <div
+              data-on-call-list=""
+              className="grid grid-cols-[minmax(0,1fr)] gap-2"
+              data-testid={`on-call-logistics-group-${slug}`}
+            >
               {group.entries.map((entry) => (
                 <LogisticsRow
                   key={entry.id}

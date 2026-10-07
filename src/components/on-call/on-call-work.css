@@ -1,0 +1,46 @@
+/* On Call's section pages in the work-mode frame (work-mode redesign, owner
+   request 6 Oct 2026). The shared kit (cards, rows, chips, buttons) lives in
+   src/app/work-mode.css. The section pages (Contacts, Referrals, Playbook,
+   Orientation, Who's who, Admin and Compliance) draw each entry as its own
+   card; the work-mode look lists a group's entries in ONE white hairline card,
+   one row under another with a hairline between. Rather than rebuild seven
+   section components, a group carries `data-on-call-list` and each entry card
+   `data-on-call-entry-card`, and this file turns the stack into one card.
+
+   Flat by the owner's decision (6 Oct, 19:58): white, a hairline, the kit's
+   barely visible card shadow, no lift. Tokens only. Scoped to the On Call
+   frame, so a section component drawn anywhere else keeps its old look.
+   Imported by the On Call layout, so it loads only with On Call. */
+
+[data-work-frame="call"] [data-on-call-list] {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--work-line);
+  border-radius: var(--work-radius-card);
+  background: var(--work-surface);
+  box-shadow: var(--work-shadow-card);
+}
+
+[data-work-frame="call"] [data-on-call-list] > * + * {
+  border-top: 1px solid var(--work-line);
+}
+
+/* An entry inside the list is a row of the card, not a card of its own. */
+[data-work-frame="call"] [data-on-call-list] [data-on-call-entry-card] {
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The row's own controls (copy, edit) sit inside the row's band, with the
+   kit's right gutter. */
+[data-work-frame="call"] [data-on-call-list] > [data-on-call-entry-wrap] {
+  padding-right: calc(var(--spacing) * 2);
+}
+
+@media (forced-colors: active) {
+  [data-work-frame="call"] [data-on-call-list] {
+    border-color: CanvasText;
+  }
+}

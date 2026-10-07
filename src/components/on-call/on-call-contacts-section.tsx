@@ -176,7 +176,12 @@ function ContactRow({
   const showTrailingColumn = !entry.isPersonal || Boolean(onEdit) || showVerify;
 
   return (
-    <div className="flex items-stretch gap-2" id={onCallEntryAnchorId(entry.id)} tabIndex={-1}>
+    <div
+      data-on-call-entry-wrap=""
+      className="flex items-stretch gap-2"
+      id={onCallEntryAnchorId(entry.id)}
+      tabIndex={-1}
+    >
       <div className="min-w-0 flex-1">
         <OnCallEntryRow
           title={entry.title}
@@ -406,7 +411,11 @@ export function OnCallContactsSection({
               {needsChecking.length}
             </span>
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-2" data-testid="on-call-contacts-group-needs-checking">
+          <div
+            data-on-call-list=""
+            className="grid grid-cols-[minmax(0,1fr)] gap-2"
+            data-testid="on-call-contacts-group-needs-checking"
+          >
             {sortEntries(needsChecking).map((entry) => (
               <ContactRow
                 key={entry.id}
@@ -453,7 +462,11 @@ export function OnCallContactsSection({
                     {group.entries.length}
                   </span>
                 </div>
-                <div className="grid grid-cols-[minmax(0,1fr)] gap-2" data-testid={`on-call-contacts-group-${slug}`}>
+                <div
+                  data-on-call-list=""
+                  className="grid grid-cols-[minmax(0,1fr)] gap-2"
+                  data-testid={`on-call-contacts-group-${slug}`}
+                >
                   {group.entries.map((entry) => (
                     <ContactRow
                       key={entry.id}
@@ -473,7 +486,11 @@ export function OnCallContactsSection({
   function renderFlatGroup(list: OnCallEntry[], variant: "role" | "overdue") {
     if (list.length === 0) return null;
     return (
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-2" data-testid={`on-call-contacts-group-${variant}`}>
+      <div
+        data-on-call-list=""
+        className="grid grid-cols-[minmax(0,1fr)] gap-2"
+        data-testid={`on-call-contacts-group-${variant}`}
+      >
         {list.map((entry) => (
           <ContactRow
             key={entry.id}
