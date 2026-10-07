@@ -1937,7 +1937,7 @@ html[data-work-frame] .app-toast-region {
 .work-more-sheet__edit,
 .work-more-sheet__done {
   display: inline-flex;
-  min-height: 2.75rem;
+  min-height: var(--spacing-tap, 3rem);
   align-items: center;
   justify-content: center;
   padding: 0 calc(var(--spacing) * 3);
@@ -2012,4 +2012,16 @@ html[data-work-frame] .app-toast-region {
   border-color: var(--mode-identity);
   background: var(--mode-identity);
   color: var(--mode-identity-contrast);
+}
+
+/* Chosen first tabs can be long: on the narrowest screens they give up width
+   (ending in an ellipsis) before More is pushed off the row. */
+.work-band__tab[data-tab="pinned"] {
+  flex: 0 1 auto;
+}
+
+.work-band__tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

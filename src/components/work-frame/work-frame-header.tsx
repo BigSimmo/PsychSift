@@ -133,7 +133,8 @@ export function WorkFrameHeader({
   useTabSwipe(navRef, currentHref);
 
   const tab = (item: WorkFrameItem, kind: "pinned" | "extra", out: boolean) => {
-    const count = out ? 0 : (counts?.[item.id] ?? 0);
+    // Hidden tabs keep their badge, so a tab measures the same hidden or shown.
+    const count = counts?.[item.id] ?? 0;
     return (
       <Link
         key={item.id}
@@ -145,7 +146,7 @@ export function WorkFrameHeader({
         tabIndex={out ? -1 : undefined}
         aria-current={!out && item.id === currentId ? "page" : undefined}
       >
-        {workFrameTabLabel(item)}
+        <span className="work-band__tab-label">{workFrameTabLabel(item)}</span>
         {count > 0 ? (
           <span className="mode-band__badge work-band__count">
             <span aria-hidden="true">{count}</span>
@@ -286,6 +287,14 @@ export function WorkMoreSheet({
   const parent = workAreaParent(area);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<readonly string[] | null>(null);
+  // Leaving the picker puts focus back on Change, which re-mounts with the list.
+  const changeRef = useRef<HTMLButtonElement>(null);
+  const refocusChange = useRef(false);
+  useEffect(() => {
+    if (draft !== null || !refocusChange.current) return;
+    refocusChange.current = false;
+    changeRef.current?.focus();
+  }, [draft]);
   const close = useCallback(() => {
     setQuery("");
     setDraft(null);
@@ -343,6 +352,7 @@ export function WorkMoreSheet({
             onChange={setDraft}
             onDone={(ids) => {
               onPick(ids);
+              refocusChange.current = true;
               setDraft(null);
             }}
           />
@@ -367,6 +377,7 @@ export function WorkMoreSheet({
                   <div className="work-more-sheet__head">
                     <h3 className="work-label">{group.label}</h3>
                     <button
+                      ref={changeRef}
                       type="button"
                       className="work-more-sheet__edit"
                       onClick={() => setDraft(first.map((item) => item.id))}
@@ -447,9 +458,12 @@ function WorkTabPicker({
   const full = draft.length >= WORK_TAB_PICKS_MAX;
   const own = area.tabs.map((item) => item.id);
   const isOwn = draft.length === own.length && draft.every((id, index) => id === own[index]);
+  // Opening the picker moves focus to its heading, since Change has gone.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => headingRef.current?.focus(), []);
   return (
     <section aria-labelledby="work-tab-picker-title" className="work-more-sheet__group" data-testid="work-tab-picker">
-      <h3 id="work-tab-picker-title" className="work-label">
+      <h3 ref={headingRef} tabIndex={-1} id="work-tab-picker-title" className="work-label outline-none">
         Your first tabs
       </h3>
       <p className="work-more-sheet__hint" role="status">
