@@ -14,7 +14,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import {
@@ -26,12 +26,14 @@ import {
   flatRow,
   FlatSwitch,
   IconCircle,
+  PendingTag,
   QuietNote,
   SectionLabel,
   Tag,
   useUndoNotice,
 } from "@/components/cme/cpd-feature-kit";
 import { CpdHomeHandoffStrip } from "@/components/cme/cpd-home/cpd-home-handoff-strip";
+import { WorkButton } from "@/components/mode-kit/work";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -45,6 +47,7 @@ import {
   cpdHomeFilesForYear,
   cpdHomeRowProblems,
   cpdHomeRows,
+  CPD_HOME_CHECK_CHUNK,
   EMPTY_CPD_HOME_SEND,
   entriesNotYetAdded,
   formatCpdHomeCsv,
@@ -73,6 +76,16 @@ export type CpdHomeSendPageProps = {
 
 const PREVIEW_ROWS = 4;
 const LIST_COLLAPSED = 6;
+/** One small batch of rows is checked per tick, so the progress bar can be drawn between them. */
+const CHECK_STEP_MS = 16;
+
+/** The file sheet: checking rows (with Cancel), then the saved file and its next steps. */
+type FileFlow =
+  | { readonly phase: "making"; readonly done: number; readonly total: number; readonly name: string }
+  | { readonly phase: "saved"; readonly file: CpdHomeFile; readonly text: string };
+
+/** Why no file was made, in words, and whether trying again could help. */
+type Failure = { readonly title: string; readonly body: string; readonly retry: boolean };
 
 function hoursWords(value: number): string {
   return `${Math.round(value * 100) / 100} h`;
@@ -153,9 +166,19 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   const [includeReflections, setIncludeReflections] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [saved, setSaved] = useState<{ file: CpdHomeFile; text: string } | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [flow, setFlow] = useState<FileFlow | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(null);
   const [checkOpen, setCheckOpen] = useState(false);
+  const making = useRef<{ cancelled: boolean } | null>(null);
+  const saved = flow?.phase === "saved" ? flow : null;
+
+  // Leaving the page part-way stops the check: nothing is saved and no file is made.
+  useEffect(
+    () => () => {
+      if (making.current) making.current.cancelled = true;
+    },
+    [],
+  );
 
   const scopeEntries = useMemo(() => {
     if (scope === "new") return notYetAdded;
@@ -196,9 +219,10 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   }
 
   function makeFile() {
+    if (flow?.phase === "making") return;
     setFailure(null);
     if (rows.length === 0) {
-      setFailure("Choose at least one activity first.");
+      setFailure({ title: "No file was made", body: "Choose at least one activity first.", retry: false });
       announce("Choose at least one activity first.");
       return;
     }
@@ -206,32 +230,78 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       announce("No file was made. Some activities are missing details.");
       return;
     }
+    // A snapshot: what is checked is exactly what goes in the file, even if the page changes meanwhile.
+    const fileRows = rows;
+    const fileOptions = options;
     const name = cpdHomeFileName(set.year, scope, today);
-    const text = formatCpdHomeCsv(rows, options);
-    if (!saveTextFile(name, text)) {
-      setFailure("This browser did not save the file. Nothing was changed. Try again.");
-      announce("No file was made. Try again.", { priority: "assertive" });
-      return;
-    }
-    const file: CpdHomeFile = {
-      id: newFileId(),
-      year: set.year,
-      madeAt: new Date().toISOString(),
-      name,
-      rows: rows.length,
-      entryIds: rows.map((row) => row.entryId),
-      includeReflections,
-      addedAt: null,
+    const total = fileRows.length;
+    const token = { cancelled: false };
+    making.current = token;
+    setFlow({ phase: "making", done: 0, total, name });
+    announce(`Making your file, ${total} ${total === 1 ? "row" : "rows"}`);
+
+    let done = 0;
+    const step = () => {
+      if (token.cancelled) return;
+      const next = Math.min(done + CPD_HOME_CHECK_CHUNK, total);
+      // Each row is checked again for a date, hours and a category. One gap stops the whole file.
+      if (cpdHomeRowProblems(fileRows.slice(done, next)).length) {
+        making.current = null;
+        setFlow(null);
+        setFailure({
+          title: "No file was made",
+          body: "An activity is missing its date, hours or category, so the file would be incomplete. Nothing was changed.",
+          retry: false,
+        });
+        announce("No file was made. An activity is missing details.", { priority: "assertive" });
+        return;
+      }
+      done = next;
+      setFlow({ phase: "making", done, total, name });
+      if (done < total) {
+        window.setTimeout(step, CHECK_STEP_MS);
+        return;
+      }
+      making.current = null;
+      const text = formatCpdHomeCsv(fileRows, fileOptions);
+      if (!saveTextFile(name, text)) {
+        setFlow(null);
+        setFailure({
+          title: "No file was made",
+          body: "This browser did not save the file. Nothing was changed.",
+          retry: true,
+        });
+        announce("No file was made. Try again.", { priority: "assertive" });
+        return;
+      }
+      const file: CpdHomeFile = {
+        id: newFileId(),
+        year: set.year,
+        madeAt: new Date().toISOString(),
+        name,
+        rows: total,
+        entryIds: fileRows.map((row) => row.entryId),
+        includeReflections: fileOptions.includeReflections,
+        addedAt: null,
+      };
+      store.update((current) => recordCpdHomeFile(current, file));
+      setFlow({ phase: "saved", file, text });
+      announce(`File saved, ${total} ${total === 1 ? "row" : "rows"}`);
     };
-    store.update((current) => recordCpdHomeFile(current, file));
-    setSaved({ file, text });
-    announce(`File saved, ${rows.length} rows`);
+    window.setTimeout(step, CHECK_STEP_MS);
+  }
+
+  function cancelMaking() {
+    if (making.current) making.current.cancelled = true;
+    making.current = null;
+    setFlow(null);
+    announce("Cancelled. No file was made.");
   }
 
   function markAdded(file: CpdHomeFile) {
     const at = new Date().toISOString();
     if (!store.update((current) => markCpdHomeFileAdded(current, file.id, at))) return;
-    setSaved(null);
+    setFlow(null);
     notify(`${activityWords(file.rows)} marked added to CPD Home`, () =>
       store.update((current) => unmarkCpdHomeFileAdded(current, file.id)),
     );
@@ -296,7 +366,10 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       testId="cpd-home-page"
     >
       <section className={cn(flatCard, "p-3")}>
-        <CpdHomeHandoffStrip activities={yearEntries.length} file={history.length ? "saved" : "none"} />
+        <CpdHomeHandoffStrip
+          activities={yearEntries.length}
+          file={flow?.phase === "making" ? "making" : history.length ? "saved" : "none"}
+        />
       </section>
 
       <section
@@ -404,11 +477,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           <SectionLabel
             id="cpd-home-activities"
             count={`${scopeEntries.length} · ${hoursWords(totalHours)}`}
-            action={
-              <Button size="sm" variant="ghost" onClick={copyAll} testId="cpd-home-copy-all">
-                Copy all
-              </Button>
-            }
+            action={{ label: "Copy all", onClick: copyAll }}
           >
             In the file
           </SectionLabel>
@@ -560,9 +629,26 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       ) : null}
 
       {failure ? (
-        <p role="alert" data-testid="cpd-home-failure" className="px-1 text-sm text-[color:var(--warning)]">
-          {failure}
-        </p>
+        <section
+          role="alert"
+          data-testid="cpd-home-failure"
+          className={cn(flatCard, "flex items-start gap-3 border-[color:var(--warning-border)] p-3")}
+        >
+          <IconCircle icon={TriangleAlert} tone="amber" />
+          <span className="grid min-w-0 flex-1 gap-1">
+            <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
+              {failure.title}
+            </span>
+            <span className="text-sm leading-5 text-[color:var(--text-muted)]">{failure.body}</span>
+            {failure.retry ? (
+              <span className="pt-1">
+                <WorkButton variant="amber" onClick={makeFile} testId="cpd-home-try-again">
+                  Try again
+                </WorkButton>
+              </span>
+            ) : null}
+          </span>
+        </section>
       ) : null}
 
       <section aria-labelledby="cpd-home-files" className="grid gap-2">
@@ -631,6 +717,18 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
         )}
       </section>
 
+      <section aria-labelledby="cpd-home-import-format" className="grid gap-2">
+        <SectionLabel id="cpd-home-import-format">Import format</SectionLabel>
+        <div className={cn(flatCard, "flex flex-wrap items-center gap-3 p-3")} data-testid="cpd-home-import-format">
+          <IconCircle icon={Clock} tone="amber" />
+          <span className="grid min-w-0 flex-1 basis-40">
+            <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">AMA CPD Home</span>
+            <span className="text-sm leading-5 text-[color:var(--text-muted)]">Not confirmed yet</span>
+          </span>
+          <PendingTag>Source pending</PendingTag>
+        </div>
+      </section>
+
       <section className="grid gap-2">
         <ul role="list" className={flatCard}>
           <li className={flatRow}>
@@ -664,18 +762,23 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       </QuietNote>
 
       <ActionDock testId="cpd-home-dock">
-        <Button icon={Eye} onClick={() => setPreviewOpen(true)} disabled={rows.length === 0} testId="cpd-home-preview">
+        <WorkButton
+          variant="secondary"
+          icon={Eye}
+          onClick={() => setPreviewOpen(true)}
+          disabled={rows.length === 0}
+          testId="cpd-home-preview"
+        >
           Preview
-        </Button>
-        <Button
-          variant="primary"
+        </WorkButton>
+        <WorkButton
           icon={Download}
           onClick={makeFile}
-          disabled={rows.length === 0}
+          disabled={rows.length === 0 || flow?.phase === "making"}
           testId="cpd-home-download"
         >
           {downloadLabel}
-        </Button>
+        </WorkButton>
       </ActionDock>
 
       <Sheet
@@ -746,15 +849,19 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       </Sheet>
 
       <Sheet
-        open={saved !== null}
-        onClose={() => setSaved(null)}
-        title="File saved"
-        description="In your downloads, on this device"
+        open={flow !== null}
+        onClose={() => (flow?.phase === "making" ? cancelMaking() : setFlow(null))}
+        title={flow?.phase === "making" ? "Making your file" : "File saved"}
+        description={flow?.phase === "making" ? flow.name : "In your downloads, on this device"}
         testId="cpd-home-saved-sheet"
         footer={
-          saved ? (
+          flow?.phase === "making" ? (
+            <Button block onClick={cancelMaking} testId="cpd-home-cancel">
+              Cancel
+            </Button>
+          ) : saved ? (
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={() => setSaved(null)} testId="cpd-home-not-yet">
+              <Button onClick={() => setFlow(null)} testId="cpd-home-not-yet">
                 Not yet
               </Button>
               <Button
@@ -769,7 +876,30 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           ) : null
         }
       >
-        {saved ? (
+        {flow?.phase === "making" ? (
+          <div className="grid gap-4" data-testid="cpd-home-making">
+            <div className={cn(flatCard, "p-3")}>
+              <CpdHomeHandoffStrip activities={yearEntries.length} file="making" />
+            </div>
+            <div className="grid gap-2">
+              <div className="flex items-center gap-3">
+                <progress
+                  max={flow.total}
+                  value={flow.done}
+                  aria-label={`${flow.done} of ${flow.total} rows checked`}
+                  data-testid="cpd-home-progress"
+                  className="h-2 min-w-0 flex-1 appearance-none overflow-hidden rounded-full bg-[color:var(--surface-subtle)] [&::-moz-progress-bar]:bg-[color:var(--mode-identity)] [&::-webkit-progress-bar]:bg-[color:var(--surface-subtle)] [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-[color:var(--mode-identity)]"
+                />
+                <span className="shrink-0 text-sm font-medium nums text-[color:var(--text-heading)]">
+                  {flow.done} of {flow.total} rows
+                </span>
+              </div>
+              <p className="text-sm text-[color:var(--text-muted)]">
+                Checking each row has a date, hours and a category
+              </p>
+            </div>
+          </div>
+        ) : saved ? (
           <div className="grid gap-4">
             <div className={cn(flatCard, "p-3")}>
               <CpdHomeHandoffStrip activities={yearEntries.length} file="saved" />

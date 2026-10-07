@@ -17,8 +17,8 @@ import {
 } from "@/components/cme/cpd-feature-kit";
 import { RefereeList, RefereeSheet, type RefereeDraft } from "@/components/cme/applications/applications-referees";
 import { SeasonDateSheet, SeasonRail, type SeasonDateDraft } from "@/components/cme/applications/applications-season";
-import { Button } from "@/components/ui/button";
-import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { WorkButton, WorkEmpty } from "@/components/mode-kit/work";
+import { cn } from "@/components/ui-primitives";
 import {
   addReferee,
   agreedCount,
@@ -53,7 +53,7 @@ type RefereeSheetState = { open: false } | { open: true; id: string | null };
  * The doctor's own plan for one recruitment season: the dates from the advert
  * on a season rail, the referees with a status each, and the way in to a CV
  * that fills itself. Kept on this device only. No recruitment date is built in
- * ("Dates not checked"), and nothing is sent to anyone.
+ * ("Date to be confirmed"), and nothing is sent to anyone.
  */
 export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean; readonly now: Date }) {
   const today = perthCalendarDate(now);
@@ -188,36 +188,34 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
               <span className="nums">{days}</span> days since you asked
             </span>
           </span>
-          <Button
-            size="sm"
+          <WorkButton
+            variant="tinted"
             onClick={() => setRefereeSheet({ open: true, id: referee.id })}
+            aria-label={`Nudge ${referee.name}`}
             testId="applications-nudge-open"
           >
             Nudge
-          </Button>
+          </WorkButton>
         </section>
       ))}
 
       {empty ? (
-        <section
-          data-testid="applications-empty"
-          className={cn(flatCard, "grid justify-items-center gap-3 px-4 py-8 text-center")}
-        >
-          <IconCircle icon={CalendarDays} />
-          <h2 className="text-base-minus font-semibold text-[color:var(--text-heading)]">
-            Plan your application season
-          </h2>
-          <p className="max-w-80 text-sm text-[color:var(--text-muted)]">
-            Add the dates from the advert, the people you will ask, and check your CV.
-          </p>
-          <Button
-            variant="primary"
-            icon={Plus}
-            onClick={() => setDateSheet({ open: true, stage: "close" })}
-            testId="applications-first-date"
-          >
-            Add the first date
-          </Button>
+        <section className={flatCard}>
+          <WorkEmpty
+            icon={CalendarDays}
+            title="Plan your application season"
+            body="Add the dates from the advert, the people you will ask, and check your CV."
+            testId="applications-empty"
+            action={
+              <WorkButton
+                icon={Plus}
+                onClick={() => setDateSheet({ open: true, stage: "close" })}
+                testId="applications-first-date"
+              >
+                Add the first date
+              </WorkButton>
+            }
+          />
         </section>
       ) : null}
 
@@ -296,33 +294,26 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
       <QuietNote icon={Lock}>Kept on this phone only, never sent. No patient details anywhere here.</QuietNote>
 
       <ActionDock testId="applications-dock">
-        <Button icon={Plus} onClick={() => setDateSheet({ open: true, stage: null })} testId="applications-add-date">
+        <WorkButton
+          variant="secondary"
+          icon={Plus}
+          onClick={() => setDateSheet({ open: true, stage: null })}
+          testId="applications-add-date"
+        >
           Add a date
-        </Button>
-        {full ? (
-          <Button
-            icon={Users}
-            aria-disabled="true"
-            aria-describedby="applications-referee-full"
-            title="8 referees is the most this keeps. Remove one first."
-            onClick={ignoreUnavailableActivation}
-            testId="applications-add-referee"
-          >
-            Add referee
-            <span id="applications-referee-full" className="sr-only">
-              8 referees is the most this keeps. Remove one first.
-            </span>
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            icon={Users}
-            onClick={() => setRefereeSheet({ open: true, id: null })}
-            testId="applications-add-referee"
-          >
-            Add referee
-          </Button>
-        )}
+        </WorkButton>
+        <WorkButton
+          variant={full ? "secondary" : "primary"}
+          icon={Users}
+          onClick={() =>
+            full
+              ? notify(`${REFEREE_LIMIT} referees is the most this keeps. Remove one first.`)
+              : setRefereeSheet({ open: true, id: null })
+          }
+          testId="applications-add-referee"
+        >
+          Add referee
+        </WorkButton>
       </ActionDock>
 
       <SeasonDateSheet

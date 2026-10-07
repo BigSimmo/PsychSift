@@ -26,6 +26,10 @@ import { looksLikePatientDetails } from "@/lib/work-search/signals";
  */
 
 export const CPD_HOME_FILE_HISTORY_LIMIT = 20;
+/** Rows checked per step while a file is made, so the page can show progress and offer Cancel. */
+export const CPD_HOME_CHECK_CHUNK = 10;
+/** From this month the year-end reminder asks for a file before 31 December. */
+export const CPD_HOME_YEAR_END_MONTH = 12;
 const ENTRY_ID_LIMIT = 2000;
 
 const categoryShortLabels: Record<CmeCategory, string> = {
@@ -284,18 +288,37 @@ export type CpdNeedsYouItem = {
 };
 
 /**
- * An update for the Notification centre: activities logged since the last
- * file the doctor marked added. Nothing before a first file is marked added,
- * because until then the doctor has not started using CPD Home this way.
+ * For the Notification centre:
+ * - an update once a file has been marked added: activities logged since, not
+ *   yet in a file marked added (nothing before a first file is marked added,
+ *   because until then the doctor has not started using CPD Home this way);
+ * - from 1 December, an action due 31 December to make the year's file, when
+ *   any of the year's activities is in no file marked added. It replaces the
+ *   update in December, so the doctor sees one item, not two.
  */
 export function cpdHomeNeedsYouItems(
   entries: readonly CmeEntry[],
   state: CpdHomeSendState,
   year: number,
+  today?: string,
 ): CpdNeedsYouItem[] {
-  if (!lastAddedFile(state, year)) return [];
   const count = entriesNotYetAdded(entries, state, year).length;
   if (count === 0) return [];
+  const yearEnd =
+    today !== undefined && Number(today.slice(0, 4)) === year && Number(today.slice(5, 7)) >= CPD_HOME_YEAR_END_MONTH;
+  if (yearEnd) {
+    return [
+      {
+        id: `cpd:cpd-home:year-end:${year}`,
+        title: `Make your ${year} CPD Home file before 31 Dec · ${count} ${count === 1 ? "activity" : "activities"} not added yet`,
+        dueOn: `${year}-12-31`,
+        area: "cpd",
+        href: `${CPD_HOME_SEND_HREF}?year=${year}`,
+        kind: "action",
+      },
+    ];
+  }
+  if (!lastAddedFile(state, year)) return [];
   return [
     {
       id: `cpd:cpd-home:new:${year}`,

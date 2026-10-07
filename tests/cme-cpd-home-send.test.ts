@@ -250,6 +250,42 @@ describe("CPD Home hooks for other areas", () => {
     ]);
   });
 
+  it("from 1 December asks for the year's file by 31 December, once, even before a first file", () => {
+    expect(cpdHomeNeedsYouItems(entries, EMPTY_CPD_HOME_SEND, 2026, "2026-11-30")).toEqual([]);
+    const december = cpdHomeNeedsYouItems(entries, EMPTY_CPD_HOME_SEND, 2026, "2026-12-01");
+    expect(december).toHaveLength(1);
+    expect(december[0]).toMatchObject({
+      id: "cpd:cpd-home:year-end:2026",
+      dueOn: "2026-12-31",
+      kind: "action",
+      area: "cpd",
+      href: "/cme/cpd-home?year=2026",
+    });
+    expect(december[0]!.title).toContain("before 31 Dec");
+    // With a file already marked added, December still shows one item, the action.
+    const state = markCpdHomeFileAdded(
+      recordCpdHomeFile(EMPTY_CPD_HOME_SEND, file("f1", ["a"], null)),
+      "f1",
+      "2026-10-06T05:20:00.000Z",
+    );
+    expect(cpdHomeNeedsYouItems(entries, state, 2026, "2026-12-20").map((item) => item.kind)).toEqual(["action"]);
+    // Another year's December does not nag about this one, and nothing is raised once every activity is added.
+    expect(cpdHomeNeedsYouItems(entries, EMPTY_CPD_HOME_SEND, 2025, "2026-12-20")).toEqual([]);
+    const all = markCpdHomeFileAdded(
+      recordCpdHomeFile(
+        EMPTY_CPD_HOME_SEND,
+        file(
+          "f2",
+          entries.map((item) => item.id),
+          null,
+        ),
+      ),
+      "f2",
+      "2026-12-02T05:20:00.000Z",
+    );
+    expect(cpdHomeNeedsYouItems(entries, all, 2026, "2026-12-20")).toEqual([]);
+  });
+
   it("offers the page to work search", () => {
     expect(cpdHomeSearchRecords()[0]).toMatchObject({ href: "/cme/cpd-home", area: "cpd" });
   });

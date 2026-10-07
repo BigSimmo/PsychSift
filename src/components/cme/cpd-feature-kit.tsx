@@ -4,16 +4,19 @@ import { Check, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react
 import { useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
+import { WorkBody, WorkDock, WorkIconCircle, WorkSectionLabel, WorkTag } from "@/components/mode-kit/work";
 import { announce } from "@/components/ui/live-announcer";
 import { useOptionalToast } from "@/components/ui/toast";
-import { cn, eyebrowText } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 /**
  * Small, flat, presentational pieces shared by two CPD features (Send to AMA
- * CPD Home, Job applications). They hold no data and no rules, so a later pass
- * can swap them for the work-mode kit without touching behaviour.
+ * CPD Home, Job applications). They hold no data and no rules. The page frame,
+ * section labels, icon circles, tags and the action dock are the work-mode kit
+ * (`src/components/mode-kit/work.tsx`); the rest are thin local pieces the kit
+ * does not have.
  *
  * Flat by design (owner, 6 Oct 2026): white cards with a 1 px hairline, flat
  * tint icon circles, no lift. Colours are tokens only.
@@ -23,6 +26,11 @@ export const flatCard = "rounded-lg border border-[color:var(--border)] bg-[colo
 export const flatRow =
   "relative flex min-h-12 min-w-0 items-center gap-3 px-3 py-2 before:pointer-events-none before:absolute before:left-3 before:right-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden";
 
+/**
+ * A CPD feature page inside the work frame: the band names the page (eyebrow
+ * and title, as the mockup's header does), the page keeps an h1 for screen
+ * readers only, and the content sits in the kit's page column.
+ */
 export function CpdFeaturePage({
   eyebrow,
   title,
@@ -34,21 +42,18 @@ export function CpdFeaturePage({
   readonly testId: string;
   readonly children: ReactNode;
 }) {
+  useModeBandHeading({ eyebrow, title });
   return (
-    <main
-      data-mode-identity="cme"
-      data-testid={testId}
-      className={cn(cmePageWidth, "grid min-w-0 gap-5 px-4 pb-32 pt-4 sm:px-6 [overflow-wrap:anywhere]")}
-    >
-      <header className="grid gap-1">
-        <p className={eyebrowText}>{eyebrow}</p>
-        <h1 className={cmePageTitle}>{title}</h1>
-      </header>
-      {children}
+    <main data-mode-identity="cme" data-testid={testId} className="min-w-0 [overflow-wrap:anywhere]">
+      <WorkBody>
+        <h1 className="sr-only">{title}</h1>
+        {children}
+      </WorkBody>
     </main>
   );
 }
 
+/** The kit's small-caps section label, with an optional count and one text action. */
 export function SectionLabel({
   id,
   children,
@@ -58,38 +63,20 @@ export function SectionLabel({
   readonly id?: string;
   readonly children: ReactNode;
   readonly count?: ReactNode;
-  readonly action?: ReactNode;
+  readonly action?: { readonly label: string; readonly onClick: () => void };
 }) {
   return (
-    <div className="flex min-h-12 min-w-0 items-end justify-between gap-3 px-1 pb-1">
-      <h2 id={id} className={cn(eyebrowText, "flex min-w-0 flex-wrap items-baseline gap-x-2")}>
-        <span>{children}</span>
-        {count !== undefined ? <span className="font-normal normal-case nums tracking-normal">{count}</span> : null}
-      </h2>
-      {action}
-    </div>
+    <WorkSectionLabel id={id} count={count} action={action}>
+      {children}
+    </WorkSectionLabel>
   );
 }
 
 export type IconTone = "mode" | "amber" | "green" | "neutral";
 
-const iconToneClass: Record<IconTone, string> = {
-  mode: "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
-  amber: "bg-[color:var(--warning-soft)] text-[color:var(--warning)]",
-  green: "bg-[color:var(--success-soft)] text-[color:var(--success)]",
-  neutral: "bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
-};
-
-/** The flat tint circle: soft fill, area-colour glyph, nothing else. */
-export function IconCircle({ icon: Icon, tone = "mode" }: { readonly icon: LucideIcon; readonly tone?: IconTone }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn("grid size-9 shrink-0 place-items-center rounded-full", iconToneClass[tone])}
-    >
-      <Icon aria-hidden="true" strokeWidth={1.75} className="size-icon-md" />
-    </span>
-  );
+/** The kit's flat tint circle: soft fill, area-colour glyph, nothing else. */
+export function IconCircle({ icon, tone = "mode" }: { readonly icon: LucideIcon; readonly tone?: IconTone }) {
+  return <WorkIconCircle icon={icon} tone={tone} />;
 }
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"] as const;
@@ -115,33 +102,21 @@ export function DateTile({ on, label }: { readonly on: string; readonly label: s
 }
 
 export type TagTone = "mode" | "amber" | "green" | "neutral";
-const tagToneClass: Record<TagTone, string> = {
-  mode: "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
-  amber: "bg-[color:var(--warning-soft)] text-[color:var(--warning)]",
-  green: "bg-[color:var(--success-soft)] text-[color:var(--success)]",
-  neutral: "border border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]",
-};
 
+/** The kit's status word on a flat tint. Always a word, never colour alone. */
 export function Tag({ tone = "neutral", children }: { readonly tone?: TagTone; readonly children: ReactNode }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex min-h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-xs font-medium leading-4",
-        tagToneClass[tone],
-      )}
-    >
-      {children}
-    </span>
-  );
+  return <WorkTag tone={tone}>{children}</WorkTag>;
 }
 
 /** "Not checked" honesty marker, in the warning tint. */
 export function PendingTag({ children }: { readonly children: ReactNode }) {
   return (
-    <Tag tone="amber">
-      <Clock aria-hidden="true" strokeWidth={2} className="size-3" />
-      {children}
-    </Tag>
+    <WorkTag tone="amber">
+      <span className="inline-flex items-center gap-1">
+        <Clock aria-hidden="true" strokeWidth={2.2} className="size-3" />
+        {children}
+      </span>
+    </WorkTag>
   );
 }
 
@@ -234,14 +209,12 @@ export function FlatSwitch({
   );
 }
 
-/** A flat bottom bar for the page's one or two main actions. Clears the app's bottom navigation. */
+/** The kit's floating action dock: one or two `WorkButton`s in a glass capsule. */
 export function ActionDock({ children, testId }: { readonly children: ReactNode; readonly testId?: string }) {
   return (
-    <div
-      data-testid={testId}
-      className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[var(--z-raised)] print:hidden grid min-w-0 grid-cols-2 gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-2"
-    >
-      {children}
+    // `contents`: the wrapper draws no box, so the dock stays sticky against the page column.
+    <div data-testid={testId} className="contents print:hidden">
+      <WorkDock>{children}</WorkDock>
     </div>
   );
 }

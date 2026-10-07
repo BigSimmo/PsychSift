@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CpdHomeEntryLink } from "@/components/cme/cpd-home/cpd-home-entry-link";
@@ -53,7 +53,15 @@ function renderPage(props: Partial<Parameters<typeof CpdHomeSendPage>[0]> = {}) 
   );
 }
 
-const TAP = /\b(?:min-h-(?:12|13|tap)|size-(?:12|tap))\b/;
+// The work-mode kit's buttons and label links take their 48px height from work-mode.css
+// (`--spacing-tap`), not a utility class (work-mode redesign, owner request 6 Oct 2026).
+const TAP = /\b(?:min-h-(?:12|13|tap)|size-(?:12|tap)|work-button|work-label__link)\b/;
+
+/** Taps Download and waits for the rows to be checked and the file saved. */
+async function download() {
+  fireEvent.click(screen.getByTestId("cpd-home-download"));
+  return screen.findByTestId("cpd-home-added");
+}
 
 describe("Send to AMA CPD Home", () => {
   let createObjectURL: ReturnType<typeof vi.fn>;
@@ -78,7 +86,7 @@ describe("Send to AMA CPD Home", () => {
 
   it("makes the file on the device, lists it, and marks it added with Undo", async () => {
     renderPage();
-    fireEvent.click(screen.getByTestId("cpd-home-download"));
+    await download();
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     const blob = createObjectURL.mock.calls[0]![0] as Blob;
     const text = await blob.text();
@@ -129,7 +137,7 @@ describe("Send to AMA CPD Home", () => {
     fireEvent.click(screen.getByTestId("cpd-home-reflections"));
     expect(screen.getByTestId("cpd-home-reflections").getAttribute("aria-checked")).toBe("true");
     expect(screen.getByTestId("cpd-home-withheld").textContent).toContain("1 reflection left out");
-    fireEvent.click(screen.getByTestId("cpd-home-download"));
+    await download();
     const text = await (createObjectURL.mock.calls[0]![0] as Blob).text();
     expect(text).toContain("Reflection");
     expect(text).not.toContain("Mrs Smith");
@@ -143,7 +151,7 @@ describe("Send to AMA CPD Home", () => {
     });
     expect(copy).toHaveBeenLastCalledWith(expect.stringContaining("Activity: Grand round"));
     await act(async () => {
-      fireEvent.click(screen.getByTestId("cpd-home-copy-all"));
+      fireEvent.click(screen.getByRole("button", { name: "Copy all" }));
     });
     const all = copy.mock.calls.at(-1)![0];
     expect(all.split("\n\n")).toHaveLength(3);
@@ -168,14 +176,54 @@ describe("Send to AMA CPD Home", () => {
     expect(screen.queryByTestId("cpd-home-saved-sheet")).toBeNull();
   });
 
-  it("says so when the browser refuses the download, and changes nothing", () => {
+  it("says so when the browser refuses the download, changes nothing, and tries again", async () => {
     createObjectURL.mockImplementation(() => {
       throw new Error("blocked");
     });
     renderPage();
     fireEvent.click(screen.getByTestId("cpd-home-download"));
-    expect(screen.getByTestId("cpd-home-failure").textContent).toContain("Nothing was changed");
+    const failure = await screen.findByTestId("cpd-home-failure");
+    expect(failure.textContent).toContain("No file was made");
+    expect(failure.textContent).toContain("Nothing was changed");
+    expect(screen.queryByTestId("cpd-home-saved-sheet")).toBeNull();
     expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
+    createObjectURL.mockImplementation(() => "blob:cpd");
+    fireEvent.click(within(failure).getByTestId("cpd-home-try-again"));
+    await screen.findByTestId("cpd-home-added");
+    expect(screen.queryByTestId("cpd-home-failure")).toBeNull();
+    expect(JSON.parse(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)!).files).toHaveLength(1);
+  });
+
+  it("checks every row with a progress bar, and Cancel makes no file", async () => {
+    const many = Array.from({ length: 25 }, (_, index) =>
+      entry(`m${index}`, `2026-0${(index % 9) + 1}-1${index % 10}`, { title: `Session ${index}` }),
+    );
+    renderPage({ entries: many });
+    fireEvent.click(screen.getByTestId("cpd-home-download"));
+    const sheet = screen.getByTestId("cpd-home-saved-sheet");
+    expect(sheet.textContent).toContain("Making your file");
+    expect(sheet.textContent).toContain("Checking each row has a date, hours and a category");
+    const bar = within(sheet).getByTestId("cpd-home-progress");
+    expect(bar.getAttribute("max")).toBe("25");
+    expect(bar.getAttribute("value")).toBe("0");
+    // The page's strip and the sheet's both show the file being made.
+    for (const strip of screen.getAllByTestId("cpd-home-handoff"))
+      expect(strip.getAttribute("aria-label")).toContain("being made");
+    // A second tap while it is being made does nothing.
+    expect(screen.getByTestId("cpd-home-download").hasAttribute("disabled")).toBe(true);
+    await waitFor(() => expect(within(sheet).getByTestId("cpd-home-progress").getAttribute("value")).toBe("10"));
+    fireEvent.click(within(sheet).getByTestId("cpd-home-cancel"));
+    expect(screen.queryByTestId("cpd-home-saved-sheet")).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
+  });
+
+  it("says the import format is not confirmed, with its source pending", () => {
+    renderPage();
+    const row = screen.getByTestId("cpd-home-import-format");
+    expect(row.textContent).toContain("Not confirmed yet");
+    expect(row.textContent).toContain("Source pending");
   });
 
   it("shows an empty state with a way to log the first activity", () => {
@@ -184,11 +232,10 @@ describe("Send to AMA CPD Home", () => {
     expect(screen.getByTestId("cpd-home-log-first").getAttribute("href")).toBe("/cme/new");
   });
 
-  it("keeps nothing in the sample, and forgets the list at an account change", () => {
+  it("keeps nothing in the sample, and forgets the list at an account change", async () => {
     const { unmount } = renderPage({ demoMode: true });
     expect(screen.getByTestId("cpd-home-privacy").textContent).toContain("Sample record");
-    fireEvent.click(screen.getByTestId("cpd-home-download"));
-    fireEvent.click(screen.getByTestId("cpd-home-added"));
+    fireEvent.click(await download());
     expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
     unmount();
     localStorage.setItem(CPD_HOME_SEND_STORAGE_KEY, JSON.stringify({ version: 1, files: [] }));

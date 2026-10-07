@@ -25,7 +25,7 @@ import {
 
 /**
  * The season rail, the signature of Job applications: the stages in order. A
- * stage with no date is drawn hollow and dashed ("Date not added"); a date the
+ * stage with no date is drawn hollow and dashed ("Date to be confirmed"); a date the
  * doctor typed is solid and says it is theirs. Today sits on the rail with the
  * countdown to the next date.
  */
@@ -89,7 +89,7 @@ export function SeasonRail({
                 aria-label={
                   item.date
                     ? `${item.label}, ${shortDate(item.date.on, today)}${item.date.time ? ` at ${item.date.time}` : ""}. Change date`
-                    : `${item.label}, date not added. Add date`
+                    : `${item.label}, date to be confirmed. Add date`
                 }
                 className={cn(focusRing, "flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-md text-left")}
               >
@@ -105,7 +105,7 @@ export function SeasonRail({
                   <span className="text-sm leading-5 text-[color:var(--text-muted)]">
                     {item.date
                       ? `Added by you${item.date.source ? `, from ${item.date.source}` : ""}${item.date.time ? ` · ${item.date.time}` : ""}`
-                      : "Date not added"}
+                      : "Date to be confirmed"}
                   </span>
                   {outOfOrder.has(item.stage) ? (
                     <span className="text-sm leading-5 text-[color:var(--warning)]">
@@ -136,8 +136,8 @@ export function SeasonRail({
           className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--warning)]"
         />
         <span>
-          <span className="font-medium">Dates not checked.</span> PsychSift has no confirmed WA recruitment dates. Add
-          them from the advert you apply to.
+          WA recruitment dates are not confirmed. Add them from the advert you apply to.{" "}
+          <span className="whitespace-nowrap font-medium text-[color:var(--warning)]">Source pending</span>
         </span>
       </p>
     </div>
@@ -317,7 +317,8 @@ function SeasonDateSheetBody({
           <span id={remindLabel} className="grid min-w-0 flex-1">
             <span className="text-base-minus font-medium text-[color:var(--text-heading)]">Remind me</span>
             <span className="text-sm text-[color:var(--text-muted)]">
-              Shown at the top of this page from a week before. It won&apos;t buzz or email you.
+              From 1 week before until the day, at the top of this page and in Notifications. It won&apos;t buzz or
+              email you.
             </span>
           </span>
           <FlatSwitch on={remind} onChange={setRemind} labelledBy={remindLabel} testId="applications-date-remind" />

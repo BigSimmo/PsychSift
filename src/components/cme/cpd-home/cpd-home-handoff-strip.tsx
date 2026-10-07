@@ -2,7 +2,7 @@ import { Award, ExternalLink, FileSpreadsheet } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
 
-export type HandoffFileState = "none" | "saved";
+export type HandoffFileState = "none" | "making" | "saved";
 
 /**
  * The signature of "Send to AMA CPD Home": your log, then the CSV file that
@@ -21,7 +21,7 @@ export function CpdHomeHandoffStrip({
     <div
       role="img"
       data-testid="cpd-home-handoff"
-      aria-label={`Your log of ${activityWords} goes into a CSV file${file === "saved" ? ", saved" : ""}. What AMA CPD Home can import is not checked yet.`}
+      aria-label={`Your log of ${activityWords} goes into a CSV file${file === "saved" ? ", saved" : file === "making" ? ", being made" : ""}. What AMA CPD Home can import is not checked yet.`}
       className="relative grid grid-cols-3 py-1"
     >
       <span
@@ -36,8 +36,8 @@ export function CpdHomeHandoffStrip({
       <Node
         icon={FileSpreadsheet}
         title="CSV file"
-        sub={file === "saved" ? "Saved" : "Not made yet"}
-        state={file === "saved" ? "done" : "open"}
+        sub={file === "saved" ? "Saved" : file === "making" ? "Making" : "Ready to make"}
+        state={file === "saved" ? "done" : file === "making" ? "current" : "open"}
       />
       <Node icon={ExternalLink} title="CPD Home" sub="To confirm" state="unchecked" />
     </div>
@@ -53,7 +53,7 @@ function Node({
   readonly icon: typeof Award;
   readonly title: string;
   readonly sub: string;
-  readonly state: "done" | "open" | "unchecked";
+  readonly state: "done" | "current" | "open" | "unchecked";
 }) {
   return (
     <span aria-hidden="true" className="relative z-[var(--z-raised)] grid justify-items-center gap-0.5 text-center">
@@ -62,6 +62,8 @@ function Node({
           "mb-1 grid size-11 place-items-center rounded-full bg-[color:var(--surface-raised)]",
           state === "done" &&
             "border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
+          state === "current" &&
+            "border-2 border-[color:var(--mode-identity)] bg-[color:var(--surface-raised)] text-[color:var(--mode-identity)]",
           state === "open" && "border-2 border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
           state === "unchecked" &&
             "border-2 border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]",

@@ -36,7 +36,9 @@ function type(testId: string, value: string) {
   fireEvent.change(screen.getByTestId(testId), { target: { value } });
 }
 
-const TAP = /\b(?:min-h-(?:12|13|tap)|size-(?:12|tap))\b/;
+// The work-mode kit's buttons and label links take their 48px height from work-mode.css
+// (`--spacing-tap`), not a utility class (work-mode redesign, owner request 6 Oct 2026).
+const TAP = /\b(?:min-h-(?:12|13|tap)|size-(?:12|tap)|work-button|work-label__link)\b/;
 
 describe("Job applications season", () => {
   beforeEach(() => {
@@ -50,11 +52,14 @@ describe("Job applications season", () => {
   it("starts empty and honest: every stage without a date, and dates not checked", () => {
     renderPage();
     expect(screen.getByTestId("applications-empty").textContent).toContain("Plan your application season");
-    expect(screen.getByTestId("applications-dates-not-checked").textContent).toContain("Dates not checked");
+    expect(screen.getByTestId("applications-dates-not-checked").textContent).toContain(
+      "WA recruitment dates are not confirmed",
+    );
+    expect(screen.getByTestId("applications-dates-not-checked").textContent).toContain("Source pending");
     expect(screen.getByTestId("applications-rail").getAttribute("aria-label")).toBe(
       "Application season, 0 of 5 dates added",
     );
-    expect(screen.getAllByText("Date not added")).toHaveLength(5);
+    expect(screen.getAllByText("Date to be confirmed")).toHaveLength(5);
     expect(screen.getByTestId("applications-referee-add-row")).toBeTruthy();
   });
 
