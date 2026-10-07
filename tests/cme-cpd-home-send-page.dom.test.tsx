@@ -57,9 +57,10 @@ function renderPage(props: Partial<Parameters<typeof CpdHomeSendPage>[0]> = {}) 
 // (`--spacing-tap`), not a utility class (work-mode redesign, owner request 6 Oct 2026).
 const TAP = /\b(?:min-h-(?:12|13|tap)|size-(?:12|tap)|work-button|work-label__link)\b/;
 
-/** Taps Download and waits for the rows to be checked and the file saved. */
+/** Taps Download, waits for the rows to be checked, then taps Download file to save it. */
 async function download() {
   fireEvent.click(screen.getByTestId("cpd-home-download"));
+  fireEvent.click(await screen.findByTestId("cpd-home-download-ready"));
   return screen.findByTestId("cpd-home-added");
 }
 
@@ -182,6 +183,7 @@ describe("Send to AMA CPD Home", () => {
     });
     renderPage();
     fireEvent.click(screen.getByTestId("cpd-home-download"));
+    fireEvent.click(await screen.findByTestId("cpd-home-download-ready"));
     const failure = await screen.findByTestId("cpd-home-failure");
     expect(failure.textContent).toContain("No file was made");
     expect(failure.textContent).toContain("Nothing was changed");
@@ -189,6 +191,7 @@ describe("Send to AMA CPD Home", () => {
     expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
     createObjectURL.mockImplementation(() => "blob:cpd");
     fireEvent.click(within(failure).getByTestId("cpd-home-try-again"));
+    fireEvent.click(await screen.findByTestId("cpd-home-download-ready"));
     await screen.findByTestId("cpd-home-added");
     expect(screen.queryByTestId("cpd-home-failure")).toBeNull();
     expect(JSON.parse(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)!).files).toHaveLength(1);
@@ -217,6 +220,72 @@ describe("Send to AMA CPD Home", () => {
     await new Promise((resolve) => setTimeout(resolve, 80));
     expect(createObjectURL).not.toHaveBeenCalled();
     expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
+  });
+
+  it("starts the download only from a tap, and offers Download again", async () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("cpd-home-download"));
+    const ready = await screen.findByTestId("cpd-home-download-ready");
+    // The rows are checked, but nothing is downloaded or recorded until the doctor taps.
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(screen.getByTestId("cpd-home-saved-sheet").textContent).toContain("File ready");
+    expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
+    fireEvent.click(ready);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const sheet = screen.getByTestId("cpd-home-saved-sheet");
+    // It never claims the file is saved, only that the browser should have saved it.
+    expect(sheet.textContent).not.toContain("File saved");
+    expect(sheet.textContent).toContain("Your browser should have saved it");
+    fireEvent.click(within(sheet).getByTestId("cpd-home-download-again"));
+    expect(createObjectURL).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)!).files).toHaveLength(1);
+  });
+
+  it("keeps an activity whose title looks like a patient detail out of the file and every copy", async () => {
+    const copy = vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    renderPage({ entries: [...entries, entry("p", "2026-08-01", { title: "Reviewed a 34yo F with psychosis" })] });
+    const problems = screen.getByTestId("cpd-home-problems");
+    expect(problems.textContent).toContain("Title looks like a patient detail");
+    // The flagged words are not repeated in the problem list.
+    expect(problems.textContent).not.toContain("34yo");
+    expect(problems.textContent).toContain("Activity on 2026-08-01");
+    fireEvent.click(screen.getByTestId("cpd-home-download"));
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(screen.queryByTestId("cpd-home-download-ready")).toBeNull();
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(screen.getByTestId("cpd-home-held-title").getAttribute("href")).toBe("/cme/log/p?edit=1");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy all" }));
+    });
+    const all = copy.mock.calls.at(-1)![0];
+    expect(all).not.toContain("34yo");
+    expect(all.split("\n\n")).toHaveLength(3);
+    fireEvent.click(screen.getByTestId("cpd-home-preview"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("cpd-home-copy-table"));
+    });
+    expect(copy).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists every file of the year behind Show older, so an older one can still be marked added", () => {
+    const files = Array.from({ length: 7 }, (_, index) => ({
+      id: `f${index}`,
+      year: 2026,
+      madeAt: `2026-09-0${index + 1}T05:00:00.000Z`,
+      name: `cpd-log-2026-chosen-2026-09-0${index + 1}.csv`,
+      rows: 1,
+      entryIds: ["a"],
+      includeReflections: false,
+      addedAt: null,
+    }));
+    localStorage.setItem(CPD_HOME_SEND_STORAGE_KEY, JSON.stringify({ version: 1, files }));
+    renderPage();
+    expect(screen.getAllByTestId("cpd-home-file")).toHaveLength(5);
+    fireEvent.click(screen.getByTestId("cpd-home-show-older-files"));
+    expect(screen.getAllByTestId("cpd-home-file")).toHaveLength(7);
+    fireEvent.click(screen.getAllByTestId("cpd-home-mark-added").at(-1)!);
+    const stored = JSON.parse(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)!);
+    expect(stored.files.find((file: { id: string }) => file.id === "f6").addedAt).not.toBeNull();
   });
 
   it("says the import format is not confirmed, with its source pending", () => {

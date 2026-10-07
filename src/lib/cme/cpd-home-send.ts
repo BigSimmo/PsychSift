@@ -4,7 +4,7 @@ import { formatEntryForCpdHome } from "@/lib/cme/clipboard";
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries, cmeCsvCell } from "@/lib/cme/export";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
-import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { cpdTextLooksLikePatient } from "@/lib/cme/patient-detail-check";
 
 /**
  * Send CPD to AMA CPD Home (#11).
@@ -88,12 +88,29 @@ export function cpdHomeRows(entries: readonly CmeEntry[], year: number, onlyIds?
 
 export type CpdHomeRowProblem = { readonly entryId: string; readonly activity: string; readonly problem: string };
 
-/** Every row that would make an incomplete file. A file is made only when this is empty. */
-export function cpdHomeRowProblems(rows: readonly CpdHomeRow[]): CpdHomeRowProblem[] {
+export const CPD_HOME_TITLE_PATIENT_PROBLEM = "Title looks like a patient detail";
+
+/**
+ * Every row that would make an incomplete or unsafe file. A file is made only when this is empty.
+ * A title that reads like a patient detail stops the file the same way a missing date does,
+ * because the title is in every row of every file and copy. Its row is named by date, so the
+ * flagged words are not shown again.
+ */
+export function cpdHomeRowProblems(
+  rows: readonly CpdHomeRow[],
+  thisYear = new Date().getFullYear(),
+): CpdHomeRowProblem[] {
   const problems: CpdHomeRowProblem[] = [];
   for (const row of rows) {
     const activity = row.activity || "Untitled activity";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date)) problems.push({ entryId: row.entryId, activity, problem: "No date" });
+    if (cpdTextLooksLikePatient(row.activity, thisYear))
+      problems.push({
+        entryId: row.entryId,
+        activity: /^\d{4}-\d{2}-\d{2}$/.test(row.date) ? `Activity on ${row.date}` : "An activity",
+        problem: CPD_HOME_TITLE_PATIENT_PROBLEM,
+      });
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date))
+      problems.push({ entryId: row.entryId, activity, problem: "No date" });
     else if (!(row.hours > 0)) problems.push({ entryId: row.entryId, activity, problem: "No hours" });
     else if (!row.category) problems.push({ entryId: row.entryId, activity, problem: "No category" });
     else if (!row.activity) problems.push({ entryId: row.entryId, activity, problem: "No title" });
@@ -102,14 +119,20 @@ export function cpdHomeRowProblems(rows: readonly CpdHomeRow[]): CpdHomeRowProbl
 }
 
 /**
- * Reflections that read like they hold a patient detail (a labelled record
- * number, a date of birth, a title and surname, a bed). These are left out of
- * the file even when reflections are included, and the page names them.
+ * Reflections that read like they hold a patient detail (a record number, a
+ * date of birth, a title and surname, a bed, initials, an age and sex, a phone
+ * number: `cpdTextLooksLikePatient`). These are left out of the file and every
+ * copy even when reflections are included, and the page names them.
  */
 export function reflectionsToLeaveOut(rows: readonly CpdHomeRow[], thisYear: number): Set<string> {
   return new Set(
-    rows.filter((row) => row.reflection && looksLikePatientDetails(row.reflection, thisYear)).map((row) => row.entryId),
+    rows.filter((row) => row.reflection && cpdTextLooksLikePatient(row.reflection, thisYear)).map((row) => row.entryId),
   );
+}
+
+/** The ids of activities whose title reads like a patient detail. No file or copy holds them. */
+export function titlesToHoldBack(entries: readonly CmeEntry[], thisYear: number): Set<string> {
+  return new Set(entries.filter((entry) => cpdTextLooksLikePatient(entry.title, thisYear)).map((entry) => entry.id));
 }
 
 export type CpdHomeFileOptions = {
@@ -154,9 +177,11 @@ export function formatCpdHomeCsv(rows: readonly CpdHomeRow[], options: CpdHomeFi
 
 function tableCell(value: string | number): string {
   // A tab or a line break inside a cell would start a new column or row when pasted.
-  return String(value)
+  const text = String(value)
     .replace(/[\t\r\n]+/g, " ")
     .trim();
+  // As in the CSV (`cmeCsvCell`): a pasted cell starting = + - or @ would run as a spreadsheet formula.
+  return typeof value === "string" && /^[=+@-]/.test(text) ? `'${text}` : text;
 }
 
 /** The same rows tab-separated, for pasting straight into a spreadsheet or a web table. */
@@ -173,15 +198,19 @@ export function cpdHomeActivityText(entry: CmeEntry, set: CmeRequirementSet, inc
   return at < 0 ? text : text.slice(0, at);
 }
 
-/** Every chosen activity, one after another, a blank line between. */
+/**
+ * Every chosen activity, one after another, a blank line between. An activity whose title reads
+ * like a patient detail (`heldTitles`) is left out altogether, and a held-back reflection is dropped.
+ */
 export function cpdHomeAllText(
   entries: readonly CmeEntry[],
   set: CmeRequirementSet,
   includeReflections: boolean,
   withheldReflections: ReadonlySet<string> = new Set(),
+  heldTitles: ReadonlySet<string> = new Set(),
 ): string {
   return entries
-    .filter((entry) => !entry.archivedAt)
+    .filter((entry) => !entry.archivedAt && !heldTitles.has(entry.id))
     .map((entry) => cpdHomeActivityText(entry, set, includeReflections && !withheldReflections.has(entry.id)))
     .join("\n\n");
 }

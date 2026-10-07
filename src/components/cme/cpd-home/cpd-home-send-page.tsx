@@ -57,6 +57,7 @@ import {
   recordCpdHomeFile,
   reflectionsToLeaveOut,
   removeCpdHomeFile,
+  titlesToHoldBack,
   unmarkCpdHomeFileAdded,
   type CpdHomeFile,
   type CpdHomeScope,
@@ -76,12 +77,19 @@ export type CpdHomeSendPageProps = {
 
 const PREVIEW_ROWS = 4;
 const LIST_COLLAPSED = 6;
+/** Files of the year listed before "Show older". Every file stays reachable, so any can be marked added. */
+const FILES_COLLAPSED = 5;
 /** One small batch of rows is checked per tick, so the progress bar can be drawn between them. */
 const CHECK_STEP_MS = 16;
 
-/** The file sheet: checking rows (with Cancel), then the saved file and its next steps. */
+/**
+ * The file sheet: checking rows (with Cancel), then the file ready to download, then the saved
+ * file and its next steps. The download itself always starts from a tap ("Download file"), never
+ * from a timer, because a browser may quietly block a download that no tap started.
+ */
 type FileFlow =
   | { readonly phase: "making"; readonly done: number; readonly total: number; readonly name: string }
+  | { readonly phase: "ready"; readonly file: CpdHomeFile; readonly text: string }
   | { readonly phase: "saved"; readonly file: CpdHomeFile; readonly text: string };
 
 /** Why no file was made, in words, and whether trying again could help. */
@@ -165,12 +173,14 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
   const [includeReflections, setIncludeReflections] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [showOlderFiles, setShowOlderFiles] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [flow, setFlow] = useState<FileFlow | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [checkOpen, setCheckOpen] = useState(false);
   const making = useRef<{ cancelled: boolean } | null>(null);
   const saved = flow?.phase === "saved" ? flow : null;
+  const ready = flow?.phase === "ready" ? flow : null;
 
   // Leaving the page part-way stops the check: nothing is saved and no file is made.
   useEffect(
@@ -187,7 +197,9 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   }, [chosen, notYetAdded, scope, yearEntries]);
   const scopeIds = useMemo(() => new Set(scopeEntries.map((entry) => entry.id)), [scopeEntries]);
   const rows = useMemo(() => cpdHomeRows(entries, set.year, scopeIds), [entries, scopeIds, set.year]);
-  const problems = useMemo(() => cpdHomeRowProblems(rows), [rows]);
+  const problems = useMemo(() => cpdHomeRowProblems(rows, thisYear), [rows, thisYear]);
+  // Titles go in every row of every file and copy, so a patient-like one keeps the activity out of all of them.
+  const heldTitles = useMemo(() => titlesToHoldBack(scopeEntries, thisYear), [scopeEntries, thisYear]);
   const withheld = useMemo(
     () => (includeReflections ? reflectionsToLeaveOut(rows, thisYear) : new Set<string>()),
     [includeReflections, rows, thisYear],
@@ -244,13 +256,13 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
     const step = () => {
       if (token.cancelled) return;
       const next = Math.min(done + CPD_HOME_CHECK_CHUNK, total);
-      // Each row is checked again for a date, hours and a category. One gap stops the whole file.
-      if (cpdHomeRowProblems(fileRows.slice(done, next)).length) {
+      // Each row is checked again for a date, hours, a category and a safe title. One gap stops the whole file.
+      if (cpdHomeRowProblems(fileRows.slice(done, next), thisYear).length) {
         making.current = null;
         setFlow(null);
         setFailure({
           title: "No file was made",
-          body: "An activity is missing its date, hours or category, so the file would be incomplete. Nothing was changed.",
+          body: "An activity is missing its date, hours or category, or its title looks like a patient detail. Nothing was changed.",
           retry: false,
         });
         announce("No file was made. An activity is missing details.", { priority: "assertive" });
@@ -264,16 +276,6 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       }
       making.current = null;
       const text = formatCpdHomeCsv(fileRows, fileOptions);
-      if (!saveTextFile(name, text)) {
-        setFlow(null);
-        setFailure({
-          title: "No file was made",
-          body: "This browser did not save the file. Nothing was changed.",
-          retry: true,
-        });
-        announce("No file was made. Try again.", { priority: "assertive" });
-        return;
-      }
       const file: CpdHomeFile = {
         id: newFileId(),
         year: set.year,
@@ -284,11 +286,32 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
         includeReflections: fileOptions.includeReflections,
         addedAt: null,
       };
-      store.update((current) => recordCpdHomeFile(current, file));
-      setFlow({ phase: "saved", file, text });
-      announce(`File saved, ${total} ${total === 1 ? "row" : "rows"}`);
+      setFlow({ phase: "ready", file, text });
+      announce(`File ready, ${total} ${total === 1 ? "row" : "rows"}. Tap Download file.`);
     };
     window.setTimeout(step, CHECK_STEP_MS);
+  }
+
+  /** Runs inside the tap, so the browser treats the download as one the doctor asked for. */
+  function downloadReady(file: CpdHomeFile, text: string) {
+    if (!saveTextFile(file.name, text)) {
+      setFlow(null);
+      setFailure({
+        title: "No file was made",
+        body: "This browser did not save the file. Nothing was changed.",
+        retry: true,
+      });
+      announce("No file was made. Try again.", { priority: "assertive" });
+      return;
+    }
+    store.update((current) => recordCpdHomeFile(current, file));
+    setFlow({ phase: "saved", file, text });
+    announce("Download started. Check your downloads.");
+  }
+
+  function downloadAgain(file: CpdHomeFile, text: string) {
+    if (saveTextFile(file.name, text)) announce("Download started again. Check your downloads.");
+    else notify("This browser did not save the file. Try Share, or copy the activities instead.");
   }
 
   function cancelMaking() {
@@ -321,16 +344,29 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   }
 
   async function copyAll() {
-    const text = cpdHomeAllText(scopeEntries, set, includeReflections, withheld);
+    const copied = scopeEntries.filter((entry) => !heldTitles.has(entry.id)).length;
+    if (copied === 0) {
+      notify("Nothing copied. Edit the titles that look like a patient detail first.");
+      return;
+    }
+    const text = cpdHomeAllText(scopeEntries, set, includeReflections, withheld, heldTitles);
     try {
       await copyTextToClipboard(text);
-      notify(`${activityWords(scopeEntries.length)} copied, one after another`);
+      notify(
+        heldTitles.size
+          ? `${activityWords(copied)} copied. ${activityWords(heldTitles.size)} left out, the title looks like a patient detail`
+          : `${activityWords(copied)} copied, one after another`,
+      );
     } catch {
       notify("Could not copy. Try again, or copy each activity on its own.");
     }
   }
 
   async function copyTable() {
+    if (heldTitles.size) {
+      notify("Not copied. Edit the titles that look like a patient detail first.");
+      return;
+    }
     try {
       await copyTextToClipboard(formatCpdHomeTable(rows, options));
       notify(`${rows.length} ${rows.length === 1 ? "row" : "rows"} copied as a table`);
@@ -495,11 +531,24 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                       {row?.category || "No category"} · <span className="nums">{hoursWords(row?.hours ?? 0)}</span>
                     </span>
                   </span>
-                  <CopyIconButton
-                    label={`Copy ${entry.title}`}
-                    text={() => cpdHomeActivityText(entry, set, includeReflections && !withheld.has(entry.id))}
-                    testId="cpd-home-copy-one"
-                  />
+                  {heldTitles.has(entry.id) ? (
+                    <Link
+                      href={`/cme/log/${entry.id}?edit=1`}
+                      className={cn(
+                        focusRing,
+                        "inline-flex min-h-12 shrink-0 items-center text-sm text-[color:var(--warning)] underline underline-offset-4",
+                      )}
+                      data-testid="cpd-home-held-title"
+                    >
+                      Edit title
+                    </Link>
+                  ) : (
+                    <CopyIconButton
+                      label={`Copy ${entry.title}`}
+                      text={() => cpdHomeActivityText(entry, set, includeReflections && !withheld.has(entry.id))}
+                      testId="cpd-home-copy-one"
+                    />
+                  )}
                 </li>
               );
             })}
@@ -607,7 +656,8 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             No file is made until these are fixed
           </p>
           <p className="text-sm text-[color:var(--text-muted)]">
-            A file with gaps could leave activities out without you knowing. Nothing was changed.
+            A file with gaps could leave activities out without you knowing, and a title is in every row and copy, so it
+            cannot hold a patient detail. Nothing was changed.
           </p>
           <ul role="list" className="grid">
             {problems.map((problem) => (
@@ -667,7 +717,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           </div>
         ) : (
           <ul role="list" className={flatCard} data-testid="cpd-home-history">
-            {history.slice(0, 5).map((file) => (
+            {(showOlderFiles ? history : history.slice(0, FILES_COLLAPSED)).map((file) => (
               <li key={file.id} className={cn(flatRow, "flex-wrap")} data-testid="cpd-home-file">
                 <CsvBadge />
                 <span className="grid min-w-0 flex-1 basis-40 py-1">
@@ -715,6 +765,16 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             ))}
           </ul>
         )}
+        {history.length > FILES_COLLAPSED ? (
+          <Button
+            variant="ghost"
+            onClick={() => setShowOlderFiles((value) => !value)}
+            aria-expanded={showOlderFiles}
+            testId="cpd-home-show-older-files"
+          >
+            {showOlderFiles ? `Show the latest ${FILES_COLLAPSED}` : `Show older · ${history.length - FILES_COLLAPSED}`}
+          </Button>
+        ) : null}
       </section>
 
       <section aria-labelledby="cpd-home-import-format" className="grid gap-2">
@@ -851,14 +911,34 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       <Sheet
         open={flow !== null}
         onClose={() => (flow?.phase === "making" ? cancelMaking() : setFlow(null))}
-        title={flow?.phase === "making" ? "Making your file" : "File saved"}
-        description={flow?.phase === "making" ? flow.name : "In your downloads, on this device"}
+        title={flow?.phase === "making" ? "Making your file" : ready ? "File ready" : "Download started"}
+        description={
+          flow?.phase === "making"
+            ? flow.name
+            : ready
+              ? `${ready.file.name}, checked and ready`
+              : "Your browser should have saved it to your downloads"
+        }
         testId="cpd-home-saved-sheet"
         footer={
           flow?.phase === "making" ? (
             <Button block onClick={cancelMaking} testId="cpd-home-cancel">
               Cancel
             </Button>
+          ) : ready ? (
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={() => setFlow(null)} testId="cpd-home-ready-cancel">
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                icon={Download}
+                onClick={() => downloadReady(ready.file, ready.text)}
+                testId="cpd-home-download-ready"
+              >
+                Download file
+              </Button>
+            </div>
           ) : saved ? (
             <div className="grid grid-cols-2 gap-2">
               <Button onClick={() => setFlow(null)} testId="cpd-home-not-yet">
@@ -899,6 +979,22 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
               </p>
             </div>
           </div>
+        ) : ready ? (
+          <div className="grid gap-3" data-testid="cpd-home-ready">
+            <div className={cn(flatCard, "flex flex-wrap items-center gap-3 p-3")}>
+              <CsvBadge />
+              <span className="grid min-w-0 flex-1">
+                <span className="truncate text-base-minus font-medium text-[color:var(--text-heading)]">
+                  {ready.file.name}
+                </span>
+                <span className="text-sm text-[color:var(--text-muted)]">
+                  <span className="nums">{ready.file.rows}</span> {ready.file.rows === 1 ? "row" : "rows"}, every one
+                  checked
+                </span>
+              </span>
+            </div>
+            <p className="text-sm text-[color:var(--text-muted)]">Tap Download file to save it on this device.</p>
+          </div>
         ) : saved ? (
           <div className="grid gap-4">
             <div className={cn(flatCard, "p-3")}>
@@ -916,6 +1012,18 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                 </span>
               </span>
               <ShareButton name={saved.file.name} text={saved.text} />
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1" data-testid="cpd-home-not-there">
+              <span className="text-sm text-[color:var(--text-muted)]">Not in your downloads?</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={Download}
+                onClick={() => downloadAgain(saved.file, saved.text)}
+                testId="cpd-home-download-again"
+              >
+                Download again
+              </Button>
             </div>
             <div className="grid gap-1">
               <SectionLabel>Next, in CPD Home</SectionLabel>

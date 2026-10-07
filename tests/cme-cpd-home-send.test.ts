@@ -24,6 +24,7 @@ import {
   recordCpdHomeFile,
   reflectionsToLeaveOut,
   removeCpdHomeFile,
+  titlesToHoldBack,
   unmarkCpdHomeFileAdded,
   type CpdHomeFile,
 } from "@/lib/cme/cpd-home-send";
@@ -149,6 +150,15 @@ describe("CPD Home file", () => {
     expect(line).toContain("Two parts here");
   });
 
+  it("keeps spreadsheet commands literal in Copy as table too", () => {
+    for (const title of ['=HYPERLINK("http://x","a")', "+1 talk", "-cmd", "@SUM(1)"]) {
+      const table = formatCpdHomeTable(cpdHomeRows([entry("x", "2026-02-02", { title })], 2026), {
+        includeReflections: false,
+      });
+      expect(table.split("\n")[1]!.split("\t")[1], title).toBe(`'${title}`);
+    }
+  });
+
   it("withholds reflections that read like a patient detail", () => {
     const flagged = cpdHomeRows(
       [
@@ -158,6 +168,31 @@ describe("CPD Home file", () => {
       2026,
     );
     expect([...reflectionsToLeaveOut(flagged, 2026)]).toEqual(["p"]);
+  });
+
+  it.each([
+    "Reviewed a 34yo F, JS, with first-episode psychosis",
+    "Discussed J.S. on ward 6 call 0412 345 678",
+    "Saw a 34 y.o. male in clinic",
+    "Saw a 34 year old woman in clinic",
+  ])("withholds a reflection the reminder or age check reads as a patient detail: %s", (reflection) => {
+    const flagged = cpdHomeRows([entry("p", "2026-04-01", { reflection })], 2026);
+    expect([...reflectionsToLeaveOut(flagged, 2026)]).toEqual(["p"]);
+  });
+
+  it("stops the file when a title reads like a patient detail, naming the row by date only", () => {
+    const flagged = [
+      entry("p", "2026-04-01", { title: "Reviewed a 34yo F, JS, with psychosis" }),
+      entry("q", "2026-04-02", { title: "Grand round: ECT update" }),
+    ];
+    const problems = cpdHomeRowProblems(cpdHomeRows(flagged, 2026), 2026);
+    expect(problems).toEqual([
+      { entryId: "p", activity: "Activity on 2026-04-01", problem: "Title looks like a patient detail" },
+    ]);
+    expect([...titlesToHoldBack(flagged, 2026)]).toEqual(["p"]);
+    const text = cpdHomeAllText(flagged, set, true, new Set(), titlesToHoldBack(flagged, 2026));
+    expect(text).not.toContain("34yo");
+    expect(text).toContain("Grand round");
   });
 
   it("names files by year and scope", () => {
