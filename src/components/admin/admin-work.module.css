@@ -925,3 +925,45 @@
   align-items: flex-end;
   gap: calc(var(--spacing) * 2);
 }
+
+/* Export: the file card, its wide preview table and its small print. */
+.exportFile {
+  display: grid;
+  min-width: 0;
+  padding-bottom: calc(var(--spacing) * 3);
+}
+
+.exportBody {
+  padding-inline: calc(var(--spacing) * 4);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.exportPreview {
+  min-width: 0;
+  margin-inline: calc(var(--spacing) * 4);
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+}
+
+.exportPreview table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--text-xs);
+}
+
+.exportPreview th,
+.exportPreview td {
+  border-bottom: 1px solid var(--border);
+  padding-block: calc(var(--spacing) * 1.5);
+  padding-inline-end: calc(var(--spacing) * 3);
+  vertical-align: top;
+  color: var(--text);
+}
+
+.exportPreview th {
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-muted);
+}

@@ -290,7 +290,6 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/AccessibleTable.tsx",
-        "src/components/admin/admin-compliance-export-page.tsx",
         "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/admin/new-job/admin-credential-pack-page.tsx",
@@ -438,7 +437,6 @@
       ],
       "productImportFiles": [
         "src/components/AccessibleTable.tsx",
-        "src/components/admin/admin-compliance-export-page.tsx",
         "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/admin/new-job/admin-credential-pack-page.tsx",
