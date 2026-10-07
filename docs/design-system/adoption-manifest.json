@@ -321,7 +321,6 @@
         "src/components/cme/cme-dashboard.tsx",
         "src/components/cme/cme-drafts-section.tsx",
         "src/components/cme/cme-entry-form.tsx",
-        "src/components/cme/cme-entry-page.tsx",
         "src/components/cme/cme-evidence-panel.tsx",
         "src/components/cme/cme-log-copy-sheet.tsx",
         "src/components/cme/cme-missed-sessions-section.tsx",
@@ -482,7 +481,6 @@
         "src/components/cme/cme-dashboard.tsx",
         "src/components/cme/cme-drafts-section.tsx",
         "src/components/cme/cme-entry-form.tsx",
-        "src/components/cme/cme-entry-page.tsx",
         "src/components/cme/cme-evidence-panel.tsx",
         "src/components/cme/cme-log-copy-sheet.tsx",
         "src/components/cme/cme-missed-sessions-section.tsx",
@@ -712,7 +710,6 @@
       "directImportFiles": [
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
-        "src/components/cme/cme-entry-page.tsx",
         "src/components/sources/sources-catalogue-client.tsx",
         "src/components/sources/sources-currency-page.tsx",
         "src/components/sources/sources-pages.tsx",
@@ -723,7 +720,6 @@
       "productImportFiles": [
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
-        "src/components/cme/cme-entry-page.tsx",
         "src/components/sources/sources-catalogue-client.tsx",
         "src/components/sources/sources-currency-page.tsx",
         "src/components/sources/sources-pages.tsx",
