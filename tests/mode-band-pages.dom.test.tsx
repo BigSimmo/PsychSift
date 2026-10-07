@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
 
 import { CmeOwnerBoundary } from "@/components/cme/cme-owner-boundary";
-import { ModeBand } from "@/components/mode-band/mode-band";
+import { ModeBand, useModeBandCurrentTab } from "@/components/mode-band/mode-band";
 import { TeachingDepthPage } from "@/components/teaching/teaching-depth-page";
 
 const ready = { status: "ready" as const, data: {}, code: null, refreshing: false, retry: () => {} };
@@ -85,5 +85,22 @@ describe("mode band on each mode's pages", () => {
       </ModeBand>,
     );
     expect(screen.getByRole("heading", { level: 1, name: "Presenting" })).toHaveClass("sr-only");
+  });
+
+  it("ticks no Roster tab when My shifts' page draws at /roster", () => {
+    // Work-mode redesign, owner request 6 Oct 2026: /roster?view=month draws My shifts' month
+    // list, so that page names itself and the Month tab (the month grid) is not marked current.
+    function ShiftsAtRoster() {
+      useModeBandCurrentTab("shifts");
+      return <>page</>;
+    }
+    nav.pathname = "/roster";
+    render(
+      <ModeBand modeId="roster">
+        <ShiftsAtRoster />
+      </ModeBand>,
+    );
+    expect(screen.getByRole("link", { name: "Month" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByTestId("work-frame-more")).toHaveAttribute("data-current");
   });
 });

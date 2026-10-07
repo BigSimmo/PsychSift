@@ -76,7 +76,7 @@ import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
 import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-team";
 import { RosterPageHeader } from "./roster-ui";
-import { useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useModeBandCurrentTab, useModeBandHeading } from "@/components/mode-band/mode-band";
 
 /**
  * Roster Shifts, as the Roster mock-up draws it: the shift on now or next, the
@@ -411,6 +411,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
       : view === "month"
         ? "Your shifts and WA public holidays."
         : "Your shifts, week by week.";
+  // The page names its own place in the frame (work-mode redesign, owner request 6 Oct 2026):
+  // Hours and rest, or My shifts for the week and plain month lists. The address alone would
+  // tick the Month tab whenever this page draws at /roster (?view=month, and before the query
+  // is read), though the month grid is not what is showing.
+  useModeBandCurrentTab(view === "hours" ? "hours" : "shifts");
   // The band's words (work-mode redesign, owner request 6 Oct 2026): the 14 days the check
   // covers, or the week on screen. The page title under the band stays for screen readers.
   useModeBandHeading(

@@ -232,7 +232,16 @@ const roster: WorkArea = {
       items: [
         { id: "today", label: "Today", sub: "Your shift today", icon: "sun", href: "/roster/today" },
         { id: "shifts", label: "My shifts", sub: "Week by week", icon: "layers", href: "/roster/shifts" },
-        { id: "requests", label: "Leave", sub: "Leave and requests", icon: "flag", href: "/roster/requests" },
+        {
+          id: "requests",
+          label: "Leave",
+          sub: "Leave and requests",
+          icon: "flag",
+          href: "/roster/requests",
+          // The page is Leave and requests (swaps, dates and shift changes too), so the band
+          // names it that from the first paint, not only once the page sets its heading.
+          title: "Leave and requests",
+        },
         {
           id: "hours",
           label: "Hours and rest",
