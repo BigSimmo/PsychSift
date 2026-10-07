@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { cpdTextLooksLikePatient } from "@/lib/cme/patient-detail-check";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * Job applications season (#22): the doctor's own plan for one recruitment
@@ -147,10 +148,7 @@ export type ApplicationTextProblem = { readonly title: string; readonly body: st
  * Null when the words read as safe. Otherwise a short reason, in the style of
  * the Remind me catch: the field cannot hold a patient detail.
  */
-export function applicationTextProblem(
-  text: string,
-  thisYear = new Date().getFullYear(),
-): ApplicationTextProblem | null {
+export function applicationTextProblem(text: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
   if (cpdTextLooksLikePatient(trimmed, thisYear, { allowCapitals: true }))
@@ -169,9 +167,9 @@ const TITLES = /^(?:dr|doctor|prof|professor|a\/prof|assoc(?:iate)?\.?\s+prof(?:
  * surname, so that one finding is allowed; capitals alone ("JS"), dotted initials ("J.S.") and an
  * age with sex are not.
  */
-export function refereeNameProblem(name: string, thisYear = new Date().getFullYear()): ApplicationTextProblem | null {
+export function refereeNameProblem(name: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
   const trimmed = name.trim();
-  if (!trimmed) return { title: "Add a name", body: "Type the referee's name, for example Dr Grant." };
+  if (!trimmed) return { title: "Add a name", body: "Type the referee's name, for example Dr Karri." };
   if (/\d/.test(trimmed))
     return {
       title: "A name has no numbers",
@@ -186,7 +184,7 @@ export function refereeNameProblem(name: string, thisYear = new Date().getFullYe
   if (cpdTextLooksLikePatient(rest, thisYear, { allowName: true }))
     return {
       title: "This looks like a patient detail",
-      body: "Only the referee's name goes here, for example Dr Grant. Leave out initials, ages and anything about a patient.",
+      body: "Only the referee's name goes here, for example Dr Karri. Leave out initials, ages and anything about a patient.",
     };
   return null;
 }
@@ -584,7 +582,7 @@ export function sampleApplications(today: string): ApplicationsState {
     referees: [
       {
         id: "sample-moss",
-        name: "Dr Moss",
+        name: "Dr Jarrah",
         role: "Consultant, Example Hospital",
         status: "agreed",
         history: [
@@ -594,12 +592,12 @@ export function sampleApplications(today: string): ApplicationsState {
       },
       {
         id: "sample-grant",
-        name: "Dr Grant",
+        name: "Dr Karri",
         role: "Consultant, Example Hospital",
         status: "asked",
         history: [{ kind: "status", status: "asked", on: shiftDays(today, -5) }],
       },
-      { id: "sample-lowe", name: "Dr Lowe", role: "Clinic B", status: "not-asked", history: [] },
+      { id: "sample-lowe", name: "Dr Banksia", role: "Clinic B", status: "not-asked", history: [] },
     ],
     statement: "",
     hiddenCvLines: [],

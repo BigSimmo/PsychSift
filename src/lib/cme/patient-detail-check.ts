@@ -1,5 +1,6 @@
 import { checkReminderText } from "@/lib/alerts/remind-me";
 import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * The patient-detail reading every CPD free-text field goes through before it
@@ -58,7 +59,7 @@ export type CpdPatientCheckOptions = {
 /** True when the words read as holding a patient detail. Empty text is never flagged. */
 export function cpdTextLooksLikePatient(
   text: string,
-  thisYear = new Date().getFullYear(),
+  thisYear = currentWorkYear(),
   options: CpdPatientCheckOptions = {},
 ): boolean {
   const trimmed = text.trim();
