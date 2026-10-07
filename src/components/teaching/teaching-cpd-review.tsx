@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { Award } from "lucide-react";
 import { useMemo, useState } from "react";
-import { focusRing } from "@/components/card-recipes";
-import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeInsetHairline, modeModuleSurface } from "@/components/mode-kit/recipes";
+import { WorkButton } from "@/components/mode-kit/work";
+import { T5Empty, T5Icon, T5List, T5Note, T5Row } from "@/components/teaching/t5-kit";
 import {
   TeachingAccountPage,
   TeachingDepthPage,
@@ -13,10 +12,9 @@ import {
 import { perthDateKey, perthTime, shortDayLabel } from "@/components/teaching/teaching-dates";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { TextField } from "@/components/ui/text-field";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 import { demoCpdReview } from "@/lib/teaching/depth-demo";
 import {
@@ -50,11 +48,12 @@ function ReviewPage({ demoMode }: { demoMode: boolean }) {
   });
   return (
     <TeachingDepthPage title="Weekly CPD review" demoMode={demoMode} resource={resource} ready={!!rows}>
-      <ModeNotice>
+      <T5Note tone="notice">
+        <b className="block font-bold text-[color:var(--text-heading)]">You choose what counts</b>
         Choose the sessions and hours you want to log. Attendance does not award CPD credit. These entries are private
         to you; your service cannot see your CPD figures.
-      </ModeNotice>
-      {rows?.length === 0 ? <ModeNotice>No attended sessions waiting to be logged.</ModeNotice> : null}
+      </T5Note>
+      {rows?.length === 0 ? <T5Empty>No attended sessions waiting to be logged.</T5Empty> : null}
       <form
         className="grid gap-3"
         onSubmit={async (event) => {
@@ -83,11 +82,15 @@ function ReviewPage({ demoMode }: { demoMode: boolean }) {
         }}
       >
         {rows?.length ? (
-          <ul role="list" className={cn(modeModuleSurface, "grid")} data-testid="teaching-review-rows">
+          <ul
+            role="list"
+            className="work-card m-0 grid list-none divide-y divide-[color:var(--border)] p-0"
+            data-testid="teaching-review-rows"
+          >
             {rows.map((row) => {
               const done = logged.has(row.occurrenceId);
               return (
-                <li key={row.occurrenceId} className={cn(modeInsetHairline, "grid gap-2 px-3 py-1")}>
+                <li key={row.occurrenceId} className="grid gap-2 px-3 py-1">
                   <Checkbox
                     label={row.title}
                     description={`${row.serviceName} · ${shortDayLabel(perthDateKey(row.startsAt))} · ${perthTime(row.startsAt)}`}
@@ -127,7 +130,14 @@ function ReviewPage({ demoMode }: { demoMode: boolean }) {
                   {results
                     .filter((result) => result.occurrenceId === row.occurrenceId)
                     .map((result) => (
-                      <p key={result.occurrenceId} role="status" className={cn("pb-2 text-sm", textMuted)}>
+                      <p
+                        key={result.occurrenceId}
+                        role="status"
+                        className={cn(
+                          "pb-2 text-xs font-semibold",
+                          result.entryId ? "text-[color:var(--success-text)]" : "text-[color:var(--danger-text)]",
+                        )}
+                      >
                         {result.entryId
                           ? "Saved to your private CPD log."
                           : (result.message ?? "Not saved. Try again.")}
@@ -141,32 +151,31 @@ function ReviewPage({ demoMode }: { demoMode: boolean }) {
         {rows?.length ? (
           <div className={teachingStickySubmit}>
             {selected.length > CPD_REVIEW_MAX_ROWS ? (
-              <p role="alert" className="text-sm text-[color:var(--text-heading)]">
+              <p role="alert" className="text-xs font-semibold text-[color:var(--danger-text)]">
                 Choose up to {CPD_REVIEW_MAX_ROWS} sessions at a time.
               </p>
             ) : null}
             {error ? (
-              <p role="alert" className="text-sm text-[color:var(--text-heading)]">
+              <p role="alert" className="text-xs font-semibold text-[color:var(--danger-text)]">
                 {error}
               </p>
             ) : null}
-            <Button type="submit" variant="primary" block disabled={busy || !parsed.success}>
+            <WorkButton type="submit" size="wide" disabled={busy || !parsed.success}>
               {busy ? "Saving…" : "Log selected sessions to my CPD"}
-            </Button>
+            </WorkButton>
           </div>
         ) : error ? (
           <p role="alert">{error}</p>
         ) : null}
       </form>
-      <Link
-        href="/cme/log"
-        className={cn(
-          "inline-flex min-h-tap items-center self-start px-1 text-sm font-medium text-[color:var(--primary)]",
-          focusRing,
-        )}
-      >
-        Open my private CPD log
-      </Link>
+      <T5List>
+        <T5Row
+          lead={<T5Icon icon={Award} leadsTo="cme" />}
+          title="Open my private CPD log"
+          meta="In CPD, under Log"
+          href="/cme/log"
+        />
+      </T5List>
     </TeachingDepthPage>
   );
 }

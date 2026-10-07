@@ -62,7 +62,7 @@ describe("mode band on each mode's pages", () => {
     expect(screen.getByTestId("mode-band-status")).toHaveTextContent(/^Offline/);
   });
 
-  it("keeps a Teaching child page's own name in view, and leaves a tab page's name to the band", () => {
+  it("leaves a Teaching page's name to the band, a child page's and a tab page's alike", () => {
     nav.pathname = "/teaching/review";
     const view = render(
       <ModeBand modeId="teaching">
@@ -71,7 +71,9 @@ describe("mode band on each mode's pages", () => {
         </TeachingDepthPage>
       </ModeBand>,
     );
-    expect(screen.getByRole("heading", { level: 1, name: "Weekly CPD review" })).not.toHaveClass("sr-only");
+    // Work-mode redesign, owner request 6 Oct 2026: the band now names every Teaching page, More pages
+    // included ("Log to CPD"), so a depth page's own h1 is for screen readers only, like a tab's.
+    expect(screen.getByRole("heading", { level: 1, name: "Weekly CPD review" })).toHaveClass("sr-only");
     nav.pathname = "/teaching/teach";
     view.rerender(
       <ModeBand modeId="teaching">
