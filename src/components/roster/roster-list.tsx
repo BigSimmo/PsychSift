@@ -32,7 +32,7 @@ export function RosterSectionHead({
     <div className="-my-2 flex min-h-12 min-w-0 items-center justify-between gap-3 px-1">
       <h2
         id={id}
-        className="flex min-w-0 items-center gap-1.5 text-[0.625rem] font-bold uppercase leading-4 tracking-[0.1em] text-[color:var(--text-muted)]"
+        className="flex min-w-0 items-center gap-1.5 text-[0.625rem] font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
       >
         {title}
         {isNew ? (

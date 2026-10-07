@@ -253,7 +253,7 @@ export function OpenShiftsBrowsePage() {
               <li className="inline-flex items-center gap-1.5">
                 <span
                   aria-hidden="true"
-                  className="inline-block size-3.5 rounded-full shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border"
+                  className="inline-block size-3.5 rounded-full shadow-[var(--work-edge-inset-strong)_var(--mode-identity)] forced-colors:border"
                 />
                 You&apos;re rostered
               </li>

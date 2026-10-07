@@ -188,7 +188,7 @@ export function ShiftRow({
         href={href}
         className={`flex min-h-12 items-start gap-2.5 px-3 py-2.5 no-underline ${modePressable} focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--mode-identity)]`}
       >
-        <span className="nums flex w-11 shrink-0 flex-col text-[0.6875rem] font-semibold leading-tight text-[color:var(--text-muted)]">
+        <span className="nums flex basis-11 shrink-0 flex-col text-[0.6875rem] font-semibold leading-tight text-[color:var(--text-muted)]">
           <span className="text-[0.8125rem] font-bold text-[color:var(--text-heading)]">
             {perthTimeOf(listing.startsAt)}
           </span>
@@ -218,7 +218,7 @@ export function SectionHeading({ children, count, id }: { children: ReactNode; c
   return (
     <h2
       id={id}
-      className="mt-3 flex items-baseline justify-between px-1 pb-1.5 text-[0.625rem] font-bold uppercase leading-4 tracking-[0.1em] text-[color:var(--text-muted)]"
+      className="mt-3 flex items-baseline justify-between px-1 pb-1.5 text-[0.625rem] font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
     >
       <span>{children}</span>
       {count !== undefined ? (

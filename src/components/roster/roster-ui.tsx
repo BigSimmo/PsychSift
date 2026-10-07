@@ -116,7 +116,7 @@ export function RosterSection({
         </WithoutModeBand>
         <h2
           id={id}
-          className="flex-1 text-[0.625rem] font-bold uppercase leading-4 tracking-[0.1em] text-[color:var(--text-muted)]"
+          className="flex-1 text-[0.625rem] font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
         >
           {title}
         </h2>
@@ -168,7 +168,7 @@ export function RosterStats({ children, testId }: { readonly children: ReactNode
 
 /** One field look for every roster select and input: 48px, hairline, violet focus. */
 export const rosterField =
-  "min-h-12 w-full min-w-0 rounded-[13px] border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-base-minus text-[color:var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity)]";
+  "min-h-12 w-full min-w-0 rounded-[var(--work-radius-field)] border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-base-minus text-[color:var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity)]";
 
 /** A calm empty state: a soft icon disc over one line, centred in a dashed card. */
 export function RosterEmpty({

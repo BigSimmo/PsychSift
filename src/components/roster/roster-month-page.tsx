@@ -83,7 +83,7 @@ const dayWords = (date: string) => `${weekdayOf(date)} ${Number(date.slice(8, 10
 
 function MonthLoading() {
   return (
-    <div className="grid gap-[0.5625rem]" data-testid="roster-month-loading" aria-busy="true">
+    <div className="grid gap-2.25" data-testid="roster-month-loading" aria-busy="true">
       <WorkCard padded>
         <div className="grid gap-2" aria-hidden="true">
           <span className="h-3.5 w-[55%] rounded-lg bg-[color:var(--surface-wash)]" />
@@ -464,7 +464,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
       );
     if (shifts.status === "error")
       return (
-        <div className="grid gap-[0.5625rem]" data-testid="roster-shifts-error">
+        <div className="grid gap-2.25" data-testid="roster-shifts-error">
           <WorkCard>
             <div className="work-row items-start" role="alert">
               <span aria-hidden="true" className="work-ic" data-tone="red">
@@ -502,7 +502,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
       shifts.shifts.length === 0 && !shifts.teamLoading && teams.status === "ready" && enabledTeams.length === 0;
     if (nothingYet && !shifts.demoMode)
       return (
-        <div className="grid gap-[0.5625rem]" data-testid="roster-month-empty">
+        <div className="grid gap-2.25" data-testid="roster-month-empty">
           {notices}
           <WorkCard>
             <WorkEmpty
@@ -541,7 +541,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
 
     const thisMonth = monthKeyOf(today);
     return (
-      <div className="grid gap-[0.5625rem]">
+      <div className="grid gap-2.25">
         {notices}
         {shifts.teamLoading ? null : statusCards()}
         <WorkCard padded testId="roster-month-calendar">
