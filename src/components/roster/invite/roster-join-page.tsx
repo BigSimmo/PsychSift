@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
-import { InformationPageShell } from "@/components/information-page-shell";
+import { InformationPageBreadcrumbs, InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { RosterAlertsSwitch } from "@/components/roster/alerts/roster-alerts-section";
@@ -187,6 +187,8 @@ export function RosterJoinPage() {
   return (
     <InformationPageShell testId="roster-join-main" width="narrow">
       <div className="grid gap-5">
+        {/* The page keeps its own header (no band), so it always offers a way back. */}
+        <InformationPageBreadcrumbs home={{ label: "Roster", href: "/roster" }} />
         <RosterPageHeader icon={UserPlus} title="Join a team roster" ask={false} />
         {state.kind === "joining" ? <p role="status">Joining your team…</p> : null}
         {state.kind === "signed-out" ? (
