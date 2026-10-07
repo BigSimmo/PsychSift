@@ -481,6 +481,19 @@ targets, next leave, presenting), worked out in the browser with no AI. The scre
 (`src/components/work-search/`) is a lazy chunk; its loaders call each area's existing routes when
 it opens and keep the records in tab memory only. It never reads the patient-label store.
 
+**Work free-text patient-detail check.** `src/lib/work-text/patient-detail-check.ts` is the one
+check every work-mode free-text field runs before Save or Copy (CPD through
+`src/lib/cme/patient-detail-check.ts`, Admin, On Call's roster person sheet, Teaching assessments, Work
+profile answers). `checkPatientDetail` returns what looks like a patient detail in words, with a
+safer wording when one exists, and `looksLikePatientDetail` is its yes/no form; options allow a
+colleague's name (`allowName`) or hospital capitals (`allowCapitals`). It reads the text twice
+through `normaliseWorkText` (NFKC-folded, look-alike letters as Latin, invisible characters removed
+or read as spaces) and runs the Remind me check, the work search's check, `looksLikeAgeAndSex` and
+its own shapes (patient words with a name or initials, bare UMRNs, beds and rooms in words or marked).
+`WORKPLACE_ABBREVIATIONS` lists the WA workplace and work capitals read past as not initials, and a
+numbered teaching or meeting venue ("Seminar room 1") is not read as a bed. Nothing it reads is
+saved or sent; it leans towards a false alarm and the pages say it catches some details, not all.
+
 **Psychiatry hub history.** `src/lib/psychiatry-hub/` (`visits.ts`) is the `/psychiatry` hub's
 on-device record of psychiatry records the reader opened (not the query-driven tools) (path, page title, section,
 time; no patient detail), written by `src/components/psychiatry/psychiatry-visit-recorder.tsx` in

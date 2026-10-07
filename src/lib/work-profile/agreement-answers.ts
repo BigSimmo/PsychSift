@@ -1,9 +1,8 @@
 import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { RULE_GATE_REASON_WORDS, type RuleGate } from "@/lib/admin/rule-sign-off";
-import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
 import { perthCalendarDate } from "@/lib/perth-time";
 import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF, type FatigueRuleId } from "@/lib/roster/fatigue-rules-source";
-import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { checkPatientDetail, looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 import type { WorkSearchArea } from "@/lib/work-search/model";
 import { restRulesGate } from "@/lib/work-profile/model";
 import { currentWorkYear } from "@/lib/work-time/current-zone";
@@ -24,7 +23,7 @@ import { currentWorkYear } from "@/lib/work-time/current-zone";
  * names who signed it off and when.
  *
  * The question never leaves the device. A question that looks like patient details is not
- * matched at all (both the work-search and the reminder detectors run on it).
+ * matched at all (the shared work-text check runs on it).
  */
 
 export const AGREEMENT_PAGE_HREF = "/my-day/profile/agreement";
@@ -45,6 +44,12 @@ export interface AgreementLine {
   readonly text: string;
   readonly clause: string;
   readonly ruleId: FatigueRuleId;
+  /**
+   * A short heading for this one clause, where a topic quotes several clauses that say different things
+   * (15(6)(c), (d) and (e) under Longest shift). Taken from what the clause says. The topic label is used
+   * when it is absent.
+   */
+  readonly label?: string;
 }
 
 export interface AgreementTopic {
@@ -58,8 +63,8 @@ export interface AgreementTopic {
 
 const R = FATIGUE_RULE_SET.rules;
 
-function line(ruleId: FatigueRuleId, clause: string, text: string): AgreementLine {
-  return { ruleId, clause, text };
+function line(ruleId: FatigueRuleId, clause: string, text: string, label?: string): AgreementLine {
+  return label ? { ruleId, clause, text, label } : { ruleId, clause, text };
 }
 
 export const AGREEMENT_TOPICS: readonly AgreementTopic[] = [
@@ -83,12 +88,18 @@ export const AGREEMENT_TOPICS: readonly AgreementTopic[] = [
     label: "Longest shift",
     keywords: ["longest shift", "shift length", "consecutive hours", "after noon", "long shift"],
     lines: [
-      line("maxShiftHours", R.maxShiftHours.clause, R.maxShiftHours.quote),
-      line("maxShiftHoursAfterNoon", R.maxShiftHoursAfterNoon.clause, R.maxShiftHoursAfterNoon.quote),
+      line("maxShiftHours", R.maxShiftHours.clause, R.maxShiftHours.quote, "Longest shift"),
+      line(
+        "maxShiftHoursAfterNoon",
+        R.maxShiftHoursAfterNoon.clause,
+        R.maxShiftHoursAfterNoon.quote,
+        "Shift starting after noon",
+      ),
       line(
         "maxShiftHoursAfterNoon",
         R.maxShiftHoursAfterNoon.exception.clause,
         R.maxShiftHoursAfterNoon.exception.quote,
+        "After noon, by written agreement",
       ),
     ],
   },
@@ -141,7 +152,8 @@ export function agreementClauses(): readonly AgreementClause[] {
   for (const topic of AGREEMENT_TOPICS) {
     for (const item of topic.lines) {
       const entry = byClause.get(item.clause) ?? { labels: [], lines: [] };
-      if (!entry.labels.includes(topic.label)) entry.labels.push(topic.label);
+      const label = item.label ?? topic.label;
+      if (!entry.labels.includes(label)) entry.labels.push(label);
       if (!entry.lines.some((existing) => existing.text === item.text)) entry.lines.push(item);
       byClause.set(item.clause, entry);
     }
@@ -180,6 +192,12 @@ export interface UncheckedTopic {
 
 const UNCHECKED_TOPICS: ReadonlyArray<UncheckedTopic & { readonly pattern: RegExp }> = [
   {
+    id: "pay",
+    label: "Pay and allowances",
+    pattern:
+      /\bpay\b|\bpaid\b|\bsalary\b|\bwages?\b|\bpenalt(?:y|ies)\b|\ballowances?\b|\bloading\b|\bmoney\b|\bsuper(?:annuation)?\b|\brates?\b|\bhourly\b|\bearn(?:s|ing|t)?\b|\bcompensat\w*|\bextra (?:money|pay|for)\b|\breimburs\w*|\btoil\b|\blieu\b/,
+  },
+  {
     id: "overtime",
     label: "Overtime",
     pattern:
@@ -189,20 +207,18 @@ const UNCHECKED_TOPICS: ReadonlyArray<UncheckedTopic & { readonly pattern: RegEx
     id: "leave",
     label: "Leave",
     pattern:
-      /\bleave\b|\bholidays?\b(?! pay)|\bsick\b|\bcarer'?s\b|\bparental\b|\bmaternity\b|\bpaternity\b|\bbereavement\b|\bcompassionate\b|\blong service\b|\bexams?\b|\bstudy (?:leave|days?)\b|\bconference\b|\bdomestic violence\b|\btime off for\b/,
-  },
-  {
-    id: "pay",
-    label: "Pay and allowances",
-    pattern:
-      /\bpay\b|\bpaid\b|\bsalary\b|\bwages?\b|\bpenalt(?:y|ies)\b|\ballowances?\b|\bloading\b|\bmoney\b|\bsuper(?:annuation)?\b|\brates? of pay\b|\bpay rates?\b/,
+      /\bleave\b|\bholidays?\b(?! pay)|\bhols\b|\bvacation\b|\bsick\b|\bcarer'?s\b|\bparental\b|\bmaternity\b|\bpaternity\b|\bbereavement\b|\bcompassionate\b|\blong service\b|\bexams?\b|\bosces?\b|\bstudy (?:leave|days?)\b|\bconference\b|\bdomestic violence\b|\btime off for\b|\bwedding\b|\bfuneral\b|\bjury\b|\bgraduation\b|\brdos?\b|\bados?\b|\bivf\b|\bdays? off for\b|\b(?:days?|weekends?|weeks?) off (?:a|per|each|every) (?:year|month)\b|\bweeks? off\b|\bmental health days?\b|\bper (?:year|annum|month)\b|\b(?:a|each|every) year\b|\bannual(?:ly)?\b/,
   },
   {
     id: "public-holidays",
     label: "Public holidays",
     pattern: /\bpublic holidays?\b|\bchristmas\b|\beaster\b|\banzac\b/,
   },
-  { id: "on-call", label: "On-call and recall", pattern: /\bon[- ]?call\b|\brecall(?:ed)?\b|\bcalled (?:back|in)\b/ },
+  {
+    id: "on-call",
+    label: "On-call and recall",
+    pattern: /\bon[- ]?call\b|\brecall(?:ed)?\b|\bcalled (?:back|in)\b|\bpagers?\b|\bsecond on\b/,
+  },
   {
     id: "roster-notice",
     label: "Roster notice and changes",
@@ -368,6 +384,16 @@ function scoreTopics(text: string): TopicScore[] {
   return ranked.slice(0, 3);
 }
 
+/**
+ * Topics whose question is never answered by an hours or rest quote, even when a rest pattern also
+ * matches: leave, pay and recall. "Can I have 5 days off for my wedding?" is a leave question, and the
+ * 48 hours after 12 days quote does not answer it. A quote may still be shown below the
+ * "not checked" answer, labelled as possibly related, never as the answer.
+ */
+const ANSWER_FIRST_AS_NOT_CHECKED = new Set(["leave", "pay", "on-call"]);
+/** Entitlement words: what the agreement gives, which the hours and rest quotes do not set out. */
+const ENTITLEMENT_WORDS = /\bentitle(?:d|ment|ments)\b|\bowed\b|\bper (?:year|annum)\b/;
+
 function uncheckedTopicsIn(text: string): UncheckedTopic[] {
   return UNCHECKED_TOPICS.filter((topic) => topic.pattern.test(text)).map(({ id, label }) => ({ id, label }));
 }
@@ -439,22 +465,20 @@ export type AgreementQuestionCheck =
   | { readonly kind: "ok" };
 
 /**
- * The patient-detail catch, run as the doctor types. Both detectors run: the work search's
- * (record numbers, beds, dates of birth, titles and names) and the reminder check (initials,
- * ages, phone numbers). Leaning towards a false alarm is deliberate: it costs one tap.
+ * The patient-detail catch, run as the doctor types: the shared work-text check
+ * (`src/lib/work-text/patient-detail-check.ts`), which folds full-width and hidden characters and
+ * runs the work search's and the reminder check's readings, ages, "pt" with initials and bare record
+ * numbers. Leaning towards a false alarm is deliberate: it costs one tap.
  */
 export function checkAgreementQuestion(question: string, thisYear = currentWorkYear()): AgreementQuestionCheck {
   const text = question.trim();
   if (!text) return { kind: "empty" };
-  const problem: ReminderTextProblem | null = checkReminderText(text);
-  if (looksLikePatientDetails(text, thisYear) || problem) {
-    const safer = problem?.suggestion ? tidySafer(problem.suggestion) : null;
-    const stillUnsafe = safer ? looksLikePatientDetails(safer, thisYear) || checkReminderText(safer) !== null : true;
-    return {
-      kind: "patient",
-      safer: stillUnsafe ? null : safer,
-      what: problem ? problem.title.replace(/^This looks like /, "") : "patient details",
-    };
+  const problem = checkPatientDetail(text, { thisYear });
+  if (problem) {
+    const safer = problem.suggestion ? tidySafer(problem.suggestion) : null;
+    const stillUnsafe = safer ? looksLikePatientDetail(safer, { thisYear }) : true;
+    const what = problem.title.replace(/^This (?:looks like|may be) /, "");
+    return { kind: "patient", safer: stillUnsafe ? null : safer, what };
   }
   if (text.length < 3) return { kind: "too-short" };
   return { kind: "ok" };
@@ -467,7 +491,7 @@ export interface AgreementTextSpan {
 }
 
 function readsAsPatientDetail(text: string, thisYear: number): boolean {
-  return looksLikePatientDetails(text, thisYear) || checkReminderText(text) !== null;
+  return looksLikePatientDetail(text, { thisYear });
 }
 
 /**
@@ -524,6 +548,12 @@ export type AgreementAnswer =
       readonly question: string;
       readonly unchecked: readonly UncheckedTopic[];
       readonly source: AgreementSource;
+      /**
+       * Checked topics the question also touched, shown below the "not checked" answer as possibly
+       * related, never as the answer. Empty when nothing checked was touched.
+       */
+      readonly related: readonly AgreementTopic[];
+      readonly signOff: AgreementSignOffState;
     }
   | { readonly kind: "patient"; readonly question: string; readonly safer: string | null; readonly what: string }
   | { readonly kind: "empty" };
@@ -544,18 +574,30 @@ export function answerAgreementQuestion(question: string, options: AgreementAnsw
   const source = agreementSource(options.today);
   const scored = scoreTopics(text);
   const unchecked = uncheckedTopicsIn(text);
-  if (!scored.length) return { kind: "not-checked", question: trimmed, unchecked, source };
+  const signOff = agreementSignOffState(options.gate);
+  const notChecked = (related: readonly AgreementTopic[]): AgreementAnswer => ({
+    kind: "not-checked",
+    question: trimmed,
+    unchecked,
+    source,
+    related,
+    signOff,
+  });
+  if (!scored.length) return notChecked([]);
   // "Am I allowed 7 days of annual leave?": the only match is a day count, and the question is about
   // a topic PsychSift has not checked. A quote about hours would not answer it, so none is shown.
-  if (unchecked.length && !scored.some((entry) => entry.solid)) {
-    return { kind: "not-checked", question: trimmed, unchecked, source };
+  if (unchecked.length && !scored.some((entry) => entry.solid)) return notChecked([]);
+  // Leave, pay, recall and entitlement questions are answered "not checked" first, whatever else matched.
+  // A solid rest match is kept, below, as possibly related.
+  if (unchecked.some((topic) => ANSWER_FIRST_AS_NOT_CHECKED.has(topic.id)) || ENTITLEMENT_WORDS.test(text)) {
+    return notChecked(scored.filter((entry) => entry.solid).map((entry) => agreementTopic(entry.id)));
   }
   return {
     kind: "quoted",
     question: trimmed,
     topics: scored.map((entry) => agreementTopic(entry.id)),
     unchecked,
-    signOff: agreementSignOffState(options.gate),
+    signOff,
     source,
   };
 }
@@ -726,8 +768,23 @@ export function agreementAnswerCopyText(answer: AgreementAnswer): string {
     return [...lines, ...notes].join("\n");
   }
   if (answer.kind === "not-checked") {
+    const related = answer.related.length
+      ? [
+          "",
+          "Possibly related, not an answer to this question:",
+          ...answer.related.flatMap((topic) => [
+            topic.label,
+            ...topic.lines.map((item) => `"${item.text}" (clause ${item.clause})`),
+          ]),
+          answer.signOff.signedOff
+            ? `${answer.signOff.signedLine}.`
+            : "Not signed off yet: no named clinician has compared these quotes with the agreement.",
+          "",
+        ]
+      : [];
     return [
       uncheckedSentence(answer.unchecked),
+      ...related,
       `Open the agreement: ${answer.source.title}, ${answer.source.citation}: ${answer.source.url}`,
       `Not sure, or disagree? ${AGREEMENT_UNION_NAME}, your union.`,
     ].join("\n");

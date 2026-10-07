@@ -7,6 +7,7 @@ import {
   buildContractEditBody,
   buildContractRemindersBody,
   buildContractRenewBody,
+  CONTRACT_RENEW_REASON,
   CONTRACT_ASKED_TAG_PREFIX,
   CONTRACT_END_SLUG_PREFIX,
   CONTRACT_QUESTIONS,
@@ -194,7 +195,8 @@ describe("asked, waiting", () => {
   });
 
   it("builds the message from the questions still open", () => {
-    expect(contractOpenAskable([])).toEqual(["training-program", "parental-leave", "untaken-leave", "in-writing"]);
+    // Planned parental leave is the doctor's to share, so it is never ticked to start with.
+    expect(contractOpenAskable([])).toEqual(["training-program", "untaken-leave", "in-writing"]);
     expect(contractOpenAskable(["training-program", "parental-leave"])).toEqual(["untaken-leave", "in-writing"]);
   });
 
@@ -219,6 +221,12 @@ describe("new contract", () => {
     expect(buildContractRenewBody(row, END, TODAY)).toEqual({ ok: false, reason: "unchanged" });
     expect(buildContractRenewBody(row, "2026-12-01", TODAY)).toEqual({ ok: false, reason: "not-later" });
     expect(buildContractRenewBody(row, "", TODAY)).toEqual({ ok: false, reason: "missing" });
+  });
+
+  it("refuses a new end date more than 10 years away, as the add form does", () => {
+    const row = contractRow(END);
+    expect(buildContractRenewBody(row, "2099-01-31", TODAY)).toEqual({ ok: false, reason: "too-far" });
+    expect(CONTRACT_RENEW_REASON["too-far"]).toMatch(/10 years/);
   });
 });
 

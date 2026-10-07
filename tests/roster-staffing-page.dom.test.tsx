@@ -45,6 +45,10 @@ vi.mock("@/components/roster/use-roster-team", () => ({
 }));
 vi.mock("@/components/roster/ask/roster-ask-box", () => ({ RosterAskButton: () => null }));
 vi.mock("@/components/ui/live-announcer", () => ({ announce: mocks.announce }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ back: vi.fn(), replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => "/roster/staffing",
+}));
 const copied = vi.hoisted(() => vi.fn<(text: string) => Promise<void>>(async () => undefined));
 vi.mock("@/lib/copy-to-clipboard", () => ({ copyTextToClipboard: (text: string) => copied(text) }));
 
@@ -115,6 +119,17 @@ it("shows the next three weeks, each day read out in words, and says no safe num
   const read = mocks.reads.find((item) => item.what === "assignments")!;
   expect(read.range).toEqual({ from: "2026-10-05", to: "2026-10-25" });
   expect(screen.queryByTestId("staffing-plan")).toBeNull();
+});
+
+it("has a visible way back to Roster, and the span sits on its own line under the head", () => {
+  render(<RosterStaffingPage now={NOW} />);
+  const back = screen.getByTestId("roster-staffing-back");
+  expect(back.getAttribute("href")).toBe("/roster");
+  expect(back.textContent).toBe("Roster");
+  const meta = screen.getByTestId("staffing-meta");
+  expect(meta.textContent).toContain("Next 3 weeks");
+  expect(meta.textContent).toContain("Rechecked");
+  expect(meta.closest("h2")).toBeNull();
 });
 
 it("typed dates show your leave, the fewest on, other dates and a Plan this leave hand-off", async () => {

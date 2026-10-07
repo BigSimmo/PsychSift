@@ -36,7 +36,7 @@ export function CpdHomeHandoffStrip({
       <Node
         icon={FileSpreadsheet}
         title="CSV file"
-        sub={file === "saved" ? "Saved" : file === "making" ? "Making" : "Ready to make"}
+        sub={file === "saved" ? "Saved" : file === "making" ? "Making" : "Not made yet"}
         state={file === "saved" ? "done" : file === "making" ? "current" : "open"}
       />
       <Node icon={ExternalLink} title="CPD Home" sub="To confirm" state="unchecked" />

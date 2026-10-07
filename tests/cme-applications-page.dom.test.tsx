@@ -160,6 +160,37 @@ describe("Job applications season", () => {
     expect(stored().referees[0].history.at(-1)).toEqual({ kind: "nudge", on: "2026-10-06" });
   });
 
+  it("builds the nudge from the saved name, never from a name being typed", async () => {
+    localStorage.setItem(
+      CPD_APPLICATIONS_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        dates: [],
+        referees: [
+          {
+            id: "r1",
+            name: "Dr Grant",
+            role: "",
+            status: "asked",
+            history: [{ kind: "status", status: "asked", on: "2026-10-01" }],
+          },
+        ],
+        statement: "",
+        hiddenCvLines: [],
+      }),
+    );
+    const copy = vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    renderPage();
+    fireEvent.click(screen.getByTestId("applications-nudge-open"));
+    fireEvent.change(screen.getByTestId("applications-referee-name"), { target: { value: "Mr Smith 45M" } });
+    expect(screen.getByTestId("applications-nudge").textContent).toContain("Hi Dr Grant,");
+    expect(screen.getByTestId("applications-nudge").textContent).not.toContain("Smith");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("applications-nudge-copy"));
+    });
+    expect(copy).toHaveBeenCalledWith(expect.not.stringContaining("Smith"));
+  });
+
   it("Undo reverses only its own change, keeping a nudge copied since", async () => {
     localStorage.setItem(
       CPD_APPLICATIONS_STORAGE_KEY,
@@ -217,6 +248,11 @@ describe("Job applications season", () => {
     expect(localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)).toBeNull();
   });
 
+  it("goes back to the CPD summary, where its link lives", () => {
+    renderPage();
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+  });
+
   it("shows the made-up sample in the demo build and keeps nothing", () => {
     renderPage(true);
     expect(screen.getByTestId("applications-mode-note").textContent).toContain("Sample season");
@@ -236,6 +272,17 @@ describe("Job applications season", () => {
     fireEvent.click(screen.getByTestId("applications-referee-save"));
     expect(screen.getAllByTestId("applications-referee")).toHaveLength(1);
     expect(stored()).toBeNull();
+  });
+
+  it("says when this browser is not keeping changes, instead of Kept on this phone", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("refused", "SecurityError");
+    });
+    renderPage();
+    expect(screen.getByTestId("applications-mode-note").textContent).toBe(
+      "This browser is not keeping changes. They last until you leave the page.",
+    );
+    expect(screen.getByTestId("applications-kept-note").textContent).not.toContain("Kept on this phone");
   });
 
   it("links to the CV and to support, and every control has a 48px tap target", () => {

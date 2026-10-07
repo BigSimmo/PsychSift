@@ -6,13 +6,23 @@ import { useMemo, useState } from "react";
 
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { ContractEndEntryLink } from "@/components/admin/contract/contract-entry-link";
-import { copyLabel, JuniorFootNote, JuniorNotice, JuniorSectionLabel, useCopy } from "@/components/admin/junior/junior-shared";
+import {
+  copyLabel,
+  JuniorBackLink,
+  JuniorFootNote,
+  juniorFlatPanel,
+  JuniorLinkChevron,
+  JuniorNotice,
+  JuniorSectionLabel,
+  juniorTextLinkClass,
+  useCopy,
+  useJuniorNow,
+} from "@/components/admin/junior/junior-shared";
 import { StarterPackEntryLink } from "@/components/admin/starter/starter-pack-entry-link";
 import { cardSurface, focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -39,24 +49,39 @@ const GROUP_ORDER: readonly { state: ReadyState; label: string }[] = [
 function segmentClass(state: ReadyState): string {
   if (state === "recorded") return "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)]";
   if (state === "in-progress") return "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)]";
+  if (state === "left-out") return "border-dashed border-[color:var(--border)] bg-[color:var(--surface-subtle)]";
   return "border-[color:var(--border-strong)] bg-[color:var(--surface-raised)]";
 }
 
-/** One segment per counted item, in the fixed order. Its words are the label. */
+const LEGEND: readonly { state: ReadyState; label: string }[] = [
+  { state: "recorded", label: "Recorded" },
+  { state: "in-progress", label: "In progress" },
+  { state: "to-do", label: "To do" },
+  { state: "left-out", label: "Not counted" },
+];
+
+/**
+ * One segment per item, every item in the fixed order, so every starter's bar has the same segments in the
+ * same places. Items not counted stay in place, greyed and dashed. Its words are the label.
+ */
 function ReadyBar({ ready }: { ready: ReadyForDayOne }) {
-  const counted = ready.items.filter((item) => item.state !== "left-out");
   return (
     <div className="grid gap-2">
       <div role="img" aria-label={readyAccessibleLabel(ready)} className="flex gap-1" data-testid="admin-ready-bar">
-        {counted.map((item) => (
-          <span key={item.id} aria-hidden="true" className={cn("h-2.5 min-w-0 flex-1 rounded-full border", segmentClass(item.state))} />
+        {ready.items.map((item) => (
+          <span
+            key={item.id}
+            aria-hidden="true"
+            data-state={item.state}
+            className={cn("h-2.5 min-w-0 flex-1 rounded-full border", segmentClass(item.state))}
+          />
         ))}
       </div>
       <ul aria-hidden="true" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--text)]">
-        {(["recorded", "in-progress", "to-do"] as const).map((state) => (
+        {LEGEND.map(({ state, label }) => (
           <li key={state} className="inline-flex items-center gap-1.5">
             <span className={cn("h-2.5 w-4 rounded-full border", segmentClass(state))} />
-            {state === "recorded" ? "Recorded" : state === "in-progress" ? "In progress" : "To do"}
+            {label}
           </li>
         ))}
       </ul>
@@ -67,7 +92,11 @@ function ReadyBar({ ready }: { ready: ReadyForDayOne }) {
 function ReadyRow({ item }: { item: ReadyItem }) {
   return (
     <li className="border-b border-[color:var(--border)] last:border-b-0">
-      <Link href={item.href} className={cn(focusRing, "flex min-h-12 items-center gap-3 px-3 py-2")} data-testid={`admin-ready-item-${item.id}`}>
+      <Link
+        href={item.href}
+        className={cn(focusRing, "flex min-h-12 items-center gap-3 px-3 py-2")}
+        data-testid={`admin-ready-item-${item.id}`}
+      >
         <span className="grid min-w-0 flex-1">
           <span className="text-sm font-medium text-[color:var(--text-heading)]">{item.title}</span>
           <span className={cn(textMuted, "text-xs")}>
@@ -91,8 +120,7 @@ function ReadyRow({ item }: { item: ReadyItem }) {
  */
 export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   const loadState = adminLoadState(state);
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const ready = useMemo(() => buildReadyForDayOne(own, now), [own, now]);
@@ -102,13 +130,21 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
 
-  const copyStatus = (key: string) => void copy(statusText, key, "Status copied. Paste it into your email to Medical Workforce.");
+  // Example records are never sent as anyone's own status.
+  const copyBlocked = state.demoMode;
+  const copyStatus = (key: string) => {
+    if (copyBlocked) return;
+    void copy(statusText, key, "Status copied. Paste it into your email to Medical Workforce.");
+  };
 
   return (
     <>
       <InformationPageShell testId="admin-ready-main">
+        <JuniorBackLink href="/admin/new-job" label="New job" testId="admin-ready-back" />
         <div className="grid gap-1">
-          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Ready for day one</PageTitleUnderBand>
+          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+            Ready for day one
+          </PageTitleUnderBand>
           <p className={cn(textMuted, "text-sm")} data-testid="admin-ready-starts">
             {loadState === "ready" ? (startsLine ?? "No start date recorded yet") : "From your own Admin records"}
           </p>
@@ -138,35 +174,66 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
               </p>
             ) : null}
 
-            <ModeFeaturedModule as="section" mode="my-work" className="grid min-w-0 gap-3 p-4" testId="admin-ready-hero">
+            <section className={cn(juniorFlatPanel, "grid min-w-0 gap-3 p-4")} data-testid="admin-ready-hero">
               <div className="flex items-end justify-between gap-3">
                 <div className="grid gap-0.5">
                   <h2 className={eyebrowText}>Before you start</h2>
-                  <p className="text-lg-minus font-semibold text-[color:var(--text-heading)]" data-testid="admin-ready-count">
-                    <span className="nums">{ready.recorded}</span> of <span className="nums">{ready.counted}</span> recorded
+                  <p
+                    className="text-lg-minus font-semibold text-[color:var(--text-heading)]"
+                    data-testid="admin-ready-count"
+                  >
+                    <span className="nums">{ready.recorded}</span> of <span className="nums">{ready.counted}</span>{" "}
+                    recorded
                   </p>
                 </div>
-                <p className={cn(textMuted, "nums shrink-0 text-sm")}>{ready.toDo === 1 ? "1 to do" : `${ready.toDo} to do`}</p>
+                <p className={cn(textMuted, "nums shrink-0 text-sm")}>
+                  {ready.toDo === 1 ? "1 to do" : `${ready.toDo} to do`}
+                </p>
               </div>
               <ReadyBar ready={ready} />
               <div className="grid gap-2">
-                <Button variant="primary" block icon={Copy} onClick={() => copyStatus("status")} testId="admin-ready-copy">
+                <Button
+                  variant="primary"
+                  block
+                  icon={Copy}
+                  onClick={() => copyStatus("status")}
+                  aria-disabled={copyBlocked ? "true" : undefined}
+                  aria-describedby={copyBlocked ? "admin-ready-copy-reason" : undefined}
+                  className={copyBlocked ? "opacity-60" : undefined}
+                  testId="admin-ready-copy"
+                >
                   {copyLabel(stateFor("status"), "Copy status for Medical Workforce")}
                 </Button>
-                <Button variant="secondary" block icon={Eye} onClick={() => setPreviewOpen(true)} testId="admin-ready-preview-open">
+                {copyBlocked ? (
+                  <p
+                    id="admin-ready-copy-reason"
+                    className={cn(textMuted, "text-xs")}
+                    data-testid="admin-ready-copy-reason"
+                  >
+                    These are example records, so there is no status of yours to copy. Sign in to copy your own.
+                  </p>
+                ) : null}
+                <Button
+                  variant="secondary"
+                  block
+                  icon={Eye}
+                  onClick={() => setPreviewOpen(true)}
+                  testId="admin-ready-preview-open"
+                >
                   See what they get
                 </Button>
               </div>
               <p className={cn(textMuted, "text-xs")}>Status words only. No dates of your checks, numbers or files.</p>
-            </ModeFeaturedModule>
+            </section>
 
             {!ready.startsOn ? (
               <JuniorNotice
                 title="Add your start date"
                 testId="admin-ready-no-start"
                 action={
-                  <Link href="/admin/new-job" className={cn(focusRing, "inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--clinical-accent)]")}>
+                  <Link href="/admin/new-job" className={juniorTextLinkClass}>
                     Set it in New job
+                    <JuniorLinkChevron />
                   </Link>
                 }
               >
@@ -191,8 +258,17 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
               );
             })}
 
-            <JuniorNotice title="Medical Workforce cannot see this card" testId="admin-ready-workforce-note">
-              Sharing it with them directly is not built yet. Copy the status and send it yourself.
+            <JuniorNotice
+              title="Medical Workforce sees this only if you share it"
+              testId="admin-ready-workforce-note"
+              action={
+                <Link href="/admin/sharing" className={juniorTextLinkClass} data-testid="admin-ready-sharing-link">
+                  Share with Medical Workforce
+                  <JuniorLinkChevron />
+                </Link>
+              }
+            >
+              Or copy the status and send it yourself.
             </JuniorNotice>
           </>
         )}
@@ -214,22 +290,42 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
         description="Exactly what Copy puts on your clipboard"
         testId="admin-ready-preview"
         footer={
-          <Button variant="primary" block icon={Copy} onClick={() => copyStatus("sheet")} testId="admin-ready-preview-copy">
+          <Button
+            variant="primary"
+            block
+            icon={Copy}
+            onClick={() => copyStatus("sheet")}
+            aria-disabled={copyBlocked ? "true" : undefined}
+            aria-describedby={copyBlocked ? "admin-ready-preview-copy-reason" : undefined}
+            className={copyBlocked ? "opacity-60" : undefined}
+            testId="admin-ready-preview-copy"
+          >
             {copyLabel(stateFor("sheet"), "Copy status")}
           </Button>
         }
       >
         <div className="grid gap-3">
-          <p className="whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm leading-6" data-testid="admin-ready-preview-text">
+          <p
+            className="whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm leading-6"
+            data-testid="admin-ready-preview-text"
+          >
             {statusText}
           </p>
           <p className={cn(textMuted, "text-sm")}>
-            Never included: the dates of your checks, registration or card numbers, files, or anything about your vaccines.
+            Never included: the dates of your checks, registration or card numbers, files, or anything about your
+            vaccines.
           </p>
+          {copyBlocked ? (
+            <p id="admin-ready-preview-copy-reason" className={cn(textMuted, "text-sm")}>
+              These are example records, so there is no status of yours to copy. Sign in to copy your own.
+            </p>
+          ) : null}
         </div>
       </Sheet>
 
-      {loadState === "signed-out" ? <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} /> : null}
+      {loadState === "signed-out" ? (
+        <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+      ) : null}
     </>
   );
 }

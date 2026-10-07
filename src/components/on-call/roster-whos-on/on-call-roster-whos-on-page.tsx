@@ -1,11 +1,15 @@
 "use client";
 
-import { Building2 } from "lucide-react";
+import { Building2, ChevronLeft } from "lucide-react";
+
+import { focusRing } from "@/components/card-recipes";
+import { ContextualBackLink } from "@/components/contextual-back-link";
 
 import { OnCallRosterWhosOnSection } from "@/components/on-call/roster-whos-on/on-call-roster-whos-on-section";
 import { useHospitalClock } from "@/components/on-call/use-hospital-clock";
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
 import { WorkBody, WorkCard, WorkIconRow } from "@/components/mode-kit/work";
+import { cn } from "@/components/ui-primitives";
 import { switchboardItem } from "@/lib/on-call/now-rows";
 
 /** The hospital's switchboard from its published handbook, for "ring switchboard to confirm". */
@@ -29,8 +33,27 @@ export function OnCallRosterWhosOnPage({ now: pinned }: { now?: Date } = {}) {
   return (
     <main data-testid="on-call-roster-whos-on-main" className="min-w-0">
       <WorkBody>
-        <h1 className="sr-only">Who is on, from your team roster</h1>
-        <OnCallRosterWhosOnSection now={now} switchboard={switchboard} hospitalName={hospitalName} />
+        <ContextualBackLink
+          fallbackHref="/on-call/whos-on"
+          data-testid="on-call-roster-back"
+          className={cn(
+            focusRing,
+            "-ml-1 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
+          )}
+        >
+          <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+          Who&apos;s on
+        </ContextualBackLink>
+        {/* The one heading for the list. The section's visible label is not a second heading. */}
+        <h1 id="on-call-roster-page-heading" className="sr-only">
+          Who is on, from your team roster
+        </h1>
+        <OnCallRosterWhosOnSection
+          now={now}
+          switchboard={switchboard}
+          hospitalName={hospitalName}
+          pageHeadingId="on-call-roster-page-heading"
+        />
         <WorkCard>
           <WorkIconRow
             icon={Building2}

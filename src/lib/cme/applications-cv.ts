@@ -1,4 +1,5 @@
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
+import { cpdNamedPlaceTextLooksLikePatient, cpdTitleLooksLikePatient } from "@/lib/cme/patient-detail-check";
 import type { CmeEntry } from "@/lib/cme/types";
 
 /**
@@ -27,7 +28,31 @@ export type CvLine = {
   readonly title: string;
   readonly sub: string | null;
   readonly source: CvSource;
+  /**
+   * Set when the title reads like a patient detail (a case presentation's title, say). The line is
+   * shown on screen only, with where to fix it, and is never copied or printed.
+   */
+  readonly heldBack?: { readonly fixHref: string; readonly fixIn: string };
 };
+
+/** Where each source's title is edited, for a held-back line. */
+const FIX_IN: Partial<Record<CvSource, { fixHref: string; fixIn: string }>> = {
+  cpd: { fixHref: "/cme/log", fixIn: "Log" },
+  teaching: { fixHref: "/teaching", fixIn: "Teaching" },
+  terms: { fixHref: "/teaching/term", fixIn: "your term tracker" },
+  you: { fixHref: "/cme/applications/cv", fixIn: "your statement" },
+};
+
+/** A line, held back when its title reads like a patient detail. */
+function screened(line: CvLine, thisYear: number, fixHref?: string): CvLine {
+  const flagged =
+    line.source === "terms" || line.source === "you"
+      ? cpdNamedPlaceTextLooksLikePatient(line.title, thisYear)
+      : cpdTitleLooksLikePatient(line.title, thisYear);
+  if (!flagged) return line;
+  const fix = FIX_IN[line.source] ?? { fixHref: "/cme", fixIn: "CPD" };
+  return { ...line, heldBack: { fixHref: fixHref ?? fix.fixHref, fixIn: fix.fixIn } };
+}
 
 export type CvSection = { readonly id: string; readonly title: string; readonly lines: readonly CvLine[] };
 
@@ -58,9 +83,10 @@ function dayMonthYear(on: string): string {
   return `${day} ${MONTHS[month - 1]} ${year}`;
 }
 
+/** "8 h", joined by a no-break space so a narrow phone never puts the number and the unit on two lines. */
 function formatHours(value: number): string {
   const rounded = Math.round(value * 100) / 100;
-  return `${rounded} h`;
+  return `${rounded}\u00a0h`;
 }
 
 /** The first year a range keeps, given the current year. */
@@ -118,24 +144,29 @@ export function buildCv(input: {
     sections.push({
       id: "terms",
       title: "Terms",
-      lines: terms.map((term) => ({
-        id: `term:${term.id}`,
-        title: [term.unit, term.site].filter(Boolean).join(", ") || (term.number ? `Term ${term.number}` : "Term"),
-        sub: `${term.number ? `Term ${term.number} · ` : ""}${dayMonthYear(term.startsOn)} to ${dayMonthYear(term.endsOn)}`,
-        source: "terms" as const,
-      })),
+      lines: terms.map((term) =>
+        screened(
+          {
+            id: `term:${term.id}`,
+            title: [term.unit, term.site].filter(Boolean).join(", ") || (term.number ? `Term ${term.number}` : "Term"),
+            sub: `${term.number ? `Term ${term.number} · ` : ""}${dayMonthYear(term.startsOn)} to ${dayMonthYear(term.endsOn)}`,
+            source: "terms" as const,
+          },
+          thisYear,
+        ),
+      ),
     });
 
   const talks = input.talks
     .map((talk) => ({ ...talk, on: perthDateOfInstant(talk.startsAt) }))
     .filter((talk) => talk.on <= input.today && inRange(talk.on))
     .sort((a, b) => b.on.localeCompare(a.on));
-  const teachingLines: CvLine[] = talks.map((talk) => ({
-    id: `talk:${talk.occurrenceId}`,
-    title: talk.title,
-    sub: dayMonthYear(talk.on),
-    source: "teaching" as const,
-  }));
+  const teachingLines: CvLine[] = talks.map((talk) =>
+    screened(
+      { id: `talk:${talk.occurrenceId}`, title: talk.title, sub: dayMonthYear(talk.on), source: "teaching" as const },
+      thisYear,
+    ),
+  );
   const attendedDays = [
     ...new Map(
       (input.attended ?? [])
@@ -205,12 +236,18 @@ export function buildCv(input: {
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, OUTCOME_LINE_LIMIT);
     for (const entry of outcomeWork)
-      cpdLines.push({
-        id: `cpd:entry:${entry.id}`,
-        title: entry.title.trim(),
-        sub: `Measuring outcomes · ${year}`,
-        source: "cpd",
-      });
+      cpdLines.push(
+        screened(
+          {
+            id: `cpd:entry:${entry.id}`,
+            title: entry.title.trim(),
+            sub: `Measuring outcomes · ${year}`,
+            source: "cpd",
+          },
+          thisYear,
+          `/cme/log/${entry.id}?edit=1`,
+        ),
+      );
   }
   if (cpdLines.length) sections.push({ id: "cpd", title: "CPD", lines: cpdLines });
 
@@ -219,7 +256,7 @@ export function buildCv(input: {
     sections.push({
       id: "statement",
       title: "In your own words",
-      lines: [{ id: "statement", title: statement, sub: null, source: "you" }],
+      lines: [screened({ id: "statement", title: statement, sub: null, source: "you" }, thisYear)],
     });
   return sections;
 }
@@ -228,16 +265,24 @@ export function cvLineCount(sections: readonly CvSection[]): number {
   return sections.reduce((sum, section) => sum + section.lines.length, 0);
 }
 
-/** Plain text for pasting, hidden lines left out. Sections left empty by hiding are dropped too. */
+/**
+ * Plain text for pasting, hidden lines and held-back lines (a title that reads like a patient
+ * detail) left out. Sections left empty are dropped too.
+ */
 export function cvPlainText(
   sections: readonly CvSection[],
   hidden: ReadonlySet<string>,
-): { text: string; hiddenCount: number; shownCount: number } {
+): { text: string; hiddenCount: number; shownCount: number; heldBackCount: number } {
   let hiddenCount = 0;
   let shownCount = 0;
+  let heldBackCount = 0;
   const blocks: string[] = [];
   for (const section of sections) {
     const lines = section.lines.filter((line) => {
+      if (line.heldBack) {
+        heldBackCount += 1;
+        return false;
+      }
       if (hidden.has(line.id)) {
         hiddenCount += 1;
         return false;
@@ -250,7 +295,7 @@ export function cvPlainText(
       [section.title, ...lines.map((line) => `- ${line.title}${line.sub ? ` (${line.sub})` : ""}`)].join("\n"),
     );
   }
-  return { text: blocks.join("\n\n"), hiddenCount, shownCount };
+  return { text: blocks.join("\n\n"), hiddenCount, shownCount, heldBackCount };
 }
 
 export function toggleHiddenLine(hidden: readonly string[], id: string): string[] {

@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Check, ChevronLeft, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import { ContextualBackLink } from "@/components/contextual-back-link";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkBody, WorkDock, WorkIconCircle, WorkSectionLabel, WorkTag } from "@/components/mode-kit/work";
 import { announce } from "@/components/ui/live-announcer";
@@ -31,21 +32,43 @@ export const flatRow =
  * and title, as the mockup's header does), the page keeps an h1 for screen
  * readers only, and the content sits in the kit's page column.
  */
+export type CpdFeatureBack = { readonly href: string; readonly label: string };
+
 export function CpdFeaturePage({
   eyebrow,
   title,
   testId,
+  back,
   children,
 }: {
   readonly eyebrow: string;
   readonly title: string;
   readonly testId: string;
+  /**
+   * The page's real parent. The frame's own back goes to the area's first tab, which skips a parent such
+   * as Job applications for the CV, so the page carries its own. It follows this tab's history when there
+   * is one and falls back to `href`, so it never dead-ends.
+   */
+  readonly back?: CpdFeatureBack;
   readonly children: ReactNode;
 }) {
   useModeBandHeading({ eyebrow, title });
   return (
     <main data-mode-identity="cme" data-testid={testId} className="min-w-0 [overflow-wrap:anywhere]">
       <WorkBody>
+        {back ? (
+          <ContextualBackLink
+            fallbackHref={back.href}
+            data-testid="cpd-feature-back"
+            className={cn(
+              focusRing,
+              "-ml-1 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
+            )}
+          >
+            <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+            {back.label}
+          </ContextualBackLink>
+        ) : null}
         <h1 className="sr-only">{title}</h1>
         {children}
       </WorkBody>

@@ -19,12 +19,15 @@ import {
   createEntry,
   deleteEntry,
   errorWords,
+  JuniorBackLink,
   JuniorFootNote,
   JuniorNotice,
   JuniorSectionLabel,
   JuniorUndoBar,
+  juniorFlatPanel,
   patchEntry,
   slugSuffix,
+  useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
 import {
   ROSTER_LEAVE_KIND_WORDS,
@@ -35,7 +38,6 @@ import { cardSurface, focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
@@ -163,6 +165,30 @@ function ReminderSwitch({
   );
 }
 
+/** Why the page is read-only, with a way to sign in when that is what would change it. */
+function ReadOnlyLine({
+  reason,
+  onSignIn,
+  className,
+}: {
+  reason: string | null;
+  onSignIn?: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("grid justify-items-start gap-1", className)}>
+      <p className={cn(textMuted, "text-sm")} data-testid="admin-contract-read-only">
+        {reason}
+      </p>
+      {onSignIn ? (
+        <Button variant="secondary" onClick={onSignIn} testId="admin-contract-sign-in">
+          Sign in
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Contract end tracker, `/admin/contract` (junior feature #6). The end date
  * from the letter, a calm countdown strip with the 3 month and 6 week
@@ -174,8 +200,7 @@ function ReminderSwitch({
 export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   const today = perthCalendarDate(now);
   const loadState = adminLoadState(state);
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
@@ -207,6 +232,9 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   const [busy, setBusy] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
   const undoId = useRef(0);
+  // Signing in is what makes this page yours, so the read-only line offers it whenever nobody is signed in
+  // (example records included). Signed in on example records, signing in again would change nothing.
+  const signInAction = !isAuthenticated ? () => setSignInOpen(true) : undefined;
   const leave = useJuniorRosterLeave(loadState === "ready" && Boolean(endsOn));
 
   function upsert(saved: OnCallEntry) {
@@ -362,6 +390,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <>
       <InformationPageShell testId="admin-contract-main">
+        <JuniorBackLink href="/admin" label="Admin Today" testId="admin-contract-back" />
         <div className="grid gap-1">
           <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
             Contract end
@@ -402,23 +431,25 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                 When does your contract end?
               </h2>
               <p className="max-w-prose text-sm text-[color:var(--text)]">
-                Add the end date from your letter once. You get a reminder 3 months and 6 weeks before, with a list of
-                what to ask.
+                Add the end date from your letter once. From 3 months before, it shows on Admin Today and here, with a
+                list of what to ask. Add the dates to your calendar for an alert.
               </p>
               {canWrite ? (
                 <Button variant="primary" onClick={() => setSheet("add")} testId="admin-contract-add">
                   Add end date
                 </Button>
               ) : (
-                <p className={cn(textMuted, "text-sm")} data-testid="admin-contract-read-only">
-                  {readOnlyReason}
-                </p>
+                <ReadOnlyLine reason={readOnlyReason} onSignIn={signInAction} className="justify-items-center" />
               )}
             </div>
             <JuniorSectionLabel>What you get</JuniorSectionLabel>
             <ul className={cn(cardSurface, "overflow-hidden")}>
               {[
-                { icon: Bell, title: "Two calm reminders", sub: "3 months and 6 weeks before the end" },
+                {
+                  icon: Bell,
+                  title: "Two reminder dates",
+                  sub: "3 months and 6 weeks before. On Admin Today, and in your calendar if you add them",
+                },
                 { icon: Layers, title: "A list of what to ask", sub: "Including planned parental leave" },
                 { icon: Send, title: "A ready message", sub: "Copy it to Medical Workforce yourself" },
               ].map((row) => (
@@ -444,12 +475,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
           </>
         ) : (
           <>
-            <ModeFeaturedModule
-              as="section"
-              mode="my-work"
-              className="grid min-w-0 gap-3 p-4"
-              testId="admin-contract-hero"
-            >
+            <section className={cn(juniorFlatPanel, "grid min-w-0 gap-3 p-4")} data-testid="admin-contract-hero">
               <div className="flex items-start justify-between gap-3">
                 <div className="grid min-w-0 gap-1">
                   <h2 className={eyebrowText}>
@@ -466,15 +492,15 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   ) : null}
                 </div>
                 <div className="grid shrink-0 justify-items-end text-right" data-testid="admin-contract-days">
-                  <b className="nums text-3xl-minus font-semibold leading-none text-[color:var(--text-heading)]">
+                  <span className="nums text-3xl-minus font-semibold leading-none text-[color:var(--text-heading)]">
                     {daysLeftWords(status).big}
-                  </b>
+                  </span>
                   <span className={cn(textMuted, "text-xs")}>{daysLeftWords(status).small}</span>
                 </div>
               </div>
               <ContractStrip strip={strip} />
               <p
-                className="flex items-start gap-2 rounded-lg bg-[color:var(--surface-raised)] px-3 py-2 text-sm text-[color:var(--text)]"
+                className="flex items-start gap-2 rounded-lg border border-[color:var(--border)] px-3 py-2 text-sm text-[color:var(--text)]"
                 data-testid="admin-contract-panel"
               >
                 <Bell
@@ -484,7 +510,8 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                 />
                 <span>{contractPanelLine(status)}</span>
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              {/* Two buttons side by side from 360 px; stacked on the narrowest phones so neither label is cut. */}
+              <div className="grid gap-2 min-[360px]:grid-cols-2">
                 {status.daysLeft < 0 ? (
                   canWrite ? (
                     <Button variant="primary" onClick={() => setSheet("renew")} testId="admin-contract-renew-open">
@@ -530,12 +557,8 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   </Button>
                 )}
               </div>
-              {!canWrite && readOnlyReason ? (
-                <p className={cn(textMuted, "text-xs")} data-testid="admin-contract-read-only">
-                  {readOnlyReason}
-                </p>
-              ) : null}
-            </ModeFeaturedModule>
+              {!canWrite && readOnlyReason ? <ReadOnlyLine reason={readOnlyReason} onSignIn={signInAction} /> : null}
+            </section>
 
             <JuniorSectionLabel
               count={
@@ -584,7 +607,15 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   date={mark.date}
                   on={mark.on}
                   disabled={!canWrite || busy || status.daysLeft < 0}
-                  reason={!canWrite ? readOnlyReason : status.daysLeft < 0 ? "The end date has passed." : null}
+                  reason={
+                    !canWrite
+                      ? readOnlyReason
+                      : status.daysLeft < 0
+                        ? "The end date has passed."
+                        : busy
+                          ? "Saving your last change."
+                          : null
+                  }
                   onToggle={() => void toggleReminder(mark.kind === "three-months" ? "threeMonths" : "sixWeeks")}
                   testId={`admin-contract-switch-${mark.kind}`}
                 />
@@ -743,9 +774,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
         onClose={() => setQuestion(null)}
       />
 
-      {loadState === "signed-out" ? (
-        <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
-      ) : null}
+      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
 
       {undo ? (
         <JuniorUndoBar

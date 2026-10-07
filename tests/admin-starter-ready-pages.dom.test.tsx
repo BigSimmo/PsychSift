@@ -37,7 +37,8 @@ const entryState = vi.hoisted(() => ({
 }));
 const cacheOnCallEntries = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/on-call/entry-store", () => ({
-  useOnCallEntries: () => entryState,
+  // Like the real store, each read is its own snapshot, so a closure kept from an earlier render goes stale.
+  useOnCallEntries: () => ({ ...entryState }),
   cacheOnCallEntries: (entries: OnCallEntry[]) => cacheOnCallEntries(entries),
 }));
 
@@ -100,6 +101,12 @@ afterEach(() => {
 });
 
 describe("StarterPackPage", () => {
+  it("goes back to New job, and gives every word group chip a full tap target", () => {
+    render(<StarterPackPage now={NOW} />);
+    expect(screen.getByTestId("admin-starter-back").getAttribute("href")).toBe("/admin/new-job");
+    expect(screen.getByTestId("admin-starter-group-all").className).toContain("min-w-12");
+  });
+
   it("finds Pager from the word from home", () => {
     render(<StarterPackPage now={NOW} />);
     fireEvent.change(screen.getByTestId("admin-starter-word-search"), { target: { value: "bleep" } });
@@ -138,6 +145,25 @@ describe("StarterPackPage", () => {
     await waitFor(() => expect(calls.some((call) => call.method === "DELETE")).toBe(true));
   });
 
+  it("keeps a change made during the ten seconds when Undo removes the new date", async () => {
+    const view = render(<StarterPackPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-starter-add-first"));
+    fireEvent.click(screen.getByTestId("admin-starter-kind-visa-end"));
+    fireEvent.change(screen.getByTestId("admin-starter-date-date"), { target: { value: "2027-01-14" } });
+    fireEvent.click(screen.getByTestId("admin-starter-date-save"));
+    await waitFor(() => expect(screen.getByTestId("admin-starter-undo")).toBeTruthy());
+    const firstWrite = cacheOnCallEntries.mock.calls[0]?.[0] as OnCallEntry[];
+    const saved = firstWrite[firstWrite.length - 1]!;
+    // Something else lands in the entries before Undo is pressed.
+    const other = contractRow();
+    entryState.entries = [saved, other];
+    view.rerender(<StarterPackPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-starter-undo-undo"));
+    await waitFor(() => expect(cacheOnCallEntries).toHaveBeenCalledTimes(2));
+    const afterUndo = cacheOnCallEntries.mock.calls[1]?.[0] as OnCallEntry[];
+    expect(afterUndo.map((entry) => entry.id)).toEqual([other.id]);
+  });
+
   it("suggests a missing word as a copied note, after the patient-detail catch", async () => {
     render(<StarterPackPage now={NOW} />);
     fireEvent.change(screen.getByTestId("admin-starter-word-search"), { target: { value: "zzqx" } });
@@ -145,10 +171,21 @@ describe("StarterPackPage", () => {
     expect((screen.getByTestId("admin-starter-suggest-word") as HTMLInputElement).value).toBe("zzqx");
     fireEvent.change(screen.getByTestId("admin-starter-suggest-word"), { target: { value: "Mr Smith bed 4" } });
     expect(screen.getByTestId("admin-starter-suggest-problem")).toBeTruthy();
-    expect((screen.getByTestId("admin-starter-suggest-copy") as HTMLButtonElement).disabled).toBe(true);
+    // Off, and it says why: aria-disabled keeps it reachable, the reason line is read with it.
+    const copyButton = () => screen.getByTestId("admin-starter-suggest-copy");
+    expect(copyButton().getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByTestId("admin-starter-suggest-reason").textContent).toBe(
+      "Copy is off until the patient detail is gone.",
+    );
+    expect(copyButton().getAttribute("aria-describedby")).toBe("admin-starter-suggest-reason");
+    fireEvent.click(copyButton());
+    expect(copyText).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByTestId("admin-starter-suggest-word"), { target: { value: "" } });
+    expect(screen.getByTestId("admin-starter-suggest-reason").textContent).toBe("Type a word first.");
     fireEvent.change(screen.getByTestId("admin-starter-suggest-word"), { target: { value: "tea trolley" } });
     expect(screen.queryByTestId("admin-starter-suggest-problem")).toBeNull();
-    expect((screen.getByTestId("admin-starter-suggest-copy") as HTMLButtonElement).disabled).toBe(false);
+    expect(copyButton().getAttribute("aria-disabled")).toBeNull();
+    expect(screen.queryByTestId("admin-starter-suggest-reason")).toBeNull();
     fireEvent.click(screen.getByTestId("admin-starter-suggest-copy"));
     await waitFor(() => expect(copyText).toHaveBeenCalledWith(expect.stringContaining('"tea trolley"')));
   });
@@ -179,6 +216,29 @@ describe("ReadyForDayOnePage", () => {
     expect(screen.getByTestId("admin-ready-bar").getAttribute("aria-label")).toMatch(/^2 of 8 recorded/);
     expect(screen.getByTestId("admin-ready-starts").textContent).toContain("Starts Mon 2 Nov 2026");
     expect(screen.getByTestId("admin-ready-item-medical-registration-renewal")).toBeTruthy();
+    // Nine segments in the fixed order on every card, the ones not counted greyed in place.
+    const segments = Array.from(screen.getByTestId("admin-ready-bar").children);
+    expect(segments).toHaveLength(9);
+    expect(segments[7]?.getAttribute("data-state")).toBe("left-out");
+    expect(screen.getByTestId("admin-ready-back").getAttribute("href")).toBe("/admin/new-job");
+  });
+
+  it("will not copy example records as a status, and says why", () => {
+    Object.assign(entryState, { demoMode: true });
+    entryState.entries = [startRow()];
+    render(<ReadyForDayOnePage now={NOW} />);
+    const copy = screen.getByTestId("admin-ready-copy");
+    expect(copy).toHaveAttribute("aria-disabled", "true");
+    expect(copy).toHaveAccessibleDescription(/example records/);
+    fireEvent.click(copy);
+    expect(copyText).not.toHaveBeenCalled();
+  });
+
+  it("links to sharing with Medical Workforce", () => {
+    entryState.entries = [startRow()];
+    render(<ReadyForDayOnePage now={NOW} />);
+    expect(screen.getByTestId("admin-ready-sharing-link")).toHaveAttribute("href", "/admin/sharing");
+    expect(screen.getByTestId("admin-ready-workforce-note")).not.toHaveTextContent("not built");
   });
 
   it("copies status words only for Medical Workforce", async () => {

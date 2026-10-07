@@ -37,6 +37,7 @@ export type ReadyItemId =
   | "respirator-fit-testing"
   | "resuscitation-competence"
   | "contract"
+  | "bank-and-tax"
   | "logins";
 
 /** The fixed order, the same on every card, so a list of starters lines up. */
@@ -48,6 +49,7 @@ export const READY_ITEM_ORDER: readonly ReadyItemId[] = [
   "respirator-fit-testing",
   "resuscitation-competence",
   "contract",
+  "bank-and-tax",
   "logins",
 ];
 
@@ -59,6 +61,7 @@ const READY_TITLES: Record<ReadyItemId, string> = {
   "respirator-fit-testing": "Respirator fit test",
   "resuscitation-competence": "Life support",
   contract: "Contract dates",
+  "bank-and-tax": "Bank and tax",
   logins: "Logins and access",
 };
 
@@ -92,7 +95,8 @@ export interface ReadyForDayOne {
 function catalogueStatus(item: ComplianceItem, startsOn: string | null): { state: ReadyState; status: string } {
   if (item.bucket === "not-recorded") return { state: "to-do", status: COMPLIANCE_BUCKET_LABELS["not-recorded"] };
   if (item.bucket === "date-passed") return { state: "to-do", status: COMPLIANCE_BUCKET_LABELS["date-passed"] };
-  if (startsOn && item.row.expiresOn && item.row.expiresOn < startsOn) return { state: "to-do", status: "Ends before you start" };
+  if (startsOn && item.row.expiresOn && item.row.expiresOn < startsOn)
+    return { state: "to-do", status: "Ends before you start" };
   return { state: "recorded", status: "Recorded" };
 }
 
@@ -111,12 +115,48 @@ export function buildReadyForDayOne(own: readonly OnCallEntry[], now: Date): Rea
       const entry = selectContractEnd(own);
       const end = entry ? complianceExpiresOn(entry) : undefined;
       if (!end) {
-        return { id, title, state: "to-do", status: "Not recorded yet", detail: null, href: "/admin/contract", action: "Add" };
+        return {
+          id,
+          title,
+          state: "to-do",
+          status: "Not recorded yet",
+          detail: null,
+          href: "/admin/contract",
+          action: "Add",
+        };
       }
       if (startsOn && end < startsOn) {
-        return { id, title, state: "to-do", status: "Ends before you start", detail: `Ends ${formatRecordedDate(end)}`, href: "/admin/contract", action: "Open" };
+        return {
+          id,
+          title,
+          state: "to-do",
+          status: "Ends before you start",
+          detail: `Ends ${formatRecordedDate(end)}`,
+          href: "/admin/contract",
+          action: "Open",
+        };
       }
-      return { id, title, state: "recorded", status: "Recorded", detail: `Ends ${formatRecordedDate(end)}`, href: "/admin/contract", action: "Open" };
+      return {
+        id,
+        title,
+        state: "recorded",
+        status: "Recorded",
+        detail: `Ends ${formatRecordedDate(end)}`,
+        href: "/admin/contract",
+        action: "Open",
+      };
+    }
+    if (id === "bank-and-tax") {
+      // Kept in the fixed order so every starter's bar lines up, but PsychSift holds no bank or tax record.
+      return {
+        id,
+        title,
+        state: "left-out",
+        status: "Not tracked here",
+        detail: "You give these to payroll yourself",
+        href: "/admin/new-job",
+        action: "Open",
+      };
     }
     if (id === "logins") {
       const logins = selectNewJobRows({ own, shared: [] }).logins.filter((row) => row.source === "you");
@@ -125,10 +165,26 @@ export function buildReadyForDayOne(own: readonly OnCallEntry[], now: Date): Rea
         return typeof details === "object" && details !== null && (details as { done?: unknown }).done === true;
       }).length;
       if (logins.length === 0) {
-        return { id, title, state: "left-out", status: "Nothing listed yet", detail: "Add logins in New job", href: "/admin/new-job", action: "Open" };
+        return {
+          id,
+          title,
+          state: "left-out",
+          status: "Nothing listed yet",
+          detail: "Add logins in New job",
+          href: "/admin/new-job",
+          action: "Open",
+        };
       }
       if (done === logins.length) {
-        return { id, title, state: "recorded", status: "All done", detail: `${logins.length} of ${logins.length} done`, href: "/admin/new-job", action: "Open" };
+        return {
+          id,
+          title,
+          state: "recorded",
+          status: "All done",
+          detail: `${logins.length} of ${logins.length} done`,
+          href: "/admin/new-job",
+          action: "Open",
+        };
       }
       return {
         id,
@@ -148,7 +204,15 @@ export function buildReadyForDayOne(own: readonly OnCallEntry[], now: Date): Rea
     if (!item) return { id, title, state: "to-do", status: "Not recorded yet", detail: null, href, action: "Record" };
     const { state, status } = catalogueStatus(item, startsOn);
     const detail = item.row.expiresOn ? `Your date ${formatRecordedDate(item.row.expiresOn)}` : null;
-    return { id, title, state, status, detail, href, action: state === "recorded" ? "Open" : item.bucket === "not-recorded" ? "Record" : "Update" };
+    return {
+      id,
+      title,
+      state,
+      status,
+      detail,
+      href,
+      action: state === "recorded" ? "Open" : item.bucket === "not-recorded" ? "Record" : "Update",
+    };
   });
 
   const count = (state: ReadyState) => items.filter((item) => item.state === state).length;
@@ -177,24 +241,24 @@ export function readyStartsLine(ready: ReadyForDayOne, now: Date): string | null
   const b = utcDay(ready.startsOn);
   if (a === null || b === null) return null;
   const days = Math.round(b - a);
-  const when = days === 0 ? "today" : days === 1 ? "tomorrow" : days < 14 ? `in ${days} days` : `in ${Math.floor(days / 7)} weeks`;
+  const when =
+    days === 0 ? "today" : days === 1 ? "tomorrow" : days < 14 ? `in ${days} days` : `in ${Math.floor(days / 7)} weeks`;
   return `Starts ${formatDateEcho(ready.startsOn)}, ${when}`;
 }
 
 /**
  * The text "Copy status for Medical Workforce" puts on the clipboard: the
- * start date and one status word per item. No dates of any credential, no
- * numbers, no detail lines.
+ * start date and one status word per item, every item in the fixed order (so
+ * a Workforce list lines up), including the ones not counted. No dates of any
+ * credential, no numbers, no detail lines.
  */
 export function readyStatusText(ready: ReadyForDayOne, now: Date): string {
   const head = ready.startsOn ? `Ready for day one, starting ${formatDateEcho(ready.startsOn)}` : "Ready for day one";
-  const lines = ready.items.filter((item) => item.state !== "left-out").map((item) => `${item.title}: ${item.status}`);
-  const leftOut = ready.items.filter((item) => item.state === "left-out" && item.status === "Not for this job");
+  const lines = ready.items.map((item) => `${item.title}: ${item.status}`);
   return [
     head,
     `Status from my own records, ${formatDateEcho(perthCalendarDate(now))}. Not checked with issuers. Documents on request.`,
     ...lines,
-    ...(leftOut.length ? [`Not for this job: ${leftOut.map((item) => item.title).join(", ")}`] : []),
   ].join("\n");
 }
 

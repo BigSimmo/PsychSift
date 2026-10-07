@@ -37,13 +37,11 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { UNDO_MS } from "@/components/teaching/use-delayed-post";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
-import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui-primitives";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
@@ -223,7 +221,8 @@ function GridHead() {
         <span className="text-center">EPAs</span>
         <span className="text-center">End</span>
       </span>
-      <span className="w-12 shrink-0" />
+      {/* The bell column: a bell to remind, a tick once reminded today. */}
+      <span className="w-12 shrink-0 text-center tracking-normal">Remind</span>
     </div>
   );
 }
@@ -279,26 +278,18 @@ export function AssessmentsTermOverview(props: ScreenProps) {
 
 /** Shared by the grid, the supervisors list and one doctor's page: pretend reminders, with Undo. */
 function useReminders(s: ScreenProps["s"]) {
-  const { extras, dispatchExtras } = useAssessmentsExtras();
-  const toast = useToast();
+  const { extras, dispatchExtras, offerUndo } = useAssessmentsExtras();
   const keys = remindedKeys(extras);
   const offlineSince = useOfflineSince();
 
   function send(records: ReminderRecord[], title: string) {
     if (!records.length || offlineSince) return;
     dispatchExtras({ type: "remind", records });
-    toast.push({
-      tone: "info",
+    offerUndo({
       title,
       body: "Made-up: nothing is sent. One reminder a day per form.",
-      duration: UNDO_MS,
-      action: {
-        label: "Undo",
-        onAction: () => {
-          dispatchExtras({ type: "unremind", keys: records.map((r) => r.key) });
-          announce("Reminder taken back.");
-        },
-      },
+      undo: () => dispatchExtras({ type: "unremind", keys: records.map((r) => r.key) }),
+      undone: "Reminder taken back.",
     });
   }
 
@@ -345,6 +336,7 @@ function OverviewHome({ s }: ScreenProps) {
   const recipients = bulkRecipients(rows, r.keys, s.now);
   const toRemind = recipients.filter((x) => !x.remindedToday);
   const remindWhyId = useId();
+  const filterNoteId = useId();
   // Why Remind cannot open, in words beside it, never a silent grey button.
   const remindWhyNot = r.offlineSince
     ? "Can't send while offline. Try again when you are back online."
@@ -376,7 +368,7 @@ function OverviewHome({ s }: ScreenProps) {
         <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">
           {`${rows.length} doctors · ${counts.overdue} overdue`}
         </h2>
-        <span className="text-sm font-medium text-[color:var(--text-heading)]">Mid-term assessments</span>
+        <span className="text-sm font-medium text-[color:var(--text-heading)]">Mid-term assessments only</span>
         <MixBar {...summary} testId="assessments-overview-meter" />
         <Totals {...summary} />
         <KeyValue k="EPAs at the term target" v={`${epasMet}\u00a0of ${rows.length}`} />
@@ -400,7 +392,16 @@ function OverviewHome({ s }: ScreenProps) {
       ) : null}
       {tab === "doctors" ? (
         <>
-          <div role="group" aria-label="Filter doctors" className="flex flex-wrap gap-1.5">
+          {/* The chips count doctors by any form, so they differ from the mid-term totals above. Said, not left to guess. */}
+          <p className={cn(secondaryText, "-mb-1 px-1 text-xs")} id={filterNoteId}>
+            Doctors, counted by their most urgent form of any kind
+          </p>
+          <div
+            role="group"
+            aria-label="Filter doctors"
+            aria-describedby={filterNoteId}
+            className="flex flex-wrap gap-1.5"
+          >
             {OVERVIEW_FILTERS.map((f) => (
               <ChoiceChip key={f.id} pressed={filter === f.id} onPressedChange={() => setFilter(f.id)}>
                 {`${f.label} · ${counts[f.id]}`}
@@ -435,15 +436,18 @@ function OverviewHome({ s }: ScreenProps) {
                         className={cn(focusRing, GRID, "min-h-15 min-w-0 flex-1 rounded-lg py-2.5 pl-3.5 no-underline")}
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
+                          {/* Below 360 px the initials give way, so the name has room to be read in full. */}
                           <span
                             aria-hidden="true"
-                            className="grid size-9 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-semibold text-[color:var(--text-heading)]"
+                            className="grid size-9 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-semibold text-[color:var(--text-heading)] max-[359px]:hidden"
                           >
                             {row.initials}
                           </span>
                           <span className="grid min-w-0">
-                            <span className={cn(titleText, "truncate")}>{row.name}</span>
-                            <span className={cn(secondaryText, "truncate text-xs")}>
+                            <span className={cn(titleText, "break-words")} data-testid="assessments-overview-name">
+                              {row.name}
+                            </span>
+                            <span className={cn(secondaryText, "break-words text-xs")}>
                               {at ? `Reminded ${at}` : `${row.grade} · ${row.supervisor}`}
                             </span>
                           </span>

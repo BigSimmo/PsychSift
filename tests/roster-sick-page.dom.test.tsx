@@ -22,6 +22,10 @@ vi.mock("@/components/roster/use-roster-team", () => ({
   postRosterAction: mocks.post,
 }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => mocks.auth }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ back: vi.fn(), replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => "/roster/sick",
+}));
 vi.mock("@/components/roster/ask/roster-ask-box", () => ({ RosterAskButton: () => null }));
 vi.mock("@/lib/copy-to-clipboard", () => ({ copyTextToClipboard: mocks.copy }));
 vi.mock("@/components/ui/live-announcer", () => ({ announce: mocks.announce }));
@@ -324,9 +328,26 @@ it("the example team refuses to send and says to phone", async () => {
   const send = screen.getByTestId("sick-send");
   expect(send.getAttribute("aria-disabled")).toBe("true");
   expect(screen.getByText(/example team, so nothing can be sent/)).toBeTruthy();
+  expect(send.textContent).toContain("Example team, so nothing is sent");
+  expect(send.textContent).not.toContain("Sends to");
   await user().click(send);
   expect(screen.queryByRole("timer")).toBeNull();
   expect(mocks.post).not.toHaveBeenCalled();
+});
+
+it("has a visible way back to Roster", async () => {
+  await renderPage();
+  const back = screen.getByTestId("roster-sick-back");
+  expect(back.getAttribute("href")).toBe("/roster");
+  expect(back.textContent).toBe("Roster");
+});
+
+it("the personal leave link sits on its own line under the text", async () => {
+  await renderPage();
+  const row = screen.getByTestId("sick-personal-leave");
+  const link = within(row).getByRole("link", { name: /Check your agreement/ });
+  expect(link.parentElement).toBe(row);
+  expect(row.className).toContain("grid");
 });
 
 it("signed out cannot send", async () => {
@@ -340,8 +361,16 @@ it("signed out cannot send", async () => {
 it("offline shows the no-connection state and blocks the send", async () => {
   Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
   await renderPage();
-  expect(screen.getByTestId("sick-offline").textContent).toContain("No connection. Nothing sent.");
-  expect(screen.getByTestId("sick-send").getAttribute("aria-disabled")).toBe("true");
+  const note = screen.getByTestId("sick-offline").textContent;
+  expect(note).toContain("No connection");
+  // Nothing has been tried yet, so the note never says "Nothing sent" as if a send had failed.
+  expect(note).not.toContain("Nothing sent");
+  expect(note).toContain("You can still pick shifts");
+  const send = screen.getByTestId("sick-send");
+  expect(send.getAttribute("aria-disabled")).toBe("true");
+  // A blocked button says why and promises nothing.
+  expect(send.textContent).toContain("No connection right now");
+  expect(send.textContent).not.toContain("10 s to undo");
 });
 
 it("offline, Send when I'm back online starts the 10 second window when the signal returns", async () => {

@@ -10,6 +10,12 @@ import { CPD_HOME_SEND_STORAGE_KEY, clearAccountScopedBrowserStorage } from "@/l
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import * as clipboard from "@/lib/copy-to-clipboard";
 
+const announcer = vi.hoisted(() => ({ announce: vi.fn() }));
+vi.mock("@/components/ui/live-announcer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/ui/live-announcer")>()),
+  announce: announcer.announce,
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/cme/cpd-home",
@@ -127,6 +133,10 @@ describe("Send to AMA CPD Home", () => {
     );
     renderPage();
     expect(screen.getByText(/new since your last file/)).toBeTruthy();
+    // Short labels with the count in the count column, so the control fits at 320 px. The date stays in the name.
+    const fresh = screen.getByRole("radio", { name: "New (1 new since 1 Oct)" });
+    expect(fresh.getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: "All (3 activities in 2026)" })).toBeTruthy();
     const list = screen.getByTestId("cpd-home-activity-list");
     expect(within(list).getAllByTestId("cpd-home-activity")).toHaveLength(1);
     expect(list.textContent).toContain("Grand round");
@@ -205,7 +215,7 @@ describe("Send to AMA CPD Home", () => {
     fireEvent.click(screen.getByTestId("cpd-home-download"));
     const sheet = screen.getByTestId("cpd-home-saved-sheet");
     expect(sheet.textContent).toContain("Making your file");
-    expect(sheet.textContent).toContain("Checking each row has a date, hours and a category");
+    expect(sheet.textContent).toContain("Checking each row has a date, hours, a category and a safe title");
     const bar = within(sheet).getByTestId("cpd-home-progress");
     expect(bar.getAttribute("max")).toBe("25");
     expect(bar.getAttribute("value")).toBe("0");
@@ -228,7 +238,7 @@ describe("Send to AMA CPD Home", () => {
     const ready = await screen.findByTestId("cpd-home-download-ready");
     // The rows are checked, but nothing is downloaded or recorded until the doctor taps.
     expect(createObjectURL).not.toHaveBeenCalled();
-    expect(screen.getByTestId("cpd-home-saved-sheet").textContent).toContain("File ready");
+    expect(screen.getByTestId("cpd-home-saved-sheet").textContent).toContain("Your file");
     expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
     fireEvent.click(ready);
     expect(createObjectURL).toHaveBeenCalledTimes(1);
@@ -248,7 +258,7 @@ describe("Send to AMA CPD Home", () => {
     expect(problems.textContent).toContain("Title looks like a patient detail");
     // The flagged words are not repeated in the problem list.
     expect(problems.textContent).not.toContain("34yo");
-    expect(problems.textContent).toContain("Activity on 2026-08-01");
+    expect(problems.textContent).toContain("Activity on Sat 1 Aug 2026");
     fireEvent.click(screen.getByTestId("cpd-home-download"));
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(screen.queryByTestId("cpd-home-download-ready")).toBeNull();
@@ -288,11 +298,61 @@ describe("Send to AMA CPD Home", () => {
     expect(stored.files.find((file: { id: string }) => file.id === "f6").addedAt).not.toBeNull();
   });
 
+  it("goes back to the CPD summary, where its link lives, even with nothing to send", () => {
+    const { unmount } = renderPage();
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+    unmount();
+    renderPage({ entries: [] });
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+  });
+
   it("says the import format is not confirmed, with its source pending", () => {
     renderPage();
     const row = screen.getByTestId("cpd-home-import-format");
     expect(row.textContent).toContain("Not confirmed yet");
     expect(row.textContent).toContain("Source pending");
+  });
+
+  it("shows the preview dates the Australian way", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("cpd-home-preview"));
+    const table = screen.getByRole("table");
+    const dates = within(table)
+      .getAllByRole("cell")
+      .map((cell) => cell.textContent)
+      .filter((text) => /^\w{3} \d/.test(text ?? ""));
+    expect(dates).toContain("Thu 15 Jan");
+    expect(table.textContent).not.toContain("2026-01-15");
+  });
+
+  it("says a file is not made because some activities need fixing first", () => {
+    renderPage({ entries: [...entries, entry("p", "2026-08-01", { title: "Reviewed a 34yo F with psychosis" })] });
+    fireEvent.click(screen.getByTestId("cpd-home-download"));
+    expect(announcer.announce).toHaveBeenCalledWith("No file was made. Some activities need fixing first.");
+  });
+
+  it("waits for a connection before the full export, and offers it again once online", () => {
+    const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    renderPage();
+    const offline = screen.getByTestId("cpd-home-full-export");
+    expect(offline.tagName).toBe("BUTTON");
+    expect((offline as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("cpd-home-full-export-note").textContent).toContain("Needs a connection");
+    onLine.mockReturnValue(true);
+    act(() => {
+      window.dispatchEvent(new Event("online"));
+    });
+    expect(screen.getByTestId("cpd-home-full-export").getAttribute("href")).toBe("/api/cme/export?year=2026");
+  });
+
+  it("says when this browser is not keeping changes", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("refused", "SecurityError");
+    });
+    renderPage();
+    expect(screen.getByTestId("cpd-home-privacy").textContent).toContain(
+      "This browser is not keeping changes. They last until you leave the page.",
+    );
   });
 
   it("shows an empty state with a way to log the first activity", () => {

@@ -134,7 +134,7 @@ export function TermFolderExportSheet({
           </span>
         </div>
         <a
-          href={csvHref(termFolderCsv(folder, today, options))}
+          href={csvHref(termFolderCsv(folder, today, options, { demo: demoMode }))}
           download={termFolderFileName(folder, demoMode)}
           // The download starts from this tap first. The sheet closes on the next tick, so the link is still on
           // the page when the browser acts on it (a detached link can lose its download in some browsers).

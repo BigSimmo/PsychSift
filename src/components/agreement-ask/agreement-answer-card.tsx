@@ -80,6 +80,38 @@ function SignOffNote({ reason }: { readonly reason: string | null }) {
   );
 }
 
+/** The verbatim quotes of some topics, each line with its clause chip. */
+function TopicQuotes({
+  topics,
+  activeClause,
+  onOpenClause,
+}: {
+  readonly topics: Quoted["topics"];
+  readonly activeClause?: string | null;
+  readonly onOpenClause: (clause: string) => void;
+}) {
+  return (
+    <>
+      {topics.map((topic) => (
+        <div key={topic.id} className="grid gap-1.5" data-testid={`agreement-topic-${topic.id}`}>
+          <h3 className="text-sm font-semibold leading-5 text-[color:var(--text-heading)]">{topic.label}</h3>
+          <ol role="list" className="grid gap-2">
+            {topic.lines.map((line, index) => (
+              <li
+                key={`${line.clause}-${index}`}
+                className="min-w-0 border-l-2 border-[color:var(--mode-identity-border)] pl-3 text-sm leading-6 text-[color:var(--text)]"
+              >
+                <q className="break-words">{line.text}</q>{" "}
+                <AgreementClauseChip clause={line.clause} active={activeClause === line.clause} onOpen={onOpenClause} />
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </>
+  );
+}
+
 function CardHeader({ icon, title, sub }: { readonly icon: ReactNode; readonly title: string; readonly sub: string }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -139,6 +171,17 @@ export const AgreementAnswerCard = forwardRef<HTMLHeadingElement, AgreementAnswe
               {answer.source.title}, {answer.source.citation}
             </p>
           </div>
+          {answer.related.length ? (
+            <div className="grid gap-3 border-t border-[color:var(--border)] px-3 py-3" data-testid="agreement-related">
+              <CardHeader
+                icon={<AgreementIconCircle icon={Scale} tone="neutral" />}
+                title="Possibly related, not an answer to your question"
+                sub="An hours or rest clause your words touched. It does not cover what you asked."
+              />
+              {answer.signOff.signedOff ? null : <SignOffNote reason={answer.signOff.reason} />}
+              <TopicQuotes topics={answer.related} activeClause={activeClause} onOpenClause={onOpenClause} />
+            </div>
+          ) : null}
           <div className="grid gap-2 border-t border-[color:var(--border)] px-3 py-3">
             <p className="text-xs font-medium leading-4 text-[color:var(--text-muted)]">What PsychSift can quote</p>
             <ul role="list" className="flex flex-wrap gap-x-2">
@@ -193,6 +236,15 @@ export const AgreementAnswerCard = forwardRef<HTMLHeadingElement, AgreementAnswe
             title="In the agreement’s own words"
             sub="Every line is a quote, with its clause"
           />
+          {answer.unchecked.length ? (
+            <p
+              className="rounded-md bg-[color:var(--surface-subtle)] px-3 py-2 text-sm leading-5 text-[color:var(--text)]"
+              data-testid="agreement-unchecked-line"
+            >
+              {uncheckedSentence(answer.unchecked)} Open the agreement for that part. The quotes below cover only the
+              hours and rest part.
+            </p>
+          ) : null}
           {answer.signOff.signedOff ? (
             <p className="text-xs leading-4 text-[color:var(--text-muted)]" data-testid="agreement-signed-off">
               {answer.signOff.signedLine}. Still read the clause before relying on it.
@@ -208,34 +260,7 @@ export const AgreementAnswerCard = forwardRef<HTMLHeadingElement, AgreementAnswe
           >
             {`Quoted from clause ${clauses.join(", ")}`}
           </h2>
-          {answer.topics.map((topic) => (
-            <div key={topic.id} className="grid gap-1.5" data-testid={`agreement-topic-${topic.id}`}>
-              <h3 className="text-sm font-semibold leading-5 text-[color:var(--text-heading)]">{topic.label}</h3>
-              <ol role="list" className="grid gap-2">
-                {topic.lines.map((line, index) => (
-                  <li
-                    key={`${line.clause}-${index}`}
-                    className="min-w-0 border-l-2 border-[color:var(--mode-identity-border)] pl-3 text-sm leading-6 text-[color:var(--text)]"
-                  >
-                    <q className="break-words">{line.text}</q>{" "}
-                    <AgreementClauseChip
-                      clause={line.clause}
-                      active={activeClause === line.clause}
-                      onOpen={onOpenClause}
-                    />
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))}
-          {answer.unchecked.length ? (
-            <p
-              className="rounded-md bg-[color:var(--surface-subtle)] px-3 py-2 text-sm leading-5 text-[color:var(--text)]"
-              data-testid="agreement-unchecked-line"
-            >
-              {uncheckedSentence(answer.unchecked)} Open the agreement for that part.
-            </p>
-          ) : null}
+          <TopicQuotes topics={answer.topics} activeClause={activeClause} onOpenClause={onOpenClause} />
           <p className="text-xs leading-4 text-[color:var(--text-muted)]">
             {answer.source.title}, {answer.source.citation}. Checked {answer.source.checkedOn}.
             {answer.source.pastExpiry

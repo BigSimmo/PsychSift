@@ -4,7 +4,6 @@ import { extrasReducer, initialExtras, readyToSend, remindedKeys } from "@/lib/t
 import {
   EMPTY_ANSWER,
   ageText,
-  cleanFeedbackText,
   claCopyText,
   dctRemindersFor,
   doctorSees,
@@ -57,7 +56,7 @@ describe("consultant inbox", () => {
     expect(ageText(4)).toBe("4 days");
   });
 
-  it("lists Ben's mid-term and the made-up EPAs, overdue only once the window opens", () => {
+  it("lists Ash's mid-term and the made-up EPAs, overdue only once the window opens", () => {
     const before = inboxRequests(at(-1), {});
     expect(before.map((i) => i.id)).toEqual(["ben-mid", "mia-epa-2", "ella-epa-4", "ravi-epa-3"]);
     expect(before.find((i) => i.id === "ben-mid")!.overdue).toBe(false);
@@ -93,10 +92,10 @@ describe("consultant inbox", () => {
     const items = inboxRequests(at(0), {});
     expect(filterCounts(items)).toEqual({ all: 4, overdue: 1, epas: 3, forms: 1 });
     expect(sortInbox(items, "doctor").map((i) => i.doctor.name)).toEqual([
-      "Dr Ben Ortiz",
-      "Dr Ella Okafor",
-      "Dr Mia Chen",
-      "Dr Ravi Kaur",
+      "Dr Ash Zamia",
+      "Dr Charlie Balga",
+      "Dr Frankie Mulga",
+      "Dr Rowan Sheoak",
     ]);
     const later = inboxRequests(at(0), {
       "ella-epa-4": { status: "later", level: null, text: "", reason: "not_this_week" },
@@ -143,9 +142,36 @@ describe("consultant inbox", () => {
     expect(feedbackProblem("Two years of steady progress.")).toBeNull();
   });
 
-  it("sends the cleaned text: folded to plain characters, invisible ones removed", () => {
-    expect(cleanFeedbackText("  Calm\u200B, clear\u00A0escalation.\uFEFF ")).toBe("Calm, clear escalation.");
-    expect(cleanFeedbackText("\uFF23\uFF41\uFF4C\uFF4D")).toBe("Calm");
+  it("uses the shared work-text check, so ordinary typing like Mr.Smith and Bed: 12 is caught", () => {
+    const caught = [
+      "Mr.Smith",
+      "Mrs.Jones",
+      "Ms.Nguyen",
+      "Bed: 12",
+      "\u041Cr Smith", // Cyrillic capital Em
+      "\u039Cr Smith", // Greek capital Mu
+      "\u0420atient John Smith", // Cyrillic capital Er
+      "B\u0435d 12", // Cyrillic small ie
+      "Mr S\u{1F600}mith",
+      "Mr\u{1F600}Smith",
+      "Mr S\u0332mith", // a combining underline
+      "Mr\u{1F3FB}Smith", // a skin-tone modifier
+      "forty-five year old man",
+      "forty five year old woman",
+      "45-yo M",
+      "a 45 M with",
+      "pt js 45m",
+      "Pt J S",
+      "Mrs S",
+      "Mr J",
+      "+61 412 345 678",
+      "U1234567",
+    ];
+    for (const text of caught) {
+      expect(feedbackProblem(text), text).not.toBeNull();
+      expect(feedbackProblem(text)!.body).toContain("catches some details, not all");
+    }
+    expect(feedbackProblem("Led the MDT well at RPH.")).toBeNull();
   });
 });
 
@@ -184,7 +210,12 @@ describe("inbox and reminder state", () => {
     const key = reminderKey("ravi", "mid", 0);
     const ravi = overviewDoctors(at(-1)).find((r) => r.id === "ravi")!;
     const records = reminderRecords(ravi, ["mid"], 0, "09:10");
-    expect(records[0]).toMatchObject({ key, supervisor: "Dr Omar Ahmed", doctorName: "Dr Ravi Kaur", at: "09:10" });
+    expect(records[0]).toMatchObject({
+      key,
+      supervisor: "Dr Quinn Wandoo",
+      doctorName: "Dr Rowan Sheoak",
+      at: "09:10",
+    });
     const s = extrasReducer(initialExtras, { type: "remind", records });
     expect(remindedKeys(s)).toEqual([key]);
     expect(extrasReducer(s, { type: "remind", records })).toBe(s);
@@ -225,7 +256,7 @@ describe("term overview", () => {
     expect(remindableForms(rows.find((r) => r.id === "noah")!)).toEqual([]);
     expect(remindableForms(overviewDoctors(at(0)).find((r) => r.id === "noah")!)).toEqual(["end"]);
     const groups = supervisorGroups(rows);
-    expect(groups.map((g) => g.name)).toEqual(["Dr Hana Ito", "Dr Omar Ahmed", "Dr Priya Nair"]);
+    expect(groups.map((g) => g.name)).toEqual(["Dr Morgan Grevillea", "Dr Quinn Wandoo", "Dr Robin Wattle"]);
   });
 
   it("exports a status-only CSV labelled as made-up", () => {
@@ -243,7 +274,7 @@ describe("inbox rows, passing on, and what the doctor sees", () => {
     const items = inboxRequests(at(0), {});
     const byId = (id: string) => items.find((i) => i.id === id)!;
     expect(inboxRowStatus(byId("ben-mid"))).toEqual({ rail: "overdue", tag: "Overdue", tone: "bad" });
-    // Ella asked on Tue 29 Sep: by Mon 26 Oct that is weeks of waiting.
+    // Charlie asked on Tue 29 Sep: by Mon 26 Oct that is weeks of waiting.
     expect(inboxRowStatus(byId("ella-epa-4"))).toMatchObject({ rail: "long", tone: "warm", tag: "3\u00a0weeks" });
     const fresh = inboxRequests(at(-1), {});
     expect(inboxRowStatus(fresh.find((i) => i.id === "ravi-epa-3")!)).toEqual({
@@ -264,28 +295,30 @@ describe("inbox rows, passing on, and what the doctor sees", () => {
   });
 
   it("says exactly what the doctor sees when a request is passed on", () => {
-    expect(doctorSees("not_seen", "Dr Hana Ito")).toBe(
-      "Not able to assess this one, as I did not see this work. Try Dr Hana Ito.",
+    expect(doctorSees("not_seen", "Dr Morgan Grevillea")).toBe(
+      "Not able to assess this one, as I did not see this work. Try Dr Morgan Grevillea.",
     );
     expect(doctorSees("other_consultant", null)).toBe("Better assessed by another consultant. Ask someone who saw it.");
-    expect(doctorSees("not_this_week", "Dr Hana Ito")).toBe("Your supervisor will look at this from Mon 08:00.");
+    expect(doctorSees("not_this_week", "Dr Morgan Grevillea")).toBe(
+      "Your supervisor will look at this from Mon 08:00.",
+    );
     const s = extrasReducer(initialExtras, {
       type: "inbox-cant",
       id: "ravi-epa-3",
       reason: "other_consultant",
-      suggestion: "Dr Omar Ahmed",
+      suggestion: "Dr Quinn Wandoo",
     });
     const item = inboxRequests(at(-1), s.answers).find((i) => i.id === "ravi-epa-3")!;
-    expect(item.doneLine).toBe("Passed on to another consultant · suggested Dr Omar Ahmed");
+    expect(item.doneLine).toBe("Passed on to another consultant · suggested Dr Quinn Wandoo");
     expect(doctorView(item, s.answers["ravi-epa-3"]!)!.words).toBe(
-      "Better assessed by another consultant. Try Dr Omar Ahmed.",
+      "Better assessed by another consultant. Try Dr Quinn Wandoo.",
     );
     // Later never carries a suggestion.
     const later = extrasReducer(initialExtras, {
       type: "inbox-cant",
       id: "ravi-epa-3",
       reason: "not_this_week",
-      suggestion: "Dr Omar Ahmed",
+      suggestion: "Dr Quinn Wandoo",
     });
     expect(later.answers["ravi-epa-3"]!.suggestion).toBeNull();
   });
@@ -310,7 +343,7 @@ describe("inbox rows, passing on, and what the doctor sees", () => {
     expect(claCopyText(item, s.answers["mia-epa-2"]!)).toBe(
       [
         "EPA 2 · Acutely unwell patient",
-        "Supervisor: Dr Priya Nair",
+        "Supervisor: Dr Robin Wattle",
         "Supervision needed: Proximal",
         "Feedback: Calm, clear escalation.",
         "Asked Fri 2 Oct",
@@ -353,7 +386,7 @@ describe("inbox rows, passing on, and what the doctor sees", () => {
     const reminders = [...reminderRecords(ben, ["mid"], 0, "09:10"), ...reminderRecords(ravi, ["mid"], 0, "09:12")];
     const items = inboxRequests(at(0), {});
     expect(dctRemindersFor(reminders, items)).toEqual([
-      { key: "ben:mid:0", text: "Dr Ben Ortiz · mid-term", at: "09:10", requestId: "ben-mid" },
+      { key: "ben:mid:0", text: "Dr Ash Zamia · mid-term", at: "09:10", requestId: "ben-mid" },
     ]);
   });
 });
@@ -363,7 +396,7 @@ describe("term overview reminders, export and words", () => {
     const rows = overviewDoctors(at(-1));
     const ravi = rows.find((r) => r.id === "ravi")!;
     expect(reminderMessage(ravi, "mid")).toBe(
-      "Dr Ravi Kaur's mid-term assessment is overdue. Please finish it in Assessments, or tell the MEU if you need more time.",
+      "Dr Rowan Sheoak's mid-term assessment is overdue. Please finish it in Assessments, or tell the MEU if you need more time.",
     );
     const ben = rows.find((r) => r.id === "ben")!;
     expect(reminderMessage(ben, "mid")).toContain("is due Fri 16 Oct");
@@ -375,22 +408,22 @@ describe("term overview reminders, export and words", () => {
   it("lists supervisors to remind, unticking those reminded today", () => {
     const rows = overviewDoctors(at(-1));
     const all = bulkRecipients(rows, [], -1);
-    expect(all.map((x) => x.supervisor)).toEqual(["Dr Hana Ito", "Dr Omar Ahmed", "Dr Priya Nair"]);
-    expect(all.find((x) => x.supervisor === "Dr Omar Ahmed")!.line).toBe("Dr Ravi Kaur · overdue since Fri 2 Oct");
+    expect(all.map((x) => x.supervisor)).toEqual(["Dr Morgan Grevillea", "Dr Quinn Wandoo", "Dr Robin Wattle"]);
+    expect(all.find((x) => x.supervisor === "Dr Quinn Wandoo")!.line).toBe("Dr Rowan Sheoak · overdue since Fri 2 Oct");
     // Several forms for one supervisor are joined with commas: no semicolons in anything shown.
     for (const recipient of all) expect(recipient.line).not.toContain(";");
-    expect(all.find((x) => x.supervisor === "Dr Hana Ito")!.line).toMatch(/^Dr [^,]+ · [^,]+, Dr /);
-    const ahmedKeys = all.find((x) => x.supervisor === "Dr Omar Ahmed")!.items.map((i) => i.key);
+    expect(all.find((x) => x.supervisor === "Dr Morgan Grevillea")!.line).toMatch(/^Dr [^,]+ · [^,]+, Dr /);
+    const ahmedKeys = all.find((x) => x.supervisor === "Dr Quinn Wandoo")!.items.map((i) => i.key);
     const after = bulkRecipients(rows, ahmedKeys, -1);
-    const ahmed = after.find((x) => x.supervisor === "Dr Omar Ahmed")!;
+    const ahmed = after.find((x) => x.supervisor === "Dr Quinn Wandoo")!;
     expect(ahmed.remindedToday).toBe(true);
     expect(ahmed.items).toEqual([]);
-    expect(after.at(-1)!.supervisor).toBe("Dr Omar Ahmed");
+    expect(after.at(-1)!.supervisor).toBe("Dr Quinn Wandoo");
   });
 
   it("describes each supervisor's mix and each status mark in words", () => {
     const groups = supervisorGroups(overviewDoctors(at(-1)));
-    const ito = groups.find((g) => g.name === "Dr Hana Ito")!;
+    const ito = groups.find((g) => g.name === "Dr Morgan Grevillea")!;
     expect(supervisorMix(ito).label).toBe("3 doctors · mid-term 1 done, 1 due, 1 overdue");
     const rows = overviewDoctors(at(-1));
     const noah = rows.find((r) => r.id === "noah")!;
@@ -415,7 +448,7 @@ describe("term overview reminders, export and words", () => {
     const withHistory = overviewCsv(rows, "Mon 5 Oct", { ...DEFAULT_EXPORT_OPTIONS, history: true }, [
       ...reminderRecords(ravi, ["mid"], -1, "09:10"),
     ]);
-    expect(withHistory).toContain('"09:10","Dr Omar Ahmed","Dr Ravi Kaur","mid-term"');
+    expect(withHistory).toContain('"09:10","Dr Quinn Wandoo","Dr Rowan Sheoak","mid-term"');
     expect(overviewCsv(rows, "Mon 5 Oct")).not.toContain("Reminders sent");
     expect(exportBlocker({ forms: false, epas: false, history: true })).toBe(
       "Choose the forms, the EPA counts or both.",

@@ -1,4 +1,4 @@
-import { Bell, Check } from "lucide-react";
+import { Bell } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
@@ -27,7 +27,13 @@ function shortDate(date: string): string {
  * hairline track, the area colour for what has passed, no glow and no motion.
  * One `role="img"` with the whole picture in words for screen readers.
  */
-export function ContractStrip({ strip, testId = "admin-contract-strip" }: { strip: ContractStripModel; testId?: string }) {
+export function ContractStrip({
+  strip,
+  testId = "admin-contract-strip",
+}: {
+  strip: ContractStripModel;
+  testId?: string;
+}) {
   const today = strip.todayPosition;
   const hideStart = today !== null && today < 0.18;
   const hideEnd = today !== null && today > 0.78;
@@ -45,7 +51,7 @@ export function ContractStrip({ strip, testId = "admin-contract-strip" }: { stri
           )}
           style={{ left: percent(mark.position) }}
         >
-          <b className="font-semibold text-[color:var(--text-heading)]">{mark.label}</b>
+          <span className="font-semibold text-[color:var(--text-heading)]">{mark.label}</span>
           <span className="nums">{mark.on ? shortDate(mark.date) : "Off"}</span>
         </span>
       ))}
@@ -78,13 +84,8 @@ export function ContractStrip({ strip, testId = "admin-contract-strip" }: { stri
             )}
             style={{ left: percent(mark.position) }}
           >
-            {mark.on ? (
-              mark.reached ? (
-                <Check aria-hidden="true" strokeWidth={2} className="size-icon-xs" />
-              ) : (
-                <Bell aria-hidden="true" strokeWidth={2} className="size-icon-xs" />
-              )
-            ) : null}
+            {/* A reached reminder is a filled marker with its bell, never a tick (Admin draws no tick icons). */}
+            {mark.on ? <Bell aria-hidden="true" strokeWidth={2} className="size-icon-xs" /> : null}
           </span>
         ))}
         {today !== null ? (

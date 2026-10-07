@@ -8,6 +8,7 @@ import { focusRing } from "@/components/card-recipes";
 import {
   ActionDock,
   CpdFeaturePage,
+  type CpdFeatureBack,
   flatCard,
   flatRow,
   IconCircle,
@@ -47,6 +48,9 @@ import {
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { useApplicationsStore } from "@/lib/cme/device-record";
 
+/** The page's parent, where its link lives. */
+const APPLICATIONS_BACK: CpdFeatureBack = { href: "/cme/summary", label: "CPD summary" };
+
 type DateSheetState = { open: false } | { open: true; stage: ApplicationStageId | null };
 type RefereeSheetState = { open: false } | { open: true; id: string | null };
 
@@ -70,7 +74,12 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
 
   if (!state) {
     return (
-      <CpdFeaturePage eyebrow="Your own plan" title="Job applications" testId="applications-page">
+      <CpdFeaturePage
+        back={APPLICATIONS_BACK}
+        eyebrow="Your own plan"
+        title="Job applications"
+        testId="applications-page"
+      >
         <div aria-hidden="true" className={cn(flatCard, "h-64 motion-safe:animate-pulse")} />
         <span role="status" className="sr-only">
           Loading your applications
@@ -182,6 +191,7 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
 
   return (
     <CpdFeaturePage
+      back={APPLICATIONS_BACK}
       eyebrow={year === null ? "Season · add a start date" : `Season ${year} · your own plan`}
       title="Job applications"
       testId="applications-page"
@@ -190,7 +200,9 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
         <QuietNote icon={Lock} testId="applications-mode-note">
           {store.mode === "sample"
             ? "Sample season with made-up names and dates. Try any control, nothing is kept."
-            : "This is marked as a shared device, so nothing here is kept after you leave the page. Use your own phone."}
+            : store.mode === "memory"
+              ? "This browser is not keeping changes. They last until you leave the page."
+              : "This is marked as a shared device, so nothing here is kept after you leave the page. Use your own phone."}
         </QuietNote>
       ) : null}
 
@@ -333,7 +345,11 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
         </p>
       ) : null}
 
-      <QuietNote icon={Lock}>Kept on this phone only, never sent. No patient details anywhere here.</QuietNote>
+      <QuietNote icon={Lock} testId="applications-kept-note">
+        {store.mode === "device"
+          ? "Kept on this phone only, never sent. No patient details anywhere here."
+          : "Never sent. No patient details anywhere here."}
+      </QuietNote>
 
       <ActionDock testId="applications-dock">
         <WorkButton

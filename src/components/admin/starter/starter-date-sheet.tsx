@@ -86,7 +86,15 @@ export function StarterDateSheet({
       footer={
         <div className="grid gap-2">
           {failure ? <InlineNotice tone="neutral">{failure}</InlineNotice> : null}
-          <Button variant="primary" block busy={busy} busyLabel="Saving" disabled={!canSave} onClick={() => void save()} testId="admin-starter-date-save">
+          <Button
+            variant="primary"
+            block
+            busy={busy}
+            busyLabel="Saving"
+            disabled={!canSave}
+            onClick={() => void save()}
+            testId="admin-starter-date-save"
+          >
             Save
           </Button>
         </div>
@@ -177,7 +185,9 @@ export function StarterDateSheet({
             ))}
           </div>
         </div>
-        <p className={cn(textMuted, "text-xs")}>Your own date, kept in your account. PsychSift does not check it with anyone.</p>
+        <p className={cn(textMuted, "text-xs")}>
+          Your own date, kept in your account. PsychSift does not check it with anyone.
+        </p>
       </form>
     </Sheet>
   );

@@ -1,9 +1,11 @@
 "use client";
 
-import { ClipboardCopy, Info, Plane, Users } from "lucide-react";
+import { ChevronLeft, ClipboardCopy, Info, Plane, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 
+import { focusRing } from "@/components/card-recipes";
+import { ContextualBackLink } from "@/components/contextual-back-link";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
@@ -158,6 +160,18 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
 
   return (
     <InformationPageShell testId="roster-staffing-page">
+      <ContextualBackLink
+        fallbackHref="/roster"
+        data-testid="roster-staffing-back"
+        data-mode-identity="roster"
+        className={cn(
+          focusRing,
+          "-ml-1 -mb-2 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
+        )}
+      >
+        <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+        Roster
+      </ContextualBackLink>
       <RosterPageHeader
         icon={Users}
         eyebrow="Plan leave with the team in view"
@@ -279,30 +293,31 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
             ) : null}
             {serviceId ? (
               <section className="grid gap-2" aria-labelledby="staffing-strip-head">
+                {/* The span and time sit on their own line under the head, so nothing collides at 320 px. */}
                 <RosterSectionHead
                   id="staffing-strip-head"
                   title="Team staffing"
                   right={
                     staffing.readAt ? (
-                      <span className="flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
-                        <span className="nums">
-                          {leave ? spanWords(span) : "Next 3 weeks"}
-                          {" · "}Rechecked {perthTimeOf(staffing.readAt)}
-                        </span>
-                        <RosterLinkWord
-                          onClick={() => {
-                            staffing.reload();
-                            announce("Checking the roster again");
-                          }}
-                          label="Check the team roster again"
-                          testId="staffing-recheck"
-                        >
-                          Recheck
-                        </RosterLinkWord>
-                      </span>
+                      <RosterLinkWord
+                        onClick={() => {
+                          staffing.reload();
+                          announce("Checking the roster again");
+                        }}
+                        label="Check the team roster again"
+                        testId="staffing-recheck"
+                      >
+                        Recheck
+                      </RosterLinkWord>
                     ) : undefined
                   }
                 />
+                {staffing.readAt ? (
+                  <p className="nums mx-1 -mt-1 text-xs text-[color:var(--text-muted)]" data-testid="staffing-meta">
+                    {leave ? spanWords(span) : "Next 3 weeks"}
+                    {" · "}Rechecked {perthTimeOf(staffing.readAt)}
+                  </p>
+                ) : null}
                 {staffing.status === "loading" ? <ModeModuleSkeleton rows={3} /> : null}
                 {staffing.status !== "loading" && staffing.status !== "ready" ? (
                   <div className="grid gap-2">
@@ -341,11 +356,11 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                 <button
                   type="button"
                   onClick={() => void copyAsk()}
-                  className={cn(rosterOutlineButton, "w-full")}
+                  className={cn(rosterOutlineButton, "w-full justify-start px-4 text-left")}
                   data-testid="staffing-ask-copy"
                 >
-                  <ClipboardCopy aria-hidden="true" className="size-icon-md" />
-                  {askCopied ? "Copied" : "Copy a note asking your roster manager"}
+                  <ClipboardCopy aria-hidden="true" className="size-icon-md shrink-0" />
+                  <span className="min-w-0">{askCopied ? "Copied" : "Copy a note for your roster manager"}</span>
                 </button>
               </section>
             ) : null}

@@ -32,11 +32,19 @@ export function RotationEndSuggestion({
   const endsOn = overview.status === "ready" ? (overview.data?.me?.rotationEndsOn ?? null) : null;
   if (!endsOn || endsOn < today || endsOn === current) return null;
   return (
-    <div className="flex min-w-0 items-start gap-2.5 rounded-lg border border-[color:var(--border)] p-3" data-testid="admin-contract-rotation">
-      <CalendarClock aria-hidden="true" strokeWidth={1.5} className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+    <div
+      className="flex min-w-0 items-start gap-2.5 rounded-lg border border-[color:var(--border)] p-3"
+      data-testid="admin-contract-rotation"
+    >
+      <CalendarClock
+        aria-hidden="true"
+        strokeWidth={1.5}
+        className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--text-muted)]"
+      />
       <span className="grid min-w-0 gap-1.5">
         <span className="text-sm text-[color:var(--text)]">
-          Your roster team has this rotation ending <b className="nums font-semibold">{formatDateEcho(endsOn)}</b>.
+          Your roster team has this rotation ending <span className="nums font-semibold">{formatDateEcho(endsOn)}</span>
+          .
         </span>
         <span className={cn(textMuted, "text-xs")}>Use it only if your contract ends then too.</span>
         <span>

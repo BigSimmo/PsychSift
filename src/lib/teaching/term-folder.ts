@@ -452,11 +452,14 @@ export function termFolderCsv(
   folder: TermFolder,
   exportedOn: string,
   options: FolderExportOptions = { sessions: true, supervision: true, names: true },
+  source: { readonly demo: boolean } = { demo: false },
 ): string {
   const line = (cells: (string | number | null)[]) => cells.map(cmeCsvCell).join(",");
   const detail = (part: FolderPart) => (options.names ? part.detail : (part.detailWithoutNames ?? part.detail));
   const gaps = folderGaps(folder);
   const lines = [
+    // Made-up sample data says so inside the file, not only in its name, so a forwarded copy cannot pass as real.
+    ...(source.demo ? [line([FOLDER_DEMO_LINE])] : []),
     line(["Term evidence folder"]),
     line(["Term", folder.title]),
     line(["Dates", folder.dates]),
@@ -507,6 +510,13 @@ export function termFolderCsv(
   return `\uFEFF${lines.join("\r\n")}\r\n`;
 }
 
+/** Why Export, Copy summary and Print wait while a part is still loading. */
+export const FOLDER_LOADING_REASON =
+  "Still filling from your records. Export, copy or print once every part has loaded.";
+
+/** The first line of anything the made-up demo hands out, so a forwarded copy still says what it is. */
+export const FOLDER_DEMO_LINE = "Made-up demo, not your records";
+
 /**
  * Why the folder cannot be exported or copied yet, or null. Before the term starts there is nothing in it, and
  * while a part is still loading the file would say "Loading" where a figure belongs.
@@ -516,7 +526,7 @@ export function folderExportBlocker(
   term: Pick<TermRecord, "startsOn">,
 ): string | null {
   if (folder.phase === "before") return `Nothing to export until the term starts on ${weekdayDayMonth(term.startsOn)}.`;
-  if (folder.loading) return "Still filling from your records. Export and copy once every part has loaded.";
+  if (folder.loading) return FOLDER_LOADING_REASON;
   return null;
 }
 

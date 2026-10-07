@@ -92,7 +92,7 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
     >
       <p>
         Use a service timetable only: no patient details, attendance, passcodes or slides. The file is read on this
-        device; only timetable rows are sent for preview.
+        device. Only timetable rows are sent for preview.
       </p>
       <a
         className={cn(

@@ -13,7 +13,9 @@ import {
   createEntry,
   deleteEntry,
   errorWords,
+  JuniorBackLink,
   JuniorFootNote,
+  juniorFlatPanel,
   JuniorNotice,
   JuniorSectionLabel,
   JuniorUndoBar,
@@ -21,6 +23,7 @@ import {
   slugSuffix,
   useCopy,
   useOnline,
+  useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
 import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
 import { StarterDateSheet } from "@/components/admin/starter/starter-date-sheet";
@@ -28,7 +31,6 @@ import { cardSurface, focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
@@ -65,7 +67,7 @@ const VISA_SOURCE = ADMIN_REQUIREMENTS_CATALOGUE.find((item) => item.id === "img
 const chipClass = (on: boolean) =>
   cn(
     focusRing,
-    "inline-flex min-h-12 shrink-0 items-center rounded-full border px-3 text-sm font-medium",
+    "inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full border px-3 text-sm font-medium",
     on
       ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
       : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text)]",
@@ -113,7 +115,8 @@ function LocalWords({ initialQuery }: { initialQuery: string }) {
             }
           }}
           autoComplete="off"
-          className={cn(fieldControlPlain, "min-h-12 pl-9 pr-12")}
+          // Room on the right only while the clear button shows, so the hint is not cut on a 320 px phone.
+          className={cn(fieldControlPlain, "min-h-12 pl-9", query ? "pr-12" : "pr-3")}
           data-testid="admin-starter-word-search"
         />
         {query ? (
@@ -239,17 +242,34 @@ function SuggestWord({ initial }: { initial: string }) {
           testId="admin-starter-suggest-problem"
         />
       ) : null}
+      {/* Off until the words are safe, and it always says why: a reason line under it, read with the button. */}
       <Button
         variant="secondary"
         icon={Copy}
-        disabled={blocked}
-        onClick={() =>
-          void copy(starterWordSuggestion(word), "suggest", "Note copied. Send it to your Medical Education Unit.")
-        }
+        aria-disabled={blocked ? "true" : undefined}
+        aria-describedby={blocked ? "admin-starter-suggest-reason" : undefined}
+        className={blocked ? "opacity-60" : undefined}
+        onClick={() => {
+          if (blocked) return;
+          void copy(starterWordSuggestion(word), "suggest", "Note copied. Send it to your Medical Education Unit.");
+        }}
         testId="admin-starter-suggest-copy"
       >
         {copyLabel(stateFor("suggest"), "Copy a note for Medical Education")}
       </Button>
+      {blocked ? (
+        <p
+          id="admin-starter-suggest-reason"
+          className={cn(textMuted, "text-xs")}
+          data-testid="admin-starter-suggest-reason"
+        >
+          {!word
+            ? "Type a word first."
+            : tooLong
+              ? `Copy is off until the word is ${STARTER_SUGGEST_LIMIT} characters or fewer.`
+              : "Copy is off until the patient detail is gone."}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -265,8 +285,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
   const searchParams = useSearchParams();
   const wordParam = searchParams?.get("word") ?? "";
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const today = perthCalendarDate(nowProp ?? mountedAt);
+  const today = perthCalendarDate(useJuniorNow(nowProp));
   const loadState = adminLoadState(state);
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const rows = useMemo(() => selectStarterDates(own), [own]);
@@ -291,6 +310,12 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
   const [failure, setFailure] = useState<string | null>(null);
   const [signInOpen, setSignInOpen] = useState(false);
   const undoId = useRef(0);
+  // The entries as they are now, for an Undo that runs up to ten seconds after the save: anything changed in
+  // between (another date saved, a reload) must survive the Undo.
+  const entriesRef = useRef(state.entries);
+  useEffect(() => {
+    entriesRef.current = state.entries;
+  }, [state.entries]);
 
   // A link from search lands on the words with the word already typed.
   useEffect(() => {
@@ -312,7 +337,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
         label: starterSavedLine(title, input.date, input.leadTimeDays),
         run: async () => {
           await deleteEntry(saved.id);
-          cacheOnCallEntries(state.entries.filter((entry) => entry.id !== saved.id));
+          cacheOnCallEntries(entriesRef.current.filter((entry) => entry.id !== saved.id));
         },
       });
       return null;
@@ -335,6 +360,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <>
       <InformationPageShell testId="admin-starter-main">
+        <JuniorBackLink href="/admin/new-job" label="New job" testId="admin-starter-back" />
         <div className="grid gap-1">
           <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
             Starter pack
@@ -354,19 +380,19 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
               className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--text-muted)]"
             />
             <span>
-              <b className="font-semibold text-[color:var(--text-heading)]">You are offline.</b> The words and who to
-              ask still work. Adding a date needs a connection.
+              <span className="font-semibold text-[color:var(--text-heading)]">You are offline.</span> The words and who
+              to ask still work. Adding a date needs a connection.
             </span>
           </div>
         ) : null}
 
-        <ModeFeaturedModule as="section" mode="my-work" className="grid min-w-0 gap-3 p-4" testId="admin-starter-hero">
+        <section className={cn(juniorFlatPanel, "grid min-w-0 gap-3 p-4")} data-testid="admin-starter-hero">
           <h2 className="text-lg-minus font-semibold text-[color:var(--text-heading)]">Welcome to WA</h2>
           <p className="text-sm leading-6 text-[color:var(--text)]">
             How the hospital works, the words people use, your own dates in one place, and who to ask. General guidance:
             your hospital&apos;s orientation is the final word.
           </p>
-          <nav aria-label="On this page" className="grid grid-cols-2 gap-2">
+          <nav aria-label="On this page" className="grid gap-2 min-[360px]:grid-cols-2">
             {JUMPS.map((jump) => (
               <a
                 key={jump.href}
@@ -381,15 +407,12 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
               </a>
             ))}
           </nav>
-        </ModeFeaturedModule>
+        </section>
 
         {/* How it works */}
         <section aria-labelledby="starter-how-heading" id="starter-how" className="grid scroll-mt-24 gap-2">
           <JuniorSectionLabel id="starter-how-heading">How it works</JuniorSectionLabel>
-          <div
-            className={cn(cardSurface, "grid gap-1 border-[color:var(--border-strong)] p-3")}
-            data-testid="admin-starter-worse"
-          >
+          <div className={cn(juniorFlatPanel, "grid gap-1 p-3")} data-testid="admin-starter-worse">
             <p className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-heading)]">
               <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="size-icon-sm shrink-0" />
               Someone getting worse fast

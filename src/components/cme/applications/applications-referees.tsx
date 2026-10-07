@@ -11,7 +11,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import {
-  applicationTextProblem,
+  refereeRoleProblem,
   daysBetween,
   lastAskedOn,
   NAME_LIMIT,
@@ -104,7 +104,8 @@ export function RefereeList({
                 <span className="truncate text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
                   {referee.name}
                 </span>
-                <span className="truncate text-sm leading-5 text-[color:var(--text-muted)]">
+                {/* Wraps, never truncates: "no reply in 6 days" is the key fact, even on a 320 px phone. */}
+                <span className="break-words text-sm leading-5 text-[color:var(--text-muted)]">
                   {refereeLine(referee, today)}
                 </span>
               </span>
@@ -182,16 +183,15 @@ function RefereeSheetBody({
   const [tried, setTried] = useState(false);
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
   const nameProblem = name.trim() || tried ? refereeNameProblem(name) : null;
-  const roleProblem = applicationTextProblem(role);
+  const roleProblem = refereeRoleProblem(role);
   const canSave = !refereeNameProblem(name) && !roleProblem;
   const unchanged =
     referee && referee.name === name.trim() && referee.role === role.trim() && referee.status === status;
   const askedOn = referee && referee.status === "asked" ? lastAskedOn(referee) : null;
   const waitingDays = askedOn ? daysBetween(askedOn, today) : null;
-  const nudge =
-    referee && referee.status === "asked"
-      ? nudgeMessage({ ...referee, name: name.trim() || referee.name }, today)
-      : null;
+  // Built from the saved name only, which has passed the patient-detail check. A name being typed is
+  // not in the message until it is saved.
+  const nudge = referee && referee.status === "asked" ? nudgeMessage(referee, today) : null;
 
   function save() {
     setTried(true);

@@ -24,12 +24,14 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ContractEndEntryLink } from "@/components/admin/contract/contract-entry-link";
 import {
   copyLabel,
+  JuniorBackLink,
   JuniorFootNote,
   JuniorSectionLabel,
   JuniorUndoBar,
   PatientDetailCatch,
   useCopy,
   useOnline,
+  useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
 import {
   ROSTER_LEAVE_STATUS_WORDS,
@@ -59,7 +61,7 @@ import {
   type LeaveType,
   type LeaveTypeId,
 } from "@/lib/admin/leave-types";
-import { selectAdminOwnEntries } from "@/lib/admin/own-entries";
+import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
@@ -85,8 +87,12 @@ function CardIcon({ icon }: { icon: LeaveIcon }) {
   );
 }
 
+/** What Roster holds for the doctor, or that they are signed out and nothing was asked for. */
+type ShownRosterLeave = JuniorRosterLeaveState | { readonly status: "signed-out" };
+const SIGNED_OUT_LEAVE: ShownRosterLeave = { status: "signed-out" };
+
 /** The doctor's own bookings in Roster for the two kinds Roster holds. */
-function RosterBookings({ type, leave, today }: { type: LeaveType; leave: JuniorRosterLeaveState; today: string }) {
+function RosterBookings({ type, leave, today }: { type: LeaveType; leave: ShownRosterLeave; today: string }) {
   const kind = type.id === "annual" ? "annual" : type.id === "conference" ? "pd_leave" : null;
   if (!kind) return null;
   const rows =
@@ -101,7 +107,11 @@ function RosterBookings({ type, leave, today }: { type: LeaveType; leave: Junior
       data-testid={`admin-leave-${type.id}-booked`}
     >
       <p className={eyebrowText}>Booked in Roster</p>
-      {leave.status === "loading" ? (
+      {leave.status === "signed-out" ? (
+        <p className={cn(textMuted, "text-sm")} data-testid={`admin-leave-${type.id}-booked-signed-out`}>
+          Sign in to see what Roster holds.
+        </p>
+      ) : leave.status === "loading" ? (
         <p className={cn(textMuted, "text-sm")}>Loading from Roster</p>
       ) : leave.status === "failed" ? (
         <p className={cn(textMuted, "text-sm")}>Could not load your leave from Roster.</p>
@@ -151,7 +161,8 @@ function MessageFields({
         />
       ) : null}
       {type.slots.includes("firstDay") ? (
-        <div className={cn("grid gap-2", type.slots.includes("lastDay") && "grid-cols-2")}>
+        <div className={cn("grid gap-2", type.slots.includes("lastDay") && "min-[360px]:grid-cols-2")}>
+          {/* Side by side from 360 px, stacked below, where two native date fields do not fit. */}
           <TextField
             type="date"
             label={type.id === "parental" ? "From about" : "First day"}
@@ -234,7 +245,6 @@ function OpenCard({
   leave,
   today,
   contractEndsOn,
-  online,
   onHide,
 }: {
   type: LeaveType;
@@ -243,10 +253,9 @@ function OpenCard({
   edited: string | null;
   onEdited: (value: string | null) => void;
   onClose: () => void;
-  leave: JuniorRosterLeaveState;
+  leave: ShownRosterLeave;
   today: string;
   contractEndsOn: string | null;
-  online: boolean;
   /** Only the discreet card offers Hide. */
   onHide?: () => void;
 }) {
@@ -314,7 +323,6 @@ function OpenCard({
           href={LEAVE_AGREEMENT.url}
           target="_blank"
           rel="noreferrer noopener"
-          aria-disabled={online ? undefined : "true"}
           className={cn(
             focusRing,
             "inline-flex min-h-12 items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]",
@@ -411,7 +419,7 @@ function OpenCard({
             {gaps === 1 ? "1 gap to fill" : `${gaps} gaps to fill`}. You can still copy it and fill them in your email.
           </p>
         ) : null}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2 min-[360px]:grid-cols-2">
           <Button
             variant="secondary"
             icon={PenLine}
@@ -489,8 +497,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const online = useOnline();
-  const mountedAt = useMemo(() => new Date(), []);
-  const today = perthCalendarDate(nowProp ?? mountedAt);
+  const today = perthCalendarDate(useJuniorNow(nowProp));
   const fromUrl = leaveTypeById(searchParams?.get("card"));
   const [openId, setOpenId] = useState<LeaveTypeId | null>(fromUrl?.id ?? null);
   const [drafts, setDrafts] = useState<Partial<Record<LeaveTypeId, LeaveMessageFields>>>({});
@@ -499,7 +506,11 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
   const own = useMemo(() => selectAdminOwnEntries(entries), [entries]);
   const contract = selectContractEnd(own);
   const contractEndsOn = contract ? (complianceExpiresOn(contract) ?? null) : null;
-  const leave = useJuniorRosterLeave(true);
+  // Roster is asked only for a signed-in reader; signed out, the cards say so instead of "could not load".
+  const loadState = adminLoadState(entries);
+  const signedOut = loadState === "signed-out";
+  const rosterLeave = useJuniorRosterLeave(loadState !== "loading" && !signedOut);
+  const leave: ShownRosterLeave = signedOut ? SIGNED_OUT_LEAVE : rosterLeave;
   // Hidden cards live in memory only: Admin keeps nothing on the device.
   const [hidden, setHidden] = useState<readonly LeaveTypeId[]>([]);
   const [undo, setUndo] = useState<{ id: number; type: LeaveTypeId } | null>(null);
@@ -510,6 +521,16 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
   // A link to another card (search, the contract page) opens it. Only a
   // change in the address does this; the page's own writes are expected.
   const urlCard = fromUrl?.id ?? null;
+  // A link that names the discreet card (typed, or from history) opens it, then its name leaves the address
+  // bar and the history entry at once.
+  const discreetInUrl = Boolean(fromUrl?.discreet);
+  useEffect(() => {
+    if (!discreetInUrl) return;
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.delete("card");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : (pathname ?? "/admin/leave"), { scroll: false });
+  }, [discreetInUrl, pathname, router, searchParams]);
   const [seenUrlCard, setSeenUrlCard] = useState(urlCard);
   if (urlCard !== seenUrlCard) {
     setSeenUrlCard(urlCard);
@@ -552,6 +573,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <InformationPageShell testId="admin-leave-main">
+      <JuniorBackLink href="/admin" label="Admin Today" testId="admin-leave-back" />
       <div className="grid gap-1">
         <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
           Leave wallet
@@ -561,8 +583,8 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
 
       {!online ? (
         <div className={cn(cardSurface, "p-3 text-sm")} role="status" data-testid="admin-leave-offline">
-          <b className="font-semibold text-[color:var(--text-heading)]">You are offline.</b> The cards and Copy still
-          work. Links open when you are back online.
+          <span className="font-semibold text-[color:var(--text-heading)]">You are offline.</span> The cards and Copy
+          still work. Links open when you are back online.
         </div>
       ) : null}
 
@@ -579,7 +601,6 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
             leave={leave}
             today={today}
             contractEndsOn={contractEndsOn}
-            online={online}
             onHide={openType.discreet ? () => hide(openType.id) : undefined}
           />
           <button
@@ -624,6 +645,12 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
           >
             Your wallet
           </JuniorSectionLabel>
+          {/*
+            The mockup's wallet: each card's top edge tucks 8 px under the card before it, a deliberate stacked
+            deck. Each card is at least 64 px tall, so at least 56 px of every card stays uncovered and tappable,
+            and the overlap only ever covers the bottom padding, never a word. A focused card lifts above the
+            next so its focus ring shows in full.
+          */}
           <ul ref={stackRef} aria-label="Leave cards" className="grid" data-testid="admin-leave-stack">
             {visible.map((type, index) => (
               <li key={type.id} className={cn(index > 0 && "-mt-2")}>
@@ -635,7 +662,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
                   data-testid={`admin-leave-card-${type.id}`}
                   className={cn(
                     focusRing,
-                    "relative flex min-h-16 w-full items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 pb-3 text-left",
+                    "relative flex min-h-16 w-full items-center gap-3 rounded-xl border focus-visible:z-10 border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 pb-3 text-left",
                     index > 0 ? "pt-4" : "pt-3",
                   )}
                 >

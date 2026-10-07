@@ -11,6 +11,7 @@ vi.mock("@/components/teaching/teaching-nav-header", () => ({ TeachingNavHeader:
 
 import { TermFolderEntryLink } from "@/components/teaching/term-folder/term-folder-entry-link";
 import { TermFolderPage } from "@/components/teaching/term-folder/term-folder-page";
+import { FolderMeter } from "@/components/teaching/term-folder/term-folder-parts";
 import { ToastProvider } from "@/components/ui/toast";
 import { TEACHING_TERM_TRACKER_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import { sampleTermTracker } from "@/lib/teaching/term-tracker";
@@ -115,7 +116,8 @@ describe("term evidence folder page", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
     expect(footer).not.toHaveTextContent(/updated \d\d:\d\d/);
-    expect(footer).toHaveTextContent("Not updated on this visit");
+    expect(footer).toHaveTextContent("Check-ins and supervision logs didn't load");
+    expect(screen.getByTestId("term-folder-failed")).toHaveTextContent("so those parts show as not updating");
   });
 
   it("reads again when the page comes back into view, and keeps the last good figures if that read fails", async () => {
@@ -134,7 +136,7 @@ describe("term evidence folder page", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
     const note = await screen.findByTestId("term-folder-failed");
-    expect(note).toHaveTextContent("keeps its last good figures");
+    expect(note).toHaveTextContent("keep their last good figures");
     expect(screen.getAllByText(/^As of \d\d:\d\d · /).length).toBeGreaterThan(0);
   });
 
@@ -144,8 +146,11 @@ describe("term evidence folder page", () => {
     render(<TermFolderPage demoMode={false} termId={null} />);
     const exportButton = await screen.findByTestId("term-folder-export-open");
     const copy = screen.getByTestId("term-folder-copy");
-    const reason = "Still filling from your records. Export and copy once every part has loaded.";
-    for (const button of [exportButton, copy]) {
+    const reason = "Still filling from your records. Export, copy or print once every part has loaded.";
+    const print = vi.fn();
+    vi.stubGlobal("print", print);
+    const printButton = screen.getByTestId("term-folder-print");
+    for (const button of [exportButton, copy, printButton]) {
       expect(button).toHaveAttribute("aria-disabled", "true");
       expect(button).toHaveAccessibleDescription(reason);
     }
@@ -155,6 +160,47 @@ describe("term evidence folder page", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     fireEvent.click(copy);
     expect(writeText).not.toHaveBeenCalled();
+    fireEvent.click(printButton);
+    expect(print).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("names the part that did not load in the footer, never updated for the lot", async () => {
+    keepTermOnPhone();
+    serveFetch((url) =>
+      url === LOGBOOK ? json(500, { error: "Down" }) : url === SUPERVISION ? json(200, { pairings: [] }) : null,
+    );
+    render(<TermFolderPage demoMode={false} termId={null} />);
+    expect(await screen.findByTestId("term-folder-failed")).toHaveTextContent("so that part shows as not updating");
+    await waitFor(() =>
+      expect(screen.getByTestId("term-folder-footer")).toHaveTextContent(
+        /^Supervision logs updated \d\d:\d\d · Check-ins didn't load$/,
+      ),
+    );
+  });
+
+  it("has a visible way back to Term", async () => {
+    render(<TermFolderPage demoMode termId={null} />);
+    expect(await screen.findByTestId("term-folder-back")).toHaveAttribute("href", "/teaching/term");
+    expect(screen.getByRole("link", { name: "Term" })).toBeVisible();
+  });
+
+  it("says in the copied demo summary that it is made up", async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<TermFolderPage demoMode termId={null} />);
+    fireEvent.click(await screen.findByTestId("term-folder-copy"));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect((writeText.mock.calls[0] as unknown as [string])[0].split("\n")[0]).toBe("Made-up demo, not your records.");
+  });
+
+  it("says inside the demo CSV that it is made up", async () => {
+    render(<TermFolderPage demoMode termId={null} />);
+    fireEvent.click(await screen.findByTestId("term-folder-export-open"));
+    const href = decodeURIComponent((await screen.findByTestId("term-folder-csv")).getAttribute("href")!);
+    expect(href).toMatch(
+      /^data:text\/csv;charset=utf-8,\uFEFF"Made-up demo, not your records"\r\n"Term evidence folder"/,
+    );
   });
 
   it("says a link to a term no longer on this phone shows another term", async () => {
@@ -198,5 +244,24 @@ describe("term evidence folder page", () => {
     render(<TermFolderPage demoMode termId={null} />);
     const coming = await screen.findByTestId("term-folder-coming");
     expect(within(coming).getByText("Term ends")).toBeInTheDocument();
+  });
+});
+
+describe("term folder meter legend", () => {
+  it("gives a not-started key a visible edge, the same as its segment", () => {
+    render(
+      <FolderMeter
+        parts={[
+          { id: "details", status: "complete" },
+          { id: "epas", status: "not_started" },
+        ]}
+        counts={{ complete: 1, on_track: 0, to_fix: 0, not_updating: 0, not_started: 1 }}
+        label="1 of 2 complete"
+      />,
+    );
+    const segment = screen.getByTestId("term-folder-meter").querySelector('[data-status="not_started"]')!;
+    expect(segment.className).toContain("border-[color:var(--decoration-soft)]");
+    const key = screen.getByText("1 not started").previousElementSibling!;
+    expect(key.className).toContain("border-[color:var(--decoration-soft)]");
   });
 });

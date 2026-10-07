@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { cpdTextLooksLikePatient } from "@/lib/cme/patient-detail-check";
+import {
+  advertSourceLooksLikePatient,
+  cpdNamedPlaceTextLooksLikePatient,
+  cpdTextLooksLikePatient,
+} from "@/lib/cme/patient-detail-check";
+import { normaliseWorkText } from "@/lib/work-text/patient-detail-check";
 import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
@@ -15,13 +20,13 @@ import { currentWorkYear } from "@/lib/work-time/current-zone";
  * Referees are colleagues, so their name and role are kept, with a status the
  * doctor sets and a short dated history. A name may not carry digits, so a
  * record, bed or phone number cannot hide in it, and the part after its title
- * goes through the CPD patient-detail reading (`cpdTextLooksLikePatient`: the
- * work search's check, the Remind me check and age with sex). A title and
+ * goes through the shared work-text check (`src/lib/work-text/patient-detail-check.ts`). A title and
  * surname ("Dr Smith", and "Mr Smith" too, because surgeons are Mr or Ms) is
  * the point of the field, so it is the one shape the name check lets through.
- * Every other free-text field (role, where a date came from, the statement)
- * goes through the same reading, letting only hospital and service capitals
- * ("RPH", "FSH") through, which the reminder check would read as initials.
+ * Every other free-text field goes through the same reading: the role lets
+ * hospital and service capitals through ("Consultant, OPH"), where a date came
+ * from may keep the advert's link and reference number, and the statement
+ * (which goes into the CV) gets the plain shared check.
  */
 
 export const APPLICATION_STAGES = [
@@ -126,9 +131,9 @@ export function parseApplications(raw: string | null): ApplicationsState {
     return {
       ...parsed.data,
       referees: parsed.data.referees.filter(
-        (referee) => !refereeNameProblem(referee.name) && !applicationTextProblem(referee.role),
+        (referee) => !refereeNameProblem(referee.name) && !refereeRoleProblem(referee.role),
       ),
-      dates: parsed.data.dates.filter((date) => !applicationTextProblem(date.source)),
+      dates: parsed.data.dates.filter((date) => !advertSourceProblem(date.source)),
       statement: applicationTextProblem(parsed.data.statement) ? "" : parsed.data.statement,
     };
   } catch {
@@ -144,19 +149,32 @@ export function isValidApplications(state: ApplicationsState): boolean {
 
 export type ApplicationTextProblem = { readonly title: string; readonly body: string };
 
+const PATIENT_PROBLEM: ApplicationTextProblem = {
+  title: "This looks like a patient detail",
+  body: "Leave out names, record numbers, bed numbers and dates of birth. Nothing about a patient belongs here.",
+};
+
 /**
  * Null when the words read as safe. Otherwise a short reason, in the style of
- * the Remind me catch: the field cannot hold a patient detail.
+ * the Remind me catch: the field cannot hold a patient detail. Hospitals and
+ * services in three capitals ("OPH") are read past; two capitals are read as
+ * initials.
  */
 export function applicationTextProblem(text: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
-  if (cpdTextLooksLikePatient(trimmed, thisYear, { allowCapitals: true }))
-    return {
-      title: "This looks like a patient detail",
-      body: "Leave out names, record numbers, bed numbers and dates of birth. Nothing about a patient belongs here.",
-    };
-  return null;
+  return cpdNamedPlaceTextLooksLikePatient(trimmed, thisYear) ? PATIENT_PROBLEM : null;
+}
+
+/** A referee's role: three-letter hospital and service capitals ("Consultant, OPH") are read past, two are not. */
+export function refereeRoleProblem(role: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
+  return applicationTextProblem(role, thisYear);
+}
+
+/** Where a date came from: an advert's link and reference number can be kept; anything else is checked. */
+export function advertSourceProblem(source: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
+  if (!source.trim()) return null;
+  return advertSourceLooksLikePatient(source, thisYear) ? PATIENT_PROBLEM : null;
 }
 
 const TITLES = /^(?:dr|doctor|prof|professor|a\/prof|assoc(?:iate)?\.?\s+prof(?:essor)?|mr|mrs|ms|mx|miss)\.?\s+/i;
@@ -168,7 +186,8 @@ const TITLES = /^(?:dr|doctor|prof|professor|a\/prof|assoc(?:iate)?\.?\s+prof(?:
  * age with sex are not.
  */
 export function refereeNameProblem(name: string, thisYear = currentWorkYear()): ApplicationTextProblem | null {
-  const trimmed = name.trim();
+  // Folded first, so a full-width digit or a hidden character cannot slip past the rules below.
+  const trimmed = normaliseWorkText(name).trim();
   if (!trimmed) return { title: "Add a name", body: "Type the referee's name, for example Dr Karri." };
   if (/\d/.test(trimmed))
     return {
@@ -391,10 +410,18 @@ export function undoSeasonDate(
   return before ? upsertSeasonDate(state, before) : removeSeasonDate(state, stage);
 }
 
-/** When the doctor first asked this referee, or null if never: the date the request went. */
-export function firstAskedOn(referee: Referee): string | null {
-  for (const event of referee.history) if (event.kind === "status" && event.status === "asked") return event.on;
-  return null;
+/**
+ * When the current request began: the first "asked" after the latest other status (agreed,
+ * declined and so on). An old request that was answered does not date a new one.
+ */
+export function currentRequestAskedOn(referee: Referee): string | null {
+  let start: string | null = null;
+  for (const event of referee.history) {
+    if (event.kind !== "status") continue;
+    if (event.status !== "asked") start = null;
+    else if (start === null) start = event.on;
+  }
+  return start;
 }
 
 /** When the doctor last asked (or nudged) this referee, or null if never. */
@@ -451,7 +478,7 @@ export function refereeLine(referee: Referee, today: string): string {
  * week" at 7 to 13 days, and the date after that.
  */
 export function nudgeMessage(referee: Referee, today: string): string {
-  const asked = firstAskedOn(referee) ?? lastAskedOn(referee);
+  const asked = currentRequestAskedOn(referee) ?? lastAskedOn(referee);
   const days = asked ? daysBetween(asked, today) : null;
   const request =
     asked === null || days === null || days < 7

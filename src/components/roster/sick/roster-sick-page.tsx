@@ -1,9 +1,21 @@
 "use client";
 
-import { CalendarClock, ClipboardCopy, Clock, ExternalLink, History, Info, Thermometer, WifiOff } from "lucide-react";
+import {
+  CalendarClock,
+  ChevronLeft,
+  ClipboardCopy,
+  Clock,
+  ExternalLink,
+  History,
+  Info,
+  Thermometer,
+  WifiOff,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
+import { focusRing } from "@/components/card-recipes";
+import { ContextualBackLink } from "@/components/contextual-back-link";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
@@ -204,23 +216,33 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
         : waitingShifts.length
           ? "Your report above is waiting for a connection. Phone your roster manager as well."
           : !online
-            ? "No connection, so nothing can be sent. Phone your roster manager instead."
+            ? "No connection, so nothing can be sent yet. Phone your roster manager if the shift is soon."
             : pickedShifts.length === 0
               ? "Pick at least one shift."
+              : null;
+
+  /** The button's second line: what pressing it does, or, when it can't, why. Never a promise it can't keep. */
+  const blockedSub = !ready
+    ? null
+    : ready.sample || signedOutSample
+      ? "Example team, so nothing is sent"
+      : !send.canSend
+        ? "Sign in to send"
+        : waitingShifts.length
+          ? "Your earlier report is still waiting to send"
+          : !online
+            ? "No connection right now"
+            : pickedShifts.length === 0
+              ? "Pick a shift first"
               : null;
 
   const shortNotice = pickedShifts.filter((shift) => isShortNotice(shift.startsAt, now));
   const timelineShifts = holding ? heldShifts : pickedShifts;
 
-  const canQueue =
-    !online &&
-    pickedShifts.length > 0 &&
-    send.canSend &&
-    !ready?.sample &&
-    !signedOutSample &&
-    !holding &&
-    !send.sending &&
-    !waitingShifts.length;
+  /** Offline, but a report could still be held and sent once the signal is back. */
+  const queueable =
+    !online && send.canSend && !ready?.sample && !signedOutSample && !holding && !send.sending && !waitingShifts.length;
+  const canQueue = queueable && pickedShifts.length > 0;
 
   useEffect(() => {
     sendWhenOnline.current = () => {
@@ -315,6 +337,18 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
   const today = new Date(now);
   return (
     <InformationPageShell testId="roster-sick-page">
+      <ContextualBackLink
+        fallbackHref="/roster"
+        data-testid="roster-sick-back"
+        data-mode-identity="roster"
+        className={cn(
+          focusRing,
+          "-ml-1 -mb-2 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
+        )}
+      >
+        <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+        Roster
+      </ContextualBackLink>
       <RosterPageHeader
         icon={Thermometer}
         eyebrow={LONG_DAY.format(today)}
@@ -341,8 +375,15 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
             <RosterSampleNotice sample={ready.sample} />
             {!online ? (
               <RosterNote icon={WifiOff} tone="warning" role="alert" testId="sick-offline">
-                <p className="font-semibold">No connection. Nothing sent.</p>
-                <p>Your roster manager doesn&apos;t know yet. Phone instead, or try again when you have signal.</p>
+                <p className="font-semibold">No connection</p>
+                {queued ? null : queueable ? (
+                  <p>
+                    You can still pick shifts, and Send when I&apos;m back online sends them once you are, while this
+                    page stays open. Your roster manager doesn&apos;t know yet, so phone if the shift is soon.
+                  </p>
+                ) : (
+                  <p>Nothing can be sent from here until you are back online. Phone your roster manager instead.</p>
+                )}
                 {queued ? (
                   <div className="grid gap-1" data-testid="sick-queued">
                     <p>
@@ -506,7 +547,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                 ) : null}
                 <SickAction
                   label={sickButtonLabel(pickedShifts, now)}
-                  sub={`Sends to ${who} · 10 s to undo`}
+                  sub={blockedSub ?? `Sends to ${who} · 10 s to undo`}
                   onPress={press}
                   disabledReason={blockedReason}
                   secondsLeft={send.secondsLeft}
@@ -625,22 +666,28 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
               </p>
             </RosterNote>
             <RosterList label="Personal leave">
-              <RosterRow
-                title="Personal leave form"
-                sub="Lodge it in HR as usual. Your agreement sets what you can take."
-                action={
-                  <a
-                    href={FATIGUE_RULE_SET.source.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="inline-flex min-h-12 items-center gap-1 whitespace-nowrap px-1 text-sm font-semibold text-[color:var(--mode-identity)] no-underline"
-                    aria-label="Check your agreement (opens the WA Health AMA agreement PDF)"
-                  >
-                    Check your agreement
-                    <ExternalLink aria-hidden="true" className="size-icon-sm" />
-                  </a>
-                }
-              />
+              {/* Text first, then the link on its own line, so neither squeezes the other at 320 px or large text. */}
+              <li className="grid min-w-0 gap-0.5 px-4 pb-1 pt-3" data-testid="sick-personal-leave">
+                <span className="break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
+                  Personal leave form
+                </span>
+                <span className="break-words text-sm leading-5 text-[color:var(--text-muted)]">
+                  Lodge it in HR as usual. Your agreement sets what you can take.
+                </span>
+                <a
+                  href={FATIGUE_RULE_SET.source.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className={cn(
+                    focusRing,
+                    "-ml-1 inline-flex min-h-12 w-fit max-w-full items-center gap-1 rounded-md px-1 text-sm font-semibold text-[color:var(--mode-identity)] no-underline",
+                  )}
+                  aria-label="Check your agreement (opens the WA Health AMA agreement PDF)"
+                >
+                  <span className="min-w-0 break-words">Check your agreement</span>
+                  <ExternalLink aria-hidden="true" className="size-icon-sm shrink-0" />
+                </a>
+              </li>
             </RosterList>
           </>
         ) : null}

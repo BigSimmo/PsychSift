@@ -96,6 +96,9 @@ export function isInformationPage(pathname: string): boolean {
   if (isSlugDetail(pathname, "/cme")) return true;
   if (pathname === "/cme") return true;
   if (pathname.startsWith("/cme/log/") && !pathname.slice("/cme/log/".length).includes("/")) return true;
+  // The CV under Job applications is two segments deep too. Wearing a composer there put the phone search
+  // bar over the page's own Copy and Save as PDF dock, which no other CPD page has.
+  if (pathname === "/cme/applications/cv") return true;
   // The Psychiatry dashboard and its own pages (the MHA clock), for On Call's
   // reason: the mode declares no search surface, so none of them may wear a
   // composer. The sections it links to keep their own routes and their own

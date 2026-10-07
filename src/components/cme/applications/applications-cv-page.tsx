@@ -23,6 +23,7 @@ import { focusRing } from "@/components/card-recipes";
 import {
   ActionDock,
   CpdFeaturePage,
+  type CpdFeatureBack,
   flatCard,
   PatientDetailCatch,
   QuietNote,
@@ -63,6 +64,9 @@ import type { SupervisionPairingView, TeachRead } from "@/lib/teaching/depth-mod
 import type { LogbookRow } from "@/lib/teaching/model";
 import { sampleTermTracker } from "@/lib/teaching/term-tracker";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
+
+/** The page's parent, where its link lives. */
+const CV_BACK: CpdFeatureBack = { href: "/cme/applications", label: "Job applications" };
 
 const SOURCE_ICON: Record<CvSource, typeof Award> = {
   admin: Briefcase,
@@ -206,11 +210,13 @@ export function ApplicationsCvPage({
     }
     try {
       await copyTextToClipboard(`Curriculum vitae\n\n${plain.text}\n`);
-      notify(
-        plain.hiddenCount
-          ? `CV copied as plain text, ${plain.hiddenCount} ${plain.hiddenCount === 1 ? "line" : "lines"} hidden`
-          : "CV copied as plain text",
-      );
+      const hiddenWords = plain.hiddenCount
+        ? `, ${plain.hiddenCount} ${plain.hiddenCount === 1 ? "line" : "lines"} hidden`
+        : "";
+      const heldWords = plain.heldBackCount
+        ? `. ${plain.heldBackCount} left out, the title looks like a patient detail`
+        : "";
+      notify(`CV copied as plain text${hiddenWords}${heldWords}`);
     } catch {
       notify("Could not copy. Save it as a PDF instead.");
     }
@@ -218,6 +224,7 @@ export function ApplicationsCvPage({
 
   return (
     <CpdFeaturePage
+      back={CV_BACK}
       eyebrow={
         hidden.size
           ? `${plain.hiddenCount} ${plain.hiddenCount === 1 ? "line" : "lines"} hidden`
@@ -307,7 +314,14 @@ export function ApplicationsCvPage({
         />
       ) : null}
 
-      <article className={cn(flatCard, "cpd-cv-print overflow-hidden")} data-testid="applications-cv">
+      {/* A row control reached by Tab scrolls clear of the sticky Copy and Save as PDF dock, not under it. */}
+      <article
+        className={cn(
+          flatCard,
+          "cpd-cv-print overflow-hidden [--phone-focus-bottom-clearance:calc(5.5rem+max(0.875rem,var(--safe-area-bottom)))]",
+        )}
+        data-testid="applications-cv"
+      >
         <header className="border-b border-[color:var(--border)] px-3 py-3">
           <h2 className="text-lg font-semibold text-[color:var(--text-heading)]">Curriculum vitae</h2>
           <p className="cpd-cv-screen-only text-sm text-[color:var(--text-muted)]">
@@ -349,57 +363,76 @@ export function ApplicationsCvPage({
             </h3>
             <ul role="list">
               {section.lines.map((line) => {
-                const isHidden = hidden.has(line.id);
+                const held = line.heldBack;
+                const isHidden = hidden.has(line.id) || Boolean(held);
                 const Icon = SOURCE_ICON[line.source];
                 return (
                   <li
                     key={line.id}
                     data-cv-hidden={isHidden}
+                    data-cv-held={held ? true : undefined}
                     data-testid="applications-cv-line"
                     className="flex min-h-12 min-w-0 items-center gap-2 px-3"
                   >
-                    <span className={cn("grid min-w-0 flex-1 py-1", isHidden && "opacity-50")}>
+                    <span className="grid min-w-0 flex-1 py-1">
                       <span
                         className={cn(
-                          "whitespace-pre-line break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]",
-                          isHidden && "line-through",
+                          "whitespace-pre-line break-words text-sm font-medium leading-5",
+                          // Hidden lines keep full-strength text (4.5:1) and say "Hidden" in words.
+                          isHidden ? "text-[color:var(--text-muted)] line-through" : "text-[color:var(--text-heading)]",
                         )}
                       >
                         {line.title}
                       </span>
-                      {line.sub ? (
+                      {held ? (
+                        <span
+                          className="text-xs leading-4 text-[color:var(--warning)]"
+                          data-testid="applications-cv-held"
+                        >
+                          Title looks like a patient detail, so it is left out of copies and print.{" "}
+                          <Link
+                            href={held.fixHref}
+                            className={cn(focusRing, "inline-flex min-h-12 items-center underline underline-offset-4")}
+                          >
+                            Edit it in {held.fixIn}
+                          </Link>
+                        </span>
+                      ) : isHidden ? (
+                        <span className="text-xs leading-4 text-[color:var(--text-muted)]">
+                          Hidden{line.sub ? ` · ${line.sub}` : ""}
+                          <span className="sr-only">, left out of copies and print.</span>
+                        </span>
+                      ) : line.sub ? (
                         <span className="text-xs leading-4 text-[color:var(--text-muted)]">{line.sub}</span>
                       ) : null}
-                      {isHidden ? <span className="sr-only">Hidden from copies and print.</span> : null}
                     </span>
                     <span
                       role="img"
                       aria-label={`From ${cvSourceLabels[line.source]}`}
                       data-mode-identity={SOURCE_MODE[line.source]}
-                      className={cn(
-                        "cpd-cv-screen-only grid size-6 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
-                        isHidden && "opacity-50",
-                      )}
+                      className="cpd-cv-screen-only grid size-6 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
                     >
                       <Icon aria-hidden="true" strokeWidth={1.75} className="size-3" />
                     </span>
-                    <button
-                      type="button"
-                      aria-pressed={isHidden}
-                      aria-label={`Hide ${line.title.slice(0, 60)}`}
-                      onClick={() => toggle(line.id, line.title)}
-                      data-testid="applications-cv-hide"
-                      className={cn(
-                        focusRing,
-                        "cpd-cv-screen-only inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-md text-[color:var(--text-muted)]",
-                      )}
-                    >
-                      {isHidden ? (
-                        <EyeOff aria-hidden="true" strokeWidth={1.75} className="size-icon-sm" />
-                      ) : (
-                        <Eye aria-hidden="true" strokeWidth={1.75} className="size-icon-sm" />
-                      )}
-                    </button>
+                    {held ? null : (
+                      <button
+                        type="button"
+                        aria-pressed={hidden.has(line.id)}
+                        aria-label={`Hide ${line.title.slice(0, 60)}`}
+                        onClick={() => toggle(line.id, line.title)}
+                        data-testid="applications-cv-hide"
+                        className={cn(
+                          focusRing,
+                          "cpd-cv-screen-only inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-md text-[color:var(--text-muted)]",
+                        )}
+                      >
+                        {hidden.has(line.id) ? (
+                          <EyeOff aria-hidden="true" strokeWidth={1.75} className="size-icon-sm" />
+                        ) : (
+                          <Eye aria-hidden="true" strokeWidth={1.75} className="size-icon-sm" />
+                        )}
+                      </button>
+                    )}
                   </li>
                 );
               })}
@@ -443,7 +476,17 @@ export function ApplicationsCvPage({
         <WorkButton variant="secondary" icon={Copy} onClick={copyText} testId="applications-cv-copy">
           Copy as text
         </WorkButton>
-        <WorkButton icon={Printer} onClick={savePdf} testId="applications-cv-pdf">
+        <WorkButton
+          icon={Printer}
+          onClick={() => {
+            if (plain.heldBackCount)
+              notify(
+                `${plain.heldBackCount} ${plain.heldBackCount === 1 ? "line" : "lines"} left out of the PDF, the title looks like a patient detail`,
+              );
+            savePdf();
+          }}
+          testId="applications-cv-pdf"
+        >
           Save as PDF
         </WorkButton>
       </ActionDock>
@@ -458,7 +501,8 @@ export function ApplicationsCvPage({
             setStatementOpen(false);
             notify(
               text ? "Statement saved" : "Statement removed",
-              before ? () => store.update(() => before) : undefined,
+              // Undo puts back the statement only, so a line hidden since stays hidden.
+              before ? () => store.update((current) => ({ ...current, statement: before.statement })) : undefined,
             );
           }
         }}

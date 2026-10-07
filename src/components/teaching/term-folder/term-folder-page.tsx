@@ -1,6 +1,16 @@
 "use client";
 
-import { CalendarDays, Check, Copy, Download, ExternalLink, Folder, Printer, ShieldCheck } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  ChevronLeft,
+  Copy,
+  Download,
+  ExternalLink,
+  Folder,
+  Printer,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -28,6 +38,7 @@ import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { useAuthSession } from "@/lib/supabase/client";
 import {
   FOLDER_CLA_URL,
+  FOLDER_DEMO_LINE,
   FOLDER_NOT_KEPT_LINE,
   FOLDER_PRIVACY_LINE,
   folderSectionLabels,
@@ -64,8 +75,9 @@ const unavailableText = "aria-disabled:cursor-not-allowed aria-disabled:text-[co
  * A short plain-text summary for an email to a supervisor. It follows the export's privacy default (names
  * off): no supervisor's name and no session titles, only statuses, counts and dates.
  */
-export function folderSummaryText(folder: TermFolder): string {
+export function folderSummaryText(folder: TermFolder, demo = false): string {
   return [
+    demo ? `${FOLDER_DEMO_LINE}.` : null,
     `${folder.title} evidence folder`,
     folder.dates,
     `${folder.headline}. ${folder.meterLabel}`,
@@ -111,8 +123,13 @@ function FolderActions({
         </button>
         <button
           type="button"
-          className={secondaryButton}
+          className={cn(secondaryButton, unavailableFace)}
+          aria-disabled={folder.loading ? true : undefined}
+          aria-describedby={folder.loading ? "term-folder-export-why" : undefined}
+          data-testid="term-folder-print"
           onClick={() => {
+            // A printout taken while a part still reads "Loading" would hand over figures it does not have.
+            if (folder.loading) return;
             announce("Opening print");
             window.print();
           }}
@@ -139,7 +156,7 @@ function FolderActions({
         onClick={async () => {
           if (blocker) return;
           try {
-            await copyTextToClipboard(folderSummaryText(folder));
+            await copyTextToClipboard(folderSummaryText(folder, demoMode));
             setCopied("copied");
             announce("Summary copied");
           } catch {
@@ -226,18 +243,26 @@ function FolderCard({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
             <ShieldCheck aria-hidden="true" className="size-icon-xs shrink-0" />
           )}
           <span className="nums font-normal">
-            {exportedAt
-              ? `Exported ${exportedAt} · gaps listed in the file`
-              : view.updatedAt
-                ? `Fills itself · updated ${view.updatedAt}`
-                : view.failed.length
-                  ? "Not updated on this visit"
-                  : "Fills itself from your records"}
+            {exportedAt ? `Exported ${exportedAt} · gaps listed in the file` : folderFooter(view)}
           </span>
         </p>
       </div>
     </section>
   );
+}
+
+const SOURCE_NAMES = { attendance: "Check-ins", supervision: "Supervision logs" } as const;
+
+/** The footer line, true to what loaded: names the part that did not, rather than "updated" for the lot. */
+export function folderFooter(view: Pick<Extract<TermFolderView, { kind: "ready" }>, "updatedAt" | "failed">): string {
+  const { updatedAt, failed } = view;
+  if (failed.length === 2) return "Check-ins and supervision logs didn't load";
+  if (failed.length === 1) {
+    const missing = SOURCE_NAMES[failed[0]!];
+    const loaded = failed[0] === "attendance" ? SOURCE_NAMES.supervision : SOURCE_NAMES.attendance;
+    return updatedAt ? `${loaded} updated ${updatedAt} · ${missing} didn't load` : `${missing} didn't load`;
+  }
+  return updatedAt ? `Fills itself · updated ${updatedAt}` : "Fills itself from your records";
 }
 
 function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: "ready" }>; demoMode: boolean }) {
@@ -257,7 +282,7 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
         <T5Note tone="warning" icon={view.offline ? "offline" : "alert"} className="mt-3" testId="term-folder-failed">
           {view.offline
             ? "No connection. The parts that need it show as not updating. "
-            : `${view.failed.length === 2 ? "Check-ins and supervision logs" : view.failed[0] === "attendance" ? "Check-ins" : "Supervision logs"} did not load, so that part shows as not updating${folder.parts.some((p) => p.status === "not_updating" && p.detail.startsWith("As of ")) ? " and keeps its last good figures" : ""}. `}
+            : `${view.failed.length === 2 ? "Check-ins and supervision logs" : view.failed[0] === "attendance" ? "Check-ins" : "Supervision logs"} did not load, so ${view.failed.length === 2 ? "those parts show" : "that part shows"} as not updating${folder.parts.some((p) => p.status === "not_updating" && p.detail.startsWith("As of ")) ? ` and ${view.failed.length === 2 ? "keep their" : "keeps its"} last good figures` : ""}. `}
           <T5Link onClick={view.retry}>Try again</T5Link>
         </T5Note>
       ) : null}
@@ -343,7 +368,8 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
       <T5Note icon="shield" className="mt-4">
         {`${FOLDER_PRIVACY_LINE} Built from your check-ins, supervision logs and the term you keep on this phone. Nothing new is saved.`}
       </T5Note>
-      <T5Meta className="mt-1 text-xs">
+      {/* Indented to the note's text, past its shield icon and gap, so the two lines read as one block. */}
+      <T5Meta className="mt-1 pl-5.5 text-xs">
         {`${withUnit(folder.sessions.length, folder.sessions.length === 1 ? "session" : "sessions")} and ${withUnit(folder.supervision.length, folder.supervision.length === 1 ? "supervision entry" : "supervision entries")} go into the CSV.`}
       </T5Meta>
     </>
@@ -379,6 +405,18 @@ function TermFolderContent({ demoMode, termId }: { demoMode: boolean; termId: st
     <InformationPageShell width="narrow" gap={false} testId="term-folder">
       <T5Page>
         <h1 className="sr-only">Term evidence folder</h1>
+        <Link
+          href="/teaching/term"
+          data-print-hide
+          data-testid="term-folder-back"
+          className={cn(
+            "inline-flex min-h-12 w-fit items-center gap-1 rounded-sm pr-2 text-sm font-semibold text-[color:var(--mode-identity)] no-underline",
+            focusRing,
+          )}
+        >
+          <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+          Term
+        </Link>
         {demoMode ? (
           <T5Note className="mt-0 mb-1">Made-up demo. Nothing here is your data, and nothing is saved.</T5Note>
         ) : null}

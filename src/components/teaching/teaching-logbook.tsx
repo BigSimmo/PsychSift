@@ -226,7 +226,7 @@ function CpdThisWeek({
                   if (failed.length < result.results.length) onLogged();
                 } catch (cause) {
                   setError(
-                    `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Try again; this will not add duplicates.`,
+                    `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Try again. This will not add duplicates.`,
                   );
                 } finally {
                   setBusy(false);

@@ -31,7 +31,7 @@ vi.mock("@/components/account-data-provider", () => ({
 }));
 
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
-  AccountSetupDialog: () => null,
+  AccountSetupDialog: () => <div data-testid="account-setup-dialog" />,
 }));
 
 vi.mock("@/components/roster/use-roster-team", () => ({
@@ -131,14 +131,23 @@ describe("ContractEndPage", () => {
   it("asks for the end date on first use and lists what you get", () => {
     render(<ContractEndPage now={NOW} />);
     expect(screen.getByTestId("admin-contract-first")).toBeTruthy();
-    expect(screen.getByText("Two calm reminders")).toBeTruthy();
+    expect(screen.getByText("Two reminder dates")).toBeTruthy();
+    // Nothing delivers a bell alert for these yet, so the page promises only Admin Today and the calendar.
+    expect(screen.getByTestId("admin-contract-first")).toHaveTextContent("it shows on Admin Today and here");
+    expect(screen.getByTestId("admin-contract-first")).not.toHaveTextContent(/you get a reminder|we will remind/i);
     expect(screen.getByTestId("admin-contract-add")).toBeTruthy();
   });
 
   it("asks a signed-out reader to sign in and saves nothing", () => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
     Object.assign(entryState, { signedOut: true });
     render(<ContractEndPage now={NOW} />);
     expect(screen.getByTestId("admin-contract-signed-out").textContent).toContain("Nothing is saved on this phone");
+    // And it really saves nothing: no write to the server, and nothing on the device.
+    expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+    expect(window.localStorage.length).toBe(0);
+    expect(window.sessionStorage.length).toBe(0);
   });
 
   it("shows the load failure rather than an empty tracker", () => {
@@ -184,6 +193,14 @@ describe("ContractEndPage", () => {
     expect(screen.getByTestId("admin-contract-foot").textContent).toContain("not a check");
   });
 
+  it("draws a reached reminder as a filled bell, never a tick", () => {
+    entryState.entries = [contractRow()];
+    render(<ContractEndPage now={new Date("2026-11-05T01:00:00Z")} />);
+    const mark = screen.getByTestId("admin-contract-strip-mark-three-months");
+    expect(mark.querySelector(".lucide-check")).toBeNull();
+    expect(mark.querySelector(".lucide-bell")).not.toBeNull();
+  });
+
   it("turns the 6 week reminder off, then puts it back with Undo", async () => {
     const row = contractRow();
     entryState.entries = [row];
@@ -225,10 +242,15 @@ describe("ContractEndPage", () => {
     render(<ContractEndPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-contract-ask-open"));
     expect((screen.getByTestId("admin-contract-ask-training-program") as HTMLInputElement).checked).toBe(false);
-    expect((screen.getByTestId("admin-contract-ask-parental-leave") as HTMLInputElement).checked).toBe(true);
+    // The plan for parental leave is the doctor's to share: never ticked to start with, and said so.
+    expect((screen.getByTestId("admin-contract-ask-parental-leave") as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByTestId("admin-contract-ask-parental-note")).toHaveTextContent("Only if you want to ask");
     const preview = screen.getByTestId("admin-contract-ask-preview").textContent ?? "";
     expect(preview).toContain("My contract ends Sun 31 Jan 2027");
     expect(preview).not.toContain("whole training program");
+    expect(preview).not.toContain("parental");
+    fireEvent.click(screen.getByTestId("admin-contract-ask-parental-leave"));
+    expect(screen.getByTestId("admin-contract-ask-preview").textContent).toContain("parental leave");
     fireEvent.click(screen.getByTestId("admin-contract-ask-copy"));
     await waitFor(() => expect(copyText).toHaveBeenCalled());
     fireEvent.click(screen.getByTestId("admin-contract-ask-mark"));
@@ -316,6 +338,21 @@ describe("ContractEndPage", () => {
     expect(screen.getByTestId("admin-contract-switch-six-weeks").getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(screen.getByTestId("admin-contract-question-in-writing"));
     expect(screen.queryByTestId("admin-contract-question-mark")).toBeNull();
+  });
+
+  it("goes back to Admin Today, and offers sign-in when example records are shown to nobody signed in", () => {
+    Object.assign(entryState, { demoMode: true, entries: [] });
+    account.isAuthenticated = false;
+    try {
+      render(<ContractEndPage now={NOW} />);
+      expect(screen.getByTestId("admin-contract-back").getAttribute("href")).toBe("/admin");
+      expect(screen.getByTestId("admin-contract-read-only").textContent).toContain("Sign in to track");
+      expect(screen.queryByTestId("account-setup-dialog")).toBeNull();
+      fireEvent.click(screen.getByTestId("admin-contract-sign-in"));
+      expect(screen.getByTestId("account-setup-dialog")).toBeTruthy();
+    } finally {
+      account.isAuthenticated = true;
+    }
   });
 
   it("says why a failed save did not land", async () => {

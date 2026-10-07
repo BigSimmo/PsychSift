@@ -39,6 +39,8 @@ import { onCallEntrySchema, type OnCallEntry, type OnCallSection } from "@/lib/o
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
+import { StarterPackEntryLink } from "@/components/admin/starter/starter-pack-entry-link";
 
 type UndoState = { id: number; entryId: string; restore: unknown; label: string };
 
@@ -192,7 +194,6 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
     return typeof details === "object" && details !== null && (details as { done?: unknown }).done === true;
   }).length;
   const totalCount = ownLogins.length;
-  const leftCount = totalCount - doneCount;
   // Write to the row the date is read from, so a new or cleared date is never ignored.
   const startEntry = start?.entry ?? ownLogins[0]?.entry ?? null;
   // Why the start date cannot be set, said under the start line. Example
@@ -315,23 +316,18 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                 Before
               </h2>
 
-              {totalCount > 0 ? (
-                <p
-                  className="text-sm font-medium text-[color:var(--text-heading)]"
-                  data-testid="admin-new-job-progress"
-                >
-                  {`Logins and access: ${doneCount} of ${totalCount} done`}
-                </p>
-              ) : null}
+              {/* Ready for day one (round 2 feature 21): what is recorded and what is still to do. */}
+              <ReadyForDayOneEntryLink />
 
               <PaperworkSignpost overview={overview} />
 
               <div className="grid gap-2">
                 <div className="flex items-center justify-between px-1">
                   <h3 className={eyebrowText}>Logins and access</h3>
-                  {ownLogins.length > 0 ? (
-                    <span className={cn(textMuted, "nums text-xs")} data-testid="admin-new-job-logins-left">
-                      {leftCount} left
+                  {/* The count sits beside its own label, once: no second "Logins and access" line above it. */}
+                  {totalCount > 0 ? (
+                    <span className={cn(textMuted, "nums text-xs")} data-testid="admin-new-job-progress">
+                      {`${doneCount} of ${totalCount} done`}
                     </span>
                   ) : null}
                 </div>
@@ -345,6 +341,7 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                     items={rows.logins}
                     label="Logins and access"
                     testId="admin-new-job-logins"
+                    listClassName={cn(cardSurface, "overflow-hidden")}
                     anchorIdOf={(row) => onCallEntryAnchorId(row.entry.id)}
                     renderItem={(row) => (
                       <AdminNewJobStepRow
@@ -362,6 +359,9 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                   />
                 )}
               </div>
+
+              {/* The starter pack (round 2 feature 14), above the contacts as the spec places it. */}
+              <StarterPackEntryLink />
 
               <div className="grid gap-2">
                 <h3 className={eyebrowText}>Contacts for this job</h3>
@@ -413,10 +413,11 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                 data-testid="admin-new-job-leaving-pack-link"
                 className={cn(
                   focusRing,
-                  "inline-flex min-h-12 w-fit items-center px-1 text-sm text-[color:var(--clinical-accent)] underline-offset-2 hover:underline",
+                  "inline-flex min-h-12 w-fit items-center gap-1 px-1 text-sm font-medium text-[color:var(--clinical-accent)] underline decoration-1 underline-offset-2",
                 )}
               >
                 Credential pack, as a PDF on this device
+                <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0" />
               </Link>
             </section>
           </>

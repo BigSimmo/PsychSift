@@ -357,6 +357,22 @@ describe("term evidence folder", () => {
     expect(csv.indexOf("\uFEFF", 1)).toBe(-1);
   });
 
+  it("says inside a demo CSV that it is made up, not only in the file name", () => {
+    const folder = buildTermFolder({
+      today,
+      state: tracker(),
+      term: term(),
+      attendance: ready(rows),
+      supervision: ready([]),
+    });
+    const demo = termFolderCsv(folder, today, FOLDER_EXPORT_DEFAULTS, { demo: true });
+    expect(demo.slice(1).split("\r\n").slice(0, 2)).toEqual([
+      '"Made-up demo, not your records"',
+      '"Term evidence folder"',
+    ]);
+    expect(termFolderCsv(folder, today, FOLDER_EXPORT_DEFAULTS)).not.toContain("Made-up");
+  });
+
   it("with names off, writes only each session's date, hours, check-in and In CPD, never its title or service", () => {
     const named = [row("2026-09-08T04:30:00Z", { title: "Grand round with Dr X", serviceName: "Dr Y's unit" })];
     const folder = buildTermFolder({
@@ -382,7 +398,7 @@ describe("term evidence folder", () => {
     expect(folderExportBlocker({ phase: "before" }, term())).toMatch(/^Nothing to export until the term starts on /);
     expect(folderExportBlocker({ phase: "during" }, term())).toBeNull();
     expect(folderExportBlocker({ phase: "during", loading: true }, term())).toBe(
-      "Still filling from your records. Export and copy once every part has loaded.",
+      "Still filling from your records. Export, copy or print once every part has loaded.",
     );
     const coming = folderComingUp(term(), "2026-09-20");
     expect(coming.map((c) => c.title)).toEqual(["Mid-term assessment due", "End-of-term assessment due", "Term ends"]);

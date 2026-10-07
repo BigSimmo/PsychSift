@@ -3,16 +3,10 @@ import { z } from "zod";
 import { formatEntryForCpdHome } from "@/lib/cme/clipboard";
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries, cmeCsvCell } from "@/lib/cme/export";
+import { formatCmeRowDate } from "@/lib/cme/cpd-year";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
-import { cpdTextLooksLikePatient } from "@/lib/cme/patient-detail-check";
+import { cpdTextLooksLikePatient, cpdTitleLooksLikePatient } from "@/lib/cme/patient-detail-check";
 import { currentWorkYear } from "@/lib/work-time/current-zone";
-
-/**
- * Activity titles name courses and colleges in capitals ("ECT workshop", "RANZCP congress"), which
- * the initials check would read as a patient. Bare capitals are read past in titles only. Dotted
- * initials, record numbers, ages and every other finding still block the file.
- */
-const TITLE_CHECK = { allowCapitals: true } as const;
 
 /**
  * Send CPD to AMA CPD Home (#11).
@@ -108,10 +102,14 @@ export function cpdHomeRowProblems(rows: readonly CpdHomeRow[], thisYear = curre
   const problems: CpdHomeRowProblem[] = [];
   for (const row of rows) {
     const activity = row.activity || "Untitled activity";
-    if (cpdTextLooksLikePatient(row.activity, thisYear, TITLE_CHECK))
+    if (cpdTitleLooksLikePatient(row.activity, thisYear))
       problems.push({
         entryId: row.entryId,
-        activity: /^\d{4}-\d{2}-\d{2}$/.test(row.date) ? `Activity on ${row.date}` : "An activity",
+        // Named by its Australian date with the year ("Activity on Mon 2 Mar 2026"); no "today"
+        // is passed, so the year is always shown.
+        activity: /^\d{4}-\d{2}-\d{2}$/.test(row.date)
+          ? `Activity on ${formatCmeRowDate(row.date, "")}`
+          : "An activity",
         problem: CPD_HOME_TITLE_PATIENT_PROBLEM,
       });
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date))
@@ -137,9 +135,7 @@ export function reflectionsToLeaveOut(rows: readonly CpdHomeRow[], thisYear: num
 
 /** The ids of activities whose title reads like a patient detail. No file or copy holds them. */
 export function titlesToHoldBack(entries: readonly CmeEntry[], thisYear: number): Set<string> {
-  return new Set(
-    entries.filter((entry) => cpdTextLooksLikePatient(entry.title, thisYear, TITLE_CHECK)).map((entry) => entry.id),
-  );
+  return new Set(entries.filter((entry) => cpdTitleLooksLikePatient(entry.title, thisYear)).map((entry) => entry.id));
 }
 
 export type CpdHomeFileOptions = {

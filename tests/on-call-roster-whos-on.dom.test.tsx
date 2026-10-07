@@ -69,8 +69,8 @@ function shift(over: Partial<RosterAssignment> & { start: string; end: string })
   };
 }
 
-const NIGHT = shift({ name: "Dr Tran Nguyen", kind: "night", start: "2026-10-06T21:00", end: "2026-10-07T08:30" });
-const EVENING = shift({ name: "Dr Sam Lee", kind: "evening", start: "2026-10-06T14:00", end: "2026-10-06T22:00" });
+const NIGHT = shift({ name: "Dr Jordan Tuart", kind: "night", start: "2026-10-06T21:00", end: "2026-10-07T08:30" });
+const EVENING = shift({ name: "Dr Sam Karri", kind: "evening", start: "2026-10-06T14:00", end: "2026-10-06T22:00" });
 const MINE = shift({ userId: ME, name: "Dr Me", start: "2026-10-06T08:00", end: "2026-10-06T16:30" });
 const LEAVE = shift({ name: "Dr On Leave", kind: "leave", start: "2026-10-06T00:00", end: "2026-10-07T00:00" });
 const TOMORROW = shift({ name: "Dr Ana Patel", start: "2026-10-07T08:00", end: "2026-10-07T16:30" });
@@ -125,12 +125,12 @@ describe("From your team roster", () => {
     const list = screen.getByTestId("on-call-roster-list");
     const rows = within(list).getAllByRole("button");
     expect(rows.map((row) => row.textContent)).toEqual([
-      expect.stringContaining("Dr Sam Lee"),
-      expect.stringContaining("Dr Tran Nguyen"),
+      expect.stringContaining("Dr Sam Karri"),
+      expect.stringContaining("Dr Jordan Tuart"),
       expect.stringContaining("You"),
     ]);
     expect(rows[0]).toHaveTextContent("Late registrar · on now");
-    expect(rows[0]).toHaveTextContent("14:00 to 22:00 · then Dr Tran Nguyen");
+    expect(rows[0]).toHaveTextContent("14:00 to 22:00 · then Dr Jordan Tuart");
     expect(rows[1]).toHaveTextContent("Night registrar · on now");
     expect(rows[2]).toHaveTextContent("You");
     expect(within(rows[2]!).getAllByText("You").length).toBeGreaterThan(0);
@@ -138,8 +138,20 @@ describe("From your team roster", () => {
     expect(rows[2]).not.toHaveTextContent("on now");
     expect(list).not.toHaveTextContent("Leave");
     expect(list).not.toHaveTextContent("Dr On Leave");
-    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("From your team roster");
-    expect(screen.getByTestId("on-call-roster-whos-on").querySelector(".work-label__count")).toHaveTextContent("3");
+    // One heading for the list, never a hidden h1 and a visible h2 saying the same thing.
+    expect(screen.getAllByRole("heading").map((heading) => heading.textContent)).toEqual([
+      "Who is on, from your team roster",
+    ]);
+    expect(screen.getByRole("region", { name: "Who is on, from your team roster" })).toBeInTheDocument();
+    expect(screen.getByTestId("on-call-roster-whos-on")).toHaveTextContent("From your team roster");
+    // The count says what it counts.
+    expect(screen.getByTestId("on-call-roster-whos-on").querySelector(".work-label__count")).toHaveTextContent(
+      "3 shifts",
+    );
+    // Names sit on the row, never inside the rail, where a short shift would clip them.
+    for (const rail of within(list).getAllByRole("img")) expect(rail.textContent).toBe("");
+    // A visible way back to Who's on.
+    expect(screen.getByTestId("on-call-roster-back")).toHaveAttribute("href", "/on-call/whos-on");
     // The now marker sits on today's rails only.
     expect(screen.getAllByTestId("on-call-roster-now-mark").length).toBe(3);
     // A full list with nobody missing needs no switchboard prompt.
@@ -205,7 +217,7 @@ describe("From your team roster", () => {
     );
     expect(screen.getByTestId("on-call-roster-provenance")).toHaveTextContent("Offline. Roster as of 21:35");
     expect(screen.getByTestId("on-call-roster-provenance")).toHaveTextContent("Not live");
-    expect(screen.getByTestId("on-call-roster-list")).toHaveTextContent("Dr Tran Nguyen");
+    expect(screen.getByTestId("on-call-roster-list")).toHaveTextContent("Dr Jordan Tuart");
     expect(screen.queryByTestId("on-call-roster-now-mark")).toBeNull();
     expect(screen.getByTestId("on-call-roster-stale")).toHaveTextContent("A later change would not show");
     expect(screen.getByTestId("on-call-roster-switchboard")).toBeInTheDocument();
@@ -284,9 +296,9 @@ describe("From your team roster", () => {
     fireEvent.click(copy);
     await screen.findByText("Note copied for Dr Grant. The list is unchanged until the roster is.");
     const [text] = clipboard.mock.calls[0] as unknown as [string];
-    expect(text).toContain("Dr Tran Nguyen");
+    expect(text).toContain("Dr Jordan Tuart");
     expect(text).toContain("Dr Patel answered the page");
-    expect(screen.getByTestId("on-call-roster-list")).toHaveTextContent("Dr Tran Nguyen");
+    expect(screen.getByTestId("on-call-roster-list")).toHaveTextContent("Dr Jordan Tuart");
   });
 
   it("draws the compact Right now block with only who is on at this moment", () => {
