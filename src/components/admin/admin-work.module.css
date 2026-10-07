@@ -283,7 +283,7 @@
   display: -webkit-box;
   overflow: hidden;
   padding-right: calc(var(--spacing) * 1.5);
-  line-height: 1.25;
+  line-height: var(--work-leading-row);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

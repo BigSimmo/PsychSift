@@ -715,23 +715,38 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   }
 }
 
-/* The area-only pill on a phone (Josh, 7 Oct 2026, "No badge on phones"):
-   the badge is hidden there, so the name and chevron take its place, with the
-   padding evened up now no round badge sits at the left edge. "Assessments"
-   fits whole at 320px. */
-@media (max-width: 639px) {
-  .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] {
-    grid-template-columns: minmax(0, max-content) auto;
-    gap: calc(var(--spacing) * 1.25);
-    padding: 0 calc(var(--spacing) * 2.5) 0 calc(var(--spacing) * 3.5);
+/* The area-only pill on a small phone (under 360px). The badge stays (Josh,
+   7 Oct 2026: the area's image on the left, as in the mockup), so the quiet
+   chevron gives its room to the name, the badge steps down to 24px and the
+   name to 13px. "Assessments" and "Open shifts" fit whole at 320px. */
+@media (max-width: 359px) {
+  .universal-header[data-work-frame] .universal-header-row {
+    column-gap: calc(var(--spacing) * 1.5);
   }
 
-  /* Large text: the chevron is hidden too, so the name has the pill alone. */
-  @container work-bar (max-width: 17rem) {
-    .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] {
-      grid-template-columns: minmax(0, 1fr);
-      padding: calc(var(--spacing) * 0.5) calc(var(--spacing) * 2.5);
-    }
+  .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] {
+    grid-template-columns: auto minmax(0, max-content);
+    gap: calc(var(--spacing) * 1);
+    padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 1);
+  }
+
+  .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] > svg {
+    display: none;
+  }
+
+  .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] .universal-header-mode-badge {
+    width: 24px;
+    height: 24px;
+  }
+
+  .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] .universal-header-mode-badge svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .universal-header[data-work-frame] [data-testid="universal-header-mode-area-only"] {
+    font-size: 0.8125rem;
+    letter-spacing: -0.01em;
   }
 }
 
