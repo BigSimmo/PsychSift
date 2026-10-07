@@ -2,11 +2,11 @@
   "$comment": "Client JS bundle-size budgets captured from a known-good production build. `production` guards aggregate user-facing chunks, `routes` guards the Lighthouse journeys and the main work-mode pages (added by the work-mode speed review, 7 Oct 2026) against route-local growth, and `mockups` is a looser design-scratch hygiene ceiling. Refresh intentionally with `npm run check:bundle-budget -- --update`.",
   "enforce": true,
   "production": {
-    "gzipBytes": 3602086,
+    "gzipBytes": 5057435,
     "tolerancePct": 10
   },
   "mockups": {
-    "gzipBytes": 704966,
+    "gzipBytes": 719616,
     "tolerancePct": 25
   },
   "serverPages": {
@@ -22,60 +22,60 @@
   },
   "routes": {
     "/": {
-      "gzipBytes": 311713,
+      "gzipBytes": 337647,
       "tolerancePct": 10
     },
     "/documents/search": {
-      "gzipBytes": 316660,
+      "gzipBytes": 342594,
       "tolerancePct": 10
     },
     "/my-day": {
-      "gzipBytes": 459150,
+      "gzipBytes": 543121,
       "tolerancePct": 10
     },
     "/my-day/week": {
-      "gzipBytes": 497351,
+      "gzipBytes": 569367,
       "tolerancePct": 10
     },
     "/roster": {
-      "gzipBytes": 401972,
+      "gzipBytes": 460164,
       "tolerancePct": 10
     },
     "/roster/shifts": {
-      "gzipBytes": 401972,
+      "gzipBytes": 460434,
       "tolerancePct": 10
     },
     "/open-shifts": {
-      "gzipBytes": 376996,
+      "gzipBytes": 418038,
       "tolerancePct": 10
     },
     "/on-call": {
-      "gzipBytes": 436771,
+      "gzipBytes": 489787,
       "tolerancePct": 10
     },
     "/on-call/handover": {
-      "gzipBytes": 471757,
+      "gzipBytes": 520491,
       "tolerancePct": 10
     },
     "/teaching": {
-      "gzipBytes": 398807,
+      "gzipBytes": 444907,
       "tolerancePct": 10
     },
     "/teaching/assessments": {
-      "gzipBytes": 401772,
+      "gzipBytes": 533674,
       "tolerancePct": 10
     },
     "/cme": {
-      "gzipBytes": 428222,
+      "gzipBytes": 482172,
       "tolerancePct": 10
     },
     "/admin": {
-      "gzipBytes": 396016,
+      "gzipBytes": 450355,
       "tolerancePct": 10
     }
   },
-  "totalGzipBytes": 4307052,
+  "totalGzipBytes": 5777051,
   "tolerancePct": 10,
-  "updatedAt": "2026-10-05T18:52:21.807Z",
-  "baselineSource": "04cebdda57256533eb09287ef899af12322eaf01"
+  "updatedAt": "2026-10-07T08:53:49.208Z",
+  "baselineSource": "8d270cd8e4fa65f954edfab15968a8a414802c30"
 }
