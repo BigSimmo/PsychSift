@@ -4,8 +4,11 @@
    tints, no lift. Every tap target stays 48px; the drawn shapes inside are the
    mockup's sizes. Motion respects reduced motion. */
 
-/* Area tokens: the mockup's rings and line heights, named once. */
-:root {
+/* Area tokens: the mockup's rings and line heights, named once. Declared again
+   on every palette scope, so a ring takes the nearest area colour. */
+:root,
+[data-mode-identity],
+[data-work-frame] {
   --assess-ring: inset 0 0 0 1px var(--work-line-strong, var(--border-strong));
   --assess-ring-firm: inset 0 0 0 1.5px var(--work-line-strong, var(--border-strong));
   --assess-ring-mode: inset 0 0 0 1.5px var(--mode-identity);
@@ -1128,4 +1131,95 @@ input.assess-txt {
   .assess-meter > i {
     background: CanvasText;
   }
+}
+
+/* ------------------------------------------------- hero buttons (hw, hg) */
+.assess-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 2);
+}
+.assess-hero-actions > .work-button {
+  flex: 1 1 auto;
+}
+.work-hero .work-button[data-variant="secondary"] {
+  color: var(--mode-identity-deep, var(--mode-identity));
+}
+.work-hero .work-button[data-variant="secondary"]::before {
+  inset: calc(var(--spacing) * 0.75) 0;
+  background: var(--surface-raised);
+  box-shadow: none;
+}
+.work-hero .work-button[data-variant="tinted"] {
+  color: inherit;
+}
+.work-hero .work-button[data-variant="tinted"]::before {
+  inset: calc(var(--spacing) * 0.75) 0;
+  background: color-mix(in srgb, var(--surface-raised) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface-raised) 30%, transparent);
+}
+.work-hero .work-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 0;
+}
+.dark .work-hero .work-button[data-variant="secondary"] {
+  color: var(--text-heading);
+}
+.dark .work-hero .work-button[data-variant="secondary"]::before {
+  background: color-mix(in srgb, var(--surface-raised) 70%, transparent);
+}
+
+/* --------------------------------------------- words list (term column) */
+.assess-word {
+  display: flex;
+  min-height: var(--spacing-tap, 3rem);
+  align-items: flex-start;
+  gap: calc(var(--spacing) * 2.5);
+  padding: calc(var(--spacing) * 2.25) calc(var(--spacing) * 3);
+  margin: 0;
+}
+.assess-word + .assess-word {
+  border-top: 1px solid var(--work-line);
+}
+.assess-word > dt {
+  width: 3.25rem;
+  flex: none;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 750;
+  color: var(--mode-identity);
+  overflow-wrap: anywhere;
+}
+.assess-word > dd {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  font-size: var(--text-xs, 0.75rem);
+  line-height: var(--assess-leading-1-4);
+  color: var(--work-ink-muted);
+}
+
+/* ------------------------------------------------------ big stat card */
+.assess-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 2);
+}
+.assess-stat > b {
+  font-size: 1.625rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--work-ink);
+}
+.assess-stat > b small {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--work-ink-muted);
+}
+.assess-stat > span {
+  font-size: 0.71875rem;
+  font-weight: 600;
+  color: var(--work-ink-muted);
 }

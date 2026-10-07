@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Check,
   Clock,
   Copy,
   Flag,
@@ -12,31 +11,31 @@ import {
   Phone,
   Send,
   Shield,
+  ShieldCheck,
   Users,
 } from "lucide-react";
 import { useState } from "react";
 
+import { WorkButton, WorkChip, WorkChips, WorkTag } from "@/components/mode-kit/work";
 import {
-  Inset,
+  AssessHeader,
+  AssessNote,
+  AssessSegmented,
+  AssessTextField,
+  CallStrip,
+  OptionCard,
+} from "@/components/teaching/assessments/assess-kit";
+import {
   List,
-  NoteField,
-  Pill,
   Row,
-  ScreenHeader,
   SectionLabel,
   SectionNote,
-  SmallPrint,
   StepRow,
   WhyNot,
-  labelText,
-  secondaryText,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { Button } from "@/components/ui/button";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
-import { cn } from "@/components/ui-primitives";
 import {
   EPAS,
   GLOSSARY,
@@ -54,35 +53,34 @@ export type SheetState =
   | null
   | { kind: "epa"; pick: EpaNumber }
   | { kind: "supepa"; index: number }
+  | { kind: "recordepa"; pick?: EpaNumber }
   | { kind: "disagree" }
   | { kind: "words" };
 
 function PhoneNumber({ children }: { children: string }) {
-  return (
-    <span className="rounded-md border border-[color:var(--border)] px-2 py-0.5 text-xs font-normal text-[color:var(--text-heading)] tabular-nums">
-      {children}
-    </span>
-  );
+  return <WorkTag tone="neutral">{children}</WorkTag>;
 }
 
-export function ConcernsHelp({ openSheet }: ScreenProps) {
+export function ConcernsHelp({ openSheet, role }: ScreenProps) {
+  const sup = role === "supervisor";
   return (
     <>
-      <ScreenHeader
-        back={viewHref("home")}
-        backLabel="Assessments"
+      <AssessHeader
+        eyebrow="PsychSift doesn't tell your supervisor"
         title="Concerns and help"
-        subtitle="PsychSift doesn't tell your supervisor"
+        back={
+          sup
+            ? { href: viewHref("home", { as: "supervisor" }), label: "To do" }
+            : { href: viewHref("home"), label: "Assessments" }
+        }
       />
-      <Inset tone="warm" icon={Phone} title="In danger now? Call 000.">
-        For urgent support, Lifeline is on 13 11 14, 24 hours.
-      </Inset>
-      <p className={cn(secondaryText, "px-1")}>
-        PsychSift doesn&apos;t tell anyone you opened this page. PsychSift doesn&apos;t receive or pass on complaints;
-        these are the usual routes in WA.
-      </p>
+      <CallStrip sub="Or Lifeline 13 11 14, 24 hours" />
+      <AssessNote icon={ShieldCheck}>
+        PsychSift doesn&apos;t tell anyone you opened this page. It doesn&apos;t receive or pass on complaints. These
+        are the usual routes in WA.
+      </AssessNote>
       <SectionLabel>About an assessment</SectionLabel>
-      <List>
+      <List label="About an assessment">
         <Row
           icon={MessageSquare}
           title="Talk it through first"
@@ -101,7 +99,7 @@ export function ConcernsHelp({ openSheet }: ScreenProps) {
         />
       </List>
       <SectionLabel>Bullying, harassment or unsafe work</SectionLabel>
-      <List>
+      <List label="Bullying, harassment or unsafe work">
         <Row
           icon={Users}
           title="Your DCT or Director of Postgraduate Medical Education"
@@ -125,7 +123,7 @@ export function ConcernsHelp({ openSheet }: ScreenProps) {
         />
       </List>
       <SectionLabel end={<SectionNote>Usually confidential</SectionNote>}>Your wellbeing</SectionLabel>
-      <List>
+      <List label="Your wellbeing">
         <Row
           icon={Heart}
           iconTone="ok"
@@ -148,59 +146,20 @@ export function ConcernsHelp({ openSheet }: ScreenProps) {
         />
       </List>
       <SectionLabel>Keep your own notes</SectionLabel>
-      <p className={cn(secondaryText, "px-1")}>
+      <AssessNote icon={PenLine}>
         Write down dates, places and what was said while it&apos;s fresh, somewhere you control, such as your personal
         email. PsychSift doesn&apos;t keep a private record for this.
-      </p>
-      <SmallPrint center>Phone numbers to be checked against PMCWA and WA Health before release.</SmallPrint>
+      </AssessNote>
+      <AssessNote center>Phone numbers to be checked against PMCWA and WA Health before release.</AssessNote>
     </>
   );
 }
 
-function OptionList<T extends string | number>({
-  legend,
-  name,
-  value,
-  onChange,
-  options,
-}: {
-  legend: string;
-  name: string;
-  value: T | null;
-  onChange: (value: T) => void;
-  options: readonly { id: T; title: string; detail: string; tag?: React.ReactNode }[];
-}) {
-  return (
-    <fieldset className="grid gap-2">
-      <legend className={cn(labelText, "mb-2 px-1")}>{legend}</legend>
-      {options.map((o) => {
-        const checked = value === o.id;
-        return (
-          <label
-            key={o.id}
-            data-mode-identity="teaching"
-            className={cn(
-              "grid cursor-pointer gap-0.5 rounded-xl border px-3 py-2.5 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--focus)] forced-colors:border",
-              checked
-                ? "border-[color:var(--mode-identity)] bg-[color:var(--mode-identity-soft)]"
-                : "border-[color:var(--border)] bg-[color:var(--surface-raised)]",
-            )}
-          >
-            <input type="radio" name={name} checked={checked} onChange={() => onChange(o.id)} className="sr-only" />
-            <span className="flex items-start justify-between gap-2">
-              <b className="text-sm font-semibold text-[color:var(--text-heading)]">{o.title}</b>
-              {checked ? (
-                <Check aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
-              ) : null}
-            </span>
-            <span className={secondaryText}>{o.detail}</span>
-            {o.tag ? <span className="mt-1">{o.tag}</span> : null}
-          </label>
-        );
-      })}
-    </fieldset>
-  );
-}
+const LEVEL_OPTIONS = SUPERVISION_LEVELS.map((l) => ({
+  id: l.id,
+  title: l.title.replace(" supervision", ""),
+  detail: l.detail,
+}));
 
 function RequestEpaSheet({
   s,
@@ -213,21 +172,20 @@ function RequestEpaSheet({
   const dup = pendingEpaRequest(s, epa);
   return (
     <div className="grid gap-3">
-      <OptionList
+      <OptionCard
         legend="EPA"
         name="assess-request-epa"
-        value={epa}
-        onChange={setEpa}
+        value={String(epa)}
+        onChange={(id) => setEpa(Number(id) as EpaNumber)}
         options={EPAS.map((e) => ({
-          id: e.id,
+          id: String(e.id),
           title: `EPA ${e.id} · ${e.title}`,
           detail: e.detail,
-          tag: e.id === 1 && !epa1ThisTerm(s) ? <Pill pill={{ label: "Needed this term", tone: "warm" }} /> : undefined,
+          tag: e.id === 1 && !epa1ThisTerm(s) ? <WorkTag tone="amber">Needed this term</WorkTag> : undefined,
         }))}
       />
-      <SegmentedControl
+      <AssessSegmented
         label="Assessor"
-        layout="equal"
         value={who}
         onChange={setWho}
         options={[
@@ -235,20 +193,18 @@ function RequestEpaSheet({
           { value: "reg", label: `${SAMPLE_REGISTRAR.name}, registrar` },
         ]}
       />
-      <SmallPrint>At least one EPA a term must be from your term supervisor or another specialist.</SmallPrint>
-      <Button
+      <AssessNote>At least one EPA a term must be from your term supervisor or another specialist.</AssessNote>
+      <WorkButton
         icon={Send}
-        variant="primary"
-        block
+        size="wide"
         disabled={!!dup}
-        aria-describedby={dup ? "assess-epa-dup" : undefined}
         onClick={() => {
           dispatch({ type: "request-epa", epa, who });
           close();
         }}
       >
         Send request
-      </Button>
+      </WorkButton>
       {dup ? (
         <WhyNot id="assess-epa-dup">
           You&apos;ve already asked for EPA {epa}. It&apos;s waiting for{" "}
@@ -259,42 +215,70 @@ function RequestEpaSheet({
   );
 }
 
+/** The supervisor's EPA: from the doctor's request (index), or straight from the dock (no index). */
 function RecordEpaSheet({
   s,
-  dispatch,
+  saveEpa,
   index,
+  pick,
   close,
-}: Pick<ScreenProps, "s" | "dispatch"> & { index: number; close: () => void }) {
+}: Pick<ScreenProps, "s" | "saveEpa"> & { index?: number; pick?: EpaNumber; close: () => void }) {
+  const request = index === undefined ? null : s.epaRequests[index];
+  const [chosen, setChosen] = useState<EpaNumber | null>(pick ?? null);
   const [level, setLevel] = useState<SupervisionLevel | null>(null);
-  const r = s.epaRequests[index];
-  if (!r) return <p className={secondaryText}>This request has already been recorded.</p>;
-  const info = epaInfo(r.epa);
+  const [note, setNote] = useState("");
+  if (index !== undefined && (!request || request.status !== "requested"))
+    return <AssessNote center>This request has already been recorded.</AssessNote>;
+  const epa = request ? request.epa : chosen;
+  const info = epa ? epaInfo(epa) : null;
+  const why = !epa ? "Choose which EPA first." : !level ? "Choose a supervision level first." : null;
   return (
     <div className="grid gap-3">
-      <p className={secondaryText}>
-        {info.title}: {info.detail}
-      </p>
-      <OptionList
+      {request ? (
+        <AssessNote
+          icon={MessageSquare}
+        >{`${SAMPLE_DOCTOR.first} asked for this. ${info!.title}: ${info!.detail}`}</AssessNote>
+      ) : (
+        <>
+          <WorkChips label="Which EPA">
+            {EPAS.map((e) => (
+              <WorkChip key={e.id} selected={chosen === e.id} onClick={() => setChosen(e.id)}>
+                {`EPA ${e.id}`}
+              </WorkChip>
+            ))}
+          </WorkChips>
+          {info ? <AssessNote>{`${info.title}: ${info.detail}`}</AssessNote> : null}
+        </>
+      )}
+      <OptionCard
         legend={`Level of supervision ${SAMPLE_DOCTOR.first} needed`}
         name="assess-epa-level"
         value={level}
         onChange={setLevel}
-        options={SUPERVISION_LEVELS.map((l) => ({ id: l.id, title: l.title, detail: l.detail }))}
+        options={LEVEL_OPTIONS}
       />
-      <SmallPrint>Direct supervision is recorded as feedback for that moment. It is not a fail on its own.</SmallPrint>
-      <Button
-        variant="primary"
-        block
-        disabled={!level}
-        aria-describedby={level ? undefined : "assess-save-epa-why"}
+      <AssessNote>Direct is feedback for that moment, not a fail.</AssessNote>
+      <AssessTextField
+        id="assess-epa-note"
+        label="One thing to keep doing (optional)"
+        value={note}
+        onChange={setNote}
+        single
+      />
+      <WorkButton
+        size="wide"
+        disabled={!!why}
         onClick={() => {
-          if (level) dispatch({ type: "record-epa", index, level });
+          if (!epa || !level) return;
+          const trimmed = note.trim() || undefined;
+          if (index !== undefined) saveEpa({ type: "record-epa", index, level, note: trimmed });
+          else saveEpa({ type: "record-epa-direct", epa, level, note: trimmed });
           close();
         }}
       >
-        Save EPA
-      </Button>
-      {level ? null : <WhyNot id="assess-save-epa-why">Choose a supervision level first.</WhyNot>}
+        {epa ? `Save EPA ${epa}` : "Save EPA"}
+      </WorkButton>
+      {why ? <WhyNot id="assess-save-epa-why">{why}</WhyNot> : null}
     </div>
   );
 }
@@ -303,7 +287,7 @@ function DisagreeSheet({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
   const [copied, setCopied] = useState<string | null>(null);
   return (
     <div className="grid gap-3">
-      <ul role="list" className="grid">
+      <ul role="list" className="work-card work-rows m-0 list-none p-0">
         <StepRow
           state="now"
           title="Write to your DCT within 14 days"
@@ -316,17 +300,17 @@ function DisagreeSheet({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
         />
         <StepRow state="lock" title="Keep a copy" detail="Ask your MEU how your response is kept with the form." />
       </ul>
-      <NoteField
+      <AssessTextField
         id="assess-disagree-draft"
         label="Draft (kept on this page, visible only to you)"
         value={s.disagreeDraft}
         onChange={(value) => dispatch({ type: "set-disagree-draft", value })}
         placeholder="I'd like to respond to my end-of-term report for Psychiatry."
       />
-      <Button
+      <WorkButton
         icon={Copy}
-        variant="primary"
-        block
+        size="wide"
+        disabled={!s.disagreeDraft.trim()}
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(s.disagreeDraft);
@@ -337,23 +321,21 @@ function DisagreeSheet({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
         }}
       >
         Copy the draft to email your DCT
-      </Button>
-      {copied ? (
-        <p role="status" className="px-1 text-center text-xs text-[color:var(--text-muted)]">
-          {copied}
-        </p>
-      ) : null}
+      </WorkButton>
+      <p role="status" className="assess-note" data-center="">
+        {copied ? <span>{copied}</span> : null}
+      </p>
     </div>
   );
 }
 
 function WordsSheet() {
   return (
-    <dl className="grid">
+    <dl className="work-card m-0">
       {GLOSSARY.map(([term, meaning]) => (
-        <div key={term} className="grid gap-0.5 border-t border-[color:var(--border)] py-2.5 first:border-t-0">
-          <dt className="text-sm font-semibold text-[color:var(--text-heading)]">{term}</dt>
-          <dd className={secondaryText}>{meaning}</dd>
+        <div key={term} className="assess-word">
+          <dt>{term}</dt>
+          <dd>{meaning}</dd>
         </div>
       ))}
     </dl>
@@ -365,22 +347,28 @@ export function AssessmentsSheets({
   close,
   s,
   dispatch,
-}: Pick<ScreenProps, "s" | "dispatch"> & { sheet: SheetState; close: () => void }) {
+  saveEpa,
+}: Pick<ScreenProps, "s" | "dispatch" | "saveEpa"> & { sheet: SheetState; close: () => void }) {
   const title =
     sheet?.kind === "epa"
       ? "Request an EPA"
       : sheet?.kind === "supepa"
-        ? `EPA ${s.epaRequests[sheet.index]?.epa ?? ""} · ${SAMPLE_DOCTOR.first}`
-        : sheet?.kind === "disagree"
-          ? "Disagree with a report"
-          : "Words used here";
+        ? `EPA ${s.epaRequests[sheet.index]?.epa ?? ""} · ${SAMPLE_DOCTOR.name}`
+        : sheet?.kind === "recordepa"
+          ? `Record an EPA · ${SAMPLE_DOCTOR.name}`
+          : sheet?.kind === "disagree"
+            ? "Disagree with a report"
+            : "Words used here";
   return (
     <Sheet open={sheet !== null} onClose={close} title={title}>
       {sheet?.kind === "epa" ? (
         <RequestEpaSheet key={sheet.pick} s={s} dispatch={dispatch} pick={sheet.pick} close={close} />
       ) : null}
       {sheet?.kind === "supepa" ? (
-        <RecordEpaSheet key={sheet.index} s={s} dispatch={dispatch} index={sheet.index} close={close} />
+        <RecordEpaSheet key={`r${sheet.index}`} s={s} saveEpa={saveEpa} index={sheet.index} close={close} />
+      ) : null}
+      {sheet?.kind === "recordepa" ? (
+        <RecordEpaSheet key={`d${sheet.pick ?? 0}`} s={s} saveEpa={saveEpa} pick={sheet.pick} close={close} />
       ) : null}
       {sheet?.kind === "disagree" ? <DisagreeSheet s={s} dispatch={dispatch} /> : null}
       {sheet?.kind === "words" ? <WordsSheet /> : null}

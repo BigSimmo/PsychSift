@@ -1,11 +1,18 @@
 "use client";
 
-import { BookOpen, Check, Clock, FileText, Target } from "lucide-react";
+import { BookOpen, Check, Clock, FileText, Plus, Target, TriangleAlert } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { WeeksRing } from "@/components/teaching/assessments/assessments-home";
+import { WorkButton, WorkChip, WorkChips, WorkDock, WorkEmpty, WorkTag } from "@/components/mode-kit/work";
 import {
-  Card,
+  AssessCallout,
+  AssessHeader,
+  AssessMeter,
+  AssessNote,
+  KindsStrip,
+  type KindState,
+} from "@/components/teaching/assessments/assess-kit";
+import {
   Eyebrow,
   KeyValue,
   List,
@@ -18,12 +25,9 @@ import {
   SmallPrint,
   StepRow,
   TextLink,
-  secondaryText,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { ChoiceChip } from "@/components/ui/chip";
-import { cn } from "@/components/ui-primitives";
 import { EPAS, epa as epaInfo, supervisionLevelName } from "@/lib/teaching/assessments/content";
 import {
   YEAR_WEEKS,
@@ -51,18 +55,6 @@ import {
 /** Green only once the DCT has countersigned the term. */
 const SIGNED_PILL = <Pill pill={{ label: "Satisfactory · countersigned", tone: "ok" }} />;
 
-function Meter({ percent }: { percent: number }) {
-  return (
-    <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-[color:var(--border)]">
-      <i
-        data-mode-identity="teaching"
-        className="block h-full rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]"
-        style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
-      />
-    </div>
-  );
-}
-
 function Requirement({
   title,
   value,
@@ -77,58 +69,35 @@ function Requirement({
   note?: string;
 }) {
   return (
-    <li className="grid gap-1.5 border-t border-[color:var(--border)] px-3.5 py-3 first:border-t-0">
+    <li className="grid gap-1.5 px-3.5 py-3">
       <div className="flex items-center justify-between gap-2">
         <b className="text-sm font-semibold text-[color:var(--text-heading)]">{title}</b>
-        {ok ? <Pill pill={{ label: "On track", tone: "ok" }} /> : null}
+        {ok ? <WorkTag tone="neutral">On track</WorkTag> : null}
       </div>
-      <span className={secondaryText}>{value}</span>
-      <Meter percent={percent} />
-      {note ? <p className="text-xs text-[color:var(--text-muted)]">{note}</p> : null}
+      <span className="text-sm text-[color:var(--text-muted)]">{value}</span>
+      <AssessMeter fraction={Math.max(0, Math.min(100, percent)) / 100} />
+      {note ? <p className="m-0 text-xs text-[color:var(--text-muted)]">{note}</p> : null}
     </li>
   );
 }
 
-const KINDS: readonly [string, string, string | null][] = [
-  ["A", "Undifferentiated illness", "Term 1"],
-  ["B", "Chronic illness", null],
-  ["C", "Acute and critical illness", "Term 3"],
-  ["D", "Peri-operative / procedural", "Term 2"],
-];
-
-function KindBoxes({ s }: { s: AssessmentsState }) {
-  return (
-    <ul role="list" className="grid grid-cols-2 gap-2">
-      {KINDS.map(([k, name, done]) => (
-        <li
-          key={k}
-          data-mode-identity="teaching"
-          className={cn(
-            "grid gap-0.5 rounded-xl border p-2.5",
-            done
-              ? "border-transparent bg-[color:var(--success-bg)]"
-              : "border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)]",
-          )}
-        >
-          <b
-            className={cn(
-              "text-base font-semibold",
-              done ? "text-[color:var(--success-text)]" : "text-[color:var(--mode-identity)]",
-            )}
-          >
-            {k}
-          </b>
-          <span className="text-xs text-[color:var(--text-heading)]">{name}</span>
-          <small className="text-2xs text-[color:var(--text-muted)]">
-            {done ?? (s.sigs.doc ? "Term 4 · awaiting DCT" : "Now, term 4")}
-          </small>
-        </li>
-      ))}
-    </ul>
-  );
+/** Kinds of experience A to D from the sample terms: done once countersigned, now for this term. */
+function kindsFor(s: AssessmentsState) {
+  return (["A", "B", "C", "D"] as const).map((letter) => {
+    const done = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "done");
+    const now = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "current");
+    const any = done ?? now ?? SAMPLE_TERMS.find((t) => t.category === letter);
+    const state: KindState = done ? "done" : now ? "now" : "todo";
+    return {
+      letter,
+      name: any?.categoryName ?? letter,
+      state,
+      note: done ? `Term ${done.n}` : now ? (s.sigs.doc ? "Term 4 · awaiting DCT" : "Now, term 4") : "Not yet",
+    };
+  });
 }
 
-export function YearRequirements({ s, openSheet }: ScreenProps) {
+export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: boolean }) {
   const w = weeksDone(s);
   const total = epaRecords(s).length;
   const more = epaNeedMore(s);
@@ -137,38 +106,47 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
   const fromSpecialist = thisTerm.find((r) => r.role !== "registrar");
   return (
     <>
-      <ScreenHeader
-        back={viewHref("home")}
-        backLabel="Assessments"
-        title="Year requirements"
-        subtitle={`${SAMPLE_DOCTOR.grade} · 2026`}
+      <AssessHeader
+        eyebrow={`${SAMPLE_DOCTOR.grade} · 2026`}
+        title={tab ? "Progress" : "Year requirements"}
+        back={tab ? undefined : { href: viewHref("home"), label: "Assessments" }}
       />
-      <Panel>
-        <div className="flex items-center justify-between gap-3">
-          <div className="grid min-w-0 gap-1">
-            <Eyebrow accent>Weeks</Eyebrow>
-            <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">{YEAR_WEEKS - w} weeks to go</h2>
-            <p className={secondaryText}>
-              At least 47 weeks of supervised practice, including professional development leave. Your year runs 2 Feb
-              2026 to 31 Jan 2027.
-            </p>
-          </div>
-          <WeeksRing weeks={w} />
+      <div className="work-card work-card--pad grid gap-2">
+        <div className="work-label">
+          <span>Supervised weeks</span>
+          <em className="work-label__count">{`${YEAR_WEEKS - w} to go`}</em>
         </div>
-        {epa1ThisTerm(s) ? null : (
-          <p className={cn(secondaryText, "flex flex-wrap items-center gap-2")}>
-            <Pill pill={{ label: "1 thing needs attention", tone: "warm" }} /> EPA 1 is needed this term, by Sun 8 Nov.
-          </p>
-        )}
-      </Panel>
+        <div className="assess-stat">
+          <b>
+            {w} <small>{`of ${YEAR_WEEKS} weeks`}</small>
+          </b>
+        </div>
+        <AssessMeter fraction={w / YEAR_WEEKS} />
+        <p className="m-0 text-sm text-[color:var(--text-muted)]">
+          At least 47 weeks of supervised practice, including professional development leave. Your year runs 2 Feb 2026
+          to 31 Jan 2027.
+        </p>
+      </div>
+      {epa1ThisTerm(s) ? null : (
+        <AssessCallout
+          icon={TriangleAlert}
+          tone="amber"
+          title="EPA 1 needed this term"
+          action={
+            <WorkButton variant="secondary" onClick={() => openSheet({ kind: "epa", pick: 1 })}>
+              Request
+            </WorkButton>
+          }
+        >
+          By Sun 8 Nov. Needed every term.
+        </AssessCallout>
+      )}
 
       <SectionLabel end={<SectionNote>PGY1 needs all four</SectionNote>}>Kinds of experience</SectionLabel>
-      <Card>
-        <KindBoxes s={s} />
-        <p className="text-xs text-[color:var(--text-muted)]">
-          Each term&apos;s kind is set by its accreditation. A term counts once the DCT countersigns it.
-        </p>
-      </Card>
+      <KindsStrip kinds={kindsFor(s)} />
+      <AssessNote>
+        Each term&apos;s kind is set by its accreditation. A term counts once the DCT countersigns it.
+      </AssessNote>
 
       <SectionLabel>Terms and spread</SectionLabel>
       <List>
@@ -224,7 +202,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
           percent={fromSpecialist ? 100 : 0}
           ok={!!fromSpecialist}
         />
-        <li className="grid gap-1.5 border-t border-[color:var(--border)] px-3.5 py-3">
+        <li className="grid gap-1.5 px-3.5 py-3">
           <b className="text-sm font-semibold text-[color:var(--text-heading)]">Each EPA</b>
           {EPAS.map((x) => {
             const n = by[x.id];
@@ -237,10 +215,11 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
                   EPA {x.id} · {x.short}
                 </span>
                 <b
-                  className={cn(
-                    "text-right font-normal tabular-nums",
-                    need && x.id === 1 ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-heading)]",
-                  )}
+                  className={
+                    need && x.id === 1
+                      ? "text-right font-normal text-[color:var(--warning-text)] tabular-nums"
+                      : "text-right font-normal text-[color:var(--text-heading)] tabular-nums"
+                  }
                 >
                   {n} · {note}
                 </b>
@@ -264,6 +243,14 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
       <SmallPrint center>
         AMC National Framework 2024 · rules to be checked against the source before release
       </SmallPrint>
+      <WorkDock>
+        <WorkButton icon={Plus} onClick={() => openSheet({ kind: "epa", pick: epa1ThisTerm(s) ? 2 : 1 })}>
+          Request an EPA
+        </WorkButton>
+        <WorkButton variant="secondary" href={viewHref("all")}>
+          All assessments
+        </WorkButton>
+      </WorkDock>
     </>
   );
 }
@@ -474,13 +461,13 @@ export function AllAssessments({ s }: ScreenProps) {
         title="All assessments"
         subtitle={`${SAMPLE_DOCTOR.grade} · 2026`}
       />
-      <div role="group" aria-label="Show" className="flex flex-wrap gap-1.5">
+      <WorkChips label="Show" scroll>
         {FILTERS.map(([id, label]) => (
-          <ChoiceChip key={id} pressed={filter === id} onPressedChange={() => setFilter(id)}>
+          <WorkChip key={id} selected={filter === id} onClick={() => setFilter(id)}>
             {label}
-          </ChoiceChip>
+          </WorkChip>
         ))}
-      </div>
+      </WorkChips>
       {terms.length ? (
         terms.map((t) => (
           <section key={t.id} className="grid gap-1" aria-label={`Term ${t.n} · ${t.name}`}>
@@ -518,11 +505,16 @@ export function AllAssessments({ s }: ScreenProps) {
           </section>
         ))
       ) : (
-        <Card className="justify-items-center text-center">
-          <Check aria-hidden="true" className="size-icon-lg text-[color:var(--success-text)]" />
-          <h2 className="text-base font-semibold text-[color:var(--text-heading)]">Nothing to do</h2>
-          <p className={secondaryText}>Every assessment so far is signed.</p>
-        </Card>
+        <WorkEmpty
+          icon={Check}
+          title="Nothing to do"
+          body="Every assessment so far is signed."
+          action={
+            <WorkButton variant="secondary" onClick={() => setFilter("all")}>
+              Show all
+            </WorkButton>
+          }
+        />
       )}
     </>
   );
