@@ -515,7 +515,7 @@ const cpd: WorkArea = {
       paths: ["/cme", "/cme/calendar"],
       title: "CPD",
     },
-    { id: "log", label: "Log", sub: "Activities", icon: "list", href: "/cme/log", paths: ["/cme/log", "/cme/new"] },
+    { id: "log", label: "Log", sub: "Activities", icon: "list", href: "/cme/log", paths: ["/cme/log", "/cme/log/", "/cme/new"] },
     { id: "learning", label: "Learning", sub: "Courses on offer", icon: "compass", href: "/cme/learning" },
   ],
   groups: [
@@ -548,6 +548,8 @@ const cpd: WorkArea = {
           query: { tab: "finish" },
         },
         { id: "routines", label: "Routines", sub: "Regular activities", icon: "repeat", href: "/cme/routines" },
+        { id: "evidence", label: "Evidence", sub: "Certificates and files", icon: "folder", href: "/cme/evidence" },
+        { id: "export", label: "Export", sub: "PDF, CSV, MyCPD", icon: "upload", href: "/cme/export" },
       ],
     },
     {

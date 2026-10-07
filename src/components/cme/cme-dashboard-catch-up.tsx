@@ -1,12 +1,11 @@
 "use client";
 
+import { Award, ChevronRight, TrendingUp } from "lucide-react";
 import Link from "next/link";
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { formatCmeHours } from "@/components/cme/cme-dashboard-next-step";
-import { CmeCategoryDot, cmeCategoryShadeFill } from "@/components/cme/cme-flat-list";
-import { CmeYearInWeeks } from "@/components/cme/cme-year-in-weeks";
-import { cn } from "@/components/ui-primitives";
+import { CmeCategoryDot } from "@/components/cme/cme-flat-list";
 import type { CmeCatchUpPlan } from "@/lib/cme/catch-up-plan";
 import { formatCalendarDateShort } from "@/lib/cme/cpd-year";
 import { cmeTargetReachedOn } from "@/lib/cme/pace";
@@ -30,18 +29,21 @@ const formatHours = formatCmeHours;
  */
 
 /**
- * The pace sentence under the summary bar:
- *   - while there is something to plan: "17.5 h to go, about 1.4 h a week.
- *     After routines, 8.5 h is still to find." (no weekly figure in the first
- *     four weeks or the last week, matching `cmeWeeklyPace`);
- *   - once the total is reached: "50 h reached on 12 Nov";
- *   - a year that has ended or been closed asks nothing more: no sentence.
+ * The pace panel at the foot of the hero (work-mode redesign, owner request
+ * 6 Oct 2026), which opens "Close the gap":
+ *   - while there is something to plan: "17.5 h to go · about 1.4 h a week",
+ *     then "After routines, 8.5 h is still to find" (no weekly figure in the
+ *     first four weeks or the last week, matching `cmeWeeklyPace`);
+ *   - once the total is reached: "50 h reached on 12 Nov", with nothing to open;
+ *   - a year that has ended or been closed asks nothing more: no panel.
+ * Pace is a number, never "ahead" or "behind", and nothing here is a status colour.
  */
-function CmeCatchUpSentence({
+function CmePacePanel({
   plan,
   weeklyHours,
   entries,
   year,
+  onOpenGap,
 }: {
   readonly plan: CmeCatchUpPlan;
   /** `cmeWeeklyPace(...).weeklyHours` when a weekly figure is meaningful, else null. */
@@ -49,6 +51,7 @@ function CmeCatchUpSentence({
   /** The year's activities, for the day the target was reached. */
   readonly entries: readonly CmeEntry[];
   readonly year: number;
+  readonly onOpenGap: () => void;
 }) {
   if (plan.status === "met") {
     const reachedOn = cmeTargetReachedOn(
@@ -57,93 +60,71 @@ function CmeCatchUpSentence({
     );
     if (!reachedOn) return null;
     return (
-      <p data-testid="cme-pace-sentence" className="m-0 text-sm-minus text-[color:var(--text-muted)]">
-        {`${formatCmeHours(plan.targetHours)} h reached on ${formatCalendarDateShort(reachedOn)}.`}
-      </p>
+      <div className="cpd-hero-pace cursor-default">
+        <TrendingUp aria-hidden="true" strokeWidth={2} />
+        <span data-testid="cme-pace-sentence" className="nums min-w-0 flex-1">
+          <b>{`${formatCmeHours(plan.targetHours)} h reached on ${formatCalendarDateShort(reachedOn)}.`}</b>
+        </span>
+      </div>
     );
   }
   if (plan.status !== "plan") return null;
   const afterRoutines =
     plan.routineEstimateHours > 0
       ? plan.remainingAfterRoutines > 0
-        ? ` After routines, ${formatCmeHours(plan.remainingAfterRoutines)} h is still to find.`
-        : " Your routines would likely cover the rest."
-      : "";
+        ? `After routines, ${formatCmeHours(plan.remainingAfterRoutines)} h is still to find`
+        : "Your routines would likely cover the rest"
+      : null;
   return (
-    <p data-testid="cme-pace-sentence" className="nums m-0 text-sm-minus text-[color:var(--text-muted)]">
-      <b className="font-medium text-[color:var(--text-heading)]">{`${formatCmeHours(plan.hoursToGo)} h to go`}</b>
-      {weeklyHours !== null ? `, about ${weeklyHours.toFixed(1)} h a week.` : "."}
-      {afterRoutines}
-    </p>
+    <button type="button" className="cpd-hero-pace" onClick={onOpenGap} data-testid="cme-pace-panel">
+      <TrendingUp aria-hidden="true" strokeWidth={2} />
+      <span data-testid="cme-pace-sentence" className="nums min-w-0 flex-1">
+        <b>
+          {`${formatCmeHours(plan.hoursToGo)} h to go`}
+          {weeklyHours !== null ? ` · about ${weeklyHours.toFixed(1)} h a week` : ""}
+        </b>
+        {afterRoutines ? (
+          <>
+            <span className="sr-only">. </span>
+            <small>{afterRoutines}</small>
+          </>
+        ) : null}
+      </span>
+      <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 opacity-80" />
+    </button>
   );
 }
+
+/* The Year page's summary card: the work-mode hero (cpd_sum, cpd_empty). */
 
 /**
- * The hatched legend dot for the routines estimate: the same diagonal stripes
- * as its part of the bar, so the eye can pair them. Colour only helps; the
- * words beside it say what it is.
+ * The legend's short names ("Reviewing", "Outcomes"), as the mockup draws them.
+ * The full name is still read out ("Reviewing performance", "Measuring
+ * outcomes"), so a screen reader hears the category the Log and the year check use.
  */
-function CmeRoutineEstimateDot() {
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-block size-2 shrink-0 rounded-full bg-[repeating-linear-gradient(135deg,var(--cme-cat-1)_0_1.5px,transparent_1.5px_3.5px)] ring-1 ring-inset ring-[color:var(--cme-cat-2)] forced-colors:bg-[GrayText]"
-    />
-  );
+function categoryName(category: CmeCategory): ReactNode {
+  if (category === "measuring") {
+    return (
+      <>
+        <span className="sr-only">Measuring outcomes</span>
+        <span aria-hidden="true">Outcomes</span>
+      </>
+    );
+  }
+  if (category === "reviewing") {
+    return (
+      <>
+        Reviewing<span className="sr-only"> performance</span>
+      </>
+    );
+  }
+  return <>Educational</>;
 }
 
-/**
- * The legend row "Your routines will likely add 9 h". It opens the routine
- * scenarios behind the estimate (the "Close the gap" detail), so the estimate
- * can always be checked. Shown only while there is something to plan and a
- * routine would add hours.
- */
-function CmeRoutineEstimateRow({
-  plan,
-  onOpenDetail,
-}: {
-  readonly plan: CmeCatchUpPlan;
-  readonly onOpenDetail: () => void;
-}) {
-  if (plan.status !== "plan" || plan.routineEstimateHours <= 0) return null;
-  return (
-    <li className="relative flex min-w-0 items-center before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-['']">
-      <button
-        type="button"
-        data-testid="cme-close-gap"
-        onClick={onOpenDetail}
-        aria-label={`Your routines will likely add ${formatCmeHours(plan.routineEstimateHours)} h. See how they would close the gap`}
-        className={cn(
-          "flex min-h-12 w-full min-w-0 items-center gap-3 py-1.5 text-left",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-        )}
-      >
-        <CmeRoutineEstimateDot />
-        <span className="min-w-0 flex-1 text-sm-minus text-[color:var(--text)]">Your routines will likely add</span>
-        <span
-          data-testid="cme-catch-up-routine-hours"
-          className="nums whitespace-nowrap text-sm text-[color:var(--text-heading)]"
-        >
-          {`${formatCmeHours(plan.routineEstimateHours)} h`}
-        </span>
-      </button>
-    </li>
-  );
-}
+/** The plain white card for the no-target variant. */
+const SUMMARY_CARD = "work-card work-card--pad grid min-w-0 gap-3";
 
-/* The Year page's summary card (the 5 Oct mock-up: screens 01, 08, 10 and 11). */
-
-/** The legend's short names; the full names are on the Log and the year check. */
-const CATEGORY_SHORT: Record<CmeCategory, string> = {
-  educational: "Educational",
-  reviewing: "Reviewing performance",
-  measuring: "Measuring outcomes",
-};
-
-const SUMMARY_CARD =
-  "grid min-w-0 gap-3.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4";
-
-const LABEL = "text-2xs font-semibold uppercase leading-4 tracking-label text-[color:var(--text-muted)]";
+const LABEL = "work-label";
 
 /** The one figure: numbers are never heavier than 400 in CPD (tests/cme-type-weight.test.ts). */
 const KPI = "nums whitespace-nowrap text-xl font-normal tracking-tight text-[color:var(--text-heading)]";
@@ -171,7 +152,19 @@ function cmeYearLabel({ year, today, closed }: { year: number; today: string; cl
   return `${year} · about ${weeks} ${weeks === 1 ? "week" : "weeks"} left`;
 }
 
-/** One summary bar: the three category shades, then the routines estimate hatched, on the inset track. */
+/** Each category keeps its own hero shade, whichever others are empty. */
+const HERO_TOKEN: Record<CmeCategory, string> = {
+  educational: "var(--cme-hero-cat-1)",
+  reviewing: "var(--cme-hero-cat-2)",
+  measuring: "var(--cme-hero-cat-3)",
+};
+
+/**
+ * The hero's one bar: the three categories (white, pale and mid apricot on the
+ * copper), then the routines estimate hatched. Widths are hours over the
+ * target, so it never runs past the end. Hidden from screen readers: the
+ * legend under it says every part in words.
+ */
 function SummaryBar({
   categoryHours,
   routineHours,
@@ -181,56 +174,65 @@ function SummaryBar({
   routineHours: number;
   scale: number;
 }) {
-  const hatchId = useId();
   const percent = (hours: number) => Math.max(0, Math.min(100, (hours / scale) * 100));
-  // Each part starts where the ones before it ended. Percent lengths with no viewBox, so the
-  // widths need no inline style and the hatching keeps its true angle at any width.
-  const parts = [
-    ...cmeCategories
-      .filter((category) => categoryHours[category] > 0)
-      .map((category) => ({ id: category, width: percent(categoryHours[category]) })),
-    ...(routineHours > 0 ? [{ id: "routines", width: percent(routineHours) }] : []),
-  ];
-  let x = 0;
-  const placed = parts.map((part) => {
-    const start = x;
-    x += part.width;
-    return { ...part, x: start };
-  });
   return (
-    <div
-      data-testid="cme-summary-bar"
-      aria-hidden="true"
-      className="h-2.5 overflow-hidden rounded-full bg-[color:var(--surface-inset)] forced-colors:border forced-colors:border-[CanvasText]"
-    >
-      <svg className="block h-full w-full" focusable="false">
-        <defs>
-          <pattern id={hatchId} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="2" height="5" className="fill-[color:var(--cme-cat-2)] forced-colors:fill-[GrayText]" />
-          </pattern>
-        </defs>
-        {placed.map((part, index) => (
-          <rect
-            key={part.id}
-            data-category={part.id}
-            x={`${part.x}%`}
-            // A hairline gap between parts, as in the mock-up: each part but the last stops just short.
-            width={`${index < placed.length - 1 ? Math.max(0, part.width - 0.5) : part.width}%`}
-            height="100%"
-            fill={part.id === "routines" ? `url(#${hatchId})` : undefined}
-            className={
-              part.id === "routines"
-                ? undefined
-                : cn("forced-colors:fill-[CanvasText]", cmeCategoryShadeFill[part.id as CmeCategory])
-            }
+    <div data-testid="cme-summary-bar" aria-hidden="true" className="cpd-hero-bar">
+      {cmeCategories
+        .filter((category) => categoryHours[category] > 0)
+        .map((category) => (
+          <i
+            key={category}
+            data-category={category}
+            style={{ width: `${percent(categoryHours[category])}%`, background: HERO_TOKEN[category] }}
           />
         ))}
-      </svg>
+      {routineHours > 0 ? (
+        <i data-category="routines" data-cat="routines" style={{ width: `${percent(routineHours)}%` }} />
+      ) : null}
     </div>
   );
 }
 
-/** The three categories as legend rows: inside the summary, and as their own group when no target is confirmed. */
+/** The hero's legend: two columns, each category then what routines would likely add. */
+function HeroLegend({
+  categoryHours,
+  plan,
+  onOpenGap,
+}: {
+  readonly categoryHours: Record<CmeCategory, number>;
+  readonly plan: CmeCatchUpPlan;
+  readonly onOpenGap: () => void;
+}) {
+  const routines = plan.status === "plan" && plan.routineEstimateHours > 0 ? plan.routineEstimateHours : 0;
+  return (
+    <ul role="list" aria-label="Hours by category" data-testid="cme-category-legend" className="cpd-hero-legend">
+      {cmeCategories.map((category) => (
+        <li key={category}>
+          <i aria-hidden="true" data-cat={category} />
+          <span className="min-w-0 truncate">{categoryName(category)}</span>
+          <b>{`${formatHours(categoryHours[category])} h`}</b>
+        </li>
+      ))}
+      {routines > 0 ? (
+        <li>
+          <button
+            type="button"
+            data-testid="cme-close-gap"
+            onClick={onOpenGap}
+            aria-label={`Your routines will likely add ${formatCmeHours(routines)} h. See how they would close the gap`}
+            className="-my-3 flex min-h-12 w-full min-w-0 items-center gap-1.75 text-left text-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity-contrast)]"
+          >
+            <i aria-hidden="true" data-cat="routines" />
+            <span className="min-w-0 truncate">Routines likely</span>
+            <b data-testid="cme-catch-up-routine-hours">{`${formatCmeHours(routines)} h`}</b>
+          </button>
+        </li>
+      ) : null}
+    </ul>
+  );
+}
+
+/** The three categories as legend rows, as their own group when no target is confirmed. */
 export function CmeCategoryLegend({
   categoryHours,
   children,
@@ -249,7 +251,7 @@ export function CmeCategoryLegend({
           className="relative flex min-h-9 min-w-0 items-center gap-3 py-1.5 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden"
         >
           <CmeCategoryDot category={category} />
-          <span className="min-w-0 flex-1 text-sm-minus text-[color:var(--text)]">{CATEGORY_SHORT[category]}</span>
+          <span className="min-w-0 flex-1 text-sm-minus text-[color:var(--text)]">{categoryName(category)}</span>
           <span className="nums whitespace-nowrap text-sm text-[color:var(--text-heading)]">
             {`${formatHours(categoryHours[category])} h`}
           </span>
@@ -272,21 +274,23 @@ export type CmeYearSummaryProps = {
   readonly plan: CmeCatchUpPlan;
   /** The weekly figure, or null in the first four weeks and the last week. */
   readonly weeklyHours: number | null;
-  /** The year's activities: the week chart and the day the target was reached. */
+  /** The year's activities: the day the target was reached. */
   readonly entries: readonly CmeEntry[];
   readonly closed: boolean;
   /** Opens the routine scenarios behind the estimate. */
   readonly onOpenGap: () => void;
+  /** The empty variant's one action ("Log your first activity"). */
+  readonly firstLogAction?: ReactNode;
 };
 
 /**
- * The Year page's one summary card, read top to bottom:
- *   1. "2026 · ABOUT 13 WEEKS LEFT" and the percent of the target;
- *   2. "32.5 of 50 h logged";
- *   3. one bar in the three CPD indigo shades, then the routines estimate hatched;
- *   4. the legend in words (each category, and what routines will likely add);
- *   5. the pace sentence;
- *   6. "EACH WEEK": a thin bar per week, grouped by month.
+ * The Year page's one summary card, the work-mode copper hero (cpd_sum), read
+ * top to bottom:
+ *   1. "2026 · ABOUT 13 WEEKS LEFT" and the percent of the target in a pill;
+ *   2. "32.5 of 50 h logged", read out as one sentence with the percent;
+ *   3. one bar: the three categories, then the routines estimate hatched;
+ *   4. the legend in two columns (each category, and what routines will likely add);
+ *   5. the pace panel, which opens "Close the gap" (where the week chart now lives).
  *
  * Two honest variants: nothing logged yet (screen 08) says so rather than
  * drawing an empty chart, and no confirmed target (screen 10) shows hours
@@ -294,6 +298,7 @@ export type CmeYearSummaryProps = {
  */
 export function CmeYearSummary(props: CmeYearSummaryProps) {
   const { year, today, loggedHours, targetHours, categoryHours, plan, weeklyHours, entries, closed, onOpenGap } = props;
+  const { firstLogAction } = props;
 
   if (!(targetHours > 0)) {
     return (
@@ -328,18 +333,24 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
   const label = cmeYearLabel({ year, today, closed });
 
   if (!(loggedHours > 0)) {
+    // cpd_empty: one calm empty state, no hero.
     return (
-      <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className={SUMMARY_CARD}>
-        <div data-testid="cme-year-label" className={LABEL}>
-          {label}
+      <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className="work-card">
+        <div className="work-empty">
+          <span aria-hidden="true" className="work-empty__badge">
+            <Award aria-hidden="true" strokeWidth={2} />
+          </span>
+          <span data-testid="cme-year-label" className="sr-only">
+            {label}
+          </span>
+          <p data-testid="cme-total-hours" className="work-empty__title">
+            Nothing logged yet
+          </p>
+          <p data-testid="cme-empty-target-line" className="work-empty__body">
+            {`Your target is ${formatHours(targetHours)} h for ${year}. Log your first activity and it shows here.`}
+          </p>
+          {firstLogAction}
         </div>
-        <p data-testid="cme-total-hours" className="m-0">
-          <b className={KPI_WORDS}>Nothing logged yet</b>
-        </p>
-        <div aria-hidden="true" className="h-2.5 rounded-full bg-[color:var(--surface-inset)]" />
-        <p data-testid="cme-empty-target-line" className="m-0 text-sm-minus text-[color:var(--text-muted)]">
-          {`Your target is ${formatHours(targetHours)} h for ${year}. Log your first activity and it will show here.`}
-        </p>
       </section>
     );
   }
@@ -348,28 +359,25 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
   const scale = Math.max(targetHours, loggedHours + routineHours, 1);
   const percent = Math.round((loggedHours / targetHours) * 100);
 
+  const spoken = `${formatHours(loggedHours)} of ${formatHours(targetHours)} hours logged, ${percent} percent`;
   return (
-    <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className={SUMMARY_CARD}>
-      <div className={cn(LABEL, "flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5")}>
-        <span data-testid="cme-year-label">{label}</span>
-        <span
-          data-testid="cme-year-percent"
-          className="nums font-normal normal-case tracking-normal"
-        >{`${percent}%`}</span>
+    <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className="work-hero">
+      <div className="cpd-hero-top">
+        <div className="min-w-0">
+          <div data-testid="cme-year-label" className="cpd-hero-kicker nums">
+            {label}
+          </div>
+          {/* Read as one sentence: "32.5 of 50 hours logged, 65 percent". */}
+          <p data-testid="cme-total-hours" className="cpd-hero-big m-0" role="img" aria-label={spoken}>
+            <b>{formatHours(loggedHours)}</b>
+            <small>{`of ${formatHours(targetHours)} h logged`}</small>
+          </p>
+        </div>
+        <span data-testid="cme-year-percent" className="cpd-hero-pct nums" aria-hidden="true">{`${percent}%`}</span>
       </div>
-      <p data-testid="cme-total-hours" className="m-0 flex items-baseline gap-1.5">
-        <b className={KPI}>{formatHours(loggedHours)}</b>
-        <span className="text-sm-minus text-[color:var(--text-muted)]">{`of ${formatHours(targetHours)} h logged`}</span>
-      </p>
       <SummaryBar categoryHours={categoryHours} routineHours={routineHours} scale={scale} />
-      <CmeCategoryLegend categoryHours={categoryHours}>
-        <CmeRoutineEstimateRow plan={plan} onOpenDetail={onOpenGap} />
-      </CmeCategoryLegend>
-      <CmeCatchUpSentence plan={plan} weeklyHours={weeklyHours} entries={entries} year={year} />
-      <div className="grid min-w-0 gap-1">
-        <h2 className={LABEL}>Each week</h2>
-        <CmeYearInWeeks entries={entries} year={year} today={today} />
-      </div>
+      <HeroLegend categoryHours={categoryHours} plan={plan} onOpenGap={onOpenGap} />
+      <CmePacePanel plan={plan} weeklyHours={weeklyHours} entries={entries} year={year} onOpenGap={onOpenGap} />
     </section>
   );
 }

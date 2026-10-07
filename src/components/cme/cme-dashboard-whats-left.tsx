@@ -1,12 +1,23 @@
 "use client";
 
-import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Award,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  LayoutGrid,
+  Paperclip,
+  PenLine,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
-import { focusRing } from "@/components/card-recipes";
-import { CmeFlatList, CmeGroup, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
-import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
+import { CmeFlatList, CmeGroup, CmeTextLink } from "@/components/cme/cme-flat-list";
+import { CME_LOG_TRIGGER_ATTRIBUTE, openCmeQuickLog } from "@/components/cme/cme-quick-log";
+import { CmeMiniMeter } from "@/components/cme/cme-work-kit";
 import { cn } from "@/components/ui-primitives";
 import { formatCmeHours } from "@/components/cme/cme-dashboard-next-step";
 import { isHoursRequirementShape, rankRequirementsByGap } from "@/lib/cme/requirement-gaps";
@@ -25,6 +36,11 @@ import type { CmeYearCheck, CmeYearCheckRow } from "@/lib/cme/year-check";
  * never red, amber or green. Everything already done folds into one
  * "N done · …" row that opens to list them.
  *
+ * Work-mode look (work-mode redesign, owner request 6 Oct 2026): each row leads
+ * with a flat icon circle, ends in a small meter (an hours figure) or the word
+ * for what a tap does ("Tag one", "Start", "Show", "Copy"), and the page's next
+ * step sits first with a soft copper wash and its own "Log" button.
+ *
  * A row opens what is behind it: an hours figure opens the Year page's detail
  * sheet (which activities make it up); a task opens its place in Set up; a
  * practice-domain count opens the Log form; a record check opens the Log
@@ -34,8 +50,13 @@ import type { CmeYearCheck, CmeYearCheckRow } from "@/lib/cme/year-check";
  * carries the `cme-next-action` test id and the page does not repeat it.
  */
 
+type WhatsLeftKind = "total" | "hours" | "domains" | "task" | "evidence" | "reflection" | "copied" | "other";
+
 type WhatsLeftRow = {
   readonly id: string;
+  readonly kind: WhatsLeftKind;
+  /** How full an hours figure is, 0 to 1, for the row's small meter. */
+  readonly fraction?: number;
   readonly title: string;
   readonly subtitle: string;
   readonly ready: boolean;
@@ -80,6 +101,8 @@ function buildWhatsLeftRows({
     const shortBy = Math.max(0, Math.round((set.totalHours - totalHours) * 100) / 100);
     rows.push({
       id: "total",
+      kind: "total",
+      fraction: set.totalHours > 0 ? totalHours / set.totalHours : 0,
       title: "Hours in total",
       subtitle: total.ready ? total.summary : `${formatCmeHours(shortBy)} h to go`,
       ready: total.ready,
@@ -93,8 +116,11 @@ function buildWhatsLeftRows({
     const requirement = set.requirements.find((item) => item.id === status.requirementId);
     if (!row || !requirement) continue;
     const shape = requirement.spec.shape;
+    const progress = status.progress;
     rows.push({
       id: row.id,
+      kind: isHoursRequirementShape(shape) ? "hours" : shape === "task" ? "task" : "domains",
+      fraction: progress && progress.target > 0 ? progress.value / progress.target : undefined,
       title: requirement.label,
       subtitle: row.summary,
       ready: row.ready,
@@ -112,13 +138,21 @@ function buildWhatsLeftRows({
   for (const row of yearCheck.rows) {
     const id = requirementId(row);
     if (id && !rows.some((item) => item.id === row.id)) {
-      rows.push({ id: row.id, title: row.label, subtitle: row.summary, ready: row.ready, href: row.action?.href });
+      rows.push({
+        id: row.id,
+        kind: "other",
+        title: row.label,
+        subtitle: row.summary,
+        ready: row.ready,
+        href: row.action?.href,
+      });
     }
   }
 
   for (const row of yearCheck.rows.filter((item) => item.group === "records")) {
     rows.push({
       id: row.id,
+      kind: row.id === "evidence" || row.id === "reflection" || row.id === "copied" ? row.id : "other",
       title: row.label,
       subtitle: row.summary,
       ready: row.ready,
@@ -129,53 +163,111 @@ function buildWhatsLeftRows({
   return rows;
 }
 
-function RowBody({ row }: { row: WhatsLeftRow }) {
+const KIND_ICON: Record<WhatsLeftKind, LucideIcon> = {
+  total: Award,
+  hours: Users,
+  domains: LayoutGrid,
+  task: PenLine,
+  evidence: Paperclip,
+  reflection: PenLine,
+  copied: Copy,
+  other: Award,
+};
+
+/** The word on an open row's end: what a tap does. Hours rows show a meter instead. */
+const KIND_ACTION: Partial<Record<WhatsLeftKind, string>> = {
+  domains: "Tag one",
+  task: "Start",
+  evidence: "Show",
+  reflection: "Show",
+  copied: "Copy",
+};
+
+function RowEnd({ row, isNext }: { row: WhatsLeftRow; isNext: boolean }) {
+  if (row.ready) return <ChevronRight aria-hidden="true" className="work-row__chev" />;
+  // The next step's own Log button sits beside the row, so its end stays quiet.
+  if (isNext && (row.kind === "hours" || row.kind === "total")) return null;
+  if (row.fraction !== undefined && (row.kind === "hours" || row.kind === "total")) {
+    // The row already says the figures ("16.5 of 25 h"), so the meter is for sight only.
+    return <CmeMiniMeter fraction={row.fraction} />;
+  }
+  const word = KIND_ACTION[row.kind];
+  if (word) {
+    return (
+      <span aria-hidden="true" className="work-button pointer-events-none" data-variant={isNext ? "primary" : "tinted"}>
+        {word}
+      </span>
+    );
+  }
+  return <ChevronRight aria-hidden="true" className="work-row__chev" />;
+}
+
+function RowBody({ row, isNext }: { row: WhatsLeftRow; isNext: boolean }) {
+  const Icon = row.ready ? Check : KIND_ICON[row.kind];
   return (
     <>
-      <CmeRowMark state={row.ready ? "done" : "open"} />
-      <span className="grid min-w-0 flex-1 gap-px py-2">
-        <span className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">{row.title}</span>
-        <span className="nums line-clamp-2 break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">
-          {row.subtitle}
-        </span>
+      <span
+        aria-hidden="true"
+        className="work-ic rounded-full"
+        data-tone={row.ready || (!isNext && row.kind !== "total" && row.kind !== "hours") ? "neutral" : undefined}
+      >
+        <Icon aria-hidden="true" strokeWidth={2} />
       </span>
-      <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+      <span className="work-row__text">
+        <span className="work-row__title break-words">{row.title}</span>
+        <span className="work-row__sub nums line-clamp-2 break-words">{row.subtitle}</span>
+      </span>
+      <RowEnd row={row} isNext={isNext} />
     </>
   );
 }
 
-const ROW_CONTROL = cn(
-  modeRowHeight.double,
-  modePressable,
-  focusRing,
-  "flex w-full min-w-0 items-center gap-3 text-left no-underline",
-);
+function logHere(event: MouseEvent<HTMLAnchorElement>) {
+  // Opens the quick-log sheet where the page has one; otherwise the link opens the full form.
+  if (openCmeQuickLog(event.currentTarget)) event.preventDefault();
+}
 
 function Row({
   row,
   isNext,
+  year,
   onOpenDetail,
 }: {
   row: WhatsLeftRow;
   isNext: boolean;
+  year: number;
   onOpenDetail: (detail: string) => void;
 }) {
   const detail = row.detail;
+  const showLog = isNext && !row.ready && (row.kind === "hours" || row.kind === "total");
   return (
     <li
       data-met={row.ready ? "true" : "false"}
       data-testid={isNext ? "cme-next-action" : undefined}
-      className={cn(modeInsetHairline, "flex min-w-0 items-center before:left-0")}
+      className={cn("flex min-w-0 items-center", isNext && "cpd-next")}
     >
       {detail ? (
-        <button type="button" className={ROW_CONTROL} onClick={() => onOpenDetail(detail)}>
-          <RowBody row={row} />
+        <button type="button" className="work-row min-w-0 flex-1" onClick={() => onOpenDetail(detail)}>
+          <RowBody row={row} isNext={isNext} />
         </button>
       ) : (
-        <Link href={row.href ?? "/cme/check"} className={ROW_CONTROL}>
-          <RowBody row={row} />
+        <Link href={row.href ?? "/cme/check"} className="work-row min-w-0 flex-1">
+          <RowBody row={row} isNext={isNext} />
         </Link>
       )}
+      {showLog ? (
+        <Link
+          href={`/cme/new?year=${year}`}
+          onClick={logHere}
+          {...{ [CME_LOG_TRIGGER_ATTRIBUTE]: "" }}
+          className="work-button mr-2 shrink-0"
+          data-variant="primary"
+          aria-label={`Log an activity toward ${row.title}`}
+          data-testid="cme-next-log"
+        >
+          Log
+        </Link>
+      ) : null}
     </li>
   );
 }
@@ -198,7 +290,10 @@ export function CmeWhatsLeft({
 }) {
   const rows = buildWhatsLeftRows({ set, statuses, yearCheck, totalHours });
   if (rows.length === 0) return null;
-  const left = rows.filter((row) => !row.ready);
+  // The next step leads the list (the mockup's top row), the rest keep their gap order.
+  const left = rows
+    .filter((row) => !row.ready)
+    .sort((a, b) => Number(b.id === nextStepRowId) - Number(a.id === nextStepRowId));
   const done = rows.filter((row) => row.ready);
   const label: ReactNode = left.length > 0 ? `What's left · ${left.length}` : "What's left";
 
@@ -208,42 +303,36 @@ export function CmeWhatsLeft({
       testId="cme-requirements"
       end={
         <CmeTextLink href={`/cme/check?year=${set.year}`} testId="cme-year-check-link">
-          Year check
+          Report
         </CmeTextLink>
       }
     >
       <CmeFlatList label="What's left">
         {left.length === 0 ? (
-          <li className="flex min-h-12 items-center text-sm-minus text-[color:var(--text-muted)]">
-            Everything in the year check is done.
-          </li>
+          <li className="work-row text-sm-minus text-[color:var(--text-muted)]">Everything in the year check is done.</li>
         ) : null}
         {left.map((row) => (
-          <Row key={row.id} row={row} isNext={row.id === nextStepRowId} onOpenDetail={onOpenDetail} />
+          <Row key={row.id} row={row} isNext={row.id === nextStepRowId} year={set.year} onOpenDetail={onOpenDetail} />
         ))}
         {done.length > 0 ? (
-          <li className={cn(modeInsetHairline, "min-w-0 before:left-0")}>
+          <li className="min-w-0">
             <details data-testid="cme-requirements-done" className="group">
-              <summary
-                className={cn(
-                  modeRowHeight.single,
-                  focusRing,
-                  "flex cursor-pointer list-none items-center gap-3 py-2 [&::-webkit-details-marker]:hidden",
-                )}
-              >
-                <CmeRowMark state="done" />
-                <span className="min-w-0 flex-1 text-sm text-[color:var(--text-muted)]">
+              <summary className="work-row cursor-pointer list-none text-xs font-semibold text-[color:var(--text-muted)] [&::-webkit-details-marker]:hidden">
+                <span aria-hidden="true" className="work-ic work-ic--sm rounded-full" data-tone="neutral">
+                  <Check aria-hidden="true" strokeWidth={2.4} />
+                </span>
+                <span className="min-w-0 flex-1">
                   <span className="nums">{`${done.length} done`}</span>
                   {` · ${joinLabels(done.map((row) => row.title))}`}
                 </span>
                 <ChevronDown
                   aria-hidden="true"
-                  className="size-icon-sm shrink-0 text-[color:var(--text-muted)] motion-safe:transition-transform motion-safe:duration-[var(--duration-fast)] group-open:rotate-180"
+                  className="work-row__chev motion-safe:transition-transform motion-safe:duration-[var(--duration-fast)] group-open:rotate-180"
                 />
               </summary>
-              <ul role="list" className="grid min-w-0">
+              <ul role="list" className="work-rows grid min-w-0 border-t border-[color:var(--work-line)]">
                 {done.map((row) => (
-                  <Row key={row.id} row={row} isNext={false} onOpenDetail={onOpenDetail} />
+                  <Row key={row.id} row={row} isNext={false} year={set.year} onOpenDetail={onOpenDetail} />
                 ))}
               </ul>
             </details>

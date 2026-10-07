@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 
-import { focusRing } from "@/components/card-recipes";
-import { cn } from "@/components/ui-primitives";
 import type { CmeYearCheck } from "@/lib/cme/year-check";
 
 /**
@@ -18,15 +16,6 @@ import type { CmeYearCheck } from "@/lib/cme/year-check";
  * when it is null (the drafts did not load) the chip is left out rather than
  * shown as a zero.
  */
-
-/**
- * A chip: the link is a real 48px-tall box (so wrapped rows can never share a
- * tap area), and the visible 32px face inside it carries the hairline outline
- * and its count in the heading colour.
- */
-const CHIP = cn(focusRing, "group inline-flex min-h-12 items-center rounded-md no-underline");
-const CHIP_FACE =
-  "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-[color:var(--border-strong)] px-2.75 text-sm-minus text-[color:var(--text-muted)] group-hover:border-[color:var(--text-muted)]";
 
 export type CmeYearChip = {
   readonly id: string;
@@ -66,17 +55,16 @@ export function buildCmeYearChips({
   return chips.filter((chip) => chip.count > 0);
 }
 
+/** The chips, in the work kit's look: a 30px pill inside a 48px tap, the count in copper. */
 export function CmeTodayShortcuts({ chips }: { chips: readonly CmeYearChip[] }) {
   if (chips.length === 0) return null;
   return (
-    <ul role="list" aria-label="To finish" data-testid="cme-today-shortcuts" className="flex flex-wrap gap-x-2">
+    <ul role="list" aria-label="To finish" data-testid="cme-today-shortcuts" className="work-chips m-0 p-0">
       {chips.map((chip) => (
-        <li key={chip.id}>
-          <Link href={chip.href} data-testid={`cme-chip-${chip.id}`} className={CHIP}>
-            <span className={CHIP_FACE}>
-              {chip.label}
-              <b className="nums font-normal text-[color:var(--text-heading)]">{chip.count}</b>
-            </span>
+        <li key={chip.id} className="list-none">
+          <Link href={chip.href} data-testid={`cme-chip-${chip.id}`} className="work-chip">
+            {chip.label}
+            <b className="nums font-normal text-[color:var(--mode-identity)]">{chip.count}</b>
           </Link>
         </li>
       ))}

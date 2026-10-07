@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Target } from "lucide-react";
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
@@ -17,8 +17,8 @@ import { furthestFromMet } from "@/lib/cme/requirement-gaps";
 import type { CmeEntry, CmeRequirementSet, CmeRequirementStatus } from "@/lib/cme/types";
 import { CME_CLOSE_WINDOW_DAYS } from "@/lib/cme/year-close";
 
-/** A quiet note: hairline border on the raised surface, no shadow and no tint (the 5 Oct mock-up). */
-const NOTE = "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]";
+/** The work kit's white card with a hairline (work-mode redesign, owner request 6 Oct 2026). */
+const NOTE = "work-card";
 
 /**
  * Today's one next step, by season — driven entirely by `now` against the CPD
@@ -161,10 +161,13 @@ export function CmeNextStepRow({
       className={cn(
         NOTE,
         focusRing,
-        "flex min-h-12 items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium text-[color:var(--text-heading)] no-underline",
+        "cpd-next flex min-h-12 items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium text-[color:var(--text-heading)] no-underline",
       )}
     >
-      <span className="min-w-0">{step.label}</span>
+      <span aria-hidden="true" className="work-ic">
+        <Target aria-hidden="true" strokeWidth={2} />
+      </span>
+      <span className="min-w-0 flex-1">{step.label}</span>
       <ChevronRight aria-hidden="true" className={cn("size-icon-sm shrink-0", textMuted)} />
     </Link>
   );
