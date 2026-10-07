@@ -58,6 +58,20 @@ describe("dialableDigits and checking", () => {
     expect(problems.label).toMatch(/patient's details/);
     expect(addSavedNumber({ label: "Bed 12 John Smith DOB 01/02/1960", number: "6457 2210" }).ok).toBe(false);
   });
+
+  it("reads names and notes with the shared patient-detail check, allowing a colleague's name only as a name", () => {
+    // A saved number may be a colleague's, or a hospital service in capitals.
+    expect(checkNumberDraft({ label: "Dr Grant, registrar", number: "6457 2210" })).toEqual({});
+    expect(checkNumberDraft({ label: "RPH ED", number: "6457 2210" })).toEqual({});
+    // Details the shared check catches and the older one did not: initials after a patient word, an age.
+    expect(checkNumberDraft({ label: "Ward 4", number: "6457 2210", note: "pt js" }).note).toMatch(/patient's details/);
+    expect(checkNumberDraft({ label: "Ward 4", number: "6457 2210", note: "45 year old male in bay 3" }).note).toMatch(
+      /patient's details/,
+    );
+    expect(checkNumberDraft({ label: "Ward 4", number: "6457 2210", note: "Mrs Smith" }).note).toMatch(
+      /patient's details/,
+    );
+  });
 });
 
 describe("restoreSavedNumbers", () => {
