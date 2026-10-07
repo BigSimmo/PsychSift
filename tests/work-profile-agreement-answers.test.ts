@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF } from "@/lib/roster/fatigue-rules-source";
 import { restRulesGate } from "@/lib/work-profile/model";
 import {
+  agreementPatientSpans,
+  searchAgreementClauses,
   AGREEMENT_PAGE_HREF,
   AGREEMENT_SUGGESTED_QUESTIONS,
   AGREEMENT_TOPICS,
@@ -301,5 +303,52 @@ describe("work search provider", () => {
 
   it("returns nothing for patient details, so the typed text never reaches a link", () => {
     expect(agreementWorkSearchAnswer("UR 4471823 after nights", opts)).toBeNull();
+  });
+});
+
+describe("marking the patient detail in a question", () => {
+  const marked = (question: string) =>
+    agreementPatientSpans(question, 2026).map((span) => question.slice(span.start, span.end));
+
+  it("marks only the detail, with its label, never the words around it", () => {
+    expect(marked("overtime, UR 4471823")).toEqual(["UR 4471823"]);
+    expect(marked("Mrs Smith stayed late")).toEqual(["Mrs Smith"]);
+    expect(marked("dob 1/2/1980 nights")).toEqual(["dob 1/2/1980"]);
+    expect(marked("J Smith after nights")).toEqual(["J Smith"]);
+    expect(marked("bed 4 break")).toEqual(["bed 4"]);
+    expect(marked("45yo F nights")[0]).toContain("45yo");
+  });
+
+  it("marks nothing in an ordinary question, and stops at trailing punctuation", () => {
+    expect(marked("How long a break between shifts?")).toEqual([]);
+    expect(marked("")).toEqual([]);
+    expect(marked("was it Mrs Smith?")).toEqual(["Mrs Smith"]);
+  });
+});
+
+describe("plain word search over the clause text", () => {
+  it("finds the clauses holding a word, with the lines that hold it", () => {
+    const matches = searchAgreementClauses("break");
+    expect(matches.length).toBeGreaterThan(0);
+    for (const match of matches) {
+      expect(match.found).toBe(1);
+      for (const line of match.lines) expect(line.text.toLowerCase()).toContain("break");
+    }
+  });
+
+  it("puts clauses with more of the words first, and ignores question words", () => {
+    const matches = searchAgreementClauses("how many nights in a row");
+    expect(matches[0]!.found).toBeGreaterThanOrEqual(matches[matches.length - 1]!.found);
+    expect(searchAgreementClauses("how many can I")).toEqual([]);
+    expect(searchAgreementClauses("zzz")).toEqual([]);
+    expect(searchAgreementClauses("")).toEqual([]);
+  });
+
+  it("never invents a clause: every match is one PsychSift has quoted", () => {
+    const quoted = new Set(Object.values(FATIGUE_RULE_SET.rules).map((rule) => (rule as { clause: string }).clause));
+    for (const match of searchAgreementClauses("hours rostered nights break")) {
+      expect(match.clause.clause).toMatch(/^15\(/);
+      expect(quoted.has(match.clause.clause) || match.clause.lines.length > 0).toBe(true);
+    }
   });
 });

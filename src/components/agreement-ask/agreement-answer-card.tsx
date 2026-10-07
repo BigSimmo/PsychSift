@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, FileQuestion, FileText, Scale, TriangleAlert } from "lucide-react";
+import { Briefcase, CalendarClock, ChevronRight, FileQuestion, FileText, Scale, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { forwardRef, type ReactNode } from "react";
 
@@ -50,8 +50,8 @@ export function AgreementClauseChip({
         className={cn(
           "inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full border px-2 text-xs font-medium",
           active
-            ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-            : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--clinical-accent)]",
+            ? "border-[color:var(--mode-identity)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
+            : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--mode-identity)]",
         )}
       >
         <FileText aria-hidden="true" className="size-icon-xs" />
@@ -157,7 +157,29 @@ export const AgreementAnswerCard = forwardRef<HTMLHeadingElement, AgreementAnswe
               ))}
             </ul>
           </div>
+          <div className="grid gap-1 border-t border-[color:var(--border)] px-3 pt-3" data-testid="agreement-who-helps">
+            <p className="text-xs font-medium leading-4 text-[color:var(--text-muted)]">Who could help</p>
+            <Link
+              href="/admin/help#admin-help-contacts"
+              data-mode-identity="my-work"
+              className={cn(focusRing, "flex min-h-13 min-w-0 items-center gap-3 rounded-md no-underline")}
+            >
+              <AgreementIconCircle icon={Briefcase} />
+              <span className="grid min-w-0 flex-1 gap-0.5">
+                <span className="text-sm font-medium leading-5 text-[color:var(--text-heading)]">
+                  Medical Workforce
+                </span>
+                <span className="text-xs leading-4 text-[color:var(--text-muted)]">
+                  Your hospital’s team, in Admin contacts
+                </span>
+              </span>
+              <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+            </Link>
+          </div>
           <AgreementUnionFooter />
+          <p className="border-t border-[color:var(--border)] px-3 py-3 text-xs leading-4 text-[color:var(--text-muted)]">
+            PsychSift can quote your breaks, shift length, nights and weekly hours. Try asking about those.
+          </p>
         </section>
       );
     }
@@ -193,7 +215,7 @@ export const AgreementAnswerCard = forwardRef<HTMLHeadingElement, AgreementAnswe
                 {topic.lines.map((line, index) => (
                   <li
                     key={`${line.clause}-${index}`}
-                    className="min-w-0 border-l-2 border-[color:var(--clinical-accent-border)] pl-3 text-sm leading-6 text-[color:var(--text)]"
+                    className="min-w-0 border-l-2 border-[color:var(--mode-identity-border)] pl-3 text-sm leading-6 text-[color:var(--text)]"
                   >
                     <q className="break-words">{line.text}</q>{" "}
                     <AgreementClauseChip
@@ -235,7 +257,7 @@ export const AgreementAnswerCard = forwardRef<HTMLHeadingElement, AgreementAnswe
             href="/roster/shifts?view=hours"
             className={cn(
               focusRing,
-              "inline-flex min-h-12 w-fit items-center gap-1.5 text-sm font-medium text-[color:var(--clinical-accent)] no-underline",
+              "inline-flex min-h-12 w-fit items-center gap-1.5 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
             )}
           >
             <CalendarClock aria-hidden="true" className="size-icon-sm" />

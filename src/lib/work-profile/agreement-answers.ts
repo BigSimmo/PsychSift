@@ -439,6 +439,55 @@ export function checkAgreementQuestion(question: string, thisYear = new Date().g
   return { kind: "ok" };
 }
 
+/** A stretch of the typed question, by character position, end exclusive. */
+export interface AgreementTextSpan {
+  readonly start: number;
+  readonly end: number;
+}
+
+function readsAsPatientDetail(text: string, thisYear: number): boolean {
+  return looksLikePatientDetails(text, thisYear) || checkReminderText(text) !== null;
+}
+
+/**
+ * Where the patient detail sits in what was typed, so the catch can mark it ("overtime, UR 4471823"
+ * marks the number). Read with the same two detectors as `checkAgreementQuestion`, over windows of
+ * one to three words: a window is marked when it reads as a patient detail and no shorter window
+ * inside it does, so the mark covers the detail and not the words around it. Empty when the
+ * detail cannot be pinned to three words or fewer; the catch still shows, unmarked.
+ */
+export function agreementPatientSpans(question: string, thisYear = new Date().getFullYear()): AgreementTextSpan[] {
+  const tokens = [...question.matchAll(/\S+/g)].map((match) => {
+    const word = match[0];
+    const lead = word.match(/^[("'[]+/)?.[0].length ?? 0;
+    const trail = word.match(/[)"'\].,;:!?]+$/)?.[0].length ?? 0;
+    const start = (match.index ?? 0) + Math.min(lead, word.length - 1);
+    return { start, end: Math.max(start + 1, (match.index ?? 0) + word.length - trail) };
+  });
+  const flaggedAt = (from: number, size: number) =>
+    readsAsPatientDetail(question.slice(tokens[from]!.start, tokens[from + size - 1]!.end), thisYear);
+  const marked = new Set<number>();
+  for (let size = 1; size <= 3; size += 1) {
+    for (let from = 0; from + size <= tokens.length; from += 1) {
+      if (!flaggedAt(from, size)) continue;
+      // Shorter windows inside this one already carry the detail: they were marked at their own size.
+      if (size > 1 && (flaggedAt(from, size - 1) || flaggedAt(from + 1, size - 1))) continue;
+      for (let index = from; index < from + size; index += 1) marked.add(index);
+      // "UR 4471823": the label in front of a number is part of the detail too.
+      const before = from > 0 ? question.slice(tokens[from - 1]!.start, tokens[from - 1]!.end) : "";
+      if (/^(?:u\.?r\.?n?|umrn|mrn|nhi|medicare|dob)$/i.test(before)) marked.add(from - 1);
+    }
+  }
+  const spans: AgreementTextSpan[] = [];
+  for (const index of [...marked].sort((a, b) => a - b)) {
+    const token = tokens[index]!;
+    const last = spans[spans.length - 1];
+    if (last && marked.has(index - 1)) spans[spans.length - 1] = { start: last.start, end: token.end };
+    else spans.push({ start: token.start, end: token.end });
+  }
+  return spans;
+}
+
 export type AgreementAnswer =
   | {
       readonly kind: "quoted";
@@ -563,6 +612,67 @@ const STOP_WORDS = new Set([
   "are",
   "get",
 ]);
+
+/** Question words that say nothing about which clause is meant. */
+const SEARCH_STOP_WORDS = new Set([
+  ...STOP_WORDS,
+  "any",
+  "are",
+  "could",
+  "does",
+  "got",
+  "has",
+  "have",
+  "many",
+  "much",
+  "need",
+  "should",
+  "there",
+  "will",
+  "with",
+  "would",
+  "you",
+  "your",
+]);
+
+export interface AgreementClauseMatch {
+  readonly clause: AgreementClause;
+  /** The quoted lines that hold the words, in clause order. */
+  readonly lines: readonly AgreementLine[];
+  /** How many of the typed words were found, for ordering. */
+  readonly found: number;
+}
+
+/**
+ * Plain word search over the clause text PsychSift holds (the quotes and their headings), no AI.
+ * A clause is listed when any typed word (three letters or more, question words left out) starts a
+ * word in it; clauses holding more of the words come first, then clause order. Works offline,
+ * because the text is built in.
+ */
+export function searchAgreementClauses(query: string): readonly AgreementClauseMatch[] {
+  const words = [
+    ...new Set(
+      normaliseAgreementQuestion(query)
+        .split(" ")
+        .filter((word) => word.length >= 3 && !SEARCH_STOP_WORDS.has(word)),
+    ),
+  ];
+  if (!words.length) return [];
+  const has = (text: string, word: string) =>
+    normaliseAgreementQuestion(text)
+      .split(" ")
+      .some((token) => token.startsWith(word));
+  const matches: AgreementClauseMatch[] = [];
+  for (const clause of agreementClauses()) {
+    const found = words.filter(
+      (word) => clause.labels.some((label) => has(label, word)) || clause.lines.some((line) => has(line.text, word)),
+    );
+    if (!found.length) continue;
+    const lines = clause.lines.filter((line) => found.some((word) => has(line.text, word)));
+    matches.push({ clause, lines, found: found.length });
+  }
+  return matches.sort((a, b) => b.found - a.found || compareClauses(a.clause.clause, b.clause.clause));
+}
 
 /** The words a highlight should mark in a suggestion, from what was typed. */
 export function agreementHighlightWords(partial: string): string[] {

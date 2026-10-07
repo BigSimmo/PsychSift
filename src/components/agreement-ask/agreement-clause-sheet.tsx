@@ -78,7 +78,7 @@ export function AgreementClauseSheet({
                   className={cn(
                     "rounded-md border px-3 py-2 text-sm leading-6",
                     used
-                      ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--text-heading)]"
+                      ? "border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--text-heading)]"
                       : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text)]",
                   )}
                 >

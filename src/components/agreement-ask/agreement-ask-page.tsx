@@ -10,7 +10,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AgreementAnswerCard } from "@/components/agreement-ask/agreement-answer-card";
 import { AgreementClauseSheet } from "@/components/agreement-ask/agreement-clause-sheet";
@@ -23,10 +23,12 @@ import {
   agreementCard,
 } from "@/components/agreement-ask/agreement-parts";
 import { ContextualBackLink } from "@/components/contextual-back-link";
-import { InformationPageShell } from "@/components/information-page-shell";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
+import { WorkBody } from "@/components/mode-kit/work";
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { SearchField } from "@/components/ui/text-field";
+import { useOptionalToast } from "@/components/ui/toast";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import {
@@ -37,6 +39,7 @@ import {
   agreementClauseCopyText,
   agreementClauses,
   agreementHighlightWords,
+  agreementPatientSpans,
   agreementSignOffState,
   agreementSource,
   agreementSuggestions,
@@ -44,6 +47,7 @@ import {
   answerAgreementTopic,
   checkAgreementQuestion,
   isAgreementTopicId,
+  searchAgreementClauses,
   type AgreementAnswer,
   type AgreementClause,
   type AgreementTopicId,
@@ -70,6 +74,8 @@ export function AgreementAskPage() {
   const pathname = usePathname();
   const online = useOnlineStatus();
   const offline = !online;
+  const toast = useOptionalToast();
+  useModeBandHeading({ eyebrow: "Work profile", title: "Ask the agreement" });
 
   const [draft, setDraft] = useState("");
   const [answer, setAnswer] = useState<Shown | null>(null);
@@ -98,6 +104,9 @@ export function AgreementAskPage() {
     [draft, typing],
   );
   const highlight = useMemo(() => agreementHighlightWords(draft), [draft]);
+  const caught = useMemo(() => (patient ? agreementPatientSpans(draft) : []), [draft, patient]);
+  // Plain word search over the clause text PsychSift holds: no AI, works offline.
+  const wordMatches = useMemo(() => (typing ? searchAgreementClauses(draft) : []), [draft, typing]);
 
   const show = useCallback((next: AgreementAnswer, asked: string) => {
     if (next.kind !== "quoted" && next.kind !== "not-checked") return;
@@ -213,13 +222,20 @@ export function AgreementAskPage() {
     copyTextToClipboard(text).then(
       () => {
         flashCopied(which);
-        announce(done, { priority: "polite" });
+        // The toast has its own polite live region; without one, say it once here.
+        if (toast) toast.push({ tone: "success", title: done, duration: 4000 });
+        else announce(done, { priority: "polite" });
       },
       () => {
         setCopyFailed(true);
         announce("Couldn’t copy. Select the text and copy it instead.", { priority: "assertive" });
       },
     );
+  };
+
+  const openMatchedClause = (match: (typeof wordMatches)[number]) => {
+    setSheet({ clause: match.clause, used: match.lines.map((line) => line.text) });
+    setCopied(null);
   };
 
   const openClause = (clause: string) => {
@@ -231,17 +247,18 @@ export function AgreementAskPage() {
   };
 
   return (
-    <InformationPageShell testId="agreement-ask-main">
-      <div className="mx-auto grid w-full min-w-0 max-w-2xl gap-5">
+    <main data-testid="agreement-ask-main" className="min-w-0 [overflow-wrap:anywhere]">
+      <WorkBody>
         <header className="grid gap-1" data-testid="agreement-ask-header">
           <ContextualBackLink
             fallbackHref="/my-day/profile?tab=work"
-            className="-ml-1 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)] no-underline"
+            className="-ml-1 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline"
           >
             <ChevronLeft aria-hidden="true" className="size-icon-sm" />
             Work profile
           </ContextualBackLink>
-          <h1 className="text-hero font-semibold leading-tight text-[color:var(--text-heading)]">Ask the agreement</h1>
+          {/* The work band names the page; the h1 stays for screen readers. */}
+          <h1 className="sr-only">Ask the agreement</h1>
           <p className="text-sm leading-5 text-[color:var(--text-muted)]">
             Answers only in the agreement’s own words, each with its clause. No AI.
           </p>
@@ -283,7 +300,13 @@ export function AgreementAskPage() {
               fieldClassName="min-w-0 flex-1"
               data-testid="agreement-question"
             />
-            <Button type="submit" variant="primary" className="shrink-0" testId="agreement-ask">
+            <Button
+              type="submit"
+              variant="primary"
+              className="shrink-0"
+              disabled={Boolean(patient)}
+              testId="agreement-ask"
+            >
               Ask
             </Button>
           </div>
@@ -315,6 +338,15 @@ export function AgreementAskPage() {
                 </span>
               </span>
             </div>
+            {caught.length ? (
+              <p
+                className="rounded-md bg-[color:var(--surface-subtle)] px-3 py-2 text-sm leading-5 text-[color:var(--text)]"
+                data-testid="agreement-patient-marked"
+              >
+                <span className="sr-only">Caught in your question: </span>
+                <MarkedText text={draft} spans={caught} />
+              </p>
+            ) : null}
             {patient.safer ? (
               <div className="grid gap-1">
                 <p className="text-xs font-medium leading-4 text-[color:var(--text-muted)]">Ask without them</p>
@@ -325,7 +357,7 @@ export function AgreementAskPage() {
                   className="flex min-h-12 w-full min-w-0 items-center gap-3 rounded-md border border-[color:var(--border)] px-3 text-left text-sm font-medium text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)]"
                 >
                   <span className="min-w-0 flex-1 break-words">{patient.safer}</span>
-                  <span className="text-[color:var(--clinical-accent)]">Ask</span>
+                  <span className="text-[color:var(--mode-identity)]">Ask</span>
                 </button>
               </div>
             ) : null}
@@ -359,6 +391,36 @@ export function AgreementAskPage() {
                       icon={MessageCircleQuestion}
                       title={<AgreementHighlight text={question} words={highlight} />}
                       onSelect={() => askSuggested(question)}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+            {wordMatches.length ? (
+              <section
+                aria-label="In the agreement's words"
+                className="grid gap-1"
+                data-testid="agreement-word-matches"
+              >
+                <AgreementSectionLabel>
+                  In the agreement’s words{" "}
+                  <span className="nums">
+                    {wordMatches.length} {wordMatches.length === 1 ? "clause" : "clauses"}
+                  </span>
+                </AgreementSectionLabel>
+                <ul role="list" className={agreementCard}>
+                  {wordMatches.slice(0, 4).map((match) => (
+                    <AgreementRowButton
+                      key={match.clause.clause}
+                      icon={FileText}
+                      title={`Clause ${match.clause.clause}`}
+                      subtitle={
+                        <AgreementHighlight
+                          text={match.lines[0]?.text ?? match.clause.labels.join(" · ")}
+                          words={highlight}
+                        />
+                      }
+                      onSelect={() => openMatchedClause(match)}
                     />
                   ))}
                 </ul>
@@ -487,7 +549,7 @@ export function AgreementAskPage() {
             </div>
           </section>
         ) : null}
-      </div>
+      </WorkBody>
 
       <AgreementClauseSheet
         clause={sheet?.clause ?? null}
@@ -506,6 +568,32 @@ export function AgreementAskPage() {
         copied={copied === "clause"}
         offline={offline}
       />
-    </InformationPageShell>
+    </main>
   );
+}
+
+/** The typed question with the caught patient detail marked, read in order by a screen reader. */
+function MarkedText({
+  text,
+  spans,
+}: {
+  readonly text: string;
+  readonly spans: readonly { readonly start: number; readonly end: number }[];
+}) {
+  const parts: ReactNode[] = [];
+  let at = 0;
+  for (const span of spans) {
+    if (span.start > at) parts.push(text.slice(at, span.start));
+    parts.push(
+      <mark
+        key={span.start}
+        className="rounded-sm bg-[color:var(--warning-soft)] px-0.5 font-semibold text-[color:var(--warning-text)] underline decoration-[color:var(--warning)] decoration-2 underline-offset-2"
+      >
+        {text.slice(span.start, span.end)}
+      </mark>,
+    );
+    at = span.end;
+  }
+  if (at < text.length) parts.push(text.slice(at));
+  return <>{parts}</>;
 }

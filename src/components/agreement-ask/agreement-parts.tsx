@@ -34,7 +34,7 @@ export function AgreementIconCircle({
       className={cn(
         "grid shrink-0 place-items-center rounded-full",
         size === "lg" ? "size-11" : "size-8",
-        tone === "accent" && "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
+        tone === "accent" && "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
         tone === "neutral" && "bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
         tone === "warning" && "bg-[color:var(--warning-soft)] text-[color:var(--warning-text)]",
       )}
@@ -119,10 +119,10 @@ export function AgreementPdfLink({
         focusRing,
         "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-md text-sm font-medium no-underline",
         variant === "primary" &&
-          "bg-[color:var(--command)] px-4 text-[color:var(--command-contrast)] hover:bg-[color:var(--command-hover)]",
+          "bg-[color:var(--mode-identity)] px-4 text-[color:var(--mode-identity-contrast)] hover:bg-[color:var(--mode-identity-deep,var(--mode-identity))]",
         variant === "secondary" &&
           "border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-4 text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
-        variant === "text" && "text-[color:var(--clinical-accent)] underline underline-offset-4",
+        variant === "text" && "text-[color:var(--mode-identity)] underline underline-offset-4",
       )}
     >
       <FileText aria-hidden="true" className="size-icon-sm shrink-0" />
@@ -163,7 +163,7 @@ export function AgreementHighlight({ text, words }: { readonly text: string; rea
     const index = match.index ?? 0;
     if (index > last) parts.push(text.slice(last, index));
     parts.push(
-      <mark key={index} className="rounded-sm bg-[color:var(--clinical-accent-soft)] font-semibold text-inherit">
+      <mark key={index} className="rounded-sm bg-[color:var(--mode-identity-soft)] font-semibold text-inherit">
         {match[0]}
       </mark>,
     );

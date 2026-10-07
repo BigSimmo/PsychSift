@@ -31,6 +31,7 @@ const announcer = vi.hoisted(() => ({ announce: vi.fn() }));
 vi.mock("@/components/ui/live-announcer", () => ({ announce: announcer.announce }));
 
 import { AgreementAskPage } from "@/components/agreement-ask/agreement-ask-page";
+import { ToastProvider } from "@/components/ui/toast";
 import { AgreementEntryLink } from "@/components/agreement-ask/agreement-entry-link";
 
 function field(): HTMLInputElement {
@@ -146,7 +147,13 @@ describe("Ask the agreement page", () => {
     expect(screen.getByTestId("agreement-patient").textContent).toContain("a record number");
     expect(field().getAttribute("aria-invalid")).toBe("true");
     expect(screen.queryByTestId("agreement-suggestions")).toBeNull();
-    fireEvent.click(screen.getByTestId("agreement-ask"));
+    // The Ask key is off while the detail is there, and the caught part is marked.
+    expect(screen.getByTestId("agreement-ask").hasAttribute("disabled")).toBe(true);
+    const marked = screen.getByTestId("agreement-patient-marked");
+    expect([...marked.querySelectorAll("mark")].map((mark) => mark.textContent)).toEqual(["UR 4471823"]);
+    expect(marked.textContent).toContain("stayed late with");
+    // A submit by the keyboard is refused too.
+    fireEvent.submit(screen.getByRole("search", { name: "Ask the agreement" }));
     expect(screen.queryByTestId("agreement-answer")).toBeNull();
     expect(announcer.announce).toHaveBeenCalledWith("Not asked. It looks like patient details.", {
       priority: "assertive",
@@ -155,6 +162,46 @@ describe("Ask the agreement page", () => {
     expect(field().value).toBe("");
     expect(screen.queryByTestId("agreement-patient")).toBeNull();
     expect(document.activeElement).toBe(field());
+  });
+
+  it("searches the clause words as you type and opens a clause with the matching lines marked", () => {
+    render(<AgreementAskPage />);
+    type("break");
+    const matches = screen.getByTestId("agreement-word-matches");
+    expect(matches.textContent).toContain("In the agreement’s words");
+    const rows = within(matches).getAllByRole("button");
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0]!.querySelector("mark")?.textContent?.toLowerCase()).toContain("break");
+    fireEvent.click(rows[0]!);
+    const sheet = screen.getByTestId("agreement-clause-sheet");
+    expect(sheet.querySelectorAll("[data-used]").length).toBeGreaterThan(0);
+    // Nothing typed is put in the address bar.
+    expect(nav.replace).not.toHaveBeenCalled();
+  });
+
+  it("says who could help when the agreement part is not checked", () => {
+    render(<AgreementAskPage />);
+    askTyped("Is parking free on nights?");
+    const help = screen.getByTestId("agreement-who-helps");
+    expect(within(help).getByRole("link").getAttribute("href")).toBe("/admin/help#admin-help-contacts");
+    expect(help.textContent).toContain("Medical Workforce");
+    expect(screen.getByTestId("agreement-union").textContent).toContain("AMA (WA)");
+    // No phone number anywhere in the answer.
+    expect(screen.getByTestId("agreement-answer").textContent).not.toMatch(/\d{4}\s?\d{3}\s?\d{3}|\(0\d\)/);
+  });
+
+  it("confirms a copy with a toast when the app has one", async () => {
+    render(
+      <ToastProvider>
+        <AgreementAskPage />
+      </ToastProvider>,
+    );
+    askTyped("How many nights in a row?");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("agreement-copy"));
+    });
+    expect(screen.getByText("Answer copied with its clause numbers")).toBeTruthy();
+    expect(announcer.announce).not.toHaveBeenCalledWith("Answer copied with its clause numbers", expect.anything());
   });
 
   it("asks the safer wording without the patient details", () => {
