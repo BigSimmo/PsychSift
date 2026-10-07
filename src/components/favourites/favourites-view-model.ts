@@ -325,11 +325,18 @@ export const SHELF_LIMIT = 8;
  * then whatever was opened most recently, then the newest saved. One rule for
  * both places it is drawn, so My Day and Favourites always agree.
  */
-export function shelfItems(items: readonly FavouriteItem[], limit: number = SHELF_LIMIT): FavouriteItem[] {
+export function shelfItems(
+  items: readonly FavouriteItem[],
+  limit: number = SHELF_LIMIT,
+  /** Item ids in the order the person arranged their pins. Unlisted pins follow, oldest first. */
+  pinOrder: readonly string[] = [],
+): FavouriteItem[] {
+  const rank = new Map(pinOrder.map((id, index) => [id, index]));
   const pinned = items
     .filter((item) => item.pinned)
     .sort(
       (first, second) =>
+        (rank.get(first.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(second.id) ?? Number.MAX_SAFE_INTEGER) ||
         (first.pinnedAt ?? Number.MAX_SAFE_INTEGER) - (second.pinnedAt ?? Number.MAX_SAFE_INTEGER) ||
         byTitle(first, second),
     );

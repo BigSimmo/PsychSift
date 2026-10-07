@@ -49,6 +49,8 @@ export type FavouritesLayout = {
   readonly scope: FavouritesScope;
   readonly view: FavouritesListView;
   readonly shelfSize: 4 | 8;
+  /** Favourite ids in the order the person arranged the My Day shelf pins. */
+  readonly pinOrder: readonly string[];
 };
 
 type LocalState = {
@@ -63,6 +65,7 @@ export const DEFAULT_FAVOURITES_LAYOUT: FavouritesLayout = Object.freeze({
   scope: "all",
   view: "recent",
   shelfSize: 8,
+  pinOrder: [],
 });
 
 export const MAX_SAVED_NUMBERS = 40;
@@ -170,6 +173,9 @@ function parseLayout(value: unknown): FavouritesLayout {
     scope: raw.scope === "clinical" || raw.scope === "work" ? raw.scope : "all",
     view: raw.view === "az" || raw.view === "type" ? raw.view : "recent",
     shelfSize: raw.shelfSize === 4 ? 4 : 8,
+    pinOrder: Array.isArray(raw.pinOrder)
+      ? raw.pinOrder.filter((id): id is string => typeof id === "string" && id.length <= 200).slice(0, 60)
+      : [],
   };
 }
 
@@ -366,18 +372,6 @@ export function setSavedNumbersPinned(ids: ReadonlySet<string>, pinned: boolean,
   return write({
     ...state,
     numbers: state.numbers.map((entry) => (ids.has(entry.id) ? { ...entry, pinnedAt: pinned ? now : null } : entry)),
-  });
-}
-
-/** Changes pin order: each id gets a pin time in list order, so the shelf draws them that way. */
-export function setPinOrder(ids: readonly string[], base: number = Date.now()): boolean {
-  const state = read();
-  const rank = new Map(ids.map((id, index) => [id, base + index]));
-  return write({
-    ...state,
-    numbers: state.numbers.map((entry) =>
-      rank.has(entry.id) && entry.pinnedAt !== null ? { ...entry, pinnedAt: rank.get(entry.id)! } : entry,
-    ),
   });
 }
 
