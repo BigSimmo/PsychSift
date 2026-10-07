@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { WorkButton, WorkCard, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
 import type { HoursSummary } from "@/lib/roster/hours";
 import { formatSpanWords } from "@/lib/roster/shifts-overview";
@@ -36,6 +38,8 @@ export function RosterPayslipCheck({
   readonly partial: boolean;
   readonly payAnchored: boolean;
 }) {
+  // Example records never leave the app: Copy opens the "can't be exported" sheet instead.
+  const { active: example } = useExampleData("rost");
   const [copied, setCopied] = useState<"done" | "failed" | null>(null);
   const figures = payslipFigures(
     shifts.map((shift) => ({ id: shift.id, startsAt: shift.startsAt, endsAt: shift.endsAt, kind: kindOf(shift) })),
@@ -55,6 +59,7 @@ export function RosterPayslipCheck({
   ];
 
   async function copy() {
+    if (!guardExampleAction(example, "copy")) return;
     const text = [
       `Roster check, ${payAnchored ? "pay fortnight" : "fortnight"} ${span}`,
       ...rows.map(([label, value]) => `${label}: ${value}`),

@@ -51,6 +51,7 @@ import {
   type ExamPrepState,
   type HeatCell,
 } from "@/lib/teaching/term-tracker";
+import { useExampleData } from "@/lib/example-data/store";
 
 type Update = (change: (current: ExamPrepState) => ExamPrepState) => void;
 
@@ -500,6 +501,8 @@ function useExamCollection(today: string | null) {
 /* ---------- the page ---------- */
 
 function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
+  // The shared example banner already says the records are made up, so the demo note shows only without it.
+  const { active: exampleShown } = useExampleData("teach");
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const sample = useMemo(() => (demoMode && today ? sampleExamPrep(today) : null), [demoMode, today]);
@@ -570,7 +573,7 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
     <InformationPageShell width="narrow" gap={false} testId="teaching-exam-prep">
       <T5Page>
         <h1 className="sr-only">My exam prep</h1>
-        {demoMode ? (
+        {demoMode && !exampleShown ? (
           <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {body}

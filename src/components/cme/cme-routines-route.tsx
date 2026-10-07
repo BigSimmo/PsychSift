@@ -13,6 +13,7 @@ import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import { cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 import {
   cmeRoutineCadenceLabels,
   cmeRoutineCadences,
@@ -105,6 +106,11 @@ export function CmeRoutinesRoute({
     if (!editingId || saving) return;
     if (dateChecks.anyInvalid) {
       setError("Fix the date before saving.");
+      return;
+    }
+    // The name is stored and becomes each logged activity's title, so the shared patient-detail check reads it.
+    if (cpdTitlePatientProblem(draft.title)) {
+      setError("Take out the patient details from the routine name to save it.");
       return;
     }
     if (demoMode) {

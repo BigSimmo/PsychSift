@@ -48,25 +48,24 @@ export function shiftLine(shift: RosterAssignment): string {
   return `${formatPerthDay(perthDateOf(shift.startsAt))} · ${SHIFT_KIND_LABEL[shift.kind]} ${formatShiftRange(shift)}`;
 }
 
-function WeekList({ label, shifts }: { label: string; shifts: readonly RosterAssignment[] }) {
+function ShiftLines({ shifts, label }: { shifts: readonly RosterAssignment[]; label: string }) {
   return (
-    <div>
-      <p className="text-xs text-[color:var(--text-muted)]">{label}</p>
-      {shifts.length ? (
-        <ul aria-label={label} className="grid gap-0.5 text-sm">
-          {shifts.map((shift) => (
-            <li key={shift.id} className="nums">
-              {shiftLine(shift)}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm">No shifts</p>
-      )}
-    </div>
+    <ul aria-label={label} className="grid gap-0.5 text-sm">
+      {shifts.map((shift) => (
+        <li key={shift.id} className="nums">
+          {shiftLine(shift)}
+        </li>
+      ))}
+    </ul>
   );
 }
 
+/**
+ * What a swap changes on one person's roster: the shift that comes off (struck
+ * through) and the one that goes on, then the whole of the affected weeks
+ * folded away. The weeks can span two rosters a fortnight apart, so listing
+ * both in full buried the one line that changes.
+ */
 export function WeekPreview({
   title,
   before,
@@ -76,13 +75,43 @@ export function WeekPreview({
   before: readonly RosterAssignment[];
   after: readonly RosterAssignment[];
 }) {
+  const afterIds = new Set(after.map((shift) => shift.id));
+  const beforeIds = new Set(before.map((shift) => shift.id));
+  const off = before.filter((shift) => !afterIds.has(shift.id));
+  const on = after.filter((shift) => !beforeIds.has(shift.id));
   return (
-    <section className={PANEL}>
-      <h3 className="mb-2 text-sm font-medium">{title}</h3>
-      <div className="grid gap-3">
-        <WeekList label={`${title} before`} shifts={before} />
-        <WeekList label={`${title} after`} shifts={after} />
-      </div>
+    <section className={PANEL} aria-label={`${title}: what changes`}>
+      <h3 className="mb-2 text-sm font-medium">{title}: what changes</h3>
+      {off.length || on.length ? (
+        <ul className="grid gap-1 text-sm">
+          {off.map((shift) => (
+            <li key={`off-${shift.id}`} className="nums">
+              <span className="font-medium">Off </span>
+              <s className="text-[color:var(--text-muted)]">{shiftLine(shift)}</s>
+            </li>
+          ))}
+          {on.map((shift) => (
+            <li key={`on-${shift.id}`} className="nums">
+              <span className="font-medium">On </span>
+              {shiftLine(shift)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm">No change to these weeks.</p>
+      )}
+      <details className="mt-2">
+        <summary className="flex min-h-12 cursor-pointer items-center text-sm font-medium text-[color:var(--mode-identity)]">
+          {`See the weeks after the swap · ${after.length} ${after.length === 1 ? "shift" : "shifts"}`}
+        </summary>
+        {after.length ? (
+          <ShiftLines shifts={after} label={`${title} after`} />
+        ) : (
+          <p className="text-sm" aria-label={`${title} after`}>
+            No shifts
+          </p>
+        )}
+      </details>
     </section>
   );
 }
@@ -144,7 +173,7 @@ export function SwapAnswerCard({
     : null;
   const preview = fresh ? swapPreview(fresh.assignments, give, take, swap.requesterId, swap.counterpartyId) : null;
   const mine = preview ? (actorId === swap.requesterId ? preview.mine : preview.theirs) : null;
-  const who = swap.requesterName ?? "They";
+  const wantsNothing = swap.requesterName ? `${swap.requesterName} wants` : "They want";
 
   async function act(action: "swap.accept" | "swap.decline" | "swap.undo") {
     setBusy(true);
@@ -169,12 +198,10 @@ export function SwapAnswerCard({
     <div className="grid gap-3">
       {loadError ? <p role="alert">{loadError}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
-      <RosterSwapTicket shift={give} label={`${who} give`} />
-      {take ? (
-        <RosterSwapTicket shift={take} label={`${who} get`} />
-      ) : (
-        <p>{who} get nothing back. You just take the shift.</p>
-      )}
+      {/* From the reader's side, as the mockup words it: the shift you give first, then the one you get. */}
+      {take ? <RosterSwapTicket shift={take} label="You give" /> : null}
+      <RosterSwapTicket shift={give} label="You get" />
+      {take ? null : <p>{wantsNothing} nothing back. You just take the shift.</p>}
       {mine ? <WeekPreview title="Your week" before={mine.before} after={mine.after} /> : null}
       {progress.ended ? <p>{progress.ended}</p> : null}
       {canAnswer ? (

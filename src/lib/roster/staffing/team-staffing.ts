@@ -236,7 +236,8 @@ export function leaveStaffingWords(result: LeaveStaffing): { readonly lead: stri
     rest:
       result.yourShifts === 0
         ? "You have no shifts on these days."
-        : `You come off ${result.yourShifts} ${result.yourShifts === 1 ? "shift" : "shifts"}.`,
+        : // Days, not shifts: the leave sheet's clash line above also counts a night that starts the day before.
+          `You're rostered on ${result.yourShifts} of these days.`,
   };
 }
 

@@ -85,6 +85,22 @@ describe("Work profile page", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
   });
 
+  it("signed out, More's Privacy link shows what is kept where rather than the example profile", () => {
+    // Final review (7 Oct 2026): the link opened the made-up profile, with nothing about privacy on it.
+    auth.status = "signed_out";
+    nav.search = "tab=privacy";
+    render(<WorkProfilePage />);
+    const privacy = screen.getByTestId("work-profile-signed-out-privacy");
+    expect(privacy.textContent).toContain("Where your work is kept");
+    expect(privacy.textContent).toContain("Patient labels stay on this phone");
+    expect(screen.queryByTestId("work-profile-example-identity")).toBeNull();
+    expect(
+      within(privacy)
+        .getByRole("link", { name: /Privacy policy/ })
+        .getAttribute("href"),
+    ).toBe("/privacy");
+  });
+
   it("shows the four tabs and opens Profile by default", () => {
     render(<WorkProfilePage />);
     const tabs = within(screen.getByRole("tablist")).getAllByRole("tab");

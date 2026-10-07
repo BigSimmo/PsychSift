@@ -78,7 +78,7 @@ export function RosterTeamSettings({ serviceId, overview }: { serviceId: string;
       <label className="grid gap-1 text-sm">
         Swap approval
         <select
-          className="min-h-12 w-full min-w-0 rounded border bg-background p-2"
+          className="min-h-12 w-full min-w-0 rounded border border-[color:var(--border)] bg-background p-2"
           value={approval}
           onChange={(event) => setApproval(event.target.value as typeof approval)}
         >

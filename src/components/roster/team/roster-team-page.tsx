@@ -4,7 +4,7 @@ import { Lock, Phone, RefreshCw, TriangleAlert, Users } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
-import { useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useModeBandHeading, WithoutModeBand } from "@/components/mode-band/mode-band";
 import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { TeamCalendar } from "@/components/roster/team/calendar/team-calendar";
@@ -256,10 +256,10 @@ function TeamCalendarSection({ team, actorId, now }: { team: RosterTeam; actorId
   const params = useSearchParams();
   const state = readCalendarState(params, perthDateOf(now));
   return (
-    <section aria-labelledby="roster-team-calendar" className="grid gap-3">
+    <section aria-labelledby="roster-team-calendar" className="grid grid-cols-[minmax(0,1fr)] gap-3">
       <RosterSectionHead id="roster-team-calendar" title={calendarTitle(state)} />
       <div data-roster-print className="contents">
-        <TeamCalendar key={team.serviceId} team={team} actorId={actorId} now={now} />
+        <TeamCalendar key={team.serviceId} team={team} actorId={actorId} now={now} phoneLink={false} />
       </div>
       {state.view === "day" ? null : <RosterFootnote testId="roster-team-legend">{LEGEND}</RosterFootnote>}
     </section>
@@ -274,7 +274,9 @@ function TeamLinks({ manager }: { manager: boolean }) {
         lead={<RosterIconLead icon={Phone} />}
         title="Phone numbers"
         sub="In On Call"
-        href="/on-call/contacts"
+        // On Call's People tab, as the mockup links it: who is on and every number, example data included.
+        // (The service handbook needs a sign-in and is the editors' page.)
+        href="/on-call/call"
       />
       <RosterRow
         lead={<RosterIconLead icon={Users} />}
@@ -308,7 +310,8 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
   return (
     <InformationPageShell testId="roster-team-page" width="narrow">
       <RosterPageHeader icon={Users} eyebrow="Roster" title="Team" subtitle="Who's on, and the whole team calendar." />
-      <div className="grid gap-3" data-mode-identity="roster">
+      {/* One column that never grows past the page: at 200% text a wide row otherwise pushed the whole page sideways. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3" data-mode-identity="roster">
         {teams.status === "loading" ? (
           <RosterNote icon={Users}>Loading your teams…</RosterNote>
         ) : teams.status !== "ready" ? (
@@ -361,7 +364,10 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
                 </select>
               </label>
             ) : (
-              <p className="px-1 text-sm text-[color:var(--text-muted)]">{selected.name}</p>
+              // The band's eyebrow already names the one team.
+              <WithoutModeBand>
+                <p className="px-1 text-sm text-[color:var(--text-muted)]">{selected.name}</p>
+              </WithoutModeBand>
             )}
             <TeamDayLists key={`day-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
             <Suspense fallback={<RosterNote icon={Users}>Loading the team roster…</RosterNote>}>

@@ -305,6 +305,24 @@ describe("Admin Workforce", () => {
     // The example data switch's own record is the only thing on the device, never a decision.
     expect(Object.keys(window.localStorage).filter((key) => !key.includes("example"))).toEqual([]);
   });
+
+  it("reminds a doctor after showing exactly what they will see, with Undo, and writes nothing", async () => {
+    storeState.signedOut = true;
+    withToasts(<AdminWorkforcePage />);
+    fireEvent.click(await screen.findByTestId("admin-workforce-view-doctors"));
+    fireEvent.click(screen.getAllByTestId("admin-workforce-doctor")[0]!);
+    fireEvent.click(screen.getByTestId("admin-workforce-remind"));
+    const preview = screen.getByTestId("admin-workforce-remind-preview");
+    expect(preview.textContent).toContain("From Medical Workforce. We still need");
+    for (const item of screen.getAllByTestId("admin-workforce-remind-item")) fireEvent.click(item);
+    expect(screen.getByTestId("admin-workforce-remind-send").hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getAllByTestId("admin-workforce-remind-item")[0]!);
+    fireEvent.click(screen.getByTestId("admin-workforce-remind-send"));
+    expect(screen.getAllByTestId("admin-workforce-doctor")[0]!.textContent).toContain("reminded");
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.getAllByTestId("admin-workforce-doctor")[0]!.textContent).not.toContain("reminded");
+    expect(Object.keys(window.localStorage).filter((key) => !key.includes("example"))).toEqual([]);
+  });
 });
 
 describe("Admin work screens keep device storage in one module", () => {

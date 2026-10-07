@@ -18,6 +18,13 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from "react";
 
+import {
+  rememberExtras,
+  rememberTrainee,
+  rememberedExtras,
+  rememberedStory,
+  rememberedTrainee,
+} from "@/components/teaching/assessments/assess-memory";
 import { clockNow } from "@/components/teaching/assessments/assessments-extras";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import {
@@ -47,7 +54,7 @@ import {
   type CantReason,
   type InboxRequest,
 } from "@/lib/teaching/assessments/inbox";
-import { readyToSend } from "@/lib/teaching/assessments/extras";
+import { initialExtras, readyToSend, settleForAnotherScreen } from "@/lib/teaching/assessments/extras";
 import { initialAssessmentsState } from "@/lib/teaching/assessments/model";
 import { CELL_WORDS, type CellStatus } from "@/lib/teaching/assessments/overview";
 import { SAMPLE_DOCTOR } from "@/lib/teaching/assessments/sample";
@@ -58,6 +65,7 @@ import {
   ASK_FIELDS,
   hoursWords,
   initialTraineeState,
+  reopenTraineeState,
   sessionLine,
   sessionStatus,
   traineeReducer,
@@ -187,13 +195,36 @@ function NoteField({
 export function AssessmentsTraineePage({
   doctorId,
   supervision,
+  memoryKey,
 }: {
   readonly doctorId: string;
+  /**
+   * The account's page-memory key (its auth epoch). With it, the page reads the same made-up story and inbox
+   * answers as the rest of Assessments in this tab, and keeps its own confirmations for when it opens again.
+   */
+  readonly memoryKey?: string;
   /** The example supervision, from the shared registry (`assessments.supervision`). */
   readonly supervision: ExampleSupervisionByDoctor;
 }) {
-  const s = useMemo(() => initialAssessmentsState(), []);
-  const [state, dispatch] = useReducer(traineeReducer, initialTraineeState);
+  // The same made-up story and inbox answers the rest of Assessments shows in this tab (page memory only), so
+  // a request the doctor sent, or an answer given in the inbox, shows here too, and the other way round.
+  const [s] = useState(
+    () => (memoryKey === undefined ? null : rememberedStory(memoryKey)) ?? initialAssessmentsState(),
+  );
+  const [state, dispatch] = useReducer(traineeReducer, undefined, () => {
+    if (memoryKey === undefined) return initialTraineeState;
+    const extras = rememberedExtras(memoryKey);
+    return reopenTraineeState(
+      rememberedTrainee(memoryKey) ?? initialTraineeState,
+      extras ? settleForAnotherScreen(extras) : initialExtras,
+    );
+  });
+  useEffect(() => {
+    if (memoryKey === undefined) return;
+    const { extras, ...own } = state;
+    rememberExtras(memoryKey, extras);
+    rememberTrainee(memoryKey, own);
+  }, [memoryKey, state]);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [cant, setCant] = useState<{ reason: CantReason | null; suggestion: string | null }>({

@@ -13,6 +13,7 @@ import { rosterCheckFor } from "@/lib/open-shifts/roster-check";
 import type { FatigueShift } from "@/lib/roster/fatigue-rules";
 import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 import { SignInAction } from "./open-shifts-sign-in";
 import { CheckLine, FootAction, OPEN_SHIFTS_HREF, SubHeader, formatShiftTimes } from "./open-shifts-ui";
@@ -89,6 +90,12 @@ export function OpenShiftsLogPage() {
 
   async function save() {
     if (!times) return;
+    // The place is saved with the shift, so it gets the one patient-detail catch. Ward and hospital capitals are fine.
+    const placeProblem = checkPatientDetail(place, { allowCapitals: true });
+    if (placeProblem) {
+      setError(`Not saved. Place: ${placeProblem.body}`);
+      return;
+    }
     setBusy(true);
     setError(null);
     const failure = await shifts.addManual({

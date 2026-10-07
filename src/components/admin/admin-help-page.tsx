@@ -240,7 +240,8 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
                   </p>
                 ) : (
                   <>
-                    {tab === "on-site" ? <AdminHelpOnSiteGlance items={rows} /> : null}
+                    {/* Four tiles at a glance, as the mockup draws them. The full list follows. */}
+                    {tab === "on-site" ? <AdminHelpOnSiteGlance items={rows.slice(0, 4)} /> : null}
                     <AdminShowAll
                       items={rows}
                       label={section.label}

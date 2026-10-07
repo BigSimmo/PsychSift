@@ -347,7 +347,10 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         <Fact label="Shift code" value={listing.shiftCode} />
       </dl>
 
-      <div className="mt-4">{sample || alreadyMine || closed ? null : <RosterCheckPanel check={check} />}</div>
+      {/* Example shifts are checked against the example roster, as Browse flags them; a release-held sample has none. */}
+      <div className="mt-4">
+        {state.sample === "release-held" || alreadyMine || closed ? null : <RosterCheckPanel check={check} />}
+      </div>
 
       <ul className="mx-3 mt-4">
         <InfoRow
@@ -426,7 +429,13 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           </Link>
         </FootAction>
       ) : sample ? (
-        <FootAction note="This is a made-up example: team rosters aren't open to real staff yet.">
+        <FootAction
+          note={
+            state.sample === "example"
+              ? "This is an example shift, so it can't be requested. Turn example data off to see your own teams."
+              : "This is a made-up example: team rosters aren't open to real staff yet."
+          }
+        >
           <Button variant="primary" block disabled onClick={() => undefined}>
             Request this shift
           </Button>

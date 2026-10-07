@@ -204,7 +204,7 @@ describe("the leave result", () => {
     expect(result).toEqual({ kind: "checked", lowest: 3, lowestDays: ["2026-10-23"], yourShifts: 2 });
     expect(leaveStaffingWords(result)).toEqual({
       lead: "Fewest on: 3 people, Fri 23.",
-      rest: "You come off 2 shifts.",
+      rest: "You're rostered on 2 of these days.",
     });
   });
 

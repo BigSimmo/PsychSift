@@ -62,7 +62,7 @@ function CrisisLineRow({ contact }: { contact: PublicCrisisContact }) {
             focusRing,
             modePressable,
             modeNumberText,
-            "min-h-12 shrink-0 whitespace-nowrap rounded-md px-1 text-right text-sm text-[color:var(--text)]",
+            "min-h-12 min-w-12 shrink-0 whitespace-nowrap rounded-md px-1 text-right text-sm text-[color:var(--text)]",
           )}
           data-testid={`${testId}-number`}
         >

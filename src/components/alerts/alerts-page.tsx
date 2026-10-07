@@ -1,9 +1,10 @@
 "use client";
 
+import { Award, Bell, CalendarDays, Phone, Presentation, ShieldCheck, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
 import { AlertsDeviceSection } from "@/components/alerts/alerts-device-section";
-import { AlertsButtonRow, AlertsQuietRow, AreaDot } from "@/components/alerts/alerts-rows";
+import { AlertsButtonRow, AlertsQuietRow } from "@/components/alerts/alerts-rows";
 import {
   AlertsAreaSheet,
   AlertsBriefSheet,
@@ -15,7 +16,7 @@ import { usePhoneAlerts } from "@/components/alerts/use-phone-alerts";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
-import { ModeStateLabel } from "@/components/mode-kit/state-label";
+import { WorkTag } from "@/components/mode-kit/work";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { useRosterSettings } from "@/components/roster/use-roster-settings";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
@@ -61,6 +62,22 @@ export function AlertsPage({
     </MyDayFrame>
   );
 }
+
+/** Each area's icon, as the notification centre draws it. */
+const AREA_ICONS: Readonly<Record<AlertAreaId, LucideIcon>> = {
+  roster: CalendarDays,
+  renewals: ShieldCheck,
+  cpd: Award,
+  teaching: Presentation,
+  "on-call": Phone,
+};
+
+/** A setting that cannot be turned off, as a small grey pill. */
+const ALWAYS_ON = (
+  <span className="pr-3">
+    <WorkTag tone="neutral">Always on</WorkTag>
+  </span>
+);
 
 type OpenSheet =
   | { kind: "area"; area: AlertAreaId }
@@ -111,6 +128,12 @@ function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
                 : "On · turn on phone alerts below to get it"
           }
           onSelect={() => setSheet({ kind: "brief" })}
+          toggle={{
+            enabled: reminders.brief.enabled,
+            label: "Morning brief",
+            onToggle: () =>
+              setReminders({ ...reminders, brief: { ...reminders.brief, enabled: !reminders.brief.enabled } }),
+          }}
           testId="alerts-brief-row"
         />
         <AlertsButtonRow
@@ -122,11 +145,7 @@ function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
         <ModeRow
           title="After a night shift"
           subtitle={`Held until ${AFTER_NIGHT_TIME}`}
-          trailing={
-            <span className="pr-3">
-              <ModeStateLabel>Always on</ModeStateLabel>
-            </span>
-          }
+          trailing={ALWAYS_ON}
           testId="alerts-brief-night-row"
         />
         <AlertsButtonRow
@@ -143,12 +162,9 @@ function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
             <AlertsButtonRow
               key={id}
               title={ALERT_AREAS[id].title}
-              subtitle={
-                <>
-                  <AreaDot mode={ALERT_AREAS[id].mode} />
-                  {areaSummary(id, reminders, today, rosterChoices)}
-                </>
-              }
+              subtitle={areaSummary(id, reminders, today, rosterChoices)}
+              icon={AREA_ICONS[id]}
+              mode={ALERT_AREAS[id].mode}
               onSelect={() => setSheet({ kind: "area", area: id })}
               testId={`alerts-area-${id}`}
             />
@@ -158,9 +174,14 @@ function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
             subtitle={
               openNotes ? `${openNotes} listed here · kept on this device` : "Listed here · kept on this device"
             }
+            icon={Bell}
+            mode="my-day"
             onSelect={() => setSheet({ kind: "reminders" })}
             testId="alerts-your-reminders"
           />
+        </ModeGroupedList>
+        {/* What is locked sits in its own card, apart from what can be changed. */}
+        <ModeGroupedList testId="alerts-locked">
           <AlertsQuietRow title="Mental Health Act timers" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="Rest-break warnings" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="CPD coaching" reason="Locked until clinical sign-off" />
@@ -178,34 +199,27 @@ function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
           title="Quiet hours"
           subtitle={quiet.enabled ? `${quiet.start} to ${quiet.end}, Perth time` : "Off"}
           onSelect={() => setSheet({ kind: "quiet" })}
+          toggle={{
+            enabled: quiet.enabled,
+            label: "Quiet hours",
+            onToggle: () => setReminders({ ...reminders, quietHours: { ...quiet, enabled: !quiet.enabled } }),
+          }}
           testId="alerts-quiet-row"
         />
         <ModeRow
           title="Quiet while on a night"
           subtitle="Swap and open-shift requests don't buzz during a night shift"
-          trailing={
-            <span className="pr-3">
-              <ModeStateLabel>Always on</ModeStateLabel>
-            </span>
-          }
+          trailing={ALWAYS_ON}
         />
         <ModeRow
           title="Your own reminders come through"
           subtitle="At the exact time you set, even in quiet hours"
-          trailing={
-            <span className="pr-3">
-              <ModeStateLabel>Always on</ModeStateLabel>
-            </span>
-          }
+          trailing={ALWAYS_ON}
         />
         <ModeRow
           title="Roster changes come through"
           subtitle="Even during a night shift, so a changed shift is never missed"
-          trailing={
-            <span className="pr-3">
-              <ModeStateLabel>Always on</ModeStateLabel>
-            </span>
-          }
+          trailing={ALWAYS_ON}
         />
       </ModeGroupedList>
 

@@ -56,6 +56,7 @@ import {
   type RegistrarAssessments,
 } from "@/lib/cme/training-assessments";
 import { TERM_TRACKER_SOURCES } from "@/lib/teaching/term-tracker";
+import { cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 import {
   currentPosition,
   formatFteMonths,
@@ -316,6 +317,11 @@ export function CmeTrainingPage({
       setError("Fix the date before saving.");
       return;
     }
+    // The label is stored with the training record, so the shared patient-detail check reads it first.
+    if (cpdTitlePatientProblem(periodDraft.label)) {
+      setError("Take out the patient details from the label to save it.");
+      return;
+    }
     const parsed = trainingPeriodInputSchema.safeParse(periodPayload(periodDraft));
     if (!parsed.success) {
       setPeriodErrors(fieldErrorsOf(parsed.error.issues));
@@ -359,6 +365,11 @@ export function CmeTrainingPage({
     setError(null);
     if (dateChecks.anyInvalid) {
       setError("Fix the date before saving.");
+      return;
+    }
+    // The label is stored with the training record, so the shared patient-detail check reads it first.
+    if (cpdTitlePatientProblem(milestoneDraft.label)) {
+      setError("Take out the patient details from the label to save it.");
       return;
     }
     const parsed = trainingMilestoneInputSchema.safeParse(milestonePayload(milestoneDraft));
@@ -753,7 +764,11 @@ export function CmeTrainingPage({
               testId="cme-training-position"
               end={
                 periodEditing ? null : (
-                  <CmeTextLink onClick={() => openPeriod()} testId="cme-training-add-period">
+                  <CmeTextLink
+                    onClick={() => openPeriod()}
+                    testId="cme-training-add-period"
+                    className="min-w-12 justify-end"
+                  >
                     Add <span className="sr-only">stage, rotation or break</span>
                   </CmeTextLink>
                 )

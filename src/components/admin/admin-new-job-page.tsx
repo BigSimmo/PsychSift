@@ -454,19 +454,14 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                   lead={<WorkIconCircle icon={Copy} />}
                   href="/admin/new-job/records"
                   testId="admin-new-job-records-link"
-                  title={
-                    <>
-                      <span className="work-row__sub block" data-testid="admin-new-job-leaving-notice">
-                        Changing site or starting a new job? Take these with you from PsychSift:
-                      </span>
-                      <span className="block">Your Admin records</span>
-                    </>
-                  }
+                  title="Your Admin records"
                   sub={
-                    <span data-testid="admin-new-job-leaving-checklist">
-                      Registration numbers and renewal dates · Contacts and logins you saved · New job ticks. Not
-                      included: hospital files, patient information, or anything you did not type here.
-                    </span>
+                    <>
+                      <span data-testid="admin-new-job-leaving-notice">Changing site or starting a new job? </span>
+                      <span data-testid="admin-new-job-leaving-checklist">
+                        Registration numbers and renewal dates, contacts and logins you saved, and New job ticks.
+                      </span>
+                    </>
                   }
                 />
                 <AdminRow

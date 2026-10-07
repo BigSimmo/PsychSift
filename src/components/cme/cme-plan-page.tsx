@@ -15,6 +15,7 @@ import { cn, controlDisabled, textMuted } from "@/components/ui-primitives";
 import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
 import { formatCalendarDateLong } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import { cpdTextPatientProblem } from "@/lib/cme/patient-detail-check";
 import {
   CME_PLAN_GOAL_MAX,
   CME_PLAN_GOAL_MAX_LENGTH,
@@ -94,6 +95,8 @@ export function CmePlanPage({
   );
   const filled = drafts.filter((draft) => draft.goal.trim().length > 0);
   const tooShort = filled.some((draft) => draft.goal.trim().length < CME_PLAN_GOAL_MIN_LENGTH);
+  // Goals are stored with the account and printed in the plan, so the one shared patient-detail check reads them.
+  const patientGoal = filled.findIndex((draft) => cpdTextPatientProblem(draft.goal) !== null);
   const offerCarry = canCarryCmeGoals(set, now) && goals.length > 0;
   const availableToCarry = carryableCmeGoals(goals, targetGoals).filter((goal) => !carriedIds.has(goal.id));
   const targetReady = nextYearConfirmed === true && targetGoals !== undefined;
@@ -299,6 +302,11 @@ export function CmePlanPage({
                   Each goal needs at least {CME_PLAN_GOAL_MIN_LENGTH} characters.
                 </p>
               ) : null}
+              {editing && patientGoal >= 0 ? (
+                <p role="alert" className="text-sm text-[color:var(--text)]" data-testid="cme-plan-patient-detail">
+                  {`Goal ${drafts.indexOf(filled[patientGoal]!) + 1} may hold patient details. Take them out to save the plan.`}
+                </p>
+              ) : null}
             </div>
           </CmeGroup>
 
@@ -308,7 +316,7 @@ export function CmePlanPage({
                 type="button"
                 className={cn("work-button min-h-12 w-full", controlDisabled)}
                 data-variant="primary"
-                disabled={saving || tooShort || saveConflict}
+                disabled={saving || tooShort || saveConflict || patientGoal >= 0}
                 onClick={() => void save()}
                 data-testid="cme-plan-save"
               >
