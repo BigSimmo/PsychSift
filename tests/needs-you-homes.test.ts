@@ -8,6 +8,8 @@ describe("staff work home paths for the Needs you bell", () => {
   it("shows on the six signed-in work homes, including On Call Who's on", () => {
     expect(isStaffWorkHomePath("my-day", "/my-day")).toBe(true);
     expect(isStaffWorkHomePath("roster", "/roster")).toBe(true);
+    // work-mode redesign, owner request 6 Oct 2026: Admin's home is Today at /admin; Renewals keeps its bell.
+    expect(isStaffWorkHomePath("my-work", "/admin")).toBe(true);
     expect(isStaffWorkHomePath("my-work", "/admin/renewals")).toBe(true);
     expect(isStaffWorkHomePath("teaching", "/teaching")).toBe(true);
     expect(isStaffWorkHomePath("cme", "/cme")).toBe(true);
@@ -19,6 +21,7 @@ describe("staff work home paths for the Needs you bell", () => {
     expect(isStaffWorkHomePath("on-call", "/on-call/contacts")).toBe(false);
     expect(isStaffWorkHomePath("roster", "/roster/team")).toBe(false);
     expect(isStaffWorkHomePath("cme", "/cme/log")).toBe(false);
+    expect(isStaffWorkHomePath("my-work", "/admin/compliance")).toBe(false);
     expect(isStaffWorkHomePath("my-day", "/my-day/week")).toBe(false);
     expect(isStaffWorkHomePath("first-nations", "/first-nations")).toBe(false);
     expect(isStaffWorkHomePath("answer", "/")).toBe(false);
