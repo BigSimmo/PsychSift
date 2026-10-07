@@ -208,10 +208,15 @@ export function RosterJoinPage() {
               </p>
             ) : null}
             <ModeGroupedList eyebrow="Optional" testId="roster-join-options">
-              <ModeRow title="Alerts for swaps and changes" trailing={<RosterAlertsSwitch />} />
+              <ModeRow
+                title="Alerts for swaps and changes"
+                subtitle="Lock screen says only that something changed"
+                trailing={<RosterAlertsSwitch />}
+              />
               {calendarShifts !== null ? (
                 <ModeRow
                   title="Shifts in my calendar"
+                  subtitle="Adds team shifts to your calendar link"
                   trailing={
                     <ToggleSwitch
                       enabled={calendarShifts}
@@ -237,6 +242,9 @@ export function RosterJoinPage() {
               spellCheck={false}
               required
             />
+            <p className="m-0 text-xs text-[color:var(--text-muted)]" data-testid="roster-join-privacy">
+              The team and its managers see your team shifts. Shifts you add yourself stay private.
+            </p>
             <Button type="submit" variant="primary">
               Join team
             </Button>
