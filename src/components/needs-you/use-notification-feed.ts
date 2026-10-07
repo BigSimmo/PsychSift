@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -184,11 +184,11 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
     myDay.status === "signed-out" ? "signed-out" : !settled ? "loading" : allFailed ? "error" : "ready";
 
   // "Checked 07:45": stamped each time the reads settle (a retry stamps again).
-  const settledKey = myDay.sources.map((source) => source.status).join(",");
-  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
-  useEffect(() => {
-    if (status === "ready" || status === "error") setCheckedAt(new Date());
-  }, [status, settledKey]);
+  const settledKey =
+    status === "ready" || status === "error" ? myDay.sources.map((source) => source.status).join(",") : null;
+  const [stamp, setStamp] = useState<{ readonly key: string; readonly at: Date } | null>(null);
+  if (settledKey !== null && stamp?.key !== settledKey) setStamp({ key: settledKey, at: new Date() });
+  const checkedAt = stamp?.at ?? null;
 
   const snoozeOnCallType = useCallback(
     (type: ReminderType) => setPreference("reminders", snoozeReminder(preferences.reminders, type, reminderToday)),

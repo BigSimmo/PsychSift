@@ -86,9 +86,13 @@ const AREA_ICONS: Readonly<Record<NotificationArea, LucideIcon>> = {
 /** The clock the groups are sorted against: refreshed on open and every minute while open. */
 function useSheetClock(open: boolean): Date {
   const [clock, setClock] = useState(() => new Date());
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setClock(new Date());
+  }
   useEffect(() => {
     if (!open) return;
-    setClock(new Date());
     const timer = window.setInterval(() => setClock(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, [open]);
@@ -157,13 +161,16 @@ function NotificationCentreSheet({
   }, [note]);
 
   // Each opening starts on All with nothing expanded.
-  useEffect(() => {
-    if (open) return;
-    setSegment("all");
-    setArea(null);
-    setExpanded(null);
-    setNote(null);
-  }, [open]);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) {
+      setSegment("all");
+      setArea(null);
+      setExpanded(null);
+      setNote(null);
+    }
+  }
 
   const { summary, status } = feed;
   const visible = summary.visible;
