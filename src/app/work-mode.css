@@ -108,7 +108,8 @@ html[data-work-frame] main {
 
 /* The dot texture, lined up with the top bar's so the two read as one. */
 .work-band::before,
-html[data-work-frame] .universal-header[data-work-frame]::after {
+html[data-work-frame] .universal-header[data-work-frame]::after,
+.universal-header[data-work-band]::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -338,13 +339,25 @@ html[data-work-frame] .universal-header[data-work-frame]::after {
 /* ----------------------------------------------------------- the top bar */
 
 /* The top bar above a work band wears the band's tint and its dots. */
-html[data-work-frame] .universal-header[data-work-frame] {
+html[data-work-frame] .universal-header[data-work-frame],
+.universal-header[data-work-band] {
   position: relative;
   isolation: isolate;
 }
 
-html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-backdrop {
+html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-backdrop,
+.universal-header[data-work-band] .edge-glass-header-backdrop {
   display: none;
+}
+
+/* Before the band has mounted and published its colour on <html> (the server
+   HTML and the first paint), the top bar and the status-bar inset above it
+   take the same tint from their own route-derived marker, so a framed work
+   page never flashes an untinted top bar. Once the band publishes,
+   mode-band.css paints the identical colour from `--mode-band-surface`. */
+html:not([data-mode-band]) .universal-header[data-work-band],
+html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] {
+  background: var(--mode-identity-band);
 }
 
 /* The pill sits in the true centre of the row on phones. */

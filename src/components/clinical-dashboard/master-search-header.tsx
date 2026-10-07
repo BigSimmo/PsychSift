@@ -79,7 +79,7 @@ import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text"
 import { Sheet } from "@/components/ui/sheet";
 import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
 import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
-import { workAreaFor } from "@/lib/work-frame/areas";
+import { workAreaFor, workFrameForRoute } from "@/lib/work-frame/areas";
 import {
   appModeDefinition,
   appModeDefinitions,
@@ -588,7 +588,22 @@ export function MasterSearchHeader({
    * the band while it is up; null elsewhere, so every other mode is unchanged.
    */
   const workFramePill = useWorkFramePill();
-  const workPill = workFramePill?.modeId === selectedAppMode.id ? workFramePill : null;
+  /**
+   * The work area and page this address draws, decided from the mode and
+   * address alone so it is in the server HTML. The band publishes the same
+   * names once it has mounted; until then (server render, first paint) the
+   * pill reads them from here, so it never flashes the registry's page name
+   * ("Shifts" over "Roster") before settling on the frame's. Only where the
+   * band will actually draw a framed page: a `band: false` page or one with no
+   * frame item keeps the registry naming it has after hydration too.
+   */
+  const routeWorkArea = workAreaFor(selectedAppMode.id, currentPathname ?? "");
+  const routeWorkFrame = workFrameForRoute(selectedAppMode.id, currentPathname ?? "");
+  const routeWorkFramed = routeWorkFrame !== null;
+  const routeWorkPill = routeWorkFrame
+    ? { modeId: selectedAppMode.id, area: routeWorkFrame.area.name, page: routeWorkFrame.page.label }
+    : null;
+  const workPill = (workFramePill?.modeId === selectedAppMode.id ? workFramePill : null) ?? routeWorkPill;
   const activeModePage = workPill?.page ? { id: "work-frame", label: workPill.page } : registryModePage;
   const pillModeLabel = workPill?.area ?? selectedAppMode.label;
   /** A mode that shows no results has nowhere for a new conversation to land. */
@@ -2559,7 +2574,11 @@ export function MasterSearchHeader({
       data-scroll-hidden={hideStrategy === "overlay" && headerChromeHidden ? "true" : undefined}
       // The work-mode frame's round glass buttons and glass pill (work-mode.css).
       // Decided from the mode and address alone, so it is in the server HTML.
-      data-work-frame={workAreaFor(selectedAppMode.id, currentPathname ?? "")?.id}
+      data-work-frame={routeWorkArea?.id}
+      // A framed page's top bar wears its band's tint from the first paint,
+      // before the band has published it on <html> (work-mode.css).
+      data-work-band={routeWorkFramed ? "" : undefined}
+      data-mode-identity={routeWorkFrame?.area.identity}
       className={cn(
         // No backdrop-filter on the header itself: it would form a backdrop
         // root and starve the .edge-glass-header-backdrop scrim (the single
@@ -3114,6 +3133,9 @@ export function MasterSearchHeader({
       <div
         aria-hidden="true"
         data-testid="chrome-safe-area-top"
+        // Tinted with the top bar from the first paint on a framed work page.
+        data-work-band={routeWorkFramed ? "" : undefined}
+        data-mode-identity={routeWorkFrame?.area.identity}
         className={cn(
           // Visible phone chrome owns the OS inset. Hidden phone chrome must
           // release it so the scroll surface reaches the physical viewport

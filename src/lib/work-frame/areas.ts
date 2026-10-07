@@ -845,3 +845,21 @@ export function workFrameTabIndex(area: WorkArea, itemId: string | null): number
 export function workFrameItemById(area: WorkArea, itemId: string): WorkFrameItem | null {
   return workAreaItems(area).find((item) => item.id === itemId) ?? null;
 }
+
+/**
+ * What the band will draw for this mode and address before it has mounted:
+ * the area and the page it names, decided from the address alone (no query,
+ * no page override), exactly as the band's own first render decides it. Null
+ * where no framed band is drawn: a clinical mode, a `band: false` page, or an
+ * address no frame item owns. The top bar uses it so its pill and tint are
+ * right in the server HTML, before the band publishes them.
+ */
+export function workFrameForRoute(
+  modeId: AppModeId,
+  pathname: string,
+): { readonly area: WorkArea; readonly page: WorkFrameItem } | null {
+  const area = workAreaFor(modeId, pathname);
+  const page = area ? workFrameCurrentItem(area, pathname, "") : null;
+  if (!area || !page || page.band === false) return null;
+  return { area, page };
+}
