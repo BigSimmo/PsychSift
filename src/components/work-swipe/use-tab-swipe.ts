@@ -59,21 +59,13 @@ function scrollsSideways(element: Element | null): boolean {
   return false;
 }
 
-/**
- * My Day's Today page still swipes between its own Today, On shift and My
- * records panels (`MyDaySwipePanel`). Two swipes on one gesture would rewrite
- * the address and navigate at once, so the panel's own swipe wins there until
- * the integrator decides which one stays.
- */
-const OWN_SWIPE_REGIONS = "#my-day-panel";
-
 export function swipeBlocked(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return true;
   // Any open modal (a sheet, its dimmed backdrop included) owns every touch.
   if (target.ownerDocument.querySelector('[aria-modal="true"]')) return true;
   if (
     target.closest(
-      `input, textarea, select, canvas, [contenteditable="true"], [role="slider"], [role="dialog"], header, [data-no-tab-swipe], ${OWN_SWIPE_REGIONS}`,
+      `input, textarea, select, canvas, [contenteditable="true"], [role="slider"], [role="dialog"], header, [data-no-tab-swipe]`,
     )
   )
     return true;

@@ -347,14 +347,15 @@ describe("MyDayPage", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
   });
 
-  it("moves to the next page with a sideways swipe, without adding history", () => {
+  // One swipe meaning in work areas: a sideways swipe moves between the header's
+  // tabs (useTabSwipe), so the page body no longer swipes between its own pages.
+  it("leaves the page alone on a sideways swipe over the body", () => {
     render(<MyDayPage now={NOW} />);
-    const before = window.history.length;
-    const panel = document.getElementById("my-day-panel")!;
-    fireEvent.touchStart(panel, { touches: [{ clientX: 300, clientY: 100 }] });
-    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 100, clientY: 110 }] });
-    expect(window.location.search).toBe("?page=work");
-    expect(window.history.length).toBe(before);
+    const body = screen.getByTestId("my-day-dashboard");
+    fireEvent.touchStart(body, { touches: [{ clientX: 300, clientY: 100 }] });
+    fireEvent.touchEnd(body, { changedTouches: [{ clientX: 100, clientY: 110 }] });
+    expect(window.location.search).toBe("");
+    expect(body.getAttribute("data-page")).toBe("today");
   });
 
   it("falls back to Today for an unknown page", () => {

@@ -30,8 +30,8 @@ describe("work tab swipe: where a swipe may start", () => {
     expect(swipeBlocked(mount("<div data-no-tab-swipe><span data-start>Week</span></div>"))).toBe(true);
   });
 
-  it("leaves My Day's own panel swipe alone", () => {
-    expect(swipeBlocked(mount('<div id="my-day-panel"><p data-start>Today</p></div>'))).toBe(true);
+  it("swipes between tabs over My Day's body too, which has no swipe of its own now", () => {
+    expect(swipeBlocked(mount('<div data-testid="my-day-dashboard"><p data-start>Today</p></div>'))).toBe(false);
   });
 });
 

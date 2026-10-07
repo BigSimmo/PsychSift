@@ -3,7 +3,7 @@
 import { ChevronLeft, Sunrise, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
@@ -26,7 +26,7 @@ import {
   type MyDayState,
 } from "@/lib/my-day/model";
 import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
-import { myDayPageIds, parseMyDayPage, type MyDayPageId } from "@/lib/my-day/dashboard";
+import { parseMyDayPage } from "@/lib/my-day/dashboard";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { focusRing } from "@/components/card-recipes";
@@ -189,63 +189,6 @@ function longDate(date: string): string {
   return `${LONG_WEEKDAYS[weekday]} ${Number(date.slice(8, 10))} ${LONG_MONTHS[Number(date.slice(5, 7)) - 1]}`;
 }
 
-/** Switch page by replacing the address, so Back still leaves My Day rather than stepping through tabs. */
-function showPage(page: MyDayPageId) {
-  const url = page === "today" ? MY_DAY_PATH : `${MY_DAY_PATH}?page=${page}`;
-  window.history.replaceState(null, "", url);
-}
-
-/** True when the touch began inside something that scrolls sideways (quick actions, the wallet). */
-function insideHorizontalScroller(target: EventTarget | null, stop: Element): boolean {
-  let node = target instanceof Element ? target : null;
-  while (node && node !== stop) {
-    if (node.scrollWidth > node.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(node).overflowX)) return true;
-    node = node.parentElement;
-  }
-  return false;
-}
-
-/** The page body; a sideways swipe on it moves to the next or previous page (the header tabs name it). */
-function MyDaySwipePanel({
-  page,
-  onChange,
-  children,
-}: {
-  readonly page: MyDayPageId;
-  readonly onChange: (page: MyDayPageId) => void;
-  readonly children: ReactNode;
-}) {
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const swipeRef = useRef<HTMLDivElement>(null);
-  return (
-    <div
-      ref={swipeRef}
-      id="my-day-panel"
-      onTouchStart={(event) => {
-        const touch = event.touches[0];
-        touchStart.current =
-          touch && swipeRef.current && !insideHorizontalScroller(event.target, swipeRef.current)
-            ? { x: touch.clientX, y: touch.clientY }
-            : null;
-      }}
-      onTouchEnd={(event) => {
-        const start = touchStart.current;
-        const touch = event.changedTouches[0];
-        touchStart.current = null;
-        if (!start || !touch) return;
-        const dx = touch.clientX - start.x;
-        const dy = touch.clientY - start.y;
-        if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
-        const index = myDayPageIds.indexOf(page);
-        const next = myDayPageIds[index + (dx < 0 ? 1 : -1)];
-        if (next) onChange(next);
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const { status: authStatus, authEpoch } = useAuthSession();
   const enabled = myDayEnabledForAuth(authStatus);
@@ -269,9 +212,6 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const page = parseMyDayPage(searchParams?.get("page"));
   // The header's Today / Work / Me tabs: ?page= is not part of the path, so the page names its own tab.
   useModeBandCurrentTab(view === "dashboard" ? `my-day-${page}` : null);
-  const changePage = (next: MyDayPageId) => {
-    if (next !== page) showPage(next);
-  };
   const [editing, setEditing] = useState(false);
   useEffect(() => {
     // Back on the dashboard (by either Back): nothing of ours is left to step back over.
@@ -401,7 +341,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 renderFullList={fullList}
               />
             ) : (
-              <MyDaySwipePanel page={page} onChange={changePage}>
+              <>
                 <MyDaySampleDashboard
                   now={now}
                   today={today}
@@ -410,7 +350,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                   onShowAll={showAll}
                   renderFullList={fullList}
                 />
-              </MyDaySwipePanel>
+              </>
             )}
           </div>
         ) : null}
@@ -441,7 +381,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             {view === "all" ? (
               fullList(items, checked)
             ) : (
-              <MyDaySwipePanel page={page} onChange={changePage}>
+              <>
                 <MyDayDashboardView
                   key={authEpoch}
                   allowSample={allowSample}
@@ -459,7 +399,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                   onShowAll={showAll}
                   onRetry={state.retry}
                 />
-              </MyDaySwipePanel>
+              </>
             )}
 
             {/* One notice at the top at most; the quieter context is one line of small print here. */}
