@@ -58,12 +58,16 @@ export const WORK_SETUP_STEP_COPY: Record<
 };
 
 /** The welcome step's list of what setup covers. */
-export const WORK_SETUP_COVERS: readonly { readonly step: WorkSetupStepId; readonly label: string }[] = [
-  { step: "stage", label: "Your stage" },
-  { step: "areas", label: "Areas you use" },
-  { step: "time-zone", label: "Time zone" },
-  { step: "roster", label: "Roster and rotation" },
-  { step: "alerts", label: "Alerts" },
+export const WORK_SETUP_COVERS: readonly {
+  readonly step: WorkSetupStepId;
+  readonly label: string;
+  readonly sub: string;
+}[] = [
+  { step: "stage", label: "Your stage", sub: "Where you are in training" },
+  { step: "areas", label: "Areas you use", sub: "Setup and help put yours first" },
+  { step: "time-zone", label: "Time zone", sub: "For shift and roster times" },
+  { step: "roster", label: "Roster and rotation", sub: "Your shifts and your term" },
+  { step: "alerts", label: "Alerts", sub: "What reaches you and when" },
 ];
 
 export const WORK_SETUP_AREA_COPY: Record<

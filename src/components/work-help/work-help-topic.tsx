@@ -2,7 +2,7 @@
 
 import { ChevronRight, Settings2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { WorkCard, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { workHelpTopicHref, type WorkHelpQuestion, type WorkHelpTopic } from "@/lib/work-help";
@@ -72,37 +72,31 @@ function Answer({
   );
 }
 
+function subscribeHash(onChange: () => void): () => void {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+const readHash = () => window.location.hash;
+const serverHash = () => "";
+
 /** Reads `#q-<id>` so a link from the help sheet or a search result opens that answer. */
 function useHashQuestion(topic: WorkHelpTopic): string | null {
-  const [hash, setHash] = useState<string | null>(null);
-  useEffect(() => {
-    const read = () => {
-      const id = window.location.hash.replace(/^#q-/, "");
-      setHash(topic.questions.some((question) => question.id === id) ? id : null);
-    };
-    read();
-    window.addEventListener("hashchange", read);
-    return () => window.removeEventListener("hashchange", read);
-  }, [topic]);
-  return hash;
+  const hash = useSyncExternalStore(subscribeHash, readHash, serverHash);
+  const id = hash.replace(/^#q-/, "");
+  return topic.questions.some((question) => question.id === id) ? id : null;
 }
 
 /** The full topic, as the help centre shows it. */
 export function WorkHelpTopicPage({ topic }: { readonly topic: WorkHelpTopic }) {
   const fromHash = useHashQuestion(topic);
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  // What the doctor opened or closed by hand; anything untouched follows the link's answer.
+  const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(new Map());
   useEffect(() => {
-    if (!fromHash) return;
-    setOpen((current) => new Set([...current, fromHash]));
-    document.getElementById(`q-${fromHash}`)?.scrollIntoView({ block: "start" });
+    if (fromHash) document.getElementById(`q-${fromHash}`)?.scrollIntoView({ block: "start" });
   }, [fromHash]);
+  const isOpen = (id: string) => toggled.get(id) ?? id === fromHash;
   const toggle = (id: string) =>
-    setOpen((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setToggled((current) => new Map(current).set(id, !(current.get(id) ?? id === fromHash)));
 
   return (
     <div className="grid gap-5" data-testid={`work-help-topic-${topic.id}`} data-mode-identity={topic.identity}>
@@ -115,7 +109,7 @@ export function WorkHelpTopicPage({ topic }: { readonly topic: WorkHelpTopic }) 
             <Answer
               key={question.id}
               question={question}
-              open={open.has(question.id)}
+              open={isOpen(question.id)}
               onToggle={() => toggle(question.id)}
             />
           ))}

@@ -2,7 +2,21 @@
 
 import "@/components/work-help/work-help.css";
 
-import { ChevronLeft, ChevronRight, Clock3, Compass, Search, SearchX, Sparkles, X } from "lucide-react";
+import {
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Compass,
+  Search,
+  SearchX,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Star,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -59,6 +73,35 @@ function TopicList({ label, topics }: { readonly label: string; readonly topics:
       <WorkCard as="ul" aria-label={label}>
         {topics.map((topic) => (
           <TopicRow key={topic.id} topic={topic} />
+        ))}
+      </WorkCard>
+    </section>
+  );
+}
+
+const GUIDE_ICON: Partial<Record<WorkHelpTopic["id"], LucideIcon>> = {
+  privacy: ShieldCheck,
+  alerts: Bell,
+  favourites: Star,
+  offline: Smartphone,
+};
+
+function GuideList({ topics }: { readonly topics: readonly WorkHelpTopic[] }) {
+  return (
+    <section className="grid gap-2" aria-label="Good to know">
+      <WorkSectionLabel>Good to know</WorkSectionLabel>
+      <WorkCard as="ul" aria-label="Good to know">
+        {topics.map((topic) => (
+          <li key={topic.id}>
+            <WorkIconRow
+              icon={GUIDE_ICON[topic.id] ?? Compass}
+              tone="neutral"
+              title={topic.title}
+              sub={topic.summary}
+              href={workHelpTopicHref(topic.id)}
+              testId={`work-help-topic-row-${topic.id}`}
+            />
+          </li>
         ))}
       </WorkCard>
     </section>
@@ -171,7 +214,7 @@ function GetStarted() {
             title="Set up Work"
             sub={setupSub}
             href={setupHref}
-            end={setupEnd ? <span className="work-help__end">{setupEnd}</span> : undefined}
+            end={setupEnd ? <span className="work-help__pill">{setupEnd}</span> : undefined}
             testId="work-help-setup"
           />
         </li>
@@ -269,7 +312,7 @@ function HelpHome() {
           <GetStarted />
           <TopicList label={others.length > 0 ? "Your areas" : "Areas"} topics={yours} />
           <TopicList label="Other areas" topics={others} />
-          <TopicList label="Good to know" topics={WORK_HELP_GUIDE_TOPICS} />
+          <GuideList topics={WORK_HELP_GUIDE_TOPICS} />
           <p className="work-help__foot">Help covers Work mode. For clinical search, use the guide in Settings.</p>
         </>
       )}

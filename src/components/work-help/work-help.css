@@ -61,10 +61,18 @@
   background: var(--mode-identity);
 }
 
-.work-help__end {
+/* Start, Resume or Review on the Set up Work row: the tinted button's look,
+   drawn as a label because the whole row is the link. */
+.work-help__pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(var(--spacing) * 8);
+  padding: 0 calc(var(--spacing) * 3.5);
+  border-radius: var(--radius-pill);
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity);
   font-size: var(--text-xs, 0.75rem);
-  font-weight: 600;
-  color: var(--mode-identity-deep, var(--mode-identity));
+  font-weight: 700;
   white-space: nowrap;
 }
 

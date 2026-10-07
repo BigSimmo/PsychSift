@@ -2,7 +2,7 @@
 
 import "@/components/work-setup/work-setup.css";
 
-import { ChevronLeft, LogIn, X } from "lucide-react";
+import { Check, ChevronLeft, Compass, LogIn, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -209,6 +209,15 @@ export function WorkSetupPage() {
       {framed ? <StepProgress progress={progress} step={step} /> : null}
 
       <main className="work-setup__body" aria-labelledby="work-setup-heading">
+        {framed ? null : (
+          <span aria-hidden="true" className="work-setup__art" data-tone={step === "done" ? "green" : undefined}>
+            {step === "done" ? (
+              <Check aria-hidden="true" strokeWidth={2.2} />
+            ) : (
+              <Compass aria-hidden="true" strokeWidth={1.8} />
+            )}
+          </span>
+        )}
         <h1 id="work-setup-heading" ref={headingRef} tabIndex={-1} className="work-setup__title">
           {copy.title}
         </h1>
@@ -231,29 +240,29 @@ export function WorkSetupPage() {
       <WorkDock aria-label="Setup actions">
         {step === "welcome" ? (
           <>
-            <WorkButton size="wide" onClick={onContinue} testId="work-setup-start">
-              {progress.completed.length > 0 || progress.skipped.length > 0 ? "Carry on" : "Start"}
-            </WorkButton>
             <WorkButton variant="quiet" href={EXIT_HREF} testId="work-setup-not-now">
               Not now
+            </WorkButton>
+            <WorkButton size="wide" onClick={onContinue} testId="work-setup-start">
+              {progress.completed.length > 0 || progress.skipped.length > 0 ? "Carry on" : "Start"}
             </WorkButton>
           </>
         ) : step === "done" ? (
           <>
-            <WorkButton size="wide" href={EXIT_HREF} testId="work-setup-finish">
-              Go to My Day
-            </WorkButton>
             <WorkButton variant="quiet" href={HELP_HREF} testId="work-setup-help">
               Open help
+            </WorkButton>
+            <WorkButton size="wide" href={EXIT_HREF} testId="work-setup-finish">
+              Go to My Day
             </WorkButton>
           </>
         ) : (
           <>
-            <WorkButton size="wide" onClick={onContinue} testId="work-setup-continue">
-              Continue
-            </WorkButton>
             <WorkButton variant="quiet" onClick={onSkip} testId="work-setup-skip">
               Skip for now
+            </WorkButton>
+            <WorkButton size="wide" onClick={onContinue} testId="work-setup-continue">
+              Continue
             </WorkButton>
           </>
         )}

@@ -80,6 +80,27 @@
   padding: calc(var(--spacing) * 6) 0 calc(var(--spacing) * 2);
 }
 
+/* Welcome and done open with one large icon circle. */
+.work-setup__art {
+  display: grid;
+  width: calc(var(--spacing) * 14);
+  height: calc(var(--spacing) * 14);
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity);
+}
+
+.work-setup__art > svg {
+  width: calc(var(--spacing) * 6.5);
+  height: calc(var(--spacing) * 6.5);
+}
+
+.work-setup__art[data-tone="green"] {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
 .work-setup__title {
   margin: 0;
   font-size: var(--text-2xl-minus, 1.375rem);
@@ -286,4 +307,11 @@
   align-items: center;
   gap: calc(var(--spacing) * 2);
   margin-top: calc(var(--spacing) * 3);
+}
+
+/* The dock: the quiet choice ("Skip for now", "Not now") sits first at its own
+   width, so the main action gets the rest of the capsule. */
+.work-setup .work-dock__capsule > .work-button[data-variant="quiet"] {
+  flex: none;
+  padding-inline: calc(var(--spacing) * 4);
 }

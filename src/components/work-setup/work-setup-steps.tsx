@@ -153,7 +153,7 @@ export function WelcomeStep({ exampleData }: WorkSetupStepContext) {
       <WorkCard as="ul" aria-label="What setup covers">
         {WORK_SETUP_COVERS.map((item) => (
           <li key={item.step}>
-            <WorkIconRow icon={COVER_ICON[item.step] ?? Sparkles} title={item.label} />
+            <WorkIconRow icon={COVER_ICON[item.step] ?? Sparkles} title={item.label} sub={item.sub} />
           </li>
         ))}
       </WorkCard>
@@ -193,7 +193,7 @@ export function ExampleSwitch({ on, onChange }: { readonly on: boolean; readonly
   );
 }
 
-export function StageStep(_context: WorkSetupStepContext) {
+export function StageStep() {
   const { preferences, setPreference } = useAppPreferences();
   return (
     <div className="grid gap-5" data-testid="work-setup-stage">
