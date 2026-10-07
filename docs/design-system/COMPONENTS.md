@@ -1058,9 +1058,9 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `AnswerFooter`           | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `Breadcrumb`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             156 |
+| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             155 |
 | `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
-| `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
+| `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
 | `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
 | `Citation`               | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `CitationList`           | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
@@ -1070,7 +1070,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `DisclosureGroup`        | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `DoseLine`               | answer   | yes   | yes                | no                    | yes            | no                 |               0 |
 | `DownloadLink`           | controls | yes   | yes                | no                    | yes            | no                 |               0 |
-| `EmptyState`             | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              19 |
+| `EmptyState`             | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              18 |
 | `ErrorState`             | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `ErrorSummary`           | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `ExternalTextLink`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
@@ -1078,7 +1078,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `FieldHint`              | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `FormField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
 | `IconButton`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
-| `InlineNotice`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              34 |
+| `InlineNotice`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              33 |
 | `LinkAction`             | controls | yes   | yes                | no                    | yes            | no                 |               0 |
 | `LoadingPanel`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
 | `MissingValue`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
