@@ -32,10 +32,18 @@ const arg = (name, fallback) => {
 const base = arg("base", "http://127.0.0.1:4310");
 const runs = Number(arg("runs", "3"));
 const out = arg("out", null);
-const routes = (arg("routes", null) ?? "/my-day,/my-day/week,/roster,/roster/shifts,/open-shifts,/on-call,/on-call/handover,/teaching,/teaching/assessments,/cme,/admin").split(",");
+const routes = (
+  arg("routes", null) ??
+  "/my-day,/my-day/week,/roster,/roster/shifts,/open-shifts,/on-call,/on-call/handover,/teaching,/teaching/assessments,/cme,/admin"
+).split(",");
 
 const PHONE = { width: 412, height: 860 };
-const NETWORK = { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 };
+const NETWORK = {
+  offline: false,
+  latency: 150,
+  downloadThroughput: (1.6 * 1024 * 1024) / 8,
+  uploadThroughput: (750 * 1024) / 8,
+};
 const CPU_SLOWDOWN = 4;
 
 const median = (values) => {
@@ -92,7 +100,13 @@ for (const route of routes) {
   const warm = [];
   const taps = [];
   for (let i = 0; i < runs; i += 1) {
-    const context = await browser.newContext({ viewport: PHONE, deviceScaleFactor: 2, isMobile: true, hasTouch: true, serviceWorkers: "block" });
+    const context = await browser.newContext({
+      viewport: PHONE,
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+      serviceWorkers: "block",
+    });
     await context.addInitScript(OBSERVERS);
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
@@ -117,4 +131,5 @@ for (const route of routes) {
   console.log(route.padEnd(24), JSON.stringify(results[route]));
 }
 await browser.close();
-if (out) writeFileSync(out, `${JSON.stringify({ measuredAt: new Date().toISOString(), base, runs, results }, null, 2)}\n`);
+if (out)
+  writeFileSync(out, `${JSON.stringify({ measuredAt: new Date().toISOString(), base, runs, results }, null, 2)}\n`);

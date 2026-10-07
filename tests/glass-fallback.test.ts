@@ -19,7 +19,6 @@ function runScript(hints: { deviceMemory?: number; hardwareConcurrency?: number 
 }
 
 describe("glass fallback", () => {
-
   it.each(cases)("%s", (_label, hints, expected) => {
     expect(shouldFlattenGlass(hints)).toBe(expected);
   });
