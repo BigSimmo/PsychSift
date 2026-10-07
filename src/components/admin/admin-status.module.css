@@ -47,7 +47,7 @@
   font-size: var(--text-3xs);
   font-weight: 600;
   letter-spacing: 0.06em;
-  line-height: 1.1;
+  line-height: var(--work-leading-tag);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -104,7 +104,7 @@
   font-size: var(--text-3xs);
   font-weight: 600;
   letter-spacing: 0.02em;
-  line-height: 1.1;
+  line-height: var(--work-leading-tag);
   white-space: nowrap;
 }
 
