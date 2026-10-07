@@ -1,10 +1,10 @@
 "use client";
 
 import { Bell, Check, Clock, Copy, Inbox, Send, TriangleAlert, UserRound, WifiOff, X } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { clockNow, useAssessmentsExtras, useOfflineSince } from "@/components/teaching/assessments/assessments-extras";
+import { useAssessmentsExtras, useOfflineSince } from "@/components/teaching/assessments/assessments-extras";
 import {
   Inset,
   KeyValue,
@@ -43,6 +43,7 @@ import {
   dctRemindersFor,
   doctorSees,
   doctorView,
+  cleanFeedbackText,
   feedbackProblem,
   filterCounts,
   inboxRequests,
@@ -134,26 +135,8 @@ function InboxRow({ item, onOpen }: { item: InboxRequest; onOpen: () => void }) 
   );
 }
 
-/** A thin bar that drains over the 10 seconds a send can still be undone. Words carry the meaning. */
-function DrainBar({ startedAt }: { startedAt: number }) {
-  const [now, setNow] = useState(startedAt);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 250);
-    return () => window.clearInterval(timer);
-  }, []);
-  const left = Math.max(0, 1 - (now - startedAt) / UNDO_MS);
-  return (
-    <span
-      aria-hidden="true"
-      className="block h-1 overflow-hidden rounded-full bg-[color:var(--surface-subtle)] motion-reduce:hidden"
-    >
-      <i className="block h-full rounded-full bg-[color:var(--mode-identity)]" style={{ width: `${left * 100}%` }} />
-    </span>
-  );
-}
-
 export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
-  const { extras, dispatchExtras } = useAssessmentsExtras();
+  const { extras, dispatchExtras, sendAnswers } = useAssessmentsExtras();
   const toast = useToast();
   const offlineSince = useOfflineSince();
   const [tab, setTab] = useState<"waiting" | "done">("waiting");
@@ -161,7 +144,6 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
   const [sort, setSort] = useState<InboxSort>("oldest");
   const [sheet, setSheet] = useState<SheetMode>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [sendingSince, setSendingSince] = useState<number | null>(null);
 
   const items = useMemo(() => inboxRequests(s, extras.answers), [s, extras.answers]);
   const counts = filterCounts(items);
@@ -188,30 +170,6 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
     return { level: answer.level, text: answer.text };
   }
 
-  /** Starts the 10-second send for one or more answers, under one Undo. */
-  function startSending(entries: { item: InboxRequest; level: SupervisionLevel; text: string }[], title: string) {
-    const at = clockNow();
-    for (const { item, level, text } of entries)
-      dispatchExtras({ type: "inbox-send", id: item.id, level, text: text.trim(), at });
-    setSendingSince(Date.now());
-    toast.push({
-      tone: "info",
-      title,
-      body: "Made-up: nothing reaches anyone.",
-      duration: UNDO_MS,
-      action: {
-        label: "Undo",
-        onAction: () => {
-          for (const { item } of entries) dispatchExtras({ type: "inbox-undo", id: item.id });
-          announce("Not sent. Your answer is kept for when you reopen it.");
-        },
-      },
-      onClose: (reason) => {
-        if (reason !== "action") for (const { item } of entries) dispatchExtras({ type: "inbox-commit", id: item.id });
-      },
-    });
-  }
-
   function send(item: InboxRequest, draft: Draft) {
     if (!draft.level || sendBlocker(draft)) return;
     setSheet(null);
@@ -221,35 +179,12 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
       return next;
     });
     if (offlineSince) {
-      dispatchExtras({ type: "inbox-queue", id: item.id, level: draft.level, text: draft.text.trim() });
+      dispatchExtras({ type: "inbox-queue", id: item.id, level: draft.level, text: cleanFeedbackText(draft.text) });
       announce(`Kept to send to ${item.doctor.name} when you are back online.`);
       return;
     }
-    startSending([{ item, level: draft.level, text: draft.text }], `Sending to ${item.doctor.name} in 10 s`);
+    sendAnswers([{ id: item.id, level: draft.level, text: draft.text }], `Sending to ${item.doctor.name} in 10 s`);
   }
-
-  // Back online: everything kept as "To send" goes, under one Undo. The listener reads the latest list.
-  const queuedRef = useRef<InboxRequest[]>([]);
-  const startRef = useRef(startSending);
-  useEffect(() => {
-    queuedRef.current = items.filter((i) => i.status === "queued");
-    startRef.current = startSending;
-  });
-  useEffect(() => {
-    const onOnline = () => {
-      const queued = queuedRef.current;
-      if (!queued.length) return;
-      startRef.current(
-        queued.map((item) => {
-          const answer = extras.answers[item.id] ?? EMPTY_ANSWER;
-          return { item, level: answer.level ?? "proximal", text: answer.text };
-        }),
-        `Back online · sending ${queued.length === 1 ? "1 answer" : `${queued.length} answers`} in 10 s`,
-      );
-    };
-    window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
-  }, [extras.answers]);
 
   function moveLater(item: InboxRequest) {
     pass(item, "not_this_week", null);
@@ -362,7 +297,6 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
               <span className={secondaryText}>
                 {`Sending ${sending.length === 1 ? "1 answer" : `${sending.length} answers`}. Undo is on the message at the bottom.`}
               </span>
-              {sendingSince ? <DrainBar key={sendingSince} startedAt={sendingSince} /> : null}
             </div>
           ) : null}
           {waiting.length === 0 ? (

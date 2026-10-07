@@ -26,6 +26,19 @@ export type ExtrasAction =
 
 export const initialExtras: ExtrasState = { answers: {}, reminders: [] };
 
+/**
+ * Answers kept as To send that can go now. One with no supervision level is left out, never given a made-up
+ * level: it stays as To send, and the inbox row says to choose a level.
+ */
+export function readyToSend(
+  answers: Readonly<Record<string, InboxAnswer>>,
+): { id: string; level: SupervisionLevel; text: string }[] {
+  const ready: { id: string; level: SupervisionLevel; text: string }[] = [];
+  for (const [id, answer] of Object.entries(answers))
+    if (answer.status === "queued" && answer.level) ready.push({ id, level: answer.level, text: answer.text });
+  return ready;
+}
+
 /** The reminder keys made so far: one a day per form. */
 export function remindedKeys(s: ExtrasState): string[] {
   return s.reminders.map((r) => r.key);
