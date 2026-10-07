@@ -14,12 +14,18 @@ import {
 import { useState } from "react";
 
 import { AdminNote, AdminRow, AdminSection, adminStyles } from "@/components/admin/admin-kit";
-import { AdminRuleToConfirm, AdminStatusIcon, AdminStatusTag } from "@/components/admin/admin-status-tag";
+import { AdminRuleToConfirm, AdminStatusIcon } from "@/components/admin/admin-status-tag";
 import { catalogueItemForEntry } from "@/components/admin/renewals/catalogue-lookup";
 import { ChecklistPressableRow, ChecklistRowActionButton } from "@/components/admin/renewals/checklist-row";
+import { ChecklistStatus } from "@/components/admin/renewals/checklist-status";
 import type { ChecklistKindFilter } from "@/components/admin/renewals/kind-chips";
 import { checklistKindLabel } from "@/components/admin/renewals/kind-chips";
-import { requirementActionLine, requirementDateLine, shortDateFrom } from "@/components/admin/renewals/urgency";
+import {
+  requirementActionLine,
+  requirementDateLine,
+  requirementRowUrgency,
+  shortDateFrom,
+} from "@/components/admin/renewals/urgency";
 import { WorkCard, WorkIconCircle } from "@/components/mode-kit/work";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { cn } from "@/components/ui-primitives";
@@ -30,7 +36,6 @@ import {
   type AdminRequirementGroup,
   type RequirementChecklistRow,
 } from "@/lib/admin/requirements";
-import { renewalStartOn } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
@@ -74,15 +79,6 @@ function groupSummary(rows: readonly RequirementChecklistRow[], today: string): 
 }
 
 /** A recorded row's end: when renewing starts, or plain Recorded. */
-function recordedEnd(row: RequirementChecklistRow, today: string) {
-  const startOn = row.entry && row.expiresOn ? renewalStartOn(row.entry) : undefined;
-  return startOn ? (
-    <AdminStatusTag status="plain" label={`Start ${shortDateFrom(startOn, today)}`} />
-  ) : (
-    <AdminStatusTag status="recorded" />
-  );
-}
-
 /**
  * What the "Record dates" slot offers when editing is unavailable: the plain
  * reason, never a button that pretends to work. The working button lives in
@@ -159,11 +155,15 @@ export function ChecklistList({
     return (
       <ChecklistPressableRow
         key={row.item.id}
-        lead={recorded ? undefined : <AdminStatusIcon status={status} />}
+        lead={
+          recorded ? undefined : (
+            <AdminStatusIcon status={status} spoken={status === "date-passed" || status === "start-renewing"} />
+          )
+        }
         title={row.item.title}
         subtitle={<span className="tabular-nums">{requirementActionLine(row, now)}</span>}
         meta={row.item.status === "needs-checking" ? <AdminRuleToConfirm /> : null}
-        statusTrailing={recorded ? recordedEnd(row, today) : undefined}
+        statusTrailing={recorded ? <ChecklistStatus urgency={requirementRowUrgency(row, now)} /> : undefined}
         actionTrailing={
           notRecorded && canEdit ? (
             <ChecklistRowActionButton

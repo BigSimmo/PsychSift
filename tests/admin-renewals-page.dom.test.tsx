@@ -110,6 +110,17 @@ function renderPage() {
 /** Every row now shows in its kind group (5 Oct mock-up v2); kept so the older tests read the same. */
 function showAllNotRecorded() {}
 
+/**
+ * Recorded rows now sit in collapsed kind groups under "Recorded", and the
+ * groups open on a tap (work-mode redesign, owner request 6 Oct 2026). Tests
+ * that open a recorded row's sheet open its group first.
+ */
+function openRecordedGroups() {
+  for (const toggle of screen.queryAllByRole("button", { expanded: false })) {
+    if (toggle.getAttribute("data-testid")?.startsWith("admin-renewals-checklist-group-")) fireEvent.click(toggle);
+  }
+}
+
 describe("AdminRenewalsPage — the checklist", () => {
   it("offers no write controls for demo entries", () => {
     storeState.demoMode = true;
@@ -127,29 +138,42 @@ describe("AdminRenewalsPage — the checklist", () => {
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));
     expect(screen.getByTestId("admin-renewals-calendar-all")).toBeDisabled();
   });
-  it("groups by kind under All, each with its count, dated rows before unrecorded ones", () => {
+  // Amended for the work-mode redesign, owner request 6 Oct 2026: the list now
+  // leads with "Needs action · soonest first", and recorded rows collapse into
+  // kind groups that carry their counts and open on a tap.
+  it("lists what needs action soonest first, then recorded rows in kind groups with their counts", () => {
     renderPage();
     const groups = screen.getByTestId("admin-renewals-checklist");
-    const checks = within(groups).getByTestId("admin-renewals-checklist-group-checks");
-    const training = within(groups).getByTestId("admin-renewals-checklist-group-training");
-    expect(within(checks).getByText("Working with Children Check")).toBeInTheDocument();
-    expect(within(training).getByText("ALS course certification")).toBeInTheDocument();
-    // The dated row leads its group; unrecorded rows follow.
-    const titles = within(checks)
+    const needs = within(groups).getByTestId("admin-renewals-checklist-needs-action");
+    const titles = within(needs)
       .getAllByRole("listitem")
       .map((item) => item.textContent ?? "");
     expect(titles[0]).toMatch(/Working with Children Check/);
-    expect(within(checks).getAllByText("Not recorded yet").length).toBeGreaterThan(0);
+    expect(titles[1]).toMatch(/ALS course certification/);
+    expect(within(needs).getAllByText("Not recorded yet").length).toBeGreaterThan(0);
+    const registration = within(groups).getByTestId("admin-renewals-checklist-group-registration-toggle");
+    expect(registration).toHaveAttribute("aria-expanded", "false");
+    expect(registration).toHaveAccessibleName("Registration · 2");
+    expect(within(groups).queryByText("Medical registration renewal")).toBeNull();
+    fireEvent.click(registration);
+    expect(registration).toHaveAttribute("aria-expanded", "true");
+    expect(within(groups).getByText("Medical registration renewal")).toBeInTheDocument();
   });
 
-  it("puts the item to act on first in Renew next, with what comes after it", () => {
+  // Amended for the work-mode redesign, owner request 6 Oct 2026: the Renew
+  // next card shows only when nothing is due; otherwise the item to act on
+  // leads "Needs action", with its passed date, and what comes after it next.
+  it("puts the item to act on first in Needs action, with what comes after it", () => {
     renderPage();
-    const card = screen.getByTestId("admin-renew-next");
+    expect(screen.queryByTestId("admin-renew-next")).toBeNull();
+    const needs = screen.getByTestId("admin-renewals-checklist-needs-action");
+    const rows = within(needs).getAllByRole("listitem");
     // WWC's date passed on 3 Sep, so it leads; ALS is inside its renewing window.
-    expect(within(card).getByRole("heading", { name: "Working with Children Check" })).toBeInTheDocument();
-    expect(screen.getByTestId("admin-renew-next-status")).toHaveTextContent("Date passed");
-    expect(screen.getByTestId("admin-renew-next-date")).toHaveTextContent("Date passed 3 Sep 2026");
-    expect(screen.getByTestId("admin-renew-next-then")).toHaveTextContent("ALS course certification");
+    expect(rows[0]).toHaveTextContent("Date passed: Working with Children Check");
+    expect(rows[0]).toHaveTextContent("Passed 3 Sep · 3 weeks ago");
+    expect(rows[0]?.querySelector('[data-admin-status="date-passed"]')).not.toBeNull();
+    expect(rows[1]).toHaveTextContent("Start renewing: ALS course certification");
+    expect(rows[1]).toHaveTextContent("Renew by 14 Oct · in 2 weeks");
   });
 
   it("says how many items have no date beside Nothing to renew right now", () => {
@@ -176,11 +200,16 @@ describe("AdminRenewalsPage — the checklist", () => {
     expect(list.getByText("ALS course certification")).toBeInTheDocument();
   });
 
-  it("draws urgency as grey shapes and words, with no red or amber anywhere on the page", () => {
+  // Amended for the work-mode redesign, owner request 6 Oct 2026: red (date
+  // passed) and amber (start renewing) are allowed, but only through the one
+  // shared status mark, which always carries its shape and word too.
+  it("draws urgency as shapes and words, colouring only through the shared status mark", () => {
     renderPage();
     expect(screen.getAllByText("Date passed").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Start renewing").length).toBeGreaterThan(0);
     expect(document.body.innerHTML).not.toMatch(/--danger|--warning/);
+    expect(document.querySelector('[data-admin-status="date-passed"] [data-mark="diamond"]')).not.toBeNull();
+    expect(document.querySelector('[data-admin-status="start-renewing"] [data-mark="triangle"]')).not.toBeNull();
   });
 
   it("marks the timeline by shape, not shade: a diamond for a passed date, a triangle otherwise (M8)", () => {
@@ -226,6 +255,7 @@ describe("AdminRenewalsPage — the checklist", () => {
 
   it("orders the sheet: issuer check, then history, then the rule", () => {
     renderPage();
+    openRecordedGroups();
     fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-medical-registration-renewal"));
     const sheet = within(screen.getByTestId("admin-renewals-item-sheet"));
     const issuer = sheet.getByTestId("admin-renewals-item-sheet-issuer-check");
@@ -297,6 +327,7 @@ describe("AdminRenewalsPage — the checklist", () => {
 
   it("shows the unconfirmed line, not a rule, for a needs-checking item", () => {
     renderPage();
+    openRecordedGroups();
     fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-professional-indemnity-insurance"));
     const sheet = screen.getByTestId("admin-renewals-item-sheet");
     expect(within(sheet).getByText("Rule to confirm")).toBeInTheDocument();
@@ -305,6 +336,7 @@ describe("AdminRenewalsPage — the checklist", () => {
 
   it("links only the medical registration item to the CPD year check", () => {
     renderPage();
+    openRecordedGroups();
     fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-medical-registration-renewal"));
     const link = screen.getByTestId("admin-renewals-cpd-link");
     expect(link.textContent).toBe("Open CPD year check");
@@ -382,6 +414,7 @@ describe("AdminRenewalsPage — Not for this job", () => {
       )
       .mockResolvedValueOnce(new Response(JSON.stringify({ entry: INDEMNITY })));
     renderPage();
+    openRecordedGroups();
     fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-professional-indemnity-insurance"));
     fireEvent.click(screen.getByTestId("admin-renewals-item-sheet-not-for-this-job"));
 
@@ -607,6 +640,7 @@ describe("AdminRenewalsPage — failed saves are never silent (I5)", () => {
       .mockResolvedValueOnce(jsonResponse({ entry: flaggedIndemnity }))
       .mockResolvedValueOnce(jsonResponse({ error: "Service unavailable." }, 503));
     renderPage();
+    openRecordedGroups();
     fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-professional-indemnity-insurance"));
     fireEvent.click(screen.getByTestId("admin-renewals-item-sheet-not-for-this-job"));
     const bar = await screen.findByTestId("admin-renewals-undo-bar");
@@ -620,6 +654,7 @@ describe("AdminRenewalsPage — failed saves are never silent (I5)", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({ entry: flaggedIndemnity }));
     renderPage();
+    openRecordedGroups();
     fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-professional-indemnity-insurance"));
     fireEvent.click(screen.getByTestId("admin-renewals-item-sheet-not-for-this-job"));
     await screen.findByTestId("admin-renewals-undo-bar");
@@ -662,8 +697,12 @@ describe("AdminRenewalsPage — readable timeline, wrapping chips, short Not rec
     expect(within(timeline).getAllByText("Working with Children Check").length).toBeGreaterThan(0);
     const months = within(timeline).getByTestId("admin-renewals-summary-timeline-months");
     expect(months.children).toHaveLength(12);
-    expect(months.children[0]?.textContent).toBe("Sep");
-    expect(months.children[1]?.textContent).toBe("Oct");
+    // Amended for the work-mode redesign, owner request 6 Oct 2026: the axis
+    // shows the mockup's month initials, each naming its month in full.
+    expect(months.children[0]?.textContent).toBe("S");
+    expect(months.children[0]?.getAttribute("title")).toBe("September");
+    expect(months.children[1]?.textContent).toBe("O");
+    expect(months.children[1]?.getAttribute("title")).toBe("October");
     expect(timeline.querySelector("[data-today-line]")).not.toBeNull();
     expect(within(timeline).getByText("Today")).toBeInTheDocument();
     // A words-only equivalent for screen readers.
@@ -718,6 +757,7 @@ describe("AdminRenewalsPage — detail sheet", () => {
 
   it("renders Open CPD year check as a real, underlined link", () => {
     renderPage();
+    openRecordedGroups();
     fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-medical-registration-renewal"));
     const link = screen.getByRole("link", { name: "Open CPD year check" });
     expect(link.getAttribute("href")).toBe("/cme/check");

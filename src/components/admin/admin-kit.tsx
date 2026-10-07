@@ -105,6 +105,7 @@ export function AdminRow({
   testId,
   chevron = true,
   "aria-expanded": ariaExpanded,
+  disabled,
   className,
 }: {
   readonly lead?: ReactNode;
@@ -123,6 +124,8 @@ export function AdminRow({
   readonly testId?: string;
   readonly chevron?: boolean;
   readonly "aria-expanded"?: boolean;
+  /** A button row that cannot act right now (still read, never hidden). */
+  readonly disabled?: boolean;
   readonly className?: string;
 }) {
   const body = (
@@ -151,6 +154,7 @@ export function AdminRow({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn("work-row", ariaExpanded !== undefined && styles.disclosure)}
       aria-expanded={ariaExpanded}
       data-testid={testId}

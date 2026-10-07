@@ -79,12 +79,20 @@ export function AdminStatusTag({
   );
 }
 
-/** The round circle that leads a row, tinted by status. Decorative: the row says the word. */
-export function AdminStatusIcon({ status }: { readonly status: AdminStatus }) {
+/**
+ * The round circle that leads a row, tinted by status. With `spoken`, a screen
+ * reader hears the status word before the row's name, for rows whose own text
+ * does not already say it.
+ */
+export function AdminStatusIcon({ status, spoken }: { readonly status: AdminStatus; readonly spoken?: boolean }) {
+  const word = STATUS_WORDS[status];
   return (
-    <span aria-hidden="true" data-admin-status={status} className={styles.icon}>
-      <AdminStatusMark status={status} />
-    </span>
+    <>
+      <span aria-hidden="true" data-admin-status={status} className={styles.icon}>
+        <AdminStatusMark status={status} />
+      </span>
+      {spoken && word ? <span className="sr-only">{`${word}: `}</span> : null}
+    </>
   );
 }
 

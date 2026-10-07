@@ -1,15 +1,26 @@
 "use client";
 
-import { Ellipsis } from "lucide-react";
+import { CalendarPlus, Copy, Ellipsis, LogIn, Plus, RotateCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { AdminFloatingAdd } from "@/components/admin/admin-floating-add";
+import {
+  AdminLoadAlert,
+  AdminPage,
+  AdminRow,
+  AdminSheet,
+  AdminSkeleton,
+  adminStyles,
+} from "@/components/admin/admin-kit";
 import { AdminQuickAddSheet } from "@/components/admin/admin-quick-add-sheet";
 import { AdminRenewedSheet } from "@/components/admin/admin-renewed-sheet";
 import { catalogueItemForEntry, isPersonalRenewal } from "@/components/admin/renewals/catalogue-lookup";
 import { ChecklistList, type RecordDatesSlot } from "@/components/admin/renewals/checklist-list";
-import { ChecklistKindChips, type ChecklistKindFilter } from "@/components/admin/renewals/kind-chips";
+import {
+  CHECKLIST_KIND_FILTERS,
+  ChecklistKindChips,
+  type ChecklistKindFilter,
+} from "@/components/admin/renewals/kind-chips";
 import { ChecklistItemDetailSheet, type ChecklistItemSubject } from "@/components/admin/renewals/item-detail-sheet";
 import { ChecklistAtAGlance } from "@/components/admin/renewals/checklist-summary";
 import { RenewNextCard } from "@/components/admin/renewals/renew-next-card";
@@ -17,16 +28,11 @@ import { PersonalRenewalsList } from "@/components/admin/renewals/personal-list"
 import { RecordDatesSheet, type RecordDatesReadOnly } from "@/components/admin/renewals/record-dates-sheet";
 import { RenewalsShowFilterList } from "@/components/admin/renewals/show-filter-list";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
-import { focusRing } from "@/components/card-recipes";
-import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { ModeBandAction, PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { WorkButton, WorkCard, WorkDock, WorkEmpty, WorkGlassButton, WorkIconCircle } from "@/components/mode-kit/work";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
-import { EmptyState, InlineNotice } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
-import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { cn, controlDisabled, IconButton, textMuted } from "@/components/ui-primitives";
 import { complianceBucket, complianceBucketCounts, type ComplianceBucket } from "@/lib/admin/compliance-overview";
 import { renewNext } from "@/lib/admin/renew-next";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -45,12 +51,11 @@ import {
   requirementsNotForThisJob,
 } from "@/lib/admin/requirements";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
-import { parseRenewalsShow, renewalsShowMatches } from "@/lib/admin/renewals-filters";
+import { parseRenewalsShow, RENEWALS_SHOW_LABELS, renewalsShowMatches } from "@/lib/admin/renewals-filters";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
-import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 type CatalogueItem = (typeof ADMIN_REQUIREMENTS_CATALOGUE)[number];
 type RenewSubject = { entry: OnCallEntry | null; createItem?: CatalogueItem };
@@ -70,10 +75,6 @@ type FailedAction = { readonly message: string; readonly retry: () => Promise<vo
 
 /** The page's own path, for clearing a `?show=` filter in place. */
 const RENEWALS_PATH = "/admin/renewals";
-
-/** A menu row in the ••• sheet: full width, 48px, plain text. */
-const menuItem =
-  "flex min-h-12 w-full items-center rounded-lg px-2 text-left text-sm text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)] disabled:cursor-default disabled:text-[color:var(--text-muted)] disabled:hover:bg-transparent";
 
 async function parsedEntry(response: Response): Promise<OnCallEntry> {
   if (!response.ok) throw await parseApiErrorResponse(response);
@@ -248,6 +249,10 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
       if (hash.startsWith("admin-renewals-group-")) {
         openedHash.current = hash;
         setTab("checklist");
+        const group = hash.slice("admin-renewals-group-".length);
+        if ((CHECKLIST_KIND_FILTERS as readonly string[]).includes(group)) {
+          setKindFilter(group as ChecklistKindFilter);
+        }
         requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }));
         return;
       }
@@ -389,51 +394,59 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
       ? { kind: "note", text: "Example records are read-only" }
       : undefined;
 
+  const filteredLabel = showFilter ? RENEWALS_SHOW_LABELS[showFilter] : null;
+  useModeBandHeading({
+    eyebrow: filteredLabel ? `Showing ${filteredLabel}` : "Source: Medical Board, WA Health · Updated 26 Sep 2026",
+  });
+
+  const recordDatesInDock = canEdit && tab === "checklist" && notRecordedItems.length > 0;
+
   return (
-    <InformationPageShell testId="admin-renewals-main">
-      <div className="flex items-start justify-between gap-2">
-        <div className="grid min-w-0 gap-1">
-          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
-            Renewals
-          </PageTitleUnderBand>
-          <p className={cn(textMuted, "text-sm")}>Source: Medical Board, WA Health · Updated 26 Sep 2026</p>
-        </div>
-        {ready ? (
-          <IconButton
-            label="More actions"
-            icon={Ellipsis}
-            onClick={() => setMenuOpen(true)}
-            className="shrink-0"
-            data-testid="admin-renewals-more"
-          />
-        ) : null}
-      </div>
+    <AdminPage testId="admin-renewals-main">
+      <PageTitleUnderBand className="sr-only">Renewals</PageTitleUnderBand>
+      {ready ? (
+        <ModeBandAction>
+          {(underBand) => (
+            <WorkGlassButton
+              icon={Ellipsis}
+              label="More actions"
+              onClick={() => setMenuOpen(true)}
+              className={underBand ? "work-band__action" : undefined}
+              testId="admin-renewals-more"
+            />
+          )}
+        </ModeBandAction>
+      ) : null}
 
       {loadState === "loading" ? (
-        <ModeModuleSkeleton rows={6} twoLine testId="admin-renewals-loading" />
+        <div className={adminStyles.column} data-testid="admin-renewals-loading" aria-busy="true">
+          <span className="sr-only">Loading your renewals</span>
+          <AdminSkeleton className="h-10" />
+          <AdminSkeleton className="h-48" />
+          <AdminSkeleton className="h-64" />
+        </div>
       ) : loadState === "failed" ? (
-        <EmptyState
+        <AdminLoadAlert
           title="Couldn't load your renewals"
-          body="Check your connection and try again."
-          actions={
-            <Button variant="primary" onClick={state.retry} testId="admin-renewals-retry">
-              Retry
-            </Button>
-          }
+          body="Check your connection and try again. Nothing is shown until your own records load."
+          onRetry={state.retry}
+          retryTestId="admin-renewals-retry"
           testId="admin-renewals-failed"
         />
       ) : loadState === "signed-out" ? (
         <>
-          <EmptyState
-            title="Sign in to see your renewals"
-            body="Renewals are kept for your signed-in account only."
-            actions={
-              <Button variant="primary" onClick={() => setSignInOpen(true)}>
-                Sign in
-              </Button>
-            }
-            testId="admin-renewals-signed-out"
-          />
+          <WorkCard testId="admin-renewals-signed-out">
+            <WorkEmpty
+              icon={LogIn}
+              title="Sign in to see your renewals"
+              body="Renewals are kept for your signed-in account only."
+              action={
+                <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)}>
+                  Sign in
+                </WorkButton>
+              }
+            />
+          </WorkCard>
           <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
         </>
       ) : (
@@ -450,34 +463,31 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
           />
 
           {failedAction ? (
-            <div data-testid="admin-renewals-action-failed">
-              <InlineNotice tone="neutral">
-                <span className="flex flex-wrap items-center justify-between gap-2">
-                  <span>{failedAction.message}</span>
-                  <button
-                    type="button"
-                    onClick={() => void failedAction.retry()}
-                    className={cn(focusRing, "min-h-tap px-2 text-sm font-medium text-[color:var(--clinical-accent)]")}
-                  >
-                    Retry
-                  </button>
-                </span>
-              </InlineNotice>
-            </div>
+            <WorkCard padded testId="admin-renewals-action-failed">
+              <div className="flex flex-wrap items-center justify-between gap-2" role="alert">
+                <span className="work-row__title">{failedAction.message}</span>
+                <WorkButton variant="secondary" icon={RotateCw} onClick={() => void failedAction.retry()}>
+                  Retry
+                </WorkButton>
+              </div>
+            </WorkCard>
           ) : null}
 
           {tab === "checklist" ? (
-            <div className="grid gap-4">
+            <>
               <RenewNextCard
                 next={next}
                 notRecorded={bucketCounts["not-recorded"]}
-                today={today}
-                canEdit={canEdit}
-                onRenew={(item) => {
-                  setRenewSubject({ entry: item.row.entry });
-                  setRenewOpen(true);
+                rows={rows}
+                now={now}
+                onOpen={(row) => setDetailSubject({ kind: "catalogue", item: row.item, entry: row.entry })}
+                onShowAll={() => {
+                  setGlance(null);
+                  setKindFilter("all");
+                  requestAnimationFrame(() =>
+                    document.getElementById("admin-renewals-checklist")?.scrollIntoView({ block: "start" }),
+                  );
                 }}
-                onOpen={(item) => setDetailSubject({ kind: "catalogue", item: item.row.item, entry: item.row.entry })}
               />
               <ChecklistAtAGlance
                 rows={rows}
@@ -524,7 +534,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
                   />
                 </>
               )}
-            </div>
+            </>
           ) : (
             <PersonalRenewalsList
               entries={personalEntries}
@@ -532,26 +542,43 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
               canEdit={canEdit}
               onOpen={(entry) => setDetailSubject({ kind: "personal", entry })}
               onAdd={() => setQuickAddOpen(true)}
+              onAddDate={(entry) => {
+                setRenewSubject({ entry });
+                setRenewOpen(true);
+              }}
+              onAddAllToCalendar={calendarFile ? downloadAll : undefined}
+              onCopyForWorkforce={() => void copyForWorkforce()}
             />
           )}
+
+          {canEdit ? (
+            <WorkDock aria-label="Renewal actions">
+              <WorkButton icon={Plus} onClick={() => setQuickAddOpen(true)} testId="admin-renewals-add">
+                Add a renewal
+              </WorkButton>
+              {recordDatesInDock ? (
+                <WorkButton
+                  variant="secondary"
+                  icon={CalendarPlus}
+                  onClick={openRecordDates}
+                  testId="admin-renewals-record-dates"
+                >
+                  Record dates
+                </WorkButton>
+              ) : null}
+            </WorkDock>
+          ) : null}
         </>
       )}
 
       {undoBar ? (
-        <div
-          data-testid="admin-renewals-undo-bar"
-          className="fixed inset-x-4 bottom-20 z-[var(--z-chrome)] flex min-h-12 items-center justify-between gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 shadow-[var(--e4)]"
-        >
-          <span className="text-sm text-[color:var(--text)]">
+        <div data-testid="admin-renewals-undo-bar" className={adminStyles.undoBar} role="status" aria-live="polite">
+          <span className={adminStyles.undoText}>
             {undoBar.failed ? `Undo didn't save · ${undoBar.message}` : undoBar.message}
           </span>
           <span className="flex shrink-0 items-center gap-1">
             {undoBar.failed ? (
-              <button
-                type="button"
-                onClick={() => setUndoBar(null)}
-                className={cn(focusRing, "min-h-tap px-2 text-sm text-[color:var(--text-muted)]")}
-              >
+              <button type="button" onClick={() => setUndoBar(null)} className={adminStyles.undoQuiet}>
                 Dismiss
               </button>
             ) : null}
@@ -559,20 +586,12 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
               type="button"
               onClick={() => void runUndo(undoBar)}
               disabled={undoBusy}
-              className={cn(
-                focusRing,
-                controlDisabled,
-                "min-h-tap px-2 text-sm font-medium text-[color:var(--clinical-accent)]",
-              )}
+              className={adminStyles.undoAction}
             >
               {undoBar.failed ? "Retry" : "Undo"}
             </button>
           </span>
         </div>
-      ) : null}
-
-      {canEdit ? (
-        <AdminFloatingAdd label="Add a renewal" onClick={() => setQuickAddOpen(true)} testId="admin-renewals-add" />
       ) : null}
 
       <ChecklistItemDetailSheet
@@ -615,36 +634,40 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
 
       <AdminQuickAddSheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSaved={upsert} />
 
-      <Sheet open={ready && menuOpen} onClose={() => setMenuOpen(false)} title="Renewals" testId="admin-renewals-menu">
-        <div className="grid gap-2">
-          <button
-            type="button"
-            onClick={() => void copyForWorkforce()}
-            data-testid="admin-renewals-copy"
-            className={cn(focusRing, menuItem)}
-          >
-            {copy === "copied" ? "Copied" : copy === "failed" ? "Couldn't copy" : "Copy for workforce"}
-          </button>
+      <AdminSheet
+        open={ready && menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title="Renewals"
+        testId="admin-renewals-menu"
+      >
+        <div className={adminStyles.column}>
+          <WorkCard as="ul">
+            <AdminRow
+              lead={<WorkIconCircle icon={Copy} />}
+              title={copy === "copied" ? "Copied" : copy === "failed" ? "Couldn't copy" : "Copy for workforce"}
+              sub="Your recorded dates as plain text"
+              onClick={() => void copyForWorkforce()}
+              testId="admin-renewals-copy"
+            />
+            <AdminRow
+              lead={<WorkIconCircle icon={CalendarPlus} tone={calendarFile ? "mode" : "neutral"} />}
+              title="Add all to my calendar"
+              sub={calendarFile ? "One calendar file with every recorded date" : "No recorded dates to add yet."}
+              onClick={downloadAll}
+              disabled={!calendarFile}
+              testId="admin-renewals-calendar-all"
+            />
+          </WorkCard>
           {copy === "failed" ? (
             <textarea
               readOnly
               value={workforceCopyText(own, now)}
               aria-label="Text to copy for workforce"
-              className="min-h-24 w-full rounded-lg border border-[color:var(--border)] p-3 text-sm"
+              className={adminStyles.copyBox}
             />
           ) : null}
-          <button
-            type="button"
-            onClick={downloadAll}
-            disabled={!calendarFile}
-            data-testid="admin-renewals-calendar-all"
-            className={cn(focusRing, menuItem)}
-          >
-            Add all to my calendar
-          </button>
-          {!calendarFile ? <p className={cn(textMuted, "px-2 text-xs")}>No recorded dates to add yet.</p> : null}
         </div>
-      </Sheet>
+      </AdminSheet>
 
       {recordQueue ? (
         <RecordDatesSheet
@@ -662,6 +685,6 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
           }}
         />
       ) : null}
-    </InformationPageShell>
+    </AdminPage>
   );
 }

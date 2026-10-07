@@ -747,3 +747,65 @@
   gap: 0.1875rem;
   padding: 0.625rem 0.6875rem;
 }
+
+/* The Undo bar: the work frame's dark toast look, above the dock. Kept as the
+   page's own bar (not the shared toast) because a failed undo stays with Retry. */
+.undoBar {
+  position: fixed;
+  inset-inline: calc(var(--spacing) * 4);
+  bottom: calc(var(--spacing) * 24);
+  z-index: var(--z-chrome);
+  display: flex;
+  min-height: calc(var(--spacing) * 12);
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+  max-width: calc(var(--spacing) * 112);
+  margin-inline: auto;
+  padding-inline: calc(var(--spacing) * 4) calc(var(--spacing) * 1);
+  border-radius: var(--work-radius-card);
+  background: var(--text-heading);
+  color: var(--surface-raised);
+  box-shadow: var(--work-shadow-float);
+}
+
+.undoText {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.undoAction,
+.undoQuiet {
+  min-height: calc(var(--spacing) * 12);
+  padding-inline: calc(var(--spacing) * 3);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--surface-raised);
+}
+
+.undoQuiet {
+  font-weight: 500;
+  opacity: 0.78;
+}
+
+.undoAction:focus-visible,
+.undoQuiet:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.undoAction:disabled {
+  opacity: 0.6;
+}
+
+.copyBox {
+  min-height: calc(var(--spacing) * 24);
+  width: 100%;
+  padding: calc(var(--spacing) * 3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: var(--text-sm);
+}

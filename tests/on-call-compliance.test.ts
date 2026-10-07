@@ -539,7 +539,11 @@ const COMPLIANCE_SURFACES = [
   "src/components/admin/today/today-renew-next-card.tsx",
   /** Admin Renewals owns the moved checklist and its reader-facing status. */
   "src/components/admin/admin-renewals-page.tsx",
-  "src/components/admin/renewals/checklist-status.tsx",
+  /** Admin's one status mark, which now holds every status word Renewals
+   *  draws (work-mode redesign, owner request 6 Oct 2026). It replaces
+   *  `renewals/checklist-status.tsx` here: that file now only passes a row's
+   *  word to this one and holds no prose of its own to read. */
+  "src/components/admin/admin-status-tag.tsx",
   /** The demo requirements, which ARE the page's content in demo mode. */
   "src/lib/on-call/demo-entries.ts",
   /** The compliance form's labels, hints and privacy sentence — and
