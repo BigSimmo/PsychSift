@@ -116,6 +116,10 @@ const NextTalkCard = dynamic(() => loadWorkMeCards().then((m) => m.NextTalkCard)
 const PinnedNumbersCard = dynamic(() => loadWorkMeCards().then((m) => m.PinnedNumbersCard));
 const QuickNoteCard = dynamic(() => loadWorkMeCards().then((m) => m.QuickNoteCard));
 const WhosOnCard = dynamic(() => loadWorkMeCards().then((m) => m.WhosOnCard));
+/** The junior features' Today cards (Sick for tomorrow, first week, Job applications, term folder), own chunk. */
+const MyDayFeatureCards = dynamic(() =>
+  import("@/components/my-day/my-day-feature-cards").then((m) => m.MyDayFeatureCards),
+);
 
 function preloadWorkMeCards(): () => void {
   const load = () => void loadWorkMeCards().catch(() => undefined);
@@ -620,6 +624,17 @@ export function MyDayDashboard({
   const desktop = useDesktop();
   const offlineAt = online ? null : (checkedAt ?? null);
 
+  // Tomorrow's first rostered shift, for "Sick for tomorrow?" (only from a roster that loaded).
+  const tomorrowShift = useMemo(() => {
+    if (!rosterReady) return null;
+    const first = shifts
+      .filter((shift) => perthDateOf(shift.startsAt) === tomorrow)
+      .map((shift) => ({ startsAt: shift.startsAt, kind: kindOf(shift) }))
+      .filter((shift) => isWorkedKind(shift.kind) || shift.kind === "on_call")
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+    return first ?? null;
+  }, [rosterReady, shifts, tomorrow]);
+
   const cards: Record<MyDayCardId, () => ReactNode> = {
     "up-next": () => (
       <>
@@ -672,36 +687,42 @@ export function MyDayDashboard({
           detailFor={detailFor}
         />
       ),
-    "needs-you": () =>
-      firstSteps ? (
-        <FirstSteps />
-      ) : (
-        <NeedsYouCard
-          shown={needsYou.shown}
-          waiting={needsYou.waiting}
-          total={needsYou.total}
-          checked={checked}
-          checkedAt={checkedAt}
-          incomplete={incomplete}
-          missing={missing}
-          offline={!online}
-          today={today}
-          hidden={
-            hiddenNote && snoozedCount > 0
-              ? { ...hiddenNote, until: untilWords(hiddenNote.until), count: snoozedCount }
-              : null
-          }
-          inlineUndo={toast === null}
-          onLater={later}
-          onUndo={() => {
-            if (hiddenNote) device.unsnooze(hiddenNote.id);
-            setHiddenNote(null);
-          }}
-          onRemindMe={onRemindMe}
-          onShowAll={onShowAll}
-          onRetry={retryAll}
-        />
-      ),
+    "needs-you": () => (
+      <>
+        {firstSteps ? (
+          <FirstSteps />
+        ) : (
+          <NeedsYouCard
+            shown={needsYou.shown}
+            waiting={needsYou.waiting}
+            total={needsYou.total}
+            checked={checked}
+            checkedAt={checkedAt}
+            incomplete={incomplete}
+            missing={missing}
+            offline={!online}
+            today={today}
+            hidden={
+              hiddenNote && snoozedCount > 0
+                ? { ...hiddenNote, until: untilWords(hiddenNote.until), count: snoozedCount }
+                : null
+            }
+            inlineUndo={toast === null}
+            onLater={later}
+            onUndo={() => {
+              if (hiddenNote) device.unsnooze(hiddenNote.id);
+              setHiddenNote(null);
+            }}
+            onRemindMe={onRemindMe}
+            onShowAll={onShowAll}
+            onRetry={retryAll}
+          />
+        )}
+        {page === "today" && !sample ? (
+          <MyDayFeatureCards now={now} today={today} tomorrowShift={tomorrowShift} />
+        ) : null}
+      </>
+    ),
     cpd: () => (
       <CpdRingsCard
         loggedHours={cpd.loggedHours}

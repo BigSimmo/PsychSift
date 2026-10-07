@@ -43,6 +43,8 @@ const callLog = vi.hoisted(() => ({
   current: null as null | { entries: { done: boolean }[]; expiresAt: number | null },
 }));
 vi.mock("@/components/on-call/handover/call-log", () => ({ useOnCallCallLog: () => callLog.current }));
+// The junior features' Today cards read their own stores and sign-in; they have their own tests.
+vi.mock("@/components/my-day/my-day-feature-cards", () => ({ MyDayFeatureCards: () => null }));
 
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { resetMyDayDeviceStateForTesting } from "@/components/my-day/my-day-device-state";
