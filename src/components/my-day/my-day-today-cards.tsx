@@ -1678,7 +1678,9 @@ export function CpdSummary({
             {`of ${hoursText(targetHours)} h`}
           </span>
         </span>
-        <span className="text-2xs font-bold text-[color:var(--mode-identity)] nums">{`${percent}%`}</span>
+        <span className="text-2xs font-bold text-[color:var(--mode-identity)] nums">
+          {left > 0 ? `${percent}%` : "Target hours logged"}
+        </span>
       </span>
       <svg
         aria-hidden="true"
@@ -1934,7 +1936,7 @@ export function CustomiseRow({ onOpen }: { readonly onOpen: () => void }) {
       <AreaIcon icon={SlidersHorizontal} />
       <span className="grid min-w-0 flex-1">
         <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">Customise My Day</span>
-        <span className="text-2xs text-[color:var(--text-muted)]">Show, hide or reorder cards</span>
+        <span className="text-2xs text-[color:var(--text-muted)]">Show or hide these cards</span>
       </span>
       <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
     </button>
