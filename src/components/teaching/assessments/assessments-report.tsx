@@ -22,7 +22,7 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import { WorkButton } from "@/components/mode-kit/work";
-import { AssessButton } from "@/components/teaching/assessments/assess-kit";
+import { AssessButton, CompareRow } from "@/components/teaching/assessments/assess-kit";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
 import { cn, fieldControlPlain } from "@/components/ui-primitives";
 import { globalRatingName } from "@/lib/teaching/assessments/content";
@@ -44,98 +44,37 @@ import { SAMPLE_DOCTOR, SAMPLE_MIDTERM, SAMPLE_SUPERVISOR } from "@/lib/teaching
 const DOC = SAMPLE_DOCTOR;
 const SUP = SAMPLE_SUPERVISOR.short;
 
-const position = (rating: number) => `${((rating - 1) / 4) * 100}%`;
-
-function Marker({ value, kind }: { value: number; kind: "you" | "sup" | "both" }) {
-  return (
-    <span
-      aria-hidden="true"
-      data-mode-identity="teaching"
-      className={cn(
-        "absolute top-1/2 grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs font-normal tabular-nums forced-colors:border",
-        kind === "sup" && "bg-[color:var(--text-heading)] text-[color:var(--surface-raised)]",
-        kind === "you" &&
-          "border-2 border-[color:var(--text-heading)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)]",
-        kind === "both" && "bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]",
-      )}
-      style={{ left: position(value) }}
-    >
-      {value}
-    </span>
-  );
-}
-
-function LegendDot({ kind, children }: { kind: "you" | "sup" | "both"; children: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        aria-hidden="true"
-        data-mode-identity="teaching"
-        className={cn(
-          "size-3 rounded-full",
-          kind === "sup" && "bg-[color:var(--text-heading)]",
-          kind === "you" && "border-2 border-[color:var(--text-heading)]",
-          kind === "both" && "bg-[color:var(--mode-identity)]",
-        )}
-      />
-      {children}
-    </span>
-  );
-}
-
-/** Self against supervisor on one 1-to-5 line per domain, in neutral grey: neither rating is "right". */
+/**
+ * Domain by domain on a 1 to 5 line: the supervisor's rating as a filled dot,
+ * the doctor's as a ring. Neutral: never green for agreeing, never red for differing.
+ */
 export function ComparisonChart({ rows, view }: { rows: ComparisonRow[]; view: "doc" | "sup" }) {
-  const selfName = view === "sup" ? DOC.first : "You";
-  const supName = view === "sup" ? "You" : SUP;
+  const supName = view === "doc" ? SUP : "You";
+  const docName = view === "doc" ? "You" : DOC.first;
   return (
-    <div className="grid gap-3">
-      <div className="flex flex-wrap gap-4 text-xs text-[color:var(--text-muted)]">
-        <LegendDot kind="you">{selfName}</LegendDot>
-        <LegendDot kind="sup">{supName}</LegendDot>
-        <LegendDot kind="both">Same</LegendDot>
-      </div>
-      {rows.map((row) => {
-        const both = row.self === row.sup;
-        return (
-          <div key={row.domain} className="grid gap-1.5">
-            <div className="flex items-baseline justify-between gap-2">
-              <b className="text-sm font-semibold text-[color:var(--text-heading)]">
-                {row.domain} · {row.title}
-              </b>
-              <span className="text-xs text-[color:var(--text-muted)]">{row.message}</span>
-            </div>
-            <div
-              role="img"
-              aria-label={`${selfName}: ${row.self ?? "none"}. ${supName}: ${row.sup}. Out of 5.`}
-              className="relative mx-3 h-7"
-            >
-              <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px bg-[color:var(--border-strong)]" />
-              {[0, 25, 50, 75, 100].map((p) => (
-                <span
-                  key={p}
-                  aria-hidden="true"
-                  className="absolute top-1/2 h-2 w-px -translate-y-1/2 bg-[color:var(--border-strong)]"
-                  style={{ left: `${p}%` }}
-                />
-              ))}
-              {row.self && !both ? (
-                <span
-                  aria-hidden="true"
-                  className="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-[color:var(--border-strong)]"
-                  style={{
-                    left: position(Math.min(row.self, row.sup)),
-                    width: `${(Math.abs(row.sup - row.self) / 4) * 100}%`,
-                  }}
-                />
-              ) : null}
-              {row.self && both ? <Marker value={row.sup} kind="both" /> : null}
-              {row.self && !both ? <Marker value={row.self} kind="you" /> : null}
-              {!both || !row.self ? <Marker value={row.sup} kind="sup" /> : null}
-            </div>
-          </div>
-        );
-      })}
-      <div className="flex justify-between text-2xs text-[color:var(--text-muted)]">
+    <div className="grid">
+      <span className="assess-key self-end" aria-hidden="true">
+        <span>
+          <i data-who="you" />
+          {supName}
+        </span>
+        <span>
+          <i data-who="them" />
+          {docName}
+        </span>
+      </span>
+      {rows.map((row) => (
+        <CompareRow
+          key={row.domain}
+          title={`${row.domain} · ${row.title}`}
+          you={row.sup}
+          them={row.self}
+          youName={supName}
+          themName={docName}
+          message={row.message}
+        />
+      ))}
+      <div className="assess-ax" aria-hidden="true">
         <span>1 Rarely met</span>
         <span>3 Consistently</span>
         <span>5 Exceeded</span>
