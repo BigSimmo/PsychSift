@@ -581,3 +581,13 @@
     animation: none;
   }
 }
+
+/*
+ * Notifications' pages are often short (all caught up, one alert), and their
+ * pale wash would stop under the last line with the shell's white below. Clear
+ * the shell on these three pages so the body's wash, the page's own colour,
+ * shows under it and the panel fills the screen however little is on it.
+ */
+.phone-viewport-shell:has(.work-band[data-work-area="notify"]) {
+  background: transparent;
+}

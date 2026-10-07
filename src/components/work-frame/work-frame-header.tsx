@@ -35,6 +35,7 @@ import type { AppModeId } from "@/lib/app-modes";
 import {
   WORK_TAB_PICKS_MAX,
   workAreaParent,
+  workAreaPillName,
   workFrameTabChoices,
   workFrameTabRow,
   workFrameTabLabel,
@@ -128,12 +129,13 @@ export function WorkFrameHeader({
   // Saving work pages to Favourites is part of the new work mode.
   const newWorkMode = useNewWorkMode();
 
+  const pillName = workAreaPillName(area);
   useEffect(() => {
     // The pill names the area only (owner pick, 7 Oct 2026): the tab row
     // already names the page, as an underlined tab or in More's slot.
-    setWorkFramePill({ modeId, area: area.name, page: null });
+    setWorkFramePill({ modeId, area: pillName, page: null });
     return () => setWorkFramePill(null);
-  }, [modeId, area.name]);
+  }, [modeId, pillName]);
 
   // Remember where you were in a top-level area, for an inner area's back arrow.
   const currentHref = current?.href ?? null;

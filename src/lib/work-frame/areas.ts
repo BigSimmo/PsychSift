@@ -142,6 +142,12 @@ export type WorkArea = {
   readonly id: WorkAreaId;
   /** The name the band, the pill's small line and the More sheet title use. */
   readonly name: string;
+  /**
+   * The pill's name when it differs from `name`: an area that is one page of
+   * its parent names the parent, as its mockup does, so a long name never
+   * cuts off at 320 px. Read it through `workAreaPillName`.
+   */
+  readonly pillName?: string;
   /** The `data-mode-identity` palette the frame paints with. */
   readonly identity: AppModeId;
   /** The three pinned tabs, in order. */
@@ -297,6 +303,9 @@ const myDay: WorkArea = {
 const notifications: WorkArea = {
   id: "notify",
   name: "Notifications",
+  // "Notifications" cuts off in the pill at 320 px. The band's title already
+  // names the page, and the alerts mockup (7 Oct 2026) shows "My Day" here.
+  pillName: "My Day",
   identity: "my-day",
   parent: "day",
   tabs: [
@@ -1284,6 +1293,11 @@ export function workFrameForRoute(
 /** The area an inner area sits inside, or null for a top-level area. */
 export function workAreaParent(area: WorkArea): WorkArea | null {
   return area.parent ? WORK_AREAS[area.parent] : null;
+}
+
+/** The name the header pill shows for an area (its `pillName`, else its name). */
+export function workAreaPillName(area: WorkArea): string {
+  return area.pillName ?? area.name;
 }
 
 /** What the fourth tab says while this More page is open. */

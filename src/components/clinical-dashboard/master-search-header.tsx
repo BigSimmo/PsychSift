@@ -82,7 +82,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
 import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
-import { workAreaFor, workFrameForRoute } from "@/lib/work-frame/areas";
+import { workAreaFor, workAreaPillName, workFrameForRoute } from "@/lib/work-frame/areas";
 import { modePickerHint } from "@/lib/mode-picker-hints";
 import {
   modePickerCardClass,
@@ -617,7 +617,7 @@ export function MasterSearchHeader({
   const routeWorkFramed = routeWorkFrame !== null;
   const routeWorkPill = routeWorkFrame
     ? // The band publishes the area alone (pill 4b), so the first paint names the area alone too.
-      { modeId: selectedAppMode.id, area: routeWorkFrame.area.name, page: null }
+      { modeId: selectedAppMode.id, area: workAreaPillName(routeWorkFrame.area), page: null }
     : null;
   const workPill = (workFramePill?.modeId === selectedAppMode.id ? workFramePill : null) ?? routeWorkPill;
   // A work band that publishes no page asks for the area alone (Josh, 7 Oct
