@@ -1,22 +1,18 @@
 "use client";
 
 import {
-  CalendarClock,
   CalendarDays,
   Check,
-  ChevronRight,
   ChevronsUp,
+  ClipboardCheck,
   KeyRound,
-  ListChecks,
+  MapPin,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { focusRing } from "@/components/card-recipes";
-import { flatCard, flatIconCircle, flatRow, flatTag, flatTintBand } from "@/components/on-call/flat-recipes";
-import { cn } from "@/components/ui-primitives";
+import { WorkCard, WorkIconRow, WorkTag } from "@/components/mode-kit/work";
 import {
   firstWeekDateTile,
   firstWeekEyebrow,
@@ -32,11 +28,11 @@ import {
 } from "@/lib/on-call/first-week-pack";
 
 export const FIRST_WEEK_SECTION_ICONS: Readonly<Record<FirstWeekSectionId, LucideIcon>> = {
-  before: CalendarClock,
-  logins: KeyRound,
   who: Users,
-  "first-days": ListChecks,
+  expect: ClipboardCheck,
   escalate: ChevronsUp,
+  logins: KeyRound,
+  "first-day": MapPin,
 };
 
 /** The start-date tile: month, day, weekday. A calendar glyph when there is no date. */
@@ -60,74 +56,79 @@ function DateTile({ startsOn }: { readonly startsOn: string | null }) {
   );
 }
 
-/** Sections read, as a segmented strip with its own screen-reader text. */
+/**
+ * A segmented strip with its own screen-reader text: sections read on the
+ * pack, logins ready on the Logins section.
+ */
 export function FirstWeekProgressStrip({
   progress,
+  label = "Sections read",
+  valueText,
   testId = "on-call-first-week-progress",
 }: {
   readonly progress: { readonly read: number; readonly total: number; readonly changed: number };
+  readonly label?: string;
+  readonly valueText?: string;
   readonly testId?: string;
 }) {
   if (progress.total === 0) return null;
-  const label = firstWeekProgressLabel(progress);
   return (
     <div
       role="progressbar"
-      aria-label="Sections read"
+      aria-label={label}
       aria-valuemin={0}
       aria-valuemax={progress.total}
       aria-valuenow={progress.read}
-      aria-valuetext={label}
+      aria-valuetext={valueText ?? firstWeekProgressLabel(progress)}
       data-testid={testId}
       className="mt-2 flex gap-1"
     >
       {Array.from({ length: progress.total }, (_, index) => (
         <span
           key={index}
-          className={cn(
-            "h-1 flex-1 rounded-full",
+          className={
             index < progress.read
-              ? "bg-[color:var(--mode-identity)]"
-              : "border border-[color:var(--mode-identity-border)] bg-[color:var(--surface-raised)]",
-          )}
+              ? "h-1 flex-1 rounded-full bg-[color:var(--mode-identity)]"
+              : "h-1 flex-1 rounded-full border border-[color:var(--mode-identity-border)] bg-[color:var(--surface-raised)]"
+          }
         />
       ))}
     </div>
   );
 }
 
-function StatusEnd({
-  section,
-  readAt,
-  logins,
-  loginsState,
-}: {
-  readonly section: FirstWeekSection;
-  readonly readAt: string | undefined;
-  readonly logins: readonly FirstWeekLogin[];
-  readonly loginsState: FirstWeekLoginsState;
-}) {
-  if (section.count === 0) return null;
+/** The round "read" tick at a row's end. */
+function ReadTick() {
+  return (
+    <span className="grid size-5.5 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]">
+      <Check aria-hidden="true" strokeWidth={2.6} className="size-icon-xs" />
+      <span className="sr-only">Read</span>
+    </span>
+  );
+}
+
+function statusEnd(
+  section: FirstWeekSection,
+  readAt: string | undefined,
+  logins: readonly FirstWeekLogin[],
+  loginsState: FirstWeekLoginsState,
+): ReactNode | undefined {
+  if (section.count === 0) return undefined;
   const status = firstWeekSectionStatus(section, readAt);
-  if (status === "changed") return <span className={flatTag.mode}>Changed</span>;
-  if (status === "read")
-    return (
-      <span className="grid size-5.5 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]">
-        <Check aria-hidden="true" strokeWidth={2.5} className="size-icon-xs" />
-        <span className="sr-only">Read</span>
-      </span>
-    );
+  if (status === "changed") return <WorkTag>Changed</WorkTag>;
+  if (status === "read") return <ReadTick />;
   if (section.id === "logins" && loginsState === "ready") {
     const { ready, own } = firstWeekLoginCounts(logins);
-    if (own - ready > 0) return <span className={flatTag.amber}>{`${own - ready} to do`}</span>;
+    if (own - ready > 0) return <WorkTag tone="amber">{`${own - ready} to do`}</WorkTag>;
   }
-  return null;
+  return undefined;
 }
 
 /**
- * The pack: a tinted header band with the start-date tile, the eyebrow ("Starts
- * in 7 days"), the hospital and the sections-read strip, then one row per
- * section, each opening that section. Presentational: the page owns the data.
+ * The signature "Your first week" pack card: a tinted header with the
+ * start-date tile, the countdown ("Starts in 7 days"), the hospital and the
+ * five-segment read strip, then one row per section, each opening that
+ * section, and a footer line. Presentational: the page owns the data.
  */
 export function FirstWeekPackCard({
   phase,
@@ -148,7 +149,7 @@ export function FirstWeekPackCard({
   readonly progress: { readonly read: number; readonly total: number; readonly changed: number };
   readonly logins: readonly FirstWeekLogin[];
   readonly loginsState: FirstWeekLoginsState;
-  /** Under the hospital: how to add a start date, or why it could not be read. */
+  /** Under the hospital: the start date, how to add one, or why it could not be read. */
   readonly startLine?: ReactNode;
   readonly footer?: ReactNode;
   /** Said on every handbook row instead of its count while the handbook is not ready ("Loading"). */
@@ -156,8 +157,8 @@ export function FirstWeekPackCard({
 }) {
   const startsOn = phase.kind === "no-date" ? null : phase.startsOn;
   return (
-    <section className={flatCard} aria-labelledby="on-call-first-week-title" data-testid="on-call-first-week-pack">
-      <div className={cn(flatTintBand, "flex items-center gap-3 px-3 py-3")}>
+    <WorkCard as="section" aria-label="Your first week" testId="on-call-first-week-pack">
+      <div className="flex items-center gap-3 border-b border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] px-3 py-3">
         <DateTile startsOn={startsOn} />
         <div className="grid min-w-0 flex-1 gap-0.5">
           <p
@@ -166,53 +167,31 @@ export function FirstWeekPackCard({
           >
             {firstWeekEyebrow(phase)}
           </p>
-          <h2
-            id="on-call-first-week-title"
-            className="text-lg font-semibold leading-6 text-[color:var(--text-heading)]"
-          >
-            Your first week
-          </h2>
+          <h2 className="text-lg font-semibold leading-6 text-[color:var(--text-heading)]">Your first week</h2>
           {hospitalName ? <p className="break-words text-sm text-[color:var(--text)]">{hospitalName}</p> : null}
           {startLine}
           {pendingText !== null ? null : <FirstWeekProgressStrip progress={progress} />}
         </div>
       </div>
-      <ul aria-label="Sections" className="grid">
+      <ul aria-label="Sections" className="work-rows">
         {sections.map((section) => {
-          const Icon = FIRST_WEEK_SECTION_ICONS[section.id];
           const pending = pendingText !== null && section.id !== "logins";
-          const empty = !pending && section.count === 0;
           return (
-            <li key={section.id} className={cn(flatRow, "p-0")}>
-              <Link
+            <li key={section.id} className="min-w-0">
+              <WorkIconRow
+                icon={FIRST_WEEK_SECTION_ICONS[section.id]}
+                tone={!pending && section.count === 0 ? "neutral" : undefined}
+                title={section.title}
+                sub={pending ? pendingText : section.summary}
                 href={firstWeekSectionHref(section.id)}
-                data-testid={`on-call-first-week-row-${section.id}`}
-                className={cn(
-                  focusRing,
-                  "flex min-h-13 min-w-0 flex-1 items-center gap-3 px-3 py-2 no-underline transition-colors duration-[var(--duration-instant)] active:bg-[color:var(--surface-wash)]",
-                )}
-              >
-                <span className={cn(flatIconCircle, empty && "opacity-60")}>
-                  <Icon aria-hidden="true" className="size-icon-md" />
-                </span>
-                <span className="grid min-w-0 flex-1 gap-0.5">
-                  <span className="break-words text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
-                    {section.title}
-                  </span>
-                  <span className="break-words text-sm leading-5 text-[color:var(--text-muted)]">
-                    {pending ? pendingText : section.summary}
-                  </span>
-                </span>
-                {pending ? null : (
-                  <StatusEnd section={section} readAt={marks[section.id]} logins={logins} loginsState={loginsState} />
-                )}
-                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-              </Link>
+                end={pending ? undefined : statusEnd(section, marks[section.id], logins, loginsState)}
+                testId={`on-call-first-week-row-${section.id}`}
+              />
             </li>
           );
         })}
       </ul>
-      {footer ? <div className="border-t border-[color:var(--border)] px-3 py-1">{footer}</div> : null}
-    </section>
+      {footer ? <div className="border-t border-[color:var(--border)] px-3 py-0.5">{footer}</div> : null}
+    </WorkCard>
   );
 }

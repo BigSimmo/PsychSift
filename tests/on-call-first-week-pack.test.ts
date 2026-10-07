@@ -3,10 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   buildFirstWeekSections,
   EMPTY_FIRST_WEEK_READ,
+  firstWeekAskForPackText,
   firstWeekCalendarIcs,
+  firstWeekChangeSummary,
   firstWeekDateTile,
   firstWeekEyebrow,
+  firstWeekItemChanged,
   firstWeekItems,
+  firstWeekLandAlertOn,
   firstWeekPhase,
   firstWeekProgress,
   firstWeekProgressLabel,
@@ -21,6 +25,7 @@ import {
   parseFirstWeekRead,
   restoreFirstWeekMarks,
   selectFirstWeekNeedsYou,
+  setFirstWeekLandAlert,
   setFirstWeekSectionRead,
   FIRST_WEEK_MAX_HOSPITALS,
   FIRST_WEEK_SECTION_IDS,
@@ -102,12 +107,12 @@ describe("sections", () => {
   ];
 
   it("draws only the phases and sections each part holds, never leaving items or referrals", () => {
-    expect(firstWeekItems(items, "before", SITE).map((item) => item.id)).toEqual(["b1"]);
     expect(
-      firstWeekItems(items, "first-days", SITE)
+      firstWeekItems(items, "first-day", SITE)
         .map((item) => item.id)
         .sort(),
-    ).toEqual(["f1", "f2"]);
+    ).toEqual(["b1", "f1"]);
+    expect(firstWeekItems(items, "expect", SITE).map((item) => item.id)).toEqual(["f2"]);
     expect(firstWeekItems(items, "who", SITE).map((item) => item.id)).toEqual(["c1"]);
     expect(firstWeekItems(items, "escalate", SITE).map((item) => item.id)).toEqual(["e1"]);
     // Emergency rows are pinned only for the chosen site.
@@ -117,13 +122,22 @@ describe("sections", () => {
   it("counts each section and summarises it, saying not written when empty", () => {
     const sections = buildFirstWeekSections({ items, siteId: SITE, logins, loginsState: "ready" });
     expect(sections.map((section) => section.id)).toEqual([...FIRST_WEEK_SECTION_IDS]);
+    expect(sections.map((section) => section.title)).toEqual([
+      "Who is who",
+      "What we expect",
+      "How to escalate",
+      "Logins",
+      "Your first day",
+    ]);
     const byId = Object.fromEntries(sections.map((section) => [section.id, section]));
-    expect(byId.before.summary).toBe("1 item");
-    expect(byId["first-days"].summary).toBe("2 items");
+    expect(byId.expect.summary).toBe("1 item");
+    expect(byId["first-day"].summary).toBe("2 items");
+    const dated = buildFirstWeekSections({ items, siteId: SITE, logins, loginsState: "ready", startsOn: "2026-11-02" });
+    expect(dated.find((section) => section.id === "first-day")?.summary).toBe("Mon 2 Nov · 2 items");
     expect(byId.who.summary).toBe("1 role");
     expect(byId.escalate.summary).toBe("1 emergency line");
     expect(byId.logins.summary).toBe("1 of 2 ready");
-    expect(byId.before.updatedAt).toBe("2026-09-20T04:00:00.000Z");
+    expect(byId["first-day"].updatedAt).toBe("2026-09-20T04:00:00.000Z");
     const empty = buildFirstWeekSections({ items: [], siteId: SITE, logins: [], loginsState: "ready" });
     expect(empty.find((section) => section.id === "who")?.summary).toBe("Not written by your hospital yet");
     expect(empty.find((section) => section.id === "logins")?.summary).toBe("None listed in New job yet");
@@ -151,8 +165,9 @@ describe("sections", () => {
 
   it("links and orders the sections", () => {
     expect(firstWeekSectionHref("who")).toBe("/on-call/first-week?section=who");
-    expect(nextFirstWeekSection("before")).toBe("logins");
-    expect(nextFirstWeekSection("escalate")).toBeNull();
+    expect(nextFirstWeekSection("who")).toBe("expect");
+    expect(nextFirstWeekSection("logins")).toBe("first-day");
+    expect(nextFirstWeekSection("first-day")).toBeNull();
     expect(isFirstWeekSectionId("who")).toBe(true);
     expect(isFirstWeekSectionId("passwords")).toBe(false);
     expect(isFirstWeekSectionId(undefined)).toBe(false);
@@ -180,9 +195,24 @@ describe("read marks", () => {
     expect(parseFirstWeekRead(null)).toEqual(EMPTY_FIRST_WEEK_READ);
     expect(parseFirstWeekRead("{")).toEqual(EMPTY_FIRST_WEEK_READ);
     expect(parseFirstWeekRead(JSON.stringify({ version: 2, hospitals: {} }))).toEqual(EMPTY_FIRST_WEEK_READ);
+    // A section the pack no longer has is dropped, and the rest kept.
     expect(
       parseFirstWeekRead(JSON.stringify({ version: 1, hospitals: { "a:b": { passwords: "2026-10-01T00:00:00Z" } } })),
     ).toEqual(EMPTY_FIRST_WEEK_READ);
+    expect(
+      parseFirstWeekRead(
+        JSON.stringify({
+          version: 1,
+          hospitals: { "a:b": { before: "2026-10-01T00:00:00Z", who: "2026-10-02T00:00:00Z" } },
+        }),
+      ),
+    ).toEqual({ version: 1, hospitals: { "a:b": { who: "2026-10-02T00:00:00Z" } } });
+    expect(parseFirstWeekRead(JSON.stringify({ version: 1, hospitals: {}, name: "Dr Smith" }))).toEqual(
+      EMPTY_FIRST_WEEK_READ,
+    );
+    expect(parseFirstWeekRead(JSON.stringify({ version: 1, hospitals: {}, landAlertOff: "yes" }))).toEqual(
+      EMPTY_FIRST_WEEK_READ,
+    );
     expect(parseFirstWeekRead(JSON.stringify({ version: 1, hospitals: { "a:b": { who: "Dr Smith" } } }))).toEqual(
       EMPTY_FIRST_WEEK_READ,
     );
@@ -218,6 +248,22 @@ describe("read marks", () => {
     expect(isValidFirstWeekRead(state)).toBe(true);
   });
 
+  it("turns the landing alert off and on, keeping every mark through later changes", () => {
+    let state = setFirstWeekSectionRead(EMPTY_FIRST_WEEK_READ, "svc:site", "who", "2026-10-01T00:00:00.000Z");
+    expect(firstWeekLandAlertOn(state)).toBe(true);
+    state = setFirstWeekLandAlert(state, false);
+    expect(firstWeekLandAlertOn(state)).toBe(false);
+    state = setFirstWeekSectionRead(state, "svc:site", "logins", "2026-10-02T00:00:00.000Z");
+    expect(firstWeekLandAlertOn(state)).toBe(false);
+    expect(isValidFirstWeekRead(state)).toBe(true);
+    expect(parseFirstWeekRead(JSON.stringify(state))).toEqual(state);
+    state = setFirstWeekLandAlert(state, true);
+    expect(state).toEqual({
+      version: 1,
+      hospitals: { "svc:site": { who: "2026-10-01T00:00:00.000Z", logins: "2026-10-02T00:00:00.000Z" } },
+    });
+  });
+
   it("restores a hospital's marks exactly, for Undo", () => {
     const before = { who: "2026-10-01T00:00:00.000Z" } as const;
     let state = setFirstWeekSectionRead(EMPTY_FIRST_WEEK_READ, "svc:site", "who", before.who);
@@ -229,11 +275,11 @@ describe("read marks", () => {
   it("counts progress over sections that hold something, with screen-reader text", () => {
     const sections: FirstWeekSection[] = [
       section,
-      { ...section, id: "before", updatedAt: null },
+      { ...section, id: "expect", updatedAt: null },
       { ...section, id: "logins", count: 0, updatedAt: null },
     ];
     const progress = firstWeekProgress(sections, {
-      before: "2026-10-01T00:00:00.000Z",
+      expect: "2026-10-01T00:00:00.000Z",
       who: "2026-10-01T00:00:00.000Z",
     });
     expect(progress).toEqual({ read: 1, total: 2, changed: 1 });
@@ -279,6 +325,50 @@ describe("hand-offs", () => {
     ]);
   });
 
+  it("raises no landing item when the doctor turned the alert off, but still says what changed", () => {
+    expect(
+      selectFirstWeekNeedsYou({
+        startsOn: "2026-11-02",
+        now: NOW,
+        progress: { read: 0, total: 4, changed: 0 },
+        landAlert: false,
+      }),
+    ).toEqual([]);
+    expect(
+      selectFirstWeekNeedsYou({
+        startsOn: "2026-11-02",
+        now: NOW,
+        progress: { read: 2, total: 4, changed: 1 },
+        landAlert: false,
+      }).map((item) => item.kind),
+    ).toEqual(["update"]);
+  });
+
+  it("counts changed items and names the newest change", () => {
+    const rows = [
+      { updatedAt: "2026-10-20T00:00:00.000Z" },
+      { updatedAt: "2026-10-22T00:00:00.000Z" },
+      { updatedAt: "2026-09-01T00:00:00.000Z" },
+      { updatedAt: null },
+    ];
+    expect(firstWeekItemChanged(rows[0], "2026-10-10T00:00:00.000Z")).toBe(true);
+    expect(firstWeekItemChanged(rows[0], undefined)).toBe(false);
+    expect(firstWeekItemChanged(rows[3], "2026-10-10T00:00:00.000Z")).toBe(false);
+    expect(firstWeekChangeSummary(rows, "2026-10-10T00:00:00.000Z")).toEqual({
+      count: 2,
+      latest: "2026-10-22T00:00:00.000Z",
+    });
+    expect(firstWeekChangeSummary(rows, undefined)).toEqual({ count: 0, latest: null });
+  });
+
+  it("writes a note asking for a pack with only the hospital and the start date", () => {
+    expect(firstWeekAskForPackText({ hospitalName: "Synthetic Hospital", startsOn: "2026-11-02" })).toContain(
+      "I am starting at Synthetic Hospital on Mon 2 Nov 2026.",
+    );
+    const bare = firstWeekAskForPackText({ hospitalName: "  ", startsOn: "nonsense" });
+    expect(bare).toContain("I am starting. Is there a first week pack");
+  });
+
   it("gives search records with titles and keywords only", () => {
     const records = firstWeekSearchRecords();
     expect(records[0]).toMatchObject({ title: "Your first week", area: "On Call", href: "/on-call/first-week" });
@@ -299,5 +389,13 @@ describe("hand-offs", () => {
       "SUMMARY:First day in your new job",
     );
     expect(firstWeekCalendarIcs({ startsOn: "not a date", hospitalName: null, now: NOW })).toBeNull();
+    const dayOnly = firstWeekCalendarIcs({
+      startsOn: "2026-11-02",
+      hospitalName: null,
+      now: NOW,
+      reminders: { weekBefore: false, dayBefore: false },
+    });
+    expect(dayOnly).not.toContain("VALARM");
+    expect(dayOnly).toContain("DTSTART;VALUE=DATE:20261102");
   });
 });

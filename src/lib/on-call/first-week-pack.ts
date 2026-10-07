@@ -19,24 +19,25 @@ export const FIRST_WEEK_HREF = "/on-call/first-week";
 export const FIRST_WEEK_LEAD_DAYS = 7;
 export const FIRST_WEEK_LENGTH_DAYS = 7;
 
-export const FIRST_WEEK_SECTION_IDS = ["before", "logins", "who", "first-days", "escalate"] as const;
+/** The pack's five sections, in the mockup's reading order. */
+export const FIRST_WEEK_SECTION_IDS = ["who", "expect", "escalate", "logins", "first-day"] as const;
 export type FirstWeekSectionId = (typeof FIRST_WEEK_SECTION_IDS)[number];
 
 export const FIRST_WEEK_SECTION_TITLES: Readonly<Record<FirstWeekSectionId, string>> = {
-  before: "Before you start",
-  logins: "Logins",
   who: "Who is who",
-  "first-days": "First shift and week",
+  expect: "What we expect",
   escalate: "How to escalate",
+  logins: "Logins",
+  "first-day": "Your first day",
 };
 
 /** The short name on the "Next" button. */
 export const FIRST_WEEK_SECTION_SHORT: Readonly<Record<FirstWeekSectionId, string>> = {
-  before: "Before",
-  logins: "Logins",
   who: "Who is who",
-  "first-days": "First week",
+  expect: "Expect",
   escalate: "Escalate",
+  logins: "Logins",
+  "first-day": "First day",
 };
 
 export function isFirstWeekSectionId(value: unknown): value is FirstWeekSectionId {
@@ -173,20 +174,29 @@ function isEmergency(item: HandbookItem): boolean {
   return item.parsed.prefix === "Emergency";
 }
 
-/** The handbook items each section draws, in the handbook's own order. */
+/**
+ * The handbook items each section draws, in the handbook's own order.
+ * "What we expect" is the hospital's first-week and ongoing orientation; "Your
+ * first day" is what to do before you start and on the first shift. Items for
+ * leaving a job never appear here.
+ */
 export function firstWeekItems(
   items: readonly HandbookItem[],
   id: Exclude<FirstWeekSectionId, "logins">,
   siteId: string | null,
 ): HandbookItem[] {
   switch (id) {
-    case "before":
-      return items.filter((item) => item.section === "orientation" && item.orientationPhase === "before_start");
-    case "first-days":
+    case "first-day":
       return items.filter(
         (item) =>
           item.section === "orientation" &&
-          (item.orientationPhase === "first_shift" || item.orientationPhase === "first_week"),
+          (item.orientationPhase === "before_start" || item.orientationPhase === "first_shift"),
+      );
+    case "expect":
+      return items.filter(
+        (item) =>
+          item.section === "orientation" &&
+          (item.orientationPhase === "first_week" || item.orientationPhase === "ongoing"),
       );
     case "who":
       return items.filter((item) => (item.section === "contacts" && !isEmergency(item)) || item.section === "cover");
@@ -236,8 +246,10 @@ export function buildFirstWeekSections(input: {
   readonly siteId: string | null;
   readonly logins: readonly FirstWeekLogin[];
   readonly loginsState: FirstWeekLoginsState;
+  /** The doctor's start date, named on "Your first day" ("Mon 2 Nov · 3 items"). */
+  readonly startsOn?: string | null;
 }): FirstWeekSection[] {
-  const { items, siteId, logins, loginsState } = input;
+  const { items, siteId, logins, loginsState, startsOn = null } = input;
   return FIRST_WEEK_SECTION_IDS.map((id): FirstWeekSection => {
     if (id === "logins") {
       return {
@@ -259,6 +271,8 @@ export function buildFirstWeekSections(input: {
       summary = [ladders ? plural(ladders, "ladder") : null, emergency ? plural(emergency, "emergency line") : null]
         .filter(Boolean)
         .join(", ");
+    } else if (id === "first-day" && startsOn && dayNumber(startsOn) !== null) {
+      summary = `${formatFirstWeekDate(startsOn).replace(/ \d{4}$/, "")} · ${plural(count, "item")}`;
     } else summary = plural(count, "item");
     return { id, title: FIRST_WEEK_SECTION_TITLES[id], summary, count, updatedAt: newest(rows) };
   });
@@ -273,6 +287,11 @@ export function buildFirstWeekSections(input: {
 export type FirstWeekReadState = {
   readonly version: 1;
   readonly hospitals: Readonly<Record<string, Readonly<Partial<Record<FirstWeekSectionId, string>>>>>;
+  /**
+   * "Tell me when it lands", off. Absent means on: one Needs you item the day
+   * the pack is highlighted. A yes or no, nothing else.
+   */
+  readonly landAlertOff?: true;
 };
 
 /** At most this many hospitals are remembered; the oldest marks go first. */
@@ -288,8 +307,9 @@ function isTime(value: unknown): value is string {
 
 export function isValidFirstWeekRead(state: unknown): state is FirstWeekReadState {
   if (!state || typeof state !== "object") return false;
-  const { version, hospitals } = state as Record<string, unknown>;
+  const { version, hospitals, landAlertOff, ...rest } = state as Record<string, unknown>;
   if (version !== 1 || !hospitals || typeof hospitals !== "object" || Array.isArray(hospitals)) return false;
+  if (Object.keys(rest).length > 0 || (landAlertOff !== undefined && landAlertOff !== true)) return false;
   const entries = Object.entries(hospitals as Record<string, unknown>);
   if (entries.length > FIRST_WEEK_MAX_HOSPITALS) return false;
   return entries.every(
@@ -302,15 +322,49 @@ export function isValidFirstWeekRead(state: unknown): state is FirstWeekReadStat
   );
 }
 
-/** Anything not in the expected shape (an older format, another writer, a hand edit) reads as nothing read. */
+/**
+ * Drops marks for sections the pack no longer has (an earlier layout of the
+ * pack), keeping the rest. Anything else not in the expected shape (another
+ * writer, a hand edit) reads as nothing read.
+ */
+function withoutRetiredSections(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parsed;
+  const { hospitals } = parsed as Record<string, unknown>;
+  if (!hospitals || typeof hospitals !== "object" || Array.isArray(hospitals)) return parsed;
+  const kept: Record<string, unknown> = {};
+  for (const [key, marks] of Object.entries(hospitals as Record<string, unknown>)) {
+    if (!marks || typeof marks !== "object" || Array.isArray(marks)) {
+      kept[key] = marks;
+      continue;
+    }
+    const current = Object.fromEntries(
+      Object.entries(marks as Record<string, unknown>).filter(([id]) => isFirstWeekSectionId(id)),
+    );
+    if (Object.keys(current).length > 0) kept[key] = current;
+  }
+  return { ...(parsed as Record<string, unknown>), hospitals: kept };
+}
+
 export function parseFirstWeekRead(raw: string | null): FirstWeekReadState {
   if (!raw) return EMPTY_FIRST_WEEK_READ;
   try {
-    const parsed: unknown = JSON.parse(raw);
+    const parsed = withoutRetiredSections(JSON.parse(raw) as unknown);
     return isValidFirstWeekRead(parsed) ? parsed : EMPTY_FIRST_WEEK_READ;
   } catch {
     return EMPTY_FIRST_WEEK_READ;
   }
+}
+
+/** Whether "Tell me when it lands" is on (the default). */
+export function firstWeekLandAlertOn(state: FirstWeekReadState): boolean {
+  return state.landAlertOff !== true;
+}
+
+/** Turn "Tell me when it lands" on or off, keeping every mark. */
+export function setFirstWeekLandAlert(state: FirstWeekReadState, on: boolean): FirstWeekReadState {
+  return on
+    ? { version: 1, hospitals: state.hospitals }
+    : { version: 1, hospitals: state.hospitals, landAlertOff: true };
 }
 
 function newestMark(marks: Readonly<Partial<Record<FirstWeekSectionId, string>>>): number {
@@ -343,7 +397,7 @@ export function setFirstWeekSectionRead(
       .sort((a, b) => newestMark(hospitals[a]) - newestMark(hospitals[b]));
     for (const key of oldest.slice(0, keys.length - FIRST_WEEK_MAX_HOSPITALS)) delete hospitals[key];
   }
-  return { version: 1, hospitals };
+  return state.landAlertOff ? { version: 1, hospitals, landAlertOff: true } : { version: 1, hospitals };
 }
 
 /** Replace one hospital's marks wholesale: Undo after "Mark all as read" or "Start again". */
@@ -387,6 +441,47 @@ export function firstWeekProgressLabel(progress: { read: number; total: number; 
   return progress.changed > 0 ? `${base}, ${progress.changed} changed since you read it` : base;
 }
 
+/** A published item changed after the section was marked read. */
+export function firstWeekItemChanged(item: Pick<HandbookItem, "updatedAt">, readAt: string | undefined): boolean {
+  if (!readAt || !item.updatedAt) return false;
+  const read = Date.parse(readAt);
+  const updated = Date.parse(item.updatedAt);
+  return Number.isFinite(read) && Number.isFinite(updated) && updated > read;
+}
+
+/** "1 thing changed since you read it", with the newest change, for the section banner. */
+export function firstWeekChangeSummary(
+  items: readonly Pick<HandbookItem, "updatedAt">[],
+  readAt: string | undefined,
+): { readonly count: number; readonly latest: string | null } {
+  const changed = items.filter((item) => firstWeekItemChanged(item, readAt));
+  let latest: string | null = null;
+  for (const item of changed) {
+    if (item.updatedAt && (latest === null || Date.parse(item.updatedAt) > Date.parse(latest))) latest = item.updatedAt;
+  }
+  return { count: changed.length, latest };
+}
+
+/**
+ * A short note asking the department for a pack, for the doctor to copy and
+ * send themselves. PsychSift sends nothing. The hospital's name and the start
+ * date are the only details in it.
+ */
+export function firstWeekAskForPackText(input: {
+  readonly hospitalName: string | null;
+  readonly startsOn: string | null;
+}): string {
+  const where = input.hospitalName?.trim() ? ` at ${input.hospitalName.trim()}` : "";
+  const when = input.startsOn && dayNumber(input.startsOn) !== null ? ` on ${formatFirstWeekDate(input.startsOn)}` : "";
+  return [
+    "Hello,",
+    "",
+    `I am starting${where}${when}. Is there a first week pack or orientation guide for new doctors? Who is who, what you expect on a normal day, how to escalate, and the logins I will need would all help.`,
+    "",
+    "Thank you.",
+  ].join("\n");
+}
+
 // ------------------------------------------------------------------ hand-offs to the shared frame
 
 /**
@@ -407,13 +502,15 @@ export function selectFirstWeekNeedsYou(input: {
   readonly startsOn: string | null;
   readonly now: Date;
   readonly progress: { readonly read: number; readonly total: number; readonly changed: number };
+  /** "Tell me when it lands"; when off, only a change since reading raises an item. Defaults to on. */
+  readonly landAlert?: boolean;
 }): FirstWeekNeedsYouItem[] {
   const phase = firstWeekPhase(input.startsOn, input.now);
   if (!isFirstWeekHighlighted(phase) || phase.kind === "no-date") return [];
   const { read, total, changed } = input.progress;
   const items: FirstWeekNeedsYouItem[] = [];
   const unread = total - read - changed;
-  if (unread > 0) {
+  if (unread > 0 && input.landAlert !== false) {
     items.push({
       id: "on-call:first-week:unread",
       title: unread === total ? "Read your first week pack" : `Your first week pack: ${unread} left to read`,
@@ -455,6 +552,12 @@ export function firstWeekSearchRecords(): FirstWeekSearchRecord[] {
       href: firstWeekSectionHref("who"),
     },
     {
+      title: "Your first week: What we expect",
+      area: "On Call",
+      keywords: [...base, "expect", "hours", "handover", "ward round", "leave", "overtime", "breaks"],
+      href: firstWeekSectionHref("expect"),
+    },
+    {
       title: "Your first week: How to escalate",
       area: "On Call",
       keywords: [...base, "escalate", "escalation", "ladder", "worried", "emergency"],
@@ -466,6 +569,12 @@ export function firstWeekSearchRecords(): FirstWeekSearchRecord[] {
       keywords: [...base, "logins", "access", "accounts", "systems"],
       href: firstWeekSectionHref("logins"),
     },
+    {
+      title: "Your first day",
+      area: "On Call",
+      keywords: [...base, "first day", "first shift", "before you start", "badge", "parking"],
+      href: firstWeekSectionHref("first-day"),
+    },
   ];
 }
 
@@ -476,11 +585,21 @@ export function firstWeekSearchRecords(): FirstWeekSearchRecord[] {
  * pack) and the day before. The hospital's name is the only detail; no login,
  * name or number enters the file. A stable UID lets a calendar update it.
  */
+export type FirstWeekCalendarReminders = {
+  /** "Read your first week pack", a week before. */
+  readonly weekBefore: boolean;
+  /** "First day at ...", the day before. */
+  readonly dayBefore: boolean;
+};
+
 export function firstWeekCalendarIcs(input: {
   readonly startsOn: string;
   readonly hospitalName: string | null;
   readonly now: Date;
+  /** Which reminders ride on the event; both by default. */
+  readonly reminders?: FirstWeekCalendarReminders;
 }): string | null {
+  const reminders = input.reminders ?? { weekBefore: true, dayBefore: true };
   if (dayNumber(input.startsOn) === null) return null;
   const where = input.hospitalName?.trim();
   const summary = where ? `First day at ${where}` : "First day in your new job";
@@ -496,16 +615,18 @@ export function firstWeekCalendarIcs(input: {
     `DTEND;VALUE=DATE:${compactDate(addDaysToDate(input.startsOn, 1))}`,
     `SUMMARY:${escapeIcsText(summary)}`,
     `DESCRIPTION:${escapeIcsText("Your first week pack is in PsychSift, On Call.")}`,
-    "BEGIN:VALARM",
-    "ACTION:DISPLAY",
-    "TRIGGER:-P7D",
-    `DESCRIPTION:${escapeIcsText("Read your first week pack")}`,
-    "END:VALARM",
-    "BEGIN:VALARM",
-    "ACTION:DISPLAY",
-    "TRIGGER:-P1D",
-    `DESCRIPTION:${escapeIcsText(summary)}`,
-    "END:VALARM",
+    ...(reminders.weekBefore
+      ? [
+          "BEGIN:VALARM",
+          "ACTION:DISPLAY",
+          "TRIGGER:-P7D",
+          `DESCRIPTION:${escapeIcsText("Read your first week pack")}`,
+          "END:VALARM",
+        ]
+      : []),
+    ...(reminders.dayBefore
+      ? ["BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER:-P1D", `DESCRIPTION:${escapeIcsText(summary)}`, "END:VALARM"]
+      : []),
     "END:VEVENT",
     "END:VCALENDAR",
   ];

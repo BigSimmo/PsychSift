@@ -8,9 +8,11 @@ import { selectNewJobStart } from "@/lib/admin/new-job-progress";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import {
   buildFirstWeekSections,
+  firstWeekLandAlertOn,
   firstWeekPhase,
   firstWeekProgress,
   restoreFirstWeekMarks,
+  setFirstWeekLandAlert,
   setFirstWeekSectionRead,
   FIRST_WEEK_SECTION_IDS,
   type FirstWeekLogin,
@@ -47,6 +49,9 @@ export type FirstWeekPack = {
   readonly restore: (marks: Marks) => void;
   /** Put one section's mark back to exactly what it was (Undo after Mark as read). */
   readonly restoreSection: (id: FirstWeekSectionId, previous: string | undefined) => void;
+  /** "Tell me when it lands" (on by default); null until this device has been read. */
+  readonly landAlert: boolean | null;
+  readonly setLandAlert: (on: boolean) => void;
 };
 
 const NO_MARKS: Marks = {};
@@ -94,8 +99,9 @@ export function useFirstWeekPack(now: Date): FirstWeekPack {
         siteId: handbook.siteId,
         logins,
         loginsState: startState,
+        startsOn,
       }),
-    [handbook.items, handbook.siteId, logins, ready, startState],
+    [handbook.items, handbook.siteId, logins, ready, startState, startsOn],
   );
 
   const sample = handbook.demo;
@@ -154,6 +160,8 @@ export function useFirstWeekPack(now: Date): FirstWeekPack {
     [hospitalKey, update],
   );
 
+  const setLandAlert = useCallback((on: boolean) => update((state) => setFirstWeekLandAlert(state, on)), [update]);
+
   return {
     handbook,
     startState,
@@ -170,5 +178,7 @@ export function useFirstWeekPack(now: Date): FirstWeekPack {
     clearAll,
     restore,
     restoreSection,
+    landAlert: store.state === null ? null : firstWeekLandAlertOn(store.state),
+    setLandAlert,
   };
 }
