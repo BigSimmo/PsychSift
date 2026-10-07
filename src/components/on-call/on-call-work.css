@@ -48,6 +48,9 @@
 /* The app's filled "command" button (Sign in, Print card, Save) is On Call's
    flat teal inside the frame, as every work-mode primary button is. */
 [data-work-frame="call"] {
+  /* Work pages are white, so a sticky group heading painted with the page
+     colour must be white too, not the older grey wash. */
+  --background: var(--work-surface);
   --command: var(--mode-identity);
   --command-hover: var(--mode-identity-deep);
   --command-contrast: var(--mode-identity-contrast);
