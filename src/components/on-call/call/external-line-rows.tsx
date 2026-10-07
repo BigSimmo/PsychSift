@@ -5,7 +5,7 @@ import { Fragment, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { onCallCrisisLines, type OnCallExternalLine } from "@/components/on-call/call/external-lines";
-import { onCallBadge, onCallLeadingIcon } from "@/components/on-call/kit/calm";
+import { onCallEmergencyBadge, onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { OnCallDialRow } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import { modeSecondaryText } from "@/components/mode-kit/type";
@@ -67,9 +67,9 @@ export function OnCallExternalLineRows({
             dial={line.dial}
             leading={
               isTripleZero(line) ? (
-                <span className={onCallBadge}>000</span>
+                <span className={onCallEmergencyBadge}>000</span>
               ) : (
-                <Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+                <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
               )
             }
             updatedAt={line.updatedAt}

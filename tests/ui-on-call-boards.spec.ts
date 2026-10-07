@@ -289,7 +289,9 @@ test.describe("01 Home", () => {
     await expectTapFloor(firstNight, "First night row");
     await expect(footer.getByTestId("on-call-now-footer-shifts")).toHaveAttribute("href", "/roster");
     await expect(footer.getByTestId("on-call-now-footer-card")).toHaveAttribute("href", "/on-call/card");
-    await expect(footer.getByTestId("on-call-now-footer-calendar")).toHaveAttribute("href", "/on-call/calendar");
+    // Amended for the work-mode redesign wiring audit (owner request 6 Oct 2026): the
+    // link goes straight to the calendar's real page, not through the old redirect.
+    await expect(footer.getByTestId("on-call-now-footer-calendar")).toHaveAttribute("href", "/roster/calendar");
     // Mock-up v10: "Who do I call now?" is its own group with the ladder link
     // at its right. The literal href is what the route-reachability guard reads;
     // the click test above proves the destination actually renders.

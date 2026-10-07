@@ -264,6 +264,7 @@ function PatientRail({
         {forReview > 0 ? <p className={cn(modeSecondaryText, "text-xs")}>{forReview} for review</p> : null}
       </div>
       <ol
+        data-no-tab-swipe
         className="relative flex w-fit min-w-0 max-w-full gap-1 overflow-x-auto before:absolute before:inset-x-6 before:top-6 before:h-px before:bg-[color:var(--border)]"
         role="list"
       >

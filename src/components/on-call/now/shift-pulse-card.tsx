@@ -68,10 +68,10 @@ export function NowShiftPulseCard({ now }: { readonly now: Date }) {
     <Link
       href="/on-call/pulse"
       data-testid="on-call-home-pulse"
-      className={cn(modePressable, focusRing, "grid min-w-0 gap-2 rounded-md px-3 py-2 no-underline")}
+      className={cn("work-card", modePressable, focusRing, "grid min-w-0 gap-2 px-3 py-2.5 no-underline")}
     >
       <span className="flex min-w-0 items-start gap-3">
-        <Clock aria-hidden="true" strokeWidth={1.5} className={cn(onCallLeadingIcon, "mt-4")} />
+        <Clock aria-hidden="true" strokeWidth={2} className={cn(onCallLeadingIcon, "mt-3.5")} />
         <span className="grid min-w-0 flex-1 gap-0.5">
           <span className={eyebrowText}>Shift pulse</span>
           <span className="break-words text-base-minus font-semibold text-[color:var(--text-heading)]">

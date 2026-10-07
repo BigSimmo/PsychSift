@@ -411,7 +411,10 @@ export function ServiceImportPanel({
           ) : null}
           {parsed.rows.length > 0 ? (
             <>
-              <div className="min-w-0 overflow-x-auto rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]">
+              <div
+                data-no-tab-swipe
+                className="min-w-0 overflow-x-auto rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]"
+              >
                 <table className="w-full min-w-[40rem] border-collapse text-left text-sm text-[color:var(--text)]">
                   <thead>
                     <tr className={cn(textMuted, "h-12 text-xs")}>

@@ -27,7 +27,8 @@ import { cardSurface, focusRing } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { TextField } from "@/components/ui/text-field";
-import { EmptyState, InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
+import { InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import {
   DEMO_SERVICE_ID,
@@ -452,7 +453,7 @@ export function ServicePage({
     return (
       <InformationPageShell testId="service-page-signed-out" width="narrow">
         <h1 className="sr-only">Service handbook</h1>
-        <EmptyState
+        <OnCallEmptyState
           icon={Building2}
           title="Sign in to open a service handbook"
           body="Memberships, local service information and orientation completion are private to your account."
@@ -472,7 +473,7 @@ export function ServicePage({
     return (
       <InformationPageShell testId="service-page-unavailable" width="narrow">
         <h1 className="sr-only">Service handbook</h1>
-        <EmptyState
+        <OnCallEmptyState
           icon={Building2}
           title="Your service handbooks are temporarily unavailable"
           body="No local or cached copy is being shown. Retry when the connection is restored."
@@ -523,7 +524,7 @@ export function ServicePage({
       ) : null}
 
       {services.length === 0 ? (
-        <EmptyState
+        <OnCallEmptyState
           icon={Building2}
           title="Create a service or join one"
           body="A service keeps its sites, handbook entries, membership and review history together."

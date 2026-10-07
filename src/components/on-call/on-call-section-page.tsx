@@ -32,7 +32,7 @@ import { OnCallSectionNavHeader } from "@/components/on-call/on-call-nav-header"
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
 import { OnCallTeachingStrip } from "@/components/on-call/on-call-teaching-strip";
 import { onCallPageSections } from "@/components/on-call/on-call-page-sections";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -492,7 +492,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
             // Nothing cached and the first fetch still running. An empty state
             // here would assert the section holds nothing before anything has
             // been read.
-            <EmptyState
+            <OnCallEmptyState
               icon={Icon}
               title={`Loading ${title.toLowerCase()}`}
               body="Fetching the entries saved to this section."

@@ -127,7 +127,7 @@ export function OnCallPageMenuActions({
       </Link>
 
       <Link
-        href="/on-call/calendar"
+        href="/roster/calendar"
         onClick={() => onNavigate?.()}
         className={inPageActionRowClass}
         data-testid="on-call-page-menu-calendar"

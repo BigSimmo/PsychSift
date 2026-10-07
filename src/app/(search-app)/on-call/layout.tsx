@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import "@/components/on-call/on-call-work.css";
+
 import { OnCallSampleNotice } from "@/components/on-call/on-call-sample-notice";
 import { ModeBand } from "@/components/mode-band/mode-band";
 

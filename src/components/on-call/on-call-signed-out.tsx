@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { Button } from "@/components/ui/button";
 
 export interface OnCallSignedOutProps {
@@ -24,7 +24,7 @@ export function OnCallSignedOut({ icon, testId }: OnCallSignedOutProps) {
   const [signInOpen, setSignInOpen] = useState(false);
   return (
     <>
-      <EmptyState
+      <OnCallEmptyState
         icon={icon}
         title="Sign in to see shared On Call entries"
         body="Signed-in users can see entries shared across services. Check the service before using a number."

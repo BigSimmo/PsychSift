@@ -16,7 +16,7 @@ import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
 import { onCallGroupAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
   onCallDetailsSchemaFor,
@@ -338,7 +338,7 @@ export function OnCallPlaybookSection({
     return (
       <div className="grid gap-5">
         {whoDoICall}
-        <EmptyState
+        <OnCallEmptyState
           icon={ListChecks}
           title="No playbook scenarios yet"
           body="Escalation scenarios you add will appear here as cards, each linking to your own guideline documents."

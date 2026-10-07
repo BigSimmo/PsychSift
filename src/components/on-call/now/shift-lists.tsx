@@ -158,7 +158,7 @@ export function NowShiftLists({
           )}
         >
           <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
-            <ListChecks aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+            <ListChecks aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           </span>
           <span className="grid min-w-0 flex-1 gap-1 py-1">
             <span

@@ -66,7 +66,7 @@ export function OnCallIsobarRow() {
         )}
       >
         <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
-          <BookOpen aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <BookOpen aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
         </span>
         <span className="grid min-w-0 flex-1 gap-0.5 py-1.5">
           <span className={cn(modeNameText, "break-words text-base-minus leading-5 text-[color:var(--text-heading)]")}>

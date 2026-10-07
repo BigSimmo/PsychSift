@@ -40,7 +40,7 @@ export function HospitalShiftUpdates({
   return (
     <>
       {mismatch && dismissed !== promptKey ? (
-        <section className="grid gap-2 px-3" data-testid="on-call-roster-site-prompt">
+        <section className="grid gap-2 px-1" data-testid="on-call-roster-site-prompt">
           <p className="text-sm text-[color:var(--text-heading)]">
             Your roster says {workplace}; you are viewing {current}. Check the hospital before calling.
           </p>
@@ -56,7 +56,7 @@ export function HospitalShiftUpdates({
           aria-label="What changed since your last shift"
           data-testid="on-call-published-changes"
         >
-          <Clock aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <Clock aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           <p className="min-w-0 flex-1 break-words text-sm text-[color:var(--text-muted)]">
             <span className="font-semibold text-[color:var(--text-heading)]">
               {changed.some((item) => item.section === "cover") ? "Cover changed" : "Changed"}
