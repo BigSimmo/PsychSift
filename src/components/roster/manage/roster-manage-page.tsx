@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useState } from "react";
+import { WithoutModeBand } from "@/components/mode-band/mode-band";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { Button } from "@/components/ui/button";
 import { useRosterNow } from "@/components/roster/roster-format";
@@ -17,11 +19,41 @@ import { RosterPublishTab } from "./publish/roster-publish-tab";
 import { ClipboardList } from "lucide-react";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 
+/**
+ * The page's three views follow the address (`?view=cover`, `?view=team`), so
+ * the work frame's tabs for Manage team (Inbox, Cover, Team) pick them
+ * (navigation follow-up, owner request 7 Oct 2026). The page's own section
+ * menu shows only where the frame is not drawn, and moves the address too.
+ */
+function sectionFor(view: string | null): string {
+  return view === "cover" ? "cover" : view === "team" ? "roster" : "approve";
+}
+
+const viewForSection: Readonly<Record<string, string | null>> = { approve: null, cover: "cover", roster: "team" };
+
+function useManageSection(): [string, (id: string) => void] {
+  const params = useSearchParams();
+  const router = useRouter();
+  const section = sectionFor(params?.get("view") ?? null);
+  const select = useCallback(
+    (id: string) => {
+      const next = new URLSearchParams(params?.toString() ?? "");
+      const view = viewForSection[id] ?? null;
+      if (view) next.set("view", view);
+      else next.delete("view");
+      const query = next.toString();
+      router.replace(query ? `/roster/manage?${query}` : "/roster/manage", { scroll: false });
+    },
+    [params, router],
+  );
+  return [section, select];
+}
+
 function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | null }) {
   const { serviceId } = team;
   const now = useRosterNow();
   const overview = useRosterRead(serviceId, "overview");
-  const [section, setSection] = useState("approve");
+  const [section, setSection] = useManageSection();
   // Waiting swaps and taken shifts are decided in one place: the calendar's
   // Needs you strip, inline and rechecked live. The Approve tab lists them
   // itself only while the strip is not showing (loading, or a manager read failed).
@@ -48,7 +80,9 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
   return (
     <div className="mx-auto grid w-full max-w-reading gap-6 lg:max-w-none lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
       <div className="order-1 grid min-w-0 gap-6 lg:order-2">
-        <RosterManageNavHeader activeId={section} onSelect={setSection} />
+        <WithoutModeBand>
+          <RosterManageNavHeader activeId={section} onSelect={setSection} />
+        </WithoutModeBand>
         {section === "approve" ? (
           <RosterApproveTab
             serviceId={serviceId}
@@ -142,7 +176,9 @@ export function RosterManagePage() {
                 </select>
               </label>
             ) : null}
-            <ManagerTeam key={team.serviceId} team={team} actorId={teams.data?.actorId ?? null} />
+            <Suspense fallback={<p role="status">Loading your team…</p>}>
+              <ManagerTeam key={team.serviceId} team={team} actorId={teams.data?.actorId ?? null} />
+            </Suspense>
           </>
         )}
       </div>

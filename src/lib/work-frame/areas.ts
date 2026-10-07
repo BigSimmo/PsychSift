@@ -19,7 +19,7 @@ import { ON_CALL_ADMIN_ROWS_HREF, ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/
  * mockup draws but the app does not have yet is simply not listed.
  */
 
-export type WorkAreaId = "day" | "rost" | "teach" | "assess" | "cpd" | "admin" | "call";
+export type WorkAreaId = "day" | "rost" | "open" | "manage" | "teach" | "assess" | "cpd" | "admin" | "call";
 
 /** Names the frame's icon map resolves (`work-frame-icons.ts`). */
 export type WorkFrameIconName =
@@ -114,6 +114,18 @@ export type WorkFrameItem = {
   readonly gate?: WorkFrameGate;
   /** Tints the item's icon with another area's colour, because the tap leaves this area. */
   readonly leadsTo?: AppModeId;
+  /**
+   * The name the fourth tab shows while this More page is open (navigation
+   * follow-up, owner request 7 Oct 2026). Defaults to `label`; set it where the
+   * label is too long for four tabs on a 320px phone.
+   */
+  readonly short?: string;
+  /**
+   * This item opens an inner area with its own three tabs (Open shifts and
+   * Manage team inside Roster, Assessments inside Teaching). More shows it as
+   * one wide row rather than a tile, and it is never the current page.
+   */
+  readonly opens?: WorkAreaId;
 };
 
 export type WorkFrameGroup = { readonly label: string; readonly items: readonly WorkFrameItem[] };
@@ -128,6 +140,11 @@ export type WorkArea = {
   readonly tabs: readonly [WorkFrameItem, WorkFrameItem, WorkFrameItem];
   /** The rest of the area, grouped, in the More sheet after the tabs. */
   readonly groups: readonly WorkFrameGroup[];
+  /**
+   * The area this one sits inside. An inner area draws a back arrow to its
+   * parent on every page, and its More ends with a way back.
+   */
+  readonly parent?: WorkAreaId;
 };
 
 const myDay: WorkArea = {
@@ -238,6 +255,7 @@ const roster: WorkArea = {
         {
           id: "hours",
           label: "Hours and rest",
+          short: "Hours",
           sub: "Rest checks",
           icon: "pulse",
           href: "/roster?view=hours",
@@ -247,26 +265,88 @@ const roster: WorkArea = {
       ],
     },
     {
+      label: "Inside Roster",
+      items: [
+        {
+          id: "open-shifts",
+          label: "Open shifts",
+          sub: "Browse, requests, alerts",
+          icon: "search",
+          href: "/open-shifts",
+          paths: [],
+          opens: "open",
+        },
+        {
+          id: "manage",
+          label: "Manage team",
+          sub: "Inbox, cover, team",
+          icon: "clipboard",
+          href: "/roster/manage",
+          paths: [],
+          // Roster managers are the teams' Open shifts posters.
+          gate: "open-shifts-poster",
+          opens: "manage",
+        },
+      ],
+    },
+    {
+      label: "Set up",
+      items: [
+        {
+          id: "calendar",
+          label: "Calendar sync",
+          sub: "Phone calendar",
+          icon: "link",
+          href: "/roster/calendar",
+          band: false,
+        },
+        { id: "join", label: "Join a team", sub: "Invite code", icon: "qr", href: "/roster/join", band: false },
+        { id: "settings", label: "Settings", sub: "Alerts and data", icon: "settings", href: "/roster/settings" },
+      ],
+    },
+  ],
+};
+
+/** Open shifts, inside Roster: the shifts on offer, your requests and alerts. */
+const openShifts: WorkArea = {
+  id: "open",
+  name: "Open shifts",
+  identity: "roster",
+  parent: "rost",
+  tabs: [
+    {
+      id: "open-shifts-browse",
+      label: "Browse",
+      sub: "Shifts on offer",
+      icon: "search",
+      href: "/open-shifts",
+      title: "Open shifts",
+    },
+    {
+      id: "open-shifts-mine",
+      label: "Requests",
+      sub: "Asked and booked",
+      icon: "send",
+      href: "/open-shifts/mine",
+      title: "My requests",
+    },
+    {
+      id: "open-shifts-alerts",
+      label: "Alerts",
+      sub: "When shifts appear",
+      icon: "bell",
+      href: "/open-shifts/alerts",
+      title: "Shift alerts",
+    },
+  ],
+  groups: [
+    {
       label: "Open shifts",
       items: [
         {
-          id: "open-shifts-browse",
-          label: "Browse",
-          sub: "Shifts on offer",
-          icon: "search",
-          href: "/open-shifts",
-          title: "Open shifts",
-        },
-        {
-          id: "open-shifts-mine",
-          label: "My requests",
-          sub: "Asked and booked",
-          icon: "send",
-          href: "/open-shifts/mine",
-        },
-        {
           id: "open-shifts-post",
           label: "Post a shift",
+          short: "Post",
           sub: "Managers",
           icon: "plus",
           href: "/open-shifts/post",
@@ -289,38 +369,78 @@ const roster: WorkArea = {
           href: "/open-shifts/log",
           band: false,
         },
-        {
-          id: "open-shifts-alerts",
-          label: "Shift alerts",
-          sub: "When shifts appear",
-          icon: "bell",
-          href: "/open-shifts/alerts",
-        },
       ],
     },
+  ],
+};
+
+/**
+ * Manage team, inside Roster, for roster managers. One page whose three views
+ * are the tabs; the page itself tells anyone else it is for managers only.
+ */
+const manageTeam: WorkArea = {
+  id: "manage",
+  name: "Manage team",
+  identity: "roster",
+  parent: "rost",
+  tabs: [
     {
-      label: "Set up",
+      id: "manage-inbox",
+      label: "Inbox",
+      sub: "Swaps and requests",
+      icon: "inbox",
+      href: "/roster/manage",
+      title: "Inbox",
+    },
+    {
+      id: "manage-cover",
+      label: "Cover",
+      sub: "Gaps to fill",
+      icon: "users",
+      href: "/roster/manage?view=cover",
+      paths: ["/roster/manage"],
+      query: { view: "cover" },
+    },
+    {
+      id: "manage-team",
+      label: "Team",
+      sub: "Publish, people, rules",
+      icon: "settings",
+      href: "/roster/manage?view=team",
+      paths: ["/roster/manage"],
+      query: { view: "team" },
+    },
+  ],
+  groups: [
+    {
+      label: "Shifts",
       items: [
         {
-          id: "calendar",
-          label: "Calendar sync",
-          sub: "Phone calendar",
-          icon: "link",
-          href: "/roster/calendar",
-          band: false,
-        },
-        { id: "join", label: "Join a team", sub: "Invite code", icon: "qr", href: "/roster/join", band: false },
-        {
-          id: "manage",
-          label: "Manage team",
-          sub: "Managers",
-          icon: "clipboard",
-          href: "/roster/manage",
-          // Roster managers are the teams' Open shifts posters; the page keeps its own header.
+          id: "manage-post",
+          label: "Post a shift",
+          sub: "Open shifts",
+          icon: "plus",
+          href: "/open-shifts/post",
+          paths: [],
           gate: "open-shifts-poster",
-          band: false,
         },
-        { id: "settings", label: "Settings", sub: "Alerts and data", icon: "settings", href: "/roster/settings" },
+        {
+          id: "manage-board",
+          label: "Week board",
+          sub: "Posted shifts",
+          icon: "grid",
+          href: "/open-shifts/board",
+          paths: [],
+          gate: "open-shifts-poster",
+        },
+        {
+          id: "manage-team-week",
+          label: "Who is on",
+          sub: "Team roster",
+          icon: "calendar",
+          href: "/roster/team",
+          paths: [],
+        },
       ],
     },
   ],
@@ -373,10 +493,11 @@ const teaching: WorkArea = {
         {
           id: "assessments",
           label: "Assessments",
-          sub: "Forms and EPAs",
+          sub: "Forms, EPAs, supervision",
           icon: "file",
           href: "/teaching/assessments",
           paths: [],
+          opens: "assess",
         },
         {
           id: "supervision",
@@ -411,6 +532,7 @@ const assessments: WorkArea = {
   id: "assess",
   name: "Assessments",
   identity: "teaching",
+  parent: "teach",
   tabs: [
     {
       id: "assess-todo",
@@ -677,7 +799,14 @@ const onCall: WorkArea = {
     {
       label: "Tonight tools",
       items: [
-        { id: "call-now", label: "Who to call now", sub: "Pick a problem", icon: "phone", href: "/on-call/now" },
+        {
+          id: "call-now",
+          label: "Who to call now",
+          short: "Call now",
+          sub: "Pick a problem",
+          icon: "phone",
+          href: "/on-call/now",
+        },
         ...(ON_CALL_WHOS_ON_ENABLED
           ? [
               {
@@ -761,6 +890,7 @@ const onCall: WorkArea = {
         {
           id: "service",
           label: "Manage service",
+          short: "Service",
           sub: "Editors",
           icon: "settings",
           href: "/on-call/service",
@@ -774,6 +904,8 @@ const onCall: WorkArea = {
 export const WORK_AREAS: Readonly<Record<WorkAreaId, WorkArea>> = {
   day: myDay,
   rost: roster,
+  open: openShifts,
+  manage: manageTeam,
   teach: teaching,
   assess: assessments,
   cpd,
@@ -793,10 +925,11 @@ export function workAreaFor(modeId: AppModeId, pathname: string): WorkArea | nul
     case "my-day":
       return myDay;
     case "roster":
+      return pathname === "/roster/manage" || pathname.startsWith("/roster/manage/") ? manageTeam : roster;
     case "open-shifts":
-      // Open shifts lives inside Roster: its pages wear Roster's frame. The mode
-      // id stays `open-shifts` for search, the pill and the registry.
-      return roster;
+      // Open shifts is an inner area of Roster, with Roster's colours. The mode
+      // id stays `open-shifts` for search and the registry.
+      return openShifts;
     case "teaching":
       return ASSESSMENT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
         ? assessments
@@ -872,4 +1005,39 @@ export function workFrameForRoute(
   const page = area ? workFrameCurrentItem(area, pathname, "") : null;
   if (!area || !page || page.band === false) return null;
   return { area, page };
+}
+
+/** The area an inner area sits inside, or null for a top-level area. */
+export function workAreaParent(area: WorkArea): WorkArea | null {
+  return area.parent ? WORK_AREAS[area.parent] : null;
+}
+
+/** What the fourth tab says while this More page is open. */
+export function workFrameTabLabel(item: WorkFrameItem): string {
+  return item.short ?? item.label;
+}
+
+/** The most tabs the row ever shows, More aside: six on a tablet. */
+export const WORK_FRAME_MAX_TABS = 6;
+
+/**
+ * More pages that join the tab row when the screen is wide enough to show
+ * them (navigation follow-up, owner request 7 Oct 2026). The width decides:
+ * the three pinned tabs always show, then these in the order More lists them,
+ * as many as fit, up to six tabs. Only plain pages of this area qualify: not
+ * actions, inner areas, links into other areas or pages that keep their own
+ * header. The caller drops gated pages the reader cannot see.
+ */
+export function workFrameExtraTabs(area: WorkArea): readonly WorkFrameItem[] {
+  return area.groups
+    .flatMap((group) => group.items)
+    .filter(
+      (item) =>
+        Boolean(item.href) &&
+        !item.action &&
+        !item.opens &&
+        !item.leadsTo &&
+        item.band !== false &&
+        item.paths?.length !== 0,
+    );
 }

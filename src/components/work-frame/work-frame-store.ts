@@ -99,3 +99,20 @@ export function useWorkFrameActionsVersion(): number {
 export function workFrameActionHandler(id: WorkFrameActionId): (() => void) | null {
   return actions.get(id) ?? null;
 }
+
+/* --------------------------------------------------------- last page per area */
+
+/**
+ * The page last open in each top-level area, so an inner area's back arrow
+ * returns to where you left its parent (navigation follow-up, owner request
+ * 7 Oct 2026). Memory only for this tab: nothing is stored on the device.
+ */
+const lastPages = new Map<string, string>();
+
+export function rememberWorkAreaPage(areaId: string, href: string): void {
+  lastPages.set(areaId, href);
+}
+
+export function rememberedWorkAreaPage(areaId: string): string | null {
+  return lastPages.get(areaId) ?? null;
+}
