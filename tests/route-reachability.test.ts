@@ -63,6 +63,15 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
     "/roster/manage",
     "Manager surface reached via ModeRow rows on Roster Today and Alerts (manager-only), which this Link-only scan does not model.",
   ],
+  // Work-mode wiring, 7 Oct 2026: both screens live inside the Assessments page as views.
+  [
+    "/teaching/assessments/help",
+    "Compatibility redirect to /teaching/assessments?view=words for older links. In-app navigation (More's Help and words) links the view directly.",
+  ],
+  [
+    "/teaching/assessments/record",
+    "Compatibility redirect to /teaching/assessments?view=record (or ?view=all) for older links. In-app navigation (More's Doctor record) links the view directly.",
+  ],
   [
     "/cme/programme",
     "Retired CPD Programme screen. It redirects to /cme/setup, which now owns both the read view and the editor, so in-app navigation links /cme/setup directly; the page stays only for existing bookmarks.",

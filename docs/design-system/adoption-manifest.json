@@ -2494,6 +2494,7 @@
         "src/components/tools/tools-search-results-page.tsx",
         "src/components/ui/confirm-dialog.tsx",
         "src/components/work-frame/work-frame-header.tsx",
+        "src/components/work-help/work-help-sheet.tsx",
         "src/components/work-profile/work-stage-sheet.tsx",
         "src/components/work-screens/admin/documents-page.tsx",
         "src/components/work-screens/admin/pay-page.tsx",

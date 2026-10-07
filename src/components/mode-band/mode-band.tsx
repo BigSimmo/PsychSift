@@ -42,6 +42,10 @@ import {
   type WorkFrameItem,
 } from "@/lib/work-frame/areas";
 import { WorkFrameHeader } from "@/components/work-frame/work-frame-header";
+import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
+import { WorkHelpHost } from "@/components/work-help/work-help-host";
+import { openWorkHelp } from "@/components/work-help/work-help-store";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
 
 /**
@@ -365,6 +369,10 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   // The work-mode frame (work-mode redesign, owner request 6 Oct 2026). Null
   // for every clinical mode, whose band is drawn exactly as before.
   const area = workAreaFor(props.modeId, pathname);
+  // More's per-area Help opens the help sheet. The help centre is a new-only screen,
+  // so a reader on the classic work mode gets neither the item nor the sheet.
+  const helpOn = useNewWorkMode() && area !== null;
+  useWorkFrameAction("work-help", helpOn && area ? () => openWorkHelp(area.id) : null);
   const [search, setSearch] = useState("");
   const workCurrent: WorkFrameItem | null = area
     ? ((pageTabId ? workFrameItemById(area, pageTabId) : null) ?? workFrameCurrentItem(area, pathname, search))
@@ -404,6 +412,13 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
                 </Suspense>
               ) : null}
               {header}
+              {helpOn ? (
+                // Draws nothing until a Help item is tapped. It reads the query, so it
+                // sits in its own boundary.
+                <Suspense fallback={null}>
+                  <WorkHelpHost />
+                </Suspense>
+              ) : null}
               {area ? (
                 // The area's palette for everything on its pages: custom
                 // properties inherit through `contents`, so this adds no box.

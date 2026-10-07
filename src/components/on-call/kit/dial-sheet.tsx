@@ -4,6 +4,7 @@ import { Phone, Share2 } from "lucide-react";
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import { SaveNumberToFavouritesButton } from "@/components/favourites/save-number-button";
 import { ModeActionButton } from "@/components/mode-kit/action-button";
 import {
   modeCallDiscShape,
@@ -230,6 +231,13 @@ export function OnCallDialSheet({
               label={`Share ${title}`}
               onClick={share}
               testId={testId ? `${testId}-share` : undefined}
+            />
+          ) : null}
+          {(mobile?.display ?? dial.copy) ? (
+            <SaveNumberToFavouritesButton
+              label={hospitalName ? `${title}, ${hospitalName}` : title}
+              number={mobile?.display ?? dial.copy ?? ""}
+              testId={testId ? `${testId}-favourite` : undefined}
             />
           ) : null}
         </div>
