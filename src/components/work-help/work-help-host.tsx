@@ -5,11 +5,10 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { closeWorkHelp, useOpenWorkHelp } from "@/components/work-help/work-help-store";
-import { workHelpTopic, workHelpTopicForArea } from "@/lib/work-help";
 
-// The sheet and its words load apart from the page, fetched when the phone is idle
-// so a first open still works after the signal drops.
-const loadSheet = () => import("@/components/work-help/work-help-sheet");
+// The sheet and its words (the help topics) load apart from the page, fetched when
+// the phone is idle so a first open still works after the signal drops.
+const loadSheet = () => import("@/components/work-help/work-help-area-sheet");
 const WorkHelpSheet = dynamic(loadSheet, { ssr: false });
 
 /**
@@ -33,12 +32,5 @@ export function WorkHelpHost() {
     idle(() => void loadSheet().catch(() => undefined));
   }, []);
   if (!area) return null;
-  // Open shifts lives inside Roster's frame and has its own help.
-  // Assessments sits inside Teaching's frame but has its own help too.
-  const topic = pathname?.startsWith("/open-shifts")
-    ? workHelpTopic("open-shifts")
-    : pathname?.startsWith("/teaching/assessments")
-      ? workHelpTopic("assess")
-      : null;
-  return <WorkHelpSheet topic={topic ?? workHelpTopicForArea(area)} open onClose={closeWorkHelp} />;
+  return <WorkHelpSheet area={area} pathname={pathname} onClose={closeWorkHelp} />;
 }

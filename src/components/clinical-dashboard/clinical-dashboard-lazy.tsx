@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-import { AnswerSkeleton } from "@/components/clinical-dashboard/answer-status";
+import { AnswerSkeleton } from "@/components/clinical-dashboard/answer-skeleton";
 import { LoadingPanel } from "@/components/ui-primitives";
 
 // Every surface here is `ssr: false`, so the server sends no markup for it and
