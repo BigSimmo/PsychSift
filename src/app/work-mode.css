@@ -1434,6 +1434,10 @@ a.work-hero:focus-visible {
   bottom: 0;
   z-index: var(--z-raised, 10);
   display: flex;
+  /* Never wider than the page: at large text the capsule's buttons wrap their
+     words instead of pushing the screen sideways. */
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: calc(var(--spacing) * 2);
   margin: 0.5rem calc(var(--work-gutter) * -0.375) 0;
