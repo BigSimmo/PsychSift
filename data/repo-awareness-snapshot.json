@@ -1139,6 +1139,11 @@
         "area": "mockup"
       },
       {
+        "path": "/my-day/profile/agreement",
+        "file": "src/app/(search-app)/my-day/profile/agreement/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/calculators/search",
         "file": "src/app/(search-app)/calculators/search/page.tsx",
         "area": "product"
