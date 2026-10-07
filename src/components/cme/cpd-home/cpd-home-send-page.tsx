@@ -298,7 +298,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
         addedAt: null,
       };
       setFlow({ phase: "ready", file, text });
-      announce(`File ready, ${total} ${total === 1 ? "row" : "rows"}. Tap Download file.`);
+      announce(`File made, ${total} ${total === 1 ? "row" : "rows"}. Tap Download file.`);
     };
     window.setTimeout(step, CHECK_STEP_MS);
   }
@@ -951,12 +951,12 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       <Sheet
         open={flow !== null}
         onClose={() => (flow?.phase === "making" ? cancelMaking() : setFlow(null))}
-        title={flow?.phase === "making" ? "Making your file" : ready ? "File ready" : "Download started"}
+        title={flow?.phase === "making" ? "Making your file" : ready ? "Your file" : "Download started"}
         description={
           flow?.phase === "making"
             ? flow.name
             : ready
-              ? `${ready.file.name}, checked and ready`
+              ? `${ready.file.name}, every row checked`
               : "Your browser should have saved it to your downloads"
         }
         testId="cpd-home-saved-sheet"

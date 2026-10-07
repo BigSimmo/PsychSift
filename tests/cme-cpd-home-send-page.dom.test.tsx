@@ -238,7 +238,7 @@ describe("Send to AMA CPD Home", () => {
     const ready = await screen.findByTestId("cpd-home-download-ready");
     // The rows are checked, but nothing is downloaded or recorded until the doctor taps.
     expect(createObjectURL).not.toHaveBeenCalled();
-    expect(screen.getByTestId("cpd-home-saved-sheet").textContent).toContain("File ready");
+    expect(screen.getByTestId("cpd-home-saved-sheet").textContent).toContain("Your file");
     expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
     fireEvent.click(ready);
     expect(createObjectURL).toHaveBeenCalledTimes(1);
