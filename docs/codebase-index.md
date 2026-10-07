@@ -500,6 +500,19 @@ in `src/lib/roster/` (the import folder, `calendar-link-fetch`, `calendar-links`
 - Roster shifts reach the calendar feed only when the doctor turns that on.
 - Nothing about shifts is stored offline, and Roster uses no AI. The On Call home still shows the
   shift on now or the next one, linking to `/roster`.
+- `/roster/sick` (Sick for tomorrow, `src/components/roster/sick/`, pure logic in
+  `src/lib/roster/sick/sick-report.ts`): my team shifts today and tomorrow, sent with the existing
+  `open.report` action after a 10-second Undo hold (`pagehide` cancels), then "Take back" with
+  `open.cancel`. Shows each report's progress from the `requests` read. Own-roster-only shifts are
+  listed as "PsychSift can't tell anyone". The example team and signed-out sample refuse to send.
+  No reason or health detail is asked for or kept.
+- `/roster/staffing` (Team staffing, `src/components/roster/staffing/`, pure logic in
+  `src/lib/roster/staffing/team-staffing.ts`): how many of the team are on each day from one
+  `assignments` read (at most 62 days), leave picked by date or by tapping days, fewest on with you
+  away, same-length dates with more on, and a hand-off to Plan leave
+  (`/roster/requests?start=leave&date=&to=`). No safe number is held, so nothing is called safe;
+  days past the latest publication are "not checked". `RosterLeaveStaffingCheck` is the same check
+  for the Plan leave sheet.
 
 **Open shifts mode.** Extra shifts advertised inside the doctor's Roster teams (mode id
 `open-shifts`, no search surface, like Roster). Tabs: `/open-shifts` (Browse), `/open-shifts/mine`,

@@ -529,6 +529,11 @@
         "area": "mockup"
       },
       {
+        "path": "/roster/staffing",
+        "file": "src/app/(search-app)/roster/staffing/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/",
         "file": "src/app/(search-app)/page.tsx",
         "area": "product"
@@ -1106,6 +1111,11 @@
       {
         "path": "/formulation/search",
         "file": "src/app/(search-app)/formulation/search/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/roster/sick",
+        "file": "src/app/(search-app)/roster/sick/page.tsx",
         "area": "product"
       },
       {

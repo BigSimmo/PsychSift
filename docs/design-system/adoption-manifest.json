@@ -3335,6 +3335,8 @@
         "src/app/(search-app)/roster/requests/page.tsx",
         "src/app/(search-app)/roster/settings/page.tsx",
         "src/app/(search-app)/roster/shifts/page.tsx",
+        "src/app/(search-app)/roster/sick/page.tsx",
+        "src/app/(search-app)/roster/staffing/page.tsx",
         "src/app/(search-app)/roster/swaps/page.tsx",
         "src/app/(search-app)/roster/team/page.tsx",
         "src/app/(search-app)/roster/today/page.tsx",
@@ -4398,6 +4400,26 @@
         },
         {
           "file": "src/app/(search-app)/roster/shifts/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/roster/sick/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/roster/staffing/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5906,6 +5928,8 @@
       "src/app/(search-app)/roster/requests/page.tsx",
       "src/app/(search-app)/roster/settings/page.tsx",
       "src/app/(search-app)/roster/shifts/page.tsx",
+      "src/app/(search-app)/roster/sick/page.tsx",
+      "src/app/(search-app)/roster/staffing/page.tsx",
       "src/app/(search-app)/roster/swaps/page.tsx",
       "src/app/(search-app)/roster/team/page.tsx",
       "src/app/(search-app)/roster/today/page.tsx",
@@ -6083,6 +6107,8 @@
       "src/app/(search-app)/roster/requests/page.tsx",
       "src/app/(search-app)/roster/settings/page.tsx",
       "src/app/(search-app)/roster/shifts/page.tsx",
+      "src/app/(search-app)/roster/sick/page.tsx",
+      "src/app/(search-app)/roster/staffing/page.tsx",
       "src/app/(search-app)/roster/swaps/page.tsx",
       "src/app/(search-app)/roster/team/page.tsx",
       "src/app/(search-app)/roster/today/page.tsx",
@@ -6142,7 +6168,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 182,
+    "inheritedCkbV2RootCount": 184,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6151,8 +6177,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 183,
-    "productionRouteCount": 175,
-    "nextUiEntryCount": 276
+    "rootCount": 185,
+    "productionRouteCount": 177,
+    "nextUiEntryCount": 278
   }
 }
