@@ -505,6 +505,10 @@ function GlobalStandaloneSearchShellBody({
   const workSideNav = useWorkSideNav(searchMode);
   const workRailShown = useWorkRailShown();
   const workSideArea = workSideNav ? workSideCurrentArea(searchMode, pathname) : null;
+  // The counts reader stays mounted once the phone menu has opened on a work
+  // page, so reopening the menu never fetches the feed again.
+  const [workMenuOpened, setWorkMenuOpened] = useState(false);
+  if (workSideNav && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
   const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow || workSideNav ? true : sidebarCollapsed;
   const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "5.25rem" : "20rem") : "0px";
   const isInfoPage = isInformationPage(pathname);
@@ -1214,7 +1218,7 @@ function GlobalStandaloneSearchShellBody({
           initialFocus={settingsInitialFocus}
         />
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
-        <LazyWorkSideCounts active={workSideNav && (workRailShown || mobileMenuOpen)} />
+        <LazyWorkSideCounts active={workSideNav && (workRailShown || workMenuOpened)} />
         {workSideNav ? (
           <LazyWorkSideMenu
             open={mobileMenuOpen}

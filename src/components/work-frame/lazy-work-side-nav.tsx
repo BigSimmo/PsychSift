@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 
 const loadWorkSideMenu = () => import("@/components/work-frame/work-side-menu").then((module) => module.WorkSideMenu);
 const LazyMenu = dynamic(loadWorkSideMenu, { ssr: false });
@@ -16,9 +16,14 @@ export function prefetchWorkSideMenu() {
   void loadWorkSideMenu();
 }
 
-/** The work side menu as a lazy chunk: nothing loads until it first opens. */
+/**
+ * The work side menu as a lazy chunk: nothing loads until it first opens, and
+ * it stays mounted after that so closing it returns focus to the menu button.
+ */
 export function LazyWorkSideMenu(props: ComponentProps<typeof LazyMenu>) {
-  return props.open ? <LazyMenu {...props} /> : null;
+  const [opened, setOpened] = useState(props.open);
+  if (props.open && !opened) setOpened(true);
+  return opened ? <LazyMenu {...props} /> : null;
 }
 
 /** The side menu and rail's counts, read only while one of them is on screen. */

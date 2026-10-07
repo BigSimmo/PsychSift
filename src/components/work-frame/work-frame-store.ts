@@ -139,6 +139,7 @@ export type WorkSideCountsState = {
   readonly areas: WorkSideCounts;
   /** Everything waiting, the bell's own number, for the Notifications row. */
   readonly total: number;
+  readonly overdue: number;
   /** Reminders due today, for the Reminders row. */
   readonly reminders: number;
 };

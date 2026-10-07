@@ -11,6 +11,7 @@ import { Sheet } from "@/components/ui/sheet";
 import {
   rememberedWorkAreaPage,
   requestWorkFrameAction,
+  workFrameActionHandler,
   useWorkSideCounts,
 } from "@/components/work-frame/work-frame-store";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
@@ -18,7 +19,13 @@ import { appModeIcons } from "@/lib/app-mode-icons";
 import { BRAND_NAME } from "@/lib/brand";
 import type { ModeSide } from "@/lib/phone-mode-groups";
 import { WORK_AREAS, type WorkAreaId } from "@/lib/work-frame/areas";
-import { WORK_SIDE_AREAS, workSideBadgeText, workSideCountLabel, type WorkSideCount } from "@/lib/work-frame/side-nav";
+import {
+  WORK_SIDE_AREAS,
+  WORK_SIDE_NOTIFICATIONS_HREF,
+  workSideBadgeText,
+  workSideCountLabel,
+  type WorkSideCount,
+} from "@/lib/work-frame/side-nav";
 
 /**
  * The work side menu (owner pick "Burger and rail", 7 Oct 2026). On a phone
@@ -40,12 +47,8 @@ export type WorkSideMenuProps = {
   readonly onSignOut: () => Promise<void> | void;
 };
 
-export function WorkSideMenu(props: WorkSideMenuProps) {
-  // Mounted only while open, so the side and the sign-out check start fresh each time.
-  return props.open ? <WorkSideMenuOpen {...props} /> : null;
-}
-
-function WorkSideMenuOpen({
+export function WorkSideMenu({
+  open,
   onOpenChange,
   identity,
   currentArea,
@@ -58,17 +61,28 @@ function WorkSideMenuOpen({
   const routeVisible = useWorkModeRouteVisible();
   const [side, setSide] = useState<ModeSide>("work");
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  // The Sheet stays mounted so it can hand focus back to the menu button on
+  // close; each opening starts on Work, with the sign-out check put away.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setSide("work");
+      setConfirmSignOut(false);
+    }
+  }
   const close = () => onOpenChange(false);
 
   const openReminders = () => {
     close();
-    if (currentArea !== "day") router.push("/my-day");
+    // Only a page that offers Reminders can open it; anywhere else goes to My Day first.
+    if (!workFrameActionHandler("my-day-reminders")) router.push("/my-day");
     requestWorkFrameAction("my-day-reminders");
   };
 
   return (
     <Sheet
-      open
+      open={open}
       onClose={close}
       title={BRAND_NAME}
       closeLabel="Close PsychSift menu"
@@ -103,8 +117,10 @@ function WorkSideMenuOpen({
         </div>
       ) : (
         <>
-          <nav aria-label="Work areas" className="work-side-menu__group">
-            <h3 className="work-side-menu__label">Work areas</h3>
+          <nav aria-labelledby="work-side-menu-areas" className="work-side-menu__group">
+            <h3 id="work-side-menu-areas" className="work-side-menu__label">
+              Work areas
+            </h3>
             <ul>
               {WORK_SIDE_AREAS.filter((entry) => routeVisible(entry.href)).map((entry) => {
                 const current = entry.id === currentArea;
@@ -132,13 +148,15 @@ function WorkSideMenuOpen({
             </ul>
           </nav>
 
-          <nav aria-label="Yours" className="work-side-menu__group">
-            <h3 className="work-side-menu__label">Yours</h3>
+          <nav aria-labelledby="work-side-menu-yours" className="work-side-menu__group">
+            <h3 id="work-side-menu-yours" className="work-side-menu__label">
+              Yours
+            </h3>
             <ul>
-              {routeVisible("/my-day/alerts") ? (
+              {routeVisible(WORK_SIDE_NOTIFICATIONS_HREF) ? (
                 <li>
                   <Link
-                    href="/my-day/alerts"
+                    href={WORK_SIDE_NOTIFICATIONS_HREF}
                     onClick={close}
                     data-mode-identity="my-day"
                     className="work-side-menu__row"
@@ -148,7 +166,7 @@ function WorkSideMenuOpen({
                       <Bell aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
                     </span>
                     <span className="work-side-menu__name">Notifications</span>
-                    <SideCount count={counts ? { total: counts.total, overdue: 0 } : undefined} />
+                    <SideCount count={counts ? { total: counts.total, overdue: counts.overdue } : undefined} />
                   </Link>
                 </li>
               ) : null}

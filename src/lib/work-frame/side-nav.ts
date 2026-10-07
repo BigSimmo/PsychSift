@@ -46,6 +46,17 @@ export function workSideAreaId(areaId: WorkAreaId): WorkAreaId {
   return WORK_AREAS[areaId].parent ?? areaId;
 }
 
+/**
+ * The notifications pages. An item that opens one of these belongs to no work
+ * area, so it is left out of the area counts (it still counts in the total).
+ * `/my-day/notifications` is the alerts build's new page, an inner area of My
+ * Day; `/my-day/alerts` is the page before it.
+ */
+const NOTIFICATION_PAGES = ["/my-day/alerts", "/my-day/notifications"] as const;
+
+/** Where the side menu's Notifications row goes. The alerts build moves this to `/my-day/notifications`. */
+export const WORK_SIDE_NOTIFICATIONS_HREF = "/my-day/alerts";
+
 export type WorkSideCount = { readonly total: number; readonly overdue: number };
 
 /** The minimal item shape the counts need, so this file does not depend on the feed. */
@@ -61,7 +72,7 @@ export function workSideCounts(items: readonly WorkSideCountItem[]): Partial<Rec
   const counts: Partial<Record<WorkAreaId, { total: number; overdue: number }>> = {};
   for (const item of items) {
     const path = item.href.split(/[?#]/)[0] ?? item.href;
-    if (path === "/my-day/alerts" || path.startsWith("/my-day/alerts/")) continue;
+    if (NOTIFICATION_PAGES.some((page) => path === page || path.startsWith(`${page}/`))) continue;
     const areaId = workAreaIdForPath(path);
     if (!areaId) continue;
     const row = workSideAreaId(areaId);

@@ -34,6 +34,7 @@ export function WorkSideCountsReader() {
     return {
       areas: workSideCounts(items),
       total: visible.length,
+      overdue: items.filter((item) => item.overdue).length,
       reminders: visible.filter((item) => item.area === "my-day").length,
     };
   }, [known, visible, clock]);

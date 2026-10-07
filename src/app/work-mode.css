@@ -2170,6 +2170,14 @@ html[data-work-frame] .app-toast-region {
   padding: 0 0.75rem 1rem;
 }
 
+.work-side-menu__body > * {
+  flex-shrink: 0;
+}
+
+.work-side-menu__body > [data-testid="app-mode-side-toggle"] {
+  min-height: 2.75rem;
+}
+
 .work-side-menu__account {
   display: flex;
   align-items: center;
@@ -2383,7 +2391,10 @@ html[data-work-frame] .app-toast-region {
   scrollbar-width: none;
 }
 
+/* The rail's initial is a 44 px target, like every other rail item. */
 .work-rail__avatar {
+  width: 2.75rem;
+  height: 2.75rem;
   margin-bottom: 0.75rem;
 }
 
@@ -2462,5 +2473,13 @@ html[data-work-frame] .app-toast-region {
   .work-side-menu__row[aria-current="true"],
   .work-rail__item[aria-current="true"] .work-rail__pill {
     outline: 2px solid Highlight;
+  }
+
+  .work-side-menu__avatar,
+  .work-rail__avatar,
+  .work-side-menu__count,
+  .work-rail__count,
+  .work-side-menu__sign-out {
+    border: 1px solid ButtonText;
   }
 }

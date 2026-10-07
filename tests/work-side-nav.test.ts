@@ -46,6 +46,7 @@ describe("work side menu and rail", () => {
       { href: "/teaching/assessments", overdue: false },
       { href: "/admin/renewals#x", overdue: true },
       { href: "/my-day/alerts", overdue: false },
+      { href: "/my-day/notifications/earlier", overdue: false },
       { href: "/dsm", overdue: false },
     ]);
     expect(counts.rost).toEqual({ total: 2, overdue: 1 });
