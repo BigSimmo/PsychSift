@@ -226,7 +226,7 @@ export function CmeEntryPage({
             </span>
             <span className="work-row__text">
               <span className="work-row__title">{transcribed ? "Marked copied" : "Not marked copied"}</span>
-              <span className="work-row__sub" data-testid="cme-entry-transcribed-status" aria-live="polite">
+              <span className="work-row__sub" data-testid="cme-entry-transcribed-status">
                 {copyFailed
                   ? "Could not copy. Check clipboard permissions and try again."
                   : stampFailed
