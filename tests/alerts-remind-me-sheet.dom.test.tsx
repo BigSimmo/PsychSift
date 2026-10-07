@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { RemindMeSheet } from "@/components/alerts/remind-me-sheet";
+import { useRemindMe } from "@/components/alerts/use-remind-me";
+import { REMIND_ME_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 
 afterEach(() => {
   cleanup();
@@ -37,5 +39,23 @@ describe("Remind me sheet", () => {
     await userEvent.clear(field);
     await userEvent.type(field, "Ask switchboard for the new pager list");
     expect(screen.queryByTestId("remind-me-problem")).toBeNull();
+  });
+
+  it("drops a stored note that only the shared patient-detail check catches", () => {
+    // A note kept before the shared check reached Remind me must not stay on the device.
+    const note = (id: string, text: string) => ({
+      id,
+      text,
+      dueAt: "2099-10-05T09:00:00.000Z",
+      createdAt: "2026-10-05T01:00:00.000Z",
+      doneAt: null,
+    });
+    window.localStorage.setItem(
+      REMIND_ME_STORAGE_KEY,
+      JSON.stringify([note("a", "Patient John bloods"), note("b", "Ask switchboard for the new pager list")]),
+    );
+    const { result } = renderHook(() => useRemindMe());
+    expect(result.current.reminders.map((item) => item.text)).toEqual(["Ask switchboard for the new pager list"]);
+    expect(window.localStorage.getItem(REMIND_ME_STORAGE_KEY)).not.toContain("Patient John");
   });
 });

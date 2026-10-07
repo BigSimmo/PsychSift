@@ -28,13 +28,18 @@ import {
   useEffectEvent,
   useRef,
   useState,
+  useSyncExternalStore,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject,
 } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
-import { readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
+import {
+  mayRecordRecentSearches,
+  readAppPreferences,
+  subscribeAppPreferences,
+} from "@/components/clinical-dashboard/use-app-preferences";
 import { WorkButton, WorkEmpty, WorkTag } from "@/components/mode-kit/work";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkSearchRecords } from "@/components/work-search/use-work-search-records";
@@ -397,6 +402,10 @@ const fieldRing =
 const fieldRingWarn =
   "ring-2 ring-[color:var(--warning)] outline-[color:color-mix(in_srgb,var(--warning)_14%,transparent)]";
 
+function readSaveRecentSearches(): boolean {
+  return readAppPreferences().saveRecentSearches;
+}
+
 export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: WorkSearchSheetProps) {
   const [now, setNow] = useState(() => Date.now());
   const today = perthDateOf(now);
@@ -413,9 +422,11 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const searchQuery = query.trim() === "" ? "" : settledQuery;
   const [filter, setFilter] = useState<WorkSearchArea | "all">("all");
   const [expanded, setExpanded] = useState<WorkSearchArea | "pages" | null>(null);
-  // Privacy's "Save recent searches" off: nothing is kept, and nothing kept before is shown.
-  const keepRecents = readAppPreferences().saveRecentSearches;
-  const [recents, setRecents] = useState(() => (keepRecents ? recentsFor(epoch) : []));
+  // Privacy's "Save recent searches" off: nothing is kept, and nothing kept before is shown. Read live, so
+  // turning it off in another tab (or the account copy arriving) hides Recent at once.
+  const keepRecents = useSyncExternalStore(subscribeAppPreferences, readSaveRecentSearches, () => false);
+  const [storedRecents, setRecents] = useState(() => (keepRecents ? recentsFor(epoch) : []));
+  const recents = keepRecents ? storedRecents : [];
   const [scrolled, setScrolled] = useState(false);
   const [chipsMore, setChipsMore] = useState(false);
   /** The query "Search for … exactly" was tapped for: one-letter-out matching is off until it changes. */
@@ -536,7 +547,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
 
   const close = (navigated: boolean) => {
     // Search history never keeps a query run over example records.
-    noteClosing(query, epoch, navigated, Date.now(), !records.sample && keepRecents);
+    noteClosing(query, epoch, navigated, Date.now(), !records.sample && mayRecordRecentSearches());
     // Closed in place (Cancel, Esc, the backdrop): take back the history step the opening added.
     if (!navigated && takeHistoryStep()) window.history.back();
     onClose(navigated);
@@ -571,7 +582,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   };
   const found = hits.length > 0 || pageHits.length > 0 || Boolean(answer && !answer.unavailable);
   const openResult = () => {
-    if (!records.sample && keepRecents) rememberQuery(query, epoch);
+    if (!records.sample && mayRecordRecentSearches()) rememberQuery(query, epoch);
     close(true);
   };
   const resetScroll = () => bodyRef.current?.scrollTo({ top: 0 });
@@ -927,7 +938,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               onSubmit={(event) => {
                 event.preventDefault();
                 if (patient) return;
-                if (found && !records.sample && keepRecents) rememberQuery(query, epoch);
+                if (found && !records.sample && mayRecordRecentSearches()) rememberQuery(query, epoch);
                 setRecents(keepRecents ? recentsFor(epoch) : []);
                 // With a keyboard and mouse, Enter opens the top result; on a phone it puts the keyboard away.
                 if (usesFinePointer()) {

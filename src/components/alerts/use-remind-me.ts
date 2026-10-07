@@ -38,7 +38,9 @@ function snapshot(): readonly Reminder[] {
   } catch {
     stored = null;
   }
-  cachedList = normalizeReminders(stored, new Date());
+  // The shared patient-detail check that saving uses runs on stored notes too, so a note kept before it
+  // existed (or under a looser check) is never shown.
+  cachedList = normalizeReminders(stored, new Date()).filter((item) => !looksLikePatientDetail(item.text));
   // A stored note that now fails the check (or a broken value) is deleted, not just hidden.
   if (raw && (!Array.isArray(stored) || stored.length > cachedList.length)) {
     try {
