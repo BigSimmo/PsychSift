@@ -6,26 +6,39 @@ import type { ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
+import type { AppModeId } from "@/lib/app-modes";
 
 /*
- * Teaching's calm, flat pieces (mock-up v5, 5 Oct 2026): thin-ruled lists instead of a card per
- * group, one raised panel per screen for the thing that matters now, grey icons, and the Teaching
- * colour kept for meaning (the live dot, today, progress). Every value is a design token; the mode
- * colour resolves from the page's `data-mode-identity="teaching"`.
+ * Teaching's pieces, restyled once for the work-mode redesign (owner request 6 Oct 2026). The
+ * names and props are the v5 kit's, so every Teaching page takes the new look from here: white
+ * cards with a hairline and ruled rows, flat tinted icon circles, small-caps section labels, the
+ * mode-colour hero for the one surface that matters now, and flat buttons. Every value is a
+ * design token; the colour resolves from the page's `data-mode-identity="teaching"`, and the
+ * shapes come from the shared work kit (`work-*` classes in src/app/work-mode.css).
  */
 
 const ink = "text-[color:var(--text-heading)]";
 const sub = "text-[color:var(--text-muted)]";
 const faint = "text-[color:var(--decoration-soft)]";
-const rule = "border-[color:var(--border)]";
 /** A link or switch keeps a 48px hit area without growing the line it sits in. */
 const hitArea =
   "relative after:absolute after:top-1/2 after:left-1/2 after:h-12 after:w-[max(100%,3rem)] after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']";
 
-/** The page body: one column, nothing wider than the screen. */
+/**
+ * Inside the hero the kit's ink and muted colours follow the hero's own text colour (white on the
+ * mode colour, light ink on the dark-theme hero), so a kicker, heading or meta reads on it unchanged.
+ */
+const heroInk =
+  "[--text-heading:currentColor] [--text-muted:color-mix(in_srgb,currentColor_82%,transparent)] [--decoration-soft:color-mix(in_srgb,currentColor_70%,transparent)] [--border:color-mix(in_srgb,currentColor_22%,transparent)] [--surface-inset:color-mix(in_srgb,currentColor_18%,transparent)] [--surface-wash:color-mix(in_srgb,currentColor_14%,transparent)]";
+
+/** The page body: one column, nothing wider than the screen, the mockup's 9px rhythm. */
 export function T5Page({ children, testId }: { children: ReactNode; testId?: string }) {
   return (
-    <div data-mode-identity="teaching" data-testid={testId} className="grid min-w-0 grid-cols-[minmax(0,1fr)] pb-6">
+    <div
+      data-mode-identity="teaching"
+      data-testid={testId}
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-y-2.25 pb-8 text-[color:var(--text-heading)]"
+    >
       {children}
     </div>
   );
@@ -52,11 +65,15 @@ export function T5Section({
       id={id}
       aria-label={label}
       data-testid={testId}
-      className={cn("mt-5 grid min-w-0 scroll-mt-32", className)}
+      className={cn("mt-1.5 grid min-w-0 scroll-mt-32 gap-y-2.25", className)}
     >
-      <div className="mb-0.5 flex min-h-6 items-center justify-between gap-2.5">
-        <h2 className={cn("min-w-0 text-2xs font-semibold tracking-label break-words uppercase", sub)}>{label}</h2>
-        {right}
+      <div className="work-label min-h-6 px-0.5">
+        <h2 className="m-0 min-w-0 break-words">{label}</h2>
+        {right === undefined || right === null ? null : typeof right === "string" ? (
+          <em className="work-label__count">{right}</em>
+        ) : (
+          <span className="flex shrink-0 items-center gap-3 tracking-normal normal-case">{right}</span>
+        )}
       </div>
       {children}
     </section>
@@ -65,7 +82,7 @@ export function T5Section({
 
 /** A smaller heading inside a section, such as "Goals from the start of term". */
 export function T5Sub({ children }: { children: ReactNode }) {
-  return <h3 className={cn("mt-3.5 text-xs font-semibold", sub)}>{children}</h3>;
+  return <h3 className={cn("mt-1.5 px-0.5 text-xs font-bold", ink)}>{children}</h3>;
 }
 
 /** A text link in the Teaching colour, with a 48px hit area. */
@@ -94,8 +111,8 @@ export function T5Link({
 }) {
   const className = cn(
     hitArea,
-    "inline-flex shrink-0 items-center gap-1 rounded-sm text-sm whitespace-nowrap",
-    quiet ? cn("font-medium", sub) : "font-semibold text-[color:var(--mode-identity)]",
+    "inline-flex shrink-0 items-center gap-1 rounded-sm text-xs tracking-normal whitespace-nowrap normal-case",
+    quiet ? cn("font-semibold", sub) : "font-bold text-[color:var(--mode-identity)] [[data-t5-hero]_&]:text-current",
     focusRing,
   );
   if (href && download !== undefined)
@@ -128,10 +145,13 @@ export function T5Link({
   );
 }
 
-/** A thin-ruled list. `ruled` draws the line above the first row too (under a section label). */
+/**
+ * A white card of ruled rows (the mockup's `.card` of `.row`s). `ruled` is kept for the v5 callers;
+ * every list is now its own card.
+ */
 export function T5List({
   children,
-  ruled = true,
+  ruled: _ruled = true,
   className,
   testId,
 }: {
@@ -144,46 +164,57 @@ export function T5List({
     <ul
       role="list"
       data-testid={testId}
-      className={cn("grid min-w-0 divide-y divide-[color:var(--border)]", rule, ruled && "border-t", className)}
+      className={cn("work-card m-0 grid min-w-0 list-none divide-y divide-[color:var(--border)] p-0", className)}
     >
       {children}
     </ul>
   );
 }
 
-/** A grey icon in a 24px column at the start of a row. */
-export function T5Icon({ icon: Icon }: { icon: LucideIcon }) {
+/**
+ * The flat tinted icon circle at the start of a row: the mode's soft fill with the icon in the
+ * colour of where a tap goes (`leadsTo` another area, or a status `tone`).
+ */
+export function T5Icon({
+  icon: Icon,
+  tone,
+  leadsTo,
+}: {
+  icon: LucideIcon;
+  tone?: "green" | "amber" | "red" | "neutral";
+  leadsTo?: AppModeId;
+}) {
   return (
-    <span aria-hidden="true" className={cn("grid w-6 shrink-0 place-items-center", sub)}>
-      <Icon aria-hidden="true" className="size-icon-md" strokeWidth={1.6} />
+    <span aria-hidden="true" className="work-ic" data-tone={tone} data-mode-identity={leadsTo}>
+      <Icon aria-hidden="true" strokeWidth={2} />
     </span>
   );
 }
 
-/** A 24-hour start time at the start of a row. */
+/** A 24-hour start time at the start of a row, in the mockup's time column. */
 export function T5Time({ time, past = false }: { time: string; past?: boolean }) {
   return (
-    <span data-row-time className={cn("nums min-w-10 shrink-0 text-sm font-normal", past ? sub : ink)}>
+    <span data-row-time className={cn("nums w-11 shrink-0 text-sm-minus font-bold", past ? sub : ink)}>
       {time}
     </span>
   );
 }
 
-/** A day number over a short month, at the start of a row. */
+/** A date tile at the start of a row: the short month in small capitals over the day. */
 export function T5Date({ day, month }: { day: string; month: string }) {
   return (
-    <span aria-hidden="true" className={cn("grid min-w-8 shrink-0 justify-items-center leading-none", ink)}>
-      <b className="nums text-base font-normal">{day}</b>
-      <small className={cn("mt-1 text-2xs font-semibold tracking-label uppercase", sub)}>{month}</small>
+    <span aria-hidden="true" className="work-date">
+      <small className="work-date__month">{month}</small>
+      <b className="work-date__day nums font-bold">{day}</b>
     </span>
   );
 }
 
-/** The small round ✓ that marks something done at the end of a row. */
+/** The small green tick that marks something done at the end of a row. */
 export function T5Done({ label }: { label: string }) {
   return (
-    <span className={cn("shrink-0", sub)}>
-      <Check aria-hidden="true" className="size-icon-md" strokeWidth={2} />
+    <span className="work-ic size-5 shrink-0" data-tone="green">
+      <Check aria-hidden="true" className="size-3" strokeWidth={3} />
       <span className="sr-only">{label}</span>
     </span>
   );
@@ -213,8 +244,8 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
     <>
       {lead}
       <span data-row-body className="grid min-w-0 flex-1 gap-px">
-        <span className={cn("text-sm leading-snug font-medium break-words", past ? sub : ink)}>{title}</span>
-        {meta ? <span className={cn("text-sm leading-snug break-words", sub)}>{meta}</span> : null}
+        <span className={cn("text-sm-minus leading-tight font-bold break-words", past ? sub : ink)}>{title}</span>
+        {meta ? <span className={cn("text-xs leading-snug break-words", sub)}>{meta}</span> : null}
         {below}
       </span>
     </>
@@ -222,35 +253,29 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
   const body = (
     <>
       {main}
-      {end ??
-        (href || onClick ? <ChevronRight aria-hidden="true" className={cn("size-icon-sm shrink-0", faint)} /> : null)}
+      {end ?? (href || onClick ? <ChevronRight aria-hidden="true" className={cn("size-3.5 shrink-0", faint)} /> : null)}
     </>
   );
-  const shape = "flex min-h-12 w-full min-w-0 items-center gap-3 py-2 text-left";
+  const shape = "flex min-h-12 w-full min-w-0 items-center gap-2.5 px-3 py-2.25 text-left";
+  const press = "transition-colors active:bg-[color:var(--surface-wash)] motion-reduce:transition-none";
   // A row that opens something and also carries an end (a ✓, a figure, a link): the end sits beside
   // the link or button rather than inside it, so the row stays tappable and no control nests in another.
   if ((href || onClick) && end) {
-    const inner = "flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-sm py-2 text-left";
+    const inner = cn("flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-sm py-2.25 text-left", focusRing);
     return (
-      <li id={id} data-testid={testId} className="flex min-w-0 items-center gap-3">
+      <li id={id} data-testid={testId} className="flex min-w-0 items-center gap-2.5 px-3">
         {href ? (
           external ? (
-            <a href={href} target="_blank" rel="noreferrer" className={cn(inner, focusRing)}>
+            <a href={href} target="_blank" rel="noreferrer" className={inner}>
               {main}
             </a>
           ) : (
-            <Link href={href} className={cn(inner, focusRing)}>
+            <Link href={href} className={inner}>
               {main}
             </Link>
           )
         ) : (
-          <button
-            type="button"
-            onClick={onClick}
-            disabled={busy}
-            aria-busy={busy || undefined}
-            className={cn(inner, focusRing)}
-          >
+          <button type="button" onClick={onClick} disabled={busy} aria-busy={busy || undefined} className={inner}>
             {main}
           </button>
         )}
@@ -262,11 +287,11 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
     return (
       <li id={id} data-testid={testId} className="min-w-0">
         {external ? (
-          <a href={href} target="_blank" rel="noreferrer" className={cn(shape, "rounded-sm", focusRing)}>
+          <a href={href} target="_blank" rel="noreferrer" className={cn(shape, press, focusRing)}>
             {body}
           </a>
         ) : (
-          <Link href={href} className={cn(shape, "rounded-sm", focusRing)}>
+          <Link href={href} className={cn(shape, press, focusRing)}>
             {body}
           </Link>
         )}
@@ -280,7 +305,7 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
           onClick={onClick}
           disabled={busy}
           aria-busy={busy || undefined}
-          className={cn(shape, "rounded-sm", focusRing)}
+          className={cn(shape, press, focusRing)}
         >
           {body}
         </button>
@@ -293,28 +318,35 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
   );
 }
 
-/** The one raised surface on a screen: the session on now, your next talk, your term. */
+/**
+ * The one surface that matters now. A plain white card by default; `hero` makes it the screen's one
+ * mode-colour card (flat: a gentle two-stop gradient, no glow), with every kit piece inside reading
+ * in the hero's text colour.
+ */
 export function T5Panel({
   children,
   label,
   className,
   testId,
   id,
+  hero = false,
 }: {
   children: ReactNode;
   label?: string;
   className?: string;
   testId?: string;
   id?: string;
+  hero?: boolean;
 }) {
   return (
     <section
       id={id}
       aria-label={label}
       data-testid={testId}
+      data-t5-hero={hero ? "" : undefined}
       className={cn(
-        "scroll-mt-32 grid min-w-0 gap-2 rounded-lg border bg-[color:var(--surface-raised)] p-3.5 forced-colors:border-[CanvasText]",
-        rule,
+        "grid min-w-0 scroll-mt-32 gap-1.5",
+        hero ? cn("work-hero", heroInk) : "work-card work-card--pad",
         className,
       )}
     >
@@ -323,10 +355,10 @@ export function T5Panel({
   );
 }
 
-/** The small line above a panel's heading. */
+/** The small-caps line above a panel's heading. */
 export function T5Kicker({ children, live = false }: { children: ReactNode; live?: boolean }) {
   return (
-    <p className={cn("flex items-center text-xs font-semibold", sub)}>
+    <p className={cn("flex items-center text-3xs font-bold tracking-label uppercase", sub)}>
       {live ? <T5LiveDot /> : null}
       {children}
     </p>
@@ -336,20 +368,24 @@ export function T5Kicker({ children, live = false }: { children: ReactNode; live
 /** A panel or page heading. `big` for a countdown figure. */
 export function T5Heading({ children, big = false, level = 2 }: { children: ReactNode; big?: boolean; level?: 2 | 3 }) {
   const Tag = level === 2 ? "h2" : "h3";
-  return <Tag className={cn("leading-snug font-semibold", big ? "text-xl" : "text-base", ink)}>{children}</Tag>;
+  return (
+    <Tag className={cn("leading-tight font-bold tracking-tight", big ? "text-2xl" : "text-lg-minus", ink)}>
+      {children}
+    </Tag>
+  );
 }
 
 /** A quiet sentence under a heading. */
 export function T5Meta({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cn("text-sm", sub, className)}>{children}</p>;
+  return <p className={cn("text-xs leading-snug", sub, className)}>{children}</p>;
 }
 
-/** A label on the left and a value on the right. */
+/** A label on the left and a value on the right (the mockup's key and value line). */
 export function T5Pair({ label, value }: { label: ReactNode; value: ReactNode }) {
   return (
-    <div className={cn("flex items-baseline justify-between gap-2.5 text-sm", sub)}>
+    <div className={cn("flex items-baseline justify-between gap-2.5 text-sm-minus", sub)}>
       <span>{label}</span>
-      <b className={cn("font-semibold", ink)}>{value}</b>
+      <b className={cn("font-bold", ink)}>{value}</b>
     </div>
   );
 }
@@ -357,20 +393,20 @@ export function T5Pair({ label, value }: { label: ReactNode; value: ReactNode })
 /** A big figure with its unit in small text, e.g. "31 h of your 50 h target". */
 export function T5BigFigure({ value, unit }: { value: ReactNode; unit?: ReactNode }) {
   return (
-    <span className={cn("nums text-xl font-normal", ink)}>
+    <span className={cn("nums text-2xl leading-none font-bold tracking-tight", ink)}>
       {value}
-      {unit ? <small className={cn("ml-1 text-sm font-normal", sub)}>{unit}</small> : null}
+      {unit ? <small className={cn("ml-1.5 text-xs font-semibold tracking-normal", sub)}>{unit}</small> : null}
     </span>
   );
 }
 
-/** The 6px live dot in the Teaching colour. */
+/** The live dot: white on the hero, the mode colour on white, On Call teal for its items. */
 export function T5LiveDot({ tone = "teaching" }: { tone?: "teaching" | "on-call" }) {
   return (
     <span
       aria-hidden="true"
       data-mode-identity={tone === "on-call" ? "on-call" : undefined}
-      className="mr-1.5 inline-block size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]"
+      className="mr-1.5 inline-block size-1.75 shrink-0 rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText] [[data-t5-hero]_&]:bg-current"
     />
   );
 }
@@ -383,10 +419,13 @@ export function T5Meter({ percent, label, thin = false }: { percent: number; lab
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
-      className={cn("block overflow-hidden rounded bg-[color:var(--surface-inset)]", thin ? "mt-1 h-[3px]" : "h-1")}
+      className={cn(
+        "block overflow-hidden rounded-full bg-[color:var(--surface-wash)]",
+        thin ? "mt-1.25 h-0.75" : "h-1.5",
+      )}
     >
       <span
-        className="block h-full rounded bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight] forced-colors:forced-color-adjust-none"
+        className="block h-full rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight] forced-colors:forced-color-adjust-none [[data-t5-hero]_&]:bg-current"
         style={{ width: `${value}%` }}
       />
     </span>
@@ -396,15 +435,15 @@ export function T5Meter({ percent, label, thin = false }: { percent: number; lab
 /** A row of equal steps, `filled` of `total` in the Teaching colour (readiness, EPAs). */
 export function T5Steps({ total, filled, label }: { total: number; filled: number; label: string }) {
   return (
-    <span role="img" aria-label={label} className="grid auto-cols-fr grid-flow-col gap-0.75">
+    <span role="img" aria-label={label} className="grid auto-cols-fr grid-flow-col gap-1">
       {Array.from({ length: total }, (_, index) => (
         <span
           key={index}
           className={cn(
-            "h-1 rounded-sm",
+            "h-1.25 rounded-full",
             index < filled
-              ? "bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight] forced-colors:forced-color-adjust-none"
-              : "bg-[color:var(--surface-inset)]",
+              ? "bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight] forced-colors:forced-color-adjust-none [[data-t5-hero]_&]:bg-current"
+              : "bg-[color:var(--surface-wash)]",
           )}
         />
       ))}
@@ -415,9 +454,10 @@ export function T5Steps({ total, filled, label }: { total: number; filled: numbe
 const NOTE_ICONS = { info: Info, alert: TriangleAlert, offline: WifiOff, shield: ShieldCheck } as const;
 
 /**
- * A short note. Plain notes sit quietly under a list; `notice` puts it on its own bordered surface
- * (no connection); `warning` adds a stronger edge and the alert icon for a real problem. It stays neutral:
- * green, amber and red are reserved for source status (design-system SPEC §2.1).
+ * A short note. A plain note is the mockup's centred footnote (`teach-ft`); `notice` is the wash
+ * message card (`teach-msg`), amber when it says the connection dropped; `warning` is the amber
+ * message card for a real problem (a part that did not load). Amber is a word and an icon, never
+ * colour alone.
  */
 export function T5Note({
   children,
@@ -434,26 +474,32 @@ export function T5Note({
 }) {
   const Icon = NOTE_ICONS[icon];
   const boxed = tone !== "plain";
+  const warning = tone === "warning" || (tone === "notice" && icon === "offline");
   return (
     <div
       role={tone === "warning" ? "status" : undefined}
       data-testid={testId}
       className={cn(
-        "flex items-start gap-2 leading-normal",
+        "flex gap-2 leading-snug",
         boxed
           ? cn(
-              "mb-3 rounded-lg border bg-[color:var(--surface-raised)] px-3 py-2.5 text-sm forced-colors:border-[CanvasText]",
-              ink,
-              tone === "warning" ? "border-[color:var(--border-strong)]" : rule,
+              "items-start rounded-[var(--work-radius-card)] border px-3 py-2.5 text-xs text-[color:var(--text)] forced-colors:border-[CanvasText]",
+              warning
+                ? "border-[color:var(--warning-border)] bg-[color:var(--warning-bg)]"
+                : "border-transparent bg-[color:var(--surface-wash)]",
             )
-          : cn("mt-2.5 text-xs", sub),
+          : cn("items-center justify-center px-2.5 text-center text-2xs font-semibold", sub),
         className,
       )}
     >
       <Icon
         aria-hidden="true"
-        className={cn("mt-px size-icon-sm shrink-0", tone === "warning" ? ink : faint)}
-        strokeWidth={1.6}
+        className={cn(
+          "shrink-0",
+          boxed ? "mt-px size-4" : "size-3.25",
+          warning ? "text-[color:var(--warning-text)]" : faint,
+        )}
+        strokeWidth={2}
       />
       <span className="min-w-0">{children}</span>
     </div>
@@ -462,10 +508,13 @@ export function T5Note({
 
 /** A row of actions: at most one filled button, the rest text links. */
 export function T5Actions({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("mt-1 mb-3 flex flex-wrap items-center gap-x-4.5 gap-y-1", className)}>{children}</div>;
+  return <div className={cn("flex flex-wrap items-center gap-x-4.5 gap-y-1", className)}>{children}</div>;
 }
 
-/** Two options side by side; the chosen one sits raised. */
+/**
+ * The segmented control: a soft track with the chosen option on a white pill. Each option keeps a
+ * 48px tap target; the drawn track is the mockup's 36px.
+ */
 export function T5Segments<T extends string>({
   value,
   options,
@@ -478,7 +527,12 @@ export function T5Segments<T extends string>({
   label: string;
 }) {
   return (
-    <div role="group" aria-label={label} className="mt-2.5 flex rounded-md bg-[color:var(--surface-inset)] p-0.5">
+    <div
+      role="group"
+      aria-label={label}
+      data-no-tab-swipe=""
+      className="relative isolate grid min-h-12 auto-cols-fr grid-flow-col px-0.75 before:absolute before:inset-x-0 before:inset-y-1.5 before:-z-10 before:rounded-full before:bg-[color:var(--surface-inset)] before:content-[''] forced-colors:before:border forced-colors:before:border-[ButtonBorder]"
+    >
       {options.map((option) => {
         const on = option.value === value;
         return (
@@ -487,18 +541,21 @@ export function T5Segments<T extends string>({
             type="button"
             aria-pressed={on}
             onClick={() => onChange(option.value)}
-            className={cn(
-              "min-h-12 flex-1 rounded-md border text-sm",
-              on
-                ? cn(
-                    "border-[color:var(--border)] bg-[color:var(--surface-raised)] font-semibold forced-colors:border-[Highlight]",
-                    ink,
-                  )
-                : cn("border-transparent font-medium", sub),
-              focusRing,
-            )}
+            className={cn("relative grid min-h-12 min-w-0 place-items-center rounded-full", focusRing)}
           >
-            {option.label}
+            <span
+              className={cn(
+                "grid h-7.5 w-full place-items-center truncate rounded-full px-2 text-xs",
+                on
+                  ? cn(
+                      "border border-[color:var(--border)] bg-[color:var(--surface-raised)] font-bold forced-colors:border-[Highlight]",
+                      ink,
+                    )
+                  : cn("font-semibold", sub),
+              )}
+            >
+              {option.label}
+            </span>
           </button>
         );
       })}
@@ -506,9 +563,9 @@ export function T5Segments<T extends string>({
   );
 }
 
-/** The quiet line under an empty section: what will appear here and when. */
+/** The quiet line for an empty section: what will appear here and when. */
 export function T5Empty({ children }: { children: ReactNode }) {
-  return <p className={cn("border-t pt-2.5 pb-0.5 text-sm", rule, sub)}>{children}</p>;
+  return <p className={cn("work-card work-card--pad text-xs leading-snug", sub)}>{children}</p>;
 }
 
 /** A tick-box row: the whole line is the label, so the 48px row is the hit area. */
@@ -530,7 +587,7 @@ export function T5Check({
 }) {
   return (
     <li className="min-w-0">
-      <label className="flex min-h-12 cursor-pointer items-center gap-3 py-2">
+      <label className="flex min-h-12 cursor-pointer items-center gap-2.5 px-3 py-2.25 has-disabled:cursor-not-allowed">
         <span className="relative grid size-5 shrink-0 place-items-center">
           <input
             type="checkbox"
@@ -538,22 +595,36 @@ export function T5Check({
             disabled={disabled}
             onChange={(event) => onChange(event.target.checked)}
             className={cn(
-              "peer absolute inset-0 cursor-pointer appearance-none rounded-sm border-[1.5px] border-[color:var(--decoration-soft)] bg-[color:var(--surface-raised)] checked:border-[color:var(--text-heading)] checked:bg-[color:var(--text-heading)] forced-colors:appearance-auto",
+              "peer absolute inset-0 cursor-pointer appearance-none rounded-md border-[1.5px] border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] checked:border-[color:var(--mode-identity)] checked:bg-[color:var(--mode-identity)] disabled:cursor-not-allowed disabled:opacity-50 forced-colors:appearance-auto",
               focusRing,
             )}
           />
           <Check
             aria-hidden="true"
-            strokeWidth={2.4}
-            className="pointer-events-none relative size-icon-xs text-[color:var(--surface-raised)] opacity-0 peer-checked:opacity-100 forced-colors:hidden"
+            strokeWidth={3}
+            className="pointer-events-none relative size-3 text-[color:var(--mode-identity-contrast)] opacity-0 peer-checked:opacity-100 forced-colors:hidden"
           />
         </span>
         <span className="grid min-w-0 flex-1 gap-px">
-          <span className={cn("text-sm leading-snug font-medium", ink)}>{label}</span>
-          {meta ? <span className={cn("text-sm", sub)}>{meta}</span> : null}
+          <span className={cn("text-sm-minus leading-tight font-bold", ink)}>{label}</span>
+          {meta ? <span className={cn("text-xs", sub)}>{meta}</span> : null}
         </span>
         {end}
       </label>
     </li>
+  );
+}
+
+/** The hours a session counts for, on a soft pill at the end of a check row. */
+export function T5Hours({ children }: { children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "nums shrink-0 rounded-full bg-[color:var(--surface-wash)] px-2.25 py-1 text-xs font-bold whitespace-nowrap",
+        ink,
+      )}
+    >
+      {children}
+    </span>
   );
 }
