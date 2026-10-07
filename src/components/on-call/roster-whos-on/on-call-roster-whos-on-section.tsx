@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { flatCard, flatEyebrow, flatIconCircle, flatQuietAction, flatTag } from "@/components/on-call/flat-recipes";
+import { flatCard, flatEyebrow, flatIconCircle, flatQuietAction } from "@/components/on-call/flat-recipes";
 import { OnCallModuleSkeleton } from "@/components/on-call/kit/module-skeleton";
 import { RosterPersonSheet } from "@/components/on-call/roster-whos-on/roster-person-sheet";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
@@ -142,7 +142,6 @@ function PersonRow({
               {row.next ? ` · then ${row.next.name}` : ""}
             </span>
           </span>
-          {row.isMe ? <span className={flatTag.mode}>You</span> : null}
         </span>
         <span className="block pl-12">
           <Rail row={row} nowMark={nowMark} />
@@ -236,21 +235,24 @@ export function OnCallRosterWhosOnSection({ now }: { readonly now: Date }) {
     document.addEventListener("visibilitychange", refresh);
     return () => document.removeEventListener("visibilitychange", refresh);
   }, [readAt, reloadOverview, reloadRead]);
-  // Only when the connection comes back, not on every status change: the
-  // latest statuses are read through a ref.
+  // Only when the connection comes back (the `online` event), never on mount or
+  // on a status change: the latest statuses are read through a ref.
   const latest = useRef({ teamsStatus, readStatus, reloadTeams, reloadRead, reloadOverview });
   useEffect(() => {
     latest.current = { teamsStatus, readStatus, reloadTeams, reloadRead, reloadOverview };
   });
   useEffect(() => {
-    if (!online) return;
-    const current = latest.current;
-    if (current.teamsStatus === "error") current.reloadTeams();
-    if (current.readStatus === "error") {
-      current.reloadRead();
-      current.reloadOverview();
-    }
-  }, [online]);
+    const back = () => {
+      const current = latest.current;
+      if (current.teamsStatus === "error") current.reloadTeams();
+      if (current.readStatus === "error") {
+        current.reloadRead();
+        current.reloadOverview();
+      }
+    };
+    window.addEventListener("online", back);
+    return () => window.removeEventListener("online", back);
+  }, []);
 
   const date = rosterWhosOnDate(day, now);
   const assignments = read.status === "ready" ? read.data?.assignments : undefined;
