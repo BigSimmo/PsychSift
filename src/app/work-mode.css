@@ -67,6 +67,10 @@
   --work-radius-field: 13px;
   --work-radius-sheet: 32px;
   --work-gutter: 1rem;
+  /* The band's side gutters, widened past a landscape notch or rounded
+     corner (the app is drawn under them: viewport-fit=cover). */
+  --work-gutter-left: max(var(--work-gutter), var(--safe-area-left, 0px));
+  --work-gutter-right: max(var(--work-gutter), var(--safe-area-right, 0px));
   /* The hero and the primary button: the mode colour, or a gentle two-stop
      gradient. In dark themes the identity is a light tint, so both fall back to
      a deep mix that keeps white text readable. */
@@ -151,7 +155,7 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
   gap: calc(var(--spacing) * 2.5);
   max-width: calc(45rem + var(--work-gutter) * 2);
   margin: 0 auto;
-  padding: 0.375rem var(--work-gutter) 0;
+  padding: 0.375rem var(--work-gutter-right) 0 var(--work-gutter-left);
 }
 
 .work-band__heading {
@@ -183,7 +187,7 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
 .work-band__status {
   max-width: calc(45rem + var(--work-gutter) * 2);
   margin: calc(var(--spacing) * 1.5) auto 0;
-  padding: 0 var(--work-gutter);
+  padding: 0 var(--work-gutter-right) 0 var(--work-gutter-left);
   box-sizing: border-box;
 }
 
@@ -231,14 +235,34 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
   display: flex;
   gap: calc(var(--spacing) * 5);
   max-width: calc(45rem + var(--work-gutter) * 2);
-  margin: calc(var(--spacing) * 1) auto 0;
-  padding: 0 var(--work-gutter);
+  margin: calc(var(--spacing) * 1) auto -1px;
+  /* The 1px under the row holds the current tab's underline, which sits on
+     the band's bottom line, inside the row's own box. */
+  padding: 0 var(--work-gutter-right) 1px var(--work-gutter-left);
   box-sizing: border-box;
+  /* Never wider than the phone: on the narrowest screens (320px) with long
+     labels and counts the row scrolls sideways inside itself, and the page
+     never does. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.work-band__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Below 360px the tabs close up so all four (three tabs and More) still fit. */
+@container mode-band (max-width: 359px) {
+  .work-band__tabs {
+    gap: calc(var(--spacing) * 3.5);
+  }
 }
 
 .work-band__tab {
   position: relative;
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: calc(var(--spacing) * 1.25);
   height: var(--spacing-tap, 3rem);
@@ -562,6 +586,14 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 
 .work-more-sheet__body.work-more-sheet__body {
   padding: 0 calc(var(--spacing) * 4) calc(var(--spacing) * 5);
+}
+
+/* Wide and landscape phones dock the sheet to the bottom edge, so its list
+   clears the home bar itself. */
+@media (min-width: 640px) {
+  .work-more-sheet__body.work-more-sheet__body {
+    padding-bottom: max(calc(var(--spacing) * 5), calc(var(--safe-area-bottom, 0px) + var(--spacing) * 2));
+  }
 }
 
 .work-more-sheet__groups {
@@ -1312,7 +1344,7 @@ a.work-hero:focus-visible {
   min-width: 0;
   flex: 1;
   gap: calc(var(--spacing) * 1.25);
-  padding: calc(var(--spacing) * 1.25);
+  padding: calc(var(--spacing) * 0.5) calc(var(--spacing) * 1.25);
   border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
   box-shadow:
@@ -1325,12 +1357,17 @@ a.work-hero:focus-visible {
 
 .work-dock__capsule > .work-button {
   flex: 1;
-  min-height: 2.625rem;
+  /* A 48px tap holding the 42px shape, so the capsule keeps its height. A
+     long label wraps rather than pushing the dock past a 320px screen. */
+  min-width: 0;
+  min-height: var(--spacing-tap, 3rem);
   font-size: var(--text-sm, 0.8125rem);
+  white-space: normal;
+  text-align: center;
 }
 
 .work-dock__capsule > .work-button::before {
-  inset: 0;
+  inset: 0.1875rem 0;
 }
 
 .work-dock__capsule > .work-button[data-variant="secondary"]::before {
