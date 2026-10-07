@@ -2193,6 +2193,10 @@
         "file": "src/app/api/on-call/entries/[id]/route.ts"
       },
       {
+        "path": "/api/work/sync",
+        "file": "src/app/api/work/sync/route.ts"
+      },
+      {
         "path": "/api/roster/team/[serviceId]/cutoff",
         "file": "src/app/api/roster/team/[serviceId]/cutoff/route.ts"
       },
