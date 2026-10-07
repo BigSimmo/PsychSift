@@ -656,21 +656,22 @@ export function HoursCard({
   );
 }
 
-/** A credential's status tag: Lapsed (red), days to go when close (neutral), Current (green). */
-function credentialTag(
-  date: string,
-  today: string,
-): { readonly text: string; readonly tone: "red" | "neutral" | "green" } {
-  if (date < today) return { text: "Lapsed", tone: "red" };
+/**
+ * A credential's tag, in Admin's own words: Date passed (red), days to go when
+ * close (neutral), Recorded (neutral). Dates, never a verdict on the holder, so
+ * no "Lapsed" or "Current" (tests/admin-wording.test.ts), and like Admin's
+ * status mark only a passed date takes a colour.
+ */
+function credentialTag(date: string, today: string): { readonly text: string; readonly tone: "red" | "neutral" } {
+  if (date < today) return { text: "Date passed", tone: "red" };
   const days = daysBetween(today, date);
   if (days <= 60) return { text: days === 0 ? "Today" : `${days} ${days === 1 ? "day" : "days"}`, tone: "neutral" };
-  return { text: "Current", tone: "green" };
+  return { text: "Recorded", tone: "neutral" };
 }
 
 const TAG_TONE = {
   red: "bg-[color:var(--danger-bg)] text-[color:var(--danger-text)]",
   neutral: "bg-[color:var(--work-wash)] text-[color:var(--text-muted)]",
-  green: "bg-[color:var(--success-bg)] text-[color:var(--success-text)]",
 } as const;
 
 /** The wallet shows the five soonest dates; the rest wait in Admin. */

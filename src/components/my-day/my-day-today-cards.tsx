@@ -702,7 +702,7 @@ export function FlagCard({
           icon={lapsed ? Shield : late ? TriangleAlert : FileText}
           warn={late && !lapsed}
           danger={lapsed}
-          title={lapsed ? `${current.title} has lapsed` : current.title}
+          title={lapsed ? `${current.title}: date passed` : current.title}
           body={`${warnLine(current, today)}${more}`}
           action={
             <Link
