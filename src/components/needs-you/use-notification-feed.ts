@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -10,7 +10,7 @@ import { useFeatureNotificationSources } from "@/components/needs-you/use-featur
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { dueReminders, type Reminder } from "@/lib/alerts/remind-me";
-import { myDayEnabledForAuth, type MyDaySourceResult } from "@/lib/my-day/model";
+import { myDayEnabledForAuth, type MyDayItem, type MyDaySourceResult } from "@/lib/my-day/model";
 import {
   myDayNotificationItem,
   onCallNotificationItem,
@@ -23,6 +23,7 @@ import {
 } from "@/lib/needs-you/feed";
 import { needsYouModeLabels } from "@/lib/needs-you/groups";
 import { withoutExampleRecords } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import {
   deriveOnCallNotifications,
@@ -118,6 +119,47 @@ function workAreaSources(sources: readonly MyDaySourceResult[]): NotificationSou
     }));
 }
 
+/**
+ * My Day's example day, while the example data switch shows it, so the centre,
+ * this page and the bell's badge list what My Day's Needs you lists (testing
+ * tools finding, 7 Oct 2026). Loaded on demand, only while examples show, from
+ * the same builder My Day uses; null while off or still loading.
+ */
+function useExampleMyDayItems(active: boolean, readAt: Date): readonly MyDayItem[] | null {
+  const [loaded, setLoaded] = useState<readonly MyDayItem[] | null>(null);
+  useEffect(() => {
+    if (!active) return undefined;
+    let cancelled = false;
+    void import("@/components/my-day/my-day-sample").then((module) => {
+      if (!cancelled) setLoaded(module.buildMyDaySample(perthToday(readAt), readAt).items);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [active, readAt]);
+  return active ? loaded : null;
+}
+
+/**
+ * The example day as sources, one per area, flagged as sample. They show on
+ * screen only while the switch is on: nothing here is stored or sent, and no
+ * push alert or brief ever reads them (those read the account on the server).
+ * Later and Remind me are left off, because both would store an example id on
+ * this device.
+ */
+function exampleSources(items: readonly MyDayItem[]): NotificationSource[] {
+  const modes = [...new Set(items.map((item) => item.mode))];
+  return modes.map((mode) => ({
+    id: mode,
+    label: SOURCE_LABELS[mode],
+    status: "ready" as const,
+    sample: true,
+    items: items
+      .filter((item) => item.mode === mode)
+      .map((item) => ({ ...myDayNotificationItem(item), snoozable: false, remindable: false })),
+  }));
+}
+
 /** The reader's own Remind me notes that are due by the end of today and not ticked off. */
 function reminderItems(reminders: readonly Reminder[], now: Date, markDone: (id: string) => void): NotificationItem[] {
   const today = perthToday(now);
@@ -168,8 +210,12 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
 
   const features = useFeatureNotificationSources({ enabled, clock, readAt });
   const routeVisible = useWorkModeRouteVisible();
+  const examplesShown = useExampleData("day").active;
+  const exampleItems = useExampleMyDayItems(examplesShown, readAt);
 
   const core = useMemo((): NotificationSource[] => {
+    // While My Day shows its example day, so does the centre, in its place.
+    if (exampleItems) return exampleSources(exampleItems);
     const onCallRead = myDay.sources.find((source) => source.mode === "on-call");
     const onCall: NotificationSource = {
       id: "on-call",
@@ -181,7 +227,7 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
       ),
     };
     return [onCall, ...workAreaSources(myDay.sources)];
-  }, [myDay.sources, onCallList]);
+  }, [exampleItems, myDay.sources, onCallList]);
 
   const sources = useMemo((): NotificationSource[] => {
     const remind: NotificationSource = {
@@ -207,15 +253,26 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
   );
 
   const failed = useMemo(() => sources.filter((source) => source.status === "failed"), [sources]);
-  const settled = myDay.status === "ready";
+  // The example day stands in for the reads, so it settles the feed on its own.
+  const settled = exampleItems ? true : examplesShown ? false : myDay.status === "ready";
   // "Nothing loaded" is judged on the work-area reads; the features' device records alone are not a feed.
   const allFailed = settled && core.every((source) => source.status === "failed");
   const status: NotificationFeedStatus =
-    myDay.status === "signed-out" ? "signed-out" : !settled ? "loading" : allFailed ? "error" : "ready";
+    myDay.status === "signed-out" && !examplesShown
+      ? "signed-out"
+      : !settled
+        ? "loading"
+        : allFailed
+          ? "error"
+          : "ready";
 
   // "Checked 07:45": stamped each time the reads settle (a retry stamps again).
   const settledKey =
-    status === "ready" || status === "error" ? myDay.sources.map((source) => source.status).join(",") : null;
+    status === "ready" || status === "error"
+      ? exampleItems
+        ? "example"
+        : myDay.sources.map((source) => source.status).join(",")
+      : null;
   const [stamp, setStamp] = useState<{ readonly key: string; readonly at: Date } | null>(null);
   if (settledKey !== null && stamp?.key !== settledKey) setStamp({ key: settledKey, at: new Date() });
   const checkedAt = stamp?.at ?? null;

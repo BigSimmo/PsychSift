@@ -248,9 +248,11 @@ export function NotificationCentreBody({ feed, active, onNavigate }: Notificatio
   // A chosen area with nothing left in this segment falls back to every area.
   const activeArea = area !== null && chips.some((chip) => chip.area === area) ? area : null;
   const shown = visible.filter((item) => inSegment(item, segment) && (activeArea === null || item.area === activeArea));
-  const onCallShown = shown.filter((item) => item.area === "on-call");
+  // On Call's own notifications keep On Call's panel. Any other On Call item (the
+  // example day's) has no panel entry, so it takes an ordinary row instead.
+  const onCallShown = shown.filter((item) => item.area === "on-call" && feed.onCall.has(item.id));
   const groups = groupNotifications(
-    shown.filter((item) => item.area !== "on-call"),
+    shown.filter((item) => !onCallShown.includes(item)),
     feed.now,
   );
   const segmentCounts = useMemo(

@@ -3,7 +3,7 @@
 import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
 import type { AppModeId } from "@/lib/app-modes";
 import { activeModeSecondaryNavigationId, type ModeSecondaryNavigationEntry } from "@/lib/mode-secondary-navigation";
-import { workAreaFor, workFrameForRoute } from "@/lib/work-frame/areas";
+import { workAreaFor, workAreaPillName, workFrameForRoute } from "@/lib/work-frame/areas";
 
 /**
  * What the universal header's mode pill names, and the work frame this address
@@ -60,7 +60,7 @@ export function useHeaderModePill({
   const routeWorkFramed = routeWorkFrame !== null;
   const routeWorkPill = routeWorkFrame
     ? // The band publishes the area alone (pill 4b), so the first paint names the area alone too.
-      { modeId, area: routeWorkFrame.area.name, page: null }
+      { modeId, area: workAreaPillName(routeWorkFrame.area), page: null }
     : null;
   const workPill = (workFramePill?.modeId === modeId ? workFramePill : null) ?? routeWorkPill;
   // A work band that publishes no page asks for the area alone (Josh, 7 Oct

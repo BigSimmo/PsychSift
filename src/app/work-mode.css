@@ -2015,11 +2015,18 @@ html[data-work-frame] .app-toast-region {
   --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='60' cy='60' r='20'/%3E%3Cpath d='M60 14v18M60 88v18M14 60h18M88 60h18M27.5 27.5l12.7 12.7M79.8 79.8l12.7 12.7M27.5 92.5l12.7-12.7M79.8 40.2l12.7-12.7'/%3E%3C/svg%3E");
 }
 
+/* Notifications, inside My Day: a bell, centred on the same 120 grid. */
+.work-band[data-work-area="notify"] .work-band__mark {
+  --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M60 24v8M34 82V58a26 26 0 0 1 52 0v24l9 11H25zM50 93a10 10 0 0 0 20 0M96 38a30 30 0 0 1 7 20M24 38a30 30 0 0 0-7 20'/%3E%3C/svg%3E");
+}
+
 .work-band[data-work-area="call"] .work-band__mark {
   --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M30 16h20l10 26-13 8a56 56 0 0 0 25 25l8-13 26 10v20a10 10 0 0 1-10 10C51 102 18 69 18 26a10 10 0 0 1 12-10zM74 18a30 30 0 0 1 28 28M74 32a16 16 0 0 1 14 14'/%3E%3C/svg%3E");
 }
 
-.work-band[data-work-area="rost"] .work-band__mark {
+.work-band[data-work-area="rost"] .work-band__mark,
+.work-band[data-work-area="open"] .work-band__mark,
+.work-band[data-work-area="manage"] .work-band__mark {
   --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='16' y='24' width='88' height='80' rx='10'/%3E%3Cpath d='M16 48h88M40 14v20M80 14v20M34 66h12M54 66h12M74 66h12M34 84h12M54 84h12'/%3E%3C/svg%3E");
 }
 
