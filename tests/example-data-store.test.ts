@@ -28,9 +28,10 @@ describe("which areas show example data", () => {
     expect(exampleActiveFor(none, "rost", "empty", false)).toBe(false);
   });
 
-  it("auto shows it only in an empty area for a new account or visitor", () => {
+  it("auto shows it in every area not known to hold real data, for a new account or visitor", () => {
     expect(exampleActiveFor(none, "rost", "empty", true)).toBe(true);
-    expect(exampleActiveFor(none, "rost", "unknown", true)).toBe(false);
+    expect(exampleActiveFor(none, "rost", "unknown", true)).toBe(true);
+    expect(exampleActiveFor({ ...none, realAreas: ["rost"] }, "rost", "unknown", true)).toBe(false);
     expect(exampleActiveFor(none, "rost", "has-data", true)).toBe(false);
   });
 

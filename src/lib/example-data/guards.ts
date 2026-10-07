@@ -8,12 +8,25 @@ import { EXAMPLE_ID_PREFIX } from "@/lib/example-data/keys";
 
 export { EXAMPLE_ID_PREFIX };
 
-type WithId = { readonly id?: unknown } | null | undefined;
+type WithId = { readonly id?: unknown; readonly sample?: unknown; readonly example?: unknown } | null | undefined;
 
-/** True for an example id, or a record whose id is one. */
+/**
+ * Id prefixes the areas' older sample modules already use. They are invented
+ * records too, so the guards treat them exactly like `example:` ids. Real
+ * records have server-made UUIDs and never start with these.
+ */
+const LEGACY_EXAMPLE_PREFIXES = ["sample-", "sample:", "demo-", "demo:"] as const;
+
+function isExampleId(id: string): boolean {
+  return id.startsWith(EXAMPLE_ID_PREFIX) || LEGACY_EXAMPLE_PREFIXES.some((prefix) => id.startsWith(prefix));
+}
+
+/** True for an example id, or a record whose id is one or that is flagged `sample: true` or `example: true`. */
 export function isExampleRecord(value: string | WithId): boolean {
-  const id = typeof value === "string" ? value : value?.id;
-  return typeof id === "string" && id.startsWith(EXAMPLE_ID_PREFIX);
+  if (typeof value === "string") return isExampleId(value);
+  if (!value) return false;
+  if (value.sample === true || value.example === true) return true;
+  return typeof value.id === "string" && isExampleId(value.id);
 }
 
 /** The list without example records. Use before any export, share, history write or notification. */

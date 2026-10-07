@@ -23,9 +23,9 @@ import type { WorkAreaId } from "@/lib/work-frame/areas";
  * switch, with the cookie that mirrors it for server-rendered pages.
  *
  * THE DEFAULT ("auto"). A brand new account (created in the last 14 days) and
- * a signed-out visitor see example data in any area that has no real data yet,
- * and the area switches to their own data the moment it has some. Everyone
- * else starts with it off. An explicit on or off always wins.
+ * a signed-out visitor see example data in every area not known to hold real
+ * data, and an area switches to their own data the moment it has some.
+ * Everyone else starts with it off. An explicit on or off always wins.
  *
  * EXPLICIT ON fills every area, real data or not, until the user adds a real
  * record in an area: that area then shows their own data, because a record
@@ -47,6 +47,16 @@ type Stored = {
 const EMPTY: Stored = { v: 1, choice: null, addedWhileOn: [], realAreas: [] };
 const NEW_ACCOUNT_DAYS = 14;
 const AREA_IDS: readonly WorkAreaId[] = ["day", "rost", "teach", "assess", "cpd", "admin", "call"];
+/**
+ * Areas that read the same records. Admin's renewals and contract are On Call
+ * entries, so a real record in one is a real record in the other.
+ */
+const LINKED: Partial<Record<WorkAreaId, WorkAreaId>> = { admin: "call", call: "admin" };
+
+function withLinked(area: WorkAreaId): WorkAreaId[] {
+  const linked = LINKED[area];
+  return linked ? [area, linked] : [area];
+}
 
 function isArea(value: unknown): value is WorkAreaId {
   return typeof value === "string" && (AREA_IDS as readonly string[]).includes(value);
@@ -89,15 +99,39 @@ function read(): Stored {
   return cache;
 }
 
-function writeCookie(state: Stored) {
+let cookieValue: string | null = null;
+
+function setCookie(value: string) {
   if (typeof document === "undefined") return;
-  const value = encodeExampleCookie(
-    state.choice === "on" ? AREA_IDS.filter((a) => !state.addedWhileOn.includes(a)) : [],
-  );
+  cookieValue = value;
   const secure = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
   document.cookie = value
     ? `${EXAMPLE_DATA_COOKIE}=${value}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
     : `${EXAMPLE_DATA_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+}
+
+/** An explicit choice sets the cookie at once. Auto mode is synced by `syncExampleCookie`, which knows the account. */
+function writeCookie(state: Stored) {
+  if (state.choice === null) return;
+  setCookie(encodeExampleCookie(state.choice === "on" ? AREA_IDS.filter((a) => !state.addedWhileOn.includes(a)) : []));
+}
+
+/**
+ * Keep the server's cookie in step with what this browser shows, including the
+ * auto default, which only the browser can work out. Returns true when the
+ * cookie changed, so the caller can refresh server-rendered data (Teaching,
+ * CPD) once. Called from one always-mounted place, the banner.
+ */
+export function syncExampleCookie(activeAreas: readonly WorkAreaId[]): boolean {
+  if (typeof document === "undefined") return false;
+  const next = encodeExampleCookie(activeAreas);
+  if (cookieValue === null) {
+    const match = new RegExp(`(?:^|; )${EXAMPLE_DATA_COOKIE}=([^;]*)`).exec(document.cookie);
+    cookieValue = match?.[1] ?? "";
+  }
+  if (cookieValue === next) return false;
+  setCookie(next);
+  return true;
 }
 
 function write(next: Stored) {
@@ -114,6 +148,7 @@ function write(next: Stored) {
 if (typeof window !== "undefined") {
   subscribeAccountTransition(() => {
     cache = null;
+    cookieValue = null;
     reports.clear();
     reportsVersion += 1;
     notify();
@@ -150,15 +185,15 @@ export function setExampleDataOn(on: boolean): void {
  */
 export function markRealRecordAdded(area: WorkAreaId): void {
   const current = read();
-  const addedWhileOn =
-    current.choice === "on" && !current.addedWhileOn.includes(area)
-      ? [...current.addedWhileOn, area]
-      : current.addedWhileOn;
-  const realAreas = current.realAreas.includes(area) ? current.realAreas : [...current.realAreas, area];
-  reports.set(area, "has-data");
+  const areas = withLinked(area);
+  const union = (list: readonly WorkAreaId[]) => [...list, ...areas.filter((a) => !list.includes(a))];
+  for (const a of areas) reports.set(a, "has-data");
   reportsVersion += 1;
-  if (addedWhileOn === current.addedWhileOn && realAreas === current.realAreas) return notify();
-  write({ ...current, addedWhileOn, realAreas });
+  write({
+    ...current,
+    addedWhileOn: current.choice === "on" ? union(current.addedWhileOn) : current.addedWhileOn,
+    realAreas: union(current.realAreas),
+  });
 }
 
 /**
@@ -214,7 +249,7 @@ export function exampleActiveFor(
   if (stored.choice === "off") return false;
   if (stored.choice === "on") return area ? !stored.addedWhileOn.includes(area) : true;
   if (!autoEligible || !area) return false;
-  return areaState === "empty";
+  return areaState !== "has-data" && !stored.realAreas.includes(area);
 }
 
 export type ExampleDataControl = {
@@ -265,6 +300,7 @@ export function useExampleData(area?: WorkAreaId): ExampleDataControl {
 /** Test hook: forget the module cache and this visit's reports. */
 export function resetExampleDataForTests(): void {
   cache = null;
+  cookieValue = null;
   reports.clear();
   reportsVersion += 1;
 }
