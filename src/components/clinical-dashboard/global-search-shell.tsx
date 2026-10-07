@@ -28,6 +28,7 @@ import { SearchCommandProvider } from "@/components/clinical-dashboard/search-co
 import {
   ClinicalDesktopSidebar,
   ClinicalMobileSidebar,
+  ClinicalSidebarContent,
   deriveSidebarIdentity,
 } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { landingModeForPreference, readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -35,6 +36,8 @@ import { useFavouritesAccess } from "@/components/clinical-dashboard/use-favouri
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
+import { LazyWorkSideCounts, LazyWorkSideMenu } from "@/components/work-frame/lazy-work-side-nav";
+import { useWorkRailShown, useWorkSideNav, WorkRail, workSideCurrentArea } from "@/components/work-frame/work-rail";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
 import {
   isPageOwnedComposerRoute,
@@ -495,7 +498,21 @@ function GlobalStandaloneSearchShellBody({
   const isDictionaryCatalogue = isDictionaryCataloguePath(pathname);
   const isDifferentialPresentationWorkflow = pathname.startsWith("/differentials/presentations/");
   const shouldShowDesktopSidebar = !hideDesktopSidebar;
-  const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow ? true : sidebarCollapsed;
+  // Work pages for readers on the new work mode get the work side menu (phone)
+  // and the narrow work rail (768 px up) in place of the clinical sidebar
+  // (owner pick "Burger and rail", 7 Oct 2026). The rail never widens, so it
+  // reads as collapsed for the layout's width.
+  const workSideNav = useWorkSideNav(searchMode);
+  const workRailShown = useWorkRailShown();
+  const workSideArea = workSideNav ? workSideCurrentArea(searchMode, pathname) : null;
+  // The counts reader stays mounted once the phone menu has opened on a work
+  // page, so reopening the menu never fetches the feed again.
+  const [workMenuOpened, setWorkMenuOpened] = useState(false);
+  if (workSideNav && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
+  // The phone menu only exists below 768 px. Turning a phone to landscape past
+  // that width closes it, so its backdrop never blocks the rail layout.
+  if (workSideNav && workRailShown && mobileMenuOpen) setMobileMenuOpen(false);
+  const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow || workSideNav ? true : sidebarCollapsed;
   const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "5.25rem" : "20rem") : "0px";
   const isInfoPage = isInformationPage(pathname);
   // Information pages are read surfaces: the record has already been found, so a
@@ -906,24 +923,32 @@ function GlobalStandaloneSearchShellBody({
         {shouldShowDesktopSidebar ? (
           <div className="hidden md:block">
             <div className="sticky top-0 flex h-dvh min-h-0">
-              <ClinicalDesktopSidebar
-                collapsed={effectiveSidebarCollapsed}
-                collapseLocked={isDifferentialPresentationWorkflow}
-                recentQueries={recentQueries}
-                identity={sidebarIdentity}
-                activeMode={searchMode}
-                showAccountLibrary={favouritesAccessible}
-                onCollapsedChange={setSidebarCollapsed}
-                onNewChat={startNewChat}
-                onPickRecent={pickRecentQuery}
-                onOpenSettings={openSettingsWithDefaultFocus}
-                onOpenAccount={openAccountProfileWithDefaultFocus}
-                onPrefetchSettings={loadSettingsDialog}
-                onPrefetchAccount={prefetchAccountDialog}
-                onPrefetchApplications={prefetchApplications}
-                onOpenSearch={openSidebarSearch}
-                onSelectMode={changeMode}
-              />
+              {workSideNav ? (
+                <WorkRail
+                  identity={sidebarIdentity}
+                  currentArea={workSideArea}
+                  onOpenSettings={openSettingsWithDefaultFocus}
+                />
+              ) : (
+                <ClinicalDesktopSidebar
+                  collapsed={effectiveSidebarCollapsed}
+                  collapseLocked={isDifferentialPresentationWorkflow}
+                  recentQueries={recentQueries}
+                  identity={sidebarIdentity}
+                  activeMode={searchMode}
+                  showAccountLibrary={favouritesAccessible}
+                  onCollapsedChange={setSidebarCollapsed}
+                  onNewChat={startNewChat}
+                  onPickRecent={pickRecentQuery}
+                  onOpenSettings={openSettingsWithDefaultFocus}
+                  onOpenAccount={openAccountProfileWithDefaultFocus}
+                  onPrefetchSettings={loadSettingsDialog}
+                  onPrefetchAccount={prefetchAccountDialog}
+                  onPrefetchApplications={prefetchApplications}
+                  onOpenSearch={openSidebarSearch}
+                  onSelectMode={changeMode}
+                />
+              )}
             </div>
           </div>
         ) : null}
@@ -1196,24 +1221,58 @@ function GlobalStandaloneSearchShellBody({
           initialFocus={settingsInitialFocus}
         />
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
-        <ClinicalMobileSidebar
-          open={mobileMenuOpen}
-          hiddenFrom="md"
-          recentQueries={recentQueries}
-          identity={sidebarIdentity}
-          activeMode={searchMode}
-          showAccountLibrary={favouritesAccessible}
-          onOpenChange={setMobileMenuOpen}
-          onNewChat={startNewChat}
-          onPickRecent={pickRecentQuery}
-          onOpenSettings={openSettingsWithDefaultFocus}
-          onOpenAccount={openAccountProfileWithDefaultFocus}
-          onPrefetchSettings={loadSettingsDialog}
-          onPrefetchAccount={prefetchAccountDialog}
-          onPrefetchApplications={prefetchApplications}
-          onOpenSearch={openSidebarSearch}
-          onSelectMode={changeMode}
-        />
+        <LazyWorkSideCounts active={workSideNav && (workRailShown || workMenuOpened)} />
+        {workSideNav ? (
+          <LazyWorkSideMenu
+            open={mobileMenuOpen}
+            onOpenChange={setMobileMenuOpen}
+            identity={sidebarIdentity}
+            currentArea={workSideArea}
+            onOpenSettings={openSettingsWithDefaultFocus}
+            onSignOut={async () => {
+              clinicalAskSession.clear();
+              await auth.signOut();
+            }}
+            clinical={
+              <ClinicalSidebarContent
+                showHeader={false}
+                recentQueries={recentQueries}
+                identity={sidebarIdentity}
+                activeMode={searchMode}
+                showAccountLibrary={favouritesAccessible}
+                onNewChat={startNewChat}
+                onPickRecent={pickRecentQuery}
+                onOpenSettings={openSettingsWithDefaultFocus}
+                onOpenAccount={openAccountProfileWithDefaultFocus}
+                onPrefetchSettings={loadSettingsDialog}
+                onPrefetchAccount={prefetchAccountDialog}
+                onPrefetchApplications={prefetchApplications}
+                onOpenSearch={openSidebarSearch}
+                onSelectMode={changeMode}
+                onNavigate={() => setMobileMenuOpen(false)}
+              />
+            }
+          />
+        ) : (
+          <ClinicalMobileSidebar
+            open={mobileMenuOpen}
+            hiddenFrom="md"
+            recentQueries={recentQueries}
+            identity={sidebarIdentity}
+            activeMode={searchMode}
+            showAccountLibrary={favouritesAccessible}
+            onOpenChange={setMobileMenuOpen}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onOpenSettings={openSettingsWithDefaultFocus}
+            onOpenAccount={openAccountProfileWithDefaultFocus}
+            onPrefetchSettings={loadSettingsDialog}
+            onPrefetchAccount={prefetchAccountDialog}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSearch={openSidebarSearch}
+            onSelectMode={changeMode}
+          />
+        )}
       </div>
     );
   };
