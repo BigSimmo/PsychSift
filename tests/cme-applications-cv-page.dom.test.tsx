@@ -194,6 +194,87 @@ describe("CV that fills itself", () => {
     expect(hide.getAttribute("aria-pressed")).toBe("false");
   });
 
+  it("leaves a patient-like talk or activity title out of the copy and the print, with a way to fix it", async () => {
+    const copy = vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    teaching.value.data = {
+      upcoming: [],
+      taught: [
+        {
+          occurrenceId: "o2",
+          serviceId: "s1",
+          title: "Case presentation: pt JS 45M",
+          startsAt: "2026-04-01T02:00:00.000Z",
+          endsAt: "2026-04-01T03:00:00.000Z",
+        },
+      ],
+    };
+    renderCv({
+      entries: [
+        entry("e3", "2026-05-01", {
+          title: "Case review of Mr Smith 45M, UMRN 1234567",
+          allocations: [{ category: "measuring", hours: 2 }],
+        }),
+      ],
+    });
+    const held = screen.getAllByTestId("applications-cv-line").filter((line) => line.dataset.cvHeld === "true");
+    expect(held).toHaveLength(2);
+    // Print leaves out every line marked hidden.
+    for (const line of held) expect(line.getAttribute("data-cv-hidden")).toBe("true");
+    expect(within(held[1]!).getByRole("link").getAttribute("href")).toBe("/cme/log/e3?edit=1");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("applications-cv-copy"));
+    });
+    const text = copy.mock.calls[0]![0];
+    expect(text).not.toContain("pt JS");
+    expect(text).not.toContain("Mr Smith");
+    expect(screen.getByText("CV copied as plain text. 2 left out, the title looks like a patient detail")).toBeTruthy();
+    teaching.value.data = {
+      upcoming: [],
+      taught: [
+        {
+          occurrenceId: "o1",
+          serviceId: "s1",
+          title: "Catatonia",
+          startsAt: "2026-09-30T02:00:00.000Z",
+          endsAt: "2026-09-30T03:00:00.000Z",
+        },
+      ],
+    };
+  });
+
+  it("shows a hidden line in full-strength text with the word Hidden, not faded", () => {
+    renderCv();
+    const catatonia = screen
+      .getAllByTestId("applications-cv-line")
+      .find((line) => line.textContent?.includes("Catatonia"))!;
+    fireEvent.click(catatonia.querySelector<HTMLButtonElement>("[data-testid='applications-cv-hide']")!);
+    expect(catatonia.innerHTML).not.toContain("opacity-50");
+    expect(catatonia.textContent).toContain("Hidden");
+  });
+
+  it("Undo after saving the statement puts back the statement only", () => {
+    renderCv();
+    fireEvent.click(screen.getByTestId("applications-cv-statement"));
+    fireEvent.change(screen.getByTestId("applications-statement-text"), {
+      target: { value: "I enjoy teaching juniors." },
+    });
+    fireEvent.click(screen.getByTestId("applications-statement-save"));
+    const catatonia = screen
+      .getAllByTestId("applications-cv-line")
+      .find((line) => line.textContent?.includes("Catatonia"))!;
+    fireEvent.click(catatonia.querySelector<HTMLButtonElement>("[data-testid='applications-cv-hide']")!);
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    const stored = JSON.parse(localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)!);
+    expect(stored.statement).toBe("");
+    expect(stored.hiddenCvLines).toEqual(["talk:o1"]);
+  });
+
+  it("goes back to Job applications, its parent", () => {
+    renderCv();
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/applications");
+    expect(screen.getByTestId("cpd-feature-back").textContent).toContain("Job applications");
+  });
+
   it("narrows to this year", () => {
     renderCv({ entries: [...entries, entry("old", "2024-05-01")] });
     expect(screen.getByTestId("applications-cv").textContent).not.toContain("2024:");

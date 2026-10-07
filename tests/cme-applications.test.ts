@@ -466,6 +466,38 @@ describe("CV", () => {
     expect(thisYear[0]!.lines.map((line) => line.sub)).toEqual(["2 sessions recorded in 2026", "2026"]);
   });
 
+  it("holds back a talk or outcome title that reads like a patient detail from the copy, and counts it", () => {
+    const sections = buildCv({
+      entries: [
+        {
+          id: "e9",
+          date: "2026-05-01",
+          title: "Case review of Mr Smith 45M, UMRN 1234567",
+          allocations: [{ category: "measuring", hours: 2 }],
+          reflection: "",
+          costCents: null,
+          transcribed: false,
+          routineId: null,
+          documentId: null,
+          buckets: [],
+        },
+      ],
+      terms: [],
+      talks: [{ occurrenceId: "t9", title: "Case presentation: pt JS 45M", startsAt: "2026-04-01T02:00:00.000Z" }],
+      statement: "",
+      range: "year",
+      today,
+    });
+    const held = sections.flatMap((section) => section.lines).filter((line) => line.heldBack);
+    expect(held.map((line) => line.id).sort()).toEqual(["cpd:entry:e9", "talk:t9"]);
+    expect(held.find((line) => line.id === "cpd:entry:e9")!.heldBack!.fixHref).toBe("/cme/log/e9?edit=1");
+    const plain = cvPlainText(sections, new Set());
+    expect(plain.heldBackCount).toBe(2);
+    expect(plain.text).not.toContain("pt JS");
+    expect(plain.text).not.toContain("Mr Smith");
+    expect(plain.text).not.toContain("UMRN");
+  });
+
   it("keeps a supervision and a term that span the whole of This year", () => {
     const sections = buildCv({
       entries: [],

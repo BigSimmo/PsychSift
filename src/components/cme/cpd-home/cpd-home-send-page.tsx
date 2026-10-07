@@ -21,6 +21,7 @@ import {
   ActionDock,
   CopyIconButton,
   CpdFeaturePage,
+  type CpdFeatureBack,
   DateTile,
   flatCard,
   flatRow,
@@ -66,6 +67,9 @@ import { activeCmeYearEntries } from "@/lib/cme/export";
 import { useCpdHomeSendStore } from "@/lib/cme/device-record";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+
+/** The page's parent, where its link lives. */
+const CPD_HOME_BACK: CpdFeatureBack = { href: "/cme/summary", label: "CPD summary" };
 
 export type CpdHomeSendPageProps = {
   readonly set: CmeRequirementSet;
@@ -211,7 +215,12 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
 
   if (yearEntries.length === 0) {
     return (
-      <CpdFeaturePage eyebrow={`Export your CPD log · ${set.year}`} title="AMA CPD Home" testId="cpd-home-page">
+      <CpdFeaturePage
+        back={CPD_HOME_BACK}
+        eyebrow={`Export your CPD log · ${set.year}`}
+        title="AMA CPD Home"
+        testId="cpd-home-page"
+      >
         <section
           className={cn(flatCard, "grid justify-items-center gap-3 px-4 py-8 text-center")}
           data-testid="cpd-home-empty"
@@ -393,6 +402,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
 
   return (
     <CpdFeaturePage
+      back={CPD_HOME_BACK}
       eyebrow={
         lastAdded
           ? `Last file ${formatCmeRowDate(perthCalendarDate(new Date(lastAdded.addedAt!)), today)}`

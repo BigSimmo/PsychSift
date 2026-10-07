@@ -288,6 +288,14 @@ describe("Send to AMA CPD Home", () => {
     expect(stored.files.find((file: { id: string }) => file.id === "f6").addedAt).not.toBeNull();
   });
 
+  it("goes back to the CPD summary, where its link lives, even with nothing to send", () => {
+    const { unmount } = renderPage();
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+    unmount();
+    renderPage({ entries: [] });
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+  });
+
   it("says the import format is not confirmed, with its source pending", () => {
     renderPage();
     const row = screen.getByTestId("cpd-home-import-format");

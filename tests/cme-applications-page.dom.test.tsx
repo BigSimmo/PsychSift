@@ -217,6 +217,11 @@ describe("Job applications season", () => {
     expect(localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)).toBeNull();
   });
 
+  it("goes back to the CPD summary, where its link lives", () => {
+    renderPage();
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+  });
+
   it("shows the made-up sample in the demo build and keeps nothing", () => {
     renderPage(true);
     expect(screen.getByTestId("applications-mode-note").textContent).toContain("Sample season");
