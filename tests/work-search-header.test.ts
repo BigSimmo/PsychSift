@@ -5,9 +5,10 @@ import { describe, expect, it } from "vitest";
 import { appModeDefinitions, appModeHasWorkSearch } from "@/lib/app-modes";
 
 describe("Search my work header icon", () => {
-  it("shows on the six staff work modes and nowhere else", () => {
+  // Open shifts joined (work-mode redesign, owner request 6 Oct 2026): it sits inside Roster's frame.
+  it("shows on the seven staff work modes and nowhere else", () => {
     const withIcon = appModeDefinitions.map((mode) => mode.id).filter((id) => appModeHasWorkSearch(id));
-    expect(withIcon.sort()).toEqual(["cme", "my-day", "my-work", "on-call", "roster", "teaching"]);
+    expect(withIcon.sort()).toEqual(["cme", "my-day", "my-work", "on-call", "open-shifts", "roster", "teaching"]);
   });
 
   it("is gated on the mode declaration, not a mode-id branch in the header", () => {
