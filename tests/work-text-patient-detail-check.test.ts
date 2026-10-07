@@ -208,5 +208,43 @@ describe("shared patient-detail check for work free text", () => {
       expect(looksLikePatientDetail("pt OT")).toBe(false);
       expect(looksLikePatientDetail("pt js")).toBe(true);
     });
+
+    it("reads PDL (professional development leave) past as a work word", () => {
+      expect(looksLikePatientDetail("PDL")).toBe(false);
+      expect(looksLikePatientDetail("PDL on Friday for the conference")).toBe(false);
+      expect(looksLikePatientDetail("PDL with JS")).toBe(true);
+    });
+  });
+
+  describe("teaching and meeting venues", () => {
+    it.each([
+      "Seminar room 1",
+      "Meeting room 2",
+      "Conference room 3",
+      "Tutorial room 4",
+      "Training room 5",
+      "Lecture theatre 2",
+      "Board room 1",
+      "Boardroom 1",
+      "Seminar Room 1",
+      "seminar room: 1",
+      "Seminar room one",
+      "Teaching in Seminar room 1 at 2pm",
+      "Meeting room 2 with the RPH team",
+    ])("does not read %s as a bed", (text) => {
+      expect(checkPatientDetail(text)).toBeNull();
+    });
+
+    it("still flags a bare room or bed, and a bed beside a venue", () => {
+      expect(checkPatientDetail("Room 4")?.title).toBe("This looks like a bed number");
+      expect(checkPatientDetail("Bed 12")?.title).toBe("This looks like a bed number");
+      expect(checkPatientDetail("Meeting room 2 bed 12")?.title).toBe("This looks like a bed number");
+    });
+
+    it("still flags a name beside a venue, and keeps the venue in the safer wording", () => {
+      const problem = checkPatientDetail("Seminar room 1, Mrs Smith");
+      expect(problem?.title).toBe("This looks like a name");
+      if (problem?.suggestion) expect(problem.suggestion).toContain("Seminar room 1");
+    });
   });
 });

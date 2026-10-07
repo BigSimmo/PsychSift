@@ -134,6 +134,7 @@ export const WORKPLACE_ABBREVIATIONS: readonly string[] = [
   "RSO",
   "DPE",
   "RDO",
+  "PDL",
   "IVF",
   "AI",
   "OT",
@@ -385,11 +386,27 @@ function standIn(index: number): string {
   return `qzx${letters}xzq`;
 }
 
+/**
+ * A teaching or meeting venue with its number ("Seminar room 1", "Board room 1", "Lecture theatre 2"). A room
+ * named for teaching or a meeting is not where a patient lies, so it is read past. A bare "Room 4" or "Bed 12"
+ * is still a bed number.
+ */
+const VENUE = new RegExp(
+  `\\b(?:(?:seminar|meeting|conference|tutorial|training|teaching|board)\\s*rooms?|lecture\\s+(?:theatre|theater|hall|room)s?)\\s*[:#.-]?\\s*(?:\\d{1,3}[a-z]?|${NUMBER_WORD})\\b`,
+  "gi",
+);
+
+/** The text with each teaching or meeting venue read as a plain word, for the bed and room checks. */
+function withoutVenues(text: string): string {
+  return text.replace(VENUE, "venue");
+}
+
 function maskAbbreviations(text: string, masked: string[]): string {
-  return text.replace(ABBREVIATION, (word) => {
+  const keep = (word: string): string => {
     masked.push(word);
     return standIn(masked.length - 1);
-  });
+  };
+  return text.replace(VENUE, keep).replace(ABBREVIATION, keep);
 }
 
 function unmaskAbbreviations(text: string, masked: readonly string[]): string {
@@ -451,15 +468,16 @@ function problemIn(text: string, options: PatientDetailCheckOptions): PatientDet
     return { title: "This looks like a name", body: DEFAULT_BODY, suggestion: null };
   if (INTERNATIONAL_PHONE.test(trimmed) || LOCAL_LANDLINE.test(trimmed))
     return { title: "This looks like a phone number", body: DEFAULT_BODY, suggestion: null };
-  if (MARKED_PLACE.test(trimmed) || NUMBERED_SEAT.test(trimmed))
+  const places = withoutVenues(trimmed);
+  if (MARKED_PLACE.test(places) || NUMBERED_SEAT.test(places))
     return { title: "This looks like a bed number", body: DEFAULT_BODY, suggestion: null };
   if (BARE_UMRN.test(trimmed) || SPACED_RECORD.test(trimmed) || SPACED_DIGITS.test(trimmed))
     return { title: "This looks like a record number", body: DEFAULT_BODY, suggestion: null };
   if (GLUED_RECORD.test(trimmed))
     return { title: "This looks like a record number", body: DEFAULT_BODY, suggestion: null };
-  if (PLACE_IN_WORDS.test(trimmed))
+  if (PLACE_IN_WORDS.test(places))
     return { title: "This looks like a bed number", body: DEFAULT_BODY, suggestion: null };
-  if (looksLikePatientDetails(trimmed, options.thisYear ?? new Date().getFullYear()))
+  if (looksLikePatientDetails(places, options.thisYear ?? new Date().getFullYear()))
     return {
       title: "This may be patient details",
       body: "It looks like a record number, a date of birth, a title and name, or a bed number. Remove it to go on.",
