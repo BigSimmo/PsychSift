@@ -1,21 +1,9 @@
 "use client";
 
-import {
-  CalendarDays,
-  ClipboardCheck,
-  GraduationCap,
-  ListChecks,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, ClipboardCheck, GraduationCap, ListChecks, Users, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
-import {
-  folderStatusWords,
-  type FolderIcon,
-  type FolderPart,
-  type FolderStatus,
-} from "@/lib/teaching/term-folder";
+import { folderStatusWords, type FolderIcon, type FolderPart, type FolderStatus } from "@/lib/teaching/term-folder";
 
 /*
  * The folder's own small parts, kept presentational so they can move onto the shared work kit later:
