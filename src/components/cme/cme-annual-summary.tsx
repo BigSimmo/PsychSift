@@ -7,6 +7,7 @@ import { ApplicationsEntryLink } from "@/components/cme/applications/application
 import { CpdHomeEntryLink } from "@/components/cme/cpd-home/cpd-home-entry-link";
 import { CmeYearClosePanel } from "@/components/cme/cme-year-close-panel";
 import { Button, buttonFaceClass } from "@/components/ui/button";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
@@ -131,10 +132,13 @@ export function CmeAnnualSummary({
       </header>
       {/* Title first, then the ways on from this year, then the page's own buttons. Not printed. */}
       <div className="cme-print-controls mt-4 mb-5 grid gap-4">
-        <nav aria-label="More from your CPD year" className="grid gap-2" data-testid="cme-summary-more">
-          <CpdHomeEntryLink year={set.year} />
-          <ApplicationsEntryLink />
-        </nav>
+        {/* Both lead to new work-mode screens, so the classic work mode keeps neither. */}
+        <NewWorkModeOnly>
+          <nav aria-label="More from your CPD year" className="grid gap-2" data-testid="cme-summary-more">
+            <CpdHomeEntryLink year={set.year} />
+            <ApplicationsEntryLink />
+          </nav>
+        </NewWorkModeOnly>
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/cme/log?year=${set.year}`} className={buttonFaceClass({ variant: "secondary" })}>

@@ -75,6 +75,7 @@ import { useRosterShifts } from "./use-roster-shifts";
 import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-team";
 import { RosterPageHeader } from "./roster-ui";
 import { useModeBandCurrentTab, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 
 /**
  * Roster Shifts, as the Roster mock-up draws it: the shift on now or next, the
@@ -694,7 +695,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                 ))}
               </nav>
             ) : null}
-            {enabledTeams.length ? <RosterSickEntryLink /> : null}
+            {enabledTeams.length ? (
+              <NewWorkModeOnly>
+                <RosterSickEntryLink />
+              </NewWorkModeOnly>
+            ) : null}
 
             <section aria-labelledby="roster-week-heading" className="grid gap-3" data-testid="roster-shifts-week">
               <div className="mt-1 flex items-center gap-1">

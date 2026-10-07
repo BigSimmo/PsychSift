@@ -48,6 +48,7 @@ import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
 import { StarterPackEntryLink } from "@/components/admin/starter/starter-pack-entry-link";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 
 /** The On Call entry editor loads on first open and then stays mounted, so its Sheet still returns focus on close. */
 const OnCallEntryEditor = dynamic(
@@ -369,7 +370,9 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
               </h2>
 
               {/* Ready for day one (round 2 feature 21): what is recorded and what is still to do. */}
-              <ReadyForDayOneEntryLink />
+              <NewWorkModeOnly>
+                <ReadyForDayOneEntryLink />
+              </NewWorkModeOnly>
 
               <PaperworkSignpost overview={overview} />
 
@@ -419,7 +422,9 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
               {isAuthenticated && !state.demoMode ? <AdminCredentialsWallet /> : null}
 
               {/* The starter pack (round 2 feature 14), above the contacts as the spec places it. */}
-              <StarterPackEntryLink />
+              <NewWorkModeOnly>
+                <StarterPackEntryLink />
+              </NewWorkModeOnly>
 
               <AdminSection as="h3" label="Contacts for this job" count={rows.contacts.length || undefined}>
                 {rows.contacts.length === 0 ? (

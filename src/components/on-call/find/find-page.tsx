@@ -24,6 +24,7 @@ import { ON_CALL_ON_SITE_HREF } from "@/components/on-call/on-call-section-ident
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import type { HandbookItem } from "@/lib/on-call/handbook-items";
 import { searchHandbookItems } from "@/lib/on-call/handbook-search";
 
@@ -227,7 +228,11 @@ export function OnCallFindPage() {
       {ready ? renderGroup(downtime) : null}
       {ready && !searching ? <OnCallFirstNightPanel id={FIRST_NIGHT_ANCHOR} testId="on-call-find-first-night" /> : null}
       {/* Your first week (round 2 feature 20): the department's pack for a new job, next to First night. */}
-      {!searching ? <FirstWeekEntryLink /> : null}
+      {!searching ? (
+        <NewWorkModeOnly>
+          <FirstWeekEntryLink />
+        </NewWorkModeOnly>
+      ) : null}
       {ready ? rest.map(renderGroup) : null}
       {ready && !searching && (hasDeskOnly || hospitalPhone) ? <OnCallHospitalPhoneSwitch on={hospitalPhone} /> : null}
 

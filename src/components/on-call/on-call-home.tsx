@@ -36,6 +36,7 @@ import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook"
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText } from "@/components/ui-primitives";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { onCallCallNowScenarios, onCallCallNowSteps } from "@/lib/on-call/call-now";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { pinnedEmergencyEntries } from "@/lib/on-call/handbook-items";
@@ -375,13 +376,17 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
               <NowShiftShortcuts />
               <NowShiftPulseCard now={now} />
               {/* A week before a new job starts until the end of its first week. */}
-              <FirstWeekTodayCardLive now={now} />
+              <NewWorkModeOnly>
+                <FirstWeekTodayCardLive now={now} />
+              </NewWorkModeOnly>
             </>
           }
           comingUp={
             <>
               {/* Who is on this moment, from the team's published roster, with a way to the full list. */}
-              <OnCallRosterRightNow now={now} />
+              <NewWorkModeOnly>
+                <OnCallRosterRightNow now={now} />
+              </NewWorkModeOnly>
               <NowYourUsual
                 tiles={tiles}
                 outlineCount={usualOutlines}

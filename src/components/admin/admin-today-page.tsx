@@ -22,6 +22,7 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { todayStateCopy } from "@/components/mode-kit/today/today-copy";
 import { WorkButton, WorkCard, WorkDock, WorkEmpty, WorkIconCircle } from "@/components/mode-kit/work";
 import { cn } from "@/components/ui-primitives";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { buildAdminHelpItems } from "@/lib/admin/help-items";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
@@ -207,7 +208,10 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
             {newJobProgress ? <TodayNewJobModule progress={newJobProgress} today={today} /> : null}
             <TodayStarred items={helpItems} testId="admin-today-pinned" />
             <TodayRequirementsModule summary={requirementsSummary} />
-            <AdminWorkAndLeaveGroup />
+            {/* Every row in it leads to a new work mode screen, so the classic work mode keeps none of it. */}
+            <NewWorkModeOnly>
+              <AdminWorkAndLeaveGroup />
+            </NewWorkModeOnly>
             <TodayOvertimeRow />
           </div>
         </div>

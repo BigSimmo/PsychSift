@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { RosterLeaveStaffingCheck } from "@/components/roster/staffing/roster-leave-staffing-check";
 import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment, RosterTeam } from "@/lib/roster/team/model";
@@ -336,15 +337,21 @@ function LeaveSession({
           </section>
         ) : null}
         {serviceId && valid ? (
-          <section className="grid gap-2" aria-label="Team staffing on these dates" data-testid="leave-staffing-check">
-            <RosterLeaveStaffingCheck
-              serviceId={serviceId}
-              actorId={actorId || null}
-              startsOn={startsOn}
-              endsOn={endsOn}
-              today={perthDateOf(new Date())}
-            />
-          </section>
+          <NewWorkModeOnly>
+            <section
+              className="grid gap-2"
+              aria-label="Team staffing on these dates"
+              data-testid="leave-staffing-check"
+            >
+              <RosterLeaveStaffingCheck
+                serviceId={serviceId}
+                actorId={actorId || null}
+                startsOn={startsOn}
+                endsOn={endsOn}
+                today={perthDateOf(new Date())}
+              />
+            </section>
+          </NewWorkModeOnly>
         ) : null}
         {serviceId && valid && covered.length ? (
           <section className="grid gap-2">

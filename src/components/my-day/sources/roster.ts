@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { managerWaiting } from "@/components/roster/manage/roster-manage-waiting";
 import { fetchRosterRead, type RosterTeamsPayload } from "@/components/roster/use-roster-team";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
 import { fatigueMyDayItems, ruleEnginesOn, type MyDayRuleShift } from "@/lib/my-day/rule-items";
@@ -187,6 +188,8 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
   retry: () => void;
 } {
   const { authEpoch } = useAuthSession();
+  // A sick report links to Sick for tomorrow, a new work mode screen the classic work mode does not have.
+  const routeVisible = useWorkModeRouteVisible();
   const [stored, setStored] = useState<{ epoch: number; loaded: Loaded } | null>(null);
   const [generation, setGeneration] = useState(0);
   const retry = useCallback(() => setGeneration((value) => value + 1), []);
@@ -205,7 +208,14 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
   if (!stored || stored.epoch !== authEpoch) return { result: loading, retry };
   const loaded = stored.loaded;
   if (loaded.status === "ready") {
-    return { result: { mode: "roster", status: "ready", items: rosterMyDayItems(loaded.input, now) }, retry };
+    return {
+      result: {
+        mode: "roster",
+        status: "ready",
+        items: rosterMyDayItems(loaded.input, now).filter((item) => routeVisible(item.href)),
+      },
+      retry,
+    };
   }
   return { result: { mode: "roster", status: loaded.status, items: [] }, retry };
 }

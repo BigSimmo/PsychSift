@@ -36,6 +36,7 @@ import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import {
   currentTerm,
   dayOfMonth,
@@ -730,7 +731,9 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
             href="/teaching/exam-prep"
           />
         </T5List>
-        <TermFolderEntryLink />
+        <NewWorkModeOnly>
+          <TermFolderEntryLink />
+        </NewWorkModeOnly>
       </>
     );
 

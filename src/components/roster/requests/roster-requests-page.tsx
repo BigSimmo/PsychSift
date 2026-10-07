@@ -32,6 +32,7 @@ import { RosterSentBar, type SentReceipt } from "./roster-sent-bar";
 import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 import { RosterNewButton, useRosterNewButtonClearance } from "@/components/roster/roster-new-button";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 
 /* Each sheet draws nothing while closed, so each loads only once first opened (and quietly when the page is idle). */
 const loadSwapFlowSheet = () => import("@/components/roster/swaps/swap-flow-sheet");
@@ -413,7 +414,11 @@ export function RosterRequestsPage() {
             title="Leave"
             right={<RosterLinkWord onClick={() => setSheet({ kind: "leave" })}>Plan leave</RosterLinkWord>}
           />
-          {enabled.length ? <RosterStaffingEntryLink /> : null}
+          {enabled.length ? (
+            <NewWorkModeOnly>
+              <RosterStaffingEntryLink />
+            </NewWorkModeOnly>
+          ) : null}
           {currentLeave.length ? (
             <RosterList label="Leave">{currentLeave.map(leaveRow)}</RosterList>
           ) : teams.status === "loading" || (teams.status === "ready" && leaveState === "loading") ? (
