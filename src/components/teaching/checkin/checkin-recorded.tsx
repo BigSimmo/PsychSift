@@ -16,15 +16,23 @@ import { attendanceLabels, type AttendanceMethod } from "@/lib/teaching/model";
  * it never claims one that did not happen. Three honest destinations: the doctor's Logbook (added now),
  * their private CPD log (only when they choose to log it, once the session ends; attendance never adds CPD
  * on its own) and the session register the organisers see.
+ *
+ * Deferred: the mock-up's "Wrong session? Undo check-in". The only removal action today is the organisers'
+ * `attendance.remove`, which refuses a doctor and never removes a code check-in, so an undo for the doctor
+ * needs a new server action. It is not offered until that exists.
  */
 
-/** A check-in recorded more than two minutes before it was shown was already there: the scan added nothing. */
+/**
+ * A check-in the server recorded more than two minutes before it answered was already there: the scan added
+ * nothing. Both times are the server's own (its `recordedAt` and the response's `Date` header), and the caller
+ * decides this once, when the answer arrives, so the line never appears later on a ticking clock.
+ */
 export const REPEAT_SCAN_MS = 2 * 60_000;
 
-export function wasAlreadyCheckedIn(recordedAt: string, shownAt: Date | null): boolean {
-  if (!shownAt) return false;
+export function wasAlreadyCheckedIn(recordedAt: string, serverAnsweredAt: number | null): boolean {
+  if (serverAnsweredAt === null || !Number.isFinite(serverAnsweredAt)) return false;
   const recorded = Date.parse(recordedAt);
-  return Number.isFinite(recorded) && shownAt.getTime() - recorded > REPEAT_SCAN_MS;
+  return Number.isFinite(recorded) && serverAnsweredAt - recorded > REPEAT_SCAN_MS;
 }
 
 function Destination({
@@ -90,6 +98,7 @@ export function CheckinRecorded({
   venue,
   method,
   recordedAt,
+  alreadyCheckedIn = false,
   now,
   logged = false,
   onLogToCpd,
@@ -103,6 +112,8 @@ export function CheckinRecorded({
   venue?: string | null;
   method: AttendanceMethod;
   recordedAt: string;
+  /** Decided once from the server's answer (`wasAlreadyCheckedIn`), never from the page's clock. */
+  alreadyCheckedIn?: boolean;
   now: Date | null;
   /** Logged to CPD in this visit. */
   logged?: boolean;
@@ -114,7 +125,6 @@ export function CheckinRecorded({
   showMethod?: boolean;
 }) {
   const ended = Boolean(endsAt && now && Date.parse(endsAt) <= now.getTime());
-  const repeat = wasAlreadyCheckedIn(recordedAt, now);
   const when = [startsAt ? shortDayLabel(perthDateKey(startsAt)) : null, `checked in ${perthTime(recordedAt)}`, venue]
     .filter(Boolean)
     .join(" · ");
@@ -145,10 +155,8 @@ export function CheckinRecorded({
         {title ? <p className="text-sm font-medium text-[color:var(--text-heading)]">{title}</p> : null}
         <p className="nums text-sm font-normal text-[color:var(--text-muted)]">{when}</p>
         {showMethod ? <Tag done>{attendanceLabels[method]}</Tag> : null}
-        {repeat ? (
-          <p className="text-sm text-[color:var(--text-muted)]">
-            You were already checked in. Nothing is added twice.
-          </p>
+        {alreadyCheckedIn ? (
+          <p className="text-sm text-[color:var(--text-muted)]">You were already checked in. Nothing is added twice.</p>
         ) : null}
       </div>
       <div className="grid gap-1">

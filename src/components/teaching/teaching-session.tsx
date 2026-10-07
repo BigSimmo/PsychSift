@@ -8,7 +8,7 @@ import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { ModeStateLabel } from "@/components/mode-kit/state-label";
-import { CheckinRecorded } from "@/components/teaching/checkin/checkin-recorded";
+import { CheckinRecorded, wasAlreadyCheckedIn } from "@/components/teaching/checkin/checkin-recorded";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { sessionPhase } from "@/components/teaching/session-phase";
 import {
@@ -37,7 +37,7 @@ import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
-import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
+import { teachingErrorMessage, teachingPostTimed, teachingServiceUrl } from "@/lib/teaching/client";
 import {
   attendanceLabels,
   memberLabel,
@@ -62,6 +62,8 @@ import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 const GONE = "This session is no longer in the programme.";
 
 type Mark = { method: AttendanceMethod; recordedAt: string };
+/** A check-in made on this visit, with whether the server already had it (decided once, from its answer). */
+type Recorded = Mark & { already: boolean };
 type Props = { occurrenceId: string; demoMode: boolean; initialSheet?: "scan"; embedded?: boolean };
 
 export function TeachingSessionScreen({
@@ -144,9 +146,9 @@ function SessionBody({
   const staff = detail.canShowCode && !cancelled && !visitor;
   const [mark, setMark] = useState<Mark | null>(detail.myAttendance ?? null);
   // A check-in made on this visit gets the "Attendance recorded" card (feature 9); an earlier one keeps its label.
-  const [recorded, setRecorded] = useState<Mark | null>(null);
-  const recordedNow = (saved: Mark) => {
-    setMark(saved);
+  const [recorded, setRecorded] = useState<Recorded | null>(null);
+  const recordedNow = (saved: Recorded) => {
+    setMark({ method: saved.method, recordedAt: saved.recordedAt });
     setRecorded(saved);
     announce("Attendance recorded");
   };
@@ -180,16 +182,20 @@ function SessionBody({
     setError(null);
     try {
       // A visitor is not a member of this service, so What's on records it (master plan R15).
-      const saved = visitor
-        ? await teachingPost<Mark>("/api/teaching/whats-on", {
+      const { data: saved, serverTime } = visitor
+        ? await teachingPostTimed<Mark>("/api/teaching/whats-on", {
             action: "whats_on.attend",
             occurrenceId: detail.occurrenceId,
           })
-        : await teachingPost<Mark>(teachingServiceUrl(detail.serviceId), {
+        : await teachingPostTimed<Mark>(teachingServiceUrl(detail.serviceId), {
             action: "attendance.self",
             occurrenceId: detail.occurrenceId,
           });
-      recordedNow({ method: saved.method, recordedAt: saved.recordedAt });
+      recordedNow({
+        method: saved.method,
+        recordedAt: saved.recordedAt,
+        already: wasAlreadyCheckedIn(saved.recordedAt, serverTime),
+      });
     } catch (cause) {
       setError(teachingErrorMessage(cause));
     } finally {
@@ -282,6 +288,7 @@ function SessionBody({
           venue={detail.venue}
           method={recorded.method}
           recordedAt={recorded.recordedAt}
+          alreadyCheckedIn={recorded.already}
           now={now}
           logged={logged}
           live={live}
@@ -385,7 +392,7 @@ function ScanSheet({
   onClose: () => void;
   detail: SessionDetailRead;
   live: boolean;
-  onDone: (mark: Mark) => void;
+  onDone: (mark: Recorded) => void;
 }) {
   const [stream, setStream] = useState<CheckinStream>("room");
   const [typed, setTyped] = useState("");
@@ -405,13 +412,17 @@ function ScanSheet({
     setBusy(true);
     setError(null);
     try {
-      const saved = await teachingPost<Mark>(teachingServiceUrl(detail.serviceId), {
+      const { data: saved, serverTime } = await teachingPostTimed<Mark>(teachingServiceUrl(detail.serviceId), {
         action: "checkin.typed",
         occurrenceId: detail.occurrenceId,
         stream,
         code,
       });
-      onDone({ method: saved.method, recordedAt: saved.recordedAt });
+      onDone({
+        method: saved.method,
+        recordedAt: saved.recordedAt,
+        already: wasAlreadyCheckedIn(saved.recordedAt, serverTime),
+      });
       onClose();
     } catch (cause) {
       setError(teachingErrorMessage(cause));

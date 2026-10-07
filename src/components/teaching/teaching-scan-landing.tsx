@@ -8,7 +8,7 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { perthDateKey, perthTime, shortDayLabel } from "@/components/teaching/teaching-dates";
-import { CheckinRecorded } from "@/components/teaching/checkin/checkin-recorded";
+import { CheckinRecorded, wasAlreadyCheckedIn } from "@/components/teaching/checkin/checkin-recorded";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { useSessionDetail } from "@/components/teaching/use-session-detail";
@@ -18,7 +18,7 @@ import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { ApiClientError } from "@/lib/api-client-error";
 import { useAuthSession } from "@/lib/supabase/client";
-import { TeachingSignedOutError, teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
+import { TeachingSignedOutError, teachingErrorMessage, teachingPost, teachingPostTimed } from "@/lib/teaching/client";
 import { type CheckinCompleted, type CheckinOpened } from "@/lib/teaching/model";
 
 /*
@@ -47,7 +47,7 @@ type Step = "open" | "complete";
 type ScanState =
   | { kind: "working"; opened: CheckinOpened | null }
   | { kind: "sign-in"; opened: CheckinOpened | null; sent: boolean }
-  | { kind: "done"; opened: CheckinOpened | null; mark: CheckinCompleted }
+  | { kind: "done"; opened: CheckinOpened | null; mark: CheckinCompleted; already: boolean }
   | { kind: "failed"; opened: CheckinOpened | null; message: string; retry: Step | null }
   | { kind: "offline"; opened: CheckinOpened | null; retry: Step };
 
@@ -98,8 +98,12 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
         setState({ kind: "working", opened });
       }
       try {
-        const mark = await teachingPost<CheckinCompleted>("/api/teaching/checkin/complete", {});
-        setState({ kind: "done", opened, mark });
+        const { data: mark, serverTime } = await teachingPostTimed<CheckinCompleted>(
+          "/api/teaching/checkin/complete",
+          {},
+        );
+        // Decided once, from the server's own two times: a ticking page clock never changes it.
+        setState({ kind: "done", opened, mark, already: wasAlreadyCheckedIn(mark.recordedAt, serverTime) });
       } catch (error) {
         setState(
           error instanceof TeachingSignedOutError
@@ -181,16 +185,11 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               venue={sessionDetail.data?.venue ?? null}
               method={state.mark.method}
               recordedAt={state.mark.recordedAt}
+              alreadyCheckedIn={state.already}
               now={now}
               logged={cpdLogged}
               onLogToCpd={hasEnded ? () => setCpdBridgeOpen(true) : undefined}
             />
-            <Link
-              href="/teaching/logbook"
-              className={cn(buttonFaceClass({ variant: "secondary", block: true }), "no-underline")}
-            >
-              Open my Logbook
-            </Link>
             <Link
               href={`/teaching/session/${state.mark.occurrenceId}`}
               className={cn(buttonFaceClass({ variant: "secondary", block: true }), "no-underline")}
