@@ -236,7 +236,10 @@ describe("Teaching depth journeys", () => {
         IMPORT_TEMPLATE_HEADERS.join(",") + "\nDemo session,lecture,once,2026-09-28,,12:30,60,Demo room,,",
     });
     fireEvent.change(input, { target: { files: [file] } });
-    await screen.findByText("Preview — nothing imported yet");
+    // Work-mode redesign, owner request 6 Oct 2026: the preview is a labelled section, with
+    // "Nothing imported yet" as its right-hand note rather than part of a heading.
+    await screen.findByTestId("teaching-import-preview");
+    expect(screen.getByText("Nothing imported yet")).toBeInTheDocument();
     expect(screen.getByTestId("teaching-import-preview-when")).toHaveTextContent(
       "Mon 28 Sep · 12:30 Perth · Once · Demo room",
     );
