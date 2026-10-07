@@ -9,6 +9,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { selectAdminOwnEntries } from "@/lib/admin/own-entries";
+import { adminPinsStorageKey } from "@/lib/admin/pins";
 import { renewalsShowCounts } from "@/lib/admin/renewals-filters";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
@@ -407,7 +408,7 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
 
   // Amended for the work-mode redesign, owner request 6 Oct 2026: Josh's locked
   // mockup puts the three counts straight after Needs you, then Coming up, New
-  // job, Starred and Requirements.
+  // job, Pinned and Requirements.
   it("orders the page Renew next, Needs you, At a glance, Coming up, New job, Requirements", () => {
     const step = onCallEntryFixture({
       section: "logistics",
@@ -465,6 +466,27 @@ describe("AdminTodayPage work-mode additions", () => {
     state.entries = [registration, indemnity];
     render(<AdminTodayPage now={NOW} />);
     expect(screen.queryByTestId("admin-credentials-wallet")).toBeNull();
+  });
+
+  it("lists numbers pinned on Help under Pinned, each opening the dial sheet", () => {
+    const security = onCallEntryFixture({
+      section: "logistics",
+      title: "Demo security escort",
+      details: { category: "Facilities", phone: "08 9000 0000" },
+      isOwn: true,
+    });
+    state.entries = [registration, security];
+    window.localStorage.setItem(adminPinsStorageKey, JSON.stringify([security.id]));
+    try {
+      render(<AdminTodayPage now={NOW} />);
+      const pinned = screen.getByTestId("admin-today-pinned");
+      expect(within(pinned).getByRole("heading", { name: /Pinned/ })).toBeTruthy();
+      expect(pinned).toHaveTextContent("Also on My Day");
+      fireEvent.click(within(pinned).getByRole("button", { name: "Call Demo security escort" }));
+      expect(screen.getByTestId("admin-today-pinned-dial")).toBeTruthy();
+    } finally {
+      window.localStorage.removeItem(adminPinsStorageKey);
+    }
   });
 
   it("links the Overtime row to Roster's extra time view", () => {

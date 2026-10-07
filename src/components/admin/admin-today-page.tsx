@@ -43,7 +43,7 @@ import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
  * Admin's Today (work-mode redesign, owner request 6 Oct 2026), the first of
  * Admin's three tabs. Order, from Josh's locked mockup: the "Renew next"
  * hero, Needs you, the three counts, Coming up, New job (once a start date is
- * set), Starred, Requirements, then the Overtime row into Roster. Nothing
+ * set), Pinned, Requirements, then the Overtime row into Roster. Nothing
  * else: no Pay, no ask box, no composer.
  *
  * Phone is one column in that order. From a laptop width it splits into what
@@ -140,7 +140,7 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   // Demo records and a signed-out page refuse writes, so they get no Add.
   const canAdd = isAuthenticated && load === "ready" && !state.demoMode && !setupOpen;
 
-  // Starred numbers (owner decision 2026-10-01): the same rows Help lists, so a star made there shows here.
+  // Pinned numbers (owner decision 2026-10-01): the same rows Help lists, so a pin made there shows here.
   const helpItems = useMemo(() => buildAdminHelpItems({ own, shared, statewide: [] }), [own, shared]);
 
   function upsert(entry: OnCallEntry) {

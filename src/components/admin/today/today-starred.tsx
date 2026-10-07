@@ -1,6 +1,6 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { Pin } from "lucide-react";
 import { useState } from "react";
 
 import { AdminCallButton, AdminRow, AdminSection } from "@/components/admin/admin-kit";
@@ -15,11 +15,11 @@ import { useAdminPins } from "@/lib/admin/pins";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 
 /**
- * "Starred" on Today (work-mode redesign, owner request 6 Oct 2026): the
- * numbers starred on Help, which My Day shows too. A row with a number opens
+ * "Pinned" on Today (work-mode redesign, owner request 6 Oct 2026): the
+ * numbers pinned on Help, which My Day shows too. A row with a number opens
  * the dial sheet (call, copy, the number in full) from its round call button
  * or the row itself; a row without one opens its entry on Help. Renders
- * nothing until something is starred. Starring and unstarring stay on Help.
+ * nothing until something is pinned. Pinning and unpinning stay on Help.
  */
 export function TodayStarred({ items, testId }: { readonly items: readonly AdminHelpItem[]; readonly testId: string }) {
   const pinned = pinnedHelpItems(useAdminPins(), items);
@@ -29,7 +29,7 @@ export function TodayStarred({ items, testId }: { readonly items: readonly Admin
     ? { display: displayPhoneNumber(dialing.phone, "own-list"), tel: onCallTelHref(dialing.phone) ?? null }
     : null;
   return (
-    <AdminSection label="Starred" count="Also on My Day" testId={testId}>
+    <AdminSection label="Pinned" count="Also on My Day" testId={testId}>
       <WorkCard as="ul">
         {pinned.map((item) => {
           const id = item.entry?.id as string;
@@ -39,7 +39,7 @@ export function TodayStarred({ items, testId }: { readonly items: readonly Admin
             return (
               <AdminRow
                 key={item.key}
-                lead={<WorkIconCircle icon={Star} />}
+                lead={<WorkIconCircle icon={Pin} />}
                 title={item.title}
                 sub={<span className="tabular-nums">{item.detail ? `${display} · ${item.detail}` : display}</span>}
                 onClick={() => setDialing(item)}
@@ -58,7 +58,7 @@ export function TodayStarred({ items, testId }: { readonly items: readonly Admin
           return (
             <AdminRow
               key={item.key}
-              lead={<WorkIconCircle icon={Star} />}
+              lead={<WorkIconCircle icon={Pin} />}
               title={item.title}
               sub={item.detail ?? undefined}
               href={`${ADMIN_PAGE_HREFS.help}#${onCallEntryAnchorId(id)}`}
