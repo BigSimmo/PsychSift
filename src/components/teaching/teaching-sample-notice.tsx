@@ -18,8 +18,8 @@ export function TeachingSampleChrome({ cookieSample }: { cookieSample: boolean }
   if (!pathname || /^\/teaching\/c(?:\/|$)/.test(pathname)) return null;
   if (signedOut)
     return (
+      <div className="mx-auto w-full max-w-reading px-3 pt-4 sm:px-5 lg:px-7">
         {/* Work-mode redesign, owner request 6 Oct 2026: the spec's short banner wording. */}
-        // Work-mode redesign, owner request 6 Oct 2026: the spec's short banner wording.
         <SignedOutSampleNotice title="Sample, not your data" testId="teaching-signed-out-sample">
           Made-up sessions. Sign in to see your own.
         </SignedOutSampleNotice>
