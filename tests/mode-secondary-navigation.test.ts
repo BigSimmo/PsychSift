@@ -95,7 +95,8 @@ const cleanLandingPath: Record<AppModeId, string> = {
   teaching: "/teaching",
   psychiatry: "/psychiatry",
   medicines: "/medicines",
-  "my-work": "/admin/renewals",
+  // Work-mode redesign, owner request 6 Oct 2026: Admin opens on Today.
+  "my-work": "/admin",
   roster: "/roster",
   "first-nations": "/first-nations",
   "my-day": "/my-day",

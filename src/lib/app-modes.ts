@@ -659,10 +659,9 @@ export const appModeDefinitions = [
     workSearch: true,
     label: "Admin",
     description: "The paperwork around hospital work: renewals, starting and leaving a job, and where to get help",
-    // Opens on Renewals, Admin's working page (modes review, phase 2b): My Day is
-    // the one Today. `/admin` still serves the old Today page for bookmarks until
-    // it can be retired.
-    href: "/admin/renewals",
+    // Opens on Today, the first of Admin's three tabs (work-mode redesign, owner
+    // request 6 Oct 2026). Renewals is the second tab.
+    href: "/admin",
     search: {
       // Admin has no catalogue of its own; it borrows the benign "tools" kind, as Psychiatry does.
       kind: "tools",
