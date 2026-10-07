@@ -1010,7 +1010,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                   data-testid="cpd-home-progress"
                   className="h-2 min-w-0 flex-1 appearance-none overflow-hidden rounded-full bg-[color:var(--surface-subtle)] [&::-moz-progress-bar]:bg-[color:var(--mode-identity)] [&::-webkit-progress-bar]:bg-[color:var(--surface-subtle)] [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-[color:var(--mode-identity)]"
                 />
-                <span className="shrink-0 text-sm font-medium nums text-[color:var(--text-heading)]">
+                <span className="shrink-0 text-sm font-normal nums text-[color:var(--text-heading)]">
                   {flow.done} of {flow.total} rows
                 </span>
               </div>
