@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { TeachingAssessments } from "@/components/teaching/assessments/teaching-assessments";
+import { exampleDataOn } from "@/lib/example-data/server";
 import { teachingDemoMode } from "@/lib/teaching/sample";
 
 export const metadata: Metadata = {
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default async function Page() {
-  return <TeachingAssessments demoMode={await teachingDemoMode()} />;
+  return <TeachingAssessments demoMode={(await teachingDemoMode()) || (await exampleDataOn("assess"))} />;
 }

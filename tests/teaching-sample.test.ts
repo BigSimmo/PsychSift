@@ -9,14 +9,13 @@ function hit(query: string) {
 }
 
 describe("Teaching sample switch", () => {
-  it("turns the sample on and lands on Teaching's home", () => {
+  it("only clears the retired Teaching-only cookie and lands on Teaching's home", () => {
+    // The one example data switch replaced the Teaching-only sample cookie; old links still land safely.
     const response = hit("");
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("/teaching");
-    const cookie = response.cookies.get(TEACHING_SAMPLE_COOKIE);
-    expect(cookie?.value).toBe("1");
-    expect(cookie?.httpOnly).toBe(true);
-    expect(cookie?.path).toBe("/");
+    expect(response.headers.get("set-cookie")).toMatch(new RegExp(`${TEACHING_SAMPLE_COOKIE}=;`));
+    expect(response.cookies.get(TEACHING_SAMPLE_COOKIE)?.value ?? "").toBe("");
   });
 
   it("returns the reader to the Teaching page they came from", () => {

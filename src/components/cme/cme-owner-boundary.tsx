@@ -1,9 +1,14 @@
 "use client";
-import { Fragment, type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
+import { LogIn } from "lucide-react";
+import { Fragment, type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CmeOfflineBanner } from "@/components/cme/cme-offline-banner";
+import { CmeSampleContext } from "@/components/cme/cme-sample-context";
 import { ModeBandStatus } from "@/components/mode-band/mode-band";
+import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { Button } from "@/components/ui/button";
+import { useExampleData } from "@/lib/example-data/store";
 import { useAuthSession } from "@/lib/supabase/client";
 
 /**
@@ -13,6 +18,12 @@ import { useAuthSession } from "@/lib/supabase/client";
 const CmeSignedOutSample = dynamic(
   () => import("@/components/cme/cme-signed-out-sample").then((module) => module.CmeSignedOutSample),
   { ssr: false, loading: () => <div data-testid="cme-sample-loading" aria-hidden="true" className="min-h-48" /> },
+);
+
+/* The sign-in dialog is closed at first paint, so it loads only when first opened. */
+const AccountSetupDialog = dynamic(
+  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
+  { ssr: false },
 );
 
 function subscribeConnectivity(onStoreChange: () => void) {
@@ -45,6 +56,7 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
   const isOnline = useSyncExternalStore(subscribeConnectivity, getConnectivitySnapshot, getServerConnectivitySnapshot);
   const isOffline = !isOnline;
   const auth = useAuthSession();
+  const cpdExample = useExampleData("cpd").active;
   const router = useRouter();
   const clientOwnerId = auth.status === "authenticated" ? (auth.session?.user.id ?? null) : null;
   const resolved =
@@ -72,15 +84,18 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
 
   if (demoMode) return <Fragment key="synthetic-demo">{children}</Fragment>;
   const signedOut = auth.status === "signed_out" || auth.status === "expired";
-  // A signed-out visitor sees the sample, never server children, so no private record can show.
-  if (signedOut) return <CmeSignedOutSample />;
+  // A signed-out visitor sees the sample while the example data switch shows it,
+  // else the sign-in state; never server children, so no private record can show.
+  if (signedOut) return cpdExample ? <CmeSignedOutSample /> : <CmeSignInRequired />;
   if (serverAuthVerified && resolved && clientOwnerId === serverOwnerId) {
     // The key comes from the verified SERVER identity, never a new client owner
     // applied to old children. Unmounting also discards the previous owner's drafts.
     return (
       <Fragment key={serverOwnerId ?? "signed-out"}>
         <CmeOfflineBanner />
-        {children}
+        {/* Signed in with the switch on, the server pages serve the example year;
+            the context makes the entry forms keep nothing. */}
+        <CmeSampleContext.Provider value={cpdExample}>{children}</CmeSampleContext.Provider>
       </Fragment>
     );
   }
@@ -107,6 +122,26 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
           Refresh CPD
         </button>
       ) : null}
+    </section>
+  );
+}
+
+/** A signed-out visitor who turned example data off: the plain sign-in state, nothing made up. */
+function CmeSignInRequired() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-signed-out">
+      <EmptyState
+        icon={LogIn}
+        title="Sign in to see your CPD record"
+        body="Your activities and hours appear here once you sign in. Nothing is shared."
+        actions={
+          <Button variant="primary" onClick={() => setOpen(true)}>
+            Sign in
+          </Button>
+        }
+      />
+      {open ? <AccountSetupDialog open onClose={() => setOpen(false)} /> : null}
     </section>
   );
 }

@@ -21,9 +21,8 @@ vi.mock("@/components/cme/cme-teaching-prompt", () => ({
 const nowIso = "2026-09-19T02:00:00Z";
 
 describe("CmeDashboardRoute demo wording", () => {
-  it("labels sample data as made-up examples rather than saved records", () => {
+  it("never calls sample data saved records (the example data banner says it is made up)", () => {
     render(<CmeDashboardRoute set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} nowIso={nowIso} routines={[]} demoMode />);
-    expect(screen.getByText(/Made-up example records/)).toBeTruthy();
     expect(screen.queryByText(/In your account/)).toBeNull();
   });
 
