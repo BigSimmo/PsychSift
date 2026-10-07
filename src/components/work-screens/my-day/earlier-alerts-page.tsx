@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import { IconButton } from "@/components/primitive-recipes/feedback";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -40,6 +40,8 @@ import { MY_DAY_ALL_VIEW_HREF, withMyDayReturn } from "@/lib/my-day/return-link"
 import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   ALERT_CODES,
+  EARLIER_ALERT_AREAS,
+  alertRowLabel,
   alertRowSub,
   alertRowTitle,
   areaChips,
@@ -47,6 +49,7 @@ import {
   groupAlertsByDay,
   isAreaFilter,
   sampleEarlierAlerts,
+  visibleAlerts,
   type AreaFilter,
   type EarlierAlert,
   type EarlierAlertArea,
@@ -61,6 +64,12 @@ import {
 
 const ALERTS_SETTINGS_HREF = "/my-day/alerts";
 const UNDO_MS = 10_000;
+/**
+ * A second tap this soon after a Remove is the same tap landing twice. The
+ * rows close up under the finger, so without this it would remove the next
+ * alert too.
+ */
+const DOUBLE_TAP_MS = 450;
 
 const AREA_ICON: Readonly<Record<EarlierAlertArea, LucideIcon>> = {
   roster: CalendarDays,
@@ -113,28 +122,62 @@ function EarlierAlertsBody({ now }: { now: Date }) {
   const pathname = usePathname() ?? "/my-day/alerts/earlier";
   const searchParams = useSearchParams();
   const requested = searchParams?.get("area");
-  const chips = areaChips(state.alerts);
+  const alerts = visibleAlerts(state.alerts, now.getTime());
+  const chips = areaChips(alerts);
   // A remembered area with nothing left in it falls back to All, never to an empty filter.
   const filter: AreaFilter =
     isAreaFilter(requested) && requested !== "all" && chips.some((chip) => chip.area === requested) ? requested : "all";
-  const shown = filterAlerts(state.alerts, filter);
+  const shown = filterAlerts(alerts, filter);
+  const filterLabel = filter === "all" ? null : EARLIER_ALERT_AREAS[filter].label;
+  const lastRemoveAt = useRef(0);
+  const readyRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const focusAfter = useRef<number | null>(null);
+
+  // After a Remove or Clear the tapped control is gone: move focus to the row that took its place
+  // (or the page, when the list is empty), never leaving a keyboard or screen reader user nowhere.
+  useEffect(() => {
+    const index = focusAfter.current;
+    if (index === null) return;
+    focusAfter.current = null;
+    const links = listRef.current?.querySelectorAll<HTMLElement>('[data-testid="earlier-alert-open"]');
+    const target = links && links.length ? links[Math.min(index, links.length - 1)] : readyRef.current;
+    target?.focus();
+  });
 
   const chooseArea = (area: AreaFilter) => {
     // Kept in the address, so Back from an opened alert returns to the same filter.
     router.replace(area === "all" ? pathname : `${pathname}?area=${area}`, { scroll: false });
   };
 
-  const removeOne = (alert: EarlierAlert) => {
-    const previous = state.remove(alert.id);
-    if (undo) undo(`${alertRowTitle(alert.code)} removed from this list`, () => state.restore(previous), UNDO_MS);
+  const removeOne = (alert: EarlierAlert, tappedAt: number) => {
+    if (tappedAt - lastRemoveAt.current < DOUBLE_TAP_MS) return;
+    lastRemoveAt.current = tappedAt;
+    const index = [...shown].sort((first, second) => second.at - first.at).findIndex((row) => row.id === alert.id);
+    const removed = state.remove(alert.id);
+    if (!removed) return;
+    focusAfter.current = Math.max(0, index);
+    if (undo) undo(`${alertRowTitle(alert.code)} removed from this list`, () => state.restore(removed), UNDO_MS);
   };
-  const clearAll = () => {
-    const previous = state.clear();
-    if (undo) undo("Alert list cleared", () => state.restore(previous), UNDO_MS);
+  const clearShown = () => {
+    // With an area chosen, Clear empties only what is shown, never the rows the filter hides.
+    const removed = state.clear(filter === "all" ? undefined : shown.map((alert) => alert.id));
+    if (!removed) return;
+    focusAfter.current = 0;
+    const count = removed.removed.length;
+    const message =
+      filter === "all" ? "Alert list cleared" : `${count} ${count === 1 ? "alert" : "alerts"} cleared from this list`;
+    if (undo) undo(message, () => state.restore(removed), UNDO_MS);
   };
 
   return (
-    <div className="grid min-w-0 gap-4" data-testid="earlier-alerts-ready">
+    <div
+      ref={readyRef}
+      tabIndex={-1}
+      aria-label="Earlier alerts"
+      className="grid min-w-0 gap-4 focus:outline-none"
+      data-testid="earlier-alerts-ready"
+    >
       {!online ? (
         <ModeNotice testId="earlier-alerts-offline">
           You&apos;re offline. This list is kept on this phone, so it still shows. The page an alert opens may need a
@@ -176,8 +219,20 @@ function EarlierAlertsBody({ now }: { now: Date }) {
             </div>
           ) : null}
 
-          {state.alerts.length === 0 ? (
-            permission === "granted" ? (
+          {alerts.length === 0 ? (
+            permission === "unsupported" ? (
+              <WorkEmpty
+                icon={BellOff}
+                testId="earlier-alerts-empty-unsupported"
+                title="This browser can't get phone alerts"
+                body="Alerts shows how to set this phone up. Then anything that buzzes it is listed here for 7 days."
+                action={
+                  <WorkButton variant="secondary" href={ALERTS_SETTINGS_HREF}>
+                    Set up phone alerts
+                  </WorkButton>
+                }
+              />
+            ) : permission === "granted" ? (
               <WorkEmpty
                 icon={Bell}
                 testId="earlier-alerts-empty"
@@ -210,7 +265,7 @@ function EarlierAlertsBody({ now }: { now: Date }) {
                     <WorkChip
                       selected={filter === "all"}
                       onClick={() => chooseArea("all")}
-                      count={state.alerts.length}
+                      count={alerts.length}
                       testId="earlier-alerts-chip-all"
                     >
                       All
@@ -229,10 +284,15 @@ function EarlierAlertsBody({ now }: { now: Date }) {
                   </WorkChips>
                 </div>
               ) : null}
-              <AlertDays alerts={shown} now={now} onOpen={state.open} onRemove={removeOne} />
+              <p role="status" className="sr-only" data-testid="earlier-alerts-filter-status">
+                {filterLabel ? `Showing ${shown.length} of ${alerts.length} alerts, ${filterLabel} only` : ""}
+              </p>
+              <div ref={listRef} className="min-w-0">
+                <AlertDays alerts={shown} now={now} onOpen={state.open} onRemove={removeOne} />
+              </div>
               <div>
-                <WorkButton variant="quiet" onClick={clearAll} testId="earlier-alerts-clear">
-                  Clear list
+                <WorkButton variant="quiet" onClick={clearShown} testId="earlier-alerts-clear">
+                  {filterLabel ? "Clear these alerts" : "Clear list"}
                 </WorkButton>
               </div>
             </>
@@ -267,7 +327,7 @@ function EarlierAlertsBody({ now }: { now: Date }) {
 
 function FootNote({ unsupported }: { unsupported: boolean }) {
   return (
-    <div className="flex min-w-0 items-start gap-2 px-1 text-sm text-[color:var(--text-muted)]">
+    <div className="flex min-w-0 items-start gap-2 px-1 text-sm text-[color:var(--work-ink-muted,var(--text-muted))]">
       <Lock aria-hidden="true" strokeWidth={1.5} className="mt-0.5 size-icon-sm shrink-0" />
       <p className="m-0 min-w-0 break-words" data-testid="earlier-alerts-foot">
         Each row shows only what the lock screen said. Open one for the details. Kept on this phone for 7 days, for your
@@ -289,7 +349,7 @@ function AlertDays({
   readonly alerts: readonly EarlierAlert[];
   readonly now: Date;
   readonly onOpen?: (alert: EarlierAlert) => void;
-  readonly onRemove?: (alert: EarlierAlert) => void;
+  readonly onRemove?: (alert: EarlierAlert, tappedAt: number) => void;
 }) {
   const days = groupAlertsByDay(alerts, now.getTime());
   return (
@@ -301,7 +361,7 @@ function AlertDays({
           </WorkSectionLabel>
           <WorkCard as="ul" testId={`earlier-alerts-day-${day.date}`}>
             {day.alerts.map((alert) => (
-              <AlertRow key={alert.id} alert={alert} onOpen={onOpen} onRemove={onRemove} />
+              <AlertRow key={alert.id} alert={alert} dayLabel={day.label} onOpen={onOpen} onRemove={onRemove} />
             ))}
           </WorkCard>
         </section>
@@ -312,12 +372,14 @@ function AlertDays({
 
 function AlertRow({
   alert,
+  dayLabel,
   onOpen,
   onRemove,
 }: {
   readonly alert: EarlierAlert;
+  readonly dayLabel: string;
   readonly onOpen?: (alert: EarlierAlert) => void;
-  readonly onRemove?: (alert: EarlierAlert) => void;
+  readonly onRemove?: (alert: EarlierAlert, tappedAt: number) => void;
 }) {
   const info = ALERT_CODES[alert.code];
   const title = alertRowTitle(alert.code);
@@ -327,6 +389,7 @@ function AlertRow({
       <Link
         href={withMyDayReturn(info.path)}
         onClick={() => onOpen?.(alert)}
+        aria-label={alertRowLabel(alert, dayLabel)}
         className="work-row min-w-0 flex-1"
         data-testid="earlier-alert-open"
       >
@@ -343,8 +406,8 @@ function AlertRow({
         <IconButton
           icon={X}
           label={`Remove ${title} from this list`}
-          onClick={() => onRemove(alert)}
-          className="mr-1 text-[color:var(--text-muted)]"
+          onClick={(event) => onRemove(alert, event.timeStamp)}
+          className="mr-1 text-[color:var(--work-ink-muted,var(--text-muted))]"
           data-testid="earlier-alert-remove"
         />
       ) : null}

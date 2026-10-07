@@ -5,20 +5,27 @@ import { describe, expect, it } from "vitest";
 
 import {
   ALERT_CODES,
+  ALERT_MATCH_MS,
   EMPTY_SNAPSHOT,
   addArrival,
+  alertRowLabel,
   alertRowSub,
   alertRowTitle,
   areaChips,
+  baselineTray,
   clearAlerts,
   filterAlerts,
   groupAlertsByDay,
+  isSameAlertTime,
   markAlertOpened,
   mergeTray,
   parseEarlierAlerts,
   removeAlert,
+  restoreAlerts,
   sampleEarlierAlerts,
   serializeEarlierAlerts,
+  storedEarlierAlertsOwner,
+  visibleAlerts,
   type AlertCode,
   type EarlierAlert,
 } from "@/lib/work-screens/my-day/earlier-alerts";
@@ -182,5 +189,131 @@ describe("Earlier alerts view", () => {
     const sample = sampleEarlierAlerts(NOW);
     expect(sample.length).toBeGreaterThan(0);
     expect(sample.every((row) => row.at <= NOW)).toBe(true);
+  });
+});
+
+describe("Earlier alerts heard by an open page and on the lock screen", () => {
+  it("lists an alert once when the page heard it arrive and the lock screen shows it a few ms earlier", () => {
+    const heard = addArrival(EMPTY_SNAPSHOT, "request", NOW);
+    const read = mergeTray(heard, [{ code: "request", at: NOW - 4 }], NOW + 30_000);
+    expect(read.alerts).toHaveLength(1);
+    // And again on every later read.
+    expect(mergeTray(read, [{ code: "request", at: NOW - 4 }], NOW + 90_000).alerts).toHaveLength(1);
+  });
+
+  it("still lists a second real alert of the same kind, one lock-screen copy per alert heard", () => {
+    const heard = addArrival(EMPTY_SNAPSHOT, "request", NOW);
+    const read = mergeTray(
+      heard,
+      [
+        { code: "request", at: NOW - 4 },
+        { code: "request", at: NOW + 20_000 },
+        { code: "request", at: NOW - 3 * HOUR },
+      ],
+      NOW + 30_000,
+    );
+    expect(read.alerts).toHaveLength(3);
+  });
+
+  it("does not bring back a heard alert the reader removed when the lock screen still shows it", () => {
+    const heard = addArrival(EMPTY_SNAPSHOT, "offer", NOW);
+    const removed = removeAlert(heard, `offer:${NOW}`);
+    expect(mergeTray(removed, [{ code: "offer", at: NOW - 7 }], NOW + 5000).alerts).toEqual([]);
+  });
+
+  it("takes one alert heard by two open tabs as one, and counts it as on a time-less lock screen", () => {
+    const first = addArrival(EMPTY_SNAPSHOT, "brief", NOW);
+    const second = addArrival(first, "brief", NOW + 3);
+    expect(second.alerts).toHaveLength(1);
+    expect(second.trayApprox.brief).toBe(1);
+    // A phone that gives lock-screen alerts no time: the one now showing is the one already listed.
+    expect(mergeTray(second, [{ code: "brief", at: null }], NOW + 60_000).alerts).toHaveLength(1);
+    // A different kind at the same moment is a different alert.
+    expect(addArrival(second, "test", NOW + 3).alerts).toHaveLength(2);
+  });
+
+  it("matches a lock-screen copy to its row by time, within the match window only", () => {
+    const row = alert("changed", NOW);
+    expect(isSameAlertTime(row, NOW)).toBe(true);
+    expect(isSameAlertTime(row, NOW - 5)).toBe(true);
+    expect(isSameAlertTime(row, NOW + ALERT_MATCH_MS + 1)).toBe(false);
+    expect(isSameAlertTime(row, undefined)).toBe(false);
+    expect(isSameAlertTime(alert("changed", NOW, { approx: true }), undefined)).toBe(true);
+  });
+});
+
+describe("Earlier alerts after another account used this device", () => {
+  it("names whose list is kept, without reading it", () => {
+    expect(storedEarlierAlertsOwner(serializeEarlierAlerts(EMPTY_SNAPSHOT, "owner-b"))).toBe("owner-b");
+    expect(storedEarlierAlertsOwner(null)).toBeNull();
+    expect(storedEarlierAlertsOwner("{not json")).toBeNull();
+  });
+
+  it("counts what is on the lock screen as already seen, so only later alerts are listed", () => {
+    const tray = [
+      { code: "manage" as const, at: NOW - HOUR },
+      { code: "brief" as const, at: null },
+    ];
+    const base = baselineTray(EMPTY_SNAPSHOT, tray);
+    expect(base.alerts).toEqual([]);
+    expect(mergeTray(base, tray, NOW).alerts).toEqual([]);
+    const later = mergeTray(base, [...tray, { code: "changed", at: NOW - 60 }], NOW);
+    expect(later.alerts.map((row) => row.code)).toEqual(["changed"]);
+  });
+});
+
+describe("Earlier alerts Clear and Undo", () => {
+  const read = mergeTray(
+    EMPTY_SNAPSHOT,
+    [
+      { code: "request", at: NOW - HOUR },
+      { code: "changed", at: NOW - 2 * HOUR },
+      { code: "brief", at: NOW - 3 * HOUR },
+    ],
+    NOW,
+  );
+
+  it("clears only the rows asked for", () => {
+    const cleared = clearAlerts(read, [`request:${NOW - HOUR}`, `changed:${NOW - 2 * HOUR}`]);
+    expect(cleared.alerts.map((row) => row.code)).toEqual(["brief"]);
+    expect(cleared.hidden).toEqual([`request:${NOW - HOUR}`, `changed:${NOW - 2 * HOUR}`]);
+  });
+
+  it("puts removed rows back into the list as it is now, keeping newer alerts and other removals", () => {
+    const request = read.alerts.find((row) => row.code === "request")!;
+    const changed = read.alerts.find((row) => row.code === "changed")!;
+    const afterFirst = removeAlert(read, request.id);
+    const afterSecond = addArrival(removeAlert(afterFirst, changed.id), "test", NOW + 1000);
+    // Undo of the first removal only.
+    const undone = restoreAlerts(afterSecond, [request], NOW + 2000);
+    expect(undone.alerts.map((row) => row.code)).toEqual(["test", "request", "brief"]);
+    expect(undone.hidden).toEqual([changed.id]);
+    // Pressing it twice changes nothing more.
+    expect(restoreAlerts(undone, [request], NOW + 3000).alerts).toHaveLength(3);
+  });
+});
+
+describe("Earlier alerts at the edges of the day and the week", () => {
+  it("drops from view what passed 7 days while the page was open", () => {
+    const rows = [alert("brief", NOW - 7 * 24 * HOUR - 1), alert("changed", NOW - 6 * 24 * HOUR)];
+    expect(visibleAlerts(rows, NOW).map((row) => row.code)).toEqual(["changed"]);
+  });
+
+  it("never heads an alert that arrived just after Perth midnight above Today", () => {
+    const beforeMidnight = Date.parse("2026-10-07T23:59:30+08:00");
+    const justAfter = Date.parse("2026-10-08T00:00:10+08:00");
+    const days = groupAlertsByDay(
+      [alert("brief", justAfter), alert("changed", Date.parse("2026-10-07T18:00:00+08:00"))],
+      beforeMidnight,
+    );
+    expect(days.map((day) => day.label)).toEqual(["Today", "Yesterday"]);
+  });
+
+  it("says the day and the state in the row's spoken label", () => {
+    const row = alert("request", Date.parse("2026-10-06T18:12:00+08:00"));
+    expect(alertRowLabel(row, "Yesterday")).toBe(
+      "Something in Roster is waiting for you. Roster · 18:12, Yesterday. New. Opens Roster swaps.",
+    );
+    expect(alertRowLabel({ ...row, openedAt: NOW }, "Yesterday")).toContain(". Opened. ");
   });
 });

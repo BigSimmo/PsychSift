@@ -23,6 +23,14 @@ export const EARLIER_ALERTS_STORAGE_KEY = "psychsift:my-day:earlier-alerts-v1";
 export const EARLIER_ALERTS_DAYS = 7;
 export const EARLIER_ALERTS_LIMIT = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * How far apart the page's clock and the lock screen's clock can be for one
+ * alert. The worker tells open pages about an alert and shows it on the lock
+ * screen at almost the same moment, so the page's own time and the lock
+ * screen's time for it differ by a few milliseconds. Within this window, one
+ * of each is the same alert, not two.
+ */
+export const ALERT_MATCH_MS = 60_000;
 
 export type EarlierAlertArea = "roster" | "brief" | "reminder" | "test";
 
@@ -200,6 +208,21 @@ export function parseEarlierAlerts(raw: string | null, owner: string, now: numbe
   }
 }
 
+/**
+ * Whose list is kept on this device, without reading the list itself. A list
+ * kept for someone else means another account used this device since this
+ * person last looked, so what is on the lock screen now was theirs.
+ */
+export function storedEarlierAlertsOwner(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<Stored> | null;
+    return value && typeof value.owner === "string" ? value.owner : null;
+  } catch {
+    return null;
+  }
+}
+
 export function serializeEarlierAlerts(snapshot: EarlierAlertsSnapshot, owner: string): string {
   const stored: Stored = {
     v: 1,
@@ -224,9 +247,28 @@ export function mergeTray(
 ): EarlierAlertsSnapshot {
   const added: EarlierAlert[] = [];
   const approxCounts: Partial<Record<AlertCode, number>> = {};
+  const known = new Set([...snapshot.alerts.map((alert) => alert.id), ...snapshot.hidden]);
+  // An alert the page heard arrive is kept at the page's time, a few ms after the
+  // lock screen's. Each one stands for at most one lock-screen copy, so it is
+  // never listed twice and two real alerts are never folded into one.
+  const arrivals = [...snapshot.alerts.filter((alert) => !alert.approx).map(({ id }) => id), ...snapshot.hidden]
+    .map(timedId)
+    .filter((entry): entry is TimedId => entry !== null);
+  const trayIds = new Set(tray.flatMap((seen) => (isFiniteTime(seen.at) ? [`${seen.code}:${seen.at}`] : [])));
+  const used = new Set<string>(trayIds);
   for (const seen of tray) {
     if (seen.at !== null && isFiniteTime(seen.at)) {
-      added.push({ id: `${seen.code}:${seen.at}`, code: seen.code, at: seen.at, approx: false, openedAt: null });
+      const id = `${seen.code}:${seen.at}`;
+      if (known.has(id)) continue;
+      const twin = arrivals.find(
+        (entry) =>
+          entry.code === seen.code && !used.has(entry.id) && Math.abs(entry.at - (seen.at as number)) <= ALERT_MATCH_MS,
+      );
+      if (twin) {
+        used.add(twin.id);
+        continue;
+      }
+      added.push({ id, code: seen.code, at: seen.at, approx: false, openedAt: null });
     } else {
       approxCounts[seen.code] = (approxCounts[seen.code] ?? 0) + 1;
     }
@@ -237,7 +279,6 @@ export function mergeTray(
       added.push({ id: `${code}:seen:${now}:${index}`, code, at: now, approx: true, openedAt: null });
     }
   }
-  const known = new Set([...snapshot.alerts.map((alert) => alert.id), ...snapshot.hidden]);
   return {
     ...snapshot,
     alerts: pruneAlerts([...snapshot.alerts, ...added.filter((alert) => !known.has(alert.id))], now),
@@ -245,13 +286,53 @@ export function mergeTray(
   };
 }
 
-/** Adds one alert the worker told an open page about, at the moment it arrived. */
+/**
+ * A first read of the lock screen after another account used this device:
+ * whatever is on it now arrived for that account, so it is counted as already
+ * seen and kept out of this person's list. Only what arrives from now on is listed.
+ */
+export function baselineTray(snapshot: EarlierAlertsSnapshot, tray: readonly SeenAlert[]): EarlierAlertsSnapshot {
+  const approxCounts: Partial<Record<AlertCode, number>> = {};
+  const ids: string[] = [];
+  for (const seen of tray) {
+    if (seen.at !== null && isFiniteTime(seen.at)) ids.push(`${seen.code}:${seen.at}`);
+    else approxCounts[seen.code] = (approxCounts[seen.code] ?? 0) + 1;
+  }
+  return { ...snapshot, hidden: hide(snapshot.hidden, ids), trayApprox: approxCounts };
+}
+
+type TimedId = { readonly id: string; readonly code: AlertCode; readonly at: number };
+
+/** `<code>:<epoch ms>` back into its parts; time-less (`seen`) ids give null. */
+function timedId(id: string): TimedId | null {
+  const match = /^([a-z]+):(\d+)$/.exec(id);
+  if (!match || !isAlertCode(match[1])) return null;
+  const at = Number(match[2]);
+  return isFiniteTime(at) ? { id, code: match[1], at } : null;
+}
+
+/** True when a lock-screen notification's time is this alert's (exactly, or as heard by an open page). */
+export function isSameAlertTime(alert: EarlierAlert, notificationTime: number | undefined): boolean {
+  if (alert.approx) return true;
+  return typeof notificationTime === "number" && Math.abs(notificationTime - alert.at) <= ALERT_MATCH_MS;
+}
+
+/**
+ * Adds one alert the worker told an open page about, at the moment it arrived.
+ * Two open tabs both hear it, so the same kind within a minute is one alert.
+ * It is also counted as on the lock screen, so a phone that gives lock-screen
+ * alerts no time does not list it a second time at the next read.
+ */
 export function addArrival(snapshot: EarlierAlertsSnapshot, code: AlertCode, now: number): EarlierAlertsSnapshot {
   const id = `${code}:${now}`;
-  if (snapshot.alerts.some((alert) => alert.id === id) || snapshot.hidden.includes(id)) return snapshot;
+  const heard = [...snapshot.alerts.filter((alert) => !alert.approx).map((alert) => alert.id), ...snapshot.hidden]
+    .map(timedId)
+    .some((entry) => entry !== null && entry.code === code && Math.abs(entry.at - now) <= ALERT_MATCH_MS);
+  if (heard) return snapshot;
   return {
     ...snapshot,
     alerts: pruneAlerts([{ id, code, at: now, approx: false, openedAt: null }, ...snapshot.alerts], now),
+    trayApprox: { ...snapshot.trayApprox, [code]: (snapshot.trayApprox[code] ?? 0) + 1 },
   };
 }
 
@@ -276,15 +357,38 @@ export function removeAlert(snapshot: EarlierAlertsSnapshot, id: string): Earlie
   };
 }
 
-/** Empties the list. Alerts still on the lock screen stay out of it until they leave the lock screen. */
-export function clearAlerts(snapshot: EarlierAlertsSnapshot): EarlierAlertsSnapshot {
+/**
+ * Empties the list, or only the given rows (the ones an area filter shows).
+ * Alerts still on the lock screen stay out of it until they leave the lock screen.
+ */
+export function clearAlerts(snapshot: EarlierAlertsSnapshot, ids?: readonly string[]): EarlierAlertsSnapshot {
+  const gone = new Set(ids ?? snapshot.alerts.map((alert) => alert.id));
   return {
     ...snapshot,
-    alerts: [],
+    alerts: snapshot.alerts.filter((alert) => !gone.has(alert.id)),
     hidden: hide(
       snapshot.hidden,
-      snapshot.alerts.map((alert) => alert.id),
+      snapshot.alerts.filter((alert) => gone.has(alert.id)).map((alert) => alert.id),
     ),
+  };
+}
+
+/**
+ * Undo: puts removed rows back into the list as it is NOW. Anything that
+ * arrived, was opened or was removed since stays as it is, so one Undo never
+ * undoes a different removal and never drops a newer alert.
+ */
+export function restoreAlerts(
+  snapshot: EarlierAlertsSnapshot,
+  removed: readonly EarlierAlert[],
+  now: number,
+): EarlierAlertsSnapshot {
+  const back = new Set(removed.map((alert) => alert.id));
+  const present = new Set(snapshot.alerts.map((alert) => alert.id));
+  return {
+    ...snapshot,
+    alerts: pruneAlerts([...snapshot.alerts, ...removed.filter((alert) => !present.has(alert.id))], now),
+    hidden: snapshot.hidden.filter((id) => !back.has(id)),
   };
 }
 
@@ -310,9 +414,25 @@ export function areaChips(alerts: readonly EarlierAlert[]): { area: EarlierAlert
 
 export type EarlierAlertDay = { readonly date: string; readonly label: string; readonly alerts: EarlierAlert[] };
 
-/** Newest day first, each day's alerts newest first. Days are Perth days. */
+/**
+ * The rows still inside the 7 days at this minute. The kept list is trimmed
+ * whenever it is written, and this trims what is on screen for a page left
+ * open for hours.
+ */
+export function visibleAlerts(alerts: readonly EarlierAlert[], now: number): EarlierAlert[] {
+  const oldest = now - EARLIER_ALERTS_DAYS * DAY_MS;
+  return alerts.filter((alert) => alert.at >= oldest);
+}
+
+/**
+ * Newest day first, each day's alerts newest first. Days are Perth days. The
+ * page's clock moves once a minute, so an alert that arrived just after Perth
+ * midnight can be newer than `now`: "today" is then the newest alert's day,
+ * never a dated heading above Today.
+ */
 export function groupAlertsByDay(alerts: readonly EarlierAlert[], now: number): EarlierAlertDay[] {
-  const today = perthDateOf(now);
+  const newest = alerts.reduce((latest, alert) => Math.max(latest, alert.at), now);
+  const today = perthDateOf(newest);
   const yesterday = addDaysToDate(today, -1);
   const days: EarlierAlertDay[] = [];
   for (const alert of [...alerts].sort((first, second) => second.at - first.at)) {
@@ -337,7 +457,7 @@ export function alertRowSub(alert: EarlierAlert): string {
 
 /** Spoken label for the whole row, so a screen reader hears the day too. */
 export function alertRowLabel(alert: EarlierAlert, dayLabel: string): string {
-  return `${alertRowTitle(alert.code)}. ${alertRowSub(alert)}, ${dayLabel}. ${alert.openedAt ? "Opened" : "Not opened yet"}. Opens ${pageName(ALERT_CODES[alert.code].path)}.`;
+  return `${alertRowTitle(alert.code)}. ${alertRowSub(alert)}, ${dayLabel}. ${alert.openedAt ? "Opened" : "New"}. Opens ${pageName(ALERT_CODES[alert.code].path)}.`;
 }
 
 function pageName(path: string): string {
