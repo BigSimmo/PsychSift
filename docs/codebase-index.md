@@ -481,6 +481,11 @@ targets, next leave, presenting), worked out in the browser with no AI. The scre
 (`src/components/work-search/`) is a lazy chunk; its loaders call each area's existing routes when
 it opens and keep the records in tab memory only. It never reads the patient-label store.
 
+**Favourites.** `src/lib/favourites/` backs the one Favourites store: `favourites-local.ts` keeps the
+parts a person shapes on the device (saved phone numbers, own names and notes, page layout) under one
+account-scoped key, `work-page-stars.ts` the page hearts, and `favourites-search.ts` turns saved numbers
+into Search my work records. Pages use `FavouritesShelf` and `WorkPageFavouriteButton`.
+
 **Work screens added by the wiring pass.** `src/lib/work-screens/` holds the pure models and sample
 records for the screens the work-mode wiring pass added: `admin/` (Requests, Sharing, Documents, Pay,
 Tax, Workforce), `assessments/` (Export, a supervisor's view of a trainee), `cpd/` (Evidence, Export)

@@ -443,6 +443,8 @@
   --clinical-accent-strong: var(--primary-700);
   --clinical-accent-soft: var(--primary-soft);
   --clinical-accent-border: #c6dcf2;
+  /* The mode picker paints rows with the clinical accent border (mode-picker-row.tsx). */
+  --product-accent-border: var(--clinical-accent-border);
   --clinical-accent-contrast: #ffffff;
 
   /* Brand-mark ink. The logo is identity, not UI state, so it carries its own

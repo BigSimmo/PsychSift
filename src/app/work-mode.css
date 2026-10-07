@@ -386,15 +386,39 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
   }
 }
 
-/* A swipe between tabs eases the new page in sideways. */
+/* A swipe between tabs eases the new page in sideways. Page content only: the
+   top bar <header> also carries data-work-frame, and the pill and round
+   buttons sliding with the page read as the whole app lurching. */
 @media (prefers-reduced-motion: no-preference) {
-  html[data-work-swipe="next"] [data-work-frame] > *,
-  html[data-work-swipe="previous"] [data-work-frame] > * {
+  html[data-work-swipe="next"] [data-work-frame]:not(header) > *,
+  html[data-work-swipe="previous"] [data-work-frame]:not(header) > * {
     animation: work-swipe-in var(--duration-moderate) var(--ease-out, ease-out) both;
   }
 
-  html[data-work-swipe="previous"] [data-work-frame] > * {
+  html[data-work-swipe="previous"] [data-work-frame]:not(header) > * {
     --work-swipe-from: -1.5rem;
+  }
+
+  /* While a finger drags sideways, the current tab's underline leans toward
+     where the swipe is going (use-tab-swipe.ts), then settles back. */
+  .work-band__tab[aria-current="page"]::after {
+    transition: transform var(--duration-fast, 160ms) var(--ease-out, ease-out);
+  }
+
+  .work-band__tabs[data-swiping] .work-band__tab[aria-current="page"]::after {
+    transform: translateX(var(--work-swipe-lean, 0px));
+    transition: none;
+  }
+}
+
+/* The tab a swipe will land on, once letting go would land there. */
+.work-band__tab[data-swipe-target] {
+  color: var(--work-ink);
+}
+
+@media (forced-colors: active) {
+  .work-band__tab[data-swipe-target] {
+    text-decoration: underline;
   }
 }
 

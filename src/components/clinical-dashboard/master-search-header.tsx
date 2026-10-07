@@ -80,6 +80,18 @@ import { Sheet } from "@/components/ui/sheet";
 import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
 import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
 import { workAreaFor, workFrameForRoute } from "@/lib/work-frame/areas";
+import { modePickerHint } from "@/lib/mode-picker-hints";
+import {
+  modePickerCardClass,
+  modePickerCardRowClass,
+  ModePickerCurrentMode,
+  modePickerGlassClass,
+  ModePickerKeyHints,
+  ModePickerRowContent,
+  modePickerRowClass,
+  ModePickerSheetBand,
+  ModePickerSideToggle,
+} from "@/components/mode-picker/mode-picker-row";
 import {
   appModeDefinition,
   appModeDefinitions,
@@ -125,7 +137,13 @@ import {
   useRosterHasEnabledTeam,
   useTeachingRoles,
 } from "@/lib/teaching/page-visibility";
-import { orderByPhoneModeGroups, phoneModeGroups } from "@/lib/phone-mode-groups";
+import {
+  modeSideOf,
+  modesOnSide,
+  orderByPhoneModeGroups,
+  phoneModeGroups,
+  type ModeSide,
+} from "@/lib/phone-mode-groups";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import type { CommandSurfacePlacement } from "@/lib/search-command-surface";
 import { useCommandDropdownDisplayableByPlacement } from "@/components/clinical-dashboard/use-command-dropdown-displayable";
@@ -335,7 +353,7 @@ export function MasterSearchHeader({
   // The mode menu draws modes under their group headings, so its keyboard
   // order (the index each row is registered at, and what Arrow Up/Down, Home
   // and End walk) must be that same drawn order, not registry order.
-  const modeMenuOptions = orderByPhoneModeGroups(visibleAppModeOptions);
+  const allModeMenuOptions = orderByPhoneModeGroups(visibleAppModeOptions);
   const trimmedQuery = query.trim();
   const hasPhiWarning = Boolean(query && identifierShapeWarning(query));
   const composerPhiWarningId = "composer-phi-warning";
@@ -381,6 +399,13 @@ export function MasterSearchHeader({
   const commandDropdownDisplayableByPlacement = useCommandDropdownDisplayableByPlacement();
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const [modeMenuQuery, setModeMenuQuery] = useState("");
+  // The Clinical and Work toggle at the top of the mode list. It opens on the
+  // side of the mode being viewed; a choice made while the menu is open lasts
+  // only until it closes. Every open path clears it, so the indices computed
+  // at open time (from the closed menu's list) match the list that renders.
+  const [modeSideChoice, setModeSideChoice] = useState<ModeSide | null>(null);
+  const modeSide: ModeSide = modeMenuOpen && modeSideChoice ? modeSideChoice : modeSideOf(searchMode);
+  const modeMenuOptions = modesOnSide(allModeMenuOptions, modeSide);
   // Which menuitemradio should receive initial focus when the mode menu opens
   // (keyboard ArrowOpen or the active mode on tap). Shared by the desktop
   // popover and the phone bottom sheet.
@@ -391,8 +416,9 @@ export function MasterSearchHeader({
   // paths also refresh from the live query so the first tap still picks Sheet.
   const [usesPhoneSearchLayout, setUsesPhoneSearchLayout] = useState(false);
   const normalizedModeMenuQuery = modeMenuQuery.trim().toLowerCase();
+  // Typing searches both sides, so a mode is never hidden behind the toggle.
   const desktopModeMenuOptions = normalizedModeMenuQuery
-    ? modeMenuOptions.filter((mode) => mode.label.toLowerCase().includes(normalizedModeMenuQuery))
+    ? allModeMenuOptions.filter((mode) => mode.label.toLowerCase().includes(normalizedModeMenuQuery))
     : modeMenuOptions;
   const activeModeMenuOptions = usesPhoneSearchLayout ? modeMenuOptions : desktopModeMenuOptions;
   const [desktopComposerPortalActive, setDesktopComposerPortalActive] = useState(false);
@@ -1147,6 +1173,7 @@ export function MasterSearchHeader({
     if (highlighted) prefetchModeSelection(highlighted.id);
     const phoneLayout = currentUsesPhoneSearchLayout();
     setModeMenuQuery("");
+    setModeSideChoice(null);
     setUsesPhoneSearchLayout(phoneLayout);
     setModeMenuFocusIndex(nextIndex);
     // Keyboard entry (Arrow Down / Up on the pill) is a request to move through
@@ -1203,6 +1230,7 @@ export function MasterSearchHeader({
     if (highlighted) prefetchModeSelection(highlighted.id);
     const phoneLayout = currentUsesPhoneSearchLayout();
     setModeMenuQuery("");
+    setModeSideChoice(null);
     setUsesPhoneSearchLayout(phoneLayout);
     setModeMenuFocusIndex(selectedModeIndex);
     setModeSheetView(modeOwnPagesAvailable ? "sections" : "modes");
@@ -1300,81 +1328,36 @@ export function MasterSearchHeader({
    * true after the next tweak to one of them.
    */
   function modeMenuRowClass(active: boolean) {
-    return cn(
-      "relative grid w-full items-center text-left transition-[background-color,color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
-      usesPhoneSearchLayout
-        ? "min-h-14 grid-cols-[2.5rem_minmax(0,1fr)_1.5rem] gap-2.5 rounded-xl px-2 py-2"
-        : "min-h-12 grid-cols-[2rem_minmax(0,1fr)_auto] gap-2 rounded-md px-2.5 py-1.5",
-      active
-        ? usesPhoneSearchLayout
-          ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)] shadow-[var(--shadow-inset)] ring-1 ring-inset ring-[color:var(--clinical-accent-border)]"
-          : "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)]"
-        : "text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
-    );
+    return modePickerRowClass(active, usesPhoneSearchLayout);
   }
 
   function renderModeMenuRowContent({
-    icon: Icon,
+    icon,
     label,
     description,
     active,
     modeIconId,
+    neutral,
   }: {
     icon: LucideIcon;
     label: string;
+    /** The one-line phone hint (`modePickerHint`), not the registry description. */
     description?: string;
     active: boolean;
     /** Only the mode list stamps this; the section list has no per-mode hook to offer. */
     modeIconId?: string;
+    neutral?: boolean;
   }) {
     return (
-      <>
-        {active && !usesPhoneSearchLayout ? (
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-1 left-0 w-0.5 rounded-r-full bg-[color:var(--clinical-accent)]"
-          />
-        ) : null}
-        <span
-          data-mode-icon={modeIconId}
-          className={cn(
-            "grid place-items-center border transition-colors duration-[var(--duration-fast)] motion-reduce:transition-none",
-            usesPhoneSearchLayout ? "h-10 w-10 rounded-xl" : "h-8 w-8 rounded-lg",
-            active
-              ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)]"
-              : "border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]",
-          )}
-        >
-          <Icon
-            aria-hidden="true"
-            className={usesPhoneSearchLayout ? "size-icon-lg" : "size-icon-md"}
-            strokeWidth={usesPhoneSearchLayout ? 1.8 : 2}
-          />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
-            {label}
-          </span>
-          {usesPhoneSearchLayout && description ? (
-            <span className="mt-0.5 line-clamp-2 text-xs font-medium leading-4 text-[color:var(--text-muted)]">
-              {description}
-            </span>
-          ) : null}
-        </span>
-        {active && usesPhoneSearchLayout ? (
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--surface)] shadow-[var(--e2)]">
-            <Check aria-hidden="true" className="size-icon-sm" strokeWidth={2.5} />
-          </span>
-        ) : active ? (
-          <Check
-            aria-hidden="true"
-            className="size-icon-md shrink-0 text-[color:var(--clinical-accent)]"
-            strokeWidth={2.5}
-          />
-        ) : (
-          <span aria-hidden="true" className={usesPhoneSearchLayout ? "h-6 w-6" : "size-icon-md"} />
-        )}
-      </>
+      <ModePickerRowContent
+        neutral={neutral}
+        icon={icon}
+        label={label}
+        hint={description}
+        active={active}
+        phone={usesPhoneSearchLayout}
+        modeIconId={modeIconId}
+      />
     );
   }
 
@@ -1396,12 +1379,14 @@ export function MasterSearchHeader({
         onPointerEnter={() => prefetchModeSelection(mode.id)}
         onKeyDown={(event) => handleModeOptionKeyDown(event, index)}
         onClick={() => selectAppMode(mode)}
-        className={modeMenuRowClass(active)}
+        className={cn(modeMenuRowClass(active), usesPhoneSearchLayout && modePickerCardRowClass)}
+        // Each row wears its own area's colour (tile, tick, selected tint).
+        data-mode-identity={mode.id}
       >
         {renderModeMenuRowContent({
           icon: appModeIcons[mode.id],
           label: mode.label,
-          description: mode.description,
+          description: modePickerHint(mode.id),
           active,
           modeIconId: usesPhoneSearchLayout ? mode.id : undefined,
         })}
@@ -1500,13 +1485,31 @@ export function MasterSearchHeader({
             {renderModeMenuRowContent({
               icon: LayoutGrid,
               label: "All modes",
-              description: "Answer, Documents, Services and the rest of PsychSift.",
+              description: "Switch to another mode",
               active: false,
+              neutral: true,
             })}
           </button>
         </div>
       </div>
     );
+  }
+
+  function chooseModeSide(side: ModeSide) {
+    setModeSideChoice(side);
+    setModeMenuQuery("");
+    // Roving focus lands on the current mode when it is on this side, else on the first row.
+    const sideOptions = modesOnSide(allModeMenuOptions, side);
+    setModeMenuFocusIndex(
+      Math.max(
+        0,
+        sideOptions.findIndex((mode) => mode.id === searchMode),
+      ),
+    );
+  }
+
+  function renderModeSideToggle() {
+    return <ModePickerSideToggle side={modeSide} onChange={chooseModeSide} phone={usesPhoneSearchLayout} />;
   }
 
   function renderModeMenuOptions() {
@@ -2803,6 +2806,7 @@ export function MasterSearchHeader({
               className={cn(glassOverlaySurface, modeMenuPopoverShell)}
             >
               <div className="border-b border-[color:var(--border)] p-3 pb-2.5">
+                <div className="mb-2.5">{renderModeSideToggle()}</div>
                 <div className="search-shell grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] px-3 shadow-[var(--shadow-inset)] transition-[border-color,box-shadow]">
                   <Search aria-hidden="true" className="size-icon-md text-[color:var(--text-muted)]" strokeWidth={2} />
                   <input
@@ -2844,7 +2848,7 @@ export function MasterSearchHeader({
                 >
                   {normalizedModeMenuQuery
                     ? `${desktopModeMenuOptions.length} ${desktopModeMenuOptions.length === 1 ? "match" : "matches"}`
-                    : `${desktopModeMenuOptions.length} modes`}
+                    : `${desktopModeMenuOptions.length} ${modeSide} modes`}
                 </p>
               </div>
 
@@ -2866,9 +2870,7 @@ export function MasterSearchHeader({
                 aria-hidden="true"
                 className="flex items-center justify-center gap-3 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)]/70 px-3 py-2 text-2xs font-medium text-[color:var(--text-muted)]"
               >
-                <span>↑↓ Navigate</span>
-                <span>Enter Select</span>
-                <span>Esc Close</span>
+                <ModePickerKeyHints />
               </div>
             </div>
           ) : null}
@@ -2952,16 +2954,26 @@ export function MasterSearchHeader({
               </button>
             ) : undefined
           }
+          // "Currently <mode>" is for the mode list. One level in, the title
+          // already names the mode ("My Day pages"), so saying it twice is noise.
           descriptionContent={
-            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs leading-5 text-[color:var(--text-muted)]">
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                <SelectedAppModeIcon aria-hidden="true" className="size-icon-xs" strokeWidth={1.9} />
-              </span>
-              <span className="min-w-0 truncate">
-                Currently{" "}
-                <span className="font-semibold text-[color:var(--text-heading)]">{selectedAppMode.label}</span>
-              </span>
-            </span>
+            modeSheetView === "sections" ? undefined : (
+              <ModePickerCurrentMode
+                modeId={selectedAppMode.id}
+                label={selectedAppMode.label}
+                icon={SelectedAppModeIcon}
+              />
+            )
+          }
+          // Direction B (Josh, 7 Oct 2026): the header is a band in the current
+          // mode's colour. Out of flow, so it adds no width beside the title.
+          titleAccessory={<ModePickerSheetBand modeId={selectedAppMode.id} icon={SelectedAppModeIcon} />}
+          // The Sheet's header-bottom slot bleeds 1rem left but, being a full-basis
+          // flex item, stays only as wide as the header's content. So the toggle
+          // steps back in on the left and keeps that full width, which lines it up
+          // with the title and the close button. The phone smoke test pins it.
+          headerBottom={
+            modeSheetView === "sections" ? undefined : <div className="ml-4 w-full">{renderModeSideToggle()}</div>
           }
           closeLabel="Close mode menu"
           returnFocusRef={modeButtonRef}
@@ -2970,18 +2982,36 @@ export function MasterSearchHeader({
           mobileSize="content"
           mobileHeaderSafeArea="padding"
           testId="app-mode-menu-sheet"
-          contentClassName="max-h-[calc(100dvh-0.75rem)] rounded-t-3xl bg-[color:var(--surface-lux)] sm:max-w-md sm:rounded-2xl"
-          bodyClassName="bg-[color:var(--surface-lux)] px-2.5 pb-2 pt-0.5"
-          headerClassName="bg-[color:var(--surface-lux)] px-4 pb-3 pt-1.5"
-          titleClassName={
-            modeSheetView === "sections" ? modePagesSheetTitleClass : "tracking-[var(--tracking-display)]"
+          contentClassName={cn(
+            "max-h-[calc(100dvh-0.75rem)] rounded-t-[2rem] sm:max-w-md sm:rounded-2xl",
+            modeSheetView === "sections" ? "bg-[color:var(--surface-lux)]" : "bg-[color:var(--surface-wash)]",
+          )}
+          bodyClassName={
+            modeSheetView === "sections"
+              ? "bg-[color:var(--surface-lux)] px-2.5 pb-2 pt-0.5"
+              : "bg-[color:var(--surface-wash)] px-4 pb-6 pt-4"
           }
-          closeButtonClassName="grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] forced-colors:border motion-reduce:transition-none"
+          headerClassName="relative isolate border-b-0 bg-transparent px-4 pb-3.5 pt-1.5"
+          titleClassName={
+            modeSheetView === "sections"
+              ? modePagesSheetTitleClass
+              : "text-xl font-bold tracking-[var(--tracking-display)]"
+          }
+          closeButtonClassName={cn(
+            "grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
+            modePickerGlassClass,
+          )}
         >
           {modeSheetView === "sections" ? (
             renderModeSectionLevel()
           ) : (
-            <div ref={phoneModeMenuListRef} id="app-mode-menu" role="menu" aria-label="Choose app mode">
+            <div
+              ref={phoneModeMenuListRef}
+              id="app-mode-menu"
+              role="menu"
+              aria-label="Choose app mode"
+              className="grid gap-4"
+            >
               {phoneModeGroups.map((group) => {
                 const groupModes = group.modeIds.flatMap((modeId) => {
                   const mode = modeMenuOptions.find((candidate) => candidate.id === modeId);
@@ -2990,27 +3020,14 @@ export function MasterSearchHeader({
                 if (groupModes.length === 0) return null;
                 const headingId = `app-mode-group-${group.id}`;
                 return (
-                  <section
-                    key={group.id}
-                    role="group"
-                    aria-labelledby={headingId}
-                    data-mode-group={group.id}
-                    className="pt-3 first:pt-1"
-                  >
-                    <div className="sticky top-0 z-[5] -mx-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-lux)]/96 px-3 py-1.5 backdrop-blur-md">
-                      <div className="flex min-w-0 items-baseline gap-2">
-                        <h3
-                          id={headingId}
-                          className="shrink-0 text-2xs font-black uppercase tracking-kicker text-[color:var(--text-muted)]"
-                        >
-                          {group.label}
-                        </h3>
-                        <p className="min-w-0 truncate text-2xs font-medium text-[color:var(--text-muted)]">
-                          {group.hint}
-                        </p>
-                      </div>
+                  <section key={group.id} role="group" aria-labelledby={headingId} data-mode-group={group.id}>
+                    <div className="flex min-w-0 items-baseline gap-2 px-1 pb-2">
+                      <h3 id={headingId} className="shrink-0 text-sm font-bold text-[color:var(--text-heading)]">
+                        {group.label}
+                      </h3>
+                      <p className="min-w-0 truncate text-xs text-[color:var(--text-muted)]">{group.hint}</p>
                     </div>
-                    <div className="mt-1.5 grid gap-1">
+                    <div className={modePickerCardClass}>
                       {groupModes.map((mode) =>
                         renderModeMenuOption(
                           mode,

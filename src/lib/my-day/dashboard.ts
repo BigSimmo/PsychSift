@@ -19,7 +19,7 @@ import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
  * day ribbon and the next timed session. A stored id from an earlier layout
  * ("shift", "renewal") is simply ignored.
  */
-export const myDayPageIds = ["today", "work", "me"] as const;
+const myDayPageIds = ["today", "work", "me"] as const;
 export type MyDayPageId = (typeof myDayPageIds)[number];
 
 export const MY_DAY_PAGE_LABELS: Readonly<Record<MyDayPageId, string>> = {

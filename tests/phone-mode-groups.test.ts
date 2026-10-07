@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { appModeIds, type AppModeId } from "@/lib/app-modes";
-import { orderByPhoneModeGroups, phoneModeGroups } from "@/lib/phone-mode-groups";
+import { appModeDefinitions, appModeIds, type AppModeId } from "@/lib/app-modes";
+import { modeSideOf, modesOnSide, orderByPhoneModeGroups, phoneModeGroups } from "@/lib/phone-mode-groups";
 
 /**
  * The phone mode sheet renders a grouped list rather than the flat
@@ -55,5 +55,24 @@ describe("phone mode groups", () => {
     // A session that hides some modes keeps the drawn order for the rest.
     const someModes = (["cme", "psychiatry", "forms", "answer"] as const).map((id) => ({ id }));
     expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["cme", "answer", "psychiatry", "forms"]);
+  });
+});
+
+describe("Clinical and Work toggle sides", () => {
+  it("puts the clinician's own day on Work and the reference on Clinical", () => {
+    const work = phoneModeGroups.filter((group) => group.side === "work").map((group) => group.id);
+    expect(work).toEqual(["my-day", "on-call"]);
+    expect(modeSideOf("cme")).toBe("work");
+    expect(modeSideOf("on-call")).toBe("work");
+    expect(modeSideOf("answer")).toBe("clinical");
+    expect(modeSideOf("dictionary")).toBe("clinical");
+  });
+
+  it("keeps the drawn order inside one side", () => {
+    const modes = orderByPhoneModeGroups(appModeDefinitions);
+    const clinical = modesOnSide(modes, "clinical").map((mode) => mode.id);
+    expect(clinical[0]).toBe("answer");
+    expect(clinical).not.toContain("my-day");
+    expect(modesOnSide(modes, "work").length + clinical.length).toBe(modes.length);
   });
 });

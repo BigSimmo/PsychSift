@@ -2006,33 +2006,48 @@ test.describe("PsychSift UI smoke coverage", () => {
       modeSheet.getByRole("button", { name: "Close mode menu" }),
     ]);
 
-    // The full catalogue remains in one radio menu, but the phone presentation
-    // now groups it into five doors: My Day (with the work areas), On Call,
-    // then the three clinical doors (modes review, phase 1).
+    // A Clinical and Work toggle sits above the grouped list (Josh, 7 Oct 2026).
+    // It opens on the side of the mode being viewed: Answer is clinical, so the
+    // three clinical doors show and the work doors wait behind Work.
+    const sideToggle = modeSheet.getByTestId("app-mode-side-toggle");
+    await expect(sideToggle.getByRole("button", { name: "Clinical", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    // Direction B (Josh, 7 Oct 2026): the toggle sits in the coloured header
+    // band, lined up with the title on the left and the close button on the right.
+    await expect(modeSheet.getByTestId("app-mode-sheet-band")).toHaveAttribute("data-mode-identity", "answer");
+    const toggleBounds = await sideToggle.boundingBox();
+    const closeBounds = await modeSheet.getByRole("button", { name: "Close mode menu" }).boundingBox();
+    const titleBounds = await modeSheet.getByRole("heading", { name: "Choose mode" }).boundingBox();
+    expect(toggleBounds && closeBounds && titleBounds).toBeTruthy();
+    expect(Math.abs(toggleBounds!.x - titleBounds!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(toggleBounds!.x + toggleBounds!.width - (closeBounds!.x + closeBounds!.width))).toBeLessThanOrEqual(
+      1,
+    );
+    expect(toggleBounds!.height).toBeGreaterThanOrEqual(44);
     const modeOptions = appModeMenu.getByRole("menuitemradio");
     const modeCount = await modeOptions.count();
     expect(modeCount).toBeGreaterThanOrEqual(10);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toHaveCount(0);
+    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
     // Sources reached the desktop menu (built from `appModeDefinitions`) but not
     // this one, which renders `phoneModeGroups` and drops any mode no group names.
     // `tests/phone-mode-groups.test.ts` guards the constant; this is the rendered proof.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toBeAttached();
-    // My Day leads the list (design review 2026-10-03, item 4), so the first
-    // option is My Day and the active Answer option is checked under Search.
-    // The sheet opens scrolled to the checked option, so on a phone whose
-    // My Day group runs past the fold it is Answer, not My Day, that starts
-    // in view.
-    await expect(modeOptions.first()).toContainText("My Day");
+    // Search leads the clinical side, so the active Answer option is first.
+    await expect(modeOptions.first()).toContainText("Answer");
     const answerOption = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await expect(answerOption).toHaveAttribute("aria-checked", "true");
     await expect(answerOption).toBeInViewport();
-    await expect(answerOption).toContainText("Source-backed clinical answer");
+    // The row shows a one-line hint; the full description stays its accessible name.
+    await expect(answerOption).toContainText("Source-backed answers");
+    await expect(answerOption).toHaveAttribute("aria-label", /Source-backed clinical answer/);
 
     // Icon tiles and glyphs use one optical scale even though the canonical
     // Lucide drawings have different silhouettes.
@@ -2062,6 +2077,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(closeGeometry.width).toBeGreaterThanOrEqual(44);
     expect(closeGeometry.height).toBeGreaterThanOrEqual(44);
     expect(Number.parseFloat(closeGeometry.radius)).toBeGreaterThanOrEqual(22);
+
+    // Work shows My Day and On Call, and Clinical brings the reference back.
+    await sideToggle.getByRole("button", { name: "Work", exact: true }).click();
+    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toHaveCount(0);
+    await expect(modeOptions.first()).toContainText("My Day");
+    await sideToggle.getByRole("button", { name: "Clinical", exact: true }).click();
+    await expect(modeOptions).toHaveCount(modeCount);
 
     // A lower group remains reachable through the sheet's own scroll owner.
     // Tools is browse-first, so selecting it opens the canonical directory.
@@ -4635,16 +4659,25 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(modeDialog).toBeVisible();
     await expect(appModeMenu).toBeVisible();
     await expect(modeSearch).toBeFocused();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(26);
+    // The Clinical and Work toggle opens on Answer's side: 19 clinical modes.
+    await expect(modeDialog.getByRole("status")).toHaveText("19 clinical modes");
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(3);
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
+    await modeDialog.getByRole("button", { name: "Work", exact: true }).click();
+    await expect(modeDialog.getByRole("status")).toHaveText("7 work modes");
     await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading")).toHaveCount(5);
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(2);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toBeAttached();
+    await modeDialog.getByRole("button", { name: "Clinical", exact: true }).click();
+    await modeSearch.focus();
+
+    // Typing searches both sides, so a mode is never hidden behind the toggle.
 
     await modeSearch.fill("d");
     await expect(modeDialog.getByRole("status")).toHaveText("9 matches");
@@ -4662,7 +4695,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     // "My Day" carries a "d" too.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
     await modeDialog.getByRole("button", { name: "Clear mode search" }).click();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(26);
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
 
     const answerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await answerMode.focus();
