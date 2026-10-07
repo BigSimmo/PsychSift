@@ -967,3 +967,14 @@
   font-weight: 500;
   color: var(--text-muted);
 }
+
+/* Credential pack: the preview drawn as a sheet of paper. */
+.paper {
+  display: grid;
+  min-width: 0;
+  gap: calc(var(--spacing) * 4);
+  padding: calc(var(--spacing) * 5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
