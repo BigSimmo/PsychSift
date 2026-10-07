@@ -37,6 +37,11 @@ type Session = {
   /** Refused by the account for what they hold; kept on this device until the doctor changes them. */
   readonly refused: Set<WorkSyncSection>;
   readonly timers: Map<WorkSyncSection, ReturnType<typeof setTimeout>>;
+  /** Bumped on every change, so a save that finishes after a newer change cannot mark it saved. */
+  readonly generations: Map<WorkSyncSection, number>;
+  /** One save at a time per section, in the order the changes were made. */
+  readonly queues: Map<WorkSyncSection, Promise<void>>;
+  matched: boolean;
   lastPull: number;
   stopped: boolean;
 };
@@ -104,24 +109,45 @@ function writeLocal(section: WorkSyncSection, value: unknown): void {
   window.dispatchEvent(new StorageEvent("storage", { key }));
 }
 
-function readMarker(): boolean {
+/**
+ * What this device remembers about its match with the account, kept so a
+ * reload cannot lose it: whether it has matched at all, and which sections
+ * hold a change the account does not have yet (not saved, or refused). Those
+ * sections are saved again on the next start and never replaced by the
+ * account's older copy.
+ */
+type SyncMarker = { readonly matched: boolean; readonly ahead: ReadonlySet<WorkSyncSection> };
+
+function readMarker(): SyncMarker {
+  let raw: string | null = null;
   try {
-    return window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY) === "1";
+    raw = window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY);
   } catch {
-    return false;
+    return { matched: false, ahead: new Set() };
+  }
+  if (raw === null) return { matched: false, ahead: new Set() };
+  try {
+    const parsed = JSON.parse(raw) as { matched?: unknown; ahead?: unknown };
+    const ahead = Array.isArray(parsed.ahead) ? parsed.ahead.filter(isWorkSyncSection) : [];
+    return { matched: parsed.matched === true, ahead: new Set(ahead) };
+  } catch {
+    return { matched: false, ahead: new Set() };
   }
 }
 
-function writeMarker(): void {
+function writeMarker(active: Session): void {
+  if (active.stopped) return;
+  const ahead = WORK_SYNC_SECTIONS.filter((section) => active.dirty.has(section) || active.refused.has(section));
   try {
-    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, "1");
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, JSON.stringify({ matched: active.matched, ahead }));
   } catch {
     // Storage refused: the next sign-in merges again, which loses nothing.
   }
 }
 
-async function push(active: Session, section: WorkSyncSection): Promise<void> {
-  active.timers.delete(section);
+async function send(active: Session, section: WorkSyncSection): Promise<void> {
+  if (active.stopped) return;
+  const generation = active.generations.get(section) ?? 0;
   const local = readLocal(section);
   const value = isEmptyWorkSyncValue(local) ? null : local;
   try {
@@ -131,9 +157,11 @@ async function push(active: Session, section: WorkSyncSection): Promise<void> {
       body: JSON.stringify({ section, value }),
     });
     if (active.stopped || !active.isCurrent()) return;
+    // A change made while this save was in flight has its own save queued behind it.
+    if ((active.generations.get(section) ?? 0) !== generation) return;
     if (response.ok) {
-      // A newer change made while this one was in flight is still dirty and has its own push queued.
-      if (!active.timers.has(section)) active.dirty.delete(section);
+      active.dirty.delete(section);
+      writeMarker(active);
       setStatus(section, "account");
       return;
     }
@@ -141,6 +169,7 @@ async function push(active: Session, section: WorkSyncSection): Promise<void> {
     if (response.status === 400 || response.status === 413 || response.status === 422) {
       active.dirty.delete(section);
       active.refused.add(section);
+      writeMarker(active);
       setStatus(section, "device");
     }
     // Anything else stays dirty and is tried again when the app next comes to the front.
@@ -149,14 +178,22 @@ async function push(active: Session, section: WorkSyncSection): Promise<void> {
   }
 }
 
+function push(active: Session, section: WorkSyncSection): void {
+  active.timers.delete(section);
+  const queued = (active.queues.get(section) ?? Promise.resolve()).then(() => send(active, section));
+  active.queues.set(section, queued);
+}
+
 function schedulePush(active: Session, section: WorkSyncSection): void {
   active.refused.delete(section);
   active.dirty.add(section);
+  active.generations.set(section, (active.generations.get(section) ?? 0) + 1);
+  writeMarker(active);
   const existing = active.timers.get(section);
   if (existing) clearTimeout(existing);
   active.timers.set(
     section,
-    setTimeout(() => void push(active, section), PUSH_DELAY_MS),
+    setTimeout(() => push(active, section), PUSH_DELAY_MS),
   );
 }
 
@@ -189,7 +226,7 @@ async function pull(active: Session): Promise<void> {
   const sections = readSections(payload);
   if (!sections || (payload as { demoMode?: unknown }).demoMode === true) return;
 
-  const matched = readMarker();
+  const matched = active.matched;
   for (const section of WORK_SYNC_SECTIONS) {
     // A change made on this device while the read was in flight is newer than what came back.
     // So is one the account refused: its older account copy must not replace it.
@@ -211,7 +248,8 @@ async function pull(active: Session): Promise<void> {
     writeLocal(section, merged);
     schedulePush(active, section);
   }
-  writeMarker();
+  active.matched = true;
+  writeMarker(active);
 }
 
 /** Starts syncing for the signed-in account. Returns the stop. */
@@ -220,12 +258,16 @@ export function startWorkSync(options: {
   readonly isCurrent: () => boolean;
 }): () => void {
   stopWorkSync();
+  const marker = readMarker();
   const active: Session = {
     headers: options.headers,
     isCurrent: options.isCurrent,
-    dirty: new Set(carriedDirty),
+    dirty: new Set([...carriedDirty, ...marker.ahead]),
     refused: new Set(),
     timers: new Map(),
+    generations: new Map(),
+    queues: new Map(),
+    matched: marker.matched,
     lastPull: 0,
     stopped: false,
   };

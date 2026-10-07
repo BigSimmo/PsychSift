@@ -166,8 +166,9 @@ export const WORK_SETUP_PROGRESS_STORAGE_KEY = "psychsift:work-setup:progress-v1
  */
 export const WORK_TAB_PICKS_STORAGE_KEY = "psychsift:work:tab-picks-v1";
 /**
- * localStorage — "1" once this device has matched its work choices with the account copy
- * (`src/lib/work-sync/`). Until then a sign-in merges the two; after it the account copy wins.
+ * localStorage — whether this device has matched its work choices with the account copy
+ * (`src/lib/work-sync/`), and which sections hold a change the account does not have yet. Until
+ * the first match a sign-in merges the two; after it the account copy wins, except for those sections.
  */
 export const WORK_ACCOUNT_SYNC_MARKER_KEY = "psychsift:work:account-sync-v1";
 

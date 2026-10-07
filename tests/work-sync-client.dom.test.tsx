@@ -29,6 +29,7 @@ function mockServer(sections: Sections, refuse: Record<string, number> = {}) {
 }
 
 const AT = "2026-10-07T21:00:00.000Z";
+const MATCHED = JSON.stringify({ matched: true, ahead: [] });
 const start = () => startWorkSync({ headers: () => ({}), isCurrent: () => true });
 const settle = async () => {
   for (let i = 0; i < 5; i += 1) await Promise.resolve();
@@ -48,7 +49,7 @@ afterEach(() => {
 
 describe("work sync client", () => {
   it("takes the account's copy on a device that has matched before, and tells the store", async () => {
-    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, "1");
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
     window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["cpd"]));
     const { puts } = mockServer({ myDayHiddenCards: { value: ["hours"], updatedAt: AT } });
     const heard = vi.fn();
@@ -68,7 +69,9 @@ describe("work sync client", () => {
     await settle();
     expect(JSON.parse(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY) ?? "[]")).toEqual(["hours", "cpd"]);
     expect(puts).toContainEqual({ section: "myDayHiddenCards", value: ["hours", "cpd"] });
-    expect(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY)).toBe("1");
+    expect(JSON.parse(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY) ?? "{}")).toMatchObject({
+      matched: true,
+    });
   });
 
   it("saves a change made on this device to the account", async () => {
@@ -82,7 +85,7 @@ describe("work sync client", () => {
   });
 
   it("keeps a note the account refused on this device, even when the account holds an older one", async () => {
-    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, "1");
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
     const server = { myDayQuickNote: { value: "Older note", updatedAt: AT } };
     mockServer(server, { myDayQuickNote: 422 });
     start();
@@ -107,5 +110,53 @@ describe("work sync client", () => {
     await settle();
     expect(puts).toEqual([]);
     expect(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY)).toBeNull();
+  });
+
+  it("keeps a refused note through a reload instead of taking the account's older copy", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    const server = { myDayQuickNote: { value: "Older note", updatedAt: AT } };
+    mockServer(server, { myDayQuickNote: 422 });
+    const stop = start();
+    await settle();
+    window.localStorage.setItem(MY_DAY_QUICK_NOTE_STORAGE_KEY, "Mr Smith bed 12");
+    announceWorkSyncChange(MY_DAY_QUICK_NOTE_STORAGE_KEY);
+    await settle();
+    // A reload: the session ends and a new one starts from what the device kept.
+    stop();
+    resetWorkSyncForTesting();
+    start();
+    await settle();
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Mr Smith bed 12");
+  });
+
+  it("saves changes to one section in order, so a slow older save never wins", async () => {
+    const order: string[] = [];
+    let releaseFirst: () => void = () => {};
+    const sections: Sections = {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method !== "PUT") return new Response(JSON.stringify({ sections }), { status: 200 });
+        const body = JSON.parse(String(init.body)) as { section: string; value: unknown };
+        order.push(`start ${String(body.value)}`);
+        if (body.value === "First") await new Promise<void>((resolve) => (releaseFirst = resolve));
+        sections[body.section] = { value: body.value, updatedAt: AT };
+        order.push(`end ${String(body.value)}`);
+        return new Response("{}", { status: 200 });
+      }),
+    );
+    start();
+    await settle();
+    window.localStorage.setItem(MY_DAY_QUICK_NOTE_STORAGE_KEY, "First");
+    announceWorkSyncChange(MY_DAY_QUICK_NOTE_STORAGE_KEY);
+    await vi.advanceTimersByTimeAsync(1000);
+    window.localStorage.setItem(MY_DAY_QUICK_NOTE_STORAGE_KEY, "Second");
+    announceWorkSyncChange(MY_DAY_QUICK_NOTE_STORAGE_KEY);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(order).toEqual(["start First"]);
+    releaseFirst();
+    await settle();
+    expect(order).toEqual(["start First", "end First", "start Second", "end Second"]);
+    expect(sections.myDayQuickNote?.value).toBe("Second");
   });
 });
