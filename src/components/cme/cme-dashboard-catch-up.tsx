@@ -76,19 +76,15 @@ function CmePacePanel({
         : "Your routines would likely cover the rest"
       : null;
   return (
-    <button type="button" className="cpd-hero-pace" onClick={onOpenGap} data-testid="cme-pace-panel">
+    <button type="button" className="cpd-hero-pace min-h-tap" onClick={onOpenGap} data-testid="cme-pace-panel">
       <TrendingUp aria-hidden="true" strokeWidth={2} />
       <span data-testid="cme-pace-sentence" className="nums min-w-0 flex-1">
         <b>
           {`${formatCmeHours(plan.hoursToGo)} h to go`}
           {weeklyHours !== null ? ` · about ${weeklyHours.toFixed(1)} h a week` : ""}
         </b>
-        {afterRoutines ? (
-          <>
-            <span className="sr-only">. </span>
-            <small>{afterRoutines}</small>
-          </>
-        ) : null}
+        <span className="sr-only">. </span>
+        {afterRoutines ? <small>{afterRoutines}</small> : null}
       </span>
       <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 opacity-80" />
     </button>
@@ -106,8 +102,9 @@ function categoryName(category: CmeCategory): ReactNode {
   if (category === "measuring") {
     return (
       <>
-        <span className="sr-only">Measuring outcomes</span>
-        <span aria-hidden="true">Outcomes</span>
+        <span className="cpd-short" data-short="Outcomes">
+          <span className="sr-only">Measuring outcomes</span>
+        </span>
       </>
     );
   }

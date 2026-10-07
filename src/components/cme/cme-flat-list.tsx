@@ -189,7 +189,7 @@ export function CmeFlatRow({
   if (href) {
     return (
       <li className={cn("flex min-w-0 items-center", className)}>
-        <Link href={href} data-testid={testId} className={cn("work-row min-w-0 flex-1", end ? "pr-1" : "")}>
+        <Link href={href} data-testid={testId} className={cn("work-row min-h-tap min-w-0 flex-1", end ? "pr-1" : "")}>
           {leadSlot}
           {text}
           {end ? null : <ChevronRight aria-hidden="true" className="work-row__chev" />}

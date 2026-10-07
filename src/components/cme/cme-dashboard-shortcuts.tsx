@@ -62,7 +62,7 @@ export function CmeTodayShortcuts({ chips }: { chips: readonly CmeYearChip[] }) 
     <ul role="list" aria-label="To finish" data-testid="cme-today-shortcuts" className="work-chips m-0 p-0">
       {chips.map((chip) => (
         <li key={chip.id} className="list-none">
-          <Link href={chip.href} data-testid={`cme-chip-${chip.id}`} className="work-chip">
+          <Link href={chip.href} data-testid={`cme-chip-${chip.id}`} className="work-chip min-h-12">
             {chip.label}
             <b className="nums font-normal text-[color:var(--mode-identity)]">{chip.count}</b>
           </Link>

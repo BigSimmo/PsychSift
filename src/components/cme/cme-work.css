@@ -886,3 +886,17 @@ html.dark[data-mode-identity="cme"] {
     animation: none;
   }
 }
+
+/* A short visible name with the full one read out ("Outcomes" for "Measuring
+   outcomes"): the short name is drawn and hidden from screen readers, the full
+   name sits in a visually hidden span, so the text reads the same either way. */
+.cpd-short::before {
+  content: attr(data-short);
+  content: attr(data-short) / "";
+}
+
+/* The dock's filled button keeps the 48px floor CPD holds to (min-h-12). */
+html [data-mode-identity="cme"] .work-dock__capsule > .work-button,
+html[data-mode-identity="cme"] .work-dock__capsule > .work-button {
+  min-height: var(--spacing-tap, 3rem);
+}

@@ -209,7 +209,7 @@ function RowBody({ row, isNext }: { row: WhatsLeftRow; isNext: boolean }) {
       <span
         aria-hidden="true"
         className="work-ic rounded-full"
-        data-tone={row.ready || (!isNext && row.kind !== "total" && row.kind !== "hours") ? "neutral" : undefined}
+        data-tone={isNext && !row.ready ? undefined : "neutral"}
       >
         <Icon aria-hidden="true" strokeWidth={2} />
       </span>
@@ -247,11 +247,11 @@ function Row({
       className={cn("flex min-w-0 items-center", isNext && "cpd-next")}
     >
       {detail ? (
-        <button type="button" className="work-row min-w-0 flex-1" onClick={() => onOpenDetail(detail)}>
+        <button type="button" className="work-row min-h-tap min-w-0 flex-1" onClick={() => onOpenDetail(detail)}>
           <RowBody row={row} isNext={isNext} />
         </button>
       ) : (
-        <Link href={row.href ?? "/cme/check"} className="work-row min-w-0 flex-1">
+        <Link href={row.href ?? "/cme/check"} className="work-row min-h-tap min-w-0 flex-1">
           <RowBody row={row} isNext={isNext} />
         </Link>
       )}
@@ -260,7 +260,7 @@ function Row({
           href={`/cme/new?year=${year}`}
           onClick={logHere}
           {...{ [CME_LOG_TRIGGER_ATTRIBUTE]: "" }}
-          className="work-button mr-2 shrink-0"
+          className="work-button min-h-tap mr-2 shrink-0"
           data-variant="primary"
           aria-label={`Log an activity toward ${row.title}`}
           data-testid="cme-next-log"
@@ -324,7 +324,7 @@ export function CmeWhatsLeft({
                   <Check aria-hidden="true" strokeWidth={2.4} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="nums">{`${done.length} done`}</span>
+                  <span className="nums font-normal">{`${done.length} done`}</span>
                   {` · ${joinLabels(done.map((row) => row.title))}`}
                 </span>
                 <ChevronDown

@@ -139,7 +139,7 @@ function routineIcon(title: string): LucideIcon {
 }
 
 /** The label's quiet link ("Snooze a week") keeps a 48px tap without a tall label row. */
-const LABEL_ACTION = "work-label__link";
+const LABEL_ACTION = "work-label__link min-h-tap";
 
 export type CmeDashboardProps = {
   readonly set: CmeRequirementSet;
@@ -362,7 +362,7 @@ export function CmeDashboard({
       entries={entries}
       closed={Boolean(set.closedAt)}
       onOpenGap={() => setDetail("gap")}
-      firstLogAction={nothingLogged ? logLink("Log your first activity", "work-button mt-2") : undefined}
+      firstLogAction={nothingLogged ? logLink("Log your first activity", "work-button min-h-tap mt-2") : undefined}
     />
   );
 
@@ -370,7 +370,11 @@ export function CmeDashboard({
     currentTrainingPosition?.stage || currentTrainingPosition?.rotation || currentTrainingPosition?.breakPeriod ? (
       <CmeFlatList label="Training">
         <li className="flex min-w-0 items-center">
-          <Link href="/cme/training" data-testid="cme-training-position-link" className="work-row min-w-0 flex-1">
+          <Link
+            href="/cme/training"
+            data-testid="cme-training-position-link"
+            className="work-row min-h-tap min-w-0 flex-1"
+          >
             <span className="cpd-lead">
               <Layers aria-hidden="true" strokeWidth={2} />
             </span>
@@ -457,7 +461,7 @@ export function CmeDashboard({
                 end={
                   <button
                     type="button"
-                    className="work-button"
+                    className="work-button min-h-tap"
                     data-variant="tinted"
                     disabled={loggingDue}
                     aria-busy={loggingDue || undefined}
@@ -519,7 +523,7 @@ export function CmeDashboard({
             <Link
               href={`/cme/calendar?year=${set.year}`}
               data-testid="cme-calendar-link"
-              className="work-row min-w-0 flex-1"
+              className="work-row min-h-tap min-w-0 flex-1"
             >
               <span aria-hidden="true" className="work-ic" data-mode-identity="my-day">
                 <CalendarDays aria-hidden="true" strokeWidth={2} />
@@ -631,7 +635,7 @@ export function CmeDashboard({
   // The dock: the one filled button. Before anything is logged it lives in the empty card instead.
   const dock = nothingLogged ? null : (
     <div className="work-dock" role="group" aria-label="Actions">
-      <div className="work-dock__capsule">{logLink("Log an activity", "work-button")}</div>
+      <div className="work-dock__capsule">{logLink("Log an activity", "work-button min-h-tap")}</div>
     </div>
   );
 

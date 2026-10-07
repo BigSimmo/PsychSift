@@ -112,7 +112,8 @@ describe("the dashboard's progress picture", () => {
     expect(legend).toHaveTextContent("Measuring outcomes1.5 h");
     const bar = screen.getByTestId("cme-summary-bar");
     expect(bar).toHaveAttribute("aria-hidden", "true");
-    expect(bar.innerHTML).toContain("--cme-cat-1");
+    // work-mode redesign, owner request 6 Oct 2026: the hero's own shades of the same indigo.
+    expect(bar.innerHTML).toMatch(/--cme-(?:hero-)?cat-1/);
     expect(bar.innerHTML).not.toMatch(/--tone-(rose|purple|green|red|amber)/);
   });
 });

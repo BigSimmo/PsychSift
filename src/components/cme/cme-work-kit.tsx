@@ -304,7 +304,7 @@ export function CmeToggleRow({
       onClick={() => onChange(!checked)}
       disabled={disabled}
       data-testid={testId}
-      className="work-row"
+      className="work-row min-h-tap"
     >
       <span className="work-row__text">
         <span className="work-row__title">{label}</span>
