@@ -81,7 +81,7 @@ describe("Teaching mode registration", () => {
       ["/teaching/term", null],
       ["/teaching/exam-prep", null],
       ["/teaching/import", null],
-    ])
+    ] as const)
       expect(activeModeSecondaryNavigationId("teaching", pathname)).toBe(id);
     expect(activeModeSecondaryNavigationId("teaching", `/teaching/session/${OCC}`)).toBeNull();
     expect(modeUsesHeaderModeNav("teaching")).toBe(false);
