@@ -738,29 +738,32 @@ html.dark[data-mode-identity="cme"] {
 
 /* ----------------------------------------------------------- month chart */
 
+/* Twelve columns, each a bar over its letter. A logged month is a link (48px
+   tall, the bar box plus the letter); an empty or future month is not. */
 .cpd-months {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: calc(var(--spacing) * 1.25);
+  margin: calc(var(--spacing) * 2.5) 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.cpd-months__bars {
-  height: calc(var(--spacing) * 14);
-  align-items: end;
-  margin-top: calc(var(--spacing) * 2.5);
+.cpd-months__col {
+  display: grid;
+  min-height: var(--spacing-tap);
+  grid-template-rows: calc(var(--spacing) * 14) auto;
+  gap: calc(var(--spacing) * 1.25);
+  color: var(--work-ink-muted);
+  text-decoration: none;
 }
 
-.cpd-months__bar {
+.cpd-months__box {
   position: relative;
   display: block;
-  height: 100%;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
 }
 
-.cpd-months__bar > i {
+.cpd-months__box > i {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
@@ -770,32 +773,49 @@ html.dark[data-mode-identity="cme"] {
   background: var(--mode-identity-soft-2);
 }
 
-.cpd-months__bar[data-current] > i {
+.cpd-months__box > i[data-current] {
   background: linear-gradient(180deg, var(--mode-identity-2), var(--mode-identity));
 }
 
-.cpd-months__bar[data-future] > i {
+/* A month still to come: a dashed outline at a fixed fifth of the height. */
+.cpd-months__box > i[data-future] {
+  height: 22%;
   background: transparent;
-  outline: 1px dashed var(--work-line-strong);
-  outline-offset: -1px;
+  border: 1px dashed var(--work-line-strong);
 }
 
-.cpd-months__bar:focus-visible {
-  outline: 2px solid var(--mode-identity);
-  outline-offset: 2px;
-  border-radius: var(--radius-xs);
-}
-
-.cpd-months__letters {
-  margin-top: calc(var(--spacing) * 1.25);
+.cpd-months__letter {
   font-size: var(--text-3xs);
   font-weight: 700;
-  color: var(--work-ink-muted);
   text-align: center;
 }
 
-.cpd-months__letters > [data-current] {
+.cpd-months__letter[data-current] {
   color: var(--mode-identity);
+}
+
+a.cpd-months__col {
+  border-radius: var(--radius-xs);
+}
+
+a.cpd-months__col:active .cpd-months__box > i {
+  opacity: 0.8;
+}
+
+a.cpd-months__col:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .cpd-months__box > i {
+    background: CanvasText;
+  }
+
+  .cpd-months__box > i[data-future] {
+    background: transparent;
+    border-color: CanvasText;
+  }
 }
 
 /* -------------------------------------------------------------- swipe row */
