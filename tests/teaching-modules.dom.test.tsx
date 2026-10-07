@@ -354,7 +354,8 @@ describe("AttendanceChart", () => {
     render(<AttendanceChart weeks={weeks} currentKey="2026-09-28" />);
     const chart = screen.getByTestId("teaching-attendance-chart");
     expect(chart.querySelectorAll("rect[data-week]")).toHaveLength(12);
-    expect(chart.querySelector("rect[data-current='true']")!.getAttribute("class")).toContain("--primary");
+    // Work-mode redesign, owner request 6 Oct 2026: this week is the Teaching colour, not product blue.
+    expect(chart.querySelector("rect[data-current='true']")!.getAttribute("class")).toContain("var(--mode-identity)");
     expect(attendanceSentence(weeks)).toBe(`Attended in 2${NB}of the last 12${NB}weeks.`);
   });
 

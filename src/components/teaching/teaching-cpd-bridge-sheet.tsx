@@ -225,7 +225,7 @@ export function TeachingCpdBridgeSheet({
 
             <Link
               href={teachingCpdEntryHref(savedResult.entryId)}
-              className={cn("text-xs text-[color:var(--primary)] underline underline-offset-2", focusRing)}
+              className={cn("text-xs text-[color:var(--mode-identity)] underline underline-offset-2", focusRing)}
             >
               Add reflection or attach slide notes in CPD
             </Link>

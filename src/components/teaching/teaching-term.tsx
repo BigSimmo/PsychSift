@@ -63,7 +63,7 @@ function withTerm(state: TermTrackerState, termId: string, change: (term: TermRe
 }
 
 const externalLink = cn(
-  "inline-flex min-h-12 items-center gap-1.5 text-sm font-medium text-[color:var(--primary)]",
+  "inline-flex min-h-12 items-center gap-1.5 text-sm font-medium text-[color:var(--mode-identity)]",
   focusRing,
 );
 

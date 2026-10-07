@@ -68,7 +68,7 @@ function QuietAction({ action, surface }: { action: TeachingAction; surface: Act
   const className = cn(
     modeTapArea,
     focusRing,
-    "justify-center text-sm font-medium text-[color:var(--primary)]",
+    "justify-center text-sm font-medium text-[color:var(--mode-identity)]",
     surfaceFace(surface, "text"),
   );
   const label = action.busy ? (action.busyLabel ?? action.label) : action.label;

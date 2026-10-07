@@ -14,7 +14,7 @@ export function TeachingSampleBanner() {
         Sample: made-up sessions and people, so you can look around without signing in. Nothing is saved.{" "}
         <a
           href={`${TEACHING_SAMPLE_PATH}?leave=1`}
-          className="font-medium text-[color:var(--primary)] underline"
+          className="font-medium text-[color:var(--mode-identity)] underline"
           data-testid="teaching-sample-leave"
         >
           Leave the sample

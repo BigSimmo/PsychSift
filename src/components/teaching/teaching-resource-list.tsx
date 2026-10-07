@@ -192,7 +192,7 @@ export function ResourceRows({
               aria-pressed={isSaved}
               aria-label={`${isSaved ? "Unsave" : "Save"} ${item.title}`}
               onClick={() => void toggle(item)}
-              className={cn(rowControl, isSaved ? "text-[color:var(--primary)]" : textMuted)}
+              className={cn(rowControl, isSaved ? "text-[color:var(--mode-identity)]" : textMuted)}
             >
               {isSaved ? (
                 <BookmarkCheck aria-hidden="true" className="size-icon-md" />

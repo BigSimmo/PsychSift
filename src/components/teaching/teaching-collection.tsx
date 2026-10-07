@@ -221,7 +221,7 @@ export function TeachingCollection({
           className={cn(
             modeTapArea,
             focusRing,
-            "justify-self-start gap-1 pr-2 text-sm font-medium text-[color:var(--primary)] no-underline",
+            "justify-self-start gap-1 pr-2 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
           )}
         >
           <ChevronLeft aria-hidden="true" className="size-icon-md" />
