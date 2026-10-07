@@ -34,7 +34,9 @@ test("This week leads with the session on now or next, and fits a phone in light
 }, testInfo) => {
   await page.goto("/teaching");
   await expect(visibleByTestId(page, "teaching-hero")).toBeVisible({ timeout: 20_000 });
-  await expect(visibleByTestId(page, "teaching-week-list")).toBeVisible();
+  // The week list moved to its own Week tab; Today keeps the session on now or next.
+  await page.goto("/teaching/week");
+  await expect(visibleByTestId(page, "teaching-week-list")).toBeVisible({ timeout: 20_000 });
   await expectNoSidewaysScroll(page, "This week");
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
@@ -48,7 +50,7 @@ test("This week leads with the session on now or next, and fits a phone in light
 test("This week at 200% text keeps every time clear of its title and never scrolls sideways", async ({
   page,
 }, testInfo) => {
-  await page.goto("/teaching");
+  await page.goto("/teaching/week");
   const list = visibleByTestId(page, "teaching-week-list");
   await expect(list).toBeVisible({ timeout: 20_000 });
   await largeText(page);
@@ -79,8 +81,8 @@ test("the old Week address shows This week, so links with an On Call anchor keep
 });
 
 test("a session opened from This week says where and when, and fits at 200% text", async ({ page }) => {
-  await page.goto("/teaching");
-  await visibleByTestId(page, "teaching-week-list").locator("a").first().click();
+  await page.goto("/teaching/week");
+  await visibleByTestId(page, "teaching-week-list").locator('a[href^="/teaching/session/"]').first().click();
   await expect(page).toHaveURL(/\/teaching\/session\/[0-9a-f-]{36}$/);
   await expect(visibleByTestId(page, "teaching-session")).toBeVisible({ timeout: 20_000 });
   await largeText(page);

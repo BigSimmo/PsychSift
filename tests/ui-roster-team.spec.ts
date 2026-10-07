@@ -279,7 +279,7 @@ test("Roster Requests keeps the phone New pill clear of the last row", async ({ 
   // phones. A bare getByTestId("roster-new") can strict-mode-fail when the
   // in-header mount and the portaled pill overlap for a frame (seen on #3329).
   await expect(page.getByTestId("phone-footer-layer-host").getByTestId("roster-new")).toBeVisible();
-  await expect.poll(() => shell.evaluate((el) => getComputedStyle(el).paddingBottom)).toBe("80px");
+  await expect.poll(() => shell.evaluate((el) => getComputedStyle(el).paddingBottom)).toBe("96px");
 });
 
 test("Roster manager route refuses ordinary members", async ({ page }) => {

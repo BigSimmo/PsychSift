@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   isWorkModePreviewUser,
@@ -89,5 +89,19 @@ describe("work-mode launch routes", () => {
       expect(entry.path).toMatch(/^\/[a-z0-9/-]+[a-z0-9]$/);
       expect(entry.owner).not.toBe("");
     }
+  });
+});
+
+describe("the launch switch never stops the server booting", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("loads the environment with a mistyped WORK_MODE_LAUNCH and leaves the typo for launch.ts to fail closed", async () => {
+    vi.resetModules();
+    vi.stubEnv("WORK_MODE_LAUNCH", " Evryone ");
+    await expect(import("../src/lib/env")).resolves.toBeDefined();
+    expect(workModeLaunchSetting({ ...PROD, WORK_MODE_LAUNCH: " Evryone " })).toBe("preview");
   });
 });

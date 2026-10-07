@@ -95,10 +95,12 @@ const envSchema = z
     NEXT_PUBLIC_MOCKUPS_ENABLED: z.enum(["true", "false"]).optional(),
     // Work-mode launch switch (src/lib/work-mode-launch/launch.ts). Read raw from
     // process.env by the proxy and the search-app layout; declared here so the
-    // names are documented and a bad value fails validation loudly. Unset in
-    // production means "preview": the new work mode for the administrator and the
-    // listed preview users only.
-    WORK_MODE_LAUNCH: z.enum(["off", "preview", "everyone"]).optional(),
+    // names are documented. Deliberately a plain string, not an enum: launch.ts
+    // trims and lowercases it and fails a typo closed to "preview", so a mistyped
+    // live switch must never stop the server booting. Unset in production means
+    // "preview": the new work mode for the administrator and the listed preview
+    // users only.
+    WORK_MODE_LAUNCH: z.string().optional(),
     WORK_MODE_PREVIEW_USER_IDS: z.string().optional(),
     // Passwordless access to the developer-gated /mockups subtrees: the secret a
     // bookmarked `?devkey=…` link presents once, which src/proxy.ts exchanges for a
