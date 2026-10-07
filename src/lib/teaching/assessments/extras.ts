@@ -1,5 +1,6 @@
 import type { SupervisionLevel } from "@/lib/teaching/assessments/content";
 import { EMPTY_ANSWER, type CantReason, type InboxAnswer } from "@/lib/teaching/assessments/inbox";
+import type { ReminderRecord } from "@/lib/teaching/assessments/overview";
 
 /*
  * Page-memory state for the two added sample views (the consultant inbox and the term overview). It sits
@@ -9,20 +10,26 @@ import { EMPTY_ANSWER, type CantReason, type InboxAnswer } from "@/lib/teaching/
 
 export interface ExtrasState {
   readonly answers: Readonly<Record<string, InboxAnswer>>;
-  /** Reminder keys from reminderKey(): doctor, form and made-up day. */
-  readonly reminded: readonly string[];
+  /** Reminders made from the term overview, oldest first. Their keys carry the made-up day. */
+  readonly reminders: readonly ReminderRecord[];
 }
 
 export type ExtrasAction =
-  | { type: "inbox-send"; id: string; level: SupervisionLevel; text: string }
+  | { type: "inbox-send"; id: string; level: SupervisionLevel; text: string; at: string }
+  | { type: "inbox-queue"; id: string; level: SupervisionLevel; text: string }
   | { type: "inbox-commit"; id: string }
   | { type: "inbox-undo"; id: string }
-  | { type: "inbox-cant"; id: string; reason: CantReason }
+  | { type: "inbox-cant"; id: string; reason: CantReason; suggestion?: string | null }
   | { type: "inbox-restore"; id: string }
-  | { type: "remind"; keys: readonly string[] }
+  | { type: "remind"; records: readonly ReminderRecord[] }
   | { type: "unremind"; keys: readonly string[] };
 
-export const initialExtras: ExtrasState = { answers: {}, reminded: [] };
+export const initialExtras: ExtrasState = { answers: {}, reminders: [] };
+
+/** The reminder keys made so far: one a day per form. */
+export function remindedKeys(s: ExtrasState): string[] {
+  return s.reminders.map((r) => r.key);
+}
 
 function answer(s: ExtrasState, id: string): InboxAnswer {
   return s.answers[id] ?? EMPTY_ANSWER;
@@ -32,12 +39,35 @@ function put(s: ExtrasState, id: string, next: InboxAnswer): ExtrasState {
   return { ...s, answers: { ...s.answers, [id]: next } };
 }
 
+const settled = (a: InboxAnswer) => a.status === "sent" || a.status === "sending";
+
 export function extrasReducer(s: ExtrasState, a: ExtrasAction): ExtrasState {
   switch (a.type) {
     case "inbox-send": {
       const current = answer(s, a.id);
-      if (current.status === "sent" || current.status === "sending") return s;
-      return put(s, a.id, { ...current, status: "sending", level: a.level, text: a.text, reason: null });
+      if (settled(current)) return s;
+      return put(s, a.id, {
+        ...current,
+        status: "sending",
+        level: a.level,
+        text: a.text,
+        reason: null,
+        suggestion: null,
+        sentAt: a.at,
+      });
+    }
+    case "inbox-queue": {
+      // Offline: the answer waits on this page as "To send" and goes when the connection is back.
+      const current = answer(s, a.id);
+      if (settled(current)) return s;
+      return put(s, a.id, {
+        ...current,
+        status: "queued",
+        level: a.level,
+        text: a.text,
+        reason: null,
+        suggestion: null,
+      });
     }
     case "inbox-commit": {
       const current = answer(s, a.id);
@@ -46,28 +76,33 @@ export function extrasReducer(s: ExtrasState, a: ExtrasAction): ExtrasState {
     case "inbox-undo": {
       // Undo keeps the level and the few lines, so reopening it carries on where it was.
       const current = answer(s, a.id);
-      return current.status === "sending" ? put(s, a.id, { ...current, status: "waiting" }) : s;
+      return current.status === "sending" || current.status === "queued"
+        ? put(s, a.id, { ...current, status: "waiting", sentAt: null })
+        : s;
     }
     case "inbox-cant": {
       const current = answer(s, a.id);
-      if (current.status === "sent" || current.status === "sending") return s;
+      if (settled(current)) return s;
+      const later = a.reason === "not_this_week";
       return put(s, a.id, {
         ...current,
-        status: a.reason === "not_this_week" ? "later" : "passed",
+        status: later ? "later" : "passed",
         reason: a.reason,
+        suggestion: later ? null : (a.suggestion ?? null),
       });
     }
     case "inbox-restore": {
       const current = answer(s, a.id);
       return current.status === "passed" || current.status === "later"
-        ? put(s, a.id, { ...current, status: "waiting", reason: null })
+        ? put(s, a.id, { ...current, status: "waiting", reason: null, suggestion: null })
         : s;
     }
     case "remind": {
-      const fresh = a.keys.filter((k) => !s.reminded.includes(k));
-      return fresh.length ? { ...s, reminded: [...s.reminded, ...fresh] } : s;
+      const known = new Set(remindedKeys(s));
+      const fresh = a.records.filter((r) => !known.has(r.key));
+      return fresh.length ? { ...s, reminders: [...s.reminders, ...fresh] } : s;
     }
     case "unremind":
-      return { ...s, reminded: s.reminded.filter((k) => !a.keys.includes(k)) };
+      return { ...s, reminders: s.reminders.filter((r) => !a.keys.includes(r.key)) };
   }
 }

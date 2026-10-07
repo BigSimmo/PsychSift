@@ -121,14 +121,20 @@ describe("consultant inbox", () => {
 });
 
 describe("term overview", () => {
-  it("shows status tags only, with the meter in words", () => {
+  it("shows status marks only, with the meter and every mark in words", () => {
     renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
     expect(screen.getByRole("img", { name: "Mid-term: 4 done, 2 due, 2 overdue, of 8 doctors." })).toBeInTheDocument();
     expect(screen.getByText(/Ratings and comments are never shown here/)).toBeInTheDocument();
     const ravi = screen.getByTestId("assessments-overview-ravi");
-    expect(within(ravi).getByText("Mid · Overdue")).toBeInTheDocument();
-    fireEvent.click(within(ravi).getByRole("button", { expanded: false }));
-    expect(within(ravi).getByText("Overdue since Fri 2 Oct")).toBeVisible();
+    expect(within(ravi).getByRole("img", { name: "Mid-term overdue" })).toBeInTheDocument();
+    expect(within(ravi).getByRole("img", { name: /^EPAs 0 of 2, below the term target$/ })).toBeInTheDocument();
+    expect(within(ravi).getByRole("img", { name: "End-of-term not open yet" })).toBeInTheDocument();
+    // One tap opens the doctor's own status page.
+    expect(within(ravi).getByRole("link")).toHaveAttribute(
+      "href",
+      "/teaching/assessments?view=overview&as=supervisor&doctor=ravi",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Export status" }));
     expect(screen.getByTestId("assessments-overview-csv")).toHaveAttribute(
       "download",
       "made-up-term-assessments-status.csv",
@@ -154,5 +160,105 @@ describe("term overview", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     fireEvent.click(screen.getByRole("radio", { name: "Supervisors" }));
     expect(screen.getByRole("button", { name: "Remind Dr Hana Ito about 2 forms" })).toBeInTheDocument();
+  });
+
+  it("keeps on-track doctors behind Show more, and opens them on a tap", () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    expect(screen.queryByTestId("assessments-overview-noah")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Show 1 more/ }));
+    expect(screen.getByTestId("assessments-overview-noah")).toBeInTheDocument();
+  });
+
+  it("reminds several supervisors at once, showing the exact status-only message", async () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Omar Ahmed about Dr Ravi Kaur's mid-term" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Supervisors" }));
+    expect(screen.getByText("1 already reminded today")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "3 doctors · mid-term 1 done, 1 due, 1 overdue" })).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("assessments-overview-bulk-open"));
+    const bulk = await screen.findByTestId("assessments-overview-bulk");
+    // Dr Ahmed was reminded today: shown, unticked, marked Today.
+    expect(within(bulk).queryByRole("checkbox", { name: /Dr Omar Ahmed/ })).toBeNull();
+    expect(within(bulk).getByText("Today")).toBeInTheDocument();
+    expect(within(bulk).getByTestId("assessments-overview-bulk-message")).toHaveTextContent(
+      /assessment is (overdue|due .*)\. Please finish it in Assessments/,
+    );
+    const send = within(bulk).getByTestId("assessments-overview-bulk-send");
+    expect(send).toHaveTextContent("Send 2 reminders");
+    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Hana Ito/ }));
+    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Priya Nair/ }));
+    expect(send).toBeDisabled();
+    expect(within(bulk).getByText("Tick at least one supervisor.")).toBeInTheDocument();
+    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Hana Ito/ }));
+    fireEvent.click(send);
+    expect(await screen.findByText("1 reminder sent to supervisors")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /Sent · 3/ }));
+    const sent = screen.getByTestId("assessments-overview-sent");
+    expect(within(sent).getAllByText("Dr Hana Ito")).toHaveLength(2);
+    expect(within(sent).getByText("Dr Omar Ahmed")).toBeInTheDocument();
+  });
+
+  it("shows one doctor's status timeline, private content, and Remind once a day", async () => {
+    const p = props(initialAssessmentsState(), {
+      params: new URLSearchParams("view=overview&as=supervisor&doctor=tom"),
+    });
+    renderWith(<AssessmentsTermOverview {...p} />);
+    const page = screen.getByTestId("assessments-overview-doctor");
+    expect(within(page).getByRole("heading", { name: "Dr Tom Fraser" })).toBeInTheDocument();
+    expect(within(page).getByText("Overdue since Fri 2 Oct")).toBeInTheDocument();
+    expect(within(page).getByText("Content stays private")).toBeInTheDocument();
+    expect(within(page).getByRole("link", { name: /Open Clinical Learning Australia/ })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+    expect(within(page).getByText("No reminders yet.")).toBeInTheDocument();
+    fireEvent.click(within(page).getByTestId("assessments-overview-doctor-remind"));
+    expect(await screen.findByText("Reminder to Dr Hana Ito about Dr Tom Fraser's mid-term")).toBeInTheDocument();
+    expect(within(page).getByTestId("assessments-overview-doctor-remind")).toBeDisabled();
+    expect(within(page).getByText("Reminded today. One reminder a day per form.")).toBeInTheDocument();
+    expect(within(page).getByText("Dr Hana Ito reminded")).toBeInTheDocument();
+  });
+
+  it("says plainly when a doctor link is not in the list", () => {
+    const p = props(initialAssessmentsState(), {
+      params: new URLSearchParams("view=overview&as=supervisor&doctor=nobody"),
+    });
+    renderWith(<AssessmentsTermOverview {...p} />);
+    expect(screen.getByText("That doctor isn't in this made-up list")).toBeInTheDocument();
+  });
+
+  it("exports only what is ticked, and refuses an empty export with a reason", () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("button", { name: "Export status" }));
+    const sheet = screen.getByTestId("assessments-overview-export");
+    expect(within(sheet).getByRole("checkbox", { name: /Reminder history/ })).not.toBeChecked();
+    fireEvent.click(within(sheet).getByRole("checkbox", { name: /Mid-term and end-of-term/ }));
+    const href = decodeURIComponent(within(sheet).getByTestId("assessments-overview-csv").getAttribute("href")!);
+    expect(href).toContain('"Doctor","Grade","Unit","Supervisor","EPAs this term"');
+    fireEvent.click(within(sheet).getByRole("checkbox", { name: /EPA counts/ }));
+    expect(within(sheet).getByText("Choose the forms, the EPA counts or both.")).toBeInTheDocument();
+    expect(within(sheet).queryByTestId("assessments-overview-csv")).toBeNull();
+  });
+
+  it("greys the bells offline and says the status is as of a time", () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+      expect(screen.getByTestId("assessments-overview-offline")).toHaveTextContent(
+        /Status as of \d\d:\d\d\. Reminders wait until you are back online\./,
+      );
+      const bell = screen.getByRole("button", { name: "Reminder unavailable offline: Dr Ravi Kaur" });
+      expect(bell).toHaveAttribute("aria-disabled", "true");
+      fireEvent.click(bell);
+      expect(screen.queryByText(/Reminder to Dr Omar Ahmed/)).toBeNull();
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it("starts the Sent tab empty with an honest note", () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Sent" }));
+    expect(screen.getByTestId("assessments-overview-sent-empty")).toHaveTextContent("No reminders yet");
   });
 });

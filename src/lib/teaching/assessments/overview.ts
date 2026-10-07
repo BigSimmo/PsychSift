@@ -275,14 +275,190 @@ export function supervisorGroups(rows: readonly OverviewDoctor[]): SupervisorGro
 
 export const OVERVIEW_PRIVACY_LINE = "Status only. Ratings and comments are never shown here.";
 
+/** What a status export carries. Content is never an option: there is none in this view to export. */
+export interface OverviewExportOptions {
+  /** Mid-term and end-of-term: done, due or overdue. */
+  readonly forms: boolean;
+  /** EPA counts: the number recorded, never what was written. */
+  readonly epas: boolean;
+  /** The reminders sent from this page, with times. Off unless asked for. */
+  readonly history: boolean;
+}
+
+export const DEFAULT_EXPORT_OPTIONS: OverviewExportOptions = { forms: true, epas: true, history: false };
+
+/** Why Export is not available, or null when it can go. */
+export function exportBlocker(options: OverviewExportOptions): string | null {
+  return options.forms || options.epas ? null : "Choose the forms, the EPA counts or both.";
+}
+
 /** Status-only CSV of the overview: no ratings, comments or goals exist in it to export. */
-export function overviewCsv(rows: readonly OverviewDoctor[], dateLabel: string): string {
-  const lines = [
-    ["Made-up example, not real doctors", dateLabel],
-    ["Doctor", "Grade", "Unit", "Supervisor", "Mid-term", "EPAs this term", "End-of-term"],
-    ...rows.map((r) => [r.name, r.grade, r.unit, r.supervisor, r.mid.detail, r.epas.detail, r.end.detail]),
+export function overviewCsv(
+  rows: readonly OverviewDoctor[],
+  dateLabel: string,
+  options: OverviewExportOptions = DEFAULT_EXPORT_OPTIONS,
+  reminders: readonly ReminderRecord[] = [],
+): string {
+  const head = [
+    "Doctor",
+    "Grade",
+    "Unit",
+    "Supervisor",
+    ...(options.forms ? ["Mid-term"] : []),
+    ...(options.epas ? ["EPAs this term"] : []),
+    ...(options.forms ? ["End-of-term"] : []),
   ];
+  const lines: string[][] = [
+    ["Made-up example, not real doctors", dateLabel],
+    head,
+    ...rows.map((r) => [
+      r.name,
+      r.grade,
+      r.unit,
+      r.supervisor,
+      ...(options.forms ? [r.mid.detail] : []),
+      ...(options.epas ? [r.epas.detail] : []),
+      ...(options.forms ? [r.end.detail] : []),
+    ]),
+  ];
+  if (options.history) {
+    lines.push([], ["Reminders sent from this page"], ["Time", "Supervisor", "Doctor", "Form"]);
+    if (reminders.length === 0) lines.push(["None"]);
+    for (const r of reminders) lines.push([r.at, r.supervisor, r.doctorName, formWord(r.form)]);
+  }
+  lines.push([], ["Status only: what is done, due or overdue."]);
   return lines.map((line) => line.map(cmeCsvCell).join(",")).join("\r\n") + "\r\n";
 }
 
 export const OVERVIEW_CSV_NAME = "made-up-term-assessments-status.csv";
+
+/* ---------- reminders (pretend: nothing leaves the page) ---------- */
+
+/** One reminder made on this page: who it went to, about whom, and the time of day it was made. */
+export interface ReminderRecord {
+  readonly key: string;
+  readonly doctorId: string;
+  readonly doctorName: string;
+  readonly supervisor: string;
+  readonly form: FormKind;
+  /** "15:02", the real time of day on this phone. */
+  readonly at: string;
+}
+
+/** The reminders a doctor's row can still send today: one a day per form. */
+export function pendingForms(row: OverviewDoctor, remindedKeys: readonly string[], now: number): FormKind[] {
+  return remindableForms(row).filter((form) => !remindedKeys.includes(reminderKey(row.id, form, now)));
+}
+
+export function reminderRecords(row: OverviewDoctor, forms: readonly FormKind[], now: number, at: string) {
+  return forms.map<ReminderRecord>((form) => ({
+    key: reminderKey(row.id, form, now),
+    doctorId: row.id,
+    doctorName: row.name,
+    supervisor: row.supervisor,
+    form,
+    at,
+  }));
+}
+
+/**
+ * The exact words a supervisor gets: status only. It names the form and whether it is due or overdue,
+ * and nothing about how the doctor is doing.
+ */
+export function reminderMessage(row: OverviewDoctor, form: FormKind): string {
+  const cell = form === "mid" ? row.mid : row.end;
+  const state =
+    cell.status === "overdue" ? "is overdue" : `is ${cell.detail.charAt(0).toLowerCase()}${cell.detail.slice(1)}`;
+  return `${row.name}'s ${formWord(form)} assessment ${state}. Please finish it in Assessments, or tell the MEU if you need more time.`;
+}
+
+export interface BulkRecipient {
+  readonly supervisor: string;
+  readonly items: readonly { readonly row: OverviewDoctor; readonly form: FormKind; readonly key: string }[];
+  /** Every form for this supervisor was already reminded today, so they start unticked and cannot be sent again. */
+  readonly remindedToday: boolean;
+  /** "Dr Ravi Kaur · overdue since Fri 2 Oct" */
+  readonly line: string;
+}
+
+/** Remind several: one recipient per supervisor with a due or overdue form, overdue first. */
+export function bulkRecipients(
+  rows: readonly OverviewDoctor[],
+  remindedKeys: readonly string[],
+  now: number,
+): BulkRecipient[] {
+  const map = new Map<string, { row: OverviewDoctor; form: FormKind; key: string; sent: boolean }[]>();
+  for (const row of rows)
+    for (const form of remindableForms(row)) {
+      const key = reminderKey(row.id, form, now);
+      map.set(row.supervisor, [
+        ...(map.get(row.supervisor) ?? []),
+        { row, form, key, sent: remindedKeys.includes(key) },
+      ]);
+    }
+  return [...map.entries()]
+    .map(([supervisor, all]) => {
+      const open = all.filter((item) => !item.sent);
+      const shown = open.length ? open : all;
+      const overdue = shown.some((i) => (i.form === "mid" ? i.row.mid : i.row.end).status === "overdue");
+      return {
+        supervisor,
+        items: open.map(({ row, form, key }) => ({ row, form, key })),
+        remindedToday: open.length === 0,
+        overdue,
+        line: shown
+          .map((i) => `${i.row.name} · ${(i.form === "mid" ? i.row.mid : i.row.end).detail.toLowerCase()}`)
+          .join("; "),
+      };
+    })
+    .sort(
+      (a, b) =>
+        Number(a.remindedToday) - Number(b.remindedToday) ||
+        Number(b.overdue) - Number(a.overdue) ||
+        a.supervisor.localeCompare(b.supervisor),
+    )
+    .map(({ supervisor, items, remindedToday, line }) => ({ supervisor, items, remindedToday, line }));
+}
+
+/** A supervisor's mix of their doctors' mid-terms, in words for the bar's screen-reader label. */
+export function supervisorMix(group: SupervisorGroup): { done: number; due: number; overdue: number; label: string } {
+  const done = group.doctors.filter((d) => d.mid.status === "done").length;
+  const due = group.doctors.filter((d) => d.mid.status === "due").length;
+  const overdue = group.doctors.filter((d) => d.mid.status === "overdue").length;
+  const n = group.doctors.length;
+  const words =
+    done === n
+      ? "all done"
+      : [done ? `${done} done` : null, due ? `${due} due` : null, overdue ? `${overdue} overdue` : null]
+          .filter(Boolean)
+          .join(", ");
+  return { done, due, overdue, label: `${n} ${n === 1 ? "doctor" : "doctors"} · mid-term ${words}` };
+}
+
+/** A status cell's words for a screen reader: "Mid-term overdue", "EPAs 1 of 2". */
+export function cellLabel(what: "Mid-term" | "EPAs" | "End-of-term", cell: OverviewCell): string {
+  if (what === "EPAs")
+    return `EPAs ${cell.detail.replace(/\u00a0/g, " ")}, ${cell.status === "done" ? "at the term target" : "below the term target"}`;
+  return `${what} ${CELL_WORDS[cell.status].toLowerCase()}`;
+}
+
+/** One doctor's term as a status timeline. Words only: what is done, due or not yet, never what was written. */
+export function doctorTimeline(
+  row: OverviewDoctor,
+): { id: FormKind | "epas"; title: string; detail: string; status: CellStatus }[] {
+  return [
+    { id: "mid", title: "Mid-term assessment", detail: row.mid.detail, status: row.mid.status },
+    {
+      id: "epas",
+      title: "EPAs this term",
+      detail: `${row.epas.detail.replace(/\u00a0/g, " ")} recorded`,
+      status: row.epas.status,
+    },
+    { id: "end", title: "End-of-term assessment", detail: row.end.detail, status: row.end.status },
+  ];
+}
+
+/** Early in term nothing has opened yet: the page says so rather than showing an empty grid of greys. */
+export function nothingDueYet(rows: readonly OverviewDoctor[]): boolean {
+  return rows.every((r) => r.mid.status === "not_yet" && r.end.status === "not_yet");
+}
