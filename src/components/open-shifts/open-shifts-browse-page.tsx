@@ -210,26 +210,38 @@ export function OpenShiftsBrowsePage() {
             urgentDays={summary.urgentDays}
             rosteredDays={rosteredDays}
           />
-          <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 pt-2 text-xs text-[color:var(--text-muted)]">
-            <span>Number under a date: shifts that match your filters</span>
-            <span className="inline-flex items-center gap-1">
-              <TriangleAlert
+          <ul
+            className="m-0 mt-1 flex list-none flex-wrap justify-center gap-x-3 gap-y-1.5 p-0 px-3 text-[0.65625rem] font-semibold text-[color:var(--text)]"
+            aria-label="Calendar key"
+          >
+            <li className="inline-flex items-center gap-1.5">
+              <span
                 aria-hidden="true"
-                strokeWidth={1.6}
-                className="size-icon-xs text-[color:var(--mode-identity)]"
-              />
+                className="nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center rounded-full bg-[color:var(--mode-identity-soft)] px-1 text-[0.5625rem] font-extrabold text-[color:var(--mode-identity)]"
+              >
+                3
+              </span>
+              Shifts that match
+            </li>
+            <li className="inline-flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center rounded-full border border-[color:var(--warning-border)] text-[color:var(--warning-text)]"
+              >
+                <TriangleAlert aria-hidden="true" strokeWidth={2.2} className="size-2.5" />
+              </span>
               Includes an urgent shift
-            </span>
+            </li>
             {state.roster && state.roster.length > 0 ? (
-              <span className="inline-flex items-center gap-1">
+              <li className="inline-flex items-center gap-1.5">
                 <span
                   aria-hidden="true"
-                  className="inline-block h-0.5 w-3 rounded-full bg-[color:var(--info,var(--command))]"
+                  className="inline-block size-3.5 rounded-full shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border"
                 />
                 You&apos;re rostered
-              </span>
+              </li>
             ) : null}
-          </div>
+          </ul>
 
           {state.rosterStatus === "error" && !sample ? (
             <Note icon={<TriangleAlert aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />} tone="warn">
