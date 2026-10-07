@@ -39,6 +39,12 @@ export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
  */
 export const WORK_PAGE_FAVOURITES_STORAGE_KEY = "psychsift:favourites:work-pages-v1";
 
+/**
+ * localStorage — Favourites kept on this device: saved phone numbers, the
+ * names and notes a person gave their favourites, and their layout choices.
+ */
+export const FAVOURITES_LOCAL_STORAGE_KEY = "psychsift:favourites:local-v1";
+
 /** localStorage — which favourites items were opened, and when (90-day TTL, no owner id). */
 export const DATABASE_FAVOURITES_LAST_OPENED_STORAGE_KEY = "database:favourites:last-opened-v1";
 /** localStorage — the pinned favourites item ids (no owner id). */
@@ -151,6 +157,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, DATABASE_FAVOURITES_LAST_OPENED_STORAGE_KEY);
   removeQuietly(() => window.localStorage, DATABASE_FAVOURITES_PINNED_STORAGE_KEY);
   removeQuietly(() => window.localStorage, WORK_PAGE_FAVOURITES_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, FAVOURITES_LOCAL_STORAGE_KEY);
   removeQuietly(() => window.sessionStorage, PLAN_DRAFT_STORAGE_KEY);
   removeQuietly(() => window.sessionStorage, CME_NEW_ENTRY_DRAFT_KEY);
 

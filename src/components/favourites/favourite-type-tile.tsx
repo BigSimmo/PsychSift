@@ -15,6 +15,8 @@ const tileTone: Record<FavouriteType, string> = {
   Differential: "bg-[color:var(--tone-rose-soft)] text-[color:var(--tone-rose)]",
   Therapy: "bg-[color:var(--tone-purple-soft)] text-[color:var(--tone-purple)]",
   "Work page": "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
+  // A saved number wears On Call's colour, where the hospital's numbers live.
+  Number: "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
 };
 
 /** The flat round icon in front of a favourite, in the colour of where it leads. */
@@ -23,7 +25,7 @@ export function FavouriteTypeTile({ item, size = "md" }: { item: FavouriteItem; 
   return (
     <span
       aria-hidden="true"
-      data-mode-identity={item.type === "Work page" ? item.identity : undefined}
+      data-mode-identity={item.type === "Work page" || item.type === "Number" ? item.identity : undefined}
       className={cn(
         "grid shrink-0 place-items-center rounded-full",
         size === "sm" ? "size-6" : size === "lg" ? "size-10" : size === "xl" ? "size-10" : "size-9",

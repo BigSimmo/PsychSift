@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Pill, Quote, type LucideIcon } from "lucide-react";
+import { FileText, Phone, Pill, Quote, type LucideIcon } from "lucide-react";
 
 import type { AccountFavourite, AccountFavouriteSet } from "@/components/account-data-provider";
 import type { FavouriteItem as PrototypeFavouriteItem } from "@/components/clinical-dashboard/favourites-prototype-data";
@@ -13,6 +13,7 @@ import {
 } from "@/components/favourites/favourites-view-model";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import { appModeIcons } from "@/lib/app-mode-icons";
+import { telHref, type FavouriteOverride, type SavedNumber } from "@/lib/favourites/favourites-local";
 import type { ResolvedWorkPageStar } from "@/lib/favourites/work-page-stars";
 
 /**
@@ -141,5 +142,44 @@ export function workStarToItem(star: ResolvedWorkPageStar): FavouriteItem {
     areaName: star.area.name,
     identity: star.area.identity,
     savedAt: star.starredAt,
+  };
+}
+
+/** A phone number saved on this device, as a favourite. Opening it dials. */
+export function numberToItem(entry: SavedNumber): FavouriteItem {
+  return {
+    id: `number:${entry.id}`,
+    title: entry.label,
+    shortTitle: entry.label,
+    description: entry.note || entry.number,
+    type: "Number",
+    tabId: "work",
+    set: "Numbers",
+    evidence: "",
+    lastUsed: entry.openedAt !== null ? formatLastOpened(entry.openedAt) : "Saved",
+    openedAt: entry.openedAt,
+    action: "Call",
+    href: telHref(entry.number) ?? "#",
+    icon: Phone,
+    pinned: entry.pinnedAt !== null,
+    pinnedAt: entry.pinnedAt,
+    sortOrder: 0,
+    identity: "on-call",
+    numberId: entry.id,
+    phone: entry.number,
+    note: entry.note || undefined,
+    savedAt: entry.createdAt,
+  };
+}
+
+/** Applies the name and note a person gave a favourite. The item's own title is kept. */
+export function applyOverride(item: FavouriteItem, override: FavouriteOverride | undefined): FavouriteItem {
+  if (!override || (!override.name && !override.note)) return item;
+  return {
+    ...item,
+    title: override.name ?? item.title,
+    shortTitle: override.name ?? item.shortTitle,
+    originalTitle: override.name ? item.title : undefined,
+    note: override.note ?? item.note,
   };
 }

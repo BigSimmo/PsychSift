@@ -19,7 +19,8 @@ export type FavouriteType =
   | "Form"
   | "Differential"
   | "Therapy"
-  | "Work page";
+  | "Work page"
+  | "Number";
 
 export type FavouriteItem = {
   id: string;
@@ -56,7 +57,20 @@ export type FavouriteItem = {
   identity?: AppModeId;
   /** Epoch ms it was saved, used to order never-opened items. */
   savedAt?: number;
+  /** Set on a saved phone number: its id in the device store (`favourites-local.ts`). */
+  numberId?: string;
+  /** A saved number as typed, shown in Geist Mono. */
+  phone?: string;
+  /** The person's own note for this favourite, kept on this phone. */
+  note?: string;
+  /** The item's own title, kept when the person renamed it. */
+  originalTitle?: string;
 };
+
+/** Which side of Favourites an item sits on. Work pages and saved numbers are Work. */
+export function favouriteScopeOf(item: Pick<FavouriteItem, "type">): "clinical" | "work" {
+  return item.type === "Work page" || item.type === "Number" ? "work" : "clinical";
+}
 
 export type FavouritesView = "recent" | "az" | "type" | "order";
 
@@ -91,6 +105,7 @@ const typeOrder: readonly FavouriteType[] = [
   "Source",
   "Saved search",
   "Work page",
+  "Number",
 ];
 
 const typeGroupLabel: Record<FavouriteType, string> = {
@@ -104,6 +119,7 @@ const typeGroupLabel: Record<FavouriteType, string> = {
   Differential: "Differentials",
   Therapy: "Therapies",
   "Work page": "Work pages",
+  Number: "Numbers",
 };
 
 export function isSourceBacked(item: FavouriteItem): boolean {

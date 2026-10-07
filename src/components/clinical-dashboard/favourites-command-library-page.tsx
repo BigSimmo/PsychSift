@@ -144,6 +144,7 @@ const typeAppearance: Record<FavouriteType, ChipAppearance> = {
   Differential: { kind: "information", tone: "accent" },
   Therapy: { kind: "information", tone: "accent" },
   "Work page": { kind: "information", tone: "accent" },
+  Number: { kind: "information", tone: "accent" },
 };
 
 // The type facet: every clinical tab, plus saved work pages.
