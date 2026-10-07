@@ -277,7 +277,9 @@
         "src/app/(search-app)/teaching/assessments/record/page.tsx",
         "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
         "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
-        "src/app/(search-app)/my-day/favourites/page.tsx"
+        "src/app/(search-app)/my-day/favourites/page.tsx",
+        "src/app/(search-app)/my-day/help/page.tsx",
+        "src/app/(search-app)/my-day/setup/page.tsx"
       ],
       "routeRoots": true,
       "roots": [],

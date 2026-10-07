@@ -1059,7 +1059,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `Breadcrumb`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             129 |
-| `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              12 |
+| `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
 | `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               7 |
 | `Citation`               | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
@@ -1088,7 +1088,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `PanelHeading`           | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `Progress`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `Quantity`               | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `RadioGroup`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
+| `RadioGroup`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `RetrievalStateBanner`   | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `SafeBoldText`           | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
 | `SearchField`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |

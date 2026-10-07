@@ -145,6 +145,12 @@ export const EXAMPLE_DATA_COOKIE = "psychsift_example_data";
 export const ON_CALL_FIRST_WEEK_READ_STORAGE_KEY = "psychsift:on-call:first-week-read-v1";
 
 /**
+ * localStorage — Set up Work: where the doctor got to in the walkthrough (step id, finished and
+ * skipped step ids, and the work areas they said they use). Holds no setting and no free text.
+ */
+export const WORK_SETUP_PROGRESS_STORAGE_KEY = "psychsift:work-setup:progress-v1";
+
+/**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
  * device's and stay; only the doctor's self-chosen work stage is a person's, so
  * only those fields go at a transition.
@@ -227,6 +233,7 @@ export function clearAccountScopedBrowserStorage(): void {
   } catch {
     // No document (a worker) or cookies blocked: nothing was set.
   }
+  removeQuietly(() => window.localStorage, WORK_SETUP_PROGRESS_STORAGE_KEY);
   stripAccountScopedPreferences();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }

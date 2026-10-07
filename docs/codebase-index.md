@@ -486,6 +486,10 @@ parts a person shapes on the device (saved phone numbers, own names and notes, p
 account-scoped key, `work-page-stars.ts` the page hearts, and `favourites-search.ts` turns saved numbers
 into Search my work records. Pages use `FavouritesShelf` and `WorkPageFavouriteButton`.
 
+**Work setup and help.** `src/lib/work-setup/progress.ts` keeps the `/my-day/setup` walkthrough's
+progress on the device (an account-scoped key). `src/lib/work-help/` holds the plain-language help
+topics per work area (`topics/*.ts`), read by `/my-day/help` and the Help item in each More sheet.
+
 **Work screens added by the wiring pass.** `src/lib/work-screens/` holds the pure models and sample
 records for the screens the work-mode wiring pass added: `admin/` (Requests, Sharing, Documents, Pay,
 Tax, Workforce), `assessments/` (Export, a supervisor's view of a trainee), `cpd/` (Evidence, Export)

@@ -608,7 +608,8 @@
         "src/components/teaching/teaching-calendar-sheet.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
-        "src/components/teaching/teaching-teach.tsx"
+        "src/components/teaching/teaching-teach.tsx",
+        "src/components/work-setup/work-setup-steps.tsx"
       ],
       "productImportFiles": [
         "src/components/calendar/calendar-view.tsx",
@@ -622,7 +623,8 @@
         "src/components/teaching/organise-sheets.tsx",
         "src/components/teaching/teaching-calendar-sheet.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
-        "src/components/teaching/teaching-resource-list.tsx"
+        "src/components/teaching/teaching-resource-list.tsx",
+        "src/components/work-setup/work-setup-steps.tsx"
       ],
       "designSync": {
         "listedInSourceMap": true,
@@ -1897,8 +1899,14 @@
       "source": "src/components/ui/choice.tsx",
       "sourceExported": true,
       "entryExported": true,
-      "directImportFiles": ["src/components/work-profile/work-stage-sheet.tsx"],
-      "productImportFiles": ["src/components/work-profile/work-stage-sheet.tsx"],
+      "directImportFiles": [
+        "src/components/work-profile/work-stage-sheet.tsx",
+        "src/components/work-setup/work-setup-steps.tsx"
+      ],
+      "productImportFiles": [
+        "src/components/work-profile/work-stage-sheet.tsx",
+        "src/components/work-setup/work-setup-steps.tsx"
+      ],
       "designSync": {
         "listedInSourceMap": true,
         "listedInDtsProps": true,
@@ -2351,6 +2359,7 @@
         "src/components/tools/tools-search-results-page.tsx",
         "src/components/ui/confirm-dialog.tsx",
         "src/components/work-frame/work-frame-header.tsx",
+        "src/components/work-help/work-help-sheet.tsx",
         "src/components/work-profile/work-stage-sheet.tsx",
         "src/components/work-screens/admin/documents-page.tsx",
         "src/components/work-screens/admin/pay-page.tsx",
@@ -3312,10 +3321,12 @@
         "src/app/(search-app)/my-day/alerts/earlier/page.tsx",
         "src/app/(search-app)/my-day/alerts/page.tsx",
         "src/app/(search-app)/my-day/favourites/page.tsx",
+        "src/app/(search-app)/my-day/help/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
         "src/app/(search-app)/my-day/profile/agreement/page.tsx",
         "src/app/(search-app)/my-day/profile/page.tsx",
+        "src/app/(search-app)/my-day/setup/page.tsx",
         "src/app/(search-app)/my-day/week/page.tsx",
         "src/app/(search-app)/my-work/page.tsx",
         "src/app/(search-app)/on-call/call/page.tsx",
@@ -4178,6 +4189,16 @@
           "sanctionedPatternsPresent": []
         },
         {
+          "file": "src/app/(search-app)/my-day/help/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
           "file": "src/app/(search-app)/my-day/hours/page.tsx",
           "exists": true,
           "imports": [],
@@ -4216,6 +4237,16 @@
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
           "sanctionedPatternsPresent": ["ModeHome"]
+        },
+        {
+          "file": "src/app/(search-app)/my-day/setup/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
         },
         {
           "file": "src/app/(search-app)/my-day/week/page.tsx",
@@ -6190,10 +6221,12 @@
       "src/app/(search-app)/my-day/alerts/earlier/page.tsx",
       "src/app/(search-app)/my-day/alerts/page.tsx",
       "src/app/(search-app)/my-day/favourites/page.tsx",
+      "src/app/(search-app)/my-day/help/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
       "src/app/(search-app)/my-day/profile/agreement/page.tsx",
       "src/app/(search-app)/my-day/profile/page.tsx",
+      "src/app/(search-app)/my-day/setup/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
       "src/app/(search-app)/my-work/page.tsx",
       "src/app/(search-app)/on-call/call/page.tsx",
@@ -6395,10 +6428,12 @@
       "src/app/(search-app)/my-day/alerts/earlier/page.tsx",
       "src/app/(search-app)/my-day/alerts/page.tsx",
       "src/app/(search-app)/my-day/favourites/page.tsx",
+      "src/app/(search-app)/my-day/help/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
       "src/app/(search-app)/my-day/profile/agreement/page.tsx",
       "src/app/(search-app)/my-day/profile/page.tsx",
+      "src/app/(search-app)/my-day/setup/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
       "src/app/(search-app)/my-work/page.tsx",
       "src/app/(search-app)/on-call/call/page.tsx",
@@ -6509,7 +6544,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 210,
+    "inheritedCkbV2RootCount": 212,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6518,8 +6553,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 211,
-    "productionRouteCount": 203,
-    "nextUiEntryCount": 311
+    "rootCount": 213,
+    "productionRouteCount": 205,
+    "nextUiEntryCount": 313
   }
 }
