@@ -49,6 +49,8 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/admin/documents", owner: "wiring" },
   { path: "/admin/pay", owner: "wiring" },
   { path: "/admin/tax", owner: "wiring" },
+  { path: "/admin/workforce", owner: "wiring" },
+  { path: "/teaching/assessments/trainee", owner: "wiring" },
   // Favourites.
   { path: "/my-day/favourites", owner: "favourites" },
   // Setup walkthrough and help centre.
