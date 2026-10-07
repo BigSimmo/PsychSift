@@ -144,7 +144,8 @@ function Countdown({
   const days = daysBetween(today, exam.on);
   const plan = studyPlanWeek(exam, today);
   return (
-    <T5Panel testId="teaching-exam-countdown">
+    // Work-mode redesign, owner request 6 Oct 2026: the countdown is the page's hero while the exam is ahead.
+    <T5Panel hero={days >= 0} label="Your exam" testId="teaching-exam-countdown">
       <T5Kicker>{`${exam.name} · ${weekdayDayMonth(exam.on)}`}</T5Kicker>
       {days >= 0 ? (
         <>

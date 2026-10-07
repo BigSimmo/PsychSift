@@ -421,7 +421,8 @@ export function T5Meter({ percent, label, thin = false }: { percent: number; lab
       aria-label={label}
       aria-hidden={label ? undefined : true}
       className={cn(
-        "block overflow-hidden rounded-full bg-[color:var(--surface-wash)]",
+        // On the hero the fill is the hero's text colour, so the track is that colour, faint.
+        "block overflow-hidden rounded-full bg-[color:var(--surface-wash)] [[data-t5-hero]_&]:bg-current/25",
         thin ? "mt-1.25 h-0.75" : "h-1.5",
       )}
     >
