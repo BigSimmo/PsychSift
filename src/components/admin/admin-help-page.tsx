@@ -5,31 +5,30 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
-import { AdminPinnedNumbers } from "@/components/admin/admin-pinned-numbers";
 import { AdminCrisisLines } from "@/components/admin/admin-crisis-lines";
+import { adminHelpForwardHref } from "@/components/admin/admin-hash-forward";
 import { AdminHelpItemRow, AdminHelpOnSiteGlance } from "@/components/admin/admin-help-item-row";
+import { AdminNote, AdminPage, adminStyles } from "@/components/admin/admin-kit";
+import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { AdminNavHeader } from "@/components/admin/admin-nav-header";
 import { ADMIN_HELP_SECTIONS } from "@/components/admin/admin-page-sections";
+import { AdminPinnedNumbers } from "@/components/admin/admin-pinned-numbers";
 import { AdminShowAll } from "@/components/admin/admin-show-all";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { InformationPageShell } from "@/components/information-page-shell";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { WorkButton, WorkEmpty, WorkSectionLabel } from "@/components/mode-kit/work";
 import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
-import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
-import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
-import { adminHelpForwardHref } from "@/components/admin/admin-hash-forward";
-import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
+import { cn } from "@/components/ui-primitives";
 import { buildAdminHelpItems, type AdminHelpItem, type AdminHelpTab } from "@/lib/admin/help-items";
-import { matchesHelpQuery } from "@/lib/admin/help-search";
+import { helpQueryAlsoLooksFor, matchesHelpQuery } from "@/lib/admin/help-search";
+import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { ADMIN_STATEWIDE_SUPPORT } from "@/lib/admin/statewide-support";
-import { ON_CALL_IN_HOURS_END_HOUR, isOnCallOutOfHours } from "@/lib/on-call/home-modules";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry, OnCallSection } from "@/lib/on-call/entry-model";
-import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { ON_CALL_IN_HOURS_END_HOUR, isOnCallOutOfHours } from "@/lib/on-call/home-modules";
 
 const TAB_BY_SECTION_ID: Record<string, AdminHelpTab> = {
   "admin-help-support": "support",
@@ -106,23 +105,23 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
     setEditorState({ open: true, entry: item.entry, section: item.entry.section });
   }
 
+  const searching = query.trim().length > 0;
+  const alsoLooksFor = searching ? helpQueryAlsoLooksFor(query) : [];
+  const noMatches = searching && filtered.length === 0;
+  const canAdd = isAuthenticated && !state.demoMode;
+
   return (
     <>
-      <AdminNavHeader title="Help" sections={ADMIN_HELP_SECTIONS} />
-      <InformationPageShell testId="admin-help-main">
+      <AdminPage testId="admin-help-main">
         <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
           Help
         </PageTitleUnderBand>
 
-        {/* Crisis lines first, above the filter and every tab (design; ui-lane-rules). */}
+        {/* Crisis lines first, above the filter and every section (design; ui-lane-rules). */}
         <AdminCrisisLines />
 
-        {/* Pinned numbers sit under the crisis lines, never above them (owner decision 2026-10-01).
-            Hidden with the sections when loading failed: a cached number is not offered as current. */}
-        {loadState === "failed" ? null : <AdminPinnedNumbers items={items} testId="admin-help-pinned" />}
-
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-          <div data-testid="admin-help-filter" className="min-w-0">
+        <div className={adminStyles.helpSearch}>
+          <div data-testid="admin-help-filter" className="min-w-0 flex-1">
             <TextField
               label="Find in Help"
               hint="Everyday words work: payslip, hungry, password"
@@ -131,18 +130,40 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          {isAuthenticated ? (
-            <Button
+          {canAdd ? (
+            <WorkButton
               variant="secondary"
-              size="sm"
               icon={Plus}
               testId="admin-help-add"
               onClick={() => setEditorState({ open: true, entry: null, section: "logistics" })}
             >
               Add your own
-            </Button>
+            </WorkButton>
           ) : null}
         </div>
+        {searching && loadState !== "failed" ? (
+          <div className="grid gap-1" role="status" aria-live="polite" data-testid="admin-help-search-result">
+            <p className="text-sm text-[color:var(--text)]">
+              {filtered.length === 1 ? "1 result" : `${filtered.length} results`}
+            </p>
+            {alsoLooksFor.length > 0 ? (
+              <p className="text-xs text-[color:var(--text-muted)]" data-testid="admin-help-also-matched">
+                Also looking for {listInWords(alsoLooksFor.slice(0, 6))}
+              </p>
+            ) : null}
+            {noMatches ? (
+              <p className="text-xs text-[color:var(--text-muted)]" data-testid="admin-help-no-match">
+                Nothing in Support, Guides, Contacts or On site. Crisis lines always show.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Pinned numbers sit under the crisis lines, never above them (owner decision 2026-10-01).
+            Hidden with the sections when loading failed: a cached number is not offered as current. */}
+        {loadState === "failed" ? null : <AdminPinnedNumbers items={items} testId="admin-help-pinned" />}
+
+        {loadState === "failed" ? null : <AdminNavHeader title="Help" sections={ADMIN_HELP_SECTIONS} />}
 
         {loadState === "failed" ? (
           <AdminLoadFailed reason={state.loadError} onRetry={retry} testId="admin-help-load-failed" />
@@ -155,27 +176,31 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
                 key={section.id}
                 id={section.id}
                 aria-label={section.label}
-                className={cn(inPageAnchor, "grid gap-2")}
+                className={cn(inPageAnchor, adminStyles.section)}
               >
-                <h2 className={eyebrowText}>{section.label}</h2>
+                <WorkSectionLabel count={rows.length > 0 ? rows.length : undefined}>{section.label}</WorkSectionLabel>
                 {tab === "on-site" && isOnCallOutOfHours(now) ? (
-                  <p className={cn(textMuted, "text-sm")} data-testid="admin-help-on-site-after-hours">
+                  <p className="text-sm text-[color:var(--text-muted)]" data-testid="admin-help-on-site-after-hours">
                     {AFTER_HOURS_LABEL}
                   </p>
                 ) : null}
                 {rows.length === 0 && loadState === "loading" ? (
                   // Design point 11: a loading section is a skeleton, never an empty-looking one.
                   <ModeModuleSkeleton rows={3} testId={`admin-help-${tab}-loading`} />
-                ) : rows.length === 0 && tab === "support" && !query.trim() ? (
+                ) : rows.length === 0 && tab === "support" && !searching ? (
                   // An honest empty state: no statewide service is listed yet, and none is invented.
-                  <EmptyState
-                    icon={LifeBuoy}
-                    title="Nothing here yet"
-                    body={EMPTY_MESSAGE.support}
-                    testId="admin-help-support-empty"
-                  />
+                  <div className="work-card">
+                    <WorkEmpty
+                      icon={LifeBuoy}
+                      title="Nothing here yet"
+                      body={EMPTY_MESSAGE.support}
+                      testId="admin-help-support-empty"
+                    />
+                  </div>
                 ) : rows.length === 0 ? (
-                  <p className={cn(textMuted, "text-sm")}>{EMPTY_MESSAGE[tab]}</p>
+                  <p className="text-sm text-[color:var(--text-muted)]">
+                    {searching ? "Nothing here matches." : EMPTY_MESSAGE[tab]}
+                  </p>
                 ) : (
                   <>
                     {tab === "on-site" ? <AdminHelpOnSiteGlance items={rows} /> : null}
@@ -183,12 +208,13 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
                       items={rows}
                       label={section.label}
                       testId={`admin-help-${tab}-list`}
+                      listClassName="work-card work-rows"
                       anchorIdOf={(item) => (item.entry ? onCallEntryAnchorId(item.entry.id) : item.key)}
                       renderItem={(item) => (
                         <AdminHelpItemRow
                           key={item.key}
                           item={item}
-                          onEdit={isAuthenticated && item.entry ? openEditor : undefined}
+                          onEdit={canAdd && item.entry ? openEditor : undefined}
                         />
                       )}
                     />
@@ -198,7 +224,11 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
             );
           })
         )}
-      </InformationPageShell>
+
+        {state.demoMode ? (
+          <AdminNote testId="admin-help-demo-note">Crisis numbers are real. Other numbers are examples.</AdminNote>
+        ) : null}
+      </AdminPage>
 
       <OnCallEntryEditor
         open={editorState.open}
@@ -210,4 +240,10 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
       />
     </>
   );
+}
+
+/** "a, b and c", in plain words, with no list punctuation beyond commas. */
+function listInWords(words: readonly string[]): string {
+  if (words.length <= 1) return words.join("");
+  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
 }

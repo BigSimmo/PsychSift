@@ -917,3 +917,11 @@
     appearance: auto;
   }
 }
+
+/* Help: the Find in Help box, with Add your own beside it from a wide phone up. */
+.helpSearch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: calc(var(--spacing) * 2);
+}
