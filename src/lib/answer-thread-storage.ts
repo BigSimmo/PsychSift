@@ -5,8 +5,11 @@ import {
   type ClientRagAnswerPayload,
   type ClientSearchResult,
 } from "@/lib/answer-client-payload";
+import { answerThreadStorageKey } from "@/lib/answer-thread-storage-keys";
 
-export const answerThreadStorageKey = "clinical-kb-answer-thread";
+// The key and the clear live in a small module so sign-out (src/lib/supabase/client.tsx)
+// can clear the thread without loading the answer projection code on every page.
+export { answerThreadStorageKey, clearPersistedAnswerThread } from "@/lib/answer-thread-storage-keys";
 export const guestAnswerThreadOwnerId = "guest-tab-session";
 export const maxStoredAnswerTurns = 12;
 // sessionStorage already dies with the tab, but long-lived clinical-workstation
@@ -252,26 +255,5 @@ export function savePersistedAnswerThread(ownerId: string, thread: PersistedAnsw
     return true;
   } catch {
     return false;
-  }
-}
-
-export function clearPersistedAnswerThread(ownerId?: string) {
-  if (typeof window === "undefined") return;
-  try {
-    if (ownerId) {
-      window.sessionStorage.removeItem(scopedStorageKey(ownerId));
-      window.sessionStorage.removeItem(answerThreadStorageKey);
-      window.localStorage.removeItem(answerThreadStorageKey);
-      return;
-    }
-    window.localStorage.removeItem(answerThreadStorageKey);
-    for (let index = window.sessionStorage.length - 1; index >= 0; index -= 1) {
-      const key = window.sessionStorage.key(index);
-      if (key === answerThreadStorageKey || key?.startsWith(`${answerThreadStorageKey}:`)) {
-        window.sessionStorage.removeItem(key);
-      }
-    }
-  } catch {
-    // Thread persistence is a convenience only.
   }
 }
