@@ -6,7 +6,6 @@ import {
   ChevronRight,
   ClipboardCopy,
   Feather,
-  GraduationCap,
   Layers,
   Plus,
   Presentation,
@@ -31,7 +30,6 @@ import { CmeBandAction, CmeKvCard, cmeFreshnessEyebrow } from "@/components/cme/
 import { CmeYearInWeeks } from "@/components/cme/cme-year-in-weeks";
 import { WorkBody } from "@/components/mode-kit/work";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/components/ui-primitives";
 import { addDays, expandEvents } from "@/lib/calendar/calendar-event";
 import { cmeCalendarEvents } from "@/lib/cme/calendar-events";
 import { buildCmeCatchUpPlan } from "@/lib/cme/catch-up-plan";
