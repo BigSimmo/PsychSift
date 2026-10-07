@@ -213,3 +213,15 @@ export function leaveStaffingWords(result: LeaveStaffing): { readonly lead: stri
         : `You come off ${result.yourShifts} ${result.yourShifts === 1 ? "shift" : "shifts"}.`,
   };
 }
+
+/**
+ * A note the doctor copies to their roster manager, since PsychSift holds no
+ * safe number. It names the dates, never a figure and never anyone else.
+ */
+export function staffingAskText(leave: StaffingWindow | null, teamName: string | null): string {
+  const team = teamName ? `${teamName} needs` : "our team needs";
+  const ask = `What is the fewest doctors ${team} on each day?`;
+  return leave
+    ? `Hi, I am thinking of leave ${spanWords(leave)}. ${ask} I would like to pick dates that suit the team.\n\nThanks`
+    : `Hi, w${ask.slice(1)} I would like to plan my leave around it.\n\nThanks`;
+}

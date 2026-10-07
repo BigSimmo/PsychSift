@@ -15,6 +15,7 @@ import {
   staffingWindow,
   sundayOf,
   type StaffingDay,
+  staffingAskText,
 } from "@/lib/roster/staffing/team-staffing";
 import type { RosterAssignment } from "@/lib/roster/team/model";
 
@@ -203,5 +204,16 @@ describe("the leave result", () => {
         (o) => o.from > "2026-10-22",
       ),
     ).toBe(true);
+  });
+});
+
+describe("staffingAskText", () => {
+  it("asks for the team's number without stating one, with or without dates", () => {
+    expect(staffingAskText(null, null)).toBe(
+      "Hi, what is the fewest doctors our team needs on each day? I would like to plan my leave around it.\n\nThanks",
+    );
+    const dated = staffingAskText({ from: "2026-11-30", to: "2026-12-01" }, "Ward 4");
+    expect(dated).toContain("leave Mon 30 Nov to Tue 1 Dec");
+    expect(dated).not.toMatch(/\d+ doctors/);
   });
 });

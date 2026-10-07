@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Plane, Users } from "lucide-react";
+import { ClipboardCopy, Info, Plane, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 
@@ -21,6 +21,7 @@ import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notic
 import { useRosterTeams } from "@/components/roster/use-roster-team";
 import { cn } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import {
   alternativeDates,
@@ -28,6 +29,7 @@ import {
   isIsoDate,
   leaveStaffing,
   shortDay,
+  staffingAskText,
   spanWords,
   staffingWindow,
   type StaffingWindow,
@@ -136,6 +138,20 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
     // First tap picks one day; a second, later tap ends the run; any other tap starts again.
     if (from && (!to || to === from) && date > from) setDates({ from, to: date });
     else setDates({ from: date, to: date });
+  }
+
+  const [askCopied, setAskCopied] = useState(false);
+  const teamName = enabled.find((team) => team.serviceId === serviceId)?.name ?? null;
+
+  async function copyAsk() {
+    try {
+      await copyTextToClipboard(staffingAskText(leave, teamName));
+      setAskCopied(true);
+      announce("Note copied. Paste it to your roster manager.");
+      window.setTimeout(() => setAskCopied(false), 2500);
+    } catch {
+      announce("Couldn't copy. Select the text instead.", { priority: "assertive" });
+    }
   }
 
   const planHref = leave ? `/roster/requests?start=leave&date=${leave.from}&to=${leave.to}` : null;
@@ -268,9 +284,21 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                   title="Team staffing"
                   right={
                     staffing.readAt ? (
-                      <span className="nums text-xs text-[color:var(--text-muted)]">
-                        {leave ? spanWords(span) : "Next 3 weeks"}
-                        {" · "}Rechecked {perthTimeOf(staffing.readAt)}
+                      <span className="flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                        <span className="nums">
+                          {leave ? spanWords(span) : "Next 3 weeks"}
+                          {" · "}Rechecked {perthTimeOf(staffing.readAt)}
+                        </span>
+                        <RosterLinkWord
+                          onClick={() => {
+                            staffing.reload();
+                            announce("Checking the roster again");
+                          }}
+                          label="Check the team roster again"
+                          testId="staffing-recheck"
+                        >
+                          Recheck
+                        </RosterLinkWord>
                       </span>
                     ) : undefined
                   }
@@ -310,6 +338,15 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                 <RosterNote icon={Info} role="note" testId="staffing-safe-note">
                   <p>{SAFE_NUMBER_NOTE}</p>
                 </RosterNote>
+                <button
+                  type="button"
+                  onClick={() => void copyAsk()}
+                  className={cn(rosterOutlineButton, "w-full")}
+                  data-testid="staffing-ask-copy"
+                >
+                  <ClipboardCopy aria-hidden="true" className="size-icon-md" />
+                  {askCopied ? "Copied" : "Copy a note asking your roster manager"}
+                </button>
               </section>
             ) : null}
             {options.length ? (

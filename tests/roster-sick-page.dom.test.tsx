@@ -238,6 +238,37 @@ it("offline shows the no-connection state and blocks the send", async () => {
   expect(screen.getByTestId("sick-send").getAttribute("aria-disabled")).toBe("true");
 });
 
+it("offline, Send when I'm back online starts the 10 second window when the signal returns", async () => {
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  await renderPage();
+  await user().click(screen.getByTestId("sick-queue"));
+  expect(screen.getByTestId("sick-queued").textContent).toContain("Only while this page stays open");
+  expect(mocks.post).not.toHaveBeenCalled();
+  await act(async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    window.dispatchEvent(new Event("online"));
+  });
+  expect(screen.getByRole("timer", { name: "10 seconds to undo" })).toBeTruthy();
+  expect(mocks.post).not.toHaveBeenCalled();
+  await act(async () => {
+    vi.advanceTimersByTime(10_000);
+  });
+  expect(mocks.post).toHaveBeenCalledWith(SERVICE, { action: "open.report", assignmentId: DAY }, { keepalive: true });
+});
+
+it("offline, Don't send drops the queued report", async () => {
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  await renderPage();
+  await user().click(screen.getByTestId("sick-queue"));
+  await user().click(screen.getByTestId("sick-queue-cancel"));
+  await act(async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    window.dispatchEvent(new Event("online"));
+    vi.advanceTimersByTime(12_000);
+  });
+  expect(mocks.post).not.toHaveBeenCalled();
+});
+
 it("shows a report already sent with its progress, and Take back cancels it", async () => {
   assignments = [tomorrowDay];
   openShifts = [

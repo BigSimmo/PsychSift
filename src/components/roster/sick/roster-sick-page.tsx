@@ -2,7 +2,7 @@
 
 import { CalendarClock, ClipboardCopy, Clock, ExternalLink, History, Info, Thermometer, WifiOff } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -94,6 +94,9 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
   const [failures, setFailures] = useState<readonly SickSendResult[]>([]);
   const [takingBack, setTakingBack] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // "Send when I'm back online": held in memory while this page is open, never on the phone.
+  const [queued, setQueued] = useState(false);
+  const sendWhenOnline = useRef<() => void>(() => undefined);
   const reload = data.reload;
 
   const ready = data.status === "ready" ? data : null;
@@ -200,6 +203,30 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
   const shortNotice = pickedShifts.filter((shift) => isShortNotice(shift.startsAt, now));
   const timelineShifts = holding ? heldShifts : pickedShifts;
 
+  const canQueue =
+    !online &&
+    pickedShifts.length > 0 &&
+    send.canSend &&
+    !ready?.sample &&
+    !signedOutSample &&
+    !holding &&
+    !send.sending;
+
+  useEffect(() => {
+    sendWhenOnline.current = () => {
+      setQueued(false);
+      setOutcome(null);
+      setFailures([]);
+      if (send.schedule(pickedShifts)) announce(`Back online. Sending to ${who} in 10 seconds. Undo to stop it.`);
+    };
+  });
+  useEffect(() => {
+    if (!queued) return;
+    const onOnline = () => sendWhenOnline.current();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [queued]);
+
   function toggle(id: string) {
     if (holding || send.sending) return;
     const next = new Set(pickedIds);
@@ -296,6 +323,29 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
               <RosterNote icon={WifiOff} tone="warning" role="alert" testId="sick-offline">
                 <p className="font-semibold">No connection. Nothing sent.</p>
                 <p>Your roster manager doesn&apos;t know yet. Phone instead, or try again when you have signal.</p>
+                {queued ? (
+                  <div className="grid gap-1" data-testid="sick-queued">
+                    <p>
+                      Sends when you are back online, with 10 seconds to undo. Only while this page stays open, so phone
+                      as well if the shift is soon.
+                    </p>
+                    <RosterLinkWord onClick={() => setQueued(false)} testId="sick-queue-cancel">
+                      Don&apos;t send
+                    </RosterLinkWord>
+                  </div>
+                ) : canQueue ? (
+                  <button
+                    type="button"
+                    className={cn(rosterOutlineButton, "justify-self-start px-4")}
+                    onClick={() => {
+                      setQueued(true);
+                      announce("It will send when you are back online, with 10 seconds to undo.");
+                    }}
+                    data-testid="sick-queue"
+                  >
+                    Send when I&apos;m back online
+                  </button>
+                ) : null}
               </RosterNote>
             ) : null}
 

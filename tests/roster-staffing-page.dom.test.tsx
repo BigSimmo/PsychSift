@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   reads: [] as { what: string; range?: { from: string; to: string } | null }[],
   announce: vi.fn(),
+  reload: vi.fn(),
   status: "ready" as string,
   teams: { status: "ready" as string, message: null as string | null, reload: vi.fn(), data: null as unknown },
 }));
@@ -39,11 +40,13 @@ vi.mock("@/components/roster/use-roster-team", () => ({
             settings: { swapApproval: "auto_same_grade", rules: {}, rulesSource: null, payFortnightAnchor: null },
             sites: [],
           };
-    return { status: "ready", data, message: null, readAt: new Date("2026-10-06T11:30:00Z"), reload: vi.fn() };
+    return { status: "ready", data, message: null, readAt: new Date("2026-10-06T11:30:00Z"), reload: mocks.reload };
   },
 }));
 vi.mock("@/components/roster/ask/roster-ask-box", () => ({ RosterAskButton: () => null }));
 vi.mock("@/components/ui/live-announcer", () => ({ announce: mocks.announce }));
+const copied = vi.hoisted(() => vi.fn<(text: string) => Promise<void>>(async () => undefined));
+vi.mock("@/lib/copy-to-clipboard", () => ({ copyTextToClipboard: (text: string) => copied(text) }));
 
 import { RosterStaffingPage } from "@/components/roster/staffing/roster-staffing-page";
 
@@ -200,4 +203,25 @@ it("labels the example team", () => {
   mocks.teams = { ...mocks.teams, data: { teams: [team], actorId: ME, sample: true } };
   render(<RosterStaffingPage now={NOW} />);
   expect(screen.getByTestId("roster-sample-notice")).toBeTruthy();
+});
+
+it("copies a note asking the roster manager for the team's number, naming only the dates", async () => {
+  render(<RosterStaffingPage now={NOW} />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("First day"), "2026-10-22");
+  await user.clear(screen.getByLabelText("Last day"));
+  await user.type(screen.getByLabelText("Last day"), "2026-10-23");
+  await user.click(screen.getByTestId("staffing-ask-copy"));
+  expect(copied).toHaveBeenCalledWith(
+    "Hi, I am thinking of leave Thu 22 to Fri 23 Oct. What is the fewest doctors Ward 4 needs on each day? I would like to pick dates that suit the team.\n\nThanks",
+  );
+  expect(screen.getByTestId("staffing-ask-copy").textContent).toBe("Copied");
+});
+
+it("Recheck reads the team roster again", async () => {
+  render(<RosterStaffingPage now={NOW} />);
+  mocks.reload.mockClear();
+  await userEvent.setup().click(screen.getByTestId("staffing-recheck"));
+  expect(mocks.reload).toHaveBeenCalled();
+  expect(mocks.announce).toHaveBeenCalledWith("Checking the roster again");
 });
