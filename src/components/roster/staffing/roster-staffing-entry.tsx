@@ -1,3 +1,4 @@
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { Users } from "lucide-react";
 import Link from "next/link";
 
@@ -10,7 +11,7 @@ import { cn } from "@/components/ui-primitives";
  * on Leave and requests above the Leave list ("Plan with the team in view").
  * A plain link: no reads, no state.
  */
-export function RosterStaffingEntryLink() {
+function RosterStaffingEntryLinkShown() {
   return (
     <Link
       href="/roster/staffing"
@@ -36,5 +37,14 @@ export function RosterStaffingEntryLink() {
       </span>
       <span className="shrink-0 text-sm font-semibold text-[color:var(--mode-identity)]">Plan</span>
     </Link>
+  );
+}
+
+/** Leads to a new work mode screen, so it shows only to readers the launch switch has let in. */
+export function RosterStaffingEntryLink() {
+  return (
+    <NewWorkModeOnly>
+      <RosterStaffingEntryLinkShown />
+    </NewWorkModeOnly>
   );
 }

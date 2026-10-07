@@ -1,3 +1,4 @@
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ChevronRight, Flag } from "lucide-react";
 import Link from "next/link";
 
@@ -10,7 +11,7 @@ import { cn } from "@/components/ui-primitives";
  * label "Jobs") or the Summary page (mounted there). A literal link, so the route is reachable
  * wherever the main build places it.
  */
-export function ApplicationsEntryLink() {
+function ApplicationsEntryLinkShown() {
   return (
     <Link
       href="/cme/applications"
@@ -25,5 +26,14 @@ export function ApplicationsEntryLink() {
       </span>
       <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
     </Link>
+  );
+}
+
+/** Leads to a new work mode screen, so it shows only to readers the launch switch has let in. */
+export function ApplicationsEntryLink() {
+  return (
+    <NewWorkModeOnly>
+      <ApplicationsEntryLinkShown />
+    </NewWorkModeOnly>
   );
 }

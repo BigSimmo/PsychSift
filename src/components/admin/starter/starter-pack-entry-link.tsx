@@ -1,3 +1,4 @@
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 
@@ -8,7 +9,7 @@ import { JuniorEntryRowBody, juniorEntryRowClass } from "@/components/admin/juni
  * "Contacts for this job") and Admin More ("Work and leave"). Already
  * mounted on Ready for day one.
  */
-export function StarterPackEntryLink() {
+function StarterPackEntryLinkShown() {
   return (
     <Link href="/admin/new-job/starter" className={juniorEntryRowClass} data-testid="admin-starter-entry">
       <JuniorEntryRowBody
@@ -17,5 +18,14 @@ export function StarterPackEntryLink() {
         line="Starter pack: local words, your dates, who to ask"
       />
     </Link>
+  );
+}
+
+/** Leads to a new work mode screen, so it shows only to readers the launch switch has let in. */
+export function StarterPackEntryLink() {
+  return (
+    <NewWorkModeOnly>
+      <StarterPackEntryLinkShown />
+    </NewWorkModeOnly>
   );
 }

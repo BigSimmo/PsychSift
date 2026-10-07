@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ChevronRight, Scale } from "lucide-react";
 import Link from "next/link";
 
@@ -10,7 +12,7 @@ import { cn } from "@/components/ui-primitives";
  * section, Search my work's empty state, and the Overtime page. A literal href so the route
  * reachability scan sees it.
  */
-export function AgreementEntryLink({ className }: { readonly className?: string }) {
+function AgreementEntryLinkShown({ className }: { readonly className?: string }) {
   return (
     <Link
       href="/my-day/profile/agreement"
@@ -36,5 +38,14 @@ export function AgreementEntryLink({ className }: { readonly className?: string 
       </span>
       <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
     </Link>
+  );
+}
+
+/** Leads to a new work mode screen, so it shows only to readers the launch switch has let in. */
+export function AgreementEntryLink(props: ComponentProps<typeof AgreementEntryLinkShown>) {
+  return (
+    <NewWorkModeOnly>
+      <AgreementEntryLinkShown {...props} />
+    </NewWorkModeOnly>
   );
 }
