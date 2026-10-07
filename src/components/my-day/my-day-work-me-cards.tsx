@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  Info,
   Lock,
   Moon,
   Phone,

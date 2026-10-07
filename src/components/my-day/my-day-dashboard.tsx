@@ -69,6 +69,7 @@ import type { MyDayDashboardSources } from "@/components/my-day/use-my-day-dashb
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { kindOf } from "@/components/roster/roster-format";
+import { clashLine } from "@/components/my-day/my-day-clash";
 import { sessionHref } from "@/components/teaching/teaching-view-model";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import type { NewJobProgress } from "@/lib/admin/new-job-progress";
@@ -833,29 +834,6 @@ export function MyDayDashboard({
       />
     </div>
   );
-}
-
-/**
- * The hero's clash line: a teaching session that starts as on call (or a
- * night) ends, or runs into it. A day shift with lunchtime teaching is not a
- * clash, so only on call and nights count.
- */
-function clashLine(shift: RosterDisplayShift | null, startsAt: string, endsAt: string): string | null {
-  if (!shift) return null;
-  const kind = kindOf(shift);
-  if (kind !== "on_call" && kind !== "night") return null;
-  const name = kind === "on_call" ? "on call" : "your night shift";
-  const shiftStart = Date.parse(shift.startsAt);
-  const shiftEnd = Date.parse(shift.endsAt);
-  const start = Date.parse(startsAt);
-  const end = Date.parse(endsAt);
-  if (![shiftStart, shiftEnd, start, end].every(Number.isFinite)) return null;
-  if (Math.abs(start - shiftEnd) <= 60_000) return `Starts as ${name} ends.`;
-  // Teaching inside the shift is ordinary; one that runs across its start or end is a clash.
-  const across = (edge: number) => start < edge && end > edge;
-  if (across(shiftEnd)) return `Runs past the end of ${name} at ${perthTimeOf(shift.endsAt)}.`;
-  if (across(shiftStart)) return `Runs into ${name}, which starts ${perthTimeOf(shift.startsAt)}.`;
-  return null;
 }
 
 interface FirstStep {

@@ -18,16 +18,21 @@ import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { endOfShiftCard, type ShiftWindow } from "@/lib/alerts/end-of-shift";
 import { myDayEnabledForAuth, myDayNeedsSignIn } from "@/lib/my-day/model";
 import { useAuthSession } from "@/lib/supabase/client";
-import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 
-const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6";
+/** The work-mode page body: a wash background, a 12px gutter and close card spacing. */
+const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl min-w-0 grid-cols-[minmax(0,1fr)] gap-2.5 px-3 pt-3 pb-8";
 /** A two-column page on a computer (Alerts); the phone layout is unchanged. */
-const WIDE_PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6 lg:max-w-5xl";
+const WIDE_PAGE_WIDTH = `${PAGE_WIDTH} lg:max-w-5xl`;
 
 /**
- * The shared frame of My Day's sub-pages: header, then the sign-in states
- * (checking, failed, signed out) the page body never has to repeat. The body
- * renders only for a reader who can be read for, so nothing fetches signed out.
+ * The shared frame of My Day's sub-pages: the band heading, then the sign-in
+ * states (checking, failed, signed out) the page body never has to repeat. The
+ * body renders only for a reader who can be read for, so nothing fetches signed
+ * out. The band names the page (work-mode redesign, owner request 6 Oct 2026):
+ * the title and line under it go there, and stay in the page only for screen
+ * readers and the document outline.
  */
 export function MyDayFrame({
   title,
@@ -59,15 +64,18 @@ export function MyDayFrame({
   const enabled = myDayEnabledForAuth(authStatus);
   const now = useMyDayNow(nowProp);
   const [signInOpen, setSignInOpen] = useState(false);
+  const eyebrow = subtitle(now);
+  useModeBandHeading({ eyebrow, title });
+  const bandShown = useModeBandShown();
 
   return (
-    <InformationPageShell testId={`${testId}-main`}>
+    <InformationPageShell testId={`${testId}-main`} width="bleed" className="bg-[color:var(--work-wash)]">
       <div className={wide ? WIDE_PAGE_WIDTH : PAGE_WIDTH}>
-        <header className="grid gap-0.5" data-testid={`${testId}-header`}>
-          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+        <header className={bandShown ? "sr-only" : "grid gap-0.5 px-1"} data-testid={`${testId}-header`}>
+          <PageTitleUnderBand className="text-2xl font-bold tracking-tight text-[color:var(--work-ink)]">
             {title}
           </PageTitleUnderBand>
-          <p className="text-sm text-[color:var(--text-muted)]">{subtitle(now)}</p>
+          <p className="text-sm text-[color:var(--text-muted)]">{eyebrow}</p>
         </header>
 
         {authStatus === "loading" ? (

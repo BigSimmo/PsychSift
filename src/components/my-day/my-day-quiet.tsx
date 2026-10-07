@@ -260,7 +260,7 @@ export function QuietRow({
     <li
       data-testid={testId}
       data-done={done ? "" : undefined}
-      className={cn("flex min-h-12 min-w-0 items-center gap-2.5 py-2", done && "opacity-60", className)}
+      className={cn("flex min-h-12 min-w-0 items-center gap-2.5 py-2", className)}
     >
       {lead}
       <span className="grid min-w-0 flex-1">
@@ -418,7 +418,7 @@ export function QuietNote({
           {title}
         </span>
         {body ? (
-          <span className="mt-px text-2xs leading-snug break-words text-[color:var(--text-soft)]">{body}</span>
+          <span className="mt-px text-2xs leading-snug break-words text-[color:var(--text-muted)]">{body}</span>
         ) : null}
       </span>
       {action ? <span className="-my-2 shrink-0 self-center">{action}</span> : null}
@@ -485,7 +485,7 @@ export function QuietKeyValue({
   return (
     <span
       className={cn(
-        "flex min-w-0 justify-between gap-2.5 text-xs text-[color:var(--text-soft)]",
+        "flex min-w-0 justify-between gap-2.5 text-xs text-[color:var(--text-muted)]",
         total && "mt-0.5 border-t border-[color:var(--work-line)] pt-1.5",
       )}
     >

@@ -245,7 +245,7 @@ function MyDayFullList({
                 )}
               >
                 {entry.mode === "all" ? "All" : myDayModeLabel(entry.mode)}
-                <span className="font-semibold opacity-80 nums">{entry.count}</span>
+                <span className="font-semibold nums">{entry.count}</span>
               </button>
             ))}
           </div>

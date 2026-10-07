@@ -93,7 +93,7 @@ export function shiftName(kind: ShiftKind): string {
 }
 
 /** The hero's small capitals line. */
-const heroEyebrow = "text-3xs font-bold uppercase tracking-widest opacity-75";
+const heroEyebrow = "text-3xs font-bold uppercase tracking-widest";
 
 /** A see-through white wash on the hero, in either theme (it follows the hero's own text colour). */
 const heroWash = "bg-[color-mix(in_srgb,currentColor_14%,transparent)]";
@@ -152,7 +152,7 @@ function HeroRing({
       </svg>
       <span className="relative grid leading-none" data-testid={testId}>
         <span className="text-lg-minus font-bold tracking-tight nums">{figure}</span>{" "}
-        <span className="mt-0.5 text-3xs font-semibold opacity-80">{word}</span>
+        <span className="mt-0.5 text-3xs font-semibold">{word}</span>
       </span>
     </span>
   );
@@ -266,7 +266,7 @@ function HeroTrackLine({
             x={tick.at <= 2 ? "0" : tick.at >= 98 ? "100%" : `${tick.at}%`}
             y="10"
             textAnchor={tick.at <= 2 ? "start" : tick.at >= 98 ? "end" : "middle"}
-            className={cn("fill-current text-3xs font-semibold nums", tick.now ? "font-bold" : "opacity-80")}
+            className={cn("fill-current text-3xs font-semibold nums", tick.now ? "font-bold" : undefined)}
           >
             {tick.label}
           </text>
@@ -324,7 +324,7 @@ function HeroPanel({
       <span className="flex min-w-0 items-center justify-between gap-2.5">
         <span className="grid min-w-0">
           <span className="text-sm font-bold leading-snug tracking-tight break-words">{title}</span>
-          {where ? <span className="mt-px text-2xs break-words opacity-80">{where}</span> : null}
+          {where ? <span className="mt-px text-2xs break-words">{where}</span> : null}
         </span>
         <Link
           href={withMyDayReturn(href)}
@@ -396,7 +396,7 @@ function HeroTop({
         >
           {title}
         </span>
-        <span className="text-xs break-words opacity-85 nums">{sub}</span>
+        <span className="text-xs break-words nums">{sub}</span>
       </span>
     </Link>
   );
@@ -543,7 +543,7 @@ export function HeroCard({
           <span className="text-lg-minus leading-tight font-bold tracking-tight break-words">
             {finished ? "Off for the rest of today" : "Off today"}
           </span>
-          <span className="text-xs break-words opacity-85">{[ended, next].filter(Boolean).join(" · ")}</span>
+          <span className="text-xs break-words">{[ended, next].filter(Boolean).join(" · ")}</span>
         </span>
       </Link>
     );
@@ -867,7 +867,7 @@ export function ShiftLegend({
       <ul
         role="list"
         aria-label="Key"
-        className="m-0 flex min-w-0 flex-1 list-none flex-wrap gap-x-3 gap-y-1 p-0 text-2xs font-semibold text-[color:var(--text-soft)]"
+        className="m-0 flex min-w-0 flex-1 list-none flex-wrap gap-x-3 gap-y-1 p-0 text-2xs font-semibold text-[color:var(--text-muted)]"
       >
         {shown.map(([kind, label]) => (
           <li key={kind} className="inline-flex items-center gap-1.25">
@@ -989,7 +989,7 @@ export function MonthView({
     }
   const navButton = cn(
     focusRing,
-    "relative grid size-7 place-items-center rounded-full bg-[color:var(--work-wash)] text-[color:var(--text-soft)] before:absolute before:-inset-2.5 before:content-['']",
+    "relative grid size-7 place-items-center rounded-full bg-[color:var(--work-wash)] text-[color:var(--text-muted)] before:absolute before:-inset-2.5 before:content-['']",
   );
   return (
     <div className="grid gap-2.5" data-testid="my-day-month">
@@ -1196,7 +1196,7 @@ export function StripDay({
         aria-hidden="true"
         className={cn(
           "text-3xs font-bold tracking-wider uppercase",
-          isToday ? "text-[color:var(--mode-identity-contrast)] opacity-85" : "text-[color:var(--text-muted)]",
+          isToday ? "text-[color:var(--mode-identity-contrast)]" : "text-[color:var(--text-muted)]",
         )}
       >
         {perthWeekday(date)}
@@ -1711,7 +1711,7 @@ export function CpdSummary({
           return (
             <span
               key={category}
-              className="flex items-center gap-2 border-[color:var(--work-line)] py-1.5 text-xs font-semibold text-[color:var(--text-soft)] [&+&]:border-t"
+              className="flex items-center gap-2 border-[color:var(--work-line)] py-1.5 text-xs font-semibold text-[color:var(--text-muted)] [&+&]:border-t"
             >
               <span className={cn("size-2 shrink-0 rounded-full", CPD_TONE[category])} />
               <span className="min-w-0 flex-1 break-words">{CPD_LABEL[category]}</span>
