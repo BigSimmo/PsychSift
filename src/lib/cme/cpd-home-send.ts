@@ -3,6 +3,7 @@ import { z } from "zod";
 import { formatEntryForCpdHome } from "@/lib/cme/clipboard";
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries, cmeCsvCell } from "@/lib/cme/export";
+import { formatCmeRowDate } from "@/lib/cme/cpd-year";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { cpdTextLooksLikePatient, cpdTitleLooksLikePatient } from "@/lib/cme/patient-detail-check";
 
@@ -106,7 +107,11 @@ export function cpdHomeRowProblems(
     if (cpdTitleLooksLikePatient(row.activity, thisYear))
       problems.push({
         entryId: row.entryId,
-        activity: /^\d{4}-\d{2}-\d{2}$/.test(row.date) ? `Activity on ${row.date}` : "An activity",
+        // Named by its Australian date with the year ("Activity on Mon 2 Mar 2026"); no "today"
+        // is passed, so the year is always shown.
+        activity: /^\d{4}-\d{2}-\d{2}$/.test(row.date)
+          ? `Activity on ${formatCmeRowDate(row.date, "")}`
+          : "An activity",
         problem: CPD_HOME_TITLE_PATIENT_PROBLEM,
       });
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date))

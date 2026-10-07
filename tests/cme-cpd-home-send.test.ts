@@ -187,7 +187,7 @@ describe("CPD Home file", () => {
     ];
     const problems = cpdHomeRowProblems(cpdHomeRows(flagged, 2026), 2026);
     expect(problems).toEqual([
-      { entryId: "p", activity: "Activity on 2026-04-01", problem: "Title looks like a patient detail" },
+      { entryId: "p", activity: "Activity on Wed 1 Apr 2026", problem: "Title looks like a patient detail" },
     ]);
     expect([...titlesToHoldBack(flagged, 2026)]).toEqual(["p"]);
     const text = cpdHomeAllText(flagged, set, true, new Set(), titlesToHoldBack(flagged, 2026));
