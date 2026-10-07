@@ -4,7 +4,7 @@ import { clickWhenHydrated, expectHydrated } from "./playwright-settlement";
 
 /**
  * Call, Refer and Find in demo mode (plan 3.6): the demo handbook is the
- * synthetic "Demonstration Hospital", so every number here is made up.
+ * synthetic "Example Hospital", so every number here is made up.
  */
 
 async function shortTargets(scope: Locator): Promise<string[]> {
@@ -53,7 +53,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     test("People names the hospital, dials the pause route and keeps short codes desk-only", async ({ page }) => {
       await open(page, "/on-call/call", colorScheme);
       const main = page.getByTestId("on-call-call-main");
-      await expect(main.getByTestId("on-call-hospital-line")).toContainText("Demonstration Hospital");
+      await expect(main.getByTestId("on-call-hospital-line")).toContainText("Example Hospital");
       await expect(main.locator('a[href="tel:0855500000,4455"]')).toHaveCount(1);
       await expect(main).toContainText("then ext 4455");
 

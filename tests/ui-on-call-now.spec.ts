@@ -4,7 +4,7 @@ import { visibleByTestId } from "./playwright-settlement";
 
 /**
  * Now (the On Call mode home) and Who's on, in a browser, on the demo
- * handbook (`src/lib/on-call/service-demo.ts`: "Demonstration Hospital", the
+ * handbook (`src/lib/on-call/service-demo.ts`: "Example Hospital", the
  * synthetic short code 55 and ACMA-reserved 5550 00xx numbers only).
  *
  * The DOM tests (`tests/on-call-now.dom.test.tsx`) prove the order and the
@@ -32,7 +32,7 @@ for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`Now (${colorScheme})`, () => {
     test("leads with the hospital, then its emergency route, then Right now", async ({ page }) => {
       await openNow(page, colorScheme);
-      await expect(visibleByTestId(page, "on-call-now-hospital")).toContainText("Demonstration Hospital");
+      await expect(visibleByTestId(page, "on-call-now-hospital")).toContainText("Example Hospital");
       const emergency = visibleByTestId(page, "on-call-now-emergency");
       await expect(emergency).toContainText("55");
       // Mock-up v10: the mobile pause route leads, the short code sits beneath it.
@@ -122,7 +122,7 @@ test("Who's on shows published named cover under the hospital's name without sto
   await page.setViewportSize({ width: WIDTH, height: HEIGHT });
   await page.goto("/on-call/whos-on", { waitUntil: "domcontentloaded" });
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0, { timeout: 20_000 });
-  await expect(visibleByTestId(page, "on-call-hub-hospital")).toContainText("Demonstration Hospital", {
+  await expect(visibleByTestId(page, "on-call-hub-hospital")).toContainText("Example Hospital", {
     timeout: 20_000,
   });
   await expect(visibleByTestId(page, "on-call-whos-on-team-Medicine")).toContainText("Registrar");

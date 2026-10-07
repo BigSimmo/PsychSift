@@ -116,7 +116,7 @@ export type RosterWhosOnRow = {
   readonly span: string;
   /** On shift at `now`. */
   readonly onNow: boolean;
-  /** Who starts as this shift ends, when the roster says: "Dr Patel from 08:00". */
+  /** Who starts as this shift ends, when the roster says: "Dr Mallee from 08:00". */
   readonly next: { readonly name: string; readonly startsAt: string } | null;
   /** Where the shift sits on the chosen day, in percent of the day, for the time rail. */
   readonly rail: { readonly left: number; readonly width: number };
@@ -233,7 +233,7 @@ export function rosterNowMark(date: string, now: Date): number | null {
   return Math.round(((at - bounds.start) / (bounds.end - bounds.start)) * 1000) / 10;
 }
 
-/** The rail's screen-reader text: "Dr Nguyen, night registrar, 21:00 to 08:30 Wed, on now". */
+/** The rail's screen-reader text: "Dr Tuart, night registrar, 21:00 to 08:30 Wed, on now". */
 export function rosterRailLabel(row: RosterWhosOnRow): string {
   const who = row.isMe ? "You" : (row.name ?? "Nobody rostered");
   return `${who}, ${row.roleLabel.toLowerCase()}, ${row.span}${row.onNow ? ", on now" : ""}`;
