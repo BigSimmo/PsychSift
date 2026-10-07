@@ -163,7 +163,7 @@ describe("CV that fills itself", () => {
     const cv = screen.getByTestId("applications-cv");
     expect(cv.textContent).toContain("Adult inpatient, Example Hospital");
     expect(cv.textContent).toContain("Catatonia");
-    expect(cv.textContent).toContain("2026: 5 h logged, 2 activities");
+    expect(cv.textContent).toContain("2026: 5\u00a0h logged, 2 activities");
     expect(cv.textContent).toContain("Clozapine audit");
     await act(async () => {
       fireEvent.click(screen.getByTestId("applications-cv-copy"));

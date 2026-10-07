@@ -370,11 +370,11 @@ describe("CV", () => {
     expect(sections[0]!.lines.map((line) => line.title)).toEqual(["Adult inpatient, Example Hospital"]);
     expect(sections[1]!.lines.map((line) => line.title)).toEqual(["Catatonia"]);
     expect(sections[2]!.lines.map((line) => line.title)).toEqual([
-      "2026: 5 h logged, 2 activities",
+      "2026: 5\u00a0h logged, 2 activities",
       "Clozapine audit",
-      "2025: 1 h logged, 1 activity",
+      "2025: 1\u00a0h logged, 1 activity",
     ]);
-    expect(sections[2]!.lines[0]!.sub).toBe("Educational 1 h · Outcomes 4 h");
+    expect(sections[2]!.lines[0]!.sub).toBe("Educational 1\u00a0h · Outcomes 4\u00a0h");
   });
 
   it("narrows to this year or widens to every year", () => {
