@@ -93,24 +93,24 @@ test("On Call's legacy teaching calendar opens Teaching's This week", async ({ p
   await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
 });
 
-// work-mode redesign, owner request 6 Oct 2026: the pill lists the frame's three pinned tabs (Today,
-// Week, Logbook), and Presenting and Resources moved into the frame's More sheet.
-test("Teaching's pinned tabs and More reach Presenting, My record and Resources", async ({ page }) => {
+// work-mode redesign, owner request 6 Oct 2026: the frame pins Today, Week and Logbook, and
+// Presenting and Resources sit in More. The pill opens the area list in a work area (Josh,
+// 7 Oct 2026), so a page is reached from its tab, or from More when it has no tab.
+test("Teaching's tabs and More reach Logbook, Presenting and Resources", async ({ page }) => {
   await page.goto("/teaching");
   await expect(visibleByTestId(page, "teaching-hero")).toBeVisible({ timeout: 20_000 });
-  await page.getByRole("button", { name: /^Mode Teaching/ }).click();
-  await visibleByTestId(page, "app-mode-section-logbook").click();
-  await expect(page).toHaveURL("/teaching/logbook");
-  await expect(visibleByTestId(page, "teaching-logbook")).toBeVisible({ timeout: 20_000 });
-  await expectNoSidewaysScroll(page, "logbook");
   for (const [name, path, testId] of [
+    ["Logbook", "/teaching/logbook", "teaching-logbook"],
     ["Presenting", "/teaching/teach", "teaching-presenting"],
     ["Resources", "/teaching/resources", "teaching-resources"],
   ] as const) {
-    await visibleByTestId(page, "work-frame-more").click();
-    await visibleByTestId(page, "work-more-sheet")
-      .getByRole("link", { name: new RegExp(`^${name}`) })
-      .click();
+    const tab = visibleByTestId(page, "mode-band-tabs").locator(`a[href="${path}"]`);
+    if ((await tab.count()) > 0) {
+      await tab.click();
+    } else {
+      await visibleByTestId(page, "work-frame-more").click();
+      await visibleByTestId(page, "work-more-sheet").locator(`a[href="${path}"]`).click();
+    }
     await expect(page).toHaveURL(path);
     await expect(visibleByTestId(page, testId)).toBeVisible({ timeout: 20_000 });
     await expectNoSidewaysScroll(page, name);
