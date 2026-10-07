@@ -97,7 +97,7 @@ import {
 } from "@/lib/work-search/signals";
 
 /**
- * "Search my work", restyled to the locked work-mode mockup (work-mode
+ * "AI Search", restyled to the locked work-mode mockup (work-mode
  * redesign, owner request 6 Oct 2026): a flat full screen (solid, so the page
  * under it never shows through), a pill field in that page's colour, area chips with counts,
  * answers as a hero, and every result a row from the work-mode kit.
@@ -836,7 +836,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
       <p className="m-0 mb-1 max-w-64 text-xs leading-normal text-[color:var(--text-muted)]">
         {visibleCount > 0
           ? "Clinical search answers from guidelines, with citations."
-          : "Clinical search answers from guidelines, with citations. Search my work only looks at your own records."}
+          : "Clinical search answers from guidelines, with citations. AI Search only looks at your own records."}
       </p>
       <Link
         href={clinicalSearchHref(trimmed)}
@@ -887,7 +887,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
     <Sheet
       open={open}
       onClose={() => close(false)}
-      ariaLabel="Search my work"
+      ariaLabel="AI Search"
       initialFocusRef={inputRef}
       returnFocusRef={returnFocusRef}
       resolveReturnFocusTarget={returnFocusAfterClose}
@@ -908,7 +908,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
         data-mode-identity={accent}
         className="flex min-h-full flex-col text-[color:var(--text-heading)]"
       >
-        <h2 className="sr-only">Search my work</h2>
+        <h2 className="sr-only">AI Search</h2>
         <div
           className={cn(
             "sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)] border-b bg-[color:var(--surface-wash)] px-3.5 pt-[max(0.25rem,var(--safe-area-top))] transition-colors motion-reduce:transition-none lg:pt-4 [@media(max-height:500px)]:static",

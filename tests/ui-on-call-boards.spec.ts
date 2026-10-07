@@ -299,7 +299,7 @@ test.describe("01 Home", () => {
     await expect(who.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
   });
 
-  test("does not put a page-menu ellipsis in the header; Search my work stays", async ({ page }) => {
+  test("does not put a page-menu ellipsis in the header; AI Search stays", async ({ page }) => {
     await openBoard(page, ROUTES.home);
     await expect(page.getByTestId("on-call-page-menu-trigger")).toHaveCount(0);
     await expect(page.getByTestId("work-search-button")).toBeVisible();

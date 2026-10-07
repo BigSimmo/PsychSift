@@ -53,7 +53,7 @@ async function attachViewportScreenshot(
 
 test.describe("PsychSift visual QA artifacts", () => {
   test.beforeEach(async ({ page }) => {
-    // The first-visit "Search my work" note sits over the header on staff modes
+    // The first-visit "AI Search" note sits over the header on staff modes
     // and has made Chromium refuse `Page.captureScreenshot` under CI load
     // (Production UI shard 1 on PR #3332). Mark it seen before any navigation.
     await page.addInitScript(() => {

@@ -4,11 +4,41 @@ import { describe, expect, it } from "vitest";
 
 import { appModeDefinitions, appModeHasWorkSearch } from "@/lib/app-modes";
 
-describe("Search my work header icon", () => {
+describe("AI Search header icon", () => {
   // Open shifts joined (work-mode redesign, owner request 6 Oct 2026): it sits inside Roster's frame.
   it("shows on the seven staff work modes and nowhere else", () => {
     const withIcon = appModeDefinitions.map((mode) => mode.id).filter((id) => appModeHasWorkSearch(id));
     expect(withIcon.sort()).toEqual(["cme", "my-day", "my-work", "on-call", "open-shifts", "roster", "teaching"]);
+  });
+
+  it("is named AI Search wherever the reader meets it, never Search my work", () => {
+    // Josh, 7 Oct 2026: the control is "AI Search". It searches the reader's own work records only.
+    const button = readFileSync("src/components/work-search/work-search-button.tsx", "utf8");
+    expect(button).toContain('aria-label="AI Search"');
+    expect(button).toContain('title="AI Search"');
+    const sheet = readFileSync("src/components/work-search/work-search-sheet.tsx", "utf8");
+    expect(sheet).toContain('ariaLabel="AI Search"');
+    for (const file of [
+      "src/components/work-search/work-search-button.tsx",
+      "src/components/work-search/work-search-sheet.tsx",
+      "src/components/work-search/work-search-keys.tsx",
+      "src/lib/work-help/topics/privacy.ts",
+    ]) {
+      const strings = readFileSync(file, "utf8").match(/"[^"\n]*"|>[^<{\n]+</g) ?? [];
+      expect(
+        strings.filter((text) => /search my work/i.test(text)),
+        file,
+      ).toEqual([]);
+    }
+  });
+
+  it("draws the lens-and-stars mark as one inline SVG with a mask id unique to each copy", () => {
+    const glyph = readFileSync("src/components/work-search/work-search-glyph.tsx", "utf8");
+    expect(glyph).not.toMatch(/lucide-react/);
+    expect(glyph).toContain('viewBox="0 0 24 24"');
+    expect(glyph).toContain("useId()");
+    expect(glyph).toContain("url(#${maskId})");
+    expect(glyph).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 
   it("is gated on the mode declaration, not a mode-id branch in the header", () => {

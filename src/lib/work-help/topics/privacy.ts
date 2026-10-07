@@ -10,7 +10,7 @@ export const privacyTopic: WorkHelpTopic = {
     {
       id: "patient-details",
       q: "Can I put patient details into PsychSift?",
-      a: "Keep names, dates of birth and record numbers out. Search my work will not search anything that looks like a patient detail, and CPD reflections and evidence ask you to remove them. The On Call handover takes only a bed number or initials.",
+      a: "Keep names, dates of birth and record numbers out. AI Search will not search anything that looks like a patient detail, and CPD reflections and evidence ask you to remove them. The On Call handover takes only a bed number or initials.",
     },
     {
       id: "kept-where",
