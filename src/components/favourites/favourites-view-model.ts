@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
+import type { AppModeId } from "@/lib/app-modes";
 import type { FavouriteContentType } from "@/lib/favourites-client-contract";
 
 /**
@@ -9,7 +10,16 @@ import type { FavouriteContentType } from "@/lib/favourites-client-contract";
  */
 
 export type FavouriteType =
-  "Medication" | "Document" | "Table" | "Saved search" | "Source" | "Service" | "Form" | "Differential" | "Therapy";
+  | "Medication"
+  | "Document"
+  | "Table"
+  | "Saved search"
+  | "Source"
+  | "Service"
+  | "Form"
+  | "Differential"
+  | "Therapy"
+  | "Work page";
 
 export type FavouriteItem = {
   id: string;
@@ -36,6 +46,16 @@ export type FavouriteItem = {
   sortOrder?: number;
   /** A demo-mode fixture, not something this clinician saved. Shown with an "Example" tag. */
   example?: boolean;
+  /** A short name for a shelf tile, when the title is long ("Month" for "Roster"). */
+  shortTitle?: string;
+  /** Set on a saved work page: its key in the device store (`work-page-stars.ts`). */
+  workKey?: string;
+  /** The work area a saved work page belongs to, shown in place of a type. */
+  areaName?: string;
+  /** The palette its icon wears: the work area's colour for a work page. */
+  identity?: AppModeId;
+  /** Epoch ms it was saved, used to order never-opened items. */
+  savedAt?: number;
 };
 
 export type FavouritesView = "recent" | "az" | "type" | "order";
@@ -69,6 +89,7 @@ const typeOrder: readonly FavouriteType[] = [
   "Table",
   "Source",
   "Saved search",
+  "Work page",
 ];
 
 const typeGroupLabel: Record<FavouriteType, string> = {
@@ -81,6 +102,7 @@ const typeGroupLabel: Record<FavouriteType, string> = {
   Form: "Forms",
   Differential: "Differentials",
   Therapy: "Therapies",
+  "Work page": "Work pages",
 };
 
 export function isSourceBacked(item: FavouriteItem): boolean {
@@ -289,4 +311,31 @@ export function moveEntry<T>(items: readonly T[], from: number, to: number): T[]
   if (moved === undefined) return next;
   next.splice(to, 0, moved);
   return next;
+}
+
+/** How many tiles the Favourites shelf shows, on My Day and on the Favourites page. */
+export const SHELF_LIMIT = 8;
+
+/**
+ * The Favourites shelf: pinned items first, in the order they were pinned,
+ * then whatever was opened most recently, then the newest saved. One rule for
+ * both places it is drawn, so My Day and Favourites always agree.
+ */
+export function shelfItems(items: readonly FavouriteItem[], limit: number = SHELF_LIMIT): FavouriteItem[] {
+  const pinned = items
+    .filter((item) => item.pinned)
+    .sort(
+      (first, second) =>
+        (first.pinnedAt ?? Number.MAX_SAFE_INTEGER) - (second.pinnedAt ?? Number.MAX_SAFE_INTEGER) ||
+        byTitle(first, second),
+    );
+  const rest = items
+    .filter((item) => !item.pinned)
+    .sort(
+      (first, second) =>
+        (second.openedAt ?? 0) - (first.openedAt ?? 0) ||
+        (second.savedAt ?? 0) - (first.savedAt ?? 0) ||
+        byTitle(first, second),
+    );
+  return [...pinned, ...rest].slice(0, Math.max(0, limit));
 }

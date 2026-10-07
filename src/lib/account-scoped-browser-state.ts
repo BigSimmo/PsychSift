@@ -32,6 +32,13 @@
 
 export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
 
+/**
+ * localStorage — the work pages this person added to Favourites (My Day,
+ * Roster, Admin and the rest). Device only: clinical favourites live on the
+ * account, but work pages have no account table and no migration is allowed.
+ */
+export const WORK_PAGE_FAVOURITES_STORAGE_KEY = "psychsift:favourites:work-pages-v1";
+
 /** localStorage — which favourites items were opened, and when (90-day TTL, no owner id). */
 export const DATABASE_FAVOURITES_LAST_OPENED_STORAGE_KEY = "database:favourites:last-opened-v1";
 /** localStorage — the pinned favourites item ids (no owner id). */
@@ -143,6 +150,7 @@ export function clearAccountScopedBrowserStorage(): void {
   if (typeof window === "undefined") return;
   removeQuietly(() => window.localStorage, DATABASE_FAVOURITES_LAST_OPENED_STORAGE_KEY);
   removeQuietly(() => window.localStorage, DATABASE_FAVOURITES_PINNED_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, WORK_PAGE_FAVOURITES_STORAGE_KEY);
   removeQuietly(() => window.sessionStorage, PLAN_DRAFT_STORAGE_KEY);
   removeQuietly(() => window.sessionStorage, CME_NEW_ENTRY_DRAFT_KEY);
 
