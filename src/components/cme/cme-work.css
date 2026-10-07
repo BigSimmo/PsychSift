@@ -753,10 +753,12 @@ html.dark[data-mode-identity="cme"] {
 
 /* Twelve columns, each a bar over its letter. A logged month is a link (48px
    tall, the bar box plus the letter); an empty or future month is not. */
+/* No column gap: each month's tap area takes its whole column (the widest twelve columns fit at 320 px),
+   and the bar below is inset by half the old gap so the chart looks the same. */
 .cpd-months {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: calc(var(--spacing) * 1.25);
+  gap: 0;
   margin: calc(var(--spacing) * 2.5) 0 0;
   padding: 0;
   list-style: none;
@@ -778,7 +780,7 @@ html.dark[data-mode-identity="cme"] {
 
 .cpd-months__box > i {
   position: absolute;
-  inset-inline: 0;
+  inset-inline: calc(var(--spacing) * 0.625);
   bottom: 0;
   display: block;
   min-height: calc(var(--spacing) * 0.5);
