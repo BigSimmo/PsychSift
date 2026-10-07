@@ -21,7 +21,7 @@ export function writeClassicWorkModePreference(classic: boolean): void {
 }
 
 /**
- * The Settings switch behind "Use the classic work mode": the instant rollback.
+ * The Settings switch behind "Hide new work screens": the instant rollback.
  * `available` is false for anyone the new work mode is not yet offered to, who has
  * only the classic work mode and so nothing to switch. Changing it reloads the page so
  * the server draws the chosen mode.

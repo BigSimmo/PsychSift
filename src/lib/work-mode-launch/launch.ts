@@ -1,6 +1,8 @@
 /**
- * The work-mode launch switch: who sees the new work mode (the redesigned frame
- * and the new screens). Example and sample data is a separate switch, owned by
+ * The work-mode launch switch: who sees the new work-mode screens (the routes in
+ * `routes.ts` and the links into them). The restyled existing pages and their frame
+ * ship to everyone: they replaced the old pages in place, so there is no classic
+ * version to fall back to (decision card to Josh, 7 October 2026). Example and sample data is a separate switch, owned by
  * the example-data work; this file decides only which work mode a reader gets.
  *
  * Pure and isomorphic, so the proxy (route hiding), the server layout (what the
@@ -18,8 +20,8 @@
  *      `WORK_MODE_PREVIEW_USER_IDS`, or anyone whose app metadata carries
  *      `work_mode_preview: true` (set in the Supabase dashboard, no deploy).
  *   3. The device preference cookie `psychsift-work-mode=classic`. Instant, one
- *      tap in Settings, no deploy: the reader is back on the classic work mode
- *      on the next page load. It can only turn the new mode off, never on.
+ *      tap in Settings, no deploy: the reader is back without the new screens
+ *      on the next page load. It can only turn them off, never on.
  *
  * Outside production, and in the isolated offline Playwright build, the default
  * is `everyone`, so local previews, unit tests and browser

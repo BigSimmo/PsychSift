@@ -1228,8 +1228,8 @@ export function SettingsDialog({
                   {classicWorkMode.available ? (
                     <SettingsToggleField
                       icon={History}
-                      label="Classic work mode"
-                      description="Use the previous work mode design on this device. Turn off to go back to the new one."
+                      label="Hide new work screens"
+                      description="Turns off the work screens added in this update, on this device only."
                       checked={classicWorkMode.classic}
                       onChange={classicWorkMode.setClassic}
                     />

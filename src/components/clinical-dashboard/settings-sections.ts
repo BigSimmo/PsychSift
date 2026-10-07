@@ -133,10 +133,10 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     keywords: "animation reduce motion vestibular transitions accessibility",
   },
   {
-    id: "settings-row-classic-work-mode",
+    id: "settings-row-hide-new-work-screens",
     section: "app-preferences",
-    label: "Classic work mode",
-    keywords: "new work mode old design previous layout roll back undo redesign my day roster frame",
+    label: "Hide new work screens",
+    keywords: "classic work mode new features roll back undo turn off preview contract leave sick cpd home",
   },
   {
     id: "settings-row-recent-searches-on-home",
