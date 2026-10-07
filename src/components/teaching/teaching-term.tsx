@@ -29,6 +29,7 @@ import { perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
 import { NoPatientDetailsMark, TermAddItem, TermRemoveButton } from "@/components/teaching/teaching-term-kit";
+import { TermFolderEntryLink } from "@/components/teaching/term-folder/term-folder-entry-link";
 import { milestoneRows, overdueNote, termPanel } from "@/components/teaching/term-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
@@ -729,6 +730,7 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
             href="/teaching/exam-prep"
           />
         </T5List>
+        <TermFolderEntryLink />
       </>
     );
 

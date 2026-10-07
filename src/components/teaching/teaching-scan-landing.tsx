@@ -8,6 +8,7 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { perthDateKey, perthTime, shortDayLabel } from "@/components/teaching/teaching-dates";
+import { CheckinRecorded } from "@/components/teaching/checkin/checkin-recorded";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { useSessionDetail } from "@/components/teaching/use-session-detail";
@@ -18,7 +19,7 @@ import { cn, textMuted } from "@/components/ui-primitives";
 import { ApiClientError } from "@/lib/api-client-error";
 import { useAuthSession } from "@/lib/supabase/client";
 import { TeachingSignedOutError, teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
-import { attendanceLabels, type CheckinCompleted, type CheckinOpened } from "@/lib/teaching/model";
+import { type CheckinCompleted, type CheckinOpened } from "@/lib/teaching/model";
 
 /*
  * Where a scanned QR lands (spec §9, part 2 S4 Step 14). It opens the scan once
@@ -73,6 +74,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [cpdBridgeOpen, setCpdBridgeOpen] = useState(false);
+  const [cpdLogged, setCpdLogged] = useState(false);
   const started = useRef(false);
 
   const occurrenceId = state.kind === "done" ? state.mark.occurrenceId : null;
@@ -171,21 +173,24 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
 
         {state.kind === "done" ? (
           <>
-            <p className="text-sm text-[color:var(--text-heading)]">{attendanceLabels[state.mark.method]}</p>
-            {!hasEnded && sessionEndsAt ? (
-              <p className="text-xs text-[color:var(--text-muted)]">
-                You can log this session to CPD once it has ended at {perthTime(sessionEndsAt)}.
-              </p>
-            ) : null}
-            <Button
-              variant="primary"
-              block
-              disabled={!hasEnded}
-              onClick={() => setCpdBridgeOpen(true)}
-              data-testid="teaching-scan-cpd-bridge-open"
+            {/* Feature 9: the "Attendance recorded" confirmation and where the check-in went. */}
+            <CheckinRecorded
+              title={opened ? null : (sessionDetail.data?.title ?? null)}
+              startsAt={sessionStartsAt ?? null}
+              endsAt={sessionEndsAt ?? null}
+              venue={sessionDetail.data?.venue ?? null}
+              method={state.mark.method}
+              recordedAt={state.mark.recordedAt}
+              now={now}
+              logged={cpdLogged}
+              onLogToCpd={hasEnded ? () => setCpdBridgeOpen(true) : undefined}
+            />
+            <Link
+              href="/teaching/logbook"
+              className={cn(buttonFaceClass({ variant: "secondary", block: true }), "no-underline")}
             >
-              {hasEnded ? "Log to CPD" : "Available once session ends"}
-            </Button>
+              Open my Logbook
+            </Link>
             <Link
               href={`/teaching/session/${state.mark.occurrenceId}`}
               className={cn(buttonFaceClass({ variant: "secondary", block: true }), "no-underline")}
@@ -200,6 +205,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
                 occurrenceId={state.mark.occurrenceId}
                 startsAt={sessionStartsAt}
                 endsAt={sessionEndsAt}
+                onLogged={() => setCpdLogged(true)}
               />
             ) : null}
           </>

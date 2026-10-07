@@ -8,6 +8,7 @@ import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { ModeStateLabel } from "@/components/mode-kit/state-label";
+import { CheckinRecorded } from "@/components/teaching/checkin/checkin-recorded";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { sessionPhase } from "@/components/teaching/session-phase";
 import {
@@ -33,6 +34,7 @@ import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useDelayedPost } from "@/components/teaching/use-delayed-post";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { Button } from "@/components/ui/button";
+import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
@@ -141,6 +143,13 @@ function SessionBody({
   const cancelled = detail.status === "cancelled";
   const staff = detail.canShowCode && !cancelled && !visitor;
   const [mark, setMark] = useState<Mark | null>(detail.myAttendance ?? null);
+  // A check-in made on this visit gets the "Attendance recorded" card (feature 9); an earlier one keeps its label.
+  const [recorded, setRecorded] = useState<Mark | null>(null);
+  const recordedNow = (saved: Mark) => {
+    setMark(saved);
+    setRecorded(saved);
+    announce("Attendance recorded");
+  };
   // `?check-in=scan` (Today's hero) opens the scan sheet on arrival; it only shows while a code can be scanned.
   const [sheet, setSheet] = useState<"scan" | "cpd" | "register" | null>(initialSheet ?? null);
   const [busy, setBusy] = useState(false);
@@ -180,7 +189,7 @@ function SessionBody({
             action: "attendance.self",
             occurrenceId: detail.occurrenceId,
           });
-      setMark({ method: saved.method, recordedAt: saved.recordedAt });
+      recordedNow({ method: saved.method, recordedAt: saved.recordedAt });
     } catch (cause) {
       setError(teachingErrorMessage(cause));
     } finally {
@@ -214,7 +223,8 @@ function SessionBody({
       external: true,
       emphasis: actions.some((action) => action.emphasis === "primary") ? "secondary" : "primary",
     });
-  if (mark && ended && live && !logged)
+  // With the recorded card on screen, its own Log to CPD button is the one to use.
+  if (mark && ended && live && !logged && !recorded)
     actions.push({ id: "cpd", label: "Log to CPD", onClick: () => setSheet("cpd"), emphasis: "text" });
 
   // The presenter's and organisers' controls sit in the phase module, in thumb reach at session time.
@@ -264,6 +274,21 @@ function SessionBody({
         <p className="nums text-sm font-normal text-[color:var(--text-muted)]">{sessionWhen(detail)}</p>
       </div>
       {change ? <ModeNotice tone="warning">{change}</ModeNotice> : null}
+      {recorded ? (
+        <CheckinRecorded
+          title={null}
+          startsAt={detail.startsAt}
+          endsAt={detail.endsAt}
+          venue={detail.venue}
+          method={recorded.method}
+          recordedAt={recorded.recordedAt}
+          now={now}
+          logged={logged}
+          live={live}
+          showMethod={false}
+          onLogToCpd={ended && live ? () => setSheet("cpd") : undefined}
+        />
+      ) : null}
       {!cancelled ? (
         <TeachingModule
           testId="teaching-session-phase"
@@ -323,7 +348,7 @@ function SessionBody({
           onClose={() => setSheet(null)}
           detail={detail}
           live={live}
-          onDone={setMark}
+          onDone={recordedNow}
         />
       ) : null}
       {mark && ended ? (
