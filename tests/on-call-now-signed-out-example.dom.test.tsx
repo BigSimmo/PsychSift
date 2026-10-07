@@ -87,7 +87,7 @@ describe("On Call Now, signed out", () => {
     }
     expect(example.textContent).toContain(ON_CALL_NOW_EXAMPLE.hospital);
     expect(example.textContent).toContain("Dr Alex Example");
-    expect(example.textContent).toContain("Dr Priya Nair");
+    expect(example.textContent).toContain("Dr Robin Wattle");
   });
 
   it("fetches nothing and saves nothing", async () => {

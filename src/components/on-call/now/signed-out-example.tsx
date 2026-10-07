@@ -57,7 +57,7 @@ export const ON_CALL_NOW_EXAMPLE = {
     {
       badge: "CON",
       role: "Consultant on call",
-      name: "Dr Priya Nair",
+      name: "Dr Robin Wattle",
       detail: "At home · until Mon 08:00",
       number: "0000 000 003",
     },
