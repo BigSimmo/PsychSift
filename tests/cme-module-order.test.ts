@@ -19,13 +19,25 @@ describe("CME dashboard module order", () => {
   });
 
   it("keeps an intentional empty list — every module hidden — rather than falling back to the default", () => {
-    expect(readCmeModuleOrder("[]")).toEqual([]);
+    // work-mode redesign, owner request 6 Oct 2026: orders are now saved as
+    // { v: 2, shown }. A list saved before "Also for you" existed says nothing
+    // about it, so it shows; a v2 empty list keeps everything hidden.
+    expect(readCmeModuleOrder("[]")).toEqual(["also-for-you"]);
+    expect(readCmeModuleOrder(JSON.stringify({ v: 2, shown: [] }))).toEqual([]);
+  });
+
+  it("hides a module added later only when a v2 order leaves it out", () => {
+    expect(readCmeModuleOrder(JSON.stringify(["requirements"]))).toEqual(["requirements", "also-for-you"]);
+    expect(readCmeModuleOrder(JSON.stringify({ v: 2, shown: ["requirements"] }))).toEqual(["requirements"]);
+    expect(canMoveModule([...defaultCmeModuleOrder], "also-for-you", -1)).toBe(false);
   });
 
   it("drops unknown and duplicate ids, keeping the owner's order", () => {
     expect(readCmeModuleOrder(JSON.stringify(["provenance", "unknown", "provenance", "requirements"]))).toEqual([
       "provenance",
       "requirements",
+      // work-mode redesign, owner request 6 Oct 2026: a pre-v2 list gains the newer module.
+      "also-for-you",
     ]);
   });
 

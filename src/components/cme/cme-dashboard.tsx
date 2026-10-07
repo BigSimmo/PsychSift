@@ -501,8 +501,10 @@ export function CmeDashboard({
       />
     ) : null;
 
+  // Hiding "Also for you" in Customise hides teaching, optional learning and
+  // CPD dates. The year-end claim reminder still shows: it has a deadline.
   const alsoForYou =
-    hasTarget && !nothingLogged ? (
+    hasTarget && !nothingLogged && shows("also-for-you") ? (
       <CmeGroup label="Also for you" testId="cme-also-for-you">
         <CmeFlatList>
           {reportingRow}

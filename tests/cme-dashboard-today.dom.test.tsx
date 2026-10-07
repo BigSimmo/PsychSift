@@ -135,6 +135,16 @@ describe("Today", () => {
     expect(next[0]).toHaveTextContent(/Big gap requirement/);
   });
 
+  it("shows Also for you by default and hides it when Customise hides it", () => {
+    // work-mode redesign, owner request 6 Oct 2026 (B2): "Also for you" is its own module.
+    const { unmount } = render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
+    expect(screen.getByTestId("cme-also-for-you")).toBeInTheDocument();
+    unmount();
+    window.localStorage.setItem(cmeModuleOrderStorageKey, JSON.stringify({ v: 2, shown: ["requirements"] }));
+    render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
+    expect(screen.queryByTestId("cme-calendar-link")).toBeNull();
+  });
+
   it("opens a task row on the setup screen", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
     expect(screen.getByRole("link", { name: /Professional development plan/ })).toHaveAttribute(
