@@ -2863,7 +2863,6 @@
         "src/components/teaching/teaching-resource-list.tsx",
         "src/components/teaching/teaching-resources.tsx",
         "src/components/teaching/teaching-scan-landing.tsx",
-        "src/components/teaching/teaching-session.tsx",
         "src/components/teaching/teaching-supervision.tsx",
         "src/components/teaching/teaching-term.tsx",
         "src/components/ui/catalogue-toolbar.tsx"
@@ -2908,7 +2907,6 @@
         "src/components/teaching/teaching-resource-list.tsx",
         "src/components/teaching/teaching-resources.tsx",
         "src/components/teaching/teaching-scan-landing.tsx",
-        "src/components/teaching/teaching-session.tsx",
         "src/components/teaching/teaching-supervision.tsx",
         "src/components/teaching/teaching-term.tsx",
         "src/components/ui/catalogue-toolbar.tsx"
