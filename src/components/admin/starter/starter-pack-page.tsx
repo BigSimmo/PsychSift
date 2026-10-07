@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CalendarPlus, ChevronRight, ExternalLink, Search, TriangleAlert, X } from "lucide-react";
+import { CalendarPlus, ChevronRight, Copy, ExternalLink, Search, TriangleAlert, WifiOff, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { ContractEndEntryLink } from "@/components/admin/contract/contract-entry-link";
 import {
+  copyLabel,
   createEntry,
   deleteEntry,
   errorWords,
@@ -16,7 +17,10 @@ import {
   JuniorNotice,
   JuniorSectionLabel,
   JuniorUndoBar,
+  PatientDetailCatch,
   slugSuffix,
+  useCopy,
+  useOnline,
 } from "@/components/admin/junior/junior-shared";
 import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
 import { StarterDateSheet } from "@/components/admin/starter/starter-date-sheet";
@@ -28,6 +32,7 @@ import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
+import { checkReminderText } from "@/lib/alerts/remind-me";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho, formatRelativeDate } from "@/lib/admin/renewal-dates";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
@@ -41,6 +46,8 @@ import {
   STARTER_OFFICES,
   starterKindInfo,
   starterSavedLine,
+  starterWordSuggestion,
+  STARTER_SUGGEST_LIMIT,
   visaContractClash,
   type LocalWordGroup,
   type StarterDateInput,
@@ -86,7 +93,10 @@ function LocalWords({ initialQuery }: { initialQuery: string }) {
         Local words
       </JuniorSectionLabel>
       <div className="relative">
-        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-icon-sm -translate-y-1/2 text-[color:var(--text-muted)]" />
+        <Search
+          aria-hidden="true"
+          className="pointer-events-none absolute left-3 top-1/2 size-icon-sm -translate-y-1/2 text-[color:var(--text-muted)]"
+        />
         <label htmlFor="starter-word-search" className="sr-only">
           Search local words, or a word from home
         </label>
@@ -111,7 +121,10 @@ function LocalWords({ initialQuery }: { initialQuery: string }) {
             type="button"
             onClick={() => setQuery("")}
             aria-label="Clear search"
-            className={cn(focusRing, "absolute right-0 top-0 grid size-12 place-items-center text-[color:var(--text-muted)]")}
+            className={cn(
+              focusRing,
+              "absolute right-0 top-0 grid size-12 place-items-center text-[color:var(--text-muted)]",
+            )}
           >
             <X aria-hidden="true" className="size-icon-sm" />
           </button>
@@ -142,7 +155,10 @@ function LocalWords({ initialQuery }: { initialQuery: string }) {
       ) : (
         <dl className={cn(cardSurface, "overflow-hidden")} data-testid="admin-starter-words">
           {shown.map(({ word, fromHome }) => (
-            <div key={word.term} className="grid gap-0.5 border-b border-[color:var(--border)] px-3 py-2.5 last:border-b-0">
+            <div
+              key={word.term}
+              className="grid gap-0.5 border-b border-[color:var(--border)] px-3 py-2.5 last:border-b-0"
+            >
               <dt className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-[color:var(--text-heading)]">
                 {word.term}
                 {fromHome ? (
@@ -165,12 +181,75 @@ function LocalWords({ initialQuery }: { initialQuery: string }) {
           ))}
         </dl>
       )}
+      <SuggestWord initial={matches.length === 0 ? query.trim() : ""} />
       {!searching && matches.length > WORDS_SHOWN ? (
-        <Button variant="ghost" onClick={() => setShowAll((value) => !value)} aria-expanded={showAll} testId="admin-starter-words-more">
+        <Button
+          variant="ghost"
+          onClick={() => setShowAll((value) => !value)}
+          aria-expanded={showAll}
+          testId="admin-starter-words-more"
+        >
           {showAll ? "Show fewer" : `Show all ${matches.length}`}
         </Button>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * "Suggest a word": a note the doctor copies to their Medical Education
+ * Unit. Nothing is sent or kept. The patient-detail catch runs first, and
+ * Copy stays off until the words read as safe.
+ */
+function SuggestWord({ initial }: { initial: string }) {
+  const [value, setValue] = useState(initial);
+  const [seenInitial, setSeenInitial] = useState(initial);
+  if (initial !== seenInitial) {
+    setSeenInitial(initial);
+    setValue(initial);
+  }
+  const { copy, stateFor } = useCopy();
+  const word = value.trim();
+  const tooLong = word.length > STARTER_SUGGEST_LIMIT;
+  const problem = word && !tooLong ? checkReminderText(word) : null;
+  const blocked = !word || tooLong || Boolean(problem);
+  return (
+    <div className={cn(cardSurface, "grid gap-2 p-3")} data-testid="admin-starter-suggest">
+      <label htmlFor="admin-starter-suggest-word" className="text-sm font-semibold text-[color:var(--text-heading)]">
+        Suggest a word
+      </label>
+      <p className={cn(textMuted, "text-xs")}>A word you heard and did not know. No patient details.</p>
+      <input
+        id="admin-starter-suggest-word"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        maxLength={STARTER_SUGGEST_LIMIT + 20}
+        aria-invalid={problem || tooLong ? true : undefined}
+        className={cn(fieldControlPlain, "min-h-12")}
+        data-testid="admin-starter-suggest-word"
+      />
+      {tooLong ? (
+        <p className="text-sm text-[color:var(--text)]">Keep it to {STARTER_SUGGEST_LIMIT} characters.</p>
+      ) : null}
+      {problem ? (
+        <PatientDetailCatch
+          problem={{ ...problem, body: "Suggestions here cannot hold patient details." }}
+          onUseSuggestion={(safer) => setValue(safer)}
+          testId="admin-starter-suggest-problem"
+        />
+      ) : null}
+      <Button
+        variant="secondary"
+        icon={Copy}
+        disabled={blocked}
+        onClick={() =>
+          void copy(starterWordSuggestion(word), "suggest", "Note copied. Send it to your Medical Education Unit.")
+        }
+        testId="admin-starter-suggest-copy"
+      >
+        {copyLabel(stateFor("suggest"), "Copy a note for Medical Education")}
+      </Button>
+    </div>
   );
 }
 
@@ -192,12 +271,20 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
   const rows = useMemo(() => selectStarterDates(own), [own]);
   const clash = visaContractClash(rows);
   const canWrite = loadState === "ready" && !state.demoMode && isAuthenticated;
-  const readOnlyReason = state.demoMode ? "These are example records. Sign in to add your own dates." : !isAuthenticated ? "Sign in to add your dates." : null;
+  const readOnlyReason = state.demoMode
+    ? "These are example records. Sign in to add your own dates."
+    : !isAuthenticated
+      ? "Sign in to add your dates."
+      : null;
   const recordedKinds = useMemo(
-    () => new Set(rows.filter((row) => row.kind !== "contract" && row.kind !== "other").map((row) => row.kind as StarterDateKind)),
+    () =>
+      new Set(
+        rows.filter((row) => row.kind !== "contract" && row.kind !== "other").map((row) => row.kind as StarterDateKind),
+      ),
     [rows],
   );
 
+  const online = useOnline();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [undo, setUndo] = useState<Undo | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -248,14 +335,35 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
     <>
       <InformationPageShell testId="admin-starter-main">
         <div className="grid gap-1">
-          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Starter pack</PageTitleUnderBand>
+          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+            Starter pack
+          </PageTitleUnderBand>
           <p className={cn(textMuted, "text-sm")}>For doctors new to WA hospitals</p>
         </div>
+
+        {!online ? (
+          <div
+            className={cn(cardSurface, "flex items-start gap-2 p-3 text-sm")}
+            role="status"
+            data-testid="admin-starter-offline"
+          >
+            <WifiOff
+              aria-hidden="true"
+              strokeWidth={1.5}
+              className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--text-muted)]"
+            />
+            <span>
+              <b className="font-semibold text-[color:var(--text-heading)]">You are offline.</b> The words and who to
+              ask still work. Adding a date needs a connection.
+            </span>
+          </div>
+        ) : null}
 
         <ModeFeaturedModule as="section" mode="my-work" className="grid min-w-0 gap-3 p-4" testId="admin-starter-hero">
           <h2 className="text-lg-minus font-semibold text-[color:var(--text-heading)]">Welcome to WA</h2>
           <p className="text-sm leading-6 text-[color:var(--text)]">
-            How the hospital works, the words people use, your own dates in one place, and who to ask. General guidance: your hospital&apos;s orientation is the final word.
+            How the hospital works, the words people use, your own dates in one place, and who to ask. General guidance:
+            your hospital&apos;s orientation is the final word.
           </p>
           <nav aria-label="On this page" className="grid grid-cols-2 gap-2">
             {JUMPS.map((jump) => (
@@ -277,7 +385,10 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
         {/* How it works */}
         <section aria-labelledby="starter-how-heading" id="starter-how" className="grid scroll-mt-24 gap-2">
           <JuniorSectionLabel id="starter-how-heading">How it works</JuniorSectionLabel>
-          <div className={cn(cardSurface, "grid gap-1 border-[color:var(--border-strong)] p-3")} data-testid="admin-starter-worse">
+          <div
+            className={cn(cardSurface, "grid gap-1 border-[color:var(--border-strong)] p-3")}
+            data-testid="admin-starter-worse"
+          >
             <p className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-heading)]">
               <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="size-icon-sm shrink-0" />
               Someone getting worse fast
@@ -292,7 +403,10 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
             </p>
             <ol className="grid" data-testid="admin-starter-ladder">
               {ESCALATION_LADDER.map((step, index) => (
-                <li key={step.who} className="flex min-h-12 items-center gap-3 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0">
+                <li
+                  key={step.who}
+                  className="flex min-h-12 items-center gap-3 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0"
+                >
                   <span className="nums grid size-7 shrink-0 place-items-center rounded-full bg-[color:var(--surface-subtle)] text-xs font-semibold text-[color:var(--text-heading)]">
                     {index + 1}
                   </span>
@@ -311,14 +425,19 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
             </p>
             <ul data-testid="admin-starter-offices">
               {STARTER_OFFICES.map((office) => (
-                <li key={office.name} className="flex min-h-12 items-center justify-between gap-3 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0">
+                <li
+                  key={office.name}
+                  className="flex min-h-12 items-center justify-between gap-3 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0"
+                >
                   <span className="text-sm font-medium text-[color:var(--text-heading)]">{office.name}</span>
                   <span className={cn(textMuted, "text-right text-xs")}>{office.what}</span>
                 </li>
               ))}
             </ul>
           </div>
-          <p className={cn(textMuted, "px-1 text-xs")}>Names and roles differ between hospitals. Ask at orientation how yours works.</p>
+          <p className={cn(textMuted, "px-1 text-xs")}>
+            Names and roles differ between hospitals. Ask at orientation how yours works.
+          </p>
         </section>
 
         <LocalWords key={wordParam} initialQuery={wordParam} />
@@ -329,7 +448,13 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
             id="starter-dates-heading"
             action={
               canWrite ? (
-                <Button variant="ghost" size="sm" icon={CalendarPlus} onClick={() => setSheetOpen(true)} testId="admin-starter-add-date">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={CalendarPlus}
+                  onClick={() => setSheetOpen(true)}
+                  testId="admin-starter-add-date"
+                >
                   Add a date
                 </Button>
               ) : undefined
@@ -356,18 +481,24 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
                 </Button>
               }
             >
-              Visa, registration and contract dates are kept for your signed-in account only. Nothing is saved on this phone.
+              Visa, registration and contract dates are kept for your signed-in account only. Nothing is saved on this
+              phone.
             </JuniorNotice>
           ) : (
             <>
               {clash ? (
-                <div className={cn(cardSurface, "grid gap-1 border-[color:var(--border-strong)] p-3")} role="note" data-testid="admin-starter-clash">
+                <div
+                  className={cn(cardSurface, "grid gap-1 border-[color:var(--border-strong)] p-3")}
+                  role="note"
+                  data-testid="admin-starter-clash"
+                >
                   <p className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-heading)]">
                     <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="size-icon-sm shrink-0" />
                     Your visa date is before your contract end
                   </p>
                   <p className="text-sm leading-5 text-[color:var(--text)]">
-                    Visa {formatDateEcho(clash.visaEnd)}, contract {formatDateEcho(clash.contractEnd)}. Talk to Medical Workforce and a registered migration agent early. PsychSift only compares the dates you typed.
+                    Visa {formatDateEcho(clash.visaEnd)}, contract {formatDateEcho(clash.contractEnd)}. Talk to Medical
+                    Workforce and a registered migration agent early. PsychSift only compares the dates you typed.
                   </p>
                 </div>
               ) : null}
@@ -375,11 +506,17 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
                 <div className={cn(cardSurface, "grid gap-1 p-3")} data-testid="admin-starter-dates-empty">
                   <p className="text-sm font-semibold text-[color:var(--text-heading)]">No dates yet</p>
                   <p className="text-sm leading-5 text-[color:var(--text)]">
-                    Add your visa end, registration renewal and supervised practice dates. Each one shows on Admin Today before it comes up.
+                    Add your visa end, registration renewal and supervised practice dates. Each one shows on Admin Today
+                    before it comes up.
                   </p>
                   {canWrite ? (
                     <div className="pt-1">
-                      <Button variant="primary" icon={CalendarPlus} onClick={() => setSheetOpen(true)} testId="admin-starter-add-first">
+                      <Button
+                        variant="primary"
+                        icon={CalendarPlus}
+                        onClick={() => setSheetOpen(true)}
+                        testId="admin-starter-add-first"
+                      >
                         Add a date
                       </Button>
                     </div>
@@ -393,7 +530,11 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
                 <ul className={cn(cardSurface, "overflow-hidden")} data-testid="admin-starter-dates">
                   {rows.map((row) => (
                     <li key={row.key} className="border-b border-[color:var(--border)] last:border-b-0">
-                      <Link href={row.href} className={cn(focusRing, "flex min-h-12 items-center gap-3 px-3 py-2")} data-testid={`admin-starter-date-${row.kind}`}>
+                      <Link
+                        href={row.href}
+                        className={cn(focusRing, "flex min-h-12 items-center gap-3 px-3 py-2")}
+                        data-testid={`admin-starter-date-${row.kind}`}
+                      >
                         <span className="grid min-w-0 flex-1">
                           <span className="text-sm font-medium text-[color:var(--text-heading)]">{row.title}</span>
                           <span className={cn(textMuted, "nums text-xs")}>
@@ -401,7 +542,10 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
                             {`, ${formatRelativeDate(row.date, today)}`}
                           </span>
                         </span>
-                        <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="size-icon-md shrink-0 text-[color:var(--text-muted)]"
+                        />
                       </Link>
                     </li>
                   ))}
@@ -425,7 +569,9 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
             <li className="border-b border-[color:var(--border)]">
               <Link href="/admin/help" className={cn(focusRing, "flex min-h-12 items-center gap-3 px-3 py-2")}>
                 <span className="grid min-w-0 flex-1">
-                  <span className="text-sm font-medium text-[color:var(--text-heading)]">Feeling overwhelmed or unsafe</span>
+                  <span className="text-sm font-medium text-[color:var(--text-heading)]">
+                    Feeling overwhelmed or unsafe
+                  </span>
                   <span className={cn(textMuted, "text-xs")}>Help and support, crisis lines first</span>
                 </span>
                 <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
@@ -441,7 +587,10 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
               </Link>
             </li>
             <li className="border-b border-[color:var(--border)]">
-              <Link href="/teaching/assessments?view=help" className={cn(focusRing, "flex min-h-12 items-center gap-3 px-3 py-2")}>
+              <Link
+                href="/teaching/assessments?view=help"
+                className={cn(focusRing, "flex min-h-12 items-center gap-3 px-3 py-2")}
+              >
                 <span className="grid min-w-0 flex-1">
                   <span className="text-sm font-medium text-[color:var(--text-heading)]">Supervision and training</span>
                   <span className={cn(textMuted, "text-xs")}>Your Medical Education Unit, and when to ask them</span>
@@ -459,7 +608,10 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
                   href={VISA_SOURCE.sourceUrl}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className={cn(focusRing, "inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]")}
+                  className={cn(
+                    focusRing,
+                    "inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]",
+                  )}
                 >
                   {VISA_SOURCE.sourceName}: visa page
                   <ExternalLink aria-hidden="true" className="size-icon-sm" />
@@ -474,12 +626,26 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
         </JuniorFootNote>
       </InformationPageShell>
 
-      <StarterDateSheet open={sheetOpen} today={today} recordedKinds={recordedKinds} onClose={() => setSheetOpen(false)} onSave={saveDate} />
+      <StarterDateSheet
+        open={sheetOpen}
+        today={today}
+        recordedKinds={recordedKinds}
+        onClose={() => setSheetOpen(false)}
+        onSave={saveDate}
+      />
 
-      {loadState === "signed-out" ? <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} /> : null}
+      {loadState === "signed-out" ? (
+        <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+      ) : null}
 
       {undo ? (
-        <JuniorUndoBar key={undo.id} label={undo.label} onUndo={() => void runUndo()} onDismiss={() => setUndo(null)} testId="admin-starter-undo" />
+        <JuniorUndoBar
+          key={undo.id}
+          label={undo.label}
+          onUndo={() => void runUndo()}
+          onDismiss={() => setUndo(null)}
+          testId="admin-starter-undo"
+        />
       ) : null}
     </>
   );

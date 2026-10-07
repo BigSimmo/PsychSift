@@ -1,7 +1,11 @@
 import type { z } from "zod";
 
 import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
-import { selectContractEnd, type AdminFeatureNeedsYouItem, type AdminFeatureSearchRecord } from "@/lib/admin/contract-end";
+import {
+  selectContractEnd,
+  type AdminFeatureNeedsYouItem,
+  type AdminFeatureSearchRecord,
+} from "@/lib/admin/contract-end";
 import { buildRenewedEntryBody, catalogueItemDraftEntry } from "@/lib/admin/renewals";
 import { formatDateEcho, utcDay } from "@/lib/admin/renewal-dates";
 import {
@@ -53,30 +57,126 @@ export interface LocalWord {
 }
 
 const OWN_WORDS: readonly LocalWord[] = [
-  { term: "Consultant", meaning: "Senior doctor who leads the team and signs off plans.", group: "hospital", fromHome: ["attending", "specialist"] },
-  { term: "Registrar", meaning: "Doctor in specialist training, senior to residents.", group: "hospital", fromHome: ["specialty trainee", "fellow"] },
-  { term: "RMO", meaning: "Resident medical officer. A doctor after internship, not yet in a training program.", group: "hospital", fromHome: ["SHO", "junior resident"] },
-  { term: "Intern", meaning: "A doctor in their first year after medical school, also called PGY1.", group: "hospital", fromHome: ["FY1", "house officer"] },
-  { term: "PGY1, PGY2", meaning: "Postgraduate year 1 or 2: the first two years after medical school.", group: "training", fromHome: ["foundation years"] },
-  { term: "MET call", meaning: "The team called to a patient who is getting worse.", group: "hospital", fromHome: ["rapid response", "crash call"], differsBySite: true },
-  { term: "Pager", meaning: "The small device that calls you to a ward.", group: "hospital", fromHome: ["bleep", "beeper"] },
+  {
+    term: "Consultant",
+    meaning: "Senior doctor who leads the team and signs off plans.",
+    group: "hospital",
+    fromHome: ["attending", "specialist"],
+  },
+  {
+    term: "Registrar",
+    meaning: "Doctor in specialist training, senior to residents.",
+    group: "hospital",
+    fromHome: ["specialty trainee", "fellow"],
+  },
+  {
+    term: "RMO",
+    meaning: "Resident medical officer. A doctor after internship, not yet in a training program.",
+    group: "hospital",
+    fromHome: ["SHO", "junior resident"],
+  },
+  {
+    term: "Intern",
+    meaning: "A doctor in their first year after medical school, also called PGY1.",
+    group: "hospital",
+    fromHome: ["FY1", "house officer"],
+  },
+  {
+    term: "PGY1, PGY2",
+    meaning: "Postgraduate year 1 or 2: the first two years after medical school.",
+    group: "training",
+    fromHome: ["foundation years"],
+  },
+  {
+    term: "MET call",
+    meaning: "The team called to a patient who is getting worse.",
+    group: "hospital",
+    fromHome: ["rapid response", "crash call"],
+    differsBySite: true,
+  },
+  {
+    term: "Pager",
+    meaning: "The small device that calls you to a ward.",
+    group: "hospital",
+    fromHome: ["bleep", "beeper"],
+  },
   { term: "ED", meaning: "Emergency department.", group: "hospital", fromHome: ["A&E", "ER", "casualty"] },
   { term: "Theatre", meaning: "Operating room.", group: "hospital", fromHome: ["OR", "operating room"] },
-  { term: "Handover", meaning: "Passing the care of patients to the next team at the change of shift.", group: "hospital", fromHome: ["sign-out", "signout"] },
+  {
+    term: "Handover",
+    meaning: "Passing the care of patients to the next team at the change of shift.",
+    group: "hospital",
+    fromHome: ["sign-out", "signout"],
+  },
   { term: "Locum", meaning: "A doctor who covers a shift or a post for a short time.", group: "hospital" },
-  { term: "Discharge summary", meaning: "The letter to the family doctor when a patient goes home.", group: "hospital", fromHome: ["discharge letter", "TTO"] },
-  { term: "GP", meaning: "General practitioner, the family doctor in the community.", group: "hospital", fromHome: ["family physician", "primary care physician"] },
-  { term: "Roster", meaning: "The list of who works which shift.", group: "pay-and-leave", fromHome: ["rota", "schedule"] },
-  { term: "Medical Workforce", meaning: "The hospital office for contracts, pay, rosters and leave.", group: "pay-and-leave", fromHome: ["medical staffing", "HR"] },
-  { term: "Staff Health", meaning: "The hospital office for staff immunisation and injury at work.", group: "hospital", fromHome: ["occupational health"] },
-  { term: "Ahpra", meaning: "Registers health practitioners in Australia, together with the Medical Board of Australia.", group: "training", fromHome: ["GMC", "medical council", "licensing board"] },
-  { term: "RANZCP", meaning: "Royal Australian and New Zealand College of Psychiatrists, which runs psychiatry training.", group: "training" },
-  { term: "AL", meaning: "Annual leave, your paid holidays.", group: "pay-and-leave", fromHome: ["holiday", "vacation", "PTO"], example: "\"I am on AL next week.\"" },
-  { term: "PD leave", meaning: "Professional development leave, for courses and conferences.", group: "pay-and-leave", fromHome: ["study leave"] },
-  { term: "Super", meaning: "Superannuation: retirement savings your employer pays into.", group: "pay-and-leave", fromHome: ["pension", "401(k)"] },
-  { term: "TFN", meaning: "Tax file number, from the Australian Taxation Office.", group: "pay-and-leave", fromHome: ["national insurance number", "tax ID"] },
+  {
+    term: "Discharge summary",
+    meaning: "The letter to the family doctor when a patient goes home.",
+    group: "hospital",
+    fromHome: ["discharge letter", "TTO"],
+  },
+  {
+    term: "GP",
+    meaning: "General practitioner, the family doctor in the community.",
+    group: "hospital",
+    fromHome: ["family physician", "primary care physician"],
+  },
+  {
+    term: "Roster",
+    meaning: "The list of who works which shift.",
+    group: "pay-and-leave",
+    fromHome: ["rota", "schedule"],
+  },
+  {
+    term: "Medical Workforce",
+    meaning: "The hospital office for contracts, pay, rosters and leave.",
+    group: "pay-and-leave",
+    fromHome: ["medical staffing", "HR"],
+  },
+  {
+    term: "Staff Health",
+    meaning: "The hospital office for staff immunisation and injury at work.",
+    group: "hospital",
+    fromHome: ["occupational health"],
+  },
+  {
+    term: "Ahpra",
+    meaning: "Registers health practitioners in Australia, together with the Medical Board of Australia.",
+    group: "training",
+    fromHome: ["GMC", "medical council", "licensing board"],
+  },
+  {
+    term: "RANZCP",
+    meaning: "Royal Australian and New Zealand College of Psychiatrists, which runs psychiatry training.",
+    group: "training",
+  },
+  {
+    term: "AL",
+    meaning: "Annual leave, your paid holidays.",
+    group: "pay-and-leave",
+    fromHome: ["holiday", "vacation", "PTO"],
+    example: '"I am on AL next week."',
+  },
+  {
+    term: "PD leave",
+    meaning: "Professional development leave, for courses and conferences.",
+    group: "pay-and-leave",
+    fromHome: ["study leave"],
+  },
+  {
+    term: "Super",
+    meaning: "Superannuation: retirement savings your employer pays into.",
+    group: "pay-and-leave",
+    fromHome: ["pension", "401(k)"],
+  },
+  {
+    term: "TFN",
+    meaning: "Tax file number, from the Australian Taxation Office.",
+    group: "pay-and-leave",
+    fromHome: ["national insurance number", "tax ID"],
+  },
   { term: "Medicare", meaning: "Australia's public health insurance.", group: "pay-and-leave", fromHome: ["NHS"] },
-  { term: "Arvo", meaning: "Afternoon.", group: "everyday", example: "\"Late shift starts this arvo.\"" },
+  { term: "Arvo", meaning: "Afternoon.", group: "everyday", example: '"Late shift starts this arvo."' },
   { term: "Brekkie", meaning: "Breakfast.", group: "everyday" },
   { term: "Smoko", meaning: "A short break.", group: "everyday", fromHome: ["tea break", "coffee break"] },
   { term: "Ta", meaning: "Thank you.", group: "everyday", fromHome: ["cheers"] },
@@ -86,7 +186,11 @@ const OWN_WORDS: readonly LocalWord[] = [
 ];
 
 /** The Teaching glossary's own terms, kept in one place and reused here. */
-const TRAINING_WORDS: readonly LocalWord[] = GLOSSARY.map(([term, meaning]) => ({ term, meaning, group: "training" as const }));
+const TRAINING_WORDS: readonly LocalWord[] = GLOSSARY.map(([term, meaning]) => ({
+  term,
+  meaning,
+  group: "training" as const,
+}));
 
 export const LOCAL_WORDS: readonly LocalWord[] = [...OWN_WORDS, ...TRAINING_WORDS].sort((a, b) =>
   a.term.localeCompare(b.term, "en-AU"),
@@ -99,7 +203,10 @@ export interface LocalWordMatch {
 }
 
 function normal(value: string): string {
-  return value.toLowerCase().replace(/[^\p{L}\p{N}&]+/gu, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}&]+/gu, " ")
+    .trim();
 }
 
 /**
@@ -239,12 +346,28 @@ export function selectStarterDates(own: readonly OnCallEntry[]): StarterDateRow[
     const date = complianceExpiresOn(entry);
     if (!date || !isComplianceEntry(entry) || !entry.slug.startsWith(STARTER_DATE_SLUG_PREFIX)) continue;
     if (catalogueItemForEntry(entry)) continue;
-    rows.push({ key: entry.id, kind: "other", title: entry.title, date, href: `/admin/renewals?item=${entry.id}`, entry, ownedByPack: true });
+    rows.push({
+      key: entry.id,
+      kind: "other",
+      title: entry.title,
+      date,
+      href: `/admin/renewals?item=${entry.id}`,
+      entry,
+      ownedByPack: true,
+    });
   }
   const contract = selectContractEnd(own);
   const contractEnd = contract ? complianceExpiresOn(contract) : undefined;
   if (contract && contractEnd) {
-    rows.push({ key: contract.id, kind: "contract", title: "Contract end", date: contractEnd, href: "/admin/contract", entry: contract, ownedByPack: false });
+    rows.push({
+      key: contract.id,
+      kind: "contract",
+      title: "Contract end",
+      date: contractEnd,
+      href: "/admin/contract",
+      entry: contract,
+      ownedByPack: false,
+    });
   }
   return rows.sort((a, b) => (a.date === b.date ? a.title.localeCompare(b.title) : a.date < b.date ? -1 : 1));
 }
@@ -262,7 +385,11 @@ export function visaContractClash(rows: readonly StarterDateRow[]): VisaClash | 
   if (!visa || !contract || visa.date >= contract.date) return null;
   const a = utcDay(visa.date);
   const b = utcDay(contract.date);
-  return { visaEnd: visa.date, contractEnd: contract.date, daysBefore: a === null || b === null ? 0 : Math.round(b - a) };
+  return {
+    visaEnd: visa.date,
+    contractEnd: contract.date,
+    daysBefore: a === null || b === null ? 0 : Math.round(b - a),
+  };
 }
 
 export interface StarterDateInput {
@@ -282,7 +409,8 @@ export function validateStarterDate(input: StarterDateInput, today: string): Sta
   const errors: StarterDateErrors = {};
   const date = input.date.trim();
   if (!date) errors.date = "Type the date.";
-  else if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || utcDay(date) === null) errors.date = "Use the date picker, or type the date as YYYY-MM-DD.";
+  else if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || utcDay(date) === null)
+    errors.date = "Use the date picker, or type the date as YYYY-MM-DD.";
   else if (date < today) errors.date = "That date has passed. Reminders are for dates still to come.";
   if (input.kind === "other") {
     const name = input.name.trim();
@@ -327,8 +455,20 @@ export function buildStarterDateBody(input: StarterDateInput, slugSuffix: string
       };
   const result = buildRenewedEntryBody(draft, { newExpiresOn: input.date.trim(), proofNote: "" });
   if (!result.ok) return null;
-  const { section, slug, title, subtitle, body, details, linkedDocumentIds, tags, isPersonal, includeOnCard, sortOrder, lastVerifiedAt } =
-    result.body;
+  const {
+    section,
+    slug,
+    title,
+    subtitle,
+    body,
+    details,
+    linkedDocumentIds,
+    tags,
+    isPersonal,
+    includeOnCard,
+    sortOrder,
+    lastVerifiedAt,
+  } = result.body;
   return {
     section,
     slug,
@@ -350,6 +490,15 @@ export function starterSavedLine(title: string, date: string, leadTimeDays: numb
   const from = utcDay(date);
   const remind = from === null ? null : new Date((from - leadTimeDays) * 86_400_000).toISOString().slice(0, 10);
   return remind ? `${title} saved. Shown on Admin Today from ${formatDateEcho(remind)}.` : `${title} saved.`;
+}
+
+/* ------------------------------------------------------ suggest a word */
+
+export const STARTER_SUGGEST_LIMIT = 40;
+
+/** The note "Suggest a word" copies. The doctor sends it; nothing is kept. */
+export function starterWordSuggestion(word: string): string {
+  return `Hi Medical Education,\n\nI heard the word "${word.trim()}" and did not know it. Could it go in the starter pack for new doctors?\n\nThanks`;
 }
 
 /* ---------------------------------------------------- hooks for main */
