@@ -480,6 +480,14 @@ ordinary 404 for them to anyone on the classic work mode. Pages and the frame hi
 `useWorkModeRouteVisible()` and `NewWorkModeOnly` from `src/components/work-mode-launch/`.
 Restyled existing pages are not gated: they ship to everyone.
 
+**Live version switch.** `src/lib/live-version/` lets testers (the administrator, the
+`work_mode_preview` app-metadata flag or `WORK_MODE_PREVIEW_USER_IDS`) use unreleased work on the
+live site. `live-version.ts` resolves Newest or Everyone's from the verified user and the
+`psychsift-live-version` cookie, `features.ts` registers each preview feature, and `server.ts`
+gives `isLivePreviewOn` and `requireLivePreview`. Components gate with `useLivePreview` and
+`LivePreview` from `src/components/live-version/`. The switch sits in Settings for testers only.
+See `docs/live-version-switch.md`.
+
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
 records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto
