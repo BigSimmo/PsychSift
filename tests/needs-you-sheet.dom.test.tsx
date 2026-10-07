@@ -204,7 +204,7 @@ describe("Notification centre behaviours", () => {
     item({ id: "teaching:catch-up", mode: "teaching", title: "Catch up on 2 sessions", severity: "info" }),
   ];
 
-  it("orders the groups Overdue, Today, This week, Later, with counts", () => {
+  it("orders the groups Overdue, Today, This week, Coming up, with counts", () => {
     myDay.items = mixed();
     render(<NeedsYouSheet open onClose={vi.fn()} returnFocusRef={returnFocusRef} />);
     const groups = screen.getAllByTestId(/^needs-you-urgency-/).map((node) => node.getAttribute("data-testid"));

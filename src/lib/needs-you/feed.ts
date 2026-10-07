@@ -4,7 +4,7 @@
  * the work areas. This file holds the typed source interface any feature uses
  * to add items, and the rules that decide what the reader sees: which items
  * are hidden by a snooze, how they are filtered (All, Action needed, Updates,
- * one area), how they are grouped (Overdue, Today, This week, Later), the
+ * one area), how they are grouped (Overdue, Today, This week, Coming up), the
  * counts the bell badge and the chips share, and the next working day a
  * snooze moves an item to.
  *
@@ -288,12 +288,13 @@ export const notificationUrgencyLabels: Readonly<Record<NotificationUrgency, str
   overdue: "Overdue",
   today: "Today",
   week: "This week",
-  later: "Later",
+  later: "Coming up",
 };
 
 /**
  * Overdue when the source says so or the due moment has passed; Today when it
- * falls today; This week within the next six days; otherwise, or undated, Later.
+ * falls today; This week within the next six days; otherwise, or undated,
+ * Coming up (the key stays `later`).
  */
 export function notificationUrgency(item: NotificationItem, now: Date): NotificationUrgency {
   if (item.overdue) return "overdue";
@@ -405,7 +406,7 @@ export interface NotificationGroup {
   readonly items: readonly NotificationItem[];
 }
 
-/** The filtered items grouped Overdue, Today, This week, Later; empty groups left out. Order inside is kept. */
+/** The filtered items grouped Overdue, Today, This week, Coming up; empty groups left out. Order inside is kept. */
 export function groupNotifications(
   items: readonly NotificationItem[],
   now: Date,
