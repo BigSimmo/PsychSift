@@ -353,6 +353,27 @@ describe("Roster Shifts", () => {
     expect(fortnight).toHaveTextContent(/plus 1\.25\sh extra/);
   });
 
+  it("says on call is not counted when the fortnight's only shifts are on call", async () => {
+    // Work-mode redesign, owner request 6 Oct 2026 (phone check): 0 h beside a week of on
+    // call read as a fault, so the fortnight says why, and invents no hours.
+    mockShifts([shift("2026-10-13", "17:00", "08:00", "on_call", { workplace: null })]);
+    routes.set("GET /api/roster/extra-time", () => Response.json({ records: [] }));
+    render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
+    const fortnight = await screen.findByTestId("roster-fortnight");
+    expect(fortnight).toHaveTextContent(/0\sh/);
+    expect(within(fortnight).getByTestId("roster-fortnight-on-call-note")).toHaveTextContent(
+      "On call isn't counted here.",
+    );
+  });
+
+  it("adds no on-call note when the fortnight has no on-call shifts", async () => {
+    mockShifts([day("2026-10-12")]);
+    routes.set("GET /api/roster/extra-time", () => Response.json({ records: [] }));
+    render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
+    const fortnight = await screen.findByTestId("roster-fortnight");
+    expect(within(fortnight).queryByTestId("roster-fortnight-on-call-note")).toBeNull();
+  });
+
   it("never offers a late finish against sample shifts, or while the next shift is already running", async () => {
     routes.set("GET /api/roster/extra-time", () => Response.json({ records: [] }));
     routes.set("GET /api/roster/shifts", () =>

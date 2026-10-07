@@ -33,6 +33,7 @@ export function RosterFortnight({
   extraStatus,
   partial,
   payAnchored,
+  onCallExcluded = false,
 }: {
   readonly summary: HoursSummary;
   readonly today: string;
@@ -43,6 +44,8 @@ export function RosterFortnight({
   readonly partial: boolean;
   /** The fortnight follows the doctor's pay anchor; without one it is just two weeks. */
   readonly payAnchored: boolean;
+  /** On-call shifts fall in the fortnight but are not rostered hours, so the total says so. */
+  readonly onCallExcluded?: boolean;
 }) {
   const hatch = useId().replace(/:/g, "");
   const scale = Math.max(BAR_SCALE_MIN, ...summary.days.map((day) => day.hours));
@@ -77,6 +80,14 @@ export function RosterFortnight({
           <span className="text-sm text-[color:var(--text-muted)]">rostered</span>
           {extraWords ? (
             <span className="nums ml-auto text-xs text-[color:var(--text-muted)]">{extraWords}</span>
+          ) : null}
+          {onCallExcluded ? (
+            <span
+              className="basis-full text-xs text-[color:var(--text-muted)]"
+              data-testid="roster-fortnight-on-call-note"
+            >
+              On call isn&apos;t counted here.
+            </span>
           ) : null}
         </p>
         <ul className="sr-only" aria-label={`Rostered hours each day, ${formatSpanWords(summary.start, summary.end)}`}>

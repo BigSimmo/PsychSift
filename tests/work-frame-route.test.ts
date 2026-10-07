@@ -19,6 +19,13 @@ describe("workFrameForRoute", () => {
     expect(named("my-work", "/admin")).toEqual(["Admin", "Today", "my-work"]);
   });
 
+  it("titles Roster's requests page as the page it is, from the first paint", () => {
+    // work-mode redesign, owner request 6 Oct 2026: the More row stays "Leave", the band says the page.
+    const frame = workFrameForRoute("roster", "/roster/requests");
+    expect(frame?.page.label).toBe("Leave");
+    expect(frame?.page.title).toBe("Leave and requests");
+  });
+
   it("is null where no framed band is drawn", () => {
     expect(named("roster", "/roster/join")).toBeNull();
     expect(named("teaching", "/teaching/session/0d7c2e1a-6f43-4f6b-9a5e-0c1d2e3f4a5b")).toBeNull();

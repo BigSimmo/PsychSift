@@ -11,6 +11,21 @@ import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { cn } from "@/components/ui-primitives";
 
+/** A domain ("emhs.health.wa.gov.au") may wrap after a dot, never inside a word. */
+function withDotBreaks(label: string): ReactNode {
+  const parts = label.split(".");
+  return parts.map((part, index) => (
+    <Fragment key={`${index}-${part}`}>
+      {part}
+      {index < parts.length - 1 ? (
+        <>
+          .<wbr />
+        </>
+      ) : null}
+    </Fragment>
+  ));
+}
+
 const isTripleZero = (line: OnCallExternalLine) => line.dial.copy === "000";
 
 /** One subtitle: where the line serves, then when it answers ("24 hours, every day" reads "24 hours"). */
@@ -76,6 +91,7 @@ export function OnCallExternalLineRows({
             sources={line.sources}
             tone={emergencyTone && isTripleZero(line) ? "emergency" : "default"}
             testId={`${testIdPrefix}-${line.id}`}
+            decorativeLeading
           />
         );
         return (
@@ -83,18 +99,23 @@ export function OnCallExternalLineRows({
             {wrapRow ? wrapRow(line, row) : row}
             {line.caveat ? (
               <li
-                className={cn(modeSecondaryText, "min-w-0 break-words pb-1.5 pl-15 pr-3 text-xs")}
+                className={cn(modeSecondaryText, "@container min-w-0 pb-1.5 pl-3 pr-1 text-xs")}
                 data-testid={`${testIdPrefix}-${line.id}-caveat`}
               >
-                {line.caveat}
+                {/* Under the name, past the glyph, and flush left at large text where the
+                    glyph gives way. The li pads like the dial row (pl-3 pr-1) so both
+                    switch at the same width. */}
+                <span className="block min-w-0 break-words pl-12 pr-2 @max-[16rem]:pl-0">{line.caveat}</span>
               </li>
             ) : null}
           </Fragment>
         );
       })}
       {uniqueSources.length > 0 ? (
-        <li className="grid min-w-0 gap-0.5 px-3 pt-2" data-testid={`${testIdPrefix}-sources`}>
-          <span className="flex min-w-0 flex-wrap items-center gap-x-3 text-xs">
+        <li className="@container grid min-w-0 gap-0.5 pl-3 pr-1 pt-2" data-testid={`${testIdPrefix}-sources`}>
+          {/* At large text (narrower than 16rem) the links stack one per line
+              under "Sources" instead of wrapping raggedly around it. */}
+          <span className="flex min-w-0 flex-wrap items-center gap-x-3 pr-2 text-xs @max-[16rem]:grid @max-[16rem]:justify-items-start">
             <span className={modeSecondaryText}>Sources</span>
             {uniqueSources.map((source) => (
               <a
@@ -104,15 +125,15 @@ export function OnCallExternalLineRows({
                 rel="noreferrer noopener"
                 className={cn(
                   focusRing,
-                  "inline-flex min-h-tap min-w-0 items-center gap-1 rounded-sm text-[color:var(--clinical-accent)]",
+                  "inline-flex min-h-tap min-w-0 max-w-full items-center gap-1 rounded-sm text-[color:var(--clinical-accent)] @max-[16rem]:min-h-[48px]",
                 )}
               >
                 <ExternalLink aria-hidden="true" className="size-icon-xs shrink-0" />
-                <span className="break-words">{source.label}</span>
+                <span className="min-w-0 break-words">{withDotBreaks(source.label)}</span>
               </a>
             ))}
           </span>
-          <span className={cn(modeSecondaryText, "text-xs")}>
+          <span className={cn(modeSecondaryText, "pr-2 text-xs")}>
             Each number&apos;s sheet gives the day it was checked.
           </span>
         </li>
