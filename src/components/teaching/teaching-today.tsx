@@ -62,7 +62,6 @@ import {
 import { useTeachingWeek, type TeachingWeekState } from "@/components/teaching/use-teaching-week";
 import { useAuthSession } from "@/lib/supabase/client";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
-import { demoTeachingLogbook } from "@/lib/teaching/demo-programme";
 import {
   attendanceLabels,
   teachingCpdEntryHref,
@@ -561,10 +560,12 @@ function NextForYou({ session }: { session: SessionSummaryRead }) {
  */
 function AttendanceCard({ live, now, today }: { live: boolean; now: Date; today: string }) {
   const resource = useTeachingResource<{ attendance: LogbookRow[] }>(live ? "/api/teaching?view=logbook" : null);
-  const rows = useMemo(
-    () => (live ? (resource.data?.attendance ?? null) : demoTeachingLogbook(now)),
-    [live, now, resource.data],
-  );
+  // The made-up logbook loads on demand, like the rest of the sample programme, so it never ships to a signed-in reader.
+  const sampleRows = useSignedOutSampleRead<LogbookRow[]>(!live, today, async () => {
+    const { demoTeachingLogbook } = await import("@/lib/teaching/demo-programme");
+    return demoTeachingLogbook(now);
+  });
+  const rows = live ? (resource.data?.attendance ?? null) : (sampleRows ?? null);
   const sample = useMemo(() => (live ? null : sampleTermTracker(today)), [live, today]);
   const { state } = useTermTrackerStore(sample);
   if (!rows) return null;
