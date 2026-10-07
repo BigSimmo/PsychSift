@@ -114,7 +114,7 @@ function InboxRow({ item, onOpen }: { item: InboxRequest; onOpen: () => void }) 
         onClick={onOpen}
         className={cn(
           focusRing,
-          "flex min-h-15 w-full min-w-0 items-center gap-3 rounded-lg py-3 pr-3 pl-4 text-left hover:bg-[color:var(--surface-wash)]",
+          "flex min-h-15 w-full min-w-0 flex-wrap items-center gap-3 rounded-lg py-3 pr-3 pl-4 text-left hover:bg-[color:var(--surface-wash)]",
         )}
       >
         <span
@@ -123,11 +123,14 @@ function InboxRow({ item, onOpen }: { item: InboxRequest; onOpen: () => void }) 
         >
           {item.doctor.initials}
         </span>
-        <span className="grid min-w-0 flex-1 gap-0.5">
+        {/* basis-32 scales with text size, so at large text the tag drops under the words instead of being cut off. */}
+        <span className="grid min-w-0 flex-1 basis-32 gap-0.5">
           <span className={titleText}>{rowTitle(item)}</span>
           <span className={cn(secondaryText, "break-words")}>{rowSubtitle(item)}</span>
         </span>
-        <Pill pill={{ label: status.tag, tone: TAG_TONE[status.tone] }} />
+        <span className="ml-auto shrink-0">
+          <Pill pill={{ label: status.tag, tone: TAG_TONE[status.tone] }} />
+        </span>
       </button>
     </li>
   );

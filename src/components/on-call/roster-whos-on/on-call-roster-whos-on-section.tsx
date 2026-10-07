@@ -87,15 +87,16 @@ function Rail({
 
 function RailAxis() {
   return (
-    <div
-      aria-hidden="true"
-      className="nums flex justify-between px-3 pb-2 pl-15 pt-1 text-2xs text-[color:var(--text-muted)]"
-    >
-      <span>00:00</span>
-      <span>06:00</span>
-      <span>12:00</span>
-      <span>18:00</span>
-      <span>24:00</span>
+    <div aria-hidden="true" className="nums @container px-3 pb-2 pl-15 pt-1 text-2xs text-[color:var(--text-muted)]">
+      {/* At large text sizes the five times no longer fit, so they shorten to the hour alone. */}
+      <div className="flex justify-between">
+        {["00", "06", "12", "18", "24"].map((hour) => (
+          <span key={hour}>
+            {hour}
+            <span className="@max-[16em]:hidden">:00</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -566,7 +567,7 @@ export function OnCallRosterWhosOnSection({
       ) : (
         <CalendarDays aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
       )}
-      <span className="min-w-0 flex-1 break-words">
+      <span className="min-w-0 flex-1 basis-40 break-words">
         {stale ? (
           <>
             {/* Stale also covers a failed refresh while online, which is not "Offline". */}
