@@ -143,7 +143,10 @@ function DrainBar({ startedAt }: { startedAt: number }) {
   }, []);
   const left = Math.max(0, 1 - (now - startedAt) / UNDO_MS);
   return (
-    <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-[color:var(--surface-subtle)]">
+    <span
+      aria-hidden="true"
+      className="block h-1 overflow-hidden rounded-full bg-[color:var(--surface-subtle)] motion-reduce:hidden"
+    >
       <i className="block h-full rounded-full bg-[color:var(--mode-identity)]" style={{ width: `${left * 100}%` }} />
     </span>
   );

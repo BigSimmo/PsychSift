@@ -20,6 +20,7 @@ import {
 import { assessmentsReducer, initialAssessmentsState, type AssessmentsState } from "@/lib/teaching/assessments/model";
 import {
   DEFAULT_EXPORT_OPTIONS,
+  assessmentsSampleSearchEntries,
   bulkRecipients,
   cellLabel,
   doctorTimeline,
@@ -375,5 +376,14 @@ describe("term overview reminders, export and words", () => {
       "Choose the forms, the EPA counts or both.",
     );
     expect(exportBlocker(DEFAULT_EXPORT_OPTIONS)).toBeNull();
+  });
+
+  it("offers work search the two sample pages only", () => {
+    const entries = assessmentsSampleSearchEntries();
+    expect(entries.map((e) => e.href)).toEqual([
+      "/teaching/assessments?view=inbox&as=supervisor",
+      "/teaching/assessments?view=overview&as=supervisor",
+    ]);
+    for (const e of entries) expect(e.title).toMatch(/made-up sample/);
   });
 });

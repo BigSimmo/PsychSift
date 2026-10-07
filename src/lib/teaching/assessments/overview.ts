@@ -462,3 +462,30 @@ export function doctorTimeline(
 export function nothingDueYet(rows: readonly OverviewDoctor[]): boolean {
   return rows.every((r) => r.mid.status === "not_yet" && r.end.status === "not_yet");
 }
+
+/* ---------- hook point for the shared work search (pages only, never record text) ---------- */
+
+export interface AssessmentsSampleSearchEntry {
+  readonly title: string;
+  readonly area: "teaching";
+  readonly keywords: readonly string[];
+  readonly href: string;
+}
+
+/** The two made-up sample views as work-search pages. They hold no real records, so only the pages are offered. */
+export function assessmentsSampleSearchEntries(): AssessmentsSampleSearchEntry[] {
+  return [
+    {
+      title: "Assessment inbox (made-up sample)",
+      area: "teaching",
+      keywords: ["assessment inbox", "inbox", "requests", "EPA", "consultant", "supervisor", "feedback"],
+      href: "/teaching/assessments?view=inbox&as=supervisor",
+    },
+    {
+      title: "Term overview (made-up sample)",
+      area: "teaching",
+      keywords: ["term overview", "DCT", "status", "overdue", "remind", "mid-term", "end-of-term", "MEU"],
+      href: "/teaching/assessments?view=overview&as=supervisor",
+    },
+  ];
+}
