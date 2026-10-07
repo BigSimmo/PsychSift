@@ -627,7 +627,8 @@ export function MasterSearchHeader({
   const routeWorkFrame = workFrameForRoute(selectedAppMode.id, currentPathname ?? "");
   const routeWorkFramed = routeWorkFrame !== null;
   const routeWorkPill = routeWorkFrame
-    ? { modeId: selectedAppMode.id, area: routeWorkFrame.area.name, page: routeWorkFrame.page.label }
+    ? // The band publishes the area alone (pill 4b), so the first paint names the area alone too.
+      { modeId: selectedAppMode.id, area: routeWorkFrame.area.name, page: null }
     : null;
   const workPill = (workFramePill?.modeId === selectedAppMode.id ? workFramePill : null) ?? routeWorkPill;
   // A work band that publishes no page asks for the area alone (Josh, 7 Oct

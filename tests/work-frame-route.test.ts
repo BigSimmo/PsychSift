@@ -13,7 +13,8 @@ describe("workFrameForRoute", () => {
 
   it("names the frame's page and area for a framed work page", () => {
     expect(named("roster", "/roster/swaps")).toEqual(["Roster", "Swaps", "roster"]);
-    expect(named("open-shifts", "/open-shifts")).toEqual(["Roster", "Browse", "roster"]);
+    expect(named("open-shifts", "/open-shifts")).toEqual(["Open shifts", "Browse", "roster"]);
+    expect(named("roster", "/roster/manage")).toEqual(["Manage team", "Inbox", "roster"]);
     expect(named("my-day", "/my-day")).toEqual(["My Day", "Today", "my-day"]);
     expect(named("teaching", "/teaching/assessments")).toEqual(["Assessments", "To do", "teaching"]);
     expect(named("my-work", "/admin")).toEqual(["Admin", "Today", "my-work"]);

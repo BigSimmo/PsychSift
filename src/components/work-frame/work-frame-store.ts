@@ -99,3 +99,56 @@ export function useWorkFrameActionsVersion(): number {
 export function workFrameActionHandler(id: WorkFrameActionId): (() => void) | null {
   return actions.get(id) ?? null;
 }
+
+/* --------------------------------------------------------- last page per area */
+
+/**
+ * The page last open in each top-level area, so an inner area's back arrow
+ * returns to where you left its parent (navigation follow-up, owner request
+ * 7 Oct 2026). Memory only for this tab: nothing is stored on the device.
+ */
+const lastPages = new Map<string, string>();
+
+export function rememberWorkAreaPage(areaId: string, href: string): void {
+  lastPages.set(areaId, href);
+}
+
+export function rememberedWorkAreaPage(areaId: string): string | null {
+  return lastPages.get(areaId) ?? null;
+}
+
+/* ------------------------------------------------------------- page's back */
+
+let pageBackClaims = 0;
+const pageBackListeners = new Set<() => void>();
+
+function subscribePageBack(listener: () => void) {
+  pageBackListeners.add(listener);
+  return () => pageBackListeners.delete(listener);
+}
+
+/**
+ * A step inside a page (a form, a report) draws its own back button to the
+ * screen before it. While one is up, the frame's back arrow to the parent area
+ * steps aside, so the top bar never shows two.
+ */
+export function useClaimWorkFrameBack(claimed: boolean): void {
+  useEffect(() => {
+    if (!claimed) return;
+    pageBackClaims += 1;
+    for (const listener of pageBackListeners) listener();
+    return () => {
+      pageBackClaims -= 1;
+      for (const listener of pageBackListeners) listener();
+    };
+  }, [claimed]);
+}
+
+/** True while a page draws its own back button. */
+export function usePageBackClaimed(): boolean {
+  return useSyncExternalStore(
+    subscribePageBack,
+    () => pageBackClaims > 0,
+    () => false,
+  );
+}

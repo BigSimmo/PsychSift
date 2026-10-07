@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import type { WorkArea } from "@/lib/work-frame/areas";
-
 /**
- * Side swipe between a work area's three pinned tabs (work-mode redesign).
+ * Side swipe along a work area's tab row as it is drawn: the tabs that fit
+ * this screen, then the More page that is open (work-mode redesign; Work mode
+ * navigation thread, 7 Oct 2026, so a swipe never lands on a hidden tab).
  *
  * Same gesture as before, tuned (Mode picker polish thread, 7 Oct 2026):
  *   - The axis is decided in the first few pixels. A gesture that starts
@@ -114,7 +114,23 @@ function tick() {
   }
 }
 
-export function useTabSwipe(area: WorkArea, tabIndex: number) {
+/**
+ * The pages a swipe walks through, as the tab row draws them now: the tabs
+ * that fit this screen in order, then the More page that is open, if the last
+ * slot names one. `current` is -1 when the open page is in none of them.
+ */
+function swipePages(nav: HTMLElement, currentHref: string): { hrefs: string[]; current: number } {
+  const links = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a.work-band__tab:not([data-fit="out"])'));
+  const hrefs = links.map((link) => link.getAttribute("href") ?? "");
+  let current = links.findIndex((link) => link.getAttribute("aria-current") === "page");
+  if (current < 0 && nav.querySelector(".work-band__more[data-current]")) {
+    hrefs.push(currentHref);
+    current = hrefs.length - 1;
+  }
+  return { hrefs, current };
+}
+
+export function useTabSwipe(navRef: RefObject<HTMLElement | null>, currentHref: string | null) {
   const router = useRouter();
   const pathname = usePathname();
   const pendingCue = useRef<{ direction: "next" | "previous"; at: number } | null>(null);
@@ -136,7 +152,7 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
   }, [pathname]);
 
   useEffect(() => {
-    if (tabIndex < 0) return;
+    if (!currentHref) return;
     type Gesture = {
       x: number;
       y: number;
@@ -145,13 +161,16 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
       armed: boolean;
       leaning: boolean;
       samples: SwipeSample[];
+      hrefs: string[];
+      current: number;
     };
     let gesture: Gesture | null = null;
 
-    const tabsNav = () => document.querySelector<HTMLElement>('[data-testid="mode-band-tabs"]');
-    const markTarget = (nav: HTMLElement | null, index: number | null) => {
-      nav?.querySelectorAll<HTMLElement>(".work-band__tab").forEach((link, i) => {
-        if (i === index) link.dataset.swipeTarget = "true";
+    const tabsNav = () => navRef.current;
+    const markTarget = (nav: HTMLElement | null, href: string | null) => {
+      nav?.querySelectorAll<HTMLElement>(".work-band__tab").forEach((link) => {
+        if (href !== null && link.getAttribute("href") === href && link.dataset.fit !== "out")
+          link.dataset.swipeTarget = "true";
         else delete link.dataset.swipeTarget;
       });
     };
@@ -179,6 +198,10 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
         swipeBlocked(event.target)
       )
         return;
+      const nav = tabsNav();
+      if (!nav) return;
+      const { hrefs, current } = swipePages(nav, currentHref);
+      if (current < 0) return;
       gesture = {
         x: touch.clientX,
         y: touch.clientY,
@@ -187,6 +210,8 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
         armed: false,
         leaning: false,
         samples: [{ x: touch.clientX, t: event.timeStamp }],
+        hrefs,
+        current,
       };
     };
 
@@ -215,17 +240,16 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
 
       const nav = tabsNav();
       if (!nav) return;
-      const targetIndex = tabIndex + (dx < 0 ? 1 : -1);
-      const target = area.tabs[targetIndex];
+      const target = g.hrefs[g.current + (dx < 0 ? 1 : -1)];
       const reach = Math.max(SWIPE_DISTANCE_MIN, window.innerWidth * SWIPE_DISTANCE_SHARE);
       const progress = Math.min(1, Math.abs(dx) / reach);
       const lean = Math.sign(dx) * -1 * progress * LEAN_MAX * (target ? 1 : EDGE_RESISTANCE);
       g.leaning = true;
       nav.dataset.swiping = "true";
       nav.style.setProperty("--work-swipe-lean", `${lean.toFixed(1)}px`);
-      const armed = Boolean(target?.href) && progress >= 1;
+      const armed = Boolean(target) && progress >= 1;
       if (armed && !g.armed) tick();
-      if (armed !== g.armed) markTarget(nav, armed ? targetIndex : null);
+      if (armed !== g.armed) markTarget(nav, armed ? (target ?? null) : null);
       g.armed = armed;
     };
 
@@ -241,11 +265,11 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
         recent: [...g.samples, { x: touch.clientX, t: event.timeStamp }],
       });
       if (!outcome) return;
-      const tab = area.tabs[tabIndex + (outcome === "next" ? 1 : -1)];
-      if (!tab?.href) return;
+      const next = g.hrefs[g.current + (outcome === "next" ? 1 : -1)];
+      if (!next) return;
       if (!g.armed) tick();
       pendingCue.current = { direction: outcome, at: performance.now() };
-      router.push(tab.href);
+      router.push(next);
     };
 
     window.addEventListener("touchstart", onStart, { passive: true });
@@ -259,5 +283,5 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
       window.removeEventListener("touchcancel", reset);
       clearLean();
     };
-  }, [area, tabIndex, router]);
+  }, [navRef, currentHref, router]);
 }

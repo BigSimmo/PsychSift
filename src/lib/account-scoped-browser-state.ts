@@ -160,6 +160,11 @@ export const ON_CALL_FIRST_WEEK_READ_STORAGE_KEY = "psychsift:on-call:first-week
  * skipped step ids, and the work areas they said they use). Holds no setting and no free text.
  */
 export const WORK_SETUP_PROGRESS_STORAGE_KEY = "psychsift:work-setup:progress-v1";
+/**
+ * localStorage — the work frame's chosen first tabs per area (which pages sit first in each tab row).
+ * Page ids only, never records. Kept on this device only.
+ */
+export const WORK_TAB_PICKS_STORAGE_KEY = "psychsift:work:tab-picks-v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -247,6 +252,7 @@ export function clearAccountScopedBrowserStorage(): void {
     // No document (a worker) or cookies blocked: nothing was set.
   }
   removeQuietly(() => window.localStorage, WORK_SETUP_PROGRESS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, WORK_TAB_PICKS_STORAGE_KEY);
   stripAccountScopedPreferences();
   // The catch-all: every other `psychsift:` key, the clinical drafts, IndexedDB,
   // page caches and PsychSift's notifications (see account-device-sweep.ts).

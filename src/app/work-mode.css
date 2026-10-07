@@ -278,6 +278,7 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
 
 /* Tabs: three pinned pages and More, underlined in the mode colour. */
 .work-band__tabs {
+  position: relative;
   /* The space between tab labels. Each tab's tap area reaches half of it on
      either side (padding pulled back by a matching negative margin), so the
      labels sit exactly where they did while every tab is at least 48px wide
@@ -392,6 +393,29 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
 
 .work-band__count {
   font-size: var(--text-xs, 0.75rem);
+}
+
+/* On a page opened from More, the fourth tab names it and is underlined like
+   a pinned tab (navigation follow-up, owner request 7 Oct 2026). A long name
+   is cut short rather than pushing the row wider than a 320px phone. */
+.work-band__more[data-current]::after {
+  border-bottom-color: var(--mode-identity);
+}
+
+/* A More page that does not fit this screen as a tab: drawn so it can be
+   measured, but hidden and out of the way (navigation follow-up). */
+.work-band__tab[data-fit="out"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.work-band__more-label {
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .work-band__tab:focus-visible,
@@ -876,6 +900,144 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 .work-more-tile__tick > svg {
   width: 0.625rem;
   height: 0.625rem;
+}
+
+/* Find a page: filters the sheet as you type. */
+.work-more-sheet__search {
+  display: flex;
+  min-height: var(--spacing-tap, 3rem);
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  padding: 0 calc(var(--spacing) * 3);
+  border-radius: var(--work-radius-field);
+  background: var(--work-wash);
+  color: var(--work-ink-muted);
+}
+
+.work-more-sheet__search:focus-within {
+  box-shadow: var(--work-edge-inset) var(--mode-identity);
+}
+
+.work-more-sheet__search > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
+.work-more-sheet__search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  /* 16px stops phones zooming the page when the field takes focus. */
+  font: inherit;
+  font-size: 1rem;
+  color: var(--work-ink);
+  outline: none;
+}
+
+.work-more-sheet__none {
+  margin: 0;
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 1);
+  font-size: 0.8125rem;
+  text-align: center;
+  color: var(--work-ink-muted);
+}
+
+/* The pinned tabs: a compact row of three. */
+.work-more-sheet__grid--tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.work-more-tile--tab {
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(var(--spacing) * 1.25);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 1);
+  text-align: center;
+}
+
+.work-more-tile--tab .work-more-tile__text {
+  justify-items: center;
+  flex: none;
+  max-width: 100%;
+}
+
+.work-more-tile--tab .work-more-tile__count {
+  position: absolute;
+  top: calc(var(--spacing) * 1.5);
+  right: calc(var(--spacing) * 1.5);
+}
+
+.work-more-tile {
+  position: relative;
+}
+
+.work-more-tile__count {
+  flex: none;
+  font-size: var(--text-xs, 0.75rem);
+}
+
+/* An inner area, or the way back out of one: one row across the sheet. */
+.work-more-sheet__wide {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.work-more-area {
+  display: flex;
+  width: 100%;
+  min-height: 3.25rem;
+  min-width: 0;
+  align-items: center;
+  gap: calc(var(--spacing) * 2.5);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  border: 1px solid var(--work-line);
+  border-radius: var(--work-radius-card);
+  background: var(--work-surface);
+  color: var(--work-ink);
+  text-decoration: none;
+}
+
+.work-more-area:active {
+  background: var(--work-wash);
+}
+
+.work-more-area:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: 1px;
+}
+
+.work-more-area__tag {
+  flex: none;
+  padding: calc(var(--spacing) * 0.75) calc(var(--spacing) * 2);
+  border-radius: var(--radius-pill);
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity-deep, var(--mode-identity));
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.work-more-area__chev {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: var(--decoration-soft);
+}
+
+.work-more-area__back {
+  background: var(--work-wash);
+  color: var(--work-ink-muted);
+}
+
+/* At 320px the tag gives way so the area's name keeps its room. */
+@media (max-width: 359px) {
+  .work-more-area__tag {
+    display: none;
+  }
 }
 
 @media (forced-colors: active) {
@@ -1856,4 +2018,104 @@ html[data-work-frame] .app-toast-region {
 
 .work-band[data-work-area="admin"] .work-band__mark {
   --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='14' y='36' width='92' height='66' rx='10'/%3E%3Cpath d='M44 36V26a6 6 0 0 1 6-6h20a6 6 0 0 1 6 6v10M14 64h92M54 60h12v10H54z'/%3E%3C/svg%3E");
+}
+
+/* Choosing your first tabs: the Tabs heading's Change link, the picker's hint, slots and buttons. */
+.work-more-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 2);
+}
+
+.work-more-sheet__edit,
+.work-more-sheet__done {
+  display: inline-flex;
+  min-height: var(--spacing-tap, 3rem);
+  align-items: center;
+  justify-content: center;
+  padding: 0 calc(var(--spacing) * 3);
+  border: 0;
+  border-radius: var(--work-radius-field);
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--mode-identity);
+  cursor: pointer;
+}
+
+.work-more-sheet__head .work-more-sheet__edit {
+  margin-right: calc(var(--spacing) * -3);
+}
+
+.work-more-sheet__edit:disabled {
+  color: var(--work-ink-muted);
+  cursor: default;
+}
+
+.work-more-sheet__done {
+  min-width: 6rem;
+  background: var(--mode-identity);
+  color: var(--mode-identity-contrast);
+}
+
+.work-more-sheet__edit:focus-visible,
+.work-more-sheet__done:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: 2px;
+}
+
+.work-more-sheet__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--work-ink-muted);
+}
+
+.work-more-sheet__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(var(--spacing) * 2);
+  padding-top: calc(var(--spacing) * 1);
+}
+
+.work-more-tile--pick[data-picked] {
+  border-color: var(--mode-identity);
+  background: var(--mode-identity-soft);
+}
+
+.work-more-tile--pick[aria-disabled="true"] {
+  color: var(--work-ink-muted);
+  cursor: default;
+}
+
+.work-more-tile__slot {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  place-items: center;
+  border: 1.5px solid var(--work-line);
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.work-more-tile--pick[data-picked] .work-more-tile__slot {
+  border-color: var(--mode-identity);
+  background: var(--mode-identity);
+  color: var(--mode-identity-contrast);
+}
+
+/* Chosen first tabs can be long: on the narrowest screens they give up width
+   (ending in an ellipsis) before More is pushed off the row. */
+.work-band__tab[data-tab="pinned"] {
+  flex: 0 1 auto;
+}
+
+.work-band__tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

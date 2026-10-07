@@ -82,7 +82,7 @@ describe("first-use copy", () => {
   });
 
   it("covers every work area", () => {
-    const areas: WorkAreaId[] = ["day", "rost", "teach", "assess", "cpd", "admin", "call"];
+    const areas: WorkAreaId[] = ["day", "rost", "open", "manage", "teach", "assess", "cpd", "admin", "call"];
     expect(Object.keys(FIRST_USE).sort()).toEqual([...areas].sort());
   });
 });

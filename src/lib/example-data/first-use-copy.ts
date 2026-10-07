@@ -35,6 +35,21 @@ export const FIRST_USE: Readonly<Record<WorkAreaId, FirstUseCopy>> = {
     primary: { label: "Join a team", href: "/roster/join" },
     secondary: { label: "Add shifts", href: "/roster/shifts" },
   },
+  // Open shifts and Manage team sit inside Roster (work mode navigation, 7 Oct 2026).
+  open: {
+    icon: "search",
+    title: "No open shifts yet",
+    body: "Shifts your team posts show here. Set an alert to hear when one appears.",
+    primary: { label: "Set a shift alert", href: "/open-shifts/alerts" },
+    secondary: { label: "Your roster", href: "/roster" },
+  },
+  manage: {
+    icon: "inbox",
+    title: "Nothing to manage yet",
+    body: "Swap and leave requests from your team, and gaps to fill, show here.",
+    primary: { label: "Who is on", href: "/roster/team" },
+    secondary: { label: "Join a team", href: "/roster/join" },
+  },
   teach: {
     icon: "board",
     title: "No teaching yet",

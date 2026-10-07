@@ -141,13 +141,23 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole("heading", { name: "Requests", exact: true })).toBeVisible();
     await page.goto("/roster/manage");
     await expect(page.getByTestId("roster-stat-waiting")).toHaveText(/Waiting\s*0/);
-    await page.getByTestId("roster-manage-section-trigger").focus();
-    await page.keyboard.press("Enter");
-    await clickWhenHydrated(page.getByRole("button", { name: "Cover", exact: true }));
+    // With the work frame up, Manage team's views are its tabs (Inbox, Cover,
+    // Team) and the page's own section menu steps aside; without it, the menu.
+    const frameTabs = page.getByTestId("mode-band-tabs");
+    const framed = await frameTabs.isVisible();
+    const openView = async (tab: string, section: string) => {
+      if (framed) {
+        await clickWhenHydrated(frameTabs.getByRole("link", { name: tab, exact: true }));
+        await expect(page).toHaveURL(new RegExp(`view=${tab.toLowerCase()}`));
+      } else {
+        await clickWhenHydrated(page.getByTestId("roster-manage-section-trigger"));
+        await clickWhenHydrated(page.getByRole("button", { name: section, exact: true }));
+      }
+    };
+    await openView("Cover", "Cover");
     await expect(page.getByRole("heading", { name: "Next two weeks" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download Excel" })).toBeVisible();
-    await clickWhenHydrated(page.getByTestId("roster-manage-section-trigger"));
-    await clickWhenHydrated(page.getByRole("button", { name: "Roster", exact: true }));
+    await openView("Team", "Roster");
     await expect(page.getByRole("button", { name: "Choose file", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Team settings" })).toBeVisible();
     expect(
