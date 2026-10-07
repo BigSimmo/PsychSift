@@ -1679,7 +1679,9 @@ button.work-week__day {
   width: 100%;
   max-width: calc(45rem + 1.5rem);
   margin: 0 auto;
-  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3) calc(var(--spacing) * 7.5);
+  /* The last card clears the phone's home bar in the installed app. */
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3)
+    max(calc(var(--spacing) * 7.5), calc(var(--safe-area-bottom, 0px) + var(--spacing) * 4));
   box-sizing: border-box;
 }
 
