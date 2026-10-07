@@ -11,7 +11,9 @@ import type { OnCallShiftContext } from "@/lib/on-call/shift-context";
 afterEach(cleanup);
 
 /** Tue 6 Oct 21:00 to Wed 7 Oct 08:00, Perth (UTC+8). */
-function roster(phase: "start" | "during" | "end" = "during"): OnCallShiftContext {
+type RosterContext = Extract<OnCallShiftContext, { kind: "roster" }>;
+
+function roster(phase: "start" | "during" | "end" = "during"): RosterContext {
   return {
     kind: "roster",
     shiftKey: "shift-1",

@@ -116,7 +116,7 @@ export function NowFooter({
               data-mode-identity="roster"
             />
           }
-          href="/on-call/calendar"
+          href="/roster/calendar"
           testId="on-call-now-footer-calendar"
         />
         <NowShiftLists context={context} shifts={shifts} items={items} now={now} />
