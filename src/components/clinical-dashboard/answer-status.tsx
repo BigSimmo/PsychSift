@@ -26,11 +26,7 @@ import { appModeIcons } from "@/lib/app-mode-icons";
 import type { AppModeId } from "@/lib/app-modes";
 import { consolidatedModeSearchPath } from "@/lib/consolidated-mode-home-redirect";
 import { motionIsSuppressed } from "@/lib/scroll-behavior";
-import {
-  sharedHomeEmptyState,
-  sharedHomePresentation,
-  type SharedHomePresentation,
-} from "@/lib/ui-copy";
+import { sharedHomeEmptyState, sharedHomePresentation, type SharedHomePresentation } from "@/lib/ui-copy";
 
 export { CopyButton } from "@/components/ui/copy-button";
 // The skeleton lives apart so the lazy-load fallbacks can draw it without this module.
