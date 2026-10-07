@@ -829,7 +829,7 @@ export function CmeEntryForm({
             inputMode="decimal"
             value={formalPeerReviewText}
             onChange={(event) => setFormalPeerReviewText(event.target.value)}
-            hint="Credit within reviewing-performance hours; it does not add extra hours."
+            hint="Credit within reviewing-performance hours. It does not add extra hours."
           />
           {!formalPeerReviewValid ? (
             <p className={cn("-mt-4 text-xs font-medium", textMuted)}>Use a positive plain number, such as 1 or 1.5.</p>

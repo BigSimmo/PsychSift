@@ -148,7 +148,7 @@ export function CmeAnnualSummary({
         </p>
         <p className={textMuted}>
           Archived entries are excluded. Formal peer review is a subset of reviewing hours. Source links identify
-          learning material; they do not prove attendance or completion. Evidence files remain attached to individual
+          learning material. They do not prove attendance or completion. Evidence files remain attached to individual
           entries. This summary is a personal record, not a compliance certificate.
         </p>
       </section>
@@ -210,7 +210,7 @@ export function CmeAnnualSummary({
                   </p>
                   {entry.sourceUrl ? <p className="break-all">Learning source: {entry.sourceUrl}</p> : null}
                   {entry.documentId ? (
-                    <p className={textMuted}>Private source document linked; not certified as evidence.</p>
+                    <p className={textMuted}>Private source document linked. Not certified as evidence.</p>
                   ) : null}
                   {(entry.evidenceCount ?? 0) > 0 ? (
                     <p>

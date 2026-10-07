@@ -145,7 +145,7 @@ export function CmeEvidencePanel({
       if (input.current) input.current.value = "";
       setNotice(
         body.duplicate
-          ? "This file was already attached; no duplicate was created."
+          ? "This file was already attached, so no duplicate was created."
           : "Evidence attached to your private activity.",
       );
       router.refresh();
@@ -213,7 +213,7 @@ export function CmeEvidencePanel({
         <p className="cpd-hint m-0">
           {demoMode
             ? "Sign in to attach evidence to your private activities."
-            : "Evidence remains available; new attachments are disabled for archived activities and closed years."}
+            : "Evidence remains available. New attachments are turned off for archived activities and closed years."}
         </p>
       ) : (
         <details className="work-card group">

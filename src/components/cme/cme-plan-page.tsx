@@ -200,7 +200,7 @@ export function CmePlanPage({
         </CmeHint>
 
         <div className="grid gap-5">
-          {demoMode ? <CmeNote>Demo mode is read-only; the plan is shown for inspection.</CmeNote> : null}
+          {demoMode ? <CmeNote>Demo mode is read-only. The plan is shown for inspection.</CmeNote> : null}
           {set.closedAt ? <CmeNote>This CPD year is closed. Its plan is view-only.</CmeNote> : null}
 
           <CmeFlatList label="Plan status">

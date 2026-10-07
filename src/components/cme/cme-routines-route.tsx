@@ -213,7 +213,7 @@ export function CmeRoutinesRoute({
               onChange={(event) =>
                 setDraft((current) => ({ ...current, usualHours: Number(event.target.value), usualAllocations: [] }))
               }
-              hint="Changing the duration clears the saved category split; review the split when you log the activity."
+              hint="Changing the duration clears the saved category split. Review the split when you log the activity."
             />
             <CmeDateField
               label="Next due"

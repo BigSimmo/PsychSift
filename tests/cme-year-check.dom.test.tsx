@@ -52,7 +52,8 @@ describe("year check page", () => {
       />,
     );
     const ring = screen.getByTestId("cme-domains-ring-domains");
-    expect(within(ring).getByRole("heading")).toHaveTextContent("Activities per domain · 2 of 4 covered");
+    // work-mode redesign, owner request 6 Oct 2026: the mockup's "2 of 4", without the overclaiming "covered".
+    expect(within(ring).getByRole("heading")).toHaveTextContent(/^Activities per domain · 2 of 4$/);
     expect(ring.querySelectorAll('path[data-filled="true"]')).toHaveLength(2);
     expect(ring).toHaveTextContent("Professionalism2 activities");
     // An archived activity does not count, so culturally safe practice still offers "Tag one".

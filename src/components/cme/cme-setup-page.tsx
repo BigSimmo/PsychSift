@@ -552,7 +552,7 @@ export function CmeSetupPage({
                             })),
                           )
                         }
-                        hint="Comma-separated; each selected domain is tracked separately."
+                        hint="Separate them with commas. Each domain is tracked separately."
                       />
                       <TextField
                         label="Activities per domain"

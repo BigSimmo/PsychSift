@@ -135,7 +135,7 @@ function ClosedYearRecord({ year, close }: { year: number; close: CmeYearClose }
               </span>
               <span className="tabular-nums">
                 {amendment.before.title !== amendment.after.title ? `Was "${amendment.before.title}". ` : ""}
-                {amendedVersionHours(amendment.before)} h on {formatCalendarDateLong(amendment.before.date)} →{" "}
+                {amendedVersionHours(amendment.before)} h on {formatCalendarDateLong(amendment.before.date)}, changed to{" "}
                 {amendedVersionHours(amendment.after)} h on {formatCalendarDateLong(amendment.after.date)}
               </span>
               <span>Reason: {amendment.reason}</span>

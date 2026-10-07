@@ -202,7 +202,7 @@ export function CmeNewEntryRoute({
         ) : null}
         {resumeDraft ? (
           <p data-testid="cme-entry-resume-notice" className={cn(textMuted, "mt-3 text-sm")}>
-            Continuing a saved draft. Saving the activity removes the draft; saving as draft again keeps your changes.
+            Continuing a saved draft. Saving the activity removes the draft. Saving as draft again keeps your changes.
           </p>
         ) : null}
         {learningPrefill?.title || learningPrefill?.sourceUrl ? (

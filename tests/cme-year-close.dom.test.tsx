@@ -169,8 +169,9 @@ describe("closing a year from the annual summary", () => {
     expect(record).toHaveTextContent("Educational activities: Reached");
     expect(record).not.toHaveTextContent(/hours short|\bMet\b/);
     expect(record).toHaveTextContent("It does not reduce any requirement.");
+    // work-mode redesign, owner request 6 Oct 2026: no arrows in visible copy, "changed to" instead.
     expect(screen.getByTestId("cme-year-amendments")).toHaveTextContent(
-      "10 January 2027: Synthetic activity2 h on 1 September 2026 → 4 h on 1 September 2026Reason: Certificate shows 4 hours",
+      "10 January 2027: Synthetic activity2 h on 1 September 2026, changed to 4 h on 1 September 2026Reason: Certificate shows 4 hours",
     );
     expect(screen.queryByTestId("cme-year-close")).toBeNull();
   });
