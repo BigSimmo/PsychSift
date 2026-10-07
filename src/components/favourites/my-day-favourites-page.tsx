@@ -177,7 +177,12 @@ function RowText({ item, now }: { item: FavouriteItem; now: number }) {
             <span className="sr-only">Pinned, </span>
           </>
         ) : null}
-        {item.numberId && item.phone ? <span className="font-mono">{item.phone}</span> : null}
+        {item.numberId && item.phone ? (
+          <span className="font-mono">
+            {item.phone}
+            <span aria-hidden="true"> ·</span>
+          </span>
+        ) : null}
         <span className="min-w-0">{rowMeta(item, now)}</span>
         {favouriteScopeOf(item) === "work" ? (
           <span className="rounded bg-[color:var(--work-wash)] px-1.5 text-2xs font-bold text-[color:var(--work-ink)]">
@@ -274,9 +279,17 @@ export function MyDayFavouritesPage() {
                 <Plus aria-hidden="true" className="size-icon-md" strokeWidth={2} />
               </button>
             ) : visible.length > 0 ? (
-              <div>
+              <div className="flex flex-wrap gap-2">
                 <WorkButton variant="secondary" icon={Plus} onClick={openAdd} testId="my-day-favourites-page-add">
                   Add a work page
+                </WorkButton>
+                <WorkButton
+                  variant="secondary"
+                  icon={Phone}
+                  onClick={numberSheets.addNumber}
+                  testId="my-day-favourites-page-add-number"
+                >
+                  Add a number
                 </WorkButton>
               </div>
             ) : null

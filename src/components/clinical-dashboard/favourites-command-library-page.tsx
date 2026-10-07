@@ -1930,7 +1930,9 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
                       />
                     ) : null}
 
-                    {libraryItems.length > 0 ? (
+                    {/* Nothing to order when the only work items are the numbers above. */}
+                    {libraryItems.length > 0 &&
+                    (clinicalItems.length + workItems.length > 0 || searching || activeFilterCount > 0) ? (
                       <div className="flex min-w-0 items-center gap-2 pt-1">
                         <SegmentedControl<FavouritesView>
                           label="Organise favourites"
