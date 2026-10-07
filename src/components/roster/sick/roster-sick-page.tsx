@@ -30,7 +30,6 @@ import {
   rosterOutlineButton,
 } from "@/components/roster/roster-list";
 import { RosterPageHeader } from "@/components/roster/roster-ui";
-import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import { postRosterAction } from "@/components/roster/use-roster-team";
 import { cn } from "@/components/ui-primitives";
@@ -372,7 +371,6 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
         ) : null}
         {ready ? (
           <>
-            <RosterSampleNotice sample={ready.sample} />
             {!online ? (
               <RosterNote icon={WifiOff} tone="warning" role="alert" testId="sick-offline">
                 <p className="font-semibold">No connection</p>

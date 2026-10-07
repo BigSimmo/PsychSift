@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function RosterSickRoute() {
   return (
-    <RosterSampleGate title="Sign in to report a shift" records="team shifts and sick reports">
+    <RosterSampleGate>
       <RosterSickPage />
     </RosterSampleGate>
   );

@@ -64,8 +64,6 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
       testId="my-day-week"
       now={now}
       signedOutSample={{
-        notice:
-          "Below is a sample week made of invented examples, so you can see how My Day's Week works. Signed in, it gathers your own roster shifts, teaching sessions and dated items. Nothing is shared.",
         render: (at) => (
           <MyDayWeekSample now={at} testId="my-day-week-ready">
             {(sample) => (

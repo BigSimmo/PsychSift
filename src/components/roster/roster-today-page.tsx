@@ -38,7 +38,6 @@ import { summariseToday, type TodaySummary } from "@/lib/roster/today";
 import { RosterSignInNotice } from "./invite/roster-sign-in-notice";
 import type { RosterAddView } from "./roster-add-sheet";
 import { RosterNewButton, useRosterNewButtonClearance } from "./roster-new-button";
-import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
 import { RosterTodayTeam } from "./team/roster-today-team";
 import { formatDateSpan, formatDuration, kindOf, shiftTimes, useRosterNow } from "./roster-format";
 import { RosterNightDial } from "./roster-night-dial";
@@ -597,9 +596,7 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
         />
       </ModeGroupedList>
     ) : null;
-  const teamNode = ready ? (
-    <RosterTodayTeam now={now} myShifts={shifts.shifts} sampleNoticeShown={shifts.sample} />
-  ) : null;
+  const teamNode = ready ? <RosterTodayTeam now={now} myShifts={shifts.shifts} /> : null;
   // The team strip may render nothing; wrapping it always is harmless because the slot is only a zero-height grid cell.
   const needsYouNode = ready ? (
     <>
@@ -665,7 +662,6 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
           <>
             {header}
             {ready && shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
-            {ready ? <RosterSampleShiftsNotice sample={shifts.sample} /> : null}
             {ready && saved ? <ModeNotice>{saved}</ModeNotice> : null}
             {ready && refreshWarning ? (
               <ModeNotice tone="warning" testId="roster-today-refresh-warning">

@@ -212,7 +212,8 @@ describe("Roster Shifts", () => {
     mockShifts([]);
     const url = mockTeamWindow("2026-09-21", "2026-10-27", ["2026-10-13"], true);
     render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
-    await screen.findByText(/12 to 18 Oct · No shifts/);
+    // With example data off the made-up team is hidden too, so the doctor sees their own, empty roster.
+    await screen.findByText("No shifts yet");
     expect(fetchCalls(url, "GET")).toHaveLength(0);
     expect(screen.queryByTestId("roster-shifts-row")).toBeNull();
   });

@@ -1,8 +1,10 @@
 /** @vitest-environment jsdom */
 
-// Roster for a visitor who is not signed in: the shared Sample box, then the
-// real screens answered from invented sample data, with nothing sent to the
-// server and nothing kept on the device. Signed-in readers see the page as before.
+// Roster while the example data switch shows examples (auto mode does for a
+// visitor who is not signed in): the real screens answered from invented sample
+// data, with nothing sent to the server and nothing kept on the device. The
+// frame's example data banner (not mounted here) says it is made up, so the
+// page carries no Sample box of its own. Switch off, the page is untouched.
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +21,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import { RosterRequestsPage } from "@/components/roster/requests/roster-requests-page";
 import { RosterSettingsPage } from "@/components/roster/roster-settings-page";
 import { RosterShiftsPage } from "@/components/roster/roster-shifts-page";
@@ -32,6 +35,8 @@ let storageWrites: ReturnType<typeof vi.spyOn>[];
 
 beforeEach(() => {
   auth.status = "signed_out";
+  window.localStorage.clear();
+  resetExampleDataForTests();
   originalFetch = window.fetch;
   realFetch = vi.fn(async () => Response.json({}, { status: 401 }));
   window.fetch = realFetch as unknown as typeof window.fetch;
@@ -63,19 +68,21 @@ const PAGES = [
 ] as const;
 
 describe("Roster signed-out sample", () => {
-  it.each(PAGES)("%s shows the Sample box and the real screen, without the old sign-in notice", async (_name, page) => {
-    render(<RosterSampleGate>{page}</RosterSampleGate>);
-    expect(await screen.findByTestId("roster-signed-out-sample")).toHaveTextContent("Sample");
-    expect(screen.getByTestId("roster-signed-out-sample-notice")).toHaveTextContent("invented examples");
-    expect(screen.getByTestId("roster-signed-out-sample-notice")).toHaveTextContent("doesn't save");
-    await waitFor(() => expect(screen.queryByTestId("roster-sample-loading")).toBeNull());
-    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
-    // Let the page's reads settle, then check none of them left the browser.
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.queryByTestId(/roster-.*-signed-out$/)).toBeNull();
-    expect(rosterCalls()).toHaveLength(0);
-    for (const write of storageWrites) expect(write).not.toHaveBeenCalled();
-  });
+  it.each(PAGES)(
+    "%s shows the real screen from the sample, with no Sample box or sign-in notice",
+    async (_name, page) => {
+      render(<RosterSampleGate>{page}</RosterSampleGate>);
+      await waitFor(() => expect(window.fetch).not.toBe(realFetch));
+      expect(screen.queryByTestId("roster-signed-out-sample")).toBeNull();
+      await waitFor(() => expect(screen.queryByTestId("roster-sample-loading")).toBeNull());
+      expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
+      // Let the page's reads settle, then check none of them left the browser.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.queryByTestId(/roster-.*-signed-out$/)).toBeNull();
+      expect(rosterCalls()).toHaveLength(0);
+      for (const write of storageWrites) expect(write).not.toHaveBeenCalled();
+    },
+  );
 
   it("Today and the team page are filled with the invented team, never real staff", async () => {
     render(
@@ -94,7 +101,7 @@ describe("Roster signed-out sample", () => {
         <RosterShiftsPage />
       </RosterSampleGate>,
     );
-    await screen.findByTestId("roster-signed-out-sample");
+    await waitFor(() => expect(screen.queryByTestId("roster-sample-loading")).toBeNull());
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(document.querySelector('[data-warning="true"]')).toBeNull();
   });
@@ -118,8 +125,30 @@ describe("Roster signed-out sample", () => {
       </RosterSampleGate>,
     );
     expect(screen.getByTestId("the-page")).toBeTruthy();
-    expect(screen.queryByTestId("roster-signed-out-sample")).toBeNull();
     expect(window.fetch).toBe(realFetch);
+  });
+
+  it("leaves the page untouched for a signed-out visitor who turned example data off", async () => {
+    setExampleDataOn(false);
+    render(
+      <RosterSampleGate>
+        <p data-testid="the-page">page</p>
+      </RosterSampleGate>,
+    );
+    expect(screen.getByTestId("the-page")).toBeTruthy();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(window.fetch).toBe(realFetch);
+  });
+
+  it("shows the sample to a signed-in reader who turned example data on", async () => {
+    auth.status = "authenticated";
+    setExampleDataOn(true);
+    render(
+      <RosterSampleGate>
+        <p>page</p>
+      </RosterSampleGate>,
+    );
+    await waitFor(() => expect(window.fetch).not.toBe(realFetch));
   });
 
   it("treats an expired session like signed out", async () => {
@@ -129,6 +158,6 @@ describe("Roster signed-out sample", () => {
         <p>page</p>
       </RosterSampleGate>,
     );
-    expect(await screen.findByTestId("roster-signed-out-sample")).toBeTruthy();
+    await waitFor(() => expect(window.fetch).not.toBe(realFetch));
   });
 });

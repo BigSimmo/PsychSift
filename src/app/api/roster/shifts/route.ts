@@ -11,8 +11,6 @@ import { deleteOwnerCalendarLinks } from "@/lib/roster/calendar-links";
 import { clearRosterSettings } from "@/lib/roster/settings";
 import { removeAllOwnerSubscriptions } from "@/lib/roster/alerts/subscriptions";
 import { removeAllOwnerLeave, withdrawRosterRequests } from "@/lib/roster/team/delete-my-data";
-import { demoMyShifts } from "@/lib/roster/team/demo-team";
-import { rosterTeamReleaseEnabled } from "@/lib/roster/team/release";
 import { demoOnCallShifts } from "@/lib/roster/shifts/demo-shifts";
 import { shiftIsInWindow } from "@/lib/roster/shifts/diff";
 import { onCallShiftImportRequestSchema } from "@/lib/roster/shifts/model";
@@ -81,15 +79,8 @@ export async function GET(request: Request) {
       fetchOwnerShifts(supabase, user.id, listFrom()),
       fetchLatestShiftImport(supabase, user.id),
     ]);
-    // While team rosters are held, a doctor with no roster of their own sees the
-    // sample doctor's shifts, marked `sample`, so every page has a full example.
-    // Their first saved shift or import replaces it.
-    if (!rosterTeamReleaseEnabled() && shifts.length === 0 && !latestImport) {
-      return NextResponse.json(
-        { shifts: demoMyShifts(new Date()), latestImport: null, sample: true },
-        { headers: noStore },
-      );
-    }
+    // No invented sample here: an empty roster is the reader's real, empty
+    // roster. The example data switch shows the sample in the browser instead.
     return NextResponse.json({ shifts, latestImport }, { headers: noStore });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();

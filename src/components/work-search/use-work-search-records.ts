@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { adminLoadState } from "@/lib/admin/own-entries";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { myDayEnabledForAuth } from "@/lib/my-day/model";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -162,6 +164,10 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
   const enabled = myDayEnabledForAuth(authStatus);
   const signedOut = authStatus === "signed_out" || authStatus === "expired";
   const onCall = useOnCallEntries();
+  // Search has no area of its own: a signed-out visitor searches the sample
+  // while the switch shows examples anywhere, and gets the signed-out state when
+  // it is off. A signed-in reader's search only ever finds their own records.
+  const exampleOn = useExampleData().activeAreas.length > 0;
   const [fetched, setFetched] = useState<Fetched | null>(() =>
     memory && memory.epoch === authEpoch && Date.now() - memory.at < FRESH_FOR_MS ? memory : null,
   );
@@ -196,7 +202,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
   }, [enabled, authEpoch, generation]);
 
   useEffect(() => {
-    if (!signedOut || sample) return;
+    if (!signedOut || !exampleOn || sample) return;
     let cancelled = false;
     void import("@/lib/work-search/sample").then(({ workSearchSample }) => {
       if (!cancelled) setSample(workSearchSample(new Date(now)));
@@ -204,17 +210,18 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
     return () => {
       cancelled = true;
     };
-  }, [signedOut, sample, now]);
+  }, [signedOut, exampleOn, sample, now]);
 
   const onCallStatus = adminLoadState(onCall);
   const liveEntries = useMemo(
-    () => (enabled && onCallStatus === "ready" ? entryItems(onCall.entries) : []),
-    [enabled, onCallStatus, onCall.entries],
+    () =>
+      enabled && onCallStatus === "ready" && !onCall.sample ? entryItems(withoutExampleRecords(onCall.entries)) : [],
+    [enabled, onCallStatus, onCall.entries, onCall.sample],
   );
   const sampleEntries = useMemo(() => (sample ? entryItems(sample.entries) : []), [sample]);
 
   return useMemo<WorkSearchRecords>(() => {
-    if (signedOut) {
+    if (signedOut && exampleOn) {
       const ready: WorkAreaStatus = sample ? "ready" : "loading";
       return {
         items: sample?.items ?? [],
@@ -227,6 +234,22 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
         cpd: sample?.cpd ?? null,
         sample: true,
         anySample: true,
+        epoch: authEpoch,
+        retry,
+      };
+    }
+    if (signedOut) {
+      return {
+        items: [],
+        entries: [],
+        areas: (["roster", "teaching", "cme", "my-work", "on-call"] as const).map((area) => ({
+          area,
+          status: "signed-out" as const,
+          sample: false,
+        })),
+        cpd: null,
+        sample: false,
+        anySample: false,
         epoch: authEpoch,
         retry,
       };
@@ -254,6 +277,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
     };
   }, [
     signedOut,
+    exampleOn,
     sample,
     sampleEntries,
     fetched,

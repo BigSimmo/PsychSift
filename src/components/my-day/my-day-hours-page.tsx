@@ -52,8 +52,6 @@ export function MyDayHoursPage({ now }: { now?: Date } = {}) {
       now={now}
       subtitle={() => "Rostered, not pay"}
       signedOutSample={{
-        notice:
-          "Below is a sample made of invented examples, so you can see how My Day's Hours works. Signed in, it shows your own rostered hours. Nothing is shared.",
         render: (at) => (
           <MyDayHoursSample now={at} testId="my-day-hours-ready">
             {(sample) => (

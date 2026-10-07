@@ -13,7 +13,6 @@ import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
 import { formatShiftRange } from "@/components/roster/roster-format";
 import { RosterChangeRows } from "@/components/roster/roster-change-rows";
 import { teamChangeNotices } from "@/lib/roster/what-changed";
-import { RosterSampleNotice } from "./roster-sample-notice";
 
 function TeamSummary({
   team,
@@ -171,16 +170,7 @@ function TeamSummary({
     </>
   );
 }
-export function RosterTodayTeam({
-  now,
-  myShifts = [],
-  sampleNoticeShown = false,
-}: {
-  now: Date;
-  myShifts?: readonly RosterDisplayShift[];
-  /** Today already says the whole page is an example, so the team strip need not say it again. */
-  sampleNoticeShown?: boolean;
-}) {
+export function RosterTodayTeam({ now, myShifts = [] }: { now: Date; myShifts?: readonly RosterDisplayShift[] }) {
   const teams = useRosterTeams();
   if (teams.status !== "ready") return null;
   const enabled = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).filter((team) => team.enabled);
@@ -196,7 +186,6 @@ export function RosterTodayTeam({
     );
   return (
     <>
-      <RosterSampleNotice sample={teams.data.sample && !sampleNoticeShown} />
       {enabled.map((team) => (
         <TeamSummary
           key={team.serviceId}

@@ -44,7 +44,6 @@ import {
   type MonthShift,
   type MonthTotals,
 } from "./roster-month-model";
-import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
 import { useRosterLinks } from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
@@ -311,7 +310,6 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const notices = (
     <>
       {shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
-      <RosterSampleShiftsNotice sample={shifts.sample} />
       {notice ? <ModeNotice>{notice}</ModeNotice> : null}
       {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
     </>

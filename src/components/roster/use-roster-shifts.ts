@@ -5,6 +5,7 @@ import { useRosterTeams, rosterTeamUrl } from "./use-roster-team";
 import { mergeMyShifts, type RosterDisplayShift } from "@/lib/roster/team/team-view";
 import { rosterAssignmentsSchema, type RosterAssignment, type RosterTeam } from "@/lib/roster/team/model";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { reportAreaData } from "@/lib/example-data/store";
 import { sharedGet } from "@/lib/shared-get";
 
 import type {
@@ -164,6 +165,10 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
     setDemoMode(Boolean(payload.demoMode));
     setSample(Boolean(payload.sample));
     setStatus("ready");
+    // Tells auto mode whether Roster has real shifts (the sample gate waits for it).
+    if (!payload.demoMode && !payload.sample) {
+      reportAreaData("rost", (payload.shifts?.length ?? 0) > 0 || payload.latestImport ? "has-data" : "empty");
+    }
   }, []);
 
   const apply = useCallback(

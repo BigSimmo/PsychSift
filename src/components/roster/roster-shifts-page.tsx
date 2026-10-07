@@ -67,7 +67,6 @@ import { RosterRestChip } from "./roster-rest-chip";
 import { RosterShareButton } from "./roster-share-button";
 import { RosterSickEntryLink } from "./sick/roster-sick-entry";
 import { RosterWhoCanCover } from "./roster-who-can-cover";
-import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
 import { useRosterExtraTime } from "./use-roster-extra-time";
 import { useRosterLinks } from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
@@ -502,7 +501,6 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     const notices = (
       <>
         {shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
-        <RosterSampleShiftsNotice sample={shifts.sample} />
         {notice ? <ModeNotice tone={notice.tone}>{notice.text}</ModeNotice> : null}
         {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
       </>

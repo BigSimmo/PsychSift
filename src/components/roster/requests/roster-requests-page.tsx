@@ -9,7 +9,6 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { RosterStaffingEntryLink } from "@/components/roster/staffing/roster-staffing-entry";
-import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterNow } from "@/components/roster/roster-format";
 import {
   RosterDateLead,
@@ -337,7 +336,6 @@ export function RosterRequestsPage() {
         }
       />
       <div className="grid min-w-0 gap-3" data-mode-identity="roster">
-        <RosterSampleNotice sample={teams.data?.sample} />
         {enabled.length > 1 ? (
           <label className="grid max-w-sm gap-1 text-sm text-[color:var(--text-muted)]">
             Team

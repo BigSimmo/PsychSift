@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RosterTeamPage } from "@/components/roster/team/roster-team-page";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 
 // The calendar keeps its view and date in the URL, so the mock URL is live:
 // router.replace updates it and useSearchParams reads it back.
@@ -89,10 +90,27 @@ describe("Roster team journey", () => {
     fireEvent.click(screen.getByRole("button", { name: "Previous day" }));
     expect(await screen.findByText("from 21:30")).toBeTruthy();
   });
-  it("labels the sample team served while team rosters are held", async () => {
+  it("hides the made-up team served while team rosters are held when example data is off", async () => {
+    window.localStorage.clear();
+    resetExampleDataForTests();
     mockTeam(true, true);
     render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
-    expect((await screen.findByTestId("roster-sample-notice")).textContent).toMatch(/Example team/);
+    expect(await screen.findByTestId("roster-team-no-team")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Registrars" })).toBeNull();
+  });
+  it("shows the made-up team, with no per-page label, while example data is on", async () => {
+    window.localStorage.clear();
+    resetExampleDataForTests();
+    setExampleDataOn(true);
+    mockTeam(true, true);
+    render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
+    expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
+    expect(screen.queryByTestId("roster-sample-notice")).toBeNull();
+    act(() => {
+      setExampleDataOn(false);
+      resetExampleDataForTests();
+    });
+    window.localStorage.clear();
   });
   it("shows no sample label for a real team", async () => {
     mockTeam();

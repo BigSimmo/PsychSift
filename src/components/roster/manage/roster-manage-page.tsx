@@ -7,7 +7,6 @@ import { useRosterNow } from "@/components/roster/roster-format";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import type { RosterTeam } from "@/lib/roster/team/model";
 import { TeamCalendar } from "@/components/roster/team/calendar/team-calendar";
-import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { RosterManageNavHeader } from "./roster-manage-nav-header";
 import { RosterApproveTab } from "./roster-approve-tab";
 import { RosterCoverTab } from "./roster-cover-tab";
@@ -125,7 +124,6 @@ export function RosterManagePage() {
           <p>Only your team&apos;s roster manager can see this page.</p>
         ) : (
           <>
-            <RosterSampleNotice sample={teams.data?.sample} />
             {available.length > 1 ? (
               <label className="grid gap-1">
                 Team
