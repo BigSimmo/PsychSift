@@ -23,6 +23,10 @@
  */
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { localProjectId } from "../src/lib/local-server-utils.mjs";
 
 const args = process.argv.slice(2);
 const arg = (name, fallback) => {
@@ -93,6 +97,29 @@ async function tapMore(page) {
   return events.length ? Math.round(Math.max(...events)) : 0;
 }
 
+// Fail closed before opening a browser: only a loopback server that answers as
+// this checkout is measured, never another project's server or a live site.
+async function assertLocalProjectServer(baseUrl) {
+  const parsed = new URL(baseUrl);
+  if (!["127.0.0.1", "localhost", "[::1]"].includes(parsed.hostname)) {
+    throw new Error(`--base must be a loopback address (127.0.0.1 or localhost), got ${parsed.hostname}`);
+  }
+  const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const expected = localProjectId(projectRoot);
+  let body;
+  try {
+    const response = await fetch(new URL("/api/local-project-id", parsed), { cache: "no-store" });
+    if (!response.ok) throw new Error(`status ${response.status}`);
+    body = await response.json();
+  } catch (error) {
+    throw new Error(`Could not confirm ${baseUrl} is this project (${error.message}). Start it with npm run ensure.`);
+  }
+  if (body?.projectId !== expected) {
+    throw new Error(`${baseUrl} is a different project (${body?.projectId ?? "unknown"}), expected ${expected}.`);
+  }
+}
+
+await assertLocalProjectServer(base);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const results = {};
 for (const route of routes) {

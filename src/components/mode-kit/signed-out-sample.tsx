@@ -38,6 +38,9 @@ export function SignedOutSampleNotice({
   readonly className?: string;
 }) {
   const [signInOpen, setSignInOpen] = useState(false);
+  // Once opened the dialog stays mounted, so it can close normally and hand focus back to the button.
+  const [signInMounted, setSignInMounted] = useState(false);
+  if (signInOpen && !signInMounted) setSignInMounted(true);
   return (
     <div
       // Carries its own token scope: the `--dash-*` colours exist only inside `.dash-surface`.
@@ -63,7 +66,7 @@ export function SignedOutSampleNotice({
           Sign in
         </Button>
       </div>
-      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
+      {signInMounted ? <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} /> : null}
     </div>
   );
 }

@@ -69,6 +69,9 @@ export function MyDayFrame({
   const enabled = myDayEnabledForAuth(authStatus);
   const now = useMyDayNow(nowProp);
   const [signInOpen, setSignInOpen] = useState(false);
+  // Once opened the dialog stays mounted, so it can close normally and hand focus back to the button.
+  const [signInMounted, setSignInMounted] = useState(false);
+  if (signInOpen && !signInMounted) setSignInMounted(true);
 
   return (
     <InformationPageShell testId={`${testId}-main`}>
@@ -130,7 +133,7 @@ export function MyDayFrame({
                 </Button>
               }
             />
-            {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
+            {signInMounted ? <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} /> : null}
           </div>
         ) : null}
 

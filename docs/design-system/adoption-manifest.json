@@ -2617,6 +2617,7 @@
         "tests/sheet-focus-stress.dom.test.tsx",
         "tests/sheet-focus.dom.test.tsx",
         "tests/sheet.dom.test.tsx",
+        "tests/signed-out-sample-focus.dom.test.tsx",
         "tests/therapy-global-convergence-contract.test.ts",
         "tests/ui-accessibility.spec.ts",
         "tests/ui-overlay-css-contract.test.ts",
