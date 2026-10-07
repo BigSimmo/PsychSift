@@ -3188,7 +3188,10 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
 }
 
 .answer-footer-search-input::-webkit-search-cancel-button,
-.answer-footer-search-input::-webkit-search-decoration {
+.answer-footer-search-input::-webkit-search-decoration,
+/* A search field that draws its own Clear button hides the browser's, which
+   otherwise sits beside it and covers the typed text. */
+.text-field-own-clear::-webkit-search-cancel-button {
   appearance: none;
 }
 

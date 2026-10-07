@@ -57,6 +57,9 @@
   --work-surface: var(--surface-raised);
   --work-ink: var(--text-heading);
   --work-ink-muted: var(--text-muted);
+  /* Flat rule: shared cards inside a work page take the work card's hairline
+     shadow instead of the app's lifted one. */
+  --e1: var(--work-shadow-card);
   /* Glass: the one recipe for floating controls. Blur and a hairline, no sheen.
      Its colours (`--work-glass-fill`, `--work-glass-line`) and the two flat
      shadows (`--work-shadow-card`, `--work-shadow-float`) live with the other
