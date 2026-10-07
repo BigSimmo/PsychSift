@@ -68,6 +68,8 @@ import { activeCmeYearEntries } from "@/lib/cme/export";
 import { useCpdHomeSendStore } from "@/lib/cme/device-record";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /** The page's parent, where its link lives. */
 const CPD_HOME_BACK: CpdFeatureBack = { href: "/cme/summary", label: "CPD summary" };
@@ -163,6 +165,8 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   const thisYear = Number(today.slice(0, 4));
   const sample = useMemo(() => (demoMode ? EMPTY_CPD_HOME_SEND : null), [demoMode]);
   const store = useCpdHomeSendStore(sample);
+  // Example records never leave the app: while CPD shows example data, the file and copies explain instead.
+  const example = useExampleData("cpd").active;
   const notify = useUndoNotice();
   const online = useOnlineStatus();
   const yearEntries = useMemo(() => activeCmeYearEntries(entries, set.year), [entries, set.year]);
@@ -305,6 +309,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
 
   /** Runs inside the tap, so the browser treats the download as one the doctor asked for. */
   function downloadReady(file: CpdHomeFile, text: string) {
+    if (!guardExampleAction(example, "export")) return;
     if (!saveTextFile(file.name, text)) {
       setFlow(null);
       setFailure({
@@ -321,6 +326,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   }
 
   function downloadAgain(file: CpdHomeFile, text: string) {
+    if (!guardExampleAction(example, "export")) return;
     if (saveTextFile(file.name, text)) announce("Download started again. Check your downloads.");
     else notify("This browser did not save the file. Try Share, or copy the activities instead.");
   }
@@ -355,6 +361,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   }
 
   async function copyAll() {
+    if (!guardExampleAction(example, "copy")) return;
     const copied = scopeEntries.filter((entry) => !heldTitles.has(entry.id)).length;
     if (copied === 0) {
       notify("Nothing copied. Edit the titles that look like a patient detail first.");
@@ -374,6 +381,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   }
 
   async function copyTable() {
+    if (!guardExampleAction(example, "copy")) return;
     if (heldTitles.size) {
       notify("Not copied. Edit the titles that look like a patient detail first.");
       return;

@@ -26,6 +26,8 @@ import { Sheet } from "@/components/ui/sheet";
 import { SearchField } from "@/components/ui/text-field";
 import { cn, EmptyState, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import type { CmeDraft } from "@/lib/cme/drafts";
 import type { CmeMissedSession } from "@/lib/cme/missed-sessions";
 import type { CmeRoutine } from "@/lib/cme/routines";
@@ -122,6 +124,8 @@ export function CmeLogPage({
   );
   const effectiveYear = navigationYears ? set.year : selectedYear;
   const [allYears, setAllYears] = useState(false);
+  // The export route reads the account, so on a page showing example data it would hand over REAL records.
+  const example = useExampleData("cpd").active;
   const [sheetSection, setSheetSection] = useState<SheetSection | null>(null);
   const yearButtonRef = useRef<HTMLButtonElement>(null);
   const categoryButtonRef = useRef<HTMLButtonElement>(null);
@@ -324,15 +328,27 @@ export function CmeLogPage({
             testId="cme-log-more-sheet"
           >
             <div className="grid gap-2 text-sm">
-              <a
-                href={`/api/cme/export?year=${effectiveYear}`}
-                download
-                data-testid="cme-log-download-csv"
-                className={moreRow}
-              >
-                <Download aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-                Download CSV
-              </a>
+              {example ? (
+                <button
+                  type="button"
+                  onClick={() => guardExampleAction(true, "export")}
+                  data-testid="cme-log-download-csv"
+                  className={moreRow}
+                >
+                  <Download aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+                  Download CSV
+                </button>
+              ) : (
+                <a
+                  href={`/api/cme/export?year=${effectiveYear}`}
+                  download
+                  data-testid="cme-log-download-csv"
+                  className={moreRow}
+                >
+                  <Download aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+                  Download CSV
+                </a>
+              )}
               <Link
                 href={`/cme/summary?year=${effectiveYear}`}
                 data-testid="cme-log-annual-summary"
