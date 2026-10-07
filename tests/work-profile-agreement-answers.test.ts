@@ -121,6 +121,20 @@ describe("matching questions to the checked clauses", () => {
     });
   });
 
+  it.each([
+    "Am I allowed 7 days of annual leave?",
+    "Can I take 14 days of study leave?",
+    "Do I get two days off for my exam?",
+  ])("a bare day count in a leave or exam question is not quoted as a rest rule: %s", (question) => {
+    const answer = answerAgreementQuestion(question, opts);
+    expect(answer).toMatchObject({ kind: "not-checked", unchecked: [{ id: "leave" }] });
+  });
+
+  it("a day count with a roster word is still a rest question", () => {
+    expect(topicIds(answerAgreementQuestion("I worked 14 days in a row", opts))).toContain("days-before-two-off");
+    expect(topicIds(answerAgreementQuestion("rostered 7 days with no break", opts))).toContain("hours-in-a-week");
+  });
+
   it("answers the checked part and names the unchecked part of a mixed question", () => {
     const answer = answerAgreementQuestion("Am I paid for working more than 75 hours a week", opts);
     expect(answer.kind).toBe("quoted");

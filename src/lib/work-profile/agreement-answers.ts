@@ -188,7 +188,7 @@ const UNCHECKED_TOPICS: ReadonlyArray<UncheckedTopic & { readonly pattern: RegEx
     id: "leave",
     label: "Leave",
     pattern:
-      /\bleave\b|\bholidays?\b(?! pay)|\bsick\b|\bcarer'?s\b|\bparental\b|\bmaternity\b|\bpaternity\b|\bbereavement\b|\bcompassionate\b|\blong service\b|\bexam (?:leave|days?)\b|\bstudy (?:leave|days?)\b|\bconference\b|\bdomestic violence\b|\btime off for\b/,
+      /\bleave\b|\bholidays?\b(?! pay)|\bsick\b|\bcarer'?s\b|\bparental\b|\bmaternity\b|\bpaternity\b|\bbereavement\b|\bcompassionate\b|\blong service\b|\bexams?\b|\bstudy (?:leave|days?)\b|\bconference\b|\bdomestic violence\b|\btime off for\b/,
   },
   {
     id: "pay",
@@ -226,8 +226,16 @@ const UNCHECKED_TOPICS: ReadonlyArray<UncheckedTopic & { readonly pattern: RegEx
   { id: "private", label: "Private work", pattern: /\bprivate (?:work|practice|patients?|clinic)\b/ },
 ];
 
-/** Strong patterns score 2, weak ones 1. A topic needs 2, or the best weak score when nothing is strong. */
-const TOPIC_PATTERNS: Readonly<Record<AgreementTopicId, { strong: RegExp[]; weak: RegExp[] }>> = {
+/**
+ * Strong patterns score 2, weak ones 1. A topic needs 2, or the best weak score when nothing is strong.
+ *
+ * `counts` are bare day counts ("7 days", "two days off"). On their own they say nothing about
+ * hours or rest: "7 days of annual leave" and "two days off for my exam" are leave questions. A count
+ * scores 2 only with a roster word nearby (`ROSTER_CONTEXT`), and 1 otherwise. When the question also
+ * names a topic PsychSift has not checked and no topic was matched by anything but a count, the
+ * answer is "not checked" rather than a quote that does not answer it (`answerAgreementQuestion`).
+ */
+const TOPIC_PATTERNS: Readonly<Record<AgreementTopicId, { strong: RegExp[]; weak: RegExp[]; counts?: RegExp[] }>> = {
   "break-between-shifts": {
     strong: [
       /\bbreaks? between\b/,
@@ -244,14 +252,13 @@ const TOPIC_PATTERNS: Readonly<Record<AgreementTopicId, { strong: RegExp[]; weak
     strong: [
       /\bhours? (?:a|per|each|in a|in one|every) (?:week|fortnight)\b/,
       /\b(?:weekly|fortnightly) hours\b/,
-      /\b(?:7|seven) (?:consecutive )?days\b/,
-      /\b(?:14|fourteen) (?:consecutive )?days\b/,
       /\b(?:75|140) hours?\b/,
       /\b(?:max(?:imum)?|most|limit (?:on|of)) (?:hours|rostered hours)\b/,
       /\bhow many hours (?:can|could|may|am|will|should)\b/,
       /\btoo many hours\b/,
     ],
     weak: [/\bfortnight\b/, /\bhours\b.*\bweek\b/],
+    counts: [/\b(?:7|seven) (?:consecutive )?days\b/, /\b(?:14|fourteen) (?:consecutive )?days\b/],
   },
   "shift-length": {
     strong: [
@@ -288,13 +295,12 @@ const TOPIC_PATTERNS: Readonly<Record<AgreementTopicId, { strong: RegExp[]; weak
     strong: [
       /\bdays? in a row\b/,
       /\bconsecutive days\b/,
-      /\b(?:12|twelve|13|thirteen|14|fourteen) days\b(?! off)/,
       /\bwithout (?:a |any )?(?:days? off|break|weekend|rest)\b/,
-      /\b(?:two|2) days off\b/,
       /\b(?:48|forty eight) ?(?:hours?|h) (?:off|free)\b/,
       /\bstraight days\b/,
     ],
     weak: [/\bdays? off\b/, /\bweekends? off\b/],
+    counts: [/\b(?:12|twelve|13|thirteen|14|fourteen) days\b(?! off)/, /\b(?:two|2) days off\b/],
   },
 };
 
@@ -322,12 +328,26 @@ export function normaliseAgreementQuestion(question: string): string {
 const NIGHTS_IN_A_ROW_ASKED =
   /\bnights? in a row\b|\bconsecutive nights?\b|\b(?:how many|max(?:imum)?|most|limit (?:on|of)) (?:consecutive )?nights?\b|\b(?:run|block|string|stretch|set) of nights\b/;
 
-function scoreTopics(text: string): AgreementTopicId[] {
+/** Words that make a bare day count a roster question: "worked 13 days straight", "7 days rostered". */
+const ROSTER_CONTEXT =
+  /\bhours?\b|\broster(?:ed|s)?\b|\bshifts?\b|\bwork(?:ed|ing)?\b|\bduty\b|\bin a row\b|\bstraight\b|\bconsecutive\b|\bnights?\b/;
+
+interface TopicScore {
+  readonly id: AgreementTopicId;
+  readonly score: number;
+  /** True when a strong pattern other than a bare count matched. */
+  readonly solid: boolean;
+}
+
+function scoreTopics(text: string): TopicScore[] {
+  const rosterWords = ROSTER_CONTEXT.test(text);
   const scores = AGREEMENT_TOPICS.map((topic) => {
     const patterns = TOPIC_PATTERNS[topic.id];
-    const strong = patterns.strong.some((pattern) => pattern.test(text)) ? 2 : 0;
-    const weak = patterns.weak.some((pattern) => pattern.test(text)) ? 1 : 0;
-    return { id: topic.id, score: strong + weak };
+    const solid = patterns.strong.some((pattern) => pattern.test(text));
+    const counted = (patterns.counts ?? []).some((pattern) => pattern.test(text));
+    const strong = solid || (counted && rosterWords) ? 2 : 0;
+    const weak = patterns.weak.some((pattern) => pattern.test(text)) || (counted && !rosterWords) ? 1 : 0;
+    return { id: topic.id, score: strong + weak, solid };
   });
   const strong = scores.filter((entry) => entry.score >= 2);
   let chosen = strong;
@@ -335,16 +355,16 @@ function scoreTopics(text: string): AgreementTopicId[] {
     const best = Math.max(0, ...scores.map((entry) => entry.score));
     chosen = best > 0 ? scores.filter((entry) => entry.score === best) : [];
   }
-  let ids = chosen.sort((a, b) => b.score - a.score).map((entry) => entry.id);
+  let ranked = chosen.sort((a, b) => b.score - a.score);
   // "Days off after nights" is the rest-after-nights clause, not the 12 days rule.
-  if (ids.includes("rest-after-nights")) {
+  if (ranked.some((entry) => entry.id === "rest-after-nights")) {
     // A count of nights ("after 4 nights") is the rest question, not the nights-in-a-row one.
-    if (!NIGHTS_IN_A_ROW_ASKED.test(text)) ids = ids.filter((id) => id !== "nights-in-a-row");
+    if (!NIGHTS_IN_A_ROW_ASKED.test(text)) ranked = ranked.filter((entry) => entry.id !== "nights-in-a-row");
     if (!TOPIC_PATTERNS["days-before-two-off"].strong.some((p) => p.test(text))) {
-      ids = ids.filter((id) => id !== "days-before-two-off");
+      ranked = ranked.filter((entry) => entry.id !== "days-before-two-off");
     }
   }
-  return ids.slice(0, 3);
+  return ranked.slice(0, 3);
 }
 
 function uncheckedTopicsIn(text: string): UncheckedTopic[] {
@@ -521,13 +541,18 @@ export function answerAgreementQuestion(question: string, options: AgreementAnsw
   if (check.kind === "patient") return { kind: "patient", question: trimmed, safer: check.safer, what: check.what };
   const text = normaliseAgreementQuestion(trimmed);
   const source = agreementSource(options.today);
-  const ids = scoreTopics(text);
+  const scored = scoreTopics(text);
   const unchecked = uncheckedTopicsIn(text);
-  if (!ids.length) return { kind: "not-checked", question: trimmed, unchecked, source };
+  if (!scored.length) return { kind: "not-checked", question: trimmed, unchecked, source };
+  // "Am I allowed 7 days of annual leave?": the only match is a day count, and the question is about
+  // a topic PsychSift has not checked. A quote about hours would not answer it, so none is shown.
+  if (unchecked.length && !scored.some((entry) => entry.solid)) {
+    return { kind: "not-checked", question: trimmed, unchecked, source };
+  }
   return {
     kind: "quoted",
     question: trimmed,
-    topics: ids.map(agreementTopic),
+    topics: scored.map((entry) => agreementTopic(entry.id)),
     unchecked,
     signOff: agreementSignOffState(options.gate),
     source,
