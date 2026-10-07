@@ -100,11 +100,10 @@ export function EarlierAlertsPage({ now }: { now?: Date } = {}) {
       now={now}
       subtitle={() => "Everything that buzzed this phone, last 7 days"}
       // Signed out, the example alerts show only while My Day's example data is on. The frame's example
-      // data banner labels them, so this notice only says what the page holds once signed in.
+      // data banner labels them.
       signedOutSample={
         exampleActive
           ? {
-              notice: "Signed in, this lists the alerts that reached this phone, kept on the phone for 7 days.",
               render: (at) => <ExampleList now={at} />,
             }
           : undefined

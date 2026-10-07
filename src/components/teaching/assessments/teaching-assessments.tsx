@@ -7,7 +7,7 @@ import { Suspense, useCallback, useEffect, useReducer, useRef, useState, type Di
 
 import { useModeBandCount } from "@/components/mode-band/mode-band";
 import { WorkBody, WorkButton, WorkEmpty, useWorkUndoToast } from "@/components/mode-kit/work";
-import { AssessSample, AssessSegmented, AssessSkeleton } from "@/components/teaching/assessments/assess-kit";
+import { AssessSegmented, AssessSkeleton } from "@/components/teaching/assessments/assess-kit";
 import {
   rememberRole,
   rememberStory,
@@ -282,9 +282,6 @@ function AssessmentsApp() {
   };
   return (
     <div ref={root} className="contents [&_:is(input,textarea,select,button)]:scroll-mb-24">
-      <AssessSample testId="teaching-assessments-sample">
-        Made-up example records. Nothing is saved or sent.
-      </AssessSample>
       {onTab ? (
         <AssessSegmented
           label="Whose assessments"

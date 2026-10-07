@@ -62,13 +62,20 @@ export function resumableSearch(epoch: number, now: number = Date.now()): string
 }
 
 /**
- * As the search closes: keep an unfinished search for a few minutes (never patient details), and when
- * patient details were left in the box, drop them and leave the flag for "Cleared what you typed".
+ * As the search closes: keep an unfinished search for a few minutes (never patient details, and never
+ * one run over example records, `keep` false), and when patient details were left in the box, drop
+ * them and leave the flag for "Cleared what you typed".
  */
-export function noteClosing(query: string, epoch: number, navigated: boolean, now: number = Date.now()) {
+export function noteClosing(
+  query: string,
+  epoch: number,
+  navigated: boolean,
+  now: number = Date.now(),
+  keep: boolean = true,
+) {
   const current = query.trim();
   const hasPatientDetails = current.length > 0 && looksLikePatientDetails(current);
-  lastSearch = !navigated && current && safeToKeep(current) ? { epoch, query: current, at: now } : null;
+  lastSearch = keep && !navigated && current && safeToKeep(current) ? { epoch, query: current, at: now } : null;
   if (hasPatientDetails) clearedPatientDetails = { epoch };
   navigatedAway = navigated;
 }

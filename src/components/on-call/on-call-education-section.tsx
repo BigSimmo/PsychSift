@@ -19,6 +19,7 @@ import {
 } from "@/lib/on-call/entry-model";
 import { onCallLocalDateKey } from "@/lib/on-call/local-date";
 import { onCallTeachingDate, onCallTeachingDateLabel } from "@/lib/on-call/teaching-schedule";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 export interface OnCallEducationSectionProps {
   entries: readonly OnCallEntry[];
@@ -216,6 +217,7 @@ export function OnCallEducationSection({
   onEditEntry,
   onVerified,
 }: OnCallEducationSectionProps) {
+  const { zone } = useWorkTimeZone();
   const educationEntries = entries.filter((entry) => entry.section === "education");
 
   if (educationEntries.length === 0) {
@@ -229,7 +231,7 @@ export function OnCallEducationSection({
     );
   }
 
-  const today = onCallLocalDateKey(now);
+  const today = onCallLocalDateKey(now, zone);
   const sorted = [...educationEntries].sort((a, b) => {
     const aKey = resolvedOccurrence(parseEducationDetails(a.details), a, today).sortKey;
     const bKey = resolvedOccurrence(parseEducationDetails(b.details), b, today).sortKey;

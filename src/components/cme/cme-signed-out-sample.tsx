@@ -19,7 +19,6 @@ import { CmeSampleContext } from "@/components/cme/cme-sample-context";
 import { CmeSetupRoute } from "@/components/cme/cme-setup-route";
 import { CmeTrainingPage } from "@/components/cme/cme-training-page";
 import { CmeYearCheckPage } from "@/components/cme/cme-year-check-page";
-import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import {
   DEMO_CME_ENTRIES,
@@ -183,12 +182,6 @@ export function CmeSignedOutSample() {
       <Suspense fallback={null}>
         <CmePageTabs />
       </Suspense>
-      <div className="mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6">
-        <SignedOutSampleNotice title="Sign in to see your CPD record" testId="cme-signed-out-sample">
-          Below is a sample made of invented examples, so you can see how CPD works. Signed in, it shows your own
-          activities and hours. Nothing is shared, and the sample doesn&rsquo;t save anything you type.
-        </SignedOutSampleNotice>
-      </div>
       <SampleBody pathname={pathname} query={query} />
     </CmeSampleContext.Provider>
   );

@@ -64,6 +64,7 @@ const cacheOnCallEntries = vi.fn();
 vi.mock("@/lib/on-call/entry-store", () => ({
   useOnCallEntries: () => entryState,
   cacheOnCallEntries: (entries: OnCallEntry[]) => cacheOnCallEntries(entries),
+  isOnCallExampleEntry: () => false,
 }));
 
 beforeEach(() => {

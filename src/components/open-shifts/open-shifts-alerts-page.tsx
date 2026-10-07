@@ -4,7 +4,7 @@ import { Info } from "lucide-react";
 import dynamic from "next/dynamic";
 
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 
 import { SignInAction } from "./open-shifts-sign-in";
 import { Note } from "./open-shifts-ui";
@@ -16,7 +16,7 @@ const RosterAlertsSection = dynamic(
 );
 
 export function OpenShiftsAlertsPage() {
-  const signedOut = useSignedOutSample();
+  const signedOut = useSignedOut();
   return (
     <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
       <PageTitleUnderBand className="px-3 pt-4 text-xl font-semibold text-[color:var(--text-heading)]">

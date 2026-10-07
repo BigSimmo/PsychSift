@@ -1,3 +1,4 @@
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 /**
  * Two cautious readings of what was typed, used only to change what the search
  * screen does on the device. Neither sends or stores anything.
@@ -90,7 +91,7 @@ function hasBirthDate(text: string, thisYear: number): boolean {
   return years.some((year) => year <= thisYear - 5);
 }
 
-export function looksLikePatientDetails(query: string, thisYear = new Date().getFullYear()): boolean {
+export function looksLikePatientDetails(query: string, thisYear = currentWorkYear()): boolean {
   const text = query.trim();
   if (text.length < 3) return false;
   if (MS_SOFTWARE.test(text)) return PATIENT_PATTERNS.slice(0, -1).some((pattern) => pattern.test(text));

@@ -71,7 +71,7 @@ describe("Open shifts remembered filters", () => {
 
   it("never saves or applies choices on the signed-out example", () => {
     window.localStorage.setItem(KEY, JSON.stringify({ hideClashes: false }));
-    hook.state = state("signed-out");
+    hook.state = state("example");
     render(<OpenShiftsBrowsePage />);
     expect(noClashes().getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(noClashes());

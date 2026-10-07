@@ -26,7 +26,7 @@ export function OnCallHospitalPhoneSwitch({
   readonly testId?: string;
 }) {
   // The signed-out sample keeps nothing on this phone and its numbers never dial, so it has no switch.
-  const sample = useSignedOutSample();
+  const sample = useSignedOutSample("call");
   if (sample) return null;
   return (
     <OnCallGroupedList testId={testId}>

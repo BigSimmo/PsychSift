@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { useExampleData } from "@/lib/example-data/store";
 import { useAuthSession } from "@/lib/supabase/client";
 
 /*
@@ -19,10 +20,16 @@ export function useTeachingSignedOut(): boolean {
   return status === "signed_out" || status === "expired";
 }
 
-/** What a Teaching screen reads as `demoMode`: the server's (local demo or the cookie) or "signed out". */
+/**
+ * What a Teaching screen reads as `demoMode`: the server's (local demo or the
+ * example data cookie) or the example data switch, which client screens follow
+ * at once, before the cookie sync refreshes the server pages. Auto mode already
+ * shows examples to a signed-out visitor, and an explicit off is honoured: they
+ * get Teaching's own sign-in notice.
+ */
 export function useTeachingDemoMode(serverDemoMode: boolean): boolean {
-  const signedOut = useTeachingSignedOut();
-  return serverDemoMode || signedOut;
+  const example = useExampleData("teach").active;
+  return serverDemoMode || example;
 }
 
 /**

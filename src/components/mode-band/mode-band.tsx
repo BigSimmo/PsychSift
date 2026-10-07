@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2, SlidersHorizontal } from "lucide-react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -41,12 +40,16 @@ import {
   type WorkArea,
   type WorkFrameItem,
 } from "@/lib/work-frame/areas";
+import { ExampleDataBanner } from "@/components/example-data/example-data-banner";
 import { WorkFrameHeader } from "@/components/work-frame/work-frame-header";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
 import { WorkHelpHost } from "@/components/work-help/work-help-host";
 import { openWorkHelp } from "@/components/work-help/work-help-store";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { formatZonedDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 
 /**
  * Modes that carry their own identity colour (`data-mode-identity` in
@@ -172,10 +175,8 @@ export function useModeBandCurrentTab(tabId: string | null) {
   }, [setCurrentTab, tabId]);
 }
 
-function greetingFor(now: Date): string {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-AU", { hour: "numeric", hourCycle: "h23", timeZone: "Australia/Perth" }).format(now),
-  );
+function greetingFor(now: Date, zone: string): string {
+  const hour = Number(zonedTimeOf(now, zone).slice(0, 2));
   if (hour < 12) return "Good morning";
   if (hour < 18) return "Good afternoon";
   return "Good evening";
@@ -184,15 +185,16 @@ function greetingFor(now: Date): string {
 /** The greeting, settled after hydration so a cached page never greets the wrong part of the day. */
 function GreetingTitle({ fallback }: { fallback: string }) {
   const now = useClientTime({ updateInterval: 60_000 });
-  return <>{now ? greetingFor(new Date(now)) : fallback}</>;
+  const { zone } = useWorkTimeZone();
+  return <>{now ? greetingFor(new Date(now), zone) : fallback}</>;
 }
 
-const dateLong = new Intl.DateTimeFormat("en-AU", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  timeZone: "Australia/Perth",
-});
+/** "Wednesday 7 October" in the work time zone. */
+function dateLong(now: Date, zone: string): string {
+  return new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long", timeZone: zone }).format(
+    now,
+  );
+}
 
 function modeHomePath(modeId: AppModeId): string | undefined {
   const mode = appModeDefinition(modeId);
@@ -211,9 +213,10 @@ function isHidden(pathname: string, hiddenOn: readonly string[] | undefined): bo
  */
 function TodayDate() {
   const time = useClientTime({ updateInterval: 60_000 });
+  const { zone } = useWorkTimeZone();
   if (!time) return <span className="mode-band__date" />;
   const now = new Date(time);
-  return <span className="mode-band__date">{dateLong.format(now)}</span>;
+  return <span className="mode-band__date">{dateLong(now, zone)}</span>;
 }
 
 /**
@@ -423,6 +426,7 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
                 // The area's palette for everything on its pages: custom
                 // properties inherit through `contents`, so this adds no box.
                 <div data-mode-identity={area.identity} data-work-frame={area.id} className="contents">
+                  <ExampleDataBanner area={area.id} />
                   {children}
                 </div>
               ) : (
@@ -515,7 +519,8 @@ function WorkModeBandHeader({
 /** Today's date as plain text, settled after hydration (see TodayDate). */
 function TodayDateText() {
   const time = useClientTime({ updateInterval: 60_000 });
-  return time ? <>{dateLong.format(new Date(time))}</> : <>&nbsp;</>;
+  const { zone } = useWorkTimeZone();
+  return time ? <>{dateLong(new Date(time), zone)}</> : <>&nbsp;</>;
 }
 
 function ModeBandHeader({
@@ -645,23 +650,16 @@ function ModeBandHeader({
   );
 }
 
-const perthTime = new Intl.DateTimeFormat("en-AU", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZone: "Australia/Perth",
-});
-const perthDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Perth", dateStyle: "short" });
-const perthDate = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Perth" });
-
 /**
- * When records were last saved to the account, in 24-hour Perth time: "14:12"
+ * When records were last saved to the account, in 24-hour work-zone time: "14:12"
  * today, otherwise "4 Oct 14:12". Never "just now": the line says where the
  * records are, not how fresh they feel.
  */
-export function savedAtLabel(savedAt: Date, now: Date): string {
-  const time = perthTime.format(savedAt);
-  return perthDay.format(savedAt) === perthDay.format(now) ? time : `${perthDate.format(savedAt)} ${time}`;
+export function savedAtLabel(savedAt: Date, now: Date, zone: string = currentWorkTimeZone()): string {
+  const time = zonedTimeOf(savedAt, zone);
+  return zonedDateOf(savedAt, zone) === zonedDateOf(now, zone)
+    ? time
+    : `${formatZonedDay(zonedDateOf(savedAt, zone)).slice(4)} ${time}`;
 }
 
 export type ModeBandStatusValue =
@@ -680,40 +678,21 @@ export type ModeBandStatusValue =
   /** Never say "Saved" when a save failed. The whole line retries. */
   | { kind: "error"; onRetry: () => void }
   | { kind: "loading" }
-  /** Signed out: the page shows invented records. */
+  /** The page shows example records: counts are hidden, and the banner under the band says so. */
   | { kind: "sample" }
   /** A plain factual line, e.g. "Practice only · nothing here is saved yet". */
   | { kind: "text"; text: string; info?: boolean };
 
-// The sign-in dialog loads only when someone asks for it.
-const AccountSetupDialog = dynamic(
-  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
-  { ssr: false },
-);
-
-function SampleLine() {
-  const [signInOpen, setSignInOpen] = useState(false);
-  return (
-    <span className="mode-band__sentence">
-      Made-up example records ·{" "}
-      <button type="button" className="mode-band__inline-action" onClick={() => setSignInOpen(true)}>
-        Sign in
-      </button>{" "}
-      to keep your own
-      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
-    </span>
-  );
-}
-
 function StatusLine({ value }: { value: ModeBandStatusValue }) {
   const time = useClientTime({ updateInterval: 60_000 });
+  const { zone } = useWorkTimeZone();
   switch (value.kind) {
     case "saved": {
       const at = typeof value.at === "string" ? new Date(value.at) : value.at;
       return (
         <span className="mode-band__saved">
           <Check aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.5} />
-          Saved to your account {savedAtLabel(at, time ? new Date(time) : at)}
+          Saved to your account {savedAtLabel(at, time ? new Date(time) : at, zone)}
         </span>
       );
     }
@@ -722,7 +701,7 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
       return (
         <span className="mode-band__saved">
           <Check aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.5} />
-          In your account · loaded {savedAtLabel(at, time ? new Date(time) : at)}
+          In your account · loaded {savedAtLabel(at, time ? new Date(time) : at, zone)}
         </span>
       );
     }
@@ -752,7 +731,8 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
     case "loading":
       return <span role="img" aria-label="Loading your records" className="mode-band__loading" />;
     case "sample":
-      return <SampleLine />;
+      // The example data banner under the band says it once; this only hides counts.
+      return null;
     case "text":
       return (
         <span className="mode-band__saved">

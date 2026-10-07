@@ -32,6 +32,7 @@ import {
   type OnCallSection,
   type OnCallStepHours,
 } from "@/lib/on-call/entry-model";
+import { isOnCallExampleEntry } from "@/lib/on-call/entry-store";
 import { isRoleExplainerEntry } from "@/lib/on-call/who-is-who";
 
 /**
@@ -903,6 +904,8 @@ export function OnCallEntryEditor({
   }
 
   async function handleSave() {
+    // Belt and braces: an example row is never written to the account.
+    if (entry && isOnCallExampleEntry(entry)) return;
     if (busy) return;
     setFormError(null);
 
@@ -1109,6 +1112,8 @@ export function OnCallEntryEditor({
 
   async function handleDelete() {
     if (!entry) return;
+    // Belt and braces: an example row is never written to the account.
+    if (isOnCallExampleEntry(entry)) return;
     setBusy("deleting");
     setFormError(null);
     try {

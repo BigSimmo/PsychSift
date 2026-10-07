@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -554,13 +554,10 @@ describe("the example-content module", () => {
     expect(screen.queryByTestId("on-call-home-first-run-empty")).toBeNull();
   });
 
-  it("is present for the signed-in owner whose account actually holds the rows", async () => {
-    // Guard the two tests above: if the module never rendered at all they would
-    // pass on a component that had simply been deleted.
-    //
-    // The owner-scoped answer has to be supplied, because that is now the only
-    // thing that decides this. The entries in view do not: the shared read
-    // returns every non-personal row across all accounts.
+  it("is retired: even when the account holds the example rows, Now offers no Load example content", async () => {
+    // 7 Oct 2026 (owner decision, M8): loading made-up rows into the account
+    // broke "example data is never saved to the account", so the module is
+    // gone from Now. The example data switch shows examples instead.
     storeState.entries = [...DEMO_ON_CALL_ENTRIES];
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
@@ -570,26 +567,10 @@ describe("the example-content module", () => {
 
     try {
       render(<OnCallHome />);
-      expect(await screen.findByTestId("on-call-home-example-content")).toBeInTheDocument();
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  it("stays absent while the owner-scoped answer is still unknown", async () => {
-    // A labelled HomeModule whose only child has decided to render nothing is
-    // a heading with an empty body. That shipped once already, caught before
-    // push; it is pinned here because the failure mode is invisible in the
-    // markup a component test usually asserts on.
-    storeState.entries = [...DEMO_ON_CALL_ENTRIES];
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error("offline")) as unknown as typeof fetch;
-
-    try {
-      render(<OnCallHome />);
-      await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+      await act(async () => {});
       expect(screen.queryByTestId("on-call-home-example-content")).toBeNull();
       expect(screen.queryByText("Example content")).toBeNull();
+      expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
     } finally {
       globalThis.fetch = originalFetch;
     }

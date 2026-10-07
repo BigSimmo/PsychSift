@@ -7,7 +7,6 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
 import { focusRing } from "@/components/card-recipes";
@@ -25,7 +24,6 @@ import { NowShiftShortcuts } from "@/components/on-call/now/shift-shortcuts";
 import { NowFooter, NowWhoToCall, type OnCallSituation } from "@/components/on-call/now/systems-down";
 import { NowYourTeam } from "@/components/on-call/now/your-team";
 import { NowYourUsual, usualTiles } from "@/components/on-call/now/your-usual";
-import { OnCallDemoContentControl, useOnCallDemoContentState } from "@/components/on-call/on-call-demo-content-control";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
@@ -54,6 +52,7 @@ import {
 import { msUntilOnCallPeriodChange, resolveOnCallNumber, type OnCallNumberFields } from "@/lib/on-call/number-resolver";
 import { useOnCallUsual } from "@/lib/on-call/recent-storage";
 import { msUntilOnCallShiftContextChange, onCallShiftContext, useOnCallShiftPick } from "@/lib/on-call/shift-context";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Now, the On Call mode home (v6 figure "Now"): who to ring, at this hospital,
@@ -133,23 +132,21 @@ const OnCallNowSignedOutExample = dynamic(() => import("@/components/on-call/now
 });
 
 /**
- * Now for a signed-out visitor (owner decision, 6 Oct 2026): the "Made-up
- * example" banner with its Sign in, then the real public crisis lines, first
- * and unchanged, then the mock-up's Now drawn from invented, text-only data.
- * None of the live page's hooks run here, so nothing is fetched from the
- * server, read from or written to the device, and no made-up number can be
- * rung. The On Call layout leaves its own sample box off this page, so the
- * visitor sees one banner, not two.
+ * Now while On Call shows example data (owner decision, 6 Oct 2026; the one
+ * switch since 7 Oct): a plain label that the crisis lines are real, then the
+ * real public crisis lines, first and unchanged, then the mock-up's Now drawn
+ * from invented, text-only data. The frame's example data banner says "made
+ * up" once, above this. None of the live page's hooks run here, so nothing is
+ * fetched from the server, read from or written to the device, and no made-up
+ * number can be rung.
  */
 function OnCallHomeSignedOutExample() {
   return (
     <InformationPageShell testId="on-call-home-main">
       <h1 className="sr-only">Now</h1>
-      <SignedOutSampleNotice title="Made-up example" testId="on-call-now-example-banner">
-        Everything below the public crisis lines is invented to show how On Call works: Example Hospital, its staff and
-        its 0000 numbers. The made-up numbers are text only and cannot be called, and nothing is saved. Sign in to see
-        your own hospital&apos;s numbers.
-      </SignedOutSampleNotice>
+      <p className="px-1 text-sm text-[color:var(--text-muted)]" data-testid="on-call-now-real-lines">
+        These crisis lines are real. Everything after them is made up and cannot be called.
+      </p>
       <NowCrisisLines />
       <OnCallNowSignedOutExample />
     </InformationPageShell>
@@ -157,19 +154,22 @@ function OnCallHomeSignedOutExample() {
 }
 
 export function OnCallHome(props: { now?: Date } = {}) {
-  // Decided before any live hook mounts, so a signed-out visitor's page never
-  // starts the entries, handbook or roster reads.
-  const signedOutExample = useSignedOutSample();
+  // Decided before any live hook mounts, so the example page never starts the
+  // entries, handbook or roster reads. A signed-out visitor who turned example
+  // data off gets the live page, whose reads answer signed out (entries signed
+  // out, handbook "signed-out"), so they see the normal sign-in state.
+  const signedOutExample = useSignedOutSample("call");
   if (signedOutExample) return <OnCallHomeSignedOutExample />;
   return <OnCallHomeLive {...props} />;
 }
 
 function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
-  const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut, demoMode } = useOnCallEntries();
+  const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut } = useOnCallEntries();
   const loadFailed = !loading && isOffline && entries.length === 0;
   const handbook = useHospitalHandbook();
   const shifts = useRosterShifts();
@@ -188,18 +188,21 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   );
   // Roster's example roster (a doctor with no shifts of their own) is never a real shift here.
   const rosterShifts = useMemo(() => (shifts.status === "ready" && !shifts.sample ? shifts.shifts : []), [shifts]);
-  const context = useMemo(() => onCallShiftContext({ shifts: rosterShifts, pick, now }), [rosterShifts, pick, now]);
+  const context = useMemo(
+    () => onCallShiftContext({ shifts: rosterShifts, pick, now, zone }),
+    [rosterShifts, pick, now, zone],
+  );
   useEffect(() => {
     if (pinnedNow || !mounted) return;
     const delay = Math.min(
       60_000 - (now.getTime() % 60_000),
-      msUntilOnCallPeriodChange(now),
-      msUntilNextOnCallLocalDay(now),
-      msUntilOnCallShiftContextChange({ shifts: rosterShifts, pick, now }),
+      msUntilOnCallPeriodChange(now, zone),
+      msUntilNextOnCallLocalDay(now, zone),
+      msUntilOnCallShiftContextChange({ shifts: rosterShifts, pick, now, zone }),
     );
     const timer = setTimeout(() => setTick(new Date()), delay);
     return () => clearTimeout(timer);
-  }, [pinnedNow, now, rosterShifts, pick, mounted]);
+  }, [pinnedNow, now, rosterShifts, pick, mounted, zone]);
 
   const usual = useOnCallUsual(context.shiftKey);
   const marks = useOnCallCallMarks(now);
@@ -284,12 +287,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
     [ladders, pinnedReminder],
   );
   const ladderEntry = needs ? ladderEntries.find((entry) => entry.id === needs.ladderId) : undefined;
-
-  // What this reader can do with the example corpus, or null while that is
-  // unknown. `useOnCallDemoContentState` reconciles the server's `signedOut`
-  // flag with what the browser knows about the session; it lives there because
-  // this file is scanned for words a compliance page may never say.
-  const exampleContent = useOnCallDemoContentState(signedOut, demoMode);
 
   const hasEntries = entries.length > 0;
   // The handbook's own sign-in states (signed out, or a session that ended)
@@ -416,15 +413,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             </>
           }
         />
-
-        {exampleContent ? (
-          <StateModule id="on-call-home-example-content" label="Example content">
-            {/* Where the reader already is: while shared example rows are
-                loaded they are on the page a stranger reads, so the way out of
-                that should not be somewhere they have to remember to look. */}
-            <OnCallDemoContentControl state={exampleContent} />
-          </StateModule>
-        ) : null}
 
         {showFirstRun ? (
           <StateModule id="on-call-home-first-run" label="Getting started">

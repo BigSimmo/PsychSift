@@ -33,8 +33,8 @@ export type OpenShiftsState = {
   readonly rosterStatus: "loading" | "ready" | "error";
   /** When the list was read: "Shift list updated 09:50". */
   readonly readAt: Date | null;
-  /** Made-up example records: signed out, or team rosters not yet open to real staff. */
-  readonly sample: "signed-out" | "release-held" | null;
+  /** Made-up example records: the example data switch is on, or team rosters are not yet open to real staff. */
+  readonly sample: "example" | "release-held" | null;
   readonly offline: boolean;
   /** Teams whose open shifts couldn't be read, so the list is incomplete. */
   readonly failedTeams: readonly string[];
@@ -76,7 +76,7 @@ async function loadTeam(team: RosterTeam): Promise<OpenShiftListing[] | null> {
 }
 
 export function useOpenShifts(): OpenShiftsState {
-  const signedOutSample = useSignedOutSample();
+  const example = useSignedOutSample("rost");
   const online = useOnlineStatus();
   const teams = useRosterTeams();
   const shifts = useRosterShifts();
@@ -108,7 +108,7 @@ export function useOpenShifts(): OpenShiftsState {
   }, [teams.status, enabled, releaseHeld]);
 
   useEffect(() => {
-    if (teams.status !== "ready" || enabled.length === 0 || releaseHeld || signedOutSample) return;
+    if (teams.status !== "ready" || enabled.length === 0 || releaseHeld || example) return;
     let cancelled = false;
     void Promise.all(enabled.map(async (team) => ({ team, rows: await loadTeam(team) }))).then((results) => {
       if (cancelled) return;
@@ -131,7 +131,7 @@ export function useOpenShifts(): OpenShiftsState {
     return () => {
       cancelled = true;
     };
-  }, [teams.status, enabled, key, generation, releaseHeld, signedOutSample, actorId]);
+  }, [teams.status, enabled, key, generation, releaseHeld, example, actorId]);
 
   const now = useRosterNow();
   const rosterRows = useMemo<FatigueShift[] | null>(() => {
@@ -150,7 +150,7 @@ export function useOpenShifts(): OpenShiftsState {
     actorId: teams.data?.actorId ?? null,
   };
 
-  if (signedOutSample || teams.status === "signed-out") {
+  if (example) {
     return {
       ...base,
       status: "ready",
@@ -159,7 +159,23 @@ export function useOpenShifts(): OpenShiftsState {
       roster: sampleRoster(now),
       rosterStatus: "ready",
       readAt: null,
-      sample: "signed-out",
+      sample: "example",
+      failedTeams: [],
+      refreshFailed: false,
+      message: null,
+    };
+  }
+  // Signed out with example data off: the normal signed-out state, nothing made up.
+  if (teams.status === "signed-out") {
+    return {
+      ...base,
+      status: "signed-out",
+      listings: [],
+      teams: [],
+      roster: null,
+      rosterStatus: "ready",
+      readAt: null,
+      sample: null,
       failedTeams: [],
       refreshFailed: false,
       message: null,
@@ -168,7 +184,8 @@ export function useOpenShifts(): OpenShiftsState {
 
   const rosterStatus = shifts.status === "ready" ? "ready" : shifts.status === "loading" ? "loading" : "error";
 
-  if (releaseHeld) {
+  // With example data off, `useRosterTeams` hides the made-up team, so this falls to "No teams yet".
+  if (releaseHeld && example) {
     return {
       ...base,
       status: "ready",

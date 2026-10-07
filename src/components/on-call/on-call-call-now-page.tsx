@@ -55,6 +55,7 @@ import { ISOBAR_HEADINGS, ISOBAR_SOURCE } from "@/lib/on-call/isobar-source";
 import { onCallHospitalPeriod, onCallLadderStepMarkId } from "@/lib/on-call/now-rows";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { handbookLadders } from "@/lib/on-call/service-availability";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * ESCALATE (mock-up v10 s-13): the escalation ladder as a live step-by-step.
@@ -112,6 +113,7 @@ function minutesBetween(fromIso: string, nowMs: number): number {
 }
 
 export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const [mounted, setMounted] = useState(false);
   /** `?situation=<ladder id>` from Now's "Who do I call now?" chips; ignored when it matches nothing. */
   const [situation, setSituation] = useState<string | null>(null);
@@ -140,10 +142,10 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
   // true; it also crosses the in-hours boundary (holidays count).
   useEffect(() => {
     if (nowProp || !mounted) return;
-    const delay = Math.min(60_000 - (now.getTime() % 60_000), msUntilOnCallPeriodChange(now));
+    const delay = Math.min(60_000 - (now.getTime() % 60_000), msUntilOnCallPeriodChange(now, zone));
     const timer = window.setTimeout(() => setClock(new Date()), delay);
     return () => window.clearTimeout(timer);
-  }, [now, nowProp, mounted]);
+  }, [now, nowProp, mounted, zone]);
 
   const marks = useOnCallCallMarks(now);
   const ready = handbook.status === "ready";

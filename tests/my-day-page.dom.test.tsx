@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import type { MyDayItem, MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
 
 const hookState: { current: MyDayState } = vi.hoisted(() => ({ current: undefined as unknown as MyDayState }));
@@ -95,6 +96,9 @@ function openAll(name: string, rerender: (ui: ReactElement) => void) {
 }
 
 beforeEach(() => {
+  // The example data switch is per device: start each test in auto mode with nothing known.
+  window.localStorage.clear();
+  resetExampleDataForTests();
   window.history.replaceState(null, "", "/my-day");
   auth.status = "authenticated";
   auth.authEpoch = 1;
@@ -143,24 +147,27 @@ describe("MyDayPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("asks a signed-out reader to sign in", async () => {
+  it("asks a signed-out reader who turned example data off to sign in", async () => {
     auth.status = "signed_out";
     setState({ status: "signed-out" });
+    setExampleDataOn(false);
     render(<MyDayPage now={NOW} />);
+    expect(screen.queryByTestId("my-day-sample")).toBeNull();
     const panel = screen.getByTestId("my-day-signed-out");
-    expect(within(panel).getByText("Sign in to see your own day")).toBeTruthy();
+    expect(within(panel).getByText("Sign in to see your day")).toBeTruthy();
     expect(screen.queryByTestId("account-dialog")).toBeNull();
     fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
     expect(await screen.findByTestId("account-dialog")).toBeTruthy();
   });
 
-  it("shows a signed-out visitor a sample day, labelled as invented, under the sign-in prompt", async () => {
+  it("shows a signed-out visitor a sample day by default, with no per-page notice (the frame's banner says it)", async () => {
     auth.status = "signed_out";
     setState({ status: "signed-out" });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-sample-notice").textContent).toContain("appear here once you sign in");
-    expect(screen.getByTestId("my-day-sample-line").textContent).toBe("Everything below is a made-up sample.");
-    expect(within(screen.getByTestId("my-day-signed-out")).getByText("Sample")).toBeTruthy();
+    expect(screen.getByTestId("my-day-sample")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-sample-notice")).toBeNull();
+    expect(screen.queryByTestId("my-day-sample-line")).toBeNull();
+    expect(screen.queryByTestId("my-day-signed-out")).toBeNull();
     const dashboard = await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
     expect(within(dashboard).getAllByText("Journal club").length).toBeGreaterThan(0);
     // "Later" on a sample row lasts only while the page is open, and stores nothing.
@@ -189,6 +196,7 @@ describe("MyDayPage", () => {
   it("treats an expired session as signed out", () => {
     auth.status = "expired";
     setState({ status: "signed-out" });
+    setExampleDataOn(false);
     render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-signed-out")).toBeTruthy();
   });

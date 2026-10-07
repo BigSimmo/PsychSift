@@ -6,7 +6,8 @@ let counter = 0;
 export function onCallEntryFixture(overrides: Partial<OnCallEntry> & Pick<OnCallEntry, "section">): OnCallEntry {
   counter += 1;
   return {
-    id: `00000000-0000-4000-8000-${String(counter).padStart(12, "0")}`,
+    // Outside the On Call demo corpus's fixed range (00000000-0000-4000-8000-), which the example data guards treat as made up.
+    id: `00000000-0000-4000-9000-${String(counter).padStart(12, "0")}`,
     slug: `entry-${counter}`,
     title: `Entry ${counter}`,
     subtitle: null,

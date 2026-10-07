@@ -8,6 +8,7 @@ import {
   onCallHospitalChoiceStorageKey,
   rememberOnCallEditorFlag,
 } from "@/lib/on-call/device-state-keys";
+import { useExampleData } from "@/lib/example-data/store";
 import { readOnCallEmergencyPinned, rememberOnCallEmergencyPinned } from "@/lib/on-call/emergency-pin-memory";
 import { pinnedEmergencyEntries, publishedHandbookItems, type HandbookItem } from "@/lib/on-call/handbook-items";
 import {
@@ -287,11 +288,13 @@ const noop = () => {};
  */
 export function useHospitalHandbook({ enabled = true }: { readonly enabled?: boolean } = {}): HospitalHandbookState {
   const auth = useAuthSession();
-  // A signed-out visitor sees the invented sample hospital (the same synthetic
-  // one the local demo build serves), held in memory only: nothing is fetched,
-  // remembered or reported.
+  const callExample = useExampleData("call").active;
+  // The invented sample hospital (the same synthetic one the local demo build
+  // serves) shows exactly when On Call shows example data, held in memory only:
+  // nothing is fetched, remembered or reported. Signed out with example data
+  // off, nothing is live and the status below reads "signed-out".
   const envDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-  const demo = envDemo || auth.status === "signed_out" || auth.status === "expired";
+  const demo = envDemo || callExample;
   // The sample's numbers are text only; the local demo build keeps its own.
   const sampleDetail = envDemo ? demoServiceDetail : sampleServiceDetail;
   const epoch = auth.authEpoch;

@@ -4,7 +4,7 @@
 // sample held in memory. It fetches nothing for itself, writes nothing to the
 // device, offers no way to write, and never links a sample number to a dialler.
 
-import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
@@ -17,8 +17,6 @@ vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="mock-sign-in-dialog" /> : null),
 }));
-
-import { OnCallSampleNotice } from "@/components/on-call/on-call-sample-notice";
 
 function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
@@ -80,25 +78,5 @@ describe("On Call signed-out sample", () => {
     expect(onCallTelHref("000")).toBe("tel:000");
     expect(onCallTelHref("13 11 14")).toBe("tel:131114");
     expect(resolveHandbookPhone("9000 0003").tel).toBe("tel:0890000003");
-  });
-
-  it("shows the shared Sample notice only when signed out or expired", async () => {
-    const view = render(<OnCallSampleNotice mode="on-call" />);
-    expect(await screen.findByTestId("on-call-signed-out-sample")).toBeTruthy();
-    expect(screen.getByText("Sign in to see your On Call")).toBeTruthy();
-    view.unmount();
-
-    auth.status = "expired";
-    const expired = render(<OnCallSampleNotice mode="admin" />);
-    expect(await screen.findByTestId("admin-signed-out-sample")).toBeTruthy();
-    expired.unmount();
-
-    for (const status of ["authenticated", "loading", "unconfigured"]) {
-      auth.status = status;
-      const other = render(<OnCallSampleNotice mode="on-call" />);
-      await act(async () => {});
-      expect(screen.queryByTestId("on-call-signed-out-sample")).toBeNull();
-      other.unmount();
-    }
   });
 });

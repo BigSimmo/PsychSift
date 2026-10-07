@@ -24,7 +24,6 @@ import {
 } from "@/components/roster/roster-list";
 import { SwapAnswerCard } from "@/components/roster/swaps/swap-answer-card";
 import { SwapProgressLine } from "@/components/roster/swaps/swap-progress-line";
-import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterRead, useRosterTeams, postRosterAction } from "@/components/roster/use-roster-team";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
@@ -387,7 +386,6 @@ export function RosterSwapsPage() {
         }
       />
       <div className="grid min-w-0 gap-3" data-mode-identity="roster">
-        <RosterSampleNotice sample={teams.data?.sample} />
         {enabled.length > 1 ? (
           <label className="grid max-w-sm gap-1 text-sm text-[color:var(--text-muted)]">
             Team

@@ -19,7 +19,6 @@ import {
   rosterOutlineButton,
 } from "@/components/roster/roster-list";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
-import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterTeams } from "@/components/roster/use-roster-team";
 import { cn } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
@@ -198,7 +197,6 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
         ) : null}
         {teams.status === "ready" ? (
           <>
-            <RosterSampleNotice sample={teams.data?.sample} />
             {enabled.length === 0 ? (
               <RosterNote icon={Info} testId="staffing-no-team">
                 <p className="font-semibold">No team roster yet</p>

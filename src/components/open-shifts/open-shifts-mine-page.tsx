@@ -12,6 +12,7 @@ import { groupMine, hoursMeter, type HoursMeter } from "@/lib/open-shifts/mine";
 import { formatHours, hoursBetween, type OpenShiftListing } from "@/lib/open-shifts/model";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { SignInAction } from "./open-shifts-sign-in";
 import { OpenShiftsGate, openShiftsStatus } from "./open-shifts-states";
 import {
@@ -191,6 +192,7 @@ function Group({
 
 export function OpenShiftsMinePage() {
   const state = useOpenShifts();
+  const signedOut = useSignedOut();
   const now = useRosterNow();
   const groups = useMemo(() => groupMine(state.listings, now), [state.listings, now]);
   const meter = useMemo(
@@ -248,7 +250,7 @@ export function OpenShiftsMinePage() {
           render={(row) => <MineRow key={row.id} listing={row} status="Approved" tone="ok" />}
         />
 
-        {worked && state.sample !== "signed-out" ? (
+        {worked && state.sample !== "example" ? (
           <div className="px-3 pt-4">
             <WorkCard>
               <WorkIconRow
@@ -302,7 +304,7 @@ export function OpenShiftsMinePage() {
             Log a shift offered to me
           </Link>
         </div>
-        {state.sample === "signed-out" ? <SignInAction label="Sign in to keep your own" /> : null}
+        {signedOut ? <SignInAction label="Sign in to keep your own" /> : null}
       </OpenShiftsGate>
     </div>
   );

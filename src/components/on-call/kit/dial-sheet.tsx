@@ -19,6 +19,8 @@ import { OnCallCopyNumber } from "@/components/on-call/on-call-copy-number";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { spokenOnCallNumber, type HandbookDial } from "@/lib/on-call/number-resolver";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /** What to key on a hospital handset: the extension when there is one, otherwise the number. */
 export function onCallHospitalPhoneText(dial: HandbookDial): string {
@@ -131,6 +133,7 @@ export function OnCallDialSheet({
   readonly testId?: string;
 }) {
   const canShare = useSyncExternalStore(noSubscription, canShareNow, () => false);
+  const { active: example } = useExampleData("call");
   const extraActions = useContext(OnCallDialSheetActionsContext);
   const hospitalText = onCallHospitalPhoneText(dial);
   const mobile = onCallMobileRoute(dial, mobileDial);
@@ -138,6 +141,7 @@ export function OnCallDialSheet({
   const copyLabel = `${dial.route === "hospital-phone" ? "Copy extension" : "Copy number"} for ${title}`;
 
   const share = () => {
+    if (!guardExampleAction(example, "share")) return;
     if (!canShareNow()) return;
     const where = hospitalName ? `, ${hospitalName}` : "";
     // A rejected or cancelled share is not an error worth showing.

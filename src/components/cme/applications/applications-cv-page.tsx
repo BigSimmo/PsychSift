@@ -64,6 +64,9 @@ import type { SupervisionPairingView, TeachRead } from "@/lib/teaching/depth-mod
 import type { LogbookRow } from "@/lib/teaching/model";
 import { sampleTermTracker } from "@/lib/teaching/term-tracker";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { zonedTimeOf } from "@/lib/work-time/format";
 
 /** The page's parent, where its link lives. */
 const CV_BACK: CpdFeatureBack = { href: "/cme/applications", label: "Job applications" };
@@ -100,9 +103,8 @@ function savePdf() {
   window.print();
 }
 
-function clock(now: Date): string {
-  const perth = new Date(now.getTime() + 8 * 3_600_000);
-  return `${String(perth.getUTCHours()).padStart(2, "0")}:${String(perth.getUTCMinutes()).padStart(2, "0")}`;
+function clock(now: Date, zone: string): string {
+  return zonedTimeOf(now, zone);
 }
 
 /**
@@ -124,6 +126,7 @@ export function ApplicationsCvPage({
   readonly now: Date;
 }) {
   const router = useRouter();
+  const { zone } = useWorkTimeZone();
   const today = perthCalendarDate(now);
   const notify = useUndoNotice();
   const applicationsSample = useMemo(() => (demoMode ? sampleApplications(today) : null), [demoMode, today]);
@@ -228,7 +231,7 @@ export function ApplicationsCvPage({
       eyebrow={
         hidden.size
           ? `${plain.hiddenCount} ${plain.hiddenCount === 1 ? "line" : "lines"} hidden`
-          : `Filled from your records · ${clock(now)}`
+          : `Filled from your records · ${clock(now, zone)}`
       }
       title="CV"
       testId="applications-cv-page"
@@ -479,6 +482,8 @@ export function ApplicationsCvPage({
         <WorkButton
           icon={Printer}
           onClick={() => {
+            // Example records never leave the app, printed included.
+            if (!guardExampleAction(demoMode, "export")) return;
             if (plain.heldBackCount)
               notify(
                 `${plain.heldBackCount} ${plain.heldBackCount === 1 ? "line" : "lines"} left out of the PDF, the title looks like a patient detail`,

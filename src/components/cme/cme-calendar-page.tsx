@@ -41,6 +41,7 @@ export function CmeCalendarPage({
         today={perthCalendarDate(new Date(nowIso))}
         exportName={`CPD ${set.year}`}
         testId="cme-calendar-view"
+        exampleArea="cpd"
         markStyle="shape"
         laterHeadingPrefix="Coming up in"
       />

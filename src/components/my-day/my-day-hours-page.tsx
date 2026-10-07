@@ -30,6 +30,8 @@ import { shortMonth } from "@/lib/my-day/quiet-figures";
 import { isWorkedKind, type ShiftKind } from "@/lib/roster/shift-kind";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { summariseToday } from "@/lib/roster/today";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /** The signed-out sample, downloaded only when a signed-out visitor opens this page. */
 const MyDayHoursSample = dynamic(
@@ -52,8 +54,6 @@ export function MyDayHoursPage({ now }: { now?: Date } = {}) {
       now={now}
       subtitle={() => "Rostered, not pay"}
       signedOutSample={{
-        notice:
-          "Below is a sample made of invented examples, so you can see how My Day's Hours works. Signed in, it shows your own rostered hours. Nothing is shared.",
         render: (at) => (
           <MyDayHoursSample now={at} testId="my-day-hours-ready">
             {(sample) => (
@@ -209,8 +209,9 @@ export function MyDayHoursFigures({
   readonly anchor: string | null;
   readonly settingsFailed: boolean;
 }) {
+  const { zone } = useWorkTimeZone();
   const [span, setSpan] = useState<"week" | "fortnight">("week");
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   const hoursShifts = shifts.map((shift) => ({
     startsAt: shift.startsAt,
     endsAt: shift.endsAt,

@@ -53,6 +53,8 @@ import {
 } from "@/lib/teaching/term-folder";
 import { dayMonth, weekdayDayMonth } from "@/lib/teaching/term-tracker";
 import { perthTime } from "@/lib/teaching/time";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /*
  * Term evidence folder, /teaching/term/folder (feature 12, mock-up nf_teach_acc). The doctor's own term
@@ -104,6 +106,8 @@ function FolderActions({
   const { folder, today, term } = view;
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const [exporting, setExporting] = useState(false);
+  // Example records never leave the app: export, print and copy open the "can't be exported" sheet instead.
+  const { active: example } = useExampleData("teach");
   const blocker = folderExportBlocker(folder, term);
   return (
     <div className="grid gap-2" data-print-hide>
@@ -114,7 +118,8 @@ function FolderActions({
           aria-disabled={blocker ? true : undefined}
           aria-describedby={blocker ? "term-folder-export-why" : undefined}
           onClick={() => {
-            if (!blocker) setExporting(true);
+            if (blocker) return;
+            if (guardExampleAction(example, "export")) setExporting(true);
           }}
           data-testid="term-folder-export-open"
         >
@@ -130,6 +135,7 @@ function FolderActions({
           onClick={() => {
             // A printout taken while a part still reads "Loading" would hand over figures it does not have.
             if (folder.loading) return;
+            if (!guardExampleAction(example, "export")) return;
             announce("Opening print");
             window.print();
           }}
@@ -155,6 +161,7 @@ function FolderActions({
         data-testid="term-folder-copy"
         onClick={async () => {
           if (blocker) return;
+          if (!guardExampleAction(example, "copy")) return;
           try {
             await copyTextToClipboard(folderSummaryText(folder, demoMode));
             setCopied("copied");

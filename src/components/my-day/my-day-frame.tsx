@@ -8,13 +8,13 @@ import { EndOfShiftCard } from "@/components/alerts/end-of-shift-card";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { useMyDayNow } from "@/components/my-day/my-day-page-parts";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { endOfShiftCard, type ShiftWindow } from "@/lib/alerts/end-of-shift";
+import { useExampleData } from "@/lib/example-data/store";
 import { myDayEnabledForAuth, myDayNeedsSignIn } from "@/lib/my-day/model";
 import { useAuthSession } from "@/lib/supabase/client";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
@@ -62,17 +62,19 @@ export function MyDayFrame({
   readonly testId: string;
   readonly now?: Date;
   /**
-   * What a signed-out visitor sees instead of the sign-in prompt: the shared
-   * Sample notice (with this body) above the page's real content built from
-   * invented data. The sample reads and keeps nothing.
+   * What the page shows while My Day shows example data (the one switch, with
+   * the frame's banner saying it is made up): the page's real content built
+   * from invented data. The sample reads and keeps nothing.
    */
-  readonly signedOutSample?: { readonly notice: ReactNode; readonly render: (now: Date) => ReactNode };
+  readonly signedOutSample?: { readonly render: (now: Date) => ReactNode };
   /** The sign-in prompt's own words, for a page that is not about "your day". */
   readonly signedOut?: { readonly title: string; readonly body: string };
   readonly wide?: boolean;
   readonly children: (now: Date) => ReactNode;
 }) {
   const { status: authStatus } = useAuthSession();
+  const dayExample = useExampleData("day").active;
+  const showSample = Boolean(signedOutSample) && dayExample;
   const enabled = myDayEnabledForAuth(authStatus);
   const now = useMyDayNow(nowProp);
   const [signInOpen, setSignInOpen] = useState(false);
@@ -115,20 +117,13 @@ export function MyDayFrame({
           </div>
         ) : null}
 
-        {myDayNeedsSignIn(authStatus) && signedOutSample ? (
+        {showSample && signedOutSample ? (
           <div className="grid gap-5" data-testid={`${testId}-signed-out-sample`}>
-            <SignedOutSampleNotice
-              title="Sign in to see your day"
-              testId={`${testId}-signed-out`}
-              noticeTestId={`${testId}-sample-notice`}
-            >
-              {signedOutSample.notice}
-            </SignedOutSampleNotice>
             {signedOutSample.render(now)}
           </div>
         ) : null}
 
-        {myDayNeedsSignIn(authStatus) && !signedOutSample ? (
+        {myDayNeedsSignIn(authStatus) && !showSample ? (
           <div className="grid gap-3" data-testid={`${testId}-signed-out`}>
             <EmptyState
               icon={LogIn}
@@ -147,7 +142,7 @@ export function MyDayFrame({
           </div>
         ) : null}
 
-        {enabled ? <MyDayFrameBody now={now}>{children}</MyDayFrameBody> : null}
+        {enabled && !showSample ? <MyDayFrameBody now={now}>{children}</MyDayFrameBody> : null}
       </div>
     </InformationPageShell>
   );

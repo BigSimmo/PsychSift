@@ -325,16 +325,21 @@ export function useAuthIfAvailable(): ReturnType<typeof useAuthSession> | null {
 export function useExampleData(area?: WorkAreaId): ExampleDataControl {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const auth = useAuthIfAvailable();
+  const signedOut = auth !== null && (auth.status === "signed_out" || auth.status === "expired");
   const autoEligible =
-    auth !== null &&
-    (auth.status === "signed_out" ||
-      auth.status === "expired" ||
-      (auth.status === "authenticated" && isNewAccount(auth.session?.user?.created_at)));
+    signedOut || (auth !== null && auth.status === "authenticated" && isNewAccount(auth.session?.user?.created_at));
   const turnOn = useCallback(() => setExampleDataOn(true), []);
   const turnOff = useCallback(() => setExampleDataOn(false), []);
   return useMemo(() => {
     const stored = snapshot === "server" ? EMPTY : read();
-    const activeAreas = AREA_IDS.filter((a) => exampleActiveFor(stored, a, areaDataState(a), autoEligible));
+    // A signed-out visitor has no account data, so Teaching and CPD have nothing
+    // to wait for: they count as empty (Josh, 7 Oct: signed-out visitors see
+    // examples by default). Signed in, they still wait for an "empty" report.
+    const stateOf = (a: WorkAreaId): AreaDataState => {
+      const known = areaDataState(a);
+      return signedOut && known === "unknown" && SERVER_READ_AREAS.includes(a) ? "empty" : known;
+    };
+    const activeAreas = AREA_IDS.filter((a) => exampleActiveFor(stored, a, stateOf(a), autoEligible));
     return {
       mode: stored.choice ?? "auto",
       on: stored.choice === "on" || activeAreas.length > 0,
@@ -343,7 +348,7 @@ export function useExampleData(area?: WorkAreaId): ExampleDataControl {
       turnOn,
       turnOff,
     };
-  }, [snapshot, autoEligible, area, turnOn, turnOff]);
+  }, [snapshot, autoEligible, signedOut, area, turnOn, turnOff]);
 }
 
 /** Test hook: forget the module cache and this visit's reports. */

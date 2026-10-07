@@ -38,12 +38,13 @@ import { cn } from "@/components/ui-primitives";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { useOnCallLinkedDocumentsState } from "@/lib/on-call/linked-documents";
 import { onCallEntryFreshness, type OnCallEntry, onCallEntryIsEditable } from "@/lib/on-call/entry-model";
-import { onCallLocalDateKey } from "@/lib/on-call/local-date";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { selectUpcomingTeachingSessions } from "@/lib/on-call/teaching-schedule";
 import { partitionLogisticsEntries } from "@/lib/on-call/compliance";
 import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
 import { isAdminWorkforceExplainer } from "@/lib/admin/placement";
+import { zonedToday } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * The entry editor loads on the first Add or Edit tap and then stays mounted,
@@ -189,6 +190,7 @@ const ON_CALL_ADD_HINT: Partial<Record<OnCallPageView, string>> = {
  * `isAuthenticated`, because their routes require one.
  */
 export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
+  const { zone } = useWorkTimeZone();
   const { isAuthenticated } = useAccountData();
   const [editorState, setEditorState] = useState<{ open: boolean; entry: OnCallEntry | null }>({
     open: false,
@@ -206,7 +208,10 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   });
   const title = ON_CALL_VIEW_TITLES[view];
   const Icon = ON_CALL_VIEW_ICONS[view];
-  const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut } = useOnCallEntries();
+  const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut, demoMode } = useOnCallEntries();
+  // Example rows are never writable: the store already refuses to cache them,
+  // and this keeps the server calls unreachable too.
+  const canWrite = isAuthenticated && !demoMode;
   // Each list component filters `entries` itself — by section, and for the two
   // contacts-backed views by `details.kind` as well — so the page hands over the
   // whole set rather than seven near-identical slices. The one exception:
@@ -242,8 +247,8 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   // `selectUpcomingTeachingSessions` rolls a recurring session forward from its
   // anchor rather than letting it vanish the afternoon its date passes.
   const upcomingTeaching = useMemo(
-    () => (view === "education" ? selectUpcomingTeachingSessions(entries, onCallLocalDateKey(new Date())) : []),
-    [view, entries],
+    () => (view === "education" ? selectUpcomingTeachingSessions(entries, zonedToday(zone)) : []),
+    [view, entries, zone],
   );
 
   // Overdue entries in THIS view, which is what "mark all as still correct"
@@ -365,13 +370,13 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   // signed-out reader is offered nothing the API would answer with a 401.
   const listProps = {
     entries: sectionEntries,
-    onEditEntry: isAuthenticated
+    onEditEntry: canWrite
       ? (entry: OnCallEntry) => {
           recordOnCallRecent({ id: entry.id, title: entry.title });
           setEditorState({ open: true, entry });
         }
       : undefined,
-    onVerified: isAuthenticated ? upsertCachedEntry : undefined,
+    onVerified: canWrite ? upsertCachedEntry : undefined,
   };
 
   /**
@@ -387,7 +392,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
           <OnCallContactsSection
             {...listProps}
             order={contactsOrder}
-            onAddEntry={isAuthenticated ? () => setEditorState({ open: true, entry: null }) : undefined}
+            onAddEntry={canWrite ? () => setEditorState({ open: true, entry: null }) : undefined}
           />
         );
       case "playbook":
@@ -469,7 +474,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
                 (it also appears in that section's empty state). The others get
                 it here, because without one an owner can reach an empty
                 Playbook or Logistics page with no way to put anything on it. */}
-            {isAuthenticated && view !== "contacts" ? (
+            {canWrite && view !== "contacts" ? (
               <Button
                 variant="secondary"
                 size="sm"
@@ -486,10 +491,10 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
               summary={`${visibleCount} ${visibleCount === 1 ? "entry" : "entries"}. ${ON_CALL_VIEW_DESCRIPTIONS[view]}`}
               order={view === "contacts" ? contactsOrder : undefined}
               onOrderChange={view === "contacts" ? setContactsOrder : undefined}
-              onAdd={isAuthenticated ? () => setEditorState({ open: true, entry: null }) : undefined}
+              onAdd={canWrite ? () => setEditorState({ open: true, entry: null }) : undefined}
               addLabel={`Add ${ON_CALL_ADD_NOUN[view]}`}
               addHint={ON_CALL_ADD_HINT[view]}
-              onVerifyAll={offersBulkVerify && isAuthenticated && !verifyAllState.running ? verifyAllStale : undefined}
+              onVerifyAll={offersBulkVerify && canWrite && !verifyAllState.running ? verifyAllStale : undefined}
               staleCount={offersBulkVerify ? staleEntries.length : 0}
             />
           </div>

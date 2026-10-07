@@ -200,7 +200,7 @@ describe("AdminRenewedSheet — Add date on a catalogue item never recorded", ()
     const created = complianceFixture(
       CATALOGUE_ITEM.title,
       { category: CATALOGUE_ITEM.group, requirementId: CATALOGUE_ITEM.id, expiresOn: "2027-01-01" },
-      { slug: "crs", id: "00000000-0000-4000-8000-0000000000cc" },
+      { slug: "crs", id: "00000000-0000-4000-9000-0000000000cc" },
     );
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

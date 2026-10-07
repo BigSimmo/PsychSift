@@ -7,7 +7,6 @@ import { Suspense, useMemo, useState } from "react";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { TeamCalendar } from "@/components/roster/team/calendar/team-calendar";
 import { formatShiftRange, useRosterNow } from "@/components/roster/roster-format";
 import {
@@ -348,7 +347,6 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
           </>
         ) : (
           <>
-            <RosterSampleNotice sample={teams.data?.sample} />
             {available.length > 1 ? (
               <label className="grid gap-1 px-1 text-sm text-[color:var(--text-muted)]">
                 Team

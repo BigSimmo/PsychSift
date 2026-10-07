@@ -70,6 +70,8 @@ import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { zonedTimeOf } from "@/lib/work-time/format";
 
 /** The page's parent, where its link lives. */
 const CPD_HOME_BACK: CpdFeatureBack = { href: "/cme/summary", label: "CPD summary" };
@@ -110,9 +112,8 @@ function activityWords(count: number): string {
   return `${count} ${count === 1 ? "activity" : "activities"}`;
 }
 
-function timeOf(iso: string): string {
-  const perth = new Date(Date.parse(iso) + 8 * 3_600_000);
-  return `${String(perth.getUTCHours()).padStart(2, "0")}:${String(perth.getUTCMinutes()).padStart(2, "0")}`;
+function timeOf(iso: string, zone: string): string {
+  return zonedTimeOf(iso, zone);
 }
 
 function newFileId(): string {
@@ -161,6 +162,7 @@ function canShareFile(name: string, text: string): File | null {
  * AMA CPD Home can import has not been checked, and the page says so first.
  */
 export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }: CpdHomeSendPageProps) {
+  const { zone } = useWorkTimeZone();
   const today = perthCalendarDate(now);
   const thisYear = Number(today.slice(0, 4));
   const sample = useMemo(() => (demoMode ? EMPTY_CPD_HOME_SEND : null), [demoMode]);
@@ -754,7 +756,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                     {file.name}
                   </span>
                   <span className="text-sm leading-5 text-[color:var(--text-muted)]">
-                    {formatCmeRowDate(perthCalendarDate(new Date(file.madeAt)), today)}, {timeOf(file.madeAt)} ·{" "}
+                    {formatCmeRowDate(perthCalendarDate(new Date(file.madeAt)), today)}, {timeOf(file.madeAt, zone)} ·{" "}
                     <span className="nums">{file.rows}</span> {file.rows === 1 ? "row" : "rows"}
                   </span>
                 </span>
@@ -1056,7 +1058,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                 </span>
                 <span className="text-sm text-[color:var(--text-muted)]">
                   <span className="nums">{saved.file.rows}</span> {saved.file.rows === 1 ? "row" : "rows"} ·{" "}
-                  <span className="nums">{timeOf(saved.file.madeAt)}</span>
+                  <span className="nums">{timeOf(saved.file.madeAt, zone)}</span>
                 </span>
               </span>
               <ShareButton name={saved.file.name} text={saved.text} />
@@ -1138,12 +1140,15 @@ function StepNumber({ n }: { readonly n: number }) {
 
 function ShareButton({ name, text }: { readonly name: string; readonly text: string }) {
   const file = useMemo(() => canShareFile(name, text), [name, text]);
+  const example = useExampleData("cpd").active;
   if (!file) return null;
   return (
     <Button
       size="sm"
       icon={Share2}
       onClick={async () => {
+        // Example records never leave the app.
+        if (!guardExampleAction(example, "share")) return;
         try {
           await navigator.share({ files: [file], title: name });
         } catch {

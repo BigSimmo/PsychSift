@@ -48,6 +48,7 @@ vi.mock("@/lib/on-call/entry-store", () => ({
   cacheOnCallEntries: (entries: OnCallEntry[]) => {
     storeState.entries = entries;
   },
+  isOnCallExampleEntry: () => false,
 }));
 
 import { AdminRenewalsPage } from "@/components/admin/admin-renewals-page";
@@ -351,7 +352,7 @@ describe("AdminRenewalsPage — Add date on a not-recorded item", () => {
         JSON.stringify({
           entry: {
             ...WWC,
-            id: "00000000-0000-4000-8000-000000000099",
+            id: "00000000-0000-4000-9000-000000000099",
             slug: "criminal-record-screening",
             title: "Criminal record screening",
             details: {
@@ -576,7 +577,7 @@ describe("AdminRenewalsPage — Not for this job on an item never recorded (I4)"
     const created = complianceFixture(
       "IMG visa requirements",
       { category: "job", requirementId: "img-visa-requirements", notForThisJob: true },
-      { slug: "img-visa-new", id: "00000000-0000-4000-8000-0000000000aa" },
+      { slug: "img-visa-new", id: "00000000-0000-4000-9000-0000000000aa" },
     );
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

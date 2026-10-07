@@ -10,6 +10,8 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { useOptionalToast } from "@/components/ui/toast";
 import { rosterShareText, type ShareShift } from "@/lib/roster/share-text";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /**
  * "Share my shifts": the doctor's own next 7 or 14 days as plain text, shown
@@ -33,6 +35,8 @@ export function RosterShareButton({
   readonly trigger?: (open: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  // Example records never leave the app: copy and share open the "can't be exported" sheet instead.
+  const { active: example } = useExampleData("rost");
   const [days, setDays] = useState<Span>(7);
   const [manual, setManual] = useState(false);
   const preview = useRef<HTMLTextAreaElement>(null);
@@ -58,6 +62,7 @@ export function RosterShareButton({
   }
 
   function copy() {
+    if (!guardExampleAction(example, "copy")) return;
     // Called straight from the click so the browser treats it as a user gesture.
     const clipboard = typeof navigator !== "undefined" ? navigator.clipboard : undefined;
     if (!clipboard?.writeText) {
@@ -73,6 +78,7 @@ export function RosterShareButton({
   }
 
   function share() {
+    if (!guardExampleAction(example, "share")) return;
     navigator.share({ text }).then(
       () => setManual(false),
       (error: unknown) => {

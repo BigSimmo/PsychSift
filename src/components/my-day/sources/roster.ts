@@ -8,12 +8,15 @@ import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
 import { fatigueMyDayItems, ruleEnginesOn, type MyDayRuleShift } from "@/lib/my-day/rule-items";
-import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, formatPerthDay } from "@/lib/roster/shifts/perth-time";
 import { sickNeedsYouItems } from "@/lib/roster/sick/sick-report";
 import type { RosterManage, RosterOverview, RosterRequests, RosterTeam } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
 import { useAuthSession } from "@/lib/supabase/client";
 import { sharedGet } from "@/lib/shared-get";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /** What one team contributes: the same reads Roster Today's team strip makes. */
 export interface RosterMyDayTeamInput {
@@ -41,9 +44,13 @@ export interface RosterMyDayInput {
  * sick report still waiting for cover (`sickNeedsYouItems`, an update).
  * Sample data yields nothing.
  */
-export function rosterMyDayItems(input: RosterMyDayInput, now: Date): MyDayItem[] {
+export function rosterMyDayItems(
+  input: RosterMyDayInput,
+  now: Date,
+  zone: string = currentWorkTimeZone(),
+): MyDayItem[] {
   if (input.sample) return [];
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   const items: MyDayItem[] = [];
   for (const { team, overview, requests, manage } of input.teams) {
     for (const swap of requests?.swaps ?? []) {
@@ -190,6 +197,7 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
   const { authEpoch } = useAuthSession();
   // A sick report links to Sick for tomorrow, a new work mode screen the classic work mode does not have.
   const routeVisible = useWorkModeRouteVisible();
+  const { zone } = useWorkTimeZone();
   const [stored, setStored] = useState<{ epoch: number; loaded: Loaded } | null>(null);
   const [generation, setGeneration] = useState(0);
   const retry = useCallback(() => setGeneration((value) => value + 1), []);
@@ -212,7 +220,7 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
       result: {
         mode: "roster",
         status: "ready",
-        items: rosterMyDayItems(loaded.input, now).filter((item) => routeVisible(item.href)),
+        items: rosterMyDayItems(loaded.input, now, zone).filter((item) => routeVisible(item.href)),
       },
       retry,
     };

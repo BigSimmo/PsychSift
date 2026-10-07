@@ -6,6 +6,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
+
 type Shifts = {
   status: "loading" | "ready" | "signed-out" | "error";
   shifts: Record<string, unknown>[];
@@ -181,10 +183,13 @@ describe("MyDayHoursPage", () => {
 
   it("shows a signed-out reader sample hours, reads nothing and keeps nothing", async () => {
     auth.status = "signed_out";
+    window.localStorage.clear();
+    resetExampleDataForTests();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     render(<MyDayHoursPage now={NOW} />);
-    expect(screen.getByTestId("my-day-hours-signed-out")).toBeTruthy();
+    expect(screen.getByTestId("my-day-hours-signed-out-sample")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-hours-signed-out")).toBeNull();
     // The sample is a lazily loaded module; a cold first import can take over the default one second here.
     expect(await screen.findByTestId("my-day-hours-ready", {}, { timeout: 8000 })).toBeTruthy();
     expect(screen.getByTestId("my-day-hours-week")).toBeTruthy();
@@ -192,5 +197,17 @@ describe("MyDayHoursPage", () => {
     expect(setItem).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
     setItem.mockRestore();
+  });
+
+  it("asks a signed-out reader who turned example data off to sign in, with no sample", () => {
+    auth.status = "signed_out";
+    window.localStorage.clear();
+    resetExampleDataForTests();
+    setExampleDataOn(false);
+    render(<MyDayHoursPage now={NOW} />);
+    expect(screen.getByTestId("my-day-hours-signed-out")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-hours-signed-out-sample")).toBeNull();
+    window.localStorage.clear();
+    resetExampleDataForTests();
   });
 });

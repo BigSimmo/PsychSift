@@ -22,6 +22,7 @@ import {
   type NotificationSource,
 } from "@/lib/needs-you/feed";
 import { needsYouModeLabels } from "@/lib/needs-you/groups";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import {
   deriveOnCallNotifications,
@@ -96,7 +97,11 @@ export function useOnline(): boolean {
 
 const SOURCE_LABELS = needsYouModeLabels;
 
-/** My Day's reads, less its On Call rows (On Call's own list stands in for them). */
+/**
+ * My Day's reads, less its On Call rows (On Call's own list stands in for them).
+ * Made-up records never notify: a source that answered with sample data adds no
+ * items, and example records are dropped from the rest.
+ */
 function workAreaSources(sources: readonly MyDaySourceResult[]): NotificationSource[] {
   return sources
     .filter((source) => source.mode !== "on-call")
@@ -105,7 +110,11 @@ function workAreaSources(sources: readonly MyDaySourceResult[]): NotificationSou
       label: SOURCE_LABELS[source.mode],
       status: source.status,
       sample: source.sample,
-      items: source.items.filter((item) => item.mode !== "on-call").map(myDayNotificationItem),
+      items: source.sample
+        ? []
+        : withoutExampleRecords(source.items)
+            .filter((item) => item.mode !== "on-call")
+            .map(myDayNotificationItem),
     }));
 }
 
@@ -135,7 +144,7 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
   // Reads start once, at mount; `clock` only re-sorts what loaded.
   const [readAt] = useState(() => new Date());
   const myDay = useMyDayItems({ enabled, now: readAt });
-  const { entries } = useOnCallEntries();
+  const { entries, sample: onCallSample } = useOnCallEntries();
   const { preferences, setPreference } = useAppPreferences();
   const { reminders, markDone } = useRemindMe();
   const today = perthToday(clock);
@@ -146,10 +155,15 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
   const onCallList = useMemo(
     () =>
       withoutAdminDuplicates(
-        visibleOnCallNotifications(deriveOnCallNotifications(entries, readAt), preferences.reminders, reminderToday),
+        // Made-up records never notify.
+        visibleOnCallNotifications(
+          deriveOnCallNotifications(onCallSample ? [] : withoutExampleRecords(entries), readAt),
+          preferences.reminders,
+          reminderToday,
+        ),
         myDay.items,
       ),
-    [entries, readAt, preferences.reminders, reminderToday, myDay.items],
+    [entries, onCallSample, readAt, preferences.reminders, reminderToday, myDay.items],
   );
 
   const features = useFeatureNotificationSources({ enabled, clock, readAt });

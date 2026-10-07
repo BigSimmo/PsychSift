@@ -8,10 +8,12 @@ import { useRosterNow } from "@/components/roster/roster-format";
 import { useDelayedRosterAction } from "@/components/roster/swaps/use-delayed-roster-action";
 import { ROSTER_ONLY_NOTE } from "@/components/roster/swaps/swap-options-loader";
 import { Button } from "@/components/ui/button";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { Sheet } from "@/components/ui/sheet";
 import { openShiftCandidates, swapNeedsManager } from "@/lib/roster/team/eligibility";
 import type { RosterAssignment } from "@/lib/roster/team/model";
 import { approvalWords, swapOptions, swapPreview } from "@/lib/roster/team/swap-options";
+import { zonedTimeOf } from "@/lib/work-time/format";
 
 import { PANEL, shiftLine, useFreshRead, WeekPreview } from "./swap-answer-card";
 
@@ -31,13 +33,8 @@ type Step = "who" | "take" | "check";
 const UNNAMED = "Name not available";
 const CHOICE = "w-full justify-start text-left";
 
-function checkedTime(value: Date): string {
-  return new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Perth",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(value);
+function checkedTime(value: Date, zone: string): string {
+  return zonedTimeOf(value, zone);
 }
 
 const grade = (value: string | null) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : "Grade not set");
@@ -78,6 +75,7 @@ function FlowSession({
   initialColleagueId,
 }: Parameters<typeof SwapFlowSheet>[0]) {
   const now = useRosterNow();
+  const { zone } = useWorkTimeZone();
   const { fresh, loadError, reread } = useFreshRead(serviceId, give.startsAt);
   const { pending, sending, canSend, schedule, undo } = useDelayedRosterAction();
   // A colleague chosen before the sheet opened starts at "take"; if they cannot take it, `shown` falls back to "who".
@@ -325,7 +323,7 @@ function FlowSession({
               after={preview.theirs.after}
             />
             <p>{approvalWords(managerReason)}</p>
-            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {checkedTime(fresh.readAt)}</p>
+            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {checkedTime(fresh.readAt, zone)}</p>
             {sendControls ?? (
               <div className="grid gap-2">
                 {signInNote}
@@ -352,7 +350,7 @@ function FlowSession({
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {checkedTime(fresh.readAt)}</p>
+            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {checkedTime(fresh.readAt, zone)}</p>
             {urgent ? <p>{GIVE_AWAY_WORDS.ringIn}</p> : null}
             {sendControls ?? (
               <>

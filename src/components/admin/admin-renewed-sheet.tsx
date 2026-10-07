@@ -22,6 +22,9 @@ import type { AdminRequirementCatalogueItem } from "@/lib/admin/requirements";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
+import { isOnCallExampleEntry } from "@/lib/on-call/entry-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 const REASON_MESSAGE: Record<Exclude<ReturnType<typeof buildRenewedEntryBody>, { ok: true }>["reason"], string> = {
   missing: "Type the new expiry date.",
@@ -68,6 +71,8 @@ export function AdminRenewedSheet({
   const subjectTitle = entry?.title ?? createItem?.title ?? "";
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
+  // Example records never leave the app, a calendar file included.
+  const { active: adminExample } = useExampleData("admin");
   const [saved, setSaved] = useState<OnCallEntry | null>(null);
   const [earlier, setEarlier] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -89,6 +94,8 @@ export function AdminRenewedSheet({
   const previousExpiresOn = entry ? complianceExpiresOn(entry) : undefined;
 
   async function save() {
+    // Belt and braces: an example row is never written to the account.
+    if (entry && isOnCallExampleEntry(entry)) return;
     const subject = entry ?? (createItem ? catalogueItemDraftEntry(createItem) : null);
     if (!subject) return;
     const result = buildRenewedEntryBody(subject, { newExpiresOn: date, proofNote: note } satisfies RenewedInput);
@@ -120,6 +127,7 @@ export function AdminRenewedSheet({
 
   async function undo() {
     if (!saved) return;
+    if (entry && isOnCallExampleEntry(entry)) return;
     setBusy(true);
     try {
       if (!entry) {
@@ -149,6 +157,7 @@ export function AdminRenewedSheet({
   }
 
   function addToCalendar() {
+    if (!guardExampleAction(adminExample, "export")) return;
     if (!saved) return;
     const event = renewalCalendarEvent(saved, new Date());
     if (event) downloadTextFile(toIcs([event]), icsFileName(saved.title), "text/calendar;charset=utf-8");

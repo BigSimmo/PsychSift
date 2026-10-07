@@ -20,6 +20,7 @@ import { selectCardEntries } from "@/lib/on-call/card-selection";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { ON_CALL_SECTIONS, type OnCallEntry } from "@/lib/on-call/entry-model";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Numbers a card entry might carry, read loosely across every section's
@@ -76,7 +77,7 @@ function sortCardEntries(entries: OnCallEntry[]): OnCallEntry[] {
  * which is live data, not a deterministic prototype — reads the clock itself,
  * once, at render time.
  */
-function formatPrintedAt(now: Date): string {
+function formatPrintedAt(now: Date, zone: string): string {
   const formatted = new Intl.DateTimeFormat("en-AU", {
     day: "2-digit",
     month: "short",
@@ -84,7 +85,7 @@ function formatPrintedAt(now: Date): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    timeZone: "Australia/Perth",
+    timeZone: zone,
     timeZoneName: "short",
   }).format(now);
   return `Printed ${formatted}`;
@@ -117,6 +118,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
   // both move underneath a page the owner is in the middle of printing.
   const mountedAt = useMemo(() => new Date(), []);
   const now = nowProp ?? mountedAt;
+  const { zone } = useWorkTimeZone();
 
   const cardEntries = selectCardEntries(entries, now);
   // Grouped by the PAGE an entry is on, not the section it is stored in. Two of
@@ -191,7 +193,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
             testId="on-call-card-output"
             monochrome
             confidential
-            printedAt={formatPrintedAt(now)}
+            printedAt={formatPrintedAt(now, zone)}
             provenance="PsychSift On Call — pocket card. Confirm against the live app before relying on a printed copy; paper cannot show its own age."
           >
             <div className="mb-4 flex items-start justify-between gap-3 print:mb-3">

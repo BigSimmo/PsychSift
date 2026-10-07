@@ -67,7 +67,6 @@ import { RosterRestChip } from "./roster-rest-chip";
 import { RosterShareButton } from "./roster-share-button";
 import { RosterSickEntryLink } from "./sick/roster-sick-entry";
 import { RosterWhoCanCover } from "./roster-who-can-cover";
-import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
 import { useRosterExtraTime } from "./use-roster-extra-time";
 import { useRosterLinks } from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
@@ -76,6 +75,8 @@ import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-
 import { RosterPageHeader } from "./roster-ui";
 import { useModeBandCurrentTab, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Roster Shifts, as the Roster mock-up draws it: the shift on now or next, the
@@ -324,12 +325,13 @@ function ShiftsLoading() {
 }
 
 export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const router = useRouter();
   const view = viewOf(useSearchParams()?.get("view") ?? null);
   const now = useRosterNow(pinnedNow);
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   // On a Sunday the week that matters is the one starting tomorrow.
-  const [monday, setMonday] = useState(() => mondayOf(addDaysToDate(perthDateOf(now), 1)));
+  const [monday, setMonday] = useState(() => mondayOf(addDaysToDate(zonedDateOf(now, zone), 1)));
   const [month, setMonth] = useState(() => monthKeyOf(today));
   const monthRange = monthGridRange(month);
   const shownRange =
@@ -400,11 +402,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     const dates = new Set<string>();
     for (const shift of overview) {
       if (shift.kind !== "leave") continue;
-      const last = perthDateOf(new Date(Date.parse(shift.endsAt) - 1).toISOString());
-      for (let date = perthDateOf(shift.startsAt); date <= last; date = addDaysToDate(date, 1)) dates.add(date);
+      const last = zonedDateOf(Date.parse(shift.endsAt) - 1, zone);
+      for (let date = zonedDateOf(shift.startsAt, zone); date <= last; date = addDaysToDate(date, 1)) dates.add(date);
     }
     return dates;
-  }, [overview]);
+  }, [overview, zone]);
   const cues = useCues(shifts.shifts, rulesByTeam);
   const events = useMemo(() => toCalendarEvents(shifts.shifts), [shifts.shifts]);
   const holidayEvents = useMemo<CalendarEvent[]>(
@@ -503,7 +505,6 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     const notices = (
       <>
         {shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
-        <RosterSampleShiftsNotice sample={shifts.sample} />
         {notice ? <ModeNotice tone={notice.tone}>{notice.text}</ModeNotice> : null}
         {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
       </>
@@ -544,6 +545,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               today={today}
               exportName="Roster"
               testId="roster-shifts-month"
+              exampleArea="rost"
               onMonthChange={setMonth}
             />
           </div>

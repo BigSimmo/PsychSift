@@ -48,6 +48,8 @@ import { withMyDayReturn } from "@/lib/my-day/return-link";
 import type { ShiftKind } from "@/lib/roster/shift-kind";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { SessionSummary } from "@/lib/teaching/model";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /*
  * The On shift (`?page=work`) and My records (`?page=me`) cards in the flat
@@ -90,6 +92,7 @@ export function CallsCard({
   /** That shift's start (ISO), when known: it draws the ring. */
   readonly shiftStartsAt?: string | null;
 }) {
+  const { zone } = useWorkTimeZone();
   const minute = useSyncExternalStore(subscribeMinute, minuteNow, serverMinute);
   const nowMs = minute === null ? null : minute * 60_000;
   const endMs = handoverAt ? Date.parse(handoverAt) : null;
@@ -98,7 +101,7 @@ export function CallsCard({
   const running = nowMs !== null && startMs !== null && endMs !== null && nowMs >= startMs && nowMs < endMs;
   const left = running && endMs !== null && nowMs !== null ? durationWords(endMs - nowMs) : null;
   const handoverDay =
-    handoverAt && nowMs !== null && perthDateOf(handoverAt) !== perthDateOf(new Date(nowMs))
+    handoverAt && nowMs !== null && zonedDateOf(handoverAt, zone) !== zonedDateOf(nowMs, zone)
       ? `${perthWeekday(handoverAt)} `
       : "";
   return (

@@ -54,6 +54,8 @@ import {
 import type { LogbookRow } from "@/lib/teaching/model";
 import { currentTerm, sampleTermTracker } from "@/lib/teaching/term-tracker";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /*
  * My record (mock-up v5 screen 03): the Term row, 12 weeks of check-ins, feedback you owe, this week's
@@ -265,6 +267,8 @@ function CpdThisWeek({
 
 function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
   const now = useTeachingNow();
+  // Example records never leave the app: the CSV link becomes a button that explains why.
+  const { active: example } = useExampleData("teach");
   const today = now ? perthDateKey(now) : null;
   const resource = useTeachingResource<{ attendance: LogbookRow[] }>(demoMode ? null : "/api/teaching?view=logbook");
   const feedback = useTeachingResource<{ sessions: SessionRef[] }>(
@@ -385,7 +389,9 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
               meta={summary.meta}
               lead={<T5Icon icon={FileText} />}
               end={
-                summary.rows.length ? (
+                summary.rows.length && example ? (
+                  <T5Link onClick={() => guardExampleAction(true, "export")}>Download CSV</T5Link>
+                ) : summary.rows.length ? (
                   <T5Link
                     href={csvHref(attendanceCsv(summary.rows))}
                     download={demoMode ? "teaching-attendance-demo.csv" : "teaching-attendance.csv"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { History, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
+import { History, LogIn, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -17,7 +17,6 @@ import {
 } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { useWorkUndoToast } from "@/components/mode-kit/work";
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
@@ -36,13 +35,14 @@ import { MyDayCustomiseSheet, MyDayQuickAddSheet } from "@/components/my-day/my-
 import { NeedsYouRow } from "@/components/my-day/my-day-today-cards";
 import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
+import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { cn } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { WorkSetupPromptCard } from "@/components/work-setup/work-setup-prompt-card";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
+import { reportAreaData, useExampleData } from "@/lib/example-data/store";
 import { isSnoozed, parseMyDayPage, snoozeUntil, type MyDaySnoozes } from "@/lib/my-day/dashboard";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
@@ -57,6 +57,8 @@ import {
 import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
 import { addDaysToDate, formatPerthDay, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { useAuthSession } from "@/lib/supabase/client";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
@@ -65,6 +67,11 @@ const NO_HELP: readonly AdminHelpItem[] = [];
  * The signed-out sample: invented data, downloaded only when a signed-out
  * visitor opens My Day, so it never counts towards anyone's first load.
  */
+/* The sign-in dialog is closed at first paint, so it loads only when first opened. */
+const AccountSetupDialog = dynamic(
+  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
+  { ssr: false },
+);
 const MyDaySampleDashboard = dynamic(
   () => import("@/components/my-day/my-day-sample").then((module) => module.MyDaySampleDashboard),
   {
@@ -384,12 +391,13 @@ function BandButton({
 }
 
 export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const { status: authStatus, authEpoch } = useAuthSession();
   const enabled = myDayEnabledForAuth(authStatus);
   // Only a local demo build with no sign-in may show invented examples.
   const allowSample = authStatus === "unconfigured";
   const now = useMyDayNow(nowProp);
-  const today = perthCalendarDate(now);
+  const today = zonedDateOf(now, zone);
   const state = useMyDayItems({ enabled, now });
   // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
   // answer changes, never on the minute tick.
@@ -434,9 +442,17 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const demoNote = allowSample && state.demoMode;
   // Roster's "unavailable" is its team data (swaps); the others are whole modes not offered yet.
   const notYet = [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
-  const ready = enabled && state.status === "ready";
-  // Signed out: My Day shows a sample day of invented examples, with a sign-in prompt above it.
-  const sampleView = myDayNeedsSignIn(authStatus);
+  // The example data switch alone decides the sample day. Auto mode already
+  // shows it to a signed-out visitor, and an explicit off is honoured (they get
+  // the sign-in state below). The frame's banner says it is made up.
+  const sampleView = useExampleData("day").active;
+  const ready = enabled && state.status === "ready" && !sampleView;
+  const [signInOpen, setSignInOpen] = useState(false);
+  // Tells auto mode whether this day has real items, so examples never cover them.
+  const realItems = enabled && state.status === "ready" ? myDayShownItems(state, false).length : null;
+  useEffect(() => {
+    if (realItems !== null) reportAreaData("day", realItems > 0 ? "has-data" : "empty");
+  }, [realItems]);
 
   // ---------------------------------------------------------------- sheets
   const [sheet, setSheet] = useState<MyDaySheet | null>(null);
@@ -494,7 +510,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
           />
         ) : null}
 
-        {authStatus === "loading" || (enabled && state.status === "loading") ? (
+        {authStatus === "loading" || (enabled && state.status === "loading" && !sampleView) ? (
           <>
             <span role="status" className="sr-only">
               Loading My Day
@@ -525,16 +541,6 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
 
         {sampleView ? (
           <div className="grid min-w-0 gap-2.5" data-testid="my-day-sample">
-            <SignedOutSampleNotice
-              title="Sign in to see your own day"
-              testId="my-day-signed-out"
-              noticeTestId="my-day-sample-notice"
-            >
-              Your shifts, on call, CPD and renewals appear here once you sign in. Nothing is shared.
-            </SignedOutSampleNotice>
-            <QuietStamp tone="off" testId="my-day-sample-line">
-              Everything below is a made-up sample.
-            </QuietStamp>
             <MyDaySampleDashboard
               now={now}
               today={today}
@@ -555,6 +561,22 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 />
               )}
             />
+          </div>
+        ) : null}
+
+        {myDayNeedsSignIn(authStatus) && !sampleView ? (
+          <div className="grid gap-3" data-testid="my-day-signed-out">
+            <EmptyState
+              icon={LogIn}
+              title="Sign in to see your day"
+              body="My Day gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared."
+              actions={
+                <Button variant="primary" onClick={() => setSignInOpen(true)}>
+                  Sign in
+                </Button>
+              }
+            />
+            {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
           </div>
         ) : null}
 

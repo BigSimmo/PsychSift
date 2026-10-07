@@ -27,6 +27,7 @@ import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { perthTimeOf } from "@/lib/perth-time";
 import type { WorkAnswer, WorkAnswerDay, WorkAnswerIcon, WorkAnswerProgress } from "@/lib/work-search/answers";
 import type { WorkItem } from "@/lib/work-search/model";
+import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 
 /**
  * A built-in answer, worked out on the device from the reader's own records,
@@ -83,6 +84,8 @@ function barWidth(fraction: number): string {
 
 /** A calendar file for one timed record, made on the device and handed over as a download. Nothing is sent. */
 function addToCalendar(item: WorkItem) {
+  // An example record never leaves the app.
+  if (isExampleRecord(item) && !guardExampleAction(true, "export")) return;
   if (!item.startsAt || !item.endsAt || !item.date) return;
   const minutes = Math.round((Date.parse(item.endsAt) - Date.parse(item.startsAt)) / 60_000);
   const location = item.detail?.split(" · ").slice(2).join(" · ") || undefined;

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function RosterSwapsRoute() {
   return (
-    <RosterSampleGate title="Sign in to see your swaps" records="swaps and open shifts">
+    <RosterSampleGate>
       <RosterSwapsPage />
     </RosterSampleGate>
   );

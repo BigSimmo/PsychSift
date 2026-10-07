@@ -31,6 +31,7 @@ import {
 } from "@/lib/cme/types";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkBody } from "@/components/mode-kit/work";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 function replaceRequirement(
   set: CmeRequirementSet,
@@ -111,7 +112,7 @@ export function CmeSetupPage({
   readonly demoMode?: boolean;
   readonly onConfirm?: (set: CmeRequirementSet) => Promise<void>;
 }) {
-  const targetYear = year ?? set?.year ?? new Date().getFullYear();
+  const targetYear = year ?? set?.year ?? currentWorkYear();
   const today = perthCalendarDate(new Date());
   const [home, setHome] = useState(() =>
     readCpdHome(set?.confirmedSource ?? confirmedSourceForHome({ kind: "national", name: "", guide: NATIONAL_GUIDE })),

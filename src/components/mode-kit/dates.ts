@@ -1,47 +1,51 @@
 /**
  * Dates and times as every mode writes them (mode design standard §2), in
- * Perth time.
+ * the work time zone (Perth unless the doctor chose another; each export takes
+ * a trailing `zone`).
  *
  *   date        `12 Mar 2026`, then a muted age: `12 Mar 2026 · 6 months ago`
  *   time        `02:14`, 24-hour
  *
  * A fixed month table rather than `Intl`, which prints "Sept" and "June" on
  * Node 24 — the same approach as `formatPerthDay` in `shifts/perth-time.ts`.
- * Perth keeps UTC+8 all year, so shifting by eight hours and reading the UTC
- * fields is exact and needs no time-zone data.
+ * Each instant is shifted by the zone's offset at that instant and its UTC
+ * fields read. Perth keeps UTC+8 all year, so in Perth that is the same fixed
+ * eight hours it always was.
  */
 
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zoneOffsetMs } from "@/lib/work-time/format";
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
-const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function perth(value: string | Date): Date | null {
+function perth(value: string | Date, zone: string): Date | null {
   const time = typeof value === "string" ? Date.parse(value) : value.getTime();
-  return Number.isFinite(time) ? new Date(time + PERTH_OFFSET_MS) : null;
+  return Number.isFinite(time) ? new Date(time + zoneOffsetMs(time, zone)) : null;
 }
 
 const two = (value: number) => String(value).padStart(2, "0");
 
 /** `20 Sep 2026`, or an empty string for a date that cannot be read. */
-export function formatModeDate(value: string | Date): string {
-  const date = perth(value);
+export function formatModeDate(value: string | Date, zone: string = currentWorkTimeZone()): string {
+  const date = perth(value, zone);
   return date ? `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}` : "";
 }
 
 /** `02:14`, 24-hour, or an empty string for a time that cannot be read. */
-export function formatModeTime(value: string | Date): string {
-  const date = perth(value);
+export function formatModeTime(value: string | Date, zone: string = currentWorkTimeZone()): string {
+  const date = perth(value, zone);
   return date ? `${two(date.getUTCHours())}:${two(date.getUTCMinutes())}` : "";
 }
 
 /**
  * How long ago, in words a tired reader takes in at a glance: `today`,
  * `yesterday`, `6 days ago`, `3 weeks ago`, `6 months ago`, `2 years ago`.
- * Counted in Perth calendar days, so "yesterday" means the reader's yesterday.
+ * Counted in work-zone calendar days, so "yesterday" means the reader's yesterday.
  */
-export function modeAgo(value: string | Date, now: Date = new Date()): string {
-  const then = perth(value);
-  const today = perth(now);
+export function modeAgo(value: string | Date, now: Date = new Date(), zone: string = currentWorkTimeZone()): string {
+  const then = perth(value, zone);
+  const today = perth(now, zone);
   if (!then || !today) return "";
   const days = Math.floor(today.getTime() / DAY_MS) - Math.floor(then.getTime() / DAY_MS);
   if (days <= 0) return "today";

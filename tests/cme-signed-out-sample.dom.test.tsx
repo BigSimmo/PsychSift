@@ -1,12 +1,16 @@
 /** @vitest-environment jsdom */
 
-// CPD signed out: the real screens filled with the invented demo year, in memory only.
+// CPD signed out: the real screens filled with the invented demo year, in memory
+// only, while the example data switch shows examples (auto mode does for a
+// signed-out visitor). The frame's banner says it is made up, so the sample has
+// no notice of its own. Switch off, the visitor gets the plain sign-in state.
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CmeOwnerBoundary } from "@/components/cme/cme-owner-boundary";
 import { DEMO_CME_ENTRIES } from "@/lib/cme/demo-year";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 
 const auth = vi.hoisted(() => ({ status: "signed_out", session: null as { user: { id: string } } | null }));
 const nav = vi.hoisted(() => ({ pathname: "/cme", search: "" }));
@@ -33,10 +37,19 @@ function renderBoundary(serverVerified = true) {
   );
 }
 
+/** The sample has loaded (its module is downloaded on demand) in place of the server page. */
+async function sampleShown() {
+  await waitFor(() => expect(screen.queryByTestId("cme-sample-loading")).toBeNull(), { timeout: 8000 });
+  expect(screen.queryByTestId("server-children")).toBeNull();
+  expect(screen.queryByTestId("cme-signed-out")).toBeNull();
+}
+
 let fetchSpy: ReturnType<typeof vi.fn>;
 let storageWrites: string[];
 
 beforeEach(() => {
+  window.localStorage.clear();
+  resetExampleDataForTests();
   auth.status = "signed_out";
   auth.session = null;
   nav.pathname = "/cme";
@@ -69,14 +82,12 @@ describe("CPD signed-out sample", () => {
     ["/cme/training", "", ""],
     ["/cme/new", "", ""],
     ["/cme/setup", "", ""],
-  ])("shows the sample notice and the real screen at %s", async (pathname, search) => {
+  ])("shows the real screen from the sample, with no notice of its own, at %s", async (pathname, search) => {
     nav.pathname = pathname;
     nav.search = search;
     renderBoundary();
-    const notice = await screen.findByTestId("cme-signed-out-sample", {}, { timeout: 8000 });
-    expect(notice.textContent).toContain("Sample");
-    expect(notice.textContent).toContain("doesn’t save");
-    expect(screen.queryByTestId("server-children")).toBeNull();
+    await sampleShown();
+    expect(screen.queryByTestId("cme-signed-out-sample")).toBeNull();
     expect(screen.queryByText(/hidden/i)).toBeNull();
     expect(screen.queryByTestId("cme-sample-unavailable")).toBeNull();
   });
@@ -85,7 +96,7 @@ describe("CPD signed-out sample", () => {
     const entry = DEMO_CME_ENTRIES[0];
     nav.pathname = `/cme/log/${entry.id}`;
     renderBoundary();
-    await screen.findByTestId("cme-signed-out-sample", {}, { timeout: 8000 });
+    await sampleShown();
     expect((await screen.findAllByText(entry.title)).length).toBeGreaterThan(0);
   });
 
@@ -106,13 +117,13 @@ describe("CPD signed-out sample", () => {
 
   it("shows the sample even when the server could not verify a session", async () => {
     renderBoundary(false);
-    expect(await screen.findByTestId("cme-signed-out-sample", {}, { timeout: 8000 })).toBeTruthy();
+    await sampleShown();
   });
 
   it("says plainly that a page outside the sample needs sign-in", async () => {
     nav.pathname = "/cme/customise";
     renderBoundary();
-    await screen.findByTestId("cme-signed-out-sample", {}, { timeout: 8000 });
+    await sampleShown();
     expect(screen.getByTestId("cme-sample-unavailable").textContent).toContain("not part of the sample");
   });
 
@@ -120,11 +131,21 @@ describe("CPD signed-out sample", () => {
     for (const pathname of ["/cme", "/cme/log", "/cme/routines", "/cme/summary", "/cme/new", "/cme/training"]) {
       nav.pathname = pathname;
       const view = renderBoundary();
-      await screen.findByTestId("cme-signed-out-sample", {}, { timeout: 8000 });
+      await sampleShown();
       view.unmount();
     }
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(storageWrites).toEqual([]);
+  });
+
+  it("gives a signed-out visitor who turned example data off the plain sign-in state, never server children", async () => {
+    act(() => setExampleDataOn(false));
+    renderBoundary();
+    const signedOut = screen.getByTestId("cme-signed-out");
+    expect(signedOut.textContent).toContain("Sign in to see your CPD record");
+    expect(screen.queryByTestId("server-children")).toBeNull();
+    act(() => screen.getByRole("button", { name: "Sign in" }).click());
+    expect(await screen.findByTestId("account-dialog")).toBeTruthy();
   });
 
   it("leaves a signed-in reader unchanged: server children, no sample", () => {

@@ -18,6 +18,7 @@ import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store"
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
 import { buildOnCallReviewQueue, type OnCallReviewItem } from "@/lib/on-call/review-queue";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * CHECK THESE — every entry of yours that is due for a check, soonest first.
@@ -29,14 +30,15 @@ import { buildOnCallReviewQueue, type OnCallReviewItem } from "@/lib/on-call/rev
  * edit it where it lives.
  */
 export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut, demoMode } = useOnCallEntries();
   const [tick, setTick] = useState(() => new Date());
   const now = nowProp ?? tick;
   useEffect(() => {
     if (nowProp) return;
-    const timer = setTimeout(() => setTick(new Date()), msUntilNextOnCallLocalDay(now));
+    const timer = setTimeout(() => setTick(new Date()), msUntilNextOnCallLocalDay(now, zone));
     return () => clearTimeout(timer);
-  }, [nowProp, now]);
+  }, [nowProp, now, zone]);
   const queue = useMemo(() => buildOnCallReviewQueue(entries, now), [entries, now]);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

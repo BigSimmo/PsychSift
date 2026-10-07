@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRosterTeams, rosterTeamUrl } from "./use-roster-team";
 import { mergeMyShifts, type RosterDisplayShift } from "@/lib/roster/team/team-view";
 import { rosterAssignmentsSchema, type RosterAssignment, type RosterTeam } from "@/lib/roster/team/model";
-import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
+import { reportAreaData } from "@/lib/example-data/store";
 import { sharedGet } from "@/lib/shared-get";
 
 import type {
@@ -13,6 +14,8 @@ import type {
   OnCallShiftImportRequest,
   OnCallShiftImportSummary,
 } from "@/lib/roster/shifts/model";
+import { zonedToday } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * The signed-in doctor's own shifts, fetched from `/api/roster/shifts`.
@@ -103,8 +106,9 @@ async function fetchShifts(signal?: AbortSignal): Promise<Loaded> {
 }
 
 export function useRosterShifts(teamRange?: { from: string; to: string }): RosterShiftsState {
+  const { zone } = useWorkTimeZone();
   const teams = useRosterTeams();
-  const today = perthDateOf(new Date());
+  const today = zonedToday(zone);
   const from = teamRange?.from ?? addDaysToDate(today, -21);
   const to = teamRange?.to ?? addDaysToDate(today, 40);
   const [teamData, setTeamData] = useState<{
@@ -164,6 +168,10 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
     setDemoMode(Boolean(payload.demoMode));
     setSample(Boolean(payload.sample));
     setStatus("ready");
+    // Tells auto mode whether Roster has real shifts (the sample gate waits for it).
+    if (!payload.demoMode && !payload.sample) {
+      reportAreaData("rost", (payload.shifts?.length ?? 0) > 0 || payload.latestImport ? "has-data" : "empty");
+    }
   }, []);
 
   const apply = useCallback(

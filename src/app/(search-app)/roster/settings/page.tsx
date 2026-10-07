@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function RosterSettingsRoute() {
   return (
-    <RosterSampleGate title="Sign in to see your Roster settings" records="Roster settings">
+    <RosterSampleGate>
       <RosterSettingsPage />
     </RosterSampleGate>
   );

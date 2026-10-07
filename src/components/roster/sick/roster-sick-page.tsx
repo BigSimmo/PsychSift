@@ -30,11 +30,11 @@ import {
   rosterOutlineButton,
 } from "@/components/roster/roster-list";
 import { RosterPageHeader } from "@/components/roster/roster-ui";
-import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import { postRosterAction } from "@/components/roster/use-roster-team";
 import { cn } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { inferShiftKind } from "@/lib/roster/shift-kind";
@@ -88,19 +88,13 @@ const subscribeOnline = (notify: () => void) => {
 const onlineSnapshot = () => navigator.onLine;
 const serverOnline = () => true;
 
-const LONG_DAY = new Intl.DateTimeFormat("en-AU", {
-  timeZone: "Australia/Perth",
-  weekday: "short",
-  day: "numeric",
-  month: "long",
-});
-
 const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 type Outcome = { readonly tone: "done" | "warning"; readonly text: string } | null;
 
 export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {}) {
   const now = useRosterNow(pinnedNow);
+  const { zone } = useWorkTimeZone();
   const data = useSickShifts(now);
   const online = useSyncExternalStore(subscribeOnline, onlineSnapshot, serverOnline);
   const signedOutSample = useRosterSignedOutSample();
@@ -351,7 +345,12 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
       </ContextualBackLink>
       <RosterPageHeader
         icon={Thermometer}
-        eyebrow={LONG_DAY.format(today)}
+        eyebrow={new Intl.DateTimeFormat("en-AU", {
+          timeZone: zone,
+          weekday: "short",
+          day: "numeric",
+          month: "long",
+        }).format(today)}
         title={title}
         subtitle="Tell your roster managers and put the shift up for cover."
       />
@@ -372,7 +371,6 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
         ) : null}
         {ready ? (
           <>
-            <RosterSampleNotice sample={ready.sample} />
             {!online ? (
               <RosterNote icon={WifiOff} tone="warning" role="alert" testId="sick-offline">
                 <p className="font-semibold">No connection</p>

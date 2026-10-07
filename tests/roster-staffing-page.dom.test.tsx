@@ -217,10 +217,10 @@ it("with no team it links Join a team", () => {
   ).toBe("/roster/join");
 });
 
-it("labels the example team", () => {
+it("carries no per-page label for the example team (the example data banner says it once)", () => {
   mocks.teams = { ...mocks.teams, data: { teams: [team], actorId: ME, sample: true } };
   render(<RosterStaffingPage now={NOW} />);
-  expect(screen.getByTestId("roster-sample-notice")).toBeTruthy();
+  expect(screen.queryByTestId("roster-sample-notice")).toBeNull();
 });
 
 it("copies a note asking the roster manager for the team's number, naming only the dates", async () => {

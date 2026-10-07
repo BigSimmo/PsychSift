@@ -3,6 +3,12 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", async (original) => ({
+  ...(await original<object>()),
+  usePathname: () => "/teaching",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn(), refresh: router.refresh }),
+}));
 vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="sign-in-dialog" /> : null),
@@ -18,6 +24,7 @@ vi.mock("@/components/on-call/on-call-entry-editor", () => ({
 import { TeachingToday } from "@/components/teaching/teaching-today";
 import { heroModel, restOfWeek, sessionRow } from "@/components/teaching/teaching-view-model";
 import { TeachingWeekScreen } from "@/components/teaching/teaching-week";
+import { readExampleData, resetExampleDataForTests } from "@/lib/example-data/store";
 import { useTeachingRoles } from "@/lib/teaching/page-visibility";
 
 import { authState } from "./helpers/teaching-auth";
@@ -420,7 +427,9 @@ describe("Today", () => {
     await waitFor(() => expect(screen.getByTestId("roles")).toBeEmptyDOMElement());
   });
 
-  it("a refused read: the sign-in module, and Open the demo enters the whole-mode Teaching sample", async () => {
+  it("a refused read: the sign-in module, and Open the demo turns the one example data switch on", async () => {
+    window.localStorage.clear();
+    resetExampleDataForTests();
     authState.status = "authenticated";
     serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? apiError(401, "teaching_signed_out") : null));
     render(<TeachingToday demoMode={false} />);
@@ -428,11 +437,12 @@ describe("Today", () => {
     expect(screen.queryByText("Demo · made-up people")).toBeNull();
     fireEvent.click(within(moduleEl).getByRole("button", { name: "Sign in" }));
     expect(screen.getByTestId("sign-in-dialog")).toBeInTheDocument();
-    // A real link, not an in-page toggle: the sample is a cookie set by a route, so it survives moving between pages.
-    expect(within(moduleEl).getByRole("link", { name: "Open the demo" })).toHaveAttribute(
-      "href",
-      "/teaching/sample?next=%2Fteaching",
-    );
+    // The one example data switch, not a Teaching-only cookie, and a refresh so server pages re-read.
+    fireEvent.click(within(moduleEl).getByRole("button", { name: "Open the demo" }));
+    expect(readExampleData().choice).toBe("on");
+    expect(router.refresh).toHaveBeenCalled();
+    window.localStorage.clear();
+    resetExampleDataForTests();
   });
 
   it("the sample is the same switch as demo mode: made-up people, no API call", async () => {

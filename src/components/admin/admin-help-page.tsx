@@ -26,9 +26,10 @@ import { buildAdminHelpItems, type AdminHelpItem, type AdminHelpTab } from "@/li
 import { helpQueryAlsoLooksFor, matchesHelpQuery } from "@/lib/admin/help-search";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { ADMIN_STATEWIDE_SUPPORT } from "@/lib/admin/statewide-support";
-import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { cacheOnCallEntries, isOnCallExampleEntry, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry, OnCallSection } from "@/lib/on-call/entry-model";
 import { ON_CALL_IN_HOURS_END_HOUR, isOnCallOutOfHours } from "@/lib/on-call/home-modules";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /** The On Call entry editor loads on first open and then stays mounted, so its Sheet still returns focus on close. */
 const OnCallEntryEditor = dynamic(
@@ -65,6 +66,7 @@ function noSubscription() {
 }
 
 export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const router = useRouter();
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();
@@ -75,7 +77,7 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
   // only. The server render never shows it, which keeps hydration in step.
   const afterHours = useSyncExternalStore(
     noSubscription,
-    () => isOnCallOutOfHours(now),
+    () => isOnCallOutOfHours(now, zone),
     () => false,
   );
   const [query, setQuery] = useState("");
@@ -109,6 +111,7 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
   }, [filtered]);
 
   function upsertCachedEntry(entry: OnCallEntry) {
+    if (isOnCallExampleEntry(entry)) return;
     const next = entries.some((existing) => existing.id === entry.id)
       ? entries.map((existing) => (existing.id === entry.id ? entry : existing))
       : [...entries, entry];
