@@ -43,6 +43,8 @@ const callLog = vi.hoisted(() => ({
   current: null as null | { entries: { done: boolean }[]; expiresAt: number | null },
 }));
 vi.mock("@/components/on-call/handover/call-log", () => ({ useOnCallCallLog: () => callLog.current }));
+// The Favourites shelf (after Needs you on Today) has its own tests and reads the account store.
+vi.mock("@/components/favourites/my-day-favourites-shelf", () => ({ MyDayFavouritesShelf: () => null }));
 
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { resetMyDayDeviceStateForTesting } from "@/components/my-day/my-day-device-state";

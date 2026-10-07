@@ -42,6 +42,9 @@ vi.mock("@/components/mode-band/mode-band", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/mode-band/mode-band")>()),
   useModeBandCurrentTab: currentTab,
 }));
+// The Favourites shelf (after Needs you on Today) has its own tests and reads the account store.
+vi.mock("@/components/favourites/my-day-favourites-shelf", () => ({ MyDayFavouritesShelf: () => null }));
+
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="account-dialog" /> : null),
 }));
