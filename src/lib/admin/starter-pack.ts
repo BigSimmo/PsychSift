@@ -1,6 +1,7 @@
 import type { z } from "zod";
 
-import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
+import type { ReminderTextProblem } from "@/lib/alerts/remind-me";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import {
   selectContractEnd,
   type AdminFeatureNeedsYouItem,
@@ -417,7 +418,8 @@ export function validateStarterDate(input: StarterDateInput, today: string): Sta
     if (!name) errors.name = "Name the date, for example visa condition review.";
     else if (name.length > STARTER_NAME_LIMIT) errors.name = `Keep the name to ${STARTER_NAME_LIMIT} characters.`;
     else {
-      const problem = checkReminderText(name);
+      // A date is often named for a body in capitals ("AHPRA", "WWC").
+      const problem = checkPatientDetail(name, { allowCapitals: true });
       if (problem) errors.nameProblem = { ...problem, body: "Names here cannot hold patient details." };
     }
   }

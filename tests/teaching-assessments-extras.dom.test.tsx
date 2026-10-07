@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -10,7 +11,7 @@ import {
 import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-inbox";
 import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { ToastProvider } from "@/components/ui/toast";
+import { ToastProvider, useToast } from "@/components/ui/toast";
 import { assessmentsReducer, initialAssessmentsState, type AssessmentsState } from "@/lib/teaching/assessments/model";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -270,6 +271,118 @@ describe("consultant inbox, more behaviours", () => {
   });
 });
 
+/** Answers Dr Mia Chen's EPA with a level and presses Send. */
+async function sendMia() {
+  fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+  const sheet = await screen.findByTestId("assessments-inbox-feedback");
+  fireEvent.click(within(sheet).getByRole("radio", { name: "Proximal" }));
+  fireEvent.click(within(sheet).getByTestId("assessments-inbox-send"));
+  return screen.findByTestId("toast");
+}
+
+function PushOthers({ count }: { count: number }) {
+  const toast = useToast();
+  return (
+    <button
+      type="button"
+      onClick={() => Array.from({ length: count }, (_, i) => toast.push({ tone: "info", title: `Other ${i}` }))}
+    >
+      Push others
+    </button>
+  );
+}
+
+describe("consultant inbox, the 10-second Undo", () => {
+  it("waits while the Undo message is touched, then sends when its own time is up", async () => {
+    renderWith(<AssessmentsInbox {...props(windowOpen)} />);
+    const toast = await sendMia();
+    fireEvent.pointerEnter(toast);
+    await act(async () => {
+      vi.advanceTimersByTime(15_000);
+    });
+    // Still undoable: nothing was sent while the doctor was reaching for Undo.
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+    expect(screen.getByTestId("assessments-inbox-sending")).toHaveTextContent("Sending 1 answer");
+    // No drain bar that would claim the time is up while Undo still works.
+    expect(screen.getByTestId("assessments-inbox-sending").querySelector("i")).toBeNull();
+    fireEvent.pointerLeave(toast);
+    await act(async () => {
+      vi.advanceTimersByTime(10_500);
+    });
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
+    expect(screen.getByText(/^Sent \d\d:\d\d · Proximal$/)).toBeInTheDocument();
+  });
+
+  it("does not send early when other messages push the Undo off the stack", async () => {
+    renderWith(
+      <>
+        <PushOthers count={5} />
+        <AssessmentsInbox {...props(windowOpen)} />
+      </>,
+    );
+    await sendMia();
+    fireEvent.click(screen.getByRole("button", { name: "Push others" }));
+    // The Undo is put back with the time it had left, and the answer is still only sending.
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+    expect(screen.getByTestId("assessments-inbox-sending")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.queryByTestId("assessments-inbox-sending")).toBeNull();
+    expect(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ })).toBeInTheDocument();
+  });
+
+  it("closes the Undo when Assessments closes, so it never claims to keep an answer on a page that is gone", async () => {
+    const view = render(
+      <ToastProvider>
+        <AssessmentsExtrasProvider>
+          <AssessmentsInbox {...props(windowOpen)} />
+        </AssessmentsExtrasProvider>
+      </ToastProvider>,
+    );
+    await sendMia();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+    view.rerender(
+      <ToastProvider>
+        <p>Another page</p>
+      </ToastProvider>,
+    );
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+    expect(screen.queryByTestId("toast")).toBeNull();
+  });
+
+  it("sends a To send answer when the connection comes back on another assessments screen", async () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    function Switcher() {
+      const [inbox, setInbox] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setInbox(false)}>
+            Leave the inbox
+          </button>
+          {inbox ? (
+            <AssessmentsInbox {...props(initialAssessmentsState())} />
+          ) : (
+            <AssessmentsTermOverview {...props(initialAssessmentsState())} />
+          )}
+        </>
+      );
+    }
+    renderWith(<Switcher />);
+    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    const sheet = await screen.findByTestId("assessments-inbox-feedback");
+    fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
+    fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leave the inbox" }));
+    expect(screen.queryByTestId("assessments-inbox")).toBeNull();
+    online.mockReturnValue(true);
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    expect(await screen.findByText("Back online · sending 1 answer in 10 s")).toBeInTheDocument();
+    online.mockRestore();
+  });
+});
+
 describe("term overview", () => {
   it("shows status marks only, with the meter and every mark in words", () => {
     renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
@@ -395,8 +508,9 @@ describe("term overview", () => {
     try {
       renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
       expect(screen.getByTestId("assessments-overview-offline")).toHaveTextContent(
-        /Status as of \d\d:\d\d\. Reminders wait until you are back online\./,
+        /Status as of \d\d:\d\d\. Reminders can't be sent while offline\. Try again when you are back online\./,
       );
+      expect(screen.getByTestId("assessments-overview-offline")).not.toHaveTextContent(/wait/);
       const bell = screen.getByRole("button", { name: "Reminder unavailable offline: Dr Ravi Kaur" });
       expect(bell).toHaveAttribute("aria-disabled", "true");
       fireEvent.click(bell);
@@ -404,6 +518,44 @@ describe("term overview", () => {
     } finally {
       online.mockRestore();
     }
+  });
+
+  it("gives the Supervisors tab's Remind its reason when it cannot open", () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+      fireEvent.click(screen.getByRole("radio", { name: "Supervisors" }));
+      const remind = screen.getByTestId("assessments-overview-bulk-open");
+      expect(remind).toHaveAttribute("aria-disabled", "true");
+      expect(remind).toHaveAccessibleDescription("Can't send while offline. Try again when you are back online.");
+      fireEvent.click(remind);
+      expect(screen.queryByTestId("assessments-overview-bulk")).toBeNull();
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it("says why Remind is unavailable once every supervisor was reminded today", async () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Supervisors" }));
+    fireEvent.click(screen.getByTestId("assessments-overview-bulk-open"));
+    fireEvent.click(await screen.findByTestId("assessments-overview-bulk-send"));
+    const remind = screen.getByTestId("assessments-overview-bulk-open");
+    expect(remind).toHaveAttribute("aria-disabled", "true");
+    expect(remind).toHaveAccessibleDescription("Everyone with a due or overdue form was reminded today.");
+  });
+
+  it("starts the download from the tap before the export sheet closes", async () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("button", { name: "Export status" }));
+    const link = screen.getByTestId("assessments-overview-csv");
+    expect(decodeURIComponent(link.getAttribute("href")!)).toMatch(/^data:text\/csv;charset=utf-8,\uFEFF"Made-up/);
+    fireEvent.click(link);
+    expect(link).toBeInTheDocument();
+    await act(async () => {
+      vi.advanceTimersByTime(10);
+    });
+    expect(screen.queryByTestId("assessments-overview-export")).toBeNull();
   });
 
   it("starts the Sent tab empty with an honest note", () => {

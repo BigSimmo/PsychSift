@@ -7,6 +7,7 @@ import { useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { WorkButton, WorkEmpty } from "@/components/mode-kit/work";
 import { T5Link, T5List, T5Meta, T5Note, T5Page, T5Row, T5Section } from "@/components/teaching/t5-kit";
 import { withUnit } from "@/components/teaching/teaching-number";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
@@ -51,16 +52,27 @@ import { perthTime } from "@/lib/teaching/time";
  */
 
 const secondaryButton = cn(buttonFaceClass({ variant: "secondary" }), "no-underline");
+/**
+ * A control that cannot act yet looks it, with the reason in the line beneath (aria-describedby). A neutral face
+ * rather than a see-through one, so its words keep full contrast.
+ */
+const unavailableFace =
+  "aria-disabled:cursor-not-allowed aria-disabled:border-[color:var(--border)] aria-disabled:bg-[color:var(--surface-subtle)] aria-disabled:text-[color:var(--text-muted)]";
+const unavailableText = "aria-disabled:cursor-not-allowed aria-disabled:text-[color:var(--text-muted)]";
 
-/** A short plain-text summary for an email to a supervisor. */
+/**
+ * A short plain-text summary for an email to a supervisor. It follows the export's privacy default (names
+ * off): no supervisor's name and no session titles, only statuses, counts and dates.
+ */
 export function folderSummaryText(folder: TermFolder): string {
   return [
     `${folder.title} evidence folder`,
     folder.dates,
-    folder.supervisor ? `Supervisor: ${folder.supervisor}` : null,
     `${folder.headline}. ${folder.meterLabel}`,
     "",
-    ...folder.parts.map((part) => `${part.label}: ${folderStatusWords[part.status]}. ${part.detail}.`),
+    ...folder.parts.map(
+      (part) => `${part.label}: ${folderStatusWords[part.status]}. ${part.detailWithoutNames ?? part.detail}.`,
+    ),
     "",
     FOLDER_PRIVACY_LINE,
   ]
@@ -86,7 +98,7 @@ function FolderActions({
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          className={cn(buttonFaceClass({ variant: "primary" }))}
+          className={cn(buttonFaceClass({ variant: "primary" }), unavailableFace)}
           aria-disabled={blocker ? true : undefined}
           aria-describedby={blocker ? "term-folder-export-why" : undefined}
           onClick={() => {
@@ -119,8 +131,13 @@ function FolderActions({
         className={cn(
           "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-sm text-sm font-semibold text-[color:var(--mode-identity)]",
           focusRing,
+          unavailableText,
         )}
+        aria-disabled={blocker ? true : undefined}
+        aria-describedby={blocker ? "term-folder-export-why" : undefined}
+        data-testid="term-folder-copy"
         onClick={async () => {
+          if (blocker) return;
           try {
             await copyTextToClipboard(folderSummaryText(folder));
             setCopied("copied");
@@ -189,12 +206,14 @@ function FolderCard({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
           onExported={() => {
             const at = perthTime(new Date().toISOString());
             setExportedAt(at);
-            announce(`Folder exported at ${at}. The gaps are listed first in the file.`);
-            toast?.push({
-              tone: "success",
-              title: `${folder.title} folder exported`,
-              body: "Gaps listed first in the file.",
-            });
+            // Said once: the toast speaks when there is one, otherwise the page announcer does.
+            if (toast)
+              toast.push({
+                tone: "success",
+                title: `${folder.title} folder exported`,
+                body: "Gaps listed first in the file.",
+              });
+            else announce(`Folder exported at ${at}. The gaps are listed first in the file.`);
           }}
         />
         <p
@@ -211,7 +230,9 @@ function FolderCard({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
               ? `Exported ${exportedAt} · gaps listed in the file`
               : view.updatedAt
                 ? `Fills itself · updated ${view.updatedAt}`
-                : "Fills itself from your records"}
+                : view.failed.length
+                  ? "Not updated on this visit"
+                  : "Fills itself from your records"}
           </span>
         </p>
       </div>
@@ -227,6 +248,11 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
   return (
     <>
       <p className="hidden text-sm print:block">{`${folder.title} evidence folder, printed ${dayMonth(view.today)}`}</p>
+      {view.requestedMissing ? (
+        <T5Note tone="warning" icon="alert" className="mt-3" testId="term-folder-missing-term">
+          {`That term is no longer on this phone. Showing ${folder.title}.`}
+        </T5Note>
+      ) : null}
       {view.failed.length > 0 ? (
         <T5Note tone="warning" icon={view.offline ? "offline" : "alert"} className="mt-3" testId="term-folder-failed">
           {view.offline
@@ -238,7 +264,7 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
       <FolderCard view={view} demoMode={demoMode} />
       {early && folder.counts.to_fix === 0 ? (
         <T5Note icon="shield" className="mt-3" testId="term-folder-early">
-          Nothing to fix yet. Each part fills itself from your records as the term runs; you do not upload anything.
+          Nothing to fix yet. Each part fills itself from your records as the term runs. You do not upload anything.
         </T5Note>
       ) : null}
       {sections.map((section) => (
@@ -326,25 +352,19 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
 
 function NoTerm() {
   return (
-    <section
-      data-testid="term-folder-no-term"
-      className="mt-3 grid justify-items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-4 py-6 text-center"
-    >
-      <span
-        aria-hidden="true"
-        className="grid size-11 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
-      >
-        <Folder aria-hidden="true" className="size-icon-md" strokeWidth={1.75} />
-      </span>
-      <h2 className="text-base font-semibold text-[color:var(--text-heading)]">Set up your term first</h2>
-      <p className="max-w-80 text-sm text-[color:var(--text-muted)]">
-        The folder fills itself from your term dates, teaching check-ins and supervision logs. You do not upload
-        anything.
-      </p>
-      <Link href="/teaching/term" className={cn(buttonFaceClass({ variant: "primary" }), "mt-1 no-underline")}>
-        Set up your term
-      </Link>
-    </section>
+    <div className="mt-3">
+      <WorkEmpty
+        icon={Folder}
+        testId="term-folder-no-term"
+        title={
+          <span role="heading" aria-level={2}>
+            Set up your term first
+          </span>
+        }
+        body="The folder fills itself from your term dates, teaching check-ins and supervision logs. You do not upload anything."
+        action={<WorkButton href="/teaching/term">Set up your term</WorkButton>}
+      />
+    </div>
   );
 }
 

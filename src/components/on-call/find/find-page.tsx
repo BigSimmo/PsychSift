@@ -10,6 +10,7 @@ import { OnCallHospitalPhoneSwitch } from "@/components/on-call/call/hospital-ph
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { handbookFirstLine, OnCallHandbookItemRow } from "@/components/on-call/find/handbook-item-row";
 import { OnCallFirstNightPanel } from "@/components/on-call/find/first-night-panel";
+import { FirstWeekEntryLink } from "@/components/on-call/first-week/first-week-entry-link";
 import { onCallChipShape, onCallChipTap, onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
@@ -220,6 +221,8 @@ export function OnCallFindPage() {
 
       {ready ? renderGroup(downtime) : null}
       {ready && !searching ? <OnCallFirstNightPanel id={FIRST_NIGHT_ANCHOR} testId="on-call-find-first-night" /> : null}
+      {/* Your first week (round 2 feature 20): the department's pack for a new job, next to First night. */}
+      {!searching ? <FirstWeekEntryLink /> : null}
       {ready ? rest.map(renderGroup) : null}
       {ready && !searching && (hasDeskOnly || hospitalPhone) ? <OnCallHospitalPhoneSwitch on={hospitalPhone} /> : null}
 

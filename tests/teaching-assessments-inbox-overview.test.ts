@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { extrasReducer, initialExtras, remindedKeys } from "@/lib/teaching/assessments/extras";
+import { extrasReducer, initialExtras, readyToSend, remindedKeys } from "@/lib/teaching/assessments/extras";
 import {
   EMPTY_ANSWER,
   ageText,
+  cleanFeedbackText,
   claCopyText,
   dctRemindersFor,
   doctorSees,
@@ -117,6 +118,35 @@ describe("consultant inbox", () => {
     expect(sendBlocker({ level: "direct", text: "bed 4 was busy" })).toBe("Remove the patient details to send.");
     expect(sendBlocker({ level: "direct", text: "x".repeat(501) })).toBe("Keep it to 500 characters.");
   });
+
+  it("is not fooled by invisible characters, full-width letters, ages in words or Patient and a name", () => {
+    const bypasses = [
+      "Mr\u200BSmith was great", // a zero-width space between the title and the name
+      "\uFF2D\uFF52\uFF53 Smith", // a full-width "Mrs"
+      "\uFF11\uFF12\uFF13\uFF14\uFF15\uFF16\uFF17 record", // full-width digits
+      "45 year old male",
+      "Patient John Smith aged 45",
+    ];
+    for (const text of bypasses) {
+      expect(feedbackProblem(text), text).not.toBeNull();
+      expect(sendBlocker({ level: "proximal", text }), text).toBe("Remove the patient details to send.");
+    }
+    // Other hiding places: a soft hyphen or a joiner inside a name, a no-break space after the title.
+    expect(feedbackProblem("Mrs\u00A0Jones settled")).not.toBeNull();
+    expect(feedbackProblem("Sm\u00ADith in Mr\u200DSmith")).not.toBeNull();
+    expect(feedbackProblem("a 45-year-old")).not.toBeNull();
+    expect(feedbackProblem("Pt: Nguyen")).not.toBeNull();
+    // Ordinary feedback still passes.
+    expect(feedbackProblem("Clear plan, safe escalation, kind to the family.")).toBeNull();
+    expect(feedbackProblem("Good patient safety focus and a calm handover.")).toBeNull();
+    expect(feedbackProblem("Patient Safety week talk was excellent.")).toBeNull();
+    expect(feedbackProblem("Two years of steady progress.")).toBeNull();
+  });
+
+  it("sends the cleaned text: folded to plain characters, invisible ones removed", () => {
+    expect(cleanFeedbackText("  Calm\u200B, clear\u00A0escalation.\uFEFF ")).toBe("Calm, clear escalation.");
+    expect(cleanFeedbackText("\uFF23\uFF41\uFF4C\uFF4D")).toBe("Calm");
+  });
 });
 
 describe("inbox and reminder state", () => {
@@ -200,7 +230,9 @@ describe("term overview", () => {
 
   it("exports a status-only CSV labelled as made-up", () => {
     const csv = overviewCsv(overviewDoctors(at(-1)), "Mon 5 Oct");
-    expect(csv.split("\r\n")[0]).toBe('"Made-up example, not real doctors","Mon 5 Oct"');
+    // The UTF-8 mark first, so Excel opens "1 of 2" (no-break space) as written.
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv.slice(1).split("\r\n")[0]).toBe('"Made-up example, not real doctors","Mon 5 Oct"');
     expect(csv).toContain('"Doctor","Grade","Unit","Supervisor","Mid-term","EPAs this term","End-of-term"');
     expect(csv).not.toMatch(/rating|comment/i);
   });
@@ -304,6 +336,16 @@ describe("inbox rows, passing on, and what the doctor sees", () => {
     expect(extrasReducer(queued, { type: "inbox-undo", id: "mia-epa-2" }).answers["mia-epa-2"]!.status).toBe("waiting");
   });
 
+  it("never makes up a supervision level for a To send answer that has none", () => {
+    const queued = extrasReducer(initialExtras, { type: "inbox-queue", id: "mia-epa-2", level: "minimal", text: "Ok" });
+    expect(readyToSend(queued.answers)).toEqual([{ id: "mia-epa-2", level: "minimal", text: "Ok" }]);
+    // An answer kept without a level (not possible from the sheet, but never assumed) stays unsent, with a reason.
+    const noLevel = { ...queued.answers, "ravi-epa-3": { ...EMPTY_ANSWER, status: "queued" as const, text: "Ok" } };
+    expect(readyToSend(noLevel).map((entry) => entry.id)).toEqual(["mia-epa-2"]);
+    const item = inboxRequests(at(-1), noLevel).find((i) => i.id === "ravi-epa-3")!;
+    expect(item.doneLine).toBe("To send · choose a supervision level so it can go");
+  });
+
   it("brings a DCT reminder to this supervisor into the inbox, matched to the request", () => {
     const rows = overviewDoctors(at(0));
     const ben = rows.find((r) => r.id === "ben")!;
@@ -334,7 +376,10 @@ describe("term overview reminders, export and words", () => {
     const rows = overviewDoctors(at(-1));
     const all = bulkRecipients(rows, [], -1);
     expect(all.map((x) => x.supervisor)).toEqual(["Dr Hana Ito", "Dr Omar Ahmed", "Dr Priya Nair"]);
-    expect(all.find((x) => x.supervisor === "Dr Omar Ahmed")!.line).toBe("Dr Ravi Kaur · overdue since fri 2 oct");
+    expect(all.find((x) => x.supervisor === "Dr Omar Ahmed")!.line).toBe("Dr Ravi Kaur · overdue since Fri 2 Oct");
+    // Several forms for one supervisor are joined with commas: no semicolons in anything shown.
+    for (const recipient of all) expect(recipient.line).not.toContain(";");
+    expect(all.find((x) => x.supervisor === "Dr Hana Ito")!.line).toMatch(/^Dr [^,]+ · [^,]+, Dr /);
     const ahmedKeys = all.find((x) => x.supervisor === "Dr Omar Ahmed")!.items.map((i) => i.key);
     const after = bulkRecipients(rows, ahmedKeys, -1);
     const ahmed = after.find((x) => x.supervisor === "Dr Omar Ahmed")!;

@@ -4,6 +4,7 @@ import type { LogbookRow } from "@/lib/teaching/model";
 import {
   FOLDER_EXPORT_DEFAULTS,
   buildTermFolder,
+  chooseFolderTerm,
   folderComingUp,
   folderExportBlocker,
   folderGaps,
@@ -20,7 +21,12 @@ import {
   termFolderSearchEntries,
   type FolderSource,
 } from "@/lib/teaching/term-folder";
-import { EMPTY_TERM_TRACKER, type TermRecord, type TermTrackerState } from "@/lib/teaching/term-tracker";
+import {
+  EMPTY_TERM_TRACKER,
+  sampleTermTracker,
+  type TermRecord,
+  type TermTrackerState,
+} from "@/lib/teaching/term-tracker";
 import { entry, pairingView } from "./helpers/teaching-depth-fixtures";
 
 const NB = " ";
@@ -247,8 +253,17 @@ describe("term evidence folder", () => {
     expect(otherTerms(state, "t4").map((t) => t.id)).toEqual(["t3"]);
   });
 
+  it("says when a ?term= link asks for a term no longer on this phone", () => {
+    const old = term({ id: "t3", number: 3, startsOn: "2026-06-22", endsOn: "2026-08-30" });
+    const state = { ...tracker(), terms: [old, term()] };
+    expect(chooseFolderTerm(state, "t3")).toMatchObject({ term: { id: "t3" }, requestedMissing: false });
+    expect(chooseFolderTerm(state, "deleted")).toMatchObject({ term: { id: "t4" }, requestedMissing: true });
+    expect(chooseFolderTerm(state, null)).toMatchObject({ term: { id: "t4" }, requestedMissing: false });
+    expect(chooseFolderTerm(EMPTY_TERM_TRACKER, "deleted")).toEqual({ term: null, requestedMissing: true });
+  });
+
   it("gives Needs you an overdue line and, near the end of term, an export prompt", () => {
-    expect(termFolderNeedsYou(tracker(), today)).toEqual([
+    expect(termFolderNeedsYou(tracker(), today, { demo: false })).toEqual([
       {
         id: "term-folder-t4-mid",
         title: "Mid-term assessment not marked done",
@@ -258,10 +273,15 @@ describe("term evidence folder", () => {
         kind: "update",
       },
     ]);
-    const nearEnd = termFolderNeedsYou(tracker(), "2026-11-01").map((i) => i.title);
+    const nearEnd = termFolderNeedsYou(tracker(), "2026-11-01", { demo: false }).map((i) => i.title);
     expect(nearEnd).toContain("Export your Term 4 · Psychiatry evidence folder");
-    expect(termFolderNeedsYou(tracker(), "2026-12-01").some((i) => i.kind === "action")).toBe(false);
-    expect(termFolderNeedsYou(EMPTY_TERM_TRACKER, today)).toEqual([]);
+    expect(termFolderNeedsYou(tracker(), "2026-12-01", { demo: false }).some((i) => i.kind === "action")).toBe(false);
+    expect(termFolderNeedsYou(EMPTY_TERM_TRACKER, today, { demo: false })).toEqual([]);
+  });
+
+  it("never puts the made-up demo tracker into a real Needs you bell", () => {
+    expect(termFolderNeedsYou(tracker(), today, { demo: true })).toEqual([]);
+    expect(termFolderNeedsYou(sampleTermTracker(today), "2026-11-01", { demo: true })).toEqual([]);
   });
 
   it("offers work search the page only, never record text", () => {
@@ -323,12 +343,47 @@ describe("term evidence folder", () => {
     expect(termFolderCsv(clean, "2026-09-02")).toContain('"Gaps · 0"\r\n"None"');
   });
 
+  it("starts both CSVs with the UTF-8 mark so Excel shows the middle dots and no-break spaces", () => {
+    const folder = buildTermFolder({
+      today,
+      state: tracker(),
+      term: term(),
+      attendance: ready(rows),
+      supervision: ready([]),
+    });
+    const csv = termFolderCsv(folder, today);
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv.slice(1).split("\r\n")[0]).toBe('"Term evidence folder"');
+    expect(csv.indexOf("\uFEFF", 1)).toBe(-1);
+  });
+
+  it("with names off, writes only each session's date, hours, check-in and In CPD, never its title or service", () => {
+    const named = [row("2026-09-08T04:30:00Z", { title: "Grand round with Dr X", serviceName: "Dr Y's unit" })];
+    const folder = buildTermFolder({
+      today,
+      state: tracker(),
+      term: term(),
+      attendance: ready(named),
+      supervision: ready([]),
+    });
+    const off = termFolderCsv(folder, today, FOLDER_EXPORT_DEFAULTS);
+    expect(off).toContain('"Date","Hours","Check-in","In CPD"');
+    expect(off).not.toContain("Grand round with Dr X");
+    expect(off).not.toContain("Dr Y's unit");
+    const on = termFolderCsv(folder, today, { ...FOLDER_EXPORT_DEFAULTS, names: true });
+    expect(on).toContain('"Date","Session","Service","Hours","Check-in","In CPD"');
+    expect(on).toContain("Grand round with Dr X");
+  });
+
   it("knows the early days, refuses an export before the term starts, and lists what is coming up", () => {
     expect(folderIsEarly(term(), "2026-08-20")).toBe(true);
     expect(folderIsEarly(term(), "2026-09-02")).toBe(true);
     expect(folderIsEarly(term(), "2026-09-10")).toBe(false);
     expect(folderExportBlocker({ phase: "before" }, term())).toMatch(/^Nothing to export until the term starts on /);
     expect(folderExportBlocker({ phase: "during" }, term())).toBeNull();
+    expect(folderExportBlocker({ phase: "during", loading: true }, term())).toBe(
+      "Still filling from your records. Export and copy once every part has loaded.",
+    );
     const coming = folderComingUp(term(), "2026-09-20");
     expect(coming.map((c) => c.title)).toEqual(["Mid-term assessment due", "End-of-term assessment due", "Term ends"]);
     expect(folderComingUp(term(), "2026-11-07")).toEqual([]);

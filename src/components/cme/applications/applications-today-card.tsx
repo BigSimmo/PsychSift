@@ -10,7 +10,7 @@ import { countdownWords, nextSeasonDate, quietReferees, shortDate, stageLabel } 
 import { useApplicationsStore } from "@/lib/cme/device-record";
 
 /**
- * A Today card for My Day or the CPD Summary: the next date the doctor added
+ * A Today card for My Day or the CPD home (mounted there): the next date the doctor added
  * to their season, with the countdown, and a quiet referee if there is one.
  * Renders nothing until the device is read, and nothing when no date is to come.
  */

@@ -88,6 +88,10 @@ export function buildCv(input: {
   const thisYear = Number(input.today.slice(0, 4));
   const firstYear = cvFirstYear(input.range, thisYear);
   const inRange = (on: string) => Number(on.slice(0, 4)) >= firstYear && on <= `${thisYear}-12-31`;
+  // A term or pairing belongs when any part of it falls in the range, so one that started before the
+  // range and ends after it (a supervision running now) is kept, not dropped.
+  const overlapsRange = (startsOn: string, endsOn: string) =>
+    startsOn <= `${thisYear}-12-31` && endsOn >= `${firstYear}-01-01`;
   const sections: CvSection[] = [];
 
   // Only a date still to come: a passed renewal date is something to fix in Admin, not a CV line.
@@ -107,7 +111,7 @@ export function buildCv(input: {
     });
 
   const terms = input.terms
-    .filter((term) => inRange(term.endsOn) || inRange(term.startsOn))
+    .filter((term) => overlapsRange(term.startsOn, term.endsOn))
     .filter((term) => term.startsOn <= input.today)
     .sort((a, b) => b.startsOn.localeCompare(a.startsOn));
   if (terms.length)
@@ -151,7 +155,7 @@ export function buildCv(input: {
     });
   }
   const supervising = (input.supervising ?? []).filter(
-    (pairing) => pairing.startsOn <= input.today && (inRange(pairing.startsOn) || inRange(pairing.endsOn)),
+    (pairing) => pairing.startsOn <= input.today && overlapsRange(pairing.startsOn, pairing.endsOn),
   );
   if (supervising.length) {
     const years = supervising.flatMap((pairing) => [

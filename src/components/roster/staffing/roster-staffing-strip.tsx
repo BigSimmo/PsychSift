@@ -2,6 +2,7 @@ import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
 import { WEEKDAYS } from "@/lib/roster/shifts/perth-time";
 import {
+  STAFFING_COUNTS_WORDS,
   inRange,
   onIfAway,
   staffingDayLabel,
@@ -10,14 +11,17 @@ import {
 } from "@/lib/roster/staffing/team-staffing";
 
 /**
- * The staffing strip: one column per day, seven to a row, each a flat bar
+ * The staffing strip: one column per day, a week to a row, each a flat bar
  * whose height is how many of the team are on. Leave days sit on a soft violet
  * tile and show your own place as a hollow block (you come off). A day the
  * published roster does not reach is hatched with a "?", never drawn as fine.
  * There is no safe line: PsychSift does not hold the team's safe number.
  *
- * Every column carries its full sentence for screen readers. With `onPick`
- * each column is a 48px button that picks dates. Presentational only.
+ * Only Day and Evening shifts count as people on, and the strip says so under
+ * the bars. Every column carries its full sentence for screen readers. With
+ * `onPick` each column is a button at least 48px wide: on a narrow phone the
+ * week scrolls sideways inside its own row, never the page. Presentational
+ * only.
  */
 
 const BAR_PX = 56;
@@ -28,7 +32,7 @@ export function RosterStaffingStrip({
   today,
   lowestDays = [],
   onPick,
-  label = "How many of the team are on each day",
+  label = "How many of the team are on a Day or Evening shift each day",
   testId,
 }: {
   readonly days: readonly StaffingDay[];
@@ -52,7 +56,8 @@ export function RosterStaffingStrip({
           key={week[0]!.date}
           role="list"
           aria-label={weekIndex === 0 ? label : `${label}, week ${weekIndex + 1}`}
-          className="nums grid grid-cols-7 gap-1"
+          data-no-tab-swipe
+          className="nums grid min-w-0 auto-cols-fr grid-flow-col gap-1 overflow-x-auto overscroll-x-contain"
         >
           {week.map((day) => {
             const away = inRange(day.date, leave);
@@ -124,7 +129,7 @@ export function RosterStaffingStrip({
               !away && "border border-transparent",
             );
             return (
-              <li key={day.date} className="min-w-0" data-staffing-day={day.date}>
+              <li key={day.date} className="min-w-12" data-staffing-day={day.date}>
                 {onPick && !past ? (
                   <button
                     type="button"
@@ -145,6 +150,9 @@ export function RosterStaffingStrip({
           })}
         </ul>
       ))}
+      <p className="text-xs text-[color:var(--text-muted)]" data-testid="staffing-counts">
+        {STAFFING_COUNTS_WORDS}
+      </p>
     </div>
   );
 }

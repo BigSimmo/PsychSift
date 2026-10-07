@@ -117,8 +117,7 @@ function Paper({ page, children }: { page: number; children: ReactNode }) {
   );
 }
 
-const sig = (text: string | null | undefined) =>
-  text ? <span className="font-serif text-sm italic">{text}</span> : null;
+const sig = (text: string | null | undefined) => (text ? <span className="text-sm italic">{text}</span> : null);
 
 /** A drawn signature prints as drawn; a typed one prints as the typed name. */
 const signed = (s: Signature) =>

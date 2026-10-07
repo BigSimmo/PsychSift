@@ -104,6 +104,26 @@ function StateModule({ id, label, children }: { id: string; label: string; child
  * Downloaded only when a signed-out visitor opens Now, so it never counts
  * towards a signed-in reader's first load.
  */
+/**
+ * "Right now, from your roster" (round 2 feature 22) and the "Your first week" card (feature 20): each
+ * reads its own data and draws nothing when there is nothing for this reader, so they load after the
+ * page's own modules and never count towards its first load.
+ */
+const OnCallRosterRightNow = dynamic(
+  () =>
+    import("@/components/on-call/roster-whos-on/on-call-roster-whos-on-page").then((module) => ({
+      default: module.OnCallRosterRightNow,
+    })),
+  { ssr: false },
+);
+const FirstWeekTodayCardLive = dynamic(
+  () =>
+    import("@/components/on-call/first-week/first-week-today-card").then((module) => ({
+      default: module.FirstWeekTodayCardLive,
+    })),
+  { ssr: false },
+);
+
 const OnCallNowSignedOutExample = dynamic(() => import("@/components/on-call/now/signed-out-example"), {
   ssr: false,
 });
@@ -340,10 +360,14 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
               />
               <NowShiftShortcuts />
               <NowShiftPulseCard now={now} />
+              {/* A week before a new job starts until the end of its first week. */}
+              <FirstWeekTodayCardLive now={now} />
             </>
           }
           comingUp={
             <>
+              {/* Who is on this moment, from the team's published roster, with a way to the full list. */}
+              <OnCallRosterRightNow now={now} />
               <NowYourUsual
                 tiles={tiles}
                 outlineCount={usualOutlines}

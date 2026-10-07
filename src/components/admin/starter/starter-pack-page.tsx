@@ -32,7 +32,6 @@ import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
-import { checkReminderText } from "@/lib/alerts/remind-me";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho, formatRelativeDate } from "@/lib/admin/renewal-dates";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
@@ -55,6 +54,7 @@ import {
 } from "@/lib/admin/starter-pack";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 type Undo = { id: number; label: string; run: () => Promise<void> };
 
@@ -211,7 +211,8 @@ function SuggestWord({ initial }: { initial: string }) {
   const { copy, stateFor } = useCopy();
   const word = value.trim();
   const tooLong = word.length > STARTER_SUGGEST_LIMIT;
-  const problem = word && !tooLong ? checkReminderText(word) : null;
+  // Words from home are often capitals ("SHO", "RMO").
+  const problem = word && !tooLong ? checkPatientDetail(word, { allowCapitals: true }) : null;
   const blocked = !word || tooLong || Boolean(problem);
   return (
     <div className={cn(cardSurface, "grid gap-2 p-3")} data-testid="admin-starter-suggest">

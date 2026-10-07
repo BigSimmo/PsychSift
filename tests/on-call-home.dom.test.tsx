@@ -61,6 +61,37 @@ vi.mock("@/lib/on-call/entry-store", () => ({
   cacheOnCallEntries: vi.fn(),
 }));
 
+// The "Right now, from your roster" block reads the team roster. Signed out by default, so it stays off Now.
+type RosterReadState = {
+  status: string;
+  data: unknown;
+  message: string | null;
+  readAt: Date | null;
+  reload: () => void;
+};
+const rosterReads = vi.hoisted(() => ({
+  teams: { status: "signed-out", data: null, message: null, readAt: null, reload: () => undefined } as RosterReadState,
+  overview: {
+    status: "signed-out",
+    data: null,
+    message: null,
+    readAt: null,
+    reload: () => undefined,
+  } as RosterReadState,
+  assignments: {
+    status: "signed-out",
+    data: null,
+    message: null,
+    readAt: null,
+    reload: () => undefined,
+  } as RosterReadState,
+}));
+vi.mock("@/components/roster/use-roster-team", () => ({
+  useRosterTeams: () => rosterReads.teams,
+  useRosterRead: (_serviceId: string | null, what: "overview" | "assignments") =>
+    what === "overview" ? rosterReads.overview : rosterReads.assignments,
+}));
+
 const { OnCallHome } = await import("@/components/on-call/on-call-home");
 const { OnCallSectionPage } = await import("@/components/on-call/on-call-section-page");
 const { modeSecondaryNavigationRegistry } = await import("@/lib/mode-secondary-navigation");
@@ -145,6 +176,63 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("On Call home layout", () => {
+  it("mounts the Right now block from the team roster, with a link to every role", async () => {
+    const at = Date.now();
+    const ready = (data: unknown): RosterReadState => ({
+      status: "ready",
+      data,
+      message: null,
+      readAt: new Date(at),
+      reload: () => undefined,
+    });
+    rosterReads.teams = ready({
+      teams: [{ serviceId: "10000000-0000-4000-8000-00000000000a", name: "Ward 4", enabled: true, role: "member" }],
+      actorId: null,
+    });
+    rosterReads.overview = ready({ latestPublication: null, managers: [] });
+    rosterReads.assignments = ready({
+      assignments: [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          userId: "00000000-0000-4000-8000-100000000001",
+          name: "Dr Tran Nguyen",
+          grade: "registrar",
+          siteId: null,
+          siteName: null,
+          startsAt: new Date(at - 60 * 60_000).toISOString(),
+          endsAt: new Date(at + 60 * 60_000).toISOString(),
+          shiftCode: "D",
+          kind: "day",
+        },
+      ],
+    });
+    try {
+      render(<OnCallHome />);
+      const block = await screen.findByTestId("on-call-roster-right-now");
+      expect(block).toHaveTextContent("Right now, from your roster");
+      expect(within(block).getByRole("link", { name: "All roles" })).toHaveAttribute("href", "/on-call/whos-on/roster");
+    } finally {
+      const signedOut: RosterReadState = {
+        status: "signed-out",
+        data: null,
+        message: null,
+        readAt: null,
+        reload: () => undefined,
+      };
+      rosterReads.teams = signedOut;
+      rosterReads.overview = signedOut;
+      rosterReads.assignments = signedOut;
+    }
+  });
+
+  it("leaves the roster block off Now when there is no team roster to read", async () => {
+    render(<OnCallHome />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByTestId("on-call-roster-right-now")).toBeNull();
+  });
+
   it("puts Your usual above the footer group, because last shift predicts this shift", () => {
     storeState.entries = [contact("reg", "After-hours registrar", ["call-first"], "9000 0030")];
 

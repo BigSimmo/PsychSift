@@ -1,20 +1,38 @@
 /** @vitest-environment jsdom */
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+const announcer = vi.hoisted(() => ({ announce: vi.fn() }));
+vi.mock("@/components/ui/live-announcer", () => ({ announce: announcer.announce }));
 vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({ AccountSetupDialog: () => null }));
 vi.mock("@/components/teaching/teaching-nav-header", () => ({ TeachingNavHeader: () => null }));
 
 import { TermFolderEntryLink } from "@/components/teaching/term-folder/term-folder-entry-link";
 import { TermFolderPage } from "@/components/teaching/term-folder/term-folder-page";
+import { ToastProvider } from "@/components/ui/toast";
+import { TEACHING_TERM_TRACKER_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
+import { sampleTermTracker } from "@/lib/teaching/term-tracker";
 
 import { authState } from "./helpers/teaching-auth";
 import { NOW, json, serveFetch, useTeachingTestClock } from "./helpers/teaching-fixtures";
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
 useTeachingTestClock(NOW);
+
+afterEach(() => {
+  announcer.announce.mockClear();
+  window.localStorage.clear();
+});
+
+const LOGBOOK = "/api/teaching?view=logbook";
+const SUPERVISION = "/api/teaching/depth?view=supervision";
+
+/** A signed-in doctor's own term on this phone (the shape the term tracker stores). */
+function keepTermOnPhone() {
+  window.localStorage.setItem(TEACHING_TERM_TRACKER_STORAGE_KEY, JSON.stringify(sampleTermTracker("2026-09-30")));
+}
 
 describe("term evidence folder page", () => {
   it("fills the made-up demo from the shipped records, with a meter read in words", async () => {
@@ -38,6 +56,7 @@ describe("term evidence folder page", () => {
     render(<TermFolderPage demoMode termId={null} />);
     fireEvent.click(await screen.findByRole("button", { name: /Print/ }));
     expect(print).toHaveBeenCalled();
+    expect(announcer.announce).toHaveBeenCalledWith("Opening print");
     vi.unstubAllGlobals();
   });
 
@@ -77,9 +96,102 @@ describe("term evidence folder page", () => {
       "Teaching sessions this term",
     );
     fireEvent.click(within(sheet).getByTestId("term-folder-csv"));
-    expect(await screen.findByTestId("term-folder-footer")).toHaveTextContent(
-      /Exported \d\d:\d\d · gaps listed in the file/,
+    await waitFor(() =>
+      expect(screen.getByTestId("term-folder-footer")).toHaveTextContent(
+        /Exported \d\d:\d\d · gaps listed in the file/,
+      ),
     );
+  });
+
+  it("never says updated when both reads failed", async () => {
+    keepTermOnPhone();
+    serveFetch((url) => (url === LOGBOOK || url === SUPERVISION ? json(500, { error: "Down" }) : null));
+    render(<TermFolderPage demoMode={false} termId={null} />);
+    expect(await screen.findByTestId("term-folder-failed")).toHaveTextContent(
+      "Check-ins and supervision logs did not load",
+    );
+    const footer = screen.getByTestId("term-folder-footer");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(footer).not.toHaveTextContent(/updated \d\d:\d\d/);
+    expect(footer).toHaveTextContent("Not updated on this visit");
+  });
+
+  it("reads again when the page comes back into view, and keeps the last good figures if that read fails", async () => {
+    keepTermOnPhone();
+    let fail = false;
+    serveFetch((url) => {
+      if (url === LOGBOOK) return fail ? json(500, { error: "Down" }) : json(200, { attendance: [] });
+      if (url === SUPERVISION) return fail ? json(500, { error: "Down" }) : json(200, { pairings: [] });
+      return null;
+    });
+    render(<TermFolderPage demoMode={false} termId={null} />);
+    await waitFor(() => expect(screen.getByTestId("term-folder-footer")).toHaveTextContent(/updated \d\d:\d\d/));
+    expect(screen.queryByTestId("term-folder-failed")).toBeNull();
+    fail = true;
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    const note = await screen.findByTestId("term-folder-failed");
+    expect(note).toHaveTextContent("keeps its last good figures");
+    expect(screen.getAllByText(/^As of \d\d:\d\d · /).length).toBeGreaterThan(0);
+  });
+
+  it("holds Export and Copy summary, with the reason, while the folder is still loading", async () => {
+    keepTermOnPhone();
+    serveFetch((url) => (url === LOGBOOK || url === SUPERVISION ? new Promise<Response>(() => {}) : null));
+    render(<TermFolderPage demoMode={false} termId={null} />);
+    const exportButton = await screen.findByTestId("term-folder-export-open");
+    const copy = screen.getByTestId("term-folder-copy");
+    const reason = "Still filling from your records. Export and copy once every part has loaded.";
+    for (const button of [exportButton, copy]) {
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      expect(button).toHaveAccessibleDescription(reason);
+    }
+    fireEvent.click(exportButton);
+    expect(screen.queryByTestId("term-folder-export")).toBeNull();
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    fireEvent.click(copy);
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("says a link to a term no longer on this phone shows another term", async () => {
+    render(<TermFolderPage demoMode termId="deleted-term" />);
+    expect(await screen.findByTestId("term-folder-missing-term")).toHaveTextContent(
+      "That term is no longer on this phone. Showing Term 4 · Psychiatry.",
+    );
+  });
+
+  it("copies a summary with no supervisor's name, the export's names-off default", async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<TermFolderPage demoMode termId={null} />);
+    fireEvent.click(await screen.findByTestId("term-folder-copy"));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    const text = (writeText.mock.calls[0] as unknown as [string])[0];
+    expect(text).toContain("Term 4 · Psychiatry evidence folder");
+    expect(text).not.toContain("Supervisor:");
+    expect(text).not.toContain("Dr Example");
+  });
+
+  it("starts the download before closing the sheet, and says it was exported once", async () => {
+    render(
+      <ToastProvider>
+        <TermFolderPage demoMode termId={null} />
+      </ToastProvider>,
+    );
+    fireEvent.click(await screen.findByTestId("term-folder-export-open"));
+    const link = await screen.findByTestId("term-folder-csv");
+    fireEvent.click(link);
+    // Still on the page while the browser acts on the tap.
+    expect(link).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("term-folder-footer")).toHaveTextContent(/Exported \d\d:\d\d/));
+    expect(screen.queryByTestId("term-folder-export")).toBeNull();
+    // The toast speaks: the page announcer does not say it a second time.
+    expect(await screen.findByText("Term 4 · Psychiatry folder exported")).toBeInTheDocument();
+    expect(announcer.announce).not.toHaveBeenCalledWith(expect.stringContaining("exported"));
   });
 
   it("lists the dates still to come this term", async () => {

@@ -119,6 +119,34 @@ describe("contract form", () => {
     expect(errors.noteProblem).toBeTruthy();
   });
 
+  it("catches patient details hidden by invisible or full-width characters, and ages in words", () => {
+    for (const note of [
+      "Mrs\u200BSmith",
+      "ｂｅｄ １２",
+      "45 year old male",
+      "patient John Smith",
+      "J Smith",
+      "45M",
+      "Room 4",
+    ]) {
+      const errors = validateContractForm({ endsOn: END, employer: "", note, reminders: BOTH_REMINDERS_ON }, TODAY);
+      expect(errors.noteProblem, note).toBeTruthy();
+    }
+  });
+
+  it("lets a hospital in capitals and ordinary admin words through", () => {
+    for (const employer of ["RPH", "Fiona Stanley Hospital (FSH)", "KGH"]) {
+      expect(validateContractForm({ endsOn: END, employer, note: "", reminders: BOTH_REMINDERS_ON }, TODAY)).toEqual(
+        {},
+      );
+    }
+    for (const note of ["MET call roster", "Copy of contract on my USB", "RPH orientation"]) {
+      expect(validateContractForm({ endsOn: END, employer: "", note, reminders: BOTH_REMINDERS_ON }, TODAY)).toEqual(
+        {},
+      );
+    }
+  });
+
   it("creates one private compliance row with the end date and the reminder lead time", () => {
     const body = buildContractCreateBody({ endsOn: END, employer: "", note: "", reminders: BOTH_REMINDERS_ON }, "zz9");
     expect(body.slug).toBe(`${CONTRACT_END_SLUG_PREFIX}zz9`);

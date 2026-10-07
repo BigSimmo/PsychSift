@@ -61,7 +61,7 @@ const people = [2, 3, 4, 5].map((n) => `5e000000-0000-4000-8000-0000000000${Stri
 type Row = { date: string; a: Record<string, unknown> };
 const rows: Row[] = [];
 let n = 100;
-function add(userId: string, date: string) {
+function add(userId: string, date: string, kind = "day") {
   n += 1;
   rows.push({
     date,
@@ -74,8 +74,8 @@ function add(userId: string, date: string) {
       siteName: null,
       startsAt: `${date}T00:00:00Z`,
       endsAt: `${date}T08:30:00Z`,
-      shiftCode: "D",
-      kind: "day",
+      shiftCode: kind === "day" ? "D" : kind === "night" ? "N" : "OC",
+      kind,
     },
   });
 }
@@ -87,6 +87,9 @@ for (let day = 5; day <= 31; day += 1) {
   for (const person of date === "2026-10-23" ? on.slice(0, 3) : on) add(person, date);
 }
 for (const date of ["2026-10-21", "2026-10-22", "2026-10-23"]) add(ME, date);
+// Mon 19 also has a night registrar and a consultant on call: neither counts as on.
+add("5e000000-0000-4000-8000-000000000006", "2026-10-19", "night");
+add("5e000000-0000-4000-8000-000000000007", "2026-10-19", "on_call");
 
 beforeEach(() => {
   mocks.reads.length = 0;
@@ -224,4 +227,30 @@ it("Recheck reads the team roster again", async () => {
   await userEvent.setup().click(screen.getByTestId("staffing-recheck"));
   expect(mocks.reload).toHaveBeenCalled();
   expect(mocks.announce).toHaveBeenCalledWith("Checking the roster again");
+});
+
+it("counts only Day and Evening shifts as on, and says so under the strip", () => {
+  render(<RosterStaffingPage now={NOW} />);
+  expect(column("2026-10-19").getAttribute("aria-label")).toBe("Mon 19: 4 on");
+  expect(screen.getByTestId("staffing-counts").textContent).toBe(
+    "Counts Day and Evening (late) shifts only. Night, on call and other work aren't counted.",
+  );
+  expect(
+    screen.getByRole("list", { name: "How many of the team are on a Day or Evening shift each day" }),
+  ).toBeTruthy();
+});
+
+it("on a 320 px phone each day stays a 48 px button and the week scrolls inside its own row", () => {
+  render(<RosterStaffingPage now={NOW} />);
+  const week = screen.getByRole("list", { name: "How many of the team are on a Day or Evening shift each day" });
+  expect(week.className).toContain("overflow-x-auto");
+  expect(week.className).toContain("grid-flow-col");
+  expect(week.className).not.toContain("grid-cols-7");
+  expect(week.hasAttribute("data-no-tab-swipe")).toBe(true);
+  for (const item of week.querySelectorAll("li")) expect(item.className).toContain("min-w-12");
+  expect(column("2026-10-14").className).toContain("min-h-12");
+  // The two date fields stack on a phone and only sit side by side from the small breakpoint.
+  const fields = screen.getByTestId("staffing-date-fields");
+  expect(fields.className).toContain("sm:grid-cols-2");
+  expect(fields.className.split(/\s+/)).not.toContain("grid-cols-2");
 });

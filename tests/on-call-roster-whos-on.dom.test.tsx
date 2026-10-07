@@ -193,7 +193,7 @@ describe("From your team roster", () => {
   it("keeps the last read on screen when the connection drops, dimmed and marked not live", () => {
     const view = renderPage();
     expect(screen.getByTestId("on-call-roster-provenance")).toHaveTextContent("Loaded 21:35");
-    roster.assignments = { status: "error", data: null, message: "x", reload: vi.fn(), readAt: null };
+    // Only the connection drops: the read itself stays "ready", as it does on a real phone.
     setOnline(false);
     act(() => {
       window.dispatchEvent(new Event("offline"));
@@ -209,6 +209,20 @@ describe("From your team roster", () => {
     expect(screen.queryByTestId("on-call-roster-now-mark")).toBeNull();
     expect(screen.getByTestId("on-call-roster-stale")).toHaveTextContent("A later change would not show");
     expect(screen.getByTestId("on-call-roster-switchboard")).toBeInTheDocument();
+  });
+
+  it("says a failed refresh while online is not live, without calling it offline", () => {
+    const view = renderPage();
+    roster.assignments = { status: "error", data: null, message: "x", reload: vi.fn(), readAt: null };
+    view.rerender(
+      <ToastProvider>
+        <OnCallRosterWhosOnPage now={NOW} />
+      </ToastProvider>,
+    );
+    const strip = screen.getByTestId("on-call-roster-provenance");
+    expect(strip).toHaveTextContent("Could not refresh. Roster as of 21:35");
+    expect(strip).toHaveTextContent("Not live");
+    expect(strip).not.toHaveTextContent("Offline");
   });
 
   it("shows a change from the roster by itself, with a count on the source strip", () => {
@@ -257,8 +271,12 @@ describe("From your team roster", () => {
     fireEvent.click(screen.getByTestId("on-call-roster-reason-someone-else"));
     expect(copy).not.toBeDisabled();
     fireEvent.change(screen.getByTestId("on-call-roster-report-note"), { target: { value: "Bed 7 review ran over" } });
-    expect(screen.getByRole("alert")).toHaveTextContent("This looks like a patient detail");
+    expect(screen.getByRole("alert")).toHaveTextContent("This looks like a bed number");
     expect(copy).toBeDisabled();
+    for (const value of ["J Smith rang", "45M in ED", "Room 4 review", "Call 0412 345 678", "Mrs\u200BSmith"]) {
+      fireEvent.change(screen.getByTestId("on-call-roster-report-note"), { target: { value } });
+      expect(copy).toBeDisabled();
+    }
     fireEvent.change(screen.getByTestId("on-call-roster-report-note"), {
       target: { value: "Dr Patel answered the page" },
     });

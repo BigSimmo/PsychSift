@@ -19,6 +19,7 @@ import { cardSurface, focusRing } from "@/components/card-recipes";
 import { CmeCategoryLegend, CmeYearSummary } from "@/components/cme/cme-dashboard-catch-up";
 import { CmeTodayDetailSheet, type CmeTodayDetail } from "@/components/cme/cme-dashboard-detail-sheet";
 import { CmeNextStepRow, computeCmeNextStep, formatCmeHours } from "@/components/cme/cme-dashboard-next-step";
+import { ApplicationsTodayCard } from "@/components/cme/applications/applications-today-card";
 import { buildCmeYearChips, CmeTodayShortcuts } from "@/components/cme/cme-dashboard-shortcuts";
 import { CmeWhatsLeft } from "@/components/cme/cme-dashboard-whats-left";
 import { CmeFlatList, CmeFlatRow, CmeGroup } from "@/components/cme/cme-flat-list";
@@ -589,6 +590,7 @@ export function CmeDashboard({
         {summary}
         {logButton}
         {chips.length > 0 ? <CmeTodayShortcuts chips={chips} /> : null}
+        <ApplicationsTodayCard today={today} />
         {byCategory}
       </div>
       {nextStepNode || whatsLeft ? (

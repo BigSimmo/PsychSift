@@ -1,4 +1,5 @@
-import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
+import type { ReminderTextProblem } from "@/lib/alerts/remind-me";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import { formatDateEcho, utcDay } from "@/lib/admin/renewal-dates";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 
@@ -18,14 +19,7 @@ import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
  */
 
 export type LeaveTypeId =
-  | "annual"
-  | "personal"
-  | "exam"
-  | "conference"
-  | "compassionate"
-  | "confidential"
-  | "long-service"
-  | "parental";
+  "annual" | "personal" | "exam" | "conference" | "compassionate" | "confidential" | "long-service" | "parental";
 
 export type LeaveIcon = "sun" | "pulse" | "book" | "board" | "heart" | "shield" | "history" | "users";
 
@@ -121,7 +115,10 @@ export const LEAVE_TYPES: readonly LeaveType[] = [
     fullName: "Compassionate and bereavement leave",
     line: "Ready message",
     icon: "heart",
-    steps: [{ text: "Copy the message below and send it" }, { text: "Your service tells you if it needs anything else" }],
+    steps: [
+      { text: "Copy the message below and send it" },
+      { text: "Your service tells you if it needs anything else" },
+    ],
     slots: ["firstDay", "lastDay"],
     to: "Medical Workforce",
   },
@@ -213,7 +210,10 @@ export function leaveMessage(
 ): string {
   const first = slot(fields.firstDay ? messageDate(fields.firstDay) : "", "first day");
   const last = slot(fields.lastDay ? messageDate(fields.lastDay) : "", "last day");
-  const range = fields.firstDay && fields.lastDay && fields.firstDay === fields.lastDay ? `on ${first}` : `from ${first} to ${last}`;
+  const range =
+    fields.firstDay && fields.lastDay && fields.firstDay === fields.lastDay
+      ? `on ${first}`
+      : `from ${first} to ${last}`;
   const detail = fields.detail.trim();
   switch (type.id) {
     case "annual":
@@ -273,7 +273,8 @@ export function validateLeaveFields(type: LeaveType, fields: LeaveMessageFields)
   if (type.slots.includes("detail") && detail) {
     if (detail.length > LEAVE_DETAIL_LIMIT) errors.detail = `Keep this to ${LEAVE_DETAIL_LIMIT} characters.`;
     else {
-      const problem = checkReminderText(detail);
+      // An exam or a course is often named in capitals ("ALS", "ASM").
+      const problem = checkPatientDetail(detail, { allowCapitals: true });
       if (problem) errors.detailProblem = { ...problem, body: "Messages here cannot hold patient details." };
     }
   }
@@ -294,8 +295,11 @@ export function leaveMessageGaps(message: string): number {
  * carry no year (see `messageDate`), so a full date here was typed by hand.
  */
 export function checkLeaveMessage(message: string): ReminderTextProblem | null {
-  const problem = checkReminderText(message.replace(/\[[^\]]+\]/g, " "));
-  return problem ? { ...problem, body: "Messages here cannot hold patient details. Hand over in the clinical system." } : null;
+  // The message carries the exam or course name, so capitals are read past here too.
+  const problem = checkPatientDetail(message.replace(/\[[^\]]+\]/g, " "), { allowCapitals: true });
+  return problem
+    ? { ...problem, body: "Messages here cannot hold patient details. Hand over in the clinical system." }
+    : null;
 }
 
 export interface LeaveSearchRecord {

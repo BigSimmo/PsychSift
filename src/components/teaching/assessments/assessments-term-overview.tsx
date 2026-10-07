@@ -195,7 +195,7 @@ function BellButton({ state, label, onClick }: { state: BellState; label: string
         "grid size-12 shrink-0 place-items-center rounded-full",
         state === "pending" && "text-[color:var(--mode-identity)] hover:bg-[color:var(--surface-wash)]",
         state === "reminded" && "cursor-default text-[color:var(--success-text)]",
-        state === "offline" && "cursor-default text-[color:var(--text-muted)] opacity-60",
+        state === "offline" && "cursor-default text-[color:var(--text-muted)]",
       )}
     >
       {state === "reminded" ? (
@@ -263,7 +263,7 @@ function OfflineNote({ since }: { since: string }) {
   return (
     <div role="status" data-testid="assessments-overview-offline">
       <Inset tone="warm" icon={WifiOff} title="No connection">
-        {`Status as of ${since}. Reminders wait until you are back online.`}
+        {`Status as of ${since}. Reminders can't be sent while offline. Try again when you are back online.`}
       </Inset>
     </div>
   );
@@ -342,6 +342,13 @@ function OverviewHome({ s }: ScreenProps) {
   const groups = supervisorGroups(rows);
   const recipients = bulkRecipients(rows, r.keys, s.now);
   const toRemind = recipients.filter((x) => !x.remindedToday);
+  const remindWhyId = useId();
+  // Why Remind cannot open, in words beside it, never a silent grey button.
+  const remindWhyNot = r.offlineSince
+    ? "Can't send while offline. Try again when you are back online."
+    : toRemind.length === 0
+      ? "Everyone with a due or overdue form was reminded today."
+      : null;
   const remindedToday = recipients.filter((x) => x.remindedToday);
   const overdueSupervisors = groups.filter((g) => g.overdue > 0).length;
   const sentToday = r.extras.reminders.filter((x) => x.key.endsWith(`:${s.now}`));
@@ -486,14 +493,19 @@ function OverviewHome({ s }: ScreenProps) {
               <Button
                 variant="primary"
                 size="sm"
-                disabled={toRemind.length === 0 || Boolean(r.offlineSince)}
-                onClick={() => setSheet("bulk")}
+                aria-disabled={remindWhyNot ? true : undefined}
+                aria-describedby={remindWhyNot ? remindWhyId : undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:border-[color:var(--border)] aria-disabled:bg-[color:var(--surface-subtle)] aria-disabled:text-[color:var(--text-muted)]"
+                onClick={() => {
+                  if (!remindWhyNot) setSheet("bulk");
+                }}
                 testId="assessments-overview-bulk-open"
               >
                 Remind
               </Button>
             </div>
           ) : null}
+          {overdueSupervisors > 0 && remindWhyNot ? <WhyNot id={remindWhyId}>{remindWhyNot}</WhyNot> : null}
           <List label="Supervisors">
             {groups.map((group) => {
               const mix = supervisorMix(group);
@@ -748,7 +760,9 @@ function ExportSheet({
         <a
           href={href}
           download={OVERVIEW_CSV_NAME}
-          onClick={onDone}
+          // The download starts from this tap first. The sheet closes on the next tick, so the link is still on
+          // the page when the browser acts on it (a detached link can lose its download in some browsers).
+          onClick={() => window.setTimeout(onDone, 0)}
           data-testid="assessments-overview-csv"
           className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
         >
@@ -789,7 +803,7 @@ function DoctorDetail({ s, doctorId }: ScreenProps & { doctorId: string }) {
     state === "reminded"
       ? "Reminded today. One reminder a day per form."
       : state === "offline"
-        ? "No connection. Reminders wait until you are back online."
+        ? "Can't send while offline. Try again when you are back online."
         : null;
   return (
     <div className="grid gap-3" data-testid="assessments-overview-doctor">

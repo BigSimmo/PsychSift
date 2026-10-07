@@ -52,7 +52,7 @@ function ReviewPage({ demoMode }: { demoMode: boolean }) {
     <TeachingDepthPage title="Weekly CPD review" demoMode={demoMode} resource={resource} ready={!!rows}>
       <ModeNotice>
         Choose the sessions and hours you want to log. Attendance does not award CPD credit. These entries are private
-        to you; your service cannot see your CPD figures.
+        to you. Your service cannot see your CPD figures.
       </ModeNotice>
       {rows?.length === 0 ? <ModeNotice>No attended sessions waiting to be logged.</ModeNotice> : null}
       <form
@@ -75,7 +75,7 @@ function ReviewPage({ demoMode }: { demoMode: boolean }) {
           } catch (cause) {
             // A request can fail after earlier rows saved. Retain request ids and choices for safe retry.
             setError(
-              `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Retry with the same choices; this will not add duplicates.`,
+              `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Retry with the same choices. This will not add duplicates.`,
             );
           } finally {
             setBusy(false);

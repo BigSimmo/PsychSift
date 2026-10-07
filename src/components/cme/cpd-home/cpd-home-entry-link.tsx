@@ -7,7 +7,7 @@ import { cn } from "@/components/ui-primitives";
 
 /**
  * The way in to Send to AMA CPD Home, for the CPD Export page or Report's
- * "Annual summary and export" group (the main build mounts it). A literal link,
+ * "Annual summary and export" group. Mounted on the CPD Summary page. A literal link,
  * so the route is reachable wherever this is placed.
  */
 export function CpdHomeEntryLink({ year }: { readonly year?: number }) {

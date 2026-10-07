@@ -327,7 +327,9 @@ export function overviewCsv(
     for (const r of reminders) lines.push([r.at, r.supervisor, r.doctorName, formWord(r.form)]);
   }
   lines.push([], ["Status only: what is done, due or overdue."]);
-  return lines.map((line) => line.map(cmeCsvCell).join(",")).join("\r\n") + "\r\n";
+  // The byte-order mark tells Excel the file is UTF-8, so "1 of 2" (no-break space) opens as written. The CPD
+  // export does the same (`formatCmeYearCsv`).
+  return "\uFEFF" + lines.map((line) => line.map(cmeCsvCell).join(",")).join("\r\n") + "\r\n";
 }
 
 export const OVERVIEW_CSV_NAME = "made-up-term-assessments-status.csv";
@@ -407,8 +409,12 @@ export function bulkRecipients(
         remindedToday: open.length === 0,
         overdue,
         line: shown
-          .map((i) => `${i.row.name} · ${(i.form === "mid" ? i.row.mid : i.row.end).detail.toLowerCase()}`)
-          .join("; "),
+          .map((i) => {
+            // Lower-case only the first letter, so the day and month keep their capitals ("overdue since Fri 2 Oct").
+            const detail = (i.form === "mid" ? i.row.mid : i.row.end).detail;
+            return `${i.row.name} · ${detail.charAt(0).toLowerCase()}${detail.slice(1)}`;
+          })
+          .join(", "),
       };
     })
     .sort(

@@ -19,7 +19,7 @@ import {
   type RosterWhosOnRow,
 } from "@/lib/on-call/roster-whos-on";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
-import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 function Fact({ label, value, testId }: { readonly label: string; readonly value: string; readonly testId?: string }) {
   return (
@@ -92,7 +92,8 @@ export function RosterPersonSheet({
   const name = row ? (row.isMe ? "You" : (row.name ?? "Nobody rostered")) : "";
   const manager = managerName(managers);
   const managerLabel = manager ?? "your roster manager";
-  const caught = note.trim().length > 0 && looksLikePatientDetails(note);
+  const problem = checkPatientDetail(note);
+  const caught = problem !== null;
 
   const close = () => {
     setReporting(false);
@@ -240,13 +241,18 @@ export function RosterPersonSheet({
               onChange={(event) => setNote(event.target.value.slice(0, 280))}
               rows={3}
               aria-invalid={caught}
-              aria-describedby={caught ? "on-call-roster-report-caught" : undefined}
+              aria-describedby={
+                caught ? "on-call-roster-report-hint on-call-roster-report-caught" : "on-call-roster-report-hint"
+              }
               className={cn(
                 "w-full rounded-[var(--work-radius-field,0.8125rem)] border bg-[color:var(--surface-raised)] p-3 text-base-minus text-[color:var(--text-heading)]",
                 caught ? "border-[color:var(--warning-border)]" : "border-[color:var(--border)]",
               )}
               data-testid="on-call-roster-report-note"
             />
+            <p id="on-call-roster-report-hint" className="text-xs text-[color:var(--text-muted)]">
+              Use Dr and a surname, for example Dr Lowe. No patient details.
+            </p>
             {caught ? (
               <p
                 id="on-call-roster-report-caught"
@@ -254,7 +260,7 @@ export function RosterPersonSheet({
                 role="alert"
               >
                 <TriangleAlert aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0" />
-                This looks like a patient detail. Take it out to copy the note.
+                {`${problem?.title ?? "This looks like a patient detail"}. Take it out to copy the note.`}
               </p>
             ) : null}
           </section>

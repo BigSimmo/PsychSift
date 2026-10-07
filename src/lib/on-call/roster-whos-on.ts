@@ -123,6 +123,8 @@ export type RosterWhosOnRow = {
 };
 
 const HANDOVER_WINDOW_MS = 90 * 60_000;
+/** The usual handover overlap: the next shift may start up to an hour before this one ends. */
+const HANDOVER_OVERLAP_MS = 60 * 60_000;
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 function weekdayOf(date: string): string {
@@ -160,11 +162,15 @@ function nextPerson(
         other.kind !== "leave" &&
         other.name !== null &&
         other.userId !== row.userId &&
-        Math.abs(Date.parse(other.startsAt) - end) <= HANDOVER_WINDOW_MS,
+        // Only someone of the same grade takes over: a registrar's row never says "then" an intern.
+        other.grade === row.grade &&
+        // A handover: starts no more than the overlap before this shift ends, and within 90 minutes after.
+        Date.parse(other.startsAt) > Date.parse(row.startsAt) &&
+        Date.parse(other.startsAt) - end >= -HANDOVER_OVERLAP_MS &&
+        Date.parse(other.startsAt) - end <= HANDOVER_WINDOW_MS,
     )
     .sort(
       (a, b) =>
-        Number(b.grade === row.grade) - Number(a.grade === row.grade) ||
         Number(b.kind === row.kind) - Number(a.kind === row.kind) ||
         Math.abs(Date.parse(a.startsAt) - end) - Math.abs(Date.parse(b.startsAt) - end) ||
         (a.name ?? "").localeCompare(b.name ?? ""),

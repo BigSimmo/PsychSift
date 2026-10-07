@@ -119,7 +119,9 @@ function CalendarChoice({
 /**
  * "Your first week" (round 2 feature 20): the hospital's published orientation,
  * roles and escalation, with the doctor's own New job logins, as one pack that
- * moves to the top of On Call from a week before the job starts.
+ * shows as a card on On Call Now from a week before the job starts (unless the
+ * doctor turns that off). No alert is delivered yet: `selectFirstWeekNeedsYou`
+ * is ready for Needs you to read the same choice when that is wired.
  *
  * `section` picks one section to read on its own (`?section=who`); anything
  * else shows the pack. Read marks are this device's only.
@@ -189,7 +191,16 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
     if (pack.landAlert === null) return;
     const next = !pack.landAlert;
     pack.setLandAlert(next);
-    say(next ? "You will get one alert when it lands" : "No alert when it lands", () => pack.setLandAlert(!next));
+    const from = phase.kind === "ahead" ? formatFirstWeekDate(phase.highlightFrom) : null;
+    // Honest about what happens today: the card on On Call Now. Nothing is sent, and no alert goes out yet.
+    say(
+      next
+        ? from
+          ? `It will show on On Call Now from ${from}`
+          : "It will show on On Call Now"
+        : "It will not show on On Call Now",
+      () => pack.setLandAlert(!next),
+    );
   };
 
   const handbookState = (
@@ -278,9 +289,9 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
     <div className="flex flex-wrap items-center justify-between gap-x-3">
       <span className="inline-flex min-h-12 items-center gap-1.5 text-sm text-[color:var(--text-muted)]">
         <Smartphone aria-hidden="true" className="size-icon-sm" />
-        {phase.kind === "ahead" ? (
+        {phase.kind === "ahead" && pack.landAlert !== false ? (
           <span data-testid="on-call-first-week-ahead">
-            {`Moves to the top of On Call from ${formatFirstWeekDate(phase.highlightFrom)}`}
+            {`Shows on On Call Now from ${formatFirstWeekDate(phase.highlightFrom)}`}
           </span>
         ) : (
           "Read marks stay on this phone"
@@ -350,15 +361,18 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
             <div className="flex min-h-12 items-center gap-3 py-1 pl-3 pr-1">
               <span className="grid min-w-0 flex-1 gap-0.5">
                 <span className="text-base-minus font-medium text-[color:var(--text-heading)]">
-                  Tell me when it lands
+                  Show it on Now when it lands
                 </span>
-                <span className="text-sm text-[color:var(--text-muted)]">
-                  {`One alert in Needs you on ${formatFirstWeekDate(phase.highlightFrom).replace(/ \d{4}$/, "")}`}
+                <span
+                  className="text-sm text-[color:var(--text-muted)]"
+                  data-testid="on-call-first-week-land-alert-sub"
+                >
+                  {`A card on On Call Now from ${formatFirstWeekDate(phase.highlightFrom).replace(/ \d{4}$/, "")}. No message or alert is sent.`}
                 </span>
               </span>
               <Toggle
                 on={pack.landAlert}
-                label="Tell me when it lands"
+                label="Show it on Now when it lands"
                 onToggle={toggleLandAlert}
                 testId="on-call-first-week-land-alert-switch"
               />
@@ -430,7 +444,7 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
                 checked
                 disabled
                 title="Your first day"
-                sub="All day, with your hospital's name"
+                sub="Always in the file, so it cannot be turned off. All day, with your hospital's name"
                 testId="on-call-first-week-calendar-day"
               />
               <div className="border-t border-[color:var(--border)]">

@@ -147,7 +147,7 @@ export function ComparisonChart({ rows, view }: { rows: ComparisonRow[]; view: "
 function SignatureMark({ who, mid, s }: { who: "sup" | "doc"; mid: boolean; s: ScreenProps["s"] }) {
   if (mid)
     return (
-      <span className="font-serif text-base text-[color:var(--text-heading)] italic">
+      <span className="text-base text-[color:var(--text-heading)] italic">
         {who === "sup" ? "Priya Nair" : "Sam Lee"}
       </span>
     );
@@ -165,7 +165,7 @@ function SignatureMark({ who, mid, s }: { who: "sup" | "doc"; mid: boolean; s: S
         <path d={sig.image.path} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" />
       </svg>
     );
-  return <span className="font-serif text-base text-[color:var(--text-heading)] italic">{sig.typed}</span>;
+  return <span className="text-base text-[color:var(--text-heading)] italic">{sig.typed}</span>;
 }
 
 function SignatureLine({ role, name, mark }: { role: string; name: string; mark: React.ReactNode }) {

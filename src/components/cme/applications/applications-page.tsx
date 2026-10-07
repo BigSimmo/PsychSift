@@ -31,11 +31,14 @@ import {
   refereeStatusLabel,
   removeReferee,
   removeSeasonDate,
+  restoreReferee,
   sampleApplications,
   seasonYear,
   setRefereeStatus,
   shortDate,
   stageLabel,
+  undoRefereeEdit,
+  undoSeasonDate,
   updateRefereeDetails,
   upsertSeasonDate,
   type ApplicationStageId,
@@ -76,20 +79,27 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
     );
   }
 
-  /** Applies a change; offers Undo back to exactly the state before it. */
-  function change(next: (current: ApplicationsState) => ApplicationsState, message: string) {
-    const before = store.state;
+  /**
+   * Applies a change and offers Undo as its inverse. Undo reverses this change only, so anything
+   * recorded since (a nudge copied for another referee, say) is kept rather than thrown away.
+   */
+  function change(
+    next: (current: ApplicationsState) => ApplicationsState,
+    message: string,
+    undo: (current: ApplicationsState) => ApplicationsState,
+  ) {
     if (!store.update(next)) {
       setRefused(true);
       return false;
     }
     setRefused(false);
-    notify(message, before ? () => store.update(() => before) : undefined);
+    notify(message, () => store.update(undo));
     return true;
   }
 
   function saveDate(draft: SeasonDateDraft) {
-    const existed = state!.dates.some((date) => date.stage === draft.stage);
+    const previous = state!.dates.find((date) => date.stage === draft.stage) ?? null;
+    const existed = previous !== null;
     const ok = change(
       (current) =>
         upsertSeasonDate(current, {
@@ -101,33 +111,59 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
           addedOn: current.dates.find((date) => date.stage === draft.stage)?.addedOn ?? today,
         }),
       `${stageLabel(draft.stage)} ${existed ? "changed" : "added"}`,
+      (current) => undoSeasonDate(current, draft.stage, previous),
     );
     if (ok) setDateSheet({ open: false });
   }
 
   function removeDate(stage: ApplicationStageId) {
-    if (change((current) => removeSeasonDate(current, stage), `${stageLabel(stage)} date removed`))
+    const previous = state!.dates.find((date) => date.stage === stage) ?? null;
+    if (
+      change(
+        (current) => removeSeasonDate(current, stage),
+        `${stageLabel(stage)} date removed`,
+        (current) => undoSeasonDate(current, stage, previous),
+      )
+    )
       setDateSheet({ open: false });
   }
 
   function saveReferee(draft: RefereeDraft, id: string | null) {
     if (!id) {
-      if (change((current) => addReferee(current, draft, today, newApplicationsId("ref")), `${draft.name} added`))
+      const newId = newApplicationsId("ref");
+      if (
+        change(
+          (current) => addReferee(current, draft, today, newId),
+          `${draft.name} added`,
+          (current) => removeReferee(current, newId),
+        )
+      )
         setRefereeSheet({ open: false });
       return;
     }
     const before = state!.referees.find((referee) => referee.id === id);
-    const statusChanged = before && before.status !== draft.status;
+    if (!before) return;
+    const statusChanged = before.status !== draft.status;
     const ok = change(
       (current) => setRefereeStatus(updateRefereeDetails(current, id, draft), id, draft.status, today),
       statusChanged ? `${draft.name} marked ${refereeStatusLabel(draft.status)}` : `${draft.name} saved`,
+      (current) =>
+        undoRefereeEdit(current, before, statusChanged ? { kind: "status", status: draft.status, on: today } : null),
     );
     if (ok) setRefereeSheet({ open: false });
   }
 
   function removeOne(id: string) {
-    const referee = state!.referees.find((item) => item.id === id);
-    if (change((current) => removeReferee(current, id), `${referee?.name ?? "Referee"} removed`))
+    const index = state!.referees.findIndex((item) => item.id === id);
+    const referee = state!.referees[index];
+    if (!referee) return;
+    if (
+      change(
+        (current) => removeReferee(current, id),
+        `${referee.name} removed`,
+        (current) => restoreReferee(current, referee, index),
+      )
+    )
       setRefereeSheet({ open: false });
   }
 
@@ -140,12 +176,13 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
   const reminders = applicationsNeedsYouItems(state, today).filter((item) => item.id.includes(":date:"));
   const empty = state.dates.length === 0 && state.referees.length === 0;
   const full = state.referees.length >= REFEREE_LIMIT;
+  const year = seasonYear(state);
   const openReferee =
     refereeSheet.open && refereeSheet.id ? (state.referees.find((r) => r.id === refereeSheet.id) ?? null) : null;
 
   return (
     <CpdFeaturePage
-      eyebrow={`Season ${seasonYear(state, today)} · your own plan`}
+      eyebrow={year === null ? "Season · add a start date" : `Season ${year} · your own plan`}
       title="Job applications"
       testId="applications-page"
     >
@@ -229,6 +266,11 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
         <div className={cn(flatCard, "p-3")}>
           <SeasonRail state={state} today={today} onEdit={(stage) => setDateSheet({ open: true, stage })} />
         </div>
+        {year === null ? (
+          <p className="px-1 text-sm text-[color:var(--text-muted)]" data-testid="applications-no-start">
+            Add a start date to show the season&apos;s year.
+          </p>
+        ) : null}
       </section>
 
       <section aria-labelledby="applications-referees-label" className="grid gap-2">

@@ -1,6 +1,7 @@
 import type { z } from "zod";
 
-import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
+import type { ReminderTextProblem } from "@/lib/alerts/remind-me";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import { complianceExpiryHistory, fullBody } from "@/lib/admin/renewals";
 import { complianceLeadTimeDays, formatDateEcho, utcDay } from "@/lib/admin/renewal-dates";
 import { addDays, addMonthsClamped, type CalendarEvent } from "@/lib/calendar/calendar-event";
@@ -358,13 +359,14 @@ export function validateContractForm(input: ContractFormInput, today: string): C
   if (employer.length > CONTRACT_EMPLOYER_LIMIT)
     errors.employer = `Keep the employer to ${CONTRACT_EMPLOYER_LIMIT} characters.`;
   else if (employer) {
-    const problem = checkReminderText(employer);
+    // An employer is a hospital or service, often in capitals ("RPH", "FSH").
+    const problem = checkPatientDetail(employer, { allowCapitals: true });
     if (problem) errors.employerProblem = problem;
   }
   const note = input.note.trim();
   if (note.length > CONTRACT_NOTE_LIMIT) errors.note = `Keep the note to ${CONTRACT_NOTE_LIMIT} characters.`;
   else if (note) {
-    const problem = checkReminderText(note);
+    const problem = checkPatientDetail(note);
     if (problem) errors.noteProblem = { ...problem, body: "Notes here cannot hold patient details." };
   }
   return errors;
