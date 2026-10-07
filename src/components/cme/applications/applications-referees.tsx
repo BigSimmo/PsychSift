@@ -188,10 +188,9 @@ function RefereeSheetBody({
     referee && referee.name === name.trim() && referee.role === role.trim() && referee.status === status;
   const askedOn = referee && referee.status === "asked" ? lastAskedOn(referee) : null;
   const waitingDays = askedOn ? daysBetween(askedOn, today) : null;
-  const nudge =
-    referee && referee.status === "asked"
-      ? nudgeMessage({ ...referee, name: name.trim() || referee.name }, today)
-      : null;
+  // Built from the saved name only, which has passed the patient-detail check. A name being typed is
+  // not in the message until it is saved.
+  const nudge = referee && referee.status === "asked" ? nudgeMessage(referee, today) : null;
 
   function save() {
     setTried(true);

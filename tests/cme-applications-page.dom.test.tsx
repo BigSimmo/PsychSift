@@ -160,6 +160,37 @@ describe("Job applications season", () => {
     expect(stored().referees[0].history.at(-1)).toEqual({ kind: "nudge", on: "2026-10-06" });
   });
 
+  it("builds the nudge from the saved name, never from a name being typed", async () => {
+    localStorage.setItem(
+      CPD_APPLICATIONS_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        dates: [],
+        referees: [
+          {
+            id: "r1",
+            name: "Dr Grant",
+            role: "",
+            status: "asked",
+            history: [{ kind: "status", status: "asked", on: "2026-10-01" }],
+          },
+        ],
+        statement: "",
+        hiddenCvLines: [],
+      }),
+    );
+    const copy = vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    renderPage();
+    fireEvent.click(screen.getByTestId("applications-nudge-open"));
+    fireEvent.change(screen.getByTestId("applications-referee-name"), { target: { value: "Mr Smith 45M" } });
+    expect(screen.getByTestId("applications-nudge").textContent).toContain("Hi Dr Grant,");
+    expect(screen.getByTestId("applications-nudge").textContent).not.toContain("Smith");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("applications-nudge-copy"));
+    });
+    expect(copy).toHaveBeenCalledWith(expect.not.stringContaining("Smith"));
+  });
+
   it("Undo reverses only its own change, keeping a nudge copied since", async () => {
     localStorage.setItem(
       CPD_APPLICATIONS_STORAGE_KEY,

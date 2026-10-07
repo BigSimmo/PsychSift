@@ -199,6 +199,23 @@ describe("referees", () => {
     expect(nudgeMessage(nudged, "2026-10-26")).toContain("I sent on Thu 1 Oct");
   });
 
+  it("dates a nudge from the current request, not an earlier one that was answered", () => {
+    const grant = withGrant().referees[0]!;
+    const again: typeof grant = {
+      ...grant,
+      status: "asked",
+      history: [
+        { kind: "status", status: "asked", on: "2025-03-01" },
+        { kind: "status", status: "agreed", on: "2025-03-05" },
+        { kind: "status", status: "asked", on: "2026-10-01" },
+      ],
+    };
+    const message = nudgeMessage(again, "2026-10-09");
+    expect(message).toContain("got my referee request from last week.");
+    expect(message).not.toContain("2025");
+    expect(message).not.toContain("Mar");
+  });
+
   it("undoes a referee edit without losing a nudge recorded since, and puts a removed referee back", () => {
     let state = addReferee(withGrant(), { name: "Dr Moss", role: "", status: "asked" }, "2026-10-01", "r2");
     const before = state.referees[0]!;

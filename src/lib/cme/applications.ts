@@ -415,10 +415,18 @@ export function undoSeasonDate(
   return before ? upsertSeasonDate(state, before) : removeSeasonDate(state, stage);
 }
 
-/** When the doctor first asked this referee, or null if never: the date the request went. */
-export function firstAskedOn(referee: Referee): string | null {
-  for (const event of referee.history) if (event.kind === "status" && event.status === "asked") return event.on;
-  return null;
+/**
+ * When the current request began: the first "asked" after the latest other status (agreed,
+ * declined and so on). An old request that was answered does not date a new one.
+ */
+export function currentRequestAskedOn(referee: Referee): string | null {
+  let start: string | null = null;
+  for (const event of referee.history) {
+    if (event.kind !== "status") continue;
+    if (event.status !== "asked") start = null;
+    else if (start === null) start = event.on;
+  }
+  return start;
 }
 
 /** When the doctor last asked (or nudged) this referee, or null if never. */
@@ -475,7 +483,7 @@ export function refereeLine(referee: Referee, today: string): string {
  * week" at 7 to 13 days, and the date after that.
  */
 export function nudgeMessage(referee: Referee, today: string): string {
-  const asked = firstAskedOn(referee) ?? lastAskedOn(referee);
+  const asked = currentRequestAskedOn(referee) ?? lastAskedOn(referee);
   const days = asked ? daysBetween(asked, today) : null;
   const request =
     asked === null || days === null || days < 7
