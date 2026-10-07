@@ -103,56 +103,39 @@ it("distinguishes runtime AI imports from erased type references", () => {
   ).toEqual(["@/lib/roster/team/model", "@/lib/openai"]);
 });
 
-it("pins the shared sign-out cleanup excluded from Roster's import walk to storage removal", () => {
+it("keeps the shared sign-out cleanup of the answer thread to storage removal, with no imports", () => {
   const auth = parsed(join(src, "lib/supabase/client.tsx"));
-  const imports = auth.statements.filter(
-    (statement): statement is ts.ImportDeclaration =>
-      ts.isImportDeclaration(statement) &&
-      ts.isStringLiteral(statement.moduleSpecifier) &&
-      statement.moduleSpecifier.text === "@/lib/answer-thread-storage",
-  );
-  expect(imports).toHaveLength(1);
-  const clause = imports[0]?.importClause;
-  expect(clause?.isTypeOnly).toBe(false);
-  expect(clause?.name).toBeUndefined();
-  expect(clause?.namedBindings && ts.isNamedImports(clause.namedBindings)).toBe(true);
-  const names =
-    clause?.namedBindings && ts.isNamedImports(clause.namedBindings)
-      ? clause.namedBindings.elements.map((element) => ({
-          exported: element.propertyName?.text ?? element.name.text,
-          local: element.name.text,
-          typeOnly: element.isTypeOnly,
-        }))
-      : [];
-  expect(names).toEqual([
-    { exported: "clearPersistedAnswerThread", local: "clearPersistedAnswerThread", typeOnly: false },
-  ]);
+  const specifiers = auth.statements
+    .filter(
+      (statement): statement is ts.ImportDeclaration =>
+        ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier),
+    )
+    .map((statement) => (statement.moduleSpecifier as ts.StringLiteral).text);
+  // Sign-out clears the thread through the small keys module, never the answer storage code.
+  expect(specifiers).toContain("@/lib/answer-thread-storage-keys");
+  expect(specifiers).not.toContain("@/lib/answer-thread-storage");
 
-  const storage = parsed(join(src, "lib/answer-thread-storage.ts"));
-  const keyDeclaration = storage.statements
+  const keys = parsed(join(src, "lib/answer-thread-storage-keys.ts"));
+  expect(keys.statements.filter(ts.isImportDeclaration)).toEqual([]);
+  const keyDeclaration = keys.statements
     .filter(ts.isVariableStatement)
     .flatMap((statement) => [...statement.declarationList.declarations])
     .find((declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === "answerThreadStorageKey");
   expect(keyDeclaration?.initializer && ts.isStringLiteral(keyDeclaration.initializer)).toBe(true);
-  const functionNamed = (name: string) =>
-    storage.statements.find(
-      (statement): statement is ts.FunctionDeclaration =>
-        ts.isFunctionDeclaration(statement) && statement.name?.text === name,
-    );
-  const cleanup = functionNamed("clearPersistedAnswerThread");
-  const scopedKey = functionNamed("scopedStorageKey");
+  const cleanup = keys.statements.find(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) && statement.name?.text === "clearPersistedAnswerThread",
+  );
   expect(cleanup?.body).toBeDefined();
-  expect(scopedKey?.body).toBeDefined();
   const calls: string[] = [];
   const unexpectedConstructs: string[] = [];
   const visit = (node: ts.Node) => {
-    if (ts.isCallExpression(node)) calls.push(node.expression.getText(storage));
-    if (ts.isNewExpression(node) || ts.isAwaitExpression(node)) unexpectedConstructs.push(node.getText(storage));
+    if (ts.isCallExpression(node)) calls.push(node.expression.getText(keys));
+    if (ts.isNewExpression(node) || ts.isAwaitExpression(node)) unexpectedConstructs.push(node.getText(keys));
     ts.forEachChild(node, visit);
   };
   visit(cleanup!.body!);
   const allowedCalls = new Set([
-    "scopedStorageKey",
     "window.sessionStorage.removeItem",
     "window.localStorage.removeItem",
     "window.sessionStorage.key",
@@ -160,13 +143,9 @@ it("pins the shared sign-out cleanup excluded from Roster's import walk to stora
   ]);
   expect(calls.filter((call) => !allowedCalls.has(call))).toEqual([]);
   expect(unexpectedConstructs).toEqual([]);
-  calls.length = 0;
-  visit(scopedKey!.body!);
-  expect(calls).toEqual([]);
-  expect(unexpectedConstructs).toEqual([]);
 });
 
-it("keeps Roster's runtime imports away from AI and speech except the pinned shared sign-out cleanup", () => {
+it("keeps Roster's runtime imports away from AI and speech", () => {
   const seen = new Set<string>();
   const queue = roots.flatMap(files).map((path) => ({ path, chain: [relative(src, path)] }));
   const violations: string[] = [];
@@ -176,13 +155,6 @@ it("keeps Roster's runtime imports away from AI and speech except the pinned sha
     seen.add(current.path);
     const content = readFileSync(current.path, "utf8");
     for (const specifier of runtimeImports(content)) {
-      // The contract above pins this one shared auth edge to storage removal.
-      // It is not an Roster answer/AI call; all other runtime edges are walked.
-      if (
-        relative(src, current.path).replaceAll("\\", "/") === "lib/supabase/client.tsx" &&
-        specifier === "@/lib/answer-thread-storage"
-      )
-        continue;
       const next = resolved(current.path, specifier);
       if (prohibited(specifier, next)) violations.push([...current.chain, specifier].join(" → "));
       else if (next && !seen.has(next)) queue.push({ path: next, chain: [...current.chain, relative(src, next)] });
