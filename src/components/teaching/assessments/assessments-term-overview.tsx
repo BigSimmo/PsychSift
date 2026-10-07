@@ -195,7 +195,7 @@ function BellButton({ state, label, onClick }: { state: BellState; label: string
         "grid size-12 shrink-0 place-items-center rounded-full",
         state === "pending" && "text-[color:var(--mode-identity)] hover:bg-[color:var(--surface-wash)]",
         state === "reminded" && "cursor-default text-[color:var(--success-text)]",
-        state === "offline" && "cursor-default text-[color:var(--text-muted)] opacity-60",
+        state === "offline" && "cursor-default text-[color:var(--text-muted)]",
       )}
     >
       {state === "reminded" ? (
@@ -495,7 +495,7 @@ function OverviewHome({ s }: ScreenProps) {
                 size="sm"
                 aria-disabled={remindWhyNot ? true : undefined}
                 aria-describedby={remindWhyNot ? remindWhyId : undefined}
-                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                className="aria-disabled:cursor-not-allowed aria-disabled:border-[color:var(--border)] aria-disabled:bg-[color:var(--surface-subtle)] aria-disabled:text-[color:var(--text-muted)]"
                 onClick={() => {
                   if (!remindWhyNot) setSheet("bulk");
                 }}

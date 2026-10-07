@@ -52,8 +52,13 @@ import { perthTime } from "@/lib/teaching/time";
  */
 
 const secondaryButton = cn(buttonFaceClass({ variant: "secondary" }), "no-underline");
-/** A control that cannot act yet looks it: dimmed, with the reason in the line beneath (aria-describedby). */
-const unavailableFace = "aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
+/**
+ * A control that cannot act yet looks it, with the reason in the line beneath (aria-describedby). A neutral face
+ * rather than a see-through one, so its words keep full contrast.
+ */
+const unavailableFace =
+  "aria-disabled:cursor-not-allowed aria-disabled:border-[color:var(--border)] aria-disabled:bg-[color:var(--surface-subtle)] aria-disabled:text-[color:var(--text-muted)]";
+const unavailableText = "aria-disabled:cursor-not-allowed aria-disabled:text-[color:var(--text-muted)]";
 
 /**
  * A short plain-text summary for an email to a supervisor. It follows the export's privacy default (names
@@ -126,7 +131,7 @@ function FolderActions({
         className={cn(
           "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-sm text-sm font-semibold text-[color:var(--mode-identity)]",
           focusRing,
-          unavailableFace,
+          unavailableText,
         )}
         aria-disabled={blocker ? true : undefined}
         aria-describedby={blocker ? "term-folder-export-why" : undefined}

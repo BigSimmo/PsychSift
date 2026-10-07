@@ -348,6 +348,12 @@ export interface FolderInput {
   readonly supervision: FolderSource<readonly SupervisionPairingView[]>;
 }
 
+/*
+ * Deferred by design, not forgotten: the feature card's "term pulse" part and an "Assessment status" part that
+ * opens the term overview. Assessment records are not kept in PsychSift (they live in Clinical Learning
+ * Australia), the term overview runs on made-up doctors only, and what the pulse should mean is not yet
+ * confirmed. The folder shows only what it can count from real records, and says where assessment forms live.
+ */
 export function buildTermFolder({ today, state, term, attendance, supervision }: FolderInput): TermFolder {
   const att = attendancePart(term, today, attendance);
   const sup = supervisionPart(term, today, supervision);
