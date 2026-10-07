@@ -75,22 +75,22 @@ export function ExampleDataBanner({ area }: { readonly area: WorkAreaId }) {
     return () => window.removeEventListener(EXAMPLE_BLOCKED_EVENT, onBlocked);
   }, []);
 
+  // Runs after every render (the store re-renders this on every change, account
+  // switches included). The sync is a string compare, and refreshes only when
+  // the server's cookie actually changed.
   useEffect(() => {
     const areas = activeKey ? (activeKey.split(".") as WorkAreaId[]) : [];
     if (syncExampleCookie(areas)) router.refresh();
-  }, [activeKey, router]);
+  });
 
   const switchOff = useCallback(() => {
     // Undo puts back exactly what was there, so auto mode returns to auto
     // rather than becoming an explicit on.
+    // The cookie sync above refreshes server-rendered areas for both.
     const before = snapshotExampleData();
     turnOff();
-    router.refresh();
-    toast?.("Example data off", () => {
-      restoreExampleData(before);
-      router.refresh();
-    });
-  }, [router, toast, turnOff]);
+    toast?.("Example data off", () => restoreExampleData(before));
+  }, [toast, turnOff]);
 
   const closeSheet = useCallback(() => setBlocked(null), []);
   const turnOffFromSheet = useCallback(() => {

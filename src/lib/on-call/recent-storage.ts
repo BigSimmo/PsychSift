@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { z } from "zod";
 
+import { isExampleRecord } from "@/lib/example-data/guards";
 import { createBrowserStore } from "@/lib/client-store-factory";
 import {
   onCallDeviceStateChangedEvent,
@@ -166,6 +167,8 @@ function capRecent(items: readonly OnCallRecentItem[]): OnCallRecentItem[] {
  */
 export function recordOnCallRecent(input: OnCallRecentInput, now: Date = new Date()): void {
   if (typeof window === "undefined") return;
+  // Example rows are display only and never join the doctor's own history.
+  if (isExampleRecord(input.id)) return;
   const existing = readOnCallRecent();
   const previous = existing.find((item) => item.id === input.id);
   const source = input.source ?? previous?.source ?? "entry";

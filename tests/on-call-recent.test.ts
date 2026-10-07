@@ -111,6 +111,12 @@ describe("readOnCallRecent", () => {
 });
 
 describe("recordOnCallRecent", () => {
+  it("never records an example row", () => {
+    recordOnCallRecent({ id: "00000000-0000-4000-8000-000000000101", title: "Example ward" }, NOW);
+    recordOnCallRecent({ id: "example:ward", title: "Example ward" }, NOW);
+    expect(readOnCallRecent()).toEqual([]);
+  });
+
   it("keeps the newest first", () => {
     recordOnCallRecent({ id: "a", title: "Ward 4B" }, NOW);
     recordOnCallRecent({ id: "b", title: "Switchboard" }, new Date(NOW.getTime() + 60_000));
