@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { AssessmentsSampleViewsNav } from "@/components/teaching/assessments/assessments-extras";
+import { AssessmentsSampleViewsNav, useAssessmentsExtras } from "@/components/teaching/assessments/assessments-extras";
 import {
   WorkButton,
   WorkChip,
@@ -54,6 +54,7 @@ import {
   SectionNote,
   StepRow,
   TextLink,
+  traineeHref,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
@@ -104,8 +105,9 @@ const home = viewHref("home", asSup);
 const FORM_TOTAL = FORM_STEPS.length;
 
 /** The other doctors on the list are made-up names only: they have no forms in this sample. */
-const BEN = { name: "Dr Ash Zamia", initials: "AZ", grade: "PGY2", due: "Fri 16 Oct" } as const;
-const MIA = { name: "Dr Frankie Mulga", initials: "FM" } as const;
+/** The made-up doctors' ids are the term overview's, so each row opens that doctor's own page. */
+const BEN = { id: "ben", name: "Dr Ash Zamia", initials: "AZ", grade: "PGY2", due: "Fri 16 Oct" } as const;
+const MIA = { id: "mia", requestId: "mia-epa-2", name: "Dr Frankie Mulga", initials: "FM" } as const;
 
 const benOverdue = (s: AssessmentsState) => s.now >= 0;
 const countersigned = SAMPLE_TERMS.filter((t) => t.status === "done").length;
@@ -167,7 +169,7 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
   } else if (st === "requested" || st === "sup-draft") {
     sub =
       st === "requested"
-        ? `${DOC.grade}. ${DOC.first} asked you on ${dayLabel(Math.max(0, s.request.sentOn))}. You rate first.`
+        ? `${DOC.grade}. ${DOC.first} asked you on ${dayLabel(s.request.sentOn)}. You rate first.`
         : `${DOC.grade}. Your draft is saved at step ${withUnit(s.sup.step + 1, "of")} ${FORM_TOTAL}.`;
     actions = (
       <>
@@ -257,6 +259,20 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
 
 export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
   const overdue = benOverdue(s);
+  // Frankie's EPA is answered in the inbox or on Frankie's page: the row says so rather than staying New.
+  const miaAnswer = useAssessmentsExtras().extras.answers[MIA.requestId]?.status;
+  const miaTag =
+    miaAnswer === "sent" || miaAnswer === "sending" ? (
+      <WorkTag tone="green">Sent</WorkTag>
+    ) : miaAnswer === "passed" ? (
+      <WorkTag tone="neutral">Passed on</WorkTag>
+    ) : miaAnswer === "later" ? (
+      <WorkTag tone="neutral">Later</WorkTag>
+    ) : miaAnswer === "queued" ? (
+      <WorkTag tone="amber">To send</WorkTag>
+    ) : (
+      <WorkTag>New</WorkTag>
+    );
   const offered = Object.values(s.avail).flat().length;
   const epaRows = s.epaRequests
     .map((r, i) => ({ r, i }))
@@ -267,6 +283,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
       title={`${BEN.name} · mid-term`}
       subtitle={`${BEN.grade} · ${overdue ? "was due" : "due"} to the MEU ${BEN.due}`}
       tag={overdue ? <WorkTag tone="red">Overdue</WorkTag> : <WorkTag tone="neutral">{BEN.due}</WorkTag>}
+      href={traineeHref(BEN.id)}
     />
   );
   const open = windowOpen(s);
@@ -296,9 +313,16 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
           avatar={MIA.initials}
           title={`${MIA.name} · EPA 2`}
           subtitle="Acutely unwell patient · asked Fri 2 Oct"
-          tag={<WorkTag>New</WorkTag>}
+          tag={miaTag}
+          href={traineeHref(MIA.id)}
         />
         {overdue ? null : ben}
+        <Row
+          avatar={DOC.initials}
+          title={`Everything from ${DOC.name}`}
+          subtitle="Requests, supervision and corrections"
+          href={traineeHref("sam")}
+        />
         <Row
           icon={Users}
           iconTone="mode"
@@ -692,6 +716,7 @@ export function SupervisorProgress({ s }: ScreenProps) {
         name={BEN.name}
         sub={`${BEN.grade} · mid-term`}
         tag={overdue ? <WorkTag tone="red">Overdue</WorkTag> : <WorkTag tone="neutral">Due soon</WorkTag>}
+        href={traineeHref(BEN.id)}
       />
       <AssessKeyValue
         k="Mid-term"

@@ -1,3 +1,4 @@
+import { OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import { DEFAULT_FILTERS, type BrowseFilters } from "@/lib/open-shifts/browse";
 import type { TimeOfDay } from "@/lib/open-shifts/model";
 
@@ -10,7 +11,7 @@ import type { TimeOfDay } from "@/lib/open-shifts/model";
  * blocked, so every read and write is guarded and Browse works without it.
  */
 
-const KEY = "psychsift.open-shifts.filters.v1";
+const KEY = OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY;
 const TIMES: readonly TimeOfDay[] = ["day", "evening", "night"];
 
 type Saved = Pick<BrowseFilters, "hideClashes" | "includeLowerLevels" | "starts">;

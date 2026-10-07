@@ -396,8 +396,8 @@ describe("SwapAnswerCard", () => {
   it("shows what they give and get, and accepts", async () => {
     mocks.post.mockResolvedValueOnce({ ok: true, result: { swapId: SWAP, status: "accepted" } });
     render(<SwapAnswerCard swap={swap} serviceId={SERVICE} actorId={ME} onDone={done} />);
-    expect(screen.getByText("Dr Sam Example give")).toBeTruthy();
-    expect(screen.getByText("Dr Sam Example get")).toBeTruthy();
+    expect(screen.getByText("You get")).toBeTruthy();
+    expect(screen.getByText("You give")).toBeTruthy();
     await screen.findByLabelText("Your week after");
     fireEvent.click(screen.getByRole("button", { name: "Accept swap" }));
     await act(async () => {});

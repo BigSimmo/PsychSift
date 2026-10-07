@@ -649,10 +649,12 @@ a.assess-pair__top:focus-visible {
   font-weight: 650;
   color: var(--work-ink-muted);
 }
+/* No gap between the times: each tap area takes its full column (45 px at 320 px wide, never under 44),
+   and the drawn pill below is inset to keep the same visible space between them. */
 .assess-slot {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: calc(var(--spacing) * 1.25);
+  gap: 0;
 }
 .assess-slot > button,
 .assess-slot > span {
@@ -677,7 +679,7 @@ a.assess-pair__top:focus-visible {
 .assess-slot > *::before {
   content: "";
   position: absolute;
-  inset: 0.5625rem 0;
+  inset: 0.5625rem calc(var(--spacing) * 0.625);
   z-index: calc(var(--z-base) - 1);
   border-radius: var(--radius-md);
   background: var(--work-surface);

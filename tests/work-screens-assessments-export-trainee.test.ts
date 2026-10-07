@@ -18,9 +18,11 @@ import {
   signedForms,
 } from "@/lib/work-screens/assessments/export";
 import { patientDetailProblem } from "@/lib/work-screens/assessments/patient-check";
+import { extrasReducer, initialExtras, settleForAnotherScreen } from "@/lib/teaching/assessments/extras";
 import {
   hoursWords,
   initialTraineeState,
+  reopenTraineeState,
   sessionLine,
   traineeReducer,
   traineeView,
@@ -200,6 +202,37 @@ describe("supervisor's view of a trainee", () => {
     const view = traineeView(s, sent, "mia", supervision)!;
     expect(view.waiting.some((r) => r.id === "mia-epa-2")).toBe(false);
     expect(view.answered.some((r) => r.id === "mia-epa-2")).toBe(true);
+  });
+
+  it("shows an answer sent from the inbox, and takes back one still in its 10 seconds when the screen closed", () => {
+    const sending = extrasReducer(initialExtras, {
+      type: "inbox-send",
+      id: "mia-epa-2",
+      level: "proximal",
+      text: "Clear plan.",
+      at: "10:00",
+    });
+    const sent = extrasReducer(sending, { type: "inbox-commit", id: "mia-epa-2" });
+    const fromSent = traineeView(
+      s,
+      reopenTraineeState(initialTraineeState, settleForAnotherScreen(sent)),
+      "mia",
+      supervision,
+    )!;
+    expect(fromSent.answered.some((r) => r.id === "mia-epa-2")).toBe(true);
+    const settled = settleForAnotherScreen(sending);
+    expect(settled.answers["mia-epa-2"]).toMatchObject({ status: "waiting", level: "proximal", text: "Clear plan." });
+    expect(traineeView(s, reopenTraineeState(initialTraineeState, settled), "mia", supervision)!.waiting).toHaveLength(
+      1,
+    );
+  });
+
+  it("opens again with a confirmation in its 10 seconds back to waiting, and one kept offline still kept", () => {
+    const reopened = reopenTraineeState(
+      { sessions: { a: "sending", b: "queued", c: "confirmed" }, asks: {}, corrections: {} },
+      initialExtras,
+    );
+    expect(reopened.sessions).toEqual({ a: "waiting", b: "queued", c: "confirmed" });
   });
 
   it("words a session line", () => {

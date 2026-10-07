@@ -74,10 +74,10 @@ describe("calendar dates", () => {
     expect(expandEvents([{ ...ALL_DAY, date: "2026-02-30" }], { start: "2026-01-01", end: "2026-12-31" })).toEqual([]);
   });
 
-  it("formats times the way people say them", () => {
-    expect(formatEventTime("12:30")).toBe("12:30 pm");
-    expect(formatEventTime("00:05")).toBe("12:05 am");
-    expect(formatEventTime("09:00")).toBe("9:00 am");
+  it("formats times in 24-hour time", () => {
+    expect(formatEventTime("12:30")).toBe("12:30");
+    expect(formatEventTime("00:05")).toBe("00:05");
+    expect(formatEventTime("9:00")).toBe("09:00");
   });
 });
 

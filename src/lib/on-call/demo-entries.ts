@@ -1791,7 +1791,8 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     title: "Logins, paging and remote access",
     subtitle: "Who to ask, and how long it takes",
     body: "Placeholder note shown only in demo mode. No login is recorded here.",
-    details: { category: "Access" },
+    // A made-up start date about four weeks ahead, so the example New job shows its start card and countdown.
+    details: { category: "Access", jobStartsOn: demoDateKey(26) },
     linkedDocumentIds: [],
     tags: ["Access"],
     isPersonal: true,

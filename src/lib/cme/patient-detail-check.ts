@@ -1,7 +1,9 @@
 import {
+  checkPatientDetail,
   looksLikePatientDetail,
   normaliseWorkText,
   type PatientDetailCheckOptions,
+  type PatientDetailProblem,
 } from "@/lib/work-text/patient-detail-check";
 import { currentWorkYear } from "@/lib/work-time/current-zone";
 
@@ -122,4 +124,25 @@ const ADVERT_REF = /\b(?:job\s+)?ref(?:erence)?\.?\s*(?:no\.?|number)?\s*[:#]?\s
 export function advertSourceLooksLikePatient(text: string, thisYear = currentWorkYear()): boolean {
   const read = text.normalize("NFKC").replace(ADVERT_LINK, " ").replace(ADVERT_REF, " ");
   return looksLikePatientDetail(read, { thisYear }) || cpdOnlyShapes(read);
+}
+const CPD_PROBLEM_FALLBACK: PatientDetailProblem = {
+  title: "This looks like a patient detail",
+  body: "This can't hold patient details. This check catches some details, not all.",
+  suggestion: null,
+};
+
+/**
+ * The CPD reading of a title (with its speaker, recent-date and course allowances) as a problem in words for
+ * a field's message; null when it reads as safe. The words come from the shared check where it names the
+ * finding, and a plain fallback where only a CPD shape caught it.
+ */
+export function cpdTitlePatientProblem(title: string, thisYear = currentWorkYear()): PatientDetailProblem | null {
+  if (!cpdTitleLooksLikePatient(title, thisYear)) return null;
+  return { ...(checkPatientDetail(title, { thisYear }) ?? CPD_PROBLEM_FALLBACK), suggestion: null };
+}
+
+/** The CPD reading of a note or reflection as a problem in words; null when it reads as safe. */
+export function cpdTextPatientProblem(text: string, thisYear = currentWorkYear()): PatientDetailProblem | null {
+  if (!cpdTextLooksLikePatient(text, thisYear)) return null;
+  return { ...(checkPatientDetail(text, { thisYear }) ?? CPD_PROBLEM_FALLBACK), suggestion: null };
 }

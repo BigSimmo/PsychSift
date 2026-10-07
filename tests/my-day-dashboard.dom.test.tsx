@@ -983,6 +983,23 @@ describe("Me cards", () => {
     expect(field.value).toBe("");
   });
 
+  it("never keeps a quick note that looks like a patient detail", () => {
+    // Final review (7 Oct 2026): the note was written to the device as typed, with no patient-detail check.
+    render(<MyDayDashboard {...props({ page: "me" })} />);
+    const field = screen.getByTestId("my-day-quick-note") as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: "Ring pharmacy" } });
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Ring pharmacy");
+    fireEvent.change(field, { target: { value: "Ring pharmacy about Mrs Smith bed 4" } });
+    expect(field.value).toBe("Ring pharmacy about Mrs Smith bed 4");
+    expect(screen.getByTestId("my-day-quick-note-problem").textContent).toContain("Not saved");
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Ring pharmacy");
+    fireEvent.change(field, { target: { value: "Ring pharmacy about the \u041Cr Smith letter" } });
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Ring pharmacy");
+    fireEvent.change(field, { target: { value: "Ring pharmacy on Monday" } });
+    expect(screen.queryByTestId("my-day-quick-note-problem")).toBeNull();
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Ring pharmacy on Monday");
+  });
+
   it("never sends the quick note anywhere", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);

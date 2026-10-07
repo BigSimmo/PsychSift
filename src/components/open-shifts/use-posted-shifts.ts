@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
 import { fetchRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { setOpenShiftsIsPoster } from "@/lib/teaching/page-visibility";
 import { useOnlineStatus } from "@/lib/use-online-status";
@@ -85,6 +86,9 @@ async function loadTeam(team: RosterTeam): Promise<{ shifts: PostedShift[]; team
 export function usePostedShifts(): PostedShiftsState {
   const online = useOnlineStatus();
   const teams = useRosterTeams();
+  // With example data on, the example team's manager side shows here as it does in Roster's Manage team,
+  // so the poster's screens are not a dead end. Its answers are example receipts: nothing is saved.
+  const example = useSignedOutSample("rost");
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
@@ -96,8 +100,10 @@ export function usePostedShifts(): PostedShiftsState {
 
   const managed = useMemo(
     () =>
-      teams.data?.sample ? [] : (teams.data?.teams ?? []).filter((team) => team.enabled && team.role === "manager"),
-    [teams.data],
+      teams.data?.sample && !example
+        ? []
+        : (teams.data?.teams ?? []).filter((team) => team.enabled && team.role === "manager"),
+    [teams.data, example],
   );
   const key = managed
     .map((team) => team.serviceId)

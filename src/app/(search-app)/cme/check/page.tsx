@@ -31,6 +31,7 @@ export default async function CmeYearCheckRoute({ searchParams }: { searchParams
       now={data.now}
       goalCount={data.goals.length}
       trainingPosition={data.trainingPosition}
+      demoMode={data.demoMode}
     />
   );
 }

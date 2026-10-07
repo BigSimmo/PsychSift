@@ -7,7 +7,12 @@ import {
   refereeRoleProblem,
 } from "@/lib/cme/applications";
 import { cpdHomeRowProblems, cpdHomeRows, reflectionsToLeaveOut, titlesToHoldBack } from "@/lib/cme/cpd-home-send";
-import { cpdTextLooksLikePatient, cpdTitleLooksLikePatient } from "@/lib/cme/patient-detail-check";
+import {
+  cpdTextLooksLikePatient,
+  cpdTextPatientProblem,
+  cpdTitleLooksLikePatient,
+  cpdTitlePatientProblem,
+} from "@/lib/cme/patient-detail-check";
 import type { CmeEntry } from "@/lib/cme/types";
 import { answerAgreementQuestion } from "@/lib/work-profile/agreement-answers";
 
@@ -141,4 +146,24 @@ describe("Ask the agreement, on the shared check", () => {
       expect(answerAgreementQuestion(question, { thisYear: 2026 }).kind).not.toBe("patient");
     },
   );
+});
+
+describe("CPD form messages follow the CPD reading", () => {
+  it("lets a speaker's title and a recent date through a title, as the CPD reading does", () => {
+    for (const title of ["Dr J Smith lecture", "Peer review 12/09/2026", "Prof Lowe on lithium"]) {
+      expect(cpdTitleLooksLikePatient(title, 2026)).toBe(false);
+      expect(cpdTitlePatientProblem(title, 2026)).toBeNull();
+    }
+  });
+
+  it("names the finding in words when a title or note holds a patient detail", () => {
+    const title = cpdTitlePatientProblem("Discuss URN 1234567", 2026);
+    expect(title?.title).toMatch(/record number/);
+    expect(title?.suggestion).toBeNull();
+    // A shape only the CPD layer catches still gets a plain message.
+    const note = cpdTextPatientProblem("Saw John Smith, 45 with low mood", 2026);
+    expect(cpdTextLooksLikePatient("Saw John Smith, 45 with low mood", 2026)).toBe(true);
+    expect(note?.title).toBeTruthy();
+    expect(cpdTextPatientProblem("Reflected on handover structure", 2026)).toBeNull();
+  });
 });

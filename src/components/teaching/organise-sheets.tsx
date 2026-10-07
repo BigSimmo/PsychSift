@@ -28,6 +28,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import {
   changeReasons,
   memberLabel,
@@ -234,6 +235,11 @@ export function SeriesSheet({
     const minutes = Number(form.minutes);
     if (form.title.trim().length < 3 || !form.firstDate) {
       setError("Give the series a title and a first date.");
+      return;
+    }
+    // The title is stored and sent to every member, so the shared patient-detail check reads it first.
+    if (checkPatientDetail(form.title, { allowCapitals: true })) {
+      setError("Take out the patient details from the title to save the series.");
       return;
     }
     if (!Number.isInteger(minutes) || minutes < 10 || minutes > 480) {

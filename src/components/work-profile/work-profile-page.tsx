@@ -1,6 +1,20 @@
 "use client";
 
-import { BriefcaseBusiness, Check, ChevronLeft, CloudOff, Lock, MapPin, TriangleAlert, UserRound } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Check,
+  ChevronLeft,
+  Cloud,
+  CloudOff,
+  FileText,
+  Lock,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Smartphone,
+  TriangleAlert,
+  UserRound,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -202,6 +216,61 @@ function SignedOutBody() {
             }
           />
         ))}
+      </WorkProfileSection>
+      <AccountSetupDialog open={open} onClose={() => setOpen(false)} />
+    </div>
+  );
+}
+
+/**
+ * Privacy for a signed-out visitor (More's "Privacy" link): what is kept where, read-only, so the link is
+ * never a dead end before signing in. The same facts as the signed-in Privacy tab, without its switches.
+ */
+function SignedOutPrivacy() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="grid gap-6" data-testid="work-profile-signed-out-privacy">
+      <WorkProfileNote
+        icon={Lock}
+        title="Signed out. Nothing is saved for you yet"
+        action={
+          <Button variant="primary" onClick={() => setOpen(true)}>
+            Sign in
+          </Button>
+        }
+      >
+        Once you sign in, this is where you choose what is kept and clear it.
+      </WorkProfileNote>
+      <WorkProfileSection label="Where your work is kept">
+        <WorkProfileRow
+          icon={Cloud}
+          title="Your account"
+          subtitle="Your stage, roster, CPD, teaching, reminders, renewal dates"
+        />
+        <WorkProfileRow
+          icon={Smartphone}
+          title="Only this phone"
+          subtitle="Credential numbers, On Call checklist ticks, My Day note, pins and recent pages"
+        />
+      </WorkProfileSection>
+      <WorkProfileNote icon={ShieldCheck} title="Patient labels stay on this phone">
+        Cleared 12 hours after the first label of the shift, when you sign out or your session ends, and before anyone
+        else signs in here.
+      </WorkProfileNote>
+      <WorkProfileSection label="Searches">
+        <WorkProfileRow
+          icon={Search}
+          title="Recent searches"
+          subtitle="Kept only in this browser tab, never on your account. Anything that looks like a patient detail is never kept."
+        />
+      </WorkProfileSection>
+      <WorkProfileSection label="More">
+        <WorkProfileRow
+          icon={FileText}
+          title="Privacy policy"
+          subtitle="How PsychSift handles your data"
+          href="/privacy"
+        />
       </WorkProfileSection>
       <AccountSetupDialog open={open} onClose={() => setOpen(false)} />
     </div>
@@ -474,7 +543,7 @@ export function WorkProfilePage() {
       {signedOut ? (
         <>
           <StatusLine status={{ kind: "signed-out" }} onRetry={() => undefined} />
-          <SignedOutBody />
+          {tab === "privacy" ? <SignedOutPrivacy /> : <SignedOutBody />}
         </>
       ) : null}
 
