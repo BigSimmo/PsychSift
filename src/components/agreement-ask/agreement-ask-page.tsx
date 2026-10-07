@@ -89,7 +89,7 @@ export function AgreementAskPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const answerHeadingRef = useRef<HTMLHeadingElement>(null);
   const copiedTimer = useRef<number | null>(null);
-  const deepLinkRead = useRef(false);
+  const deepLinkRead = useRef<string | null>(null);
   const warnId = useId();
 
   const source = useMemo(() => agreementSource(), []);
@@ -125,12 +125,14 @@ export function AgreementAskPage() {
     );
   }, []);
 
-  // A deep link opens a topic or a clause. Fixed ids only; any other parameter is ignored.
+  // A deep link opens a topic or a clause. Fixed ids only; any other parameter is ignored. The last
+  // link read is remembered, so following a new one while on the page opens it too.
   useEffect(() => {
-    if (deepLinkRead.current) return;
-    deepLinkRead.current = true;
     const topic = searchParams.get("topic");
     const clause = searchParams.get("clause");
+    const key = `${topic ?? ""}|${clause ?? ""}`;
+    if (deepLinkRead.current === key) return;
+    deepLinkRead.current = key;
     if (isAgreementTopicId(topic)) {
       const next = answerAgreementTopic(topic);
       // Deferred a tick so the heading exists before it takes focus.

@@ -278,6 +278,30 @@ describe("Ask the agreement page", () => {
     expect(field().value).toBe("");
   });
 
+  it("a second deep link followed while on the page opens too", async () => {
+    nav.search = "topic=rest-after-nights";
+    const { rerender } = render(<AgreementAskPage />);
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByTestId("agreement-topic-rest-after-nights")).toBeTruthy();
+    nav.search = "topic=nights-in-a-row";
+    rerender(<AgreementAskPage />);
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByTestId("agreement-topic-nights-in-a-row")).toBeTruthy();
+    // The same link again, after the address was cleared, opens again too.
+    nav.search = "";
+    rerender(<AgreementAskPage />);
+    nav.search = "clause=15(4)(a)";
+    rerender(<AgreementAskPage />);
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(within(screen.getByTestId("agreement-clause-sheet")).getByText("Clause 15(4)(a)")).toBeTruthy();
+  });
+
   it("asking a new question clears a deep link from the address", () => {
     nav.search = "topic=shift-length";
     render(<AgreementAskPage />);
