@@ -1,15 +1,26 @@
 import type { LucideIcon } from "lucide-react";
 
+import type { AppModeId } from "@/lib/app-modes";
 import type { FavouriteContentType } from "@/lib/favourites-client-contract";
 
 /**
  * Pure logic behind the Favourites page: what is in the list, how it is grouped,
- * what Continue and Quick launch show, and the one-line summary under the title.
+ * what Continue and the My Day pins show, and the one-line summary under the title.
  * Kept free of React so every ordering rule can be pinned by a plain unit test.
  */
 
 export type FavouriteType =
-  "Medication" | "Document" | "Table" | "Saved search" | "Source" | "Service" | "Form" | "Differential" | "Therapy";
+  | "Medication"
+  | "Document"
+  | "Table"
+  | "Saved search"
+  | "Source"
+  | "Service"
+  | "Form"
+  | "Differential"
+  | "Therapy"
+  | "Work page"
+  | "Number";
 
 export type FavouriteItem = {
   id: string;
@@ -28,7 +39,7 @@ export type FavouriteItem = {
   href: string;
   icon: LucideIcon;
   pinned?: boolean;
-  /** Epoch ms the item joined Quick launch, used to keep tiles in pin order. */
+  /** Epoch ms the item was pinned to My Day, used to keep tiles in pin order. */
   pinnedAt?: number | null;
   contentType?: FavouriteContentType;
   contentKey?: string;
@@ -36,7 +47,30 @@ export type FavouriteItem = {
   sortOrder?: number;
   /** A demo-mode fixture, not something this clinician saved. Shown with an "Example" tag. */
   example?: boolean;
+  /** A short name for a shelf tile, when the title is long ("Month" for "Roster"). */
+  shortTitle?: string;
+  /** Set on a saved work page: its key in the device store (`work-page-stars.ts`). */
+  workKey?: string;
+  /** The work area a saved work page belongs to, shown in place of a type. */
+  areaName?: string;
+  /** The palette its icon wears: the work area's colour for a work page. */
+  identity?: AppModeId;
+  /** Epoch ms it was saved, used to order never-opened items. */
+  savedAt?: number;
+  /** Set on a saved phone number: its id in the device store (`favourites-local.ts`). */
+  numberId?: string;
+  /** A saved number as typed, shown in Geist Mono. */
+  phone?: string;
+  /** The person's own note for this favourite, kept on this phone. */
+  note?: string;
+  /** The item's own title, kept when the person renamed it. */
+  originalTitle?: string;
 };
+
+/** Which side of Favourites an item sits on. Work pages and saved numbers are Work. */
+export function favouriteScopeOf(item: Pick<FavouriteItem, "type">): "clinical" | "work" {
+  return item.type === "Work page" || item.type === "Number" ? "work" : "clinical";
+}
 
 export type FavouritesView = "recent" | "az" | "type" | "order";
 
@@ -53,6 +87,7 @@ export type FavouriteSetChip = {
 };
 
 export const UNSORTED_SET_NAME = "Unsorted";
+/** How many favourites can be pinned to My Day at once, clinical and work pages together. */
 export const QUICK_LAUNCH_LIMIT = 4;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -69,6 +104,8 @@ const typeOrder: readonly FavouriteType[] = [
   "Table",
   "Source",
   "Saved search",
+  "Work page",
+  "Number",
 ];
 
 const typeGroupLabel: Record<FavouriteType, string> = {
@@ -81,6 +118,8 @@ const typeGroupLabel: Record<FavouriteType, string> = {
   Form: "Forms",
   Differential: "Differentials",
   Therapy: "Therapies",
+  "Work page": "Work pages",
+  Number: "Numbers",
 };
 
 export function isSourceBacked(item: FavouriteItem): boolean {
@@ -90,9 +129,16 @@ export function isSourceBacked(item: FavouriteItem): boolean {
 export function matchesFavouriteSearch(item: FavouriteItem, searchTerm: string): boolean {
   const term = searchTerm.trim().toLowerCase();
   if (!term) return true;
-  return [item.title, item.description, item.type, item.set, item.evidence].some((field) =>
-    field.toLowerCase().includes(term),
-  );
+  return [
+    item.title,
+    item.description,
+    item.type,
+    item.set,
+    item.evidence,
+    item.note ?? "",
+    item.phone ?? "",
+    item.originalTitle ?? "",
+  ].some((field) => field.toLowerCase().includes(term));
 }
 
 function byTitle(first: FavouriteItem, second: FavouriteItem) {
@@ -197,23 +243,10 @@ export function quickLaunchHasRoom(items: readonly FavouriteItem[]): boolean {
   return items.filter((item) => item.pinned).length < QUICK_LAUNCH_LIMIT;
 }
 
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
-
-/** The single summary line under the page title. */
-export function favouritesSummary({
-  itemCount,
-  setCount,
-  quickLaunchCount,
-}: {
-  itemCount: number;
-  setCount: number;
-  quickLaunchCount: number;
-}): string {
+/** The single summary line under the page title, for example "11 saved · 2 pinned". */
+export function favouritesSummary({ itemCount, pinnedCount }: { itemCount: number; pinnedCount: number }): string {
   const parts = [`${itemCount} saved`];
-  if (setCount > 0) parts.push(plural(setCount, "set", "sets"));
-  if (quickLaunchCount > 0) parts.push(`${quickLaunchCount} in quick launch`);
+  if (pinnedCount > 0) parts.push(`${pinnedCount} pinned`);
   return parts.join(" · ");
 }
 
@@ -289,4 +322,38 @@ export function moveEntry<T>(items: readonly T[], from: number, to: number): T[]
   if (moved === undefined) return next;
   next.splice(to, 0, moved);
   return next;
+}
+
+/** How many tiles the Favourites shelf shows, on My Day and on the Favourites page. */
+export const SHELF_LIMIT = 8;
+
+/**
+ * The Favourites shelf: pinned items first, in the order they were pinned,
+ * then whatever was opened most recently, then the newest saved. One rule for
+ * both places it is drawn, so My Day and Favourites always agree.
+ */
+export function shelfItems(
+  items: readonly FavouriteItem[],
+  limit: number = SHELF_LIMIT,
+  /** Item ids in the order the person arranged their pins. Unlisted pins follow, oldest first. */
+  pinOrder: readonly string[] = [],
+): FavouriteItem[] {
+  const rank = new Map(pinOrder.map((id, index) => [id, index]));
+  const pinned = items
+    .filter((item) => item.pinned)
+    .sort(
+      (first, second) =>
+        (rank.get(first.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(second.id) ?? Number.MAX_SAFE_INTEGER) ||
+        (first.pinnedAt ?? Number.MAX_SAFE_INTEGER) - (second.pinnedAt ?? Number.MAX_SAFE_INTEGER) ||
+        byTitle(first, second),
+    );
+  const rest = items
+    .filter((item) => !item.pinned)
+    .sort(
+      (first, second) =>
+        (second.openedAt ?? 0) - (first.openedAt ?? 0) ||
+        (second.savedAt ?? 0) - (first.savedAt ?? 0) ||
+        byTitle(first, second),
+    );
+  return [...pinned, ...rest].slice(0, Math.max(0, limit));
 }
