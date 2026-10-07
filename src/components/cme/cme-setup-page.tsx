@@ -5,9 +5,6 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { CmeDateField, useCmeDateChecks } from "@/components/cme/cme-date-field";
-import { CmeNavHeader } from "@/components/cme/cme-nav-header";
-import { cardSurface } from "@/components/card-recipes";
-import { InformationPageShell } from "@/components/information-page-shell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { TextField } from "@/components/ui/text-field";
@@ -32,7 +29,8 @@ import {
   type CmeRequirementSet,
   type CmeRequirementSpec,
 } from "@/lib/cme/types";
-import { cmePageTitle } from "@/components/cme/cme-page-frame";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
+import { WorkBody } from "@/components/mode-kit/work";
 
 function replaceRequirement(
   set: CmeRequirementSet,
@@ -196,17 +194,21 @@ export function CmeSetupPage({
     }));
   }
 
+  useModeBandHeading({
+    eyebrow: set ? `${targetYear} · editing targets` : `${targetYear} · first time`,
+    title: "Targets",
+  });
+
   return (
-    <>
-      <CmeNavHeader title="Set up" />
-      <InformationPageShell testId="cme-setup-page">
-        <h1 className={cmePageTitle}>Your CPD home for {targetYear}</h1>
+    <main data-testid="cme-setup-page" data-mode-identity="cme" className="w-full">
+      <WorkBody>
+        <h1 className="m-0 text-lg font-semibold text-[color:var(--text-heading)]">Your CPD home for {targetYear}</h1>
         <p className={cn(textMuted, "text-sm leading-relaxed")}>
           Choose the programme you use, then check and confirm its targets against your current guide. These are your
           own confirmed numbers, not targets looked up by the app.
         </p>
 
-        <fieldset className={cn(cardSurface, "space-y-2 p-4")} data-testid="cme-home-choices">
+        <fieldset className={"work-card work-card--pad space-y-2"} data-testid="cme-home-choices">
           <legend className="sr-only">Your CPD home</legend>
           {(
             [
@@ -243,7 +245,7 @@ export function CmeSetupPage({
         </fieldset>
 
         {home.kind === "ranzcp" ? (
-          <section data-testid="cme-setup-preset" className={cn(cardSurface, "p-4")}>
+          <section data-testid="cme-setup-preset" className={"work-card work-card--pad"}>
             <p className="text-sm font-semibold text-[color:var(--text-heading)]">
               Starting preset: {describeConfirmedSource(CME_PRESET_VERSION)}
             </p>
@@ -367,7 +369,7 @@ export function CmeSetupPage({
               {draft.requirements.map((requirement) => (
                 <div
                   key={requirement.id}
-                  className={cn(cardSurface, "space-y-3 p-4")}
+                  className={"work-card work-card--pad space-y-3"}
                   id={`cme-requirement-${requirement.id}`}
                   data-testid={`cme-requirement-${requirement.id}`}
                 >
@@ -609,7 +611,7 @@ export function CmeSetupPage({
         >
           Set up your routines
         </Link>
-      </InformationPageShell>
-    </>
+      </WorkBody>
+    </main>
   );
 }
