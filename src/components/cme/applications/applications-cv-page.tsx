@@ -64,6 +64,7 @@ import type { SupervisionPairingView, TeachRead } from "@/lib/teaching/depth-mod
 import type { LogbookRow } from "@/lib/teaching/model";
 import { sampleTermTracker } from "@/lib/teaching/term-tracker";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 /** The page's parent, where its link lives. */
 const CV_BACK: CpdFeatureBack = { href: "/cme/applications", label: "Job applications" };
@@ -479,6 +480,8 @@ export function ApplicationsCvPage({
         <WorkButton
           icon={Printer}
           onClick={() => {
+            // Example records never leave the app, printed included.
+            if (!guardExampleAction(demoMode, "export")) return;
             if (plain.heldBackCount)
               notify(
                 `${plain.heldBackCount} ${plain.heldBackCount === 1 ? "line" : "lines"} left out of the PDF, the title looks like a patient detail`,

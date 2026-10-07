@@ -27,6 +27,7 @@ import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 /**
  * Credential pack: the doctor's registration numbers (from the wallet on this
@@ -70,6 +71,7 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function copy() {
+    if (!guardExampleAction(state.sample, "copy")) return;
     void copyTextToClipboard(text).then(
       () => setSendState("copied"),
       () => setSendState("failed"),
@@ -77,6 +79,7 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function share() {
+    if (!guardExampleAction(state.sample, "share")) return;
     navigator.share({ title: "Credential pack", text }).then(
       () => setSendState("idle"),
       (error: unknown) => {
@@ -231,7 +234,9 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
               <WorkButton
                 variant="primary"
                 icon={FileDown}
-                onClick={() => window.print()}
+                onClick={() => {
+                  if (guardExampleAction(state.sample, "export")) window.print();
+                }}
                 disabled={nothingIncluded}
                 testId="admin-credential-pack-pdf"
               >

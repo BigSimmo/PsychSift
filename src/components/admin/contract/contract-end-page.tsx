@@ -72,6 +72,7 @@ import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 type Undo = { id: number; label: string; run: () => Promise<void> };
 type SheetName = "add" | "edit" | "ask" | "renew" | null;
@@ -365,6 +366,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function downloadCalendar() {
+    if (!guardExampleAction(state.sample, "export")) return;
     if (!entry) return;
     const file = contractCalendarFile(entry, now);
     if (file) downloadTextFile(file, "contract-end.ics", "text/calendar");

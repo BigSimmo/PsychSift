@@ -31,6 +31,7 @@ import {
   type FirstWeekSectionId,
 } from "@/lib/on-call/first-week-pack";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 /** Undo stays on screen for 10 seconds, the app's standard for a reversible change. */
 const UNDO_MS = 10_000;
@@ -174,6 +175,8 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
     say("Read marks cleared", () => pack.restore(previous));
   };
   const saveCalendar = () => {
+    // The made-up sample hospital's first week never leaves the app.
+    if (!guardExampleAction(pack.sample, "export")) return;
     if (phase.kind === "no-date") return;
     const ics = firstWeekCalendarIcs({ startsOn: phase.startsOn, hospitalName, now: new Date(), reminders });
     if (!ics) return;

@@ -28,6 +28,7 @@ import {
   type OnCallHandoverHeading,
   type OnCallHandoverPatient,
 } from "@/lib/on-call/handover";
+import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 
 /*
  * THE TABLE: a shift header, one table with the patient column frozen, what
@@ -424,6 +425,15 @@ export function OnCallHandoverTable({
 
   const send = useCallback(async () => {
     setChecking(false);
+    // Example records never leave the app. A doctor's own handover is never
+    // blocked: only a list holding example records is.
+    if (
+      !guardExampleAction(
+        patients.some((patient) => isExampleRecord(patient)),
+        "send",
+      )
+    )
+      return;
     if (destination === "print") {
       window.requestAnimationFrame(() => window.print());
       return;

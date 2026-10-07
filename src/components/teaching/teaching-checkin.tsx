@@ -30,6 +30,8 @@ import { checkinScanPath } from "@/lib/teaching/checkin-token";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
 import type { CheckinCode, CheckinStream } from "@/lib/teaching/model";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /*
  * The presenter's code screen (spec §9, review focus 3): the QR and its six
@@ -100,6 +102,7 @@ function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"copied" | "failed" | null>(null);
+  const { active: example } = useExampleData("teach");
   const serviceUrl = teachingServiceUrl(detail.serviceId);
   const code = useCheckinCode<CheckinCode>(
     teachingServiceUrl(detail.serviceId, { action: "checkin.code", occurrenceId: detail.occurrenceId, stream }),
@@ -115,6 +118,7 @@ function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number
   const sharedUrl = shared ? new URL(shared.path, window.location.origin).toString() : null;
 
   async function copyLink() {
+    if (!guardExampleAction(example, "copy")) return;
     if (!sharedUrl) return;
     try {
       await navigator.clipboard.writeText(sharedUrl);
@@ -125,6 +129,7 @@ function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number
   }
 
   async function shareLink() {
+    if (!guardExampleAction(example, "share")) return;
     if (!sharedUrl) return;
     try {
       await navigator.share({ title: detail.title, url: sharedUrl });

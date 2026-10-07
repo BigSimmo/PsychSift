@@ -27,6 +27,7 @@ import {
   upcomingLearningItems,
 } from "@/lib/cme/learning-directory-view";
 import type { LearningDirectoryItem } from "@/lib/cme/learning-directory";
+import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 
 const KIND_LABEL: Record<LearningDirectoryItem["kind"], string> = {
   course: "Course",
@@ -75,6 +76,8 @@ function whenWhereCost(item: LearningDirectoryItem, today: string): string {
 }
 
 function downloadCalendarEvent(item: LearningDirectoryItem): void {
+  // An example course never leaves the app; the real course directory is public information.
+  if (isExampleRecord(item) && !guardExampleAction(true, "export")) return;
   const ics = learningCalendarEventIcs(item);
   if (!ics) return;
   const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));

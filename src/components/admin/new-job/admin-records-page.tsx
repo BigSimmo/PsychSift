@@ -25,6 +25,7 @@ import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 /** A group longer than this folds behind "Show all N". */
 const RECORDS_PREVIEW_ROWS = 6;
@@ -112,6 +113,7 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
   }, []);
 
   function copy() {
+    if (!guardExampleAction(state.sample, "copy")) return;
     void copyTextToClipboard(adminRecordsText(sections, now)).then(
       () => setCopyState("copied"),
       () => setCopyState("failed"),
@@ -119,6 +121,7 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function print() {
+    if (!guardExampleAction(state.sample, "export")) return;
     flushSync(() => setPrintAll(true));
     window.print();
   }

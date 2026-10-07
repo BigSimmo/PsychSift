@@ -56,6 +56,7 @@ import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 type CatalogueItem = (typeof ADMIN_REQUIREMENTS_CATALOGUE)[number];
 type RenewSubject = { entry: OnCallEntry | null; createItem?: CatalogueItem };
@@ -324,6 +325,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   async function copyForWorkforce() {
+    if (!guardExampleAction(state.demoMode, "copy")) return;
     const text = workforceCopyText(own, now);
     try {
       await copyTextToClipboard(text);
@@ -336,6 +338,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function downloadAll() {
+    if (!guardExampleAction(state.demoMode, "export")) return;
     if (calendarFile) downloadTextFile(calendarFile, "renewals.ics", "text/calendar;charset=utf-8");
   }
 

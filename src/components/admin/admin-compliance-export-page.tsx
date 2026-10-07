@@ -39,6 +39,7 @@ import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { buildXlsx, XLSX_MIME } from "@/lib/admin/xlsx-lite";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 /** The columns a reader can drop. Item (column 0) always stays, so every row still names its requirement. */
 const OPTIONAL_COLUMNS = COMPLIANCE_EXPORT_HEADER.slice(1);
@@ -101,6 +102,8 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
   }
 
   function save() {
+    // Example records never leave the app (the local demo build keeps its labelled demo export).
+    if (!guardExampleAction(state.sample, "export")) return;
     const bytes = buildXlsx([
       { name: "Items", rows: selection, widths: header.map((name) => WIDTHS[name] ?? 18) },
       {

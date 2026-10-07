@@ -541,6 +541,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               today={today}
               exportName="Roster"
               testId="roster-shifts-month"
+              exampleArea="rost"
               onMonthChange={setMonth}
             />
           </div>

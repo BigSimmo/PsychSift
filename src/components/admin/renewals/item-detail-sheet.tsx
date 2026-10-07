@@ -18,6 +18,8 @@ import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { complianceExpiresOn, complianceIssuerCheckedOn, entryNotForThisJob } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 export type ChecklistItemSubject =
   | { readonly kind: "catalogue"; readonly item: AdminRequirementCatalogueItem; readonly entry: OnCallEntry | null }
@@ -60,6 +62,8 @@ export function ChecklistItemDetailSheet({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Example records never leave the app, a calendar file included.
+  const { active: adminExample } = useExampleData("admin");
   const open = subject !== null;
   const item = subject?.kind === "catalogue" ? subject.item : undefined;
   const entry = subject?.entry ?? null;
@@ -128,6 +132,7 @@ export function ChecklistItemDetailSheet({
   }
 
   function addToCalendar() {
+    if (!guardExampleAction(adminExample, "export")) return;
     if (!entry) return;
     const event = renewalCalendarEvent(entry, now);
     if (!event) return;

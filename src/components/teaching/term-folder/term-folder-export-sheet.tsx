@@ -16,6 +16,8 @@ import {
   type FolderExportOptions,
   type TermFolder,
 } from "@/lib/teaching/term-folder";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /*
  * Export the term folder (mock-up nf_teach_accExport): choose what goes in, names off by default, and the gaps
@@ -76,6 +78,7 @@ export function TermFolderExportSheet({
   onExported: () => void;
 }) {
   const [options, setOptions] = useState<FolderExportOptions>(FOLDER_EXPORT_DEFAULTS);
+  const { active: example } = useExampleData("teach");
   const toggle = (key: keyof FolderExportOptions) => setOptions((o) => ({ ...o, [key]: !o[key] }));
   const gaps = folderGaps(folder);
   return (
@@ -138,7 +141,14 @@ export function TermFolderExportSheet({
           download={termFolderFileName(folder, demoMode)}
           // The download starts from this tap first. The sheet closes on the next tick, so the link is still on
           // the page when the browser acts on it (a detached link can lose its download in some browsers).
-          onClick={() => window.setTimeout(onExported, 0)}
+          onClick={(event) => {
+            // Example records never leave the app.
+            if (!guardExampleAction(example, "export")) {
+              event.preventDefault();
+              return;
+            }
+            window.setTimeout(onExported, 0);
+          }}
           className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
           data-testid="term-folder-csv"
         >

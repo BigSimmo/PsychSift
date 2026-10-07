@@ -56,7 +56,13 @@ export function OnCallCalendarPage({ now: nowProp }: { now?: Date } = {}) {
         ) : isOffline && entries.length === 0 ? (
           <OnCallLoadFailed reason={loadError} onRetry={retry} />
         ) : (
-          <CalendarView events={events} today={today} exportName="On Call" testId="on-call-calendar-view" />
+          <CalendarView
+            events={events}
+            today={today}
+            exportName="On Call"
+            testId="on-call-calendar-view"
+            exampleArea="call"
+          />
         )}
         <CalendarSubscribe testId="on-call-calendar-subscribe" />
         <ModeGroupedList testId="on-call-calendar-shifts">

@@ -1138,12 +1138,15 @@ function StepNumber({ n }: { readonly n: number }) {
 
 function ShareButton({ name, text }: { readonly name: string; readonly text: string }) {
   const file = useMemo(() => canShareFile(name, text), [name, text]);
+  const example = useExampleData("cpd").active;
   if (!file) return null;
   return (
     <Button
       size="sm"
       icon={Share2}
       onClick={async () => {
+        // Example records never leave the app.
+        if (!guardExampleAction(example, "share")) return;
         try {
           await navigator.share({ files: [file], title: name });
         } catch {
