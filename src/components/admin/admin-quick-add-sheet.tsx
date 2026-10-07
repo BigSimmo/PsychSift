@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
-import { Sheet } from "@/components/ui/sheet";
+import { AdminSheet } from "@/components/admin/admin-kit";
+import { WorkButton } from "@/components/mode-kit/work";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
@@ -131,7 +131,7 @@ export function AdminQuickAddSheet({
   }
 
   return (
-    <Sheet
+    <AdminSheet
       open={open}
       onClose={onClose}
       title="Add a renewal"
@@ -139,16 +139,15 @@ export function AdminQuickAddSheet({
       footer={
         <div className="grid gap-2">
           {error ? <InlineNotice tone="neutral">{error}</InlineNotice> : null}
-          <Button
+          <WorkButton
             variant="primary"
-            block
-            busy={busy}
-            disabled={!canSave}
+            size="wide"
             onClick={() => void save()}
             testId="admin-quick-add-save"
+            disabled={busy || !canSave}
           >
             Save
-          </Button>
+          </WorkButton>
         </div>
       }
     >
@@ -219,6 +218,6 @@ export function AdminQuickAddSheet({
           ) : null}
         </div>
       </div>
-    </Sheet>
+    </AdminSheet>
   );
 }

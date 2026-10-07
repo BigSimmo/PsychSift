@@ -1,24 +1,23 @@
 "use client";
 
-import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import { ChevronRight, ClipboardList, PenLine } from "lucide-react";
-import Link from "next/link";
+import { CalendarClock, CalendarPlus, ClipboardList, FileSpreadsheet, LogIn } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { AdminNote, AdminPage, AdminRow, AdminSection, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
-import { AdminRuleToConfirm, AdminStatusWord } from "@/components/admin/admin-status-word";
-import { focusRing } from "@/components/card-recipes";
+import {
+  AdminRuleToConfirm,
+  AdminStatusIcon,
+  AdminStatusShape,
+  AdminStatusTag,
+} from "@/components/admin/admin-status-tag";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
-import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
-import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeInsetHairline, modeModuleSurface, modePressable } from "@/components/mode-kit/recipes";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
-import { Button, buttonFaceClass } from "@/components/ui/button";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { WorkButton, WorkCard, WorkChip, WorkDock, WorkEmpty, WorkIconCircle } from "@/components/mode-kit/work";
 import {
   buildComplianceOverview,
+  COMPLIANCE_BUCKET_LABELS,
   COMPLIANCE_BUCKETS,
   complianceDateLine,
   complianceFilterChips,
@@ -38,87 +37,89 @@ import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 
+const RECORD_DATES_HREF = `${ADMIN_PAGE_HREFS.renewals}?record=missing`;
+
 /** Each item opens on Renewals, where its dates are recorded and edited, so there is one editor. */
 function itemHref(itemId: string): string {
   return `${ADMIN_PAGE_HREFS.renewals}?item=${encodeURIComponent(itemId)}`;
 }
 
 /**
- * The recorded share as one ring: the accent arc is what is recorded, the
- * track is the rest. A count, never a percentage or a verdict.
+ * The recorded share as one ring in Admin's slate: the arc is what is
+ * recorded, the track the rest. A count, never a percentage or a verdict, and
+ * spoken as words.
  */
 function RecordedRing({ recorded, total }: { readonly recorded: number; readonly total: number }) {
-  const radius = 26;
+  const radius = 37;
   const circumference = 2 * Math.PI * radius;
   const share = total > 0 ? recorded / total : 0;
   return (
-    <span className="relative inline-flex size-20 shrink-0 items-center justify-center">
-      <svg aria-hidden="true" viewBox="0 0 64 64" className="absolute inset-0 size-full -rotate-90">
-        <circle cx="32" cy="32" r={radius} fill="none" strokeWidth="6" className="stroke-[color:var(--border)]" />
+    <span className={adminStyles.ring} role="img" aria-label={`${recorded} of ${total} recorded`}>
+      <svg aria-hidden="true" viewBox="0 0 84 84" width="100%" height="100%">
+        <circle cx="42" cy="42" r={radius} fill="none" strokeWidth="7" className={adminStyles.ringTrack} />
         <circle
-          cx="32"
-          cy="32"
+          cx="42"
+          cy="42"
           r={radius}
           fill="none"
-          strokeWidth="6"
+          strokeWidth="7"
           strokeLinecap="round"
-          strokeDasharray={`${share * circumference} ${circumference}`}
-          className="stroke-[color:var(--clinical-accent)]"
+          strokeDasharray={`${(share * circumference).toFixed(1)} ${circumference.toFixed(1)}`}
+          className={adminStyles.ringValue}
         />
       </svg>
-      <span className="relative grid justify-items-center leading-none">
-        <span className="nums text-xl font-semibold text-[color:var(--text-heading)]">{recorded}</span>
-        <span className={cn(textMuted, "nums text-xs")}>{`of ${total}`}</span>
+      <span aria-hidden="true">
+        <span className={adminStyles.ringFigure}>{recorded}</span>
+        <span className={adminStyles.ringLabel}>{`of ${total}`}</span>
       </span>
     </span>
   );
 }
 
 /**
- * The summary (mock-up v2, screen 8): an eyebrow naming the next start date
- * when one is recorded, the ring with its four-status legend beside it, then
- * one plain sentence. The legend is a key, not a set of buttons: the chips
- * below the actions filter.
+ * The summary (work-mode redesign, owner request 6 Oct 2026): the ring beside
+ * a four-row legend (shape, word, count), then one plain sentence. The legend
+ * is a key, not a set of buttons: the chips below filter.
  */
 function SummaryCard({ overview }: { readonly overview: ComplianceOverview }) {
   const recorded = overview.total - overview.counts["not-recorded"];
   const startsOn = overview.nextJob?.startsOn;
   return (
-    <section aria-labelledby="admin-compliance-summary-heading" className={cn(modeModuleSurface, "grid gap-3 p-3")}>
-      <h2 id="admin-compliance-summary-heading" className={eyebrowText} data-testid="admin-compliance-summary-eyebrow">
-        {startsOn ? `Before your next job, ${formatDateEcho(startsOn)}` : "Your requirements"}
-      </h2>
-      <div className="flex min-w-0 items-center gap-4">
-        <RecordedRing recorded={recorded} total={overview.total} />
-        <ul role="list" aria-label="By status" className="grid min-w-0 flex-1 gap-1">
-          {COMPLIANCE_BUCKETS.map((bucket) => (
-            <li
-              key={bucket}
-              className="flex min-w-0 items-center justify-between gap-2"
-              data-testid={`admin-compliance-count-${bucket}`}
-            >
-              <AdminStatusWord bucket={bucket} className="whitespace-normal" />
-              <span className="nums text-sm font-medium text-[color:var(--text-heading)]">
-                {overview.counts[bucket]}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <p className="text-sm text-[color:var(--text)]" data-testid="admin-compliance-recorded">
-        <span className="font-medium text-[color:var(--text-heading)]">{`${recorded} of ${overview.total} recorded.`}</span>
-        {overview.notForThisJob.length > 0 ? ` ${overview.notForThisJob.length} not for this job.` : null}
-        {" Dates you entered, not a check."}
-      </p>
-    </section>
+    <AdminSection
+      label={
+        <span data-testid="admin-compliance-summary-eyebrow">
+          {startsOn ? `Before your next job, ${formatDateEcho(startsOn)}` : "Your requirements"}
+        </span>
+      }
+      labelId="admin-compliance-summary-heading"
+    >
+      <WorkCard padded>
+        <div className={adminStyles.ringRow}>
+          <RecordedRing recorded={recorded} total={overview.total} />
+          <ul role="list" aria-label="By status" className={adminStyles.legend}>
+            {COMPLIANCE_BUCKETS.map((bucket) => (
+              <li key={bucket} className={adminStyles.legendRow} data-testid={`admin-compliance-count-${bucket}`}>
+                <AdminStatusShape status={bucket} />
+                <span className="min-w-0 flex-1">{COMPLIANCE_BUCKET_LABELS[bucket]}</span>
+                <span className={adminStyles.legendCount}>{overview.counts[bucket]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="work-row__sub mt-3 mb-0" data-testid="admin-compliance-recorded">
+          <span className="work-row__title">{`${recorded} of ${overview.total} recorded.`}</span>
+          {overview.notForThisJob.length > 0 ? ` ${overview.notForThisJob.length} not for this job.` : null}
+          {" Dates you entered, not a check."}
+        </p>
+      </WorkCard>
+    </AdminSection>
   );
 }
 
 /**
  * What is still to do before the recorded start date, with the reason in
  * words, including dates that run out before the start (which no status word
- * shows). Kept from the live page although the mock-up drops it, because New
- * job's signpost points here and the reader must be able to see what it counts.
+ * shows). New job's signpost points here, so the reader can see what it counts.
  */
 function BeforeNextJob({ overview }: { readonly overview: ComplianceOverview }) {
   const pass = overview.nextJob;
@@ -128,57 +129,32 @@ function BeforeNextJob({ overview }: { readonly overview: ComplianceOverview }) 
   const endsBefore = pass.toDo.filter((todo) => todo.reason === "ends-before-start");
   const others = pass.toDo.length - endsBefore.length;
   return (
-    <section
-      aria-labelledby="admin-compliance-before-next-job-heading"
-      className="grid min-w-0 gap-2"
-      data-testid="admin-compliance-before-next-job"
+    <AdminSection
+      label={`To do before ${formatDateEcho(pass.startsOn)}`}
+      count={pass.toDo.length}
+      labelId="admin-compliance-before-next-job-heading"
+      testId="admin-compliance-before-next-job"
     >
-      <h2 id="admin-compliance-before-next-job-heading" className={cn(eyebrowText, "px-3")}>
-        {`To do before ${formatDateEcho(pass.startsOn)} · ${pass.toDo.length}`}
-      </h2>
       {endsBefore.length > 0 ? (
-        <ModeGroupedList testId="admin-compliance-before-next-job-list">
+        <WorkCard as="ul" testId="admin-compliance-before-next-job-list">
           {endsBefore.map((todo) => (
-            <ModeRow
+            <AdminRow
               key={todo.item.row.item.id}
+              lead={<WorkIconCircle icon={CalendarClock} tone="neutral" />}
               href={itemHref(todo.item.row.item.id)}
               title={todo.item.row.item.title}
-              subtitle={nextJobReasonText(todo)}
+              sub={nextJobReasonText(todo)}
               testId={`admin-compliance-todo-${todo.item.row.item.id}`}
             />
           ))}
-        </ModeGroupedList>
+        </WorkCard>
       ) : null}
       {others > 0 ? (
-        <p className={cn(textMuted, "px-3 text-sm")} data-testid="admin-compliance-before-next-job-others">
+        <p className="work-row__sub m-0 px-1" data-testid="admin-compliance-before-next-job-others">
           {`${endsBefore.length > 0 ? "And " : ""}${others} ${others === 1 ? "item" : "items"} with a date passed or not recorded yet, marked in the lists below.`}
         </p>
       ) : null}
-    </section>
-  );
-}
-
-/** The one filled button (record dates on Renewals) and the plain export row under it. */
-function Actions() {
-  return (
-    <div className="grid min-w-0 gap-3">
-      <Link
-        href={`${ADMIN_PAGE_HREFS.renewals}?record=missing`}
-        data-testid="admin-compliance-record-dates"
-        className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
-      >
-        <PenLine aria-hidden="true" className="size-icon-md shrink-0" />
-        <span>Record dates</span>
-      </Link>
-      <ModeGroupedList testId="admin-compliance-actions">
-        <ModeRow
-          href={ADMIN_PAGE_HREFS.complianceExport}
-          title="Export a copy for yourself"
-          subtitle="Excel, saved on this device"
-          testId="admin-compliance-export-link"
-        />
-      </ModeGroupedList>
-    </div>
+    </AdminSection>
   );
 }
 
@@ -192,66 +168,39 @@ function FilterChips({
   readonly onFilter: (filter: ComplianceFilter) => void;
 }) {
   return (
-    <div role="group" aria-label="Show" className="flex min-w-0 flex-wrap gap-2">
-      {complianceFilterChips(overview).map((chip) => {
-        const selected = chip.filter === filter;
-        return (
-          <button
-            key={chip.filter}
-            type="button"
-            aria-pressed={selected}
-            onClick={() => onFilter(chip.filter)}
-            data-testid={`admin-compliance-filter-${chip.filter}`}
-            className={cn(
-              focusRing,
-              modePressable,
-              "inline-flex min-h-12 items-center gap-1.5 rounded-full border px-3 text-sm",
-              selected
-                ? // forced-colors repaints every border the same colour, so the
-                  // chosen chip also gets a thicker one there.
-                  "border-[color:var(--text-heading)] font-medium text-[color:var(--text-heading)] forced-colors:border-2"
-                : "border-[color:var(--border)] text-[color:var(--text)]",
-            )}
-          >
-            {chip.label}
-            <span className="nums">{chip.count}</span>
-          </button>
-        );
-      })}
+    <div role="group" aria-label="Show" className="work-chips flex-wrap">
+      {complianceFilterChips(overview).map((chip) => (
+        <WorkChip
+          key={chip.filter}
+          selected={chip.filter === filter}
+          onClick={() => onFilter(chip.filter)}
+          count={chip.count}
+          testId={`admin-compliance-filter-${chip.filter}`}
+        >
+          {chip.label}
+        </WorkChip>
+      ))}
     </div>
   );
 }
 
-/** One row: the title, the status word first, the date the doctor typed, and the rule mark. */
+/** One row: the status icon, the title, the date the doctor typed, the status tag and the rule mark. */
 function ItemRow({ item, today }: { readonly item: ComplianceItem; readonly today: string }) {
   const dateLine = complianceDateLine(item, today);
   return (
-    <ModeRow
+    <AdminRow
+      lead={<AdminStatusIcon status={item.bucket} />}
       href={itemHref(item.row.item.id)}
       title={item.row.item.title}
-      subtitle={<AdminStatusWord bucket={item.bucket} testId={`admin-compliance-status-${item.row.item.id}`} />}
-      meta={
-        dateLine || item.ruleToConfirm ? (
-          <span className="grid justify-items-start gap-1 text-sm text-[color:var(--text-muted)]">
-            {dateLine ? <span>{dateLine}</span> : null}
-            {item.ruleToConfirm ? <AdminRuleToConfirm /> : null}
-          </span>
-        ) : undefined
+      sub={dateLine ? <span className="tabular-nums">{dateLine}</span> : undefined}
+      tags={
+        <>
+          <AdminStatusTag status={item.bucket} testId={`admin-compliance-status-${item.row.item.id}`} />
+          {item.ruleToConfirm ? <AdminRuleToConfirm /> : null}
+        </>
       }
       testId={`admin-compliance-item-${item.row.item.id}`}
     />
-  );
-}
-
-/** A group's eyebrow with its recorded count on the right (mock-up v2). */
-function GroupHeading({ id, label, aside }: { readonly id: string; readonly label: string; readonly aside: string }) {
-  return (
-    <div className="flex min-w-0 items-baseline justify-between gap-2 px-3">
-      <h2 id={id} className={eyebrowText}>
-        {label}
-      </h2>
-      <span className={cn(textMuted, "nums shrink-0 text-xs")}>{aside}</span>
-    </div>
   );
 }
 
@@ -269,123 +218,106 @@ function GroupLists({
       {overview.groups.map((group) => {
         const items = group.items.filter((item) => complianceFilterMatches(filter, item));
         if (items.length === 0) return null;
-        const headingId = `admin-compliance-group-${group.group}-heading`;
         return (
-          <section
+          <AdminSection
             key={group.group}
             id={`admin-compliance-group-${group.group}`}
-            aria-labelledby={headingId}
-            className="grid min-w-0 gap-2 scroll-mt-32"
-            data-testid={`admin-compliance-group-${group.group}`}
+            label={group.label}
+            count={`${group.recorded} of ${group.items.length} recorded`}
+            labelId={`admin-compliance-group-${group.group}-heading`}
+            testId={`admin-compliance-group-${group.group}`}
           >
-            <GroupHeading
-              id={headingId}
-              label={group.label}
-              aside={`${group.recorded} of ${group.items.length} recorded`}
-            />
-            <ul role="list" className={modeModuleSurface}>
+            <WorkCard as="ul">
               {items.map((item) => (
                 <ItemRow key={item.row.item.id} item={item} today={today} />
               ))}
-            </ul>
-          </section>
+            </WorkCard>
+          </AdminSection>
         );
       })}
       {filter === "all" && overview.notForThisJob.length > 0 ? (
-        <section
-          aria-labelledby="admin-compliance-not-for-this-job-heading"
-          className="grid min-w-0 gap-2"
-          data-testid="admin-compliance-not-for-this-job"
+        <AdminSection
+          label="Not for this job"
+          count={overview.notForThisJob.length}
+          labelId="admin-compliance-not-for-this-job-heading"
+          testId="admin-compliance-not-for-this-job"
         >
-          <GroupHeading
-            id="admin-compliance-not-for-this-job-heading"
-            label="Not for this job"
-            aside={`${overview.notForThisJob.length}`}
-          />
-          <ul role="list" className={modeModuleSurface}>
+          <WorkCard as="ul">
             {overview.notForThisJob.map((item) => (
-              <ModeRow
+              <AdminRow
                 key={item.id}
+                lead={<AdminStatusIcon status="not-for-job" />}
                 href={itemHref(item.id)}
                 title={item.title}
-                subtitle={<AdminStatusWord bucket="recorded" label="Not for this job" />}
-                meta={item.status === "needs-checking" ? <AdminRuleToConfirm /> : undefined}
+                tags={
+                  <>
+                    <AdminStatusTag status="not-for-job" />
+                    {item.status === "needs-checking" ? <AdminRuleToConfirm /> : null}
+                  </>
+                }
               />
             ))}
-          </ul>
-        </section>
+          </WorkCard>
+        </AdminSection>
       ) : null}
     </>
   );
 }
 
 /**
- * First use (mock-up v2, screen 22): nothing recorded yet, so a to-do list
- * rather than twenty rows of "Not recorded yet". One job: record dates.
+ * First use: nothing recorded yet, so a to-do list rather than twenty rows of
+ * "Not recorded yet". One job: record dates.
  */
-function FirstUse({ overview }: { readonly overview: ComplianceOverview }) {
+function FirstUse({ overview, canEdit }: { readonly overview: ComplianceOverview; readonly canEdit: boolean }) {
   return (
-    <div className="grid min-w-0 gap-5" data-testid="admin-compliance-first-use">
-      <div className="grid justify-items-center gap-2 px-3 pt-2 text-center">
-        <span
-          aria-hidden="true"
-          className="inline-flex size-12 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--text-muted)]"
-        >
-          <ClipboardList aria-hidden="true" strokeWidth={1.5} className="size-icon-md" />
-        </span>
-        <h2 className="text-lg-minus font-semibold text-[color:var(--text-heading)]">Add your dates once</h2>
-        <p className={cn(textMuted, "max-w-sm text-sm")}>
-          Type the end dates from your certificates. Compliance then shows what to renew next and what to sort out
-          before your next job.
-        </p>
-      </div>
-      <Link
-        href={`${ADMIN_PAGE_HREFS.renewals}?record=missing`}
-        data-testid="admin-compliance-record-dates"
-        className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
+    <div className={adminStyles.column} data-testid="admin-compliance-first-use">
+      <WorkCard>
+        <WorkEmpty
+          icon={ClipboardList}
+          title="Add your dates once"
+          body="Type the end dates from your certificates. Compliance then shows what to renew next and what to sort out before your next job."
+          action={
+            canEdit ? (
+              <WorkButton icon={CalendarPlus} href={RECORD_DATES_HREF} testId="admin-compliance-record-dates">
+                Record dates
+              </WorkButton>
+            ) : undefined
+          }
+        />
+      </WorkCard>
+      <AdminSection
+        label={`${overview.total} items on the statewide list`}
+        labelId="admin-compliance-first-use-heading"
       >
-        <span>Record dates</span>
-      </Link>
-      <section aria-labelledby="admin-compliance-first-use-heading" className="grid min-w-0 gap-2">
-        <h2 id="admin-compliance-first-use-heading" className={cn(eyebrowText, "px-3")}>
-          {`${overview.total} items on the statewide list`}
-        </h2>
-        <ul role="list" className={modeModuleSurface}>
+        <WorkCard as="ul">
           {overview.groups.map((group) => (
-            <li key={group.group} className={modeInsetHairline}>
-              <Link
-                href={`${ADMIN_PAGE_HREFS.renewals}#admin-renewals-group-${group.group}`}
-                data-testid={`admin-compliance-first-use-${group.group}`}
-                className={cn(
-                  focusRing,
-                  modePressable,
-                  "flex min-h-13 min-w-0 items-center gap-3 py-1 pl-3 pr-2 no-underline",
-                )}
-              >
-                <span className="grid min-w-0 flex-1 gap-0.5">
-                  <span className="text-base-minus font-medium text-[color:var(--text-heading)]">{group.label}</span>
-                  <span className="flex flex-wrap items-center gap-x-2 text-sm text-[color:var(--text-muted)]">
-                    <AdminStatusWord bucket="not-recorded" />
-                    <span className="nums">{`${group.items.length} ${group.items.length === 1 ? "item" : "items"}`}</span>
-                  </span>
-                  <span className="text-sm text-[color:var(--text-muted)]">{complianceGroupNames(group)}</span>
-                </span>
-                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-              </Link>
-            </li>
+            <AdminRow
+              key={group.group}
+              href={`${ADMIN_PAGE_HREFS.renewals}#admin-renewals-group-${group.group}`}
+              testId={`admin-compliance-first-use-${group.group}`}
+              title={group.label}
+              sub={complianceGroupNames(group)}
+              tags={
+                <AdminStatusTag
+                  status="not-recorded"
+                  label={`Not recorded yet · ${group.items.length} ${group.items.length === 1 ? "item" : "items"}`}
+                />
+              }
+            />
           ))}
-        </ul>
-      </section>
+        </WorkCard>
+      </AdminSection>
+      <AdminNote>Your service&apos;s own list may differ.</AdminNote>
     </div>
   );
 }
 
 /**
- * Admin · Compliance (doctor's side, 5 Oct mock-up v2, screens 8 and 22): the
- * requirements a health service asks for, grouped, with what is recorded, one
- * "Record dates" action, filter chips and an Excel export. A view over the
- * same rows as Renewals (`src/lib/admin/compliance-overview.ts`), which stays
- * the one place dates are recorded.
+ * Admin · Compliance (More, work-mode redesign, owner request 6 Oct 2026): the
+ * requirements a health service asks for, grouped, with what is recorded, the
+ * export, filter chips and "Record dates" in the dock. A view over the same
+ * rows as Renewals (`src/lib/admin/compliance-overview.ts`), which stays the
+ * one place dates are recorded. A failed load stays fail-closed.
  */
 export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
@@ -395,6 +327,8 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
   const loadState = adminLoadState(state);
   const [signInOpen, setSignInOpen] = useState(false);
   const [filter, setFilter] = useState<ComplianceFilter>("all");
+  const canEdit = loadState === "ready" && !state.demoMode;
+  useModeBandHeading({ eyebrow: "What your health service asks you to keep current" });
 
   const overview = useMemo(() => {
     const own = selectAdminOwnEntries(state);
@@ -402,58 +336,78 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
     const start = selectNewJobStart({ own, shared });
     return buildComplianceOverview(ADMIN_REQUIREMENTS_CATALOGUE, own, now, start?.startsOn ?? null);
   }, [state, now]);
+  const firstUse = complianceIsFirstUse(overview);
 
   return (
-    <InformationPageShell testId="admin-compliance-main">
-      <div className="grid min-w-0 gap-1">
-        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
-          Compliance
-        </PageTitleUnderBand>
-        <p className={cn(textMuted, "text-sm")}>What your health service asks you to keep current</p>
-      </div>
+    <AdminPage testId="admin-compliance-main">
+      <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+        Compliance
+      </PageTitleUnderBand>
 
       {loadState === "loading" ? (
-        <ModeModuleSkeleton rows={6} twoLine testId="admin-compliance-loading" />
+        <div className={adminStyles.column} data-testid="admin-compliance-loading" aria-busy="true">
+          <span className="sr-only">Loading your compliance</span>
+          <AdminSkeleton className="h-36" />
+          <AdminSkeleton className="h-16" />
+          <AdminSkeleton className="h-64" />
+        </div>
       ) : loadState === "failed" ? (
         <AdminLoadFailed reason={state.loadError ?? "failed"} onRetry={state.retry} testId="admin-compliance-failed" />
       ) : loadState === "signed-out" ? (
         <>
-          <EmptyState
-            title="Sign in to see your compliance"
-            body="Your records are kept for your signed-in account only."
-            actions={
-              <Button variant="primary" onClick={() => setSignInOpen(true)}>
-                Sign in
-              </Button>
-            }
-            testId="admin-compliance-signed-out"
-          />
+          <WorkCard testId="admin-compliance-signed-out">
+            <WorkEmpty
+              icon={LogIn}
+              title="Sign in to see your compliance"
+              body="Your records are kept for your signed-in account only."
+              action={
+                <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)}>
+                  Sign in
+                </WorkButton>
+              }
+            />
+          </WorkCard>
           <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
         </>
       ) : (
-        <div className="grid min-w-0 gap-5" data-testid="admin-compliance-ready">
+        <div className={adminStyles.column} data-testid="admin-compliance-ready">
           {state.demoMode ? (
             <ModeNotice testId="admin-compliance-demo-notice">
               Example records. These dates are made up, and nothing here is your own.
             </ModeNotice>
           ) : null}
-          {complianceIsFirstUse(overview) ? (
-            <FirstUse overview={overview} />
+          {firstUse ? (
+            <FirstUse overview={overview} canEdit={canEdit} />
           ) : (
             <>
               <SummaryCard overview={overview} />
-              <Actions />
+              <WorkCard as="ul" testId="admin-compliance-actions">
+                <AdminRow
+                  lead={<WorkIconCircle icon={FileSpreadsheet} />}
+                  href={ADMIN_PAGE_HREFS.complianceExport}
+                  title="Export a copy for yourself"
+                  sub="Excel, saved on this device"
+                  testId="admin-compliance-export-link"
+                />
+              </WorkCard>
               <BeforeNextJob overview={overview} />
               <FilterChips overview={overview} filter={filter} onFilter={setFilter} />
               <GroupLists overview={overview} filter={filter} today={today} />
             </>
           )}
-          <p className={cn(textMuted, "px-3 text-xs")}>
-            Linked to your account only, not shared with your health service. Rules from the statewide requirements
-            list; Rule to confirm means its source did not state it clearly.
-          </p>
+          <AdminNote>
+            Linked to your account only, not shared with your health service. Rules come from the statewide requirements
+            list. Rule to confirm means its source did not state it clearly.
+          </AdminNote>
+          {canEdit && !firstUse ? (
+            <WorkDock aria-label="Compliance actions">
+              <WorkButton icon={CalendarPlus} href={RECORD_DATES_HREF} testId="admin-compliance-record-dates">
+                Record dates
+              </WorkButton>
+            </WorkDock>
+          ) : null}
         </div>
       )}
-    </InformationPageShell>
+    </AdminPage>
   );
 }

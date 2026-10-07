@@ -502,7 +502,8 @@ describe("passwordless developer-area access (?devkey)", () => {
 
 describe("Admin mode redirects", () => {
   it.each([
-    ["/my-work", "/admin/renewals"],
+    // Work-mode redesign, owner request 6 Oct 2026: Admin opens on Today again.
+    ["/my-work", "/admin"],
     ["/on-call/compliance", "/admin/renewals"],
     ["/on-call/logistics", "/admin/help"],
     ["/on-call/education", "/teaching/week"],

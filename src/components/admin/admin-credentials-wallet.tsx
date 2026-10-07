@@ -108,11 +108,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
   ];
 
   return (
-    <section
-      data-testid={testId}
-      aria-label="Doctor credentials wallet"
-      className="grid gap-2.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 shadow-xs"
-    >
+    <section data-testid={testId} aria-label="Doctor credentials wallet" className="work-card grid gap-2.5 p-3.5">
       <div className="flex items-center justify-between">
         <h3 className={cn(eyebrowText, "flex items-center gap-1.5")}>
           <CreditCard className="size-3.5" aria-hidden="true" />
@@ -180,9 +176,9 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
                   <div
                     data-testid={`${testId}-copied-${c.key}`}
                     role="status"
-                    className="absolute inset-0 grid place-items-center rounded-xl bg-[color:var(--surface-raised)]/95 shadow-sm backdrop-blur-xs animate-in fade-in duration-[var(--duration-quick)]"
+                    className="absolute inset-0 grid place-items-center rounded-xl bg-[color:var(--surface-raised)]/95 backdrop-blur-xs animate-in fade-in duration-[var(--duration-quick)]"
                   >
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--success)] px-2 py-0.5 text-2xs font-medium text-[color:var(--command-contrast)] shadow-xs">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--success)] px-2 py-0.5 text-2xs font-medium text-[color:var(--command-contrast)]">
                       <Check className="size-2.5" aria-hidden="true" />
                       Copied!
                     </span>
@@ -194,9 +190,9 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
                   <div
                     data-testid={`${testId}-failed-${c.key}`}
                     role="status"
-                    className="absolute inset-0 grid place-items-center rounded-xl bg-[color:var(--surface-raised)]/95 shadow-sm backdrop-blur-xs animate-in fade-in duration-[var(--duration-quick)]"
+                    className="absolute inset-0 grid place-items-center rounded-xl bg-[color:var(--surface-raised)]/95 backdrop-blur-xs animate-in fade-in duration-[var(--duration-quick)]"
                   >
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-inset)] px-2 py-0.5 text-2xs font-medium text-[color:var(--text-heading)] shadow-xs">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-inset)] px-2 py-0.5 text-2xs font-medium text-[color:var(--text-heading)]">
                       Copy failed
                     </span>
                   </div>
