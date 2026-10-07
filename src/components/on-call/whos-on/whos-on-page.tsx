@@ -19,6 +19,7 @@ import { allocateOnCallGroupSlug, onCallGroupAnchorId } from "@/components/on-ca
 import { onCallWhosOnSections } from "@/components/on-call/on-call-page-sections";
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
 import { Select } from "@/components/ui/select";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import type { HandbookItem } from "@/lib/on-call/handbook-items";
 import { compareOnCallTeams, ON_CALL_TEAMS, type OnCallTeam } from "@/lib/on-call/handbook-title";
 import { saveOnCallMyTeam, useOnCallMyTeam } from "@/lib/on-call/my-team-storage";
@@ -94,23 +95,25 @@ export function OnCallWhosOnPage({ now: pinned }: { now?: Date } = {}) {
       lead={<OnCallHospitalLine handbook={handbook} testId="on-call-hub-hospital" />}
     >
       <OnCallHandbookState handbook={handbook} page="whos-on" />
-      {/* Names come from the team roster on its own page; this page lists hospital roles. */}
-      <Link
-        href="/on-call/whos-on/roster"
-        className={cn(
-          focusRing,
-          "mx-3 flex min-h-12 items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 text-sm font-medium text-[color:var(--text-heading)]",
-        )}
-        data-testid="on-call-whos-on-roster-link"
-      >
-        <CalendarDays
-          aria-hidden="true"
-          strokeWidth={1.5}
-          className="size-icon-sm shrink-0 text-[color:var(--text-muted)]"
-        />
-        <span className="min-w-0 flex-1">Names from your team roster</span>
-        <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
-      </Link>
+      {/* Names come from the team roster on its own page (a new work mode screen); this page lists hospital roles. */}
+      <NewWorkModeOnly>
+        <Link
+          href="/on-call/whos-on/roster"
+          className={cn(
+            focusRing,
+            "mx-3 flex min-h-12 items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 text-sm font-medium text-[color:var(--text-heading)]",
+          )}
+          data-testid="on-call-whos-on-roster-link"
+        >
+          <CalendarDays
+            aria-hidden="true"
+            strokeWidth={1.5}
+            className="size-icon-sm shrink-0 text-[color:var(--text-muted)]"
+          />
+          <span className="min-w-0 flex-1">Names from your team roster</span>
+          <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+        </Link>
+      </NewWorkModeOnly>
       {ready ? null : <OnCallCrisisLines />}
       {ready ? (
         <>
