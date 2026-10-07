@@ -27,7 +27,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
-  useAuthSession: () => ({ status: "authenticated" }),
+  useAuthSession: () => ({ status: "authenticated", authEpoch: 0 }),
 }));
 
 // Work-mode redesign, owner request 6 Oct 2026: the Notification centre reads each

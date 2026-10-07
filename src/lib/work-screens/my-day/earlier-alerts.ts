@@ -1,3 +1,4 @@
+import { MY_DAY_EARLIER_ALERTS_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/perth-time";
 
 /**
@@ -19,7 +20,8 @@ import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/p
  * reads that file and fails when they drift).
  */
 
-export const EARLIER_ALERTS_STORAGE_KEY = "psychsift:my-day:earlier-alerts-v1";
+// The key lives with the other account-scoped keys, so sign-out clears exactly this one.
+export const EARLIER_ALERTS_STORAGE_KEY = MY_DAY_EARLIER_ALERTS_STORAGE_KEY;
 export const EARLIER_ALERTS_DAYS = 7;
 export const EARLIER_ALERTS_LIMIT = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;

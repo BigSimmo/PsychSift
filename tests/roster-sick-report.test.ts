@@ -265,6 +265,7 @@ describe("hand-offs", () => {
     );
     expect(items).toEqual([
       {
+        id: "roster:sick:5e000000-0000-4000-8000-0000000000f1",
         title: "Wed 7 · Day not covered yet",
         dueOn: "2026-10-07",
         area: "roster",

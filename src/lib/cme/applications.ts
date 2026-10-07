@@ -504,8 +504,8 @@ export type ApplicationsNeedsYouItem = {
 };
 
 /**
- * Ready for the Notification centre, NOT WIRED YET (the main build owns it; the page says
- * "at the top of this page only" until it is). A date with Remind me on, from a week before
+ * The Notification centre's Job applications source (`useFeatureNotificationSources`), and the
+ * top of this page. A date with Remind me on, from a week before
  * to the day itself; and a referee asked five or more days ago with no reply.
  */
 export function applicationsNeedsYouItems(state: ApplicationsState, today: string): ApplicationsNeedsYouItem[] {

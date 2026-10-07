@@ -1534,6 +1534,12 @@ a.work-hero:focus-visible {
   pointer-events: none;
 }
 
+/* While a dock is on the page, a control that takes focus (a tab, the keyboard
+   opening on a field) scrolls clear of the dock rather than under it. */
+html:has(.work-dock) {
+  scroll-padding-bottom: calc(5.75rem + var(--safe-area-bottom, 0px));
+}
+
 .work-dock__capsule {
   display: flex;
   min-width: 0;

@@ -35,6 +35,7 @@ import {
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { WorkButton, WorkEmpty, WorkTag } from "@/components/mode-kit/work";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkSearchRecords } from "@/components/work-search/use-work-search-records";
 import { AnswerCard } from "@/components/work-search/work-search-answer-card";
 import {
@@ -55,6 +56,7 @@ import { cn } from "@/components/ui-primitives";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/perth-time";
+import { AGREEMENT_PAGE_HREF } from "@/lib/work-profile/agreement-answers";
 import { answerWorkQuestion, type WorkAnswer } from "@/lib/work-search/answers";
 import { workSearchAreaLabels, workSearchAreas, type WorkAreaRead, type WorkSearchArea } from "@/lib/work-search/model";
 import {
@@ -74,6 +76,7 @@ import {
   takeClearedFlag,
   takeHistoryStep,
 } from "@/lib/work-search/memory";
+import { agreementWorkAnswer } from "@/lib/work-search/feature-pages";
 import { searchWorkPages } from "@/lib/work-search/pages";
 import {
   buildWorkSearchIndex,
@@ -397,6 +400,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const [now, setNow] = useState(() => Date.now());
   const today = perthDateOf(now);
   const records = useWorkSearchRecords(now);
+  // The agreement page is a new-work-mode screen: its answers are offered only where it can open.
+  const agreementVisible = useWorkModeRouteVisible()(AGREEMENT_PAGE_HREF);
   const epoch = records.epoch;
   const accent = currentArea ?? "my-day";
   // Reopened within a few minutes, the last search comes back (selected, so typing replaces it).
@@ -510,7 +515,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const index = buildWorkSearchIndex({ items: records.items, entries: records.entries });
   // Patient details are not looked up at all: the notice is the whole answer.
   const hits = !searchable ? [] : searchWork(index, searchQuery, { currentArea, today, exact, now });
-  const pageHits = !searchable || filter !== "all" ? [] : searchWorkPages(searchQuery);
+  const pageHits = !searchable || filter !== "all" ? [] : searchWorkPages(searchQuery, records.pages);
   const allItems = [...records.items, ...records.entries.map(({ item }) => item)];
   const correction = exact || hits.length === 0 ? null : workSearchCorrection(index, searchQuery);
   const nextUp = workComingUp(allItems, today, now, 3);
@@ -521,7 +526,9 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const answer =
     !gate.answer || patient
       ? null
-      : answerWorkQuestion(searchQuery, { items: allItems, areas: records.areas, today, now, cpd: records.cpd });
+      : (answerWorkQuestion(searchQuery, { items: allItems, areas: records.areas, today, now, cpd: records.cpd }) ??
+        // An entitlement question ("can I be rostered 16 hours") gets the agreement's own words.
+        (agreementVisible ? agreementWorkAnswer(searchQuery) : null));
   const suggestions = answer || patient || !typed ? [] : suggestQuestions(query.trim());
 
   const close = (navigated: boolean) => {

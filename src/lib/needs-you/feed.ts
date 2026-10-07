@@ -93,6 +93,8 @@ const MY_DAY_UPDATE_IDS = new Set(["my-work:more", "teaching:catch-up"]);
 export function myDayItemKind(item: MyDayItem): NotificationKind {
   if (MY_DAY_UPDATE_IDS.has(item.id)) return "update";
   if (item.id.startsWith("my-work:date:") && item.severity === "info") return "update";
+  // A sick report still waiting for cover: the roster manager acts, the reader is told.
+  if (item.id.startsWith("roster:sick:")) return "update";
   if (item.mode === "on-call") return "update";
   return "action";
 }
@@ -108,6 +110,42 @@ export function myDayNotificationItem(item: MyDayItem): NotificationItem {
     href: item.href,
     kind: myDayItemKind(item),
     overdue: item.severity === "overdue",
+  };
+}
+
+/** The area words the features' own Needs you items use, to the centre's areas. */
+const FEATURE_AREAS = {
+  call: "on-call",
+  admin: "my-work",
+  cpd: "cme",
+  teaching: "teaching",
+  roster: "roster",
+} as const satisfies Readonly<Record<string, NotificationArea>>;
+
+/**
+ * What a feature's own Needs you selector returns (First week, Contract, Starter
+ * pack, Ready for day one, Job applications, CPD Home, Term folder): a stable id,
+ * plain words, the Perth date it is due (or null), its area and page, and whether
+ * it asks for an action.
+ */
+export interface FeatureNeedsYouItem {
+  readonly id: string;
+  readonly title: string;
+  readonly dueOn: string | null;
+  readonly area: keyof typeof FEATURE_AREAS;
+  readonly href: string;
+  readonly kind: NotificationKind;
+}
+
+/** A feature's Needs you item as a Notification centre item, field for field. */
+export function featureNotificationItem(item: FeatureNeedsYouItem): NotificationItem {
+  return {
+    id: item.id,
+    title: item.title,
+    due: item.dueOn,
+    area: FEATURE_AREAS[item.area],
+    href: item.href,
+    kind: item.kind,
   };
 }
 

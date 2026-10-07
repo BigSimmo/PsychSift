@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { FAVOURITES_LOCAL_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
-import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { checkPatientDetail, type PatientDetailCheckOptions } from "@/lib/work-text/patient-detail-check";
 
 /**
  * The parts of Favourites a person shapes for themselves, kept on this device
@@ -100,13 +100,27 @@ export function telHref(number: string): string | null {
 }
 
 /**
- * Why a typed text cannot be kept, or null when it can. The patient-detail
- * check is the same one work search uses (labelled numbers, bed numbers, dates
- * of birth, a title and a name).
+ * How each free-text field is read by the shared patient-detail check
+ * (`checkPatientDetail`, the one every work page uses: initials, ages, beds,
+ * record numbers, dates of birth, a title and a name, hidden characters).
+ * - a saved number's name may be a colleague's ("Dr Grant, registrar") and
+ *   often a hospital or service in capitals ("RPH ED"), so both are allowed;
+ * - a favourite's own name may name a hospital or service in capitals;
+ * - notes allow neither.
+ * The number itself keeps its own digits check (`checkNumberDraft`).
  */
-export function favouriteTextProblem(text: string, maxLength: number): string | null {
+export const NUMBER_LABEL_CHECK: PatientDetailCheckOptions = { allowName: true, allowCapitals: true };
+export const OVERRIDE_NAME_CHECK: PatientDetailCheckOptions = { allowCapitals: true };
+export const NOTE_CHECK: PatientDetailCheckOptions = {};
+
+/** Why a typed text cannot be kept, or null when it can. */
+export function favouriteTextProblem(
+  text: string,
+  maxLength: number,
+  check: PatientDetailCheckOptions = NOTE_CHECK,
+): string | null {
   if (text.length > maxLength) return `Keep it to ${maxLength} characters.`;
-  if (looksLikePatientDetails(text)) {
+  if (checkPatientDetail(text, check)) {
     return "This looks like a patient's details. Save work names only, such as a ward or service.";
   }
   return null;
@@ -123,7 +137,7 @@ export function checkNumberDraft(draft: NumberDraft): NumberDraftProblems {
   const note = (draft.note ?? "").trim();
   if (!label) problems.label = "Give it a name, such as Ward 4B or Pharmacy.";
   else {
-    const problem = favouriteTextProblem(label, NUMBER_LABEL_MAX);
+    const problem = favouriteTextProblem(label, NUMBER_LABEL_MAX, NUMBER_LABEL_CHECK);
     if (problem) problems.label = problem;
   }
   if (!number) problems.number = "Add the number.";
@@ -131,7 +145,7 @@ export function checkNumberDraft(draft: NumberDraft): NumberDraftProblems {
     problems.number = "Use digits, with spaces or brackets if you like.";
   } else if (number.length > 24) problems.number = "That is longer than a phone number.";
   if (note) {
-    const problem = favouriteTextProblem(note, NUMBER_NOTE_MAX);
+    const problem = favouriteTextProblem(note, NUMBER_NOTE_MAX, NOTE_CHECK);
     if (problem) problems.note = problem;
   }
   return problems;
@@ -220,8 +234,8 @@ function parse(raw: string | null): LocalState {
         const name = str((entry as Record<string, unknown>).name, OVERRIDE_NAME_MAX).trim();
         const note = str((entry as Record<string, unknown>).note, OVERRIDE_NOTE_MAX).trim();
         const clean: { name?: string; note?: string } = {};
-        if (name && !looksLikePatientDetails(name)) clean.name = name;
-        if (note && !looksLikePatientDetails(note)) clean.note = note;
+        if (name && !checkPatientDetail(name, OVERRIDE_NAME_CHECK)) clean.name = name;
+        if (note && !checkPatientDetail(note, NOTE_CHECK)) clean.note = note;
         if (clean.name || clean.note) overrides[key] = clean;
       }
     }
@@ -434,11 +448,11 @@ export function setFavouriteOverride(
   const name = override?.name?.trim() ?? "";
   const note = override?.note?.trim() ?? "";
   if (name) {
-    const problem = favouriteTextProblem(name, OVERRIDE_NAME_MAX);
+    const problem = favouriteTextProblem(name, OVERRIDE_NAME_MAX, OVERRIDE_NAME_CHECK);
     if (problem) return { ok: false, field: "name", problem };
   }
   if (note) {
-    const problem = favouriteTextProblem(note, OVERRIDE_NOTE_MAX);
+    const problem = favouriteTextProblem(note, OVERRIDE_NOTE_MAX, NOTE_CHECK);
     if (problem) return { ok: false, field: "note", problem };
   }
   if (!name && !note) delete next[itemId];

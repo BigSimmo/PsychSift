@@ -180,7 +180,8 @@ describe("Pages", () => {
       area: "Roster",
       href: "/roster/requests",
     });
-    expect(searchWorkPages("export")[0]?.page.href).toBe("/admin/compliance/export");
+    // Several areas have an Export page now (Admin, CPD, Assessments), so the Admin one is among them.
+    expect(searchWorkPages("export").map((hit) => hit.page.href)).toContain("/admin/compliance/export");
     expect(searchWorkPages("fit test")[0]?.page.href).toBe("/admin/compliance");
     expect(searchWorkPages("switchboard")[0]?.page.href).toBe("/on-call/call");
     expect(searchWorkPages("sync")[0]?.page.href).toBe("/roster/calendar");

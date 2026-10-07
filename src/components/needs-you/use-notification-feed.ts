@@ -6,7 +6,9 @@ import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
+import { useFeatureNotificationSources } from "@/components/needs-you/use-feature-notification-sources";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { dueReminders, type Reminder } from "@/lib/alerts/remind-me";
 import { myDayEnabledForAuth, type MyDaySourceResult } from "@/lib/my-day/model";
 import {
@@ -36,10 +38,14 @@ import { useAuthSession } from "@/lib/supabase/client";
  * show, so the two numbers can never disagree.
  *
  * Sources today: My Day's work-area reads (Roster, CPD, Teaching, Admin), On
- * Call's own notifications (its honest wording kept), and the reader's own
- * Remind me notes due today. A later feature adds items by writing a hook that
- * returns `NotificationSource[]` (see `src/lib/needs-you/feed.ts`) and listing
- * it in `useNotificationSources` below. Snoozes use My Day's existing
+ * Call's own notifications (its honest wording kept), the junior features'
+ * own selectors (`useFeatureNotificationSources`: first week pack, contract,
+ * starter pack, Ready for day one, Job applications, CPD Home, term folder),
+ * and the reader's own Remind me notes due today. A later feature adds items
+ * by writing a hook that returns `NotificationSource[]` (see
+ * `src/lib/needs-you/feed.ts`) and listing it in `sources` below. An item that
+ * links to a screen the launch switch holds back is left out, so the bell
+ * never opens a page this reader cannot reach. Snoozes use My Day's existing
  * account-scoped device store, so "Later" on My Day and a snooze here agree.
  * Nothing new is stored and nothing is sent anywhere.
  */
@@ -146,7 +152,10 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
     [entries, readAt, preferences.reminders, reminderToday, myDay.items],
   );
 
-  const sources = useMemo((): NotificationSource[] => {
+  const features = useFeatureNotificationSources({ enabled, clock, readAt });
+  const routeVisible = useWorkModeRouteVisible();
+
+  const core = useMemo((): NotificationSource[] => {
     const onCallRead = myDay.sources.find((source) => source.mode === "on-call");
     const onCall: NotificationSource = {
       id: "on-call",
@@ -157,14 +166,21 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
         onCallNotificationItem(notification, onCallEntryHref(notification.entry)),
       ),
     };
+    return [onCall, ...workAreaSources(myDay.sources)];
+  }, [myDay.sources, onCallList]);
+
+  const sources = useMemo((): NotificationSource[] => {
     const remind: NotificationSource = {
       id: "reminders",
       label: "Your reminders",
       status: "ready",
       items: reminderItems(reminders, clock, markDone),
     };
-    return [onCall, ...workAreaSources(myDay.sources), remind];
-  }, [myDay.sources, onCallList, reminders, clock, markDone]);
+    return [...core, ...features, remind].map((source) => ({
+      ...source,
+      items: source.items.filter((item) => routeVisible(item.href)),
+    }));
+  }, [core, features, reminders, clock, markDone, routeVisible]);
 
   const onCall = useMemo(
     () => new Map(onCallList.map((notification) => [`on-call:${notification.id}`, notification])),
@@ -178,8 +194,8 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
 
   const failed = useMemo(() => sources.filter((source) => source.status === "failed"), [sources]);
   const settled = myDay.status === "ready";
-  const allFailed =
-    settled && sources.filter((source) => source.id !== "reminders").every((source) => source.status === "failed");
+  // "Nothing loaded" is judged on the work-area reads; the features' device records alone are not a feed.
+  const allFailed = settled && core.every((source) => source.status === "failed");
   const status: NotificationFeedStatus =
     myDay.status === "signed-out" ? "signed-out" : !settled ? "loading" : allFailed ? "error" : "ready";
 

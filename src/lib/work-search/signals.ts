@@ -45,8 +45,9 @@ const PATIENT_PATTERNS: readonly RegExp[] = [
   // "PT" in capitals is physiotherapy ("OT and PT workshop"), so only "pt" or "Pt" counts here.
   /\b[Pp]t\.?\s+(?!(?:[Tt]ime|[Hh]ours?|[Rr]oster|[Ss]hifts?|[Ll]eave|[Dd]ays?|FTE|[Ff]te|[Cc]ontract|[Pp]osition|[Rr]ole|[Ww]ork)\b)[A-Za-z][A-Za-z'-]{2,}/,
   // A name written the way a patient list writes it: "Smith, John" or "SMITH, John".
-  // Not a greeting or an ask after the comma ("URGENT, Please call").
-  /\b[A-Z][A-Za-z'-]+,\s*(?!(?:Please|Thanks|Thank|Call|Can|Could|See|Note|Hi|Hello|Dear)\b)[A-Z][a-z'-]+\b/,
+  // Not a greeting or an ask after the comma ("URGENT, Please call"), and not a
+  // job title before a place ("Consultant, Royal Perth", "Registrar, Ward 4").
+  /\b(?!(?:Consultant|Registrar|Resident|Intern|Fellow|Director|Professor|Lecturer|Head|Lead|Manager|Supervisor|Psychiatrist|Physician|Surgeon|Psychologist|Nurse|Coordinator|Clinician)\b)[A-Z][A-Za-z'-]+,\s*(?!(?:Please|Thanks|Thank|Call|Can|Could|See|Note|Hi|Hello|Dear|Ward|Clinic|Unit|Team|Department|Dept|Hospital|Service|Level|Building|Room|Floor)\b)[A-Z][a-z'-]+\b/,
   // A title and a name. Kept last: "Ms Teams" and the like skip it.
   /\b(?:mr|mrs|miss|ms|mx|master|mstr)\.?\s+[a-z][a-z'-]{1,}/i,
 ];

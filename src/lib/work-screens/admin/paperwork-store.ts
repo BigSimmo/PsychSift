@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
+import { ADMIN_PAPERWORK_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import {
   emptyPaperwork,
   isValidPaperwork,
@@ -25,7 +25,8 @@ import { withoutExampleRecords } from "@/lib/example-data/guards";
  * sample in React state so every control can be tried and nothing is saved.
  */
 
-export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
+// The key lives with the other account-scoped keys, so sign-out clears exactly this one.
+export { ADMIN_PAPERWORK_STORAGE_KEY };
 
 const listeners = new Set<() => void>();
 let memory: string | null = null;
