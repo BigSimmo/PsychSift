@@ -131,6 +131,18 @@ describe("your dates", () => {
     ).toMatch(/passed/);
   });
 
+  it("catches hidden patient details in a date name, and lets a body in capitals through", () => {
+    for (const name of ["Ｍｒｓ Ｓｍｉｔｈ", "bed\u200B12 review", "45 year old male", "patient John Smith"]) {
+      expect(
+        validateStarterDate({ kind: "other", name, date: "2026-12-01", leadTimeDays: 42 }, TODAY).nameProblem,
+        name,
+      ).toBeTruthy();
+    }
+    for (const name of ["AHPRA renewal", "WWC check", "RPH orientation"]) {
+      expect(validateStarterDate({ kind: "other", name, date: "2026-12-01", leadTimeDays: 42 }, TODAY)).toEqual({});
+    }
+  });
+
   it("writes a catalogue date as a private row with the chosen reminder", () => {
     const body = buildStarterDateBody({ kind: "visa-end", name: "", date: "2027-01-14", leadTimeDays: 90 }, "abc");
     expect(body?.slug).toMatch(new RegExp(`^${STARTER_DATE_SLUG_PREFIX}img-visa-requirements-abc$`));

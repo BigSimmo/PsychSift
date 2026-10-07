@@ -136,6 +136,32 @@ describe("rosterWhosOnRows", () => {
     expect(row.next).toEqual({ name: "Dr Patel", startsAt: registrar.startsAt });
   });
 
+  it("names nobody next when only another grade, or a shift that started well before, follows", () => {
+    const night = shift({
+      name: "Dr Nguyen",
+      kind: "night",
+      grade: "registrar",
+      start: "2026-10-06T21:00",
+      end: "2026-10-07T08:30",
+    });
+    const intern = shift({
+      name: "Dr Intern",
+      kind: "day",
+      grade: "intern",
+      start: "2026-10-07T08:00",
+      end: "2026-10-07T16:30",
+    });
+    const early = shift({
+      name: "Dr Early",
+      kind: "day",
+      grade: "registrar",
+      start: "2026-10-07T07:00",
+      end: "2026-10-07T15:30",
+    });
+    const [row] = rosterWhosOnRows([night, intern, early], { date: "2026-10-06", now: NOW, actorId: null });
+    expect(row.next).toBeNull();
+  });
+
   it("places each shift on the day's rail, clipped to the day", () => {
     const night = shift({ kind: "night", start: "2026-10-06T21:00", end: "2026-10-07T08:30" });
     const day = shift({ kind: "day", start: "2026-10-06T06:00", end: "2026-10-06T18:00" });

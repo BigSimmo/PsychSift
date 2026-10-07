@@ -52,6 +52,8 @@ describe("Find page", () => {
     expect(onSite).toHaveAttribute("href", "/admin/help");
     expect(onSite).toHaveTextContent("Parking, food and access are in Admin");
     expect(onSite).toHaveTextContent("Go");
+    // Your first week is reached from the Handbook tab, next to First night.
+    expect(screen.getByTestId("on-call-first-week-entry").closest("a")).toHaveAttribute("href", "/on-call/first-week");
     expect(screen.getByRole("link", { name: "Your manuals" })).toHaveAttribute("href", "/on-call/orientation");
     expect(screen.getAllByRole("searchbox")).toHaveLength(1);
     expect(screen.getByRole("searchbox", { name: "Search the handbook" })).toHaveAttribute(

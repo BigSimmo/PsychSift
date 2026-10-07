@@ -56,9 +56,15 @@ export function FirstWeekTodayCard({
   );
 }
 
-/** The same card, reading the pack itself, for a page that holds none of it. */
+/**
+ * The same card, reading the pack itself, for a page that holds none of it (On Call Now). The doctor's
+ * "Show it on Now when it lands" choice is honoured: turned off, the card shows only when a section changed
+ * since they read it, the same rule `selectFirstWeekNeedsYou` keeps.
+ */
 export function FirstWeekTodayCardLive({ now }: { readonly now: Date }) {
   const pack = useFirstWeekPack(now);
+  if (pack.sample) return null;
+  if (pack.landAlert === false && pack.progress.changed === 0) return null;
   return (
     <FirstWeekTodayCard
       phase={pack.phase}

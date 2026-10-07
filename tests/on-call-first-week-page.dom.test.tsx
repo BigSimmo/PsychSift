@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
@@ -62,7 +62,8 @@ const rosterTeams = vi.hoisted(() => ({
 vi.mock("@/components/roster/use-roster-team", () => ({ useRosterTeams: () => rosterTeams.state }));
 
 const { OnCallFirstWeekPage } = await import("@/components/on-call/first-week/first-week-page");
-const { FirstWeekTodayCard } = await import("@/components/on-call/first-week/first-week-today-card");
+const { FirstWeekTodayCard, FirstWeekTodayCardLive } =
+  await import("@/components/on-call/first-week/first-week-today-card");
 const { firstWeekPhase } = await import("@/lib/on-call/first-week-pack");
 
 // 09:00 Perth, Mon 26 Oct 2026.
@@ -161,23 +162,28 @@ describe("Your first week, the pack", () => {
     expect(screen.getByTestId("on-call-first-week-row-logins")).toHaveTextContent("Could not load your New job list");
   });
 
-  it("says when the pack moves to the top, for a start more than a week away", () => {
+  it("says when the pack shows on On Call Now, for a start more than a week away", () => {
     entryState.entries = [login("Hospital email", { jobStartsOn: "2026-11-30" })];
     renderPage();
     expect(screen.getByTestId("on-call-first-week-eyebrow")).toHaveTextContent("Starts in 5 weeks");
-    expect(screen.getByTestId("on-call-first-week-ahead")).toHaveTextContent("from Mon 23 Nov 2026");
+    expect(screen.getByTestId("on-call-first-week-ahead")).toHaveTextContent(
+      "Shows on On Call Now from Mon 23 Nov 2026",
+    );
   });
 
-  it("offers one alert when the pack lands, on by default, and remembers turning it off with Undo", () => {
+  it("promises only the card on On Call Now, never an alert, and remembers turning it off with Undo", () => {
     entryState.entries = [login("Hospital email", { jobStartsOn: "2026-11-30" })];
     renderPage();
-    const toggle = screen.getByRole("switch", { name: "Tell me when it lands" });
+    const toggle = screen.getByRole("switch", { name: "Show it on Now when it lands" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByTestId("on-call-first-week-land-alert")).toHaveTextContent(
-      "One alert in Needs you on Mon 23 Nov",
-    );
+    const card = screen.getByTestId("on-call-first-week-land-alert");
+    expect(card).toHaveTextContent("A card on On Call Now from Mon 23 Nov. No message or alert is sent.");
+    // Nothing delivers an alert yet, so the page must not promise one.
+    expect(document.body).not.toHaveTextContent(/one alert|you will get|we will tell you|in Needs you/i);
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText("It will not show on On Call Now")).toBeInTheDocument();
+    expect(screen.queryByTestId("on-call-first-week-ahead")).toBeNull();
     expect(JSON.parse(window.localStorage.getItem(ON_CALL_FIRST_WEEK_READ_STORAGE_KEY) ?? "{}")).toMatchObject({
       landAlertOff: true,
     });
@@ -209,7 +215,10 @@ describe("Your first week, the pack", () => {
     expect(download).not.toHaveBeenCalled();
     const sheet = screen.getByTestId("on-call-first-week-calendar-sheet");
     expect(sheet).toHaveTextContent("the calendar does not follow");
-    expect(within(sheet).getByRole("checkbox", { name: "Your first day" })).toBeDisabled();
+    const firstDay = within(sheet).getByRole("checkbox", { name: "Your first day" });
+    expect(firstDay).toBeDisabled();
+    // A control that cannot be changed says why.
+    expect(firstDay).toHaveAccessibleDescription(/cannot be turned off/);
     fireEvent.click(within(sheet).getByRole("checkbox", { name: "A week before" }));
     fireEvent.click(screen.getByTestId("on-call-first-week-calendar-save"));
     const [ics, name, type] = download.mock.calls[0] as [string, string, string];
@@ -412,6 +421,26 @@ describe("FirstWeekTodayCard", () => {
     expect(screen.getByTestId("on-call-first-week-today-card")).toHaveTextContent("Starts in 7 days");
     expect(screen.getByTestId("on-call-first-week-today-card")).toHaveTextContent("Synthetic Hospital · 3 to read");
     rerender(<FirstWeekTodayCard phase={firstWeekPhase("2026-12-30", NOW)} progress={progress} hospitalName={null} />);
+    expect(screen.queryByTestId("on-call-first-week-today-card")).toBeNull();
+  });
+});
+
+describe("FirstWeekTodayCardLive, as mounted on On Call Now", () => {
+  it("shows the card from a week before the start, linking to the pack", async () => {
+    render(<FirstWeekTodayCardLive now={NOW} />);
+    const card = await screen.findByTestId("on-call-first-week-today-card");
+    expect(card).toHaveAttribute("href", "/on-call/first-week");
+  });
+
+  it("stays off On Call Now when the doctor turned it off and nothing changed", async () => {
+    window.localStorage.setItem(
+      ON_CALL_FIRST_WEEK_READ_STORAGE_KEY,
+      JSON.stringify({ version: 1, hospitals: {}, landAlertOff: true }),
+    );
+    render(<FirstWeekTodayCardLive now={NOW} />);
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(screen.queryByTestId("on-call-first-week-today-card")).toBeNull();
   });
 });

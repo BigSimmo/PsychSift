@@ -353,7 +353,9 @@ export function OnCallRosterWhosOnSection({
   }
   const { lastGood, baseline, changedAt } = memory;
 
-  const live = freshAssignments !== null && overview.status === "ready";
+  // Offline, the last read stays on screen as "as of" its time, never as live: going offline does not change
+  // the read's own state, and the two-minute refresh skips itself, so the read alone cannot say it is old.
+  const live = online && freshAssignments !== null && overview.status === "ready";
   const stale =
     !live &&
     lastGood !== null &&
@@ -560,7 +562,8 @@ export function OnCallRosterWhosOnSection({
       <span className="min-w-0 flex-1 break-words">
         {stale ? (
           <>
-            <strong className="font-semibold">Offline.</strong>
+            {/* Stale also covers a failed refresh while online, which is not "Offline". */}
+            <strong className="font-semibold">{online ? "Could not refresh." : "Offline."}</strong>
             {` Roster as of ${shownReadAt ? perthTimeOf(shownReadAt) : "your last read"}`}
           </>
         ) : (
@@ -596,6 +599,11 @@ export function OnCallRosterWhosOnSection({
         />
       </div>
     ) : null;
+
+  // On Now the block is a glance, not a set-up page: with no team roster to read (signed out, no team in
+  // PsychSift yet, or only Roster's made-up example team) it stays off the page, and the full page explains.
+  if (variant === "now" && (teams.status === "signed-out" || (teams.status === "ready" && !team) || sample))
+    return null;
 
   return (
     <section
@@ -650,7 +658,11 @@ export function OnCallRosterWhosOnSection({
           icon={TriangleAlert}
           tone="amber"
           title="A later change would not show"
-          body="This is the roster as it was when you last had a connection. Ring switchboard to confirm who is on."
+          body={
+            online
+              ? "This is the roster as it was when it was last read. Ring switchboard to confirm who is on."
+              : "This is the roster as it was when you last had a connection. Ring switchboard to confirm who is on."
+          }
           testId="on-call-roster-stale"
         />
       ) : null}

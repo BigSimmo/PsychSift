@@ -117,5 +117,10 @@ describe("checks before Copy", () => {
   it("catches a record number typed into an edited message, ignoring the gaps", () => {
     expect(checkLeaveMessage("Hi,\n\nI am unwell. Patient UMRN 7654321 needs handover.")).toBeTruthy();
     expect(checkLeaveMessage(leaveMessage(annual, EMPTY_LEAVE_FIELDS))).toBeNull();
+    // Hidden by invisible or full-width characters, or written as words.
+    expect(checkLeaveMessage("Hi,\n\nCover for UR１２３４５６７ please.")).toBeTruthy();
+    expect(checkLeaveMessage("Hi,\n\nMrs\u200BSmith needs handover.")).toBeTruthy();
+    expect(checkLeaveMessage("Hi,\n\nThe 45 year old woman in bed twelve needs review.")).toBeTruthy();
+    expect(checkLeaveMessage("Hi,\n\nI have an RDO and the ALS course at RPH.")).toBeNull();
   });
 });
