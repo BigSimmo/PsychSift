@@ -2737,8 +2737,19 @@ export function MasterSearchHeader({
             // inert everywhere but On Call — see the `--mode-identity` block in
             // `globals.css`.
             data-mode-identity={selectedAppMode.id}
+            // The bar's stylesheet re-spaces the area-only pill on a phone, where
+            // its badge is hidden.
+            data-area-only={pillShowsAreaOnly ? "" : undefined}
           >
-            <span className="universal-header-mode-badge grid h-8 w-8 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
+            <span
+              className={cn(
+                "universal-header-mode-badge grid h-8 w-8 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]",
+                // No badge on phones (Josh, 7 Oct 2026): the area's coloured
+                // name alone says where you are, and it needs the room more.
+                // Tablets and computers keep the badge.
+                pillShowsAreaOnly && "max-sm:hidden",
+              )}
+            >
               {/* 16px in the 32px pill, not the 14px metadata step: this is a
                   primary control, and 2.25 keeps its absolute stroke in line
                   with the larger glyphs beside it. */}

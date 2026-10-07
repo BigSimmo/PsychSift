@@ -331,6 +331,9 @@ describe("work area mode pill", () => {
     expect(areaOnly).toHaveTextContent("My Day");
     expect(areaOnly.className).toContain("text-[color:var(--clinical-accent)]");
     expect(within(trigger).queryByText("Mode")).toBeNull();
+    // No badge on phones (Josh, 7 Oct 2026): hidden below 640px, kept above.
+    expect(trigger).toHaveAttribute("data-area-only");
+    expect(trigger.querySelector(".universal-header-mode-badge")?.className).toContain("max-sm:hidden");
   });
 
   it("keeps the page over the area while the band still names a page", () => {
@@ -338,5 +341,7 @@ describe("work area mode pill", () => {
     render(<MasterSearchHeader {...headerProps()} searchMode="my-day" />);
     const trigger = screen.getByRole("button", { name: "Mode My Day, page Week" });
     expect(within(trigger).queryByTestId("universal-header-mode-area-only")).toBeNull();
+    expect(trigger).not.toHaveAttribute("data-area-only");
+    expect(trigger.querySelector(".universal-header-mode-badge")?.className).not.toContain("max-sm:hidden");
   });
 });
