@@ -195,7 +195,9 @@ describe("My record", () => {
     serveRecord();
     render(<TeachingLogbook demoMode={false} />);
     const chart = await screen.findByTestId("teaching-record-chart");
-    expect(chart.textContent).toContain(`Last 12 weeks · 2${NB}sessions`);
+    // Work-mode redesign, owner request 6 Oct 2026: "Last 12 weeks" is now the section label (a string
+    // prop), so it is built with withUnit and carries the non-breaking space too.
+    expect(chart.textContent).toContain(`Last 12${NB}weeks · 2${NB}sessions`);
     expect(chart.textContent).toContain(`You checked in at teaching in 1${NB}of the last 12${NB}weeks.`);
     expect(within(chart).getByRole("img").getAttribute("aria-label")).toMatch(
       /^Sessions per week, 13 July to this week:/,

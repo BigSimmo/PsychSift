@@ -46,13 +46,13 @@ export function heroSession(sessions: readonly SessionSummaryRead[], now: Date):
   return list.find((s) => Date.parse(s.endsAt) > time) ?? null;
 }
 
-/** "4:45" over "to start", or "40" over "min to start"; the spoken form says it whole. */
+/** "4:45" over "to start", or "40" over "min"; the spoken form says it whole. */
 export function countdown(session: Pick<SessionSummaryRead, "startsAt">, now: Date) {
   const minutes = Math.max(1, Math.ceil((Date.parse(session.startsAt) - now.getTime()) / MINUTE));
   const hours = Math.floor(minutes / 60);
   return {
     figure: hours > 0 ? `${hours}:${String(minutes % 60).padStart(2, "0")}` : String(minutes),
-    label: hours > 0 ? "to start" : "min to start",
+    label: hours > 0 ? "to start" : "min",
     spoken: `Starts in ${durationText(minutes)}`,
     // The ring fills over the last 12 hours before the start.
     fraction: 1 - Math.min(minutes, 720) / 720,

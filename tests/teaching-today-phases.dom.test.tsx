@@ -85,7 +85,7 @@ describe("Today's model", () => {
   it("counts down and measures progress with units joined by a non-breaking space", () => {
     expect(countdown(session(), NOW)).toMatchObject({
       figure: "40",
-      label: "min to start",
+      label: "min",
       spoken: `Starts in 40${NB}min`,
     });
     expect(countdown(session(), new Date("2026-09-30T00:00:00Z"))).toMatchObject({ figure: "4:30", label: "to start" });

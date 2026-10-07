@@ -4,7 +4,7 @@ import { TeachingLogbook } from "@/components/teaching/teaching-logbook";
 import { teachingDemoMode } from "@/lib/teaching/sample";
 
 export const metadata: Metadata = {
-  title: "My record | Teaching | PsychSift",
+  title: "Logbook | Teaching | PsychSift",
   description: "Your teaching check-ins, feedback you owe, sessions not yet in CPD and counts for your supervisor.",
 };
 
