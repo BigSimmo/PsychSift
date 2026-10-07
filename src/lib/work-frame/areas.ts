@@ -301,8 +301,8 @@ const roster: WorkArea = {
       items: [
         {
           id: "calendar",
-          label: "Calendar sync",
-          sub: "Phone calendar",
+          label: "Teaching and expiries",
+          sub: "Add to your calendar",
           icon: "link",
           href: "/roster/calendar",
           band: false,
