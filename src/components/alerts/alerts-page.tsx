@@ -34,7 +34,17 @@ const EARLIER_ALERTS_HREF = "/my-day/alerts/earlier";
  * this buzz me?" and "why didn't it?". So every line says what the app will
  * actually do today; what is not built yet is shown greyed with the reason.
  */
-export function AlertsPage({ now }: { now?: Date } = {}) {
+export function AlertsPage({
+  now,
+  inFrame = false,
+}: {
+  now?: Date;
+  /**
+   * Drawn as the Settings tab of My Day › Notifications, whose Earlier tab sits
+   * in the band, so the page leaves out its own Earlier alerts row.
+   */
+  inFrame?: boolean;
+} = {}) {
   return (
     <MyDayFrame
       title="Alerts"
@@ -47,7 +57,7 @@ export function AlertsPage({ now }: { now?: Date } = {}) {
         body: "Alerts come from your own roster and records, so they need your account. Nothing is sent to this device while you're signed out.",
       }}
     >
-      {(at) => <AlertsBody now={at} />}
+      {(at) => <AlertsBody now={at} inFrame={inFrame} />}
     </MyDayFrame>
   );
 }
@@ -61,7 +71,7 @@ type OpenSheet =
   | { kind: "remind-me" }
   | null;
 
-function AlertsBody({ now }: { now: Date }) {
+function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
   const { preferences, setPreference } = useAppPreferences();
   const reminders = preferences.reminders;
   const roster = useRosterSettings();
@@ -201,7 +211,7 @@ function AlertsBody({ now }: { now: Date }) {
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-3">
         <AlertsDeviceSection alerts={alerts} shared={shared} />
-        {routeVisible(EARLIER_ALERTS_HREF) ? (
+        {!inFrame && routeVisible(EARLIER_ALERTS_HREF) ? (
           <ModeGroupedList testId="alerts-earlier" className="mt-2">
             <ModeRow
               title="Earlier alerts"

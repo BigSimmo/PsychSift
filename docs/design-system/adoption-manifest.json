@@ -3329,6 +3329,9 @@
         "src/app/(search-app)/my-day/favourites/page.tsx",
         "src/app/(search-app)/my-day/help/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
+        "src/app/(search-app)/my-day/notifications/earlier/page.tsx",
+        "src/app/(search-app)/my-day/notifications/page.tsx",
+        "src/app/(search-app)/my-day/notifications/settings/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
         "src/app/(search-app)/my-day/profile/agreement/page.tsx",
         "src/app/(search-app)/my-day/profile/page.tsx",
@@ -4206,6 +4209,36 @@
         },
         {
           "file": "src/app/(search-app)/my-day/hours/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/my-day/notifications/earlier/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["ModeHome"]
+        },
+        {
+          "file": "src/app/(search-app)/my-day/notifications/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/my-day/notifications/settings/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -6229,6 +6262,9 @@
       "src/app/(search-app)/my-day/favourites/page.tsx",
       "src/app/(search-app)/my-day/help/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
+      "src/app/(search-app)/my-day/notifications/earlier/page.tsx",
+      "src/app/(search-app)/my-day/notifications/page.tsx",
+      "src/app/(search-app)/my-day/notifications/settings/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
       "src/app/(search-app)/my-day/profile/agreement/page.tsx",
       "src/app/(search-app)/my-day/profile/page.tsx",
@@ -6436,6 +6472,9 @@
       "src/app/(search-app)/my-day/favourites/page.tsx",
       "src/app/(search-app)/my-day/help/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
+      "src/app/(search-app)/my-day/notifications/earlier/page.tsx",
+      "src/app/(search-app)/my-day/notifications/page.tsx",
+      "src/app/(search-app)/my-day/notifications/settings/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
       "src/app/(search-app)/my-day/profile/agreement/page.tsx",
       "src/app/(search-app)/my-day/profile/page.tsx",
@@ -6550,7 +6589,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 212,
+    "inheritedCkbV2RootCount": 215,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6559,8 +6598,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 213,
-    "productionRouteCount": 205,
-    "nextUiEntryCount": 313
+    "rootCount": 216,
+    "productionRouteCount": 208,
+    "nextUiEntryCount": 316
   }
 }

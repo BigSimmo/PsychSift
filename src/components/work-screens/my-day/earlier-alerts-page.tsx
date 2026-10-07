@@ -91,7 +91,17 @@ function readPermission(): string {
   }
 }
 
-export function EarlierAlertsPage({ now }: { now?: Date } = {}) {
+export function EarlierAlertsPage({
+  now,
+  inFrame = false,
+}: {
+  now?: Date;
+  /**
+   * Drawn as the Earlier tab of My Day › Notifications, whose To do and
+   * Settings tabs sit in the band, so the page leaves out its Related links.
+   */
+  inFrame?: boolean;
+} = {}) {
   const exampleActive = useExampleData("day").active;
   return (
     <MyDayFrame
@@ -114,7 +124,7 @@ export function EarlierAlertsPage({ now }: { now?: Date } = {}) {
         body: "Signed in, this lists the alerts that reached this phone, kept on the phone for 7 days.",
       }}
     >
-      {(at) => <EarlierAlertsBody now={at} exampleActive={exampleActive} />}
+      {(at) => <EarlierAlertsBody now={at} exampleActive={exampleActive} inFrame={inFrame} />}
     </MyDayFrame>
   );
 }
@@ -150,7 +160,7 @@ function ExampleList({ now }: { now: Date }) {
   );
 }
 
-function EarlierAlertsBody({ now, exampleActive }: { now: Date; exampleActive: boolean }) {
+function EarlierAlertsBody({ now, exampleActive, inFrame }: { now: Date; exampleActive: boolean; inFrame: boolean }) {
   const state = useEarlierAlerts();
   const online = useOnlineStatus();
   const permission = useSyncExternalStore(subscribeNever, readPermission, () => "default");
@@ -347,25 +357,27 @@ function EarlierAlertsBody({ now, exampleActive }: { now: Date; exampleActive: b
         </>
       )}
 
-      <section aria-labelledby="earlier-alerts-related" className="grid gap-2">
-        <WorkSectionLabel id="earlier-alerts-related">Related</WorkSectionLabel>
-        <WorkCard>
-          <WorkIconRow
-            icon={Bell}
-            title="Alert settings"
-            sub="Morning brief, quiet hours and this phone"
-            href={ALERTS_SETTINGS_HREF}
-            testId="earlier-alerts-settings-link"
-          />
-          <WorkIconRow
-            icon={Inbox}
-            title="Needs you"
-            sub="What is waiting for you, overdue first"
-            href={MY_DAY_ALL_VIEW_HREF}
-            testId="earlier-alerts-needs-you-link"
-          />
-        </WorkCard>
-      </section>
+      {inFrame ? null : (
+        <section aria-labelledby="earlier-alerts-related" className="grid gap-2">
+          <WorkSectionLabel id="earlier-alerts-related">Related</WorkSectionLabel>
+          <WorkCard>
+            <WorkIconRow
+              icon={Bell}
+              title="Alert settings"
+              sub="Morning brief, quiet hours and this phone"
+              href={ALERTS_SETTINGS_HREF}
+              testId="earlier-alerts-settings-link"
+            />
+            <WorkIconRow
+              icon={Inbox}
+              title="Needs you"
+              sub="What is waiting for you, overdue first"
+              href={MY_DAY_ALL_VIEW_HREF}
+              testId="earlier-alerts-needs-you-link"
+            />
+          </WorkCard>
+        </section>
+      )}
     </div>
   );
 }
