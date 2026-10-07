@@ -10,11 +10,12 @@ import {
   CircleCheck,
   Clock3,
   CloudOff,
+  FileUp,
   GraduationCap,
   LayoutGrid,
+  Lock,
   Phone,
   QrCode,
-  FileUp,
   Route,
   Sparkles,
   UserRound,
@@ -253,20 +254,19 @@ export function AreasStep({ progress, onAreas }: WorkSetupStepContext) {
   return (
     <div className="grid gap-3" data-testid="work-setup-areas">
       <WorkCard as="ul" aria-label="Areas you use">
-        <li className="work-setup__area" data-mode-identity="my-day">
-          <Checkbox
-            label={
-              <span className="work-setup__area-label">
+        <li className="work-setup__area" data-mode-identity="my-day" data-testid="work-setup-area-day">
+          <span className="work-setup__always">
+            <span aria-hidden="true" className="work-setup__always-box">
+              <Lock aria-hidden="true" strokeWidth={2.2} />
+            </span>
+            <span className="work-setup__area-text">
+              <span className="work-setup__area-name work-setup__area-label">
                 <span aria-hidden="true" className="work-setup__dot" />
                 My Day
               </span>
-            }
-            description="Always on. Your day across every area."
-            checked
-            disabled
-            readOnly
-            data-testid="work-setup-area-toggle-day"
-          />
+              <span className="work-setup__area-sub">Always on. Your day across every area.</span>
+            </span>
+          </span>
         </li>
         {WORK_SETUP_AREAS.map((area) => {
           const copy = WORK_SETUP_AREA_COPY[area];

@@ -168,6 +168,44 @@
   min-width: 0;
 }
 
+/* My Day can't be turned off: a lock where the checkbox would be, on the same column. */
+.work-setup__always {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: calc(var(--spacing) * 3);
+  min-width: 0;
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 1);
+}
+
+.work-setup__always-box {
+  display: grid;
+  width: calc(var(--spacing) * 5);
+  height: calc(var(--spacing) * 5);
+  flex: none;
+  margin-top: calc(var(--spacing) * 0.5);
+  place-items: center;
+  color: var(--work-ink-muted);
+}
+
+/* Same type as the checkbox rows beside it. */
+.work-setup__always .work-setup__area-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.25rem;
+}
+
+.work-setup__always .work-setup__area-sub {
+  margin-top: calc(var(--spacing) * 0.5);
+  font-size: var(--text-xs);
+  line-height: 1rem;
+}
+
+.work-setup__always-box > svg {
+  width: calc(var(--spacing) * 3.5);
+  height: calc(var(--spacing) * 3.5);
+}
+
 .work-setup__area-label {
   display: inline-flex;
   align-items: center;
