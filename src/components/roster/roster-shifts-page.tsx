@@ -102,8 +102,10 @@ const TEAM_RULE_LOOKBACK_DAYS = 21;
 const ROSTER_AHEAD_DAYS = 14;
 
 const SHIFTS_HREF = "/roster/shifts";
-const HOURS_HREF = "/roster/shifts?view=hours";
-const MONTH_HREF = "/roster/shifts?view=month";
+// Hours and rest and the Month tab live at /roster in the work-mode frame
+// (work-mode redesign, owner request 6 Oct 2026), so the frame ticks them.
+const HOURS_HREF = "/roster?view=hours";
+const MONTH_HREF = "/roster";
 
 /** If the checks fail to load, say they were not run rather than leaving a gap. */
 function HoursRowUnavailable() {
