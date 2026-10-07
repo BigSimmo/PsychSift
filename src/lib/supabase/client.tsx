@@ -632,12 +632,3 @@ export function useAuthSession() {
   }
   return context;
 }
-
-/**
- * Whether someone is signed in, for chrome that may render outside the provider (the work frame
- * header in isolation): false there, and false while the status is still loading.
- */
-export function useSignedIn(): boolean {
-  const status = useContext(AuthContext)?.status;
-  return status === "authenticated" || status === "expired";
-}

@@ -29,9 +29,9 @@ import {
   workFrameActionHandler,
 } from "@/components/work-frame/work-frame-store";
 import { useWorkTabPicks } from "@/components/work-frame/work-tab-picks";
+import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
 import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";
-import { useSignedIn } from "@/lib/supabase/client";
 import type { AppModeId } from "@/lib/app-modes";
 import {
   WORK_TAB_PICKS_MAX,
