@@ -37,6 +37,6 @@ describe("mode picker row", () => {
   });
 
   it("restates the product accent so a clinical row never inherits a work area's colour", () => {
-    expect(modePickerRowClass(false, true)).toContain("[--clinical-accent:var(--primary-500)]");
+    expect(modePickerRowClass(false, true)).toContain("[--clinical-accent:var(--primary)]");
   });
 });

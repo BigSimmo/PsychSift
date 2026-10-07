@@ -27,7 +27,7 @@ import { cn } from "@/components/ui-primitives";
  * this utility-layer reset.
  */
 const productAccentReset =
-  "[--clinical-accent:var(--primary-500)] [--clinical-accent-soft:var(--primary-soft)] [--clinical-accent-border:color-mix(in_oklab,var(--primary-500)_28%,var(--surface))] [--clinical-accent-contrast:var(--primary-contrast)]";
+  "[--clinical-accent:var(--primary)] [--clinical-accent-soft:var(--primary-soft)] [--clinical-accent-border:var(--product-accent-border,color-mix(in_oklab,var(--primary)_22%,var(--surface)))] [--clinical-accent-contrast:var(--primary-contrast)]";
 
 export function modePickerRowClass(active: boolean, phone: boolean): string {
   return cn(
@@ -37,7 +37,9 @@ export function modePickerRowClass(active: boolean, phone: boolean): string {
       ? "min-h-14 grid-cols-[2.5rem_minmax(0,1fr)_1.5rem] gap-3 rounded-xl px-2 py-2"
       : "min-h-12 grid-cols-[2rem_minmax(0,1fr)_auto] gap-2.5 rounded-md px-2.5 py-1.5",
     active
-      ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)] ring-1 ring-inset ring-[color:var(--clinical-accent-border)]"
+      ? phone
+        ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)] ring-1 ring-inset ring-[color:var(--clinical-accent-border)]"
+        : "bg-[color:var(--clinical-accent-soft)] text-[color:var(--text)]"
       : "text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
   );
 }

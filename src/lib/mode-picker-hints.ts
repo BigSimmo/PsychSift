@@ -10,7 +10,8 @@ import type { AppModeId } from "@/lib/app-modes";
  * row's accessible name, so nothing a screen reader hears is lost.
  *
  * A `Record` over every mode id, so a new mode cannot ship without a hint:
- * the type check fails first. `tests/mode-picker-hints.test.ts` pins the length.
+ * the type check fails first. `tests/mode-picker-hints.test.ts` pins the length,
+ * which leaves about 25px spare at 320px in Geist (measured 7 Oct 2026).
  */
 export const modePickerHints = {
   "my-day": "What needs you today",
@@ -25,7 +26,7 @@ export const modePickerHints = {
   services: "Services and referral pathways",
   favourites: "Your saved items",
   sources: "Ranked source catalogue",
-  psychiatry: "Diagnosis to therapy, in one place",
+  psychiatry: "All of psychiatry in one place",
   dsm: "Diagnostic criteria",
   differentials: "Causes and clinical clues",
   specifiers: "Episode and course wording",
@@ -33,7 +34,7 @@ export const modePickerHints = {
   "therapy-compass": "Therapy reference",
   forms: "Forms and pathways",
   "first-nations": "Culturally safe care",
-  medicines: "Medicines and tools, in one place",
+  medicines: "All medicines and tools",
   prescribing: "Dosing, safety and monitoring",
   calculators: "Scores and calculators",
   tools: "Clinical tools",
@@ -42,7 +43,7 @@ export const modePickerHints = {
 } as const satisfies Record<AppModeId, string>;
 
 /** Longest hint the sheet allows: one row at 320px beside a 40px tile and a tick. */
-export const modePickerHintMaxLength = 34;
+export const modePickerHintMaxLength = 30;
 
 export function modePickerHint(modeId: AppModeId): string {
   return modePickerHints[modeId];
