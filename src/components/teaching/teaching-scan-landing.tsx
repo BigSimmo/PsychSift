@@ -257,6 +257,8 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               <T5Button type="submit" variant="primary" block busy={sending} busyLabel="Sending">
                 Email me a sign-in link
               </T5Button>
+              {/* A scan opens a fresh tab with no history, so waiting for sign-in has its own way out too. */}
+              {todayLink}
             </form>
           )
         ) : null}
