@@ -280,17 +280,25 @@ export function MyDayHoursFigures({
             .map((day) => `${day.date}: ${hoursText(day.hours)} hours`)
             .join(", ")}
         </p>
-        <HoursChart bars={shown} letters={weekdayLetters(shown.days)} kinds={kinds} />
-        <ShiftLegend
-          kinds={usedKinds}
-          end={
-            perShift !== null ? (
-              <span className="shrink-0 text-2xs font-semibold text-[color:var(--text-muted)] nums">
-                {`Average ${hoursText(perShift)} h a shift`}
-              </span>
-            ) : null
-          }
-        />
+        {shown.totalHours > 0 ? (
+          <>
+            <HoursChart bars={shown} letters={weekdayLetters(shown.days)} kinds={kinds} />
+            <ShiftLegend
+              kinds={usedKinds}
+              end={
+                perShift !== null ? (
+                  <span className="shrink-0 text-2xs font-semibold text-[color:var(--text-muted)] nums">
+                    {`Average ${hoursText(perShift)} h a shift`}
+                  </span>
+                ) : null
+              }
+            />
+          </>
+        ) : (
+          <p className="m-0 text-xs text-[color:var(--text-muted)]" data-testid="my-day-hours-none-worked">
+            {`No worked shifts this ${span === "fortnight" && !settingsFailed ? "fortnight" : "week"}. On call from home and leave are not counted.`}
+          </p>
+        )}
       </section>
       <div className={quietCard}>
         <QuietList testId="my-day-hours-facts" className="px-3">
