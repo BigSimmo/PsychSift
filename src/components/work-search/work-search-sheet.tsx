@@ -939,7 +939,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             >
               <WorkSearchGlyph
                 className={cn(
-                  "size-4.5",
+                  "size-icon-lg",
                   patient ? "text-[color:var(--warning)]" : "text-[color:var(--mode-identity)]",
                 )}
               />

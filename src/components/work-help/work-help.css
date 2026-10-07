@@ -216,7 +216,7 @@
   height: calc(var(--spacing) * 4);
   flex: none;
   color: var(--decoration-soft, var(--work-ink-muted));
-  transition: transform var(--duration-fast, 150ms) ease;
+  transition: transform var(--duration-fast) ease;
 }
 
 .work-help__q[data-open] .work-help__q-chev {

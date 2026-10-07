@@ -144,7 +144,7 @@ export function CheckLine({ check }: { check: RosterCheck }) {
   const { tone, text } = checkSummary(check);
   const Icon = TONE_ICON[tone];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[0.71875rem] font-semibold ${TONE_CLASS[tone]}`}>
+    <span className={`inline-flex items-center gap-1.5 text-2xs font-semibold ${TONE_CLASS[tone]}`}>
       <Icon aria-hidden="true" strokeWidth={2} className="size-icon-xs shrink-0" />
       {text}
     </span>
@@ -191,19 +191,19 @@ export function ShiftRow({
         href={href}
         className={`flex min-h-12 items-start gap-2.5 px-3 py-2.5 no-underline ${modePressable} focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--mode-identity)]`}
       >
-        <span className="nums flex basis-11 shrink-0 flex-col text-[0.6875rem] font-semibold leading-tight text-[color:var(--text-muted)]">
-          <span className="text-[0.8125rem] font-bold text-[color:var(--text-heading)]">
+        <span className="nums flex basis-11 shrink-0 flex-col text-2xs font-semibold leading-tight text-[color:var(--text-muted)]">
+          <span className="text-sm-minus font-bold text-[color:var(--text-heading)]">
             {perthTimeOf(listing.startsAt)}
           </span>
           <span className="mt-0.5">{perthTimeOf(listing.endsAt)}</span>
           <span className="mt-0.5">{formatHours(hours)}</span>
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-[0.8125rem] font-bold leading-snug text-[color:var(--text-heading)]">
+          <span className="text-sm-minus font-bold leading-snug text-[color:var(--text-heading)]">
             {shiftTitle(listing)}
           </span>
-          <span className="text-[0.71875rem] text-[color:var(--text-muted)]">{shiftPlace(listing)}</span>
-          {meta ? <span className="text-[0.71875rem] text-[color:var(--text-muted)]">{meta}</span> : null}
+          <span className="text-2xs text-[color:var(--text-muted)]">{shiftPlace(listing)}</span>
+          {meta ? <span className="text-2xs text-[color:var(--text-muted)]">{meta}</span> : null}
           {status ?? (check ? <span className="mt-1.5">{<CheckLine check={check} />}</span> : null)}
         </span>
         <ChevronRight
@@ -221,11 +221,11 @@ export function SectionHeading({ children, count, id }: { children: ReactNode; c
   return (
     <h2
       id={id}
-      className="mt-3 flex items-baseline justify-between px-1 pb-1.5 text-[0.625rem] font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
+      className="mt-3 flex items-baseline justify-between px-1 pb-1.5 text-3xs font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
     >
       <span>{children}</span>
       {count !== undefined ? (
-        <span className="nums text-[0.71875rem] font-semibold normal-case tracking-normal">{count}</span>
+        <span className="nums text-2xs font-semibold normal-case tracking-normal">{count}</span>
       ) : null}
     </h2>
   );
@@ -243,7 +243,7 @@ export function Note({
 }) {
   return (
     <div
-      className={`flex items-start gap-2.5 px-1 py-2 text-[0.75rem] font-medium leading-snug ${tone === "warn" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]"}`}
+      className={`flex items-start gap-2.5 px-1 py-2 text-xs font-medium leading-snug ${tone === "warn" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]"}`}
     >
       <span className="mt-0.5 shrink-0">{icon}</span>
       <div className="min-w-0">{children}</div>
@@ -328,7 +328,7 @@ export function FootAction({ children, note }: { children: ReactNode; note?: Rea
   return (
     <div className="mt-4 flex flex-col gap-2 px-1 pb-6">
       {children}
-      {note ? <p className="text-center text-[0.71875rem] font-medium text-[color:var(--text-muted)]">{note}</p> : null}
+      {note ? <p className="text-center text-2xs font-medium text-[color:var(--text-muted)]">{note}</p> : null}
     </div>
   );
 }

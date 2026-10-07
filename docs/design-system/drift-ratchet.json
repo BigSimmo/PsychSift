@@ -1,16 +1,16 @@
 {
   "$comment": "Ratchet ceilings for two token-system drift metrics measured in docs/design-system/drift-measurement-2026-09-02.md. Both metrics may only go DOWN. `npm run check:design-drift-ratchet` fails the moment either current count exceeds its ceiling. `npm run check:design-drift-ratchet -- --update` refreshes a ceiling to the current measured count, but only ever lowers or matches it — it refuses to raise a ceiling. Raising one on purpose requires `--update --allow-increase`, which prints the old and new ceiling so the diff is visible in review; do this only with a stated reason (a newly-legitimate dynamic style, or a component whose adoption regressed) recorded in the commit message.",
   "inlineStyles": {
-    "ceiling": 249,
+    "ceiling": 260,
     "description": "Count of style={{ }} JSX attributes under tracked src/**/*.{ts,tsx}, excluding lines that are inside a comment (trimmed line starts with // or *).",
-    "measuredAt": "2026-10-06T08:47:16.670Z",
-    "baselineSource": "8172760a3e991870425486c8532cdc14f217e129",
-    "$lastRaise": "253 -> 262, 2026-10-06, one combined raise approved by the owner on 2026-10-06 so the gated mode PRs stop conflicting on this file: My Day #3287 (+2: today-track fill and now-marker positions), Open shifts #3303 (+1: hours meter width), Teaching v5 #3304 (+4: progress width, logbook bar heights and average line, feedback split flex-grow) and On Call #3306 (+2 net: track-bar fill, cover-progress marker and label, shift-pulse bar heights, replacing two older right-now track styles). Each count was measured by merging that PR alone into main; all four merged together measure exactly 262. LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: every new site is a calculated percentage or proportion; no fixed token expresses them. If any of these PRs does not merge, the next --update lowers the ceiling back to the measured count. Previous raise: 249 -> 253 for Teaching assessments #3302 on top of CPD #3289 (owner-approved 2026-10-06)."
+    "measuredAt": "2026-10-07T10:05:01.197Z",
+    "baselineSource": "239bd21d601867ff58c3a7cc05f898fab189fefa",
+    "$lastRaise": "249 -> 260, 2026-10-07, work-mode build PR (branch claude/project-thread-1ykpld). 25 new sites against 8172760a; 3 were BYPASS and were replaced with classes (sick-action ring strokes -> stroke-[color:var(...)], staffing-strip fixed 56px track -> h-14). The remaining 22 are LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md, each a computed percentage, proportion or pixel height that no fixed token expresses: contract-strip mark/today positions, segment flex-grow and fill widths; CPD catch-up category widths, mini-meter widths and split flex; On Call right-now cover marker and label, shift-clock meter width, roster who-is-on rail left/width and now-mark; roster today-track fill; staffing sparkline and strip bar heights; assessments meter width; Admin tax month bar heights. Net +11 after sites removed elsewhere. Previous raise: 253 -> 262, 2026-10-06, one combined raise approved by the owner on 2026-10-06 so the gated mode PRs stop conflicting on this file: My Day #3287 (+2: today-track fill and now-marker positions), Open shifts #3303 (+1: hours meter width), Teaching v5 #3304 (+4: progress width, logbook bar heights and average line, feedback split flex-grow) and On Call #3306 (+2 net: track-bar fill, cover-progress marker and label, shift-pulse bar heights, replacing two older right-now track styles). Each count was measured by merging that PR alone into main; all four merged together measure exactly 262. LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: every new site is a calculated percentage or proportion; no fixed token expresses them. If any of these PRs does not merge, the next --update lowers the ceiling back to the measured count."
   },
   "unimportedRegisteredComponents": {
     "ceiling": 8,
     "description": "docs/design-system/adoption-manifest.json summary.registeredComponentCount minus summary.productImportedComponentCount — registered components with zero productImportFiles.",
-    "measuredAt": "2026-10-06T08:47:16.670Z",
-    "baselineSource": "8172760a3e991870425486c8532cdc14f217e129"
+    "measuredAt": "2026-10-07T10:05:01.197Z",
+    "baselineSource": "239bd21d601867ff58c3a7cc05f898fab189fefa"
   }
 }

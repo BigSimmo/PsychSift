@@ -99,7 +99,7 @@ function MonthLoading() {
           </div>
         </div>
       </WorkCard>
-      <p role="status" className="text-center text-[0.71875rem] font-medium text-[color:var(--text-muted)]">
+      <p role="status" className="text-center text-2xs font-medium text-[color:var(--text-muted)]">
         Loading your roster…
       </p>
     </div>
@@ -131,7 +131,7 @@ function MonthTotalsCard({
       <dl className="m-0 grid grid-cols-4 px-1 pb-1.5 pt-2.5 text-center">
         {kinds.map(([kind, count]) => (
           <div key={kind} className="grid gap-0.5">
-            <dt className="text-[0.65625rem] font-semibold text-[color:var(--text-muted)]">{SHIFT_KIND_LABEL[kind]}</dt>
+            <dt className="text-3xs font-semibold text-[color:var(--text-muted)]">{SHIFT_KIND_LABEL[kind]}</dt>
             <dd className="nums m-0 text-lg font-bold text-[color:var(--text-heading)]">
               <span className="sr-only">{atLeast}</span>
               {count}
@@ -141,14 +141,14 @@ function MonthTotalsCard({
       </dl>
       <dl className="m-0 grid grid-cols-2 border-t border-[color:var(--border)] px-1 pb-2.5 pt-2 text-center">
         <div className="grid gap-0.5">
-          <dt className="text-[0.65625rem] font-semibold text-[color:var(--text-muted)]">Days off</dt>
+          <dt className="text-3xs font-semibold text-[color:var(--text-muted)]">Days off</dt>
           <dd className="nums m-0 text-lg font-bold text-[color:var(--text-heading)]" data-testid="roster-month-off">
             {partial ? <span className="sr-only">at most </span> : null}
             {totals.off}
           </dd>
         </div>
         <div className="grid gap-0.5">
-          <dt className="text-[0.65625rem] font-semibold text-[color:var(--text-muted)]">Public holidays worked</dt>
+          <dt className="text-3xs font-semibold text-[color:var(--text-muted)]">Public holidays worked</dt>
           <dd
             className="nums m-0 text-lg font-bold text-[color:var(--text-heading)]"
             data-testid="roster-month-holidays"
@@ -159,7 +159,7 @@ function MonthTotalsCard({
         </div>
       </dl>
       {totals.countedFrom || partial ? (
-        <p className="m-0 border-t border-[color:var(--border)] px-3 py-2 text-center text-[0.6875rem] text-[color:var(--text-muted)]">
+        <p className="m-0 border-t border-[color:var(--border)] px-3 py-2 text-center text-2xs text-[color:var(--text-muted)]">
           {[
             totals.countedFrom
               ? `Counted from ${formatPerthDay(totals.countedFrom)}, as far back as your roster loads.`
@@ -392,7 +392,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
                 Answer
               </WorkButton>
             </div>
-            <p className="nums m-0 flex items-center gap-1.5 px-3 pb-2.5 text-[0.71875rem] text-[color:var(--text-muted)]">
+            <p className="nums m-0 flex items-center gap-1.5 px-3 pb-2.5 text-2xs text-[color:var(--text-muted)]">
               <Clock aria-hidden="true" className="size-3.5" strokeWidth={2} />
               Answer by {perthTimeOf(waitingSwap.expiresAt)}{" "}
               {perthDateOf(waitingSwap.expiresAt) === today
@@ -489,7 +489,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
             />
           </WorkCard>
           {links.links.length ? (
-            <p className="m-0 px-1 text-[0.71875rem] font-medium text-[color:var(--text-muted)]">
+            <p className="m-0 px-1 text-2xs font-medium text-[color:var(--text-muted)]">
               A linked phone calendar may still show your shifts, as of its last update.
             </p>
           ) : null}
@@ -531,7 +531,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
               <WorkIconRow icon={Users} title="Join a team" sub="Paste an invite link or code" href="/roster/join" />
             </li>
           </WorkCard>
-          <p className="m-0 px-1 text-center text-[0.71875rem] font-medium text-[color:var(--text-muted)]">
+          <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
             PDF, Excel, CSV or calendar file. Nothing is shared until you join a team.
           </p>
         </div>
@@ -571,12 +571,12 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
         </WorkCard>
         {comingUp()}
         <MonthTotalsCard totals={totals} partial={partial} month={month} />
-        <p className="m-0 px-1 text-center text-[0.71875rem] font-medium text-[color:var(--text-muted)]">
+        <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
           {shifts.sample
             ? "Sample shifts and team are invented."
             : "Your copy of the roster. Check official changes with your service."}
         </p>
-        <p className="m-0 -mt-1 px-1 text-center text-[0.6875rem] text-[color:var(--text-muted)]">
+        <p className="m-0 -mt-1 px-1 text-center text-2xs text-[color:var(--text-muted)]">
           WA public holidays, wa.gov.au, read 25 Sep 2026.{" "}
           <Link href="/roster/shifts" className="font-semibold text-[color:var(--mode-identity)]">
             Week by week

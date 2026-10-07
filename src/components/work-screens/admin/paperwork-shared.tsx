@@ -316,8 +316,8 @@ export function PaperworkSwitch({
       >
         <span
           className={cn(
-            "absolute size-5 rounded-full bg-[color:var(--surface-raised)] transition-[left] duration-[var(--duration-instant)] motion-reduce:transition-none",
-            on ? "left-[1.0625rem]" : "left-0.5",
+            "absolute left-0.5 size-5 rounded-full bg-[color:var(--surface-raised)] transition-transform duration-[var(--duration-instant)] motion-reduce:transition-none",
+            on && "translate-x-3.75",
           )}
         />
       </span>

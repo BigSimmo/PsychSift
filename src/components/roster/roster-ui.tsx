@@ -78,7 +78,7 @@ export function RosterPageHeader({
               <div className="text-sm text-[color:var(--text-muted)]">{subtitle}</div>
             </WithoutModeBand>
           ) : (
-            <div className="text-[0.78125rem] text-[color:var(--text-muted)]">{subtitle}</div>
+            <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
           )
         ) : null}
       </div>
@@ -116,7 +116,7 @@ export function RosterSection({
         </WithoutModeBand>
         <h2
           id={id}
-          className="flex-1 text-[0.625rem] font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
+          className="flex-1 text-3xs font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
         >
           {title}
         </h2>
@@ -149,7 +149,7 @@ export function RosterStat({
         <Icon aria-hidden="true" strokeWidth={1.75} className="size-icon-md" />
       </span>
       <span className="grid min-w-0 gap-0.5">
-        <span className="text-[0.6875rem] font-semibold text-[color:var(--text-muted)]">{label}</span>
+        <span className="text-2xs font-semibold text-[color:var(--text-muted)]">{label}</span>
         <span className={cn(modeNumberText, "break-words text-base-minus font-bold text-[color:var(--text-heading)]")}>
           {value}
         </span>
@@ -189,7 +189,7 @@ export function RosterEmpty({
       >
         <Icon aria-hidden="true" strokeWidth={1.75} className="size-icon-lg" />
       </span>
-      <p className="text-[0.78125rem] text-[color:var(--text-muted)]">{children}</p>
+      <p className="text-xs text-[color:var(--text-muted)]">{children}</p>
     </div>
   );
 }

@@ -235,13 +235,13 @@ export function OpenShiftsBrowsePage() {
             rosteredDays={rosteredDays}
           />
           <ul
-            className="m-0 mt-1 flex list-none flex-wrap justify-center gap-x-3 gap-y-1.5 p-0 px-3 text-[0.65625rem] font-semibold text-[color:var(--text)]"
+            className="m-0 mt-1 flex list-none flex-wrap justify-center gap-x-3 gap-y-1.5 p-0 px-3 text-3xs font-semibold text-[color:var(--text)]"
             aria-label="Calendar key"
           >
             <li className="inline-flex items-center gap-1.5">
               <span
                 aria-hidden="true"
-                className="nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center rounded-full bg-[color:var(--mode-identity-soft)] px-1 text-[0.5625rem] font-extrabold text-[color:var(--mode-identity)]"
+                className="nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center rounded-full bg-[color:var(--mode-identity-soft)] px-1 text-3xs font-extrabold text-[color:var(--mode-identity)]"
               >
                 3
               </span>

@@ -23,7 +23,14 @@ function Countdown({ seconds }: { readonly seconds: number }) {
       className="nums relative grid size-10.5 shrink-0 place-items-center text-sm font-bold text-[color:var(--mode-identity)]"
     >
       <svg aria-hidden="true" viewBox="0 0 42 42" className="absolute inset-0 size-full">
-        <circle cx="21" cy="21" r="18" fill="none" strokeWidth="3" style={{ stroke: "var(--mode-identity-border)" }} />
+        <circle
+          cx="21"
+          cy="21"
+          r="18"
+          fill="none"
+          strokeWidth="3"
+          className="stroke-[color:var(--mode-identity-border)]"
+        />
         <circle
           cx="21"
           cy="21"
@@ -34,8 +41,7 @@ function Countdown({ seconds }: { readonly seconds: number }) {
           strokeDasharray={RING.toFixed(1)}
           strokeDashoffset={offset.toFixed(1)}
           transform="rotate(-90 21 21)"
-          className="transition-[stroke-dashoffset] duration-200 motion-reduce:transition-none"
-          style={{ stroke: "var(--mode-identity)" }}
+          className="stroke-[color:var(--mode-identity)] transition-[stroke-dashoffset] duration-[var(--duration-moderate)] motion-reduce:transition-none"
         />
       </svg>
       <span aria-hidden="true">{seconds}</span>

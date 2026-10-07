@@ -1177,10 +1177,18 @@ function ChooseList({
   readonly onNone: () => void;
 }) {
   const newestFirst = [...entries].reverse();
+  // The visible count is not a live region (SPEC §9.2); a change is said once through the announcer.
+  const chosenCount = chosen.size;
+  const spokenCount = useRef(chosenCount);
+  useEffect(() => {
+    if (spokenCount.current === chosenCount) return;
+    spokenCount.current = chosenCount;
+    announce(`${chosenCount} of ${entries.length} chosen`);
+  }, [chosenCount, entries.length]);
   return (
     <div className="grid gap-2" data-testid="cpd-home-choose">
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <p className="text-sm text-[color:var(--text-muted)]" aria-live="polite">
+        <p className="text-sm text-[color:var(--text-muted)]">
           <span className="nums">{chosen.size}</span> of <span className="nums">{entries.length}</span> chosen
         </p>
         <span className="flex gap-1">

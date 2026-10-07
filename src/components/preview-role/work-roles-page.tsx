@@ -12,6 +12,7 @@ import {
   WorkSectionLabel,
   WorkTag,
 } from "@/components/mode-kit/work";
+import { announce } from "@/components/ui/live-announcer";
 import { useExampleData } from "@/lib/example-data/store";
 import {
   PREVIEW_ROLES,
@@ -70,6 +71,7 @@ export function WorkRolesPage() {
   const example = useExampleData();
   const chooseRole = (next: PreviewRole) => {
     choose(next);
+    announce(PREVIEW_ROLE_INFO[next].label);
     if (next !== "junior" && example.mode !== "on") example.turnOn();
   };
 
@@ -114,9 +116,7 @@ export function WorkRolesPage() {
         </WorkChips>
 
         <WorkCard padded testId="work-roles-current">
-          <p className="text-base font-semibold text-[var(--work-ink)]" aria-live="polite">
-            {info.label}
-          </p>
+          <p className="text-base font-semibold text-[var(--work-ink)]">{info.label}</p>
           <p className="text-sm text-[var(--work-ink-muted)]">{info.sub}</p>
           <p className="mt-2 text-sm text-[var(--work-ink-muted)]">{info.data}</p>
           {saved ? null : (

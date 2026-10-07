@@ -179,7 +179,7 @@ export function ModePickerSheetBand({ modeId, icon: Icon }: { modeId: string; ic
       aria-hidden="true"
       data-mode-identity={modeId}
       data-testid="app-mode-sheet-band"
-      className="pointer-events-none absolute inset-x-0 -top-4 bottom-0 -z-10 overflow-hidden border-b border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-band)] sm:top-0"
+      className="pointer-events-none absolute inset-x-0 -top-4 bottom-0 [z-index:var(--work-z-under)] overflow-hidden border-b border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-band)] sm:top-0"
     >
       <span className="absolute inset-0 bg-[radial-gradient(var(--mode-identity-border)_0.7px,transparent_0.8px)] bg-[length:12px_12px] opacity-55" />
       <Icon
@@ -250,7 +250,7 @@ export function ModePickerSideToggle({
       className={cn(
         "grid grid-cols-2 gap-1 p-0.5",
         phone
-          ? cn("h-11 rounded-full", modePickerGlassClass)
+          ? cn("h-tap rounded-full", modePickerGlassClass)
           : "h-10 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)]",
       )}
     >

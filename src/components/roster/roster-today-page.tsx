@@ -182,7 +182,7 @@ function DayLine({ shift, now }: { readonly shift: OnCallShift; readonly now: Da
           style={{ left: `${at * 100}%` }}
         />
       </span>
-      <span className="nums flex justify-between text-[0.625rem] opacity-90">
+      <span className="nums flex justify-between text-3xs opacity-90">
         <span>00</span>
         <span>06</span>
         <span>12</span>
@@ -196,7 +196,7 @@ function DayLine({ shift, now }: { readonly shift: OnCallShift; readonly now: Da
 function ShiftTimes({ shift }: { readonly shift: OnCallShift }) {
   const { start, end, plusOne } = shiftTimes(shift);
   return (
-    <span className="nums flex flex-wrap items-baseline gap-x-1.5 text-[1.375rem] font-bold leading-tight tracking-display">
+    <span className="nums flex flex-wrap items-baseline gap-x-1.5 text-2xl-minus font-bold leading-tight tracking-display">
       <span>{start}</span>
       <span className="text-sm font-semibold opacity-90">to</span>
       <span>{end}</span>
@@ -212,7 +212,7 @@ function ringHours(ms: number): string {
 }
 
 const heroButton =
-  "inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[color:color-mix(in_oklab,currentColor_16%,transparent)] px-3 text-[0.8125rem] font-semibold text-current no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current forced-colors:border";
+  "inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[color:color-mix(in_oklab,currentColor_16%,transparent)] px-3 text-sm-minus font-semibold text-current no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current forced-colors:border";
 
 function Hero({
   summary,
@@ -331,7 +331,7 @@ function Hero({
           leadShift ? (
             <span className="grid gap-0.5">
               {lead.state === "day_off" ? (
-                <span className="text-[0.9375rem] font-semibold" data-testid="roster-today-next">
+                <span className="text-base-minus font-semibold" data-testid="roster-today-next">
                   {`Next: ${SHIFT_KIND_LABEL[kindOf(leadShift)]}, `}
                   <span>{formatPerthDay(perthDateOf(leadShift.startsAt))}</span>
                 </span>

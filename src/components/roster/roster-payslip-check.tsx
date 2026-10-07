@@ -91,20 +91,20 @@ export function RosterPayslipCheck({
               key={label}
               className="flex items-center justify-between gap-3 border-b py-2 border-[color:var(--border)] last:border-b-0"
             >
-              <dt className="text-[0.78125rem] text-[color:var(--text)]">{label}</dt>
-              <dd className="nums m-0 text-[0.8125rem] font-bold text-[color:var(--text-heading)]">{value}</dd>
+              <dt className="text-xs text-[color:var(--text)]">{label}</dt>
+              <dd className="nums m-0 text-sm-minus font-bold text-[color:var(--text-heading)]">{value}</dd>
             </div>
           ))}
         </dl>
         <div className="grid gap-1.5 border-t border-[color:var(--border)] px-3 pb-3 pt-2.5">
-          <p className="m-0 text-[0.71875rem] text-[color:var(--text-muted)]">
+          <p className="m-0 text-2xs text-[color:var(--text-muted)]">
             Your roster, not your pay. Compare it with your payslip.
             {partial ? " Part of your roster didn't load, so these are minimums." : ""}
           </p>
           <WorkButton variant="tinted" icon={Copy} onClick={() => void copy()} testId="roster-payslip-copy">
             Copy as text
           </WorkButton>
-          <p role="status" className="m-0 min-h-4 text-[0.71875rem] text-[color:var(--text-muted)]">
+          <p role="status" className="m-0 min-h-4 text-2xs text-[color:var(--text-muted)]">
             {copied === "done"
               ? "Copied. Paste it beside your payslip."
               : copied === "failed"

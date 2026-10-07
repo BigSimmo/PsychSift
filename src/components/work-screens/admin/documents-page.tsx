@@ -233,11 +233,7 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
             </WorkCard>
           ) : (
             folders.map((view) => (
-              <section
-                key={view.folder}
-                aria-labelledby={`admin-documents-${view.folder}`}
-                className="grid gap-[inherit]"
-              >
+              <section key={view.folder} aria-labelledby={`admin-documents-${view.folder}`} className="grid gap-2.25">
                 <WorkSectionLabel id={`admin-documents-${view.folder}`} count={view.documents.length}>
                   {view.label}
                 </WorkSectionLabel>

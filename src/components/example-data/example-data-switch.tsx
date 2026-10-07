@@ -48,15 +48,15 @@ export function ExampleDataSwitch({ variant = "work" }: { readonly variant?: "wo
             }`}
           >
             <span
-              className={`absolute size-5 rounded-full bg-[color:var(--surface-raised)] transition-[left] duration-[var(--duration-instant)] motion-reduce:transition-none forced-colors:bg-[CanvasText] ${
-                on ? "left-[1.0625rem]" : "left-0.5"
+              className={`absolute left-0.5 size-5 rounded-full bg-[color:var(--surface-raised)] transition-transform duration-[var(--duration-instant)] motion-reduce:transition-none forced-colors:bg-[CanvasText] ${
+                on ? "translate-x-3.75" : ""
               }`}
             />
           </span>
         </button>
       </div>
       {on ? (
-        <div className="px-3 pb-3 pl-[3.25rem]">
+        <div className="px-3 pb-3 pl-13">
           <p id={noteId} className="m-0 text-xs leading-snug font-medium text-[color:var(--work-ink-muted)]">
             {exampleAreasLine(activeAreas.length)}
           </p>

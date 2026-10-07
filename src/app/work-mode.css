@@ -466,7 +466,7 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
   /* While a finger drags sideways, the current tab's underline leans toward
      where the swipe is going (use-tab-swipe.ts), then settles back. */
   .work-band__tab[aria-current="page"]::after {
-    transition: transform var(--duration-fast, 160ms) var(--ease-out, ease-out);
+    transition: transform var(--duration-fast) var(--ease-out, ease-out);
   }
 
   .work-band__tabs[data-swiping] .work-band__tab[aria-current="page"]::after {

@@ -24,6 +24,7 @@ import {
  * only.
  */
 
+/** Bar track height in px; the track itself is `h-14` (56px), so keep the two in step. */
 const BAR_PX = 56;
 
 export function RosterStaffingStrip({
@@ -85,7 +86,7 @@ export function RosterStaffingStrip({
                 >
                   {unknown ? "?" : count}
                 </span>
-                <span aria-hidden="true" className="flex w-5 flex-col justify-end" style={{ height: BAR_PX }}>
+                <span aria-hidden="true" className="flex h-14 w-5 flex-col justify-end">
                   {youHeight ? (
                     <span
                       className="mb-0.5 block w-full rounded-sm border-[1.5px] border-[color:var(--mode-identity)] bg-[color:var(--surface-raised)]"

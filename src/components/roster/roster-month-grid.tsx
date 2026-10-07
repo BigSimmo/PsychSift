@@ -95,7 +95,7 @@ export function RosterShiftChip({
       aria-hidden="true"
       data-kind={kind}
       className={cn(
-        "nums block h-[0.9375rem] min-w-[1.375rem] rounded-sm px-0.75 text-center text-[0.5625rem] font-extrabold not-italic leading-3.75 tracking-normal forced-colors:border",
+        "nums block h-[0.9375rem] min-w-[1.375rem] rounded-sm px-0.75 text-center text-3xs font-extrabold not-italic leading-3.75 tracking-normal forced-colors:border",
         SHIFT_CHIP_TONE[kind],
         dashed && "bg-[color:var(--surface-raised)] outline-dashed outline-[1.3px] -outline-offset-[1.3px]",
         className,
@@ -112,7 +112,7 @@ const LEGEND_KINDS: readonly ShiftKind[] = ["day", "evening", "night", "on_call"
 export function RosterMonthLegend({ swapAsked = false }: { readonly swapAsked?: boolean }) {
   return (
     <ul
-      className="mt-2.5 flex flex-wrap justify-center gap-x-2.5 gap-y-1.5 text-[0.65625rem] font-semibold text-[color:var(--text)]"
+      className="mt-2.5 flex flex-wrap justify-center gap-x-2.5 gap-y-1.5 text-3xs font-semibold text-[color:var(--text)]"
       aria-label="Key"
     >
       {LEGEND_KINDS.map((kind) => (
@@ -124,7 +124,7 @@ export function RosterMonthLegend({ swapAsked = false }: { readonly swapAsked?: 
       <li className="inline-flex items-center gap-1.5">
         <span
           aria-hidden="true"
-          className="nums text-[0.5625rem] font-extrabold tracking-label text-[color:var(--warning-text)]"
+          className="nums text-3xs font-extrabold tracking-label text-[color:var(--warning-text)]"
         >
           PH
         </span>
@@ -193,7 +193,7 @@ export function RosterMonthGrid({
   return (
     <div data-testid={testId} data-no-tab-swipe="">
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h2 className="nums text-[0.9375rem] font-bold text-[color:var(--text-heading)]">{monthTitle(month)}</h2>
+        <h2 className="nums text-base-minus font-bold text-[color:var(--text-heading)]">{monthTitle(month)}</h2>
         {/* The month change is announced by a hidden twin, never by the visible heading (SPEC §9.2). */}
         <span className="sr-only" aria-live="polite">
           {monthTitle(month)}
@@ -232,7 +232,7 @@ export function RosterMonthGrid({
               key={index}
               role="columnheader"
               aria-label={WEEKDAY_LONG[(index + 1) % 7]}
-              className="pb-1 text-[0.59375rem] font-bold tracking-label text-[color:var(--text-muted)]"
+              className="pb-1 text-3xs font-bold tracking-label text-[color:var(--text-muted)]"
             >
               {label}
             </span>
@@ -285,7 +285,7 @@ export function RosterMonthGrid({
                     <b
                       aria-hidden="true"
                       className={cn(
-                        "nums grid size-[1.5625rem] place-items-center rounded-full text-[0.78125rem] font-semibold",
+                        "nums grid size-[1.5625rem] place-items-center rounded-full text-xs font-semibold",
                         isToday
                           ? "bg-[color:var(--mode-identity)] font-bold text-[color:var(--mode-identity-contrast)] forced-colors:border"
                           : past || notLoaded
@@ -300,7 +300,7 @@ export function RosterMonthGrid({
                     {notLoaded ? (
                       <i
                         aria-hidden="true"
-                        className="block h-[0.9375rem] text-[0.5625rem] leading-3.75 not-italic text-[color:var(--text-muted)]"
+                        className="block h-[0.9375rem] text-3xs leading-3.75 not-italic text-[color:var(--text-muted)]"
                       >
                         ·
                       </i>
@@ -313,7 +313,7 @@ export function RosterMonthGrid({
                     {holiday ? (
                       <span
                         aria-hidden="true"
-                        className="-mt-0.5 text-[0.5rem] font-extrabold leading-none tracking-label text-[color:var(--warning-text)]"
+                        className="-mt-0.5 text-3xs font-extrabold leading-none tracking-label text-[color:var(--warning-text)]"
                       >
                         PH
                       </span>

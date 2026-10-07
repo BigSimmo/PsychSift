@@ -223,8 +223,8 @@ export function FlatSwitch({
       >
         <span
           className={cn(
-            "absolute top-0.5 size-6 rounded-full bg-[color:var(--surface-raised)] motion-safe:transition-[left]",
-            on ? "left-5.5" : "left-0.5",
+            "absolute top-0.5 left-0.5 size-6 rounded-full bg-[color:var(--surface-raised)] motion-safe:transition-transform",
+            on && "translate-x-5",
           )}
         />
       </span>

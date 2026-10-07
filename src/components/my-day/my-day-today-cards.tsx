@@ -210,7 +210,7 @@ function HeroTrackLine({
   // Drawn as SVG so the positions are attributes, not inline styles.
   return (
     <div aria-hidden="true" data-testid="my-day-ribbon" className="mt-3">
-      <svg className="block h-4.5 w-full overflow-visible" role="presentation">
+      <svg className="block h-[1.125rem] w-full overflow-visible" role="presentation">
         <rect
           x="0"
           y="0"
@@ -1222,7 +1222,7 @@ export function StripDay({
       <span
         aria-hidden="true"
         className={cn(
-          "mt-0.5 h-0.75 w-4.5 rounded-full forced-colors:bg-[CanvasText]",
+          "mt-0.5 h-0.75 w-[1.125rem] rounded-full forced-colors:bg-[CanvasText]",
           code ? (isToday ? "bg-[color:var(--mode-identity-contrast)]" : SHIFT_BAR[code]) : "bg-transparent",
         )}
       />

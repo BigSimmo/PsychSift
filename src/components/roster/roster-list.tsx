@@ -32,7 +32,7 @@ export function RosterSectionHead({
     <div className="-my-2 flex min-h-12 min-w-0 items-center justify-between gap-3 px-1">
       <h2
         id={id}
-        className="flex min-w-0 items-center gap-1.5 text-[0.625rem] font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
+        className="flex min-w-0 items-center gap-1.5 text-3xs font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
       >
         {title}
         {isNew ? (
@@ -156,7 +156,7 @@ export function RosterInitials({ name }: { readonly name: string }) {
   return (
     <span
       aria-hidden="true"
-      className="grid size-[1.875rem] shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[0.6875rem] font-bold text-[color:var(--mode-identity)] forced-colors:border"
+      className="grid size-[1.875rem] shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-2xs font-bold text-[color:var(--mode-identity)] forced-colors:border"
     >
       {initials}
     </span>
@@ -214,7 +214,7 @@ export function RosterRow({
         {sub ? (
           <span
             className={cn(
-              "break-words text-[0.71875rem] leading-4",
+              "break-words text-2xs leading-4",
               tone === "warning" ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)]",
             )}
           >
@@ -223,7 +223,7 @@ export function RosterRow({
         ) : null}
       </span>
       {trail ? (
-        <span className="shrink-0 whitespace-nowrap text-[0.6875rem] font-semibold text-[color:var(--text-muted)]">
+        <span className="shrink-0 whitespace-nowrap text-2xs font-semibold text-[color:var(--text-muted)]">
           {trail}
         </span>
       ) : null}
@@ -289,7 +289,7 @@ export function RosterNote({
       role={role}
       data-testid={testId}
       className={cn(
-        "flex min-w-0 items-start gap-2.5 rounded-[var(--work-radius-card,14px)] border px-3 py-2.5 text-[0.78125rem] leading-5 text-[color:var(--text)] forced-colors:border",
+        "flex min-w-0 items-start gap-2.5 rounded-[var(--work-radius-card,14px)] border px-3 py-2.5 text-xs leading-5 text-[color:var(--text)] forced-colors:border",
         tone === "warning"
           ? "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)]"
           : "border-[color:var(--border)] bg-[color:var(--surface-raised)]",
@@ -311,7 +311,7 @@ export function RosterNote({
 /** Small grey footnote text under a section. */
 export function RosterFootnote({ children, testId }: { readonly children: ReactNode; readonly testId?: string }) {
   return (
-    <p className="mx-1 text-[0.71875rem] font-medium leading-snug text-[color:var(--text-muted)]" data-testid={testId}>
+    <p className="mx-1 text-2xs font-medium leading-snug text-[color:var(--text-muted)]" data-testid={testId}>
       {children}
     </p>
   );

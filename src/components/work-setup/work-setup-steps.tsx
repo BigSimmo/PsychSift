@@ -25,6 +25,7 @@ import {
 import { WorkCard, WorkIconRow, WorkSectionLabel, WorkTag } from "@/components/mode-kit/work";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { Checkbox, RadioGroup } from "@/components/ui/choice";
+import { announce } from "@/components/ui/live-announcer";
 import { SetupAreaStatus, SetupAreaTrailing } from "@/components/work-setup/work-setup-area-status";
 import { WORK_SETUP_AREA_COPY, WORK_SETUP_COVERS, WORK_SETUP_STEP_COPY } from "@/components/work-setup/work-setup-copy";
 import { setupZoneLabel, type SetupExampleData, type SetupTimeZone } from "@/components/work-setup/shared-settings";
@@ -248,7 +249,11 @@ export function AreasStep({ progress, onAreas }: WorkSetupStepContext) {
     const next = new Set(chosen);
     if (on) next.add(area);
     else next.delete(area);
-    onAreas(WORK_SETUP_AREAS.filter((item) => next.has(item)));
+    const areas = WORK_SETUP_AREAS.filter((item) => next.has(item));
+    onAreas(areas);
+    // The hint below is visible content, not a live region (SPEC §9.2); the new count is said once here.
+    const nextSteps = countedWorkSetupSteps(areas).length;
+    announce(`Setup has ${nextSteps} ${nextSteps === 1 ? "step" : "steps"} for these.`);
   };
   const steps = countedWorkSetupSteps(progress.areas).length;
   return (
@@ -288,7 +293,7 @@ export function AreasStep({ progress, onAreas }: WorkSetupStepContext) {
           );
         })}
       </WorkCard>
-      <p className="work-setup__hint" aria-live="polite" data-testid="work-setup-areas-count">
+      <p className="work-setup__hint" data-testid="work-setup-areas-count">
         Setup has {steps} {steps === 1 ? "step" : "steps"} for these.
       </p>
     </div>

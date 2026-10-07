@@ -126,9 +126,7 @@ function TeamToday({ read, actorId, now }: { read: AssignmentsRead; actorId: str
           <RosterSectionHead
             id="roster-team-now"
             title="On now"
-            right={
-              <span className="nums text-[0.71875rem] text-[color:var(--text-muted)]">{formatPerthDay(today)}</span>
-            }
+            right={<span className="nums text-2xs text-[color:var(--text-muted)]">{formatPerthDay(today)}</span>}
           />
           <RosterList label="On now">
             {onNow.map((row) => {
@@ -151,7 +149,7 @@ function TeamToday({ read, actorId, now }: { read: AssignmentsRead; actorId: str
             id="roster-team-with-you"
             title={withYouTitle}
             right={
-              <span className="nums text-[0.71875rem] text-[color:var(--text-muted)]">
+              <span className="nums text-2xs text-[color:var(--text-muted)]">
                 {`Your ${SHIFT_KIND_LABEL[first.kind].toLowerCase()} · ${formatShiftRange(first)}`}
               </span>
             }

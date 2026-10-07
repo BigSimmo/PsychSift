@@ -69,11 +69,16 @@ export const DISABLED_OPACITY_CLASS = new RegExp(
 );
 
 export const RAW_COLOR_EXEMPTIONS = [
-  // Both files are the theme-token layer itself — the one place raw colour values
+  // These files are the theme-token layer itself — the one place raw colour values
   // are *defined* rather than consumed. `ckb-v2-tokens.css` is the opt-in `.ckb-v2`
   // layer, split out of globals.css only for readability; it declares no rules
-  // beyond custom properties.
-  { category: "global theme tokens", pattern: /^src\/app\/(?:globals|ckb-v2-tokens)\.css$/, scope: "whole-file" },
+  // beyond custom properties. `work-mode-tokens.css` is the work-mode colour tokens,
+  // split out of globals.css behind @import to keep it under its size budget.
+  {
+    category: "global theme tokens",
+    pattern: /^src\/app\/(?:globals|ckb-v2-tokens|work-mode-tokens)\.css$/,
+    scope: "whole-file",
+  },
   {
     category: "brand artwork",
     pattern:

@@ -186,14 +186,18 @@ export function JuniorUndoBar({
   }, [push, dismiss, label, durationMs]);
   useEffect(() => {
     if (push) return undefined;
+    // The bar below is visible content, so it is not a live region (SPEC §9.2); say it once here.
+    announce(label);
+    return undefined;
+  }, [push, label]);
+  useEffect(() => {
+    if (push) return undefined;
     const timer = window.setTimeout(() => dismissRef.current(), durationMs);
     return () => window.clearTimeout(timer);
   }, [push, durationMs]);
   if (push) return null;
   return (
     <div
-      role="status"
-      aria-live="polite"
       data-testid={testId}
       className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[var(--z-chrome)] flex justify-center px-4 print:hidden"
     >

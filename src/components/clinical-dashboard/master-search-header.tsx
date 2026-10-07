@@ -2898,7 +2898,7 @@ export function MasterSearchHeader({
           mobileHeaderSafeArea="padding"
           testId="app-mode-menu-sheet"
           contentClassName={cn(
-            "max-h-[calc(100dvh-0.75rem)] rounded-t-[2rem] sm:max-w-md sm:rounded-2xl",
+            "max-h-[calc(100dvh-0.75rem)] rounded-t-[var(--work-radius-sheet)] sm:max-w-md sm:rounded-2xl",
             modeSheetView === "sections" ? "bg-[color:var(--surface-lux)]" : "bg-[color:var(--surface-wash)]",
           )}
           bodyClassName={

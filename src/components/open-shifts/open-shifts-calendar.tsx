@@ -77,7 +77,7 @@ export function OpenShiftsCalendar({
   return (
     <section aria-label={`${title} calendar`} className="px-3 pt-2" data-no-tab-swipe>
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h2 className="nums text-[0.9375rem] font-bold text-[color:var(--text-heading)]">{title}</h2>
+        <h2 className="nums text-base-minus font-bold text-[color:var(--text-heading)]">{title}</h2>
         <span className="sr-only" aria-live="polite">
           {title}
         </span>
@@ -107,7 +107,7 @@ export function OpenShiftsCalendar({
           {DOW.map((letter, index) => (
             <div
               key={DOW_FULL[index]}
-              className="pb-1 text-[0.59375rem] font-bold tracking-label text-[color:var(--text-muted)]"
+              className="pb-1 text-3xs font-bold tracking-label text-[color:var(--text-muted)]"
             >
               {letter}
             </div>
@@ -156,7 +156,7 @@ export function OpenShiftsCalendar({
                     <b
                       aria-hidden="true"
                       className={cn(
-                        "nums grid size-[1.5625rem] place-items-center rounded-full text-[0.78125rem]",
+                        "nums grid size-[1.5625rem] place-items-center rounded-full text-xs",
                         isToday
                           ? "bg-[color:var(--mode-identity)] font-bold text-[color:var(--mode-identity-contrast)] forced-colors:border"
                           : inMonth && !past
@@ -173,7 +173,7 @@ export function OpenShiftsCalendar({
                       <span
                         aria-hidden="true"
                         className={cn(
-                          "nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center gap-0.5 rounded-full px-1 text-[0.5625rem] font-extrabold leading-none",
+                          "nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center gap-0.5 rounded-full px-1 text-3xs font-extrabold leading-none",
                           urgent
                             ? "border border-[color:var(--warning-border)] text-[color:var(--warning-text)]"
                             : "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",

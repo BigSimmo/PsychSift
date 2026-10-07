@@ -95,7 +95,7 @@ export function WorkTimeZoneSetting({ variant = "work" }: { readonly variant?: "
           className="size-icon-sm flex-none text-[color:var(--decoration-soft)]"
         />
       </button>
-      <div className="-mt-1 px-3 pb-3 pl-[3.25rem] text-xs leading-snug font-medium text-[color:var(--work-ink-muted)]">
+      <div className="-mt-1 px-3 pb-3 pl-13 text-xs leading-snug font-medium text-[color:var(--work-ink-muted)]">
         <p className="m-0" data-testid="work-time-zone-note">
           {note}
         </p>
