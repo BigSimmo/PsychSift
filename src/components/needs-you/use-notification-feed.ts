@@ -183,10 +183,12 @@ export function useNotificationFeed({ clock }: { readonly clock: Date }): Notifi
   const status: NotificationFeedStatus =
     myDay.status === "signed-out" ? "signed-out" : !settled ? "loading" : allFailed ? "error" : "ready";
 
+  // "Checked 07:45": stamped each time the reads settle (a retry stamps again).
+  const settledKey = myDay.sources.map((source) => source.status).join(",");
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
   useEffect(() => {
     if (status === "ready" || status === "error") setCheckedAt(new Date());
-  }, [status, myDay.sources]);
+  }, [status, settledKey]);
 
   const snoozeOnCallType = useCallback(
     (type: ReminderType) => setPreference("reminders", snoozeReminder(preferences.reminders, type, reminderToday)),

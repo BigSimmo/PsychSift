@@ -138,6 +138,12 @@ function NotificationCentreSheet({
   const [expanded, setExpanded] = useState<string | null>(null);
   const [note, setNote] = useState<UndoNote | null>(null);
   const noteSeq = useRef(0);
+  // An Undo runs after the row's options have closed, so it reads the newest list from here.
+  const remindersRef = useRef(feed.reminders);
+  useEffect(() => {
+    remindersRef.current = feed.reminders;
+  }, [feed.reminders]);
+  const getReminders = useCallback(() => remindersRef.current, []);
 
   const showNote = useCallback((message: string, undo?: () => void) => {
     noteSeq.current += 1;
@@ -388,6 +394,7 @@ function NotificationCentreSheet({
                           onNavigate={navigate}
                           onSnooze={() => snooze(item)}
                           onNote={showNote}
+                          getReminders={getReminders}
                         />
                       ))}
                     </ul>
@@ -517,7 +524,9 @@ function NotificationRow({
   onNavigate,
   onSnooze,
   onNote,
+  getReminders,
 }: {
+  readonly getReminders: () => readonly Reminder[];
   readonly item: NotificationItem;
   readonly now: Date;
   readonly snoozeLabel: string;
@@ -595,6 +604,7 @@ function NotificationRow({
           remindable={remindable}
           onSnooze={onSnooze}
           onNote={onNote}
+          getReminders={getReminders}
           onDone={() => {
             onCollapse();
             requestAnimationFrame(() => optionsRef.current?.focus());
@@ -614,7 +624,9 @@ function RowActions({
   onSnooze,
   onNote,
   onDone,
+  getReminders,
 }: {
+  readonly getReminders: () => readonly Reminder[];
   readonly id: string;
   readonly item: NotificationItem;
   readonly now: Date;
@@ -624,13 +636,9 @@ function RowActions({
   readonly onNote: (message: string, undo?: () => void) => void;
   readonly onDone: () => void;
 }) {
-  const { add, remove, reminders } = useRemindMe();
+  const { add, remove } = useRemindMe();
   const [choosing, setChoosing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const latest = useRef(reminders);
-  useEffect(() => {
-    latest.current = reminders;
-  }, [reminders]);
   // Worked out once, when the options open, so a ticking clock never swaps a choice under the finger.
   const [openedAt] = useState(now);
   const options = useMemo(() => remindMeWhenOptions(openedAt, null), [openedAt]);
@@ -640,7 +648,7 @@ function RowActions({
     if (result === "saved") {
       onDone();
       onNote(`Reminder set for ${label}`, () => {
-        const saved = [...latest.current]
+        const saved = [...getReminders()]
           .reverse()
           .find(
             (reminder) => reminder.text === item.title.trim() && reminder.dueAt === dueAt && reminder.doneAt === null,

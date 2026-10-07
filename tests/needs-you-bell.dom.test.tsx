@@ -79,6 +79,7 @@ describe("Needs you header bell", () => {
 
   it("shows the centre's count as a badge, red when something is overdue, and says it in words", () => {
     centre.summary = { count: 3, overdue: 1 };
+    nav.pathname = "/roster";
     render(<NeedsYouButton modeId="roster" />);
     expect(screen.queryByTestId("needs-you-badge")).toBeNull();
     const bell = screen.getByTestId("needs-you-bell");
@@ -94,6 +95,7 @@ describe("Needs you header bell", () => {
 
   it("caps the badge at 9+ and hides it at zero", () => {
     centre.summary = { count: 14, overdue: 0 };
+    nav.pathname = "/cme";
     const { unmount } = render(<NeedsYouButton modeId="cme" />);
     act(() => {
       fireEvent.focus(screen.getByTestId("needs-you-bell"));
