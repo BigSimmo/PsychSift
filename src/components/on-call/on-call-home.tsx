@@ -39,6 +39,7 @@ import { cn, eyebrowText } from "@/components/ui-primitives";
 import { onCallCallNowScenarios, onCallCallNowSteps } from "@/lib/on-call/call-now";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { pinnedEmergencyEntries } from "@/lib/on-call/handbook-items";
+import { selectPinnedPlaybookEntry } from "@/lib/on-call/home-modules";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
 import { useOnCallMyTeam } from "@/lib/on-call/my-team-storage";
 import {
@@ -245,15 +246,21 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   const selectedNeeds = useMemo(() => selectNeedsYou({ ladders, marks, dialKeys }), [ladders, marks, dialKeys]);
   // "They answered" closes the card on this phone until the next call is made.
   const needs = onCallNeedsYouAnswered(selectedNeeds, marks) ? null : selectedNeeds;
-  // "Who do I call now?": one chip per ladder that exists, never an invented situation.
+  // "Who do I call now?": the pinned reminder first, as the owner's own words to
+  // read (it is a statement, not a situation to pick), then one chip per other
+  // ladder that exists, never an invented situation. The reminder's ladder
+  // stays on the Escalation ladder page.
+  const pinnedReminder = useMemo(() => selectPinnedPlaybookEntry(entries), [entries]);
   const situations = useMemo<OnCallSituation[]>(
     () =>
-      ladders.map((ladder) => ({
-        id: ladder.id,
-        title: ladder.title,
-        href: `/on-call/now?situation=${encodeURIComponent(ladder.id)}`,
-      })),
-    [ladders],
+      ladders
+        .filter((ladder) => ladder.id !== pinnedReminder?.id)
+        .map((ladder) => ({
+          id: ladder.id,
+          title: ladder.title,
+          href: `/on-call/now?situation=${encodeURIComponent(ladder.id)}`,
+        })),
+    [ladders, pinnedReminder],
   );
   const ladderEntry = needs ? ladderEntries.find((entry) => entry.id === needs.ladderId) : undefined;
 
@@ -368,7 +375,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                   now={now}
                 />
               ) : null}
-              <NowWhoToCall situations={situations} />
+              <NowWhoToCall situations={situations} reminder={pinnedReminder?.title ?? null} />
             </>
           }
           shortcuts={

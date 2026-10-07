@@ -24,7 +24,18 @@ export type OnCallSituation = { readonly id: string; readonly title: string; rea
  * only from ladders that exist (the reader's own Playbook and the hospital's);
  * with none, the action still opens the page that says so.
  */
-export function NowWhoToCall({ situations }: { readonly situations: readonly OnCallSituation[] }) {
+export function NowWhoToCall({
+  situations,
+  reminder = null,
+}: {
+  readonly situations: readonly OnCallSituation[];
+  /**
+   * The pinned Playbook reminder ("You are expected to wake the consultant."):
+   * a statement to read, so it is plain text under the heading, never a chip
+   * that looks like a choice.
+   */
+  readonly reminder?: string | null;
+}) {
   return (
     <section aria-labelledby="on-call-now-who-heading" className="grid min-w-0 gap-1" data-testid="on-call-now-who">
       <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-1">
@@ -36,6 +47,14 @@ export function NowWhoToCall({ situations }: { readonly situations: readonly OnC
           Escalation ladder
         </Link>
       </div>
+      {reminder ? (
+        <p
+          className="min-w-0 break-words px-1 pb-1 text-sm leading-5 text-[color:var(--text)]"
+          data-testid="on-call-now-who-reminder"
+        >
+          {reminder}
+        </p>
+      ) : null}
       {situations.length > 0 ? (
         <ul role="list" className="flex min-w-0 flex-wrap gap-x-2 px-1">
           {situations.map((situation) => (

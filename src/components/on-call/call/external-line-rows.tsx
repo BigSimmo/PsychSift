@@ -11,6 +11,21 @@ import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { cn } from "@/components/ui-primitives";
 
+/** A domain ("emhs.health.wa.gov.au") may wrap after a dot, never inside a word. */
+function withDotBreaks(label: string): ReactNode {
+  const parts = label.split(".");
+  return parts.map((part, index) => (
+    <Fragment key={`${index}-${part}`}>
+      {part}
+      {index < parts.length - 1 ? (
+        <>
+          .<wbr />
+        </>
+      ) : null}
+    </Fragment>
+  ));
+}
+
 const isTripleZero = (line: OnCallExternalLine) => line.dial.copy === "000";
 
 /** One subtitle: where the line serves, then when it answers ("24 hours, every day" reads "24 hours"). */
@@ -110,11 +125,11 @@ export function OnCallExternalLineRows({
                 rel="noreferrer noopener"
                 className={cn(
                   focusRing,
-                  "inline-flex min-h-tap min-w-0 items-center gap-1 rounded-sm text-[color:var(--clinical-accent)]",
+                  "inline-flex min-h-tap min-w-0 max-w-full items-center gap-1 rounded-sm text-[color:var(--clinical-accent)] @max-[16rem]:min-h-[48px]",
                 )}
               >
                 <ExternalLink aria-hidden="true" className="size-icon-xs shrink-0" />
-                <span className="min-w-0 break-words">{source.label}</span>
+                <span className="min-w-0 break-words">{withDotBreaks(source.label)}</span>
               </a>
             ))}
           </span>

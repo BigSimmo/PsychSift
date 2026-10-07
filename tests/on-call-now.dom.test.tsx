@@ -42,6 +42,7 @@ vi.mock("@/components/on-call/use-hospital-handbook", async (importOriginal) => 
 }));
 
 const { OnCallHome } = await import("@/components/on-call/on-call-home");
+const { NowWhoToCall } = await import("@/components/on-call/now/systems-down");
 const { ON_CALL_WHOS_ON_ENABLED } = await import("@/lib/on-call/feature-flags");
 const { readOnCallMyTeam, saveOnCallMyTeam } = await import("@/lib/on-call/my-team-storage");
 const { recordOnCallRecent } = await import("@/lib/on-call/recent-storage");
@@ -529,5 +530,26 @@ describe("Now: what is not on it", () => {
     handbook.state = readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }]));
     const { container } = render(<OnCallHome now={IN_HOURS} />);
     expect(container.querySelector(".font-bold, .font-extrabold, .font-black")).toBeNull();
+  });
+});
+
+describe("Who do I call now: the pinned reminder", () => {
+  it("reads the pinned reminder as plain words, not a chip that looks like a choice", () => {
+    // Work-mode redesign, owner request 6 Oct 2026 (phone check): the pinned Playbook
+    // reminder is a statement, so it is a line of text and only real situations are chips.
+    render(
+      <NowWhoToCall
+        reminder="You are expected to wake the consultant."
+        situations={[{ id: "s1", title: "Systems unavailable", href: "/on-call/now?situation=s1" }]}
+      />,
+    );
+    const reminder = screen.getByTestId("on-call-now-who-reminder");
+    expect(reminder.tagName).toBe("P");
+    expect(reminder).toHaveTextContent("You are expected to wake the consultant.");
+    expect(reminder.closest("a, button, li")).toBeNull();
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Escalation ladder",
+      "Systems unavailable",
+    ]);
   });
 });
