@@ -29,6 +29,7 @@ describe("work side menu and rail", () => {
     expect(workSideAreaId("assess")).toBe("teach");
     expect(workSideAreaId("open")).toBe("open");
     expect(workSideAreaId("day")).toBe("day");
+    expect(workSideAreaId("notify")).toBe("day");
   });
 
   it("finds the most specific area for an address", () => {

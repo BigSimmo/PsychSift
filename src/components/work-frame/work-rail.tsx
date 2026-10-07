@@ -9,7 +9,7 @@ import { rememberedWorkAreaPage, useWorkSideCounts } from "@/components/work-fra
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import type { AppModeId } from "@/lib/app-modes";
-import { modeSideOf } from "@/lib/phone-mode-groups";
+import { modeMenuSideForMode } from "@/lib/phone-mode-groups";
 import { WORK_AREAS, workAreaFor, type WorkAreaId } from "@/lib/work-frame/areas";
 import { WORK_SIDE_AREAS, workSideAreaId, workSideBadgeText, workSideCountLabel } from "@/lib/work-frame/side-nav";
 
@@ -19,7 +19,7 @@ import { WORK_SIDE_AREAS, workSideAreaId, workSideBadgeText, workSideCountLabel 
  * mode. Classic readers keep the clinical sidebar everywhere.
  */
 export function useWorkSideNav(modeId: AppModeId): boolean {
-  return useNewWorkMode() && modeSideOf(modeId) === "work";
+  return useNewWorkMode() && modeMenuSideForMode(modeId) === "work";
 }
 
 /** The row the side menu and rail light for this page, inner areas rolled up. */

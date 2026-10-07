@@ -17,7 +17,7 @@ import {
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { BRAND_NAME } from "@/lib/brand";
-import type { ModeSide } from "@/lib/phone-mode-groups";
+import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
 import { WORK_AREAS, type WorkAreaId } from "@/lib/work-frame/areas";
 import {
   WORK_SIDE_AREAS,
@@ -59,7 +59,7 @@ export function WorkSideMenu({
   const router = useRouter();
   const counts = useWorkSideCounts();
   const routeVisible = useWorkModeRouteVisible();
-  const [side, setSide] = useState<ModeSide>("work");
+  const [side, setSide] = useState<ModeMenuSideId>("work");
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   // The Sheet stays mounted so it can hand focus back to the menu button on
   // close; each opening starts on Work, with the sign-out check put away.

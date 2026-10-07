@@ -54,8 +54,8 @@ export function workSideAreaId(areaId: WorkAreaId): WorkAreaId {
  */
 const NOTIFICATION_PAGES = ["/my-day/alerts", "/my-day/notifications"] as const;
 
-/** Where the side menu's Notifications row goes. The alerts build moves this to `/my-day/notifications`. */
-export const WORK_SIDE_NOTIFICATIONS_HREF = "/my-day/alerts";
+/** Where the side menu's Notifications row goes: the notifications page, an inner area of My Day. */
+export const WORK_SIDE_NOTIFICATIONS_HREF = "/my-day/notifications";
 
 export type WorkSideCount = { readonly total: number; readonly overdue: number };
 
