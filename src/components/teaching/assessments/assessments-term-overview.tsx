@@ -37,13 +37,11 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { UNDO_MS } from "@/components/teaching/use-delayed-post";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
-import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui-primitives";
 import { remindedKeys } from "@/lib/teaching/assessments/extras";
 import { termWeek, todayLabel, type PillTone } from "@/lib/teaching/assessments/model";
@@ -277,26 +275,18 @@ export function AssessmentsTermOverview(props: ScreenProps) {
 
 /** Shared by the grid, the supervisors list and one doctor's page: pretend reminders, with Undo. */
 function useReminders(s: ScreenProps["s"]) {
-  const { extras, dispatchExtras } = useAssessmentsExtras();
-  const toast = useToast();
+  const { extras, dispatchExtras, offerUndo } = useAssessmentsExtras();
   const keys = remindedKeys(extras);
   const offlineSince = useOfflineSince();
 
   function send(records: ReminderRecord[], title: string) {
     if (!records.length || offlineSince) return;
     dispatchExtras({ type: "remind", records });
-    toast.push({
-      tone: "info",
+    offerUndo({
       title,
       body: "Made-up: nothing is sent. One reminder a day per form.",
-      duration: UNDO_MS,
-      action: {
-        label: "Undo",
-        onAction: () => {
-          dispatchExtras({ type: "unremind", keys: records.map((r) => r.key) });
-          announce("Reminder taken back.");
-        },
-      },
+      undo: () => dispatchExtras({ type: "unremind", keys: records.map((r) => r.key) }),
+      undone: "Reminder taken back.",
     });
   }
 

@@ -4,7 +4,6 @@ import { extrasReducer, initialExtras, readyToSend, remindedKeys } from "@/lib/t
 import {
   EMPTY_ANSWER,
   ageText,
-  cleanFeedbackText,
   claCopyText,
   dctRemindersFor,
   doctorSees,
@@ -143,9 +142,36 @@ describe("consultant inbox", () => {
     expect(feedbackProblem("Two years of steady progress.")).toBeNull();
   });
 
-  it("sends the cleaned text: folded to plain characters, invisible ones removed", () => {
-    expect(cleanFeedbackText("  Calm\u200B, clear\u00A0escalation.\uFEFF ")).toBe("Calm, clear escalation.");
-    expect(cleanFeedbackText("\uFF23\uFF41\uFF4C\uFF4D")).toBe("Calm");
+  it("uses the shared work-text check, so ordinary typing like Mr.Smith and Bed: 12 is caught", () => {
+    const caught = [
+      "Mr.Smith",
+      "Mrs.Jones",
+      "Ms.Nguyen",
+      "Bed: 12",
+      "\u041Cr Smith", // Cyrillic capital Em
+      "\u039Cr Smith", // Greek capital Mu
+      "\u0420atient John Smith", // Cyrillic capital Er
+      "B\u0435d 12", // Cyrillic small ie
+      "Mr S\u{1F600}mith",
+      "Mr\u{1F600}Smith",
+      "Mr S\u0332mith", // a combining underline
+      "Mr\u{1F3FB}Smith", // a skin-tone modifier
+      "forty-five year old man",
+      "forty five year old woman",
+      "45-yo M",
+      "a 45 M with",
+      "pt js 45m",
+      "Pt J S",
+      "Mrs S",
+      "Mr J",
+      "+61 412 345 678",
+      "U1234567",
+    ];
+    for (const text of caught) {
+      expect(feedbackProblem(text), text).not.toBeNull();
+      expect(feedbackProblem(text)!.body).toContain("catches some details, not all");
+    }
+    expect(feedbackProblem("Led the MDT well at RPH.")).toBeNull();
   });
 });
 

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AssessmentsExtrasProvider,
   AssessmentsSampleViewsNav,
+  useAssessmentsExtras,
 } from "@/components/teaching/assessments/assessments-extras";
 import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-inbox";
 import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
@@ -277,7 +278,7 @@ async function sendMia() {
   const sheet = await screen.findByTestId("assessments-inbox-feedback");
   fireEvent.click(within(sheet).getByRole("radio", { name: "Proximal" }));
   fireEvent.click(within(sheet).getByTestId("assessments-inbox-send"));
-  return screen.findByTestId("toast");
+  return (await screen.findAllByTestId("toast")).at(-1)!;
 }
 
 function PushOthers({ count }: { count: number }) {
@@ -314,7 +315,7 @@ describe("consultant inbox, the 10-second Undo", () => {
     expect(screen.getByText(/^Sent \d\d:\d\d · Proximal$/)).toBeInTheDocument();
   });
 
-  it("does not send early when other messages push the Undo off the stack", async () => {
+  it("keeps a send pushed off the message stack: it goes at its own time, with Undo on the inbox meanwhile", async () => {
     renderWith(
       <>
         <PushOthers count={5} />
@@ -323,12 +324,25 @@ describe("consultant inbox, the 10-second Undo", () => {
     );
     await sendMia();
     fireEvent.click(screen.getByRole("button", { name: "Push others" }));
-    // The Undo is put back with the time it had left, and the answer is still only sending.
-    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
-    expect(screen.getByTestId("assessments-inbox-sending")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    // The message is gone, but the answer is still only sending, and Undo is still in reach.
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+    expect(screen.getByTestId("assessments-inbox-sending")).toHaveTextContent("Sending 1 answer");
+    fireEvent.click(screen.getByTestId("assessments-inbox-undo-sending"));
     expect(screen.queryByTestId("assessments-inbox-sending")).toBeNull();
     expect(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ })).toBeInTheDocument();
+    // Sent again and pushed off again: it goes when its own 10 seconds end, once.
+    await sendMia();
+    fireEvent.click(screen.getByRole("button", { name: "Push others" }));
+    await act(async () => {
+      vi.advanceTimersByTime(9_000);
+    });
+    expect(screen.getByTestId("assessments-inbox-sending")).toBeInTheDocument();
+    await act(async () => {
+      vi.advanceTimersByTime(1_500);
+    });
+    expect(screen.queryByTestId("assessments-inbox-sending")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
+    expect(screen.getByText(/^Sent \d\d:\d\d · Proximal$/)).toBeInTheDocument();
   });
 
   it("closes the Undo when Assessments closes, so it never claims to keep an answer on a page that is gone", async () => {
@@ -380,6 +394,158 @@ describe("consultant inbox, the 10-second Undo", () => {
     });
     expect(await screen.findByText("Back online · sending 1 answer in 10 s")).toBeInTheDocument();
     online.mockRestore();
+  });
+});
+
+const QUICK = ["q1", "q2", "q3", "q4", "q5", "q6", "q7"];
+
+/** Sends made straight through the provider, as fast as a test can tap, with each answer's status in view. */
+function QuickSends() {
+  const { extras, sendAnswers } = useAssessmentsExtras();
+  return (
+    <>
+      {QUICK.map((id) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => sendAnswers([{ id, level: "proximal", text: "Ok" }], `Sending ${id} in 10 s`)}
+        >
+          {`Send ${id}`}
+        </button>
+      ))}
+      <output data-testid="quick-statuses">
+        {QUICK.map((id) => `${id}:${extras.answers[id]?.status ?? "waiting"}`).join(" ")}
+      </output>
+    </>
+  );
+}
+
+function quickStatuses(): Record<string, string> {
+  return Object.fromEntries(
+    screen
+      .getByTestId("quick-statuses")
+      .textContent!.split(" ")
+      .map((pair) => pair.split(":") as [string, string]),
+  );
+}
+
+describe("pretend sends never lost, rushed or repeated", () => {
+  for (const count of [6, 7]) {
+    it(`sends all ${count} of ${count} quick sends when their time is up, none stuck`, async () => {
+      renderWith(<QuickSends />);
+      for (const id of QUICK.slice(0, count)) fireEvent.click(screen.getByRole("button", { name: `Send ${id}` }));
+      const sending = Object.values(quickStatuses()).filter((status) => status === "sending");
+      expect(sending).toHaveLength(count);
+      await act(async () => {
+        vi.advanceTimersByTime(10_500);
+      });
+      const after = quickStatuses();
+      for (const id of QUICK.slice(0, count)) expect(after[id], id).toBe("sent");
+      // Every message closed with its send: nothing left showing an Undo that does nothing.
+      expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+    });
+  }
+
+  it("sends each answer once: a second tap or a second reconnect adds no second Undo", () => {
+    renderWith(<QuickSends />);
+    fireEvent.click(screen.getByRole("button", { name: "Send q1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send q1" }));
+    expect(screen.getAllByRole("button", { name: "Undo" })).toHaveLength(1);
+  });
+
+  it("does not send at once a message held past 10 seconds and then pushed off", async () => {
+    renderWith(
+      <>
+        <PushOthers count={5} />
+        <QuickSends />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Send q1" }));
+    const undo = screen.getByRole("button", { name: "Undo" });
+    fireEvent.focusIn(undo);
+    await act(async () => {
+      vi.advanceTimersByTime(15_000);
+    });
+    expect(quickStatuses().q1).toBe("sending");
+    fireEvent.click(screen.getByRole("button", { name: "Push others" }));
+    await act(async () => {
+      vi.advanceTimersByTime(10);
+    });
+    // Pushed off while held: still sending, not sent at once.
+    expect(quickStatuses().q1).toBe("sending");
+    await act(async () => {
+      vi.advanceTimersByTime(9_000);
+    });
+    expect(quickStatuses().q1).toBe("sending");
+    await act(async () => {
+      vi.advanceTimersByTime(1_500);
+    });
+    expect(quickStatuses().q1).toBe("sent");
+  });
+
+  it("closes Later and Remind Undo messages on leaving Assessments, so neither speaks about a page that is gone", async () => {
+    const view = render(
+      <ToastProvider>
+        <AssessmentsExtrasProvider>
+          <AssessmentsTermOverview {...props(initialAssessmentsState())} />
+        </AssessmentsExtrasProvider>
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Omar Ahmed about Dr Ravi Kaur's mid-term" }));
+    expect(await screen.findByRole("button", { name: "Undo" })).toBeInTheDocument();
+    view.rerender(
+      <ToastProvider>
+        <p>Another page</p>
+      </ToastProvider>,
+    );
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+  });
+
+  it("sends a To send answer when the page comes back into view online, in case the online event was missed", async () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+      fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+      const sheet = await screen.findByTestId("assessments-inbox-feedback");
+      fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
+      fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
+      online.mockReturnValue(true);
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(await screen.findByText("Back online · sending 1 answer in 10 s")).toBeInTheDocument();
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it("leaves an answer whose sheet is open out of the reconnect, and saves the words exactly as typed", async () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+      fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+      let sheet = await screen.findByTestId("assessments-inbox-feedback");
+      fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
+      fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
+      // Reopen the queued answer and edit it; the connection comes back while the sheet is open.
+      fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+      sheet = await screen.findByTestId("assessments-inbox-feedback");
+      fireEvent.change(within(sheet).getByLabelText(/A few lines/), { target: { value: "Halve to ½ tab, x² ﬁne…" } });
+      online.mockReturnValue(true);
+      await act(async () => {
+        window.dispatchEvent(new Event("online"));
+      });
+      expect(screen.queryByText(/Back online · sending/)).toBeNull();
+      fireEvent.click(within(sheet).getByTestId("assessments-inbox-send"));
+      await act(async () => {
+        vi.advanceTimersByTime(10_500);
+      });
+      fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen/ }));
+      expect(await screen.findByText("Halve to ½ tab, x² ﬁne…")).toBeInTheDocument();
+    } finally {
+      online.mockRestore();
+    }
   });
 });
 
