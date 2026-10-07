@@ -2,9 +2,12 @@
 
 import { currentCover } from "@/lib/on-call/service-availability";
 import { useHospitalClock } from "@/components/on-call/use-hospital-clock";
-import { Users } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, ChevronRight, Users } from "lucide-react";
 import { useMemo } from "react";
 
+import { focusRing } from "@/components/card-recipes";
+import { cn } from "@/components/ui-primitives";
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { OnCallDialRow } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
@@ -91,6 +94,23 @@ export function OnCallWhosOnPage({ now: pinned }: { now?: Date } = {}) {
       lead={<OnCallHospitalLine handbook={handbook} testId="on-call-hub-hospital" />}
     >
       <OnCallHandbookState handbook={handbook} page="whos-on" />
+      {/* Names come from the team roster on its own page; this page lists hospital roles. */}
+      <Link
+        href="/on-call/whos-on/roster"
+        className={cn(
+          focusRing,
+          "mx-3 flex min-h-12 items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 text-sm font-medium text-[color:var(--text-heading)]",
+        )}
+        data-testid="on-call-whos-on-roster-link"
+      >
+        <CalendarDays
+          aria-hidden="true"
+          strokeWidth={1.5}
+          className="size-icon-sm shrink-0 text-[color:var(--text-muted)]"
+        />
+        <span className="min-w-0 flex-1">Names from your team roster</span>
+        <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+      </Link>
       {ready ? null : <OnCallCrisisLines />}
       {ready ? (
         <>
