@@ -1383,3 +1383,22 @@ export function parseWorkTabPicks(raw: string | null): WorkTabPicks {
     return {};
   }
 }
+
+/**
+ * The area whose pages include this address, or null when no work page owns
+ * it. A page listed in two areas goes to the longer, more specific path, so a
+ * notification that links to `/roster/manage/cover` counts under Manage team,
+ * not Roster.
+ */
+export function workAreaIdForPath(pathname: string): WorkAreaId | null {
+  let best: { readonly id: WorkAreaId; readonly length: number } | null = null;
+  for (const area of Object.values(WORK_AREAS)) {
+    for (const item of workAreaItems(area)) {
+      for (const path of itemPaths(item)) {
+        if (!pathMatches([path], pathname) && !pathname.startsWith(`${path}/`)) continue;
+        if (!best || path.length > best.length) best = { id: area.id, length: path.length };
+      }
+    }
+  }
+  return best?.id ?? null;
+}
