@@ -73,8 +73,8 @@ import { clinicalSearchHref, looksLikePatientDetails, workSearchGate } from "@/l
 
 /**
  * "Search my work", restyled to the locked work-mode mockup (work-mode
- * redesign, owner request 6 Oct 2026): a frosted overlay over the page it was
- * opened from, a glass field in that page's colour, area chips with counts,
+ * redesign, owner request 6 Oct 2026): a flat full screen (solid, so the page
+ * under it never shows through), a pill field in that page's colour, area chips with counts,
  * answers as a hero, and every result a row from the work-mode kit.
  *
  * Fast: results follow typing after a short pause (about 80 ms), from an index
@@ -944,8 +944,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
       mobilePlacement="fullscreen"
       mobileSize="viewport"
       testId="work-search-sheet"
-      desktopBackdropClassName="max-lg:bg-transparent max-lg:backdrop-blur-none"
-      contentClassName="bg-[color:color-mix(in_srgb,var(--surface-wash)_90%,transparent)] backdrop-blur-[22px] backdrop-saturate-150 supports-[not(backdrop-filter:blur(1px))]:bg-[color:var(--surface-wash)] lg:bg-[color:var(--surface-wash)] lg:h-[min(46rem,calc(100dvh-8rem))] lg:max-h-[calc(100dvh-8rem)] lg:max-w-2xl lg:rounded-2xl lg:border-[color:var(--border)]"
+      contentClassName="bg-[color:var(--surface-wash)] lg:h-[min(46rem,calc(100dvh-8rem))] lg:max-h-[calc(100dvh-8rem)] lg:max-w-2xl lg:rounded-2xl lg:border-[color:var(--border)]"
       bodyClassName="p-0 sm:p-0"
       bodyRef={bodyRef}
       onBodyScroll={(event) => setScrolled(event.currentTarget.scrollTop > 2)}
@@ -961,7 +960,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
         <h2 className="sr-only">Search my work</h2>
         <div
           className={cn(
-            "sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)] border-b bg-[color:color-mix(in_srgb,var(--surface-wash)_92%,transparent)] px-3.5 pt-[max(0.25rem,var(--safe-area-top))] backdrop-blur-xl transition-colors motion-reduce:transition-none lg:pt-4 [@media(max-height:500px)]:static",
+            "sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)] border-b bg-[color:var(--surface-wash)] px-3.5 pt-[max(0.25rem,var(--safe-area-top))] transition-colors motion-reduce:transition-none lg:pt-4 [@media(max-height:500px)]:static",
             scrolled ? "border-[color:var(--border)]" : "border-transparent",
           )}
         >
@@ -1138,7 +1137,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 </button>
               }
             />
-          ) : records.anySample && !records.sample ? (
+          ) : records.anySample && !records.sample && !patient ? (
             <p role="note" className="m-0 px-1 text-2xs font-semibold text-[color:var(--text-muted)]">
               Some of what&apos;s shown here is sample data, not yours.
             </p>

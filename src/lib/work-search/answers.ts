@@ -840,7 +840,12 @@ function route(text: string, input: WorkAnswerInput): WorkAnswer | null {
   if (NOT_ABOUT_SHIFTS.test(text)) return null;
 
   const range = parseDateRange(text, input.today);
-  if (/\b(free days?|days? off|off days?|not rostered)\b/.test(text)) {
+  if (
+    /\b(free days?|days? off|off days?|not rostered)\b/.test(text) ||
+    // "Which days am I off this week?", "am I off on Friday", "when am I off"
+    /\b(?:am i|i am|im|i'm) off\b/.test(text) ||
+    /\bwhich days?\b.*\boff\b/.test(text)
+  ) {
     const named =
       /\b(this week|next week|this month|next month|this weekend|next weekend)\b/.exec(text)?.[1] ??
       (range ? null : "this week");

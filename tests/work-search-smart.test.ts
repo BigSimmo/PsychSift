@@ -87,6 +87,12 @@ describe("more ways to ask", () => {
     }
   });
 
+  it('knows "which days am I off" and "am I off" as days off', () => {
+    for (const question of ["Which days am I off this week?", "am I off next week", "which day am i off"]) {
+      expect(answerWorkQuestion(question, input)?.icon, question).toBe("free");
+    }
+  });
+
   it("knows CME, points and hours left as CPD", () => {
     const cpd = { set: null, entries: [] };
     for (const question of ["how many cme points do I need", "how many hours left", "am I on track"]) {

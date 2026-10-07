@@ -29,7 +29,7 @@ export function WorkSearchKeys({
   const command = isApple() ? "⌘" : "Ctrl";
   const rows: { keys: string[][]; label: string }[] = [
     { keys: [["/"], [command, "K"]], label: "Search my work" },
-    { keys: [["Up"], ["Down"]], label: "Move between results" },
+    { keys: [["Up", "Down"]], label: "Move between results" },
     { keys: [["Enter"]], label: "Open the top result" },
     { keys: [["Esc"]], label: "Close" },
     { keys: [["?"]], label: "Show this list" },
