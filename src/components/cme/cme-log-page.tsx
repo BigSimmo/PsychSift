@@ -45,6 +45,8 @@ import { cn, InlineNotice } from "@/components/ui-primitives";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { groupDrafts, type CmeDraft } from "@/lib/cme/drafts";
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import type { CmeMissedSession } from "@/lib/cme/missed-sessions";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
@@ -147,6 +149,8 @@ export function CmeLogPage({
   );
   const effectiveYear = navigationYears ? set.year : selectedYear;
   const [allYears, setAllYears] = useState(false);
+  // The export route reads the account, so on a page showing example data it would hand over REAL records.
+  const example = useExampleData("cpd").active;
   const [sheetSection, setSheetSection] = useState<SheetSection | null>(null);
   const yearButtonRef = useRef<HTMLButtonElement>(null);
   const categoryButtonRef = useRef<HTMLButtonElement>(null);
@@ -686,22 +690,41 @@ export function CmeLogPage({
             testId="cme-log-more-sheet"
           >
             <div className="work-card work-rows">
-              <a
-                href={`/api/cme/export?year=${effectiveYear}`}
-                download
-                data-testid="cme-log-download-csv"
-                className="work-row min-h-tap"
-              >
-                <span className="cpd-lead">
-                  <Download aria-hidden="true" strokeWidth={2} />
-                </span>
-                <span className="work-row__text">
-                  <span className="work-row__title">Download CSV</span>
-                  <span aria-hidden="true" className="work-row__sub">
-                    Every activity in {effectiveYear}, for a spreadsheet
+              {example ? (
+                <button
+                  type="button"
+                  onClick={() => guardExampleAction(true, "export")}
+                  data-testid="cme-log-download-csv"
+                  className="work-row min-h-tap w-full text-left"
+                >
+                  <span className="cpd-lead">
+                    <Download aria-hidden="true" strokeWidth={2} />
                   </span>
-                </span>
-              </a>
+                  <span className="work-row__text">
+                    <span className="work-row__title">Download CSV</span>
+                    <span aria-hidden="true" className="work-row__sub">
+                      Every activity in {effectiveYear}, for a spreadsheet
+                    </span>
+                  </span>
+                </button>
+              ) : (
+                <a
+                  href={`/api/cme/export?year=${effectiveYear}`}
+                  download
+                  data-testid="cme-log-download-csv"
+                  className="work-row min-h-tap"
+                >
+                  <span className="cpd-lead">
+                    <Download aria-hidden="true" strokeWidth={2} />
+                  </span>
+                  <span className="work-row__text">
+                    <span className="work-row__title">Download CSV</span>
+                    <span aria-hidden="true" className="work-row__sub">
+                      Every activity in {effectiveYear}, for a spreadsheet
+                    </span>
+                  </span>
+                </a>
+              )}
               <Link
                 href={`/cme/summary?year=${effectiveYear}`}
                 data-testid="cme-log-annual-summary"

@@ -8,6 +8,8 @@ import { CpdHomeEntryLink } from "@/components/cme/cpd-home/cpd-home-entry-link"
 import { CmeYearClosePanel } from "@/components/cme/cme-year-close-panel";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { formatCalendarDateLong, formatCalendarMonthLabel } from "@/lib/cme/cpd-year";
 import { evaluateYear } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries } from "@/lib/cme/export";
@@ -92,6 +94,8 @@ export function CmeAnnualSummary({
   /** The instant the close window is judged against; the page passes its own clock. */
   now?: Date;
 }) {
+  // Example records never leave the app: while CPD shows example data, both exports explain instead.
+  const example = useExampleData("cpd").active;
   const active = activeCmeYearEntries(entries, set.year);
   const status = evaluateYear({ set, entries: active });
   const months = groupByMonth(active);
@@ -136,12 +140,28 @@ export function CmeAnnualSummary({
             <Link href={`/cme/log?year=${set.year}`} className={buttonFaceClass({ variant: "secondary" })}>
               Back to log
             </Link>
-            <Button testId="cme-summary-save-pdf" onClick={() => savePdf(set.year)}>
+            <Button
+              testId="cme-summary-save-pdf"
+              onClick={() => {
+                if (guardExampleAction(example, "export")) savePdf(set.year);
+              }}
+            >
               Save as PDF
             </Button>
-            <a href={`/api/cme/export?year=${set.year}`} download className={buttonFaceClass({ variant: "secondary" })}>
-              Download CSV
-            </a>
+            {example ? (
+              // The export route reads the account, so on an example page it would hand over REAL records.
+              <Button variant="secondary" onClick={() => guardExampleAction(true, "export")}>
+                Download CSV
+              </Button>
+            ) : (
+              <a
+                href={`/api/cme/export?year=${set.year}`}
+                download
+                className={buttonFaceClass({ variant: "secondary" })}
+              >
+                Download CSV
+              </a>
+            )}
           </div>
           <p className={cn(textMuted, "mt-2 text-xs")}>
             Opens your device&apos;s print screen. Choose Save as PDF, or Share on a phone, to send it to your college
