@@ -1,5 +1,7 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 import {
   FormEvent,
   useCallback,
@@ -80,7 +82,6 @@ import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/u
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
 import { useHeaderModePill } from "@/components/clinical-dashboard/master-search-header-mode-pill";
 import { useScopeDocumentList } from "@/components/clinical-dashboard/master-search-header-scope-documents";
 import { workAreaFor } from "@/lib/work-frame/areas";
@@ -153,6 +154,12 @@ import { useCommandDropdownDisplayableByPlacement } from "@/components/clinical-
 import type { ClinicalDocument, ClinicalQueryMode } from "@/lib/types";
 import { type SearchScopeFilters } from "@/lib/search-scope";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
+
+// The bell and AI Search only render on staff work pages. A separate chunk keeps their code,
+// the notification feed helpers and their CSS off every clinical page's main thread.
+const StaffWorkHeaderControls = dynamic(() =>
+  import("@/components/needs-you/staff-work-header-controls").then((m) => m.StaffWorkHeaderControls),
+);
 
 // Shared between the composer input's aria-describedby and the rendered
 // PrivacyInputNotice id/testId so the wiring cannot drift apart.
