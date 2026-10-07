@@ -10,27 +10,25 @@ import {
   Moon,
   MoonStar,
   Plane,
+  Phone,
   Plus,
   RefreshCw,
   Sun,
+  Users,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeActionButton } from "@/components/mode-kit/action-button";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { useModeBandHeading, WithoutModeBand } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { WorkHero, WorkRing } from "@/components/mode-kit/work";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
-import {
-  modeDot,
-  modeModuleSurface,
-  modeSummaryHairline,
-  modeSummaryMutedText,
-  modeSummarySurface,
-} from "@/components/mode-kit/recipes";
-import { modeDisplayNumberText, modeNumberText } from "@/components/mode-kit/type";
+import { modeDot } from "@/components/mode-kit/recipes";
 import { Button } from "@/components/ui/button";
-import { cn, eyebrowText } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -142,22 +140,28 @@ function DayLine({ shift, now }: { readonly shift: OnCallShift; readonly now: Da
   const dayStart = Date.parse(`${today}T00:00:00+08:00`);
   const start = Math.max(0, (Date.parse(shift.startsAt) - dayStart) / DAY_MS);
   const end = Math.min(1, (Date.parse(shift.endsAt) - dayStart) / DAY_MS);
-  const at = (now.getTime() - dayStart) / DAY_MS;
+  const at = Math.min(1, Math.max(0, (now.getTime() - dayStart) / DAY_MS));
+  // The hero's 24 h track (mockup `rost_today`): what's done of today, the shift's block and a
+  // marker for now. Drawn in the hero's own ink, so it reads on the gradient in light and dark.
   return (
-    <div className="grid gap-1" aria-hidden="true">
-      <span className="relative block h-2.5 rounded-full bg-[color:var(--surface-summary-line)]">
+    <div className="grid gap-1" aria-hidden="true" data-testid="roster-today-track">
+      <span className="relative block h-2 rounded-full bg-[color:color-mix(in_oklab,currentColor_22%,transparent)] forced-colors:border">
+        <span
+          className="absolute inset-y-0 left-0 rounded-full bg-[color:color-mix(in_oklab,currentColor_30%,transparent)]"
+          style={{ width: `${at * 100}%` }}
+        />
         {end > start ? (
           <span
-            className="absolute inset-y-0 rounded-full bg-[color:var(--surface-summary-muted)]"
+            className="absolute inset-y-0 rounded-full bg-[color:color-mix(in_oklab,currentColor_78%,transparent)] forced-colors:bg-[CanvasText]"
             style={{ left: `${start * 100}%`, width: `${(end - start) * 100}%` }}
           />
         ) : null}
         <span
-          className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--surface-summary-ink)] ring-4 ring-[color:var(--surface-summary)]"
+          className="absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-current"
           style={{ left: `${at * 100}%` }}
         />
       </span>
-      <span className={cn("nums flex justify-between text-xs", modeSummaryMutedText)}>
+      <span className="nums flex justify-between text-[0.625rem] opacity-80">
         <span>00</span>
         <span>06</span>
         <span>12</span>
@@ -171,15 +175,23 @@ function DayLine({ shift, now }: { readonly shift: OnCallShift; readonly now: Da
 function ShiftTimes({ shift }: { readonly shift: OnCallShift }) {
   const { start, end, plusOne } = shiftTimes(shift);
   return (
-    <span className={cn(modeDisplayNumberText, "flex flex-wrap items-baseline gap-x-1 text-hero")}>
+    <span className="nums flex flex-wrap items-baseline gap-x-1.5 text-[1.375rem] font-bold leading-tight tracking-[-0.02em]">
       <span>{start}</span>
-      <span aria-hidden="true">–</span>
-      <span className="sr-only">to</span>
+      <span className="text-sm font-semibold opacity-80">to</span>
       <span>{end}</span>
-      {plusOne ? <span className={cn(modeSummaryMutedText, "text-sm")}>+1</span> : null}
+      {plusOne ? <span className="text-xs font-semibold opacity-80">+1</span> : null}
     </span>
   );
 }
+
+/** Hours with one decimal for the ring ("13", "5.5"), from milliseconds. */
+function ringHours(ms: number): string {
+  const hours = Math.max(0, ms) / 3_600_000;
+  return hours >= 10 ? String(Math.round(hours)) : String(Math.round(hours * 10) / 10);
+}
+
+const heroButton =
+  "inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[color:color-mix(in_oklab,currentColor_16%,transparent)] px-3 text-[0.8125rem] font-semibold text-current no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current forced-colors:border";
 
 function Hero({
   summary,
@@ -201,7 +213,7 @@ function Hero({
   const lead = summary.lead;
   if (lead.state === "empty") {
     return (
-      <section className={cn(modeModuleSurface, "grid justify-items-start gap-3 p-5")} data-testid="roster-today-empty">
+      <section className="work-card grid justify-items-start gap-3 p-5" data-testid="roster-today-empty">
         <RosterIdentityTile icon={CalendarRange} />
         <h2 className="text-lg-minus font-semibold text-[color:var(--text-heading)]">Get your shifts in</h2>
         <p className="text-sm text-[color:var(--text-muted)]">
@@ -259,62 +271,88 @@ function Hero({
   if (leadShift && lead.state === "on_now")
     when = `Ends in ${formatDuration(Date.parse(leadShift.endsAt) - now.getTime())}`;
 
-  // Only a live or upcoming shift earns a pill; a day off already says so in the eyebrow.
+  // Only a live or upcoming shift earns a status word; a day off already says so in the eyebrow.
   const status = lead.state === "on_now" ? "On now" : lead.state === "before" ? "Later today" : null;
+
+  // The ring (mockup "13 h / to go"): time left of the shift on now, or time until today's
+  // shift starts, out of the day. Nothing is drawn on a day off.
+  let ring: ReactNode = null;
+  if (leadShift && lead.state === "on_now") {
+    const total = Date.parse(leadShift.endsAt) - Date.parse(leadShift.startsAt);
+    const left = Date.parse(leadShift.endsAt) - now.getTime();
+    ring = (
+      <WorkRing
+        value={ringHours(left)}
+        label="h left"
+        fraction={total > 0 ? 1 - left / total : 0}
+        accessibleLabel={`${formatDuration(left)} left of this shift`}
+      />
+    );
+  } else if (leadShift && lead.state === "before") {
+    const until = Date.parse(leadShift.startsAt) - now.getTime();
+    ring = (
+      <WorkRing
+        value={ringHours(until)}
+        label="h to go"
+        fraction={1 - Math.min(1, until / DAY_MS)}
+        accessibleLabel={`Starts in ${formatDuration(until)}`}
+      />
+    );
+  }
+
   return (
-    <section
-      data-mode-identity="roster"
-      className={cn(
-        modeSummarySurface,
-        "grid gap-3 p-5 bg-[image:radial-gradient(circle_at_100%_0%,color-mix(in_oklab,var(--mode-identity)_45%,transparent),transparent_65%)] forced-colors:bg-none",
-      )}
-      data-testid="roster-today-hero"
-      aria-label="Today"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <h2 className={cn(eyebrowText, modeSummaryMutedText)}>{eyebrow}</h2>
-        {status ? (
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs",
-              modeSummaryHairline,
-              lead.state === "on_now" ? "text-[color:var(--surface-summary-ink)]" : modeSummaryMutedText,
-            )}
-          >
-            {lead.state === "on_now" ? (
-              <span aria-hidden="true" className={cn(modeDot, "bg-[color:var(--success)]")} />
-            ) : null}
-            {status}
-          </span>
-        ) : null}
-      </div>
-      {leadShift ? (
-        <>
-          {lead.state === "day_off" ? (
-            <span className="text-base-minus" data-testid="roster-today-next">
-              {`Next: ${SHIFT_KIND_LABEL[kindOf(leadShift)]}, `}
-              <span>{formatPerthDay(perthDateOf(leadShift.startsAt))}</span>
+    <div data-mode-identity="roster" className="grid">
+      <WorkHero
+        testId="roster-today-hero"
+        aria-label="Today"
+        eyebrow={[eyebrow, status].filter(Boolean).join(" · ")}
+        title={
+          leadShift ? (
+            <span className="grid gap-0.5">
+              {lead.state === "day_off" ? (
+                <span className="text-[0.9375rem] font-semibold" data-testid="roster-today-next">
+                  {`Next: ${SHIFT_KIND_LABEL[kindOf(leadShift)]}, `}
+                  <span>{formatPerthDay(perthDateOf(leadShift.startsAt))}</span>
+                </span>
+              ) : null}
+              <ShiftTimes shift={leadShift} />
             </span>
-          ) : null}
-          <ShiftTimes shift={leadShift} />
-          <RosterRestChip cue={cues.get(leadShift.id)} testId="roster-today-rest" />
-          {when || place ? (
-            <span className={cn(modeSummaryMutedText, "text-sm")}>{[when, place].filter(Boolean).join(" · ")}</span>
-          ) : null}
-          {lead.state !== "day_off" ? <DayLine shift={leadShift} now={now} /> : null}
-        </>
-      ) : (
-        <span className={cn(modeSummaryMutedText, "text-sm")}>No more shifts in your roster.</span>
-      )}
-      {summary.nextWeekendOff ? (
-        <div className={cn("border-t pt-3", modeSummaryHairline)}>
-          <span className={cn(modeSummaryMutedText, "text-xs")}>Weekend off</span>
-          <span className={cn(modeNumberText, "block text-base-minus")}>
-            {formatDateSpan(summary.nextWeekendOff.saturday, summary.nextWeekendOff.sunday)}
-          </span>
-        </div>
-      ) : null}
-    </section>
+          ) : (
+            "No more shifts in your roster."
+          )
+        }
+        sub={
+          leadShift && (when || place) ? (
+            <span className="nums">{[when, place].filter(Boolean).join(" · ")}</span>
+          ) : null
+        }
+        ring={ring}
+        footer={
+          <div className="grid gap-3">
+            {leadShift ? <RosterRestChip cue={cues.get(leadShift.id)} testId="roster-today-rest" /> : null}
+            {leadShift && lead.state !== "day_off" ? <DayLine shift={leadShift} now={now} /> : null}
+            {summary.nextWeekendOff ? (
+              <p className="m-0 text-xs">
+                <span className="opacity-80">Weekend off · </span>
+                <span className="nums font-semibold">
+                  {formatDateSpan(summary.nextWeekendOff.saturday, summary.nextWeekendOff.sunday)}
+                </span>
+              </p>
+            ) : null}
+            <div className="flex gap-2" data-testid="roster-today-hero-actions">
+              <Link href="/roster/team" className={heroButton}>
+                <Users aria-hidden="true" strokeWidth={2} className="size-icon-sm" />
+                Who is on
+              </Link>
+              <Link href="/on-call/contacts" className={heroButton}>
+                <Phone aria-hidden="true" strokeWidth={2} className="size-icon-sm" />
+                Phone numbers
+              </Link>
+            </div>
+          </div>
+        }
+      />
+    </div>
   );
 }
 
@@ -426,6 +464,8 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
     [shifts.demoMode, shifts.latestImport, today],
   );
   const greeting = greetingFor(now);
+  // Under the work-mode band the date and the greeting are the band's words (mockup `rost_today`).
+  useModeBandHeading({ eyebrow: formatPerthDay(today), title: greeting.text });
   const fresh = hasFreshLink(links.links, now);
   const staleLink = staleRosterLink(links.links, now);
 
@@ -436,7 +476,9 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
       title="Today"
       subtitle={
         <div className="grid gap-0.5">
-          <span>{greeting.text}</span>
+          <WithoutModeBand>
+            <span>{greeting.text}</span>
+          </WithoutModeBand>
           <RosterFreshness
             fresh={fresh}
             staleLink={staleLink}
@@ -547,7 +589,7 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
     ready && summary.lead.state !== "empty" ? (
       <>
         <RosterSection icon={CalendarDays} title="This week" id="roster-today-week">
-          <div className={cn(modeModuleSurface, "px-2 py-3")}>
+          <div className="work-card px-2 py-3">
             <RosterWeekStrip week={summary.week} today={today} testId="roster-today-week-strip" />
           </div>
         </RosterSection>
