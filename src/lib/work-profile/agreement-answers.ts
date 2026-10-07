@@ -2,7 +2,7 @@ import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { RULE_GATE_REASON_WORDS, type RuleGate } from "@/lib/admin/rule-sign-off";
 import { perthCalendarDate } from "@/lib/perth-time";
 import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF, type FatigueRuleId } from "@/lib/roster/fatigue-rules-source";
-import { checkPatientDetail, looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
+import { checkPatientDetail, looksLikePatientDetail, normaliseWorkText } from "@/lib/work-text/patient-detail-check";
 import type { WorkSearchArea } from "@/lib/work-search/model";
 import { restRulesGate } from "@/lib/work-profile/model";
 
@@ -206,7 +206,7 @@ const UNCHECKED_TOPICS: ReadonlyArray<UncheckedTopic & { readonly pattern: RegEx
     id: "leave",
     label: "Leave",
     pattern:
-      /\bleave\b|\bholidays?\b(?! pay)|\bhols\b|\bvacation\b|\bsick\b|\bcarer'?s\b|\bparental\b|\bmaternity\b|\bpaternity\b|\bbereavement\b|\bcompassionate\b|\blong service\b|\bexams?\b|\bosces?\b|\bstudy (?:leave|days?)\b|\bconference\b|\bdomestic violence\b|\btime off for\b|\bwedding\b|\bfuneral\b|\bjury\b|\bgraduation\b|\brdos?\b|\bados?\b|\bivf\b|\bdays? off for\b|\b(?:days?|weekends?|weeks?) off (?:a|per|each|every) (?:year|month)\b|\bweeks? off\b|\bmental health days?\b|\bper (?:year|annum|month)\b|\b(?:a|each|every) year\b|\bannual(?:ly)?\b/,
+      /\bleave\b|\bholidays?\b(?! pay)|\bhols\b|\bvacation\b|\bsick\b|\bcarer'?s\b|\bparental\b|\bmaternity\b|\bpaternity\b|\bbereavement\b|\bcompassionate\b|\blong service\b|\bexams?\b|\bosces?\b|\bstudy (?:leave|days?)\b|\bconference\b|\bdomestic violence\b|\btime off for\b|\bwedding\b|\bfuneral\b|\bjury\b|\bgraduation\b|\brdos?\b|\bados?\b|\bivf\b|\bbirthdays?\b|\bstudy\b|\b(?:days?|time) off (?:for|to)\b|\b(?:days?|weekends?|weeks?) off (?:a|per|each|every) (?:year|month)\b|\bweeks? off\b|\bmental health days?\b|\bper (?:year|annum|month)\b|\b(?:a|each|every) year\b|\bannual(?:ly)?\b/,
   },
   {
     id: "public-holidays",
@@ -383,13 +383,6 @@ function scoreTopics(text: string): TopicScore[] {
   return ranked.slice(0, 3);
 }
 
-/**
- * Topics whose question is never answered by an hours or rest quote, even when a rest pattern also
- * matches: leave, pay and recall. "Can I have 5 days off for my wedding?" is a leave question, and the
- * 48 hours after 12 days quote does not answer it. A quote may still be shown below the
- * "not checked" answer, labelled as possibly related, never as the answer.
- */
-const ANSWER_FIRST_AS_NOT_CHECKED = new Set(["leave", "pay", "on-call"]);
 /** Entitlement words: what the agreement gives, which the hours and rest quotes do not set out. */
 const ENTITLEMENT_WORDS = /\bentitle(?:d|ment|ments)\b|\bowed\b|\bper (?:year|annum)\b/;
 
@@ -457,6 +450,78 @@ function tidySafer(text: string): string | null {
   return tidy.split(" ").length >= 2 ? tidy : null;
 }
 
+/**
+ * Ask the agreement's own extra catches, on top of the shared work-text check. A question about hours,
+ * rest or pay never needs a person's name, so this field is stricter than the shared check:
+ * - a full name ("Jane Doe", "John SMITH") or "Smith, John", anywhere in the question,
+ * - "patient" or "pt" with two words that are not ordinary work words ("patient john smith"),
+ * - "p t" typed with a space.
+ * Hospital, place, day and workplace capitals are read past, so "Fiona Stanley" and "Boxing Day" pass.
+ */
+const AGREEMENT_PLACE_PHRASES =
+  /\b(?:fiona stanley|sir charles gairdner|charles gairdner|royal perth|king edward|perth children'?s|st john of god|joondalup health|osborne park|rockingham general|armadale health|peel health|bentley health|graylands|fremantle hospital|medical workforce|human resources|wa health|ama wa|fair work)\b/gi;
+const AGREEMENT_CAPITAL_WORDS = new Set(
+  (
+    "can could do does did is are am was were what when where why how who which will would should shall may might must " +
+    "if i i'm im my our your the a an after before during on in at for from with without has have had any please " +
+    "tell need so and but also since until every each most max maximum minimum rostered working worked being getting " +
+    "doing taking it its it's this that these those there their some two three four five six seven twelve fourteen " +
+    "hospital health general department medical workforce leave shift shifts night nights day days ward clinic service " +
+    "services team unit emergency mental metropolitan east north south west western australia australian wa perth " +
+    "christmas easter boxing new year years anzac good friday monday tuesday wednesday thursday friday saturday sunday " +
+    "january february march april june july august september october november december labour king's kings queen's " +
+    "birthday public holiday holidays annual long agreement award industrial commission union registrar resident intern " +
+    "interns consultant consultants doctor doctors dr nurse manager director head clinical training lead rural regional " +
+    "country hr ed icu rdo rdos ama hours hour rest break breaks roster rosters overtime pay paid sick study exam exams osce " +
+    "pgy1 pgy2 rmo rmos jmo jmos dct"
+  ).split(" "),
+);
+const PATIENT_WORD_FOLLOWERS = new Set(
+  (
+    "care load loads numbers number safety ratio ratios list lists handover handovers contact facing flow transfer " +
+    "transfers transport and or to with on in at for of the a an is was who that which after before during when while " +
+    "needs admissions admission reviews review work hours notes files records deaths death complaints complaint escalation " +
+    "escalations deteriorating sick unwell came died asked needed requires required calls call families family visits " +
+    "rounds round time times workload workloads issues issue matters meetings meeting cases case beds bed counts count " +
+    "my his her their our me us them it this these those"
+  ).split(" "),
+);
+
+function agreementOnlyPatientDetail(text: string): boolean {
+  const folded = normaliseWorkText(text).replace(AGREEMENT_PLACE_PHRASES, " ");
+  if (/\bp\.?\s+t\.?\s+[a-z]/i.test(folded)) return true;
+  const patientFollowers = folded.toLowerCase().match(/\b(?:patient|pt)\.?\s+([a-z]+)\s+([a-z]+)\b/);
+  if (
+    patientFollowers &&
+    !PATIENT_WORD_FOLLOWERS.has(patientFollowers[1]!) &&
+    !PATIENT_WORD_FOLLOWERS.has(patientFollowers[2]!)
+  )
+    return true;
+  if (/\b[A-Z][a-z]{1,}(?:-[A-Z][a-z]+)?,\s*[A-Z][a-z]{1,}\b/.test(folded)) {
+    const [, surname, first] = folded.match(/\b([A-Z][a-z]+(?:-[A-Z][a-z]+)?),\s*([A-Z][a-z]+)\b/) ?? [];
+    if (
+      surname &&
+      first &&
+      !AGREEMENT_CAPITAL_WORDS.has(surname.toLowerCase()) &&
+      !AGREEMENT_CAPITAL_WORDS.has(first.toLowerCase())
+    )
+      return true;
+  }
+  const words = [...folded.matchAll(/[A-Za-z][A-Za-z'’-]*/g)].map((match) => match[0]);
+  const nameLike = (word: string) =>
+    (/^[A-Z][a-z'’-]+$/.test(word) || /^[A-Z]{3,}$/.test(word)) &&
+    !AGREEMENT_CAPITAL_WORDS.has(word.toLowerCase().replace("’", "'"));
+  for (let index = 0; index + 1 < words.length; index += 1) {
+    const [first, second] = [words[index]!, words[index + 1]!];
+    // Two capitals in a row are a name only when at least one is in ordinary title case ("John SMITH"),
+    // so a pair of workplace capitals ("ED ICU") is not.
+    if (nameLike(first) && nameLike(second) && (/[a-z]/.test(first) || /[a-z]/.test(second))) return true;
+  }
+  return false;
+}
+
+const AGREEMENT_NAME_PROBLEM = "a person's name";
+
 export type AgreementQuestionCheck =
   | { readonly kind: "empty" }
   | { readonly kind: "too-short" }
@@ -479,6 +544,7 @@ export function checkAgreementQuestion(question: string, thisYear = new Date().g
     const what = problem.title.replace(/^This (?:looks like|may be) /, "");
     return { kind: "patient", safer: stillUnsafe ? null : safer, what };
   }
+  if (agreementOnlyPatientDetail(text)) return { kind: "patient", safer: null, what: AGREEMENT_NAME_PROBLEM };
   if (text.length < 3) return { kind: "too-short" };
   return { kind: "ok" };
 }
@@ -490,7 +556,7 @@ export interface AgreementTextSpan {
 }
 
 function readsAsPatientDetail(text: string, thisYear: number): boolean {
-  return looksLikePatientDetail(text, { thisYear });
+  return looksLikePatientDetail(text, { thisYear }) || agreementOnlyPatientDetail(text);
 }
 
 /**
@@ -588,7 +654,15 @@ export function answerAgreementQuestion(question: string, options: AgreementAnsw
   if (unchecked.length && !scored.some((entry) => entry.solid)) return notChecked([]);
   // Leave, pay, recall and entitlement questions are answered "not checked" first, whatever else matched.
   // A solid rest match is kept, below, as possibly related.
-  if (unchecked.some((topic) => ANSWER_FIRST_AS_NOT_CHECKED.has(topic.id)) || ENTITLEMENT_WORDS.test(text)) {
+  // "Can I have the weekend off?" or "a day off on my birthday": the only match is a loose days off
+  // phrase, which reads as a leave request as often as a rest question. Not checked, nothing quoted.
+  if (!scored.some((entry) => entry.score >= 2) && scored.every((entry) => entry.id === "days-before-two-off")) {
+    return notChecked([]);
+  }
+  // Anything outside the checked hours and rest rules (leave, pay, recall, notice, disputes and the rest)
+  // is answered "not checked" first, whatever else matched. A solid rest match is kept, below, as
+  // possibly related, never as the answer.
+  if (unchecked.length || ENTITLEMENT_WORDS.test(text)) {
     return notChecked(scored.filter((entry) => entry.solid).map((entry) => agreementTopic(entry.id)));
   }
   return {

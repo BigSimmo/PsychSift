@@ -154,10 +154,61 @@ describe("matching questions to the checked clauses", () => {
     expect(copy.indexOf("PsychSift hasn’t checked")).toBeLessThan(copy.indexOf("Possibly related"));
   });
 
-  it("still quotes a checked topic beside an unchecked one that is not leave, pay or recall", () => {
+  // Anything outside clause 15's hours and rest rules answers "not checked" first (coordinator review
+  // M-A, 7 Oct 2026): a wrong clause quoted as the answer is worse than "not checked".
+  it("answers not checked first for any unchecked topic, keeping a solid rest match as related", () => {
     const answer = answerAgreementQuestion("Is there a limit on overtime hours in a week?", opts);
-    expect(answer.kind).toBe("quoted");
-    if (answer.kind === "quoted") expect(answer.unchecked.map((topic) => topic.id)).toEqual(["overtime"]);
+    expect(answer.kind).toBe("not-checked");
+    if (answer.kind === "not-checked") {
+      expect(answer.unchecked.map((topic) => topic.id)).toEqual(["overtime"]);
+      expect(answer.related.map((topic) => topic.id)).toEqual(["hours-in-a-week"]);
+    }
+  });
+
+  it.each([
+    "Can I take a day off to study?",
+    "Do I get a day off on my birthday?",
+    "How long is a long weekend off?",
+    "Can I have the weekend off?",
+    "How many nights in a row before a roster change notice?",
+  ])("never quotes a rest clause as the answer to %j", (question) => {
+    expect(answerAgreementQuestion(question, opts).kind).toBe("not-checked");
+  });
+
+  it.each([
+    "Can I work 10 nights in a row?",
+    "How many hours rest after a night shift?",
+    "How many days in a row can I work?",
+    "Can I work 14 hours straight?",
+  ])("still quotes the rule for the plain rest question %j", (question) => {
+    expect(answerAgreementQuestion(question, opts).kind).toBe("quoted");
+  });
+
+  it.each([
+    "patient john smith overtime",
+    "Saw John Smith, 45 after nights",
+    "Smith, John 45",
+    "Jane Doe overtime after nights",
+    "I looked after Mary Brown on nights",
+    "p t Smith 45",
+    "John SMITH overtime",
+    "SMITH John 45",
+    "after nights with \uff2a\uff41\uff4e\uff45 \uff24\uff4f\uff45",
+  ])("catches the name in %j and answers nothing", (question) => {
+    expect(answerAgreementQuestion(question, opts).kind).toBe("patient");
+  });
+
+  it.each([
+    "Can I work at Fiona Stanley after nights?",
+    "Is Boxing Day a public holiday?",
+    "Is there a limit on patient numbers?",
+    "Does patient care time count as hours?",
+    "Can Medical Workforce change my roster?",
+    "Can my DCT make me work nights?",
+    "Sir Charles Gairdner rosters 7 nights in a row, allowed?",
+    "Do I get King's Birthday off?",
+  ])("does not mistake %j for a patient detail", (question) => {
+    expect(answerAgreementQuestion(question, opts).kind).not.toBe("patient");
   });
 
   // Every question the verifier found quoting a rest clause (verify-cpd-agreement.md, M-A).
