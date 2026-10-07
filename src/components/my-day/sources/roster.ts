@@ -8,6 +8,7 @@ import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
 import { fatigueMyDayItems, ruleEnginesOn, type MyDayRuleShift } from "@/lib/my-day/rule-items";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { sickNeedsYouItems } from "@/lib/roster/sick/sick-report";
 import type { RosterManage, RosterOverview, RosterRequests, RosterTeam } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -17,7 +18,8 @@ import { sharedGet } from "@/lib/shared-get";
 export interface RosterMyDayTeamInput {
   readonly team: Pick<RosterTeam, "serviceId" | "role">;
   readonly overview: Pick<RosterOverview, "nextCutoffOn"> | null;
-  readonly requests: Pick<RosterRequests, "swaps"> | null;
+  /** `openShifts` carries the reader's own sick reports, when the read returned them. */
+  readonly requests: (Pick<RosterRequests, "swaps"> & Partial<Pick<RosterRequests, "openShifts">>) | null;
   /** Read only for a team the reader manages. */
   readonly manage: Pick<RosterManage, "swaps" | "openShifts"> | null;
 }
@@ -34,7 +36,8 @@ export interface RosterMyDayInput {
 /**
  * Roster's own "Needs you" rows, mapped for My Day. Same selectors as
  * `RosterTodayTeam`: `swapProgress(...).tab === "needs_you"`, `managerWaiting`
- * (decisions-in-strip, managers only) and the 14-day roster cutoff nudge.
+ * (decisions-in-strip, managers only), the 14-day roster cutoff nudge, and a
+ * sick report still waiting for cover (`sickNeedsYouItems`, an update).
  * Sample data yields nothing.
  */
 export function rosterMyDayItems(input: RosterMyDayInput, now: Date): MyDayItem[] {
@@ -78,6 +81,18 @@ export function rosterMyDayItems(input: RosterMyDayInput, now: Date): MyDayItem[
         href: `/roster/requests?start=dates&team=${encodeURIComponent(team.serviceId)}`,
       });
     }
+  }
+  // A sick report still waiting for cover, once across teams (Sick for tomorrow's own selector).
+  const openShifts = input.teams.flatMap(({ requests }) => requests?.openShifts ?? []);
+  for (const report of sickNeedsYouItems(openShifts, now)) {
+    items.push({
+      id: report.id,
+      mode: "roster",
+      title: report.title,
+      due: report.dueOn,
+      severity: "info",
+      href: report.href,
+    });
   }
   if (input.ownShifts) items.push(...fatigueMyDayItems(input.ownShifts, now));
   return items;

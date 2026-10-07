@@ -226,14 +226,14 @@ describe("Job applications season", () => {
     expect(stored().referees[1].history.at(-1)).toEqual({ kind: "nudge", on: "2026-10-06" });
   });
 
-  it("never guesses the season year, and says the reminder shows on this page only", () => {
+  it("never guesses the season year, and says the reminder shows on this page and in Notifications", () => {
     renderPage();
     expect(screen.getByTestId("applications-no-start").textContent).toContain("Add a start date");
     expect(document.body.textContent).not.toMatch(/Season 2027/);
     fireEvent.click(screen.getByTestId("applications-add-date"));
     const sheet = screen.getByTestId("applications-date-sheet");
-    expect(sheet.textContent).toContain("at the top of this page only");
-    expect(sheet.textContent).not.toContain("Notifications");
+    expect(sheet.textContent).toContain("at the top of this page and in Notifications");
+    expect(sheet.textContent).not.toContain("buzz or email you, so open");
   });
 
   it("removes the saved applications and CPD Home records when the device is marked shared", () => {

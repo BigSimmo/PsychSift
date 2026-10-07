@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { MyDayItem } from "@/lib/my-day/model";
 import {
   areaCounts,
+  featureNotificationItem,
   formatNotificationDue,
   formatSnoozeDay,
   groupNotifications,
@@ -145,6 +146,7 @@ describe("source adapters", () => {
   it("calls answers, logs, preps and renewals actions, and far dates updates", () => {
     expect(myDayItemKind(myDay({ id: "roster:swap:1", mode: "roster" }))).toBe("action");
     expect(myDayItemKind(myDay({ id: "cme:routine:1", mode: "cme" }))).toBe("action");
+    expect(myDayItemKind(myDay({ id: "roster:sick:1", mode: "roster" }))).toBe("update");
     expect(myDayItemKind(myDay({ id: "my-work:date:1", mode: "my-work", severity: "soon" }))).toBe("action");
     expect(myDayItemKind(myDay({ id: "my-work:date:1", mode: "my-work", severity: "info" }))).toBe("update");
     expect(myDayItemKind(myDay({ id: "my-work:more", mode: "my-work" }))).toBe("update");
@@ -200,5 +202,31 @@ describe("the bell", () => {
     expect(notificationBellLabel(0)).toBe("Notifications");
     expect(notificationBellLabel(1)).toBe("Notifications, 1 needs you");
     expect(notificationBellLabel(4, 2)).toBe("Notifications, 4 need you, 2 overdue");
+  });
+});
+
+describe("feature items", () => {
+  it("maps a feature's Needs you item field for field, with its area as the centre names it", () => {
+    expect(
+      featureNotificationItem({
+        id: "contract-end-passed-1",
+        title: "Contract end date has passed. Add your new end date",
+        dueOn: "2026-10-01",
+        area: "admin",
+        href: "/admin/contract",
+        kind: "action",
+      }),
+    ).toEqual({
+      id: "contract-end-passed-1",
+      title: "Contract end date has passed. Add your new end date",
+      due: "2026-10-01",
+      area: "my-work",
+      href: "/admin/contract",
+      kind: "action",
+    });
+    const areas = (["call", "admin", "cpd", "teaching", "roster"] as const).map(
+      (area) => featureNotificationItem({ id: area, title: area, dueOn: null, area, href: "/", kind: "update" }).area,
+    );
+    expect(areas).toEqual(["on-call", "my-work", "cme", "teaching", "roster"]);
   });
 });

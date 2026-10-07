@@ -123,8 +123,8 @@ function CalendarChoice({
  * "Your first week" (round 2 feature 20): the hospital's published orientation,
  * roles and escalation, with the doctor's own New job logins, as one pack that
  * shows as a card on On Call Now from a week before the job starts (unless the
- * doctor turns that off). No alert is delivered yet: `selectFirstWeekNeedsYou`
- * is ready for Needs you to read the same choice when that is wired.
+ * doctor turns that off). The Notification centre reads the same choice through
+ * `selectFirstWeekNeedsYou` (`useFeatureNotificationSources`).
  *
  * `section` picks one section to read on its own (`?section=who`); anything
  * else shows the pack. Read marks are this device's only.

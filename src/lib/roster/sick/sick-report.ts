@@ -384,6 +384,8 @@ export function sickErrorWords(code: string, message: string): string {
 // ------------------------------------------------------------------ hand-offs for other areas
 
 export type RosterNeedsYouItem = {
+  /** `roster:sick:<open shift id>`, stable while the report waits, so a snooze holds. */
+  readonly id: string;
   readonly title: string;
   readonly dueOn: string;
   readonly area: "roster";
@@ -400,6 +402,7 @@ export function sickNeedsYouItems(openShifts: readonly RosterOpenShift[], now: D
     .filter((item) => isLiveReport(item) && Date.parse(item.endsAt) > now.getTime())
     .sort(byStart)
     .map((item) => ({
+      id: `roster:sick:${item.id}`,
       title: `${sickShiftTitle(item, now)} not covered yet`,
       dueOn: perthDateOf(item.startsAt),
       area: "roster" as const,

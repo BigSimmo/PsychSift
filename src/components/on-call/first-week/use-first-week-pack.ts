@@ -6,11 +6,13 @@ import { useHospitalHandbook, type HospitalHandbookState } from "@/components/on
 import { selectNewJobRows } from "@/lib/admin/help-items";
 import { selectNewJobStart } from "@/lib/admin/new-job-progress";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
 import {
   buildFirstWeekSections,
   firstWeekLandAlertOn,
   firstWeekPhase,
   firstWeekProgress,
+  isFirstWeekHighlighted,
   restoreFirstWeekMarks,
   setFirstWeekLandAlert,
   setFirstWeekSectionRead,
@@ -60,17 +62,30 @@ const NO_MARKS: Marks = {};
  * Everything "Your first week" reads, in one place, so the page and a Today
  * card cannot disagree: the hospital handbook (published only), the doctor's
  * own New job start date and logins, and this device's read marks.
+ *
+ * `feed: true` is for a page that only surfaces the pack (the Notification centre, My Day Today): example
+ * records are left out, and the handbook is read only while the pack is highlighted.
  */
-export function useFirstWeekPack(now: Date): FirstWeekPack {
-  const handbook = useHospitalHandbook();
+export function useFirstWeekPack(now: Date, { feed = false }: { readonly feed?: boolean } = {}): FirstWeekPack {
   const entries = useOnCallEntries();
   const loadState = adminLoadState(entries);
   const startState: FirstWeekLoginsState = loadState;
 
-  const own = useMemo(() => selectAdminOwnEntries(entries), [entries]);
-  const shared = useMemo(() => selectAdminSharedEntries(entries), [entries]);
+  // A feed (the Notification centre, My Day Today) never takes a start date or a login from example records.
+  const own = useMemo(() => {
+    const all = selectAdminOwnEntries(entries);
+    return feed ? withoutExampleRecords(all) : all;
+  }, [entries, feed]);
+  const shared = useMemo(() => {
+    const all = selectAdminSharedEntries(entries);
+    return feed ? withoutExampleRecords(all) : all;
+  }, [entries, feed]);
   const rows = useMemo(() => selectNewJobRows({ own, shared }), [own, shared]);
   const startsOn = loadState === "ready" ? (selectNewJobStart({ own, shared })?.startsOn ?? null) : null;
+  // A feed reads the hospital handbook only while the pack is highlighted, so other weeks cost no request.
+  const handbook = useHospitalHandbook({
+    enabled: !feed || isFirstWeekHighlighted(firstWeekPhase(startsOn, now)),
+  });
 
   const logins = useMemo<FirstWeekLogin[]>(
     () =>

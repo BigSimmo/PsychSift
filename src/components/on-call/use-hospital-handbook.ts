@@ -281,7 +281,11 @@ function hospitalOptions(services: readonly ServiceSummary[]): HospitalHandbookO
 
 const noop = () => {};
 
-export function useHospitalHandbook(): HospitalHandbookState {
+/**
+ * `enabled: false` reads nothing (status stays "loading"), for a feed that only needs the handbook some
+ * of the time, such as the Notification centre's first week pack before the pack is highlighted.
+ */
+export function useHospitalHandbook({ enabled = true }: { readonly enabled?: boolean } = {}): HospitalHandbookState {
   const auth = useAuthSession();
   // A signed-out visitor sees the invented sample hospital (the same synthetic
   // one the local demo build serves), held in memory only: nothing is fetched,
@@ -291,7 +295,7 @@ export function useHospitalHandbook(): HospitalHandbookState {
   // The sample's numbers are text only; the local demo build keeps its own.
   const sampleDetail = envDemo ? demoServiceDetail : sampleServiceDetail;
   const epoch = auth.authEpoch;
-  const live = !demo && auth.status === "authenticated";
+  const live = enabled && !demo && auth.status === "authenticated";
   const [servicesState, setServicesState] = useState<ServicesState | null>(null);
   const [choice, setChoice] = useState<(StoredChoice & { epoch: number }) | null>(null);
   const [detailState, setDetailState] = useState<DetailState | null>(null);

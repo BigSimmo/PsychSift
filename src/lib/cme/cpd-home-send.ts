@@ -320,7 +320,7 @@ export type CpdNeedsYouItem = {
 };
 
 /**
- * Ready for the Notification centre, NOT WIRED YET (the main build owns it):
+ * The Notification centre's CPD Home source (`useFeatureNotificationSources`):
  * - an update once a file has been marked added: activities logged since, not
  *   yet in a file marked added (nothing before a first file is marked added,
  *   because until then the doctor has not started using CPD Home this way);

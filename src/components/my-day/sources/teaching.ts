@@ -17,6 +17,7 @@ import {
   type ReminderSettings,
 } from "@/lib/reminders/settings";
 import type { SessionRef, TeachRead } from "@/lib/teaching/depth-model";
+import { useAuthSession } from "@/lib/supabase/client";
 import type { TeachingWeekResponse } from "@/lib/teaching/model";
 
 /**
@@ -122,10 +123,16 @@ export function useTeachingMyDaySource({ enabled, now }: { enabled: boolean; now
   retry: () => void;
 } {
   const unlogged = useTeachingResource<{ count: number }>(enabled ? "/api/teaching?view=unlogged-count" : null);
-  const teach = useTeachingResource<TeachRead>(enabled ? "/api/teaching/depth?view=teach" : null);
-  const feedback = useTeachingResource<{ sessions: SessionRef[] }>(
-    enabled ? "/api/teaching/depth?view=feedback-open" : null,
+  // The depth routes refuse the synthetic demo build, so it is not asked (the answer is known).
+  const { status: authStatus } = useAuthSession();
+  const demoMode = authStatus === "unconfigured" || process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const depth = enabled && !demoMode;
+  const teachRead = useTeachingResource<TeachRead>(depth ? "/api/teaching/depth?view=teach" : null);
+  const feedbackRead = useTeachingResource<{ sessions: SessionRef[] }>(
+    depth ? "/api/teaching/depth?view=feedback-open" : null,
   );
+  const teach = demoMode ? { ...teachRead, code: DEMO_UNAVAILABLE } : teachRead;
+  const feedback = demoMode ? { ...feedbackRead, code: DEMO_UNAVAILABLE } : feedbackRead;
   // The same Monday-to-a-week-ahead range Teaching's own week read uses.
   const today = perthDateKey(now);
   const weekUrl = enabled
