@@ -472,6 +472,14 @@ states are in `src/components/example-data/` and `src/components/work-first-use/
 `src/lib/work-time/` holds the work time zone (Perth by default, saved as `preferences.timeZone`) and
 the zone-aware date and time helpers every shift and "today" uses instead of the device clock.
 
+**Work-mode launch switch.** `src/lib/work-mode-launch/` decides who sees the new-only work
+screens. `launch.ts` resolves the setting (`WORK_MODE_LAUNCH` off, preview or everyone, with
+`WORK_MODE_PREVIEW_USER_IDS` and the administrator claim as the preview audience) and the
+per-device rollback cookie. `routes.ts` lists the new-only routes, and `src/proxy.ts` serves the
+ordinary 404 for them to anyone on the classic work mode. Pages and the frame hide links with
+`useWorkModeRouteVisible()` and `NewWorkModeOnly` from `src/components/work-mode-launch/`.
+Restyled existing pages are not gated: they ship to everyone.
+
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
 records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto

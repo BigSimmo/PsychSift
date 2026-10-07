@@ -69,7 +69,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * store means adding it to this list, not to one of the three call sites.
  *
  * Deliberately NOT the initial signed-out boot path: that must keep the guest
- * answer-thread snapshot (see `initializeSession`).
+ * answer-thread snapshot (see `initializeSession`). The one boot case that IS a
+ * transition, a stored session the auth server rejects, calls this too.
  */
 function clearAccountScopedBrowserState() {
   clearPersistedAnswerThread();
@@ -335,9 +336,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // A stored session the auth server rejected on boot is a session that
           // expired while the page was closed. Patient labels must not outlive it,
           // even before the shift ends; the guest stores above are kept as before.
+          // It is also an account transition: on a shared ward computer the person
+          // whose session lapsed may be gone, and until the next sign-in everything
+          // they left (quick note, Remind me, On Call numbers, CPD applications)
+          // would stay readable, including on the offline page. So clear it all now.
           if (sessionResult.data.session && !resolved.session) {
-            clearPatientLabels("account-transition");
-            // MHA clocks (form codes and times) live in their own store, outside the label namespace.
+            clearAccountScopedBrowserState();
+            // MHA clocks (form codes and times) also drop their in-memory copy.
             clearMhaClocks();
           }
           if (callbackError) {

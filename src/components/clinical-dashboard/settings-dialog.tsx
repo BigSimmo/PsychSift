@@ -55,6 +55,7 @@ import {
 import { type SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { useAccountData } from "@/components/account-data-provider";
 import { useTheme } from "@/components/clinical-dashboard/use-theme";
+import { useClassicWorkMode } from "@/components/work-mode-launch/use-classic-work-mode";
 import {
   ANSWER_STYLE_OPTIONS,
   DENSITY_OPTIONS,
@@ -278,6 +279,9 @@ export function SettingsDialog({
 
   const { theme, preference: themePreference, setPreference: setThemePreference } = useTheme();
   const { preferences, setPreference, resetPreferences, syncState, retrySync } = useAppPreferences();
+  // The work-mode launch switch's instant rollback: shown only to readers the new
+  // work mode is offered to (src/lib/work-mode-launch).
+  const classicWorkMode = useClassicWorkMode();
   // Hide-on-scroll for the mobile glass header (phone-gated inside the hook), so
   // the top goes fully edge-to-edge while scrolling — the same behaviour as the
   // app's search bar. Desktop keeps its title bar pinned and never hides it.
@@ -1233,6 +1237,15 @@ export function SettingsDialog({
                     onChange={(value) => setPreference("timeZone", value)}
                   />
                   <ExampleDataField />
+                  {classicWorkMode.available ? (
+                    <SettingsToggleField
+                      icon={History}
+                      label="Hide new work screens"
+                      description="Turns off the work screens added in this update, on this device only."
+                      checked={classicWorkMode.classic}
+                      onChange={classicWorkMode.setClassic}
+                    />
+                  ) : null}
                 </SettingsGroup>
               </SettingsSection>
 

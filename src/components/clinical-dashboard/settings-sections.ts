@@ -146,6 +146,12 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     keywords: "sample demo made up fake test data look around explore tour work mode",
   },
   {
+    id: "settings-row-hide-new-work-screens",
+    section: "app-preferences",
+    label: "Hide new work screens",
+    keywords: "classic work mode new features roll back undo turn off preview contract leave sick cpd home",
+  },
+  {
     id: "settings-row-recent-searches-on-home",
     section: "personalisation",
     label: "Recent searches on home",

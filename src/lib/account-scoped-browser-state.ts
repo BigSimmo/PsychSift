@@ -27,8 +27,12 @@
  * synchronously sees honest absence, never the previous person's values.
  *
  * Adding an account-scoped store means adding its key to `clearAccountScopedBrowserStorage`
- * below and, if it caches, subscribing to the event where it lives.
+ * below and, if it caches, subscribing to the event where it lives. A `psychsift:` key
+ * is also caught by the sweep in `account-device-sweep.ts`, so a forgotten one still
+ * goes; name it here anyway, because the name is where its contents are written down.
  */
+
+import { sweepAccountDeviceData } from "@/lib/account-device-sweep";
 
 export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
 
@@ -79,6 +83,13 @@ export const MY_DAY_SNOOZED_ITEMS_STORAGE_KEY = "psychsift:my-day:snoozed-v1";
  * here"; it is cleared at sign-out, session expiry and account switch.
  */
 export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
+/** localStorage — My Day's earlier alerts the reader cleared or read (alert ids and times). */
+export const MY_DAY_EARLIER_ALERTS_STORAGE_KEY = "psychsift:my-day:earlier-alerts-v1";
+/**
+ * localStorage — Admin paperwork (wiring thread's paperwork-store.ts): the doctor's own
+ * requests, documents list and pay and tax checklists. Kept on this device only.
+ */
+export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
 /**
  * localStorage — Remind me notes: short text and a due time, kept on this
  * device only. The sheet refuses initials, bed and record numbers and names,
@@ -218,6 +229,8 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_HIDDEN_CARDS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_SNOOZED_ITEMS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, MY_DAY_EARLIER_ALERTS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, ADMIN_PAPERWORK_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
@@ -235,6 +248,9 @@ export function clearAccountScopedBrowserStorage(): void {
   }
   removeQuietly(() => window.localStorage, WORK_SETUP_PROGRESS_STORAGE_KEY);
   stripAccountScopedPreferences();
+  // The catch-all: every other `psychsift:` key, the clinical drafts, IndexedDB,
+  // page caches and PsychSift's notifications (see account-device-sweep.ts).
+  sweepAccountDeviceData();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 
