@@ -151,10 +151,15 @@ export function previousWorkSetupStep(
 }
 
 /** How many counted steps are finished or skipped, out of how many. */
+/** Steps finished with Continue, out of the steps these areas ask about. A skipped step is not done. */
 export function workSetupCount(progress: WorkSetupProgress): { readonly done: number; readonly total: number } {
   const counted = countedWorkSetupSteps(progress.areas);
-  const done = counted.filter((step) => progress.completed.includes(step) || progress.skipped.includes(step)).length;
+  const done = counted.filter((step) => progress.completed.includes(step)).length;
   return { done, total: counted.length };
+}
+
+export function workSetupCountLabel(done: number, total: number): string {
+  return `${done} of ${total} done`;
 }
 
 /** Continue: the step is finished (and no longer skipped), and the walkthrough moves on. */

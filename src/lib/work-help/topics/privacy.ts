@@ -16,7 +16,7 @@ export const privacyTopic: WorkHelpTopic = {
       id: "kept-where",
       q: "What is kept on my account and what stays on this phone?",
       a: "Your account holds your stage, roster, CPD, teaching, reminders and renewal dates. Credential numbers, On Call checklist ticks, your My Day note, pins and recent pages stay on this phone only.",
-      link: { label: "Open Privacy", href: "/my-day/profile#privacy" },
+      link: { label: "Privacy", href: "/my-day/profile?tab=privacy" },
     },
     {
       id: "patient-labels",
@@ -27,22 +27,22 @@ export const privacyTopic: WorkHelpTopic = {
       id: "signing-out",
       q: "What happens when I sign out?",
       a: "Signing out clears everything kept on this phone for your account, including patient labels. Display settings stay.",
-      link: { label: "Open Privacy", href: "/my-day/profile#privacy" },
+      link: { label: "Privacy", href: "/my-day/profile?tab=privacy" },
     },
     {
       id: "shared-computer",
       q: "I'm using a shared computer. What should I change?",
       a: "On the Alerts page, turn on This is a shared computer. That device then takes no phone alerts and keeps no reminders. Sign out when you finish.",
-      link: { label: "Open Alerts", href: "/my-day/alerts" },
+      link: { label: "Alerts", href: "/my-day/alerts" },
     },
     {
       id: "recent-searches",
       q: "Can I stop it remembering my searches?",
       a: "Yes. In Privacy, turn off Save recent searches, or tap Clear recent searches. Recent searches are kept only in this browser tab, never on your account.",
-      link: { label: "Open Privacy", href: "/my-day/profile#privacy" },
+      link: { label: "Privacy", href: "/my-day/profile?tab=privacy" },
     },
   ],
-  setUp: [{ label: "Privacy", href: "/my-day/profile#privacy" }],
+  setUp: [{ label: "Privacy", href: "/my-day/profile?tab=privacy" }],
   keywords:
     "confidential confidentiality patient identifiers urn mrn medicare data security shared device ward computer sign out log out delete storage",
 };

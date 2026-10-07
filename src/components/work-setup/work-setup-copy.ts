@@ -51,8 +51,8 @@ export const WORK_SETUP_STEP_COPY: Record<
     short: "Alerts",
   },
   done: {
-    title: "You’re set up",
-    sub: "Change any of this later in Work profile, or reopen setup from My Day’s More.",
+    title: "You're set up",
+    sub: "Change your stage later in Work profile, or reopen setup from My Day's More or Help.",
     short: "Done",
   },
 };
@@ -84,6 +84,7 @@ export const WORK_SETUP_AREA_COPY: Record<
 
 /** Where the walkthrough lives, and a deep link to one step. */
 export const WORK_SETUP_HREF = "/my-day/setup";
+/** A step's own address. Bare WORK_SETUP_HREF means "wherever I got to". */
 export function workSetupStepHref(step: WorkSetupStepId): string {
-  return step === "welcome" ? WORK_SETUP_HREF : `${WORK_SETUP_HREF}?step=${step}`;
+  return `${WORK_SETUP_HREF}?step=${step}`;
 }

@@ -4,43 +4,32 @@
 
 .work-setup {
   display: grid;
-  min-height: 100dvh;
-  grid-template-rows: auto auto 1fr auto;
   max-width: 40rem;
   margin: 0 auto;
   padding: 0 var(--work-gutter-right) 0 var(--work-gutter-left);
-  padding-top: var(--safe-area-top, 0px);
   background: var(--work-surface);
   color: var(--work-ink);
 }
 
-.work-setup__bar {
-  display: grid;
-  grid-template-columns: var(--spacing-tap, 3rem) 1fr var(--spacing-tap, 3rem);
+/* Where you are, and Close. Back is the top bar's round left button. */
+.work-setup__top {
+  display: flex;
+  min-height: var(--spacing-tap, 3rem);
   align-items: center;
+  justify-content: space-between;
   gap: calc(var(--spacing) * 2);
-  padding-top: calc(var(--spacing) * 2);
 }
 
-.work-setup__bar-gap {
-  width: var(--spacing-tap, 3rem);
+.work-setup__top > .work-button {
+  margin-right: calc(var(--spacing) * -3);
 }
 
 .work-setup__where {
-  display: grid;
   margin: 0;
-  justify-items: center;
-  text-align: center;
-  line-height: var(--work-leading-row);
-}
-
-.work-setup__where-title {
-  font-size: var(--text-sm, 0.8125rem);
-  font-weight: 700;
-}
-
-.work-setup__where-step {
   font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--work-ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -50,7 +39,7 @@
   grid-auto-columns: 1fr;
   grid-auto-flow: column;
   gap: calc(var(--spacing) * 1);
-  margin: calc(var(--spacing) * 3) 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -77,7 +66,7 @@
   display: grid;
   align-content: start;
   gap: calc(var(--spacing) * 4);
-  padding: calc(var(--spacing) * 6) 0 calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 5) 0 calc(var(--spacing) * 2);
 }
 
 /* Welcome and done open with one large icon circle. */
@@ -160,7 +149,7 @@
   white-space: nowrap;
 }
 
-/* Areas you use: a colour dot, then the native checkbox row. */
+/* Areas you use: the native checkbox row, its name led by the area colour. */
 .work-setup__area {
   display: flex;
   align-items: center;
@@ -179,9 +168,15 @@
   min-width: 0;
 }
 
+.work-setup__area-label {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+}
+
 .work-setup__dot {
-  width: calc(var(--spacing) * 2.5);
-  height: calc(var(--spacing) * 2.5);
+  width: calc(var(--spacing) * 2);
+  height: calc(var(--spacing) * 2);
   flex: none;
   border-radius: var(--radius-pill);
   background: var(--mode-identity);
@@ -260,6 +255,17 @@
 }
 
 @media (forced-colors: active) {
+  .work-setup__switch::before {
+    border: 1px solid CanvasText;
+  }
+  .work-setup__switch[aria-checked="true"]::before {
+    background: Highlight;
+  }
+  .work-setup__switch-knob {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
   .work-setup__segment,
   .work-setup__dot {
     forced-color-adjust: none;

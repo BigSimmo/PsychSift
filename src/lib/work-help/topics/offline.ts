@@ -36,7 +36,7 @@ export const offlineTopic: WorkHelpTopic = {
       id: "iphone-alerts",
       q: "Why can't I turn on alerts on my iPhone?",
       a: "Apple only allows them once PsychSift is on your Home Screen. Add it there, open it from the new icon, then turn on phone alerts on the Alerts page.",
-      link: { label: "Open Alerts", href: "/my-day/alerts" },
+      link: { label: "Alerts", href: "/my-day/alerts" },
     },
   ],
   setUp: [{ label: "Alerts", href: "/my-day/alerts" }],

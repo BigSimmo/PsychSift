@@ -1,14 +1,16 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { closeWorkHelp, useOpenWorkHelp } from "@/components/work-help/work-help-store";
 import { workHelpTopicForArea } from "@/lib/work-help";
 
-// The sheet and its words load on first open, never with the page.
-const WorkHelpSheet = dynamic(() => import("@/components/work-help/work-help-sheet"), { ssr: false });
+// The sheet and its words load apart from the page, fetched when the phone is idle
+// so a first open still works after the signal drops.
+const loadSheet = () => import("@/components/work-help/work-help-sheet");
+const WorkHelpSheet = dynamic(loadSheet, { ssr: false });
 
 /**
  * Mounted once by the work frame. Draws the help sheet for whichever area asked
@@ -18,14 +20,18 @@ const WorkHelpSheet = dynamic(() => import("@/components/work-help/work-help-she
 export function WorkHelpHost() {
   const area = useOpenWorkHelp();
   const pathname = usePathname();
-  const first = useRef(true);
+  const search = useSearchParams()?.toString() ?? "";
+  const where = `${pathname}?${search}`;
+  const shownAt = useRef(where);
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (shownAt.current === where) return;
+    shownAt.current = where;
     closeWorkHelp();
-  }, [pathname]);
+  }, [where]);
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((run: () => void) => window.setTimeout(run, 2000));
+    idle(() => void loadSheet().catch(() => undefined));
+  }, []);
   if (!area) return null;
   return <WorkHelpSheet topic={workHelpTopicForArea(area)} open onClose={closeWorkHelp} />;
 }

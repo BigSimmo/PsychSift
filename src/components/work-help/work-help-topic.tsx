@@ -2,6 +2,7 @@
 
 import { ChevronRight, Settings2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { WorkCard, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
@@ -141,6 +142,7 @@ export function WorkHelpTopicBrief({
   readonly onNavigate: () => void;
   readonly questions?: number;
 }) {
+  const router = useRouter();
   return (
     <div className="grid gap-4" data-testid={`work-help-brief-${topic.id}`} data-mode-identity={topic.identity}>
       <p className="work-help__summary">{topic.summary}.</p>
@@ -148,7 +150,13 @@ export function WorkHelpTopicBrief({
       <section className="grid gap-2" aria-labelledby={`help-brief-${topic.id}-questions`}>
         <WorkSectionLabel
           id={`help-brief-${topic.id}-questions`}
-          action={{ label: `All ${topic.questions.length}`, href: workHelpTopicHref(topic.id) }}
+          action={{
+            label: `All ${topic.questions.length}`,
+            onClick: () => {
+              onNavigate();
+              router.push(workHelpTopicHref(topic.id));
+            },
+          }}
         >
           Common questions
         </WorkSectionLabel>
@@ -158,7 +166,12 @@ export function WorkHelpTopicBrief({
               <Link
                 href={`${workHelpTopicHref(topic.id)}#${questionDomId(question)}`}
                 className="work-row"
-                onClick={onNavigate}
+                onClick={() => {
+                  onNavigate();
+                  // A link to the topic page already open changes only the hash, which
+                  // the browser does not announce for in-app navigation.
+                  window.setTimeout(() => window.dispatchEvent(new HashChangeEvent("hashchange")), 0);
+                }}
                 data-testid={`work-help-brief-q-${question.id}`}
               >
                 <span className="work-row__text">

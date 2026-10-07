@@ -82,18 +82,22 @@ function LinkRow({
   return <WorkIconRow icon={icon} title={title} sub={sub} href={href} leadsTo={leadsTo} end={end} testId={testId} />;
 }
 
+/** Always mounted, so a screen reader hears it when the phone drops offline. */
 function OfflineNote({ online }: { readonly online: boolean }) {
-  if (online) return null;
   return (
-    <p className="work-setup__note" role="status" data-testid="work-setup-offline">
-      <CloudOff aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
-      You’re offline. These open when you’re back online.
-    </p>
+    <div role="status" className="contents">
+      {online ? null : (
+        <p className="work-setup__note" data-testid="work-setup-offline">
+          <CloudOff aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+          {"You're offline. These open when you're back online."}
+        </p>
+      )}
+    </div>
   );
 }
 
 function LeavesNote() {
-  return <p className="work-setup__hint">Each opens in its own area. Come back here with Back when you’re done.</p>;
+  return <p className="work-setup__hint">{"Each opens in its own area. Come back here with Back when you're done."}</p>;
 }
 
 const AREA_ICON: Record<AreaRow["id"], LucideIcon> = {
@@ -120,16 +124,15 @@ const AREA_MODE: Record<AreaRow["id"], AppModeId> = {
   "on-call": "on-call",
 };
 
-/** An area's set-up row: its state at the end, and a link unless the read is unsettled. */
+/** An area's set-up row: its state at the end, and a link whenever the phone is online. */
 function AreaStatusRow({ row, online }: { readonly row: AreaRow; readonly online: boolean }) {
-  const settled = row.state !== "not-checked";
   return (
     <LinkRow
       icon={AREA_ICON[row.id]}
       title={row.title}
       sub={row.subtitle}
       href={AREA_HREF[row.id]}
-      online={online && settled}
+      online={online}
       leadsTo={AREA_MODE[row.id]}
       end={<SetupAreaTrailing row={row} />}
       testId={`work-setup-area-${row.id}`}
@@ -194,7 +197,8 @@ export function ExampleSwitch({ on, onChange }: { readonly on: boolean; readonly
 }
 
 export function StageStep() {
-  const { preferences, setPreference } = useAppPreferences();
+  const { preferences, setPreference, syncState } = useAppPreferences();
+  const chose = Boolean(preferences.workStage);
   return (
     <div className="grid gap-5" data-testid="work-setup-stage">
       <WorkCard padded>
@@ -222,6 +226,17 @@ export function StageStep() {
           />
         </WorkCard>
       ) : null}
+      <p className="work-setup__hint" role="status" data-testid="work-setup-stage-saved">
+        {!chose
+          ? ""
+          : syncState === "local-only"
+            ? "Saved on this phone only. Sign in to keep it with your account."
+            : syncState === "error"
+              ? "Couldn't save to your account just now. It's kept on this phone for now."
+              : syncState === "syncing"
+                ? "Saving to your account."
+                : "Saved to your account."}
+      </p>
     </div>
   );
 }
@@ -239,20 +254,31 @@ export function AreasStep({ progress, onAreas }: WorkSetupStepContext) {
     <div className="grid gap-3" data-testid="work-setup-areas">
       <WorkCard as="ul" aria-label="Areas you use">
         <li className="work-setup__area" data-mode-identity="my-day">
-          <span aria-hidden="true" className="work-setup__dot" />
-          <span className="work-setup__area-text">
-            <span className="work-setup__area-name">My Day</span>
-            <span className="work-setup__area-sub">Your day across every area</span>
-          </span>
-          <span className="work-setup__muted">Always on</span>
+          <Checkbox
+            label={
+              <span className="work-setup__area-label">
+                <span aria-hidden="true" className="work-setup__dot" />
+                My Day
+              </span>
+            }
+            description="Always on. Your day across every area."
+            checked
+            disabled
+            readOnly
+            data-testid="work-setup-area-toggle-day"
+          />
         </li>
         {WORK_SETUP_AREAS.map((area) => {
           const copy = WORK_SETUP_AREA_COPY[area];
           return (
             <li key={area} className="work-setup__area" data-mode-identity={copy.identity}>
-              <span aria-hidden="true" className="work-setup__dot" />
               <Checkbox
-                label={copy.name}
+                label={
+                  <span className="work-setup__area-label">
+                    <span aria-hidden="true" className="work-setup__dot" />
+                    {copy.name}
+                  </span>
+                }
                 description={copy.sub}
                 checked={chosen.has(area)}
                 onChange={(event) => toggle(area, event.currentTarget.checked)}

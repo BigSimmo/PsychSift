@@ -26,7 +26,7 @@ export const searchTopic: WorkHelpTopic = {
       id: "patient-details",
       q: "What if I type a patient detail?",
       a: "If what you type looks like a patient detail, such as a hospital number, bed number or date of birth, it is not searched or saved, and you are asked to clear it.",
-      link: { label: "Open Privacy", href: "/my-day/profile#privacy" },
+      link: { label: "Privacy", href: "/my-day/profile?tab=privacy" },
     },
     {
       id: "clinical-questions",

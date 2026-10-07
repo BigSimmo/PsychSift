@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
@@ -39,7 +39,7 @@ import {
   workHelpTopicHref,
   type WorkHelpTopic,
 } from "@/lib/work-help";
-import { workSetupCount } from "@/lib/work-setup/progress";
+import { workSetupCount, workSetupCountLabel } from "@/lib/work-setup/progress";
 
 const subscribeNothing = () => () => undefined;
 function useHydrated(): boolean {
@@ -68,7 +68,7 @@ function TopicRow({ topic }: { readonly topic: WorkHelpTopic }) {
 function TopicList({ label, topics }: { readonly label: string; readonly topics: readonly WorkHelpTopic[] }) {
   if (topics.length === 0) return null;
   return (
-    <section className="grid gap-2" aria-label={label}>
+    <section className="grid gap-2">
       <WorkSectionLabel>{label}</WorkSectionLabel>
       <WorkCard as="ul" aria-label={label}>
         {topics.map((topic) => (
@@ -88,7 +88,7 @@ const GUIDE_ICON: Partial<Record<WorkHelpTopic["id"], LucideIcon>> = {
 
 function GuideList({ topics }: { readonly topics: readonly WorkHelpTopic[] }) {
   return (
-    <section className="grid gap-2" aria-label="Good to know">
+    <section className="grid gap-2">
       <WorkSectionLabel>Good to know</WorkSectionLabel>
       <WorkCard as="ul" aria-label="Good to know">
         {topics.map((topic) => (
@@ -131,12 +131,8 @@ function Highlight({ text, terms }: { readonly text: string; readonly terms: rea
 function SearchResults({ query, onClear }: { readonly query: string; readonly onClear: () => void }) {
   const matches = useMemo(() => searchWorkHelp(query), [query]);
   const terms = helpSearchTerms(query);
-  const total = matches.reduce((sum, match) => sum + Math.max(1, match.questions.length), 0);
   return (
     <div className="grid gap-4" data-testid="work-help-results">
-      <p className="sr-only" role="status">
-        {matches.length === 0 ? "No help found" : `${total} ${total === 1 ? "result" : "results"}`}
-      </p>
       {matches.length === 0 ? (
         <WorkEmpty
           icon={SearchX}
@@ -151,7 +147,7 @@ function SearchResults({ query, onClear }: { readonly query: string; readonly on
         />
       ) : (
         matches.map((match) => (
-          <section key={match.topic.id} className="grid gap-2" aria-label={match.topic.title}>
+          <section key={match.topic.id} className="grid gap-2">
             <WorkSectionLabel>{match.topic.title}</WorkSectionLabel>
             <WorkCard as="ul" aria-label={match.topic.title}>
               {match.questions.length === 0 ? (
@@ -183,19 +179,39 @@ function SearchResults({ query, onClear }: { readonly query: string; readonly on
   );
 }
 
+/** What the status region says, settled after typing pauses so it doesn't read every keystroke. */
+function useSearchAnnouncement(query: string): string {
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (helpSearchTerms(query).length === 0) {
+        setSaid("");
+        return;
+      }
+      const total = searchWorkHelp(query).reduce((sum, match) => sum + Math.max(1, match.questions.length), 0);
+      setSaid(total === 0 ? "No help found" : `${total} ${total === 1 ? "result" : "results"}`);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+  return said;
+}
+
 function GetStarted() {
   const hydrated = useHydrated();
   const { progress } = useWorkSetupProgress();
   const exampleData = useSetupExampleData();
   const timeZone = useSetupTimeZone();
   const { done, total } = workSetupCount(progress);
+  const untouched =
+    progress.status === "new" ||
+    (progress.status === "dismissed" && progress.completed.length === 0 && progress.skipped.length === 0);
   const setupSub = !hydrated
     ? "Stage, areas, time zone, roster and alerts"
     : progress.status === "done"
       ? "Done. Open it again any time"
-      : progress.status === "new"
+      : untouched
         ? "Stage, areas, time zone, roster and alerts"
-        : `${done} of ${total} done`;
+        : workSetupCountLabel(done, total);
   const setupEnd = !hydrated
     ? undefined
     : progress.status === "done"
@@ -205,7 +221,7 @@ function GetStarted() {
         : "Resume";
   const setupHref = hydrated && progress.status === "in-progress" ? workSetupStepHref(progress.step) : WORK_SETUP_HREF;
   return (
-    <section className="grid gap-2" aria-label="Get started">
+    <section className="grid gap-2">
       <WorkSectionLabel>Get started</WorkSectionLabel>
       <WorkCard as="ul" aria-label="Get started">
         <li>
@@ -256,6 +272,18 @@ function HelpHome() {
   const [query, setQuery] = useState(() => searchParams?.get("q") ?? "");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const searching = helpSearchTerms(query).length > 0;
+  const announcement = useSearchAnnouncement(query);
+
+  // The search rides in the address, so Back from an answer comes back to these results.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const current = searchParams?.get("q") ?? "";
+      const next = query.trim();
+      if (current === next) return;
+      router.replace(next ? `${WORK_HELP_HREF}?q=${encodeURIComponent(next)}` : WORK_HELP_HREF, { scroll: false });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [query, router, searchParams]);
   const areas = hydrated && progress.status !== "new" ? progress.areas : null;
   const { yours, others } = orderedAreaTopics(areas);
 
@@ -305,6 +333,9 @@ function HelpHome() {
         ) : null}
       </form>
 
+      <p className="sr-only" role="status" data-testid="work-help-status">
+        {announcement}
+      </p>
       {searching ? (
         <SearchResults query={query} onClear={clear} />
       ) : (

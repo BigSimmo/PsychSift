@@ -13,8 +13,8 @@ import {
   countedWorkSetupSteps,
   dismissWorkSetup,
   workSetupCount,
+  workSetupCountLabel,
   workSetupPromptVisible,
-  type WorkSetupProgress,
 } from "@/lib/work-setup/progress";
 
 const subscribeNothing = () => () => undefined;
@@ -40,9 +40,12 @@ export function WorkSetupPromptCard() {
   const { done, total } = workSetupCount(progress);
   const started = progress.status === "in-progress";
   const putAway = () => {
-    const before: WorkSetupProgress = progress;
+    const before = progress.status;
     update(dismissWorkSetup);
-    undoToast?.("Setup put away. Find it in More.", () => update(() => before));
+    // Undo restores only the status, so a step finished meanwhile is kept.
+    undoToast?.("Setup put away. Find it in More or Help.", () =>
+      update((current) => (current.status === "dismissed" ? { ...current, status: before } : current)),
+    );
   };
 
   return (
@@ -52,7 +55,7 @@ export function WorkSetupPromptCard() {
         <div className="work-setup-prompt__text">
           <p className="work-setup-prompt__title">Set up Work</p>
           <p className="work-setup-prompt__sub">
-            {started ? `${done} of ${total} done` : "Stage, areas, time zone, roster and alerts"}
+            {started ? workSetupCountLabel(done, total) : "Stage, areas, time zone, roster and alerts"}
           </p>
         </div>
       </div>

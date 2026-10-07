@@ -52,7 +52,7 @@ export const dayTopic: WorkHelpTopic = {
   setUp: [
     { label: "Work profile", href: "/my-day/profile" },
     { label: "Alerts", href: "/my-day/alerts" },
-    { label: "Privacy", href: "/my-day/profile#privacy" },
+    { label: "Privacy", href: "/my-day/profile?tab=privacy" },
   ],
   keywords:
     "dashboard home today agenda tasks to do overdue snooze later reminder notifications notify morning brief hours worked week planner note",

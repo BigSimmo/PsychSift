@@ -3,6 +3,7 @@
 import "@/components/work-help/work-help.css";
 
 import { BookOpen } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { WorkButton } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
@@ -23,6 +24,7 @@ export default function WorkHelpSheet({
   readonly open: boolean;
   readonly onClose: () => void;
 }) {
+  const router = useRouter();
   return (
     <Sheet
       open={open}
@@ -39,7 +41,15 @@ export default function WorkHelpSheet({
       <div className="grid gap-4 pb-2">
         <WorkHelpTopicBrief topic={topic} onNavigate={onClose} />
         <div>
-          <WorkButton variant="secondary" icon={BookOpen} href={WORK_HELP_HREF} testId="work-help-sheet-all">
+          <WorkButton
+            variant="secondary"
+            icon={BookOpen}
+            onClick={() => {
+              onClose();
+              router.push(WORK_HELP_HREF);
+            }}
+            testId="work-help-sheet-all"
+          >
             All help
           </WorkButton>
         </div>

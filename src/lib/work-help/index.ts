@@ -103,7 +103,7 @@ export function foldHelpText(text: string): string {
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
-    .replace(/[’']/g, "")
+    .replace(/[\u2019']/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
