@@ -225,6 +225,8 @@ describe("favourites auth gate DOM", () => {
     // widens the row instead of ellipsing.
     for (const tag of tags) {
       for (const sibling of Array.from(tag.parentElement?.children ?? [])) {
+        // The shelf tile's sub line is the tag itself, not a title beside it.
+        if (sibling === tag) continue;
         const classes = (sibling.getAttribute("class") ?? "").split(/\s+/);
         if (classes.includes("truncate")) expect(classes).toContain("min-w-0");
       }

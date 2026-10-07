@@ -148,11 +148,9 @@ describe("favourites view model", () => {
   });
 
   it("writes one plain summary line", () => {
-    expect(favouritesSummary({ itemCount: 10, setCount: 3, quickLaunchCount: 4 })).toBe(
-      "10 saved · 3 sets · 4 in quick launch",
-    );
-    expect(favouritesSummary({ itemCount: 1, setCount: 1, quickLaunchCount: 0 })).toBe("1 saved · 1 set");
-    expect(favouritesSummary({ itemCount: 0, setCount: 0, quickLaunchCount: 0 })).toBe("0 saved");
+    expect(favouritesSummary({ itemCount: 11, pinnedCount: 2 })).toBe("11 saved · 2 pinned");
+    expect(favouritesSummary({ itemCount: 1, pinnedCount: 0 })).toBe("1 saved");
+    expect(favouritesSummary({ itemCount: 0, pinnedCount: 0 })).toBe("0 saved");
   });
 
   it("labels times the way a clinician reads them", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, Copy, ExternalLink, Folder, FolderPlus, Pin, PinOff, Trash2, type LucideIcon } from "lucide-react";
+import { ArrowRight, Check, Copy, Folder, FolderPlus, Layers, Pin, PinOff, X, type LucideIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { FavouriteTypeTile } from "@/components/favourites/favourite-type-tile";
@@ -23,18 +23,48 @@ export type FavouriteSheetState =
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
 
+// Sheets portal to <body>, outside the page's work-mode token scope, so these
+// use the app tokens the work-mode ones map to (white card, hairline rows).
+const actionCard =
+  "grid overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] [&>*+*]:border-t [&>*+*]:border-[color:var(--border)]";
+
 const actionRow = cn(
-  "flex min-h-tap w-full items-center gap-3.5 rounded-lg px-2 text-left text-base-minus font-medium text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
+  "flex min-h-tap w-full items-center gap-3 px-3 py-1.5 text-left text-sm font-bold text-[color:var(--text-heading)] active:bg-[color:var(--surface-wash)]",
   focusRing,
+  "focus-visible:-outline-offset-2",
 );
 
-function ActionIcon({ icon: Icon, className }: { icon: LucideIcon; className?: string }) {
-  return <Icon className={cn("size-icon-lg shrink-0 text-[color:var(--text-muted)]", className)} aria-hidden="true" />;
+function ActionIcon({ icon: Icon, tone = "neutral" }: { icon: LucideIcon; tone?: "neutral" | "accent" | "danger" }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "grid size-8 shrink-0 place-items-center rounded-full",
+        tone === "danger"
+          ? "bg-[color:var(--danger-bg)] text-[color:var(--danger)]"
+          : "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
+      )}
+    >
+      <Icon className="size-icon-sm" aria-hidden="true" />
+    </span>
+  );
+}
+
+function RowText({ title, sub }: { title: ReactNode; sub?: ReactNode }) {
+  return (
+    <span className="grid min-w-0 flex-1">
+      <span className="truncate">{title}</span>
+      {sub ? <span className="truncate text-xs font-medium text-[color:var(--text-muted)]">{sub}</span> : null}
+    </span>
+  );
 }
 
 const setNamesNote = "Name sets by workflow, never by patient. Set names are saved to your account.";
 
-/** Open, pin, copy, move and remove for one favourite. */
+/**
+ * Open, pin, move, copy and remove for one favourite. A work page cannot go
+ * into a set and has no source to copy, so those two rows are left out for it.
+ */
 export function FavouriteActionsSheet({
   item,
   open,
@@ -52,7 +82,7 @@ export function FavouriteActionsSheet({
   onClose: () => void;
   /** The control focus goes back to when the sheet closes, such as the row's actions button. */
   returnFocusTarget?: () => HTMLElement | null;
-  /** Saved account items can be moved and removed; examples cannot. Anything can be pinned. */
+  /** Saved items can be removed (and account items moved); examples cannot. Anything can be pinned. */
   canMutate: boolean;
   onOpen: (item: FavouriteItem) => void;
   onTogglePin: (item: FavouriteItem) => void;
@@ -63,6 +93,11 @@ export function FavouriteActionsSheet({
   const nameId = useId();
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const actionLabel = item.action === "Copy" ? "Open" : item.action;
+  const isWork = item.type === "Work page";
+  const pinLabel = item.pinned ? "Unpin from My Day" : "Pin to My Day";
+  const description = isWork
+    ? [item.areaName ?? "Work page", "This phone"].join(" · ")
+    : [item.type, item.set, isSourceBacked(item) ? "Source-backed" : ""].filter(Boolean).join(" · ");
 
   return (
     <Sheet
@@ -71,16 +106,16 @@ export function FavouriteActionsSheet({
       title={item.title}
       labelledBy={nameId}
       headerLeading={<FavouriteTypeTile item={item} size="lg" />}
-      description={[item.type, item.set, isSourceBacked(item) ? "Source-backed" : ""].filter(Boolean).join(" · ")}
+      description={description}
       closeLabel="Close actions"
       resolveReturnFocusTarget={returnFocusTarget}
       testId="favourite-actions-sheet"
-      bodyClassName="p-2 sm:p-3"
+      bodyClassName="p-3 pb-5"
     >
       <span id={nameId} className="sr-only">
         Actions for {item.title}
       </span>
-      <div className="grid gap-0.5">
+      <div className={actionCard}>
         <Link
           href={item.href}
           aria-label={`${actionLabel} ${item.title}`}
@@ -88,14 +123,15 @@ export function FavouriteActionsSheet({
             onOpen(item);
             onClose();
           }}
-          className={cn(actionRow, "font-semibold text-[color:var(--clinical-accent)]")}
+          className={actionRow}
         >
-          <ActionIcon icon={ExternalLink} className="text-[color:var(--clinical-accent)]" />
-          {actionLabel}
+          <ActionIcon icon={ArrowRight} />
+          <RowText title={actionLabel} />
         </Link>
-        {/* Pinning works for every item: saved ones on the account, others in this browser. */}
+        {/* Pinning works for every item: saved ones on the account or this phone, examples in this browser. */}
         <button
           type="button"
+          aria-label={pinLabel}
           className={actionRow}
           onClick={() => {
             onTogglePin(item);
@@ -103,60 +139,80 @@ export function FavouriteActionsSheet({
           }}
         >
           <ActionIcon icon={item.pinned ? PinOff : Pin} />
-          {item.pinned ? "Remove from quick launch" : "Add to quick launch"}
+          <RowText title={pinLabel} sub="Pinned items sit first on My Day" />
         </button>
-        <button
-          type="button"
-          className={actionRow}
-          onClick={async () => {
-            const copied = await onCopyCitation(item);
-            setCopyStatus(copied ? "copied" : "failed");
-          }}
-        >
-          <ActionIcon icon={copyStatus === "copied" ? Check : Copy} />
-          {copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Copy failed" : "Copy citation"}
-        </button>
-        {canMutate ? (
-          <>
-            <button type="button" className={actionRow} onClick={() => onMove(item)}>
-              <ActionIcon icon={Folder} />
-              Move to set
-              <span className="ml-auto truncate pl-2 text-sm text-[color:var(--text-muted)]">{item.set}</span>
-            </button>
-            <button
-              type="button"
-              className={cn(actionRow, "text-[color:var(--danger)] hover:bg-[color:var(--danger-soft)]")}
-              onClick={() => {
-                onRemove(item);
-                onClose();
-              }}
-            >
-              <ActionIcon icon={Trash2} className="text-[color:var(--danger)]" />
-              Remove from favourites
-            </button>
-          </>
-        ) : (
-          <p className="px-2 pb-2 pt-1 text-sm text-[color:var(--text-muted)]">
-            This is an example. Save your own favourites to move them into sets or remove them.
-          </p>
+        {canMutate && !isWork ? (
+          <button type="button" aria-label="Move to a set" className={actionRow} onClick={() => onMove(item)}>
+            <ActionIcon icon={Folder} />
+            <RowText title="Move to a set" sub={item.set} />
+          </button>
+        ) : null}
+        {isWork ? null : (
+          <button
+            type="button"
+            className={actionRow}
+            onClick={async () => {
+              const copied = await onCopyCitation(item);
+              setCopyStatus(copied ? "copied" : "failed");
+            }}
+          >
+            <ActionIcon icon={copyStatus === "copied" ? Check : Copy} />
+            <RowText
+              title={
+                copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Copy failed" : "Copy link with source"
+              }
+            />
+          </button>
         )}
-        <span className="sr-only" role="status" aria-live="polite">
-          {copyStatus === "copied"
-            ? `${item.title} citation copied`
-            : copyStatus === "failed"
-              ? "Unable to copy citation"
-              : ""}
-        </span>
+        {canMutate ? (
+          <button
+            type="button"
+            className={cn(actionRow, "text-[color:var(--danger)] active:bg-[color:var(--danger-soft)]")}
+            onClick={() => {
+              onRemove(item);
+              onClose();
+            }}
+          >
+            <ActionIcon icon={X} tone="danger" />
+            <RowText title="Remove from Favourites" />
+          </button>
+        ) : null}
       </div>
+      {canMutate ? null : (
+        <p className="px-1 pt-3 text-sm text-[color:var(--text-muted)]">
+          This is an example. Save your own favourites to move them into sets or remove them.
+        </p>
+      )}
+      <span className="sr-only" role="status" aria-live="polite">
+        {copyStatus === "copied"
+          ? `${item.title} link copied`
+          : copyStatus === "failed"
+            ? "Unable to copy the link"
+            : ""}
+      </span>
     </Sheet>
   );
 }
 
 function ChoiceList({ children }: { children: ReactNode }) {
-  return <div className="grid gap-0.5">{children}</div>;
+  return <div className={actionCard}>{children}</div>;
 }
 
-/** Choose the set for one or more favourites. */
+function CurrentMark() {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="grid size-6 shrink-0 place-items-center rounded-md bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
+      >
+        <Check className="size-icon-xs" strokeWidth={3} aria-hidden="true" />
+      </span>
+      <span className="sr-only">(current set)</span>
+    </>
+  );
+}
+
+/** Choose the set for one or more favourites. A tap moves them at once, with Undo after. */
 export function FavouriteMoveSheet({
   items,
   open,
@@ -178,50 +234,39 @@ export function FavouriteMoveSheet({
 }) {
   const single = items.length === 1 ? items[0] : null;
   const currentSetId = single ? (single.setId ?? null) : undefined;
-  const title = single ? `Move ${single.title}` : `Move ${items.length} favourites`;
+  const title = single ? "Move to a set" : `Move ${items.length} favourites`;
   return (
     <Sheet
       open={open}
       onClose={onClose}
       title={title}
+      description={single?.title}
       closeLabel="Close move"
       resolveReturnFocusTarget={returnFocusTarget}
-      bodyClassName="p-2 sm:p-3"
+      bodyClassName="grid gap-3 p-3 pb-5"
     >
       <ChoiceList>
         {sets.map((set) => (
           <button key={set.id} type="button" className={actionRow} onClick={() => onPick(set.id)}>
             <ActionIcon icon={Folder} />
-            {set.name}
-            {currentSetId === set.id ? (
-              <>
-                <Check className="ml-auto size-icon-md text-[color:var(--clinical-accent)]" aria-hidden="true" />
-                <span className="sr-only">(current set)</span>
-              </>
-            ) : null}
+            <RowText title={set.name} />
+            {currentSetId === set.id ? <CurrentMark /> : null}
           </button>
         ))}
         <button type="button" className={actionRow} onClick={() => onPick(null)}>
-          <ActionIcon icon={Folder} className="text-[color:var(--decoration-soft)]" />
-          {UNSORTED_SET_NAME} (no set)
-          {currentSetId === null ? (
-            <>
-              <Check className="ml-auto size-icon-md text-[color:var(--clinical-accent)]" aria-hidden="true" />
-              <span className="sr-only">(current set)</span>
-            </>
-          ) : null}
+          <ActionIcon icon={Layers} />
+          <RowText title={`${UNSORTED_SET_NAME} (no set)`} />
+          {currentSetId === null ? <CurrentMark /> : null}
         </button>
-        {canCreateSet ? (
-          <button
-            type="button"
-            className={cn(actionRow, "font-semibold text-[color:var(--clinical-accent)]")}
-            onClick={onNewSet}
-          >
-            <ActionIcon icon={FolderPlus} className="text-[color:var(--clinical-accent)]" />
-            New set
-          </button>
-        ) : null}
       </ChoiceList>
+      {canCreateSet ? (
+        <div className={actionCard}>
+          <button type="button" className={cn(actionRow, "text-[color:var(--clinical-accent)]")} onClick={onNewSet}>
+            <ActionIcon icon={FolderPlus} />
+            <RowText title="New set" />
+          </button>
+        </div>
+      ) : null}
     </Sheet>
   );
 }
@@ -281,7 +326,7 @@ export function FavouriteSetNameSheet({
       description={setNamesNote}
       closeLabel={mode === "create" ? "Close new set" : "Close rename"}
       resolveReturnFocusTarget={returnFocusTarget}
-      bodyClassName="p-2 sm:p-3"
+      bodyClassName="p-3 pb-5"
     >
       <form
         className="grid gap-3 px-2 pt-1"
@@ -310,12 +355,14 @@ export function FavouriteSetNameSheet({
       </form>
       {suggestedNames.length > 0 ? (
         <>
-          <p className="px-2 pt-4 pb-1 text-sm font-semibold text-[color:var(--text-muted)]">Suggestions</p>
+          <p className="px-2 pt-4 pb-1.5 text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+            Suggestions
+          </p>
           <ChoiceList>
             {suggestedNames.map((name) => (
               <button key={name} type="button" className={actionRow} onClick={() => submit(name)}>
                 <ActionIcon icon={Folder} />
-                {name}
+                <RowText title={name} />
               </button>
             ))}
           </ChoiceList>
