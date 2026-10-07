@@ -36,7 +36,9 @@ import { gradeRank, placementProblem } from "@/lib/roster/team/eligibility";
 import type { RosterAction, RosterManageSwap, RosterOpenShift, RosterSwap } from "@/lib/roster/team/model";
 import { requestStatusWords } from "@/lib/roster/team/request-status";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
-import { ArrowLeftRight, CalendarOff, CheckCircle2, HandHelping, Info, Plane } from "lucide-react";
+import { ArrowLeftRight, CalendarOff, CheckCircle2, HandHelping, Info, Plane, Users } from "lucide-react";
+import { useModeBandCount, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 import { RosterNewButton } from "@/components/roster/roster-new-button";
 import { usePhoneFooterLayerScrollHidden } from "@/components/clinical-dashboard/phone-footer-layer-portal";
@@ -344,6 +346,11 @@ export function RosterSwapsPage() {
   }
 
   const ready = !!serviceId && !!actorId && requests.status === "ready";
+  // The band's eyebrow and the Swaps tab count (mockup `rost_swaps`), only from loaded swaps.
+  const answerWords = needsYou.length ? `${needsYou.length} to answer` : "Nothing to answer";
+  const sentWords = sentSwaps.length ? ` · ${sentSwaps.length} sent` : "";
+  useModeBandHeading(ready ? { eyebrow: `${answerWords}${sentWords}` } : null);
+  useModeBandCount("swaps", ready ? needsYou.length || null : null);
 
   return (
     <InformationPageShell testId="roster-swaps-page" className={phoneFooterHidden ? "max-sm:pb-4" : "max-sm:pb-20"}>
@@ -421,9 +428,18 @@ export function RosterSwapsPage() {
         ) : null}
         {teams.status === "error" ? <TryAgainNote onRetry={teams.reload}>{teams.message}</TryAgainNote> : null}
         {teams.status === "ready" && !enabled.length ? (
-          <RosterNote icon={Info}>
-            <p>No confirmed team yet, so there are no swaps to show.</p>
-          </RosterNote>
+          <WorkCard testId="roster-swaps-no-team">
+            <WorkEmpty
+              icon={Users}
+              title="No team yet"
+              body="No confirmed team yet, so there are no swaps to show. Swaps happen inside a roster team: join one with the invite link or code from your roster manager."
+              action={
+                <WorkButton icon={Users} href="/roster/join">
+                  Join a team
+                </WorkButton>
+              }
+            />
+          </WorkCard>
         ) : null}
         {teams.status === "ready" && serviceId && !actorId ? (
           <TryAgainNote onRetry={teams.reload}>

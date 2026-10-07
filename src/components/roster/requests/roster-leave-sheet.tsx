@@ -1,15 +1,20 @@
 "use client";
 
+import { CalendarCheck, CalendarX, Users } from "lucide-react";
 import { useEffect, useState, type ComponentProps } from "react";
+
+import { WorkCard, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { rosterField } from "@/components/roster/roster-ui";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
-import { perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
+import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment, RosterTeam } from "@/lib/roster/team/model";
 import type { RosterLeave } from "@/lib/roster/leave";
 
+import { clashDayWords, leaveChecks } from "./roster-leave-checks";
 import { RosterSwapTicket } from "./roster-swap-ticket";
 import type { RequestSent } from "./request-ui";
 
@@ -42,6 +47,8 @@ function LeaveSession({
   teams,
   actorId,
   assignments,
+  assignmentsReady = true,
+  loadedTo = null,
   initialDate,
   initialTo,
   existing,
@@ -54,6 +61,10 @@ function LeaveSession({
   teams: RosterTeam[];
   actorId: string;
   assignments: RosterAssignment[];
+  /** False while the team roster read is loading or failed: the checks then say "not checked". */
+  assignmentsReady?: boolean;
+  /** The last day the team roster read covers. Without it the checks claim nothing past the clashes. */
+  loadedTo?: string | null;
   initialDate?: string | null;
   initialTo?: string | null;
   existing?: RosterLeave | null;
@@ -288,14 +299,40 @@ function LeaveSession({
             </select>
           </label>
         ) : null}
-        {canOverlap && overlapState === "loading" ? <p role="status">Checking how many are off…</p> : null}
-        {canOverlap && overlapState === "error" ? (
-          <p role="alert">Team overlap couldn&apos;t be checked. Try again before saving.</p>
-        ) : null}
-        {canOverlap && overlap !== null ? (
-          <p>
-            {overlap} of the team {overlap === 1 ? "is" : "are"} already off these dates
-          </p>
+        {serviceId && valid && startsOn && endsOn ? (
+          <section className="grid gap-2" aria-labelledby="roster-leave-checks" data-testid="roster-leave-checks">
+            <WorkSectionLabel id="roster-leave-checks">Checks</WorkSectionLabel>
+            <WorkCard as="ul">
+              <LeaveCheckRows
+                assignments={assignments}
+                ready={assignmentsReady}
+                actorId={actorId}
+                startsOn={startsOn}
+                endsOn={endsOn}
+                loadedTo={loadedTo}
+              />
+              {canOverlap ? (
+                <li>
+                  <WorkIconRow
+                    icon={Users}
+                    tone="neutral"
+                    title="Others off in your team"
+                    sub={
+                      overlapState === "loading" ? (
+                        <span role="status">Checking how many are off…</span>
+                      ) : overlapState === "error" ? (
+                        <span role="alert">Team overlap couldn&apos;t be checked. Try again before saving.</span>
+                      ) : overlap !== null ? (
+                        <span>
+                          {overlap} of the team {overlap === 1 ? "is" : "are"} already off these dates
+                        </span>
+                      ) : null
+                    }
+                  />
+                </li>
+              ) : null}
+            </WorkCard>
+          </section>
         ) : null}
         {serviceId && valid && covered.length ? (
           <section className="grid gap-2">
@@ -324,5 +361,87 @@ function LeaveSession({
         ) : null}
       </div>
     </Sheet>
+  );
+}
+
+/**
+ * Clashes and first shift back, from the team roster the page already read.
+ * Says "not checked" rather than "no clashes" while that read isn't ready.
+ */
+function LeaveCheckRows({
+  assignments,
+  ready,
+  actorId,
+  startsOn,
+  endsOn,
+  loadedTo,
+}: {
+  assignments: RosterAssignment[];
+  ready: boolean;
+  actorId: string;
+  startsOn: string;
+  endsOn: string;
+  loadedTo: string | null;
+}) {
+  if (!ready || !actorId || !loadedTo) {
+    return (
+      <li>
+        <WorkIconRow
+          icon={CalendarX}
+          tone="neutral"
+          title="Clashes: not checked"
+          sub="Your team roster hasn't loaded, so clashes can't be checked yet."
+          testId="roster-leave-check-clashes"
+        />
+      </li>
+    );
+  }
+  const checks = leaveChecks(assignments, actorId, startsOn, endsOn, loadedTo);
+  const count = checks.clashes.length;
+  const atLeast = checks.clashesPartial ? "at least " : "";
+  const back = checks.firstBack;
+  return (
+    <>
+      <li>
+        <WorkIconRow
+          icon={CalendarX}
+          tone={count ? "amber" : "neutral"}
+          title={
+            count
+              ? `Clashes with ${atLeast}${count} ${count === 1 ? "shift" : "shifts"}`
+              : checks.clashesPartial
+                ? "No clashes in the loaded roster"
+                : "No clashes with your team shifts"
+          }
+          sub={[
+            count
+              ? clashDayWords(
+                  checks.clashes.map((shift) => perthDateOf(shift.startsAt)),
+                  formatPerthDay,
+                )
+              : null,
+            checks.clashesPartial ? `Roster loaded to ${formatPerthDay(loadedTo)}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+          testId="roster-leave-check-clashes"
+        />
+      </li>
+      <li>
+        <WorkIconRow
+          icon={CalendarCheck}
+          tone="neutral"
+          title="First shift back"
+          sub={
+            back
+              ? `${formatPerthDay(perthDateOf(back.startsAt))} · ${SHIFT_KIND_LABEL[back.kind]} from ${perthTimeOf(back.startsAt)}`
+              : checks.firstBackState === "loaded"
+                ? `No team shift by ${formatPerthDay(loadedTo)}`
+                : "Your roster isn't loaded that far yet"
+          }
+          testId="roster-leave-check-back"
+        />
+      </li>
+    </>
   );
 }

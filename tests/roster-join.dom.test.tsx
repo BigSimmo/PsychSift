@@ -64,6 +64,10 @@ describe("joining a Roster team", () => {
   it("accepts a pasted link, clears the field, and never stores the code", async () => {
     const storage = vi.spyOn(Storage.prototype, "setItem");
     render(<RosterJoinPage />);
+    // Work-mode redesign, owner request 6 Oct 2026: who sees what, said before joining.
+    expect(screen.getByTestId("roster-join-privacy").textContent).toBe(
+      "The team and its managers see your team shifts. Shifts you add yourself stay private.",
+    );
     fireEvent.change(screen.getByRole("textbox", { name: /Invite link or code/ }), {
       target: { value: `https://localhost:3000/roster/join#code=${CODE}` },
     });

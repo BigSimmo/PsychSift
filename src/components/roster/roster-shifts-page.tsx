@@ -76,6 +76,7 @@ import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
 import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-team";
 import { RosterPageHeader } from "./roster-ui";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
 
 /**
  * Roster Shifts, as the Roster mock-up draws it: the shift on now or next, the
@@ -102,8 +103,10 @@ const TEAM_RULE_LOOKBACK_DAYS = 21;
 const ROSTER_AHEAD_DAYS = 14;
 
 const SHIFTS_HREF = "/roster/shifts";
-const HOURS_HREF = "/roster/shifts?view=hours";
-const MONTH_HREF = "/roster/shifts?view=month";
+// Hours and rest and the Month tab live at /roster in the work-mode frame
+// (work-mode redesign, owner request 6 Oct 2026), so the frame ticks them.
+const HOURS_HREF = "/roster?view=hours";
+const MONTH_HREF = "/roster";
 
 /** If the checks fail to load, say they were not run rather than leaving a gap. */
 function HoursRowUnavailable() {
@@ -408,6 +411,15 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
       : view === "month"
         ? "Your shifts and WA public holidays."
         : "Your shifts, week by week.";
+  // The band's words (work-mode redesign, owner request 6 Oct 2026): the 14 days the check
+  // covers, or the week on screen. The page title under the band stays for screen readers.
+  useModeBandHeading(
+    view === "hours"
+      ? { eyebrow: `Next 14 days · ${formatSpanWords(today, addDaysToDate(today, 13))}`, title: "Hours and rest" }
+      : view === "month"
+        ? { title: "Month" }
+        : { eyebrow: `Week of ${formatSpanWords(monday, addDaysToDate(monday, 6))}` },
+  );
 
   function body() {
     if (shifts.status === "loading") return <ShiftsLoading />;
