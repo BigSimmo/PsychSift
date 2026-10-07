@@ -1,14 +1,19 @@
 import { Award, BookOpen, CalendarDays, FileText, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { CmeDomainsRing, isActivityCountRequirement } from "@/components/cme/cme-domains-ring";
 import { formatSourceMonth } from "@/components/cme/cme-plan-goal-split";
 import { CmeFlatList, CmeFlatRow, CmeGroup, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
-import { cn, eyebrowText } from "@/components/ui-primitives";
+import { CmeBandHeading } from "@/components/cme/cme-work-kit";
+import { WorkBody } from "@/components/mode-kit/work";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { cn } from "@/components/ui-primitives";
 import {
   formatCalendarDateLong,
   formatCalendarDateShort,
+  daysRemainingInCpdYear,
   formatCmeRowDate,
   perthCalendarDate,
 } from "@/lib/cme/cpd-year";
@@ -92,6 +97,18 @@ function confirmedSetName(set: CmeRequirementSet): string {
 
 function CheckRow({ row, set }: { row: CmeYearCheckRow; set: CmeRequirementSet }) {
   const action = rowAction(row, set);
+  const actionLink = (href: string) =>
+    action ? (
+      <Link
+        href={href}
+        data-testid={`cme-check-action-${row.id}`}
+        className="work-button min-h-tap shrink-0"
+        data-variant="tinted"
+      >
+        {action.label}
+        <span className="sr-only">: {row.label}</span>
+      </Link>
+    ) : null;
   return (
     <CmeFlatRow
       testId={`cme-check-row-${row.id}`}
@@ -105,10 +122,18 @@ function CheckRow({ row, set }: { row: CmeYearCheckRow; set: CmeRequirementSet }
       subtitle={reportSummary(row)}
       end={
         action ? (
-          <CmeTextLink href={action.href} testId={`cme-check-action-${row.id}`}>
-            {action.label}
-            <span className="sr-only">: {row.label}</span>
-          </CmeTextLink>
+          row.id === "evidence" ? (
+            // The new work mode has a page for the certificates still to add.
+            <NewWorkModeOnly fallback={actionLink(action.href)}>
+              {actionLink(`/cme/evidence?year=${set.year}`)}
+            </NewWorkModeOnly>
+          ) : (
+            actionLink(action.href)
+          )
+        ) : row.ready && row.group === "targets" ? (
+          <span className="work-tag" data-tone="neutral">
+            Reached
+          </span>
         ) : undefined
       }
     />
@@ -185,187 +210,202 @@ export function CmeYearCheckPage({
   const lane = rule.lane;
   const confirmedShort = formatCalendarDateShort(set.confirmedOn);
 
+  const openTargets = targets.filter((row) => !row.ready).length;
+  const openRecords = records.filter((row) => !row.ready).length;
+  const weeksLeft = Math.max(0, Math.ceil(daysRemainingInCpdYear(now, set.year) / 7));
+  const weeksLabel = closed
+    ? "Closed"
+    : weeksLeft === 0
+      ? "Year over"
+      : `${weeksLeft} ${weeksLeft === 1 ? "week" : "weeks"} left`;
+  const openSummary =
+    openTargets + openRecords === 0
+      ? "Every target and record check is done"
+      : `${openTargets} ${openTargets === 1 ? "target" : "targets"} and ${openRecords} record ${
+          openRecords === 1 ? "check" : "checks"
+        } open`;
+
   return (
-    <main
-      data-testid="cme-year-check"
-      data-mode-identity="cme"
-      className="mx-auto w-full max-w-3xl px-4 pb-24 pt-6 sm:px-6"
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <h1 className={eyebrowText}>Year check for {set.year}</h1>
-        <p data-testid="cme-check-count" className="nums text-sm text-[color:var(--text-heading)]">
-          {check.readyCount} of {check.rows.length} checks done
-        </p>
-      </div>
-      <div aria-hidden="true" data-testid="cme-check-progress" className="mt-3 flex gap-0.75">
-        {check.rows.map((row, index) => (
-          <i
-            key={row.id}
-            data-done={index < check.readyCount ? "true" : "false"}
-            className={cn(
-              "h-1.5 flex-1 rounded-full forced-color-adjust-none",
-              index < check.readyCount
-                ? "bg-[color:var(--clinical-accent)] forced-colors:bg-[Highlight]"
-                : "bg-[color:var(--surface-inset)] ring-1 ring-inset ring-[color:var(--border-strong)]",
-            )}
-          />
-        ))}
-      </div>
-
-      <div className="mt-6 grid gap-6">
-        <div className="grid gap-3.5">
-          <CmeGroup
-            testId="cme-check-targets"
-            label={`Targets you confirmed · ${confirmedSetName(set)}, ${confirmedShort}`}
-          >
-            <CmeFlatList>
-              {targets.map((row) => (
-                <CheckRow key={row.id} row={row} set={set} />
-              ))}
-            </CmeFlatList>
-          </CmeGroup>
-
-          <CmeGroup testId="cme-check-records" label="Your own record-keeping checks">
-            <CmeFlatList>
-              {records.map((row) => (
-                <CheckRow key={row.id} row={row} set={set} />
-              ))}
-            </CmeFlatList>
-            <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-note">
-              Short of something? A note can explain it, but it does not reduce the requirement.{" "}
-              {closable && !closed ? (
-                <CmeTextLink href={closeHref} className="min-h-0">
-                  Add a note
-                </CmeTextLink>
-              ) : closed ? (
-                "Notes go on the closed year's record."
-              ) : (
-                `You can add one when you close the year, from ${formatCmeRowDate(closableFrom, today)}.`
-              )}
-            </p>
-          </CmeGroup>
-        </div>
-
-        {domainRequirements.map((requirement) => (
-          <CmeDomainsRing
-            key={requirement.id}
-            requirement={requirement}
-            entries={entries}
-            year={set.year}
-            source={
-              requirement.id === "domains" && readCpdHome(set.confirmedSource).kind === "ranzcp" ? (
-                <SourceLink href={RANZCP_CPD_URL}>RANZCP</SourceLink>
-              ) : undefined
-            }
-          />
-        ))}
-
-        <CmeGroup testId="cme-check-summary" label="Annual summary">
-          <CmeFlatList>
-            <CmeFlatRow
-              lead={<FileText {...leadIcon} />}
-              title={`${activities(yearEntries.length)} · ${yearHours} h${
-                goalCount === null ? "" : ` · ${goalCount} ${goalCount === 1 ? "goal" : "goals"}`
-              }`}
-              subtitle="A personal record, not proof you meet the standard. Your CPD home reports that."
-            />
-          </CmeFlatList>
-          <div className="flex flex-wrap gap-x-5 pl-7">
-            <CmeTextLink href={summaryHref} testId="cme-check-save-pdf">
-              Save as PDF
-            </CmeTextLink>
-            <a
-              href={`/api/cme/export?year=${set.year}`}
-              download
-              data-testid="cme-check-csv"
-              className={cn(
-                focusRing,
-                "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
-              )}
-            >
-              Download CSV
-            </a>
-          </div>
-        </CmeGroup>
-
-        <CmeGroup
-          testId="cme-check-rule"
-          label="Your CPD rule"
-          end={<SourceLink>Medical Board · {MEDICAL_BOARD_CHECKED}</SourceLink>}
-        >
-          <CmeFlatList>
-            {RULE_LANES.map((option) => {
-              const chosen = option.id === lane;
-              return (
-                <CmeFlatRow
-                  key={option.id}
-                  testId={`cme-check-rule-${option.id}`}
-                  muted={!chosen}
-                  lead={<CmeRowMark state={chosen ? "done" : "none"} />}
-                  title={
-                    <>
-                      {option.title}
-                      {chosen ? <span className="sr-only"> — your rule</span> : null}
-                    </>
-                  }
-                  subtitle={option.subtitle}
-                />
-              );
-            })}
-            <CmeFlatRow
-              testId="cme-check-renewal"
-              href="/admin/renewals"
-              lead={<ShieldCheck {...leadIcon} />}
-              title={`Your next renewal asks which CPD home you used in ${set.year}`}
-              subtitle="Renewals are in Admin"
-            />
-          </CmeFlatList>
-          <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-rule-note">
-            Not signed off: a plain summary of the Medical Board standard, {MEDICAL_BOARD_CHECKED}. {rule.basis}{" "}
-            <CmeTextLink href="/cme/training" className="min-h-0">
-              Check your training record
-            </CmeTextLink>
+    <main data-testid="cme-year-check" data-mode-identity="cme" className="w-full">
+      <CmeBandHeading eyebrow={`Year check · ${weeksLabel}`} title="Report" />
+      <WorkBody>
+        <section aria-labelledby="cme-check-heading" className="work-hero">
+          <h1 id="cme-check-heading" className="work-hero__eyebrow m-0">
+            Year check for {set.year} · {weeksLabel}
+          </h1>
+          <p data-testid="cme-check-count" className="work-hero__title nums m-0 mt-0.5">
+            {check.readyCount} of {check.rows.length} checks done
           </p>
-        </CmeGroup>
+          <p className="work-hero__sub m-0" data-testid="cme-check-open-summary">
+            {openSummary}
+          </p>
+          <div aria-hidden="true" data-testid="cme-check-progress" className="cpd-dots work-hero__foot">
+            {check.rows.map((row, index) => (
+              <i key={row.id} data-done={index < check.readyCount ? "true" : "false"} />
+            ))}
+          </div>
+        </section>
 
-        <CmeGroup testId="cme-check-settings" label="Year end and settings">
-          <CmeFlatList>
-            <CmeFlatRow
-              testId="cme-check-close"
-              lead={<CalendarDays {...leadIcon} />}
-              title="Close the year"
-              subtitle={
-                closed
-                  ? `Closed on ${formatCalendarDateLong(perthCalendarDate(new Date(set.closedAt!)))}. Closed in PsychSift only, not in ${homeName}.`
-                  : closable
-                    ? `Closes the year in PsychSift only, not in ${homeName}.`
-                    : `From ${formatCmeRowDate(closableFrom, today)}. Closes the year in PsychSift only, not in ${homeName}.`
-              }
-              end={
-                closed ? (
-                  <CmeTextLink href={summaryHref}>View</CmeTextLink>
-                ) : closable ? (
-                  <CmeTextLink href={closeHref}>Close</CmeTextLink>
+        <div className="grid gap-5">
+          <div className="grid gap-3.5">
+            <CmeGroup
+              testId="cme-check-targets"
+              label={`Targets you confirmed · ${confirmedSetName(set)}, ${confirmedShort}`}
+            >
+              <CmeFlatList>
+                {targets.map((row) => (
+                  <CheckRow key={row.id} row={row} set={set} />
+                ))}
+              </CmeFlatList>
+            </CmeGroup>
+
+            <CmeGroup testId="cme-check-records" label="Your own record-keeping checks">
+              <CmeFlatList>
+                {records.map((row) => (
+                  <CheckRow key={row.id} row={row} set={set} />
+                ))}
+              </CmeFlatList>
+              <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-note">
+                Short of something? A note can explain it, but it does not reduce the requirement.{" "}
+                {closable && !closed ? (
+                  <CmeTextLink href={closeHref} className="min-h-0">
+                    Add a note
+                  </CmeTextLink>
+                ) : closed ? (
+                  "Notes go on the closed year's record."
+                ) : (
+                  `You can add one when you close the year, from ${formatCmeRowDate(closableFrom, today)}.`
+                )}
+              </p>
+            </CmeGroup>
+          </div>
+
+          {domainRequirements.map((requirement) => (
+            <CmeDomainsRing
+              key={requirement.id}
+              requirement={requirement}
+              entries={entries}
+              year={set.year}
+              source={
+                requirement.id === "domains" && readCpdHome(set.confirmedSource).kind === "ranzcp" ? (
+                  <SourceLink href={RANZCP_CPD_URL}>RANZCP</SourceLink>
                 ) : undefined
               }
             />
-            <CmeFlatRow
-              testId="cme-check-setup"
-              href={`/cme/setup?year=${set.year}`}
-              lead={<Award {...leadIcon} />}
-              title="Set up your year"
-              subtitle={`${set.totalHours} h total · ${confirmedSetName(set)}, confirmed ${confirmedShort}`}
-            />
-            <CmeFlatRow
-              testId="cme-check-customise"
-              href="/cme/customise"
-              lead={<SlidersHorizontal {...leadIcon} />}
-              title="Customise the Year page"
-              subtitle="Reorder or hide its sections"
-            />
-          </CmeFlatList>
-        </CmeGroup>
-      </div>
+          ))}
+
+          <CmeGroup testId="cme-check-summary" label="Annual summary">
+            <CmeFlatList>
+              <CmeFlatRow
+                lead={<FileText {...leadIcon} />}
+                title={`${activities(yearEntries.length)} · ${yearHours} h${
+                  goalCount === null ? "" : ` · ${goalCount} ${goalCount === 1 ? "goal" : "goals"}`
+                }`}
+                subtitle="A personal record, not proof you meet the standard. Your CPD home reports that."
+              />
+            </CmeFlatList>
+            <div className="flex flex-wrap gap-x-5 pl-7">
+              <CmeTextLink href={summaryHref} testId="cme-check-save-pdf">
+                Save as PDF
+              </CmeTextLink>
+              <a
+                href={`/api/cme/export?year=${set.year}`}
+                download
+                data-testid="cme-check-csv"
+                className={cn(
+                  focusRing,
+                  "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
+                )}
+              >
+                Download CSV
+              </a>
+              <NewWorkModeOnly>
+                <CmeTextLink href={`/cme/export?year=${set.year}`} testId="cme-check-export">
+                  All export options
+                </CmeTextLink>
+              </NewWorkModeOnly>
+            </div>
+          </CmeGroup>
+
+          <CmeGroup
+            testId="cme-check-rule"
+            label="Your CPD rule"
+            end={<SourceLink>Medical Board · {MEDICAL_BOARD_CHECKED}</SourceLink>}
+          >
+            <CmeFlatList>
+              {RULE_LANES.map((option) => {
+                const chosen = option.id === lane;
+                return (
+                  <CmeFlatRow
+                    key={option.id}
+                    testId={`cme-check-rule-${option.id}`}
+                    muted={!chosen}
+                    lead={<CmeRowMark state={chosen ? "done" : "none"} />}
+                    title={
+                      <>
+                        {option.title}
+                        {chosen ? <span className="sr-only"> — your rule</span> : null}
+                      </>
+                    }
+                    subtitle={option.subtitle}
+                  />
+                );
+              })}
+              <CmeFlatRow
+                testId="cme-check-renewal"
+                href="/admin/renewals"
+                lead={<ShieldCheck {...leadIcon} />}
+                title={`Your next renewal asks which CPD home you used in ${set.year}`}
+                subtitle="Renewals are in Admin"
+              />
+            </CmeFlatList>
+            <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-rule-note">
+              Not signed off: a plain summary of the Medical Board standard, {MEDICAL_BOARD_CHECKED}. {rule.basis}{" "}
+              <CmeTextLink href="/cme/training" className="min-h-0">
+                Check your training record
+              </CmeTextLink>
+            </p>
+          </CmeGroup>
+
+          <CmeGroup testId="cme-check-settings" label="Year end and settings">
+            <CmeFlatList>
+              <CmeFlatRow
+                testId="cme-check-close"
+                lead={<CalendarDays {...leadIcon} />}
+                title="Close the year"
+                subtitle={
+                  closed
+                    ? `Closed on ${formatCalendarDateLong(perthCalendarDate(new Date(set.closedAt!)))}. Closed in PsychSift only, not in ${homeName}.`
+                    : closable
+                      ? `Closes the year in PsychSift only, not in ${homeName}.`
+                      : `From ${formatCmeRowDate(closableFrom, today)}. Closes the year in PsychSift only, not in ${homeName}.`
+                }
+                end={
+                  closed ? (
+                    <CmeTextLink href={summaryHref}>View</CmeTextLink>
+                  ) : closable ? (
+                    <CmeTextLink href={closeHref}>Close</CmeTextLink>
+                  ) : undefined
+                }
+              />
+              <CmeFlatRow
+                testId="cme-check-setup"
+                href={`/cme/setup?year=${set.year}`}
+                lead={<Award {...leadIcon} />}
+                title="Set up your year"
+                subtitle={`${set.totalHours} h total · ${confirmedSetName(set)}, confirmed ${confirmedShort}`}
+              />
+              <CmeFlatRow
+                testId="cme-check-customise"
+                href="/cme/customise"
+                lead={<SlidersHorizontal {...leadIcon} />}
+                title="Customise the Year page"
+                subtitle="Reorder or hide its sections"
+              />
+            </CmeFlatList>
+          </CmeGroup>
+        </div>
+      </WorkBody>
     </main>
   );
 }

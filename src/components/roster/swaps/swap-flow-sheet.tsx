@@ -1,25 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { GIVE_AWAY_WORDS, isUrgentGiveAway } from "@/components/roster/requests/request-ui";
 import { RosterSwapTicket } from "@/components/roster/requests/roster-swap-ticket";
-import { formatShiftRange, useRosterNow } from "@/components/roster/roster-format";
+import { useRosterNow } from "@/components/roster/roster-format";
 import { useDelayedRosterAction } from "@/components/roster/swaps/use-delayed-roster-action";
-import {
-  loadSwapOptionsRead,
-  ROSTER_ONLY_NOTE,
-  type SwapOptionsRead,
-} from "@/components/roster/swaps/swap-options-loader";
-import { postRosterAction } from "@/components/roster/use-roster-team";
+import { ROSTER_ONLY_NOTE } from "@/components/roster/swaps/swap-options-loader";
 import { Button } from "@/components/ui/button";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { Sheet } from "@/components/ui/sheet";
-import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
-import { formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
-import { openShiftCandidates, placementProblem, swapNeedsManager } from "@/lib/roster/team/eligibility";
-import type { RosterAssignment, RosterSwap } from "@/lib/roster/team/model";
-import { swapProgress } from "@/lib/roster/team/swap-progress";
-import { approvalWords, reasonWords, swapOptions, swapPreview } from "@/lib/roster/team/swap-options";
+import { openShiftCandidates, swapNeedsManager } from "@/lib/roster/team/eligibility";
+import type { RosterAssignment } from "@/lib/roster/team/model";
+import { approvalWords, swapOptions, swapPreview } from "@/lib/roster/team/swap-options";
+import { zonedTimeOf } from "@/lib/work-time/format";
+
+import { PANEL, shiftLine, useFreshRead, WeekPreview } from "./swap-answer-card";
+
+/* The swaps page needs only the answer card, so it lives in its own small file; re-exported for callers here. */
+export { SwapAnswerCard } from "./swap-answer-card";
 
 /**
  * The calendar-first swap flow: pick who, pick what to take back, check, then
@@ -29,105 +28,13 @@ import { approvalWords, reasonWords, swapOptions, swapPreview } from "@/lib/rost
  * refusal is shown in plain words and the roster is read again.
  */
 
-type Fresh = SwapOptionsRead;
 type Step = "who" | "take" | "check";
 
 const UNNAMED = "Name not available";
-const PANEL = "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3 shadow-[var(--e1)]";
 const CHOICE = "w-full justify-start text-left";
 
-function checkedTime(value: Date): string {
-  return new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Perth",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(value);
-}
-
-function useFreshRead(serviceId: string, shiftStart: string) {
-  const [fresh, setFresh] = useState<Fresh | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [generation, setGeneration] = useState(0);
-  useEffect(() => {
-    let current = true;
-    void loadSwapOptionsRead(serviceId, shiftStart, new Date()).then((result) => {
-      if (!current) return;
-      if (!result.ok) {
-        setLoadError("The team roster couldn't be checked. Close this and try again.");
-        return;
-      }
-      setLoadError(null);
-      setFresh(result.fresh);
-    });
-    return () => {
-      current = false;
-    };
-  }, [serviceId, shiftStart, generation]);
-  return { fresh, loadError, reread: () => setGeneration((value) => value + 1) };
-}
-
-function shiftLine(shift: RosterAssignment): string {
-  return `${formatPerthDay(perthDateOf(shift.startsAt))} · ${SHIFT_KIND_LABEL[shift.kind]} ${formatShiftRange(shift)}`;
-}
-
-function WeekList({ label, shifts }: { label: string; shifts: readonly RosterAssignment[] }) {
-  return (
-    <div>
-      <p className="text-xs text-[color:var(--text-muted)]">{label}</p>
-      {shifts.length ? (
-        <ul aria-label={label} className="grid gap-0.5 text-sm">
-          {shifts.map((shift) => (
-            <li key={shift.id} className="nums">
-              {shiftLine(shift)}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm">No shifts</p>
-      )}
-    </div>
-  );
-}
-
-function WeekPreview({
-  title,
-  before,
-  after,
-}: {
-  title: string;
-  before: readonly RosterAssignment[];
-  after: readonly RosterAssignment[];
-}) {
-  return (
-    <section className={PANEL}>
-      <h3 className="mb-2 text-sm font-medium">{title}</h3>
-      <div className="grid gap-3">
-        <WeekList label={`${title} before`} shifts={before} />
-        <WeekList label={`${title} after`} shifts={after} />
-      </div>
-    </section>
-  );
-}
-
-const ACCEPT_CANCEL_WORDS: Record<string, string> = {
-  withdrawn: "Swap cancelled: it was withdrawn",
-  roster_changed: "Swap cancelled: the roster changed",
-  member_left: "Swap cancelled: they left the team",
-  no_longer_fits: "Swap cancelled: it no longer fits",
-};
-
-/**
- * What an Accept really did. `swap.accept` answers success even when it finds
- * the swap has expired or no longer fits and ends it, so the words follow the
- * returned status rather than the button pressed.
- */
-function acceptWords(result: { status?: string; autoApproved?: boolean; cancelReason?: string }): string {
-  if (result.status === "approved") return result.autoApproved ? "Swap approved itself" : "Swap accepted";
-  if (result.status === "cancelled") return ACCEPT_CANCEL_WORDS[result.cancelReason ?? ""] ?? "Swap cancelled";
-  if (result.status === "expired") return "Swap expired before you accepted it";
-  if (result.status === "accepted") return "Swap accepted";
-  return "Answer sent. Check Swaps for where it has got to";
+function checkedTime(value: Date, zone: string): string {
+  return zonedTimeOf(value, zone);
 }
 
 const grade = (value: string | null) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : "Grade not set");
@@ -168,6 +75,7 @@ function FlowSession({
   initialColleagueId,
 }: Parameters<typeof SwapFlowSheet>[0]) {
   const now = useRosterNow();
+  const { zone } = useWorkTimeZone();
   const { fresh, loadError, reread } = useFreshRead(serviceId, give.startsAt);
   const { pending, sending, canSend, schedule, undo } = useDelayedRosterAction();
   // A colleague chosen before the sheet opened starts at "take"; if they cannot take it, `shown` falls back to "who".
@@ -415,7 +323,7 @@ function FlowSession({
               after={preview.theirs.after}
             />
             <p>{approvalWords(managerReason)}</p>
-            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {checkedTime(fresh.readAt)}</p>
+            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {checkedTime(fresh.readAt, zone)}</p>
             {sendControls ?? (
               <div className="grid gap-2">
                 {signInNote}
@@ -442,7 +350,7 @@ function FlowSession({
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {checkedTime(fresh.readAt)}</p>
+            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {checkedTime(fresh.readAt, zone)}</p>
             {urgent ? <p>{GIVE_AWAY_WORDS.ringIn}</p> : null}
             {sendControls ?? (
               <>
@@ -462,102 +370,5 @@ function FlowSession({
         ) : null}
       </div>
     </Sheet>
-  );
-}
-
-/**
- * A swap someone sent to me: what they give, what they get, my week before
- * and after, and Accept or Decline. A swap that has ended (Expired included)
- * offers neither.
- */
-export function SwapAnswerCard({
-  swap,
-  serviceId,
-  actorId,
-  onDone,
-}: {
-  swap: RosterSwap;
-  serviceId: string;
-  actorId: string;
-  onDone: (label: string) => void;
-}) {
-  const now = useRosterNow();
-  const { fresh, loadError, reread } = useFreshRead(serviceId, swap.give?.startsAt ?? swap.createdAt);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [undoable, setUndoable] = useState(false);
-  const { give, take } = swap;
-  if (!give) return <p role="alert">That swap changed. Refresh Swaps.</p>;
-
-  const progress = swapProgress(swap, actorId, now);
-  const canAnswer = swap.counterpartyId === actorId && swap.status === "requested" && progress.ended === null;
-  const canUndo =
-    undoable ||
-    (swap.status === "approved" &&
-      swap.autoApproved &&
-      !!swap.decidedAt &&
-      now.getTime() < Date.parse(swap.decidedAt) + 600_000);
-  const clash = fresh
-    ? placementProblem(fresh.assignments, actorId, give.startsAt, give.endsAt, [take?.id], null)
-    : null;
-  const preview = fresh ? swapPreview(fresh.assignments, give, take, swap.requesterId, swap.counterpartyId) : null;
-  const mine = preview ? (actorId === swap.requesterId ? preview.mine : preview.theirs) : null;
-  const who = swap.requesterName ?? "They";
-
-  async function act(action: "swap.accept" | "swap.decline" | "swap.undo") {
-    setBusy(true);
-    setError(null);
-    const result = await postRosterAction(serviceId, { action, swapId: swap.id });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.message);
-      reread();
-      return;
-    }
-    if (action === "swap.undo") {
-      setUndoable(false);
-      onDone("Swap undone");
-    } else if (action === "swap.accept") {
-      setUndoable(result.result.status === "approved" && !!result.result.autoApproved);
-      onDone(acceptWords(result.result));
-    } else onDone("Swap declined");
-  }
-
-  return (
-    <div className="grid gap-3">
-      {loadError ? <p role="alert">{loadError}</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
-      <RosterSwapTicket shift={give} label={`${who} give`} />
-      {take ? (
-        <RosterSwapTicket shift={take} label={`${who} get`} />
-      ) : (
-        <p>{who} get nothing back. You just take the shift.</p>
-      )}
-      {mine ? <WeekPreview title="Your week" before={mine.before} after={mine.after} /> : null}
-      {progress.ended ? <p>{progress.ended}</p> : null}
-      {canAnswer ? (
-        <>
-          <p>
-            {swap.needsManagerBecause
-              ? `Your manager also needs to approve because ${reasonWords[swap.needsManagerBecause]}.`
-              : "It goes through as soon as you accept."}
-          </p>
-          {clash ? <p role="alert">A shift clash was found, so this swap can&apos;t be accepted.</p> : null}
-          <div className="grid grid-cols-2 gap-2">
-            <Button disabled={busy} onClick={() => void act("swap.decline")}>
-              Decline
-            </Button>
-            <Button variant="primary" disabled={busy || !!clash} onClick={() => void act("swap.accept")}>
-              Accept swap
-            </Button>
-          </div>
-        </>
-      ) : null}
-      {canUndo ? (
-        <Button variant="secondary" disabled={busy} onClick={() => void act("swap.undo")}>
-          Undo for 10 min
-        </Button>
-      ) : null}
-    </div>
   );
 }

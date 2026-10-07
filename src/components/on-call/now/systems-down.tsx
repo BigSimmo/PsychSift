@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, Moon, WifiOff } from "lucide-react";
+import { Briefcase, CalendarDays, CalendarRange, Moon, Printer, WifiOff } from "lucide-react";
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
@@ -24,10 +24,21 @@ export type OnCallSituation = { readonly id: string; readonly title: string; rea
  * only from ladders that exist (the reader's own Playbook and the hospital's);
  * with none, the action still opens the page that says so.
  */
-export function NowWhoToCall({ situations }: { readonly situations: readonly OnCallSituation[] }) {
+export function NowWhoToCall({
+  situations,
+  reminder = null,
+}: {
+  readonly situations: readonly OnCallSituation[];
+  /**
+   * The pinned Playbook reminder ("You are expected to wake the consultant."):
+   * a statement to read, so it is plain text under the heading, never a chip
+   * that looks like a choice.
+   */
+  readonly reminder?: string | null;
+}) {
   return (
     <section aria-labelledby="on-call-now-who-heading" className="grid min-w-0 gap-1" data-testid="on-call-now-who">
-      <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-3">
+      <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-1">
         <h2 id="on-call-now-who-heading" className={eyebrowText}>
           Who do I call now?
         </h2>
@@ -36,8 +47,16 @@ export function NowWhoToCall({ situations }: { readonly situations: readonly OnC
           Escalation ladder
         </Link>
       </div>
+      {reminder ? (
+        <p
+          className="min-w-0 break-words px-1 pb-1 text-sm leading-5 text-[color:var(--text)]"
+          data-testid="on-call-now-who-reminder"
+        >
+          {reminder}
+        </p>
+      ) : null}
       {situations.length > 0 ? (
-        <ul role="list" className="flex min-w-0 flex-wrap gap-x-2 px-3">
+        <ul role="list" className="flex min-w-0 flex-wrap gap-x-2 px-1">
           {situations.map((situation) => (
             <li key={situation.id} className="min-w-0">
               <Link
@@ -77,28 +96,53 @@ export function NowFooter({
   const firstNight = onCallFirstNightProgress(ticked);
   return (
     <nav aria-labelledby="on-call-now-footer-heading" className="grid min-w-0 gap-1" data-testid="on-call-now-footer">
-      <h2 id="on-call-now-footer-heading" className={cn(eyebrowText, "flex min-h-12 items-center px-3")}>
+      <h2 id="on-call-now-footer-heading" className={cn(eyebrowText, "flex min-h-12 items-center px-1")}>
         More for this shift
       </h2>
-      <ul role="list" className="min-w-0">
-        <OnCallRow title="My shifts" subtitle="Your own roster" href="/roster" testId="on-call-now-footer-shifts" />
+      {/* One flat white card, every row with its icon circle (work-mode
+          redesign, owner request 6 Oct 2026). A row that leaves On Call takes
+          the colour of where it goes, as the work-mode kit does. */}
+      <ul role="list" className="work-card min-w-0">
+        <OnCallRow
+          title="My shifts"
+          subtitle="Your own roster"
+          leading={
+            <CalendarDays
+              aria-hidden="true"
+              strokeWidth={2}
+              className={onCallLeadingIcon}
+              data-mode-identity="roster"
+            />
+          }
+          href="/roster"
+          testId="on-call-now-footer-shifts"
+        />
         <OnCallRow
           title="Pocket card"
           subtitle="One printable page"
+          leading={<Printer aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           href="/on-call/card"
           testId="on-call-now-footer-card"
         />
         <OnCallRow
           title="Calendar"
           subtitle="Teaching and recorded dates"
-          href="/on-call/calendar"
+          leading={
+            <CalendarRange
+              aria-hidden="true"
+              strokeWidth={2}
+              className={onCallLeadingIcon}
+              data-mode-identity="roster"
+            />
+          }
+          href="/roster/calendar"
           testId="on-call-now-footer-calendar"
         />
         <NowShiftLists context={context} shifts={shifts} items={items} now={now} />
         <OnCallRow
           title="Systems down"
           subtitle="When computers or phones fail"
-          leading={<WifiOff aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+          leading={<WifiOff aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           href={ON_CALL_FIND_DOWNTIME_HREF}
           testId="on-call-now-systems-down"
         />
@@ -106,14 +150,14 @@ export function NowFooter({
         <OnCallRow
           title="First night"
           subtitle={`Guided path · ${firstNight.done} of ${firstNight.total} done`}
-          leading={<Moon aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+          leading={<Moon aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           href="/on-call/first-night"
           testId="on-call-home-first-night"
         />
         <OnCallRow
           title="On site"
           subtitle="Parking, food, access · in Admin"
-          leading={<Briefcase aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+          leading={<Briefcase aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           href={ON_CALL_ON_SITE_HREF}
           testId="on-call-now-on-site"
         />

@@ -5,7 +5,9 @@ import { visibleByTestId } from "./playwright-settlement";
 /**
  * Admin's own short browser journey (Task 10, integration): the two retired
  * paths, the pill's identity, Help's phone layout, and the one-composer
- * contract every Admin page keeps.
+ * contract every Admin page keeps. Amended for the work-mode redesign (owner
+ * request 6 Oct 2026): `/my-work` lands on Today, Admin is slate, and the rail
+ * is the shared chip row.
  *
  * Case 2 checks the Checklist tab's real grouped headings rather than the
  * "Blocking / Partial / Chased / Unrecorded" bands task-10-brief.md names.
@@ -22,8 +24,12 @@ import { visibleByTestId } from "./playwright-settlement";
 const PHONE_WIDTH = 390;
 const PHONE_HEIGHT = 844;
 
-/** Admin's mode identity, `--type-form` in light mode (spec, AGENTS.md). */
-const ADMIN_IDENTITY_LIGHT_RGB = "rgb(125, 90, 44)";
+/**
+ * Admin's mode identity in light mode. Work-mode redesign, owner request 6 Oct
+ * 2026: Admin moved from brown to the slate palette (#44566e), measured in
+ * Chromium on /admin/help.
+ */
+const ADMIN_IDENTITY_LIGHT_RGB = "rgb(68, 86, 110)";
 
 async function gotoPhone(page: Page, path: string) {
   await page.setViewportSize({ width: PHONE_WIDTH, height: PHONE_HEIGHT });
@@ -31,12 +37,19 @@ async function gotoPhone(page: Page, path: string) {
 }
 
 test.describe("Admin mode — redirects, pill identity and shared chrome", () => {
-  // Admin opens on Renewals now (modes review, phase 2b: My Day is the one
-  // Today). `/admin` still serves the old Today page for bookmarks, with no tab.
-  test("/my-work lands on /admin/renewals, and the pill names Admin without a Today page", async ({ page }) => {
+  // Work-mode redesign, owner request 6 Oct 2026: Today is Admin's first tab
+  // again, so `/my-work` lands on `/admin`. Pill 4b (Josh, 7 Oct 2026): on a
+  // work page the pill names the area alone, in its colour, and the band's
+  // current tab names the page — so Today is asserted on the tab, not the pill.
+  test("/my-work lands on /admin, the pill names Admin, and the Today tab is current", async ({ page }) => {
     await page.goto("/my-work");
-    await expect(page).toHaveURL(/\/admin\/renewals$/);
-    await expect(page.getByRole("button", { name: "Mode Admin, page Renewals", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin$/);
+    const pill = page.getByRole("button", { name: "Mode Admin", exact: true });
+    await expect(pill).toBeVisible();
+    await expect(pill).toContainText("Admin");
+    await expect(
+      page.getByRole("navigation", { name: "Admin pages" }).getByRole("link", { name: /^Today\b/ }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   test("/on-call/compliance lands on /admin/renewals, keeping the checklist's own groups", async ({ page }) => {
@@ -54,7 +67,9 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     await expect(visibleByTestId(page, "admin-renewals-checklist-row-medical-registration-renewal")).toBeVisible();
   });
 
-  test("at 390px, Help puts its crisis lines ahead of every content tab, and the active tab underlines in Admin's identity colour with no brown button anywhere", async ({
+  // Work-mode redesign, owner request 6 Oct 2026: the underlined rail became the
+  // shared chip row, and the active chip carries the identity colour itself.
+  test("at 390px, Help puts its crisis lines ahead of every content section, and the active chip wears Admin's identity colour with no identity-filled button anywhere", async ({
     page,
   }) => {
     await gotoPhone(page, "/admin/help");
@@ -65,27 +80,22 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     const rail = visibleByTestId(page, "admin-section-header-section-rail");
     await expect(rail).toBeVisible();
 
-    // Crisis lines are the page's first real content — above every one of the
-    // four content tabs' own sections — even though the tab rail is chrome
-    // that sits above all of it, including crisis lines (see the file header).
+    // Crisis lines are the page's first real content, above every one of the
+    // four content sections.
     const crisisTop = (await crisis.boundingBox())?.y ?? Number.POSITIVE_INFINITY;
     for (const label of ["Support", "Guides", "Contacts", "On site"]) {
-      const section = page.locator(`section:has(> h2:text-is("${label}"))`);
+      const section = page.locator(`section[aria-label="${label}"]`);
       const sectionTop = (await section.boundingBox())?.y ?? Number.NEGATIVE_INFINITY;
       expect(sectionTop, `${label}'s section should sit below the crisis lines`).toBeGreaterThan(crisisTop);
     }
 
-    // Whichever tab settled active, its underline resolves through the rail's
-    // own `data-mode-identity="my-work"` remap to Admin's brown, not the
-    // product accent.
-    await expect
-      .poll(async () => rail.locator('button[aria-current="true"] .mode-nav__rule').count())
-      .toBeGreaterThan(0);
-    const activeUnderline = rail.locator('button[aria-current="true"] .mode-nav__rule').first();
-    await expect(activeUnderline).toHaveCSS("background-color", ADMIN_IDENTITY_LIGHT_RGB);
+    // Whichever chip settled active, it resolves to Admin's identity colour,
+    // not the product accent.
+    await expect.poll(async () => rail.locator('button[aria-current="true"]').count()).toBeGreaterThan(0);
+    const activeChip = rail.locator('button[aria-current="true"]').first();
+    await expect(activeChip).toHaveCSS("color", ADMIN_IDENTITY_LIGHT_RGB);
 
-    // Brown is identity only (standard §3): never on a button, anywhere on
-    // this page, including the rail's own buttons.
+    // The identity colour is identity only (standard §3): never a button's fill.
     const buttonBackgrounds = await page
       .locator("button")
       .evaluateAll((buttons) => buttons.map((button) => getComputedStyle(button).backgroundColor));

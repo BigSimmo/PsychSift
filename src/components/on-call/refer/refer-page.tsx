@@ -151,7 +151,7 @@ export function OnCallReferPage() {
               key={item.id}
               item={item}
               listOnly
-              leading={<ClipboardList aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              leading={<ClipboardList aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
               secondary={secondary(item)}
               meta={
                 <OnCallRouteFreshnessLine
@@ -175,7 +175,7 @@ export function OnCallReferPage() {
           <OnCallRow
             href={servicesHref}
             testId="on-call-refer-services-link"
-            leading={<LayoutList aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+            leading={<LayoutList aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
             title={`Search services for “${query.trim()}”`}
             subtitle="Opens the Services mode"
           />
@@ -184,7 +184,7 @@ export function OnCallReferPage() {
           <OnCallRow
             href="/services/search"
             testId="on-call-refer-services-link"
-            leading={<LayoutList aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+            leading={<LayoutList aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
             title="Search and compare services"
             subtitle="Best use, eligibility and hours, in the Services mode"
           />
@@ -245,7 +245,7 @@ export function OnCallReferPage() {
               <OnCallRow
                 key={entry.id}
                 href={`/on-call/referrals#${onCallEntryAnchorId(entry.id)}`}
-                leading={<Feather aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+                leading={<Feather aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
                 title={entry.title}
                 subtitle={[entry.subtitle, entry.isPersonal ? "Private" : "Shared with your service"]
                   .filter(Boolean)

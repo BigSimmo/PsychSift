@@ -12,8 +12,8 @@ import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
 import { allocateOnCallGroupSlug, onCallGroupAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { onCallAdminCategoryLabel } from "@/components/on-call/on-call-page-sections";
 import { OnCallPrivateFlag } from "@/components/on-call/on-call-private-flag";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { ExternalTextLink } from "@/components/ui/link";
 import { cn, eyebrowText, metadataPillDensity, textMuted, toolbarButton } from "@/components/ui-primitives";
 import { partitionLogisticsEntries } from "@/lib/on-call/compliance";
@@ -178,7 +178,7 @@ export function OnCallLogisticsSection({
 
   if (adminEntries.length === 0) {
     return (
-      <EmptyState
+      <OnCallEmptyState
         icon={BriefcaseBusiness}
         title="No admin entries yet"
         body="Leave, rosters, pay, forms, access and facilities will appear here, filed into folders. Compliance requirements live on their own page."
@@ -252,7 +252,11 @@ export function OnCallLogisticsSection({
                 </span>
               </p>
             ) : null}
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-2" data-testid={`on-call-logistics-group-${slug}`}>
+            <div
+              data-on-call-list=""
+              className="grid grid-cols-[minmax(0,1fr)] gap-2"
+              data-testid={`on-call-logistics-group-${slug}`}
+            >
               {group.entries.map((entry) => (
                 <LogisticsRow
                   key={entry.id}

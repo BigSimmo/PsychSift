@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ pathname: "/teaching" }));
 vi.mock("next/navigation", async (original) => ({
@@ -13,17 +13,23 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="sign-in-dialog" /> : null),
 }));
 
-import { TeachingSampleChrome } from "@/components/teaching/teaching-sample-notice";
 import { TeachingCollection } from "@/components/teaching/teaching-collection";
 import { TeachingLogbook } from "@/components/teaching/teaching-logbook";
 import { TeachingResources } from "@/components/teaching/teaching-resources";
 import { TeachingToday } from "@/components/teaching/teaching-today";
 import { TeachingWhatsOn } from "@/components/teaching/teaching-whats-on";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import { authState } from "./helpers/teaching-auth";
 import { NOW, apiError, serveFetch, useTeachingTestClock } from "./helpers/teaching-fixtures";
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
 useTeachingTestClock(NOW);
+
+beforeEach(() => {
+  // The example data switch is per device: each test starts in auto mode.
+  window.localStorage.clear();
+  resetExampleDataForTests();
+});
 
 function signedOutWith(status: "signed_out" | "expired" = "signed_out") {
   authState.status = status as never;
@@ -33,34 +39,19 @@ function signedOutWith(status: "signed_out" | "expired" = "signed_out") {
 }
 
 describe("signed-out Teaching sample, the default", () => {
-  it("shows the shared sign-in notice above every page, with no Leave the sample and no cookie", () => {
-    signedOutWith();
-    const cookieWrite = vi.spyOn(document, "cookie", "set");
-    render(<TeachingSampleChrome cookieSample={false} />);
-    expect(screen.getByTestId("teaching-signed-out-sample")).toHaveTextContent("Sign in to see your teaching");
-    expect(screen.queryByTestId("teaching-sample-leave")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(screen.getByTestId("sign-in-dialog")).toBeInTheDocument();
-    expect(cookieWrite).not.toHaveBeenCalled();
+  it("follows the example data switch: a signed-out visitor who turned it off gets the sign-in notice", async () => {
+    const { fetchMock } = signedOutWith();
+    setExampleDataOn(false);
+    render(<TeachingToday demoMode={false} />);
+    expect(await screen.findByTestId("teaching-state-signed-out")).toBeInTheDocument();
+    expect(screen.queryByText("Demo · made-up people")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalled();
   });
 
-  it("treats an expired sign-in the same way, and keeps off the check-in landing", () => {
+  it("treats an expired sign-in the same way as signed out", async () => {
     signedOutWith("expired");
-    const { rerender } = render(<TeachingSampleChrome cookieSample />);
-    expect(screen.getByTestId("teaching-signed-out-sample")).toBeInTheDocument();
-    expect(screen.queryByTestId("teaching-sample-banner")).not.toBeInTheDocument();
-    state.pathname = "/teaching/c/token";
-    rerender(<TeachingSampleChrome cookieSample />);
-    expect(screen.queryByTestId("teaching-signed-out-sample")).not.toBeInTheDocument();
-    state.pathname = "/teaching";
-  });
-
-  it("leaves a signed-in reader unchanged: no notice, and the old cookie banner only if the cookie is on", () => {
-    const { rerender } = render(<TeachingSampleChrome cookieSample={false} />);
-    expect(screen.queryByTestId("teaching-signed-out-sample")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("teaching-sample-banner")).not.toBeInTheDocument();
-    rerender(<TeachingSampleChrome cookieSample />);
-    expect(screen.getByTestId("teaching-sample-leave")).toBeInTheDocument();
+    render(<TeachingToday demoMode={false} />);
+    expect(await screen.findByText("Demo · made-up people")).toBeInTheDocument();
   });
 
   it("fills Today with the made-up programme and makes no request and no storage write", async () => {

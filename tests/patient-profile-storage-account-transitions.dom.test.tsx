@@ -535,6 +535,33 @@ describe("the boot-time SIGNED_IN replay is not an account transition (M4, L2, L
     expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).toBeNull();
   });
 
+  // A stored session rejected on boot lapsed while the page was closed. On a shared
+  // ward computer its owner may be gone, so it is a full account transition: the
+  // quick note and every other person-scoped store go, not only the clocks.
+  it("clears every account-scoped store when the auth server rejects the stored session on boot", async () => {
+    window.localStorage.setItem("psychsift:my-day:quick-note-v1", "Ring the registrar");
+    window.localStorage.setItem("psychsift:work:anything-new-v1", "1");
+    window.localStorage.setItem("psychsift:work-search-coach-seen", "1");
+    authApi.getUser.mockImplementationOnce(
+      async () =>
+        ({
+          data: { user: null },
+          error: { status: 401, message: "invalid JWT" },
+        }) as unknown as Awaited<ReturnType<typeof authApi.getUser>>,
+    );
+
+    render(
+      <AuthProvider>
+        <AuthActions />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed_out"));
+
+    expect(window.localStorage.getItem("psychsift:my-day:quick-note-v1")).toBeNull();
+    expect(window.localStorage.getItem("psychsift:work:anything-new-v1")).toBeNull();
+    expect(window.localStorage.getItem("psychsift:work-search-coach-seen")).toBe("1");
+  });
+
   it("still clears when the boot could not be verified and someone then signs in", async () => {
     seedEveryRefreshSurvivingStore();
 

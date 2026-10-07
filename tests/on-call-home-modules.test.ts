@@ -20,6 +20,15 @@ import { onCallLocalDateKey } from "@/lib/on-call/local-date";
 import { ROLE_EXPLAINER_KIND } from "@/lib/on-call/who-is-who";
 
 /**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
+
+/**
  * The home is derived entirely from tags the owner controls. These tests pin the
  * derivation, and in particular the three ways it could put something useless on
  * the most-looked-at screen in the mode: a call card with no number, a role
@@ -51,21 +60,21 @@ const contact = (over: Partial<OnCallEntry> & { details?: unknown }) =>
   entry({ section: "contacts", details: { role: "Role" }, ...over });
 
 /**
- * Local-time fixtures, built with the `Date(y, m, d, h)` constructor rather than
- * an ISO string on purpose: the rule is about the hour on the registrar's own
- * phone, so the test must express the hour in the same zone the helper reads.
+ * Perth wall-clock fixtures (`perthWall`, same arguments as `Date(y, m, d, h)`):
+ * the rule is about the hour on the hospital's clock in the work time zone,
+ * Perth by default, whatever zone the phone or the test runner is in.
  *
  * 16 September 2026 is a Wednesday, 19 September a Saturday, 20 September a
  * Sunday.
  */
-const WEEKDAY_0900 = new Date(2026, 8, 16, 9, 0, 0);
-const WEEKDAY_2200 = new Date(2026, 8, 16, 22, 0, 0);
-const WEEKDAY_0800 = new Date(2026, 8, 16, 8, 0, 0);
-const WEEKDAY_0759 = new Date(2026, 8, 16, 7, 59, 0);
-const WEEKDAY_1700 = new Date(2026, 8, 16, 17, 0, 0);
-const WEEKDAY_1659 = new Date(2026, 8, 16, 16, 59, 0);
-const SATURDAY_MIDDAY = new Date(2026, 8, 19, 12, 0, 0);
-const SUNDAY_MIDDAY = new Date(2026, 8, 20, 12, 0, 0);
+const WEEKDAY_0900 = perthWall(2026, 8, 16, 9, 0, 0);
+const WEEKDAY_2200 = perthWall(2026, 8, 16, 22, 0, 0);
+const WEEKDAY_0800 = perthWall(2026, 8, 16, 8, 0, 0);
+const WEEKDAY_0759 = perthWall(2026, 8, 16, 7, 59, 0);
+const WEEKDAY_1700 = perthWall(2026, 8, 16, 17, 0, 0);
+const WEEKDAY_1659 = perthWall(2026, 8, 16, 16, 59, 0);
+const SATURDAY_MIDDAY = perthWall(2026, 8, 19, 12, 0, 0);
+const SUNDAY_MIDDAY = perthWall(2026, 8, 20, 12, 0, 0);
 
 describe("isOnCallOutOfHours", () => {
   it("is false during the weekday working day", () => {
@@ -328,15 +337,16 @@ describe("selectUpcomingSessions", () => {
 });
 
 describe("onCallLocalDateKey", () => {
-  it("uses the viewer's own day, not UTC", () => {
-    // 23:00 on the 12th in a zone ahead of UTC is still the 12th to the person
-    // holding the phone; keying on UTC would call tonight's teaching yesterday's.
-    const localLateEvening = new Date(2026, 8, 12, 23, 0, 0);
+  it("uses the work zone's day (Perth), not UTC", () => {
+    // 23:00 on the 12th in Perth is still the 12th on the ward even though it is
+    // 15:00 UTC; and 07:00 Perth on the 13th is the 13th though UTC says the 12th.
+    const localLateEvening = perthWall(2026, 8, 12, 23, 0, 0);
     expect(onCallLocalDateKey(localLateEvening)).toBe("2026-09-12");
+    expect(onCallLocalDateKey(perthWall(2026, 8, 13, 7, 0, 0))).toBe("2026-09-13");
   });
 
   it("pads single-digit months and days", () => {
-    expect(onCallLocalDateKey(new Date(2026, 0, 5, 12, 0, 0))).toBe("2026-01-05");
+    expect(onCallLocalDateKey(perthWall(2026, 0, 5, 12, 0, 0))).toBe("2026-01-05");
   });
 });
 
@@ -395,41 +405,41 @@ describe("msUntilOnCallHoursBoundary", () => {
   // next render" was wrong about a page nobody is touching, which is exactly the
   // page someone glances at overnight.
   it("counts down to 17:00 from inside the working day", () => {
-    // Wednesday 16:00 local.
-    expect(msUntilOnCallHoursBoundary(new Date(2026, 8, 16, 16, 0, 0))).toBe(60 * 60 * 1000);
+    // Wednesday 16:00 Perth.
+    expect(msUntilOnCallHoursBoundary(perthWall(2026, 8, 16, 16, 0, 0))).toBe(60 * 60 * 1000);
   });
 
   it("counts down to 08:00 from the small hours", () => {
-    // Wednesday 02:30 local.
-    expect(msUntilOnCallHoursBoundary(new Date(2026, 8, 16, 2, 30, 0))).toBe(5.5 * 60 * 60 * 1000);
+    // Wednesday 02:30 Perth.
+    expect(msUntilOnCallHoursBoundary(perthWall(2026, 8, 16, 2, 30, 0))).toBe(5.5 * 60 * 60 * 1000);
   });
 
   it("counts down to the next morning's 08:00 from the evening", () => {
-    // Wednesday 22:00 local -> Thursday 08:00 local.
-    expect(msUntilOnCallHoursBoundary(new Date(2026, 8, 16, 22, 0, 0))).toBe(10 * 60 * 60 * 1000);
+    // Wednesday 22:00 Perth -> Thursday 08:00 Perth.
+    expect(msUntilOnCallHoursBoundary(perthWall(2026, 8, 16, 22, 0, 0))).toBe(10 * 60 * 60 * 1000);
   });
 
   it("carries a Friday evening across the weekend to Monday 08:00", () => {
-    // Friday 18:00 local. Saturday and Sunday are out of hours throughout, so
+    // Friday 18:00 Perth. Saturday and Sunday are out of hours throughout, so
     // the next moment the answer can change is Monday morning -- waking at
     // Saturday 08:00 would re-render for nothing.
-    const friday = new Date(2026, 8, 18, 18, 0, 0);
+    const friday = perthWall(2026, 8, 18, 18, 0, 0);
     expect(friday.getDay()).toBe(5);
     expect(msUntilOnCallHoursBoundary(friday)).toBe(62 * 60 * 60 * 1000);
   });
 
   it("never returns zero or less, so a timer scheduled on it cannot spin", () => {
     for (const at of [
-      new Date(2026, 8, 16, 8, 0, 0),
-      new Date(2026, 8, 16, 17, 0, 0),
-      new Date(2026, 8, 19, 12, 0, 0),
+      perthWall(2026, 8, 16, 8, 0, 0),
+      perthWall(2026, 8, 16, 17, 0, 0),
+      perthWall(2026, 8, 19, 12, 0, 0),
     ]) {
       expect(msUntilOnCallHoursBoundary(at)).toBeGreaterThan(0);
     }
   });
 
   it("lands exactly on a boundary that flips the answer", () => {
-    const at = new Date(2026, 8, 16, 16, 0, 0);
+    const at = perthWall(2026, 8, 16, 16, 0, 0);
     const next = new Date(at.getTime() + msUntilOnCallHoursBoundary(at));
     expect(isOnCallOutOfHours(at)).toBe(false);
     expect(isOnCallOutOfHours(next)).toBe(true);

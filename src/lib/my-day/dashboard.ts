@@ -19,7 +19,7 @@ import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
  * day ribbon and the next timed session. A stored id from an earlier layout
  * ("shift", "renewal") is simply ignored.
  */
-export const myDayPageIds = ["today", "work", "me"] as const;
+const myDayPageIds = ["today", "work", "me"] as const;
 export type MyDayPageId = (typeof myDayPageIds)[number];
 
 export const MY_DAY_PAGE_LABELS: Readonly<Record<MyDayPageId, string>> = {
@@ -29,7 +29,8 @@ export const MY_DAY_PAGE_LABELS: Readonly<Record<MyDayPageId, string>> = {
 };
 
 export const MY_DAY_PAGE_CARDS = {
-  today: ["up-next", "next-up", "flag", "quick-actions", "this-week", "needs-you", "cpd", "renewals"],
+  // Work-mode redesign (6 Oct 2026): Needs you comes before This week, urgent first.
+  today: ["up-next", "next-up", "flag", "quick-actions", "needs-you", "this-week", "cpd", "renewals"],
   // During on call: the calls panel, then the team, numbers and next talk. On an ordinary day "Coming up" leads.
   work: ["calls", "coming-up", "whos-on", "pinned-numbers", "next-talk"],
   me: ["glance", "hours", "cpd-month", "credentials", "quick-note"],
@@ -125,6 +126,25 @@ export function isSnoozed(snoozes: MyDaySnoozes, id: string, today: string): boo
 /** "Later" means tomorrow, in Perth. */
 export function snoozeUntil(now: Date): string {
   return addDaysToDate(perthDateOf(now), 1);
+}
+
+/**
+ * The next rostered working day after today (any shift but leave), within
+ * `horizonDays`, as a Perth date; null when the roster has none. "Later" offers
+ * it when it is not tomorrow (a weekend or days off between).
+ */
+export function nextRosteredDay(
+  shifts: readonly { readonly startsAt: string; readonly kind: string }[],
+  today: string,
+  horizonDays = 14,
+): string | null {
+  const last = addDaysToDate(today, horizonDays);
+  const dates = shifts
+    .filter((shift) => shift.kind !== "leave")
+    .map((shift) => perthDateOf(shift.startsAt))
+    .filter((date) => date > today && date <= last)
+    .sort();
+  return dates[0] ?? null;
 }
 
 /**

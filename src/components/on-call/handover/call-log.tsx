@@ -38,6 +38,8 @@ import {
   PATIENT_LABELS_CLEARED_EVENT,
   startPatientLabelRetention,
 } from "@/lib/patient-label-storage";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { formatZonedDay, zonedDateOf } from "@/lib/work-time/format";
 
 /*
  * The quick call log (`OnCallCallLogCard`), shown in Now's "Log a call" sheet.
@@ -152,9 +154,9 @@ function NoteArea({
 }
 
 /** "Mon 08:00": when the shift's notes clear. */
-function clockLabel(epochMs: number): string {
+function clockLabel(epochMs: number, zone: string): string {
   const at = new Date(epochMs);
-  const day = new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "Australia/Perth" }).format(at);
+  const day = formatZonedDay(zonedDateOf(at, zone)).slice(0, 3);
   return `${day} ${onCallCallLogTime(at.toISOString())}`;
 }
 
@@ -167,6 +169,7 @@ export const ON_CALL_CALLER_CHIPS = ["Ward nurse", "Emergency dept", "Registrar"
  * then tonight's calls and "Add the 1 to-do to the handover".
  */
 export function OnCallCallLogCard() {
+  const { zone } = useWorkTimeZone();
   const view = useOnCallCallLog();
   const entries = view?.entries ?? null;
   const [draft, setDraft] = useState<OnCallCallLogDraft>(emptyDraft);
@@ -357,8 +360,8 @@ export function OnCallCallLogCard() {
       {entries && entries.length > 0 ? <AddToHandover entries={entries} /> : null}
       <p className={cn(modeSecondaryText, "text-xs")} data-testid="on-call-call-log-privacy">
         Saved on this phone only. Beds or initials, never names. Clears when your shift ends
-        {view?.expiresAt ? ` (${clockLabel(view.expiresAt)})` : " (at most 12 hours after the first note)"} or you sign
-        out.
+        {view?.expiresAt ? ` (${clockLabel(view.expiresAt, zone)})` : " (at most 12 hours after the first note)"} or you
+        sign out.
       </p>
     </section>
   );

@@ -1,6 +1,6 @@
 /**
  * Reads the date and times out of a pasted shift offer ("need a reg for Ward
- * 4B Sat 17 Oct 0800–1630, Northgate"). It runs on the phone only; the
+ * A Sat 17 Oct 0800–1630, Example Hospital"). It runs on the phone only; the
  * message is never sent or saved. Anything it can't read is left blank for
  * the doctor to fill in, never guessed.
  */

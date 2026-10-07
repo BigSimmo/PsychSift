@@ -2,17 +2,24 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useSyncExternalStore } from "react";
 
-import { focusRing } from "@/components/card-recipes";
 import { cmePageWidth } from "@/components/cme/cme-page-frame";
 import { cn } from "@/components/ui-primitives";
 
-export type CmeSegment = { readonly label: string; readonly href: string; readonly active: boolean };
+export type CmeSegment = {
+  readonly label: string;
+  readonly href: string;
+  readonly active: boolean;
+  /** A count beside the label ("To finish · 2"), read out as "2 waiting". */
+  readonly count?: number | null;
+};
 
 /**
- * The 5 Oct mock-up's segmented control: a sunk track with the current page
- * raised in it. Each part is a link (these are pages, not panels), the current
- * one marked `aria-current`. The face is 40px; each link's tap area is 48px.
+ * The work-mode segmented switch (work-mode redesign, owner request 6 Oct
+ * 2026): a pale pill track with the current part as a white pill. Each part is
+ * a link (these are pages, not panels), the current one marked `aria-current`.
+ * Each pill is the 48px production tap floor (`--spacing-tap`), drawn as its own box.
  */
 export function CmeSegmentedTabs({
   label,
@@ -27,23 +34,23 @@ export function CmeSegmentedTabs({
 }) {
   return (
     <nav aria-label={label} data-testid={testId} className={className}>
-      <div className="flex gap-0.5 rounded-md bg-[color:var(--surface-inset)] p-0.75 forced-colors:border forced-colors:border-[CanvasText]">
+      <div className="cpd-seg">
         {segments.map((segment) => (
           <Link
             key={segment.label}
             href={segment.href}
             aria-current={segment.active ? "page" : undefined}
-            className={cn(
-              focusRing,
-              // Labels wrap rather than overlap when there is no room (200% zoom on a phone).
-              "relative inline-flex min-w-0 flex-1 items-center justify-center rounded-sm border border-transparent px-1.5 py-3.25 text-center text-sm-minus leading-5 no-underline",
-              "after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
-              segment.active
-                ? "border-[color:var(--border)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] forced-colors:border-[Highlight]"
-                : "font-medium text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
-            )}
+            className="cpd-seg__item"
           >
             {segment.label}
+            {segment.count ? (
+              <>
+                <span aria-hidden="true" className="nums">
+                  &nbsp;· {segment.count}
+                </span>
+                <span className="sr-only">, {segment.count} waiting</span>
+              </>
+            ) : null}
           </Link>
         ))}
       </div>
@@ -51,42 +58,57 @@ export function CmeSegmentedTabs({
   );
 }
 
+/* The "To finish" count: Log publishes it while it is open (drafts, teaching to
+   log and missed sessions), so the switch never shows a count nothing on screen
+   keeps current. Held in memory only. */
+let finishCount: number | null = null;
+const finishListeners = new Set<() => void>();
+
+function subscribeFinish(listener: () => void) {
+  finishListeners.add(listener);
+  return () => {
+    finishListeners.delete(listener);
+  };
+}
+
+function setFinishCount(next: number | null) {
+  if (finishCount === next) return;
+  finishCount = next;
+  finishListeners.forEach((listener) => listener());
+}
+
+/** Puts a count on "To finish" while the calling page is open. Null hides it. */
+export function useCmeFinishCount(count: number | null) {
+  useEffect(() => {
+    setFinishCount(count);
+    return () => setFinishCount(null);
+  }, [count]);
+}
+
 /**
- * The switch at the top of Log and Plan, which span more than one address
- * (Log: activities, to finish, routines; Plan: goals and training). Courses
- * draws its own, because its Upcoming count comes from the page's list. Year
- * and Report have none: the mode header's tabs cover them.
+ * The switch at the top of Log, which spans three addresses: activities, to
+ * finish and routines. Every other CPD page is one of the band's tabs or a
+ * More page, so it has none.
  */
 export function CmePageTabs() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const count = useSyncExternalStore(
+    subscribeFinish,
+    () => finishCount,
+    () => null,
+  );
   const year = searchParams.get("year");
   const withYear = (href: string) =>
     year ? `${href}${href.includes("?") ? "&" : "?"}year=${encodeURIComponent(year)}` : href;
 
-  let label: string;
-  let segments: CmeSegment[];
-  if (pathname === "/cme/log" || pathname === "/cme/routines") {
-    label = "Log";
-    const finish = pathname === "/cme/log" && searchParams.get("tab") === "finish";
-    segments = [
-      { label: "Activities", href: withYear("/cme/log"), active: pathname === "/cme/log" && !finish },
-      { label: "To finish", href: withYear("/cme/log?tab=finish"), active: finish },
-      { label: "Routines", href: withYear("/cme/routines"), active: pathname === "/cme/routines" },
-    ];
-  } else if (pathname === "/cme/plan" || pathname === "/cme/calendar" || pathname === "/cme/training") {
-    // CPD dates (`/cme/calendar`) is reached from the Year page's "CPD dates" row,
-    // so the switch holds only the mock-up's two parts and marks neither there.
-    label = "Plan";
-    segments = [
-      { label: "Goals", href: withYear("/cme/plan"), active: pathname === "/cme/plan" },
-      { label: "Training", href: withYear("/cme/training"), active: pathname === "/cme/training" },
-    ];
-  } else {
-    return null;
-  }
+  if (pathname !== "/cme/log" && pathname !== "/cme/routines") return null;
+  const finish = pathname === "/cme/log" && searchParams.get("tab") === "finish";
+  const segments: CmeSegment[] = [
+    { label: "Activities", href: withYear("/cme/log"), active: pathname === "/cme/log" && !finish },
+    { label: "To finish", href: withYear("/cme/log?tab=finish"), active: finish, count },
+    { label: "Routines", href: withYear("/cme/routines"), active: pathname === "/cme/routines" },
+  ];
 
-  return (
-    <CmeSegmentedTabs label={`${label} pages`} segments={segments} className={cn(cmePageWidth, "px-4 pt-4 sm:px-6")} />
-  );
+  return <CmeSegmentedTabs label="Log pages" segments={segments} className={cn(cmePageWidth, "px-3 pt-3")} />;
 }

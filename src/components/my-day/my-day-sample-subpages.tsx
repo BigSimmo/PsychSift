@@ -3,7 +3,8 @@
 import { useMemo, type ReactNode } from "react";
 
 import { buildMyDaySample } from "@/components/my-day/my-day-sample";
-import { perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * The signed-out samples of My Day's Week and Hours pages: the same invented
@@ -22,7 +23,8 @@ export function MyDaySubpageSampleView({
   readonly testId: string;
   readonly children: (sample: MyDaySubpageSample) => ReactNode;
 }) {
-  const sample = useMemo(() => buildMyDaySample(perthDateOf(now), now), [now]);
+  const { zone } = useWorkTimeZone();
+  const sample = useMemo(() => buildMyDaySample(zonedDateOf(now, zone), now), [now, zone]);
   return (
     <div className="grid gap-5" data-testid={testId}>
       {children(sample)}

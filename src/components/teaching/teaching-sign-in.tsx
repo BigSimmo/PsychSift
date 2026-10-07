@@ -1,26 +1,30 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
-import { teachingSampleEntryHref } from "@/lib/teaching/sample-paths";
+import { useExampleData } from "@/lib/example-data/store";
 
 /*
  * The signed-out module: Sign in opens the app's own sign-in dialog; "Open the
- * demo" enters the Teaching sample, which stays on across every Teaching page
- * and returns the reader to the page they were on.
+ * demo" turns the one example data switch on (every work area, not a
+ * Teaching-only cookie) and refreshes, so server-rendered pages re-read.
  */
 export function TeachingSignInNotice() {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
+  const router = useRouter();
+  const { turnOn } = useExampleData("teach");
   return (
     <>
       <TeachingStateNotice
         state="signed-out"
         onSignIn={() => setOpen(true)}
-        demoHref={teachingSampleEntryHref(pathname)}
+        onOpenDemo={() => {
+          turnOn();
+          router.refresh();
+        }}
       />
       <AccountSetupDialog open={open} onClose={() => setOpen(false)} />
     </>

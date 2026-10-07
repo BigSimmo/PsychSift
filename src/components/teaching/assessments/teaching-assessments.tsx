@@ -1,40 +1,63 @@
 "use client";
 
-import { ClipboardCheck, Info } from "lucide-react";
+import { FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 
-import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { modeModuleSurface } from "@/components/mode-kit/recipes";
+import { useModeBandCount } from "@/components/mode-band/mode-band";
+import { WorkBody, WorkButton, WorkEmpty, useWorkUndoToast } from "@/components/mode-kit/work";
+import { AssessSegmented, AssessSkeleton } from "@/components/teaching/assessments/assess-kit";
+import {
+  rememberRole,
+  rememberStory,
+  rememberedRole,
+  rememberedStory,
+  type AssessRole,
+} from "@/components/teaching/assessments/assess-memory";
 import { AssessmentsHome } from "@/components/teaching/assessments/assessments-home";
 import { AllAssessments, TermDetails, YearRequirements } from "@/components/teaching/assessments/assessments-year";
 import { AssessmentForm } from "@/components/teaching/assessments/assessments-form";
 import { AskSupervisor, BookMeeting, EndOfTermSteps } from "@/components/teaching/assessments/assessments-steps";
 import { AssessmentReport, SignForm } from "@/components/teaching/assessments/assessments-report";
 import { ConcernsHelp, AssessmentsSheets, type SheetState } from "@/components/teaching/assessments/assessments-help";
-import { SideBySide, SupervisorHome, SupervisorTimes } from "@/components/teaching/assessments/assessments-supervisor";
+import {
+  DoctorRecord,
+  SideBySide,
+  SupervisorHistory,
+  SupervisorHome,
+  SupervisorProgress,
+  SupervisorTimes,
+  SupervisorWords,
+} from "@/components/teaching/assessments/assessments-supervisor";
+import { AssessmentsExtrasProvider } from "@/components/teaching/assessments/assessments-extras";
+import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
+import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-inbox";
+import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
 import { viewHref, type AssessmentsView } from "@/components/teaching/assessments/assessments-parts";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
-import { Button } from "@/components/ui/button";
-import { SegmentedControl } from "@/components/ui/segmented-control";
-import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
+import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
 import {
   assessmentsReducer,
   dayLabel,
+  doctorActions,
   initialAssessmentsState,
+  supervisorTodo,
   type AssessmentsAction,
   type AssessmentsState,
 } from "@/lib/teaching/assessments/model";
-import { WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
+import { SAMPLE_DOCTOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
+import { useAuthSession } from "@/lib/supabase/client";
+import { useExampleData } from "@/lib/example-data/store";
 
 /* The printable form is heavy and opened rarely, so it loads only when asked for. */
 const FormPdf = dynamic(() => import("@/components/teaching/assessments/assessments-pdf").then((m) => m.FormPdf), {
-  loading: () => <ModeModuleSkeleton rows={3} />,
+  loading: () => <AssessSkeleton label="Loading the form" />,
 });
 
-export type Role = "doctor" | "supervisor";
+export type Role = AssessRole;
+
+export type EpaSave = Extract<AssessmentsAction, { type: "record-epa" | "record-epa-direct" }>;
 
 export type ScreenProps = {
   s: AssessmentsState;
@@ -43,6 +66,8 @@ export type ScreenProps = {
   role: Role;
   openSheet: (sheet: SheetState) => void;
   go: (href: string) => void;
+  /** Records an EPA and offers Undo for a few seconds ("EPA 1 saved for Dr Sam Karri"). */
+  saveEpa: (action: EpaSave) => void;
 };
 
 const VIEWS: readonly AssessmentsView[] = [
@@ -60,28 +85,73 @@ const VIEWS: readonly AssessmentsView[] = [
   "help",
   "times",
   "side",
+  "progress",
+  "record",
+  "words",
+  "inbox",
+  "overview",
 ];
+
+/** Views that are the doctor's own: they never take the supervisor's side. */
+const DOCTOR_ONLY: ReadonlySet<AssessmentsView> = new Set(["hub", "reqs", "term", "request", "book", "report"]);
+/** The tabs show the role switch. */
+const TAB_VIEWS: ReadonlySet<AssessmentsView> = new Set(["home", "progress"]);
+/**
+ * Screens both sides have (the tabs, History, Help and words, Get help): with no `as`
+ * in the address they keep whoever's assessments were last shown, so a supervisor who
+ * opens one from the tabs or More stays the supervisor.
+ */
+const ROLE_KEPT: ReadonlySet<AssessmentsView> = new Set(["home", "progress", "all", "words", "help"]);
 
 const DATE_OPTIONS = [
   { value: "-1", label: "Mon 5 Oct (week 6)" },
   ...WINDOW_DAYS.map((_, i) => ({ value: String(i), label: dayLabel(i) })),
 ];
 
+/** Whose screen this is: the address says, or a tab keeps the last choice, or it is the doctor's. */
+export function resolveRole(view: AssessmentsView, as: string | null, remembered: Role): Role {
+  if (DOCTOR_ONLY.has(view)) return "doctor";
+  if (as === "supervisor" || as === "doctor") return as;
+  return ROLE_KEPT.has(view) ? remembered : "doctor";
+}
+
 function Screen(props: ScreenProps & { view: AssessmentsView }) {
   const { view, role } = props;
+  if (view === "help") return <ConcernsHelp {...props} />;
+  if (view === "words") return <SupervisorWords {...props} />;
+  // The two added sample views (features 16 and 4) read the same made-up records from either role.
+  // They have no real data source yet, so a real user only reaches them with Assessments example data on.
+  if (view === "inbox")
+    return (
+      <ExampleOnlyGate area="assess" what="The inbox">
+        <AssessmentsInbox {...props} />
+      </ExampleOnlyGate>
+    );
+  if (view === "overview")
+    return (
+      <ExampleOnlyGate area="assess" what="The term overview">
+        <AssessmentsTermOverview {...props} />
+      </ExampleOnlyGate>
+    );
   if (role === "supervisor") {
     if (view === "form") return <AssessmentForm {...props} who="sup" />;
     if (view === "sign") return <SignForm {...props} who="sup" />;
     if (view === "side") return <SideBySide {...props} />;
     if (view === "times") return <SupervisorTimes {...props} />;
     if (view === "pdf") return <FormPdf {...props} />;
+    if (view === "progress") return <SupervisorProgress {...props} />;
+    if (view === "record") return <DoctorRecord {...props} />;
+    if (view === "all") return <SupervisorHistory {...props} />;
     return <SupervisorHome {...props} />;
   }
   switch (view) {
     case "hub":
       return <EndOfTermSteps {...props} />;
     case "reqs":
+    case "record":
       return <YearRequirements {...props} />;
+    case "progress":
+      return <YearRequirements {...props} tab />;
     case "term":
       return <TermDetails {...props} />;
     case "all":
@@ -98,40 +168,40 @@ function Screen(props: ScreenProps & { view: AssessmentsView }) {
       return <SignForm {...props} who="self" />;
     case "pdf":
       return <FormPdf {...props} />;
-    case "help":
-      return <ConcernsHelp {...props} />;
     default:
       return <AssessmentsHome {...props} />;
   }
 }
 
-/** The made-up records' own controls: a plain statement that nothing is kept, and a made-up date to move. */
-function SampleBar({ s, dispatch, showDate }: Pick<ScreenProps, "s" | "dispatch"> & { showDate: boolean }) {
+/**
+ * The made-up story's own tool: move the made-up date to walk the end-of-term
+ * steps. A demo control, so it sits at the foot of the To do tab.
+ */
+function TryTheStory({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
   return (
-    <div
-      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
-      data-testid="teaching-assessments-sample"
-    >
-      <p role="status" className={cn("flex items-center gap-1.5 text-sm", textMuted)}>
-        <Info aria-hidden="true" className="size-icon-sm shrink-0" />
-        Made-up example records. Nothing is saved or sent.
+    <div className="grid gap-1.5 pt-2">
+      <label htmlFor="assess-made-up-date" className="work-label">
+        Try the story
+      </label>
+      <select
+        id="assess-made-up-date"
+        value={String(s.now)}
+        onChange={(event) => dispatch({ type: "set-now", now: Number(event.target.value) })}
+        className="assess-txt cursor-pointer"
+        aria-describedby="assess-made-up-date-note"
+      >
+        {DATE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {`Made-up date: ${o.label}`}
+          </option>
+        ))}
+      </select>
+      <p id="assess-made-up-date-note" className="assess-note">
+        <span>
+          Move the made-up date to open the booking window and the signing steps. It can&apos;t go back before something
+          already recorded.
+        </span>
       </p>
-      {showDate ? (
-        <label className={cn("flex items-center gap-2 text-sm", textMuted)}>
-          Made-up date
-          <select
-            value={String(s.now)}
-            onChange={(event) => dispatch({ type: "set-now", now: Number(event.target.value) })}
-            className={cn(fieldControlPlain, "w-auto pr-8")}
-          >
-            {DATE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
     </div>
   );
 }
@@ -139,17 +209,53 @@ function SampleBar({ s, dispatch, showDate }: Pick<ScreenProps, "s" | "dispatch"
 function AssessmentsApp() {
   const params = useSearchParams();
   const router = useRouter();
-  const [s, dispatch] = useReducer(assessmentsReducer, undefined, initialAssessmentsState);
+  const auth = useAuthSession();
+  const memoryKey = String(auth.authEpoch);
+  const [s, dispatch] = useReducer(
+    assessmentsReducer,
+    undefined,
+    () => rememberedStory(memoryKey) ?? initialAssessmentsState(),
+  );
+  useEffect(() => rememberStory(memoryKey, s), [memoryKey, s]);
   const [sheet, setSheet] = useState<SheetState>(null);
+  const [savedNote, setSavedNote] = useState<string | null>(null);
   const requested = params.get("view") as AssessmentsView | null;
   const view: AssessmentsView = requested && VIEWS.includes(requested) ? requested : "home";
-  const role: Role = params.get("as") === "supervisor" ? "supervisor" : "doctor";
+  const as = params.get("as");
+  // The remembered side lives outside React (module memory), read fresh on each screen.
+  const role = resolveRole(view, as, rememberedRole());
+  useEffect(() => {
+    // An address that names a side makes the tabs keep it.
+    if ((as === "supervisor" || as === "doctor") && !DOCTOR_ONLY.has(view)) {
+      rememberRole(as);
+    }
+  }, [as, view]);
   const go = useCallback((href: string) => router.push(href), [router]);
-  const props: ScreenProps = { s, dispatch, params, role, openSheet: setSheet, go };
-  const home = view === "home";
+  const toast = useWorkUndoToast();
+  const saveEpa = useCallback(
+    (action: EpaSave) => {
+      const index = action.type === "record-epa" ? action.index : s.epaRequests.length;
+      const epa = action.type === "record-epa" ? s.epaRequests[index]?.epa : action.epa;
+      dispatch(action);
+      setSavedNote(null);
+      const message = `EPA ${epa ?? ""} saved for ${SAMPLE_DOCTOR.name}`;
+      const undo = () => {
+        dispatch({ type: "undo-record-epa", index });
+        setSavedNote(`EPA ${epa ?? ""} taken back.`);
+      };
+      if (toast) toast(message, undo, 6000);
+      else setSavedNote(`${message}.`);
+    },
+    [s.epaRequests, toast],
+  );
+  const props: ScreenProps = { s, dispatch, params, role, openSheet: setSheet, go, saveEpa };
+  const onTab = TAB_VIEWS.has(view);
   const root = useRef<HTMLDivElement>(null);
   const place = params.toString();
   const first = useRef(true);
+  useModeBandCount("assess-todo", role === "supervisor" ? supervisorTodo(s) : doctorActions(s));
+  // More's "Record an EPA": the supervisor's two-tap EPA, from wherever the page is.
+  useWorkFrameAction("assess-record-epa", role === "supervisor" ? () => setSheet({ kind: "recordepa" }) : null);
   useEffect(() => {
     // On every move to another screen (not the first load): close any open sheet and put focus on the new screen's title.
     if (first.current) {
@@ -157,6 +263,7 @@ function AssessmentsApp() {
       return;
     }
     setSheet(null);
+    setSavedNote(null);
     const heading =
       root.current?.querySelector<HTMLElement>("[data-screen-heading]") ??
       root.current?.querySelector<HTMLElement>("h2");
@@ -167,26 +274,34 @@ function AssessmentsApp() {
     }
     heading?.focus({ preventScroll: true });
   }, [place]);
+  const switchRole = (next: Role) => {
+    if (next === role) return;
+    rememberRole(next);
+    const tab = view === "progress" ? "progress" : "home";
+    go(viewHref(tab, next === "supervisor" ? { as: "supervisor" } : { as: "doctor" }));
+  };
   return (
-    <div
-      ref={root}
-      className="grid gap-3 [&_:is(input,textarea,select,button)]:scroll-mb-20"
-      data-mode-identity="teaching"
-    >
-      <SampleBar s={s} dispatch={dispatch} showDate={home} />
-      {home ? (
-        <SegmentedControl
+    <div ref={root} className="contents [&_:is(input,textarea,select,button)]:scroll-mb-24">
+      {onTab ? (
+        <AssessSegmented
           label="Whose assessments"
-          layout="equal"
           value={role}
-          onChange={(next) => go(viewHref("home", next === "supervisor" ? { as: "supervisor" } : {}))}
+          onChange={switchRole}
           options={[
             { value: "doctor", label: "My training" },
             { value: "supervisor", label: "I supervise" },
           ]}
         />
       ) : null}
-      <Screen {...props} view={view} />
+      <AssessmentsExtrasProvider>
+        <Screen {...props} view={view} />
+      </AssessmentsExtrasProvider>
+      {view === "home" ? <TryTheStory s={s} dispatch={dispatch} /> : null}
+      {savedNote ? (
+        <p role="status" className="assess-note" data-center="">
+          <span>{savedNote}</span>
+        </p>
+      ) : null}
       <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />
     </div>
   );
@@ -195,36 +310,32 @@ function AssessmentsApp() {
 /** Signed in, there is nowhere to keep real records yet: say so, and offer the made-up ones. */
 function NotKeptYet({ onTry }: { onTry: () => void }) {
   return (
-    <section data-testid="teaching-assessments-not-yet" className={cn(modeModuleSurface, "grid gap-2 p-4")}>
-      <ClipboardCheck aria-hidden="true" className="size-icon-lg text-[color:var(--text-muted)]" />
-      <h2 className="text-base font-semibold text-[color:var(--text-heading)]">
-        Assessment records can&apos;t be kept in PsychSift yet
-      </h2>
-      <p className={cn("text-sm", textMuted)}>
-        Your term assessments and EPAs stay in Clinical Learning Australia (CLA) and with your Medical Education Unit
-        (MEU). You can walk through how this page will work on made-up records. Nothing is saved or sent.
-      </p>
-      <Button variant="secondary" block onClick={onTry}>
-        Try it with made-up records
-      </Button>
+    <section data-testid="teaching-assessments-not-yet" aria-label="Assessment records">
+      <WorkEmpty
+        icon={FileText}
+        title="Records can't be kept here yet"
+        body="Forms and EPAs stay in Clinical Learning Australia (CLA) and with your Medical Education Unit (MEU). Try this page on made-up records. Nothing is saved or sent."
+        action={<WorkButton onClick={onTry}>Try with made-up records</WorkButton>}
+      />
     </section>
   );
 }
 
 function AssessmentsPage({ demoMode }: { demoMode: boolean }) {
-  const [practice, setPractice] = useState(false);
-  const sample = demoMode || practice;
+  // "Try it with made-up records" turns on the one example data switch, so the shared banner shows and Turn off works.
+  const { active, turnOn } = useExampleData("assess");
+  const sample = demoMode || active;
   return (
-    <InformationPageShell width="narrow" gap={false} testId="teaching-assessments">
+    <WorkBody testId="teaching-assessments">
       <h1 className="sr-only">Assessments</h1>
       {sample ? (
-        <Suspense fallback={<ModeModuleSkeleton rows={4} />}>
+        <Suspense fallback={<AssessSkeleton />}>
           <AssessmentsApp />
         </Suspense>
       ) : (
-        <NotKeptYet onTry={() => setPractice(true)} />
+        <NotKeptYet onTry={turnOn} />
       )}
-    </InformationPageShell>
+    </WorkBody>
   );
 }
 

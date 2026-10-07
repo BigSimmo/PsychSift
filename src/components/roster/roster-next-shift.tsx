@@ -13,6 +13,8 @@ import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-v
 import { kindOf } from "./roster-format";
 import { rosterOutlineButton } from "./roster-list";
 import { RosterWhoCanCover, rosterRequestHref } from "./roster-who-can-cover";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * The card that leads Shifts: the shift on now, or the next one. A thin
@@ -84,6 +86,7 @@ export function RosterNextShift({
   readonly now: Date;
   readonly actorId: string | null;
 }) {
+  const { zone } = useWorkTimeZone();
   const kind = kindOf(shift);
   const date = perthDateOf(shift.startsAt);
   const place = shift.workplace ?? shift.location;
@@ -93,7 +96,7 @@ export function RosterNextShift({
   const nowWords = onCall ? "On call now" : "On shift now";
   const eyebrow = onNow
     ? `${nowWords} · ${formatPerthDay(date)}${onCall ? "" : ` ${SHIFT_KIND_LABEL[kind].toLowerCase()}`}`
-    : `Next shift · ${relativeDay(date, perthDateOf(now))}`;
+    : `Next shift · ${relativeDay(date, zonedDateOf(now, zone))}`;
   const big = onNow ? shiftSpan(shift) : `${formatPerthDay(date)} · ${shiftSpan(shift)}`;
   const sub = onNow
     ? [place, `${formatSpanUntil(Date.parse(shift.endsAt) - now.getTime())} left`, `ends ${endWords}`]

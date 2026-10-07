@@ -1,13 +1,14 @@
 "use client";
 
-import { ClipboardList, Clock, QrCode } from "lucide-react";
-import { useId, useState } from "react";
+import { CalendarX, Check, ClipboardList, MapPin, QrCode, UserRound, Video } from "lucide-react";
+import { useState } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { ModeStateLabel } from "@/components/mode-kit/state-label";
+import { WorkButton } from "@/components/mode-kit/work";
+import { CheckinRecorded, wasAlreadyCheckedIn } from "@/components/teaching/checkin/checkin-recorded";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { sessionPhase } from "@/components/teaching/session-phase";
 import {
@@ -16,14 +17,14 @@ import {
   checkinOpens,
   isOccurrenceId,
   sessionWhen,
-  typedCodeDigits,
 } from "@/components/teaching/session-view-model";
 import { ActionStrip, type TeachingAction } from "@/components/teaching/teaching-actions";
-import { AttendanceTileRow, TeachingModule, TeachingSwitch } from "@/components/teaching/teaching-modules";
+import { T5Icon, T5Kicker, T5List, T5Note, T5Panel, T5Row, T5Section, T5Button } from "@/components/teaching/t5-kit";
+import { TeachingCodeSheet } from "@/components/teaching/teaching-code-sheet";
+import { AttendanceTileRow } from "@/components/teaching/teaching-modules";
 import { TeachingNavHeader } from "@/components/teaching/teaching-nav-header";
 import type { SessionDetailRead } from "@/components/teaching/teaching-reads";
 import { SessionMaterials } from "@/components/teaching/teaching-resource-list";
-import { TeachingRow } from "@/components/teaching/teaching-row";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { joinLabel, joinPlatform } from "@/components/teaching/teaching-view-model";
@@ -32,15 +33,13 @@ import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useDelayedPost } from "@/components/teaching/use-delayed-post";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
-import { Button } from "@/components/ui/button";
+import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
-import { TextField } from "@/components/ui/text-field";
-import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
+import { teachingErrorMessage, teachingPostTimed, teachingServiceUrl } from "@/lib/teaching/client";
 import {
   attendanceLabels,
   memberLabel,
   type AttendanceMethod,
-  type CheckinStream,
   type RegisterResult,
   type RegisterRow,
 } from "@/lib/teaching/model";
@@ -60,6 +59,8 @@ import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 const GONE = "This session is no longer in the programme.";
 
 type Mark = { method: AttendanceMethod; recordedAt: string };
+/** A check-in made on this visit, with whether the server already had it (decided once, from its answer). */
+type Recorded = Mark & { already: boolean };
 type Props = { occurrenceId: string; demoMode: boolean; initialSheet?: "scan"; embedded?: boolean };
 
 export function TeachingSessionScreen({
@@ -76,7 +77,24 @@ export function TeachingSessionScreen({
 
   let body;
   let ready = false;
-  if (!valid || resource.code === "teaching_not_found") body = <ModeNotice>{GONE}</ModeNotice>;
+  if (!valid || resource.code === "teaching_not_found")
+    body = (
+      <section
+        data-testid="teaching-session-gone"
+        className="work-card grid justify-items-center gap-1.5 px-4.5 pt-6.5 pb-4 text-center"
+      >
+        <span aria-hidden="true" className="work-ic work-ic--lg" data-tone="neutral">
+          <CalendarX aria-hidden="true" strokeWidth={2} />
+        </span>
+        <h2 className="mt-1 text-base-minus font-bold text-[color:var(--text-heading)]">No longer in the programme</h2>
+        <p className="max-w-72 text-xs leading-snug text-[color:var(--text-muted)]">{GONE}</p>
+        <div className="mt-2 w-full max-w-68">
+          <WorkButton variant="secondary" size="wide" href="/teaching/week">
+            Back to this week
+          </WorkButton>
+        </div>
+      </section>
+    );
   else if (resource.status === "signed-out") body = <TeachingSignInNotice />;
   else if (resource.status === "offline" || resource.status === "error" || resource.status === "setup")
     body = <TeachingStateNotice state={resource.status} onRetry={resource.retry} />;
@@ -109,7 +127,7 @@ export function TeachingSessionScreen({
       <TeachingNavHeader
         title="Session"
         testIdPrefix="teaching-session"
-        back={{ href: "/teaching/week", label: "This week" }}
+        back={{ href: "/teaching/week", label: "Week" }}
       />
       <InformationPageShell width="narrow" gap={false} testId="teaching-session">
         {content}
@@ -141,6 +159,13 @@ function SessionBody({
   const cancelled = detail.status === "cancelled";
   const staff = detail.canShowCode && !cancelled && !visitor;
   const [mark, setMark] = useState<Mark | null>(detail.myAttendance ?? null);
+  // A check-in made on this visit gets the "Attendance recorded" card (feature 9); an earlier one keeps its label.
+  const [recorded, setRecorded] = useState<Recorded | null>(null);
+  const recordedNow = (saved: Recorded) => {
+    setMark({ method: saved.method, recordedAt: saved.recordedAt });
+    setRecorded(saved);
+    announce("Attendance recorded");
+  };
   // `?check-in=scan` (Today's hero) opens the scan sheet on arrival; it only shows while a code can be scanned.
   const [sheet, setSheet] = useState<"scan" | "cpd" | "register" | null>(initialSheet ?? null);
   const [busy, setBusy] = useState(false);
@@ -171,16 +196,20 @@ function SessionBody({
     setError(null);
     try {
       // A visitor is not a member of this service, so What's on records it (master plan R15).
-      const saved = visitor
-        ? await teachingPost<Mark>("/api/teaching/whats-on", {
+      const { data: saved, serverTime } = visitor
+        ? await teachingPostTimed<Mark>("/api/teaching/whats-on", {
             action: "whats_on.attend",
             occurrenceId: detail.occurrenceId,
           })
-        : await teachingPost<Mark>(teachingServiceUrl(detail.serviceId), {
+        : await teachingPostTimed<Mark>(teachingServiceUrl(detail.serviceId), {
             action: "attendance.self",
             occurrenceId: detail.occurrenceId,
           });
-      setMark({ method: saved.method, recordedAt: saved.recordedAt });
+      recordedNow({
+        method: saved.method,
+        recordedAt: saved.recordedAt,
+        already: wasAlreadyCheckedIn(saved.recordedAt, serverTime),
+      });
     } catch (cause) {
       setError(teachingErrorMessage(cause));
     } finally {
@@ -214,8 +243,14 @@ function SessionBody({
       external: true,
       emphasis: actions.some((action) => action.emphasis === "primary") ? "secondary" : "primary",
     });
-  if (mark && ended && live && !logged)
-    actions.push({ id: "cpd", label: "Log to CPD", onClick: () => setSheet("cpd"), emphasis: "text" });
+  // With the recorded card on screen, its own Log to CPD button is the one to use.
+  if (mark && ended && live && !logged && !recorded)
+    actions.push({
+      id: "cpd",
+      label: "Log to CPD",
+      onClick: () => setSheet("cpd"),
+      emphasis: actions.some((action) => action.emphasis === "primary") ? "secondary" : "primary",
+    });
 
   // The presenter's and organisers' controls sit in the phase module, in thumb reach at session time.
   const staffActions: TeachingAction[] = [];
@@ -237,9 +272,6 @@ function SessionBody({
       emphasis: "secondary",
       testId: "teaching-session-register",
     });
-  const hasBody =
-    mark !== null || logged || actions.length > 0 || staffActions.length > 0 || error !== null || registerFailed;
-
   const moduleTitle =
     phase === "checkin" && started && !ended
       ? "On now"
@@ -257,59 +289,89 @@ function SessionBody({
   const platform = detail.joinUrl ? (joinPlatform(detail.joinUrl) ?? "Online") : "Online";
   const onlineLine = visitor ? platform : `${platform} · Members only`;
 
+  const kicker = [moduleTitle, aside].filter(Boolean).join(" · ");
+  const heading = (
+    <Title className="text-lg-minus leading-tight font-bold tracking-tight text-[color:var(--text-heading)]">
+      {detail.title}
+    </Title>
+  );
+  const when = <p className="nums text-xs font-normal text-[color:var(--text-muted)]">{sessionWhen(detail)}</p>;
+
   return (
     <>
-      <div className="grid gap-1">
-        <Title className="text-xl font-semibold text-[color:var(--text-heading)]">{detail.title}</Title>
-        <p className="nums text-sm font-normal text-[color:var(--text-muted)]">{sessionWhen(detail)}</p>
-      </div>
-      {change ? <ModeNotice tone="warning">{change}</ModeNotice> : null}
-      {!cancelled ? (
-        <TeachingModule
-          testId="teaching-session-phase"
-          title={moduleTitle}
-          icon={Clock}
-          live={moduleTitle === "On now"}
-          freshKey={moduleTitle}
-          aside={aside}
-        >
-          {hasBody ? (
-            <div className="grid gap-2 p-3">
-              {mark || logged ? (
-                <p className="flex flex-wrap gap-x-3 gap-y-1">
-                  {mark ? <ModeStateLabel tone="muted">{attendanceLabels[mark.method]}</ModeStateLabel> : null}
-                  {logged ? <ModeStateLabel tone="muted">Logged to CPD</ModeStateLabel> : null}
-                </p>
+      {cancelled ? (
+        <T5Panel label="Session">
+          {heading}
+          {when}
+        </T5Panel>
+      ) : (
+        <T5Panel hero label={moduleTitle} testId="teaching-session-phase">
+          <T5Kicker live={moduleTitle === "On now"}>{kicker}</T5Kicker>
+          {heading}
+          {when}
+          {mark || logged ? (
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold">
+              {mark ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
+                  {attendanceLabels[mark.method]}
+                </span>
               ) : null}
-              <ActionStrip actions={actions} layout="stack" />
-              {staffActions.length > 0 ? (
-                <div data-testid="teaching-session-staff-actions">
-                  <ActionStrip actions={staffActions} />
-                </div>
-              ) : null}
-              {error ? (
-                <div role="alert">
-                  <ModeNotice tone="warning">{error}</ModeNotice>
-                </div>
-              ) : null}
-              {registerFailed ? <ModeNotice tone="warning">The register couldn&apos;t load.</ModeNotice> : null}
+              {logged ? <span>Logged to CPD</span> : null}
+            </p>
+          ) : null}
+          {actions.length > 0 ? <ActionStrip surface="hero" actions={actions} layout="stack" className="mt-1" /> : null}
+          {staffActions.length > 0 ? (
+            <div data-testid="teaching-session-staff-actions">
+              <ActionStrip surface="hero" actions={staffActions} />
             </div>
-          ) : (
-            <div className="pb-3" />
-          )}
-        </TeachingModule>
+          ) : null}
+          {error ? (
+            <p role="alert" className="text-xs font-bold">
+              {error}
+            </p>
+          ) : null}
+          {registerFailed ? <p className="text-xs font-bold">The register couldn&apos;t load.</p> : null}
+        </T5Panel>
+      )}
+      {recorded ? (
+        <CheckinRecorded
+          title={null}
+          startsAt={detail.startsAt}
+          endsAt={detail.endsAt}
+          venue={detail.venue}
+          method={recorded.method}
+          recordedAt={recorded.recordedAt}
+          alreadyCheckedIn={recorded.already}
+          now={now}
+          logged={logged}
+          live={live}
+          showMethod={false}
+          onLogToCpd={ended && live ? () => setSheet("cpd") : undefined}
+        />
       ) : null}
-      <ModeGroupedList mode="teaching" eyebrow="Details" testId="teaching-session-details">
-        {detail.venue ? <ModeRow title="Where" subtitle={detail.venue} /> : null}
-        {detail.hasJoinLink ? (
-          detail.joinUrl && !cancelled ? (
-            <TeachingRow title="Online" subtitle={onlineLine} externalHref={detail.joinUrl} />
-          ) : (
-            <ModeRow title="Online" subtitle={onlineLine} />
-          )
-        ) : null}
-        {detail.presenterName ? <ModeRow title="Presenter" subtitle={detail.presenterName} /> : null}
-      </ModeGroupedList>
+      {change ? (
+        <T5Note tone="warning" icon="alert">
+          {change}
+        </T5Note>
+      ) : null}
+      <T5Section label="Details" testId="teaching-session-details">
+        <T5List>
+          {detail.venue ? <T5Row lead={<T5Icon icon={MapPin} />} title="Where" meta={detail.venue} /> : null}
+          {detail.hasJoinLink ? (
+            <T5Row
+              lead={<T5Icon icon={Video} />}
+              title="Online"
+              meta={onlineLine}
+              href={detail.joinUrl && !cancelled ? detail.joinUrl : undefined}
+              external
+            />
+          ) : null}
+          {detail.presenterName ? (
+            <T5Row lead={<T5Icon icon={UserRound} />} title="Presenter" meta={detail.presenterName} />
+          ) : null}
+        </T5List>
+      </T5Section>
       <SessionMaterials detail={detail} />
       {staff && detail.counts ? (
         <AttendanceTileRow
@@ -318,12 +380,13 @@ function SessionBody({
         />
       ) : null}
       {canScan ? (
-        <ScanSheet
+        <TeachingCodeSheet
           open={sheet === "scan"}
           onClose={() => setSheet(null)}
-          detail={detail}
+          session={{ serviceId: detail.serviceId, occurrenceId: detail.occurrenceId, hasJoinLink: detail.hasJoinLink }}
+          subtitle={`${detail.title} · ${sessionWhen(detail)}`}
           live={live}
-          onDone={setMark}
+          onDone={recordedNow}
         />
       ) : null}
       {mark && ended ? (
@@ -333,6 +396,9 @@ function SessionBody({
           occurrenceId={detail.occurrenceId}
           startsAt={detail.startsAt}
           endsAt={detail.endsAt}
+          subtitle={`${detail.title} · ${sessionWhen(detail)}`}
+          checkIn={mark}
+          demo={!live}
           onLogged={() => setLogged(true)}
         />
       ) : null}
@@ -346,102 +412,6 @@ function SessionBody({
         />
       ) : null}
     </>
-  );
-}
-
-function ScanSheet({
-  open,
-  onClose,
-  detail,
-  live,
-  onDone,
-}: {
-  open: boolean;
-  onClose: () => void;
-  detail: SessionDetailRead;
-  live: boolean;
-  onDone: (mark: Mark) => void;
-}) {
-  const [stream, setStream] = useState<CheckinStream>("room");
-  const [typed, setTyped] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit() {
-    const code = typedCodeDigits(typed);
-    if (!code) {
-      setError("Enter the 6-digit code.");
-      return;
-    }
-    if (!live) {
-      setError("The demo doesn't save check-ins.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const saved = await teachingPost<Mark>(teachingServiceUrl(detail.serviceId), {
-        action: "checkin.typed",
-        occurrenceId: detail.occurrenceId,
-        stream,
-        code,
-      });
-      onDone({ method: saved.method, recordedAt: saved.recordedAt });
-      onClose();
-    } catch (cause) {
-      setError(teachingErrorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const formId = useId();
-  return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title="Check in with code"
-      footer={
-        <Button type="submit" form={formId} variant="primary" block busy={busy} busyLabel="Checking in">
-          Check in
-        </Button>
-      }
-    >
-      <form
-        id={formId}
-        className="grid gap-3"
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!busy) void submit();
-        }}
-      >
-        <p className="text-sm text-[color:var(--text-heading)]">
-          Open your phone&apos;s camera and point it at the code on screen.
-        </p>
-        {detail.hasJoinLink ? (
-          <TeachingSwitch
-            value={stream}
-            onChange={setStream}
-            label="Where you are"
-            options={[
-              { value: "room", label: "Room" },
-              { value: "teams", label: "Teams" },
-            ]}
-          />
-        ) : null}
-        <TextField
-          label="Or type the six digits"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          value={typed}
-          onChange={(event) => setTyped(event.target.value.replace(/\D/g, "").slice(0, 6))}
-          placeholder="000000"
-          error={error ?? undefined}
-        />
-      </form>
-    </Sheet>
   );
 }
 
@@ -510,7 +480,7 @@ function RegisterSheet({
                   subtitle={attendanceLabels[row.method]}
                   trailing={
                     userId ? (
-                      <Button
+                      <T5Button
                         variant="ghost"
                         aria-label={`Remove ${name}`}
                         busy={removing === userId}
@@ -519,7 +489,7 @@ function RegisterSheet({
                         onClick={() => remove(userId, name)}
                       >
                         Remove
-                      </Button>
+                      </T5Button>
                     ) : undefined
                   }
                 />
@@ -534,9 +504,9 @@ function RegisterSheet({
             className="flex items-center justify-between gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1 pr-1 pl-3"
           >
             <span className="text-sm text-[color:var(--text-heading)]">{`${delayed.pending}.`}</span>
-            <Button variant="ghost" onClick={undo}>
+            <T5Button variant="ghost" onClick={undo}>
               Undo
-            </Button>
+            </T5Button>
           </div>
         ) : null}
         {error ? (

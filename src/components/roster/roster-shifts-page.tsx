@@ -16,9 +16,8 @@ import {
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { CalendarView } from "@/components/calendar/calendar-view";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
@@ -49,11 +48,9 @@ import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/r
 
 import { RosterAskButton } from "./ask/roster-ask-box";
 import { RosterSignInNotice } from "./invite/roster-sign-in-notice";
-import { RosterAddSheet, type RosterAddView } from "./roster-add-sheet";
+import type { RosterAddView } from "./roster-add-sheet";
 import { kindOf, useRosterNow } from "./roster-format";
 import { RosterFortnight } from "./roster-fortnight";
-import { RosterHoursPanel } from "./roster-hours-panel";
-import { RosterImportFlow } from "./roster-import-flow";
 import {
   RosterDateLead,
   RosterFootnote,
@@ -68,14 +65,18 @@ import {
 import { RosterNextShift } from "./roster-next-shift";
 import { RosterRestChip } from "./roster-rest-chip";
 import { RosterShareButton } from "./roster-share-button";
+import { RosterSickEntryLink } from "./sick/roster-sick-entry";
 import { RosterWhoCanCover } from "./roster-who-can-cover";
-import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
 import { useRosterExtraTime } from "./use-roster-extra-time";
 import { useRosterLinks } from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
 import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-team";
 import { RosterPageHeader } from "./roster-ui";
+import { useModeBandCurrentTab, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Roster Shifts, as the Roster mock-up draws it: the shift on now or next, the
@@ -102,8 +103,10 @@ const TEAM_RULE_LOOKBACK_DAYS = 21;
 const ROSTER_AHEAD_DAYS = 14;
 
 const SHIFTS_HREF = "/roster/shifts";
-const HOURS_HREF = "/roster/shifts?view=hours";
-const MONTH_HREF = "/roster/shifts?view=month";
+// Hours and rest and the Month tab live at /roster in the work-mode frame
+// (work-mode redesign, owner request 6 Oct 2026), so the frame ticks them.
+const HOURS_HREF = "/roster?view=hours";
+const MONTH_HREF = "/roster";
 
 /** If the checks fail to load, say they were not run rather than leaving a gap. */
 function HoursRowUnavailable() {
@@ -129,6 +132,35 @@ const RosterAfterNightNote = dynamic(
   () => import("./roster-shifts-checks").then((module) => module.RosterAfterNightNote).catch(() => () => null),
   { ssr: false },
 );
+
+/*
+ * The month calendar, Hours & rest, the import flow and the add sheet each show only on demand, so
+ * they load apart from the week list. The two views keep server rendering, so a direct link to
+ * `?view=month` or `?view=hours` draws the same first HTML; the flow and the sheet load in the browser.
+ * All four are fetched quietly once the page is idle, so opening one never waits.
+ */
+const loadCalendarView = () => import("@/components/calendar/calendar-view");
+const loadHoursPanel = () => import("./roster-hours-panel");
+const loadImportFlow = () => import("./roster-import-flow");
+const loadAddSheet = () => import("./roster-add-sheet");
+const CalendarView = dynamic(() => loadCalendarView().then((m) => m.CalendarView));
+const RosterHoursPanel = dynamic(() => loadHoursPanel().then((m) => m.RosterHoursPanel));
+const RosterImportFlow = dynamic(() => loadImportFlow().then((m) => m.RosterImportFlow), { ssr: false });
+const RosterAddSheet = dynamic(() => loadAddSheet().then((m) => m.RosterAddSheet), { ssr: false });
+
+function preloadOnDemandParts(): () => void {
+  const load = () => {
+    for (const loader of [loadAddSheet, loadImportFlow, loadCalendarView, loadHoursPanel]) {
+      void loader().catch(() => undefined);
+    }
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(load);
+    return () => window.cancelIdleCallback(id);
+  }
+  const timer = window.setTimeout(load, 1500);
+  return () => window.clearTimeout(timer);
+}
 
 function mondayOf(date: string): string {
   const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
@@ -293,12 +325,13 @@ function ShiftsLoading() {
 }
 
 export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const router = useRouter();
   const view = viewOf(useSearchParams()?.get("view") ?? null);
   const now = useRosterNow(pinnedNow);
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   // On a Sunday the week that matters is the one starting tomorrow.
-  const [monday, setMonday] = useState(() => mondayOf(addDaysToDate(perthDateOf(now), 1)));
+  const [monday, setMonday] = useState(() => mondayOf(addDaysToDate(zonedDateOf(now, zone), 1)));
   const [month, setMonth] = useState(() => monthKeyOf(today));
   const monthRange = monthGridRange(month);
   const shownRange =
@@ -324,7 +357,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   const links = useRosterLinks();
   const settings = useRosterSettings();
   const [addView, setAddView] = useState<RosterAddView | null>(null);
+  // Once opened, the add sheet stays mounted, so its open and close behave exactly as before.
+  const [addMounted, setAddMounted] = useState(false);
+  if (addView !== null && !addMounted) setAddMounted(true);
   const [importing, setImporting] = useState(false);
+  useEffect(preloadOnDemandParts, []);
   const [notice, setNotice] = useState<{ tone: "neutral" | "warning"; text: string } | null>(null);
   const [teamShift, setTeamShift] = useState<OnCallShift | null>(null);
   const [confirmSeries, setConfirmSeries] = useState<{ readonly id: string; readonly label: string } | null>(null);
@@ -352,6 +389,12 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shifts.shifts, extra.records, fortnight.start, fortnight.end],
   );
+  // On call from home is not rostered hours (isWorkedKind), so a fortnight of on-call
+  // shifts reads 0 h. The fortnight then says so instead of looking empty.
+  const onCallExcluded = shifts.shifts.some((shift) => {
+    const date = perthDateOf(shift.startsAt);
+    return kindOf(shift) === "on_call" && date >= summary.start && date <= summary.end;
+  });
   const overview = useMemo(() => shifts.shifts.map(toOverview), [shifts.shifts]);
   const byId = useMemo(() => new Map(shifts.shifts.map((shift) => [shift.id, shift])), [shifts.shifts]);
   // Every day a leave entry covers; one ending at midnight does not reach the next day.
@@ -359,11 +402,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     const dates = new Set<string>();
     for (const shift of overview) {
       if (shift.kind !== "leave") continue;
-      const last = perthDateOf(new Date(Date.parse(shift.endsAt) - 1).toISOString());
-      for (let date = perthDateOf(shift.startsAt); date <= last; date = addDaysToDate(date, 1)) dates.add(date);
+      const last = zonedDateOf(Date.parse(shift.endsAt) - 1, zone);
+      for (let date = zonedDateOf(shift.startsAt, zone); date <= last; date = addDaysToDate(date, 1)) dates.add(date);
     }
     return dates;
-  }, [overview]);
+  }, [overview, zone]);
   const cues = useCues(shifts.shifts, rulesByTeam);
   const events = useMemo(() => toCalendarEvents(shifts.shifts), [shifts.shifts]);
   const holidayEvents = useMemo<CalendarEvent[]>(
@@ -408,6 +451,20 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
       : view === "month"
         ? "Your shifts and WA public holidays."
         : "Your shifts, week by week.";
+  // The page names its own place in the frame (work-mode redesign, owner request 6 Oct 2026):
+  // Hours and rest, or My shifts for the week and plain month lists. The address alone would
+  // tick the Month tab whenever this page draws at /roster (?view=month, and before the query
+  // is read), though the month grid is not what is showing.
+  useModeBandCurrentTab(view === "hours" ? "hours" : "shifts");
+  // The band's words (work-mode redesign, owner request 6 Oct 2026): the 14 days the check
+  // covers, or the week on screen. The page title under the band stays for screen readers.
+  useModeBandHeading(
+    view === "hours"
+      ? { eyebrow: `Next 14 days · ${formatSpanWords(today, addDaysToDate(today, 13))}`, title: "Hours and rest" }
+      : view === "month"
+        ? { title: "Month" }
+        : { eyebrow: `Week of ${formatSpanWords(monday, addDaysToDate(monday, 6))}` },
+  );
 
   function body() {
     if (shifts.status === "loading") return <ShiftsLoading />;
@@ -448,7 +505,6 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     const notices = (
       <>
         {shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
-        <RosterSampleShiftsNotice sample={shifts.sample} />
         {notice ? <ModeNotice tone={notice.tone}>{notice.text}</ModeNotice> : null}
         {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
       </>
@@ -469,6 +525,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               extra={extra}
               partial={partial}
               payAnchored={Boolean(payAnchor)}
+              onCallExcluded={onCallExcluded}
               onRetry={() => void shifts.reload()}
             />
           )}
@@ -488,6 +545,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               today={today}
               exportName="Roster"
               testId="roster-shifts-month"
+              exampleArea="rost"
               onMonthChange={setMonth}
             />
           </div>
@@ -639,6 +697,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                 ))}
               </nav>
             ) : null}
+            {enabledTeams.length ? (
+              <NewWorkModeOnly>
+                <RosterSickEntryLink />
+              </NewWorkModeOnly>
+            ) : null}
 
             <section aria-labelledby="roster-week-heading" className="grid gap-3" data-testid="roster-shifts-week">
               <div className="mt-1 flex items-center gap-1">
@@ -705,6 +768,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               extraStatus={extra.status}
               partial={partial}
               payAnchored={Boolean(payAnchor)}
+              onCallExcluded={onCallExcluded}
             />
 
             <RosterSectionHead title="Roster tools" />
@@ -826,40 +890,42 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
         ) : null}
       </Sheet>
 
-      <RosterAddSheet
-        open={addView !== null}
-        view={addView ?? "menu"}
-        onViewChange={setAddView}
-        onClose={() => setAddView(null)}
-        today={today}
-        workplaces={workplaces}
-        hasTeam={enabledTeams.length > 0}
-        onDates={() => {
-          setAddView(null);
-          router.push(datesHref);
-        }}
-        onImportFile={() => {
-          setAddView(null);
-          setImporting(true);
-        }}
-        onAddShift={async (request) => {
-          const failure = await shifts.addManual(request);
-          if (!failure) {
+      {addMounted ? (
+        <RosterAddSheet
+          open={addView !== null}
+          view={addView ?? "menu"}
+          onViewChange={setAddView}
+          onClose={() => setAddView(null)}
+          today={today}
+          workplaces={workplaces}
+          hasTeam={enabledTeams.length > 0}
+          onDates={() => {
             setAddView(null);
-            setNotice({ tone: "neutral", text: "Saved" });
-          }
-          return failure;
-        }}
-        onAddLink={async (url, workplace) => {
-          const failure = await links.add(url, workplace);
-          if (!failure) {
-            void shifts.reload();
+            router.push(datesHref);
+          }}
+          onImportFile={() => {
             setAddView(null);
-            setNotice({ tone: "neutral", text: "Saved" });
-          }
-          return failure;
-        }}
-      />
+            setImporting(true);
+          }}
+          onAddShift={async (request) => {
+            const failure = await shifts.addManual(request);
+            if (!failure) {
+              setAddView(null);
+              setNotice({ tone: "neutral", text: "Saved" });
+            }
+            return failure;
+          }}
+          onAddLink={async (url, workplace) => {
+            const failure = await links.add(url, workplace);
+            if (!failure) {
+              void shifts.reload();
+              setAddView(null);
+              setNotice({ tone: "neutral", text: "Saved" });
+            }
+            return failure;
+          }}
+        />
+      ) : null}
     </InformationPageShell>
   );
 }

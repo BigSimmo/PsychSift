@@ -15,11 +15,10 @@ import {
   resourceWriteError,
   type AddKind,
 } from "@/components/teaching/resources-model";
-import { T5Icon, T5List, T5Row } from "@/components/teaching/t5-kit";
+import { T5Icon, T5List, T5Row, T5Button } from "@/components/teaching/t5-kit";
 import type { SessionDetailRead } from "@/components/teaching/teaching-reads";
 import { TeachingRow } from "@/components/teaching/teaching-row";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
@@ -135,7 +134,7 @@ export function ResourceRows({
                 className={cn(
                   rowControl,
                   "-mr-3",
-                  isSaved ? "text-[color:var(--mode-identity)]" : "text-[color:var(--decoration-soft)]",
+                  isSaved ? "text-[color:var(--mode-identity)]" : "text-[color:var(--text-muted)]",
                 )}
               >
                 {isSaved ? (
@@ -193,7 +192,7 @@ export function ResourceRows({
               aria-pressed={isSaved}
               aria-label={`${isSaved ? "Unsave" : "Save"} ${item.title}`}
               onClick={() => void toggle(item)}
-              className={cn(rowControl, isSaved ? "text-[color:var(--primary)]" : textMuted)}
+              className={cn(rowControl, isSaved ? "text-[color:var(--mode-identity)]" : textMuted)}
             >
               {isSaved ? (
                 <BookmarkCheck aria-hidden="true" className="size-icon-md" />
@@ -296,9 +295,9 @@ export function AddResourceSheet({
       onClose={onClose}
       title="Add a resource"
       footer={
-        <Button variant="primary" block disabled={!ready} busy={busy} busyLabel="Adding" onClick={() => void add()}>
+        <T5Button variant="primary" block disabled={!ready} busy={busy} busyLabel="Adding" onClick={() => void add()}>
           Add
-        </Button>
+        </T5Button>
       }
     >
       <div className="grid gap-3">

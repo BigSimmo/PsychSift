@@ -23,6 +23,15 @@ describe("CPD annual summary months", () => {
     expect(within(september!).getByText(/\d+ activit(y|ies) · [\d.]+ h/)).toBeInTheDocument();
   });
 
+  it("links to Send to AMA CPD Home for the year and to Job applications", () => {
+    renderSummary();
+    const more = screen.getByTestId("cme-summary-more");
+    expect(within(more).getByTestId("cpd-home-entry-link").getAttribute("href")).toBe(
+      `/cme/cpd-home?year=${DEMO_CME_YEAR.year}`,
+    );
+    expect(within(more).getByTestId("applications-entry-link").getAttribute("href")).toBe("/cme/applications");
+  });
+
   it("keeps every activity in the page so nothing is lost when folded", () => {
     renderSummary();
     const list = screen.getByTestId("cme-summary-months");

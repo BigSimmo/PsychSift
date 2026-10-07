@@ -29,6 +29,8 @@ import { formatOnCallDate, formatOnCallTime } from "@/lib/on-call/display-dates"
 import { fatigueWarnings } from "@/lib/roster/fatigue-rules";
 import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF } from "@/lib/roster/fatigue-rules-source";
 import { inferShiftKind, isWorkedKind } from "@/lib/roster/shift-kind";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { formatZonedDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 
 /*
  * SHIFT PULSE (mock-up v10 s-14): how the night is going for the doctor, not
@@ -78,17 +80,9 @@ function hourWords(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
-function perthWhen(iso: string, withDay: boolean): string {
-  const parts = new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Perth",
-    weekday: withDay ? "short" : undefined,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(iso));
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
-  const time = `${part("hour")}:${part("minute")}`;
-  return withDay ? `${part("weekday")} ${time}` : time;
+function perthWhen(iso: string, withDay: boolean, zone: string): string {
+  const time = zonedTimeOf(iso, zone);
+  return withDay ? `${formatZonedDay(zonedDateOf(iso, zone)).slice(0, 3)} ${time}` : time;
 }
 
 type ShiftNow = {
@@ -115,6 +109,7 @@ function shiftNow(shifts: readonly MyShift[], now: Date): ShiftNow {
 // ---------------------------------------------------------------- breaks
 
 function BreaksCard({ breaks, shift }: { readonly breaks: readonly OnCallBreak[]; readonly shift: MyShift | null }) {
+  const { zone } = useWorkTimeZone();
   const running = breaks.find((entry) => entry.endedAt === null) ?? null;
   const taken = breaks.length;
   const lastEnded = [...breaks].reverse().find((entry) => entry.endedAt !== null) ?? null;
@@ -144,7 +139,7 @@ function BreaksCard({ breaks, shift }: { readonly breaks: readonly OnCallBreak[]
         </span>
         <div className="grid min-w-0 gap-0.5">
           <p id="on-call-pulse-breaks-heading" className={cn(eyebrowText, "nums")}>
-            {shift ? `${perthWhen(shift.startsAt, true)} – ${perthWhen(shift.endsAt, true)}` : "This shift"}
+            {shift ? `${perthWhen(shift.startsAt, true, zone)} – ${perthWhen(shift.endsAt, true, zone)}` : "This shift"}
           </p>
           <p
             className="text-lg-minus font-semibold leading-6 text-[color:var(--text-heading)]"
@@ -343,6 +338,7 @@ function restBeforeNext(shift: ShiftNow): RestView | null {
 }
 
 function RestCard({ rest }: { readonly rest: RestView }) {
+  const { zone } = useWorkTimeZone();
   const rule = FATIGUE_RULE_SET.rules.minBreakHours;
   const short = rest.hours < rule.hours;
   const shown = Math.round(rest.hours * 10) / 10;
@@ -363,7 +359,9 @@ function RestCard({ rest }: { readonly rest: RestView }) {
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="grid min-w-0 gap-0.5">
             <p className="nums text-2xl font-semibold text-[color:var(--text-heading)]">{shown} h</p>
-            <p className={modeSecondaryText}>{`Next shift ${perthWhen(rest.next.startsAt, true)}, from your Roster`}</p>
+            <p
+              className={modeSecondaryText}
+            >{`Next shift ${perthWhen(rest.next.startsAt, true, zone)}, from your Roster`}</p>
           </div>
           <p
             className={cn(
@@ -389,8 +387,8 @@ function RestCard({ rest }: { readonly rest: RestView }) {
           <rect x={`${markAt}%`} y="0" width="2" height="12" rx="1" className="fill-[color:var(--text-heading)]" />
         </svg>
         <div className="nums flex justify-between gap-2 text-2xs font-semibold text-[color:var(--text-muted)]">
-          <span>{`${perthWhen(rest.from, true)} · ${rule.hours} h minimum`}</span>
-          <span>{perthWhen(rest.next.startsAt, true)}</span>
+          <span>{`${perthWhen(rest.from, true, zone)} · ${rule.hours} h minimum`}</span>
+          <span>{perthWhen(rest.next.startsAt, true, zone)}</span>
         </div>
         <p className="text-xs text-[color:var(--text-muted)]">
           Clause {rule.clause}: &ldquo;{rule.quote}&rdquo; Your agreement may allow exceptions the roster cannot see.
@@ -403,6 +401,7 @@ function RestCard({ rest }: { readonly rest: RestView }) {
 // ---------------------------------------------------------------- page
 
 export function OnCallShiftPulsePage() {
+  const { zone } = useWorkTimeZone();
   const counts = useSyncExternalStore(
     subscribe,
     () => readKey(onCallCallCountsStorageKey),
@@ -464,9 +463,9 @@ export function OnCallShiftPulsePage() {
           {shift?.last ? (
             <OnCallGroupedList testId="on-call-pulse-overtime">
               <OnCallRow
-                title={`Stayed past ${perthWhen(shift.last.endsAt, false)}?`}
+                title={`Stayed past ${perthWhen(shift.last.endsAt, false, zone)}?`}
                 subtitle="Your shifts and hours are in Roster"
-                leading={<Clock aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+                leading={<Clock aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
                 href="/roster"
                 testId="on-call-pulse-roster"
               />

@@ -8,6 +8,7 @@ import {
   onCallHospitalChoiceStorageKey,
   rememberOnCallEditorFlag,
 } from "@/lib/on-call/device-state-keys";
+import { useExampleData } from "@/lib/example-data/store";
 import { readOnCallEmergencyPinned, rememberOnCallEmergencyPinned } from "@/lib/on-call/emergency-pin-memory";
 import { pinnedEmergencyEntries, publishedHandbookItems, type HandbookItem } from "@/lib/on-call/handbook-items";
 import {
@@ -101,12 +102,39 @@ const REMOVED_KEEP_MS = 24 * 60 * 60 * 1000;
 type Memo<T> = { readonly at: number; readonly value: T };
 const servicesMemo = new Map<number, Memo<ServiceSummary[]>>();
 const detailMemo = new Map<string, Memo<ServiceDetail>>();
+// A read still on its way, keyed like the memo, so a second hook mounting at
+// the same moment awaits the first request instead of sending its own.
+type Pending = Promise<{ readonly status: number; readonly payload: unknown }>;
+const servicesPending = new Map<number, Pending>();
+const detailPending = new Map<string, Pending>();
 let memoListening = false;
 let memoEpoch: number | null = null;
 
 function dropMemo(): void {
   servicesMemo.clear();
   detailMemo.clear();
+  servicesPending.clear();
+  detailPending.clear();
+}
+
+/**
+ * One request per key while it is in flight; nothing is kept once it settles
+ * (the 60 s memo above is what holds an answer). A caller that unmounts stops
+ * listening but never cancels the read for another caller.
+ */
+function readOnce<K>(pending: Map<K, Pending>, key: K, url: string): Pending {
+  const existing = pending.get(key);
+  if (existing) return existing;
+  const request: Pending = fetch(url, { cache: "no-store" }).then(async (response) => ({
+    status: response.status,
+    payload: response.ok ? ((await response.json()) as unknown) : null,
+  }));
+  pending.set(key, request);
+  const settle = () => {
+    if (pending.get(key) === request) pending.delete(key);
+  };
+  request.then(settle, settle);
+  return request;
 }
 
 function listenForWipe(): void {
@@ -254,17 +282,23 @@ function hospitalOptions(services: readonly ServiceSummary[]): HospitalHandbookO
 
 const noop = () => {};
 
-export function useHospitalHandbook(): HospitalHandbookState {
+/**
+ * `enabled: false` reads nothing (status stays "loading"), for a feed that only needs the handbook some
+ * of the time, such as the Notification centre's first week pack before the pack is highlighted.
+ */
+export function useHospitalHandbook({ enabled = true }: { readonly enabled?: boolean } = {}): HospitalHandbookState {
   const auth = useAuthSession();
-  // A signed-out visitor sees the invented sample hospital (the same synthetic
-  // one the local demo build serves), held in memory only: nothing is fetched,
-  // remembered or reported.
+  const callExample = useExampleData("call").active;
+  // The invented sample hospital (the same synthetic one the local demo build
+  // serves) shows exactly when On Call shows example data, held in memory only:
+  // nothing is fetched, remembered or reported. Signed out with example data
+  // off, nothing is live and the status below reads "signed-out".
   const envDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-  const demo = envDemo || auth.status === "signed_out" || auth.status === "expired";
+  const demo = envDemo || callExample;
   // The sample's numbers are text only; the local demo build keeps its own.
   const sampleDetail = envDemo ? demoServiceDetail : sampleServiceDetail;
   const epoch = auth.authEpoch;
-  const live = !demo && auth.status === "authenticated";
+  const live = enabled && !demo && auth.status === "authenticated";
   const [servicesState, setServicesState] = useState<ServicesState | null>(null);
   const [choice, setChoice] = useState<(StoredChoice & { epoch: number }) | null>(null);
   const [detailState, setDetailState] = useState<DetailState | null>(null);
@@ -290,12 +324,12 @@ export function useHospitalHandbook(): HospitalHandbookState {
     const controller = new AbortController();
     void (async () => {
       try {
-        const response = await fetch("/api/on-call/services", { cache: "no-store", signal: controller.signal });
-        if (response.status === 401) {
+        const { status, payload } = await readOnce(servicesPending, epoch, "/api/on-call/services");
+        if (controller.signal.aborted) return;
+        if (status === 401) {
           setServicesState({ epoch, status: "expired", error: "Your session ended." });
           return;
         }
-        const payload: unknown = response.ok ? await response.json() : null;
         if (!isServiceList(payload)) {
           setServicesState({ epoch, status: "unavailable", error: UNAVAILABLE });
           return;
@@ -351,16 +385,16 @@ export function useHospitalHandbook(): HospitalHandbookState {
     void (async () => {
       try {
         const query = siteId ? `?${new URLSearchParams({ siteId }).toString()}` : "";
-        const response = await fetch(`/api/on-call/services/${serviceId}${query}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (response.status === 401) {
+        const { status, payload } = await readOnce(
+          detailPending,
+          detailKey,
+          `/api/on-call/services/${serviceId}${query}`,
+        );
+        if (controller.signal.aborted) return;
+        if (status === 401) {
           setDetailState({ key: detailKey, status: "expired", error: "Your session ended." });
           return;
         }
-        const payload: unknown = response.ok ? await response.json() : null;
-        if (controller.signal.aborted) return;
         if (!isServiceDetail(payload)) {
           setDetailState({ key: detailKey, status: "unavailable", error: UNAVAILABLE });
           return;

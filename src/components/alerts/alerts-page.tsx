@@ -18,10 +18,14 @@ import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeStateLabel } from "@/components/mode-kit/state-label";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { useRosterSettings } from "@/components/roster/use-roster-settings";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ALERT_AREA_IDS, ALERT_AREAS, areaSummary, type AlertAreaId } from "@/lib/alerts/areas";
 import { AFTER_NIGHT_TIME } from "@/lib/alerts/morning-brief";
 import { useSharedDevice } from "@/lib/alerts/shared-device";
 import { perthDateKey, type ReminderSettings } from "@/lib/reminders/settings";
+
+/** The last 7 days of alerts on this phone: a new work mode screen. */
+const EARLIER_ALERTS_HREF = "/my-day/alerts/earlier";
 
 /**
  * My Day › Alerts: one place for every alert the app can send, built from the
@@ -30,20 +34,30 @@ import { perthDateKey, type ReminderSettings } from "@/lib/reminders/settings";
  * this buzz me?" and "why didn't it?". So every line says what the app will
  * actually do today; what is not built yet is shown greyed with the reason.
  */
-export function AlertsPage({ now }: { now?: Date } = {}) {
+export function AlertsPage({
+  now,
+  inFrame = false,
+}: {
+  now?: Date;
+  /**
+   * Drawn as the Settings tab of My Day › Notifications, whose Earlier tab sits
+   * in the band, so the page leaves out its own Earlier alerts row.
+   */
+  inFrame?: boolean;
+} = {}) {
   return (
     <MyDayFrame
       title="Alerts"
       testId="my-day-alerts"
       now={now}
       wide
-      subtitle={() => "What can reach your phone, and when"}
+      subtitle={() => "What reaches your phone, and when"}
       signedOut={{
         title: "Sign in to get alerts",
         body: "Alerts come from your own roster and records, so they need your account. Nothing is sent to this device while you're signed out.",
       }}
     >
-      {(at) => <AlertsBody now={at} />}
+      {(at) => <AlertsBody now={at} inFrame={inFrame} />}
     </MyDayFrame>
   );
 }
@@ -57,12 +71,13 @@ type OpenSheet =
   | { kind: "remind-me" }
   | null;
 
-function AlertsBody({ now }: { now: Date }) {
+function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
   const { preferences, setPreference } = useAppPreferences();
   const reminders = preferences.reminders;
   const roster = useRosterSettings();
   const alerts = usePhoneAlerts();
   const shared = useSharedDevice();
+  const routeVisible = useWorkModeRouteVisible();
   const { reminders: notes } = useRemindMe();
   const openNotes = notes.filter((item) => !item.doneAt).length;
   const [sheet, setSheet] = useState<OpenSheet>(null);
@@ -146,7 +161,6 @@ function AlertsBody({ now }: { now: Date }) {
             onSelect={() => setSheet({ kind: "reminders" })}
             testId="alerts-your-reminders"
           />
-          <AlertsQuietRow title="Open shifts" reason="Arrives with Open shifts" testId="alerts-area-open-shifts" />
           <AlertsQuietRow title="Mental Health Act timers" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="Rest-break warnings" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="CPD coaching" reason="Locked until clinical sign-off" />
@@ -197,6 +211,16 @@ function AlertsBody({ now }: { now: Date }) {
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-3">
         <AlertsDeviceSection alerts={alerts} shared={shared} />
+        {!inFrame && routeVisible(EARLIER_ALERTS_HREF) ? (
+          <ModeGroupedList testId="alerts-earlier" className="mt-2">
+            <ModeRow
+              title="Earlier alerts"
+              subtitle="What buzzed this phone, last 7 days"
+              href={EARLIER_ALERTS_HREF}
+              testId="alerts-earlier-row"
+            />
+          </ModeGroupedList>
+        ) : null}
       </div>
 
       <AlertsAreaSheet

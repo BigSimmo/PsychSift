@@ -4,7 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ModeBand, ModeBandStatus, useModeBandCount } from "@/components/mode-band/mode-band";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/cme" }));
+// Work-mode redesign, owner request 6 Oct 2026: the work frame also reads the
+// query (which More page is current) and the router (side swipe between tabs).
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/cme",
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 function YearPage({ drafts, sample }: { drafts: number; sample?: boolean }) {
   useModeBandCount("log", drafts);
@@ -36,14 +42,15 @@ describe("mode band tab counts", () => {
     expect(screen.getByRole("link", { name: /^Log/ })).toHaveTextContent(/^Log$/);
   });
 
-  it("shows no count, seen or spoken, on a signed-out sample", () => {
+  it("shows no count, seen or spoken, on example records", () => {
     render(
       <ModeBand modeId="cme" statusSlot>
         <YearPage drafts={3} sample />
       </ModeBand>,
     );
     expect(screen.getByRole("link", { name: /^Log/ })).toHaveTextContent(/^Log$/);
-    expect(screen.getByText(/Made-up example records/)).toBeTruthy();
+    // The example data banner says "made up" once; the status line itself stays empty.
+    expect(screen.queryByText(/Made-up example records/)).toBeNull();
   });
 
   it("shows no count when the page could not load what it counts", () => {

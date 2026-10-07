@@ -1,12 +1,13 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { FormField } from "@/components/ui/form-field";
-import { InlineNotice, cn, eyebrowText, fieldControlPlain, textMuted } from "@/components/ui-primitives";
+import { InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import {
   CME_EVIDENCE_MAX_BYTES,
   cmeEvidenceKinds,
@@ -14,6 +15,7 @@ import {
   type CmeEvidence,
   type CmeEvidenceKind,
 } from "@/lib/cme/evidence-model";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 export function CmeEvidencePanel({
   entryId,
@@ -144,7 +146,7 @@ export function CmeEvidencePanel({
       if (input.current) input.current.value = "";
       setNotice(
         body.duplicate
-          ? "This file was already attached; no duplicate was created."
+          ? "This file was already attached, so no duplicate was created."
           : "Evidence attached to your private activity.",
       );
       router.refresh();
@@ -160,25 +162,22 @@ export function CmeEvidencePanel({
     <section
       // Sits inside the entry page's own padded column, so it adds no width
       // or side padding of its own (it used to, doubling the phone gutter).
-      className="mt-5 space-y-3"
+      className="grid gap-1.5"
       data-testid="cme-evidence-panel"
       aria-labelledby="cme-evidence-heading"
     >
-      <div>
-        <h2 id="cme-evidence-heading" className={eyebrowText}>
-          Private evidence
-        </h2>
-        <p className={cn(textMuted, "mt-1 text-sm")}>
-          Certificates, receipts and redacted assessments. Service editors cannot access these files. Reading links are
-          kept separately.
-        </p>
-      </div>
+      <h2 id="cme-evidence-heading" className="work-label m-0">
+        Evidence
+      </h2>
+      <p className="cpd-hint m-0">
+        Certificates, receipts and redacted assessments, private to you. Service editors cannot open these files.
+      </p>
       {loading ? (
-        <p role="status" className={textMuted}>
+        <p role="status" className="cpd-hint m-0">
           Loading evidence…
         </p>
       ) : files.length ? (
-        <ul className="divide-y divide-[color:var(--border)] rounded-xl border border-[color:var(--border)]">
+        <ul role="list" className="work-card work-rows m-0 grid p-0">
           {files.map((item) => (
             <EvidenceFileRow
               key={item.id}
@@ -196,9 +195,7 @@ export function CmeEvidencePanel({
           ))}
         </ul>
       ) : !error ? (
-        <p className={cn(textMuted, "text-sm")}>
-          {demoMode ? "Demo evidence is not stored." : "No evidence attached yet."}
-        </p>
+        <p className="cpd-hint m-0">{demoMode ? "Demo evidence is not stored." : "No evidence attached yet."}</p>
       ) : null}
       {error ? (
         <InlineNotice tone="neutral">
@@ -214,15 +211,23 @@ export function CmeEvidencePanel({
         </p>
       ) : null}
       {readOnly || demoMode ? (
-        <p className={cn(textMuted, "text-sm")}>
+        <p className="cpd-hint m-0">
           {demoMode
             ? "Sign in to attach evidence to your private activities."
-            : "Evidence remains available; new attachments are disabled for archived activities and closed years."}
+            : "Evidence remains available. New attachments are turned off for archived activities and closed years."}
         </p>
       ) : (
-        <details className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
-          <summary className="flex min-h-tap cursor-pointer items-center font-semibold">Attach evidence</summary>
-          <div className="mt-3 space-y-4">
+        <details className="work-card group">
+          <summary className="work-row min-h-tap cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            <span aria-hidden="true" className="cpd-lead" data-tone="mode">
+              <Plus aria-hidden="true" strokeWidth={2} />
+            </span>
+            <span className="work-row__text">
+              <span className="work-row__title">Attach evidence</span>
+              <span className="work-row__sub">PDF, JPEG or PNG, up to 10 MB</span>
+            </span>
+          </summary>
+          <div className="space-y-4 px-3 pb-3">
             <label className="block text-sm font-medium">
               Type
               <select
@@ -316,6 +321,7 @@ function EvidenceFileRow({
   canRemove: boolean;
   onRemoved: (updated: CmeEvidence) => void;
 }) {
+  const { zone } = useWorkTimeZone();
   const [removing, setRemoving] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -326,7 +332,9 @@ function EvidenceFileRow({
   if (item.removedAt) {
     return (
       <li className="grid gap-0.5 p-3" data-testid={`cme-evidence-removed-${item.id}`}>
-        <p className={cn(textMuted, "text-sm font-medium")}>File removed on {formatRemovedDate(item.removedAt)}</p>
+        <p className={cn(textMuted, "text-sm font-medium")}>
+          File removed on {formatRemovedDate(item.removedAt, zone)}
+        </p>
         <p className={cn(textMuted, "break-words text-xs")}>Reason: {item.removalReason}</p>
       </li>
     );
@@ -359,12 +367,16 @@ function EvidenceFileRow({
   }
 
   return (
-    <li className="grid gap-2 p-3">
+    <li className="grid gap-2 px-3 py-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
+        <span aria-hidden="true" className="cpd-file" data-kind={/\.pdf$/i.test(item.fileName) ? "pdf" : "image"}>
+          {/\.pdf$/i.test(item.fileName) ? "PDF" : "IMG"}
+        </span>
         <div className="min-w-0 flex-1 break-words">
-          <p className="font-medium">{item.fileName}</p>
-          <p className={cn(textMuted, "text-sm")}>
-            {cmeEvidenceKindLabel(item.kind)} · {Math.ceil(item.byteSize / 1024)} KB
+          <p className="work-row__title m-0">{item.fileName}</p>
+          <p className="work-row__sub m-0">
+            <span className="nums font-normal">{Math.ceil(item.byteSize / 1024)}</span> KB ·{" "}
+            {cmeEvidenceKindLabel(item.kind)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -451,9 +463,9 @@ function cmeEvidenceKindLabel(kind: CmeEvidenceKind): string {
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
-function formatRemovedDate(iso: string): string {
+function formatRemovedDate(iso: string, zone: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
     ? iso
-    : date.toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Perth" });
+    : date.toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: zone });
 }

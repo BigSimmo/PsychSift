@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
-import { cn, floatingControl } from "@/components/ui-primitives";
+import { adminStyles } from "@/components/admin/admin-kit";
+import { cn } from "@/components/ui-primitives";
 
 const AUTO_DISMISS_MS = 6_000;
 
@@ -33,22 +34,11 @@ export function AdminSavedUndoBar({
   }, []);
 
   return (
-    <div
-      role="status"
-      data-testid={testId}
-      className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[var(--z-chrome)] flex justify-center px-4 print:hidden"
-    >
-      <div className="flex min-h-12 items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 shadow-[var(--e3)]">
-        <span className="text-sm text-[color:var(--text)]">{label}</span>
-        <button
-          type="button"
-          onClick={onUndo}
-          data-testid={`${testId}-undo`}
-          className={cn(floatingControl, "text-xs")}
-        >
-          Undo
-        </button>
-      </div>
+    <div role="status" data-testid={testId} className={cn(adminStyles.undoBar, "print:hidden")}>
+      <span className={adminStyles.undoText}>{label}</span>
+      <button type="button" onClick={onUndo} data-testid={`${testId}-undo`} className={adminStyles.undoAction}>
+        Undo
+      </button>
     </div>
   );
 }

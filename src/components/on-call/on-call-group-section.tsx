@@ -45,7 +45,7 @@ export function OnCallGroupSection({
           {count}
         </span>
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-2" data-testid={testId}>
+      <div data-on-call-list="" className="grid grid-cols-[minmax(0,1fr)] gap-2" data-testid={testId}>
         {children}
       </div>
     </section>

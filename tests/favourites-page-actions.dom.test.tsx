@@ -139,9 +139,9 @@ describe("favourites page actions", () => {
     renderPage();
     await user.click(within(rowFor("perinatal")).getByRole("button", { name: "More actions for Service perinatal" }));
     const sheet = screen.getByRole("dialog", { name: "Actions for Service perinatal" });
-    expect(within(sheet).getByRole("button", { name: "Add to quick launch" })).toBeVisible();
-    expect(within(sheet).getByRole("button", { name: /Move to set/ })).toBeVisible();
-    expect(within(sheet).getByRole("button", { name: "Remove from favourites" })).toBeVisible();
+    expect(within(sheet).getByRole("button", { name: "Pin to My Day" })).toBeVisible();
+    expect(within(sheet).getByRole("button", { name: /Move to a set/ })).toBeVisible();
+    expect(within(sheet).getByRole("button", { name: "Remove from Favourites" })).toBeVisible();
   });
 
   it("holds a removal back until Undo has had its chance", async () => {
@@ -149,28 +149,27 @@ describe("favourites page actions", () => {
     renderPage();
 
     await user.click(within(rowFor("perinatal")).getByRole("button", { name: /More actions/ }));
-    await user.click(screen.getByRole("button", { name: "Remove from favourites" }));
+    await user.click(screen.getByRole("button", { name: "Remove from Favourites" }));
     expect(screen.queryByTestId("favourite-row-services:perinatal")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Undo" }));
     expect(rowFor("perinatal")).toBeInTheDocument();
     expect(account.setFavourite).not.toHaveBeenCalled();
 
     await user.click(within(rowFor("perinatal")).getByRole("button", { name: /More actions/ }));
-    await user.click(screen.getByRole("button", { name: "Remove from favourites" }));
+    await user.click(screen.getByRole("button", { name: "Remove from Favourites" }));
     await user.click(screen.getByRole("button", { name: "Dismiss: Removed Service perinatal" }));
     await waitFor(() => expect(account.setFavourite).toHaveBeenCalledWith("service", "perinatal", false));
   });
 
-  it("keeps Quick launch to four and says so instead of pinning a fifth", async () => {
+  it("keeps My Day to four pins and says so instead of pinning a fifth", async () => {
     account.pinnedSlugs = slugs.slice(0, 4);
     const user = userEvent.setup();
     renderPage();
 
-    const quickLaunch = screen.getByTestId("favourites-quick-launch");
-    expect(within(quickLaunch).getByText("4 of 4")).toBeInTheDocument();
+    expect(screen.getByText("5 saved · 4 pinned")).toBeInTheDocument();
     await user.click(within(rowFor("youth-early-psychosis")).getByRole("button", { name: /More actions/ }));
-    await user.click(screen.getByRole("button", { name: "Add to quick launch" }));
-    expect(await screen.findByText("Quick launch is full")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pin to My Day" }));
+    expect(await screen.findByText("My Day holds four pins. Unpin one first.")).toBeInTheDocument();
     expect(account.setFavouritePinned).not.toHaveBeenCalled();
   });
 
@@ -200,7 +199,7 @@ describe("favourites page actions", () => {
     renderPage();
     const continueCard = screen.getByRole("link", { name: "Continue Service older-adult" });
     expect(continueCard).toHaveAttribute("href", "/services/older-adult");
-    expect(within(continueCard).getByText(/opened today at/)).toBeInTheDocument();
+    expect(within(continueCard).getByText(/Service · opened \d{2}:\d{2}/)).toBeInTheDocument();
   });
 
   it("reorders inside a set with up and down buttons, never by drag alone", async () => {

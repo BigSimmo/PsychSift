@@ -3,7 +3,7 @@ import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export default function Page() {
   return (
-    <RosterSampleGate title="Sign in to see your team" records="team and its calendar">
+    <RosterSampleGate>
       <RosterTeamPage />
     </RosterSampleGate>
   );

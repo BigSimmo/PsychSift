@@ -2,19 +2,27 @@
 
 // My Day's Teaching source: a demo-mode refusal is "unavailable", a real error is "failed".
 import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   byUrl: {} as Record<string, { status: string; code: string | null }>,
+  asked: [] as string[],
+  authStatus: "authenticated",
 }));
 
+vi.mock("@/lib/supabase/client", () => ({
+  useAuthSession: () => ({ status: mocks.authStatus, authEpoch: 0 }),
+}));
 vi.mock("@/components/teaching/use-teaching-resource", () => ({
-  useTeachingResource: (url: string | null) => ({
-    ...(url ? (mocks.byUrl[url] ?? { status: "ready", code: null }) : { status: "idle", code: null }),
-    data: null,
-    refreshing: false,
-    retry: () => {},
-  }),
+  useTeachingResource: (url: string | null) => {
+    if (url) mocks.asked.push(url);
+    return {
+      ...(url ? (mocks.byUrl[url] ?? { status: "ready", code: null }) : { status: "idle", code: null }),
+      data: null,
+      refreshing: false,
+      retry: () => {},
+    };
+  },
 }));
 vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
   useAppPreferences: () => ({ preferences: { reminders: undefined } }),
@@ -26,6 +34,10 @@ const now = new Date("2026-10-03T04:00:00Z");
 
 describe("useTeachingMyDaySource in the synthetic demo", () => {
   beforeEach(() => {
+    // The suite runner sets the demo build flag; only the second case is the local demo build.
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "false");
+    mocks.asked = [];
+    mocks.authStatus = "authenticated";
     mocks.byUrl = {
       "/api/teaching?view=unlogged-count": { status: "ready", code: null },
       "/api/teaching/depth?view=teach": { status: "error", code: "demo_mode_unavailable" },
@@ -33,9 +45,20 @@ describe("useTeachingMyDaySource in the synthetic demo", () => {
     };
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("reads a demo-mode refusal as unavailable, not as a failed read", () => {
     const { result } = renderHook(() => useTeachingMyDaySource({ enabled: true, now }));
     expect(result.current.result.status).toBe("unavailable");
+  });
+
+  it("does not ask the depth routes in the local demo build, and still reads as unavailable", () => {
+    mocks.authStatus = "unconfigured";
+    const { result } = renderHook(() => useTeachingMyDaySource({ enabled: true, now }));
+    expect(result.current.result.status).toBe("unavailable");
+    expect(mocks.asked.some((url) => url.startsWith("/api/teaching/depth"))).toBe(false);
   });
 
   it("still reports a real error as failed", () => {

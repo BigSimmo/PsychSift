@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { renewalsItemHref, renewalsShowHref } from "@/components/admin/today/today-hrefs";
+import { selectNewJobProgress, type NewJobProgress } from "@/lib/admin/new-job-progress";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { buildAdminHelpItems, type AdminHelpItem } from "@/lib/admin/help-items";
@@ -14,7 +15,6 @@ import {
 } from "@/lib/admin/own-entries";
 import { renewalStartOn } from "@/lib/admin/renewal-dates";
 import { selectComingUp, selectNeedsYou } from "@/lib/admin/today-selectors";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import type { MyDayItem, MyDayNextRenewal, MyDaySourceResult, MyDaySourceStatus } from "@/lib/my-day/model";
@@ -23,6 +23,9 @@ import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { deriveOnCallNotifications, visibleOnCallNotifications } from "@/lib/on-call/notifications";
 import { perthDateKey, type ReminderSettings } from "@/lib/reminders/settings";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Admin ("my-work") and On Call share one read of the reader's On Call entries,
@@ -43,9 +46,13 @@ function plural(count: number, singular: string, pluralForm: string): string {
   return count === 1 ? singular : pluralForm;
 }
 
-export function adminMyDayItems(own: readonly OnCallEntry[], now: Date): MyDayItem[] {
+export function adminMyDayItems(
+  own: readonly OnCallEntry[],
+  now: Date,
+  zone: string = currentWorkTimeZone(),
+): MyDayItem[] {
   const items: MyDayItem[] = [];
-  const today = perthCalendarDate(now);
+  const today = zonedDateOf(now, zone);
   const entryById = new Map(own.map((entry) => [entry.id, entry]));
 
   const comingUp = selectComingUp(own, now);
@@ -103,8 +110,13 @@ export function adminMyDayItems(own: readonly OnCallEntry[], now: Date): MyDayIt
  * "Needs you" rows, so they are not counted again here. Unlike the items, this
  * is not gated on the reminder: it is a figure Admin's own pages always show.
  */
-export function adminNextRenewal(own: readonly OnCallEntry[], now: Date, sample: boolean): MyDayNextRenewal | null {
-  const today = perthCalendarDate(now);
+export function adminNextRenewal(
+  own: readonly OnCallEntry[],
+  now: Date,
+  sample: boolean,
+  zone: string = currentWorkTimeZone(),
+): MyDayNextRenewal | null {
+  const today = zonedDateOf(now, zone);
   // Uncapped: the capped list fills with passed dates first, which would hide a future one.
   for (const group of selectComingUp(own, now, { limit: Number.MAX_SAFE_INTEGER }).groups) {
     if (group.kind === "passed") continue;
@@ -181,12 +193,15 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
   helpItems: readonly AdminHelpItem[];
   /** The reader's own Admin entries, for Renew next and the renewals timeline; empty until ready. */
   adminEntries: readonly OnCallEntry[];
+  /** The New job countdown for My records (work-mode redesign, 6 Oct 2026); null without a start date. */
+  newJob: NewJobProgress | null;
   retry: () => void;
 } {
   // `useOnCallEntries` fetches unconditionally and cannot be disabled; it is
   // still called every render (hooks rules) and ignored while signed out.
   const state = useOnCallEntries();
   const { preferences } = useAppPreferences();
+  const { zone } = useWorkTimeZone();
   const reminders = preferences.reminders;
   const load = adminLoadState(state);
   const { entries, demoMode, retry } = state;
@@ -199,10 +214,10 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
     () => ({
       mode: "my-work",
       status,
-      items: ready ? adminMyDayItems(own, now) : [],
+      items: ready ? adminMyDayItems(own, now, zone) : [],
       sample: enabled && demoMode,
     }),
-    [status, ready, own, now, enabled, demoMode],
+    [status, ready, own, now, zone, enabled, demoMode],
   );
   const onCall = useMemo<MyDaySourceResult>(
     () => ({
@@ -214,8 +229,8 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
     [status, ready, entries, now, reminders, enabled, demoMode],
   );
   const nextRenewal = useMemo(
-    () => (ready ? adminNextRenewal(own, now, enabled && demoMode) : undefined),
-    [ready, own, now, enabled, demoMode],
+    () => (ready ? adminNextRenewal(own, now, enabled && demoMode, zone) : undefined),
+    [ready, own, now, zone, enabled, demoMode],
   );
   const renewals = useMemo(() => (ready ? adminRenewalRows(own, now) : NO_RENEWALS), [ready, own, now]);
   const helpItems = useMemo(
@@ -226,5 +241,12 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
     [ready, own, entries, demoMode],
   );
   const adminEntries = ready ? own : NO_ENTRIES;
-  return { admin, onCall, nextRenewal, renewals, helpItems, adminEntries, retry };
+  const newJob = useMemo(
+    () =>
+      ready && !demoMode
+        ? selectNewJobProgress({ own, shared: selectAdminSharedEntries({ entries, demoMode }) }, now)
+        : null,
+    [ready, demoMode, own, entries, now],
+  );
+  return { admin, onCall, nextRenewal, renewals, helpItems, adminEntries, newJob, retry };
 }

@@ -127,7 +127,7 @@ export function OnCallPageMenuActions({
       </Link>
 
       <Link
-        href="/on-call/calendar"
+        href="/roster/calendar"
         onClick={() => onNavigate?.()}
         className={inPageActionRowClass}
         data-testid="on-call-page-menu-calendar"
@@ -157,7 +157,7 @@ export function OnCallPageMenuActions({
         <span className="grid gap-0.5">
           <span className="font-semibold">What the home shows</span>
           <span className={cn(textMuted, "text-xs")}>
-            {`Tick "Call first on the home" on a contact to add it to Your usual. Tag a playbook scenario "${ON_CALL_HOME_TAGS.pinned}" to open it first in Who do I call now.`}
+            {`Tick "Call first on the home" on a contact to add it to Your usual. Tag a playbook scenario "${ON_CALL_HOME_TAGS.pinned}" to show it first in Who do I call now, as a line to read.`}
           </span>
         </span>
       </div>
@@ -167,7 +167,7 @@ export function OnCallPageMenuActions({
 
 /**
  * In-page More for an On Call section. Not the universal header trailing slot:
- * that slot is the Needs you bell on the home, and Search my work everywhere.
+ * that slot is the notifications bell and AI Search, on every page.
  */
 export function OnCallPageMenu({
   view,

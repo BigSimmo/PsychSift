@@ -11,7 +11,7 @@ import { onCallViewForEntry } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { BrowserPrintButton, PrintOutput, PrintSection } from "@/components/ui/print-output";
 import { OnCallCardQr } from "@/components/on-call/on-call-card-qr";
@@ -20,6 +20,7 @@ import { selectCardEntries } from "@/lib/on-call/card-selection";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { ON_CALL_SECTIONS, type OnCallEntry } from "@/lib/on-call/entry-model";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Numbers a card entry might carry, read loosely across every section's
@@ -76,7 +77,7 @@ function sortCardEntries(entries: OnCallEntry[]): OnCallEntry[] {
  * which is live data, not a deterministic prototype — reads the clock itself,
  * once, at render time.
  */
-function formatPrintedAt(now: Date): string {
+function formatPrintedAt(now: Date, zone: string): string {
   const formatted = new Intl.DateTimeFormat("en-AU", {
     day: "2-digit",
     month: "short",
@@ -84,7 +85,7 @@ function formatPrintedAt(now: Date): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    timeZone: "Australia/Perth",
+    timeZone: zone,
     timeZoneName: "short",
   }).format(now);
   return `Printed ${formatted}`;
@@ -117,6 +118,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
   // both move underneath a page the owner is in the middle of printing.
   const mountedAt = useMemo(() => new Date(), []);
   const now = nowProp ?? mountedAt;
+  const { zone } = useWorkTimeZone();
 
   const cardEntries = selectCardEntries(entries, now);
   // Grouped by the PAGE an entry is on, not the section it is stored in. Two of
@@ -161,7 +163,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
           // Nothing cached yet and the first fetch still in flight. Asserting
           // "nothing is flagged" here would be a claim about the entry set that
           // this component cannot yet make.
-          <EmptyState
+          <OnCallEmptyState
             icon={Phone}
             title="Loading the card"
             body="Fetching the entries flagged for this card."
@@ -172,7 +174,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
         ) : signedOut && entries.length === 0 ? (
           <OnCallSignedOut icon={Phone} testId="on-call-card-signed-out" />
         ) : groups.length === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={Phone}
             title="Nothing is flagged for the card yet"
             body="Open an entry in Contacts, Playbook, Referrals, Orientation, Teaching or Admin and flag it for the card to have it appear here. Compliance requirements and Who's who explainers can never appear on the card, and nor can personal numbers or anything overdue for checking."
@@ -191,7 +193,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
             testId="on-call-card-output"
             monochrome
             confidential
-            printedAt={formatPrintedAt(now)}
+            printedAt={formatPrintedAt(now, zone)}
             provenance="PsychSift On Call — pocket card. Confirm against the live app before relying on a printed copy; paper cannot show its own age."
           >
             <div className="mb-4 flex items-start justify-between gap-3 print:mb-3">

@@ -11,9 +11,9 @@ import { OnCallEntryRow } from "@/components/on-call/on-call-entry-row";
 import { onCallEntryGroups } from "@/components/on-call/on-call-entry-groups";
 import { OnCallFreshnessBadge } from "@/components/on-call/on-call-freshness-badge";
 import { OnCallGroupSection } from "@/components/on-call/on-call-group-section";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import { WhoCoversThis } from "@/components/on-call/who-covers-this";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { ExternalTextLink } from "@/components/ui/link";
 import { Disclosure } from "@/components/ui/disclosure";
 import { cn, textMuted, toolbarButton } from "@/components/ui-primitives";
@@ -135,7 +135,7 @@ export function OnCallReferralsSection({
 
   if (allReferrals.length === 0) {
     return (
-      <EmptyState
+      <OnCallEmptyState
         icon={Repeat}
         title="No referral pathways yet"
         body="Services you add will appear here — who they accept, catchment, hours, and how to refer."

@@ -45,8 +45,8 @@ export function AttendanceChart({ weeks, currentKey }: { weeks: readonly Attenda
             week.count === 0
               ? "fill-[color:var(--border)]"
               : isCurrent
-                ? "fill-[color:var(--primary)]"
-                : "fill-[color:var(--mode-identity)] opacity-70";
+                ? "fill-[color:var(--mode-identity)]"
+                : "fill-[color:var(--mode-identity-soft)] forced-colors:fill-[GrayText]";
           return (
             <rect
               key={week.key}

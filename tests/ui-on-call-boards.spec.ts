@@ -289,7 +289,9 @@ test.describe("01 Home", () => {
     await expectTapFloor(firstNight, "First night row");
     await expect(footer.getByTestId("on-call-now-footer-shifts")).toHaveAttribute("href", "/roster");
     await expect(footer.getByTestId("on-call-now-footer-card")).toHaveAttribute("href", "/on-call/card");
-    await expect(footer.getByTestId("on-call-now-footer-calendar")).toHaveAttribute("href", "/on-call/calendar");
+    // Amended for the work-mode redesign wiring audit (owner request 6 Oct 2026): the
+    // link goes straight to the calendar's real page, not through the old redirect.
+    await expect(footer.getByTestId("on-call-now-footer-calendar")).toHaveAttribute("href", "/roster/calendar");
     // Mock-up v10: "Who do I call now?" is its own group with the ladder link
     // at its right. The literal href is what the route-reachability guard reads;
     // the click test above proves the destination actually renders.
@@ -297,7 +299,7 @@ test.describe("01 Home", () => {
     await expect(who.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
   });
 
-  test("does not put a page-menu ellipsis in the header; Search my work stays", async ({ page }) => {
+  test("does not put a page-menu ellipsis in the header; AI Search stays", async ({ page }) => {
     await openBoard(page, ROUTES.home);
     await expect(page.getByTestId("on-call-page-menu-trigger")).toHaveCount(0);
     await expect(page.getByTestId("work-search-button")).toBeVisible();
@@ -320,21 +322,19 @@ test.describe("Coming up — moved off Home to Teaching (plan C25)", () => {
 });
 
 test.describe("02 More, 03 All modes — the pill owns page switching", () => {
-  test("opens this mode's own sections from the pill, with one tap back to all modes", async ({ page }) => {
+  test("opens the area list from the pill, on the Work side, with pages left to the tabs", async ({ page }) => {
     await openBoard(page, ROUTES.contacts, DESKTOP);
     await page.getByRole("button", { name: /Mode/ }).first().click();
 
-    // In a mode that owns its own pages the pill opens THOSE, drawn like the
-    // switcher everywhere else, rather than making a reader step in from the
-    // full mode list every time they want another section.
-    const sections = page.locator("#app-mode-menu");
-    await expect(sections).toBeVisible();
-    await expect(sections).toHaveAttribute("aria-label", /On Call pages/);
-    await expect(sections.getByRole("link", { name: "Now" })).toBeVisible();
-
-    // And never a dead end: the level above is one control away.
-    await page.getByTestId("app-mode-popover-back").click();
-    await expect(page.locator("#app-mode-menu")).toHaveAttribute("aria-label", /Choose app mode/);
+    // In a work area the tabs and More already move between this area's pages,
+    // so the pill opens on the area list (Josh, 7 Oct 2026, "Area list first"),
+    // on the Work side because On Call is a work area.
+    const menu = page.locator("#app-mode-menu");
+    await expect(menu).toBeVisible();
+    await expect(menu).toHaveAttribute("aria-label", /Choose app mode/);
+    await expect(menu.getByRole("radio", { name: "Work" })).toBeChecked();
+    await expect(menu.getByRole("menuitemradio", { name: /^On Call\b/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("app-mode-section-list")).toHaveCount(0);
   });
 
   test("carries no second bar repeating those same destinations", async ({ page }) => {
@@ -392,12 +392,10 @@ test.describe("02 More — the second row is about the page you are on", () => {
   test("names the page once, in the pill, with the mode beneath it", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
     // The pill's accessible name still opens `Mode …` — twelve test files and
-    // the shared helper find this control by that prefix — and now says the
-    // page as well.
-    // Contacts is the editor behind People (kit 1.7), so the pill names People.
-    const pill = page.getByRole("button", { name: "Mode On Call, page People" });
+    // the shared helper find this control by that prefix. On a work page it
+    // names the area alone (pill 4b); the tabs underneath name the page.
+    const pill = page.getByRole("button", { name: "Mode On Call", exact: true });
     await expect(pill).toBeVisible();
-    await expect(pill).toContainText("People");
     await expect(pill).toContainText("On Call");
 
     // And nothing else on the page paints the name. Measured, not counted by
@@ -416,16 +414,19 @@ test.describe("02 More — the second row is about the page you are on", () => {
     expect(titles.painted, "a heading repeats the name the pill already shows").toBe(0);
   });
 
-  test("carries the mode's own colour on the pill and the bar, and only there", async ({ page }) => {
+  test("carries the mode's own colour on the pill and the bar, and on the work page around them", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
     // openBoard settles on the list, but the bar mounts a frame or more later: it renders
     // only once the page has resolved two or more groups from the list. WebKit reaches
     // this read before that, found no bar, and compared the pill's teal against null.
     // Wait for both elements this test compares, then read them.
-    // Contacts is the editor behind People (kit 1.7), so the pill names People — same as
-    // the assertion in "names the page once, in the pill, with the mode beneath it".
+    // The pill names the area alone on a work page (pill 4b), the same as the
+    // assertion in "names the page once, in the pill, with the mode beneath it".
     await expect(await sectionBar(page)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Mode On Call, page People" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode On Call", exact: true })).toBeVisible();
+    // The band publishes the area's palette onto <body> in a layout effect;
+    // wait for it so the read below is not racing the mount.
+    await expect(page.locator("body")).toHaveAttribute("data-mode-identity", "on-call");
     const identity = await page.evaluate(() => {
       const read = (selector: string) => {
         const element = document.querySelector(selector);
@@ -441,9 +442,13 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // cannot end up different greens.
     expect(identity.pill).toBe(identity.bar);
     expect(identity.pill).toBeTruthy();
-    // And the rest of the page keeps the product accent: the hue is scoped to
-    // the mode's own chrome, not sprayed over its content.
-    expect(identity.page).not.toBe(identity.pill);
+    // Work-mode redesign (owner request 6 Oct 2026): while the work frame is
+    // up, the area's palette also rides on <body>, so sheets, toasts and the
+    // work search that portal out of the page wear the same teal
+    // (`usePublishBandSurface` in mode-band.tsx). The page therefore matches
+    // the pill now; the old "only the chrome" scoping was retired on purpose.
+    // Clinical pages never mount the frame, so they keep the product accent.
+    expect(identity.page).toBe(identity.pill);
   });
 
   test("fits its words without truncating at the site's narrow width", async ({ page }) => {
@@ -853,8 +858,9 @@ test.describe("11 Admin: Help", () => {
     await expect(onSite.locator("li", { hasText: "After-hours entry" })).toBeVisible();
     await expect(onSite.locator("li", { hasText: "Locked wards" })).toBeVisible();
 
-    // Read in the reader's own zone (spec), so this mirrors the app's own
-    // rule rather than pinning a time of day the suite happens to run at.
+    // Read in the work time zone (Perth with no saved choice, on both the test
+    // runner and the page), so this mirrors the app's own rule rather than
+    // pinning a time of day the suite happens to run at.
     const afterHours = page.getByTestId("admin-help-on-site-after-hours");
     if (isOnCallOutOfHours(new Date())) {
       await expect(afterHours).toContainText(
@@ -906,24 +912,23 @@ test.describe("Compliance — the view the boards never drew", () => {
   test("files the requirements under the catalogue's groups, recorded dates first", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
 
-    // The demo corpus links seven rows to catalogue items (registration and
-    // indemnity, Working with Children Check and police clearance, among
-    // others), so these groups have rows.
-    const registration = visibleByTestId(page, "admin-renewals-checklist-group-registration");
+    // The locked mockup leads with the rows that need action, soonest first,
+    // then folds the recorded rows into one collapsed group per catalogue kind.
+    // The demo registration falls due inside its lead time, so it needs action.
+    const needsAction = visibleByTestId(page, "admin-renewals-checklist-needs-action");
+    const recorded = visibleByTestId(page, "admin-renewals-checklist-recorded");
+    await expect(needsAction, "the demo corpus's recorded rows do not render").toBeVisible();
+    await expect(needsAction).toContainText("Medical registration renewal");
+    await expect(recorded).toBeVisible();
+
+    // A date to act on comes before the dates already settled.
+    const [needsBox, recordedBox] = [await needsAction.boundingBox(), await recorded.boundingBox()];
+    expect(recordedBox!.y, "Needs action is above Recorded").toBeGreaterThan(needsBox!.y);
+
+    // The demo corpus links a Working with Children Check, filed under Checks.
     const checks = visibleByTestId(page, "admin-renewals-checklist-group-checks");
-    await expect(registration, "the demo corpus's recorded rows do not render").toBeVisible();
     await expect(checks).toBeVisible();
-    await expect(registration).toContainText("Medical registration renewal");
     await expect(checks).toContainText("Working with Children Check");
-
-    // Groups follow the catalogue's order.
-    const [registrationBox, checksBox] = [await registration.boundingBox(), await checks.boundingBox()];
-    expect(checksBox!.y, "Checks is above Registration").toBeGreaterThan(registrationBox!.y);
-
-    // Inside a group, a recorded date to act on comes before the slots nobody
-    // has filled in yet.
-    const firstCheck = checks.getByRole("listitem").first();
-    await expect(firstCheck).toContainText("Working with Children Check");
   });
 
   test("says on the page that these are dates the reader entered, not a check", async ({ page }) => {
@@ -939,7 +944,7 @@ test.describe("Compliance — the view the boards never drew", () => {
     // sentence in this position is the control that keeps it rejected.
     const [summaryBox, firstGroup] = [
       await summary.boundingBox(),
-      await visibleByTestId(page, "admin-renewals-checklist-group-registration").boundingBox(),
+      await visibleByTestId(page, "admin-renewals-checklist-needs-action").boundingBox(),
     ];
     expect(summaryBox!.y, "the 'not a check' line has slipped below the list").toBeLessThan(firstGroup!.y);
   });

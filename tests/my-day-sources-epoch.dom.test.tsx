@@ -10,7 +10,11 @@ const auth = vi.hoisted(() => ({ authEpoch: 1 }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
 vi.mock("@/components/clinical-dashboard/use-app-preferences", async () => {
   const { DEFAULT_REMINDER_SETTINGS } = await import("@/lib/reminders/settings");
-  return { useAppPreferences: () => ({ preferences: { reminders: DEFAULT_REMINDER_SETTINGS } }) };
+  return {
+    useAppPreferences: () => ({ preferences: { reminders: DEFAULT_REMINDER_SETTINGS } }),
+    readAppPreferences: () => ({ timeZone: "Australia/Perth" }),
+    subscribeAppPreferences: () => () => undefined,
+  };
 });
 
 import { useCmeMyDaySource } from "@/components/my-day/sources/cme";

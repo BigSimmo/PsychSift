@@ -17,11 +17,10 @@ import {
 } from "@/components/teaching/my-record-model";
 import { attendanceCsv, csvHref, logbookGroups } from "@/components/teaching/organise-model";
 import {
-  T5Actions,
   T5Check,
+  T5Empty,
   T5Heading,
   T5Icon,
-  T5Kicker,
   T5Link,
   T5List,
   T5Meta,
@@ -39,7 +38,7 @@ import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
-import { Button } from "@/components/ui/button";
+import { WorkButton, WorkTag } from "@/components/mode-kit/work";
 import { cn } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 import { demoTeachingFeedbackOwed, demoTeachingLogbook } from "@/lib/teaching/demo-programme";
@@ -55,6 +54,8 @@ import {
 import type { LogbookRow } from "@/lib/teaching/model";
 import { currentTerm, sampleTermTracker } from "@/lib/teaching/term-tracker";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /*
  * My record (mock-up v5 screen 03): the Term row, 12 weeks of check-ins, feedback you owe, this week's
@@ -85,8 +86,8 @@ function RecordBars({ chart }: { chart: RecordChart }) {
                 week.count === 0 && !current
                   ? "rounded-none border-b-2 border-dotted border-[color:var(--decoration-soft)] forced-colors:border-[CanvasText]"
                   : current
-                    ? "rounded-t-xs bg-[color:var(--mode-identity)] ring-[1.5px] ring-[color:var(--text-heading)] forced-colors:bg-[Highlight]"
-                    : "rounded-t-xs bg-[color:var(--border)] forced-colors:bg-[CanvasText]",
+                    ? "rounded-t-sm bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight]"
+                    : "rounded-t-sm bg-[color:var(--mode-identity-soft)] forced-colors:bg-[CanvasText]",
               )}
               style={{ height: `${Math.max((week.count / max) * 100, 3)}%` }}
             />
@@ -143,14 +144,12 @@ function CpdThisWeek({
 
   return (
     <T5Section
-      label="CPD this week"
-      right={week.right ? <T5Meta>{week.right}</T5Meta> : null}
+      label={week.rows.length > 0 ? `Not yet in CPD · ${week.rows.length}` : "Not yet in CPD"}
+      right={week.right}
       testId="teaching-record-cpd"
     >
       {week.rows.length === 0 ? (
-        <T5Meta className="border-t border-[color:var(--border)] py-2.5">
-          Nothing from this week is waiting to go into your CPD.
-        </T5Meta>
+        <T5Empty>Nothing from this week is waiting to go into your CPD.</T5Empty>
       ) : (
         <>
           <T5List ruled>
@@ -172,7 +171,7 @@ function CpdThisWeek({
                     })
                   }
                   end={
-                    <span className="shrink-0 text-sm font-normal text-[color:var(--text-heading)] tabular-nums">
+                    <span className="nums shrink-0 text-sm-minus font-bold text-[color:var(--text-heading)]">
                       {withUnit(row.hours, "h")}
                     </span>
                   }
@@ -180,11 +179,9 @@ function CpdThisWeek({
               );
             })}
           </T5List>
-          <T5Actions className="mt-3">
-            <Button
-              type="button"
-              variant="primary"
-              block
+          <div className="grid gap-1">
+            <WorkButton
+              size="wide"
               disabled={busy || chosen.length === 0 || chosen.length > CPD_REVIEW_MAX_ROWS}
               onClick={async () => {
                 if (busy || chosen.length === 0 || chosen.length > CPD_REVIEW_MAX_ROWS) return;
@@ -226,7 +223,7 @@ function CpdThisWeek({
                   if (failed.length < result.results.length) onLogged();
                 } catch (cause) {
                   setError(
-                    `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Try again; this will not add duplicates.`,
+                    `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Try again. This will not add duplicates.`,
                   );
                 } finally {
                   setBusy(false);
@@ -234,38 +231,44 @@ function CpdThisWeek({
               }}
             >
               {busy ? "Saving…" : cpdButtonLabel(chosen.length)}
-            </Button>
-            <T5Link href="/teaching/review" quiet>
-              Change hours
-            </T5Link>
-          </T5Actions>
+            </WorkButton>
+            <span className="flex justify-center">
+              <T5Link href="/teaching/review" quiet>
+                Change hours
+              </T5Link>
+            </span>
+          </div>
           {chosen.length > CPD_REVIEW_MAX_ROWS ? (
-            <p role="status" className="mt-2 text-sm text-[color:var(--text-heading)]">
+            <p role="status" className="text-xs font-semibold text-[color:var(--text-heading)]">
               {`Choose up to ${withUnit(CPD_REVIEW_MAX_ROWS, "sessions")} at a time.`}
             </p>
           ) : null}
           {error ? (
-            <p role="alert" className="mt-2 text-sm text-[color:var(--text-heading)]">
+            <p role="alert" className="text-xs font-semibold text-[color:var(--danger-text)]">
               {error}
             </p>
           ) : null}
         </>
       )}
       {week.older > 0 ? (
-        <T5List ruled className="mt-2">
+        <T5List>
           <T5Row
             title={`${withUnit(week.older, week.older === 1 ? "older session" : "older sessions")} not in CPD yet`}
+            meta="More than 7 days ago · on the review page"
             href="/teaching/review"
+            end={<WorkTag tone="amber">Overdue</WorkTag>}
           />
         </T5List>
       ) : null}
-      <T5Note className="mt-3">Your CPD log is private. Logged sessions show in CPD, under Log.</T5Note>
+      <T5Note icon="shield">Your CPD log is private. Logged sessions show in CPD, under Log.</T5Note>
     </T5Section>
   );
 }
 
 function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
   const now = useTeachingNow();
+  // Example records never leave the app: the CSV link becomes a button that explains why.
+  const { active: example } = useExampleData("teach");
   const today = now ? perthDateKey(now) : null;
   const resource = useTeachingResource<{ attendance: LogbookRow[] }>(demoMode ? null : "/api/teaching?view=logbook");
   const feedback = useTeachingResource<{ sessions: SessionRef[] }>(
@@ -309,11 +312,21 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
     const summary = supervisorSummary(rows, termState ? currentTerm(termState) : null, today);
     body = (
       <>
-        <T5Panel className="mt-3" testId="teaching-record-chart">
-          <T5Kicker>Last 12 weeks · {withUnit(chart.total, chart.total === 1 ? "session" : "sessions")}</T5Kicker>
-          <T5Heading>{chart.headline}</T5Heading>
-          <RecordBars chart={chart} />
-        </T5Panel>
+        <T5Section
+          label={`Last ${withUnit(12, "weeks")}`}
+          right={
+            <em className="work-label__count">
+              <span className="sr-only"> · </span>
+              {withUnit(chart.total, chart.total === 1 ? "session" : "sessions")}
+            </em>
+          }
+          testId="teaching-record-chart"
+        >
+          <T5Panel>
+            <T5Heading level={3}>{chart.headline}</T5Heading>
+            <RecordBars chart={chart} />
+          </T5Panel>
+        </T5Section>
 
         {owed === null ? (
           feedback.status === "loading" ? null : (
@@ -376,7 +389,9 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
               meta={summary.meta}
               lead={<T5Icon icon={FileText} />}
               end={
-                summary.rows.length ? (
+                summary.rows.length && example ? (
+                  <T5Link onClick={() => guardExampleAction(true, "export")}>Download CSV</T5Link>
+                ) : summary.rows.length ? (
                   <T5Link
                     href={csvHref(attendanceCsv(summary.rows))}
                     download={demoMode ? "teaching-attendance-demo.csv" : "teaching-attendance.csv"}
@@ -397,13 +412,11 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
 
         {rows.length === 0 ? (
           <T5Section label="Every check-in" testId="teaching-record-ledger">
-            <T5Meta className="border-t border-[color:var(--border)] py-2.5">
-              No check-ins yet. Sessions you check in to show here.
-            </T5Meta>
+            <T5Empty>No check-ins yet. Sessions you check in to show here.</T5Empty>
           </T5Section>
         ) : (
           // The mock-up ends at the supervisor summary, so every check-in stays folded until asked for.
-          <div className="mt-4.5" data-testid="teaching-record-ledger">
+          <div className="grid gap-y-2.25" data-testid="teaching-record-ledger">
             <T5List ruled>
               <T5Row
                 title="Every check-in"
@@ -417,8 +430,8 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
               />
             </T5List>
             {ledgerOpen ? (
-              <div className="mt-2">
-                {demoNote ? <T5Note className="mb-2">The demo doesn&apos;t save to CPD.</T5Note> : null}
+              <div className="grid gap-y-2.25">
+                {demoNote ? <T5Note>The demo doesn&apos;t save to CPD.</T5Note> : null}
                 <LogbookLedger groups={logbookGroups(rows, onLog)} />
               </div>
             ) : null}
@@ -431,6 +444,8 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
             occurrenceId={logging.occurrenceId}
             startsAt={logging.startsAt}
             endsAt={logging.endsAt}
+            subtitle={logging.title}
+            checkIn={{ method: logging.method, recordedAt: logging.recordedAt }}
             onLogged={() => {
               resource.retry();
               review.retry();
@@ -443,10 +458,8 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
   return (
     <InformationPageShell width="narrow" gap={false} testId="teaching-logbook">
       <T5Page>
-        <h1 className="sr-only">My record</h1>
-        {demoMode ? (
-          <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
-        ) : null}
+        <h1 className="sr-only">Logbook</h1>
+        {demoMode ? <T5Note tone="notice">Made-up demo. Changes stay on this page and are not saved.</T5Note> : null}
         {termRowEl}
         {body}
       </T5Page>

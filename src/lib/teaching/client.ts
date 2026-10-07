@@ -40,6 +40,28 @@ export async function teachingPost<T>(
   );
 }
 
+/**
+ * A post that also returns the server's own clock, read once from the response's `Date` header. The check-in
+ * card compares it with the server's `recordedAt` to tell a repeat scan from a fresh one: both times come from
+ * the server, so a ticking page clock or a device clock running fast can never turn a fresh check-in into a
+ * repeat. Null when the header is missing or unreadable, and then the card claims nothing.
+ */
+export async function teachingPostTimed<T>(
+  url: string,
+  body: Record<string, unknown>,
+): Promise<{ data: T; serverTime: number | null }> {
+  const response = await fetch(url, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const header = response.headers.get("date");
+  const parsed = header ? Date.parse(header) : Number.NaN;
+  const data = await settle<T>(response);
+  return { data, serverTime: Number.isFinite(parsed) ? parsed : null };
+}
+
 /** A multipart upload (the term import's .xlsx); the browser sets the boundary header itself. */
 export async function teachingUpload<T>(url: string, form: FormData): Promise<T> {
   return settle<T>(await fetch(url, { method: "POST", cache: "no-store", body: form }));

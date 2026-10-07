@@ -38,9 +38,9 @@ export function TeachingContextBar({
 }) {
   if (teams.length === 0) return null;
   return (
-    <div className="flex min-h-12 items-center justify-between gap-3 border-b border-[color:var(--border)]">
+    <div className="flex min-h-12 items-center justify-between gap-3 px-0.5">
       {teams.length === 1 ? (
-        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-[color:var(--text-heading)]">
+        <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-[color:var(--text-heading)]">
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)]" />
           <span className="truncate">{teams[0].name}</span>
         </span>
@@ -57,7 +57,11 @@ export function TeachingContextBar({
           fieldClassName="min-w-0 max-w-[70%]"
         />
       )}
-      {demoTag ? <span className={cn("shrink-0 text-xs", textMuted)}>Demo · made-up people</span> : null}
+      {demoTag ? (
+        <span className={cn("work-tag shrink-0")} data-tone="neutral">
+          Demo · made-up people
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -400,7 +404,11 @@ export function LogbookLedger({ groups }: { groups: readonly LedgerGroup[] }) {
 
 export type DayRailDay = { key: string; weekday: string; day: string; count: number; past: boolean };
 
-/** Seven days: the picked day in product blue with a 2px underline, past days muted, up to two dots per day. */
+/**
+ * Seven days: the picked day filled in the mode colour, past days muted, up to three dots per day.
+ * Work-mode redesign, owner request 6 Oct 2026: the old product-blue underline became the Teaching
+ * colour, matching Week's day strip.
+ */
 export function DayRail({
   days,
   value,
@@ -413,7 +421,7 @@ export function DayRail({
   label: string;
 }) {
   return (
-    <div role="group" aria-label={label} className="grid grid-cols-7 border-b border-[color:var(--border)]">
+    <div role="group" aria-label={label} className="grid grid-cols-7" data-no-tab-swipe="">
       {days.map((day) => {
         const selected = day.key === value;
         // Split the plural from the count: a template literal with a digit or
@@ -430,21 +438,36 @@ export function DayRail({
             aria-label={`${day.weekday} ${day.day}, ${countWords}`}
             onClick={() => onChange(day.key)}
             className={cn(
-              "-mb-px grid min-h-12 justify-items-center gap-0.5 border-b-2 py-1.5",
+              "grid min-h-12 justify-items-center gap-1 rounded-xl py-1.5",
               selected
-                ? "border-[color:var(--primary)] text-[color:var(--primary)]"
-                : cn(
-                    "border-transparent",
-                    day.past ? "text-[color:var(--text-muted)]" : "text-[color:var(--text-heading)]",
-                  ),
+                ? "text-[color:var(--mode-identity)]"
+                : day.past
+                  ? "text-[color:var(--text-muted)]"
+                  : "text-[color:var(--text-heading)]",
               focusRing,
             )}
           >
-            <span className="text-xs">{day.weekday}</span>
-            <span className={cn(modeNumberText, "text-base-minus")}>{day.day}</span>
-            <span aria-hidden="true" className="flex h-1 gap-0.5">
-              {Array.from({ length: Math.min(day.count, 2) }, (_, index) => (
-                <span key={index} className="size-0.75 rounded-full bg-current" />
+            <span
+              className={cn(
+                "text-3xs font-bold tracking-label uppercase",
+                !selected && "text-[color:var(--text-muted)]",
+              )}
+            >
+              {day.weekday}
+            </span>
+            <span
+              className={cn(
+                modeNumberText,
+                "grid size-8 place-items-center rounded-full text-sm font-bold",
+                selected &&
+                  "bg-[color:var(--work-primary)] text-[color:var(--work-primary-text)] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]",
+              )}
+            >
+              {day.day}
+            </span>
+            <span aria-hidden="true" className="flex h-1 gap-0.75">
+              {Array.from({ length: Math.min(day.count, 3) }, (_, index) => (
+                <span key={index} className="size-1 rounded-full bg-[color:var(--mode-identity)] opacity-70" />
               ))}
             </span>
           </button>
@@ -454,12 +477,6 @@ export function DayRail({
   );
 }
 
-/**
- * The live `SegmentedControl`, recoloured through its own tokens to a raised
- * neutral segment, scrolling sideways at large text with a fade at the end
- * while there is more. Measured in listeners, never set synchronously in the
- * effect (`react-hooks/set-state-in-effect`).
- */
 export function TeachingSwitch<T extends string>({
   value,
   onChange,

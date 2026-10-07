@@ -190,22 +190,30 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: (id: string, rea
       }}
       // Borderless floating surface: a hairline ring is its edge and the shadow is
       // its lift — never a border AND a shadow on one element (register #39/#40).
-      className="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg bg-[color:var(--surface-raised)] p-3 shadow-[var(--shadow-elevated)] ring-1 ring-[color:var(--border-lux)]"
+      // `app-toast*` hooks let the work-mode frame draw its dark Undo toast
+      // (work-mode.css) without a second toast system.
+      className="app-toast pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg bg-[color:var(--surface-raised)] p-3 shadow-[var(--shadow-elevated)] ring-1 ring-[color:var(--border-lux)]"
     >
       <span
         aria-hidden
-        className="mt-0.5 block h-[1.125rem] w-[3px] shrink-0 rounded-full"
+        className="app-toast__bar mt-0.5 block h-[1.125rem] w-[3px] shrink-0 rounded-full"
         style={{ background: TONE_ACCENT[toast.tone] }}
       />
-      <Icon aria-hidden="true" className={cn("mt-0.5 size-icon-md shrink-0", TONE_TEXT[toast.tone])} />
+      <Icon aria-hidden="true" className={cn("app-toast__icon mt-0.5 size-icon-md shrink-0", TONE_TEXT[toast.tone])} />
       <div className="min-w-0 flex-1">
         {/* Remount on announceKey so a repeated identical outcome re-enters the
             polite live region instead of staying silent while still visible. */}
-        <p key={toast.announceKey ?? 0} className="text-sm font-semibold text-[color:var(--text-heading)]">
+        <p
+          key={toast.announceKey ?? 0}
+          className="app-toast__title text-sm font-semibold text-[color:var(--text-heading)]"
+        >
           {toast.title}
         </p>
         {toast.body ? (
-          <p key={`body-${toast.announceKey ?? 0}`} className="mt-0.5 text-xs text-[color:var(--text-muted)]">
+          <p
+            key={`body-${toast.announceKey ?? 0}`}
+            className="app-toast__body mt-0.5 text-xs text-[color:var(--text-muted)]"
+          >
             {toast.body}
           </p>
         ) : null}
@@ -217,7 +225,7 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: (id: string, rea
             toast.action?.onAction();
             onClose(toast.id, "action");
           }}
-          className="inline-flex min-h-tap shrink-0 items-center rounded-lg px-3 text-sm font-bold text-[color:var(--clinical-accent)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+          className="app-toast__action inline-flex min-h-tap shrink-0 items-center rounded-lg px-3 text-sm font-bold text-[color:var(--clinical-accent)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
         >
           {toast.action.label}
         </button>
@@ -226,7 +234,7 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: (id: string, rea
         type="button"
         onClick={() => onClose(toast.id, "dismiss")}
         aria-label={`Dismiss: ${toast.title}`}
-        className="grid size-tap shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+        className="app-toast__dismiss grid size-tap shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
       >
         <X aria-hidden="true" className="size-icon-md" />
       </button>
@@ -251,7 +259,7 @@ export function ToastRegion() {
       role="status"
       aria-live="polite"
       aria-relevant="additions text"
-      className="pointer-events-none fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:inset-x-auto sm:right-0 sm:items-end"
+      className="app-toast-region pointer-events-none fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:inset-x-auto sm:right-0 sm:items-end"
     >
       {toasts.map((toast) => (
         <ToastCard key={toast.id} toast={toast} onClose={close} />

@@ -21,6 +21,7 @@ import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAction } from "@/lib/roster/team/model";
 
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { SignInAction } from "./open-shifts-sign-in";
 import {
   FootAction,
@@ -249,6 +250,7 @@ export function RequestSheet({
 
 export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: string; openShiftId: string }) {
   const state = useOpenShifts();
+  const signedOut = useSignedOut();
   const now = useRosterNow();
   const [sheetOpen, setSheetOpen] = useState(false);
   // Kept mounted after the first open so closing hands focus back to "Request this shift".
@@ -388,7 +390,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         </p>
       </div>
 
-      {state.sample === "signed-out" ? (
+      {signedOut ? (
         <SignInAction label="Sign in to request shifts" />
       ) : closed ? (
         <FootAction>

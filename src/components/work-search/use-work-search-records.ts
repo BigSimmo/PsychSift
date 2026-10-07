@@ -3,8 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
-import { adminLoadState } from "@/lib/admin/own-entries";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
+import { useApplicationsStore } from "@/lib/cme/device-record";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
+import { useSavedNumbers } from "@/lib/favourites/favourites-local";
+import { savedNumberWorkItems } from "@/lib/favourites/favourites-search";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { myDayEnabledForAuth } from "@/lib/my-day/model";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -20,12 +26,14 @@ import {
   sessionWorkItems,
   shiftWorkItems,
 } from "@/lib/work-search/items";
+import { featureSearchPages, withFeaturePages } from "@/lib/work-search/feature-pages";
 import {
   TEACHING_LOOKAHEAD_DAYS,
   type WorkAreaRead,
   type WorkAreaStatus,
   type WorkItem,
 } from "@/lib/work-search/model";
+import { workSearchPages, type WorkSearchPage } from "@/lib/work-search/pages";
 import type { WorkSearchEntry } from "@/lib/work-search/search";
 
 /**
@@ -148,6 +156,11 @@ export interface WorkSearchRecords {
   readonly entries: readonly WorkSearchEntry[];
   readonly areas: readonly WorkAreaRead[];
   readonly cpd: WorkSearchCpd | null;
+  /**
+   * The pages offered by name: the frame's own, plus the junior features' pages
+   * (`feature-pages.ts`), less any screen the launch switch holds back for this reader.
+   */
+  readonly pages: readonly WorkSearchPage[];
   /** True while a signed-out visitor searches the invented sample. */
   readonly sample: boolean;
   /** True when any area returned invented example records (demo mode, or a roster with none of your own yet). */
@@ -162,6 +175,10 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
   const enabled = myDayEnabledForAuth(authStatus);
   const signedOut = authStatus === "signed_out" || authStatus === "expired";
   const onCall = useOnCallEntries();
+  // Search has no area of its own: a signed-out visitor searches the sample
+  // while the switch shows examples anywhere, and gets the signed-out state when
+  // it is off. A signed-in reader's search only ever finds their own records.
+  const exampleOn = useExampleData().activeAreas.length > 0;
   const [fetched, setFetched] = useState<Fetched | null>(() =>
     memory && memory.epoch === authEpoch && Date.now() - memory.at < FRESH_FOR_MS ? memory : null,
   );
@@ -196,7 +213,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
   }, [enabled, authEpoch, generation]);
 
   useEffect(() => {
-    if (!signedOut || sample) return;
+    if (!signedOut || !exampleOn || sample) return;
     let cancelled = false;
     void import("@/lib/work-search/sample").then(({ workSearchSample }) => {
       if (!cancelled) setSample(workSearchSample(new Date(now)));
@@ -204,17 +221,41 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
     return () => {
       cancelled = true;
     };
-  }, [signedOut, sample, now]);
+  }, [signedOut, exampleOn, sample, now]);
 
   const onCallStatus = adminLoadState(onCall);
   const liveEntries = useMemo(
-    () => (enabled && onCallStatus === "ready" ? entryItems(onCall.entries) : []),
-    [enabled, onCallStatus, onCall.entries],
+    () =>
+      enabled && onCallStatus === "ready" && !onCall.sample ? entryItems(withoutExampleRecords(onCall.entries)) : [],
+    [enabled, onCallStatus, onCall.entries, onCall.sample],
   );
   const sampleEntries = useMemo(() => (sample ? entryItems(sample.entries) : []), [sample]);
 
+  // Numbers the reader saved to Favourites on this device (patient-detail checked when saved and read).
+  const savedNumbers = useSavedNumbers();
+  const numberItems = useMemo(() => savedNumberWorkItems(savedNumbers), [savedNumbers]);
+
+  // Pages: the frame's and the features'. Only a signed-in reader's own device words are listed.
+  const applications = useApplicationsStore(null).state;
+  const routeVisible = useWorkModeRouteVisible();
+  const ownEntries = useMemo(
+    () =>
+      enabled && onCallStatus === "ready" && !onCall.demoMode
+        ? selectAdminOwnEntries({ entries: onCall.entries, demoMode: false })
+        : null,
+    [enabled, onCallStatus, onCall.demoMode, onCall.entries],
+  );
+  const pages = useMemo(
+    () =>
+      withFeaturePages(
+        workSearchPages(),
+        featureSearchPages(signedOut ? null : { entries: ownEntries, applications }),
+      ).filter((page) => routeVisible(page.href)),
+    [signedOut, ownEntries, applications, routeVisible],
+  );
+
   return useMemo<WorkSearchRecords>(() => {
-    if (signedOut) {
+    if (signedOut && exampleOn) {
       const ready: WorkAreaStatus = sample ? "ready" : "loading";
       return {
         items: sample?.items ?? [],
@@ -225,8 +266,26 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
           sample: true,
         })),
         cpd: sample?.cpd ?? null,
+        pages,
         sample: true,
         anySample: true,
+        epoch: authEpoch,
+        retry,
+      };
+    }
+    if (signedOut) {
+      return {
+        items: [],
+        entries: [],
+        areas: (["roster", "teaching", "cme", "my-work", "on-call"] as const).map((area) => ({
+          area,
+          status: "signed-out" as const,
+          sample: false,
+        })),
+        cpd: null,
+        pages,
+        sample: false,
+        anySample: false,
         epoch: authEpoch,
         retry,
       };
@@ -237,7 +296,10 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
       current?.roster.sample || current?.teaching.sample || current?.cme.sample || onCall.demoMode,
     );
     return {
-      items: current ? [...current.roster.items, ...current.teaching.items, ...current.cme.items] : [],
+      items: [
+        ...(current ? [...current.roster.items, ...current.teaching.items, ...current.cme.items] : []),
+        ...numberItems,
+      ],
       entries: liveEntries,
       areas: [
         { area: "roster", status: current?.roster.status ?? "loading", sample: current?.roster.sample ?? false },
@@ -247,6 +309,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
         { area: "on-call", status: entryStatus, sample: onCall.demoMode },
       ],
       cpd: current?.cpd ?? null,
+      pages,
       sample: false,
       anySample,
       epoch: authEpoch,
@@ -254,6 +317,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
     };
   }, [
     signedOut,
+    exampleOn,
     sample,
     sampleEntries,
     fetched,
@@ -263,5 +327,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
     liveEntries,
     onCall.demoMode,
     retry,
+    numberItems,
+    pages,
   ]);
 }

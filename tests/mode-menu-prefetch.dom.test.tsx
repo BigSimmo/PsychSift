@@ -1,11 +1,12 @@
 /** @vitest-environment jsdom */
 
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
+import { setWorkFramePill } from "@/components/work-frame/work-frame-store";
 import { LAST_APP_MODE_STORAGE_KEY } from "@/components/clinical-dashboard/use-last-app-mode";
 import { appModeSelectionHref, visibleAppModeDefinitionsForSession, type AppModeId } from "@/lib/app-modes";
 import { modeMenuSideForMode, orderModesForSide } from "@/lib/phone-mode-groups";
@@ -336,16 +337,46 @@ describe("mode menu destination prefetch", () => {
     expect(within(dialog).getByRole("status")).toHaveTextContent("7 in Work");
   });
 
-  it("returns from On Call's pages into the Work list", async () => {
+  it("opens On Call's pill straight on the Work list", async () => {
+    // On Call is a work area, so its pill opens on the area list rather than
+    // its own pages (Josh, 7 Oct 2026, "Area list first").
     const user = userEvent.setup();
     render(<MasterSearchHeader {...headerProps()} searchMode="on-call" />);
 
     await user.click(screen.getByRole("button", { name: /Mode On Call/i }));
-    await user.click(await screen.findByTestId("app-mode-section-all-modes"));
+    expect(screen.queryByTestId("app-mode-section-all-modes")).toBeNull();
 
     const dialog = await screen.findByRole("dialog", { name: "Choose app mode" });
     expect(within(dialog).getByRole("radio", { name: "Work" })).toHaveAttribute("aria-checked", "true");
     expect(within(dialog).getByRole("menuitemradio", { name: /^On Call\b/i })).toHaveAttribute("aria-checked", "true");
     expect(within(dialog).queryByRole("menuitemradio", { name: /^Answer\b/i })).toBeNull();
+  });
+});
+
+describe("work area mode pill", () => {
+  afterEach(() => {
+    act(() => setWorkFramePill(null));
+  });
+
+  it("shows only the area name, in its colour, when the band names no page (pill 4b)", () => {
+    act(() => setWorkFramePill({ modeId: "my-day", area: "My Day", page: null }));
+    render(<MasterSearchHeader {...headerProps()} searchMode="my-day" />);
+    const trigger = screen.getByRole("button", { name: "Mode My Day" });
+    const areaOnly = within(trigger).getByTestId("universal-header-mode-area-only");
+    expect(areaOnly).toHaveTextContent("My Day");
+    expect(areaOnly.className).toContain("text-[color:var(--clinical-accent)]");
+    expect(within(trigger).queryByText("Mode")).toBeNull();
+    // No badge on phones (Josh, 7 Oct 2026): hidden below 640px, kept above.
+    expect(trigger).toHaveAttribute("data-area-only");
+    expect(trigger.querySelector(".universal-header-mode-badge")?.className).toContain("max-sm:hidden");
+  });
+
+  it("keeps the page over the area while the band still names a page", () => {
+    act(() => setWorkFramePill({ modeId: "my-day", area: "My Day", page: "Week" }));
+    render(<MasterSearchHeader {...headerProps()} searchMode="my-day" />);
+    const trigger = screen.getByRole("button", { name: "Mode My Day, page Week" });
+    expect(within(trigger).queryByTestId("universal-header-mode-area-only")).toBeNull();
+    expect(trigger).not.toHaveAttribute("data-area-only");
+    expect(trigger.querySelector(".universal-header-mode-badge")?.className).not.toContain("max-sm:hidden");
   });
 });

@@ -282,7 +282,6 @@ export function MyDaySampleDashboard({
       helpItems={NO_HELP}
       sources={sample.sources}
       checked={sample.checked}
-      editing={false}
       page={page}
       onShowAll={onShowAll}
       onRetry={noop}

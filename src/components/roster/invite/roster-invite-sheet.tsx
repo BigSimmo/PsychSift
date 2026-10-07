@@ -6,12 +6,15 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 type Props = { serviceId: string; teamName: string; defaultEmail?: string; onClose: () => void };
 type InviteResult = { path?: unknown; expiresAt?: unknown; message?: unknown };
 
 export function RosterInviteSheet({ serviceId, teamName, defaultEmail = "", onClose }: Props) {
   const [email, setEmail] = useState(defaultEmail);
+  const { active: example } = useExampleData("rost");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [path, setPath] = useState<string | null>(null);
@@ -49,6 +52,7 @@ export function RosterInviteSheet({ serviceId, teamName, defaultEmail = "", onCl
   }
 
   async function copy() {
+    if (!guardExampleAction(example, "copy")) return;
     if (!link) return;
     try {
       await navigator.clipboard.writeText(link);
@@ -59,6 +63,7 @@ export function RosterInviteSheet({ serviceId, teamName, defaultEmail = "", onCl
   }
 
   async function share() {
+    if (!guardExampleAction(example, "share")) return;
     if (!link || !navigator.share) return;
     try {
       await navigator.share({ title: `Join ${teamName} in Roster`, url: link });

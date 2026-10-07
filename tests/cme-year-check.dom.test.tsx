@@ -52,7 +52,8 @@ describe("year check page", () => {
       />,
     );
     const ring = screen.getByTestId("cme-domains-ring-domains");
-    expect(within(ring).getByRole("heading")).toHaveTextContent("Activities per domain · 2 of 4 covered");
+    // work-mode redesign, owner request 6 Oct 2026: the mockup's "2 of 4", without the overclaiming "covered".
+    expect(within(ring).getByRole("heading")).toHaveTextContent(/^Activities per domain · 2 of 4$/);
     expect(ring.querySelectorAll('path[data-filled="true"]')).toHaveLength(2);
     expect(ring).toHaveTextContent("Professionalism2 activities");
     // An archived activity does not count, so culturally safe practice still offers "Tag one".
@@ -88,7 +89,8 @@ describe("year check page", () => {
     expect(evidence).toHaveTextContent("1 activity with no evidence attached");
     expect(within(evidence).getByRole("link", { name: "Show: Evidence kept for each activity" })).toHaveAttribute(
       "href",
-      "/cme/log?year=2026&fix=evidence",
+      // The new work mode (the test default) sends this to CPD Evidence; the classic mode keeps Log's filter.
+      "/cme/evidence?year=2026",
     );
     expect(screen.getByTestId("cme-check-row-copied")).toHaveTextContent("1 activity not marked copied");
   });

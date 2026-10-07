@@ -22,6 +22,9 @@ import { monthGrid, monthGridRange, monthKeyOf, shiftMonth, WEEKDAY_SHORT_LABELS
 import { googleCalendarUrl, outlookCalendarUrl } from "@/lib/calendar/provider-links";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { applyReminderAlarms, type ReminderSettings } from "@/lib/reminders/settings";
+import { guardExampleAction, isExampleRecord, withoutExampleRecords } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
+import type { WorkAreaId } from "@/lib/work-frame/areas";
 
 /**
  * A phone-first month calendar with the day's list underneath.
@@ -185,6 +188,8 @@ export type CalendarViewProps = {
   readonly onMonthChange?: (month: string) => void;
   /** Optional wording for the upcoming events list; the month follows this prefix. */
   readonly laterHeadingPrefix?: string;
+  /** The work area whose records these are, so a calendar file is refused while it shows example data. */
+  readonly exampleArea?: WorkAreaId;
 };
 
 export function CalendarView({
@@ -196,7 +201,11 @@ export function CalendarView({
   markStyle = "dot",
   onMonthChange,
   laterHeadingPrefix = "Later in",
+  exampleArea,
 }: CalendarViewProps) {
+  // Example records never leave the app: a calendar file is refused (with the
+  // "can't be exported" sheet) while the area shows examples or any event is one.
+  const areaExample = useExampleData(exampleArea).active;
   const { preferences } = useAppPreferences();
   const reminders = preferences.reminders;
   const [month, setMonth] = useState(() => monthKeyOf(today));
@@ -344,7 +353,7 @@ export function CalendarView({
                     className={cn(
                       "flex min-h-12 flex-col items-center justify-start gap-1 rounded-lg pt-1.5 text-sm transition motion-reduce:transition-none",
                       "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-                      day.inMonth ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)] opacity-60",
+                      day.inMonth ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)]",
                       isSelected
                         ? "bg-[color:var(--clinical-accent-soft)] font-semibold text-[color:var(--clinical-accent)] opacity-100 ring-2 ring-inset ring-[color:var(--clinical-accent)]"
                         : "hover:bg-[color:var(--surface-subtle)]",
@@ -488,7 +497,11 @@ export function CalendarView({
           data-testid={`${testId}-export`}
           className={cn(floatingControl, "self-start")}
           disabled={downloadEvents.length === 0}
-          onClick={() => downloadIcs(downloadEvents, exportName, reminders)}
+          onClick={() => {
+            if (!guardExampleAction(areaExample || downloadEvents.some((event) => isExampleRecord(event)), "export"))
+              return;
+            downloadIcs(withoutExampleRecords(downloadEvents), exportName, reminders);
+          }}
         >
           <Download aria-hidden="true" className="size-icon-sm" />
           Download calendar file
@@ -504,7 +517,7 @@ export function CalendarView({
         returnFocusRef={returnFocus}
         testId={`${testId}-add-sheet`}
       >
-        {sheetEvent ? <AddToCalendarOptions event={sheetEvent} reminders={reminders} /> : null}
+        {sheetEvent ? <AddToCalendarOptions event={sheetEvent} reminders={reminders} example={areaExample} /> : null}
       </Sheet>
     </section>
   );
@@ -565,13 +578,25 @@ function CalendarEventRow({
   );
 }
 
-function AddToCalendarOptions({ event, reminders }: { event: CalendarEvent; reminders: ReminderSettings }) {
+function AddToCalendarOptions({
+  event,
+  reminders,
+  example,
+}: {
+  event: CalendarEvent;
+  reminders: ReminderSettings;
+  example: boolean;
+}) {
+  const blocked = example || isExampleRecord(event);
   return (
     <div className="flex flex-col gap-3 pb-2">
       <button
         type="button"
         className={cn(floatingControl, "justify-start")}
-        onClick={() => downloadIcs([event], event.title, reminders)}
+        onClick={() => {
+          if (!guardExampleAction(blocked, "export")) return;
+          downloadIcs([event], event.title, reminders);
+        }}
         data-testid="calendar-add-file"
       >
         <Download aria-hidden="true" className="size-icon-sm" />
@@ -581,6 +606,9 @@ function AddToCalendarOptions({ event, reminders }: { event: CalendarEvent; remi
         href={googleCalendarUrl(event)}
         tone="inherit"
         className={cn(floatingControl, "justify-start no-underline")}
+        onClick={(click) => {
+          if (!guardExampleAction(blocked, "export")) click.preventDefault();
+        }}
         data-testid="calendar-add-google"
       >
         Google Calendar
@@ -589,6 +617,9 @@ function AddToCalendarOptions({ event, reminders }: { event: CalendarEvent; remi
         href={outlookCalendarUrl(event)}
         tone="inherit"
         className={cn(floatingControl, "justify-start no-underline")}
+        onClick={(click) => {
+          if (!guardExampleAction(blocked, "export")) click.preventDefault();
+        }}
         data-testid="calendar-add-outlook"
       >
         Outlook

@@ -37,7 +37,7 @@ export type TeachingAction = {
   testId?: string;
 };
 
-type ActionSurface = "card" | "summary";
+type ActionSurface = "card" | "summary" | "hero";
 
 /*
  * On the summary surface (Today's hero) the app's filled face is the same
@@ -68,7 +68,7 @@ function QuietAction({ action, surface }: { action: TeachingAction; surface: Act
   const className = cn(
     modeTapArea,
     focusRing,
-    "justify-center text-sm font-medium text-[color:var(--primary)]",
+    "justify-center text-sm font-medium text-[color:var(--mode-identity)]",
     surfaceFace(surface, "text"),
   );
   const label = action.busy ? (action.busyLabel ?? action.label) : action.label;
@@ -126,6 +126,75 @@ function LinkAction({
   );
 }
 
+/*
+ * Work-mode faces (work-mode redesign, owner request 6 Oct 2026). On a card the actions are the
+ * work kit's flat pills (`work-button`): the mode colour for the one primary, white with a line
+ * for the rest. On the hero (Teaching's own Today, session and presenting heroes) the primary is a
+ * white pill in the mode colour and the rest a quiet glass-free tint, as the mockup draws them.
+ * My Day's `summary` surface keeps the app's faces above.
+ */
+const HERO_FACE = {
+  primary:
+    "text-[color:var(--work-hero-action-ink,var(--mode-identity))] before:bg-[color:var(--work-hero-action-fill,var(--surface-raised))]",
+  secondary:
+    "text-current before:border before:border-[color:color-mix(in_srgb,currentColor_22%,transparent)] before:bg-[color:color-mix(in_srgb,currentColor_14%,transparent)]",
+  text: "text-current underline underline-offset-4",
+} as const;
+
+function WorkAction({
+  action,
+  emphasis,
+  surface,
+}: {
+  action: TeachingAction;
+  emphasis: "primary" | "secondary" | "text";
+  surface: "card" | "hero";
+}) {
+  const Icon = action.icon;
+  const label = action.busy ? (action.busyLabel ?? action.label) : action.label;
+  const inner = (
+    <>
+      {Icon ? <Icon aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} /> : null}
+      <span className="min-w-0 truncate">{label}</span>
+      <NewTabNote external={action.external} />
+    </>
+  );
+  const shared =
+    surface === "hero"
+      ? {
+          className: cn(
+            "inline-flex min-h-12 w-full items-center justify-center gap-1.5 rounded-full px-3 text-xs font-bold no-underline",
+            "relative isolate before:absolute before:inset-x-0 before:inset-y-1.75 before:[z-index:var(--work-z-under)] before:rounded-full before:content-[''] disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:before:border-transparent disabled:before:bg-[color:var(--surface-subtle)]",
+            HERO_FACE[emphasis],
+            focusRing,
+          ),
+          "data-testid": action.testId,
+        }
+      : {
+          className: cn("work-button w-full", emphasis === "text" && "!font-semibold"),
+          "data-variant": emphasis === "text" ? "quiet" : emphasis,
+          "data-testid": action.testId,
+        };
+  if (action.href) {
+    return (
+      <a href={action.href} {...shared} {...(action.external ? { target: "_blank", rel: "noreferrer" } : {})}>
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={action.onClick}
+      disabled={!action.onClick || action.busy}
+      aria-busy={action.busy || undefined}
+      {...shared}
+    >
+      {inner}
+    </button>
+  );
+}
+
 export function ActionStrip({
   actions,
   surface = "card",
@@ -149,6 +218,8 @@ export function ActionStrip({
       >
         {actions.map((action, index) => {
           const emphasis = action.emphasis ?? (index === 0 ? "primary" : "secondary");
+          if (surface !== "summary")
+            return <WorkAction key={action.id} action={action} emphasis={emphasis} surface={surface} />;
           if (emphasis === "text") return <QuietAction key={action.id} action={action} surface={surface} />;
           const variant = EMPHASIS_VARIANT[emphasis];
           if (action.href)

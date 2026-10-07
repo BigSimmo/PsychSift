@@ -10,31 +10,30 @@ const PAGE =
 
 /**
  * The Year page's loading state: its shapes in its order, so nothing jumps when
- * it arrives (spec §6.2 and §7; standard §7: static outlines, no shimmer).
- * Heights follow the loaded layout (the 5 Oct mock-up) at 390 px wide:
- *   - the header row, 48 px (the "Year" heading beside the 48 px Customise button);
- *   - the summary card, 400 px: label, figure, bar, four legend rows, the pace
- *     sentence and the week chart;
- *   - the one "Log an activity" button, 48 px;
- *   - a row of 32 px chips;
+ * it arrives (standard §7: static outlines, no shimmer). Work-mode redesign
+ * (owner request 6 Oct 2026, mock-up cpd_sum): the band above already names
+ * the page, so the shapes start with the hero.
+ *   - the hero, 224 px, at the hero's own radius;
+ *   - "To log": one card of two 52 px rows;
+ *   - "Records to tidy": a row of chips;
  *   - "What's left": its label and three 52 px rows (the kit's skeleton).
- * On a computer the summary, button and chips sit left and the rows right, as
- * on the loaded page. It holds no data and no words except the screen-reader label.
+ * On a computer the hero, To log and chips sit left and the rows right, as on
+ * the loaded page. It holds no data and no words except the screen-reader label.
  */
 export function CmeLoadingSkeleton() {
   return (
     <div role="status" aria-label="Loading your CPD record" data-testid="cme-loading" className={cn(PAGE, "max-w-5xl")}>
-      <div data-testid="cme-loading-header" aria-hidden="true" className="flex h-12 items-start justify-between gap-3">
-        <span className="h-7 w-14 rounded-sm bg-[color:var(--surface-subtle)]" />
-        <span className={cn(BLOCK, "h-12 w-28")} />
-      </div>
       <div
-        className="mt-4 grid gap-5.5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-x-10"
+        className="grid gap-5.5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-x-10"
         data-testid="cme-loading-lead"
       >
         <div className="grid content-start gap-5.5">
-          <div data-testid="cme-loading-hero" aria-hidden="true" className={cn(BLOCK, "h-100")} />
-          <div data-testid="cme-loading-card" aria-hidden="true" className={cn(BLOCK, "h-12 lg:w-40")} />
+          <div
+            data-testid="cme-loading-hero"
+            aria-hidden="true"
+            className="h-56 rounded-[var(--work-radius-hero,18px)] bg-[color:var(--surface-subtle)]"
+          />
+          <div data-testid="cme-loading-card" aria-hidden="true" className={cn(BLOCK, "h-26")} />
           <div aria-hidden="true" className="flex gap-2">
             <span data-testid="cme-loading-chip" className={cn(BLOCK, "h-8 w-36 rounded-md")} />
             <span data-testid="cme-loading-chip" className={cn(BLOCK, "h-8 w-28 rounded-md")} />

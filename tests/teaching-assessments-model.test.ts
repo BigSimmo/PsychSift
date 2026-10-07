@@ -48,8 +48,8 @@ function storyTo(point: "self" | "sent" | "ready" | "booked" | "met" | "sup-sign
       { type: "book", day: 2, time: "14:30" },
     ],
     met: [{ type: "set-now", now: 2 }, { type: "meeting-held" }],
-    "sup-signed": [{ type: "sign", who: "sup", typed: "Priya Nair", image: null }],
-    "doc-signed": [{ type: "sign", who: "self", typed: "Sam Lee", image: null }],
+    "sup-signed": [{ type: "sign", who: "sup", typed: "Robin Wattle", image: null }],
+    "doc-signed": [{ type: "sign", who: "self", typed: "Sam Karri", image: null }],
   };
   const actions = order.slice(0, order.indexOf(point) + 1).flatMap((k) => steps[k]);
   return run(...actions);
@@ -71,7 +71,7 @@ describe("Teaching assessments: home on Mon 5 Oct (week 6)", () => {
   it("shows 2 doctor actions: EPA 1 and starting the end-of-term", () => {
     expect(doctorActions(s)).toBe(2);
     expect(stage(s)).toBe("start");
-    expect(endOfTermLine(s)).toBe("Rate yourself first (optional), then ask Dr Nair");
+    expect(endOfTermLine(s)).toBe("Rate yourself first (optional), then ask Dr Wattle");
     expect(endOfTermPill(s)).toEqual({ label: "Not started", tone: "accent" });
   });
 
@@ -89,6 +89,37 @@ describe("Teaching assessments: home on Mon 5 Oct (week 6)", () => {
     const twice = assessmentsReducer(once, { type: "request-epa", epa: 1, who: "reg" });
     expect(twice.epaRequests).toHaveLength(1);
   });
+
+  it("lets the supervisor record an EPA without a request, and Undo removes it", () => {
+    const saved = assessmentsReducer(s, { type: "record-epa-direct", epa: 1, level: "minimal", note: " Clear plans " });
+    expect(epaRecords(saved)).toHaveLength(9);
+    expect(saved.epaRequests[0]).toMatchObject({
+      epa: 1,
+      who: "sup",
+      status: "done",
+      direct: true,
+      note: "Clear plans",
+    });
+    expect(doctorActions(saved)).toBe(1);
+    const undone = assessmentsReducer(saved, { type: "undo-record-epa", index: 0 });
+    expect(undone.epaRequests).toHaveLength(0);
+    expect(epaRecords(undone)).toHaveLength(8);
+  });
+
+  it("puts a requested EPA back to waiting on Undo, keeping the doctor's request", () => {
+    const requested = assessmentsReducer(s, { type: "request-epa", epa: 1, who: "sup" });
+    const recorded = assessmentsReducer(requested, {
+      type: "record-epa",
+      index: 0,
+      level: "direct",
+      note: "Keep it up",
+    });
+    expect(recorded.epaRequests[0]).toMatchObject({ status: "done", level: "direct", note: "Keep it up" });
+    const undone = assessmentsReducer(recorded, { type: "undo-record-epa", index: 0 });
+    expect(undone.epaRequests).toEqual([{ epa: 1, who: "sup", status: "requested" }]);
+    // A second Undo changes nothing.
+    expect(assessmentsReducer(undone, { type: "undo-record-epa", index: 0 })).toBe(undone);
+  });
 });
 
 describe("Teaching assessments: the end-of-term story", () => {
@@ -104,13 +135,13 @@ describe("Teaching assessments: the end-of-term story", () => {
   it("marks the supervisor's form as a draft once she saves part of it", () => {
     const s = run({ type: "send-request" }, { type: "set-rating", who: "sup", domain: 1, rating: 4 });
     expect(stage(s)).toBe("sup-draft");
-    expect(endOfTermLine(s)).toBe("Sent to Dr Nair. She's preparing her view.");
+    expect(endOfTermLine(s)).toBe("Sent to Dr Wattle. She's preparing her view.");
   });
 
   it("counts nothing for the doctor once the meeting is booked and EPA 1 is requested", () => {
     const s = assessmentsReducer(storyTo("booked"), { type: "request-epa", epa: 1, who: "sup" });
     expect(doctorActions(s)).toBe(0);
-    expect(endOfTermLine(s)).toBe("Dr Nair's draft is done. Meeting Wed 28 Oct, 14:30.");
+    expect(endOfTermLine(s)).toBe("Dr Wattle's draft is done. Meeting Wed 28 Oct, 14:30.");
   });
 
   it("asks the doctor to book once the window opens", () => {
@@ -121,13 +152,13 @@ describe("Teaching assessments: the end-of-term story", () => {
 
   it("says booking opens Mon 26 Oct before the window", () => {
     const s = storyTo("ready");
-    expect(endOfTermLine(s)).toBe("Dr Nair's draft is done. Booking opens Mon 26 Oct.");
+    expect(endOfTermLine(s)).toBe("Dr Wattle's draft is done. Booking opens Mon 26 Oct.");
   });
 
   it("gives the doctor a turn to sign after the supervisor signs", () => {
     const s = storyTo("sup-signed");
     expect(endOfTermPill(s)).toEqual({ label: "Your turn to sign", tone: "warm" });
-    expect(endOfTermLine(s)).toBe("Dr Nair has signed. Read your report and sign.");
+    expect(endOfTermLine(s)).toBe("Dr Wattle has signed. Read your report and sign.");
   });
 
   it("never says sent until the doctor emails the PDF", () => {
@@ -183,7 +214,7 @@ describe("Teaching assessments: locks and guards", () => {
   });
 
   it("will not let the doctor sign before the supervisor", () => {
-    const s = assessmentsReducer(storyTo("met"), { type: "sign", who: "self", typed: "Sam Lee", image: null });
+    const s = assessmentsReducer(storyTo("met"), { type: "sign", who: "self", typed: "Sam Karri", image: null });
     expect(s.sigs.doc).toBeNull();
   });
 
@@ -258,12 +289,12 @@ describe("Teaching assessments: reports", () => {
     const rows = compareRatings(SAMPLE_MIDTERM.self.ratings, SAMPLE_MIDTERM.sup.ratings, "doc", "Sam");
     expect(rows.map((r) => r.message)).toEqual([
       "Same rating",
-      "Dr Nair: 1 higher",
+      "Dr Wattle: 1 higher",
       "Same rating",
-      "Dr Nair: 1 higher",
+      "Dr Wattle: 1 higher",
     ]);
     expect(reportSummary(SAMPLE_MIDTERM.self, SAMPLE_MIDTERM.sup)).toMatch(
-      /^You rated yourself lower than Dr Nair in 2 domains\. Ask her what she saw\. You both ticked \d+ of the \d+ outcomes Dr Nair observed\.$/,
+      /^You rated yourself lower than Dr Wattle in 2 domains\. Ask her what she saw\. You both ticked \d+ of the \d+ outcomes Dr Wattle observed\.$/,
     );
   });
 
@@ -348,7 +379,9 @@ describe("Teaching assessments: post-build review guards", () => {
     const changed = assessmentsReducer(met, { type: "set-feedback", who: "sup", domain: 1, value: "" });
     const low = assessmentsReducer(changed, { type: "set-rating", who: "sup", domain: 1, rating: 1 });
     expect(low.sup.status).toBe("draft");
-    expect(assessmentsReducer(low, { type: "sign", who: "sup", typed: "Priya Nair", image: null }).sigs.sup).toBeNull();
+    expect(
+      assessmentsReducer(low, { type: "sign", who: "sup", typed: "Robin Wattle", image: null }).sigs.sup,
+    ).toBeNull();
   });
 
   it("counts the booking prompt only while the supervisor's draft is ready", () => {

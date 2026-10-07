@@ -123,6 +123,7 @@ export function OnCallTeachingStrip({ sessions, testId = "on-call-home-teaching-
     // sideways — the same treatment `ModeHomeTemplate` gives its pill row.
     <div
       data-testid={testId}
+      data-no-tab-swipe
       className="-mx-4 flex w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 pb-1 [-webkit-overflow-scrolling:touch] sm:mx-0 sm:w-full sm:flex-wrap sm:px-0"
     >
       {sessions.map((session, index) => (

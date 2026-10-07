@@ -186,14 +186,15 @@ describe("Routines", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
-  it("puts a due routine at the top of the one list, with a Due chip and a one-tap log button", () => {
+  it("puts a due routine at the top, under Due today, with a one-tap log button", () => {
     renderPage();
     const list = screen.getByTestId("cme-routines-list");
     const rows = within(list).getAllByRole("listitem");
     const due = screen.getByTestId("cme-routines-due-row");
     expect(rows[0]).toBe(due);
     expect(within(due).getByText("Supervision")).toBeInTheDocument();
-    expect(within(due).getByText("Due")).toBeInTheDocument();
+    // work-mode redesign, owner request 6 Oct 2026: the group heading says Due today, not a chip.
+    expect(within(list).getByRole("heading", { level: 2, name: "Due today · 1" })).toBeInTheDocument();
     expect(within(due).getByRole("button", { name: "Log 1.0 h for Supervision" })).toBeInTheDocument();
   });
 
@@ -220,7 +221,7 @@ describe("Routines", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("says in plain words that due Log saves with Undo, behind How this works", () => {
+  it("says in plain words that due Log saves with Undo", () => {
     renderPage();
     expect(screen.getByTestId("cme-routines-confirmation-note")).toHaveTextContent(
       /saves that activity straight away/i,
@@ -229,10 +230,8 @@ describe("Routines", () => {
     expect(screen.getByTestId("cme-routines-confirmation-note")).toHaveTextContent(
       /nothing is recorded from attendance/i,
     );
-    const how = screen.getByTestId("cme-routines-how");
-    expect(how.tagName).toBe("DETAILS");
-    expect(how).toContainElement(screen.getByTestId("cme-routines-confirmation-note"));
-    expect(within(how).getByText("How this works")).toBeInTheDocument();
+    // work-mode redesign, owner request 6 Oct 2026: a short hint under the list, as the mock-up draws it, not a fold.
+    expect(screen.queryByTestId("cme-routines-how")).toBeNull();
   });
 
   it("lists every active routine with its next-due date", () => {
@@ -273,9 +272,13 @@ describe("Routines", () => {
     expect(screen.getByRole("button", { name: "Log 1.0 h for Peer review group" })).toBeInTheDocument();
   });
 
-  it("never shows an archived routine, due or not", () => {
+  it("never lists an archived routine as due or coming up, only under Archived", () => {
     renderPage();
-    expect(screen.queryByText("Retired peer-review group")).toBeNull();
+    // work-mode redesign, owner request 6 Oct 2026: archived routines sit in their own group to restore.
+    expect(within(screen.getByTestId("cme-routines-list")).queryByText("Retired peer-review group")).toBeNull();
+    expect(
+      within(screen.getByTestId("cme-routines-archived")).getByText("Retired peer-review group"),
+    ).toBeInTheDocument();
   });
 
   it("offers a New routine control", async () => {
@@ -326,11 +329,12 @@ describe("Routines", () => {
     expect(screen.getByRole("button", { name: /new routine/i })).toBeInTheDocument();
   });
 
-  it("draws the routines as one hairline card of rows, not a card per routine", () => {
+  it("draws Due today and Coming up as groups of rows", () => {
     renderPage();
     const list = screen.getByTestId("cme-routines-list");
-    expect(within(list).getByRole("heading", { level: 2, name: "Your routines" })).toBeInTheDocument();
-    expect(within(list).getAllByRole("list")).toHaveLength(1);
+    // work-mode redesign, owner request 6 Oct 2026: two groups, as the mock-up draws them.
+    expect(within(list).getByRole("heading", { level: 2, name: "Coming up" })).toBeInTheDocument();
+    expect(within(list).getAllByRole("list")).toHaveLength(2);
     // The due routine and the not-yet-due one, once each; the archived routine is still left out.
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
     expect(within(list).getAllByTestId("cme-routines-due-row")).toHaveLength(1);

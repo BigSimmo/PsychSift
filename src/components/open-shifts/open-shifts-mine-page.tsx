@@ -1,16 +1,18 @@
 "use client";
 
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Plus, Receipt } from "lucide-react";
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
 
 import { useRosterNow } from "@/components/roster/roster-format";
 import { ModeBandStatus, PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
+import { WorkCard, WorkIconRow } from "@/components/mode-kit/work";
 import { groupMine, hoursMeter, type HoursMeter } from "@/lib/open-shifts/mine";
 import { formatHours, hoursBetween, type OpenShiftListing } from "@/lib/open-shifts/model";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { SignInAction } from "./open-shifts-sign-in";
 import { OpenShiftsGate, openShiftsStatus } from "./open-shifts-states";
 import {
@@ -190,6 +192,7 @@ function Group({
 
 export function OpenShiftsMinePage() {
   const state = useOpenShifts();
+  const signedOut = useSignedOut();
   const now = useRosterNow();
   const groups = useMemo(() => groupMine(state.listings, now), [state.listings, now]);
   const meter = useMemo(
@@ -197,6 +200,15 @@ export function OpenShiftsMinePage() {
     [state.roster, state.listings, now],
   );
   const nothing = groups.requested.length + groups.booked.length + groups.cancelled.length === 0;
+  // Past (mockup `rost_mine`): approved shifts already worked that the list still holds. They
+  // leave the groups above once worked, so this row points to the payslip check instead.
+  const worked = useMemo(
+    () =>
+      state.listings.filter(
+        (row) => row.claimedByMe && row.status === "approved" && Date.parse(row.endsAt) <= now.getTime(),
+      ).length,
+    [state.listings, now],
+  );
 
   return (
     <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
@@ -238,6 +250,20 @@ export function OpenShiftsMinePage() {
           render={(row) => <MineRow key={row.id} listing={row} status="Approved" tone="ok" />}
         />
 
+        {worked && state.sample !== "example" ? (
+          <div className="px-3 pt-4">
+            <WorkCard>
+              <WorkIconRow
+                icon={Receipt}
+                title={`Recently worked · ${worked}`}
+                sub="Check them against your payslip"
+                href="/roster?view=hours"
+                testId="open-shifts-mine-past"
+              />
+            </WorkCard>
+          </div>
+        ) : null}
+
         {nothing && (state.failedTeams.length > 0 || state.offline) ? (
           <div className="px-3 py-6">
             <p className="text-base-minus font-medium text-[color:var(--text-heading)]">This list may be incomplete</p>
@@ -278,7 +304,7 @@ export function OpenShiftsMinePage() {
             Log a shift offered to me
           </Link>
         </div>
-        {state.sample === "signed-out" ? <SignInAction label="Sign in to keep your own" /> : null}
+        {signedOut ? <SignInAction label="Sign in to keep your own" /> : null}
       </OpenShiftsGate>
     </div>
   );

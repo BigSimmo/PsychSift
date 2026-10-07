@@ -1,8 +1,10 @@
 /** @vitest-environment jsdom */
 
-// Now, signed out (owner decision, 6 Oct 2026): a "Made-up example" banner with
-// Sign in, the real public crisis lines first, then the mock-up's Now drawn from
-// invented data. Nothing is fetched or saved, and no made-up number is a link.
+// Now while On Call shows example data (owner decision, 6 Oct 2026; the one
+// switch since 7 Oct): a plain label that the crisis lines are real, the real
+// public crisis lines first, then the mock-up's Now drawn from invented data.
+// The frame's example data banner says "made up" (not mounted here). Nothing is
+// fetched or saved, and no made-up number is a link.
 
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,7 +24,7 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
 }));
 
 const { OnCallHome } = await import("@/components/on-call/on-call-home");
-const { OnCallSampleNotice } = await import("@/components/on-call/on-call-sample-notice");
+const { resetExampleDataForTests, setExampleDataOn } = await import("@/lib/example-data/store");
 const { ON_CALL_NOW_EXAMPLE, ON_CALL_NOW_EXAMPLE_NUMBERS } =
   await import("@/components/on-call/now/signed-out-example");
 
@@ -30,6 +32,8 @@ describe("On Call Now, signed out", () => {
   beforeEach(() => {
     auth.status = "signed_out";
     nav.pathname = "/on-call";
+    window.localStorage.clear();
+    resetExampleDataForTests();
   });
   afterEach(() => {
     cleanup();
@@ -44,26 +48,25 @@ describe("On Call Now, signed out", () => {
     return { fetchSpy, setItem, example };
   }
 
-  it("shows the Made-up example banner with Sign in, for signed-out and ended sessions", async () => {
+  it("labels the crisis lines as real, for signed-out and ended sessions", async () => {
     await renderExample();
-    const banner = screen.getByTestId("on-call-now-example-banner");
-    expect(banner.textContent).toContain("Made-up example");
-    expect(banner.textContent).toContain("cannot be called");
-    act(() => screen.getByRole("button", { name: "Sign in" }).click());
-    expect(screen.getByTestId("mock-sign-in-dialog")).toBeTruthy();
+    const label = screen.getByTestId("on-call-now-real-lines");
+    expect(label.textContent).toBe(
+      "These crisis lines are real. Everything after them is made up and cannot be called.",
+    );
     cleanup();
 
     auth.status = "expired";
     render(<OnCallHome />);
-    expect(screen.getByTestId("on-call-now-example-banner")).toBeTruthy();
+    expect(screen.getByTestId("on-call-now-real-lines")).toBeTruthy();
   });
 
   it("puts the real public crisis lines first, above every made-up row", async () => {
     const { example } = await renderExample();
-    const banner = screen.getByTestId("on-call-now-example-banner");
+    const label = screen.getByTestId("on-call-now-real-lines");
     const crisis = screen.getByTestId("on-call-now-crisis");
-    // banner, then crisis lines, then the example.
-    expect(banner.compareDocumentPosition(crisis) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // label, then crisis lines, then the example.
+    expect(label.compareDocumentPosition(crisis) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(crisis.compareDocumentPosition(example) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // The crisis lines keep their real, callable numbers.
     const crisisLinks = [...crisis.querySelectorAll("a[href^='tel:']")].map((link) => link.getAttribute("href"));
@@ -87,7 +90,7 @@ describe("On Call Now, signed out", () => {
     }
     expect(example.textContent).toContain(ON_CALL_NOW_EXAMPLE.hospital);
     expect(example.textContent).toContain("Dr Alex Example");
-    expect(example.textContent).toContain("Dr Priya Nair");
+    expect(example.textContent).toContain("Dr Robin Wattle");
   });
 
   it("fetches nothing and saves nothing", async () => {
@@ -97,14 +100,17 @@ describe("On Call Now, signed out", () => {
     expect(setItem).not.toHaveBeenCalled();
   });
 
-  it("leaves the layout's sample box off Now only, so the banner is not doubled", async () => {
-    const now = render(<OnCallSampleNotice mode="on-call" />);
+  it("follows the example data switch: off means the live page, signed out too", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ entries: [], signedOut: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    act(() => setExampleDataOn(false));
+    render(<OnCallHome />);
     await act(async () => {});
-    expect(screen.queryByTestId("on-call-signed-out-sample")).toBeNull();
-    now.unmount();
-
-    nav.pathname = "/on-call/call";
-    render(<OnCallSampleNotice mode="on-call" />);
-    expect(await screen.findByTestId("on-call-signed-out-sample")).toBeTruthy();
+    expect(screen.queryByTestId("on-call-now-example")).toBeNull();
+    expect(screen.queryByTestId("on-call-now-real-lines")).toBeNull();
   });
 });

@@ -34,7 +34,9 @@ test("This week leads with the session on now or next, and fits a phone in light
 }, testInfo) => {
   await page.goto("/teaching");
   await expect(visibleByTestId(page, "teaching-hero")).toBeVisible({ timeout: 20_000 });
-  await expect(visibleByTestId(page, "teaching-week-list")).toBeVisible();
+  // The week list moved to its own Week tab; Today keeps the session on now or next.
+  await page.goto("/teaching/week");
+  await expect(visibleByTestId(page, "teaching-week-list")).toBeVisible({ timeout: 20_000 });
   await expectNoSidewaysScroll(page, "This week");
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
@@ -48,7 +50,7 @@ test("This week leads with the session on now or next, and fits a phone in light
 test("This week at 200% text keeps every time clear of its title and never scrolls sideways", async ({
   page,
 }, testInfo) => {
-  await page.goto("/teaching");
+  await page.goto("/teaching/week");
   const list = visibleByTestId(page, "teaching-week-list");
   await expect(list).toBeVisible({ timeout: 20_000 });
   await largeText(page);
@@ -79,8 +81,8 @@ test("the old Week address shows This week, so links with an On Call anchor keep
 });
 
 test("a session opened from This week says where and when, and fits at 200% text", async ({ page }) => {
-  await page.goto("/teaching");
-  await visibleByTestId(page, "teaching-week-list").locator("a").first().click();
+  await page.goto("/teaching/week");
+  await visibleByTestId(page, "teaching-week-list").locator('a[href^="/teaching/session/"]').first().click();
   await expect(page).toHaveURL(/\/teaching\/session\/[0-9a-f-]{36}$/);
   await expect(visibleByTestId(page, "teaching-session")).toBeVisible({ timeout: 20_000 });
   await largeText(page);
@@ -93,19 +95,27 @@ test("On Call's legacy teaching calendar opens Teaching's This week", async ({ p
   await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
 });
 
-test("Teaching's five tabs reach Presenting, My record, Resources and Organise", async ({ page }) => {
+// work-mode redesign, owner request 6 Oct 2026: the frame pins Today, Week and Logbook, and
+// Presenting and Resources sit in More. The pill opens the area list in a work area (Josh,
+// 7 Oct 2026), so a page is reached from its tab, or from More when it has no tab.
+test("Teaching's tabs and More reach Logbook, Presenting and Resources", async ({ page }) => {
   await page.goto("/teaching");
   await expect(visibleByTestId(page, "teaching-hero")).toBeVisible({ timeout: 20_000 });
-  for (const [id, path, testId] of [
-    ["teach", "/teaching/teach", "teaching-presenting"],
-    ["logbook", "/teaching/logbook", "teaching-logbook"],
-    ["resources", "/teaching/resources", "teaching-resources"],
+  for (const [name, path, testId] of [
+    ["Logbook", "/teaching/logbook", "teaching-logbook"],
+    ["Presenting", "/teaching/teach", "teaching-presenting"],
+    ["Resources", "/teaching/resources", "teaching-resources"],
   ] as const) {
-    await page.getByRole("button", { name: /^Mode Teaching/ }).click();
-    await visibleByTestId(page, `app-mode-section-${id}`).click();
+    const tab = visibleByTestId(page, "mode-band-tabs").locator(`a[href="${path}"]`);
+    if ((await tab.count()) > 0) {
+      await tab.click();
+    } else {
+      await visibleByTestId(page, "work-frame-more").click();
+      await visibleByTestId(page, "work-more-sheet").locator(`a[href="${path}"]`).click();
+    }
     await expect(page).toHaveURL(path);
     await expect(visibleByTestId(page, testId)).toBeVisible({ timeout: 20_000 });
-    await expectNoSidewaysScroll(page, id);
+    await expectNoSidewaysScroll(page, name);
   }
 });
 

@@ -28,6 +28,8 @@ import {
   type OnCallHandoverHeading,
   type OnCallHandoverPatient,
 } from "@/lib/on-call/handover";
+import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /*
  * THE TABLE: a shift header, one table with the patient column frozen, what
@@ -174,6 +176,7 @@ function Table({
   const cellBase = "border-b border-[color:var(--border)] px-3 py-3 align-top text-sm text-[color:var(--text)]";
   return (
     <div
+      data-no-tab-swipe
       className="max-w-full overflow-x-auto rounded-md print:overflow-visible"
       tabIndex={0}
       aria-label="Handover table, scrolls sideways"
@@ -367,6 +370,7 @@ function PastePreview({
         </figure>
       ) : (
         <pre
+          data-no-tab-swipe
           className="max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-wash)] p-3 font-mono text-xs leading-5 text-[color:var(--text-heading)] forced-colors:border"
           data-testid="on-call-handover-paste-text"
           tabIndex={0}
@@ -393,6 +397,7 @@ export function OnCallHandoverTable({
   readonly toTeam: string | null;
   readonly onEdit: (patient: OnCallHandoverPatient) => void;
 }) {
+  const { zone } = useWorkTimeZone();
   const [view, setView] = useState<"table" | "cards">("table");
   const [paste, setPaste] = useState<"word" | "text">("word");
   const [destination, setDestination] = useState<OnCallHandoverDestination>("copy");
@@ -422,6 +427,15 @@ export function OnCallHandoverTable({
 
   const send = useCallback(async () => {
     setChecking(false);
+    // Example records never leave the app. A doctor's own handover is never
+    // blocked: only a list holding example records is.
+    if (
+      !guardExampleAction(
+        patients.some((patient) => isExampleRecord(patient)),
+        "send",
+      )
+    )
+      return;
     if (destination === "print") {
       window.requestAnimationFrame(() => window.print());
       return;
@@ -460,7 +474,7 @@ export function OnCallHandoverTable({
         monochrome
         confidential
         printedAt={`Printed ${new Intl.DateTimeFormat("en-AU", {
-          timeZone: "Australia/Perth",
+          timeZone: zone,
           dateStyle: "medium",
           timeStyle: "short",
         }).format(new Date())}`}

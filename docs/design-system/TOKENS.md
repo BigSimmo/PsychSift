@@ -257,7 +257,23 @@ mode kit. Any other page still needs its own owner decision.
 
 ## 9 · Component-scoped families the contract does not govern
 
-None today. The one family this section recorded — `--ward-*`, `--net-*` and `--co-*`, the Ward
+**`--work-*` (work-mode frame and kit, owner request 6 Oct 2026).** Declared at the top of
+`src/app/work-mode.css`, with its colour values in `src/app/globals.css` beside the work shift
+codes. Colours are scoped to `[data-work-frame]`, `.work-band`, `.work-more-sheet` and the work
+header; the structural tokens (edge, z, leading, small radii) sit on `:root` so a portalled kit
+control still lays out. Usage rule: work-mode recipes only. It holds the glass recipe
+(`--work-glass-fill`, `-line`, `-blur`), the flat card and float shadows, the radii, the
+line heights by role (`--work-leading-*`), `--work-edge-inset` (the inside hairline of a borderless
+glass layer, chip or secondary button, coloured at the use site and the layer's one edge owner,
+in the spirit of `--ring-hairline`), `--work-edge-inset-strong` (the same inside edge at 1.5px, for a
+selected day or shift cell), `--work-z-under` (a fill painted under its own isolated control's
+content, never a rung on the global `--z-*` ladder; Tailwind call sites spell it
+`before:[z-index:var(--work-z-under)]`), `--work-hero-action-fill` and `--work-hero-action-ink` (set
+only in dark themes, where the hero's white primary action turns to heading ink; light call sites
+fall back to the raised surface and the mode colour) and the Undo toast and hero ink colours. Spacing is not part of the family: work-mode CSS uses `calc(var(--spacing) * n)`, as
+`mode-band.css` does.
+
+Before the work-mode family, there were none. The one family this section recorded — `--ward-*`, `--net-*` and `--co-*`, the Ward
 Flow bed board's private spacing, line-height and z-index vocabulary — was retired with the Ward
 Flow prototype on 2026-09-26. A new component-scoped family needs a row here before it ships: an
 unregistered token family is indistinguishable from drift, and §8 forbids a token without a usage

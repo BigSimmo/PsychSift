@@ -3,7 +3,7 @@
 import { CloudOff, RotateCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 
 export interface OnCallLoadFailedProps {
   reason: "offline" | "failed" | null;
@@ -20,7 +20,7 @@ export interface OnCallLoadFailedProps {
  */
 export function OnCallLoadFailed({ reason, onRetry, testId = "on-call-load-failed" }: OnCallLoadFailedProps) {
   return (
-    <EmptyState
+    <OnCallEmptyState
       icon={CloudOff}
       title="Couldn't load your On Call entries"
       body={

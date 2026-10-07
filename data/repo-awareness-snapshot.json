@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-06"
+    "committed_at": "2026-10-07"
   },
   "routes": {
     "modes": [
@@ -92,7 +92,7 @@
       {
         "id": "my-work",
         "label": "Admin",
-        "home": "/admin/renewals",
+        "home": "/admin",
         "dev_only": false
       },
       {
@@ -269,6 +269,11 @@
         "area": "mockup"
       },
       {
+        "path": "/mockups/work-roles",
+        "file": "src/app/mockups/work-roles/page.tsx",
+        "area": "mockup"
+      },
+      {
         "path": "/mockups/on-call-shift-cover",
         "file": "src/app/mockups/on-call-shift-cover/page.tsx",
         "area": "mockup"
@@ -334,6 +339,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/new-job/starter",
+        "file": "src/app/(search-app)/admin/new-job/starter/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/development/ledger",
         "file": "src/app/mockups/development/ledger/page.tsx",
         "area": "mockup"
@@ -342,6 +352,11 @@
         "path": "/mockups/privacy-page-directions",
         "file": "src/app/mockups/privacy-page-directions/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/cme/cpd-home",
+        "file": "src/app/(search-app)/cme/cpd-home/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/resources/[collectionId]",
@@ -379,6 +394,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/sharing",
+        "file": "src/app/(search-app)/admin/sharing/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/document-search/source/evidence",
         "file": "src/app/mockups/document-search/source/evidence/page.tsx",
         "area": "mockup"
@@ -414,6 +434,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/documents",
+        "file": "src/app/(search-app)/admin/documents/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/tools-split-clinical-brief",
         "file": "src/app/mockups/tools-split-clinical-brief/page.tsx",
         "area": "mockup"
@@ -424,9 +449,19 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/new-job/ready",
+        "file": "src/app/(search-app)/admin/new-job/ready/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan/reviews",
         "file": "src/app/mockups/care-plan/reviews/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/teaching/term/folder",
+        "file": "src/app/(search-app)/teaching/term/folder/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/universal-search-redesign",
@@ -529,6 +564,11 @@
         "area": "mockup"
       },
       {
+        "path": "/roster/staffing",
+        "file": "src/app/(search-app)/roster/staffing/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/",
         "file": "src/app/(search-app)/page.tsx",
         "area": "product"
@@ -574,6 +614,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/contract",
+        "file": "src/app/(search-app)/admin/contract/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/roster",
         "file": "src/app/(search-app)/roster/page.tsx",
         "area": "product"
@@ -581,6 +626,11 @@
       {
         "path": "/cme/customise",
         "file": "src/app/(search-app)/cme/customise/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/my-day/setup",
+        "file": "src/app/(search-app)/my-day/setup/page.tsx",
         "area": "product"
       },
       {
@@ -592,6 +642,11 @@
         "path": "/mockups/warning-line",
         "file": "src/app/mockups/warning-line/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/my-day/alerts/earlier",
+        "file": "src/app/(search-app)/my-day/alerts/earlier/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/resources",
@@ -609,8 +664,8 @@
         "area": "product"
       },
       {
-        "path": "/my-day/alerts",
-        "file": "src/app/(search-app)/my-day/alerts/page.tsx",
+        "path": "/my-day/notifications",
+        "file": "src/app/(search-app)/my-day/notifications/page.tsx",
         "area": "product"
       },
       {
@@ -654,6 +709,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/requests",
+        "file": "src/app/(search-app)/admin/requests/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan/patients/[patientId]/presentations/new",
         "file": "src/app/mockups/care-plan/patients/[patientId]/presentations/new/page.tsx",
         "area": "mockup"
@@ -687,6 +747,11 @@
         "path": "/mockups/dictionary-browse-header",
         "file": "src/app/mockups/dictionary-browse-header/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/on-call/first-week",
+        "file": "src/app/(search-app)/on-call/first-week/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/c/complete",
@@ -784,6 +849,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/workforce",
+        "file": "src/app/(search-app)/admin/workforce/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/settings-search-general",
         "file": "src/app/mockups/settings-search-general/page.tsx",
         "area": "mockup"
@@ -854,6 +924,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/leave",
+        "file": "src/app/(search-app)/admin/leave/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/calculators-popup-sheet",
         "file": "src/app/mockups/calculators-popup-sheet/page.tsx",
         "area": "mockup"
@@ -891,6 +966,11 @@
       {
         "path": "/teaching/display/[token]",
         "file": "src/app/(display)/teaching/display/[token]/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/on-call/whos-on/roster",
+        "file": "src/app/(search-app)/on-call/whos-on/roster/page.tsx",
         "area": "product"
       },
       {
@@ -969,6 +1049,11 @@
         "area": "product"
       },
       {
+        "path": "/my-day/notifications/earlier",
+        "file": "src/app/(search-app)/my-day/notifications/earlier/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/tools-clinical-lanes",
         "file": "src/app/mockups/tools-clinical-lanes/page.tsx",
         "area": "mockup"
@@ -982,6 +1067,11 @@
         "path": "/mockups/tools-split-compact-sheet",
         "file": "src/app/mockups/tools-split-compact-sheet/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/teaching/assessments/trainee/[id]",
+        "file": "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/week",
@@ -1001,6 +1091,11 @@
       {
         "path": "/factsheets/search",
         "file": "src/app/(search-app)/factsheets/search/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/cme/applications",
+        "file": "src/app/(search-app)/cme/applications/page.tsx",
         "area": "product"
       },
       {
@@ -1059,6 +1154,11 @@
         "area": "product"
       },
       {
+        "path": "/cme/applications/cv",
+        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/differentials/search",
         "file": "src/app/(search-app)/differentials/search/page.tsx",
         "area": "product"
@@ -1089,6 +1189,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/tax",
+        "file": "src/app/(search-app)/admin/tax/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan/patients/[patientId]/patient-plan/print",
         "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/print/page.tsx",
         "area": "mockup"
@@ -1109,13 +1214,33 @@
         "area": "product"
       },
       {
+        "path": "/roster/sick",
+        "file": "src/app/(search-app)/roster/sick/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/tools-action-workbench",
         "file": "src/app/mockups/tools-action-workbench/page.tsx",
         "area": "mockup"
       },
       {
+        "path": "/teaching/assessments/record",
+        "file": "src/app/(search-app)/teaching/assessments/record/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/my-day/profile/agreement",
+        "file": "src/app/(search-app)/my-day/profile/agreement/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/calculators/search",
         "file": "src/app/(search-app)/calculators/search/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/my-day/notifications/settings",
+        "file": "src/app/(search-app)/my-day/notifications/settings/page.tsx",
         "area": "product"
       },
       {
@@ -1137,6 +1262,11 @@
         "path": "/mockups/dsm-favourites",
         "file": "src/app/mockups/dsm-favourites/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/admin/pay",
+        "file": "src/app/(search-app)/admin/pay/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/therapy-navigation-rail",
@@ -1192,6 +1322,11 @@
         "path": "/mockups/care-plan/patients/[patientId]/history",
         "file": "src/app/mockups/care-plan/patients/[patientId]/history/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/cme/evidence",
+        "file": "src/app/(search-app)/cme/evidence/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/document-search/source",
@@ -1269,6 +1404,11 @@
         "area": "product"
       },
       {
+        "path": "/my-day/favourites",
+        "file": "src/app/(search-app)/my-day/favourites/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/dictionary-control-row",
         "file": "src/app/mockups/dictionary-control-row/page.tsx",
         "area": "mockup"
@@ -1281,6 +1421,11 @@
       {
         "path": "/teaching/assessments",
         "file": "src/app/(search-app)/teaching/assessments/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/my-day/help",
+        "file": "src/app/(search-app)/my-day/help/page.tsx",
         "area": "product"
       },
       {
@@ -1297,11 +1442,6 @@
         "path": "/mockups/therapy-recommend-popup-triage",
         "file": "src/app/mockups/therapy-recommend-popup-triage/page.tsx",
         "area": "mockup"
-      },
-      {
-        "path": "/my-day",
-        "file": "src/app/(search-app)/my-day/page.tsx",
-        "area": "product"
       },
       {
         "path": "/specifiers/map",
@@ -1372,6 +1512,11 @@
         "path": "/mockups/document-top-navigation",
         "file": "src/app/mockups/document-top-navigation/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/cme/export",
+        "file": "src/app/(search-app)/cme/export/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/phone-mode-sheet-yes",
@@ -1499,6 +1644,11 @@
         "area": "product"
       },
       {
+        "path": "/teaching/assessments/export",
+        "file": "src/app/(search-app)/teaching/assessments/export/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/answer-chat-perfected-v2",
         "file": "src/app/mockups/answer-chat-perfected-v2/page.tsx",
         "area": "mockup"
@@ -1523,7 +1673,7 @@
       {
         "path": "/my-work",
         "file": "src/app/(search-app)/my-work/page.tsx",
-        "target": "/admin/renewals"
+        "target": "/admin"
       },
       {
         "path": "/calculators",
@@ -1534,6 +1684,11 @@
         "path": "/forms",
         "file": "src/app/(search-app)/forms/page.tsx",
         "target": "/?mode=forms"
+      },
+      {
+        "path": "/teaching/assessments/help",
+        "file": "src/app/(search-app)/teaching/assessments/help/page.tsx",
+        "target": "/teaching/assessments?view=words&as=supervisor"
       },
       {
         "path": "/differentials",
@@ -1564,6 +1719,11 @@
         "path": "/on-call/compliance",
         "file": "src/app/(search-app)/on-call/compliance/page.tsx",
         "target": "/admin/renewals"
+      },
+      {
+        "path": "/my-day/alerts",
+        "file": "src/app/(search-app)/my-day/alerts/page.tsx",
+        "target": "/my-day/notifications/settings"
       },
       {
         "path": "/medications",
@@ -1621,6 +1781,11 @@
         "target": "/?mode=services"
       },
       {
+        "path": "/my-day",
+        "file": "src/app/(search-app)/my-day/page.tsx",
+        "target": "/my-day/notifications"
+      },
+      {
         "path": "/mockups/favourites-hub",
         "file": "src/app/mockups/favourites-hub/page.tsx",
         "target": "/favourites"
@@ -1634,6 +1799,11 @@
         "path": "/dictionary/sources",
         "file": "src/app/(search-app)/dictionary/sources/page.tsx",
         "target": "/sources/search?usedBy=dictionary"
+      },
+      {
+        "path": "/teaching/assessments/trainee",
+        "file": "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
+        "target": "/teaching/assessments?view=overview&as=supervisor"
       },
       {
         "path": "/on-call/logistics",

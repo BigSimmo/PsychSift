@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,15 @@ import type { HospitalHandbookState } from "@/components/on-call/use-hospital-ha
 import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
 import { type OnCallEntry } from "@/lib/on-call/entry-model";
 import { readyHandbook } from "./helpers/on-call-handbook-fixtures";
+
+/**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/on-call",
@@ -59,6 +68,37 @@ const storeState = vi.hoisted(() => ({
 vi.mock("@/lib/on-call/entry-store", () => ({
   useOnCallEntries: () => storeState,
   cacheOnCallEntries: vi.fn(),
+}));
+
+// The "Right now, from your roster" block reads the team roster. Signed out by default, so it stays off Now.
+type RosterReadState = {
+  status: string;
+  data: unknown;
+  message: string | null;
+  readAt: Date | null;
+  reload: () => void;
+};
+const rosterReads = vi.hoisted(() => ({
+  teams: { status: "signed-out", data: null, message: null, readAt: null, reload: () => undefined } as RosterReadState,
+  overview: {
+    status: "signed-out",
+    data: null,
+    message: null,
+    readAt: null,
+    reload: () => undefined,
+  } as RosterReadState,
+  assignments: {
+    status: "signed-out",
+    data: null,
+    message: null,
+    readAt: null,
+    reload: () => undefined,
+  } as RosterReadState,
+}));
+vi.mock("@/components/roster/use-roster-team", () => ({
+  useRosterTeams: () => rosterReads.teams,
+  useRosterRead: (_serviceId: string | null, what: "overview" | "assignments") =>
+    what === "overview" ? rosterReads.overview : rosterReads.assignments,
 }));
 
 const { OnCallHome } = await import("@/components/on-call/on-call-home");
@@ -145,6 +185,63 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("On Call home layout", () => {
+  it("mounts the Right now block from the team roster, with a link to every role", async () => {
+    const at = Date.now();
+    const ready = (data: unknown): RosterReadState => ({
+      status: "ready",
+      data,
+      message: null,
+      readAt: new Date(at),
+      reload: () => undefined,
+    });
+    rosterReads.teams = ready({
+      teams: [{ serviceId: "10000000-0000-4000-8000-00000000000a", name: "Ward 4", enabled: true, role: "member" }],
+      actorId: null,
+    });
+    rosterReads.overview = ready({ latestPublication: null, managers: [] });
+    rosterReads.assignments = ready({
+      assignments: [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          userId: "00000000-0000-4000-8000-100000000001",
+          name: "Dr Tran Nguyen",
+          grade: "registrar",
+          siteId: null,
+          siteName: null,
+          startsAt: new Date(at - 60 * 60_000).toISOString(),
+          endsAt: new Date(at + 60 * 60_000).toISOString(),
+          shiftCode: "D",
+          kind: "day",
+        },
+      ],
+    });
+    try {
+      render(<OnCallHome />);
+      const block = await screen.findByTestId("on-call-roster-right-now");
+      expect(block).toHaveTextContent("Right now, from your roster");
+      expect(within(block).getByRole("link", { name: "All roles" })).toHaveAttribute("href", "/on-call/whos-on/roster");
+    } finally {
+      const signedOut: RosterReadState = {
+        status: "signed-out",
+        data: null,
+        message: null,
+        readAt: null,
+        reload: () => undefined,
+      };
+      rosterReads.teams = signedOut;
+      rosterReads.overview = signedOut;
+      rosterReads.assignments = signedOut;
+    }
+  });
+
+  it("leaves the roster block off Now when there is no team roster to read", async () => {
+    render(<OnCallHome />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByTestId("on-call-roster-right-now")).toBeNull();
+  });
+
   it("puts Your usual above the footer group, because last shift predicts this shift", () => {
     storeState.entries = [contact("reg", "After-hours registrar", ["call-first"], "9000 0030")];
 
@@ -252,7 +349,7 @@ describe("On Call home layout", () => {
     storeState.entries = [dualLineContact()];
 
     // A Wednesday at 09:00 local.
-    render(<OnCallHome now={new Date(2026, 8, 16, 9, 0, 0)} />);
+    render(<OnCallHome now={perthWall(2026, 8, 16, 9, 0, 0)} />);
 
     expect(usualCallHref("bed-manager")).toMatch(/90000011$/);
   });
@@ -261,7 +358,7 @@ describe("On Call home layout", () => {
     storeState.entries = [dualLineContact()];
 
     // The same Wednesday at 22:00 local.
-    render(<OnCallHome now={new Date(2026, 8, 16, 22, 0, 0)} />);
+    render(<OnCallHome now={perthWall(2026, 8, 16, 22, 0, 0)} />);
 
     expect(usualCallHref("bed-manager")).toMatch(/90000012$/);
     // The round tile prints no number, so it can never show one under the
@@ -278,7 +375,7 @@ describe("On Call home layout", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {
       // Months after the stored anchor of 8 January.
-      vi.setSystemTime(new Date(2026, 8, 16, 9, 0, 0));
+      vi.setSystemTime(perthWall(2026, 8, 16, 9, 0, 0));
       storeState.entries = [recurringSession()];
 
       render(<OnCallSectionPage view="education" />);
@@ -314,7 +411,7 @@ describe("On Call home layout", () => {
     // change exists to prevent, arriving by a different route.
     vi.useFakeTimers();
     try {
-      vi.setSystemTime(new Date(2026, 8, 16, 16, 55, 0));
+      vi.setSystemTime(perthWall(2026, 8, 16, 16, 55, 0));
       storeState.entries = [dualLineContact()];
 
       render(<OnCallHome />);
@@ -341,10 +438,10 @@ describe("On Call home layout", () => {
   it("holds a clock a caller pinned, so a test or a print view is not moved under it", () => {
     vi.useFakeTimers();
     try {
-      vi.setSystemTime(new Date(2026, 8, 16, 16, 55, 0));
+      vi.setSystemTime(perthWall(2026, 8, 16, 16, 55, 0));
       storeState.entries = [dualLineContact()];
 
-      render(<OnCallHome now={new Date(2026, 8, 16, 9, 0, 0)} />);
+      render(<OnCallHome now={perthWall(2026, 8, 16, 9, 0, 0)} />);
       act(() => {
         vi.advanceTimersByTime(24 * 60 * 60 * 1000);
       });
@@ -457,13 +554,10 @@ describe("the example-content module", () => {
     expect(screen.queryByTestId("on-call-home-first-run-empty")).toBeNull();
   });
 
-  it("is present for the signed-in owner whose account actually holds the rows", async () => {
-    // Guard the two tests above: if the module never rendered at all they would
-    // pass on a component that had simply been deleted.
-    //
-    // The owner-scoped answer has to be supplied, because that is now the only
-    // thing that decides this. The entries in view do not: the shared read
-    // returns every non-personal row across all accounts.
+  it("is retired: even when the account holds the example rows, Now offers no Load example content", async () => {
+    // 7 Oct 2026 (owner decision, M8): loading made-up rows into the account
+    // broke "example data is never saved to the account", so the module is
+    // gone from Now. The example data switch shows examples instead.
     storeState.entries = [...DEMO_ON_CALL_ENTRIES];
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
@@ -473,26 +567,10 @@ describe("the example-content module", () => {
 
     try {
       render(<OnCallHome />);
-      expect(await screen.findByTestId("on-call-home-example-content")).toBeInTheDocument();
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  it("stays absent while the owner-scoped answer is still unknown", async () => {
-    // A labelled HomeModule whose only child has decided to render nothing is
-    // a heading with an empty body. That shipped once already, caught before
-    // push; it is pinned here because the failure mode is invisible in the
-    // markup a component test usually asserts on.
-    storeState.entries = [...DEMO_ON_CALL_ENTRIES];
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error("offline")) as unknown as typeof fetch;
-
-    try {
-      render(<OnCallHome />);
-      await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+      await act(async () => {});
       expect(screen.queryByTestId("on-call-home-example-content")).toBeNull();
       expect(screen.queryByText("Example content")).toBeNull();
+      expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -509,7 +587,9 @@ describe("On Call home tools after the header ellipsis left", () => {
     render(<OnCallHome now={new Date("2026-06-01T09:00:00+08:00")} />);
     expect(screen.getByTestId("on-call-now-footer-shifts").getAttribute("href")).toBe("/roster");
     expect(screen.getByTestId("on-call-now-footer-card").getAttribute("href")).toBe("/on-call/card");
-    expect(screen.getByTestId("on-call-now-footer-calendar").getAttribute("href")).toBe("/on-call/calendar");
+    // Amended for the work-mode redesign wiring audit (owner request 6 Oct 2026):
+    // straight to the real page, not through the /on-call/calendar redirect.
+    expect(screen.getByTestId("on-call-now-footer-calendar").getAttribute("href")).toBe("/roster/calendar");
   });
 });
 

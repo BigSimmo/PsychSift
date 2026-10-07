@@ -3,6 +3,12 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", async (original) => ({
+  ...(await original<object>()),
+  usePathname: () => "/teaching",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn(), refresh: router.refresh }),
+}));
 vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="sign-in-dialog" /> : null),
@@ -18,6 +24,7 @@ vi.mock("@/components/on-call/on-call-entry-editor", () => ({
 import { TeachingToday } from "@/components/teaching/teaching-today";
 import { heroModel, restOfWeek, sessionRow } from "@/components/teaching/teaching-view-model";
 import { TeachingWeekScreen } from "@/components/teaching/teaching-week";
+import { readExampleData, resetExampleDataForTests } from "@/lib/example-data/store";
 import { useTeachingRoles } from "@/lib/teaching/page-visibility";
 
 import { authState } from "./helpers/teaching-auth";
@@ -238,7 +245,10 @@ describe("Today", () => {
     );
     render(<TeachingToday demoMode={false} />);
     const hero = await screen.findByTestId("teaching-hero");
-    expect(hero).toHaveTextContent("Seminar room 1 · Hospital A psychiatry · check-in opens 12:15");
+    // Work-mode redesign, owner request 6 Oct 2026: the hero's meta line is the time, place and
+    // service, and when check-in opens is its own note under it.
+    expect(hero).toHaveTextContent("12:30 to 13:30 · Seminar room 1 · Hospital A psychiatry");
+    expect(hero).toHaveTextContent("Check-in opens 12:15 · also online");
     expect(await within(hero).findByRole("link", { name: /^Join on Teams/ })).toHaveAttribute("href", JOIN);
     expect(rawText(screen.getByRole("link", { name: /Rest of this week/ }))).toContain(`1${NB}more session`);
     expect(screen.queryByTestId(/^teaching-row-/)).toBeNull();
@@ -417,7 +427,9 @@ describe("Today", () => {
     await waitFor(() => expect(screen.getByTestId("roles")).toBeEmptyDOMElement());
   });
 
-  it("a refused read: the sign-in module, and Open the demo enters the whole-mode Teaching sample", async () => {
+  it("a refused read: the sign-in module, and Open the demo turns the one example data switch on", async () => {
+    window.localStorage.clear();
+    resetExampleDataForTests();
     authState.status = "authenticated";
     serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? apiError(401, "teaching_signed_out") : null));
     render(<TeachingToday demoMode={false} />);
@@ -425,11 +437,12 @@ describe("Today", () => {
     expect(screen.queryByText("Demo · made-up people")).toBeNull();
     fireEvent.click(within(moduleEl).getByRole("button", { name: "Sign in" }));
     expect(screen.getByTestId("sign-in-dialog")).toBeInTheDocument();
-    // A real link, not an in-page toggle: the sample is a cookie set by a route, so it survives moving between pages.
-    expect(within(moduleEl).getByRole("link", { name: "Open the demo" })).toHaveAttribute(
-      "href",
-      "/teaching/sample?next=%2Fteaching",
-    );
+    // The one example data switch, not a Teaching-only cookie, and a refresh so server pages re-read.
+    fireEvent.click(within(moduleEl).getByRole("button", { name: "Open the demo" }));
+    expect(readExampleData().choice).toBe("on");
+    expect(router.refresh).toHaveBeenCalled();
+    window.localStorage.clear();
+    resetExampleDataForTests();
   });
 
   it("the sample is the same switch as demo mode: made-up people, no API call", async () => {
@@ -582,7 +595,7 @@ describe("Week", () => {
     render(<TeachingWeekScreen demoMode={false} />);
     const list = await waitFor(() => byId("teaching-relocated"));
     fireEvent.click(await within(list).findByRole("button", { name: /Registrar tutorial/ }));
-    expect(screen.getByTestId("on-call-editor")).toHaveTextContent(ENTRY);
+    expect(await screen.findByTestId("on-call-editor")).toHaveTextContent(ENTRY);
     const handbook = await waitFor(() => byId("teaching-handbook"));
     expect(within(handbook).getByRole("link", { name: /Friday registrar teaching/ })).toHaveAttribute(
       "href",

@@ -41,7 +41,8 @@ import { useHospitalHandbook, type HospitalHandbookState } from "@/components/on
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
-import { formatOnCallTime } from "@/lib/on-call/display-dates";
+import { RosterWhosOnEntryLink } from "@/components/on-call/roster-whos-on/roster-whos-on-entry-link";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -50,6 +51,8 @@ import { searchHandbookItems } from "@/lib/on-call/handbook-search";
 import { msUntilOnCallPeriodChange, resolveOnCallNumber, type HandbookDial } from "@/lib/on-call/number-resolver";
 import { buildOnCallReviewQueue } from "@/lib/on-call/review-queue";
 import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
+import { zonedTimeOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /** The entry editor loads only when "Add your own number" is tapped, so People's first paint does not carry it. */
 const OnCallEntryEditor = dynamic(
@@ -91,10 +94,10 @@ const phoneSwitchInSheet = (on: boolean) => <OnCallHospitalPhoneSwitch on={on} t
 
 /** A row's leading mark: its short badge when the label carries one, a shield on emergency rows, else a phone. */
 function rowLeading(item: HandbookItem, emergencyGroup: boolean): ReactNode {
-  if (emergencyGroup) return <Shield aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />;
+  if (emergencyGroup) return <Shield aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />;
   const badge = onCallRowBadge(item);
   if (badge) return <span className={onCallBadge}>{badge}</span>;
-  return <Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />;
+  return <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />;
 }
 
 function HandbookCallRow({
@@ -250,6 +253,7 @@ function MineCallRow({
  * live in Now's "Log a call" sheet; the old link to them is sent on there.
  */
 export function OnCallCallPage() {
+  const { zone } = useWorkTimeZone();
   const router = useRouter();
   const account = useOptionalAccountData();
   const handbook = useHospitalHandbook();
@@ -282,9 +286,9 @@ export function OnCallCallPage() {
   // Re-read the clock when the in-hours period starts or ends (holidays count),
   // so a page left open shows your own numbers on the right daytime or after-hours line.
   useEffect(() => {
-    const timer = window.setTimeout(() => setClock(new Date()), msUntilOnCallPeriodChange(clock));
+    const timer = window.setTimeout(() => setClock(new Date()), msUntilOnCallPeriodChange(clock, zone));
     return () => window.clearTimeout(timer);
-  }, [clock]);
+  }, [clock, zone]);
   const searching = query.trim().length > 0;
   const ready = handbook.status === "ready";
   const name = hospitalName(handbook);
@@ -350,7 +354,7 @@ export function OnCallCallPage() {
       <OnCallGroupedList
         eyebrow="Cover"
         count={cover.length}
-        note={hydrated ? `Cover as of ${formatOnCallTime(hospitalNow)}` : undefined}
+        note={hydrated ? `Cover as of ${zonedTimeOf(hospitalNow, zone)}` : undefined}
         testId="on-call-call-cover"
       >
         {cover.map((item) => (
@@ -405,7 +409,10 @@ export function OnCallCallPage() {
         )}
         {!searching && tab === "hospital" && groups.length > 1 ? (
           <nav aria-label="Departments" data-testid="on-call-call-departments">
-            <ul className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 [-webkit-overflow-scrolling:touch]">
+            <ul
+              data-no-tab-swipe
+              className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 [-webkit-overflow-scrolling:touch]"
+            >
               {groups.map((group) => (
                 <li key={group.slug} className="shrink-0">
                   <a
@@ -521,20 +528,24 @@ export function OnCallCallPage() {
 
       {searching ? null : (
         <div className="grid min-w-0 gap-4" data-testid="on-call-call-more">
-          <ul role="list" className="min-w-0">
+          {/* Who is on from the team's published roster: a new work mode screen. */}
+          <NewWorkModeOnly>
+            <RosterWhosOnEntryLink />
+          </NewWorkModeOnly>
+          <ul role="list" className="work-card min-w-0">
             <OnCallIsobarRow />
             <OnCallRow
               href="/on-call/who-is-who"
               title="Who's who"
               subtitle="What the short role names mean"
-              leading={<Users aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              leading={<Users aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
               testId="on-call-call-whos-who"
             />
             <OnCallRow
               href="/on-call/card"
               title="Pocket card"
               subtitle="The numbers flagged for it, to print"
-              leading={<Printer aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              leading={<Printer aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
               testId="on-call-call-pocket-card"
             />
             <OnCallRow
@@ -547,7 +558,7 @@ export function OnCallCallPage() {
                     : "None due for a check"
                   : undefined
               }
-              leading={<ListChecks aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              leading={<ListChecks aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
               testId="on-call-call-check"
             />
           </ul>

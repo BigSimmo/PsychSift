@@ -14,6 +14,7 @@ import {
   checkReminderText,
   REMIND_ME_TEXT_LIMIT,
   reminderWhenLabel,
+  remindMeClock,
   remindMeWhenOptions,
 } from "@/lib/alerts/remind-me";
 import { useSharedDevice } from "@/lib/alerts/shared-device";
@@ -28,12 +29,18 @@ export function RemindMeSheet({
   onClose,
   now,
   shiftEndsAt,
+  initialText = "",
 }: {
   readonly open: boolean;
   readonly onClose: () => void;
   readonly now: Date;
   /** Today's rostered shift end, for the "End of shift" choice. */
   readonly shiftEndsAt: string | null;
+  /**
+   * The words to start from, e.g. a Needs you row's title. They are checked
+   * like typed words, so a title that looks like a patient detail cannot be saved.
+   */
+  readonly initialText?: string;
 }) {
   const { add } = useRemindMe();
   const shared = useSharedDevice();
@@ -43,7 +50,10 @@ export function RemindMeSheet({
   // The choices are worked out once, when the sheet opens: the clock ticking
   // must not swap a picked time for another one while the sheet is up.
   const [openedAt, setOpenedAt] = useState<Date | null>(null);
-  if (open && !openedAt) setOpenedAt(now);
+  if (open && !openedAt) {
+    setOpenedAt(now);
+    setText(initialText.slice(0, REMIND_ME_TEXT_LIMIT));
+  }
   if (!open && openedAt) setOpenedAt(null);
   const optionsAt = openedAt ?? now;
   const options = useMemo(() => remindMeWhenOptions(optionsAt, shiftEndsAt), [optionsAt, shiftEndsAt]);
@@ -71,10 +81,11 @@ export function RemindMeSheet({
       open={open}
       onClose={close}
       title="Remind me"
+      description="Kept on this phone"
       testId="remind-me-sheet"
       footer={
         <Button variant="primary" block disabled={!canSave} onClick={save} testId="remind-me-save">
-          Save reminder
+          {`Save for ${remindMeClock(Date.parse(chosen.dueAt))}`}
         </Button>
       }
     >
@@ -132,7 +143,7 @@ export function RemindMeSheet({
           <span>
             {shared
               ? "This is marked as a shared device, so it keeps no reminders. Use your own phone."
-              : "No names, record numbers or bed numbers. The words stay on this device and never reach our server or your calendar. For now it shows under Your reminders on the Alerts page, and it won't buzz. Not for legal deadlines such as Mental Health Act times."}
+              : "No names, record or bed numbers. The words stay on this phone and never reach the server or your calendar. It shows under Your reminders and won't buzz. Not for Mental Health Act deadlines."}
           </span>
         </p>
         {failure ? (

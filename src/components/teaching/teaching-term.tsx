@@ -24,17 +24,19 @@ import {
   T5Row,
   T5Section,
   T5Sub,
+  T5Button,
 } from "@/components/teaching/t5-kit";
 import { perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
 import { NoPatientDetailsMark, TermAddItem, TermRemoveButton } from "@/components/teaching/teaching-term-kit";
+import { TermFolderEntryLink } from "@/components/teaching/term-folder/term-folder-entry-link";
 import { milestoneRows, overdueNote, termPanel } from "@/components/teaching/term-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
-import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import {
   currentTerm,
   dayOfMonth,
@@ -63,7 +65,7 @@ function withTerm(state: TermTrackerState, termId: string, change: (term: TermRe
 }
 
 const externalLink = cn(
-  "inline-flex min-h-12 items-center gap-1.5 text-sm font-medium text-[color:var(--primary)]",
+  "inline-flex min-h-12 items-center gap-1.5 text-sm font-medium text-[color:var(--mode-identity)]",
   focusRing,
 );
 
@@ -194,13 +196,13 @@ function TermForm({
       ) : null}
       <NoPatientDetailsMark />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary">
+        <T5Button type="submit" variant="primary">
           {term ? "Save term" : "Start tracking this term"}
-        </Button>
+        </T5Button>
         {onCancel ? (
-          <Button type="button" variant="secondary" onClick={onCancel}>
+          <T5Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
-          </Button>
+          </T5Button>
         ) : null}
       </div>
     </form>
@@ -247,9 +249,9 @@ function TermSummary({
       </ol>
       <T5Actions className="mt-1">
         {panel.finished ? (
-          <Button type="button" variant="primary" onClick={onNew}>
+          <T5Button type="button" variant="primary" onClick={onNew}>
             Start the next term
-          </Button>
+          </T5Button>
         ) : null}
         <T5Link onClick={onEdit} quiet label="Edit this term">
           Edit
@@ -348,9 +350,9 @@ function EpaTargetForm({ update, onDone }: { update: Update; onDone: () => void 
         <ExternalLink aria-hidden="true" className="size-icon-sm" />
         <span className="sr-only">(opens in a new tab)</span>
       </a>
-      <Button type="button" variant="primary" onClick={() => save({ ...DEFAULT_EPA_TARGETS })}>
+      <T5Button type="button" variant="primary" onClick={() => save({ ...DEFAULT_EPA_TARGETS })}>
         Use {DEFAULT_EPA_TARGETS.perTerm} a term, {DEFAULT_EPA_TARGETS.perYear} a year
-      </Button>
+      </T5Button>
       <form
         className="grid gap-2"
         onSubmit={(event) => {
@@ -381,12 +383,12 @@ function EpaTargetForm({ update, onDone }: { update: Update; onDone: () => void 
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="secondary">
+          <T5Button type="submit" variant="secondary">
             Save my own target
-          </Button>
-          <Button type="button" variant="ghost" onClick={onDone}>
+          </T5Button>
+          <T5Button type="button" variant="ghost" onClick={onDone}>
             Cancel
-          </Button>
+          </T5Button>
         </div>
       </form>
     </div>
@@ -542,11 +544,11 @@ function MeetingForm({ term, update, onDone }: { term: TermRecord; update: Updat
       </div>
       <TextField label="Where" maxLength={120} value={place} onChange={(event) => setPlace(event.target.value)} />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary">
+        <T5Button type="submit" variant="primary">
           Save meeting
-        </Button>
+        </T5Button>
         {term.meeting ? (
-          <Button
+          <T5Button
             type="button"
             variant="ghost"
             onClick={() => {
@@ -555,11 +557,11 @@ function MeetingForm({ term, update, onDone }: { term: TermRecord; update: Updat
             }}
           >
             Clear
-          </Button>
+          </T5Button>
         ) : null}
-        <Button type="button" variant="ghost" onClick={onDone}>
+        <T5Button type="button" variant="ghost" onClick={onDone}>
           Cancel
-        </Button>
+        </T5Button>
       </div>
     </form>
   );
@@ -729,6 +731,9 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
             href="/teaching/exam-prep"
           />
         </T5List>
+        <NewWorkModeOnly>
+          <TermFolderEntryLink />
+        </NewWorkModeOnly>
       </>
     );
 

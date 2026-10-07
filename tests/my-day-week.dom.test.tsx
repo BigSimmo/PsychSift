@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CmeRoutine } from "@/lib/cme/routines";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
 import { DEFAULT_REMINDER_SETTINGS } from "@/lib/reminders/settings";
 import {
@@ -26,6 +27,8 @@ type ItemsRead = {
   cmeRoutines: CmeRoutine[];
 };
 const itemsState = vi.hoisted(() => ({ current: undefined as unknown as ItemsRead }));
+// work-mode redesign, owner request 6 Oct 2026: My Day's pages offer More's Customise, which navigates to Today.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
 vi.mock("@/components/my-day/use-my-day-items", () => ({ useMyDayItems: () => itemsState.current }));
 
 type Shifts = {
@@ -45,6 +48,8 @@ vi.mock("@/components/teaching/use-teaching-week", () => ({ useTeachingWeek: () 
 
 vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
   useAppPreferences: () => ({ preferences: { reminders: DEFAULT_REMINDER_SETTINGS } }),
+  readAppPreferences: () => ({ timeZone: "Australia/Perth" }),
+  subscribeAppPreferences: () => () => undefined,
 }));
 
 const auth = vi.hoisted(() => ({ status: "authenticated", authEpoch: 1 }));
@@ -388,20 +393,34 @@ describe("MyDayWeekPage", () => {
 
   it("shows a signed-out reader the sample week, reads nothing and keeps nothing", async () => {
     auth.status = "signed_out";
+    window.localStorage.clear();
+    resetExampleDataForTests();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     render(<MyDayWeekPage now={NOW} />);
-    const panel = screen.getByTestId("my-day-week-signed-out");
-    expect(within(panel).getByText("Sign in to see your day")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-week-signed-out")).toBeNull();
     expect(await screen.findByTestId("my-day-week-ready")).toBeTruthy();
     expect(screen.getByTestId("my-day-week-footer")).toBeTruthy();
     expect(screen.getByText("Registrar teaching: agitation")).toBeTruthy();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
-    fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
-    expect(screen.getByTestId("account-dialog")).toBeTruthy();
     fetchSpy.mockRestore();
     setItem.mockRestore();
+  });
+
+  it("asks a signed-out reader who turned example data off to sign in", async () => {
+    auth.status = "signed_out";
+    window.localStorage.clear();
+    resetExampleDataForTests();
+    setExampleDataOn(false);
+    render(<MyDayWeekPage now={NOW} />);
+    const panel = screen.getByTestId("my-day-week-signed-out");
+    expect(within(panel).getByText("Sign in to see your day")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-week-signed-out-sample")).toBeNull();
+    fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByTestId("account-dialog")).toBeTruthy();
+    window.localStorage.clear();
+    resetExampleDataForTests();
   });
 
   it("shows the skeleton while the sign-in is being checked", () => {

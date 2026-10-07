@@ -4,8 +4,8 @@ import { Check, Clock, Download, Info, Minus, Plus, Send } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Inset, ScreenHeader, viewHref } from "@/components/teaching/assessments/assessments-parts";
+import { AssessButton } from "@/components/teaching/assessments/assess-kit";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import {
   DOMAINS,
@@ -14,6 +14,8 @@ import {
   RATING_LABELS,
   type Domain,
 } from "@/lib/teaching/assessments/content";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { blankForm, meetingDate, type AssessmentForm, type Signature } from "@/lib/teaching/assessments/model";
 import {
   CURRENT_TERM,
@@ -117,8 +119,7 @@ function Paper({ page, children }: { page: number; children: ReactNode }) {
   );
 }
 
-const sig = (text: string | null | undefined) =>
-  text ? <span className="font-serif text-sm italic">{text}</span> : null;
+const sig = (text: string | null | undefined) => (text ? <span className="text-sm italic">{text}</span> : null);
 
 /** A drawn signature prints as drawn; a typed one prints as the typed name. */
 const signed = (s: Signature) =>
@@ -138,6 +139,7 @@ const signed = (s: Signature) =>
 export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
   const [zoom, setZoom] = useState(false);
   const [sentNote, setSentNote] = useState(false);
+  const example = useExampleData("assess").active;
   // A past term with no saved form, or an unknown form, opens the blank form rather than a filled-looking one.
   const asked = params.get("of");
   const pastTerm = asked === "past" ? sampleTerm(params.get("term")) : null;
@@ -157,14 +159,14 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
     kind = params.get("kind") === "mid" ? "mid" : "eot";
     f = fromPast(SAMPLE_PAST_FORMS[term.id as "t1" | "t2" | "t3"]![kind]);
     supSig = sig(term.supervisor.replace("Dr ", ""));
-    docSig = sig("Sam Lee");
+    docSig = sig("Sam Karri");
     supDate = docDate = (kind === "eot" ? term.signed : term.midSigned) ?? "";
   } else if (of === "mid") {
     term = CURRENT_TERM;
     kind = "mid";
     f = fromPast(SAMPLE_MIDTERM.sup);
-    supSig = sig("Priya Nair");
-    docSig = sig("Sam Lee");
+    supSig = sig("Robin Wattle");
+    docSig = sig("Sam Karri");
     supDate = docDate = SAMPLE_MIDTERM.date;
   } else if (of === "eot") {
     term = CURRENT_TERM;
@@ -229,9 +231,9 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
       {status}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-[color:var(--text-muted)]">3 pages · A4</span>
-        <Button variant="secondary" size="sm" icon={zoom ? Minus : Plus} onClick={() => setZoom((z) => !z)}>
+        <AssessButton variant="secondary" icon={zoom ? Minus : Plus} onClick={() => setZoom((z) => !z)}>
           {zoom ? "Fit to screen" : "Zoom to full size"}
-        </Button>
+        </AssessButton>
       </div>
       <div
         className={cn("grid gap-3", zoom ? "overflow-x-auto" : "")}
@@ -339,7 +341,7 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
         </div>
       </div>
       {canSend && !s.sentToMeu ? (
-        <Button
+        <AssessButton
           icon={Send}
           variant="primary"
           block
@@ -349,16 +351,24 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
           }}
         >
           Email the PDF to your MEU
-        </Button>
+        </AssessButton>
       ) : null}
       {sentNote ? (
         <p role="status" className="px-1 text-center text-xs text-[color:var(--text-muted)]">
           Made-up records: nothing was emailed. It is marked as sent so you can see the next step.
         </p>
       ) : null}
-      <Button icon={Download} variant="secondary" block onClick={() => window.print()}>
+      <AssessButton
+        icon={Download}
+        variant="secondary"
+        block
+        onClick={() => {
+          // Example records never leave the app, and printing to PDF is how this one would.
+          if (guardExampleAction(example, "export")) window.print();
+        }}
+      >
         Save a copy
-      </Button>
+      </AssessButton>
     </>
   );
 }

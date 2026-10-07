@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 
+import { AgreementEntryLink } from "@/components/agreement-ask/agreement-entry-link";
 import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
@@ -30,6 +31,7 @@ import {
   WorkProfileSection,
 } from "@/components/work-profile/work-profile-list";
 import type { WorkProfileData, WorkProfilePreferences } from "@/components/work-profile/use-work-profile-data";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { JURISDICTION_OPTIONS, workStageLabel } from "@/lib/account-preferences";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
@@ -307,6 +309,12 @@ export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
           href={FATIGUE_RULE_SET.source.url}
           external
         />
+        {/* Ask the agreement is a new work mode screen. */}
+        <NewWorkModeOnly>
+          <li className="border-t border-[color:var(--work-line)] forced-colors:border-[color:CanvasText]">
+            <AgreementEntryLink />
+          </li>
+        </NewWorkModeOnly>
         {weekday ? (
           <WorkProfileRow
             title="Pay fortnight starts"

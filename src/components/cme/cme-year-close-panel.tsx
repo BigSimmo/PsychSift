@@ -13,6 +13,7 @@ import { cn, eyebrowText, fieldControlPlain, InlineNotice, textMuted } from "@/c
 import { formatCalendarDateLong, perthCalendarDate } from "@/lib/cme/cpd-year";
 import type { CmePlanGoal } from "@/lib/cme/plan-goals";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import type { CmeEntry, CmeRequirementSet, CmeYearClose } from "@/lib/cme/types";
 import { buildCmeYearEndActions, canOfferCmeYearEnd } from "@/lib/cme/year-close-actions";
 import {
@@ -135,7 +136,7 @@ function ClosedYearRecord({ year, close }: { year: number; close: CmeYearClose }
               </span>
               <span className="tabular-nums">
                 {amendment.before.title !== amendment.after.title ? `Was "${amendment.before.title}". ` : ""}
-                {amendedVersionHours(amendment.before)} h on {formatCalendarDateLong(amendment.before.date)} →{" "}
+                {amendedVersionHours(amendment.before)} h on {formatCalendarDateLong(amendment.before.date)}, changed to{" "}
                 {amendedVersionHours(amendment.after)} h on {formatCalendarDateLong(amendment.after.date)}
               </span>
               <span>Reason: {amendment.reason}</span>
@@ -181,7 +182,7 @@ export function CmeYearClosePanel({
     ) : (
       <section className={cn(cardSurface, "mt-4 p-4 text-sm")} data-testid="cme-year-closed-record">
         <p>
-          {year} was closed on {formatInstantDate(closedAt)}. Its closing snapshot could not be read just now; it has
+          {year} was closed on {formatInstantDate(closedAt)}. Its closing snapshot could not be read just now. It has
           not been changed.
         </p>
       </section>
@@ -191,10 +192,16 @@ export function CmeYearClosePanel({
   const closable = canCloseCmeYear(now, year);
 
   async function closeYear() {
+    const trimmed = note.trim();
+    // The note is stored with the closed year, so it goes through the one shared patient-detail check first.
+    const problem = checkPatientDetail(trimmed);
+    if (problem) {
+      setError(`${problem.title}. ${problem.body}`);
+      return;
+    }
     setPending(true);
     setError(null);
     try {
-      const trimmed = note.trim();
       const response = await fetch("/api/cme/year/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -235,7 +242,7 @@ export function CmeYearClosePanel({
             id="cme-year-close-note"
             hint={
               unmetCount > 0
-                ? `${unmetCount} ${unmetCount === 1 ? "target is" : "targets are"} not reached yet. A note — leave, illness, anything — goes on the record where an explanation belongs. It does not reduce the requirement.`
+                ? `${unmetCount} ${unmetCount === 1 ? "target is" : "targets are"} not reached yet. A note about leave, illness or anything else goes on the record where an explanation belongs. It does not reduce the requirement.`
                 : "A note goes on the record where an explanation belongs. It does not reduce any requirement."
             }
           >

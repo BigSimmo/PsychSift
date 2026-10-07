@@ -1,7 +1,9 @@
 import { modeDot } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 import { onCallAgo } from "@/lib/on-call/display-dates";
-import { PERTH_OFFSET_MS } from "@/lib/perth-time";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zonedDateOf } from "@/lib/work-time/format";
 
 /** A route not updated or confirmed for this many whole months says so (mock-up v10 s-3). */
 export const ON_CALL_ROUTE_STALE_MONTHS = 3;
@@ -21,10 +23,10 @@ function latest(...values: readonly (string | null | undefined)[]): string | nul
   return best?.value ?? null;
 }
 
-/** Whole months between two instants, counted in Perth calendar dates. */
-function wholeMonths(from: string, now: Date): number {
-  const then = new Date(Date.parse(from) + PERTH_OFFSET_MS);
-  const today = new Date(now.getTime() + PERTH_OFFSET_MS);
+/** Whole months between two instants, counted in work-zone calendar dates. */
+function wholeMonths(from: string, now: Date, zone: string): number {
+  const then = new Date(`${zonedDateOf(from, zone)}T00:00:00Z`);
+  const today = new Date(`${zonedDateOf(now, zone)}T00:00:00Z`);
   return (
     (today.getUTCFullYear() - then.getUTCFullYear()) * 12 +
     (today.getUTCMonth() - then.getUTCMonth()) -
@@ -42,14 +44,15 @@ export function onCallRouteFreshness(
   updatedAt: string | null,
   lastConfirmedAt: string | null | undefined,
   now: Date = new Date(),
+  zone: string = currentWorkTimeZone(),
 ): OnCallRouteFreshness {
   const basis = latest(updatedAt, lastConfirmedAt);
   if (!basis) return { kind: "undated", words: "No update date recorded · confirm before use" };
-  const months = wholeMonths(basis, now);
+  const months = wholeMonths(basis, now, zone);
   if (months >= ON_CALL_ROUTE_STALE_MONTHS) {
     return { kind: "stale", words: `Not checked for ${months} months · confirm before use` };
   }
-  return { kind: "fresh", words: `Updated ${onCallAgo(basis, now)}` };
+  return { kind: "fresh", words: `Updated ${onCallAgo(basis, now, zone)}` };
 }
 
 /**
@@ -68,7 +71,8 @@ export function OnCallRouteFreshnessLine({
   readonly now?: Date;
   readonly testId?: string;
 }) {
-  const freshness = onCallRouteFreshness(updatedAt, lastConfirmedAt, now);
+  const { zone } = useWorkTimeZone();
+  const freshness = onCallRouteFreshness(updatedAt, lastConfirmedAt, now, zone);
   const warn = freshness.kind !== "fresh";
   return (
     <span

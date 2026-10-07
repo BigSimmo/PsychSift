@@ -6,6 +6,7 @@ import { useCmeMyDaySource } from "@/components/my-day/sources/cme";
 import { useEntriesMyDaySources } from "@/components/my-day/sources/entries";
 import { useRosterMyDaySource } from "@/components/my-day/sources/roster";
 import { useTeachingMyDaySource } from "@/components/my-day/sources/teaching";
+import type { NewJobProgress } from "@/lib/admin/new-job-progress";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import type { MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
@@ -22,7 +23,11 @@ import type { MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
  * own the compliance-date rows without On Call repeating them.
  */
 /** The My Day state plus the CPD routines it already read, so the Week page need not read them again. */
-export type MyDayItemsRead = MyDayState & { readonly cmeRoutines: readonly CmeRoutine[] };
+export type MyDayItemsRead = MyDayState & {
+  readonly cmeRoutines: readonly CmeRoutine[];
+  /** The New job countdown (start date and own checklist), or null. */
+  readonly newJob: NewJobProgress | null;
+};
 
 export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; readonly now: Date }): MyDayItemsRead {
   const entries = useEntriesMyDaySources({ enabled, now });
@@ -73,5 +78,6 @@ export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; rea
     renewals: signedOut ? [] : entries.renewals,
     helpItems: signedOut ? [] : entries.helpItems,
     adminEntries: signedOut ? [] : entries.adminEntries,
+    newJob: signedOut ? null : entries.newJob,
   };
 }

@@ -139,7 +139,8 @@ describe("the session page", () => {
     const phase = await screen.findByTestId("teaching-session-phase");
     fireEvent.click(within(phase).getByRole("button", { name: "Log to CPD" }));
     const sheet = await screen.findByRole("dialog", { name: "Log to CPD" });
-    fireEvent.click(within(sheet).getByRole("button", { name: "Save to CPD" }));
+    // Work-mode redesign, owner request 6 Oct 2026: the save button names the hours it logs.
+    fireEvent.click(within(sheet).getByRole("button", { name: /^Log .+ to CPD$/ }));
     await waitFor(() => expect(phase).toHaveTextContent("Logged to CPD"));
     expect(within(phase).queryByRole("button", { name: "Log to CPD" })).toBeNull();
   });

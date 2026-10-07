@@ -62,42 +62,34 @@ describe("Teaching mode registration", () => {
 
   it("registers all first-build pages with their icons, and adopts no shared bar", () => {
     expect(modeSecondaryNavigationRegistry.teaching.map(({ id, href }) => [id, href])).toEqual([
-      // Teaching v5 (5 Oct mock-up): This week, Presenting, My record, Resources, Organise. The ids stay, so
-      // bookmarks and icons keep working; Week, What's on and Supervision now sit behind those tabs.
+      // work-mode redesign, owner request 6 Oct 2026: the pill lists the frame's three pinned tabs,
+      // Today, Week and Logbook. Presenting, Assessments, Resources, Organise and the rest sit in the
+      // frame's More sheet (`src/lib/work-frame/areas.ts`), whose routes all stay.
       ["today", "/teaching"],
-      ["teach", "/teaching/teach"],
-      ["assessments", "/teaching/assessments"],
+      ["week", "/teaching/week"],
       ["logbook", "/teaching/logbook"],
-      ["resources", "/teaching/resources"],
-      ["organise", "/teaching/organise"],
     ]);
-    expect(modeSecondaryNavigationRegistry.teaching.map(({ label }) => label)).toEqual([
-      "This week",
-      "Presenting",
-      "Assessments",
-      "My record",
-      "Resources",
-      "Organise",
-    ]);
+    expect(modeSecondaryNavigationRegistry.teaching.map(({ label }) => label)).toEqual(["Today", "Week", "Logbook"]);
     expect(activeModeSecondaryNavigationId("teaching", "/teaching/logbook")).toBe("logbook");
     for (const [pathname, id] of [
-      ["/teaching/week", "today"],
-      ["/teaching/whats-on", "today"],
-      ["/teaching/supervision", "teach"],
-      ["/teaching/assessments", "assessments"],
-      ["/teaching/feedback", "logbook"],
-      ["/teaching/review", "logbook"],
-      ["/teaching/term", "logbook"],
-      ["/teaching/exam-prep", "resources"],
-      ["/teaching/import", "organise"],
-    ])
+      ["/teaching/week", "week"],
+      ["/teaching/whats-on", null],
+      ["/teaching/supervision", null],
+      ["/teaching/assessments", null],
+      ["/teaching/feedback", null],
+      ["/teaching/review", null],
+      ["/teaching/term", null],
+      ["/teaching/exam-prep", null],
+      ["/teaching/import", null],
+    ] as const)
       expect(activeModeSecondaryNavigationId("teaching", pathname)).toBe(id);
     expect(activeModeSecondaryNavigationId("teaching", `/teaching/session/${OCC}`)).toBeNull();
     expect(modeUsesHeaderModeNav("teaching")).toBe(false);
-    expect(["today", "logbook", "organise"].map((id) => modeSectionIcon(id)?.displayName)).toEqual([
+    // work-mode redesign, owner request 6 Oct 2026: Week replaces Organise among the pill's pages.
+    expect(["today", "week", "logbook"].map((id) => modeSectionIcon(id)?.displayName)).toEqual([
       "CalendarClock",
+      "CalendarDays",
       "NotebookText",
-      "SlidersHorizontal",
     ]);
   });
 

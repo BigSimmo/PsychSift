@@ -87,7 +87,7 @@ describe("Favourites signed out", () => {
     expect(screen.getAllByText(FAVOURITES_SAMPLE_SET).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(screen.getByTestId("account-dialog")).toBeInTheDocument();
+    expect(await screen.findByTestId("account-dialog")).toBeInTheDocument();
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();

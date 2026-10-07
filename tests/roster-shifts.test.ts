@@ -684,17 +684,16 @@ describe("hand-added shifts", () => {
   });
 });
 
-describe("the example roster while team rosters are held", () => {
+describe("no server-made example roster (the example data switch shows it in the browser)", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it("shows a doctor with no shifts of their own the sample doctor's roster, marked as an example", async () => {
+  it("answers a doctor with no shifts of their own with their real, empty roster", async () => {
     vi.stubEnv("NODE_ENV", "production");
     fakeSupabase({ on_call_shifts: [], on_call_shift_imports: [] });
     const response = await GET(request("GET"));
-    const payload = (await response.json()) as { sample?: boolean; shifts: Array<{ workplace: string | null }> };
-    expect(payload.sample).toBe(true);
-    expect(payload.shifts.length).toBeGreaterThan(10);
-    expect(payload.shifts.every((item) => item.workplace === "Example Hospital")).toBe(true);
+    const payload = (await response.json()) as { sample?: boolean; shifts: unknown[] };
+    expect(payload.sample).toBeUndefined();
+    expect(payload.shifts).toEqual([]);
   });
 
   it("shows the doctor's own shifts, never the example, once they have any", async () => {
