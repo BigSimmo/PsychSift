@@ -442,6 +442,8 @@ type OnCallExampleScopeValue = {
   readonly active: boolean;
   /** The user turned the switch on themselves, so there is nothing to wait for. */
   readonly explicit: boolean;
+  /** The user turned the switch off. Honoured signed out too: no sample, the normal sign-in state. */
+  readonly off: boolean;
 };
 
 const OnCallExampleScopeContext = createContext<OnCallExampleScopeValue | null>(null);
@@ -457,7 +459,8 @@ export function OnCallExampleDataScope({ children }: { readonly children?: React
   const admin = useExampleData("admin");
   const active = call.active || admin.active;
   const explicit = call.mode === "on";
-  const value = useMemo(() => ({ active, explicit }), [active, explicit]);
+  const off = call.mode === "off";
+  const value = useMemo(() => ({ active, explicit, off }), [active, explicit, off]);
   return createElement(OnCallExampleScopeContext.Provider, { value }, children);
 }
 
@@ -466,7 +469,8 @@ export function OnCallExampleDataScope({ children }: { readonly children?: React
  * example data switch off this is exactly `useStoredOnCallEntries`. It swaps in
  * the invented sample for a signed-out visitor (whom the server answers with
  * no entries), and, inside `OnCallExampleDataScope`, whenever the switch shows
- * examples in On Call or Admin.
+ * examples in On Call or Admin. Inside the scope an explicit off wins for
+ * everyone, signed out included.
  *
  * The sample comes from the example data registry on demand (so it never
  * counts towards anyone's first load) and is held in this component's memory
@@ -485,7 +489,9 @@ export function useOnCallEntries(): OnCallEntriesState {
   const scope = useContext(OnCallExampleScopeContext);
   const [sampleEntries, setSampleEntries] = useState<OnCallEntry[] | null>(null);
   const { signedOut, loading, isOffline, demoMode, entries } = stored;
-  const signedOutSample = signedOut && !loading && !isOffline;
+  // Signed out, auto mode already shows the sample; an explicit off inside the
+  // scope is honoured, so the visitor sees the normal signed-out state.
+  const signedOutSample = signedOut && !loading && !isOffline && !(scope?.off ?? false);
   // The automatic default waits for the real read, so it never flashes
   // examples over entries the account turns out to have.
   const switchSample = scope !== null && scope.active && (scope.explicit || !loading);

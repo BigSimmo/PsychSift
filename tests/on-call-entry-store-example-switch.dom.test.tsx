@@ -114,6 +114,29 @@ describe("useOnCallEntries and the example data switch", () => {
     expect(result.current.entries).toHaveLength(DEMO_ON_CALL_ENTRIES.length);
   });
 
+  it("honours an explicit off for a signed-out visitor: no sample, the normal signed-out state", async () => {
+    auth.status = "signed_out";
+    auth.session = null;
+    setExampleDataOn(false);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ entries: [], signedOut: true }));
+    const { result } = renderHook(() => useOnCallEntries(), { wrapper: scope });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.signedOut).toBe(true);
+    expect(result.current.sample).toBe(false);
+    expect(result.current.demoMode).toBe(false);
+    expect(result.current.entries).toEqual([]);
+  });
+
+  it("still shows the sample to a signed-out visitor in auto mode", async () => {
+    auth.status = "signed_out";
+    auth.session = null;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ entries: [], signedOut: true }));
+    const { result } = renderHook(() => useOnCallEntries(), { wrapper: scope });
+    await waitFor(() => expect(result.current.sample).toBe(true));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.entries).toHaveLength(DEMO_ON_CALL_ENTRIES.length);
+  });
+
   it("changes nothing outside the frame's scope", async () => {
     setExampleDataOn(true);
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ entries: [realEntry], signedOut: false }));
