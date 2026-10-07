@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, Info } from "lucide-react";
+import { ClipboardCheck } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useReducer, useRef, useState, type Dispatch } from "react";
@@ -31,6 +31,7 @@ import {
   type AssessmentsAction,
   type AssessmentsState,
 } from "@/lib/teaching/assessments/model";
+import { useExampleData } from "@/lib/example-data/store";
 import { WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
 
 /* The printable form is heavy and opened rarely, so it loads only when asked for. */
@@ -125,17 +126,11 @@ function Screen(props: ScreenProps & { view: AssessmentsView }) {
   }
 }
 
-/** The made-up records' own controls: a plain statement that nothing is kept, and a made-up date to move. */
+/** The made-up records' own control: a made-up date to move. The shared example data banner says nothing is kept. */
 function SampleBar({ s, dispatch, showDate }: Pick<ScreenProps, "s" | "dispatch"> & { showDate: boolean }) {
+  if (!showDate) return null;
   return (
-    <div
-      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
-      data-testid="teaching-assessments-sample"
-    >
-      <p role="status" className={cn("flex items-center gap-1.5 text-sm", textMuted)}>
-        <Info aria-hidden="true" className="size-icon-sm shrink-0" />
-        Made-up example records. Nothing is saved or sent.
-      </p>
+    <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1" data-testid="teaching-assessments-sample">
       {showDate ? (
         <label className={cn("flex items-center gap-2 text-sm", textMuted)}>
           Made-up date
@@ -234,8 +229,9 @@ function NotKeptYet({ onTry }: { onTry: () => void }) {
 }
 
 function AssessmentsPage({ demoMode }: { demoMode: boolean }) {
-  const [practice, setPractice] = useState(false);
-  const sample = demoMode || practice;
+  // "Try it with made-up records" turns on the one example data switch, so the shared banner shows and Turn off works.
+  const { active, turnOn } = useExampleData("assess");
+  const sample = demoMode || active;
   return (
     <InformationPageShell width="narrow" gap={false} testId="teaching-assessments">
       <h1 className="sr-only">Assessments</h1>
@@ -244,7 +240,7 @@ function AssessmentsPage({ demoMode }: { demoMode: boolean }) {
           <AssessmentsApp />
         </Suspense>
       ) : (
-        <NotKeptYet onTry={() => setPractice(true)} />
+        <NotKeptYet onTry={turnOn} />
       )}
     </InformationPageShell>
   );
