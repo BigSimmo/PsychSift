@@ -101,7 +101,7 @@ type FileFlow =
 type Failure = { readonly title: string; readonly body: string; readonly retry: boolean };
 
 function hoursWords(value: number): string {
-  return `${Math.round(value * 100) / 100} h`;
+  return `${Math.round(value * 100) / 100}\u00a0h`;
 }
 
 function activityWords(count: number): string {
