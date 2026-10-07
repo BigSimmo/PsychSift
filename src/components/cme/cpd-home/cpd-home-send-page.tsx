@@ -530,7 +530,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       </section>
 
       {scope !== "chosen" && scopeEntries.length > 0 ? (
-        <section aria-labelledby="cpd-home-activities" className="grid gap-2">
+        <section aria-labelledby="cpd-home-activities" className="grid min-w-0 gap-2 [&>.work-label]:flex-wrap">
           <SectionLabel
             id="cpd-home-activities"
             count={`${scopeEntries.length} · ${hoursWords(totalHours)}`}
