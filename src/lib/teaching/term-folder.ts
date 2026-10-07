@@ -399,13 +399,22 @@ export function otherTerms(state: TermTrackerState, shownId: string): TermRecord
 
 /** The term a `?term=` link asks for, else the current term, else the newest one. */
 export function pickFolderTerm(state: TermTrackerState, requested: string | null): TermRecord | null {
-  if (requested) {
-    const asked = state.terms.find((term) => term.id === requested);
-    if (asked) return asked;
-  }
+  return chooseFolderTerm(state, requested).term;
+}
+
+/**
+ * The term to show, and whether a `?term=` link asked for one that is no longer on this phone (a deleted
+ * term, or an old bookmark), so the page can say so instead of quietly showing another term at that address.
+ */
+export function chooseFolderTerm(
+  state: TermTrackerState,
+  requested: string | null,
+): { term: TermRecord | null; requestedMissing: boolean } {
+  const asked = requested ? state.terms.find((term) => term.id === requested) : undefined;
+  if (asked) return { term: asked, requestedMissing: false };
   const current = state.terms.find((term) => term.id === state.currentTermId);
-  if (current) return current;
-  return [...state.terms].sort((a, b) => b.startsOn.localeCompare(a.startsOn))[0] ?? null;
+  const fallback = current ?? [...state.terms].sort((a, b) => b.startsOn.localeCompare(a.startsOn))[0] ?? null;
+  return { term: fallback, requestedMissing: Boolean(requested) };
 }
 
 export const FOLDER_PRIVACY_LINE = "Status and counts only. No assessment content, ratings or comments.";
@@ -417,7 +426,7 @@ export const FOLDER_CLA_URL = TERM_TRACKER_SOURCES.pmcwaCla;
 export interface FolderExportOptions {
   readonly sessions: boolean;
   readonly supervision: boolean;
-  /** People's names (the supervisor). Off keeps it to counts and dates. */
+  /** People's names (the supervisor) and session titles and services. Off keeps it to counts and dates. */
   readonly names: boolean;
 }
 
@@ -461,10 +470,18 @@ export function termFolderCsv(
       ? [
           "",
           line(["Teaching sessions this term"]),
-          line(["Date", "Session", "Service", "Hours", "Check-in", "In CPD"]),
-          ...folder.sessions.map((row) =>
-            line([row.date, row.title, row.serviceName, row.hours, row.how, row.inCpd ? "Yes" : "No"]),
-          ),
+          // Session titles and services are organisers' free text and can hold a name, so they go only with names on.
+          ...(options.names
+            ? [
+                line(["Date", "Session", "Service", "Hours", "Check-in", "In CPD"]),
+                ...folder.sessions.map((row) =>
+                  line([row.date, row.title, row.serviceName, row.hours, row.how, row.inCpd ? "Yes" : "No"]),
+                ),
+              ]
+            : [
+                line(["Date", "Hours", "Check-in", "In CPD"]),
+                ...folder.sessions.map((row) => line([row.date, row.hours, row.how, row.inCpd ? "Yes" : "No"])),
+              ]),
         ]
       : []),
     ...(options.supervision
@@ -479,17 +496,22 @@ export function termFolderCsv(
     line([FOLDER_NOT_KEPT_LINE]),
     line([FOLDER_PRIVACY_LINE]),
   ];
-  return `${lines.join("\r\n")}\r\n`;
+  // The byte-order mark tells Excel the file is UTF-8, so "Term 4 · Psychiatry" and "3 sessions" (no-break
+  // space) do not open as "Term 4 Â· Psychiatry". The CPD export does the same (`formatCmeYearCsv`).
+  return `\uFEFF${lines.join("\r\n")}\r\n`;
 }
 
-/** Why the folder cannot be exported yet, or null. Before the term starts there is nothing in it. */
+/**
+ * Why the folder cannot be exported or copied yet, or null. Before the term starts there is nothing in it, and
+ * while a part is still loading the file would say "Loading" where a figure belongs.
+ */
 export function folderExportBlocker(
-  folder: Pick<TermFolder, "phase">,
+  folder: Pick<TermFolder, "phase"> & Partial<Pick<TermFolder, "loading">>,
   term: Pick<TermRecord, "startsOn">,
 ): string | null {
-  return folder.phase === "before"
-    ? `Nothing to export until the term starts on ${weekdayDayMonth(term.startsOn)}.`
-    : null;
+  if (folder.phase === "before") return `Nothing to export until the term starts on ${weekdayDayMonth(term.startsOn)}.`;
+  if (folder.loading) return "Still filling from your records. Export and copy once every part has loaded.";
+  return null;
 }
 
 /** Early in the term (before it starts, or its first week): nothing can be behind yet. */
@@ -541,10 +563,18 @@ export interface FolderNeedsYouItem {
 
 /**
  * Needs-you source, from the device term tracker alone (no network): from a week before the current
- * term ends to a fortnight after, a prompt to export the folder; and one line for each assessment date
+ * term ends to a fortnight after, a prompt to export the folder, and one line for each assessment date
  * the doctor set that has passed without being marked done.
+ *
+ * Only the doctor's own stored term tracker may feed a real bell. The made-up demo tracker
+ * (`sampleTermTracker`) must never reach one, so a caller says which it has, and a demo gets nothing.
  */
-export function termFolderNeedsYou(state: TermTrackerState, today: string): FolderNeedsYouItem[] {
+export function termFolderNeedsYou(
+  state: TermTrackerState,
+  today: string,
+  source: { readonly demo: boolean },
+): FolderNeedsYouItem[] {
+  if (source.demo) return [];
   const term = state.terms.find((t) => t.id === state.currentTermId);
   if (!term) return [];
   const items: FolderNeedsYouItem[] = [];

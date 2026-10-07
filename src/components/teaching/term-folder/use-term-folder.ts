@@ -12,7 +12,7 @@ import type { LogbookRow } from "@/lib/teaching/model";
 import {
   buildTermFolder,
   otherTerms,
-  pickFolderTerm,
+  chooseFolderTerm,
   type FolderSource,
   type TermFolder,
 } from "@/lib/teaching/term-folder";
@@ -39,8 +39,13 @@ export type TermFolderView =
       readonly term: TermRecord;
       readonly folder: TermFolder;
       readonly earlier: readonly TermRecord[];
-      /** "15:02": when the reads last arrived, or null while one is still loading. */
+      /**
+       * "15:02": when a read last succeeded, or null while one is still loading or when none has succeeded on
+       * this visit. A failed read never sets it.
+       */
       readonly updatedAt: string | null;
+      /** A `?term=` link asked for a term that is no longer on this phone, so another term is shown. */
+      readonly requestedMissing: boolean;
       readonly failed: readonly ("attendance" | "supervision")[];
       readonly offline: boolean;
       readonly retry: () => void;
@@ -84,21 +89,45 @@ export function useTermFolder(demoMode: boolean, requestedTermId: string | null)
   const supervisionSource = toSource(demoMode ? "ready" : supervision.status, pairings, keptPairings);
   const bothReady = attendanceSource.status !== "loading" && supervisionSource.status !== "loading";
 
-  // The time the folder last filled, shown as "updated 15:02". Set when a read lands, never guessed.
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  // Each source's last good read, stamped when it lands (deferred so the stamp follows the paint that showed
+  // the figures). A failed read stamps nothing, so "updated 15:02" only ever names a read that worked.
   useEffect(() => {
-    if (!bothReady) return;
-    const stamp = perthTime(new Date().toISOString());
-    // Deferred so the stamp follows the paint that showed the new figures.
-    const timer = window.setTimeout(() => {
-      setUpdatedAt(stamp);
-      if (rows) setKeptRows({ data: rows, at: stamp });
-      if (pairings) setKeptPairings({ data: pairings, at: stamp });
-    }, 0);
+    if (!rows) return;
+    const timer = window.setTimeout(() => setKeptRows({ data: rows, at: perthTime(new Date().toISOString()) }), 0);
     return () => window.clearTimeout(timer);
-  }, [bothReady, rows, pairings]);
+  }, [rows]);
+  useEffect(() => {
+    if (!pairings) return;
+    const timer = window.setTimeout(
+      () => setKeptPairings({ data: pairings, at: perthTime(new Date().toISOString()) }),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [pairings]);
+  const goodStamps = [
+    attendanceSource.status === "ready" ? keptRows?.at : null,
+    supervisionSource.status === "ready" ? keptPairings?.at : null,
+  ].filter((at): at is string => Boolean(at));
+  const updatedAt = goodStamps.length ? goodStamps.sort().at(-1)! : null;
 
-  const term = state ? pickFolderTerm(state, requestedTermId) : null;
+  // Read both again when the page comes back into view, so figures that loaded once are not shown forever,
+  // and a read that now fails keeps its last good figures, marked "As of".
+  const refreshLogbook = logbook.retry;
+  const refreshSupervision = supervision.retry;
+  useEffect(() => {
+    if (demoMode) return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      refreshLogbook();
+      refreshSupervision();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [demoMode, refreshLogbook, refreshSupervision]);
+
+  const { term, requestedMissing } = state
+    ? chooseFolderTerm(state, requestedTermId)
+    : { term: null, requestedMissing: false };
   const folder = useMemo(
     () =>
       state && term && today
@@ -124,11 +153,14 @@ export function useTermFolder(demoMode: boolean, requestedTermId: string | null)
     folder,
     earlier: otherTerms(state, term.id),
     updatedAt: bothReady ? updatedAt : null,
+    requestedMissing,
     failed,
     offline: !demoMode && (logbook.status === "offline" || supervision.status === "offline"),
+    // Try again reads both sources, so the whole folder is current, not only the part that failed.
     retry: () => {
-      if (attendanceSource.status === "failed" || attendanceSource.status === "stale") logbook.retry();
-      if (supervisionSource.status === "failed" || supervisionSource.status === "stale") supervision.retry();
+      if (demoMode) return;
+      logbook.retry();
+      supervision.retry();
     },
   };
 }

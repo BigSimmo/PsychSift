@@ -108,7 +108,7 @@ export function TermFolderExportSheet({
             checked={options.names}
             onChange={() => toggle("names")}
             title="Include names"
-            detail="Your supervisor's name. Off keeps it to counts and dates"
+            detail="Your supervisor's name, and session titles and services. Off keeps it to counts and dates"
           />
         </ul>
         <div
@@ -136,7 +136,9 @@ export function TermFolderExportSheet({
         <a
           href={csvHref(termFolderCsv(folder, today, options))}
           download={termFolderFileName(folder, demoMode)}
-          onClick={onExported}
+          // The download starts from this tap first. The sheet closes on the next tick, so the link is still on
+          // the page when the browser acts on it (a detached link can lose its download in some browsers).
+          onClick={() => window.setTimeout(onExported, 0)}
           className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
           data-testid="term-folder-csv"
         >
