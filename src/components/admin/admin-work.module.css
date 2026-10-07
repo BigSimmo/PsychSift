@@ -823,3 +823,10 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+.legendCount {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+}
