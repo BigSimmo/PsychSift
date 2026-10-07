@@ -11,7 +11,11 @@ import { JuniorEntryRowBody, juniorEntryRowClass } from "@/components/admin/juni
 export function StarterPackEntryLink() {
   return (
     <Link href="/admin/new-job/starter" className={juniorEntryRowClass} data-testid="admin-starter-entry">
-      <JuniorEntryRowBody icon={BookOpen} title="New to WA hospitals?" line="Starter pack: local words, your dates, who to ask" />
+      <JuniorEntryRowBody
+        icon={BookOpen}
+        title="New to WA hospitals?"
+        line="Starter pack: local words, your dates, who to ask"
+      />
     </Link>
   );
 }
