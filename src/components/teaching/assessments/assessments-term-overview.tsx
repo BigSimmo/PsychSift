@@ -170,7 +170,7 @@ function Totals({ done, due, overdue }: { done: number; due: number; overdue: nu
     <div aria-hidden="true" className="grid grid-cols-3 gap-2 text-center">
       {cells.map((c) => (
         <div key={c.word} className="grid">
-          <b className={cn("nums text-xl font-semibold", c.ink)}>{c.n}</b>
+          <b className={cn("nums text-xl font-normal", c.ink)}>{c.n}</b>
           <span className="text-xs text-[color:var(--text-muted)]">{c.word}</span>
         </div>
       ))}
@@ -363,14 +363,14 @@ function OverviewHome({ s }: ScreenProps) {
       />
       {r.offlineSince ? <OfflineNote since={r.offlineSince} /> : null}
       <Panel>
-        <Eyebrow accent>{`Term 4 · week ${termWeek(s)} of 10 · made-up hospital`}</Eyebrow>
+        <Eyebrow accent>{`Term 4 · week ${termWeek(s)}\u00a0of 10 · made-up hospital`}</Eyebrow>
         <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">
           {`${rows.length} doctors · ${counts.overdue} overdue`}
         </h2>
         <span className="text-sm font-medium text-[color:var(--text-heading)]">Mid-term assessments</span>
         <MixBar {...summary} testId="assessments-overview-meter" />
         <Totals {...summary} />
-        <KeyValue k="EPAs at the term target" v={`${epasMet} of ${rows.length}`} />
+        <KeyValue k="EPAs at the term target" v={`${epasMet}\u00a0of ${rows.length}`} />
         <KeyValue k="End-of-term window" v="26 Oct to 6 Nov" />
       </Panel>
       <SegmentedControl
@@ -602,7 +602,7 @@ function SentList({ reminders, now }: { reminders: readonly ReminderRecord[]; no
       key={x.key}
       className="flex min-h-13 items-center gap-3 border-t border-[color:var(--border)] px-3.5 py-2.5 first:border-t-0"
     >
-      <span className="nums w-12 shrink-0 text-sm font-semibold text-[color:var(--text-heading)]">{x.at}</span>
+      <span className="nums w-12 shrink-0 text-sm font-normal text-[color:var(--text-heading)]">{x.at}</span>
       <span className="grid min-w-0 flex-1 gap-0.5">
         <span className={titleText}>{x.supervisor}</span>
         <span className={cn(secondaryText, "text-xs")}>{`${x.doctorName} · ${formWord(x.form)}`}</span>

@@ -563,7 +563,7 @@ function FeedbackSheet({
         />
         <p id={noteId} className="flex justify-between gap-2 px-1 text-xs text-[color:var(--text-muted)]">
           <span>No names, initials, record or bed numbers.</span>
-          <span className="nums font-normal">{`${draft.text.length} of ${FEEDBACK_MAX_CHARS}`}</span>
+          <span className="nums font-normal">{`${draft.text.length}\u00a0of ${FEEDBACK_MAX_CHARS}`}</span>
         </p>
       </div>
       {problem ? (
