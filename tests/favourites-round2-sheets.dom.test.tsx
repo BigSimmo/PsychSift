@@ -111,6 +111,19 @@ describe("NumberFormSheet", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("turns Pin to My Day off, and says why, when My Day holds four pins", async () => {
+    const user = userEvent.setup();
+    render(<NumberFormSheet open onClose={vi.fn()} pinRoom={false} />);
+    const pin = screen.getByRole("switch", { name: /^Pin to My Day/ });
+    expect(pin).toBeDisabled();
+    expect(pin).toHaveAttribute("aria-checked", "false");
+    expect(pin).toHaveAccessibleDescription("My Day holds four pins. Unpin one first.");
+    await user.type(screen.getByLabelText(/^Name/), "Ward 4B");
+    await user.type(screen.getByLabelText(/^Number/), "9224 2104");
+    await user.click(screen.getByRole("button", { name: "Save number" }));
+    expect(loadFavouritesLocal().numbers[0]!.pinnedAt).toBeNull();
+  });
+
   it("edits an existing number", async () => {
     const user = userEvent.setup();
     const entry = savedNumber();

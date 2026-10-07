@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clipboard, Pencil, Phone, Pin, PinOff, TriangleAlert, X, type LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type FocusEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type ReactNode } from "react";
 
 import type { FavouriteItem } from "@/components/favourites/favourites-view-model";
 import { Button } from "@/components/ui/button";
@@ -108,6 +108,24 @@ export function SwitchTrack({ on }: { on: boolean }) {
   );
 }
 
+export type ReturnFocusTarget = HTMLElement | null | (() => HTMLElement | null);
+
+/**
+ * A stable `resolveReturnFocusTarget` for Sheet. The target is kept in a ref so
+ * an inline function from the caller does not re-run the sheet's open effect
+ * on every render.
+ */
+export function useReturnFocusResolver(returnFocusTarget: ReturnFocusTarget | undefined) {
+  const returnFocusTargetRef = useRef(returnFocusTarget);
+  useEffect(() => {
+    returnFocusTargetRef.current = returnFocusTarget;
+  }, [returnFocusTarget]);
+  return useCallback(() => {
+    const target = returnFocusTargetRef.current;
+    return (typeof target === "function" ? target() : target) ?? null;
+  }, []);
+}
+
 /** Keeps a focused field above the phone keyboard once the keyboard has risen. */
 export function keepAboveKeyboard(event: FocusEvent<HTMLElement>) {
   const field = event.currentTarget;
@@ -140,25 +158,18 @@ export function NumberFormSheet({
   editing,
   returnFocusTarget,
   onSaved,
+  pinRoom = true,
 }: {
   open: boolean;
   onClose: () => void;
   editing?: SavedNumber | null;
   /** The element focus returns to on close, or a function that finds it at close time. */
-  returnFocusTarget?: HTMLElement | null | (() => HTMLElement | null);
+  returnFocusTarget?: ReturnFocusTarget;
   onSaved?: (id: string) => void;
+  /** False when My Day already holds its four pins: Pin to My Day is then off and says why. */
+  pinRoom?: boolean;
 }) {
-  // Kept in a ref so the resolver handed to Sheet stays stable even when the
-  // caller passes an inline function, which would otherwise re-run the
-  // sheet's open effect on every render.
-  const returnFocusTargetRef = useRef(returnFocusTarget);
-  useEffect(() => {
-    returnFocusTargetRef.current = returnFocusTarget;
-  }, [returnFocusTarget]);
-  const resolveReturnFocus = useCallback(() => {
-    const target = returnFocusTargetRef.current;
-    return (typeof target === "function" ? target() : target) ?? null;
-  }, []);
+  const resolveReturnFocus = useReturnFocusResolver(returnFocusTarget);
   const isEdit = Boolean(editing);
   return (
     <Sheet
@@ -172,7 +183,13 @@ export function NumberFormSheet({
       bodyClassName="p-3 pb-6"
     >
       <div data-work-frame="sheet">
-        <NumberForm key={editing?.id ?? "new"} editing={editing ?? null} onClose={onClose} onSaved={onSaved} />
+        <NumberForm
+          key={editing?.id ?? "new"}
+          editing={editing ?? null}
+          onClose={onClose}
+          onSaved={onSaved}
+          pinRoom={pinRoom}
+        />
       </div>
     </Sheet>
   );
@@ -182,11 +199,14 @@ function NumberForm({
   editing,
   onClose,
   onSaved,
+  pinRoom,
 }: {
   editing: SavedNumber | null;
   onClose: () => void;
   onSaved?: (id: string) => void;
+  pinRoom: boolean;
 }) {
+  const pinReasonId = useId();
   const [label, setLabel] = useState(editing?.label ?? "");
   const [number, setNumber] = useState(editing?.number ?? "");
   const [note, setNote] = useState(editing?.note ?? "");
@@ -205,7 +225,9 @@ function NumberForm({
     setFormError(null);
     if (Object.keys(problems).length) return;
     const draft = { label, number, note };
-    const result = editing ? updateSavedNumber(editing.id, draft) : addSavedNumber({ ...draft, pinned });
+    const result = editing
+      ? updateSavedNumber(editing.id, draft)
+      : addSavedNumber({ ...draft, pinned: pinned && pinRoom });
     if (result.ok) {
       onSaved?.(result.id);
       onClose();
@@ -278,13 +300,18 @@ function NumberForm({
           <button
             type="button"
             role="switch"
-            aria-checked={pinned}
-            className={sheetRow}
+            aria-checked={pinned && pinRoom}
+            aria-describedby={pinRoom ? undefined : pinReasonId}
+            disabled={!pinRoom}
+            className={cn(sheetRow, "disabled:cursor-not-allowed disabled:active:bg-transparent")}
             onClick={() => setPinned((value) => !value)}
           >
-            <SheetActionIcon icon={Pin} />
-            <SheetRowText title="Pin to My Day" />
-            <SwitchTrack on={pinned} />
+            <SheetActionIcon icon={Pin} tone={pinRoom ? "neutral" : "muted"} />
+            <SheetRowText
+              title={pinRoom ? "Pin to My Day" : <span className="text-[color:var(--text-muted)]">Pin to My Day</span>}
+              sub={pinRoom ? undefined : <span id={pinReasonId}>My Day holds four pins. Unpin one first.</span>}
+            />
+            <SwitchTrack on={pinned && pinRoom} />
           </button>
         </div>
       )}
@@ -320,13 +347,17 @@ export function NumberActionsSheet({
   onEdit,
   onTogglePin,
   onRemove,
+  returnFocusTarget,
 }: {
   item: FavouriteItem | null;
   onClose: () => void;
   onEdit: (item: FavouriteItem) => void;
   onTogglePin: (item: FavouriteItem) => void;
   onRemove: (item: FavouriteItem) => void;
+  /** Where focus goes on close: the opener, or a heading once the row is gone. */
+  returnFocusTarget?: ReturnFocusTarget;
 }) {
+  const resolveReturnFocus = useReturnFocusResolver(returnFocusTarget);
   return (
     <Sheet
       open={item !== null}
@@ -334,6 +365,7 @@ export function NumberActionsSheet({
       title={item?.title ?? "Saved number"}
       description="Number on this phone"
       closeLabel="Close number actions"
+      resolveReturnFocusTarget={resolveReturnFocus}
       testId="number-actions-sheet"
       bodyClassName="p-3 pb-5"
     >
@@ -403,7 +435,9 @@ function NumberActions({
   return (
     <div className="grid gap-3">
       <div className="grid gap-0.5 px-1">
-        <p className="m-0 font-mono text-2xl font-semibold tabular-nums text-[color:var(--text-heading)]">{phone}</p>
+        <p className="m-0 min-w-0 break-all font-mono text-2xl font-semibold tabular-nums text-[color:var(--text-heading)]">
+          {phone}
+        </p>
         {item.note ? <p className={cn("m-0 text-sm", textMuted)}>{item.note}</p> : null}
       </div>
       <div className={sheetCard}>

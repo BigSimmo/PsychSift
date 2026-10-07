@@ -9,14 +9,19 @@ import { cn } from "@/components/ui-primitives";
 import {
   addSavedNumber,
   dialableDigits,
+  forgetPinOrder,
   NUMBER_LABEL_MAX,
   removeSavedNumbers,
+  RESTORE_FAILED,
+  restoreSavedNumbers,
   useSavedNumbers,
+  type SavedNumber,
 } from "@/lib/favourites/favourites-local";
 
 /**
  * Saves a work number from anywhere on the site (an On Call contact, a
- * service page) to Favourites, on this phone. Tapping again removes it.
+ * service page) to Favourites, on this phone. Tapping again removes it, with
+ * Undo, since the saved entry may carry a name and note the person gave it.
  * A number is "already saved" when its dialled digits match, so the same
  * ward saved twice under two names is one number.
  */
@@ -35,18 +40,32 @@ export function SaveNumberToFavouritesButton({
   const digits = dialableDigits(number);
   const saved = numbers.find((entry) => dialableDigits(entry.number) === digits) ?? null;
   const [message, setMessage] = useState("");
+  const [removed, setRemoved] = useState<readonly SavedNumber[]>([]);
 
   const toggle = () => {
+    setRemoved([]);
     if (saved) {
-      removeSavedNumbers(new Set([saved.id]));
+      const gone = removeSavedNumbers(new Set([saved.id]));
+      if (gone.length === 0) {
+        setMessage("This phone did not save that.");
+        return;
+      }
+      forgetPinOrder(gone.map((entry) => `number:${entry.id}`));
+      setRemoved(gone);
       setMessage("Removed from Favourites.");
       return;
     }
     const result = addSavedNumber({ label: label.slice(0, NUMBER_LABEL_MAX), number });
     if (result.ok) setMessage("Saved to Favourites on this phone.");
-    else if (result.reason === "full") setMessage("Favourites holds 40 numbers. Remove one first.");
+    else if (result.reason === "full") setMessage(RESTORE_FAILED.full);
     else if (result.reason === "storage") setMessage("This phone did not save that.");
     else setMessage("This number cannot be saved.");
+  };
+
+  const undo = () => {
+    const result = restoreSavedNumbers(removed);
+    setRemoved([]);
+    setMessage(result.ok ? "Back in Favourites." : RESTORE_FAILED[result.reason]);
   };
 
   return (
@@ -70,6 +89,19 @@ export function SaveNumberToFavouritesButton({
       <p role="status" className="min-w-0 text-sm text-[color:var(--text-muted)]" data-testid={`${testId}-status`}>
         {message}
       </p>
+      {removed.length > 0 ? (
+        <button
+          type="button"
+          onClick={undo}
+          data-testid={`${testId}-undo`}
+          className={cn(
+            "min-h-12 shrink-0 rounded-md px-2 text-sm font-semibold text-[color:var(--mode-identity)] underline underline-offset-2",
+            focusRing,
+          )}
+        >
+          Undo
+        </button>
+      ) : null}
     </div>
   );
 }

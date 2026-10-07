@@ -82,9 +82,13 @@ const EMPTY_STATE: LocalState = Object.freeze({
 
 /* -------------------------------------------------------------- checking */
 
-/** The digits a phone dials: a leading + kept, everything else but digits dropped. */
+/**
+ * The digits a phone dials: a leading + kept, everything else but digits
+ * dropped. A "(0)" trunk prefix after a country code is not dialled from
+ * abroad, so "+61 (0)8 6457 2210" dials +61864572210.
+ */
 export function dialableDigits(number: string): string {
-  const trimmed = number.trim();
+  const trimmed = number.trim().replace(/^(\+\d{1,3})\s*\(0\)/, "$1");
   const digits = trimmed.replace(/\D/g, "");
   return trimmed.startsWith("+") ? `+${digits}` : digits;
 }
@@ -250,17 +254,19 @@ function notify() {
   }
 }
 
-/** Returns false when the browser refused the write. */
+/**
+ * Returns false when the browser refused the write. Nothing changes then, so
+ * the page never shows an unsaved change as saved.
+ */
 function write(next: LocalState): boolean {
-  cache = next;
-  let saved = true;
   try {
     window.localStorage.setItem(FAVOURITES_LOCAL_STORAGE_KEY, JSON.stringify(next));
   } catch {
-    saved = false;
+    return false;
   }
+  cache = next;
   notify();
-  return saved;
+  return true;
 }
 
 let storageListenerAttached = false;
@@ -352,19 +358,50 @@ export function updateSavedNumber(id: string, draft: NumberDraft): SaveResult {
   return write({ ...state, numbers }) ? { ok: true, id } : { ok: false, reason: "storage" };
 }
 
+/** Removes numbers and returns them, for Undo. Nothing is returned when the write failed. */
 export function removeSavedNumbers(ids: ReadonlySet<string>): readonly SavedNumber[] {
   const state = read();
   const removed = state.numbers.filter((entry) => ids.has(entry.id));
-  if (removed.length) write({ ...state, numbers: state.numbers.filter((entry) => !ids.has(entry.id)) });
-  return removed;
+  if (!removed.length) return removed;
+  return write({ ...state, numbers: state.numbers.filter((entry) => !ids.has(entry.id)) }) ? removed : [];
 }
 
-export function restoreSavedNumbers(entries: readonly SavedNumber[]): boolean {
+export type RestoreResult = { readonly ok: true } | { readonly ok: false; readonly reason: "full" | "storage" };
+
+/** What a caller shows when Undo cannot put numbers back. */
+export const RESTORE_FAILED: Record<"full" | "storage", string> = {
+  full: `Favourites holds ${MAX_SAVED_NUMBERS} numbers. Remove one first.`,
+  storage: "This phone did not save that.",
+};
+
+/**
+ * Puts back numbers removed a moment ago (Undo), keeping their names and
+ * times. Refuses rather than drop another number when Favourites is full.
+ * `pinRoom` is how many My Day pins are free now: a number that was pinned
+ * comes back unpinned once that room is used, so My Day never holds more than
+ * its limit.
+ */
+export function restoreSavedNumbers(
+  entries: readonly SavedNumber[],
+  { pinRoom = Number.POSITIVE_INFINITY }: { pinRoom?: number } = {},
+): RestoreResult {
   const state = read();
   const present = new Set(state.numbers.map((entry) => entry.id));
   const missing = entries.filter((entry) => !present.has(entry.id));
-  if (!missing.length) return true;
-  return write({ ...state, numbers: [...missing, ...state.numbers].slice(0, MAX_SAVED_NUMBERS) });
+  if (!missing.length) return { ok: true };
+  if (state.numbers.length + missing.length > MAX_SAVED_NUMBERS) return { ok: false, reason: "full" };
+  let room = pinRoom;
+  const restored = missing.map((entry) => {
+    if (entry.pinnedAt === null) return entry;
+    if (room > 0) {
+      room -= 1;
+      return entry;
+    }
+    return { ...entry, pinnedAt: null };
+  });
+  return write({ ...state, numbers: [...restored, ...state.numbers] })
+    ? { ok: true }
+    : { ok: false, reason: "storage" };
 }
 
 export function setSavedNumbersPinned(ids: ReadonlySet<string>, pinned: boolean, now: number = Date.now()): boolean {
@@ -416,6 +453,17 @@ export function setFavouriteOverride(
 export function setFavouritesLayout(patch: Partial<FavouritesLayout>): boolean {
   const state = read();
   return write({ ...state, layout: parseLayout({ ...state.layout, ...patch }) });
+}
+
+/**
+ * Drops favourites from the My Day order once they are unpinned or removed,
+ * so the kept order holds only what is pinned.
+ */
+export function forgetPinOrder(ids: Iterable<string>): boolean {
+  const forget = new Set(ids);
+  const state = read();
+  if (!state.layout.pinOrder.some((id) => forget.has(id))) return true;
+  return setFavouritesLayout({ pinOrder: state.layout.pinOrder.filter((id) => !forget.has(id)) });
 }
 
 export function resetFavouritesLayout(): boolean {

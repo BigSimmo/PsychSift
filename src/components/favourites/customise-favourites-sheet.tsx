@@ -13,6 +13,8 @@ import {
   SheetRowText,
   sheetSectionLabel,
   SwitchTrack,
+  useReturnFocusResolver,
+  type ReturnFocusTarget,
 } from "@/components/favourites/number-sheets";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -65,11 +67,22 @@ function moved<T>(list: readonly T[], index: number, by: -1 | 1): T[] {
  * which tab it opens on, the list order and how many tiles My Day shows. Every
  * change saves at once, on this phone.
  */
-export function CustomiseFavouritesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CustomiseFavouritesSheet({
+  open,
+  onClose,
+  returnFocusTarget,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Where focus goes on close: the opener, or the page heading once it is gone. */
+  returnFocusTarget?: ReturnFocusTarget;
+}) {
+  const resolveReturnFocus = useReturnFocusResolver(returnFocusTarget);
   return (
     <Sheet
       open={open}
       onClose={onClose}
+      resolveReturnFocusTarget={resolveReturnFocus}
       title="Customise Favourites"
       description="Changes save as you make them."
       closeLabel="Close customise favourites"
@@ -185,7 +198,7 @@ function CustomiseBody() {
           data-testid="reset-layout-confirm"
         >
           <p className="m-0 text-sm font-semibold text-[color:var(--text-heading)]">
-            Put sections, order and tiles back to how they started?
+            Put sections, order, tiles and the My Day order back to how they started?
           </p>
           <p className={cn("m-0 text-xs", textMuted)}>Your favourites, numbers, names and notes stay as they are.</p>
           <div className="grid grid-cols-2 gap-2">
@@ -241,6 +254,7 @@ export function ArrangeShelfSheet({
   unpinned,
   pinLimit,
   onTogglePin,
+  returnFocusTarget,
 }: {
   open: boolean;
   onClose: () => void;
@@ -248,7 +262,10 @@ export function ArrangeShelfSheet({
   unpinned: readonly FavouriteItem[];
   pinLimit: number;
   onTogglePin: (item: FavouriteItem) => void;
+  /** Where focus goes on close: the Arrange button, or the page heading once the shelf is gone. */
+  returnFocusTarget?: ReturnFocusTarget;
 }) {
+  const resolveReturnFocus = useReturnFocusResolver(returnFocusTarget);
   const ids = useId();
   const full = pinned.length >= pinLimit;
   const reasonId = `${ids}-full`;
@@ -262,6 +279,7 @@ export function ArrangeShelfSheet({
     <Sheet
       open={open}
       onClose={onClose}
+      resolveReturnFocusTarget={resolveReturnFocus}
       title="Arrange My Day"
       description={`${pinned.length} pinned of ${pinLimit}`}
       closeLabel="Close arrange My Day"

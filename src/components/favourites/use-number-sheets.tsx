@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { NumberActionsSheet, NumberFormSheet } from "@/components/favourites/number-sheets";
 import { QUICK_LAUNCH_LIMIT, type FavouriteItem } from "@/components/favourites/favourites-view-model";
 import { announce } from "@/components/ui/live-announcer";
 import { useOptionalToast } from "@/components/ui/toast";
 import {
+  forgetPinOrder,
   removeSavedNumbers,
+  RESTORE_FAILED,
   restoreSavedNumbers,
   setSavedNumbersPinned,
   useSavedNumbers,
@@ -39,11 +41,27 @@ export function useNumberSheets(items: readonly FavouriteItem[]): NumberSheetsAp
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SavedNumber | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const fallbackFocusRef = useRef<HTMLElement | null>(null);
 
   const rememberFocus = () => {
     const active = document.activeElement;
-    if (active instanceof HTMLElement && !active.closest('[role="dialog"]')) returnFocusRef.current = active;
+    if (active instanceof HTMLElement && !active.closest('[role="dialog"]')) {
+      returnFocusRef.current = active;
+      // The heading of the section the opener sits in, for when its row is removed.
+      fallbackFocusRef.current = active.closest("section")?.querySelector<HTMLElement>("h1, h2, h3") ?? null;
+    }
   };
+
+  // Stable on purpose: the sheets read it in their open effects. The opener
+  // first; once its row is gone, its section heading, then the page heading.
+  const returnFocus = useCallback(() => {
+    if (returnFocusRef.current?.isConnected) return returnFocusRef.current;
+    const heading = fallbackFocusRef.current?.isConnected
+      ? fallbackFocusRef.current
+      : document.querySelector<HTMLElement>("main h1");
+    if (heading && !heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+    return heading;
+  }, []);
 
   const say = useCallback(
     (title: string, tone: "success" | "warning" | "danger" = "success") => {
@@ -66,19 +84,22 @@ export function useNumberSheets(items: readonly FavouriteItem[]): NumberSheetsAp
 
   // Live, so the sheet's pin label follows a change made while it is open.
   const actionItem = actionId ? (items.find((item) => item.id === actionId) ?? null) : null;
+  const pinnedCount = items.filter((entry) => entry.pinned).length;
+  // Read at Undo time, so a restored number never takes My Day past its limit.
+  const pinnedCountRef = useRef(pinnedCount);
+  useEffect(() => {
+    pinnedCountRef.current = pinnedCount;
+  }, [pinnedCount]);
 
   const togglePin = (item: FavouriteItem) => {
     if (!item.numberId) return;
     if (item.pinned) {
-      say(
-        setSavedNumbersPinned(new Set([item.numberId]), false)
-          ? "Unpinned from My Day"
-          : "This phone did not save that",
-        "success",
-      );
+      const saved = setSavedNumbersPinned(new Set([item.numberId]), false);
+      if (saved) forgetPinOrder([item.id]);
+      say(saved ? "Unpinned from My Day" : "This phone did not save that", "success");
       return;
     }
-    if (items.filter((entry) => entry.pinned).length >= QUICK_LAUNCH_LIMIT) {
+    if (pinnedCount >= QUICK_LAUNCH_LIMIT) {
       say("My Day holds four pins. Unpin one first.", "warning");
       return;
     }
@@ -88,8 +109,12 @@ export function useNumberSheets(items: readonly FavouriteItem[]): NumberSheetsAp
   const remove = (item: FavouriteItem) => {
     if (!item.numberId) return;
     const removed = removeSavedNumbers(new Set([item.numberId]));
-    if (removed.length === 0) return;
+    if (removed.length === 0) {
+      say("This phone did not save that", "danger");
+      return;
+    }
     if (!toast) {
+      forgetPinOrder([item.id]);
       announce(`Removed ${item.title}`);
       return;
     }
@@ -100,14 +125,21 @@ export function useNumberSheets(items: readonly FavouriteItem[]): NumberSheetsAp
       action: {
         label: "Undo",
         onAction: () => {
-          if (!restoreSavedNumbers(removed)) {
+          const restored = restoreSavedNumbers(removed, {
+            pinRoom: QUICK_LAUNCH_LIMIT - pinnedCountRef.current,
+          });
+          if (!restored.ok) {
             toast.push({
               tone: "danger",
               title: "Could not put the number back",
-              body: "Add it again from Favourites.",
+              body: restored.reason === "full" ? RESTORE_FAILED.full : "Add it again from Favourites.",
             });
           }
         },
+      },
+      // Undo keeps its place on My Day; otherwise it leaves the kept order.
+      onClose: (reason) => {
+        if (reason !== "action") forgetPinOrder([item.id]);
       },
     });
   };
@@ -127,12 +159,14 @@ export function useNumberSheets(items: readonly FavouriteItem[]): NumberSheetsAp
           setActionId(null);
           remove(item);
         }}
+        returnFocusTarget={returnFocus}
       />
       <NumberFormSheet
         open={formOpen}
         onClose={() => setFormOpen(false)}
         editing={editing}
-        returnFocusTarget={() => returnFocusRef.current}
+        returnFocusTarget={returnFocus}
+        pinRoom={pinnedCount < QUICK_LAUNCH_LIMIT}
       />
     </>
   );

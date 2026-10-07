@@ -107,9 +107,12 @@ import { sharedHomePresentation } from "@/lib/ui-copy";
 import { useAuthSession } from "@/lib/supabase/client";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import {
+  forgetPinOrder,
   recordNumberOpened,
   removeSavedNumbers,
+  RESTORE_FAILED,
   restoreSavedNumbers,
+  setFavouritesLayout,
   setSavedNumbersPinned,
   telHref,
   useFavouriteOverrides,
@@ -199,7 +202,8 @@ const viewOptions = {
 
 function favouriteCitationText(item: FavouriteItem): string {
   const evidenceLine = isSourceBacked(item) ? `Evidence: ${item.evidence}` : item.description;
-  return `${item.title}\n${evidenceLine}\n${item.href}`;
+  // The item's own title: a name the person gave it never goes into a citation.
+  return `${item.originalTitle ?? item.title}\n${evidenceLine}\n${item.href}`;
 }
 
 async function copyFavouriteCitation(item: FavouriteItem): Promise<boolean> {
@@ -823,12 +827,18 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       string,
       {
         items: FavouriteItem[];
+        /** Every favourite removed, account and phone alike, to drop from the My Day order. */
+        removedIds: readonly string[];
+        /** Pinned favourites other than numbers that Undo puts back pinned. */
+        pinnedBack: number;
         workRemoved: readonly WorkPageStar[];
         numbersRemoved: readonly SavedNumber[];
         toastId: string | null;
       }
     >(),
   );
+  // Read at Undo time, so restored numbers never take My Day past its limit.
+  const pinnedCountRef = useRef(0);
   const removalCounterRef = useRef(0);
   const accountDataRef = useRef(accountData);
   const toastRef = useRef<ToastApi | null>(null);
@@ -852,13 +862,19 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
         body: "Add it again from Add a work page.",
       });
     }
-    if (outcome === "cancel" && entry.numbersRemoved.length > 0 && !restoreSavedNumbers(entry.numbersRemoved)) {
-      toastRef.current?.push({
-        tone: "danger",
-        title: "Could not put the number back",
-        body: "Add it again from Add a number.",
+    if (outcome === "cancel" && entry.numbersRemoved.length > 0) {
+      const restored = restoreSavedNumbers(entry.numbersRemoved, {
+        pinRoom: QUICK_LAUNCH_LIMIT - pinnedCountRef.current - entry.pinnedBack,
       });
+      if (!restored.ok) {
+        toastRef.current?.push({
+          tone: "danger",
+          title: "Could not put the number back",
+          body: restored.reason === "full" ? RESTORE_FAILED.full : "Add it again from Add a number.",
+        });
+      }
     }
+    if (outcome === "commit") forgetPinOrder(entry.removedIds);
     const ids = entry.items.map((item) => item.id);
     const release = () => setPendingRemovalIds((current) => new Set([...current].filter((id) => !ids.includes(id))));
     const account = accountDataRef.current;
@@ -905,6 +921,9 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     () => items.filter((item) => !pendingRemovalIds.has(item.id)),
     [items, pendingRemovalIds],
   );
+  useEffect(() => {
+    pinnedCountRef.current = libraryItems.filter((item) => item.pinned).length;
+  }, [libraryItems]);
 
   // A different account (or signing out) must never inherit this account's
   // pending removals: keep the favourites and drop the messages.
@@ -1201,6 +1220,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     if (unpin) {
       const results = await Promise.all(targets.map((item) => setItemPinned(item, false)));
       const failed = results.filter((saved) => !saved).length;
+      forgetPinOrder(targets.filter((_, index) => results[index]).map((item) => item.id));
       toast.push(
         failed === 0
           ? {
@@ -1287,7 +1307,14 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     const numberIds = new Set(mutable.flatMap((item) => (item.numberId ? [item.numberId] : [])));
     const numbersRemoved = numberIds.size > 0 ? removeSavedNumbers(numberIds) : [];
     const key = `removal-${(removalCounterRef.current += 1)}`;
-    pendingRemovalsRef.current.set(key, { items: accountItems, workRemoved, numbersRemoved, toastId: null });
+    pendingRemovalsRef.current.set(key, {
+      items: accountItems,
+      removedIds: mutable.map((item) => item.id),
+      pinnedBack: mutable.filter((item) => item.pinned && !item.numberId).length,
+      workRemoved,
+      numbersRemoved,
+      toastId: null,
+    });
     setPendingRemovalIds((current) => new Set([...current, ...accountItems.map((item) => item.id)]));
     setOpenSwipeId(null);
     const toastId = toast.push({
@@ -1595,8 +1622,10 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   const numberItems = numbersSectionOn ? filteredItems.filter((item) => Boolean(item.numberId)) : [];
   const showNumbers =
     numbersSectionOn && (numberItems.length > 0 || (!searching && activeFilterCount === 0 && scopeItems.length > 0));
-  const clinicalShown = allScope ? sectionOn("clinical") : scope === "clinical";
-  const workShown = allScope ? sectionOn("work") : scope === "work";
+  // A search or a filter looks through everything: a hidden list never hides a match.
+  const narrowing = searching || activeFilterCount > 0;
+  const clinicalShown = allScope ? narrowing || sectionOn("clinical") : scope === "clinical";
+  const workShown = allScope ? narrowing || sectionOn("work") : scope === "work";
   const clinicalItems = clinicalShown ? filteredItems.filter((item) => !isWorkItem(item)) : [];
   const workItems = workShown
     ? filteredItems.filter((item) => isWorkItem(item) && !(numbersSectionOn && item.numberId))
@@ -1605,6 +1634,13 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   // The filter controls and any empty state sit where the first list does.
   const firstListSection = layout.order.find((id) => id === "clinical" || id === "work") ?? "clinical";
   const listsDrawn = filteredItems.length > 0;
+  // Both lists hidden on All while there is something in them: say so, quietly, with a way back.
+  const listsHiddenNote =
+    allScope &&
+    !narrowing &&
+    !clinicalShown &&
+    !workShown &&
+    filteredItems.some((item) => !isWorkItem(item) || !(numbersSectionOn && item.numberId));
   const workScopeEmpty = (
     <div className="grid gap-3" data-testid="favourites-work-empty">
       <WorkEmpty
@@ -2024,6 +2060,28 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
                         </ul>
                       ) : null
                     ) : null}
+
+                    {listsHiddenNote ? (
+                      <div
+                        className="flex min-w-0 flex-wrap items-center justify-between gap-2 px-1"
+                        data-testid="favourites-lists-hidden"
+                      >
+                        <p className="m-0 min-w-0 text-sm text-[color:var(--text-muted)]">
+                          Clinical and Work lists are hidden.
+                        </p>
+                        <WorkButton
+                          variant="secondary"
+                          onClick={() =>
+                            setFavouritesLayout({
+                              hidden: layout.hidden.filter((id) => id !== "clinical" && id !== "work"),
+                            })
+                          }
+                          testId="favourites-lists-hidden-show"
+                        >
+                          Show them
+                        </WorkButton>
+                      </div>
+                    ) : null}
                   </>
                 ) : null}
 
@@ -2237,23 +2295,31 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
           setNumberActionId(null);
           removeItems([item]);
         }}
+        returnFocusTarget={returnFocusToOrigin}
       />
       <NumberFormSheet
         open={numberFormOpen}
         onClose={() => setNumberFormOpen(false)}
         editing={editingNumber}
         returnFocusTarget={returnFocusToOrigin}
+        pinRoom={pinnedCount < QUICK_LAUNCH_LIMIT}
       />
       <EditFavouriteSheet
         item={editItem}
         overrideName={editItem ? overrides[editItem.id]?.name : undefined}
         overrideNote={editItem ? overrides[editItem.id]?.note : undefined}
         onClose={() => setEditItem(null)}
+        returnFocusTarget={returnFocusToOrigin}
       />
-      <CustomiseFavouritesSheet open={customiseOpen} onClose={() => setCustomiseOpen(false)} />
+      <CustomiseFavouritesSheet
+        open={customiseOpen}
+        onClose={() => setCustomiseOpen(false)}
+        returnFocusTarget={returnFocusToOrigin}
+      />
       <ArrangeShelfSheet
         open={arrangeOpen}
         onClose={() => setArrangeOpen(false)}
+        returnFocusTarget={returnFocusToOrigin}
         pinned={pinnedInOrder}
         unpinned={libraryItems.filter((item) => !item.pinned && !item.example)}
         pinLimit={QUICK_LAUNCH_LIMIT}

@@ -3,7 +3,12 @@
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
-import { keepAboveKeyboard, sheetFootnote } from "@/components/favourites/number-sheets";
+import {
+  keepAboveKeyboard,
+  sheetFootnote,
+  useReturnFocusResolver,
+  type ReturnFocusTarget,
+} from "@/components/favourites/number-sheets";
 import type { FavouriteItem } from "@/components/favourites/favourites-view-model";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -22,16 +27,21 @@ export function EditFavouriteSheet({
   overrideName,
   overrideNote,
   onClose,
+  returnFocusTarget,
 }: {
   item: FavouriteItem | null;
   overrideName?: string;
   overrideNote?: string;
   onClose: () => void;
+  /** Where focus goes on close: the opener, or the page heading once it is gone. */
+  returnFocusTarget?: ReturnFocusTarget;
 }) {
+  const resolveReturnFocus = useReturnFocusResolver(returnFocusTarget);
   return (
     <Sheet
       open={item !== null}
       onClose={onClose}
+      resolveReturnFocusTarget={resolveReturnFocus}
       title="Edit favourite"
       description={item?.type}
       closeLabel="Close edit favourite"
