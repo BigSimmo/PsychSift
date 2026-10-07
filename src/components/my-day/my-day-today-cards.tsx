@@ -1186,7 +1186,7 @@ export function StripDay({
   const tile = cn(
     "relative grid min-h-13 content-center justify-items-center gap-0.5 rounded-xl border py-1.5 no-underline forced-colors:border",
     isToday
-      ? "border-[color:var(--mode-identity)] bg-[color:var(--mode-identity-soft)]"
+      ? "border-transparent bg-[color:var(--mode-identity)]"
       : "border-[color:var(--work-line)] bg-[color:var(--work-surface)]",
   );
   const inner = (
@@ -1196,7 +1196,7 @@ export function StripDay({
         aria-hidden="true"
         className={cn(
           "text-3xs font-bold tracking-wider uppercase",
-          isToday ? "text-[color:var(--mode-identity)]" : "text-[color:var(--text-muted)]",
+          isToday ? "text-[color:var(--mode-identity-contrast)] opacity-85" : "text-[color:var(--text-muted)]",
         )}
       >
         {perthWeekday(date)}
@@ -1206,7 +1206,7 @@ export function StripDay({
         className={cn(
           "text-lg-minus leading-none font-bold nums",
           isToday
-            ? "text-[color:var(--mode-identity)]"
+            ? "text-[color:var(--mode-identity-contrast)]"
             : off
               ? "text-[color:var(--text-muted)]"
               : "text-[color:var(--work-ink)]",
@@ -1218,7 +1218,7 @@ export function StripDay({
         aria-hidden="true"
         className={cn(
           "mt-0.5 h-0.75 w-4.5 rounded-full forced-colors:bg-[CanvasText]",
-          code ? SHIFT_BAR[code] : "bg-transparent",
+          code ? (isToday ? "bg-[color:var(--mode-identity-contrast)]" : SHIFT_BAR[code]) : "bg-transparent",
         )}
       />
       {due ? (

@@ -195,7 +195,8 @@ function MyDayFullList({
 
   return (
     <div className="grid min-w-0 gap-2.5" data-testid="my-day-full-list">
-      <div>
+      {/* The band's back button is the visible way back; this one takes focus on opening and shows when focused. */}
+      <div className="sr-only focus-within:not-sr-only">
         <button ref={backRef} type="button" onClick={onBack} data-testid="my-day-back" className={quietLink}>
           Back to dashboard
         </button>
@@ -239,7 +240,7 @@ function MyDayFullList({
                   focusRing,
                   "relative inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-xs font-bold whitespace-nowrap before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] forced-colors:border",
                   area === entry.mode
-                    ? "border-transparent bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]"
+                    ? "border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
                     : "border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] text-[color:var(--work-ink)]",
                 )}
               >
@@ -258,7 +259,9 @@ function MyDayFullList({
               <QuietLabel
                 id={`my-day-section-${group.key}-label`}
                 title={GROUP_TITLE[group.key]}
-                count={group.items.length}
+                aside={
+                  <span className="text-2xs font-bold text-[color:var(--text-muted)] nums">{group.items.length}</span>
+                }
               />
               <QuietList className={quietCard}>
                 {group.items.map((item) =>

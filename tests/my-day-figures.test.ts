@@ -60,7 +60,7 @@ describe("myDayActionLabel", () => {
   });
 
   // Work-mode redesign, owner request 6 Oct 2026: more verbs, read from the item's id.
-  it("says Answer for a swap, Prep for teaching prep, Renew for a recorded date and Sign for a form or leave", () => {
+  it("says Answer for a swap, Prep for teaching prep, Renew for a recorded date and Sign for a form", () => {
     expect(myDayActionLabel({ id: "roster:swap:1", mode: "roster", title: "Sam asks to swap" })).toBe("Answer");
     expect(myDayActionLabel({ id: "teaching:prep:1", mode: "teaching", title: "Prepare your talk" })).toBe("Prep");
     expect(myDayActionLabel({ id: "my-work:date:1", mode: "my-work", title: "Medical registration" })).toBe("Renew");

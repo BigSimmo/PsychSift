@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Clock, Info, Lock, Moon, Phone, Shield, TriangleAlert, WifiOff } from "lucide-react";
+import { ChevronRight, Clock, FileText, Info, Lock, Moon, Phone, Shield, TriangleAlert, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useId, useState, useSyncExternalStore } from "react";
 
@@ -11,7 +11,6 @@ import {
   DateBlock,
   QuietFoot,
   QuietList,
-  QuietRing,
   QuietRow,
   QuietSection,
   QuietTextLink,
@@ -106,32 +105,20 @@ export function CallsCard({
         </h2>
         <span className="text-2xs font-semibold text-[color:var(--text-muted)]">Counts only · this phone</span>
       </div>
-      <div className="flex min-w-0 items-center gap-3.5">
-        {left && span !== null && endMs !== null && nowMs !== null ? (
-          <>
-            <QuietRing fraction={(endMs - nowMs) / span} mode="on-call" testId="my-day-calls-ring">
-              <span className="grid justify-items-center">
-                <span className="max-w-16 text-sm font-bold leading-tight text-[color:var(--work-ink)] nums">
-                  {left.short}
-                </span>
-                <span className="text-3xs font-semibold text-[color:var(--text-muted)]">{`of ${durationWords(span).short}`}</span>
-              </span>
-            </QuietRing>
-            <span className="sr-only">{`${left.spoken} left of ${durationWords(span).spoken}.`}</span>
-          </>
-        ) : null}
-        <dl className="m-0 grid min-w-0 flex-1 grid-cols-2 gap-1.5">
-          {left ? <CallFigure label="Left" value={left.short} /> : null}
-          <CallFigure label="Logged" value={String(total)} />
-          <CallFigure label="Open" value={String(open)} warn={open > 0} />
-          {handoverAt ? <CallFigure label="Handover" value={`${handoverDay}${perthTimeOf(handoverAt)}`} /> : null}
-        </dl>
-      </div>
+      {left && span !== null ? (
+        <span className="sr-only">{`${left.spoken} left of ${durationWords(span).spoken}.`}</span>
+      ) : null}
+      <dl className="m-0 flex min-w-0 divide-x divide-[color:var(--work-line)]">
+        {left ? <CallFigure label="Left" value={left.short} /> : null}
+        <CallFigure label="Logged" value={String(total)} />
+        <CallFigure label="Open" value={String(open)} warn={open > 0} />
+        {handoverAt ? <CallFigure label="Handover" value={`${handoverDay}${perthTimeOf(handoverAt)}`} /> : null}
+      </dl>
       <div className="grid grid-cols-2 gap-2">
         <Link
           href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
           data-testid="my-day-calls-log"
-          className={quietPrimary}
+          className={cn(quietPrimary, "bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]")}
         >
           <Phone aria-hidden="true" className="size-3.5" />
           Log a call
@@ -141,9 +128,10 @@ export function CallsCard({
           data-testid="my-day-calls-handover"
           className={cn(
             focusRing,
-            "inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] px-4 text-sm font-bold text-[color:var(--work-ink)] no-underline",
+            "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] px-4 text-sm font-bold text-[color:var(--work-ink)] no-underline",
           )}
         >
+          <FileText aria-hidden="true" className="size-3.5" />
           Handover
         </Link>
       </div>
@@ -161,11 +149,11 @@ function CallFigure({
   readonly warn?: boolean;
 }) {
   return (
-    <div className="grid min-w-0 rounded-lg bg-[color:var(--work-wash)] px-2.5 py-1.5">
-      <dt className="text-3xs font-bold tracking-wider text-[color:var(--text-muted)] uppercase">{label}</dt>
+    <div className="grid min-w-0 flex-1 justify-items-center gap-0.5 px-1 text-center">
+      <dt className="text-2xs font-semibold text-[color:var(--text-muted)]">{label}</dt>
       <dd
         className={cn(
-          "m-0 text-base font-bold nums",
+          "m-0 text-lg-minus leading-tight font-bold nums",
           warn ? "text-[color:var(--warning-text)]" : "text-[color:var(--work-ink)]",
         )}
       >

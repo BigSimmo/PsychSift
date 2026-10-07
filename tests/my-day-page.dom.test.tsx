@@ -193,7 +193,7 @@ describe("MyDayPage", () => {
   // The grouped list is now the dashboard's "All N" view (the default view is
   // the card dashboard), so these two open it first.
   // work-mode redesign, owner request 6 Oct 2026: the groups are by due date, Overdue, Today, This week and Later, each
-  // label carrying its count; the row's link is its verb pill.
+  // with its count at the right; the row's link is its verb pill.
   it("groups items as Overdue, Today, This week, Later in that order and omits empty groups", () => {
     setState({
       items: [item("a", "overdue"), item("b", "soon"), item("c", "info", { mode: "cme", detail: "Extra line" })],
@@ -201,7 +201,7 @@ describe("MyDayPage", () => {
     const first = render(<MyDayPage now={NOW} />);
     openAll("See all 3", first.rerender);
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
-    expect(headings).toEqual(["Overdue1", "This week1", "Later1"]);
+    expect(headings).toEqual(["Overdue", "This week", "Later"]);
     const later = screen.getByTestId("my-day-item-c");
     expect(later.textContent).toContain("CPD");
     expect(later.textContent).toContain("Extra line");
@@ -213,7 +213,7 @@ describe("MyDayPage", () => {
     window.history.replaceState(null, "", "/my-day");
     const second = render(<MyDayPage now={NOW} />);
     openAll("See all 1", second.rerender);
-    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["This week1"]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["This week"]);
   });
 
   it("puts the state word in the link text, Date passed for Admin and Overdue elsewhere", () => {

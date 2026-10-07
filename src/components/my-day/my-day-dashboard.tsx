@@ -609,7 +609,8 @@ export function MyDayDashboard({
           shift={heroShift}
           running={shiftRunning}
           upNext={heroUpNextWithClash}
-          nextTeaching={heroNext}
+          // One Next up panel, as in the mockup: today's next session, else the next one ahead.
+          nextTeaching={heroUpNextWithClash ? null : heroNext}
           finished={finished}
           nextShift={nextShift}
           endOfShift={heroEnd}
@@ -850,7 +851,10 @@ function clashLine(shift: RosterDisplayShift | null, startsAt: string, endsAt: s
   const end = Date.parse(endsAt);
   if (![shiftStart, shiftEnd, start, end].every(Number.isFinite)) return null;
   if (Math.abs(start - shiftEnd) <= 60_000) return `Starts as ${name} ends.`;
-  if (start < shiftEnd && end > shiftStart) return `Runs into ${name}, which ends ${perthTimeOf(shift.endsAt)}.`;
+  // Teaching inside the shift is ordinary; one that runs across its start or end is a clash.
+  const across = (edge: number) => start < edge && end > edge;
+  if (across(shiftEnd)) return `Runs past the end of ${name} at ${perthTimeOf(shift.endsAt)}.`;
+  if (across(shiftStart)) return `Runs into ${name}, which starts ${perthTimeOf(shift.startsAt)}.`;
   return null;
 }
 

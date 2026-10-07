@@ -54,7 +54,8 @@ export function myDayActionLabel(item: Pick<MyDayItem, "mode" | "title"> & { rea
   if (item.mode === "roster" && id.startsWith("roster:swap:")) return "Answer";
   if (item.mode === "teaching" && id.startsWith("teaching:prep:")) return "Prep";
   if (item.mode === "my-work" && id.startsWith("my-work:date:")) return "Renew";
-  if (/\b(form|leave)\b/i.test(item.title)) return "Sign";
+  // A form to sign ("Sign leave form"); a page that only mentions leave is not one.
+  if (/\bform\b/i.test(item.title)) return "Sign";
   return "Open";
 }
 
