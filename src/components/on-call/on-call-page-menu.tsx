@@ -167,7 +167,7 @@ export function OnCallPageMenuActions({
 
 /**
  * In-page More for an On Call section. Not the universal header trailing slot:
- * that slot is the Needs you bell on the home, and Search my work everywhere.
+ * that slot is the notifications bell and AI Search, on every page.
  */
 export function OnCallPageMenu({
   view,

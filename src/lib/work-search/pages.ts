@@ -103,6 +103,8 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
 
 let pagesMemory: readonly WorkSearchPage[] | null = null;
 
+const LAUNCH_GATES: ReadonlySet<string> = new Set(["new-work-mode", "classic-work-mode"]);
+
 /** Every page the work frame lists, once each, in the frame's own order. */
 export function workSearchPages(): readonly WorkSearchPage[] {
   if (pagesMemory) return pagesMemory;
@@ -121,7 +123,9 @@ export function workSearchPages(): readonly WorkSearchPage[] {
     const items = [...area.tabs, ...area.groups.flatMap((group) => group.items)];
     for (const item of items) {
       // Actions run on a page, and gated pages may not be the reader's: neither is offered.
-      if (!item.href || item.gate) continue;
+      // The two launch gates only pick which copy of a page the frame lists; the search
+      // hides new-only routes per reader, so classic readers keep Needs you and Alerts.
+      if (!item.href || (item.gate && !LAUNCH_GATES.has(item.gate))) continue;
       // A link into another area (`paths: []` or `leadsTo`) is listed under its own area.
       if (item.leadsTo || (item.paths && item.paths.length === 0)) continue;
       if (seen.has(item.href)) continue;

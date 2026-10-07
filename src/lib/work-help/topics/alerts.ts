@@ -16,7 +16,7 @@ export const alertsTopic: WorkHelpTopic = {
     {
       id: "the-bell",
       q: "What is the bell at the top?",
-      a: "The bell on a work area's home opens Notifications, with everything that needs you grouped as Overdue, Today, This week and Later. Tap a row to open it, or snooze it.",
+      a: "The bell on every work page opens Notifications in My Day. To do lists what needs you, grouped Overdue, Today, This week and Coming up. Earlier keeps the last 7 days. Settings holds your morning brief, quiet hours and reminder types.",
     },
     {
       id: "quiet-hours",

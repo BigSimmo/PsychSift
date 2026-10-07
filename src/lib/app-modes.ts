@@ -92,7 +92,7 @@ export type AppModeDefinition = {
   description: string;
   devOnly?: boolean;
   href?: string;
-  /** Staff work modes show the "Search my work" icon in the header, which searches
+  /** Staff work modes show the "AI Search" icon in the header, which searches
       all of them at once. Declared here rather than as a list of mode ids in the
       header, for the same reason `resultsSurface` is: the header must not grow a
       `searchMode === "…"` branch. */
@@ -715,7 +715,7 @@ export const appModeDefinitions = [
   },
   {
     id: "open-shifts",
-    // Search my work sits top right on every work page, Open shifts included
+    // AI Search sits top right on every work page, Open shifts included
     // (work-mode redesign, owner request 7 Oct 2026).
     workSearch: true,
     label: "Open shifts",
@@ -808,7 +808,7 @@ export function appModeDefinition(modeId: AppModeId) {
   return appModeDefinitions.find((mode) => mode.id === modeId) ?? appModeDefinitions[0];
 }
 
-/** Whether this mode shows the "Search my work" header icon. */
+/** Whether this mode shows the "AI Search" header icon. */
 export function appModeHasWorkSearch(modeId: AppModeId): boolean {
   return (appModeDefinition(modeId) as AppModeDefinition).workSearch === true;
 }

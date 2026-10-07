@@ -450,6 +450,28 @@
   border-top: 1px solid var(--work-line);
 }
 
+/* ------------------------------------------------------------- the page */
+
+/* My Day › Notifications draws the same body on the page's wash, so the
+   pieces that were wash-on-white in the sheet sit on the card surface here. */
+.notify-page .notify-seg {
+  border: 1px solid var(--work-line);
+  background: var(--work-surface);
+}
+
+.notify-page .notify-seg__option[aria-checked="true"]::before {
+  background: var(--work-wash);
+}
+
+.notify-page .notify-note:not([data-tone]) {
+  background: var(--work-surface);
+}
+
+/* The Undo bar clears the phone's home bar on the page. */
+.notify-page .notify-undo-region {
+  bottom: calc(var(--safe-area-bottom, 0px) + var(--spacing) * 2);
+}
+
 /* --------------------------------------------------------------- Undo bar */
 
 /* Kept inside the sheet so Undo stays reachable while the dialog holds focus. */

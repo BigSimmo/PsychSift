@@ -55,7 +55,7 @@ import { needsYouWaitingCopy } from "@/lib/needs-you/groups";
  * header bell's sheet, upgraded from the shared "Needs you" sheet. One glass
  * sheet titled Notifications, with a settings link to Alerts; a segmented
  * control (All, Action needed, Updates); area chips with counts; the items
- * grouped Overdue, Today, This week and Later, each row in its area's colour
+ * grouped Overdue, Today, This week and Coming up, each row in its area's colour
  * and opening the page that owns it; Snooze to the next working day and Remind
  * me from any row. On Call keeps its own group and wording (nothing there
  * claims anything about the reader's standing), and its own week-long snooze.
@@ -84,8 +84,11 @@ const AREA_ICONS: Readonly<Record<NotificationArea, LucideIcon>> = {
   "my-day": Bell,
 };
 
-/** The clock the groups are sorted against: refreshed on open and every minute while open. */
-function useSheetClock(open: boolean): Date {
+/**
+ * The clock the groups are sorted against: refreshed on open and every minute
+ * while open. The Notifications page passes true for as long as it is shown.
+ */
+export function useNotificationClock(open: boolean): Date {
   const [clock, setClock] = useState(() => new Date());
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
@@ -102,7 +105,7 @@ function useSheetClock(open: boolean): Date {
 
 /** The sheet on its own: it reads its own feed (used where no centre is mounted). */
 export function NeedsYouSheet(props: NeedsYouSheetProps) {
-  const clock = useSheetClock(props.open);
+  const clock = useNotificationClock(props.open);
   const feed = useNotificationFeed({ clock });
   return <NotificationCentreSheet {...props} feed={feed} />;
 }
@@ -116,7 +119,7 @@ export function NeedsYouCentre({
   onSummary,
   ...props
 }: NeedsYouSheetProps & { readonly onSummary: (summary: NotificationBadgeSummary) => void }) {
-  const clock = useSheetClock(props.open);
+  const clock = useNotificationClock(props.open);
   const feed = useNotificationFeed({ clock });
   const ready = feed.status === "ready";
   const { count, overdue } = feed.summary;
@@ -132,12 +135,78 @@ function perthClockLabel(date: Date | null): string {
 
 type UndoNote = { readonly id: number; readonly message: string; readonly undo?: () => void };
 
+/** The line under the centre's title: what is waiting, or why nothing could be checked. */
+export function notificationCentreDescription(feed: NotificationFeed): string {
+  const { summary, status } = feed;
+  return status === "loading"
+    ? "Checking what needs you."
+    : status === "signed-out"
+      ? "Sign in to see what needs you."
+      : status === "error"
+        ? "Nothing could be checked."
+        : summary.overdue > 0
+          ? `${needsYouWaitingCopy(summary.count).replace(/\.$/, "")}, ${summary.overdue} overdue.`
+          : needsYouWaitingCopy(summary.count);
+}
+
 function NotificationCentreSheet({
   open,
   onClose,
   returnFocusRef,
   feed,
 }: NeedsYouSheetProps & { readonly feed: NotificationFeed }) {
+  const navigate = () => onClose(true);
+  return (
+    <Sheet
+      open={open}
+      onClose={() => onClose()}
+      title="Notifications"
+      description={notificationCentreDescription(feed)}
+      closeLabel="Close notifications"
+      returnFocusRef={returnFocusRef}
+      portal
+      testId="needs-you-sheet"
+      contentClassName="work-more-sheet notify-sheet"
+      headerClassName="work-more-sheet__header"
+      titleClassName="work-more-sheet__title"
+      closeButtonClassName="work-more-sheet__close"
+      bodyClassName="work-more-sheet__body"
+      bodyTabIndex={0}
+      headerActions={
+        <Link
+          href="/my-day/alerts"
+          onClick={navigate}
+          aria-label="Notification settings"
+          title="Notification settings"
+          className="work-more-sheet__close notify-sheet__settings"
+          data-testid="needs-you-settings"
+        >
+          <Settings aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+        </Link>
+      }
+    >
+      <NotificationCentreBody feed={feed} active={open} onNavigate={navigate} />
+    </Sheet>
+  );
+}
+
+export type NotificationCentreBodyProps = {
+  readonly feed: NotificationFeed;
+  /**
+   * Whether the centre is showing. Going from shown to hidden resets it, so each
+   * opening starts on All with nothing expanded. The page passes true.
+   */
+  readonly active: boolean;
+  /** Runs when a row's link is followed (the sheet closes itself; the page does nothing). */
+  readonly onNavigate: () => void;
+};
+
+/**
+ * The Notification centre's body: the segmented control, area chips, grouped
+ * rows, row options, snoozed list, notes and Undo bar, with every state the
+ * centre has. The bell's sheet and the Notifications page both draw this.
+ */
+export function NotificationCentreBody({ feed, active, onNavigate }: NotificationCentreBodyProps) {
   const [segment, setSegment] = useState<NotificationSegment>("all");
   const [area, setArea] = useState<NotificationArea | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -162,10 +231,10 @@ function NotificationCentreSheet({
   }, [note]);
 
   // Each opening starts on All with nothing expanded.
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (!open) {
+  const [wasActive, setWasActive] = useState(active);
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (!active) {
       setSegment("all");
       setArea(null);
       setExpanded(null);
@@ -192,18 +261,6 @@ function NotificationCentreSheet({
     [visible],
   );
 
-  const description =
-    status === "loading"
-      ? "Checking what needs you."
-      : status === "signed-out"
-        ? "Sign in to see what needs you."
-        : status === "error"
-          ? "Nothing could be checked."
-          : summary.overdue > 0
-            ? `${needsYouWaitingCopy(summary.count).replace(/\.$/, "")}, ${summary.overdue} overdue.`
-            : needsYouWaitingCopy(summary.count);
-
-  const navigate = () => onClose(true);
   const snoozeDay = nextWorkingDay(feed.today);
   const snoozeDayLabel = formatSnoozeDay(snoozeDay, feed.today);
 
@@ -234,7 +291,7 @@ function NotificationCentreSheet({
             expanded={expanded === item.id}
             onToggle={() => setExpanded((current) => (current === item.id ? null : item.id))}
             onCollapse={() => setExpanded(null)}
-            onNavigate={navigate}
+            onNavigate={onNavigate}
             onSnooze={() => snooze(item)}
             onNote={showNote}
             getReminders={getReminders}
@@ -245,222 +302,200 @@ function NotificationCentreSheet({
   );
 
   return (
-    <Sheet
-      open={open}
-      onClose={() => onClose()}
-      title="Notifications"
-      description={description}
-      closeLabel="Close notifications"
-      returnFocusRef={returnFocusRef}
-      portal
-      testId="needs-you-sheet"
-      contentClassName="work-more-sheet notify-sheet"
-      headerClassName="work-more-sheet__header"
-      titleClassName="work-more-sheet__title"
-      closeButtonClassName="work-more-sheet__close"
-      bodyClassName="work-more-sheet__body"
-      bodyTabIndex={0}
-      headerActions={
-        <Link
-          href="/my-day/alerts"
-          onClick={navigate}
-          aria-label="Notification settings"
-          title="Notification settings"
-          className="work-more-sheet__close notify-sheet__settings"
-          data-testid="needs-you-settings"
-        >
-          <Settings aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
-        </Link>
-      }
-    >
-      <div className="notify">
-        {!feed.online && status !== "signed-out" ? (
-          <div className="notify-note" role="status" data-testid="needs-you-offline">
-            <WorkIconCircle icon={WifiOff} tone="neutral" />
-            <span className="notify-note__text">
-              <b>You are offline</b>
-              <small>
-                {feed.checkedAt
-                  ? `This is what loaded at ${perthClockLabel(feed.checkedAt)}. New items appear when you are back online.`
-                  : "New items appear when you are back online."}
-              </small>
+    <div className="notify">
+      {!feed.online && status !== "signed-out" ? (
+        <div className="notify-note" role="status" data-testid="needs-you-offline">
+          <WorkIconCircle icon={WifiOff} tone="neutral" />
+          <span className="notify-note__text">
+            <b>You are offline</b>
+            <small>
+              {feed.checkedAt
+                ? `This is what loaded at ${perthClockLabel(feed.checkedAt)}. New items appear when you are back online.`
+                : "New items appear when you are back online."}
+            </small>
+          </span>
+        </div>
+      ) : null}
+
+      {status === "signed-out" ? (
+        <WorkEmpty
+          icon={Bell}
+          title="Your notifications live here"
+          body={<span data-testid="needs-you-signed-out">Sign in to see what needs you.</span>}
+        />
+      ) : status === "loading" ? (
+        <NotificationSkeleton />
+      ) : status === "error" ? (
+        <WorkEmpty
+          icon={TriangleAlert}
+          title="Notifications did not load"
+          body={
+            <span data-testid="needs-you-error">
+              Nothing was checked, so this is not the same as nothing due. Check your connection and try again.
             </span>
-          </div>
-        ) : null}
-
-        {status === "signed-out" ? (
-          <WorkEmpty
-            icon={Bell}
-            title="Your notifications live here"
-            body={<span data-testid="needs-you-signed-out">Sign in to see what needs you.</span>}
-          />
-        ) : status === "loading" ? (
-          <NotificationSkeleton />
-        ) : status === "error" ? (
-          <WorkEmpty
-            icon={TriangleAlert}
-            title="Notifications did not load"
-            body={
-              <span data-testid="needs-you-error">
-                Nothing was checked, so this is not the same as nothing due. Check your connection and try again.
-              </span>
-            }
-            action={
-              <WorkButton variant="secondary" icon={RotateCcw} onClick={feed.retry} testId="needs-you-retry">
-                Try again
-              </WorkButton>
-            }
-          />
-        ) : (
-          <>
-            {feed.failed.length > 0 ? (
-              <div className="notify-note" data-tone="amber" role="status" data-testid="needs-you-partial">
-                <WorkIconCircle icon={TriangleAlert} tone="amber" />
-                <span className="notify-note__text">
-                  <b>{`${listNames(feed.failed.map((source) => source.label))} did not load`}</b>
-                  <small>Items from there may be missing. A missing item means not checked, not nothing due.</small>
-                  <span className="notify-note__action">
-                    <WorkButton variant="secondary" icon={RotateCcw} onClick={feed.retry} testId="needs-you-retry">
-                      Try again
-                    </WorkButton>
-                  </span>
-                </span>
-              </div>
-            ) : null}
-
-            {summary.count > 0 ? (
-              <>
-                <SegmentedControl value={segment} counts={segmentCounts} onChange={setSegment} />
-                {chips.length > 1 ? (
-                  <WorkChips scroll label="Areas">
-                    <WorkChip
-                      selected={activeArea === null}
-                      onClick={() => setArea(null)}
-                      count={segmentCounts[segment]}
-                      testId="needs-you-area-all"
-                    >
-                      All
-                    </WorkChip>
-                    {chips.map((chip) => (
-                      <span key={chip.area} className="contents" data-mode-identity={chip.area}>
-                        <WorkChip
-                          selected={activeArea === chip.area}
-                          onClick={() => setArea(activeArea === chip.area ? null : chip.area)}
-                          count={chip.count}
-                          testId={`needs-you-area-${chip.area}`}
-                        >
-                          {chip.label}
-                        </WorkChip>
-                      </span>
-                    ))}
-                  </WorkChips>
-                ) : null}
-              </>
-            ) : null}
-
-            {summary.count === 0 ? (
-              <WorkEmpty
-                icon={CheckCheck}
-                title="You're all caught up"
-                body={<span data-testid="needs-you-empty">Nothing needs you right now.</span>}
-              />
-            ) : shown.length === 0 ? (
-              <WorkEmpty
-                icon={CheckCheck}
-                title={segment === "update" ? "No updates" : "Nothing to act on"}
-                body={
-                  <span data-testid="needs-you-filter-empty">
-                    {activeArea
-                      ? `Nothing in ${notificationAreaLabels[activeArea]} here right now.`
-                      : "Nothing here right now."}
-                  </span>
-                }
-                action={
-                  <WorkButton
-                    variant="secondary"
-                    onClick={() => {
-                      setSegment("all");
-                      setArea(null);
-                    }}
-                  >
-                    Show all
+          }
+          action={
+            <WorkButton variant="secondary" icon={RotateCcw} onClick={feed.retry} testId="needs-you-retry">
+              Try again
+            </WorkButton>
+          }
+        />
+      ) : (
+        <>
+          {feed.failed.length > 0 ? (
+            <div className="notify-note" data-tone="amber" role="status" data-testid="needs-you-partial">
+              <WorkIconCircle icon={TriangleAlert} tone="amber" />
+              <span className="notify-note__text">
+                <b>{`${listNames(feed.failed.map((source) => source.label))} did not load`}</b>
+                <small>Items from there may be missing. A missing item means not checked, not nothing due.</small>
+                <span className="notify-note__action">
+                  <WorkButton variant="secondary" icon={RotateCcw} onClick={feed.retry} testId="needs-you-retry">
+                    Try again
                   </WorkButton>
-                }
-              />
-            ) : (
-              <>
-                {groups.filter((group) => group.urgency !== "later").map(renderGroup)}
-                {onCallShown.length > 0 ? (
-                  <section aria-labelledby="needs-you-group-on-call" className="notify-group notify-oncall">
-                    <WorkSectionLabel as="h3" id="needs-you-group-on-call" count={onCallShown.length}>
-                      {notificationAreaLabels["on-call"]}
-                    </WorkSectionLabel>
-                    <div data-mode-identity="on-call">
-                      <OnCallNotificationsPanel
-                        notifications={onCallShown
-                          .map((item) => feed.onCall.get(item.id))
-                          .filter((notification) => notification !== undefined)}
-                        heading={null}
-                        onNavigate={navigate}
-                        onSnooze={(type) => {
-                          feed.snoozeOnCallType(type);
-                          showNote("Snoozed for a week. Notification settings can bring it back.");
-                        }}
-                      />
-                    </div>
-                  </section>
-                ) : null}
-                {groups.filter((group) => group.urgency === "later").map(renderGroup)}
-              </>
-            )}
-
-            {summary.snoozed.length > 0 ? (
-              <SnoozedList
-                snoozed={summary.snoozed}
-                today={feed.today}
-                onBringBack={(item) => {
-                  feed.unsnooze(item.id);
-                  showNote(`${item.title} is back`);
-                }}
-              />
-            ) : null}
-
-            <p className="notify-stamp" data-tone={feed.failed.length > 0 ? "amber" : undefined}>
-              <i aria-hidden="true" />
-              {stampText(feed)}
-            </p>
-            <p className="notify-foot">
-              <History aria-hidden="true" strokeWidth={2} />
-              <span>
-                Each item opens the page that owns it. Snooze hides it until the next working day, on this device only.
+                </span>
               </span>
-            </p>
-          </>
-        )}
-
-        <p className="sr-only" aria-live="polite" role="status">
-          {note?.message ?? ""}
-        </p>
-        <div className="notify-undo-region">
-          {note ? (
-            <div className="notify-undo" key={note.id} data-testid="needs-you-undo">
-              <span>{note.message}</span>
-              {note.undo ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    note.undo?.();
-                    setNote(null);
-                  }}
-                >
-                  Undo
-                </button>
-              ) : null}
             </div>
           ) : null}
-        </div>
+
+          {summary.count > 0 ? (
+            <>
+              <SegmentedControl value={segment} counts={segmentCounts} onChange={setSegment} />
+              {chips.length > 1 ? (
+                <WorkChips scroll label="Areas">
+                  <WorkChip
+                    selected={activeArea === null}
+                    onClick={() => setArea(null)}
+                    count={segmentCounts[segment]}
+                    testId="needs-you-area-all"
+                  >
+                    All
+                  </WorkChip>
+                  {chips.map((chip) => (
+                    <span key={chip.area} className="contents" data-mode-identity={chip.area}>
+                      <WorkChip
+                        selected={activeArea === chip.area}
+                        onClick={() => setArea(activeArea === chip.area ? null : chip.area)}
+                        count={chip.count}
+                        testId={`needs-you-area-${chip.area}`}
+                      >
+                        {chip.label}
+                      </WorkChip>
+                    </span>
+                  ))}
+                </WorkChips>
+              ) : null}
+            </>
+          ) : null}
+
+          {summary.count === 0 && feed.failed.length > 0 ? (
+            // Something did not load, so an empty list is not "all caught up".
+            <WorkEmpty
+              icon={CheckCheck}
+              title="Nothing in what loaded"
+              body={<span data-testid="needs-you-empty-partial">The areas that loaded have nothing for you.</span>}
+            />
+          ) : summary.count === 0 ? (
+            <WorkEmpty
+              icon={CheckCheck}
+              title="You're all caught up"
+              body={<span data-testid="needs-you-empty">Nothing needs you right now.</span>}
+            />
+          ) : shown.length === 0 ? (
+            <WorkEmpty
+              icon={CheckCheck}
+              title={segment === "update" ? "No updates" : "Nothing to act on"}
+              body={
+                <span data-testid="needs-you-filter-empty">
+                  {activeArea
+                    ? `Nothing in ${notificationAreaLabels[activeArea]} here right now.`
+                    : "Nothing here right now."}
+                </span>
+              }
+              action={
+                <WorkButton
+                  variant="secondary"
+                  onClick={() => {
+                    setSegment("all");
+                    setArea(null);
+                  }}
+                >
+                  Show all
+                </WorkButton>
+              }
+            />
+          ) : (
+            <>
+              {groups.filter((group) => group.urgency !== "later").map(renderGroup)}
+              {onCallShown.length > 0 ? (
+                <section aria-labelledby="needs-you-group-on-call" className="notify-group notify-oncall">
+                  <WorkSectionLabel as="h3" id="needs-you-group-on-call" count={onCallShown.length}>
+                    {notificationAreaLabels["on-call"]}
+                  </WorkSectionLabel>
+                  <div data-mode-identity="on-call">
+                    <OnCallNotificationsPanel
+                      notifications={onCallShown
+                        .map((item) => feed.onCall.get(item.id))
+                        .filter((notification) => notification !== undefined)}
+                      heading={null}
+                      onNavigate={onNavigate}
+                      onSnooze={(type) => {
+                        feed.snoozeOnCallType(type);
+                        showNote("Snoozed for a week. Notification settings can bring it back.");
+                      }}
+                    />
+                  </div>
+                </section>
+              ) : null}
+              {groups.filter((group) => group.urgency === "later").map(renderGroup)}
+            </>
+          )}
+
+          {summary.snoozed.length > 0 ? (
+            <SnoozedList
+              snoozed={summary.snoozed}
+              today={feed.today}
+              onBringBack={(item) => {
+                feed.unsnooze(item.id);
+                showNote(`${item.title} is back`);
+              }}
+            />
+          ) : null}
+
+          <p className="notify-stamp" data-tone={feed.failed.length > 0 ? "amber" : undefined}>
+            <i aria-hidden="true" />
+            {stampText(feed)}
+          </p>
+          <p className="notify-foot">
+            <History aria-hidden="true" strokeWidth={2} />
+            <span>
+              Each item opens the page that owns it. Snooze hides it until the next working day, on this device only.
+            </span>
+          </p>
+        </>
+      )}
+
+      <p className="sr-only" aria-live="polite" role="status">
+        {note?.message ?? ""}
+      </p>
+      <div className="notify-undo-region">
+        {note ? (
+          <div className="notify-undo" key={note.id} data-testid="needs-you-undo">
+            <span>{note.message}</span>
+            {note.undo ? (
+              <button
+                type="button"
+                onClick={() => {
+                  note.undo?.();
+                  setNote(null);
+                }}
+              >
+                Undo
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-    </Sheet>
+    </div>
   );
 }
 

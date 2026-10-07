@@ -84,6 +84,14 @@ describe("work-mode launch routes", () => {
     expect(workModeRouteHidden("/teaching/assessments?view=inbox", launched)).toBe(false);
   });
 
+  it("keeps My Day's Notifications pages from classic readers", () => {
+    for (const href of ["/my-day/notifications", "/my-day/notifications/earlier", "/my-day/notifications/settings"]) {
+      expect(workModeRouteHidden(href, classic)).toBe(true);
+      expect(workModeRouteHidden(href, launched)).toBe(false);
+    }
+    expect(workModeRouteHidden("/my-day/alerts", classic)).toBe(false);
+  });
+
   it("keeps every entry an absolute path with no trailing slash or query in the path", () => {
     for (const entry of NEW_WORK_MODE_ROUTES) {
       expect(entry.path).toMatch(/^\/[a-z0-9/-]+[a-z0-9]$/);

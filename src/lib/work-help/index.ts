@@ -58,6 +58,8 @@ export function workHelpTopic(id: string | null | undefined): WorkHelpTopic | nu
 
 /** The topic a work area's More sheet opens. Every area has one. */
 export function workHelpTopicForArea(area: WorkAreaId): WorkHelpTopic {
+  // Notifications (inside My Day) is answered by the alerts topic: the bell, quiet hours, the brief.
+  if (area === "notify") return alertsTopic;
   return WORK_HELP_AREA_TOPICS.find((topic) => topic.areaId === area) ?? dayTopic;
 }
 

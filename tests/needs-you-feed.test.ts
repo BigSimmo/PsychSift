@@ -129,7 +129,7 @@ describe("summary, filters and groups", () => {
     const groups = groupNotifications(items, NOW, "all", "my-work");
     expect(groups.map((group) => [group.label, group.items.length])).toEqual([
       ["Overdue", 1],
-      ["Later", 1],
+      ["Coming up", 1],
     ]);
   });
 });

@@ -28,6 +28,14 @@ export const FIRST_USE: Readonly<Record<WorkAreaId, FirstUseCopy>> = {
     primary: { label: "Add your roster", href: "/roster" },
     secondary: { label: "Open settings", href: "/my-day/profile" },
   },
+  // Notifications sits inside My Day (new work mode).
+  notify: {
+    icon: "bell",
+    title: "Nothing needs you yet",
+    body: "When something in your roster, CPD, teaching or admin needs you, it shows here.",
+    primary: { label: "Alert settings", href: "/my-day/notifications/settings" },
+    secondary: { label: "Your day", href: "/my-day" },
+  },
   rost: {
     icon: "calendar",
     title: "No roster yet",

@@ -279,7 +279,10 @@
         "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
         "src/app/(search-app)/my-day/favourites/page.tsx",
         "src/app/(search-app)/my-day/help/page.tsx",
-        "src/app/(search-app)/my-day/setup/page.tsx"
+        "src/app/(search-app)/my-day/setup/page.tsx",
+        "src/app/(search-app)/my-day/notifications/page.tsx",
+        "src/app/(search-app)/my-day/notifications/earlier/page.tsx",
+        "src/app/(search-app)/my-day/notifications/settings/page.tsx"
       ],
       "routeRoots": true,
       "roots": [],
