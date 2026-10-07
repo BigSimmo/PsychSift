@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { mergeAccountPreferences, normalizePreferences } from "@/lib/account-preferences";
+import { isWorkTimeZone } from "@/lib/work-time/zones";
 import { dateKeyToUtcMillis, isValidTime } from "@/lib/calendar/calendar-event";
 import { MAX_ALERTS_PER_DAY, MIN_ALERTS_PER_DAY, REMINDER_LEAD_TIMES } from "@/lib/reminders/settings";
 import { jsonError } from "@/lib/http";
@@ -82,6 +83,7 @@ const preferencesPatchSchema = z
     workStage: z.enum(["intern", "resident", "registrar", "consultant", "other"]).nullable(),
     ranzcpStage: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable(),
     reminders: remindersPatchSchema,
+    timeZone: z.string().refine(isWorkTimeZone, { message: "Unknown time zone." }),
   })
   .partial()
   .strict()
