@@ -1,9 +1,8 @@
 import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { RULE_GATE_REASON_WORDS, type RuleGate } from "@/lib/admin/rule-sign-off";
-import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
 import { perthCalendarDate } from "@/lib/perth-time";
 import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF, type FatigueRuleId } from "@/lib/roster/fatigue-rules-source";
-import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { checkPatientDetail, looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 import type { WorkSearchArea } from "@/lib/work-search/model";
 import { restRulesGate } from "@/lib/work-profile/model";
 
@@ -23,7 +22,7 @@ import { restRulesGate } from "@/lib/work-profile/model";
  * names who signed it off and when.
  *
  * The question never leaves the device. A question that looks like patient details is not
- * matched at all (both the work-search and the reminder detectors run on it).
+ * matched at all (the shared work-text check runs on it).
  */
 
 export const AGREEMENT_PAGE_HREF = "/my-day/profile/agreement";
@@ -438,22 +437,20 @@ export type AgreementQuestionCheck =
   | { readonly kind: "ok" };
 
 /**
- * The patient-detail catch, run as the doctor types. Both detectors run: the work search's
- * (record numbers, beds, dates of birth, titles and names) and the reminder check (initials,
- * ages, phone numbers). Leaning towards a false alarm is deliberate: it costs one tap.
+ * The patient-detail catch, run as the doctor types: the shared work-text check
+ * (`src/lib/work-text/patient-detail-check.ts`), which folds full-width and hidden characters and
+ * runs the work search's and the reminder check's readings, ages, "pt" with initials and bare record
+ * numbers. Leaning towards a false alarm is deliberate: it costs one tap.
  */
 export function checkAgreementQuestion(question: string, thisYear = new Date().getFullYear()): AgreementQuestionCheck {
   const text = question.trim();
   if (!text) return { kind: "empty" };
-  const problem: ReminderTextProblem | null = checkReminderText(text);
-  if (looksLikePatientDetails(text, thisYear) || problem) {
-    const safer = problem?.suggestion ? tidySafer(problem.suggestion) : null;
-    const stillUnsafe = safer ? looksLikePatientDetails(safer, thisYear) || checkReminderText(safer) !== null : true;
-    return {
-      kind: "patient",
-      safer: stillUnsafe ? null : safer,
-      what: problem ? problem.title.replace(/^This looks like /, "") : "patient details",
-    };
+  const problem = checkPatientDetail(text, { thisYear });
+  if (problem) {
+    const safer = problem.suggestion ? tidySafer(problem.suggestion) : null;
+    const stillUnsafe = safer ? looksLikePatientDetail(safer, { thisYear }) : true;
+    const what = problem.title.replace(/^This (?:looks like|may be) /, "");
+    return { kind: "patient", safer: stillUnsafe ? null : safer, what };
   }
   if (text.length < 3) return { kind: "too-short" };
   return { kind: "ok" };
@@ -466,7 +463,7 @@ export interface AgreementTextSpan {
 }
 
 function readsAsPatientDetail(text: string, thisYear: number): boolean {
-  return looksLikePatientDetails(text, thisYear) || checkReminderText(text) !== null;
+  return looksLikePatientDetail(text, { thisYear });
 }
 
 /**

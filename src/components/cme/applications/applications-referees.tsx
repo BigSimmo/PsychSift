@@ -11,7 +11,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import {
-  applicationTextProblem,
+  refereeRoleProblem,
   daysBetween,
   lastAskedOn,
   NAME_LIMIT,
@@ -182,7 +182,7 @@ function RefereeSheetBody({
   const [tried, setTried] = useState(false);
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
   const nameProblem = name.trim() || tried ? refereeNameProblem(name) : null;
-  const roleProblem = applicationTextProblem(role);
+  const roleProblem = refereeRoleProblem(role);
   const canSave = !refereeNameProblem(name) && !roleProblem;
   const unchanged =
     referee && referee.name === name.trim() && referee.role === role.trim() && referee.status === status;

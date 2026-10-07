@@ -12,7 +12,7 @@ import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import {
   APPLICATION_STAGES,
-  applicationTextProblem,
+  advertSourceProblem,
   outOfOrderStages,
   seasonDateFor,
   seasonRail,
@@ -209,7 +209,7 @@ function SeasonDateSheetBody({
   const [remind, setRemind] = useState(existing?.remind ?? true);
   const [dateInvalid, setDateInvalid] = useState(false);
   const [tried, setTried] = useState(false);
-  const problem = applicationTextProblem(source);
+  const problem = advertSourceProblem(source);
   const timeOk = time === "" || /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
   const canSave = Boolean(on) && !dateInvalid && !problem && timeOk;
 
