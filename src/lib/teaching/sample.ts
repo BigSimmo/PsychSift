@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { isDemoMode } from "@/lib/env";
+import { exampleDataOn } from "@/lib/example-data/server";
 import { TEACHING_SAMPLE_COOKIE } from "@/lib/teaching/sample-paths";
 
 /*
@@ -15,7 +16,12 @@ export async function teachingSampleOn(): Promise<boolean> {
   return (await cookies()).get(TEACHING_SAMPLE_COOKIE)?.value === "1";
 }
 
-/** What every Teaching page passes as `demoMode`: real demo mode, or this browser's sample. */
+/**
+ * What every Teaching page passes as `demoMode`: real demo mode, this browser's
+ * signed-out sample, or the work-mode example data switch (one switch for every
+ * area, `src/lib/example-data/`). All three show the same invented programme
+ * and none of them can write.
+ */
 export async function teachingDemoMode(): Promise<boolean> {
-  return isDemoMode() || (await teachingSampleOn());
+  return isDemoMode() || (await teachingSampleOn()) || (await exampleDataOn("teach"));
 }

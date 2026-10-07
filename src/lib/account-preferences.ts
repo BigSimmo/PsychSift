@@ -5,6 +5,7 @@ import {
   type ReminderSettings,
   type ReminderSettingsPatch,
 } from "@/lib/reminders/settings-model";
+import { DEFAULT_WORK_TIME_ZONE, isWorkTimeZone } from "@/lib/work-time/zones";
 
 export type DensityPreference = "comfortable" | "compact" | "spacious";
 /**
@@ -55,6 +56,11 @@ export type AppPreferences = {
    * reproduce the app as it was before these existed.
    */
   reminders: ReminderSettings;
+  /**
+   * The work time zone (IANA id, one of `WORK_TIME_ZONES`). Every roster, shift
+   * and "today" in work mode is read in it, whatever the device is set to.
+   */
+  timeZone: string;
 };
 
 /**
@@ -140,6 +146,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   workStage: null,
   ranzcpStage: null,
   reminders: DEFAULT_REMINDER_SETTINGS,
+  timeZone: DEFAULT_WORK_TIME_ZONE,
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -171,6 +178,7 @@ export const PREFERENCE_FIELD_KEYS = [
   "workStage",
   "ranzcpStage",
   "reminders",
+  "timeZone",
 ] as const satisfies ReadonlyArray<keyof AppPreferences>;
 
 /**
@@ -223,6 +231,7 @@ export function normalizePreferences(input: unknown): AppPreferences {
       ? (input.ranzcpStage as RanzcpStagePreference)
       : null,
     reminders: normalizeReminderSettings(input.reminders),
+    timeZone: isWorkTimeZone(input.timeZone) ? input.timeZone : DEFAULT_PREFERENCES.timeZone,
   };
 }
 
