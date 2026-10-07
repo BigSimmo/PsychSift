@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { ModeBandAction } from "@/components/mode-band/mode-band";
+import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import {
   WorkBody,
@@ -33,7 +33,7 @@ import { RosterDaySheet, type RosterDayColleague } from "./roster-day-sheet";
 import { kindOf, useRosterNow } from "./roster-format";
 import { RosterImportFlow } from "./roster-import-flow";
 import { RosterInitials } from "./roster-list";
-import { RosterMonthGrid, RosterMonthLegend, RosterShiftChip, type RosterMonthDay } from "./roster-month-grid";
+import { longDay, RosterMonthGrid, RosterMonthLegend, RosterShiftChip, type RosterMonthDay } from "./roster-month-grid";
 import {
   clockSpan,
   monthTotals,
@@ -179,6 +179,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const router = useRouter();
   const now = useRosterNow(pinnedNow);
   const today = perthDateOf(now);
+  // The band's eyebrow is today's date (mockup `rost_month`: "Tue 6 October").
+  useModeBandHeading({ eyebrow: longDay(today) });
   const [month, setMonth] = useState(() => monthKeyOf(today));
   const [selected, setSelected] = useState<string | null>(null);
   const [sheetDate, setSheetDate] = useState<string | null>(null);

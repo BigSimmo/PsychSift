@@ -22,6 +22,7 @@ import {
   rosterOutlineButton,
 } from "@/components/roster/roster-list";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { cn } from "@/components/ui-primitives";
 import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterLeave } from "@/lib/roster/leave";
@@ -121,6 +122,8 @@ function TryAgainNote({ children, onRetry }: { children: ReactNode; onRetry: () 
 /** Dates I can't work, leave and shifts I can't make. Swaps and open shifts live on the Swaps page. */
 export function RosterRequestsPage() {
   const now = useRosterNow();
+  // The band's words (mockup `rost_requests`); the page heading "Requests" stays under it.
+  useModeBandHeading({ eyebrow: "Leave, dates and shift changes", title: "Leave and requests" });
   const phoneFooterHidden = usePhoneFooterLayerScrollHidden() === true;
   const search = useSyncExternalStore(subscribeSearch, searchSnapshot, serverSearchSnapshot);
   const [consumedSearch, setConsumedSearch] = useState<string | null>(null);
