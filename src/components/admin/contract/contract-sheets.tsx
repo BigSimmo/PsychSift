@@ -4,11 +4,7 @@ import Link from "next/link";
 import { Copy, ExternalLink, Mail } from "lucide-react";
 import { useState } from "react";
 
-import {
-  copyLabel,
-  PatientDetailCatch,
-  useCopy,
-} from "@/components/admin/junior/junior-shared";
+import { copyLabel, PatientDetailCatch, useCopy } from "@/components/admin/junior/junior-shared";
 import { focusRing } from "@/components/card-recipes";
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
@@ -18,13 +14,13 @@ import { buttonFaceClass } from "@/components/ui/button";
 import { cn, eyebrowText, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import {
   BOTH_REMINDERS_ON,
-  CONTRACT_ASK_DEFAULT,
   CONTRACT_EMPLOYER_LIMIT,
   CONTRACT_NOTE_LIMIT,
   CONTRACT_QUESTIONS,
   CONTRACT_RENEW_REASON,
   contractAskMessage,
   contractFormHasErrors,
+  contractOpenAskable,
   contractReminderPoints,
   mailtoHref,
   validateContractForm,
@@ -92,7 +88,8 @@ export function ContractFormSheet({
   const canSave = Boolean(value.endsOn.trim()) && !contractFormHasErrors(errors) && !busy;
   const showErrors = touched || Boolean(value.endsOn);
   const set = (patch: Partial<ContractFormInput>) => setDraft({ ...value, ...patch });
-  const toggle = (key: keyof ContractReminders) => set({ reminders: { ...value.reminders, [key]: !value.reminders[key] } });
+  const toggle = (key: keyof ContractReminders) =>
+    set({ reminders: { ...value.reminders, [key]: !value.reminders[key] } });
   const points = !errors.endsOn && value.endsOn ? contractReminderPoints(value.endsOn) : null;
 
   async function save() {
@@ -115,7 +112,15 @@ export function ContractFormSheet({
       footer={
         <div className="grid gap-2">
           {failure ? <InlineNotice tone="neutral">{failure}</InlineNotice> : null}
-          <Button variant="primary" block busy={busy} busyLabel="Saving" disabled={!canSave} onClick={() => void save()} testId="admin-contract-save">
+          <Button
+            variant="primary"
+            block
+            busy={busy}
+            busyLabel="Saving"
+            disabled={!canSave}
+            onClick={() => void save()}
+            testId="admin-contract-save"
+          >
             Save
           </Button>
         </div>
@@ -223,14 +228,40 @@ export function ContractFormSheet({
 export function ContractQuestionSheet({
   question,
   endsOn,
+  asked = false,
+  canMark = false,
+  onMark,
   onClose,
 }: {
   question: ContractQuestion | null;
   endsOn: string | null;
+  /** This question is marked "Asked, waiting". */
+  asked?: boolean;
+  /** Signed in with a saved row, so the mark can be saved. */
+  canMark?: boolean;
+  /** Resolves to an error message, or null when saved. */
+  onMark?: (asked: boolean) => Promise<string | null>;
   onClose: () => void;
 }) {
   const { copy, stateFor } = useCopy();
   const state = stateFor("question");
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [shownFor, setShownFor] = useState<string | null>(null);
+  if ((question?.id ?? null) !== shownFor) {
+    setShownFor(question?.id ?? null);
+    setFailure(null);
+  }
+
+  async function mark() {
+    if (!onMark || busy) return;
+    setBusy(true);
+    setFailure(null);
+    const problem = await onMark(!asked);
+    setBusy(false);
+    if (problem) setFailure(problem);
+  }
+
   return (
     <Sheet
       open={question !== null}
@@ -239,15 +270,32 @@ export function ContractQuestionSheet({
       description={question?.hint}
       testId="admin-contract-question"
       footer={
-        <Button
-          variant="primary"
-          block
-          icon={Copy}
-          onClick={() => question && void copy(question.question, "question", "Question copied. Paste it into your email.")}
-          testId="admin-contract-question-copy"
-        >
-          {copyLabel(state, "Copy question")}
-        </Button>
+        <div className="grid gap-2">
+          {failure ? <InlineNotice tone="neutral">{failure}</InlineNotice> : null}
+          <Button
+            variant="primary"
+            block
+            icon={Copy}
+            onClick={() =>
+              question && void copy(question.question, "question", "Question copied. Paste it into your email.")
+            }
+            testId="admin-contract-question-copy"
+          >
+            {copyLabel(state, "Copy question")}
+          </Button>
+          {canMark && onMark ? (
+            <Button
+              variant="secondary"
+              block
+              busy={busy}
+              busyLabel="Saving"
+              onClick={() => void mark()}
+              testId="admin-contract-question-mark"
+            >
+              {asked ? "Not asked yet" : "I have asked this"}
+            </Button>
+          ) : null}
+        </div>
       }
     >
       {question ? (
@@ -258,7 +306,15 @@ export function ContractQuestionSheet({
                 <span>
                   What you can take <span className={cn(textMuted, "text-xs")}>· not signed off yet</span>
                 </span>
-                <a href={LEAVE_AGREEMENT.url} target="_blank" rel="noreferrer noopener" className={cn(focusRing, "inline-flex min-h-12 items-center gap-1 font-medium text-[color:var(--clinical-accent)]")}>
+                <a
+                  href={LEAVE_AGREEMENT.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className={cn(
+                    focusRing,
+                    "inline-flex min-h-12 items-center gap-1 font-medium text-[color:var(--clinical-accent)]",
+                  )}
+                >
                   Check your agreement
                   <ExternalLink aria-hidden="true" className="size-icon-sm" />
                 </a>
@@ -269,16 +325,30 @@ export function ContractQuestionSheet({
                   <b className="nums font-semibold">{formatDateEcho(endsOn)}</b>
                 </div>
               ) : null}
-              <Link href="/admin/leave?card=parental" className={cn(focusRing, "inline-flex min-h-12 items-center font-medium text-[color:var(--clinical-accent)]")}>
+              <Link
+                href="/admin/leave?card=parental"
+                className={cn(
+                  focusRing,
+                  "inline-flex min-h-12 items-center font-medium text-[color:var(--clinical-accent)]",
+                )}
+              >
                 Parental leave card
               </Link>
             </div>
           ) : null}
           <SheetGroup label="Question to copy">
-            <p className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm leading-6" data-testid="admin-contract-question-text">
+            <p
+              className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm leading-6"
+              data-testid="admin-contract-question-text"
+            >
               {question.question}
             </p>
           </SheetGroup>
+          {asked ? (
+            <p className="text-sm text-[color:var(--text)]" data-testid="admin-contract-question-asked">
+              Marked as asked, waiting for an answer.
+            </p>
+          ) : null}
           <p className={cn(textMuted, "text-xs")}>Copy never sends anything. Paste it into your own email.</p>
         </div>
       ) : null}
@@ -288,13 +358,52 @@ export function ContractQuestionSheet({
 
 /* ---------------------------------------------------------------- ask */
 
-export function ContractAskSheet({ open, endsOn, onClose }: { open: boolean; endsOn: string | null; onClose: () => void }) {
-  const [chosen, setChosen] = useState<readonly ContractQuestionId[]>(CONTRACT_ASK_DEFAULT);
+export function ContractAskSheet({
+  open,
+  endsOn,
+  asked = [],
+  canMark = false,
+  onMarkAsked,
+  onClose,
+}: {
+  open: boolean;
+  endsOn: string | null;
+  /** Questions already marked "Asked, waiting": left out of the message to start with. */
+  asked?: readonly ContractQuestionId[];
+  canMark?: boolean;
+  /** Mark the chosen questions as asked. Resolves to an error message, or null when saved. */
+  onMarkAsked?: (ids: readonly ContractQuestionId[]) => Promise<string | null>;
+  onClose: () => void;
+}) {
+  const [chosen, setChosen] = useState<readonly ContractQuestionId[]>([]);
+  const [wasOpen, setWasOpen] = useState(false);
+  const [handedOver, setHandedOver] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  // Each time the sheet opens, the message starts from the questions still open.
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setChosen(contractOpenAskable(asked));
+      setHandedOver(false);
+      setFailure(null);
+    }
+  }
   const { copy, stateFor } = useCopy();
   const askable = CONTRACT_QUESTIONS.filter((question) => question.ask);
   const message = contractAskMessage(chosen, endsOn);
   const toggle = (id: ContractQuestionId) =>
     setChosen((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
+  const unmarked = chosen.filter((id) => !asked.includes(id));
+
+  async function markChosen() {
+    if (!onMarkAsked || busy || unmarked.length === 0) return;
+    setBusy(true);
+    setFailure(null);
+    const problem = await onMarkAsked(unmarked);
+    setBusy(false);
+    if (problem) setFailure(problem);
+  }
   return (
     <Sheet
       open={open}
@@ -309,13 +418,22 @@ export function ContractAskSheet({ open, endsOn, onClose }: { open: boolean; end
               variant="secondary"
               icon={Copy}
               disabled={!message}
-              onClick={() => message && void copy(`${message.subject}\n\n${message.body}`, "ask", "Message copied. Paste it into your email.")}
+              onClick={() => {
+                if (!message) return;
+                setHandedOver(true);
+                void copy(`${message.subject}\n\n${message.body}`, "ask", "Message copied. Paste it into your email.");
+              }}
               testId="admin-contract-ask-copy"
             >
               {copyLabel(stateFor("ask"), "Copy")}
             </Button>
             {message ? (
-              <a href={mailtoHref(message.subject, message.body)} className={buttonFaceClass({ variant: "primary" })} data-testid="admin-contract-ask-email">
+              <a
+                href={mailtoHref(message.subject, message.body)}
+                onClick={() => setHandedOver(true)}
+                className={buttonFaceClass({ variant: "primary" })}
+                data-testid="admin-contract-ask-email"
+              >
                 <Mail aria-hidden="true" className="size-icon-md shrink-0" />
                 <span>Open in email</span>
               </a>
@@ -325,6 +443,21 @@ export function ContractAskSheet({ open, endsOn, onClose }: { open: boolean; end
               </Button>
             )}
           </div>
+          {failure ? <InlineNotice tone="neutral">{failure}</InlineNotice> : null}
+          {handedOver && canMark && onMarkAsked && unmarked.length > 0 ? (
+            <Button
+              variant="ghost"
+              block
+              busy={busy}
+              busyLabel="Saving"
+              onClick={() => void markChosen()}
+              testId="admin-contract-ask-mark"
+            >
+              {unmarked.length === 1
+                ? "Sent it? Mark this one as asked"
+                : `Sent it? Mark these ${unmarked.length} as asked`}
+            </Button>
+          ) : null}
           <p className={cn(textMuted, "text-center text-xs")}>Nothing is sent from PsychSift.</p>
         </div>
       }
@@ -333,7 +466,10 @@ export function ContractAskSheet({ open, endsOn, onClose }: { open: boolean; end
         <fieldset className="grid gap-1">
           <legend className={cn(eyebrowText, "mb-1.5")}>Questions in the message</legend>
           {askable.map((question) => (
-            <label key={question.id} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg px-1 text-sm">
+            <label
+              key={question.id}
+              className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg px-1 text-sm"
+            >
               <input
                 type="checkbox"
                 checked={chosen.includes(question.id)}
@@ -342,19 +478,25 @@ export function ContractAskSheet({ open, endsOn, onClose }: { open: boolean; end
                 data-testid={`admin-contract-ask-${question.id}`}
               />
               <span className="min-w-0 flex-1">{question.title}</span>
+              {asked.includes(question.id) ? <span className={cn(textMuted, "text-xs")}>Asked</span> : null}
               {question.id === "parental-leave" ? <span className={cn(textMuted, "text-xs")}>No dates</span> : null}
             </label>
           ))}
         </fieldset>
         <SheetGroup label="Preview">
           {message ? (
-            <div className="grid gap-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm" data-testid="admin-contract-ask-preview">
+            <div
+              className="grid gap-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm"
+              data-testid="admin-contract-ask-preview"
+            >
               <b className="font-semibold text-[color:var(--text-heading)]">{message.subject}</b>
               <span className="whitespace-pre-line leading-6">{message.body}</span>
             </div>
           ) : (
             <p className={cn(textMuted, "text-sm")} data-testid="admin-contract-ask-empty">
-              Choose at least one question.
+              {askable.every((question) => asked.includes(question.id))
+                ? "Every question is marked as asked. Tick one to ask it again."
+                : "Choose at least one question."}
             </p>
           )}
         </SheetGroup>
@@ -372,15 +514,19 @@ export function ContractRenewSheet({
   build,
   onClose,
   onSave,
+  askedCount = 0,
 }: {
   open: boolean;
   previousEnd: string | null;
   today: string;
   build: (newEnd: string) => ContractRenewResult;
   onClose: () => void;
-  onSave: (newEnd: string) => Promise<string | null>;
+  onSave: (newEnd: string, keepAnswers: boolean) => Promise<string | null>;
+  /** How many questions are marked as asked now. Zero hides the choice. */
+  askedCount?: number;
 }) {
   const [value, setValue] = useState("");
+  const [keepAnswers, setKeepAnswers] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [wasOpen, setWasOpen] = useState(false);
@@ -389,6 +535,7 @@ export function ContractRenewSheet({
     if (!open) {
       setValue("");
       setFailure(null);
+      setKeepAnswers(false);
     }
   }
   const result = value ? build(value) : null;
@@ -399,7 +546,7 @@ export function ContractRenewSheet({
     if (!result?.ok || busy) return;
     setBusy(true);
     setFailure(null);
-    const problem = await onSave(value);
+    const problem = await onSave(value, keepAnswers);
     setBusy(false);
     if (problem) setFailure(problem);
   }
@@ -414,7 +561,15 @@ export function ContractRenewSheet({
       footer={
         <div className="grid gap-2">
           {failure ? <InlineNotice tone="neutral">{failure}</InlineNotice> : null}
-          <Button variant="primary" block busy={busy} busyLabel="Saving" disabled={!result?.ok || busy} onClick={() => void save()} testId="admin-contract-renew-save">
+          <Button
+            variant="primary"
+            block
+            busy={busy}
+            busyLabel="Saving"
+            disabled={!result?.ok || busy}
+            onClick={() => void save()}
+            testId="admin-contract-renew-save"
+          >
             Save new contract
           </Button>
         </div>
@@ -439,7 +594,10 @@ export function ContractRenewSheet({
         </div>
         {points ? (
           <SheetGroup label="Reminders move to">
-            <ul className="grid gap-1 rounded-lg border border-[color:var(--border)] p-3 text-sm" data-testid="admin-contract-renew-points">
+            <ul
+              className="grid gap-1 rounded-lg border border-[color:var(--border)] p-3 text-sm"
+              data-testid="admin-contract-renew-points"
+            >
               <li className="flex justify-between gap-2">
                 <span>3 months before</span>
                 <b className="nums font-semibold">{formatDateEcho(points.threeMonths)}</b>
@@ -451,7 +609,41 @@ export function ContractRenewSheet({
             </ul>
           </SheetGroup>
         ) : null}
-        <p className={cn(textMuted, "text-xs")}>Your reminder choices stay as they are. The questions start fresh.</p>
+        {askedCount > 0 ? (
+          <SheetGroup label="Questions you marked as asked" id="admin-contract-renew-answers-label">
+            <div
+              className="flex flex-wrap gap-2"
+              role="radiogroup"
+              aria-labelledby="admin-contract-renew-answers-label"
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!keepAnswers}
+                className={chipClass(!keepAnswers)}
+                onClick={() => setKeepAnswers(false)}
+                data-testid="admin-contract-renew-fresh"
+              >
+                Start fresh
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={keepAnswers}
+                className={chipClass(keepAnswers)}
+                onClick={() => setKeepAnswers(true)}
+                data-testid="admin-contract-renew-keep"
+              >
+                Keep answers
+              </button>
+            </div>
+          </SheetGroup>
+        ) : null}
+        <p className={cn(textMuted, "text-xs")} data-testid="admin-contract-renew-foot">
+          {askedCount > 0 && keepAnswers
+            ? "Your reminder choices stay as they are. Questions stay marked as asked."
+            : "Your reminder choices stay as they are. The questions start fresh."}
+        </p>
       </div>
     </Sheet>
   );

@@ -154,7 +154,8 @@ export interface ContractReminderMark {
   readonly reached: boolean;
 }
 
-export type ContractPhase = "far" | "before-reminders" | "reminder-today" | "between" | "final-weeks" | "ends-today" | "ended";
+export type ContractPhase =
+  "far" | "before-reminders" | "reminder-today" | "between" | "final-weeks" | "ends-today" | "ended";
 
 export interface ContractStatus {
   readonly endsOn: string;
@@ -316,7 +317,11 @@ export function contractStrip(status: ContractStatus): ContractStrip {
   );
   const accessibleLabel = [
     "Last 6 months of your contract.",
-    inside ? `Today ${longDate(status.today)}.` : status.daysLeft < 0 ? "The end date has passed." : "Today is before this window.",
+    inside
+      ? `Today ${longDate(status.today)}.`
+      : status.daysLeft < 0
+        ? "The end date has passed."
+        : "Today is before this window.",
     `${reminderWordsList.join(". ")}.`,
     `Ends ${longDate(status.endsOn)}.`,
   ].join(" ");
@@ -347,9 +352,11 @@ export function validateContractForm(input: ContractFormInput, today: string): C
   if (!end) errors.endsOn = "Type the end date from your letter.";
   else if (!isRealDate(end)) errors.endsOn = "Use the date picker, or type the date as YYYY-MM-DD.";
   else if (end < today) errors.endsOn = "That date has passed. Check the year on your letter.";
-  else if (daysBetween(today, end) > MAX_YEARS_AHEAD * 366) errors.endsOn = "That is more than 10 years away. Check the year.";
+  else if (daysBetween(today, end) > MAX_YEARS_AHEAD * 366)
+    errors.endsOn = "That is more than 10 years away. Check the year.";
   const employer = input.employer.trim();
-  if (employer.length > CONTRACT_EMPLOYER_LIMIT) errors.employer = `Keep the employer to ${CONTRACT_EMPLOYER_LIMIT} characters.`;
+  if (employer.length > CONTRACT_EMPLOYER_LIMIT)
+    errors.employer = `Keep the employer to ${CONTRACT_EMPLOYER_LIMIT} characters.`;
   else if (employer) {
     const problem = checkReminderText(employer);
     if (problem) errors.employerProblem = problem;
@@ -411,7 +418,9 @@ export function buildContractEditBody(entry: OnCallEntry, input: ContractFormInp
   const fields = reminderFields(next, input.reminders, entry.tags);
   const details = contractDetails(input, detailsOf(entry), fields.leadTimeDays);
   const history =
-    previous && previous !== next ? [previous, ...complianceExpiryHistory(entry)].slice(0, 10) : complianceExpiryHistory(entry);
+    previous && previous !== next
+      ? [previous, ...complianceExpiryHistory(entry)].slice(0, 10)
+      : complianceExpiryHistory(entry);
   return {
     ...fullBody(entry, history.length ? { ...details, expiryHistory: history } : details),
     tags: fields.tags,
@@ -424,9 +433,15 @@ export type ContractRenewResult =
 
 /**
  * "Got a new contract?": a later end date. Both reminders move with it, the
- * old end date goes into history, and the reminder choice is kept.
+ * old end date goes into history, and the reminder choice is kept. The
+ * "Asked, waiting" marks start fresh unless the doctor keeps them.
  */
-export function buildContractRenewBody(entry: OnCallEntry, newEndsOn: string, today: string): ContractRenewResult {
+export function buildContractRenewBody(
+  entry: OnCallEntry,
+  newEndsOn: string,
+  today: string,
+  { keepAnswers = false }: { keepAnswers?: boolean } = {},
+): ContractRenewResult {
   const next = newEndsOn.trim();
   if (!next) return { ok: false, reason: "missing" };
   if (!isRealDate(next)) return { ok: false, reason: "malformed" };
@@ -436,7 +451,9 @@ export function buildContractRenewBody(entry: OnCallEntry, newEndsOn: string, to
   if (next < today) return { ok: false, reason: "passed" };
   const reminders = contractReminders(entry);
   const fields = reminderFields(next, reminders, entry.tags);
-  const history = previous ? [previous, ...complianceExpiryHistory(entry)].slice(0, 10) : complianceExpiryHistory(entry);
+  const history = previous
+    ? [previous, ...complianceExpiryHistory(entry)].slice(0, 10)
+    : complianceExpiryHistory(entry);
   return {
     ok: true,
     body: {
@@ -447,7 +464,7 @@ export function buildContractRenewBody(entry: OnCallEntry, newEndsOn: string, to
         expiryHistory: history,
         provenance: "typed",
       }),
-      tags: fields.tags,
+      tags: keepAnswers ? fields.tags : withAskedTags(fields.tags, []),
     },
   };
 }
@@ -470,7 +487,8 @@ export function buildContractRemindersBody(entry: OnCallEntry, reminders: Contra
 
 /* ----------------------------------------------------------- questions */
 
-export type ContractQuestionId = "training-program" | "parental-leave" | "untaken-leave" | "in-writing" | "keep-copy" | "who-to-ask";
+export type ContractQuestionId =
+  "training-program" | "parental-leave" | "untaken-leave" | "in-writing" | "keep-copy" | "who-to-ask";
 
 export interface ContractQuestion {
   readonly id: ContractQuestionId;
@@ -499,7 +517,8 @@ export const CONTRACT_QUESTIONS: readonly ContractQuestion[] = [
     title: "Planned parental leave",
     hint: "Ask if it falls inside the next contract",
     ask: "whether planned parental leave would fall inside the next contract",
-    question: "If I take parental leave during my next contract, does the contract include it, and does my service carry over?",
+    question:
+      "If I take parental leave during my next contract, does the contract include it, and does my service carry over?",
   },
   {
     id: "untaken-leave",
@@ -536,6 +555,56 @@ export const CONTRACT_ASK_DEFAULT: readonly ContractQuestionId[] = [
   "parental-leave",
   "untaken-leave",
 ];
+
+/* --------------------------------------------------------- asked marks */
+
+/**
+ * "Asked, waiting": the doctor's own mark that a question has gone to
+ * Medical Workforce. One tag per question on the same private row, so it
+ * follows the account and never sits on the phone. The app never learns
+ * whether an answer came, so the words stay "Asked, waiting".
+ */
+export const CONTRACT_ASKED_TAG_PREFIX = "contract-asked-";
+
+const QUESTION_IDS = new Set<string>(CONTRACT_QUESTIONS.map((question) => question.id));
+
+/** Questions marked as asked, in the list's own order. */
+export function contractAskedQuestions(entry: OnCallEntry | null): ContractQuestionId[] {
+  if (!entry) return [];
+  const asked = new Set(
+    entry.tags
+      .filter((tag) => tag.startsWith(CONTRACT_ASKED_TAG_PREFIX))
+      .map((tag) => tag.slice(CONTRACT_ASKED_TAG_PREFIX.length))
+      .filter((id) => QUESTION_IDS.has(id)),
+  );
+  return CONTRACT_QUESTIONS.filter((question) => asked.has(question.id)).map((question) => question.id);
+}
+
+function withAskedTags(tags: readonly string[], asked: readonly ContractQuestionId[]): string[] {
+  const others = tags.filter((tag) => !tag.startsWith(CONTRACT_ASKED_TAG_PREFIX));
+  const ordered = CONTRACT_QUESTIONS.filter((question) => asked.includes(question.id));
+  return [...others, ...ordered.map((question) => `${CONTRACT_ASKED_TAG_PREFIX}${question.id}`)];
+}
+
+/** Mark questions as asked (or not). Everything else on the row stays as it is. */
+export function buildContractAskedBody(
+  entry: OnCallEntry,
+  ids: readonly ContractQuestionId[],
+  asked: boolean,
+): UpdateBody {
+  const current = contractAskedQuestions(entry);
+  const next = asked
+    ? [...current, ...ids.filter((id) => !current.includes(id))]
+    : current.filter((id) => !ids.includes(id));
+  return { ...fullBody(entry, detailsOf(entry)), tags: withAskedTags(entry.tags, next) };
+}
+
+/** Questions that can go in a message and are not marked as asked yet. */
+export function contractOpenAskable(asked: readonly ContractQuestionId[]): ContractQuestionId[] {
+  return CONTRACT_QUESTIONS.filter((question) => question.ask && !asked.includes(question.id)).map(
+    (question) => question.id,
+  );
+}
 
 /** The message for Medical Workforce, built from the chosen questions. No personal dates other than the end. */
 export function contractAskMessage(

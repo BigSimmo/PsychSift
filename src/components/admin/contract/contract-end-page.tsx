@@ -39,10 +39,12 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import {
+  buildContractAskedBody,
   buildContractCreateBody,
   buildContractEditBody,
   buildContractRemindersBody,
   buildContractRenewBody,
+  contractAskedQuestions,
   contractCalendarFile,
   contractEmployer,
   contractEndHistory,
@@ -55,6 +57,7 @@ import {
   selectContractEnd,
   type ContractFormInput,
   type ContractQuestion,
+  type ContractQuestionId,
   type ContractReminders,
   type ContractStatus,
 } from "@/lib/admin/contract-end";
@@ -81,7 +84,12 @@ function daysLeftWords(status: ContractStatus): { big: string; small: string } {
 
 function askLabel(status: ContractStatus): string {
   if (status.daysLeft < 0) return "Ask about your next contract";
-  if (status.reminderToday || status.phase === "between" || status.phase === "final-weeks" || status.phase === "ends-today") {
+  if (
+    status.reminderToday ||
+    status.phase === "between" ||
+    status.phase === "final-weeks" ||
+    status.phase === "ends-today"
+  ) {
     return "Ask this week";
   }
   const next = status.nextReminder;
@@ -122,7 +130,11 @@ function ReminderSwitch({
           if (!disabled) onToggle();
         }}
         data-testid={testId}
-        className={cn(focusRing, "inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center", disabled && "opacity-60")}
+        className={cn(
+          focusRing,
+          "inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center",
+          disabled && "opacity-60",
+        )}
       >
         <span
           aria-hidden="true"
@@ -230,9 +242,9 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
     }
   }
 
-  async function saveRenew(newEnd: string): Promise<string | null> {
+  async function saveRenew(newEnd: string, keepAnswers: boolean): Promise<string | null> {
     if (!entry) return "Nothing to renew yet.";
-    const result = buildContractRenewBody(entry, newEnd, today);
+    const result = buildContractRenewBody(entry, newEnd, today, { keepAnswers });
     if (!result.ok) return "Check the new end date.";
     try {
       const original = entry;
@@ -243,6 +255,24 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
       return null;
     } catch (error) {
       return errorWords(error, "Could not save the new end date.");
+    }
+  }
+
+  async function markAsked(ids: readonly ContractQuestionId[], asked: boolean): Promise<string | null> {
+    if (!entry || ids.length === 0) return null;
+    try {
+      const original = entry;
+      const saved = await patchEntry(entry.id, buildContractAskedBody(entry, ids, asked));
+      upsert(saved);
+      const label = asked
+        ? ids.length === 1
+          ? "Marked as asked"
+          : `${ids.length} questions marked as asked`
+        : "Marked as not asked yet";
+      offerUndo(label, () => restore(original));
+      return null;
+    } catch (error) {
+      return errorWords(error, "Could not save that mark.");
     }
   }
 
@@ -311,6 +341,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
       }
     : null;
   const history = entry ? contractEndHistory(entry) : [];
+  const asked = contractAskedQuestions(entry);
   const leaveBeforeEnd =
     leave.status === "ready" && endsOn
       ? leave.leave
@@ -322,7 +353,9 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
     <>
       <InformationPageShell testId="admin-contract-main">
         <div className="grid gap-1">
-          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Contract end</PageTitleUnderBand>
+          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+            Contract end
+          </PageTitleUnderBand>
           <p className={cn(textMuted, "text-sm")}>Dates you entered from your letter</p>
         </div>
 
@@ -350,11 +383,17 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
           </JuniorNotice>
         ) : !entry || !status || !strip || !endsOn ? (
           <>
-            <div className={cn(cardSurface, "grid justify-items-center gap-2 px-4 py-6 text-center")} data-testid="admin-contract-first">
+            <div
+              className={cn(cardSurface, "grid justify-items-center gap-2 px-4 py-6 text-center")}
+              data-testid="admin-contract-first"
+            >
               <FileClock aria-hidden="true" strokeWidth={1.5} className="size-icon-lg text-[color:var(--text-muted)]" />
-              <h2 className="text-lg-minus font-semibold text-[color:var(--text-heading)]">When does your contract end?</h2>
+              <h2 className="text-lg-minus font-semibold text-[color:var(--text-heading)]">
+                When does your contract end?
+              </h2>
               <p className="max-w-prose text-sm text-[color:var(--text)]">
-                Add the end date from your letter once. You get a reminder 3 months and 6 weeks before, with a list of what to ask.
+                Add the end date from your letter once. You get a reminder 3 months and 6 weeks before, with a list of
+                what to ask.
               </p>
               {canWrite ? (
                 <Button variant="primary" onClick={() => setSheet("add")} testId="admin-contract-add">
@@ -373,9 +412,16 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                 { icon: Layers, title: "A list of what to ask", sub: "Including planned parental leave" },
                 { icon: Send, title: "A ready message", sub: "Copy it to Medical Workforce yourself" },
               ].map((row) => (
-                <li key={row.title} className="flex min-h-12 items-center gap-3 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0">
+                <li
+                  key={row.title}
+                  className="flex min-h-12 items-center gap-3 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0"
+                >
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--surface-subtle)]">
-                    <row.icon aria-hidden="true" strokeWidth={1.5} className="size-icon-sm text-[color:var(--text-heading)]" />
+                    <row.icon
+                      aria-hidden="true"
+                      strokeWidth={1.5}
+                      className="size-icon-sm text-[color:var(--text-heading)]"
+                    />
                   </span>
                   <span className="grid min-w-0">
                     <span className="text-sm font-medium text-[color:var(--text-heading)]">{row.title}</span>
@@ -388,23 +434,44 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
           </>
         ) : (
           <>
-            <ModeFeaturedModule as="section" mode="my-work" className="grid min-w-0 gap-3 p-4" testId="admin-contract-hero">
+            <ModeFeaturedModule
+              as="section"
+              mode="my-work"
+              className="grid min-w-0 gap-3 p-4"
+              testId="admin-contract-hero"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="grid min-w-0 gap-1">
-                  <h2 className={eyebrowText}>{status.reminderToday ? `${status.reminderToday.label} to go` : "Contract ends"}</h2>
-                  <p className="nums text-lg-minus font-semibold text-[color:var(--text-heading)]" data-testid="admin-contract-end-date">
+                  <h2 className={eyebrowText}>
+                    {status.reminderToday ? `${status.reminderToday.label} to go` : "Contract ends"}
+                  </h2>
+                  <p
+                    className="nums text-lg-minus font-semibold text-[color:var(--text-heading)]"
+                    data-testid="admin-contract-end-date"
+                  >
                     {formatDateEcho(endsOn)}
                   </p>
-                  {contractEmployer(entry) ? <p className="break-words text-sm text-[color:var(--text)]">{contractEmployer(entry)}</p> : null}
+                  {contractEmployer(entry) ? (
+                    <p className="break-words text-sm text-[color:var(--text)]">{contractEmployer(entry)}</p>
+                  ) : null}
                 </div>
                 <div className="grid shrink-0 justify-items-end text-right" data-testid="admin-contract-days">
-                  <b className="nums text-3xl-minus font-semibold leading-none text-[color:var(--text-heading)]">{daysLeftWords(status).big}</b>
+                  <b className="nums text-3xl-minus font-semibold leading-none text-[color:var(--text-heading)]">
+                    {daysLeftWords(status).big}
+                  </b>
                   <span className={cn(textMuted, "text-xs")}>{daysLeftWords(status).small}</span>
                 </div>
               </div>
               <ContractStrip strip={strip} />
-              <p className="flex items-start gap-2 rounded-lg bg-[color:var(--surface-raised)] px-3 py-2 text-sm text-[color:var(--text)]" data-testid="admin-contract-panel">
-                <Bell aria-hidden="true" strokeWidth={1.5} className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--clinical-accent)]" />
+              <p
+                className="flex items-start gap-2 rounded-lg bg-[color:var(--surface-raised)] px-3 py-2 text-sm text-[color:var(--text)]"
+                data-testid="admin-contract-panel"
+              >
+                <Bell
+                  aria-hidden="true"
+                  strokeWidth={1.5}
+                  className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--clinical-accent)]"
+                />
                 <span>{contractPanelLine(status)}</span>
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -414,21 +481,41 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                       New contract
                     </Button>
                   ) : (
-                    <Button variant="primary" icon={Mail} onClick={() => setSheet("ask")} testId="admin-contract-ask-open">
+                    <Button
+                      variant="primary"
+                      icon={Mail}
+                      onClick={() => setSheet("ask")}
+                      testId="admin-contract-ask-open"
+                    >
                       Ask Workforce
                     </Button>
                   )
                 ) : (
-                  <Button variant="primary" icon={Mail} onClick={() => setSheet("ask")} testId="admin-contract-ask-open">
+                  <Button
+                    variant="primary"
+                    icon={Mail}
+                    onClick={() => setSheet("ask")}
+                    testId="admin-contract-ask-open"
+                  >
                     Ask Workforce
                   </Button>
                 )}
                 {canWrite ? (
-                  <Button variant="secondary" icon={PenLine} onClick={() => setSheet("edit")} testId="admin-contract-edit">
+                  <Button
+                    variant="secondary"
+                    icon={PenLine}
+                    onClick={() => setSheet("edit")}
+                    testId="admin-contract-edit"
+                  >
                     Edit dates
                   </Button>
                 ) : (
-                  <Button variant="secondary" icon={CalendarPlus} onClick={downloadCalendar} testId="admin-contract-calendar-hero">
+                  <Button
+                    variant="secondary"
+                    icon={CalendarPlus}
+                    onClick={downloadCalendar}
+                    testId="admin-contract-calendar-hero"
+                  >
                     Calendar
                   </Button>
                 )}
@@ -440,7 +527,15 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
               ) : null}
             </ModeFeaturedModule>
 
-            <JuniorSectionLabel count={`${CONTRACT_QUESTIONS.length} questions`}>{askLabel(status)}</JuniorSectionLabel>
+            <JuniorSectionLabel
+              count={
+                asked.length
+                  ? `${asked.length} of ${CONTRACT_QUESTIONS.length} asked`
+                  : `${CONTRACT_QUESTIONS.length} questions`
+              }
+            >
+              {askLabel(status)}
+            </JuniorSectionLabel>
             <ul className={cn(cardSurface, "overflow-hidden")} data-testid="admin-contract-questions">
               {CONTRACT_QUESTIONS.map((item) => (
                 <li key={item.id} className="border-b border-[color:var(--border)] last:border-b-0">
@@ -454,13 +549,23 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                       <span className="text-sm font-medium text-[color:var(--text-heading)]">{item.title}</span>
                       <span className={cn(textMuted, "text-xs")}>{item.hint}</span>
                     </span>
+                    {asked.includes(item.id) ? (
+                      <span
+                        className="shrink-0 rounded-md border border-[color:var(--border)] px-2 py-0.5 text-xs text-[color:var(--text)]"
+                        data-testid={`admin-contract-asked-${item.id}`}
+                      >
+                        Asked, waiting
+                      </span>
+                    ) : null}
                     <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
                   </button>
                 </li>
               ))}
             </ul>
 
-            <JuniorSectionLabel action={<span className={cn(textMuted, "text-xs")}>On Admin Today</span>}>Reminders</JuniorSectionLabel>
+            <JuniorSectionLabel action={<span className={cn(textMuted, "text-xs")}>On Admin Today</span>}>
+              Reminders
+            </JuniorSectionLabel>
             <div className={cn(cardSurface, "overflow-hidden")} data-testid="admin-contract-reminders">
               {status.marks.map((mark) => (
                 <ReminderSwitch
@@ -480,7 +585,11 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                 data-testid="admin-contract-calendar"
                 className={cn(focusRing, "flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left")}
               >
-                <CalendarPlus aria-hidden="true" strokeWidth={1.5} className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+                <CalendarPlus
+                  aria-hidden="true"
+                  strokeWidth={1.5}
+                  className="size-icon-md shrink-0 text-[color:var(--text-muted)]"
+                />
                 <span className="grid min-w-0 flex-1">
                   <span className="text-sm font-medium text-[color:var(--text-heading)]">Add to my calendar</span>
                   <span className={cn(textMuted, "text-xs")}>An alert at 9 am on each reminder that is on</span>
@@ -503,9 +612,14 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
               ) : (
                 <ul>
                   {leaveBeforeEnd.map((item) => (
-                    <li key={item.id} className="flex min-h-12 items-center gap-3 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0">
+                    <li
+                      key={item.id}
+                      className="flex min-h-12 items-center gap-3 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0"
+                    >
                       <span className="grid min-w-0 flex-1">
-                        <span className="text-sm font-medium text-[color:var(--text-heading)]">{ROSTER_LEAVE_KIND_WORDS[item.kind]}</span>
+                        <span className="text-sm font-medium text-[color:var(--text-heading)]">
+                          {ROSTER_LEAVE_KIND_WORDS[item.kind]}
+                        </span>
                         <span className={cn(textMuted, "nums text-xs")}>
                           {item.startsOn === item.endsOn
                             ? formatDateEcho(item.startsOn)
@@ -519,7 +633,13 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   ))}
                 </ul>
               )}
-              <Link href="/roster/requests" className={cn(focusRing, "flex min-h-12 items-center gap-2 border-t border-[color:var(--border)] px-3 text-sm font-medium text-[color:var(--clinical-accent)]")}>
+              <Link
+                href="/roster/requests"
+                className={cn(
+                  focusRing,
+                  "flex min-h-12 items-center gap-2 border-t border-[color:var(--border)] px-3 text-sm font-medium text-[color:var(--clinical-accent)]",
+                )}
+              >
                 Plan leave in Roster
               </Link>
             </div>
@@ -530,7 +650,10 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   type="button"
                   onClick={() => setSheet("renew")}
                   data-testid="admin-contract-renew-row"
-                  className={cn(focusRing, "flex min-h-12 w-full items-center gap-3 border-b border-[color:var(--border)] px-3 py-2 text-left")}
+                  className={cn(
+                    focusRing,
+                    "flex min-h-12 w-full items-center gap-3 border-b border-[color:var(--border)] px-3 py-2 text-left",
+                  )}
                 >
                   <span className="grid min-w-0 flex-1">
                     <span className="text-sm font-medium text-[color:var(--text-heading)]">Got a new contract?</span>
@@ -540,7 +663,10 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                 </button>
               ) : null}
               {contractNote(entry) ? (
-                <p className="border-b border-[color:var(--border)] px-3 py-2 text-sm" data-testid="admin-contract-note-line">
+                <p
+                  className="border-b border-[color:var(--border)] px-3 py-2 text-sm"
+                  data-testid="admin-contract-note-line"
+                >
                   <span className={textMuted}>Note: </span>
                   {contractNote(entry)}
                 </p>
@@ -555,7 +681,10 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   onClick={() => void removeRecord()}
                   disabled={busy}
                   data-testid="admin-contract-remove"
-                  className={cn(focusRing, "flex min-h-12 w-full items-center gap-2 border-t border-[color:var(--border)] px-3 text-left text-sm text-[color:var(--text-muted)]")}
+                  className={cn(
+                    focusRing,
+                    "flex min-h-12 w-full items-center gap-2 border-t border-[color:var(--border)] px-3 text-left text-sm text-[color:var(--text-muted)]",
+                  )}
                 >
                   <Trash2 aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
                   Remove this record
@@ -578,7 +707,14 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
         onClose={() => setSheet(null)}
         onSave={saveForm}
       />
-      <ContractAskSheet open={sheet === "ask"} endsOn={endsOn} onClose={() => setSheet(null)} />
+      <ContractAskSheet
+        open={sheet === "ask"}
+        endsOn={endsOn}
+        asked={asked}
+        canMark={canWrite && Boolean(entry)}
+        onMarkAsked={(ids) => markAsked(ids, true)}
+        onClose={() => setSheet(null)}
+      />
       <ContractRenewSheet
         open={sheet === "renew"}
         previousEnd={endsOn}
@@ -586,10 +722,20 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
         build={(value) => (entry ? buildContractRenewBody(entry, value, today) : { ok: false, reason: "missing" })}
         onClose={() => setSheet(null)}
         onSave={saveRenew}
+        askedCount={asked.length}
       />
-      <ContractQuestionSheet question={question} endsOn={endsOn} onClose={() => setQuestion(null)} />
+      <ContractQuestionSheet
+        question={question}
+        endsOn={endsOn}
+        asked={question ? asked.includes(question.id) : false}
+        canMark={canWrite && Boolean(entry)}
+        onMark={(next) => (question ? markAsked([question.id], next) : Promise.resolve(null))}
+        onClose={() => setQuestion(null)}
+      />
 
-      {loadState === "signed-out" ? <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} /> : null}
+      {loadState === "signed-out" ? (
+        <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+      ) : null}
 
       {undo ? (
         <JuniorUndoBar
