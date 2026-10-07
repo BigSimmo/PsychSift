@@ -316,7 +316,7 @@ describe("useHospitalHandbook", () => {
     const { result } = renderHook(() => useHospitalHandbook());
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(result.current.demo).toBe(true);
-    expect(result.current.siteName).toBe("Demonstration Hospital");
+    expect(result.current.siteName).toBe("Example Hospital");
     await act(async () =>
       expect(await result.current.report(result.current.items[0]!.id, "wrong-department")).toBe("demo"),
     );

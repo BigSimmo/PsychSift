@@ -31,21 +31,21 @@ type SampleRow = {
 const SITES = {
   northgate: {
     siteId: SITE_NORTHGATE,
-    siteName: "Northgate Hospital · Ward 4B",
+    siteName: "Example Hospital · Ward A",
     serviceId: TEAM_NORTH,
-    teamName: "Northgate Psychiatry",
+    teamName: "Example Psychiatry Team",
   },
   riverside: {
     siteId: SITE_RIVERSIDE,
-    siteName: "Riverside Hospital · ED liaison",
+    siteName: "Example Health Campus · ED liaison",
     serviceId: TEAM_RIVER,
-    teamName: "Riverside Mental Health",
+    teamName: "Example Mental Health Team",
   },
   lakeside: {
     siteId: SITE_LAKESIDE,
-    siteName: "Lakeside Hospital · Older adult",
+    siteName: "Example Mental Health Unit · Older adult",
     serviceId: TEAM_NORTH,
-    teamName: "Northgate Psychiatry",
+    teamName: "Example Psychiatry Team",
   },
 } as const;
 

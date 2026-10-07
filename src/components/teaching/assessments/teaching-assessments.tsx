@@ -15,6 +15,7 @@ import { AskSupervisor, BookMeeting, EndOfTermSteps } from "@/components/teachin
 import { AssessmentReport, SignForm } from "@/components/teaching/assessments/assessments-report";
 import { ConcernsHelp, AssessmentsSheets, type SheetState } from "@/components/teaching/assessments/assessments-help";
 import { AssessmentsExtrasProvider } from "@/components/teaching/assessments/assessments-extras";
+import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
 import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-inbox";
 import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
 import { SideBySide, SupervisorHome, SupervisorTimes } from "@/components/teaching/assessments/assessments-supervisor";
@@ -75,8 +76,19 @@ const DATE_OPTIONS = [
 function Screen(props: ScreenProps & { view: AssessmentsView }) {
   const { view, role } = props;
   // The two added sample views (features 16 and 4) read the same made-up records from either role.
-  if (view === "inbox") return <AssessmentsInbox {...props} />;
-  if (view === "overview") return <AssessmentsTermOverview {...props} />;
+  // They have no real data source yet, so a real user only reaches them with Assessments example data on.
+  if (view === "inbox")
+    return (
+      <ExampleOnlyGate area="assess" what="The inbox">
+        <AssessmentsInbox {...props} />
+      </ExampleOnlyGate>
+    );
+  if (view === "overview")
+    return (
+      <ExampleOnlyGate area="assess" what="The term overview">
+        <AssessmentsTermOverview {...props} />
+      </ExampleOnlyGate>
+    );
   if (role === "supervisor") {
     if (view === "form") return <AssessmentForm {...props} who="sup" />;
     if (view === "sign") return <SignForm {...props} who="sup" />;
