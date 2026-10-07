@@ -70,6 +70,19 @@ export function zoneOffsetMinutes(instant: Instant, zone: string): number {
   return Math.round((asUtc - (ms - (ms % 1000))) / 60000);
 }
 
+const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+/**
+ * Milliseconds the zone is ahead of UTC at an instant, for helpers that shift an
+ * instant and read its UTC fields. Perth, which has no daylight saving, is the
+ * fixed eight hours with no Intl lookup, so the Perth answer is exactly what the
+ * old fixed-offset helpers gave. Unknown zones read as Perth.
+ */
+export function zoneOffsetMs(ms: number, zone: string): number {
+  const resolved = safeZone(zone);
+  return resolved === DEFAULT_WORK_TIME_ZONE ? PERTH_OFFSET_MS : zoneOffsetMinutes(ms, resolved) * 60_000;
+}
+
 /** The calendar date of an instant in the zone, `YYYY-MM-DD`. */
 export function zonedDateOf(instant: Instant, zone: string): string {
   const parts = wallParts(toMs(instant, "zonedDateOf"), safeZone(zone));
