@@ -49,8 +49,3 @@ export async function getWorkModeLaunch(): Promise<WorkModeLaunch> {
 export async function requireNewWorkMode(): Promise<void> {
   if (!(await getWorkModeLaunch()).newWorkMode) notFound();
 }
-
-/** The same for a page that runs wholly on labelled sample data. */
-export async function requireSampleScreens(): Promise<void> {
-  if (!(await getWorkModeLaunch()).sampleScreens) notFound();
-}

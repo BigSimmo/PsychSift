@@ -21,14 +21,9 @@ export function useNewWorkMode(): boolean {
   return useContext(WorkModeLaunchContext).newWorkMode;
 }
 
-/** True when this reader may see screens that run on labelled sample data. */
-export function useSampleScreens(): boolean {
-  return useContext(WorkModeLaunchContext).sampleScreens;
-}
-
 /**
  * Returns a filter for links: `visible(href)` is false for a new-only screen on the
- * classic work mode, and for a sample-data screen outside the preview audience.
+ * classic work mode.
  * Use it for More items, Today cards, Notification sources and search results.
  */
 export function useWorkModeRouteVisible(): (href: string) => boolean {
@@ -39,9 +34,4 @@ export function useWorkModeRouteVisible(): (href: string) => boolean {
 /** Renders its children only in the new work mode, else `fallback` (default nothing). */
 export function NewWorkModeOnly({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
   return useNewWorkMode() ? children : fallback;
-}
-
-/** Renders its children only for readers allowed sample-data screens, else `fallback`. */
-export function SampleDataOnly({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
-  return useSampleScreens() ? children : fallback;
 }

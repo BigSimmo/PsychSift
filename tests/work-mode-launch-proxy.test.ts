@@ -25,10 +25,9 @@ describe("proxy work-mode launch gate", () => {
     expect(rewrittenTo(await proxy(requestFor("/admin/pay")))).toBeNull();
   });
 
-  it("404s new-only and sample screens when the launch is off, and leaves existing screens", async () => {
+  it("404s new-only screens when the launch is off, and leaves existing screens", async () => {
     vi.stubEnv("WORK_MODE_LAUNCH", "off");
     expect(rewrittenTo(await proxy(requestFor("/admin/pay")))).toBe("/_work-mode-not-launched");
-    expect(rewrittenTo(await proxy(requestFor("/admin/workforce")))).toBe("/_work-mode-not-launched");
     expect(rewrittenTo(await proxy(requestFor("/admin/compliance")))).toBeNull();
     const hidden = await proxy(requestFor("/admin/pay"));
     expect(hidden.headers.get("content-security-policy")).toContain("script-src");
@@ -37,12 +36,6 @@ describe("proxy work-mode launch gate", () => {
   it("honours the device's classic preference instantly", async () => {
     const response = await proxy(requestFor("/cme/applications", "psychsift-work-mode=classic"));
     expect(rewrittenTo(response)).toBe("/_work-mode-not-launched");
-  });
-
-  it("hides sample-data views selected by query", async () => {
-    vi.stubEnv("WORK_MODE_SAMPLE_SCREENS", "off");
-    expect(rewrittenTo(await proxy(requestFor("/teaching/assessments?view=inbox")))).toBe("/_work-mode-not-launched");
-    expect(rewrittenTo(await proxy(requestFor("/teaching/assessments")))).toBeNull();
   });
 });
 

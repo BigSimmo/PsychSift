@@ -1,6 +1,7 @@
 /**
- * The work-mode launch switch: who sees the new work mode (the redesigned frame,
- * the new screens) and who sees screens that still run on labelled sample data.
+ * The work-mode launch switch: who sees the new work mode (the redesigned frame
+ * and the new screens). Example and sample data is a separate switch, owned by
+ * the example-data work; this file decides only which work mode a reader gets.
  *
  * Pure and isomorphic, so the proxy (route hiding), the server layout (what the
  * page renders) and tests all decide the same way from the same three inputs:
@@ -20,13 +21,8 @@
  *      tap in Settings, no deploy: the reader is back on the classic work mode
  *      on the next page load. It can only turn the new mode off, never on.
  *
- * Sample-data screens follow a stricter rule than the new mode itself: they are
- * shown only to the preview audience, even when the launch is `everyone`, until
- * the real data behind them exists (`WORK_MODE_SAMPLE_SCREENS=off` hides them
- * from everyone). A real doctor must never meet invented requests or pay figures.
- *
  * Outside production, and in the isolated offline Playwright build, the default
- * is `everyone` with sample screens on, so local previews, unit tests and browser
+ * is `everyone`, so local previews, unit tests and browser
  * journeys keep seeing the new mode with no setup. An explicit env value still wins.
  */
 
@@ -36,7 +32,6 @@ export const WORK_MODE_PREFERENCE_COOKIE = "psychsift-work-mode";
 export const WORK_MODE_CLASSIC_PREFERENCE = "classic";
 
 export type WorkModeLaunchSetting = "off" | "preview" | "everyone";
-export type WorkModeSampleSetting = "off" | "preview";
 
 export type WorkModeLaunchUser = {
   readonly id: string;
@@ -46,8 +41,6 @@ export type WorkModeLaunchUser = {
 export type WorkModeLaunch = {
   /** Draw the new work-mode frame and allow the new work-mode screens. */
   readonly newWorkMode: boolean;
-  /** Allow screens that run on labelled sample data. Implies `newWorkMode`. */
-  readonly sampleScreens: boolean;
   /** This reader is in the preview audience (whatever the device preference says). */
   readonly previewAudience: boolean;
   /** The reader chose the classic work mode on this device. */
@@ -59,7 +52,6 @@ export type WorkModeLaunch = {
 type LaunchEnvironment = Record<string, string | undefined>;
 
 const LAUNCH_SETTINGS: ReadonlySet<string> = new Set(["off", "preview", "everyone"]);
-const SAMPLE_SETTINGS: ReadonlySet<string> = new Set(["off", "preview"]);
 
 function relaxedDefaults(environment: LaunchEnvironment): boolean {
   return environment.NODE_ENV !== "production" || environment.PLAYWRIGHT_OFFLINE_MODE === "true";
@@ -71,12 +63,6 @@ export function workModeLaunchSetting(environment: LaunchEnvironment): WorkModeL
   // An unrecognised value is a typo in a live switch: fail closed to the preview audience.
   if (value) return "preview";
   return relaxedDefaults(environment) ? "everyone" : "preview";
-}
-
-export function workModeSampleSetting(environment: LaunchEnvironment): WorkModeSampleSetting {
-  const value = environment.WORK_MODE_SAMPLE_SCREENS?.trim().toLowerCase();
-  if (value && SAMPLE_SETTINGS.has(value)) return value as WorkModeSampleSetting;
-  return "preview";
 }
 
 function previewUserIds(environment: LaunchEnvironment): ReadonlySet<string> {
@@ -112,8 +98,7 @@ export function resolveWorkModeLaunch({
   const classicPreferred = preference === WORK_MODE_CLASSIC_PREFERENCE;
   const audienceAllowed = setting === "everyone" || (setting === "preview" && previewAudience);
   const newWorkMode = audienceAllowed && !classicPreferred;
-  const sampleScreens = newWorkMode && previewAudience && workModeSampleSetting(environment) === "preview";
-  return { newWorkMode, sampleScreens, previewAudience, classicPreferred, choiceAvailable: audienceAllowed };
+  return { newWorkMode, previewAudience, classicPreferred, choiceAvailable: audienceAllowed };
 }
 
 /**
@@ -123,11 +108,5 @@ export function resolveWorkModeLaunch({
  */
 export const WORK_MODE_LAUNCH_FALLBACK: WorkModeLaunch =
   process.env.NODE_ENV === "production"
-    ? {
-        newWorkMode: false,
-        sampleScreens: false,
-        previewAudience: false,
-        classicPreferred: false,
-        choiceAvailable: false,
-      }
-    : { newWorkMode: true, sampleScreens: true, previewAudience: true, classicPreferred: false, choiceAvailable: true };
+    ? { newWorkMode: false, previewAudience: false, classicPreferred: false, choiceAvailable: false }
+    : { newWorkMode: true, previewAudience: true, classicPreferred: false, choiceAvailable: true };

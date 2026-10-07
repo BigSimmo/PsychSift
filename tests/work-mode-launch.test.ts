@@ -6,12 +6,7 @@ import {
   workModeLaunchSetting,
   type WorkModeLaunchUser,
 } from "@/lib/work-mode-launch/launch";
-import {
-  matchesWorkModeRoute,
-  NEW_WORK_MODE_ROUTES,
-  SAMPLE_DATA_ROUTES,
-  workModeRouteHidden,
-} from "@/lib/work-mode-launch/routes";
+import { matchesWorkModeRoute, NEW_WORK_MODE_ROUTES, workModeRouteHidden } from "@/lib/work-mode-launch/routes";
 
 const PROD = { NODE_ENV: "production" };
 const admin: WorkModeLaunchUser = { id: "a1", appMetadata: { site_role: "administrator" } };
@@ -46,7 +41,7 @@ describe("work-mode launch switch", () => {
 
   it("turns everything off with WORK_MODE_LAUNCH=off, even for the administrator", () => {
     const launch = resolveWorkModeLaunch({ user: admin, environment: { ...PROD, WORK_MODE_LAUNCH: "off" } });
-    expect(launch).toMatchObject({ newWorkMode: false, sampleScreens: false, choiceAvailable: false });
+    expect(launch).toMatchObject({ newWorkMode: false, choiceAvailable: false });
   });
 
   it("lets the device preference roll back instantly, but never switch the mode on", () => {
@@ -61,25 +56,11 @@ describe("work-mode launch switch", () => {
     expect(forced.newWorkMode).toBe(false);
     expect(forced.choiceAvailable).toBe(false);
   });
-
-  it("keeps sample-data screens to the preview audience even when launched to everyone", () => {
-    const everyone = { ...PROD, WORK_MODE_LAUNCH: "everyone" };
-    expect(resolveWorkModeLaunch({ user: doctor, environment: everyone })).toMatchObject({
-      newWorkMode: true,
-      sampleScreens: false,
-    });
-    expect(resolveWorkModeLaunch({ user: admin, environment: everyone }).sampleScreens).toBe(true);
-    expect(
-      resolveWorkModeLaunch({ user: admin, environment: { ...everyone, WORK_MODE_SAMPLE_SCREENS: "off" } })
-        .sampleScreens,
-    ).toBe(false);
-  });
 });
 
 describe("work-mode launch routes", () => {
-  const classic = { newWorkMode: false, sampleScreens: false };
-  const newNoSample = { newWorkMode: true, sampleScreens: false };
-  const full = { newWorkMode: true, sampleScreens: true };
+  const classic = { newWorkMode: false };
+  const launched = { newWorkMode: true };
 
   it("matches whole path segments only", () => {
     expect(matchesWorkModeRoute(NEW_WORK_MODE_ROUTES, "/admin/pay")).toBe(true);
@@ -93,21 +74,12 @@ describe("work-mode launch routes", () => {
     expect(workModeRouteHidden("/cme/applications/cv", classic)).toBe(true);
     expect(workModeRouteHidden("/cme/log", classic)).toBe(false);
     expect(workModeRouteHidden("/my-day", classic)).toBe(false);
-    expect(workModeRouteHidden("/cme/applications/cv", newNoSample)).toBe(false);
-  });
-
-  it("hides sample-data screens, including query-selected views, from everyone outside the preview", () => {
-    expect(workModeRouteHidden("/admin/workforce", newNoSample)).toBe(true);
-    expect(workModeRouteHidden("/teaching/assessments/trainee/abc", newNoSample)).toBe(true);
-    expect(workModeRouteHidden("/teaching/assessments?view=inbox&as=supervisor", newNoSample)).toBe(true);
-    expect(workModeRouteHidden("/teaching/assessments?view=overview#top", newNoSample)).toBe(true);
-    expect(workModeRouteHidden("/teaching/assessments", newNoSample)).toBe(false);
-    expect(workModeRouteHidden("/teaching/assessments?view=inbox", full)).toBe(false);
-    expect(workModeRouteHidden("/admin/workforce", full)).toBe(false);
+    expect(workModeRouteHidden("/cme/applications/cv", launched)).toBe(false);
+    expect(workModeRouteHidden("/cme/applications?tab=cv#top", classic)).toBe(true);
   });
 
   it("keeps every entry an absolute path with no trailing slash or query in the path", () => {
-    for (const entry of [...NEW_WORK_MODE_ROUTES, ...SAMPLE_DATA_ROUTES]) {
+    for (const entry of NEW_WORK_MODE_ROUTES) {
       expect(entry.path).toMatch(/^\/[a-z0-9/-]+[a-z0-9]$/);
       expect(entry.owner).not.toBe("");
     }
