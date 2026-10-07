@@ -5,7 +5,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { clearAdminPins } from "@/lib/admin/pin-storage-keys";
 import { removeThisDevicePushSubscription } from "@/lib/alerts/device-push";
-import { clearPersistedAnswerThread } from "@/lib/answer-thread-storage";
+import { clearPersistedAnswerThread } from "@/lib/answer-thread-storage-keys";
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
 import { clearOnCallEntryCache } from "@/lib/on-call/entry-cache-keys";
 import { clearOnCallChecklists } from "@/lib/on-call/checklist-storage-keys";
