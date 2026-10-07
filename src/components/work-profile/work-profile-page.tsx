@@ -3,13 +3,15 @@
 import { BriefcaseBusiness, Check, ChevronLeft, CloudOff, Lock, MapPin, TriangleAlert, UserRound } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { deriveSidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ContextualBackLink } from "@/components/contextual-back-link";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import { formatModeTime } from "@/components/mode-kit/dates";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -29,7 +31,33 @@ import { WORK_PROFILE_TABS, profileTabCount, readWorkProfileTab, type WorkProfil
 // The sheet is opened rarely; it loads on first open, not with the page.
 const WorkStageSheet = dynamic(() => import("@/components/work-profile/work-stage-sheet"), { ssr: false });
 
-const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 lg:max-w-5xl";
+/** The work-mode page body: a wash background, a 12px gutter and close card spacing. */
+const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl min-w-0 grid-cols-[minmax(0,1fr)] gap-4 px-3 pt-3 pb-8 lg:max-w-5xl";
+
+/** The status line in plain words, for the band's small line over the title. */
+function statusWords(status: HeaderStatus): string {
+  switch (status.kind) {
+    case "saved":
+      return status.at ? `Saved to your account ${formatModeTime(status.at)}` : "Saved to your account";
+    case "saving":
+      return "Saving";
+    case "checking":
+      return "Checking your saved settings";
+    case "failed":
+      return "Not saved";
+    case "read-failed":
+      return "Couldn’t load your saved settings";
+    case "offline":
+      return "Offline";
+    case "signed-out":
+      return "Signed out · nothing saved here";
+    case "none":
+      return "Nothing set up yet";
+  }
+}
+
+/** Lets the body tell the frame what the band's small line should say. */
+const BandLineContext = createContext<(line: string) => void>(() => undefined);
 
 type HeaderStatus =
   | { kind: "saved"; at: Date | null }
@@ -42,11 +70,16 @@ type HeaderStatus =
   | { kind: "none" };
 
 function StatusLine({ status, onRetry }: { readonly status: HeaderStatus; readonly onRetry: () => void }) {
-  const base = "-mt-4 flex min-h-5 items-center gap-1.5 text-xs text-[color:var(--text-muted)]";
+  const setBandLine = useContext(BandLineContext);
+  const words = statusWords(status);
+  useEffect(() => setBandLine(words), [setBandLine, words]);
+  const bandShown = useModeBandShown();
+  // Under the band the line is the band's own small line; here it stays for screen readers.
+  const base = bandShown ? "sr-only" : "-mt-4 flex min-h-5 items-center gap-1.5 text-xs text-[color:var(--text-muted)]";
   if (status.kind === "failed" || status.kind === "read-failed") {
     // The whole line is the retry button; its 48px tap area must not push the tabs down.
     return (
-      <div role="alert" className="-mt-4">
+      <div role="alert" className={bandShown ? undefined : "-mt-4"}>
         <button
           type="button"
           onClick={onRetry}
@@ -304,7 +337,11 @@ export function WorkProfileSignedInView({
     <>
       <StatusLine status={status} onRetry={onRetry} />
       <Tabs items={items} value={tab} onChange={(id) => onTab(readWorkProfileTab(id))} label="Work profile">
-        <div className="pt-5" data-testid={`work-profile-panel-${tab}`}>
+        <div
+          className="scroll-mt-4 pt-4"
+          id={tab === "privacy" ? "privacy" : tab === "work" ? "work-and-leave" : undefined}
+          data-testid={`work-profile-panel-${tab}`}
+        >
           {!online ? (
             <div className="pb-6">
               <WorkProfileNote icon={CloudOff} title="You’re offline" testId="work-profile-offline">
@@ -334,24 +371,37 @@ export function WorkProfileSignedInView({
   );
 }
 
-/** The page frame: back link and title over the body, shared by every state. */
+/**
+ * The page frame, shared by every state. Under the band (work-mode redesign,
+ * owner request 6 Oct 2026) the band carries the title, the status line and
+ * the back button; without it, the back link and title are drawn here.
+ */
 export function WorkProfileFrame({ children }: { readonly children: ReactNode }) {
+  const bandShown = useModeBandShown();
+  const [line, setLine] = useState("Stage, workplaces and settings");
+  useModeBandHeading({ eyebrow: line, title: "Work profile" });
   return (
-    <InformationPageShell testId="work-profile-main">
-      <div className={PAGE_WIDTH}>
-        <header className="grid gap-1" data-testid="work-profile-header">
-          <ContextualBackLink
-            fallbackHref="/my-day"
-            className="-ml-1 inline-flex min-h-tap w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)] no-underline"
-          >
-            <ChevronLeft aria-hidden="true" className="size-icon-sm" />
-            My Day
-          </ContextualBackLink>
-          <h1 className="text-hero font-semibold leading-tight text-[color:var(--text-heading)]">Work profile</h1>
-        </header>
-        {children}
-      </div>
-    </InformationPageShell>
+    <BandLineContext.Provider value={setLine}>
+      <InformationPageShell testId="work-profile-main" width="bleed" className="bg-[color:var(--work-wash)]">
+        <div className={PAGE_WIDTH}>
+          <header className={bandShown ? "sr-only" : "grid gap-1"} data-testid="work-profile-header">
+            {bandShown ? null : (
+              <ContextualBackLink
+                fallbackHref="/my-day"
+                className="-ml-1 inline-flex min-h-tap w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline"
+              >
+                <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+                My Day
+              </ContextualBackLink>
+            )}
+            <PageTitleUnderBand className="text-2xl font-bold leading-tight tracking-tight text-[color:var(--work-ink)]">
+              Work profile
+            </PageTitleUnderBand>
+          </header>
+          {children}
+        </div>
+      </InformationPageShell>
+    </BandLineContext.Provider>
   );
 }
 
@@ -366,6 +416,16 @@ export function WorkProfilePage() {
   const router = useRouter();
   const pathname = usePathname();
   const tab = readWorkProfileTab(searchParams.get("tab"));
+
+  // More's Privacy link (and an old Work and leave link) arrive as a #hash: open that part.
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    const fromHash = hash === "privacy" ? "privacy" : hash === "work-and-leave" ? "work" : null;
+    if (!fromHash || fromHash === tab) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", fromHash);
+    router.replace(`${pathname}?${params.toString()}#${hash}`, { scroll: false });
+  }, [pathname, router, tab]);
 
   const setTab = useCallback(
     (next: WorkProfileTab) => {

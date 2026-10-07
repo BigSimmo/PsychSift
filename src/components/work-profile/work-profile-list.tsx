@@ -10,9 +10,9 @@ import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 
 /**
- * Work profile's flat list: a small grey label, then rows divided by hairlines
- * that run full width, with no card around them (the calm Work search look the
- * mock-up was approved in). Rows follow the mode-kit 48/52 height rule.
+ * Work profile's list in the flat work-mode look (work-mode redesign, owner
+ * request 6 Oct 2026): a small-capitals label, then one white card with
+ * hairline rows and no shadow. Rows follow the mode-kit 48/52 height rule.
  */
 export function WorkProfileSection({
   label,
@@ -25,20 +25,23 @@ export function WorkProfileSection({
 }) {
   const headingId = useId();
   return (
-    <section aria-labelledby={label ? headingId : undefined} className="grid min-w-0 gap-1" data-testid={testId}>
+    <section aria-labelledby={label ? headingId : undefined} className="grid min-w-0 gap-1.5" data-testid={testId}>
       {label ? (
-        <h2 id={headingId} className={cn(eyebrowText, "pb-1")}>
+        <h2 id={headingId} className={cn(eyebrowText, "px-1")}>
           {label}
         </h2>
       ) : null}
-      <ul role="list" className="grid min-w-0">
+      <ul
+        role="list"
+        className="grid min-w-0 rounded-[var(--work-radius-card)] border border-[color:var(--work-line)] bg-[color:var(--work-surface)] px-3 forced-colors:border"
+      >
         {children}
       </ul>
     </section>
   );
 }
 
-const hairline = "border-t border-[color:var(--border)] first:border-t-0 forced-colors:border-[color:CanvasText]";
+const hairline = "border-t border-[color:var(--work-line)] first:border-t-0 forced-colors:border-[color:CanvasText]";
 
 /** A small dot in an area's colour, beside its name. Decorative: the name always says the area. */
 function AreaDot({ mode }: { readonly mode: string }) {
@@ -82,27 +85,30 @@ export function WorkProfileRow({
   const twoLine = Boolean(subtitle);
   const titleColour =
     tone === "link"
-      ? "text-[color:var(--clinical-accent)]"
+      ? "text-[color:var(--mode-identity)]"
       : tone === "danger"
         ? "text-[color:var(--danger-text)]"
-        : "text-[color:var(--text-heading)]";
+        : "text-[color:var(--work-ink)]";
   const body = (
     <>
       {Icon ? (
-        <Icon
+        <span
           aria-hidden="true"
-          strokeWidth={1.6}
           className={cn(
-            "size-icon-md shrink-0",
-            tone === "danger" ? "text-[color:var(--danger-text)]" : "text-[color:var(--text-muted)]",
+            "grid size-8 shrink-0 place-items-center rounded-full",
+            tone === "danger"
+              ? "bg-[color:var(--danger-bg)] text-[color:var(--danger-text)]"
+              : "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
           )}
-        />
+        >
+          <Icon aria-hidden="true" strokeWidth={1.8} className="size-4" />
+        </span>
       ) : null}
       <span className="grid min-w-0 flex-1 gap-0.5 py-1">
         <span
           className={cn(
             modeNameText,
-            "flex min-w-0 items-center gap-2 break-words text-base-minus leading-5",
+            "flex min-w-0 items-center gap-2 break-words text-sm-minus leading-5 font-bold",
             titleColour,
           )}
         >
@@ -173,8 +179,10 @@ export function WorkProfileNote({
     <div
       data-testid={testId}
       className={cn(
-        "flex min-w-0 items-start gap-2.5 rounded-lg border bg-[color:var(--surface-raised)] px-3 py-2.5",
-        tone === "warning" ? "border-[color:var(--warning-border)]" : "border-[color:var(--border)]",
+        "flex min-w-0 items-start gap-2.5 rounded-[var(--work-radius-card)] border px-3 py-2.5",
+        tone === "warning"
+          ? "border-[color:var(--warning-border)] bg-[color:var(--warning-bg)]"
+          : "border-[color:var(--work-line)] bg-[color:var(--work-surface)]",
       )}
     >
       <Icon
@@ -186,7 +194,7 @@ export function WorkProfileNote({
         )}
       />
       <div className="grid min-w-0 flex-1 gap-0.5">
-        <p className="text-sm font-semibold text-[color:var(--text-heading)]">{title}</p>
+        <p className="text-sm-minus font-bold text-[color:var(--work-ink)]">{title}</p>
         {children ? <div className="text-sm text-[color:var(--text-muted)]">{children}</div> : null}
       </div>
       {action ? <div className="shrink-0 self-center">{action}</div> : null}
@@ -195,5 +203,5 @@ export function WorkProfileNote({
 }
 
 export function WorkProfileFoot({ children }: { readonly children: ReactNode }) {
-  return <p className="text-xs leading-5 text-[color:var(--text-muted)]">{children}</p>;
+  return <p className="px-1 text-xs leading-5 text-[color:var(--text-muted)]">{children}</p>;
 }
