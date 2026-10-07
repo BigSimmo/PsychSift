@@ -4310,6 +4310,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/live-version-switch.md",
+        "section": "root",
+        "catalogued": false
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/COMPLETE_ISSUE_INVENTORY.md",
         "section": "archive",
         "catalogued": false
