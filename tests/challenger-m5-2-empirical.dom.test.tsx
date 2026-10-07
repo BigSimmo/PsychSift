@@ -163,8 +163,8 @@ describe("Challenger M5-2: Empirical Verification & Hardening Harness", () => {
       ).toBeUndefined();
     });
 
-    it("verifies disabledOpacityUses ceiling is tightened to 36", () => {
-      expect(baseline.metrics.disabledOpacityUses).toBe(36);
+    it("verifies disabledOpacityUses ceiling is tightened to 31", () => {
+      expect(baseline.metrics.disabledOpacityUses).toBe(31);
     });
 
     it("verifies visibleLiveRegions ceiling is tightened to 20", () => {

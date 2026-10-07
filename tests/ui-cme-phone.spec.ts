@@ -48,7 +48,7 @@ test.describe("CME on a phone", () => {
     await page.goto("/cme");
     await expect(page.locator("#main-content")).toBeVisible();
     await expect(page.getByTestId("cme-total-hours")).toContainText("32.5");
-    await expect(page.getByTestId("cme-pace-sentence")).toContainText("17.5 h to go, about 1.2 h a week.");
+    await expect(page.getByTestId("cme-pace-sentence")).toContainText("17.5 h to go · about 1.2 h a week.");
     await expect(page.getByTestId("cme-year-label").filter({ visible: true })).toHaveText("2026 · about 15 weeks left");
     await expect(page.getByTestId("cme-next-action")).toBeVisible();
   });

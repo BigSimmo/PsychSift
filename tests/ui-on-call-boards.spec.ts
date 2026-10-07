@@ -414,7 +414,7 @@ test.describe("02 More — the second row is about the page you are on", () => {
     expect(titles.painted, "a heading repeats the name the pill already shows").toBe(0);
   });
 
-  test("carries the mode's own colour on the pill and the bar, and only there", async ({ page }) => {
+  test("carries the mode's own colour on the pill and the bar, and on the work page around them", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
     // openBoard settles on the list, but the bar mounts a frame or more later: it renders
     // only once the page has resolved two or more groups from the list. WebKit reaches
@@ -424,6 +424,9 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // assertion in "names the page once, in the pill, with the mode beneath it".
     await expect(await sectionBar(page)).toBeVisible();
     await expect(page.getByRole("button", { name: "Mode On Call", exact: true })).toBeVisible();
+    // The band publishes the area's palette onto <body> in a layout effect;
+    // wait for it so the read below is not racing the mount.
+    await expect(page.locator("body")).toHaveAttribute("data-mode-identity", "on-call");
     const identity = await page.evaluate(() => {
       const read = (selector: string) => {
         const element = document.querySelector(selector);
@@ -439,9 +442,13 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // cannot end up different greens.
     expect(identity.pill).toBe(identity.bar);
     expect(identity.pill).toBeTruthy();
-    // And the rest of the page keeps the product accent: the hue is scoped to
-    // the mode's own chrome, not sprayed over its content.
-    expect(identity.page).not.toBe(identity.pill);
+    // Work-mode redesign (owner request 6 Oct 2026): while the work frame is
+    // up, the area's palette also rides on <body>, so sheets, toasts and the
+    // work search that portal out of the page wear the same teal
+    // (`usePublishBandSurface` in mode-band.tsx). The page therefore matches
+    // the pill now; the old "only the chrome" scoping was retired on purpose.
+    // Clinical pages never mount the frame, so they keep the product accent.
+    expect(identity.page).toBe(identity.pill);
   });
 
   test("fits its words without truncating at the site's narrow width", async ({ page }) => {

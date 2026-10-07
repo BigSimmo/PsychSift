@@ -19,7 +19,7 @@ export type CmeSegment = {
  * The work-mode segmented switch (work-mode redesign, owner request 6 Oct
  * 2026): a pale pill track with the current part as a white pill. Each part is
  * a link (these are pages, not panels), the current one marked `aria-current`.
- * The pill is 36px; each link's tap area reaches 48px.
+ * Each pill is the 48px production tap floor (`--spacing-tap`), drawn as its own box.
  */
 export function CmeSegmentedTabs({
   label,

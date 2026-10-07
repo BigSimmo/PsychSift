@@ -4531,14 +4531,19 @@ test.describe("PsychSift UI smoke coverage", () => {
       await expect(page.getByTestId("smart-search-phone-ticker")).toHaveCount(0);
       await expect(page.getByTestId("search-example-ticker")).toHaveCount(0);
       await expect(page.getByTestId("smart-search-prompt-row")).toHaveCount(0);
-      // With the pill alone, the set chips sit close under the search bar.
+      // With the pill alone, the page's next block sits close under the search
+      // bar: no privacy line, ticker or reserved row in between. Since the
+      // 2026-10-07 work-mode rebuild that block is whatever the layout draws
+      // first (the Clinical and Work switch, Continue, the My Day shelf), not
+      // necessarily the set chips, so measure to the slot's next drawn sibling.
       const gap = await page.evaluate(() => {
-        const form = document
-          .querySelector('.mode-home-composer-slot [data-testid="global-search-input"]')
-          ?.closest("form");
-        const chips = document.querySelector('[data-testid="favourites-set-chips"]');
-        if (!form || !chips) return null;
-        return chips.getBoundingClientRect().top - form.getBoundingClientRect().bottom;
+        const slot = document.querySelector(".mode-home-composer-slot");
+        const form = slot?.querySelector('[data-testid="global-search-input"]')?.closest("form");
+        if (!slot || !form) return null;
+        let next = slot.nextElementSibling;
+        while (next && next.getBoundingClientRect().height === 0) next = next.nextElementSibling;
+        if (!next) return null;
+        return next.getBoundingClientRect().top - form.getBoundingClientRect().bottom;
       });
       expect(gap, `gap under the search bar at ${viewport.width}px`).not.toBeNull();
       expect(gap!).toBeLessThanOrEqual(24);
@@ -4602,7 +4607,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Actions for Lithium monitoring guideline" });
     await expect(dialog.getByRole("link", { name: "Ask Lithium monitoring guideline" })).toBeVisible();
-    const copyCitation = dialog.getByRole("button", { name: "Copy citation" });
+    // Renamed from "Copy citation" in the 2026-10-07 work-mode rebuild.
+    const copyCitation = dialog.getByRole("button", { name: "Copy link with source" });
     await copyCitation.focus();
     await page.keyboard.press("Enter");
     await expect(dialog.getByRole("button", { name: "Copied" })).toBeFocused();

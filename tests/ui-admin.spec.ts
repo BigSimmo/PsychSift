@@ -38,11 +38,18 @@ async function gotoPhone(page: Page, path: string) {
 
 test.describe("Admin mode — redirects, pill identity and shared chrome", () => {
   // Work-mode redesign, owner request 6 Oct 2026: Today is Admin's first tab
-  // again, so `/my-work` lands on `/admin` and the pill names that page.
-  test("/my-work lands on /admin, and the pill names Admin's Today page", async ({ page }) => {
+  // again, so `/my-work` lands on `/admin`. Pill 4b (Josh, 7 Oct 2026): on a
+  // work page the pill names the area alone, in its colour, and the band's
+  // current tab names the page — so Today is asserted on the tab, not the pill.
+  test("/my-work lands on /admin, the pill names Admin, and the Today tab is current", async ({ page }) => {
     await page.goto("/my-work");
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole("button", { name: "Mode Admin, page Today", exact: true })).toBeVisible();
+    const pill = page.getByRole("button", { name: "Mode Admin", exact: true });
+    await expect(pill).toBeVisible();
+    await expect(pill).toContainText("Admin");
+    await expect(
+      page.getByRole("navigation", { name: "Admin pages" }).getByRole("link", { name: /^Today\b/ }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   test("/on-call/compliance lands on /admin/renewals, keeping the checklist's own groups", async ({ page }) => {

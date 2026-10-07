@@ -362,7 +362,9 @@ html.dark[data-mode-identity="cme"] {
   position: relative;
   display: flex;
   min-width: 0;
-  min-height: calc(var(--spacing) * 9);
+  /* The production tap floor, on the item's own box: a pseudo-element hit area
+     reaches 48px for a finger but not for a measured box or a pointer outline. */
+  min-height: var(--spacing-tap);
   flex: 1;
   align-items: center;
   justify-content: center;
@@ -377,13 +379,6 @@ html.dark[data-mode-identity="cme"] {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-}
-
-/* The tap reaches 48px above and below the drawn pill. */
-.cpd-seg__item::after {
-  content: "";
-  position: absolute;
-  inset: calc(var(--spacing) * -1) 0;
 }
 
 .cpd-seg__item[aria-current="page"],
