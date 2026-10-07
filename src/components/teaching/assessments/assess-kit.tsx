@@ -7,6 +7,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Info,
   Phone,
   ShieldCheck,
   TriangleAlert,
@@ -15,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useSyncExternalStore, type ReactNode } from "react";
+import { createElement, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { ModeBandAction, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
@@ -176,7 +177,7 @@ export function AssessSegmented<T extends string>({
 
 /** A plain small line with an icon ("Leave out anything that could identify a patient."). */
 export function AssessNote({
-  icon: Icon = TriangleAlert,
+  icon,
   tone,
   center,
   children,
@@ -190,7 +191,7 @@ export function AssessNote({
 }) {
   return (
     <p id={id} className="assess-note" data-tone={tone} data-center={center ? "" : undefined}>
-      <Icon aria-hidden="true" strokeWidth={2} />
+      {createElement(icon ?? (tone === "amber" ? TriangleAlert : Info), { "aria-hidden": true, strokeWidth: 2 })}
       <span className="min-w-0">{children}</span>
     </p>
   );
@@ -861,5 +862,44 @@ export function AssessUndoBar({
         <i />
       </span>
     </div>
+  );
+}
+
+/* ---------------------------------------------------------------- button */
+
+/**
+ * The kit's flat button for a tap that stays on the page, with what the kit
+ * button cannot carry: a line that explains why it is greyed out.
+ */
+export function AssessButton({
+  children,
+  variant = "primary",
+  block,
+  icon: Icon,
+  disabled,
+  describedBy,
+  onClick,
+}: {
+  readonly children: ReactNode;
+  readonly variant?: "primary" | "secondary" | "tinted" | "quiet";
+  readonly block?: boolean;
+  readonly icon?: LucideIcon;
+  readonly disabled?: boolean;
+  readonly describedBy?: string;
+  readonly onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="work-button"
+      data-variant={variant}
+      data-size={block ? "wide" : undefined}
+      disabled={disabled}
+      aria-describedby={describedBy}
+      onClick={onClick}
+    >
+      {Icon ? <Icon aria-hidden="true" strokeWidth={2} /> : null}
+      {children}
+    </button>
   );
 }

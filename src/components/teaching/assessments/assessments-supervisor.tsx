@@ -369,8 +369,8 @@ function RatingsCard({ s }: { s: AssessmentsState }) {
   const rows = compareRatings(self?.ratings ?? null, s.sup.ratings, "sup", DOC.first);
   return (
     <section className="work-card" id="assess-ratings" aria-labelledby="assess-ratings-title" tabIndex={-1}>
-      <div className="assess-cr__top">
-        <h3 id="assess-ratings-title" className="work-label">
+      <div className="assess-card-head">
+        <h3 id="assess-ratings-title" className="work-label m-0">
           Ratings
         </h3>
         <span className="assess-key" aria-hidden="true">
@@ -869,7 +869,7 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
         })}
       </List>
       <section className="work-card" aria-labelledby="assess-term-forms">
-        <h3 id="assess-term-forms" className="work-label assess-cr__top">
+        <h3 id="assess-term-forms" className="work-label assess-card-head">
           Term assessments
         </h3>
         <AssessKeyValue k="Mid-term" v={`${midTermsSigned} of 4 so far`} />
@@ -1028,7 +1028,7 @@ export function SupervisorWords({ role }: ScreenProps) {
       <SectionLabel>Words used here</SectionLabel>
       <dl className="work-card m-0">
         {GLOSSARY.map(([term, meaning]) => (
-          <div key={term} className="assess-word">
+          <div key={term} className="assess-word" data-long={term.length > 8 ? "" : undefined}>
             <dt>{term}</dt>
             <dd>{meaning}</dd>
           </div>

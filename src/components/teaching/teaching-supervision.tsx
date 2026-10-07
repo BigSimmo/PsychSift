@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, Send, ShieldCheck, TriangleAlert, Users } from "lucide-react";
+import { Clock, Lock, Minus, Plus, Send, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useModeBandCount } from "@/components/mode-band/mode-band";
@@ -189,7 +189,7 @@ function TopicChips({
     <fieldset disabled={disabled} className="assess-field m-0 min-w-0 border-0 p-0">
       <legend className="assess-field__label">
         <span>{legend}</span>
-        <em>{`${value.length} of ${MAX_TOPICS}`}</em>
+        <small className="font-semibold text-[color:var(--text-muted)] tabular-nums">{`${value.length} of ${MAX_TOPICS}`}</small>
       </legend>
       <div className="work-chips">
         {supervisionTopics.map((topic) => {
@@ -481,11 +481,7 @@ function RecentList({
                 ))}
               </div>
               <span className="work-row__end flex-col items-end gap-1">
-                {sending ? (
-                  <WorkTag tone="neutral">Sending</WorkTag>
-                ) : (
-                  <WorkTag tone="neutral">{entry.status === "confirmed" ? "Confirmed" : "Awaiting"}</WorkTag>
-                )}
+                {sending ? <WorkTag tone="neutral">Sending</WorkTag> : null}
                 {canCorrect ? (
                   <WorkButton variant="quiet" disabled={sender.inert} onClick={() => onCorrect(entry)}>
                     Correct <span className="sr-only">{shortDayLabel(entry.date)}</span>
@@ -549,7 +545,9 @@ function LogForm({ pairing, today, sender }: { pairing: SupervisionPairingView; 
         <WorkButton type="submit" icon={Send} size="wide" disabled={inert}>
           Send for supervisor confirmation
         </WorkButton>
-        <AssessNote center>Sends after 10 seconds, with Undo.</AssessNote>
+        <AssessNote icon={Clock} center>
+          Sends after 10 seconds, with Undo.
+        </AssessNote>
       </form>
       <form
         className="work-card work-card--pad grid gap-3"
@@ -580,7 +578,7 @@ function LogForm({ pairing, today, sender }: { pairing: SupervisionPairingView; 
             onChange={(event) => setTarget(event.target.value)}
           />
         </div>
-        <AssessNote>Only you see your target.</AssessNote>
+        <AssessNote icon={Lock}>Only you see your target.</AssessNote>
         <WorkButton type="submit" variant="secondary" size="wide" disabled={inert}>
           Save my target
         </WorkButton>

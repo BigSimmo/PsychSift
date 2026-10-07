@@ -195,13 +195,12 @@ function AssessmentsApp() {
   const requested = params.get("view") as AssessmentsView | null;
   const view: AssessmentsView = requested && VIEWS.includes(requested) ? requested : "home";
   const as = params.get("as");
-  const [remembered, setRemembered] = useState<Role>(() => rememberedRole());
-  const role = resolveRole(view, as, remembered);
+  // The remembered side lives outside React (module memory), read fresh on each screen.
+  const role = resolveRole(view, as, rememberedRole());
   useEffect(() => {
     // An address that names a side makes the tabs keep it.
     if ((as === "supervisor" || as === "doctor") && !DOCTOR_ONLY.has(view)) {
       rememberRole(as);
-      setRemembered(as);
     }
   }, [as, view]);
   const go = useCallback((href: string) => router.push(href), [router]);
@@ -251,7 +250,6 @@ function AssessmentsApp() {
   const switchRole = (next: Role) => {
     if (next === role) return;
     rememberRole(next);
-    setRemembered(next);
     const tab = view === "progress" ? "progress" : "home";
     go(viewHref(tab, next === "supervisor" ? { as: "supervisor" } : { as: "doctor" }));
   };

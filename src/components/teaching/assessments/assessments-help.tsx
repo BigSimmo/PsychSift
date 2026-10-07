@@ -333,7 +333,7 @@ function WordsSheet() {
   return (
     <dl className="work-card m-0">
       {GLOSSARY.map(([term, meaning]) => (
-        <div key={term} className="assess-word">
+        <div key={term} className="assess-word" data-long={term.length > 8 ? "" : undefined}>
           <dt>{term}</dt>
           <dd>{meaning}</dd>
         </div>
@@ -361,17 +361,20 @@ export function AssessmentsSheets({
             : "Words used here";
   return (
     <Sheet open={sheet !== null} onClose={close} title={title}>
-      {sheet?.kind === "epa" ? (
-        <RequestEpaSheet key={sheet.pick} s={s} dispatch={dispatch} pick={sheet.pick} close={close} />
-      ) : null}
-      {sheet?.kind === "supepa" ? (
-        <RecordEpaSheet key={`r${sheet.index}`} s={s} saveEpa={saveEpa} index={sheet.index} close={close} />
-      ) : null}
-      {sheet?.kind === "recordepa" ? (
-        <RecordEpaSheet key={`d${sheet.pick ?? 0}`} s={s} saveEpa={saveEpa} pick={sheet.pick} close={close} />
-      ) : null}
-      {sheet?.kind === "disagree" ? <DisagreeSheet s={s} dispatch={dispatch} /> : null}
-      {sheet?.kind === "words" ? <WordsSheet /> : null}
+      {/* The sheet opens outside the page, so it names the Teaching colours again. */}
+      <div data-mode-identity="teaching" data-work-frame="" className="contents">
+        {sheet?.kind === "epa" ? (
+          <RequestEpaSheet key={sheet.pick} s={s} dispatch={dispatch} pick={sheet.pick} close={close} />
+        ) : null}
+        {sheet?.kind === "supepa" ? (
+          <RecordEpaSheet key={`r${sheet.index}`} s={s} saveEpa={saveEpa} index={sheet.index} close={close} />
+        ) : null}
+        {sheet?.kind === "recordepa" ? (
+          <RecordEpaSheet key={`d${sheet.pick ?? 0}`} s={s} saveEpa={saveEpa} pick={sheet.pick} close={close} />
+        ) : null}
+        {sheet?.kind === "disagree" ? <DisagreeSheet s={s} dispatch={dispatch} /> : null}
+        {sheet?.kind === "words" ? <WordsSheet /> : null}
+      </div>
     </Sheet>
   );
 }

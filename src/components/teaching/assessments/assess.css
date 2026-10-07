@@ -1187,7 +1187,25 @@ input.assess-txt {
   font-size: var(--text-xs, 0.75rem);
   font-weight: 750;
   color: var(--mode-identity);
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+}
+/* A long term ("Assessment Review Panel") sits over its meaning instead of breaking mid-word. */
+.assess-word[data-long] {
+  flex-direction: column;
+  gap: calc(var(--spacing) * 0.5);
+}
+.assess-word[data-long] > dt {
+  width: auto;
+}
+
+/* A card's own heading row: label on the left, a key or count on the right. */
+.assess-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 2);
+  margin: 0;
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3) calc(var(--spacing) * 1);
 }
 .assess-word > dd {
   min-width: 0;

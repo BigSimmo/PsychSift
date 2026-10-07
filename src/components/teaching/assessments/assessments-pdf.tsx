@@ -4,8 +4,8 @@ import { Check, Clock, Download, Info, Minus, Plus, Send } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Inset, ScreenHeader, viewHref } from "@/components/teaching/assessments/assessments-parts";
+import { AssessButton } from "@/components/teaching/assessments/assess-kit";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import {
   DOMAINS,
@@ -229,9 +229,9 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
       {status}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-[color:var(--text-muted)]">3 pages · A4</span>
-        <Button variant="secondary" size="sm" icon={zoom ? Minus : Plus} onClick={() => setZoom((z) => !z)}>
+        <AssessButton variant="secondary" icon={zoom ? Minus : Plus} onClick={() => setZoom((z) => !z)}>
           {zoom ? "Fit to screen" : "Zoom to full size"}
-        </Button>
+        </AssessButton>
       </div>
       <div
         className={cn("grid gap-3", zoom ? "overflow-x-auto" : "")}
@@ -339,7 +339,7 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
         </div>
       </div>
       {canSend && !s.sentToMeu ? (
-        <Button
+        <AssessButton
           icon={Send}
           variant="primary"
           block
@@ -349,16 +349,16 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
           }}
         >
           Email the PDF to your MEU
-        </Button>
+        </AssessButton>
       ) : null}
       {sentNote ? (
         <p role="status" className="px-1 text-center text-xs text-[color:var(--text-muted)]">
           Made-up records: nothing was emailed. It is marked as sent so you can see the next step.
         </p>
       ) : null}
-      <Button icon={Download} variant="secondary" block onClick={() => window.print()}>
+      <AssessButton icon={Download} variant="secondary" block onClick={() => window.print()}>
         Save a copy
-      </Button>
+      </AssessButton>
     </>
   );
 }

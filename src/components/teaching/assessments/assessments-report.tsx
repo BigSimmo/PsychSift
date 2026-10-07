@@ -1,7 +1,6 @@
 "use client";
 
 import { FileText, Flag, MessageSquare, PenLine, Target, TriangleAlert } from "lucide-react";
-import Link from "next/link";
 import { useRef, useState, type PointerEvent } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -22,9 +21,10 @@ import {
   secondaryText,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
+import { WorkButton } from "@/components/mode-kit/work";
+import { AssessButton } from "@/components/teaching/assessments/assess-kit";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { Button, buttonFaceClass } from "@/components/ui/button";
-import { cn, fieldControlPlain, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { cn, fieldControlPlain } from "@/components/ui-primitives";
 import { globalRatingName } from "@/lib/teaching/assessments/content";
 import {
   compareRatings,
@@ -180,8 +180,6 @@ function SignatureLine({ role, name, mark }: { role: string; name: string; mark:
   );
 }
 
-const unavailableNoteId = "assess-goal-unavailable";
-
 export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
   const mid = params.get("of") !== "eot";
   if (!mid && !supReady(s))
@@ -260,7 +258,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
         <Eyebrow>Areas for improvement</Eyebrow>
         <p className="text-sm text-[color:var(--text-heading)]">{sup.areas}</p>
       </Card>
-      <SectionLabel end={<SectionNote>Suggested from the ratings · edit before adding</SectionNote>}>
+      <SectionLabel end={<SectionNote>Suggested from the ratings</SectionNote>}>
         {mid ? "Goals for the rest of term" : "Goals for next term"}
       </SectionLabel>
       <List>
@@ -275,22 +273,9 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
               className="size-icon-md shrink-0 text-[color:var(--text-muted)]"
             />
             <span className="min-w-0 flex-1 text-sm text-[color:var(--text-heading)]">{goal}</span>
-            <button
-              type="button"
-              aria-disabled="true"
-              aria-describedby={unavailableNoteId}
-              title="Adding goals — coming soon"
-              onClick={ignoreUnavailableActivation}
-              className={cn(buttonFaceClass({ variant: "secondary", size: "sm" }), "shrink-0 aria-disabled:opacity-60")}
-            >
-              Edit and add
-            </button>
           </li>
         ))}
       </List>
-      <p id={unavailableNoteId} className="sr-only">
-        Adding goals to next term is not built yet.
-      </p>
       <SmallPrint>
         Your self-assessment is shared only with {SUP}. Only the supervisor&apos;s form goes to the MEU; PsychSift
         doesn&apos;t send it for you.
@@ -339,25 +324,17 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
         />
       </ul>
       {!mid && s.sigs.sup && !s.sigs.doc ? (
-        <Link
-          href={viewHref("sign")}
-          className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
-        >
-          <PenLine aria-hidden="true" className="size-icon-sm" />
+        <WorkButton href={viewHref("sign")} icon={PenLine} size="wide">
           Read and sign
-        </Link>
+        </WorkButton>
       ) : null}
       <div className="grid grid-cols-2 gap-2">
-        <Link
-          href={viewHref("pdf", { of: mid ? "mid" : "eot" })}
-          className={cn(buttonFaceClass({ variant: "secondary", block: true }), "no-underline")}
-        >
-          <FileText aria-hidden="true" className="size-icon-sm" />
+        <WorkButton href={viewHref("pdf", { of: mid ? "mid" : "eot" })} variant="secondary" icon={FileText}>
           View PDF
-        </Link>
-        <Button icon={Flag} variant="secondary" block onClick={() => openSheet({ kind: "disagree" })}>
+        </WorkButton>
+        <AssessButton icon={Flag} variant="secondary" block onClick={() => openSheet({ kind: "disagree" })}>
           Disagree?
-        </Button>
+        </AssessButton>
       </div>
     </>
   );
@@ -525,19 +502,19 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
         Your signature is saved with the form, with the date and time{sup ? ", through your secure email link" : ""}. On
         these made-up records it stays on this page. Made-up date: {todayLabel(s)}.
       </SmallPrint>
-      <Button
+      <AssessButton
         icon={PenLine}
         variant="primary"
         block
         disabled={!can}
-        aria-describedby={can ? undefined : "assess-sign-why"}
+        describedBy={can ? undefined : "assess-sign-why"}
         onClick={() => {
           dispatch({ type: "sign", who, typed: typed || name.replace("Dr ", ""), image });
           go(sup ? viewHref("side", { as: "supervisor" }) : viewHref("hub"));
         }}
       >
         Sign
-      </Button>
+      </AssessButton>
       {can ? null : (
         <WhyNot id="assess-sign-why">
           {hasSignature ? "" : "Draw or type your signature. "}
@@ -545,9 +522,9 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
         </WhyNot>
       )}
       {sup ? null : (
-        <Button icon={Flag} variant="secondary" block onClick={() => openSheet({ kind: "disagree" })}>
+        <AssessButton icon={Flag} variant="secondary" block onClick={() => openSheet({ kind: "disagree" })}>
           I disagree with part of this
-        </Button>
+        </AssessButton>
       )}
     </>
   );
