@@ -126,12 +126,16 @@ export function useFeatureNotificationSources({
   const highlighted = isFirstWeekHighlighted(firstWeek.phase);
   const handbook = firstWeek.handbook.status;
   const applications = useApplicationsStore(null).state;
-  const cpdHome = useCpdHomeSendStore(null).state;
+  const cpdHomeStore = useCpdHomeSendStore(null);
+  // A device marked shared keeps no CPD Home record, so nothing is read or shown there (not even December's prompt).
+  const cpdHomeShared = cpdHomeStore.mode === "shared";
+  const cpdHome = cpdHomeStore.state;
   const terms = useTermTrackerStore(null).state;
 
   const cpdHomeNeeded =
     enabled &&
     !demo &&
+    !cpdHomeShared &&
     cpdHome !== null &&
     (lastAddedFile(cpdHome, year) !== null || Number(today.slice(5, 7)) >= CPD_HOME_YEAR_END_MONTH);
   const cpdEntries = useCpdHomeEntries(year, cpdHomeNeeded, authEpoch);
@@ -194,7 +198,7 @@ export function useFeatureNotificationSources({
             ? "loading"
             : cpdEntries.status;
     const cpdHomeItems =
-      cpdHome && cpdEntries?.status === "ready"
+      cpdHome && cpdHomeNeeded && cpdEntries?.status === "ready"
         ? cpdHomeNeedsYouItems(
             cpdEntries.entries,
             { ...cpdHome, files: withoutExampleRecords(cpdHome.files) },

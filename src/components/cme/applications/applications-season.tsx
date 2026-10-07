@@ -317,8 +317,7 @@ function SeasonDateSheetBody({
           <span id={remindLabel} className="grid min-w-0 flex-1">
             <span className="text-base-minus font-medium text-[color:var(--text-heading)]">Remind me</span>
             <span className="text-sm text-[color:var(--text-muted)]">
-              From 1 week before until the day, at the top of this page and in Notifications. It won&apos;t buzz or
-              email you.
+              Shows in Notifications from 1 week before until the day.
             </span>
           </span>
           <FlatSwitch on={remind} onChange={setRemind} labelledBy={remindLabel} testId="applications-date-remind" />
