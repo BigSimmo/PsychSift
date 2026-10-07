@@ -322,7 +322,7 @@ export function ContractQuestionSheet({
               {endsOn ? (
                 <div className="flex justify-between gap-2">
                   <span>Contract ends</span>
-                  <b className="nums font-semibold">{formatDateEcho(endsOn)}</b>
+                  <span className="nums font-semibold">{formatDateEcho(endsOn)}</span>
                 </div>
               ) : null}
               <Link
@@ -493,7 +493,7 @@ export function ContractAskSheet({
               className="grid gap-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm"
               data-testid="admin-contract-ask-preview"
             >
-              <b className="font-semibold text-[color:var(--text-heading)]">{message.subject}</b>
+              <span className="font-semibold text-[color:var(--text-heading)]">{message.subject}</span>
               <span className="whitespace-pre-line leading-6">{message.body}</span>
             </div>
           ) : (
@@ -604,11 +604,11 @@ export function ContractRenewSheet({
             >
               <li className="flex justify-between gap-2">
                 <span>3 months before</span>
-                <b className="nums font-semibold">{formatDateEcho(points.threeMonths)}</b>
+                <span className="nums font-semibold">{formatDateEcho(points.threeMonths)}</span>
               </li>
               <li className="flex justify-between gap-2">
                 <span>6 weeks before</span>
-                <b className="nums font-semibold">{formatDateEcho(points.sixWeeks)}</b>
+                <span className="nums font-semibold">{formatDateEcho(points.sixWeeks)}</span>
               </li>
             </ul>
           </SheetGroup>

@@ -43,7 +43,8 @@ export function RotationEndSuggestion({
       />
       <span className="grid min-w-0 gap-1.5">
         <span className="text-sm text-[color:var(--text)]">
-          Your roster team has this rotation ending <b className="nums font-semibold">{formatDateEcho(endsOn)}</b>.
+          Your roster team has this rotation ending <span className="nums font-semibold">{formatDateEcho(endsOn)}</span>
+          .
         </span>
         <span className={cn(textMuted, "text-xs")}>Use it only if your contract ends then too.</span>
         <span>

@@ -24,6 +24,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ContractEndEntryLink } from "@/components/admin/contract/contract-entry-link";
 import {
   copyLabel,
+  JuniorBackLink,
   JuniorFootNote,
   JuniorSectionLabel,
   JuniorUndoBar,
@@ -572,6 +573,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <InformationPageShell testId="admin-leave-main">
+      <JuniorBackLink href="/admin" label="Admin Today" testId="admin-leave-back" />
       <div className="grid gap-1">
         <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
           Leave wallet
@@ -581,8 +583,8 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
 
       {!online ? (
         <div className={cn(cardSurface, "p-3 text-sm")} role="status" data-testid="admin-leave-offline">
-          <b className="font-semibold text-[color:var(--text-heading)]">You are offline.</b> The cards and Copy still
-          work. Links open when you are back online.
+          <span className="font-semibold text-[color:var(--text-heading)]">You are offline.</span> The cards and Copy
+          still work. Links open when you are back online.
         </div>
       ) : null}
 
@@ -643,6 +645,12 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
           >
             Your wallet
           </JuniorSectionLabel>
+          {/*
+            The mockup's wallet: each card's top edge tucks 8 px under the card before it, a deliberate stacked
+            deck. Each card is at least 64 px tall, so at least 56 px of every card stays uncovered and tappable,
+            and the overlap only ever covers the bottom padding, never a word. A focused card lifts above the
+            next so its focus ring shows in full.
+          */}
           <ul ref={stackRef} aria-label="Leave cards" className="grid" data-testid="admin-leave-stack">
             {visible.map((type, index) => (
               <li key={type.id} className={cn(index > 0 && "-mt-2")}>
@@ -654,7 +662,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
                   data-testid={`admin-leave-card-${type.id}`}
                   className={cn(
                     focusRing,
-                    "relative flex min-h-16 w-full items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 pb-3 text-left",
+                    "relative flex min-h-16 w-full items-center gap-3 rounded-xl border focus-visible:z-10 border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 pb-3 text-left",
                     index > 0 ? "pt-4" : "pt-3",
                   )}
                 >
