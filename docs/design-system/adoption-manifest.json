@@ -2360,6 +2360,7 @@
         "src/components/ui/confirm-dialog.tsx",
         "src/components/work-frame/work-frame-header.tsx",
         "src/components/work-profile/work-stage-sheet.tsx",
+        "src/components/work-search/work-search-keys.tsx",
         "src/components/work-search/work-search-sheet.tsx"
       ],
       "productImportFiles": [
@@ -2464,6 +2465,7 @@
         "src/components/ui/confirm-dialog.tsx",
         "src/components/work-frame/work-frame-header.tsx",
         "src/components/work-profile/work-stage-sheet.tsx",
+        "src/components/work-search/work-search-keys.tsx",
         "src/components/work-search/work-search-sheet.tsx"
       ],
       "designSync": {

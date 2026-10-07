@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 
-import { LazyWorkSearchSheet, prefetchWorkSearchSheet } from "@/components/work-search/lazy-work-search-sheet";
+import {
+  LazyWorkSearchKeys,
+  LazyWorkSearchSheet,
+  prefetchWorkSearchSheet,
+} from "@/components/work-search/lazy-work-search-sheet";
 import { WorkSearchGlyph } from "@/components/work-search/work-search-glyph";
 import type { AppModeId } from "@/lib/app-modes";
 import { cn } from "@/components/ui-primitives";
@@ -31,14 +35,54 @@ function subscribeNever() {
   return () => {};
 }
 
+/** Typing in a field (or a rich-text box): the shortcut keys are the reader's letters there, not ours. */
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+}
+
+/** Another dialog is open over the page: its keys belong to it. */
+function dialogOpen(): boolean {
+  return document.querySelector('[role="dialog"][aria-modal="true"]') !== null;
+}
+
+/** The start of the "opening to first result" timing, kept on this device only. */
+function markOpening() {
+  try {
+    performance.clearMarks("work-search:open");
+    performance.mark("work-search:open");
+  } catch {
+    // A browser without the timeline simply records nothing.
+  }
+}
+
+/**
+ * Fetches the search screen's code once the page has settled, so the first tap opens it
+ * at once. Skipped when the reader has asked the browser to save data.
+ */
+function prefetchWhenIdle(): () => void {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  if (connection?.saveData) return () => {};
+  if (typeof window.requestIdleCallback === "function") {
+    const handle = window.requestIdleCallback(() => prefetchWorkSearchSheet(), { timeout: 4000 });
+    return () => window.cancelIdleCallback(handle);
+  }
+  const timer = window.setTimeout(prefetchWorkSearchSheet, 2500);
+  return () => window.clearTimeout(timer);
+}
+
 /**
  * The header's "Search my work" control on the staff modes: a round magnifier-with-sparkle
  * on phones and a labelled pill on wide screens, so it is never mistaken for the clinical
  * search box. It opens a full-screen search across Roster, Teaching, CPD, Admin and On Call.
  * The first time it appears, a small "New" note points at it until dismissed.
+ *
+ * Keys (work-mode redesign, ideas list #3): "/" or Ctrl K (Command K on a Mac) opens
+ * it from anywhere on a work page that is not a text field, and "?" shows the list.
  */
 export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; className?: string }) {
   const [open, setOpen] = useState(false);
+  const [keysOpen, setKeysOpen] = useState(false);
   // Read from storage after hydration (the server snapshot says "seen"), then hidden for good once dismissed.
   const seen = useSyncExternalStore(subscribeNever, coachSeen, () => true);
   const [dismissed, setDismissed] = useState(false);
@@ -62,18 +106,44 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
     setDismissed(true);
     markCoachSeen();
   };
+  const openSearch = () => {
+    markOpening();
+    dismissCoach();
+    setOpen(true);
+  };
+  const openSearchFromKeys = useEffectEvent(openSearch);
+
+  useEffect(prefetchWhenIdle, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey || event.isComposing || isTyping(event.target) || dialogOpen()) return;
+      const slash = event.key === "/" && !event.metaKey && !event.ctrlKey;
+      const command = event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey) && !event.shiftKey;
+      const help = event.key === "?" && !event.metaKey && !event.ctrlKey;
+      if (!slash && !command && !help) return;
+      // Captured first, so no other page shortcut acts on the same key as well.
+      event.preventDefault();
+      event.stopPropagation();
+      if (help) setKeysOpen(true);
+      else openSearchFromKeys();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
 
   return (
     <span
-      className={cn("relative inline-flex shrink-0 rounded-full", coach && "ring-4 ring-[color:var(--surface-inset)]")}
+      className={cn(
+        "relative inline-flex shrink-0 rounded-full",
+        // While the note shows, a soft halo in the page's colour draws the eye to the button it is about.
+        coach && "ring-4 ring-[color:color-mix(in_srgb,var(--mode-identity,var(--focus))_20%,transparent)]",
+      )}
     >
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => {
-          dismissCoach();
-          setOpen(true);
-        }}
+        onClick={openSearch}
         onPointerEnter={prefetchWorkSearchSheet}
         onFocus={prefetchWorkSearchSheet}
         aria-label="Search my work"
@@ -95,13 +165,15 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           ref={coachRef}
           id="work-search-coach"
           role="note"
-          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 grid w-[min(14rem,calc(100vw-2rem))] gap-1.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)]"
+          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 grid w-[min(14.75rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:color-mix(in_srgb,var(--surface-raised)_92%,transparent)] p-3.5 text-left shadow-[var(--e4)] backdrop-blur-xl"
         >
           <span
             aria-hidden="true"
             className="absolute -top-1.5 right-4 size-3 rotate-45 border-l border-t border-[color:var(--border)] bg-[color:var(--surface-raised)]"
           />
-          <span className="text-3xs font-extrabold uppercase tracking-widest text-[color:var(--text-muted)]">New</span>
+          <span className="text-3xs font-extrabold uppercase tracking-widest text-[color:var(--mode-identity,var(--focus))]">
+            New
+          </span>
           <span className="text-base-minus font-bold text-[color:var(--text-heading)]">Search my work</span>
           <span className="text-xs text-[color:var(--text-muted)]">
             Find shifts, leave, CPD, forms and renewals in one place.
@@ -111,7 +183,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
             onClick={dismissCoach}
             className="pointer-events-auto inline-flex min-h-12 items-center justify-self-end focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
-            <span className="rounded-full border border-[color:var(--border-strong)] bg-[color:var(--surface-inset)] px-4 py-2 text-sm-minus font-bold text-[color:var(--text-heading)]">
+            <span className="rounded-full bg-[color:var(--mode-identity,var(--focus))] px-4 py-2 text-sm-minus font-bold text-[color:var(--mode-identity-contrast,var(--surface-raised))]">
               Got it
             </span>
           </button>
@@ -129,6 +201,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
         currentArea={isWorkSearchArea(modeId) ? modeId : null}
         returnFocusRef={buttonRef}
       />
+      <LazyWorkSearchKeys open={keysOpen} onClose={() => setKeysOpen(false)} />
     </span>
   );
 }
