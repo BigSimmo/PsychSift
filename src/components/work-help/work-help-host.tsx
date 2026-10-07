@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { closeWorkHelp, useOpenWorkHelp } from "@/components/work-help/work-help-store";
-import { workHelpTopicForArea } from "@/lib/work-help";
+import { workHelpTopic, workHelpTopicForArea } from "@/lib/work-help";
 
 // The sheet and its words load apart from the page, fetched when the phone is idle
 // so a first open still works after the signal drops.
@@ -33,5 +33,7 @@ export function WorkHelpHost() {
     idle(() => void loadSheet().catch(() => undefined));
   }, []);
   if (!area) return null;
-  return <WorkHelpSheet topic={workHelpTopicForArea(area)} open onClose={closeWorkHelp} />;
+  // Open shifts lives inside Roster's frame but has its own help.
+  const topic = pathname?.startsWith("/open-shifts") ? workHelpTopic("open-shifts") : null;
+  return <WorkHelpSheet topic={topic ?? workHelpTopicForArea(area)} open onClose={closeWorkHelp} />;
 }
