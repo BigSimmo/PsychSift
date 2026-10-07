@@ -120,6 +120,14 @@ describe("New entry", () => {
     expect(screen.queryByText(/what will you do differently/i)).toBeNull();
   });
 
+  it("scrolls a focused field clear of the pinned Save bar, but not the pinned Save itself (WCAG 2.4.11)", () => {
+    const { container } = render(<CmeEntryForm onSubmit={vi.fn()} />);
+    expect(screen.getByTestId("cme-entry-save-bar")).toBeInTheDocument();
+    const form = container.querySelector("form")!;
+    expect(form.className).toContain("[&_:is(input,textarea,select,button):not([type=submit])]:scroll-mb-32");
+    expect(screen.getByRole("button", { name: /save entry/i })).toHaveAttribute("type", "submit");
+  });
+
   it("takes an optional cost and marks it optional", () => {
     render(<CmeEntryForm onSubmit={vi.fn()} />);
     expect(screen.getByLabelText(/what it cost/i)).toBeInTheDocument();

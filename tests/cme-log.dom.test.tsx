@@ -320,9 +320,24 @@ describe("One entry", () => {
 
   it("shows every allocation with its category pill", () => {
     render(<CmeEntryPage entryId="fx-2" entries={fixtureEntries} set={fixtureSet} />);
-    const section = screen.getByTestId("cme-entry-allocations");
-    expect(within(section).getByText("Reviewing performance")).toBeInTheDocument();
-    expect(within(section).getByText("Measuring outcomes")).toBeInTheDocument();
+    const rows = screen.getAllByTestId("cme-entry-allocation");
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]!).getByText("Reviewing performance")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("Measuring outcomes")).toBeInTheDocument();
+  });
+
+  it("keeps the activity facts a valid definition list (axe dlitem/definition-list)", () => {
+    const { container } = render(<CmeEntryPage entryId="fx-2" entries={fixtureEntries} set={fixtureSet} />);
+    const list = container.querySelector('dl[aria-label="This activity"]');
+    expect(list).not.toBeNull();
+    for (const group of Array.from(list!.children)) {
+      expect(group.tagName).toBe("DIV");
+      const kinds = Array.from(group.children).map((child) => child.tagName);
+      expect(kinds).toEqual(["DT", "DD"]);
+    }
+    for (const term of Array.from(container.querySelectorAll("dt, dd"))) {
+      expect(term.parentElement?.parentElement?.tagName).toBe("DL");
+    }
   });
 
   it("shows the reflection in the owner's own words", () => {

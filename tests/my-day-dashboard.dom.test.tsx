@@ -497,6 +497,16 @@ describe("Needs you", () => {
     expect(onShowAll).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the whole verb pill its own target above the Later button tucked under it", () => {
+    render(<MyDayDashboard {...props({ items: five })} />);
+    // axe target-size (WCAG 2.5.8): Later's 48px box is pulled up under the pill, so the
+    // pill is raised over it and its tap layer ends at its own bottom edge.
+    const pill = screen.getByTestId("my-day-open-a");
+    expect(pill.className).toContain("z-10");
+    expect(pill.className).toContain("before:bottom-0");
+    expect(screen.getByRole("button", { name: "Later: Title a" }).className).toContain("min-h-12");
+  });
+
   it("moves a row to tomorrow on this device with Later, and Undo brings it back", () => {
     render(<MyDayDashboard {...props({ items: five })} />);
     fireEvent.click(screen.getByRole("button", { name: "Later: Title a" }));

@@ -249,25 +249,25 @@ export function CmeEntryPage({
                 <span className="nums font-normal">{totalHours}</span> h
               </dd>
             </div>
-            <div data-testid="cme-entry-allocations" className="contents">
-              {entry.allocations.map((allocation, index) => (
-                <div key={allocation.category} className="cpd-kv">
-                  <dt>{index === 0 ? "Counts toward" : <span className="sr-only">Also counts toward</span>}</dt>
-                  <dd>
-                    <span className="mr-1.5 inline-flex align-[1px]">
-                      <CmeDot cat={allocation.category} />
-                    </span>
-                    <span>{cmeCategoryLabels[allocation.category]}</span>
-                    {entry.allocations.length > 1 ? (
-                      <>
-                        {" · "}
-                        <span className="nums font-normal">{allocation.hours}</span> h
-                      </>
-                    ) : null}
-                  </dd>
-                </div>
-              ))}
-            </div>
+            {/* Each allocation is its own dt/dd group directly inside the dl: a
+                wrapper div here would make the dl invalid for screen readers. */}
+            {entry.allocations.map((allocation, index) => (
+              <div key={allocation.category} className="cpd-kv" data-testid="cme-entry-allocation">
+                <dt>{index === 0 ? "Counts toward" : <span className="sr-only">Also counts toward</span>}</dt>
+                <dd>
+                  <span className="mr-1.5 inline-flex align-[1px]">
+                    <CmeDot cat={allocation.category} />
+                  </span>
+                  <span>{cmeCategoryLabels[allocation.category]}</span>
+                  {entry.allocations.length > 1 ? (
+                    <>
+                      {" · "}
+                      <span className="nums font-normal">{allocation.hours}</span> h
+                    </>
+                  ) : null}
+                </dd>
+              </div>
+            ))}
             {entry.buckets.length > 0 ? (
               <div className="cpd-kv">
                 <dt>{entry.buckets.length === 1 ? "Domain" : "Domains"}</dt>
