@@ -8,6 +8,7 @@ import {
   MY_DAY_SNOOZED_ITEMS_STORAGE_KEY,
   subscribeAccountTransition,
 } from "@/lib/account-scoped-browser-state";
+import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 import {
   parseHiddenCards,
   parseSnoozes,
@@ -21,9 +22,10 @@ import {
  * they moved to tomorrow. Both keys are account-scoped
  * (`src/lib/account-scoped-browser-state.ts`): the auth provider removes them
  * at sign-out, session expiry or an account switch, so one doctor's choices
- * never show for the next person on a shared computer. Nothing here is sent
- * to a server, and a browser that refuses storage simply keeps the choice for
- * this page only.
+ * never show for the next person on a shared computer. `@/lib/work-sync`
+ * copies these keys to the doctor's account and back, so the choices follow
+ * them to another device (owner decision 7 Oct 2026). A browser that refuses
+ * storage simply keeps the choice for this page only.
  */
 
 const listeners = new Set<() => void>();
@@ -71,8 +73,11 @@ function write(key: string, value: string | null): void {
     else window.localStorage.setItem(key, value);
   } catch {
     // Storage refused: the choice lasts for this page only.
+    notify();
+    return;
   }
   notify();
+  announceWorkSyncChange(key);
 }
 
 const serverSnapshot = () => null;
@@ -129,8 +134,9 @@ export function useMyDayDeviceState(today: string): MyDayDeviceState {
 export const MY_DAY_QUICK_NOTE_LIMIT = 500;
 
 /**
- * The quick note on Me: kept on this device for this account only (the same
- * account-scoped store as the hidden cards), never sent anywhere.
+ * The quick note on Me: kept in the same account-scoped store as the hidden
+ * cards, and copied to the account unless it reads as a patient detail (the
+ * server refuses those, and the note then stays on this device).
  */
 export function useMyDayQuickNote(): readonly [string, (value: string) => void] {
   const raw = useSyncExternalStore(subscribe, () => read(MY_DAY_QUICK_NOTE_STORAGE_KEY), serverSnapshot);

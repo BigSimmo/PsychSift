@@ -165,6 +165,11 @@ export const WORK_SETUP_PROGRESS_STORAGE_KEY = "psychsift:work-setup:progress-v1
  * Page ids only, never records. Kept on this device only.
  */
 export const WORK_TAB_PICKS_STORAGE_KEY = "psychsift:work:tab-picks-v1";
+/**
+ * localStorage — "1" once this device has matched its work choices with the account copy
+ * (`src/lib/work-sync/`). Until then a sign-in merges the two; after it the account copy wins.
+ */
+export const WORK_ACCOUNT_SYNC_MARKER_KEY = "psychsift:work:account-sync-v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -253,6 +258,7 @@ export function clearAccountScopedBrowserStorage(): void {
   }
   removeQuietly(() => window.localStorage, WORK_SETUP_PROGRESS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, WORK_TAB_PICKS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, WORK_ACCOUNT_SYNC_MARKER_KEY);
   stripAccountScopedPreferences();
   // The catch-all: every other `psychsift:` key, the clinical drafts, IndexedDB,
   // page caches and PsychSift's notifications (see account-device-sweep.ts).

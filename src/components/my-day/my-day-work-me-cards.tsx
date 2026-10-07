@@ -50,6 +50,7 @@ import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { SessionSummary } from "@/lib/teaching/model";
 import { zonedDateOf } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { useWorkSyncStatus } from "@/lib/work-sync/work-sync-client";
 
 /*
  * The On shift (`?page=work`) and My records (`?page=me`) cards in the flat
@@ -875,16 +876,30 @@ export function CpdMonthCard({
   );
 }
 
-/** A note on this device only, for this account. Never sent anywhere. */
+const QUICK_NOTE_KEPT: Readonly<Record<ReturnType<typeof useWorkSyncStatus>, string>> = {
+  account: "Saved to your account, so it shows on your other devices.",
+  device: "Not saved to your account because it may hold a patient detail. It stays on this device.",
+  off: "Deleted when you sign out.",
+};
+
+/**
+ * A note for this account. Signed in, it is copied to the account and follows
+ * the doctor to other devices, unless it reads as a patient detail.
+ */
 export function QuickNoteCard() {
   const [note, setNote] = useMyDayQuickNote();
+  const kept = useWorkSyncStatus("myDayQuickNote");
   const fieldId = useId();
   const hintId = useId();
   return (
     <QuietSection
       title="Quick note"
       testId="my-day-card-quick-note"
-      aside={<span className="text-2xs font-semibold text-[color:var(--text-muted)]">This device only</span>}
+      aside={
+        <span className="text-2xs font-semibold text-[color:var(--text-muted)]">
+          {kept === "account" ? "Your account" : "This device only"}
+        </span>
+      }
     >
       <label htmlFor={fieldId} className="sr-only">
         Quick note
@@ -901,9 +916,7 @@ export function QuickNoteCard() {
         className="min-h-14 w-full resize-y rounded-lg border border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] px-3 py-2.5 text-sm text-[color:var(--work-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)] forced-colors:border"
       />
       <div id={hintId}>
-        <QuietFoot icon={TriangleAlert}>
-          Never write patient names or details here. Deleted when you sign out.
-        </QuietFoot>
+        <QuietFoot icon={TriangleAlert}>Never write patient names or details here. {QUICK_NOTE_KEPT[kept]}</QuietFoot>
       </div>
     </QuietSection>
   );
