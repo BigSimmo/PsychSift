@@ -5,7 +5,11 @@ import { CmeNewEntryRoute } from "@/components/cme/cme-new-entry-route";
 import { DEMO_CME_ENTRIES, DEMO_CME_YEAR } from "@/lib/cme/demo-year";
 import type { CmeRoutine } from "@/lib/cme/routines";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+// work-mode redesign, owner request 6 Oct 2026: the form page now has its own back header, which reads the path.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/cme/new",
+}));
 
 describe("Log again chips on the new-entry form", () => {
   it("offers up to five recent activities, each opening the existing repeat prefill", () => {

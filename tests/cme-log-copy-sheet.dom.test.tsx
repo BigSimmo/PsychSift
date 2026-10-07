@@ -239,18 +239,21 @@ describe("log page structure", () => {
     expect(screen.getByTestId("cme-log-month-total").querySelector("[aria-hidden]")?.textContent).toBe(`${sum}\u00a0h`);
     expect(screen.getByTestId("cme-log-month-total")).toHaveTextContent(`${sum} hours in 2026`);
     expect(screen.getByTestId("cme-log-month-hours-2026-09")).toHaveTextContent("1.5");
-    // Grey bars, the current month the one indigo mark.
-    expect(strip.querySelector('[data-month-bar="2026-09"]')?.className).toContain("var(--clinical-accent)");
-    expect(strip.querySelector('[data-month-bar="2026-08"]')?.className).toContain("var(--border-strong)");
+    // work-mode redesign, owner request 6 Oct 2026: pale bars, the current month the one
+    // copper mark, set by data attribute for the area's own CSS.
+    expect(strip.querySelector('[data-month-bar="2026-09"]')).toHaveAttribute("data-current");
+    expect(strip.querySelector('[data-month-bar="2026-08"]')).not.toHaveAttribute("data-current");
   });
 
   it("offers the next uncopied activity from a plain note, naming MyCPD only for a RANZCP year", () => {
     const { unmount } = render(<CmeLogPage entries={ENTRIES} set={SET} today="2026-09-26" />);
     const note = screen.getByTestId("cme-log-copy-help");
-    expect(note).toHaveTextContent("2 activities not marked copied to your CPD home");
-    expect(note).toHaveTextContent("PsychSift sends nothing to your college.");
+    // work-mode redesign, owner request 6 Oct 2026: the mock-up's "3 not marked copied" strip.
+    expect(note).toHaveTextContent("2 not marked copied to your CPD home");
+    // work-mode redesign, owner request 6 Oct 2026: the mock-up's short strip line.
+    expect(note).toHaveTextContent("Copy one, paste it into your CPD home");
     expect(note).not.toHaveTextContent(/MyCPD|RANZCP/);
-    expect(within(note).getByRole("button", { name: "Copy the next one" })).toBeInTheDocument();
+    expect(within(note).getByRole("button", { name: "Copy next" })).toBeInTheDocument();
     unmount();
     render(
       <CmeLogPage
@@ -260,10 +263,8 @@ describe("log page structure", () => {
       />,
     );
     const ranzcp = screen.getByTestId("cme-log-copy-help");
-    expect(ranzcp).toHaveTextContent("2 activities not marked copied to MyCPD");
-    expect(ranzcp).toHaveTextContent(
-      "Copy one, paste it into MyCPD, then mark it copied. PsychSift sends nothing to RANZCP.",
-    );
+    expect(ranzcp).toHaveTextContent("2 not marked copied to MyCPD");
+    expect(ranzcp).toHaveTextContent("Copy one, paste it into MyCPD");
   });
 
   it("pins each month header within its month on a surface token", () => {
@@ -271,7 +272,7 @@ describe("log page structure", () => {
     const header = screen.getByTestId("cme-log-month-header-2026-09");
     expect(header.className).toMatch(/\bsticky\b/);
     expect(header.className).toMatch(/\btop-0\b/);
-    expect(header.className).toContain("bg-[color:var(--background)]");
+    expect(header.className).toContain("bg-[color:var(--surface-raised)]"); // work-mode redesign, owner request 6 Oct 2026: work pages sit on white
   });
 
   it("keeps Download CSV and the annual summary reachable behind More", async () => {

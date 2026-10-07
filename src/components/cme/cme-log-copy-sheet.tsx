@@ -8,7 +8,7 @@ import { cmeCpdHomeWords } from "@/components/cme/cme-log-shared";
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
-import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
+import { InlineNotice, textMuted } from "@/components/ui-primitives";
 import { formatEntryForCpdHome } from "@/lib/cme/clipboard";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
@@ -136,26 +136,40 @@ export function CmeLogCopySheet({
   }
 
   const footer = finished ? (
-    <Button variant="primary" block onClick={onClose} testId="cme-log-copy-close">
+    <button
+      type="button"
+      className="work-button min-h-tap w-full"
+      data-variant="primary"
+      data-size="wide"
+      onClick={onClose}
+      data-testid="cme-log-copy-close"
+    >
       Close
-    </Button>
+    </button>
   ) : (
     <div className="flex gap-2">
-      <Button className="flex-1" onClick={() => moveTo(index + 1)} disabled={busy} testId="cme-log-copy-skip">
-        Skip
-      </Button>
-      <Button
-        variant="primary"
-        className="flex-[2]"
-        icon={Check}
-        busy={busy}
-        busyLabel="Saving…"
-        disabled={demoMode || !current}
-        onClick={() => void markAndNext()}
-        testId="cme-log-copy-mark"
+      <button
+        type="button"
+        className="work-button min-h-tap flex-1"
+        data-variant="secondary"
+        onClick={() => moveTo(index + 1)}
+        disabled={busy}
+        data-testid="cme-log-copy-skip"
       >
-        Mark copied, next
-      </Button>
+        Skip
+      </button>
+      <button
+        type="button"
+        className="work-button min-h-tap flex-[2]"
+        data-variant="primary"
+        aria-busy={busy || undefined}
+        disabled={busy || demoMode || !current}
+        onClick={() => void markAndNext()}
+        data-testid="cme-log-copy-mark"
+      >
+        <Check aria-hidden="true" strokeWidth={2.2} />
+        {busy ? "Saving…" : "Mark copied, next"}
+      </button>
     </div>
   );
 
@@ -183,16 +197,12 @@ export function CmeLogCopySheet({
         ) : null}
 
         {lastMarked && !demoMode ? (
-          <div data-testid="cme-log-copy-last" className="flex flex-wrap items-center gap-x-2">
+          <div data-testid="cme-log-copy-last" className="cpd-ban">
+            <Check aria-hidden="true" strokeWidth={2} />
             <span className={textMuted}>
               Marked copied: <span className="text-[color:var(--text)]">{lastMarked.title}</span>
             </span>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void undo()}
-              className="min-h-tap font-medium text-[color:var(--clinical-accent)] underline underline-offset-2"
-            >
+            <button type="button" disabled={busy} onClick={() => void undo()} className="work-label__link min-h-tap">
               Undo
             </button>
           </div>
@@ -206,18 +216,18 @@ export function CmeLogCopySheet({
           </p>
         ) : (
           <>
-            <dl
-              data-testid="cme-log-copy-fields"
-              className="divide-y divide-[color:var(--border)] rounded-lg border border-[color:var(--border)]"
-            >
+            <dl data-testid="cme-log-copy-fields" className="work-card m-0">
               {fields.map((field, position) => {
                 const key = `${position}:${field.label}`;
                 const copied = copiedField === key;
                 const name = field.label || "this line";
                 return (
-                  <div key={key} className="flex items-start gap-3 py-1 pl-3 pr-1">
+                  <div
+                    key={key}
+                    className="flex items-start gap-3 border-t border-[color:var(--work-line)] py-0.5 pl-3 pr-1 first:border-t-0"
+                  >
                     <div className="grid min-w-0 flex-1 gap-0.5 py-2">
-                      <dt className={cn(textMuted, "text-xs")}>{field.label}</dt>
+                      <dt className="text-xs font-semibold text-[color:var(--text-muted)]">{field.label}</dt>
                       <dd className="whitespace-pre-wrap break-words text-[color:var(--text)]">{field.value}</dd>
                     </div>
                     <Button

@@ -74,7 +74,7 @@ export function CmeDomainsRing({
   return (
     <CmeGroup
       testId={`cme-domains-ring-${requirement.id}`}
-      label={`${groupName(requirement)} · ${filledCount} of ${buckets.length} covered`}
+      label={`${groupName(requirement)} · ${filledCount} of ${buckets.length}`}
       end={source}
     >
       <div className="flex items-center gap-4">

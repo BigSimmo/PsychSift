@@ -484,11 +484,9 @@ describe("Log rows, grouped by month", () => {
 
   it("makes Log an activity the page's one filled button, in CPD indigo, with no floating Log", () => {
     const { container } = render(<CmeLogPage entries={fixtureEntries} set={fixtureSet} today={TODAY} />);
+    // work-mode redesign, owner request 6 Oct 2026: filled buttons are the kit's primary variant, in the dock.
     const filled = [...container.querySelectorAll<HTMLElement>("button, a[href]")].filter(
-      (node) =>
-        node.className.includes("bg-[color:var(--command)]") ||
-        node.className.includes("bg-[color:var(--clinical-accent)]") ||
-        node.className.includes("bg-[color:var(--cme-filled)]"),
+      (node) => node.getAttribute("data-variant") === "primary",
     );
     expect(filled.map((node) => node.getAttribute("data-testid"))).toEqual(["cme-log-new-entry"]);
     expect(screen.getByTestId("cme-log-new-entry")).toHaveTextContent("Log an activity");

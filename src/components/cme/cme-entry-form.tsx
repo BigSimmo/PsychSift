@@ -151,6 +151,12 @@ export type CmeEntryFormProps = {
   /** Existing owner entries, used only to ask before a same-day repeat. */
   existingEntries?: readonly CmeEntry[];
   availableDomains?: readonly string[];
+  /**
+   * Categories an hours target this year is still short in, furthest from met
+   * first. Each gets a "Still short" tag on its chip. A hint only: nothing is
+   * preselected, and the tag is absent when the list is empty.
+   */
+  stillShort?: readonly CmeCategory[];
   submitLabel?: string;
   onDirtyChange?: (dirty: boolean) => void;
   /**
@@ -205,6 +211,7 @@ export function CmeEntryForm({
   initialStatedHours,
   existingEntries = [],
   availableDomains = [],
+  stillShort = [],
   submitLabel = "Save entry",
   onDirtyChange,
   draftStorageKey,
@@ -575,32 +582,39 @@ export function CmeEntryForm({
     void performSave(proposed);
   }
 
+  // In a sheet footer the mockup names the hours ("Save 1 h") once they are
+  // chosen. The page form keeps its own label.
+  const saveLabel = actionContainer && statedHours > 0 ? `Save ${statedHours}\u00a0h` : submitLabel;
+  const saveButton = (
+    <Button
+      type="submit"
+      form={formId}
+      variant="primary"
+      // aria-disabled rather than disabled: Save keeps its Tab stop, so the
+      // reason under it can be reached by keyboard (docs/wiring-conventions.md).
+      // handleSubmit refuses to save while !canSave.
+      aria-disabled={!canSave || undefined}
+      busy={saving}
+      busyLabel="Saving…"
+      block
+      aria-describedby={saveBlockedReason ? "cme-entry-save-blocked" : undefined}
+    >
+      {saveLabel}
+    </Button>
+  );
+  const saveReason = saveBlockedReason ? (
+    <p
+      id="cme-entry-save-blocked"
+      data-testid="cme-entry-save-blocked"
+      className={cn("mt-2 text-center text-xs", textMuted)}
+    >
+      {saveBlockedReason}
+    </p>
+  ) : null;
   const saveControl = (
     <>
-      <Button
-        type="submit"
-        form={formId}
-        variant="primary"
-        // aria-disabled rather than disabled: Save keeps its Tab stop, so the
-        // reason under it can be reached by keyboard (docs/wiring-conventions.md).
-        // handleSubmit refuses to save while !canSave.
-        aria-disabled={!canSave || undefined}
-        busy={saving}
-        busyLabel="Saving…"
-        block
-        aria-describedby={saveBlockedReason ? "cme-entry-save-blocked" : undefined}
-      >
-        {submitLabel}
-      </Button>
-      {saveBlockedReason ? (
-        <p
-          id="cme-entry-save-blocked"
-          data-testid="cme-entry-save-blocked"
-          className={cn("mt-2 text-center text-xs", textMuted)}
-        >
-          {saveBlockedReason}
-        </p>
-      ) : null}
+      {saveButton}
+      {saveReason}
     </>
   );
 
@@ -725,12 +739,25 @@ export function CmeEntryForm({
               key={category}
               pressed={mode === category}
               title={cmeCategoryLabels[category]}
+              ariaDescribedBy={stillShort.includes(category) ? `${formId}-still-short-${category}` : undefined}
               onPress={() => {
                 categoryChosenByUser.current = true;
                 setMode(category);
               }}
             >
               {CATEGORY_CHIP_LABELS[category]}
+              {stillShort.includes(category) ? (
+                // Described, not named: the chip is still called by its
+                // category, and a screen reader adds "Still short" after it.
+                <span
+                  aria-hidden="true"
+                  id={`${formId}-still-short-${category}`}
+                  className="work-tag"
+                  data-testid={`cme-entry-still-short-${category}`}
+                >
+                  Still short
+                </span>
+              ) : null}
             </CmeChoiceChip>
           ))}
           <CmeChoiceChip
@@ -802,7 +829,7 @@ export function CmeEntryForm({
             inputMode="decimal"
             value={formalPeerReviewText}
             onChange={(event) => setFormalPeerReviewText(event.target.value)}
-            hint="Credit within reviewing-performance hours; it does not add extra hours."
+            hint="Credit within reviewing-performance hours. It does not add extra hours."
           />
           {!formalPeerReviewValid ? (
             <p className={cn("-mt-4 text-xs font-medium", textMuted)}>Use a positive plain number, such as 1 or 1.5.</p>
@@ -896,22 +923,27 @@ export function CmeEntryForm({
 
       {actionContainer ? (
         createPortal(
-          <div className="grid gap-2">
-            {saveControl}
-            {onSaveDraft ? (
-              <Button
-                type="button"
-                variant="secondary"
-                busy={savingDraft}
-                busyLabel="Saving draft…"
-                disabled={saving || (!title.trim() && !reflection.trim())}
-                onClick={() => void handleSaveDraft()}
-                testId="cme-entry-save-draft"
-                block
-              >
-                Keep as draft
-              </Button>
-            ) : null}
+          <div>
+            <div className="flex gap-2">
+              {onSaveDraft ? (
+                <div className="min-w-0 flex-1">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    busy={savingDraft}
+                    busyLabel="Saving draft…"
+                    disabled={saving || (!title.trim() && !reflection.trim())}
+                    onClick={() => void handleSaveDraft()}
+                    testId="cme-entry-save-draft"
+                    block
+                  >
+                    Save as draft
+                  </Button>
+                </div>
+              ) : null}
+              <div className="min-w-0 flex-[1.4]">{saveButton}</div>
+            </div>
+            {saveReason}
           </div>,
           actionContainer,
         )

@@ -74,7 +74,8 @@ describe("CME capture routes", () => {
   it("opens confirmed Set up as a read view with a link to its editor", () => {
     render(<CmeSetupRoute year={2025} set={requirementSet} demoMode={false} />);
     expect(screen.getByTestId("cme-programme-page")).toHaveTextContent(requirementSet.confirmedSource);
-    expect(screen.getByRole("link", { name: /re-confirm against this year/i })).toHaveAttribute(
+    // work-mode redesign, owner request 6 Oct 2026: the mockup's "Re-confirm targets".
+    expect(screen.getByRole("link", { name: /re-confirm targets/i })).toHaveAttribute(
       "href",
       "/cme/setup?year=2025&edit=1",
     );

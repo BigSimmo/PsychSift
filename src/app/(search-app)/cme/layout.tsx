@@ -5,6 +5,9 @@ import { isDemoMode } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ModeBand } from "@/components/mode-band/mode-band";
 
+// CPD's own work-mode pieces (copper shades, hours bar, month chart, switch).
+import "@/components/cme/cme-work.css";
+
 /** Bind server-rendered private records to the owner verified for this response. */
 export default async function CmeLayout({ children }: { children: ReactNode }) {
   const demoMode = isDemoMode();
@@ -28,13 +31,10 @@ export default async function CmeLayout({ children }: { children: ReactNode }) {
     // The band sits outside the owner boundary: it holds no private record, so it
     // shows signed out, offline and while the session is checked, and the page's
     // status line and counts reach it from inside the boundary.
-    // A record, a form and the summary keep their own back-arrow headers.
-    <ModeBand
-      modeId="cme"
-      customiseHref="/cme/customise"
-      statusSlot={["/cme"]}
-      hiddenOn={["/cme/log/", "/cme/new", "/cme/summary"]}
-    >
+    // A record, a form, the summary and Customise keep their own back-arrow headers.
+    // Each page names its own band (eyebrow: when its records loaded) and puts
+    // its own one action in the band (work-mode redesign, owner request 6 Oct 2026).
+    <ModeBand modeId="cme" hiddenOn={["/cme/log/", "/cme/new", "/cme/summary", "/cme/customise"]}>
       <CmeOwnerBoundary serverOwnerId={serverOwnerId} serverAuthVerified={serverAuthVerified} demoMode={demoMode}>
         <Suspense fallback={null}>
           <CmePageTabs />

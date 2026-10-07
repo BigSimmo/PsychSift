@@ -138,7 +138,7 @@ export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: 
         ) : null}
         {demoMode ? (
           <div className="mt-4">
-            <InlineNotice tone="neutral">Demo mode is read-only; the form is shown for inspection.</InlineNotice>
+            <InlineNotice tone="neutral">Demo mode is read-only. The form is shown for inspection.</InlineNotice>
           </div>
         ) : null}
         <div className="mt-6">

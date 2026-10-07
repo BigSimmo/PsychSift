@@ -363,10 +363,8 @@ test.describe("CME phone design", () => {
     await sheet.getByLabel("What was it", { exact: false }).fill("Synthetic grand round");
     await sheet.getByRole("group", { name: "Hours" }).getByRole("button", { name: "1", exact: true }).click();
     await sheet.getByRole("button", { name: "Educational", exact: true }).click();
-    await expect(sheet.getByRole("button", { name: "Save entry", exact: true })).not.toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    // work-mode redesign, owner request 6 Oct 2026: the sheet's Save names the hours chosen.
+    await expect(sheet.getByRole("button", { name: /^Save 1\s+h$/ })).not.toHaveAttribute("aria-disabled", "true");
     expect(writes).toEqual([]);
   });
 
