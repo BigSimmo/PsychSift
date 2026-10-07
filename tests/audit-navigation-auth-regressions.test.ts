@@ -229,8 +229,10 @@ describe("audit navigation and auth regressions", () => {
     // menu), so it always announces `dialog` regardless of phone layout.
     expect(masterSearchHeaderSource).toContain('aria-haspopup="dialog"');
     expect(masterSearchHeaderSource).toContain('mobilePlacement="bottom"');
+    // Near-full height on the phone, a centred dialog from `sm` up. The colour
+    // follows the level (direction B, 7 Oct 2026), so only the frame is pinned.
     expect(masterSearchHeaderSource).toContain(
-      'contentClassName="max-h-[calc(100dvh-0.75rem)] rounded-t-3xl bg-[color:var(--surface-lux)] sm:max-w-md sm:rounded-2xl"',
+      '"max-h-[calc(100dvh-0.75rem)] rounded-t-[2rem] sm:max-w-md sm:rounded-2xl"',
     );
     // Row sizes live in the shared mode-picker row; the header passes its phone layout through.
     expect(masterSearchHeaderSource).toContain("modePickerRowClass(active, usesPhoneSearchLayout)");

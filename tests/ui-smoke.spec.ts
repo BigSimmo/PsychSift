@@ -2014,6 +2014,18 @@ test.describe("PsychSift UI smoke coverage", () => {
       "aria-pressed",
       "true",
     );
+    // Direction B (Josh, 7 Oct 2026): the toggle sits in the coloured header
+    // band, lined up with the title on the left and the close button on the right.
+    await expect(modeSheet.getByTestId("app-mode-sheet-band")).toHaveAttribute("data-mode-identity", "answer");
+    const toggleBounds = await sideToggle.boundingBox();
+    const closeBounds = await modeSheet.getByRole("button", { name: "Close mode menu" }).boundingBox();
+    const titleBounds = await modeSheet.getByRole("heading", { name: "Choose mode" }).boundingBox();
+    expect(toggleBounds && closeBounds && titleBounds).toBeTruthy();
+    expect(Math.abs(toggleBounds!.x - titleBounds!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(toggleBounds!.x + toggleBounds!.width - (closeBounds!.x + closeBounds!.width))).toBeLessThanOrEqual(
+      1,
+    );
+    expect(toggleBounds!.height).toBeGreaterThanOrEqual(44);
     const modeOptions = appModeMenu.getByRole("menuitemradio");
     const modeCount = await modeOptions.count();
     expect(modeCount).toBeGreaterThanOrEqual(10);

@@ -82,9 +82,14 @@ import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
 import { workAreaFor } from "@/lib/work-frame/areas";
 import { modePickerHint } from "@/lib/mode-picker-hints";
 import {
+  modePickerCardClass,
+  modePickerCardRowClass,
+  ModePickerCurrentMode,
+  modePickerGlassClass,
   ModePickerKeyHints,
   ModePickerRowContent,
   modePickerRowClass,
+  ModePickerSheetBand,
   ModePickerSideToggle,
 } from "@/components/mode-picker/mode-picker-row";
 import {
@@ -1359,7 +1364,7 @@ export function MasterSearchHeader({
         onPointerEnter={() => prefetchModeSelection(mode.id)}
         onKeyDown={(event) => handleModeOptionKeyDown(event, index)}
         onClick={() => selectAppMode(mode)}
-        className={modeMenuRowClass(active)}
+        className={cn(modeMenuRowClass(active), usesPhoneSearchLayout && modePickerCardRowClass)}
         // Each row wears its own area's colour (tile, tick, selected tint).
         data-mode-identity={mode.id}
       >
@@ -2925,16 +2930,22 @@ export function MasterSearchHeader({
           // already names the mode ("My Day pages"), so saying it twice is noise.
           descriptionContent={
             modeSheetView === "sections" ? undefined : (
-              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs leading-5 text-[color:var(--text-muted)]">
-                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                  <SelectedAppModeIcon aria-hidden="true" className="size-icon-xs" strokeWidth={1.9} />
-                </span>
-                <span className="min-w-0 truncate">
-                  Currently{" "}
-                  <span className="font-semibold text-[color:var(--text-heading)]">{selectedAppMode.label}</span>
-                </span>
-              </span>
+              <ModePickerCurrentMode
+                modeId={selectedAppMode.id}
+                label={selectedAppMode.label}
+                icon={SelectedAppModeIcon}
+              />
             )
+          }
+          // Direction B (Josh, 7 Oct 2026): the header is a band in the current
+          // mode's colour. Out of flow, so it adds no width beside the title.
+          titleAccessory={<ModePickerSheetBand modeId={selectedAppMode.id} icon={SelectedAppModeIcon} />}
+          // The Sheet's header-bottom slot bleeds 1rem left but, being a full-basis
+          // flex item, stays only as wide as the header's content. So the toggle
+          // steps back in on the left and keeps that full width, which lines it up
+          // with the title and the close button. The phone smoke test pins it.
+          headerBottom={
+            modeSheetView === "sections" ? undefined : <div className="ml-4 w-full">{renderModeSideToggle()}</div>
           }
           closeLabel="Close mode menu"
           returnFocusRef={modeButtonRef}
@@ -2943,63 +2954,63 @@ export function MasterSearchHeader({
           mobileSize="content"
           mobileHeaderSafeArea="padding"
           testId="app-mode-menu-sheet"
-          contentClassName="max-h-[calc(100dvh-0.75rem)] rounded-t-3xl bg-[color:var(--surface-lux)] sm:max-w-md sm:rounded-2xl"
-          bodyClassName="bg-[color:var(--surface-lux)] px-2.5 pb-2 pt-0.5"
-          headerClassName="bg-[color:var(--surface-lux)] px-4 pb-3 pt-1.5"
-          titleClassName={
-            modeSheetView === "sections" ? modePagesSheetTitleClass : "tracking-[var(--tracking-display)]"
+          contentClassName={cn(
+            "max-h-[calc(100dvh-0.75rem)] rounded-t-[2rem] sm:max-w-md sm:rounded-2xl",
+            modeSheetView === "sections" ? "bg-[color:var(--surface-lux)]" : "bg-[color:var(--surface-wash)]",
+          )}
+          bodyClassName={
+            modeSheetView === "sections"
+              ? "bg-[color:var(--surface-lux)] px-2.5 pb-2 pt-0.5"
+              : "bg-[color:var(--surface-wash)] px-4 pb-6 pt-4"
           }
-          closeButtonClassName="grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] forced-colors:border motion-reduce:transition-none"
+          headerClassName="relative isolate border-b-0 bg-transparent px-4 pb-3.5 pt-1.5"
+          titleClassName={
+            modeSheetView === "sections"
+              ? modePagesSheetTitleClass
+              : "text-xl font-bold tracking-[var(--tracking-display)]"
+          }
+          closeButtonClassName={cn(
+            "grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
+            modePickerGlassClass,
+          )}
         >
           {modeSheetView === "sections" ? (
             renderModeSectionLevel()
           ) : (
-            <>
-              <div className="sticky top-0 z-10 -mx-2.5 bg-[color:var(--surface-lux)] px-2.5 pb-2 pt-1">
-                {renderModeSideToggle()}
-              </div>
-              <div ref={phoneModeMenuListRef} id="app-mode-menu" role="menu" aria-label="Choose app mode">
-                {phoneModeGroups.map((group) => {
-                  const groupModes = group.modeIds.flatMap((modeId) => {
-                    const mode = modeMenuOptions.find((candidate) => candidate.id === modeId);
-                    return mode ? [mode] : [];
-                  });
-                  if (groupModes.length === 0) return null;
-                  const headingId = `app-mode-group-${group.id}`;
-                  return (
-                    <section
-                      key={group.id}
-                      role="group"
-                      aria-labelledby={headingId}
-                      data-mode-group={group.id}
-                      className="pt-3 first:pt-1"
-                    >
-                      <div className="sticky top-14 z-[5] -mx-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-lux)]/96 px-3 py-1.5 backdrop-blur-md">
-                        <div className="flex min-w-0 items-baseline gap-2">
-                          <h3
-                            id={headingId}
-                            className="shrink-0 text-2xs font-black uppercase tracking-kicker text-[color:var(--text-muted)]"
-                          >
-                            {group.label}
-                          </h3>
-                          <p className="min-w-0 truncate text-2xs font-medium text-[color:var(--text-muted)]">
-                            {group.hint}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-1.5 grid gap-1">
-                        {groupModes.map((mode) =>
-                          renderModeMenuOption(
-                            mode,
-                            modeMenuOptions.findIndex((candidate) => candidate.id === mode.id),
-                          ),
-                        )}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-            </>
+            <div
+              ref={phoneModeMenuListRef}
+              id="app-mode-menu"
+              role="menu"
+              aria-label="Choose app mode"
+              className="grid gap-4"
+            >
+              {phoneModeGroups.map((group) => {
+                const groupModes = group.modeIds.flatMap((modeId) => {
+                  const mode = modeMenuOptions.find((candidate) => candidate.id === modeId);
+                  return mode ? [mode] : [];
+                });
+                if (groupModes.length === 0) return null;
+                const headingId = `app-mode-group-${group.id}`;
+                return (
+                  <section key={group.id} role="group" aria-labelledby={headingId} data-mode-group={group.id}>
+                    <div className="flex min-w-0 items-baseline gap-2 px-1 pb-2">
+                      <h3 id={headingId} className="shrink-0 text-sm font-bold text-[color:var(--text-heading)]">
+                        {group.label}
+                      </h3>
+                      <p className="min-w-0 truncate text-xs text-[color:var(--text-muted)]">{group.hint}</p>
+                    </div>
+                    <div className={modePickerCardClass}>
+                      {groupModes.map((mode) =>
+                        renderModeMenuOption(
+                          mode,
+                          modeMenuOptions.findIndex((candidate) => candidate.id === mode.id),
+                        ),
+                      )}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
           )}
         </Sheet>
       ) : null}

@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react";
+import { BriefcaseMedical, Check, ChevronDown, ChevronUp, Stethoscope, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
 import { modeSideLabels, modeSides, type ModeSide } from "@/lib/phone-mode-groups";
@@ -77,7 +77,7 @@ export function ModePickerRowContent({
         data-mode-icon={modeIconId}
         className={cn(
           "grid place-items-center border text-[color:var(--clinical-accent)] transition-colors duration-[var(--duration-fast)] motion-reduce:transition-none",
-          phone ? "h-10 w-10 rounded-xl" : "h-8 w-8 rounded-lg",
+          phone ? "h-10 w-10 rounded-full" : "h-8 w-8 rounded-lg",
           neutral
             ? "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]"
             : active
@@ -97,18 +97,14 @@ export function ModePickerRowContent({
           </span>
         ) : null}
       </span>
-      {active && phone ? (
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]">
-          <Check aria-hidden="true" className="size-icon-sm" strokeWidth={2.5} />
-        </span>
-      ) : active ? (
+      {active ? (
         <Check
           aria-hidden="true"
           className="size-icon-md shrink-0 text-[color:var(--clinical-accent)]"
-          strokeWidth={2.5}
+          strokeWidth={phone ? 2.6 : 2.5}
         />
       ) : (
-        <span aria-hidden="true" className={phone ? "h-6 w-6" : "size-icon-md"} />
+        <span aria-hidden="true" className="size-icon-md" />
       )}
     </>
   );
@@ -148,10 +144,91 @@ export function ModePickerKeyHints() {
 }
 
 /**
+ * Glass, the one recipe for floating controls (work-mode.css): a see-through
+ * fill, a hairline and a blur, no shadow. The work tokens only exist inside a
+ * work frame, so each carries a fallback for the sheet's portal.
+ */
+export const modePickerGlassClass =
+  "border border-[color:var(--work-glass-line,var(--border))] bg-[color:var(--work-glass-fill,color-mix(in_srgb,var(--surface)_72%,transparent))] backdrop-blur-[18px] backdrop-saturate-[1.8]";
+
+/**
+ * Direction B (Josh, 7 Oct 2026): on the phone each group's modes sit in one
+ * white card, with hairline dividers that start past the icon.
+ */
+export const modePickerCardClass =
+  "overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]";
+
+/** Added to a phone row inside that card: square edges, no ring, an inset divider above every row but the first. */
+export const modePickerCardRowClass =
+  "rounded-none px-3 ring-0 not-first:before:absolute not-first:before:inset-x-0 not-first:before:left-16 not-first:before:top-0 not-first:before:h-px not-first:before:bg-[color:var(--border)]";
+
+/**
+ * The phone sheet's header band, drawn behind the title in the current mode's
+ * colour: the work band's pale fill, its dot texture and a faint line drawing of
+ * the mode's icon. The caller makes the header `relative isolate`, so this sits
+ * under the title and close button. It reaches up over the sheet's drag grip
+ * (which still takes the drag, because the band ignores the pointer) and draws
+ * the grip again on top, so the colour runs to the sheet's rounded top edge.
+ */
+export function ModePickerSheetBand({ modeId, icon: Icon }: { modeId: string; icon: LucideIcon }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-mode-identity={modeId}
+      data-testid="app-mode-sheet-band"
+      className="pointer-events-none absolute inset-x-0 -top-4 bottom-0 -z-10 overflow-hidden border-b border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-band)] sm:top-0"
+    >
+      <span className="absolute inset-0 bg-[radial-gradient(var(--mode-identity-border)_0.7px,transparent_0.8px)] bg-[length:12px_12px] opacity-55" />
+      <Icon
+        aria-hidden="true"
+        className="absolute -bottom-11 -right-5 h-40 w-40 text-[color:var(--mode-identity)] opacity-[0.12]"
+        strokeWidth={1.25}
+      />
+      <span className="absolute left-1/2 top-2 h-1 w-9 -translate-x-1/2 rounded-full bg-[color:var(--border-strong)] sm:hidden" />
+    </span>
+  );
+}
+
+/**
+ * "Currently <mode>" under the sheet title, with a small badge in the mode's
+ * colour: its two-stop gradient, which is flat for a mode with no work palette.
+ */
+export function ModePickerCurrentMode({
+  modeId,
+  label,
+  icon: Icon,
+}: {
+  modeId: string;
+  label: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <span className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm leading-5 text-[color:var(--text-muted)]">
+      <span
+        data-mode-identity={modeId}
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[linear-gradient(160deg,var(--mode-identity-2),var(--mode-identity)_70%)] text-[color:var(--mode-identity-contrast)] forced-colors:border"
+      >
+        <Icon aria-hidden="true" className="size-icon-xs" strokeWidth={2} />
+      </span>
+      <span className="min-w-0 truncate">
+        Currently <span className="font-semibold text-[color:var(--text-heading)]">{label}</span>
+      </span>
+    </span>
+  );
+}
+
+const modeSideIcons: Record<ModeSide, LucideIcon> = {
+  clinical: Stethoscope,
+  work: BriefcaseMedical,
+};
+
+/**
  * The Clinical and Work toggle at the top of the mode list (Josh, 7 Oct 2026).
  * It filters the list below to one side. Two pressed-state buttons rather than
  * tabs: the list it filters is a menu, and a menu cannot sit inside a tab panel.
- * Flat, like the rows: the chosen side is a white segment on a quiet track.
+ * On the phone it is a glass pill in the header band (direction B); on the
+ * desktop popover it stays a quiet flat track. The chosen side is a white
+ * segment with a hairline in both.
  */
 export function ModePickerSideToggle({
   side,
@@ -168,12 +245,15 @@ export function ModePickerSideToggle({
       aria-label="Show modes"
       data-testid="app-mode-side-toggle"
       className={cn(
-        "grid grid-cols-2 gap-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-0.5",
-        phone ? "h-11" : "h-10",
+        "grid grid-cols-2 gap-1 p-0.5",
+        phone
+          ? cn("h-11 rounded-full", modePickerGlassClass)
+          : "h-10 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)]",
       )}
     >
       {modeSides.map((option) => {
         const pressed = option === side;
+        const Icon = modeSideIcons[option];
         return (
           <button
             key={option}
@@ -182,12 +262,14 @@ export function ModePickerSideToggle({
             data-mode-side={option}
             onClick={() => onChange(option)}
             className={cn(
-              "rounded-md text-sm font-semibold transition-[background-color,color] duration-[var(--duration-fast)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
+              "inline-flex items-center justify-center gap-1.5 border text-sm font-semibold transition-[background-color,color] duration-[var(--duration-fast)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
+              phone ? "rounded-full" : "rounded-md",
               pressed
-                ? "border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-heading)] forced-colors:border-[color:Highlight]"
-                : "text-[color:var(--text-muted)] hover:text-[color:var(--text-heading)]",
+                ? "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-heading)] forced-colors:border-[color:Highlight]"
+                : "border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text-heading)]",
             )}
           >
+            <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
             {modeSideLabels[option]}
           </button>
         );
