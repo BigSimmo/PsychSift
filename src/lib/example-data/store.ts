@@ -288,14 +288,29 @@ function getServerSnapshot() {
   return "server";
 }
 
+/**
+ * The sign-in state, or null when no sign-in provider is mounted (a screen
+ * rendered on its own, as many tests do). Null is never auto eligible, so an
+ * explicit choice still works and nothing else changes.
+ */
+export function useAuthIfAvailable(): ReturnType<typeof useAuthSession> | null {
+  try {
+    return useAuthSession();
+  } catch (error) {
+    if (error instanceof Error && error.message === "useAuthSession must be used within AuthProvider.") return null;
+    throw error;
+  }
+}
+
 /** Read and drive the example data switch. Pass the area to learn whether this screen shows examples. */
 export function useExampleData(area?: WorkAreaId): ExampleDataControl {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const { session, status } = useAuthSession();
+  const auth = useAuthIfAvailable();
   const autoEligible =
-    status === "signed_out" ||
-    status === "expired" ||
-    (status === "authenticated" && isNewAccount(session?.user?.created_at));
+    auth !== null &&
+    (auth.status === "signed_out" ||
+      auth.status === "expired" ||
+      (auth.status === "authenticated" && isNewAccount(auth.session?.user?.created_at)));
   const turnOn = useCallback(() => setExampleDataOn(true), []);
   const turnOff = useCallback(() => setExampleDataOn(false), []);
   return useMemo(() => {

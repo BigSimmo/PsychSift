@@ -97,6 +97,23 @@ describe("ExampleDataBanner", () => {
     }
   });
 
+  it("offers Sign in only to a signed-out visitor", () => {
+    act(() => setExampleDataOn(true));
+    renderBanner();
+    expect(screen.queryByTestId("example-data-banner-sign-in")).toBeNull();
+    cleanup();
+
+    auth.status = "signed_out";
+    try {
+      renderBanner();
+      const banner = screen.getByRole("region", { name: "Example data" });
+      expect(within(banner).getByRole("button", { name: "Sign in" })).toBeTruthy();
+      expect(within(banner).getByRole("button", { name: "Turn off example data" })).toBeTruthy();
+    } finally {
+      auth.status = "authenticated";
+    }
+  });
+
   it("goes when a real record is added in its area", () => {
     act(() => setExampleDataOn(true));
     renderBanner();

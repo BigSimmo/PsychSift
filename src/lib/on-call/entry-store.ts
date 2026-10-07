@@ -1,10 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  createElement,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { z } from "zod";
 
 import { mayContainOnCallCompliance } from "@/lib/on-call/compliance";
 import { createBrowserStore } from "@/lib/client-store-factory";
+import { isExampleRecord } from "@/lib/example-data/guards";
+import { loadExampleDataset } from "@/lib/example-data/registry";
+import { reportAreaData, useExampleData } from "@/lib/example-data/store";
 // The key, its event and the clear function live in a module that imports
 // nothing, so the auth provider can clear this cache without pulling the On
 // Call domain model into every page's bundle. Re-exported here so existing
@@ -122,6 +134,11 @@ export function readCachedOnCallEntries(): CachedOnCallEntries | null {
  */
 export function cacheOnCallEntries(entries: OnCallEntry[]): boolean {
   if (typeof window === "undefined") return false;
+  // Example rows shown by the example data switch are display only. A screen
+  // that writes back the list it was given (verify all, an edit's upsert) must
+  // never put them in the account's cache, so the whole write is refused and
+  // the real cache is left exactly as it was.
+  if (entries.some((entry) => shownExampleEntries.has(entry))) return false;
   try {
     const payload: CachedOnCallEntries = { entries, savedAt: new Date().toISOString() };
     sessionCache = JSON.stringify(payload);
@@ -247,9 +264,11 @@ export type OnCallEntriesState = {
    *  database. Nothing in this mode can be written, so a control that offers to
    *  is a control that can only fail. */
   demoMode: boolean;
-  /** True while a signed-out visitor is shown the invented sample. The rows live
-   *  in memory only (never in the entry cache or on the device), and `demoMode`
-   *  is also true so every control that writes stays off. */
+  /** True while the invented sample is shown: to a signed-out visitor, or
+   *  because the example data switch is showing examples in On Call or Admin.
+   *  The rows live in memory only (never in the entry cache, on the device or
+   *  on the server), and `demoMode` is also true so every control that writes
+   *  stays off. */
   sample: boolean;
 };
 
@@ -396,28 +415,104 @@ export function useStoredOnCallEntries(): OnCallEntriesState {
 }
 
 /**
- * What every On Call and Admin screen reads. For a signed-in reader this is
- * exactly `useStoredOnCallEntries`. For a signed-out visitor, whom the server
- * answers with no entries, it swaps in the invented sample so the real screens
- * can be seen in use.
+ * The demo corpus's fixed ids (`src/lib/on-call/demo-entries.ts`). Real rows
+ * get server-made random UUIDs, so this prefix never matches one.
+ */
+const DEMO_ENTRY_ID_PREFIX = "00000000-0000-4000-8000-";
+
+/**
+ * The example rows this module handed to a screen. They are fresh copies, so
+ * the check is exact: only rows that came from the swap below are in it, never
+ * a fetched row and never a test's fixture.
+ */
+const shownExampleEntries = new WeakSet<OnCallEntry>();
+
+/**
+ * True for an invented On Call entry: one shown by the example swap, one the
+ * shared guards recognise, or a row of the demo corpus. Use it before a write
+ * that takes a single entry (verify, edit, delete) and when deciding whether a
+ * list holds any real data.
+ */
+export function isOnCallExampleEntry(entry: OnCallEntry): boolean {
+  return shownExampleEntries.has(entry) || isExampleRecord(entry) || entry.id.startsWith(DEMO_ENTRY_ID_PREFIX);
+}
+
+type OnCallExampleScopeValue = {
+  /** On Call or Admin shows example data now (the two read the same records). */
+  readonly active: boolean;
+  /** The user turned the switch on themselves, so there is nothing to wait for. */
+  readonly explicit: boolean;
+};
+
+const OnCallExampleScopeContext = createContext<OnCallExampleScopeValue | null>(null);
+
+/**
+ * Connects `useOnCallEntries` to the example data switch. Mounted once by the
+ * work frame around each work area's pages. Outside it (a unit test, a page
+ * with no frame) the hook behaves exactly as before: signed-out sample only,
+ * and nothing is reported to the switch.
+ */
+export function OnCallExampleDataScope({ children }: { readonly children?: ReactNode }) {
+  const call = useExampleData("call");
+  const admin = useExampleData("admin");
+  const active = call.active || admin.active;
+  const explicit = call.mode === "on";
+  const value = useMemo(() => ({ active, explicit }), [active, explicit]);
+  return createElement(OnCallExampleScopeContext.Provider, { value }, children);
+}
+
+/**
+ * What every On Call and Admin screen reads. For a signed-in reader with the
+ * example data switch off this is exactly `useStoredOnCallEntries`. It swaps in
+ * the invented sample for a signed-out visitor (whom the server answers with
+ * no entries), and, inside `OnCallExampleDataScope`, whenever the switch shows
+ * examples in On Call or Admin.
  *
- * The sample is loaded on demand (so it never counts towards anyone's first
- * load) and held in this component's memory only: it is never written to the
- * entry cache or the device, it asks the server for nothing, and `demoMode` is
- * true so every control that writes stays off. While it arrives the page keeps
- * its loading state rather than showing a sign-in dead end.
+ * The sample comes from the example data registry on demand (so it never
+ * counts towards anyone's first load) and is held in this component's memory
+ * only: it is never written to the entry cache, the device or the server
+ * (`cacheOnCallEntries` refuses it), and `demoMode` and `sample` are true so
+ * every control that writes stays off. The real read still runs underneath, so
+ * turning the switch off shows the user's own entries at once. While the
+ * sample arrives the page keeps its loading state rather than showing a
+ * sign-in dead end.
+ *
+ * Inside the scope it also tells the switch whether the real read found
+ * anything, so the automatic default never covers real entries with examples.
  */
 export function useOnCallEntries(): OnCallEntriesState {
   const stored = useStoredOnCallEntries();
+  const scope = useContext(OnCallExampleScopeContext);
   const [sampleEntries, setSampleEntries] = useState<OnCallEntry[] | null>(null);
-  const { signedOut, loading, isOffline } = stored;
-  const sampling = signedOut && !loading && !isOffline;
+  const { signedOut, loading, isOffline, demoMode, entries } = stored;
+  const signedOutSample = signedOut && !loading && !isOffline;
+  // The automatic default waits for the real read, so it never flashes
+  // examples over entries the account turns out to have.
+  const switchSample = scope !== null && scope.active && (scope.explicit || !loading);
+  const sampling = signedOutSample || switchSample;
+
+  // Only a settled, signed-in, live read says anything about real data.
+  const realState: "empty" | "has-data" | null =
+    scope === null || loading || isOffline || signedOut || demoMode
+      ? null
+      : entries.some((entry) => !isOnCallExampleEntry(entry))
+        ? "has-data"
+        : "empty";
+
+  useEffect(() => {
+    if (realState === null) return;
+    reportAreaData("call", realState);
+    reportAreaData("admin", realState);
+  }, [realState]);
 
   useEffect(() => {
     if (!sampling) return;
     let cancelled = false;
-    void import("@/lib/on-call/demo-entries").then((module) => {
-      if (!cancelled) setSampleEntries([...module.DEMO_ON_CALL_ENTRIES]);
+    void loadExampleDataset("onCall.entries").then((rows) => {
+      if (cancelled) return;
+      const copies = rows.map((row) => ({ ...row }));
+      for (const copy of copies) shownExampleEntries.add(copy);
+      setSampleEntries(copies);
     });
     return () => {
       cancelled = true;
@@ -430,6 +525,7 @@ export function useOnCallEntries(): OnCallEntriesState {
     entries: sampleEntries ?? [],
     cachedAt: null,
     loading: sampleEntries === null,
+    isOffline: false,
     loadError: null,
     signedOut: false,
     demoMode: true,
