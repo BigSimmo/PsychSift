@@ -17,16 +17,16 @@
   display: grid;
   min-width: 1.125rem;
   height: 1.125rem;
-  padding: 0 0.3125rem;
+  padding: 0 calc(var(--spacing) * 1.25);
   place-items: center;
   border-radius: var(--radius-pill, 999px);
-  box-shadow: 0 0 0 2px var(--surface-raised);
+  outline: 2px solid var(--surface-raised);
   background: var(--mode-identity, var(--clinical-accent));
   color: var(--mode-identity-contrast, var(--text-inverse, var(--surface-raised)));
   font-size: 0.625rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+  line-height: var(--leading-tight);
   pointer-events: none;
 }
 
@@ -51,23 +51,23 @@
 
 .notify {
   display: grid;
-  gap: 0.75rem;
+  gap: calc(var(--spacing) * 3);
   min-width: 0;
 }
 
 .notify-group {
   display: grid;
-  gap: 0.4375rem;
+  gap: calc(var(--spacing) * 1.75);
   min-width: 0;
 }
 
 /* Segmented control: All, Action needed, Updates. A soft track; the chosen one is white. */
 .notify-seg {
   display: flex;
-  gap: 0.125rem;
-  padding: 0.1875rem;
+  gap: calc(var(--spacing) * 0.5);
+  padding: calc(var(--spacing) * 0.75);
   border-radius: var(--radius-pill, 999px);
-  background: rgb(var(--work-ink-rgb) / 6%);
+  background: var(--work-wash);
 }
 
 .notify-seg__option {
@@ -78,7 +78,7 @@
   flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 0.3125rem;
+  gap: calc(var(--spacing) * 1.25);
   border: 0;
   background: transparent;
   font: inherit;
@@ -104,8 +104,8 @@
 }
 
 .notify-seg__option[aria-checked="true"]::before {
+  border: 1px solid var(--work-line);
   background: var(--work-surface);
-  box-shadow: inset 0 0 0 1px var(--work-line);
 }
 
 .notify-seg__option:focus-visible {
@@ -153,7 +153,7 @@
 .notify-row__link.notify-row__link {
   min-width: 0;
   flex: 1;
-  padding-right: 0.25rem;
+  padding-right: calc(var(--spacing) * 1);
 }
 
 .notify-row__link .work-row__title {
@@ -164,8 +164,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  column-gap: 0.375rem;
-  row-gap: 0.125rem;
+  column-gap: calc(var(--spacing) * 1.5);
+  row-gap: calc(var(--spacing) * 0.5);
 }
 
 .notify-row__due[data-tone="red"] {
@@ -176,7 +176,7 @@
 .notify-row__reminder {
   display: inline-flex;
   align-items: center;
-  gap: 0.1875rem;
+  gap: calc(var(--spacing) * 0.75);
   font-weight: 600;
   color: var(--mode-identity);
 }
@@ -226,7 +226,7 @@
 
 .notify-row__dots {
   display: flex;
-  gap: 0.1875rem;
+  gap: calc(var(--spacing) * 0.75);
 }
 
 .notify-row__dots > i {
@@ -239,20 +239,20 @@
 
 .notify-row__actions {
   display: grid;
-  gap: 0.5rem;
-  padding: 0 0.75rem 0.75rem;
+  gap: calc(var(--spacing) * 2);
+  padding: 0 calc(var(--spacing) * 3) calc(var(--spacing) * 3);
 }
 
 .notify-row__buttons {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 0.5rem;
+  column-gap: calc(var(--spacing) * 2);
 }
 
 .notify-row__hint {
   margin: 0;
   font-size: 0.71875rem;
-  line-height: 1.35;
+  line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
 
@@ -264,7 +264,7 @@
 /* Wider screens line the options up under the title. */
 @media (min-width: 420px) {
   .notify-row__actions {
-    padding-left: 3.25rem;
+    padding-left: calc(var(--spacing) * 13);
   }
 }
 
@@ -287,8 +287,8 @@
 .notify-oncall [data-testid="on-call-notifications-list"] a {
   min-height: var(--spacing-tap, 3rem);
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.5625rem 0.75rem;
+  gap: calc(var(--spacing) * 2.5);
+  padding: calc(var(--spacing) * 2.25) calc(var(--spacing) * 3);
   border-radius: 0;
   color: var(--work-ink);
 }
@@ -315,7 +315,7 @@
 
 .notify-oncall [data-testid="on-call-notifications-list"] a > span:first-child > span:last-child {
   font-size: 0.71875rem;
-  line-height: 1.3;
+  line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
 
@@ -325,7 +325,7 @@
 }
 
 .notify-oncall [data-testid="on-call-notifications-snooze"] {
-  margin-top: 0.125rem;
+  margin-top: calc(var(--spacing) * 0.5);
 }
 
 .notify-oncall [data-testid="on-call-notifications-snooze"] button {
@@ -366,8 +366,8 @@
   display: flex;
   min-width: 0;
   align-items: flex-start;
-  gap: 0.625rem;
-  padding: 0.6875rem 0.75rem;
+  gap: calc(var(--spacing) * 2.5);
+  padding: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);
   border: 1px solid var(--work-line);
   border-radius: var(--work-radius-card);
   background: var(--work-wash);
@@ -382,7 +382,7 @@
   display: grid;
   min-width: 0;
   flex: 1;
-  gap: 0.125rem;
+  gap: calc(var(--spacing) * 0.5);
 }
 
 .notify-note__text b {
@@ -393,19 +393,19 @@
 
 .notify-note__text small {
   font-size: 0.71875rem;
-  line-height: 1.4;
+  line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
 
 .notify-note__action {
-  margin-top: 0.375rem;
+  margin-top: calc(var(--spacing) * 1.5);
 }
 
 .notify-stamp {
   display: flex;
   align-items: center;
-  gap: 0.4375rem;
-  margin: 0.125rem 0 0;
+  gap: calc(var(--spacing) * 1.75);
+  margin: calc(var(--spacing) * 0.5) 0 0;
   font-size: 0.6875rem;
   font-weight: 600;
   color: var(--work-ink-muted);
@@ -426,10 +426,10 @@
 .notify-foot {
   display: flex;
   align-items: flex-start;
-  gap: 0.4375rem;
+  gap: calc(var(--spacing) * 1.75);
   margin: 0;
   font-size: 0.6875rem;
-  line-height: 1.4;
+  line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
 
@@ -437,7 +437,7 @@
   width: 0.8125rem;
   height: 0.8125rem;
   flex: none;
-  margin-top: 0.0625rem;
+  margin-top: calc(var(--spacing) * 0.25);
 }
 
 .notify-snoozed__toggle .work-row__end {
@@ -466,11 +466,11 @@
 .notify-undo {
   display: flex;
   align-items: center;
-  gap: 0.5625rem;
+  gap: calc(var(--spacing) * 2.25);
   min-height: var(--spacing-tap, 3rem);
-  padding: 0 0.375rem 0 0.875rem;
+  padding: 0 calc(var(--spacing) * 1.5) 0 calc(var(--spacing) * 3.5);
   border-radius: var(--work-radius-card);
-  background: rgb(var(--work-ink-rgb) / 92%);
+  background: color-mix(in srgb, var(--text-heading) 92%, transparent);
   color: var(--surface-raised);
   font-size: 0.8125rem;
   font-weight: 600;
@@ -478,9 +478,9 @@
 }
 
 .dark .notify-undo {
+  border: 1px solid var(--work-glass-line);
   background: var(--surface-raised);
   color: var(--text-heading);
-  box-shadow: inset 0 0 0 1px var(--work-glass-line);
 }
 
 .notify-undo > span {
@@ -490,7 +490,7 @@
 
 .notify-undo > button {
   min-height: var(--spacing-tap, 3rem);
-  padding: 0 0.625rem;
+  padding: 0 calc(var(--spacing) * 2.5);
   border: 0;
   background: transparent;
   font: inherit;
@@ -539,7 +539,7 @@
 .notify-skeleton__line {
   width: 70%;
   height: 0.625rem;
-  margin: 0.1875rem 0;
+  margin: calc(var(--spacing) * 0.75) 0;
 }
 
 .notify-skeleton__line--short {

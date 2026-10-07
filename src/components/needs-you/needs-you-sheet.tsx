@@ -438,7 +438,10 @@ function NotificationCentreSheet({
           </>
         )}
 
-        <div className="notify-undo-region" aria-live="polite" role="status">
+        <p className="sr-only" aria-live="polite" role="status">
+          {note?.message ?? ""}
+        </p>
+        <div className="notify-undo-region">
           {note ? (
             <div className="notify-undo" key={note.id} data-testid="needs-you-undo">
               <span>{note.message}</span>
