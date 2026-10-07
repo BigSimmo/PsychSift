@@ -344,7 +344,7 @@ export function CalendarView({
                     className={cn(
                       "flex min-h-12 flex-col items-center justify-start gap-1 rounded-lg pt-1.5 text-sm transition motion-reduce:transition-none",
                       "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-                      day.inMonth ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)] opacity-60",
+                      day.inMonth ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)]",
                       isSelected
                         ? "bg-[color:var(--clinical-accent-soft)] font-semibold text-[color:var(--clinical-accent)] opacity-100 ring-2 ring-inset ring-[color:var(--clinical-accent)]"
                         : "hover:bg-[color:var(--surface-subtle)]",

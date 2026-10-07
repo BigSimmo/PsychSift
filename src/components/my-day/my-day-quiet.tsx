@@ -22,13 +22,13 @@ import type { MyDaySourceMode } from "@/lib/my-day/model";
 /** A text link or button: the area colour, with a 48px tap area round its words. */
 export const quietLink = cn(
   focusRing,
-  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-xs font-bold text-[color:var(--mode-identity)] no-underline hover:underline",
+  "relative inline-flex min-h-12 min-w-12 items-center justify-center whitespace-nowrap rounded-md text-xs font-bold text-[color:var(--mode-identity)] no-underline hover:underline",
 );
 
 /** The same, in the muted colour, for the quieter of two actions ("Later"). */
 export const quietLinkMuted = cn(
   focusRing,
-  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-2xs font-bold text-[color:var(--text-muted)] no-underline hover:underline",
+  "relative inline-flex min-h-12 min-w-12 items-center justify-center whitespace-nowrap rounded-md text-2xs font-bold text-[color:var(--text-muted)] no-underline hover:underline",
 );
 
 /**

@@ -2,7 +2,7 @@
 
 import { LifeBuoy, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
 import { AdminCrisisLines } from "@/components/admin/admin-crisis-lines";
@@ -54,6 +54,10 @@ const AFTER_HOURS_LABEL = `After hours now · from ${String(ON_CALL_IN_HOURS_END
  * `/on-call/logistics#on-call-entry-<id>` anchor for a row New job now owns
  * forwards there once, through `adminHelpForwardHref`.
  */
+function noSubscription() {
+  return () => {};
+}
+
 export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
   const router = useRouter();
   const { isAuthenticated } = useAccountData();
@@ -61,6 +65,13 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
   const { entries, retry } = state;
   const mountedAt = useMemo(() => new Date(), []);
   const now = nowProp ?? mountedAt;
+  // The after-hours line depends on the clock, so it is decided on the device
+  // only. The server render never shows it, which keeps hydration in step.
+  const afterHours = useSyncExternalStore(
+    noSubscription,
+    () => isOnCallOutOfHours(now),
+    () => false,
+  );
   const [query, setQuery] = useState("");
   const [editorState, setEditorState] = useState<{ open: boolean; entry: OnCallEntry | null; section: OnCallSection }>({
     open: false,
@@ -193,7 +204,7 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
                 className={cn(inPageAnchor, adminStyles.section)}
               >
                 <WorkSectionLabel count={rows.length > 0 ? rows.length : undefined}>{section.label}</WorkSectionLabel>
-                {tab === "on-site" && isOnCallOutOfHours(now) ? (
+                {tab === "on-site" && afterHours ? (
                   <p className="text-sm text-[color:var(--text-muted)]" data-testid="admin-help-on-site-after-hours">
                     {AFTER_HOURS_LABEL}
                   </p>
