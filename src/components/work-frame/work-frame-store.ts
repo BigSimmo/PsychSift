@@ -50,6 +50,9 @@ export function useWorkFramePill(): WorkFramePill | null {
 const actions = new Map<WorkFrameActionId, () => void>();
 const actionListeners = new Set<() => void>();
 let actionVersion = 0;
+/** An action asked for before its page opened; see `requestWorkFrameAction`. */
+const PENDING_ACTION_MS = 8000;
+let pendingAction: { readonly id: WorkFrameActionId; readonly at: number } | null = null;
 
 function subscribeActions(listener: () => void) {
   actionListeners.add(listener);
@@ -78,6 +81,11 @@ export function useWorkFrameAction(id: WorkFrameActionId, handler: (() => void) 
     const run = () => latest.current?.();
     actions.set(id, run);
     notifyActions();
+    if (pendingAction?.id === id) {
+      const fresh = Date.now() - pendingAction.at < PENDING_ACTION_MS;
+      pendingAction = null;
+      if (fresh) run();
+    }
     return () => {
       if (actions.get(id) === run) {
         actions.delete(id);
@@ -98,6 +106,64 @@ export function useWorkFrameActionsVersion(): number {
 
 export function workFrameActionHandler(id: WorkFrameActionId): (() => void) | null {
   return actions.get(id) ?? null;
+}
+
+/**
+ * Runs a page action now if a page offers it, or as soon as the page that
+ * offers it opens (the side menu's Reminders, tapped away from My Day, goes
+ * to My Day and opens its Reminders there). A request older than a few
+ * seconds is dropped, so a slow or failed page load never opens a sheet later
+ * out of nowhere.
+ */
+
+export function requestWorkFrameAction(id: WorkFrameActionId): void {
+  const handler = actions.get(id);
+  if (handler) {
+    pendingAction = null;
+    handler();
+    return;
+  }
+  pendingAction = { id, at: Date.now() };
+}
+
+/* -------------------------------------------------------- side menu counts */
+
+/**
+ * What the side menu and rail show beside each area: things waiting there,
+ * from the one notification feed. The reader publishes here, and null means
+ * not known (signed out, still loading, offline or a failed read), when the
+ * rows show no number rather than a wrong one.
+ */
+export type WorkSideCounts = Readonly<Partial<Record<string, { readonly total: number; readonly overdue: number }>>>;
+export type WorkSideCountsState = {
+  readonly areas: WorkSideCounts;
+  /** Everything waiting, the bell's own number, for the Notifications row. */
+  readonly total: number;
+  /** Reminders due today, for the Reminders row. */
+  readonly reminders: number;
+};
+
+let sideCounts: WorkSideCountsState | null = null;
+const sideCountListeners = new Set<() => void>();
+
+function subscribeSideCounts(listener: () => void) {
+  sideCountListeners.add(listener);
+  return () => sideCountListeners.delete(listener);
+}
+
+export function setWorkSideCounts(next: WorkSideCountsState | null): void {
+  if (next === sideCounts) return;
+  if (next && sideCounts && JSON.stringify(next) === JSON.stringify(sideCounts)) return;
+  sideCounts = next;
+  for (const listener of sideCountListeners) listener();
+}
+
+export function useWorkSideCounts(): WorkSideCountsState | null {
+  return useSyncExternalStore(
+    subscribeSideCounts,
+    () => sideCounts,
+    () => null,
+  );
 }
 
 /* --------------------------------------------------------- last page per area */
