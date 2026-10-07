@@ -27,6 +27,7 @@ import type { TrainingPosition } from "@/lib/cme/training-timeline";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { buildCmeYearCheck, type CmeYearCheckRow } from "@/lib/cme/year-check";
 import { canCloseCmeYear, CME_CLOSE_WINDOW_DAYS } from "@/lib/cme/year-close";
+import { CmeExampleCsvButton } from "@/components/cme/cme-example-csv-button";
 
 /**
  * Where the CPD rule summaries come from: the same captured, fingerprinted Medical Board registration
@@ -182,6 +183,7 @@ export function CmeYearCheckPage({
   now = new Date(),
   goalCount = null,
   trainingPosition = null,
+  demoMode = false,
 }: {
   set: CmeRequirementSet;
   entries: readonly CmeEntry[];
@@ -191,6 +193,8 @@ export function CmeYearCheckPage({
   goalCount?: number | null;
   /** The owner's place in their training record, when it was read. */
   trainingPosition?: TrainingPosition | null;
+  /** Example (or demo) records: the export route reads the account, so its CSV is never offered over them. */
+  demoMode?: boolean;
 }) {
   const check = buildCmeYearCheck(set, entries);
   const targets = reportOrder(check.rows.filter((row) => row.group === "targets"));
@@ -308,17 +312,30 @@ export function CmeYearCheckPage({
               <CmeTextLink href={summaryHref} testId="cme-check-save-pdf">
                 Save as PDF
               </CmeTextLink>
-              <a
-                href={`/api/cme/export?year=${set.year}`}
-                download
-                data-testid="cme-check-csv"
-                className={cn(
-                  focusRing,
-                  "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
-                )}
-              >
-                Download CSV
-              </a>
+              {demoMode ? (
+                // The export route reads the account, so on an example page it would hand over REAL records.
+                <CmeExampleCsvButton
+                  testId="cme-check-csv"
+                  className={cn(
+                    focusRing,
+                    "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
+                  )}
+                >
+                  Download CSV
+                </CmeExampleCsvButton>
+              ) : (
+                <a
+                  href={`/api/cme/export?year=${set.year}`}
+                  download
+                  data-testid="cme-check-csv"
+                  className={cn(
+                    focusRing,
+                    "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
+                  )}
+                >
+                  Download CSV
+                </a>
+              )}
               <NewWorkModeOnly>
                 <CmeTextLink href={`/cme/export?year=${set.year}`} testId="cme-check-export">
                   All export options

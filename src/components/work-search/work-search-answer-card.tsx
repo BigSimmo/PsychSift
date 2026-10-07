@@ -201,7 +201,13 @@ function AnswerHero({ answer, onOpen }: { answer: WorkAnswer; onOpen: () => void
         </p>
       ) : null}
       {answer.action || calendar ? (
-        <div className={cn("mt-2 grid gap-2", answer.action && calendar ? "grid-cols-2" : "grid-cols-1")}>
+        // Two across, one above the other once large text leaves no room for both labels.
+        <div
+          className={cn(
+            "mt-2 grid gap-2",
+            answer.action && calendar ? "grid-cols-[repeat(auto-fit,minmax(min(100%,7.5rem),1fr))]" : "grid-cols-1",
+          )}
+        >
           {answer.action ? (
             <Link href={answer.action.href} onClick={onPlainClick(onOpen)} data-work-search-primary="" className={tap}>
               <span className={heroFaceSolid}>

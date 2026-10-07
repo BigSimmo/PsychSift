@@ -276,13 +276,18 @@
   font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--text);
-  white-space: nowrap;
 }
 
+/* A long item name wraps to a second line instead of losing its end (and its date) to an ellipsis. */
 .tlName {
+  display: -webkit-box;
   overflow: hidden;
   padding-right: calc(var(--spacing) * 1.5);
-  text-overflow: ellipsis;
+  line-height: var(--work-leading-row);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .tlTrack {
@@ -479,6 +484,14 @@
   font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--text-muted);
+}
+
+/* As a link the line is a real tap target: 48 px tall, the extra height taken from the card's own padding so the
+   card does not grow much. */
+a.nextLine {
+  min-height: calc(var(--spacing) * 12);
+  margin-top: 0;
+  margin-bottom: calc(var(--spacing) * -3);
 }
 
 .nextLine > svg {

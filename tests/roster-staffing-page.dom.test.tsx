@@ -138,7 +138,9 @@ it("typed dates show your leave, the fewest on, other dates and a Plan this leav
   await user.type(screen.getByLabelText("First day"), "2026-10-22");
   await user.clear(screen.getByLabelText("Last day"));
   await user.type(screen.getByLabelText("Last day"), "2026-10-23");
-  expect(screen.getByTestId("staffing-result").textContent).toBe("Fewest on: 3 people, Fri 23. You come off 2 shifts.");
+  expect(screen.getByTestId("staffing-result").textContent).toBe(
+    "Fewest on: 3 people, Fri 23. You're rostered on 2 of these days.",
+  );
   expect(column("2026-10-23").getAttribute("aria-label")).toBe(
     "Fri 23: 3 on, you off on leave, fewest on, in your leave",
   );
@@ -150,7 +152,7 @@ it("typed dates show your leave, the fewest on, other dates and a Plan this leav
   );
   await user.click(within(options).getByRole("button", { name: "Use Wed 21 to Thu 22 Oct" }));
   expect(screen.getByTestId("staffing-result").textContent).toBe(
-    "Fewest on: 4 people, Wed 21 and Thu 22. You come off 2 shifts.",
+    "Fewest on: 4 people, Wed 21 and Thu 22. You're rostered on 2 of these days.",
   );
   expect(mocks.announce).toHaveBeenCalledWith("Wed 21 to Thu 22 Oct picked");
 });

@@ -4,6 +4,7 @@ import { Copy, FileText, LogIn, Printer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 
+import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { AdminNote, AdminPage, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { AdminNavHeader } from "@/components/admin/admin-nav-header";
@@ -126,6 +127,7 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
     window.print();
   }
 
+  const [signInOpen, setSignInOpen] = useState(false);
   useModeBandHeading({ eyebrow: "New job", title: "Your Admin records" });
 
   return (
@@ -144,23 +146,6 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
           As you recorded them · {formatDateEcho(perthCalendarDate(now))}
         </p>
       </div>
-
-      {loadState === "ready" ? (
-        <div className="print:hidden" data-testid="admin-records-actions">
-          {/* A fixed dock at the foot of the screen; first in reading order so the actions come before the groups. */}
-          <WorkDock aria-label="Record actions">
-            <WorkButton variant="secondary" icon={Copy} onClick={copy} testId="admin-records-copy">
-              {copyState === "copied" ? "Copied" : copyState === "failed" ? "Could not copy" : "Copy"}
-            </WorkButton>
-            <WorkButton variant="secondary" icon={Printer} onClick={print} testId="admin-records-print">
-              Print
-            </WorkButton>
-          </WorkDock>
-          <span className="sr-only" role="status" aria-live="polite">
-            {copyState === "copied" ? "Copied" : copyState === "failed" ? "Could not copy" : ""}
-          </span>
-        </div>
-      ) : null}
 
       {loadState === "ready" ? (
         <div className="print:hidden">
@@ -183,6 +168,11 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
             icon={LogIn}
             title="Sign in to see your Admin records"
             body="They are kept for your signed-in account only."
+            action={
+              <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)} testId="admin-records-signed-out-sign-in">
+                Sign in
+              </WorkButton>
+            }
             testId="admin-records-signed-out"
           />
         </WorkCard>
@@ -203,6 +193,25 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
         For a site or job change, take registration numbers and renewal dates, the contacts and logins you saved, and
         your New job ticks. Hospital files, patient information, and anything you did not type here are not included.
       </AdminNote>
+
+      {loadState === "ready" ? (
+        <div className="contents print:hidden" data-testid="admin-records-actions">
+          {/* The dock sits last and sticks to the foot of the screen, as on every work page. Its wrapper draws
+              no box (`contents`), so the page itself is what it sticks within. */}
+          <WorkDock aria-label="Record actions">
+            <WorkButton icon={Copy} onClick={copy} testId="admin-records-copy">
+              {copyState === "copied" ? "Copied" : copyState === "failed" ? "Could not copy" : "Copy"}
+            </WorkButton>
+            <WorkButton variant="secondary" icon={Printer} onClick={print} testId="admin-records-print">
+              Print
+            </WorkButton>
+          </WorkDock>
+          <span className="sr-only" role="status" aria-live="polite">
+            {copyState === "copied" ? "Copied" : copyState === "failed" ? "Could not copy" : ""}
+          </span>
+        </div>
+      ) : null}
+      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
     </AdminPage>
   );
 }

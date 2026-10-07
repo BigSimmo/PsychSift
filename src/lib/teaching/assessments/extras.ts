@@ -39,6 +39,19 @@ export function readyToSend(
   return ready;
 }
 
+/**
+ * The answers as another screen picks them up. A send still in its 10 seconds when its screen closed was
+ * cancelled with it (nothing goes once the page that held the Undo has gone), so it is back to waiting,
+ * with its level and few lines kept, exactly as Undo leaves it.
+ */
+export function settleForAnotherScreen(s: ExtrasState): ExtrasState {
+  const sending = Object.entries(s.answers).filter(([, a]) => a.status === "sending");
+  if (!sending.length) return s;
+  const answers = { ...s.answers };
+  for (const [id, a] of sending) answers[id] = { ...a, status: "waiting", sentAt: null };
+  return { ...s, answers };
+}
+
 /** The reminder keys made so far: one a day per form. */
 export function remindedKeys(s: ExtrasState): string[] {
   return s.reminders.map((r) => r.key);

@@ -34,7 +34,7 @@ export const ON_CALL_NOW_EXAMPLE = {
   rightNow: {
     role: "Psychiatry registrar",
     name: "Dr Alex Example",
-    until: "Until Mon 08:00 · 10 h 20 min to go",
+    until: "Until 08:00 tomorrow · 10 h 20 min to go",
     number: "0000 000 002",
     numberLabel: "Mobile",
     start: "17:00",
@@ -58,7 +58,7 @@ export const ON_CALL_NOW_EXAMPLE = {
       badge: "CON",
       role: "Consultant on call",
       name: "Dr Robin Wattle",
-      detail: "At home · until Mon 08:00",
+      detail: "At home · until 08:00 tomorrow",
       number: "0000 000 003",
     },
     { badge: "NIC", role: "Nurse in charge", name: null, detail: "Until 23:00", number: "0000 000 004" },

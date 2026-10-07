@@ -65,6 +65,17 @@ export type TraineeAction =
   /** Undo puts the correction back as it was before (waiting, or Later). */
   | { type: "correction-undo"; id: string; to: Exclude<CorrectionStatus, "confirmed"> };
 
+/**
+ * The doctor pages' own records as the page opens again in this tab. A confirmation still in its
+ * 10 seconds when the page closed was cancelled with it, so it is waiting again. One kept as To send
+ * while offline stays kept.
+ */
+export function reopenTraineeState(kept: Omit<TraineeState, "extras">, extras: ExtrasState): TraineeState {
+  const sessions: Record<string, SessionStatus> = {};
+  for (const [id, status] of Object.entries(kept.sessions)) sessions[id] = status === "sending" ? "waiting" : status;
+  return { ...kept, sessions, extras };
+}
+
 export function sessionStatus(state: TraineeState, session: SampleSession): SessionStatus {
   return state.sessions[session.id] ?? (session.confirmed ? "confirmed" : "waiting");
 }

@@ -165,6 +165,12 @@ export const WORK_SETUP_PROGRESS_STORAGE_KEY = "psychsift:work-setup:progress-v1
  * Page ids only, never records. Kept on this device only.
  */
 export const WORK_TAB_PICKS_STORAGE_KEY = "psychsift:work:tab-picks-v1";
+/**
+ * localStorage — Open shifts Browse: the filter choices the doctor kept (no clashes, lower levels,
+ * start times). Choices only, never a site, a shift or a name. Its key uses a dot, not the
+ * `psychsift:` prefix, so the sweep would miss it: it is named here.
+ */
+export const OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY = "psychsift.open-shifts.filters.v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -253,6 +259,7 @@ export function clearAccountScopedBrowserStorage(): void {
   }
   removeQuietly(() => window.localStorage, WORK_SETUP_PROGRESS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, WORK_TAB_PICKS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY);
   stripAccountScopedPreferences();
   // The catch-all: every other `psychsift:` key, the clinical drafts, IndexedDB,
   // page caches and PsychSift's notifications (see account-device-sweep.ts).

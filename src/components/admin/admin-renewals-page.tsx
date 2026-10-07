@@ -399,7 +399,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
 
   const filteredLabel = showFilter ? RENEWALS_SHOW_LABELS[showFilter] : null;
   useModeBandHeading({
-    eyebrow: filteredLabel ? `Showing ${filteredLabel}` : "Source: Medical Board, WA Health · Updated 26 Sep 2026",
+    eyebrow: filteredLabel ? `Showing ${filteredLabel}` : "Medical Board and WA Health · checked 26 Sep",
   });
 
   const recordDatesInDock = canEdit && tab === "checklist" && notRecordedItems.length > 0;

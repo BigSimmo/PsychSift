@@ -79,14 +79,12 @@ function mockTeam(enabled = true, sample = false, assignments: unknown[] = [sams
   );
 }
 describe("Roster team journey", () => {
-  it("shows an overnight team shift and links to the team's phone numbers", async () => {
+  it("shows an overnight team shift and links to the phone numbers in On Call", async () => {
     mockTeam();
     render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
     expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
     expect(screen.getByText("to 08:00")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Phone numbers are in On call/ }).getAttribute("href")).toBe(
-      "/on-call/service?service=example",
-    );
+    expect(screen.getByRole("link", { name: /Phone numbers/ }).getAttribute("href")).toBe("/on-call/call");
     fireEvent.click(screen.getByRole("button", { name: "Previous day" }));
     expect(await screen.findByText("from 21:30")).toBeTruthy();
   });
