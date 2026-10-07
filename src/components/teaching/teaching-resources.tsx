@@ -16,7 +16,7 @@ import {
   resourceWriteError,
   thisWeekMeta,
 } from "@/components/teaching/resources-model";
-import { T5Icon, T5Link, T5List, T5Meta, T5Page, T5Row, T5Section } from "@/components/teaching/t5-kit";
+import { T5Icon, T5Link, T5List, T5Meta, T5Page, T5Row, T5Section, T5Button } from "@/components/teaching/t5-kit";
 import { addDays, mondayOf, perthDateKey, shortDayLabel } from "@/components/teaching/teaching-dates";
 import { catchUpSessions, TeachingCatchUp } from "@/components/teaching/teaching-catch-up";
 import { TeachingContextBar } from "@/components/teaching/teaching-modules";
@@ -28,7 +28,6 @@ import { ALL_TEAMS } from "@/components/teaching/teaching-view-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
-import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
@@ -399,7 +398,7 @@ function NewCollectionSheet({
       onClose={onClose}
       title="New collection"
       footer={
-        <Button
+        <T5Button
           variant="primary"
           block
           disabled={!ready}
@@ -408,7 +407,7 @@ function NewCollectionSheet({
           onClick={() => void create()}
         >
           Create collection
-        </Button>
+        </T5Button>
       }
     >
       <div className="grid gap-3">

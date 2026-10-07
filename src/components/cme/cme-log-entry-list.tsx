@@ -17,17 +17,21 @@ import type { CmeEntry } from "@/lib/cme/types";
 
 const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
-/** The row's date column: the day large, the month small. The full date (weekday, and the year when not this year) is read aloud. */
+/**
+ * The row's date tile (work-mode redesign, owner request 6 Oct 2026): the
+ * month small in copper over the day. The full date (weekday, and the year
+ * when not this year) is read aloud instead.
+ */
 function DateColumn({ date, today }: { date: string; today: string }) {
   const day = Number(date.slice(8, 10));
   const month = SHORT_MONTHS[Number(date.slice(5, 7)) - 1] ?? "";
   return (
-    <span className="grid w-10 shrink-0 justify-items-center leading-tight">
-      <span aria-hidden="true" className="nums text-base font-normal text-[color:var(--text-heading)]">
-        {day}
-      </span>
-      <span aria-hidden="true" className="text-2xs text-[color:var(--text-muted)]">
+    <span className="work-date">
+      <span aria-hidden="true" className="work-date__month">
         {month}
+      </span>
+      <span aria-hidden="true" className="work-date__day">
+        {day}
       </span>
       <span className="sr-only">{formatCmeRowDate(date, today)}</span>
     </span>
@@ -94,11 +98,11 @@ export function CmeLogMonthList({
           id={monthAnchorId(group.key)}
           data-testid={`cme-log-month-${group.key}`}
           aria-labelledby={`${group.key}-heading`}
-          className={cn(inPageAnchor, "grid gap-1")}
+          className={cn(inPageAnchor, "grid gap-1.5")}
         >
           <div
             data-testid={`cme-log-month-header-${group.key}`}
-            className="sticky top-0 z-[var(--z-raised)] flex min-h-8 items-center bg-[color:var(--background)]"
+            className="sticky top-0 z-[var(--z-raised)] flex min-h-8 items-center bg-[color:var(--surface-raised)]"
           >
             <div className="min-w-0 flex-1">
               <CmeGroupLabel

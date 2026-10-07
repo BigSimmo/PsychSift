@@ -40,8 +40,7 @@ import { ArrowLeftRight, CalendarOff, CheckCircle2, HandHelping, Info, Plane, Us
 import { useModeBandCount, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
-import { RosterNewButton } from "@/components/roster/roster-new-button";
-import { usePhoneFooterLayerScrollHidden } from "@/components/clinical-dashboard/phone-footer-layer-portal";
+import { RosterNewButton, useRosterNewButtonClearance } from "@/components/roster/roster-new-button";
 
 const activeOpen = (item: RosterOpenShift) =>
   item.status === "reported" || item.status === "open" || item.status === "claimed";
@@ -90,7 +89,7 @@ function EmptyRow({ children }: { children: string }) {
 /** Swaps and open shifts for one team. Answers are session-only React state; nothing is stored on the device. */
 export function RosterSwapsPage() {
   const now = useRosterNow();
-  const phoneFooterHidden = usePhoneFooterLayerScrollHidden() === true;
+  const newButtonClearance = useRosterNewButtonClearance();
   const teams = useRosterTeams();
   const ownShifts = useRosterShifts();
   const enabled = useMemo(() => teams.data?.teams.filter((team) => team.enabled) ?? [], [teams.data]);
@@ -353,7 +352,7 @@ export function RosterSwapsPage() {
   useModeBandCount("swaps", ready ? needsYou.length || null : null);
 
   return (
-    <InformationPageShell testId="roster-swaps-page" className={phoneFooterHidden ? "max-sm:pb-4" : "max-sm:pb-20"}>
+    <InformationPageShell testId="roster-swaps-page" className={newButtonClearance}>
       <RosterPageHeader
         icon={ArrowLeftRight}
         eyebrow="Roster"

@@ -1476,6 +1476,15 @@ body {
   --work-close-fill: rgb(255 255 255 / 8%);
 }
 
+/* The hero's white primary action (Teaching's heroes). Unset in light themes,
+   where the call site falls back to a white pill in the mode colour. In dark
+   themes the identity is a light tint, so the pill takes the heading ink as its
+   fill and the raised surface as its text. */
+.dark {
+  --work-hero-action-fill: var(--text-heading);
+  --work-hero-action-ink: var(--surface-raised);
+}
+
 /* On the coloured hero and the dark Undo toast (both themes): white ink at
    set strengths, and the toast's own dark ink. */
 :root {
@@ -3188,7 +3197,10 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
 }
 
 .answer-footer-search-input::-webkit-search-cancel-button,
-.answer-footer-search-input::-webkit-search-decoration {
+.answer-footer-search-input::-webkit-search-decoration,
+/* A search field that draws its own Clear button hides the browser's, which
+   otherwise sits beside it and covers the typed text. */
+.text-field-own-clear::-webkit-search-cancel-button {
   appearance: none;
 }
 

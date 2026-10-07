@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { renewalsItemHref, renewalsShowHref } from "@/components/admin/today/today-hrefs";
+import { selectNewJobProgress, type NewJobProgress } from "@/lib/admin/new-job-progress";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { buildAdminHelpItems, type AdminHelpItem } from "@/lib/admin/help-items";
@@ -181,6 +182,8 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
   helpItems: readonly AdminHelpItem[];
   /** The reader's own Admin entries, for Renew next and the renewals timeline; empty until ready. */
   adminEntries: readonly OnCallEntry[];
+  /** The New job countdown for My records (work-mode redesign, 6 Oct 2026); null without a start date. */
+  newJob: NewJobProgress | null;
   retry: () => void;
 } {
   // `useOnCallEntries` fetches unconditionally and cannot be disabled; it is
@@ -226,5 +229,12 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
     [ready, own, entries, demoMode],
   );
   const adminEntries = ready ? own : NO_ENTRIES;
-  return { admin, onCall, nextRenewal, renewals, helpItems, adminEntries, retry };
+  const newJob = useMemo(
+    () =>
+      ready && !demoMode
+        ? selectNewJobProgress({ own, shared: selectAdminSharedEntries({ entries, demoMode }) }, now)
+        : null,
+    [ready, demoMode, own, entries, now],
+  );
+  return { admin, onCall, nextRenewal, renewals, helpItems, adminEntries, newJob, retry };
 }

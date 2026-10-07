@@ -1,29 +1,25 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ChevronRight, Network } from "lucide-react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { CalendarClock, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Network } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { withUnit } from "@/components/teaching/teaching-number";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { ModeBandAction } from "@/components/mode-band/mode-band";
+import { WorkGlassButton, WorkTag } from "@/components/mode-kit/work";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { focusOnCallEntryFromHash, onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
+import { useRosterShifts } from "@/components/roster/use-roster-shifts";
+import { clashSummary, rosterClashes, type RosterClash } from "@/components/teaching/roster-clash";
 import {
-  T5Actions,
-  T5Done,
   T5Empty,
-  T5Heading,
   T5Icon,
-  T5Kicker,
   T5Link,
   T5List,
   T5LiveDot,
-  T5Meta,
-  T5Meter,
   T5Note,
   T5Page,
-  T5Panel,
   T5Row,
   T5Section,
   T5Segments,
@@ -32,6 +28,7 @@ import {
 import { TeachingCalendarSheet } from "@/components/teaching/teaching-calendar-sheet";
 import { addDays, mondayOf, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
 import { TeachingContextBar } from "@/components/teaching/teaching-modules";
+import { withUnit } from "@/components/teaching/teaching-number";
 import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
@@ -39,9 +36,6 @@ import {
   dayHeading,
   defaultWeekFilter,
   mineSessions,
-  nextForYou,
-  nextForYouMeta,
-  nowPanel,
   openFromOtherServices,
   sessionsOn,
   stripDays,
@@ -49,20 +43,17 @@ import {
   weekDayKeys,
   weekRow,
   weekTitle,
-  type NowPanel,
 } from "@/components/teaching/this-week-model";
 import {
   ALL_TEAMS,
-  joinLabel,
   relocatedEntryId,
-  sessionHref,
   sessionsForTeam,
   teamInCalendar,
   type WeekFilter,
 } from "@/components/teaching/teaching-view-model";
 import { useHandbookTeaching } from "@/components/teaching/use-handbook-teaching";
+import { useLastLoaded, useOnline, type LoadedWeek } from "@/components/teaching/use-teaching-online";
 import { useRelocatedTeaching } from "@/components/teaching/use-relocated-teaching";
-import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import {
@@ -71,22 +62,24 @@ import {
   useTeachingSignedOut,
 } from "@/components/teaching/use-teaching-sample";
 import { useTeachingWeek, type TeachingWeekState } from "@/components/teaching/use-teaching-week";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { useAuthSession } from "@/lib/supabase/client";
-import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
-import type { TeachingWeekResponse, WhatsOnRow } from "@/lib/teaching/model";
+import type { WhatsOnRow } from "@/lib/teaching/model";
 
 /*
- * This week (mock-up v5 screen 01): the session on now with one-tap check in, then every session this
- * week, day by day. It replaces Today, Week and the What's on landing; What's on stays one tap away for
- * sessions other services have opened. The reader's On Call teaching list and their service handbook's
- * teaching entries stay at the foot, as they were on Week.
+ * Week (work-mode redesign, owner request 6 Oct 2026): the week's calendar card (the dates with
+ * previous and next, a day rail, and Mine or Whole service), then every session day by day with a
+ * tag for what matters (checked in, you present, moved, a roster clash), then sessions other
+ * services opened to you, your On Call teaching list and your service handbook's teaching. The
+ * session on now and the next one for you live on Today.
  *
- * Nothing is kept on the phone (Teaching stores no timetable on the device). If the connection drops
- * after the week has loaded, the page keeps showing that read, says the time it loaded, and turns
- * check in off, rather than pretending to be current.
+ * Roster clashes (ideas 12) read the reader's own shifts through Roster's hook, read only, when
+ * signed in; the demo and the signed-out sample never call it.
+ *
+ * Nothing of the week is kept on the phone. If the connection drops after the week has loaded, the
+ * page keeps showing that read and says the time it loaded, rather than pretending to be current.
+ * Nothing is kept on the phone at all: the Mine or Whole service choice lasts for this visit only.
  */
 
 // "Mine" comes first. Sessions carry no training-level field (only What's on rows do), so Mine is the
@@ -96,37 +89,23 @@ const FILTERS = [
   { value: "all", label: "Whole service" },
 ] as const;
 
-function subscribeOnline(onChange: () => void) {
-  window.addEventListener("online", onChange);
-  window.addEventListener("offline", onChange);
-  return () => {
-    window.removeEventListener("online", onChange);
-    window.removeEventListener("offline", onChange);
-  };
+/**
+ * The last Mine or Whole service choice, kept in memory for this visit only, so it survives moving
+ * between Teaching pages. It is never written to the device: Teaching allows one device key only
+ * (What's on's level, see teaching-search-privacy.test.ts), and a convenience is not worth a second.
+ */
+let rememberedFilter: WeekFilter | null = null;
+
+function storedFilter(): WeekFilter | null {
+  return rememberedFilter;
 }
 
-/** The browser's own connection flag; true on the server. */
-function useOnline(): boolean {
-  return useSyncExternalStore(
-    subscribeOnline,
-    () => navigator.onLine,
-    () => true,
-  );
-}
-
-type Loaded = { monday: string; week: TeachingWeekResponse; at: Date };
-
-/** The last good read of this week, in memory only, with the time it arrived. */
-function useLastLoaded(view: TeachingWeekState, monday: string | null, now: Date | null): Loaded | null {
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const week = view.status === "ready" ? view.week : null;
-  // Remember each new read as it arrives (state adjusted during render, not in an effect).
-  if (week && monday && now && loaded?.week !== week) setLoaded({ monday, week, at: now });
-  if (week && monday && now) return { monday, week, at: loaded?.week === week ? loaded.at : now };
-  return loaded && loaded.monday === monday ? loaded : null;
+function storeFilter(value: WeekFilter) {
+  rememberedFilter = value;
 }
 
 type WhatsOnRead = { sessions: WhatsOnRow[] };
+const NO_CLASHES: ReadonlyMap<string, RosterClash> = new Map();
 
 /**
  * Remounts on sign-in, sign-out, account switch and demo change, like TeachingAccountPage, so the last
@@ -162,7 +141,7 @@ function ThisWeekScreen({ demoMode }: { demoMode: boolean }) {
   return (
     <InformationPageShell width="narrow" gap={false} testId="teaching-this-week">
       <T5Page>
-        <h1 className="sr-only">This week</h1>
+        <h1 className="sr-only">Week</h1>
         {now && today && monday ? (
           <ThisWeekBody
             view={view}
@@ -184,6 +163,20 @@ function ThisWeekScreen({ demoMode }: { demoMode: boolean }) {
   );
 }
 
+/** Reads the reader's own shifts only while mounted, so the demo and the sample never ask Roster. */
+function RosterClashRead({
+  sessions,
+  children,
+}: {
+  sessions: readonly SessionSummaryRead[];
+  children: (clashes: ReadonlyMap<string, RosterClash>) => ReactNode;
+}) {
+  const roster = useRosterShifts();
+  const shifts = roster.status === "ready" && !roster.sample && !roster.demoMode ? roster.shifts : null;
+  const clashes = useMemo(() => (shifts ? rosterClashes(sessions, shifts) : NO_CLASHES), [sessions, shifts]);
+  return <>{children(clashes)}</>;
+}
+
 function ThisWeekBody({
   view,
   loaded,
@@ -197,7 +190,7 @@ function ThisWeekBody({
   retryWhatsOn,
 }: {
   view: TeachingWeekState;
-  loaded: Loaded | null;
+  loaded: LoadedWeek | null;
   online: boolean;
   now: Date;
   today: string;
@@ -208,7 +201,7 @@ function ThisWeekBody({
   retryWhatsOn: () => void;
 }) {
   const [team, setTeam] = useState(ALL_TEAMS);
-  const [chosenFilter, setFilter] = useState<WeekFilter | null>(null);
+  const [chosenFilter, setChosenFilter] = useState<WeekFilter | null>(() => storedFilter());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [editor, setEditor] = useState<{ entry: OnCallEntry | null } | null>(null);
   const live = view.demo === "off";
@@ -240,7 +233,7 @@ function ThisWeekBody({
     !week.relocatedUnavailable
   )
     return (
-      <div className="grid gap-3">
+      <>
         <TeachingStateNotice state="no-team" />
         <T5List>
           <T5Row
@@ -250,17 +243,17 @@ function ThisWeekBody({
             testId="teaching-week-whats-on"
           />
         </T5List>
-      </div>
+      </>
     );
 
   const teamValue = team === ALL_TEAMS || week.teams.some((t) => t.id === team) ? team : ALL_TEAMS;
   const showTeam = teamValue === ALL_TEAMS && week.teams.length > 1;
   const everything = sessionsForTeam([...week.sessions, ...week.relocated], teamValue);
-  const filter = chosenFilter ?? defaultWeekFilter(everything);
+  // A remembered "Mine" never opens a week where the reader presents nothing: that would be empty.
+  const remembered = chosenFilter === "presenting" && mineSessions(everything).length === 0 ? null : chosenFilter;
+  const filter = remembered ?? defaultWeekFilter(everything);
   const sessions = filter === "presenting" ? mineSessions(everything) : everything;
-  const context = { teams: week.teams, attendance: week.attendance, showTeam, now, today };
-  const panel = current ? nowPanel(everything, context) : null;
-  const next = current ? nextForYou(everything, panel?.session.occurrenceId ?? null, now) : null;
+  const context = { teams: week.teams, attendance: week.attendance, showTeam, now };
   const days = weekDayKeys(monday, sessions);
   const partial = week.relocatedUnavailable;
   const others = whatsOn ? openFromOtherServices(whatsOn.sessions) : null;
@@ -268,11 +261,85 @@ function ThisWeekBody({
     ? [...new Set(whatsOn.sessions.filter((row) => !row.own).map((row) => row.teamName))].join(", ")
     : "";
   const offlineAt = stale && loaded ? perthTime(loaded.at.toISOString()) : null;
+  const calendarLabel = week.teams.some(teamInCalendar) ? "In your calendar" : "Add to calendar";
 
   function retry() {
     relocated.reload();
     view.retry();
   }
+
+  function chooseFilter(value: WeekFilter) {
+    setChosenFilter(value);
+    storeFilter(value);
+  }
+
+  const list = (clashes: ReadonlyMap<string, RosterClash>) => {
+    const clashCount = sessions.filter(
+      (s) => clashes.has(s.occurrenceId) && Date.parse(s.endsAt) > now.getTime(),
+    ).length;
+    return (
+      <>
+        {clashCount > 0 ? (
+          <T5List testId="teaching-week-clashes">
+            <T5Row
+              lead={<T5Icon icon={CalendarClock} tone="amber" />}
+              title={clashSummary(clashCount)}
+              meta="From your roster · check before you go"
+              href="/roster"
+            />
+          </T5List>
+        ) : null}
+        <T5Section
+          label={weekCountLabel(sessions, partial, current ? "This week" : "That week")}
+          right={
+            live && !offlineAt ? (
+              <T5Link onClick={() => setCalendarOpen(true)} testId="teaching-calendar">
+                {calendarLabel}
+              </T5Link>
+            ) : null
+          }
+          testId="teaching-week-list"
+        >
+          {sessions.length === 0 ? (
+            <T5Empty>
+              {partial
+                ? "None loaded. Sessions shared from On Call are missing; try again."
+                : filter === "presenting"
+                  ? `You are not presenting from ${weekTitle(days[0], days[days.length - 1])}.`
+                  : `No sessions are booked for ${weekTitle(days[0], days[days.length - 1])} yet. They appear here as soon as an organiser adds them.`}
+            </T5Empty>
+          ) : (
+            days.map((key) => {
+              const onDay = sessionsOn(sessions, key);
+              if (onDay.length === 0) return null;
+              return (
+                <div key={key} id={`day-${key}`} tabIndex={-1} className="grid scroll-mt-32 gap-y-2.25">
+                  <h3
+                    className={cn(
+                      "work-label m-0 min-h-5 px-0.5",
+                      key === today && "text-[color:var(--mode-identity)]!",
+                    )}
+                  >
+                    {dayHeading(key, today)}
+                  </h3>
+                  <T5List>
+                    {onDay.map((session) => (
+                      <WeekRow
+                        key={session.occurrenceId}
+                        session={session}
+                        context={context}
+                        clash={clashes.get(session.occurrenceId) ?? null}
+                      />
+                    ))}
+                  </T5List>
+                </div>
+              );
+            })
+          )}
+        </T5Section>
+      </>
+    );
+  };
 
   return (
     <>
@@ -285,108 +352,40 @@ function ThisWeekBody({
         />
       ) : null}
       {offlineAt ? (
-        <T5Note icon="offline" tone="notice" className="mt-3.5" testId="teaching-week-offline">
+        <T5Note icon="offline" tone="notice" testId="teaching-week-offline">
           {`No connection. Showing your week as loaded at ${offlineAt}. Changes made since then will not show.`}
         </T5Note>
       ) : null}
       {partial ? (
-        <div className="mt-3.5">
-          <T5Note icon="alert" tone="warning" className="mb-0" testId="teaching-week-partial">
+        <div className="grid gap-1">
+          <T5Note icon="alert" tone="warning" testId="teaching-week-partial">
             Sessions shared from On Call did not load, so they are missing below.
           </T5Note>
-          <T5Actions className="mb-0">
+          <span className="px-0.5">
             <T5Link onClick={retry}>Try again</T5Link>
-          </T5Actions>
+          </span>
         </div>
       ) : null}
-      {panel ? (
-        <OnNowPanel
-          key={panel.session.occurrenceId}
-          panel={panel}
-          live={live}
-          offlineAt={offlineAt}
-          today={today}
-          now={now}
-          onCheckedIn={view.retry}
+      <div className="work-card grid gap-1 px-1.5 pt-1 pb-1.5">
+        <WeekHeader
+          first={days[0]}
+          last={days[days.length - 1]}
+          current={current}
+          onPrevious={() => onMonday(addDays(monday, -7))}
+          onNext={() => onMonday(addDays(monday, 7))}
+          onThisWeek={() => onMonday(null)}
         />
-      ) : null}
-      {next ? (
-        <T5List ruled={false} className={panel ? "mt-1" : "mt-3.5"} testId="teaching-next-for-you">
-          <T5Row
-            lead={<T5Time time={perthTime(next.startsAt)} />}
-            title={`Next for you: ${next.title}`}
-            meta={nextForYouMeta(next, today)}
-            // A presenter's next talk opens Presenting, where the patient-details check lives.
-            href={
-              next.isPresenter ? `/teaching/teach?talk=${encodeURIComponent(next.occurrenceId)}` : sessionHref(next)
-            }
-          />
-        </T5List>
-      ) : null}
-      <WeekHeader
-        first={days[0]}
-        last={days[days.length - 1]}
-        first-of-page={!panel && !next}
-        current={current}
-        onPrevious={() => onMonday(addDays(monday, -7))}
-        onNext={() => onMonday(addDays(monday, 7))}
-        onThisWeek={() => onMonday(null)}
-      />
-      <DayStrip days={stripDays(days, sessions, today)} />
-      <T5Segments value={filter} options={FILTERS} onChange={setFilter} label="Show" />
-      <T5Section
-        label={weekCountLabel(sessions, partial, current ? "This week" : "That week")}
-        right={
-          live && !offlineAt ? (
-            <T5Link onClick={() => setCalendarOpen(true)} testId="teaching-calendar">
-              {week.teams.some(teamInCalendar) ? "In your calendar" : "Add to calendar"}
-            </T5Link>
-          ) : null
-        }
-        testId="teaching-week-list"
-      >
-        {sessions.length === 0 ? (
-          <T5Empty>
-            {partial
-              ? "None loaded. Sessions shared from On Call are missing; try again."
-              : filter === "presenting"
-                ? `You are not presenting from ${weekTitle(days[0], days[days.length - 1])}.`
-                : `No sessions are booked for ${weekTitle(days[0], days[days.length - 1])} yet. They appear here as soon as an organiser adds them.`}
-          </T5Empty>
-        ) : (
-          days.map((key) => {
-            const list = sessionsOn(sessions, key);
-            if (list.length === 0) return null;
-            return (
-              <div key={key} id={`day-${key}`} tabIndex={-1} className="scroll-mt-32">
-                <h3
-                  className={cn(
-                    "mt-4.5 mb-0.5 text-xs font-semibold",
-                    key === today ? "text-[color:var(--text-heading)]" : "text-[color:var(--text-muted)]",
-                  )}
-                >
-                  {dayHeading(key, today)}
-                </h3>
-                <T5List>
-                  {list.map((session) => (
-                    <WeekRow key={session.occurrenceId} session={session} context={context} />
-                  ))}
-                </T5List>
-              </div>
-            );
-          })
-        )}
-      </T5Section>
+        <DayStrip days={stripDays(days, sessions, today)} today={today} />
+        <T5Segments value={filter} options={FILTERS} onChange={chooseFilter} label="Show" />
+      </div>
+      {live && !stale ? <RosterClashRead sessions={sessions}>{list}</RosterClashRead> : list(NO_CLASHES)}
       {sessions.length === 0 && !current ? (
-        <T5List className="mt-4.5">
+        <T5List>
           <T5Row lead={<T5Icon icon={CalendarDays} />} title="Back to this week" onClick={() => onMonday(null)} />
         </T5List>
       ) : null}
       {others !== null && others > 0 ? (
-        <T5List
-          className={sessions.length === 0 && !current ? "" : "mt-4.5"}
-          ruled={!(sessions.length === 0 && !current)}
-        >
+        <T5List>
           <T5Row
             lead={<T5Icon icon={Network} />}
             title={
@@ -400,7 +399,7 @@ function ThisWeekBody({
           />
         </T5List>
       ) : whatsOnFailed ? (
-        <T5List className="mt-4.5">
+        <T5List>
           <T5Row
             lead={<T5Icon icon={Network} />}
             title="Sessions open to you from other services"
@@ -411,6 +410,17 @@ function ThisWeekBody({
       ) : null}
       {live && !offlineAt ? (
         <>
+          <ModeBandAction>
+            {() => (
+              <WorkGlassButton
+                icon={CalendarPlus}
+                label={calendarLabel}
+                className="work-band__action"
+                onClick={() => setCalendarOpen(true)}
+                testId="teaching-week-calendar-action"
+              />
+            )}
+          </ModeBandAction>
           <T5Section
             label="Your On Call teaching list"
             right={<T5Link onClick={() => setEditor({ entry: null })}>Add to the list</T5Link>}
@@ -419,18 +429,23 @@ function ThisWeekBody({
           >
             {week.relocated.length > 0 ? (
               <T5List>
-                {sessionsForTeam(week.relocated, ALL_TEAMS).map((s, index, list) => {
+                {sessionsForTeam(week.relocated, ALL_TEAMS).map((s, index, all) => {
                   const entryId = relocatedEntryId(s.occurrenceId);
                   const entry = relocated.entries.get(entryId);
                   // A repeating entry has one row per occurrence; only the first carries the anchor id.
-                  const first = list.findIndex((other) => relocatedEntryId(other.occurrenceId) === entryId) === index;
+                  const first = all.findIndex((other) => relocatedEntryId(other.occurrenceId) === entryId) === index;
                   return (
                     <T5Row
                       key={s.occurrenceId}
                       id={first ? onCallEntryAnchorId(entryId) : undefined}
                       lead={<T5Time time={s.allDay ? "All day" : perthTime(s.startsAt)} />}
                       title={s.title}
-                      meta={[dayHeading(perthDateKey(s.startsAt), today), s.venue].filter(Boolean).join(" · ")}
+                      meta={
+                        <>
+                          <T5LiveDot tone="on-call" />
+                          {[dayHeading(perthDateKey(s.startsAt), today), s.venue].filter(Boolean).join(" · ")}
+                        </>
+                      }
                       onClick={entry && onCallEntryIsEditable(entry) ? () => setEditor({ entry }) : undefined}
                     />
                   );
@@ -482,10 +497,19 @@ function ThisWeekBody({
   );
 }
 
-function WeekRow({ session, context }: { session: SessionSummaryRead; context: Parameters<typeof weekRow>[1] }) {
+function WeekRow({
+  session,
+  context,
+  clash,
+}: {
+  session: SessionSummaryRead;
+  context: Parameters<typeof weekRow>[1];
+  clash: RosterClash | null;
+}) {
   const row = weekRow(session, context);
   // Attended and cancelled rows recede; a missed one stays readable beside its Watch link, as in the mock-up.
   const muted = row.state === "done" || row.state === "cancelled";
+  const ahead = row.state === "upcoming" || row.state === "moved" || row.state === "now";
   return (
     <T5Row
       lead={<T5Time time={row.time} past={muted} />}
@@ -498,13 +522,20 @@ function WeekRow({ session, context }: { session: SessionSummaryRead; context: P
       }
       past={muted}
       href={row.href}
+      testId={`teaching-week-row-${session.occurrenceId}`}
       end={
         row.state === "done" ? (
-          <T5Done label="Attended" />
+          <WorkTag tone="green">Checked in</WorkTag>
+        ) : clash && ahead ? (
+          <WorkTag tone="amber">{clash}</WorkTag>
         ) : row.watch ? (
           <T5Link href={row.watch} label={`Watch ${row.title}`}>
             Watch
           </T5Link>
+        ) : session.isPresenter && ahead ? (
+          <WorkTag>You present</WorkTag>
+        ) : row.state === "moved" ? (
+          <WorkTag tone="neutral">Moved</WorkTag>
         ) : undefined
       }
     />
@@ -518,42 +549,35 @@ function WeekHeader({
   onPrevious,
   onNext,
   onThisWeek,
-  ...rest
 }: {
   first: string;
   last: string;
   current: boolean;
-  "first-of-page": boolean;
   onPrevious: () => void;
   onNext: () => void;
   onThisWeek: () => void;
 }) {
   const arrow = cn(
-    "grid size-12 place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]",
+    "grid size-12 place-items-center rounded-full text-[color:var(--text-muted)] active:bg-[color:var(--surface-wash)]",
     focusRing,
   );
   return (
-    <div
-      className={cn("flex items-center justify-between gap-2", rest["first-of-page"] ? "mt-1" : "mt-5")}
-      data-testid="teaching-week-nav"
-    >
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3">
-        <h2 className="nums text-base font-normal text-[color:var(--text-heading)]">{weekTitle(first, last)}</h2>
+    <div className="flex items-center justify-between gap-1" data-testid="teaching-week-nav">
+      <button type="button" className={arrow} onClick={onPrevious} aria-label="Previous week">
+        <ChevronLeft aria-hidden="true" className="size-icon-md" />
+      </button>
+      <div className="flex min-w-0 flex-wrap items-baseline justify-center gap-x-3">
+        <h2 className="text-base-minus font-bold text-[color:var(--text-heading)]">{weekTitle(first, last)}</h2>
         {current ? null : <T5Link onClick={onThisWeek}>This week</T5Link>}
       </div>
-      <span className="flex gap-1">
-        <button type="button" className={arrow} onClick={onPrevious} aria-label="Previous week">
-          <ChevronLeft aria-hidden="true" className="size-icon-md" />
-        </button>
-        <button type="button" className={arrow} onClick={onNext} aria-label="Next week">
-          <ChevronRight aria-hidden="true" className="size-icon-md" />
-        </button>
-      </span>
+      <button type="button" className={arrow} onClick={onNext} aria-label="Next week">
+        <ChevronRight aria-hidden="true" className="size-icon-md" />
+      </button>
     </div>
   );
 }
 
-function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
+function DayStrip({ days, today }: { days: ReturnType<typeof stripDays>; today: string }) {
   function jump(key: string) {
     // Move focus with the view, so a keyboard or screen-reader user lands on the day they chose.
     const target = document.getElementById(`day-${key}`);
@@ -561,163 +585,47 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
     target?.focus({ preventScroll: true });
   }
   return (
-    <div className="mt-1 grid auto-cols-fr grid-flow-col" role="list" aria-label="Days this week">
-      {days.map((day) => (
-        <span role="listitem" key={day.key} className="grid">
-          <button
-            type="button"
-            onClick={() => jump(day.key)}
-            disabled={day.count === 0}
-            aria-label={`${day.weekday} ${day.day}${day.today ? ", today" : ""}: ${
-              day.count === 0 ? "no sessions" : withUnit(day.count, day.count === 1 ? "session" : "sessions")
-            }`}
-            className={cn("grid min-h-12 justify-items-center gap-1 rounded-lg py-1.5", focusRing)}
-          >
-            <small
-              className={cn(
-                "text-2xs",
-                day.today
-                  ? "font-semibold text-[color:var(--text-heading)]"
-                  : "font-medium text-[color:var(--text-muted)]",
-              )}
+    <div className="grid auto-cols-fr grid-flow-col" role="list" aria-label="Days this week" data-no-tab-swipe="">
+      {days.map((day) => {
+        const past = day.key < today;
+        return (
+          <span role="listitem" key={day.key} className="grid">
+            <button
+              type="button"
+              onClick={() => jump(day.key)}
+              disabled={day.count === 0}
+              aria-label={`${day.weekday} ${day.day}${day.today ? ", today" : ""}: ${
+                day.count === 0 ? "no sessions" : withUnit(day.count, day.count === 1 ? "session" : "sessions")
+              }`}
+              className={cn("grid min-h-12 justify-items-center gap-1 rounded-xl py-1.5", focusRing)}
             >
-              {day.weekday}
-            </small>
-            <b
-              className={cn(
-                "nums grid min-h-8 min-w-8 place-items-center rounded-full border-[1.5px] border-transparent px-1 text-sm font-normal text-[color:var(--text-heading)]",
-                day.today && "border-[color:var(--mode-identity)] forced-colors:border-[Highlight]",
-              )}
-            >
-              {day.day}
-            </b>
-            <span aria-hidden="true" className="flex h-1 gap-0.75">
-              {Array.from({ length: Math.min(day.count, 5) }, (_, index) => (
-                <i key={index} className="size-1 rounded-full bg-[color:var(--decoration-soft)] opacity-70" />
-              ))}
-            </span>
-          </button>
-        </span>
-      ))}
+              <small
+                className={cn(
+                  "text-3xs font-bold tracking-label uppercase",
+                  day.today ? "text-[color:var(--mode-identity)]" : "text-[color:var(--text-muted)]",
+                )}
+              >
+                {day.weekday}
+              </small>
+              <b
+                className={cn(
+                  "nums grid size-8 place-items-center rounded-full border-[1.5px] border-transparent text-sm-minus font-bold",
+                  // Past days read muted by colour, never by opacity, so they keep 4.5:1.
+                  past && !day.today ? "text-[color:var(--text-muted)]" : "text-[color:var(--text-heading)]",
+                  day.today && "border-[color:var(--mode-identity)] forced-colors:border-[Highlight]",
+                )}
+              >
+                {day.day}
+              </b>
+              <span aria-hidden="true" className="flex h-1 gap-0.75">
+                {Array.from({ length: Math.min(day.count, 5) }, (_, index) => (
+                  <i key={index} className="size-1 rounded-full bg-[color:var(--mode-identity)] opacity-70" />
+                ))}
+              </span>
+            </button>
+          </span>
+        );
+      })}
     </div>
-  );
-}
-
-function OnNowPanel({
-  panel,
-  live,
-  offlineAt,
-  today,
-  now,
-  onCheckedIn,
-}: {
-  panel: NowPanel;
-  live: boolean;
-  offlineAt: string | null;
-  today: string;
-  now: Date;
-  onCheckedIn: () => void;
-}) {
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
-  const { session } = panel;
-  const href = sessionHref(session);
-  const isToday = perthDateKey(session.startsAt) === today;
-  const wantsJoin = session.hasJoinLink && href !== null && isToday && panel.checkIn !== "open";
-  const detail = useSessionDetail(wantsJoin ? session.occurrenceId : null, !live, now);
-  const joinUrl = detail.data?.joinUrl ?? null;
-
-  async function checkIn() {
-    if (!live) {
-      setMessage({ tone: "error", text: "The demo doesn't save check-ins." });
-      return;
-    }
-    setSaving(true);
-    setMessage(null);
-    try {
-      await teachingPost(teachingServiceUrl(session.serviceId), {
-        action: "attendance.self",
-        occurrenceId: session.occurrenceId,
-      });
-      setMessage({ tone: "ok", text: "Checked in." });
-      onCheckedIn();
-    } catch (cause) {
-      setMessage({ tone: "error", text: teachingErrorMessage(cause) });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // Signed out, the sample still shows the real controls; tapping Check in says the demo saves nothing.
-  const unavailable = offlineAt !== null;
-  return (
-    <T5Panel label={panel.live ? "On now" : "Next up"} className="mt-3.5" testId="teaching-hero">
-      <T5Kicker live={panel.live}>{panel.kicker}</T5Kicker>
-      <T5Heading>{session.title}</T5Heading>
-      <T5Meta>{panel.meta}</T5Meta>
-      {panel.elapsed !== null ? (
-        <T5Meter percent={panel.elapsed} label={`${panel.elapsed}% of the session has passed`} />
-      ) : null}
-      {panel.checkIn === "open" ? (
-        <>
-          <T5Actions>
-            <Button
-              variant="primary"
-              onClick={() => void checkIn()}
-              disabled={saving || unavailable}
-              busy={saving}
-              busyLabel="Saving"
-            >
-              Check in
-            </Button>
-            {offlineAt ? (
-              <T5Link onClick={onCheckedIn}>Try again</T5Link>
-            ) : href ? (
-              <T5Link href={`${href}?check-in=scan`}>Type the code instead</T5Link>
-            ) : null}
-          </T5Actions>
-          <T5Meta>
-            {offlineAt
-              ? `As of ${offlineAt}. Check in needs a connection. You can still check in without the code for 7 days after the session.`
-              : "Organisers of this session see that you checked in."}
-          </T5Meta>
-        </>
-      ) : panel.checkIn === "code" && href && !unavailable ? (
-        <>
-          <T5Actions>
-            <T5Link href={`${href}?check-in=scan`}>Check in with the code</T5Link>
-          </T5Actions>
-          <T5Meta>{`One-tap check in opens when it starts at ${perthTime(session.startsAt)}.`}</T5Meta>
-        </>
-      ) : panel.checkIn === "done" ? (
-        <T5Meta>
-          <span className="font-medium text-[color:var(--text-heading)]">You checked in.</span> Organisers of this
-          session see that you checked in.
-        </T5Meta>
-      ) : (
-        <T5Actions>
-          {wantsJoin && joinUrl ? (
-            <T5Link href={joinUrl} external>
-              {joinLabel(joinUrl)}
-            </T5Link>
-          ) : null}
-          {href ? <T5Link href={href}>Details</T5Link> : null}
-          {panel.opensAt ? <T5Meta>{`Check in opens ${panel.opensAt}`}</T5Meta> : null}
-        </T5Actions>
-      )}
-      {message ? (
-        <p
-          role={message.tone === "error" ? "alert" : "status"}
-          className={cn(
-            "text-sm",
-            message.tone === "error"
-              ? "font-medium text-[color:var(--text-heading)]"
-              : "text-[color:var(--text-heading)]",
-          )}
-        >
-          {message.text}
-        </p>
-      ) : null}
-    </T5Panel>
   );
 }

@@ -195,9 +195,7 @@ export function AlertsAreaSheet({
                     reason={`Turn on phone alerts under This ${deviceName === "computer" ? "computer" : "phone"} first`}
                   />
                 )
-              ) : (
-                <AlertsQuietRow title={`On this ${deviceName}`} reason="Arrives with the next update" />
-              )}
+              ) : null}
               {area.myDayTypes.length === 0 ? (
                 <ModeRow
                   title="In My Day"

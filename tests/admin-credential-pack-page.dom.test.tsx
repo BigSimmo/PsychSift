@@ -109,7 +109,8 @@ describe("AdminCredentialPackPage", () => {
     fireEvent.click(screen.getByTestId("admin-credential-pack-include-number-ahpra"));
     fireEvent.click(screen.getByTestId(`admin-credential-pack-include-renewal-${renewal.id}`));
     await waitFor(() => {
-      expect(screen.getByText(/Nothing ticked/)).toBeTruthy();
+      // Work-mode redesign, owner request 6 Oct 2026: the include rows are switches now, so the words follow.
+      expect(screen.getByText(/Nothing switched on/)).toBeTruthy();
       expect((screen.getByTestId("admin-credential-pack-pdf") as HTMLButtonElement).disabled).toBe(true);
     });
   });

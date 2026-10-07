@@ -67,6 +67,8 @@ export default async function CmeLogRoute({
       drafts={data.drafts}
       missedSessions={data.missedSessions}
       recordsFailed={data.recordsFailed}
+      nowIso={data.now.toISOString()}
+      loadTeachingCount={!data.demoMode}
     />
   );
 }

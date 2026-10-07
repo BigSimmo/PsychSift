@@ -19,9 +19,9 @@ export function TeachingSampleChrome({ cookieSample }: { cookieSample: boolean }
   if (signedOut)
     return (
       <div className="mx-auto w-full max-w-reading px-3 pt-4 sm:px-5 lg:px-7">
-        <SignedOutSampleNotice title="Sign in to see your teaching" testId="teaching-signed-out-sample">
-          Below is a sample made of invented sessions and people, so you can see how Teaching works. Signed in, it shows
-          your own sessions, check-ins and logbook. Nothing is saved or shared.
+        {/* Work-mode redesign, owner request 6 Oct 2026: the spec's short banner wording. */}
+        <SignedOutSampleNotice title="Sample, not your data" testId="teaching-signed-out-sample">
+          Made-up sessions. Sign in to see your own.
         </SignedOutSampleNotice>
       </div>
     );

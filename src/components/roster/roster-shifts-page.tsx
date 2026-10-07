@@ -76,7 +76,7 @@ import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
 import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-team";
 import { RosterPageHeader } from "./roster-ui";
-import { useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useModeBandCurrentTab, useModeBandHeading } from "@/components/mode-band/mode-band";
 
 /**
  * Roster Shifts, as the Roster mock-up draws it: the shift on now or next, the
@@ -355,6 +355,12 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shifts.shifts, extra.records, fortnight.start, fortnight.end],
   );
+  // On call from home is not rostered hours (isWorkedKind), so a fortnight of on-call
+  // shifts reads 0 h. The fortnight then says so instead of looking empty.
+  const onCallExcluded = shifts.shifts.some((shift) => {
+    const date = perthDateOf(shift.startsAt);
+    return kindOf(shift) === "on_call" && date >= summary.start && date <= summary.end;
+  });
   const overview = useMemo(() => shifts.shifts.map(toOverview), [shifts.shifts]);
   const byId = useMemo(() => new Map(shifts.shifts.map((shift) => [shift.id, shift])), [shifts.shifts]);
   // Every day a leave entry covers; one ending at midnight does not reach the next day.
@@ -411,6 +417,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
       : view === "month"
         ? "Your shifts and WA public holidays."
         : "Your shifts, week by week.";
+  // The page names its own place in the frame (work-mode redesign, owner request 6 Oct 2026):
+  // Hours and rest, or My shifts for the week and plain month lists. The address alone would
+  // tick the Month tab whenever this page draws at /roster (?view=month, and before the query
+  // is read), though the month grid is not what is showing.
+  useModeBandCurrentTab(view === "hours" ? "hours" : "shifts");
   // The band's words (work-mode redesign, owner request 6 Oct 2026): the 14 days the check
   // covers, or the week on screen. The page title under the band stays for screen readers.
   useModeBandHeading(
@@ -481,6 +492,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               extra={extra}
               partial={partial}
               payAnchored={Boolean(payAnchor)}
+              onCallExcluded={onCallExcluded}
               onRetry={() => void shifts.reload()}
             />
           )}
@@ -717,6 +729,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               extraStatus={extra.status}
               partial={partial}
               payAnchored={Boolean(payAnchor)}
+              onCallExcluded={onCallExcluded}
             />
 
             <RosterSectionHead title="Roster tools" />

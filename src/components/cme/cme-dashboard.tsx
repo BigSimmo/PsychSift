@@ -6,16 +6,17 @@ import {
   ChevronRight,
   ClipboardCopy,
   Feather,
-  GraduationCap,
+  Layers,
   Plus,
+  Presentation,
   Settings2,
+  SlidersHorizontal,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, type MouseEvent, type ReactNode } from "react";
 
-import { cardSurface, focusRing } from "@/components/card-recipes";
 import { CmeCategoryLegend, CmeYearSummary } from "@/components/cme/cme-dashboard-catch-up";
 import { CmeTodayDetailSheet, type CmeTodayDetail } from "@/components/cme/cme-dashboard-detail-sheet";
 import { CmeNextStepRow, computeCmeNextStep, formatCmeHours } from "@/components/cme/cme-dashboard-next-step";
@@ -25,10 +26,10 @@ import { CmeFlatList, CmeFlatRow, CmeGroup } from "@/components/cme/cme-flat-lis
 import { hoursByCategory } from "@/components/cme/cme-progress-visuals";
 import { CME_LOG_TRIGGER_ATTRIBUTE, openCmeQuickLog } from "@/components/cme/cme-quick-log";
 import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
-import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
-import { TodayShell } from "@/components/mode-kit/today/today-shell";
+import { CmeBandAction, CmeKvCard, cmeFreshnessEyebrow } from "@/components/cme/cme-work-kit";
+import { CmeYearInWeeks } from "@/components/cme/cme-year-in-weeks";
+import { WorkBody } from "@/components/mode-kit/work";
 import { Button } from "@/components/ui/button";
-import { cn, textMuted } from "@/components/ui-primitives";
 import { addDays, expandEvents } from "@/lib/calendar/calendar-event";
 import { cmeCalendarEvents } from "@/lib/cme/calendar-events";
 import { buildCmeCatchUpPlan } from "@/lib/cme/catch-up-plan";
@@ -57,11 +58,29 @@ import {
   type ReminderSettings,
   type ReminderType,
 } from "@/lib/reminders/settings";
-import { ModeBandStatus, useModeBandCount, useModeBandShown } from "@/components/mode-band/mode-band";
+import {
+  ModeBandStatus,
+  useModeBandCount,
+  useModeBandHeading,
+  useModeBandShown,
+} from "@/components/mode-band/mode-band";
 
 /**
- * THE YEAR PAGE (`/cme`): the screen the whole mode is judged by, built to the
- * 5 Oct mock-up (screens 01, 08, 10 and 11).
+ * THE YEAR PAGE (`/cme`, the band's Summary tab): the screen the whole mode is
+ * judged by. Work-mode redesign (owner request 6 Oct 2026, mockup cpd_sum,
+ * cpd_empty, cpd_gap): urgent first, on white cards under the copper band.
+ *
+ *   1. the copper hero: hours against the target, the category bar, the
+ *      legend and the pace panel (which opens "Close the gap");
+ *   2. "To log": teaching sessions not yet logged and routines due today, each
+ *      with its own Log, and "Snooze a week";
+ *   3. "What's left": the next step first, then the year check's open items;
+ *   4. "Records to tidy": chips (not marked copied, no reflection, drafts);
+ *   5. "Also for you", then "About this year";
+ *   6. the floating dock: "Log an activity" (it opens the quick-log sheet).
+ *
+ * What follows is the earlier (5 Oct) description, which still holds for the
+ * data and the honest variants:
  *
  * Read top to bottom on a phone, one idea per block:
  *   1. the summary card (`CmeYearSummary`): the year and weeks left, hours
@@ -117,20 +136,8 @@ function routineIcon(title: string): LucideIcon {
   return /peer|group|supervis|balint|meeting/i.test(title) ? Users : BookOpen;
 }
 
-/** A quiet in-row text action (Log 1 h, Snooze for a week) with a 48px tap area. */
-const TEXT_ACTION = cn(
-  focusRing,
-  "inline-flex min-h-12 shrink-0 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] hover:underline disabled:cursor-not-allowed disabled:text-[color:var(--text-muted)] disabled:no-underline",
-);
-
-/**
- * The page's columns on a computer. The phone order is the DOM order; from
- * `lg` the left blocks float left and the right blocks float right, each
- * clearing its own side, so the two columns stack independently without
- * moving anything in the reading order.
- */
-const LEFT = "min-w-0 lg:float-left lg:clear-left lg:mb-5.5 lg:w-[55%]";
-const RIGHT = "min-w-0 lg:float-right lg:clear-right lg:mb-5.5 lg:w-[calc(45%-2.5rem)]";
+/** The label's quiet link ("Snooze a week") keeps a 48px tap without a tall label row. */
+const LABEL_ACTION = "work-label__link min-h-tap";
 
 export type CmeDashboardProps = {
   readonly set: CmeRequirementSet;
@@ -247,11 +254,11 @@ export function CmeDashboard({
     return (
       <button
         type="button"
-        className={TEXT_ACTION}
+        className={LABEL_ACTION}
         aria-label={`Snooze for a week: ${REMINDER_TYPE_LABELS[type]}`}
         onClick={() => onSnoozeReminder(type)}
       >
-        Snooze for a week
+        Snooze a week
       </button>
     );
   }
@@ -291,10 +298,19 @@ export function CmeDashboard({
     if (openCmeQuickLog(event.currentTarget)) event.preventDefault();
   }
 
+  // The band names the page: when its records loaded, then "CPD 2026".
+  useModeBandHeading({
+    eyebrow: cmeFreshnessEyebrow({
+      demoMode,
+      loadedAt: now,
+      failed: draftsToFinish === null ? "Drafts did not load" : null,
+    }),
+    title: `CPD ${set.year}`,
+  });
+
   const status = (
     <>
-      {/* The mode band above the page names the mode and carries Customise
-          and this status line; the h1 still names the page for screen readers. */}
+      {/* The band above the page names the mode and the page; the h1 still names it for screen readers. */}
       <h1 className="sr-only">Year</h1>
       <ModeBandStatus
         testId="cme-data-freshness"
@@ -306,37 +322,30 @@ export function CmeDashboard({
               : { kind: "loaded", at: now }
         }
       />
-      {!underBand ? (
+      {underBand ? (
+        <CmeBandAction icon={SlidersHorizontal} label="Customise" href="/cme/customise" testId="cme-customise-action" />
+      ) : (
         <div className="flex justify-end">
           <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>
             Customise
           </Button>
         </div>
-      ) : null}
-
-      {currentTrainingPosition?.stage || currentTrainingPosition?.rotation || currentTrainingPosition?.breakPeriod ? (
-        <Link
-          href="/cme/training"
-          data-testid="cme-training-position-link"
-          className={cn(
-            cardSurface,
-            "flex min-h-tap items-center justify-between gap-3 p-3 text-sm text-[color:var(--text)]",
-          )}
-        >
-          <span>
-            {currentTrainingPosition.stage?.label ?? "Training"}
-            {currentTrainingPosition.onBreak
-              ? ` · on break${currentTrainingPosition.breakPeriod ? `: ${currentTrainingPosition.breakPeriod.label}` : ""}`
-              : currentTrainingPosition.rotationIndex !== null && currentTrainingPosition.rotationCount !== null
-                ? ` · rotation ${currentTrainingPosition.rotationIndex} of ${currentTrainingPosition.rotationCount}`
-                : currentTrainingPosition.rotation
-                  ? ` · ${currentTrainingPosition.rotation.label}`
-                  : ""}
-          </span>
-          <span className={textMuted}>Plan › Training</span>
-        </Link>
-      ) : null}
+      )}
     </>
+  );
+
+  const logLink = (label: string, className: string) => (
+    <Link
+      href={`/cme/new?year=${set.year}`}
+      onClick={handleLogActivity}
+      data-testid="cme-log-activity"
+      {...{ [CME_LOG_TRIGGER_ATTRIBUTE]: "" }}
+      className={className}
+      data-variant="primary"
+    >
+      <Plus aria-hidden="true" className="size-4" strokeWidth={2} />
+      {label}
+    </Link>
   );
 
   const summary = (
@@ -351,25 +360,40 @@ export function CmeDashboard({
       entries={entries}
       closed={Boolean(set.closedAt)}
       onOpenGap={() => setDetail("gap")}
+      firstLogAction={nothingLogged ? logLink("Log your first activity", "work-button min-h-tap mt-2") : undefined}
     />
   );
 
-  const logButton = (
-    <Link
-      href={`/cme/new?year=${set.year}`}
-      onClick={handleLogActivity}
-      data-testid="cme-log-activity"
-      {...{ [CME_LOG_TRIGGER_ATTRIBUTE]: "" }}
-      className={cn(
-        focusRing,
-        "relative inline-flex min-h-12 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-[color:var(--cme-filled)] px-4 text-sm-minus font-semibold text-[color:var(--cme-filled-text)] no-underline lg:w-auto lg:justify-self-start",
-        "forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]",
-      )}
-    >
-      <Plus aria-hidden="true" className="size-4" strokeWidth={1.6} />
-      {nothingLogged ? "Log your first activity" : "Log an activity"}
-    </Link>
-  );
+  const trainingLink =
+    currentTrainingPosition?.stage || currentTrainingPosition?.rotation || currentTrainingPosition?.breakPeriod ? (
+      <CmeFlatList label="Training">
+        <li className="flex min-w-0 items-center">
+          <Link
+            href="/cme/training"
+            data-testid="cme-training-position-link"
+            className="work-row min-h-tap min-w-0 flex-1"
+          >
+            <span className="cpd-lead">
+              <Layers aria-hidden="true" strokeWidth={2} />
+            </span>
+            <span className="work-row__text">
+              <span className="work-row__title">
+                {currentTrainingPosition.stage?.label ?? "Training"}
+                {currentTrainingPosition.onBreak
+                  ? ` · on break${currentTrainingPosition.breakPeriod ? `: ${currentTrainingPosition.breakPeriod.label}` : ""}`
+                  : currentTrainingPosition.rotationIndex !== null && currentTrainingPosition.rotationCount !== null
+                    ? ` · rotation ${currentTrainingPosition.rotationIndex} of ${currentTrainingPosition.rotationCount}`
+                    : currentTrainingPosition.rotation
+                      ? ` · ${currentTrainingPosition.rotation.label}`
+                      : ""}
+              </span>
+              <span className="work-row__sub">Your training clock</span>
+            </span>
+            <ChevronRight aria-hidden="true" className="work-row__chev" />
+          </Link>
+        </li>
+      </CmeFlatList>
+    ) : null;
 
   const nextStepNode =
     hasTarget && !nothingLogged && nextStepRowId === null ? (
@@ -396,113 +420,121 @@ export function CmeDashboard({
     />
   ) : null;
 
-  const routinesNode = !shows("routines-due") ? null : dueRoutines.length > 0 ? (
-    <CmeGroup
-      label={`Routines due · ${dueRoutines.length}`}
-      end={snoozeButton("cpd-routines")}
-      testId="cme-routines-due"
-    >
-      <CmeFlatList>
-        {dueRoutines.map((routine) => {
-          const Icon = routineIcon(routine.title);
-          return (
-            <CmeFlatRow
-              key={routine.id}
-              title={routine.title}
-              subtitle={`${cmeRoutineCadenceLabels[routine.cadence]} · usually ${formatCmeHours(routine.usualHours)} h`}
-              lead={<Icon aria-hidden="true" strokeWidth={1.6} />}
-              end={
-                <button
-                  type="button"
-                  className={cn(TEXT_ACTION, "pl-3")}
-                  disabled={loggingDue}
-                  aria-busy={loggingDue || undefined}
-                  onClick={() => handleLogRoutine(routine)}
-                >
-                  {loggingDue ? "Saving…" : `Log ${formatCmeHours(routine.usualHours)} h`}
-                </button>
-              }
-            />
-          );
-        })}
-      </CmeFlatList>
-    </CmeGroup>
-  ) : nothingLogged && !hasActiveRoutine ? (
-    <CmeGroup label="Routines" testId="cme-routines-setup">
-      <CmeFlatList>
-        <CmeFlatRow
-          title="Set up a routine"
-          subtitle="For things you do regularly, such as a peer review group"
-          lead={<Users aria-hidden="true" strokeWidth={1.6} />}
-          href={`/cme/routines?year=${set.year}`}
-        />
-      </CmeFlatList>
-    </CmeGroup>
-  ) : null;
+  // Teaching's own count of sessions given and not yet logged: Teaching's review list logs them.
+  const teachingRow = (
+    <CmeFlatRow
+      testId="cme-teaching-link"
+      href={teachingCount !== null ? "/teaching/review" : "/teaching"}
+      lead={<Presentation aria-hidden="true" strokeWidth={2} />}
+      leadTone="mode"
+      title="Teaching you gave"
+      subtitle={
+        teachingCount !== null
+          ? `${teachingCount} ${teachingCount === 1 ? "session is" : "sessions are"} not logged yet`
+          : "Sessions you gave, kept in Teaching"
+      }
+    />
+  );
+  const teachingToLog = teachingCount !== null && teachingCount > 0;
+
+  const routinesShown = shows("routines-due");
+  const toLog =
+    routinesShown && (dueRoutines.length > 0 || teachingToLog) ? (
+      <CmeGroup
+        label="To log"
+        end={dueRoutines.length > 0 ? snoozeButton("cpd-routines") : null}
+        testId={dueRoutines.length > 0 ? "cme-routines-due" : "cme-to-log"}
+      >
+        <CmeFlatList>
+          {teachingToLog ? teachingRow : null}
+          {dueRoutines.map((routine) => {
+            const Icon = routineIcon(routine.title);
+            return (
+              <CmeFlatRow
+                key={routine.id}
+                title={routine.title}
+                subtitle={`${cmeRoutineCadenceLabels[routine.cadence]} · usually ${formatCmeHours(routine.usualHours)} h`}
+                lead={<Icon aria-hidden="true" strokeWidth={2} />}
+                leadTone="mode"
+                end={
+                  <button
+                    type="button"
+                    className="work-button min-h-tap"
+                    data-variant="tinted"
+                    disabled={loggingDue}
+                    aria-busy={loggingDue || undefined}
+                    onClick={() => handleLogRoutine(routine)}
+                  >
+                    <span className="nums">
+                      {loggingDue ? "Saving…" : `Log ${formatCmeHours(routine.usualHours)} h`}
+                    </span>
+                  </button>
+                }
+              />
+            );
+          })}
+        </CmeFlatList>
+      </CmeGroup>
+    ) : nothingLogged && !hasActiveRoutine ? (
+      <CmeGroup label="Routines" testId="cme-routines-setup">
+        <CmeFlatList>
+          <CmeFlatRow
+            title="Set up a routine"
+            subtitle="For things you do regularly, like a peer review group"
+            lead={<CalendarDays aria-hidden="true" strokeWidth={2} />}
+            leadTone="mode"
+            href={`/cme/routines?year=${set.year}`}
+          />
+        </CmeFlatList>
+      </CmeGroup>
+    ) : null;
 
   const reportingRow =
     showReportingReminder && reportingReminder ? (
       <CmeFlatRow
         testId="cme-reporting-reminder"
         href={`/cme/log?year=${reportingReminder.year}&copy=todo`}
-        lead={<ClipboardCopy aria-hidden="true" strokeWidth={1.6} />}
+        lead={<ClipboardCopy aria-hidden="true" strokeWidth={2} />}
         title={`${reportingReminder.notCopied} ${reportingReminder.notCopied === 1 ? "activity" : "activities"} from ${reportingReminder.year} not marked copied to MyCPD`}
         subtitle={`Your ${reportingReminder.year} claim closes on ${formatDayFullMonth(reportingReminder.closesOn)}`}
         end={snoozeButton("cpd-year-end")}
       />
     ) : null;
 
+  // Hiding "Also for you" in Customise hides teaching, optional learning and
+  // CPD dates. The year-end claim reminder still shows: it has a deadline.
   const alsoForYou =
-    hasTarget && !nothingLogged ? (
+    hasTarget && !nothingLogged && shows("also-for-you") ? (
       <CmeGroup label="Also for you" testId="cme-also-for-you">
         <CmeFlatList>
           {reportingRow}
-          <CmeFlatRow
-            testId="cme-teaching-link"
-            href={teachingCount !== null ? "/teaching/review" : "/teaching"}
-            lead={<GraduationCap aria-hidden="true" strokeWidth={1.6} />}
-            title="Teaching you gave"
-            subtitle={
-              teachingCount !== null
-                ? `${teachingCount} ${teachingCount === 1 ? "session is" : "sessions are"} not logged yet`
-                : "Sessions you gave, kept in Teaching"
-            }
-          />
+          {teachingToLog ? null : teachingRow}
           {culturallySafePracticeToLog ? (
             <CmeFlatRow
               testId="cme-first-nations-learning-link"
               href="/first-nations/talking"
-              lead={<Feather aria-hidden="true" strokeWidth={1.6} />}
+              lead={<Feather aria-hidden="true" strokeWidth={2} />}
               title="Optional learning: First Nations Talking"
               subtitle="Opening it does not log CPD"
             />
           ) : null}
           {/* A plain next/link row (the kit row's look), so the route checker sees the one link to the calendar. */}
-          <li className={cn(modeInsetHairline, "flex min-w-0 items-center before:left-0")}>
+          <li className="flex min-w-0 items-center">
             <Link
               href={`/cme/calendar?year=${set.year}`}
               data-testid="cme-calendar-link"
-              className={cn(
-                modeRowHeight.double,
-                modePressable,
-                focusRing,
-                "flex min-w-0 flex-1 items-center gap-3 no-underline",
-              )}
+              className="work-row min-h-tap min-w-0 flex-1"
             >
-              <CalendarDays
-                aria-hidden="true"
-                strokeWidth={1.6}
-                className="size-icon-md shrink-0 text-[color:var(--text-muted)]"
-              />
-              <span className="grid min-w-0 flex-1 gap-px py-2">
-                <span className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">
-                  CPD dates
-                </span>
-                <span className="line-clamp-2 break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">
+              <span aria-hidden="true" className="work-ic" data-mode-identity="my-day">
+                <CalendarDays aria-hidden="true" strokeWidth={2} />
+              </span>
+              <span className="work-row__text">
+                <span className="work-row__title">CPD dates</span>
+                <span className="work-row__sub line-clamp-2">
                   {nextDate ? `${formatCalendarDateShort(nextDate.date)}: ${nextDate.title}` : "Nothing coming up"}
                 </span>
               </span>
-              <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+              <ChevronRight aria-hidden="true" className="work-row__chev" />
             </Link>
           </li>
         </CmeFlatList>
@@ -516,35 +548,37 @@ export function CmeDashboard({
       )
     );
 
+  const home = readCpdHome(set.confirmedSource);
   const targetsLine = set.confirmedOn
-    ? `You confirmed ${readCpdHome(set.confirmedSource).kind === "ranzcp" ? "the RANZCP starting set" : describeConfirmedSource(set.confirmedSource)} on ${formatCalendarDateShort(set.confirmedOn)}.${nothingLogged ? "" : " A personal record, not independent certification."}`
+    ? `You confirmed ${home.kind === "ranzcp" ? "the RANZCP starting set" : describeConfirmedSource(set.confirmedSource)} on ${formatCalendarDateShort(set.confirmedOn)}.${nothingLogged ? "" : " A personal record, not independent certification."}`
     : "No targets confirmed yet. Set them up whenever you like.";
 
-  const aboutRows: ReactNode[] = [];
+  const aboutFacts: { label: string; value: string; testId: string }[] = [];
+  if (shows("year-dates")) {
+    aboutFacts.push({
+      label: "Year",
+      value: `1 Jan to 31 Dec${inRequestedYear && !nothingLogged ? ` · ${daysRemainingInCpdYear(now, set.year)} days left` : ""}`,
+      testId: "cme-year-dates",
+    });
+  }
+  if (set.confirmedOn && (home.kind === "ranzcp" || home.name)) {
+    aboutFacts.push({
+      label: "CPD home",
+      value: home.kind === "ranzcp" ? "RANZCP" : home.name,
+      testId: "cme-cpd-home",
+    });
+  }
   if (!nothingLogged && shows("audited-today")) {
-    aboutRows.push(
-      <CmeFlatRow
-        key="today"
-        testId="cme-audited-today"
-        title="Today"
-        subtitle={
-          loggedToday.length > 0
-            ? `${loggedToday.length} ${loggedToday.length === 1 ? "activity" : "activities"} logged, ${formatCmeHours(loggedTodayHours)} h`
-            : "Nothing logged yet"
-        }
-      />,
-    );
+    aboutFacts.push({
+      label: "Today",
+      value:
+        loggedToday.length > 0
+          ? `${loggedToday.length} ${loggedToday.length === 1 ? "activity" : "activities"}, ${formatCmeHours(loggedTodayHours)} h`
+          : "Nothing logged yet",
+      testId: "cme-audited-today",
+    });
   }
-  if (!nothingLogged && shows("year-dates")) {
-    aboutRows.push(
-      <CmeFlatRow
-        key="year"
-        testId="cme-year-dates"
-        title="Year"
-        subtitle={`1 January to 31 December${inRequestedYear ? ` · ${daysRemainingInCpdYear(now, set.year)} days left` : ""}`}
-      />,
-    );
-  }
+  const aboutRows: ReactNode[] = [];
   if (shows("provenance")) {
     aboutRows.push(
       <CmeFlatRow
@@ -563,53 +597,64 @@ export function CmeDashboard({
       <CmeFlatRow
         key="check"
         testId="cme-about-year-check"
-        title="Year check"
-        subtitle="The report, exports and closing the year"
+        title="Report"
+        subtitle="The year check, exports and closing the year"
         href={`/cme/check?year=${set.year}`}
       />,
     );
   }
   const about =
-    aboutRows.length > 0 ? (
+    aboutFacts.length > 0 || aboutRows.length > 0 || trainingLink ? (
       <CmeGroup label="About this year" testId="cme-about-year">
-        <CmeFlatList>{aboutRows}</CmeFlatList>
+        {aboutFacts.length > 0 ? (
+          <CmeKvCard
+            label="This year"
+            rows={aboutFacts.map((fact) => ({ label: fact.label, value: fact.value, testId: fact.testId }))}
+          />
+        ) : null}
+        {aboutRows.length > 0 ? <CmeFlatList>{aboutRows}</CmeFlatList> : null}
+        {trainingLink}
       </CmeGroup>
     ) : null;
 
   const byCategory = !hasTarget ? (
     <CmeGroup label="Logged by category" testId="cme-logged-by-category">
-      <CmeCategoryLegend categoryHours={hoursByCategory(entries)} label="Logged by category" />
+      <div className="work-card px-3">
+        <CmeCategoryLegend categoryHours={hoursByCategory(entries)} label="Logged by category" />
+      </div>
     </CmeGroup>
   ) : null;
 
-  // Phone order is the DOM order; `LEFT` and `RIGHT` place each block on a computer.
-  const body = (
-    <div data-mode-identity="cme" data-testid="cme-year-body" className="grid min-w-0 gap-5.5 lg:block lg:flow-root">
-      <div className={cn(LEFT, "grid gap-5.5")}>
-        {summary}
-        {logButton}
-        {chips.length > 0 ? <CmeTodayShortcuts chips={chips} /> : null}
-        {byCategory}
-      </div>
-      {nextStepNode || whatsLeft ? (
-        <div className={cn(RIGHT, "grid gap-3")}>
-          {nextStepNode}
-          {whatsLeft}
-        </div>
-      ) : null}
-      {routinesNode ? <div className={LEFT}>{routinesNode}</div> : null}
-      {alsoForYou || about ? (
-        <div className={cn(RIGHT, "grid gap-5.5")}>
-          {alsoForYou}
-          {about}
-        </div>
-      ) : null}
+  const chipsNode =
+    chips.length > 0 ? (
+      <CmeGroup label="Records to tidy" testId="cme-records-to-tidy">
+        <CmeTodayShortcuts chips={chips} />
+      </CmeGroup>
+    ) : null;
+
+  // The dock: the one filled button. Before anything is logged it lives in the empty card instead.
+  const dock = nothingLogged ? null : (
+    <div className="work-dock" role="group" aria-label="Actions">
+      <div className="work-dock__capsule">{logLink("Log an activity", "work-button min-h-tap")}</div>
     </div>
   );
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(max(1rem,var(--safe-area-bottom))+2.5rem)] pt-6 sm:px-6 lg:max-w-5xl">
-      <TodayShell mode="cme" modeName="CPD" status={status} now={body} nowSurface="own" />
+    <main className="w-full" data-testid="cme-year-page">
+      <div className="contents">{status}</div>
+      <div data-mode-identity="cme" data-testid="cme-year-body" className="min-w-0">
+        <WorkBody>
+          {summary}
+          {nextStepNode}
+          {toLog}
+          {whatsLeft}
+          {chipsNode}
+          {byCategory}
+          {alsoForYou}
+          {about}
+          {dock}
+        </WorkBody>
+      </div>
 
       <CmeTodayDetailSheet
         detail={detail}
@@ -620,6 +665,12 @@ export function CmeDashboard({
         totalHours={totalHours}
         totalGap={totalGap}
         gapScenarios={gapScenarios}
+        routineEstimateHours={catchUp.status === "plan" ? catchUp.routineEstimateHours : 0}
+        remainingAfterRoutines={catchUp.status === "plan" ? catchUp.remainingAfterRoutines : null}
+        stillToFindWeekly={
+          catchUp.status === "plan" && weeklyPace !== null && weeklyPace.weeksLeft >= 1 ? catchUp.hoursPerWeek : null
+        }
+        weeks={hasTarget && !nothingLogged ? <CmeYearInWeeks entries={entries} year={set.year} today={today} /> : null}
       />
     </main>
   );

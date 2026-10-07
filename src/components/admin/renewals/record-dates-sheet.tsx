@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Sheet } from "@/components/ui/sheet";
+import { AdminSheet } from "@/components/admin/admin-kit";
+import { WorkButton } from "@/components/mode-kit/work";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
@@ -154,7 +154,7 @@ export function RecordDatesSheet({
   }
 
   return (
-    <Sheet
+    <AdminSheet
       open
       onClose={onClose}
       title="Record missing dates"
@@ -168,42 +168,45 @@ export function RecordDatesSheet({
                 <InlineNotice tone="neutral">
                   <span className="flex flex-wrap items-center justify-between gap-2">
                     <span>{failure.message}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={failure.retry}
-                      disabled={busy}
-                      testId={`${testId}-retry`}
-                    >
+                    <WorkButton variant="quiet" onClick={failure.retry} testId={`${testId}-retry`} disabled={busy}>
                       Retry
-                    </Button>
+                    </WorkButton>
                   </span>
                 </InlineNotice>
               </div>
             ) : null}
-            <Button
+            <WorkButton
               variant="primary"
-              block
-              busy={busy}
-              disabled={!validDate}
+              size="wide"
               onClick={saveAndNext}
               testId={`${testId}-save`}
+              disabled={busy || !validDate}
             >
               Save and next
-            </Button>
+            </WorkButton>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="secondary" disabled={busy} onClick={() => advance("skipped")} testId={`${testId}-skip`}>
+              <WorkButton
+                variant="secondary"
+                onClick={() => advance("skipped")}
+                testId={`${testId}-skip`}
+                disabled={busy}
+              >
                 Skip
-              </Button>
-              <Button variant="secondary" disabled={busy} onClick={notForThisJob} testId={`${testId}-not-for-this-job`}>
+              </WorkButton>
+              <WorkButton
+                variant="secondary"
+                onClick={notForThisJob}
+                testId={`${testId}-not-for-this-job`}
+                disabled={busy}
+              >
                 Not for this job
-              </Button>
+              </WorkButton>
             </div>
           </div>
         ) : (
-          <Button variant="primary" block onClick={onClose} testId={`${testId}-done`}>
+          <WorkButton variant="primary" size="wide" onClick={onClose} testId={`${testId}-done`}>
             {done ? "Done" : "Close"}
-          </Button>
+          </WorkButton>
         )
       }
     >
@@ -212,16 +215,16 @@ export function RecordDatesSheet({
           <p className="text-sm text-[color:var(--text)]">{READ_ONLY_TEXT[readOnly]}</p>
           {readOnly === "signed-out" && onSignIn ? (
             <div>
-              <Button variant="secondary" onClick={onSignIn} testId={`${testId}-sign-in`}>
+              <WorkButton variant="secondary" onClick={onSignIn} testId={`${testId}-sign-in`}>
                 Sign in
-              </Button>
+              </WorkButton>
             </div>
           ) : null}
           {readOnly === "failed" && onRetryLoad ? (
             <div>
-              <Button variant="secondary" onClick={onRetryLoad} testId={`${testId}-retry-load`}>
+              <WorkButton variant="secondary" onClick={onRetryLoad} testId={`${testId}-retry-load`}>
                 Retry
-              </Button>
+              </WorkButton>
             </div>
           ) : null}
         </div>
@@ -266,6 +269,6 @@ export function RecordDatesSheet({
           <p className={cn(textMuted, "text-sm")}>Dates you entered, not a check</p>
         </div>
       )}
-    </Sheet>
+    </AdminSheet>
   );
 }

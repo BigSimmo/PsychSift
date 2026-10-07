@@ -33,8 +33,7 @@ import { RosterLeaveSheet } from "./roster-leave-sheet";
 import { RosterSentBar, type SentReceipt } from "./roster-sent-bar";
 import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
-import { RosterNewButton } from "@/components/roster/roster-new-button";
-import { usePhoneFooterLayerScrollHidden } from "@/components/clinical-dashboard/phone-footer-layer-portal";
+import { RosterNewButton, useRosterNewButtonClearance } from "@/components/roster/roster-new-button";
 
 type Start = "swap" | "give_away" | "cant_make" | "dates" | "leave";
 type ActiveSheet = {
@@ -124,7 +123,7 @@ export function RosterRequestsPage() {
   const now = useRosterNow();
   // The band's words (mockup `rost_requests`); the page heading "Requests" stays under it.
   useModeBandHeading({ eyebrow: "Leave, dates and shift changes", title: "Leave and requests" });
-  const phoneFooterHidden = usePhoneFooterLayerScrollHidden() === true;
+  const newButtonClearance = useRosterNewButtonClearance();
   const search = useSyncExternalStore(subscribeSearch, searchSnapshot, serverSearchSnapshot);
   const [consumedSearch, setConsumedSearch] = useState<string | null>(null);
   const teams = useRosterTeams();
@@ -266,7 +265,7 @@ export function RosterRequestsPage() {
 
   const canTeamAct = !!serviceId && !!actorId && overview.status === "ready";
   return (
-    <InformationPageShell testId="roster-requests-page" className={phoneFooterHidden ? "max-sm:pb-4" : "max-sm:pb-20"}>
+    <InformationPageShell testId="roster-requests-page" className={newButtonClearance}>
       <RosterPageHeader
         icon={Inbox}
         eyebrow="Roster"

@@ -1,19 +1,31 @@
 "use client";
 
-import { ChevronLeft, CopyPlus, FileQuestion, Pencil, Repeat } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  CopyPlus,
+  ExternalLink,
+  FileQuestion,
+  History,
+  Lock,
+  Pencil,
+  Repeat,
+} from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
 import { CmeDetailNavHeader } from "@/components/cme/cme-nav-header";
+import { cmeCpdHomeWords } from "@/components/cme/cme-log-shared";
 import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
+import { CmeDot, CmePrivacyLine } from "@/components/cme/cme-work-kit";
+import { WorkBody } from "@/components/mode-kit/work";
 import { inPageActionRowClass } from "@/components/in-page-nav/in-page-nav-classes";
-import { Button } from "@/components/ui/button";
-import { Chip } from "@/components/ui/chip";
 import { MissingValue } from "@/components/ui/missing-value";
-import { cn, EmptyState, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { cn, EmptyState } from "@/components/ui-primitives";
 import { formatEntryForCpdHome } from "@/lib/cme/clipboard";
-import { formatCalendarDateLong } from "@/lib/cme/cpd-year";
+import { formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { normalizeCmeSourceUrl } from "@/lib/cme/learning-source";
 import { cmeCategoryLabels, type CmeEntry, type CmeRequirementSet } from "@/lib/cme/types";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
@@ -143,6 +155,8 @@ export function CmeEntryPage({
     }
   }
 
+  const cpdHome = cmeCpdHomeWords(set);
+  const today = perthCalendarDate(new Date());
   const totalHours = Math.round(entry.allocations.reduce((sum, allocation) => sum + allocation.hours, 0) * 100) / 100;
 
   const logAgainHref = `/cme/new?year=${entry.date.slice(0, 4)}&repeat=${encodeURIComponent(entry.id)}`;
@@ -189,131 +203,196 @@ export function CmeEntryPage({
             : undefined
         }
       />
-      <main data-testid="cme-entry-page" className={cn(cmePageWidth, "px-4 pb-10 pt-6 sm:px-6")}>
-        <div className="flex flex-col gap-1">
-          <h1 className={cmePageTitle}>{entry.title}</h1>
-          <p className={cn(textMuted, "text-sm")}>
-            {formatCalendarDateLong(entry.date)} · {totalHours} hour{totalHours === 1 ? "" : "s"}
-            {entry.archivedAt ? " recorded · excluded from totals" : ""}
-          </p>
-          {entry.routineId ? (
-            <span className="mt-1 inline-flex">
-              <Chip size="compact" icon={Repeat} appearance={{ kind: "information", tone: "accent" }}>
-                Routine
-              </Chip>
-            </span>
-          ) : null}
-        </div>
-
-        {notice ? <div className="mt-4">{notice}</div> : null}
-
-        {/* The one primary action, straight under the title: copying an activity
-            to the CPD home is the job this page is opened for most often. */}
-        <section data-testid="cme-entry-portal" className="mt-5">
-          <h2 className={eyebrowText}>Your CPD home</h2>
-          <div className="mt-2">
-            <Button
-              variant="primary"
-              size="lg"
-              block
-              disabled={readOnly || Boolean(entry.archivedAt)}
-              onClick={() => void handleCopy()}
-            >
-              Copy for your CPD home
-            </Button>
+      <main data-testid="cme-entry-page" data-mode-identity="cme" className="w-full">
+        <WorkBody>
+          <div className="grid gap-0.5 px-1">
+            <p className="cpd-hint m-0 font-semibold">{formatCmeRowDate(entry.date, today)}</p>
+            <h1 className={cmePageTitle}>{entry.title}</h1>
+            {entry.archivedAt ? (
+              <p className="cpd-hint m-0">{`Archived. ${totalHours} hour${totalHours === 1 ? "" : "s"} recorded · excluded from totals`}</p>
+            ) : null}
           </div>
-          {/* Position and words carry this, never colour — design decision §12
-            bans red, amber and green from this mode, including for a
-            not-yet-transcribed entry. */}
-          <p data-testid="cme-entry-transcribed-status" className={cn(textMuted, "mt-2 text-center text-xs")}>
-            {copyFailed
-              ? "Could not copy — check clipboard permissions and try again."
-              : stampFailed
-                ? "Copied to your clipboard, but this record could not be marked as copied."
-                : transcribed
-                  ? "Copied to your clipboard for your CPD home."
-                  : "Not yet copied for your CPD home."}
-          </p>
-          <p className={cn(textMuted, "mt-1 text-center text-2xs")}>
-            Puts the core activity details on your clipboard for transfer, then marks this entry copied.
-          </p>
-        </section>
 
-        <section data-testid="cme-entry-allocations" className="mt-5">
-          <h2 className={eyebrowText}>Allocations</h2>
-          <ul className="mt-2 flex flex-col gap-2">
-            {entry.allocations.map((allocation) => (
-              <li key={allocation.category} className={cn(cardSurface, "flex items-center justify-between gap-3 p-3")}>
-                <Chip appearance={{ kind: "category", tone: "indigo" }}>{cmeCategoryLabels[allocation.category]}</Chip>
-                <span className="text-sm font-normal tabular-nums text-[color:var(--text-heading)]">
-                  {`${allocation.hours} h`}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+          {notice ? <div>{notice}</div> : null}
 
-        <section data-testid="cme-entry-reflection" className="mt-5">
-          <h2 className={eyebrowText}>Reflection</h2>
-          {entry.reflection.trim().length > 0 ? (
-            <p
-              className={cn(
-                cardSurface,
-                "mt-2 whitespace-pre-wrap break-words p-3 text-sm leading-relaxed text-[color:var(--text)]",
+          {/* Where the copy stands. Words, never colour (design decision §12). */}
+          <div className="cpd-sug" data-testid="cme-entry-portal">
+            <span aria-hidden="true" className="work-ic" data-tone={transcribed ? "neutral" : undefined}>
+              {transcribed ? (
+                <Check aria-hidden="true" strokeWidth={2.2} />
+              ) : (
+                <Copy aria-hidden="true" strokeWidth={2} />
               )}
-            >
-              {entry.reflection}
-            </p>
-          ) : (
-            <div className="mt-2">
-              <EmptyState testId="cme-entry-reflection-empty" title="No reflection written yet." />
-            </div>
-          )}
-        </section>
+            </span>
+            <span className="work-row__text">
+              <span className="work-row__title">{transcribed ? "Marked copied" : "Not marked copied"}</span>
+              <span className="work-row__sub" data-testid="cme-entry-transcribed-status">
+                {copyFailed
+                  ? "Could not copy. Check clipboard permissions and try again."
+                  : stampFailed
+                    ? "Copied to your clipboard, but this record could not be marked as copied."
+                    : transcribed
+                      ? `Copied to your clipboard for ${cpdHome.name}.`
+                      : `Not yet copied. Copy it into ${cpdHome.name}, and it is marked copied.`}
+              </span>
+            </span>
+          </div>
 
-        <section data-testid="cme-entry-evidence" className="mt-5">
-          <h2 className={eyebrowText}>Source record</h2>
-          {entry.documentId ? (
-            <div className={cn(cardSurface, "mt-2 p-3 text-sm text-[color:var(--text)]")}>
-              A private source document is linked to this entry. This label records the link; it does not certify the
-              document as audit evidence.
+          <dl className="work-card m-0" aria-label="This activity">
+            <div className="cpd-kv">
+              <dt>Date</dt>
+              <dd>{formatCmeRowDate(entry.date, today)}</dd>
             </div>
-          ) : (
-            <div className="mt-2">
-              <EmptyState
-                testId="cme-entry-evidence-empty"
-                title="No source is linked."
-                body="A learning source and evidence of your participation are separate. Manage supporting files below."
-              />
+            <div className="cpd-kv">
+              <dt>Hours</dt>
+              <dd>
+                <span className="nums font-normal">{totalHours}</span> h
+              </dd>
             </div>
-          )}
-        </section>
+            <div data-testid="cme-entry-allocations" className="contents">
+              {entry.allocations.map((allocation, index) => (
+                <div key={allocation.category} className="cpd-kv">
+                  <dt>{index === 0 ? "Counts toward" : <span className="sr-only">Also counts toward</span>}</dt>
+                  <dd>
+                    <span className="mr-1.5 inline-flex align-[1px]">
+                      <CmeDot cat={allocation.category} />
+                    </span>
+                    <span>{cmeCategoryLabels[allocation.category]}</span>
+                    {entry.allocations.length > 1 ? (
+                      <>
+                        {" · "}
+                        <span className="nums font-normal">{allocation.hours}</span> h
+                      </>
+                    ) : null}
+                  </dd>
+                </div>
+              ))}
+            </div>
+            {entry.buckets.length > 0 ? (
+              <div className="cpd-kv">
+                <dt>{entry.buckets.length === 1 ? "Domain" : "Domains"}</dt>
+                <dd>{entry.buckets.join(", ")}</dd>
+              </div>
+            ) : null}
+            {entry.routineId ? (
+              <div className="cpd-kv">
+                <dt>Logged from</dt>
+                <dd className="inline-flex items-center gap-1.5">
+                  <Repeat aria-hidden="true" className="size-icon-sm" strokeWidth={2} />A routine
+                </dd>
+              </div>
+            ) : null}
+            <div className="cpd-kv" data-testid="cme-entry-cost">
+              <dt>Cost</dt>
+              <dd>
+                {entry.costCents !== null ? (
+                  <span className="nums font-normal">{formatCostCents(entry.costCents)}</span>
+                ) : (
+                  <MissingValue reason="not_recorded" />
+                )}
+              </dd>
+            </div>
+          </dl>
 
-        {entry.sourceUrl ? (
-          <p className="mt-3 break-all text-sm">
-            Learning source:{" "}
-            <a
-              href={normalizeCmeSourceUrl(entry.sourceUrl) ?? undefined}
-              rel="noreferrer"
-              target="_blank"
-              className="underline"
-            >
-              {entry.sourceUrl}
-            </a>
-            . This link is not evidence.
-          </p>
-        ) : null}
-        {children}
-        <section data-testid="cme-entry-cost" className="mt-5">
-          <h2 className={eyebrowText}>Cost</h2>
-          <p className={cn(cardSurface, "mt-2 p-3 text-sm text-[color:var(--text)]")}>
-            {entry.costCents !== null ? formatCostCents(entry.costCents) : <MissingValue reason="not_recorded" />}
-          </p>
-        </section>
+          <section
+            data-testid="cme-entry-reflection"
+            aria-labelledby="cme-entry-reflection-heading"
+            className="grid gap-1.5"
+          >
+            <div className="work-label">
+              <h2 id="cme-entry-reflection-heading" className="m-0 text-inherit font-inherit">
+                Reflection
+              </h2>
+              {editHref ? (
+                <Link href={editHref} className="work-label__link min-h-tap">
+                  Edit
+                </Link>
+              ) : null}
+            </div>
+            {entry.reflection.trim().length > 0 ? (
+              <p className="work-card work-card--pad m-0 whitespace-pre-wrap break-words text-sm leading-relaxed text-[color:var(--text)]">
+                {entry.reflection}
+              </p>
+            ) : (
+              <p className="cpd-hint m-0" data-testid="cme-entry-reflection-empty">
+                No reflection written yet.
+              </p>
+            )}
+          </section>
 
-        {/* Last, below the record: archiving sat straight under the title,
+          <section data-testid="cme-entry-evidence" aria-labelledby="cme-entry-source-heading" className="grid gap-1.5">
+            <h2 id="cme-entry-source-heading" className="work-label m-0">
+              Source record
+            </h2>
+            {entry.documentId ? (
+              <p className="work-card work-card--pad m-0 text-sm text-[color:var(--text)]">
+                A private source document is linked to this entry. This label records the link. It does not certify the
+                document as audit evidence.
+              </p>
+            ) : (
+              <p className="cpd-hint m-0" data-testid="cme-entry-evidence-empty">
+                No source is linked. A learning source and evidence of your participation are separate. Manage
+                supporting files below.
+              </p>
+            )}
+            {entry.sourceUrl && normalizeCmeSourceUrl(entry.sourceUrl) ? (
+              <div className="work-card">
+                <a
+                  href={normalizeCmeSourceUrl(entry.sourceUrl) ?? undefined}
+                  rel="noreferrer"
+                  target="_blank"
+                  className="work-row min-h-tap"
+                  data-testid="cme-entry-source-link"
+                >
+                  <span className="cpd-lead">
+                    <ExternalLink aria-hidden="true" strokeWidth={2} />
+                  </span>
+                  <span className="work-row__text">
+                    <span className="work-row__title">Organiser page</span>
+                    <span className="work-row__sub">A link is not evidence of attendance</span>
+                  </span>
+                  <ChevronRight aria-hidden="true" className="work-row__chev" />
+                </a>
+              </div>
+            ) : null}
+          </section>
+
+          {children}
+
+          {/* Last, below the record: archiving sat straight under the title,
           above the details, where it was the easiest thing to tap by mistake. */}
-        {actions}
+          {actions}
+
+          <CmePrivacyLine icon={Lock}>{`Private to you. Nothing is sent to ${cpdHome.college}.`}</CmePrivacyLine>
+
+          {
+            <div className="work-dock" role="group" aria-label="Activity actions">
+              <div className="work-dock__capsule">
+                <button
+                  type="button"
+                  className="work-button min-h-tap"
+                  data-variant="primary"
+                  disabled={readOnly || Boolean(entry.archivedAt)}
+                  onClick={() => void handleCopy()}
+                >
+                  <Copy aria-hidden="true" strokeWidth={2.2} />
+                  {`Copy for ${cpdHome.name}`}
+                </button>
+                {!readOnly ? (
+                  <Link
+                    href={logAgainHref}
+                    className="work-button min-h-tap"
+                    data-variant="secondary"
+                    data-testid="cme-entry-dock-log-again"
+                  >
+                    <History aria-hidden="true" strokeWidth={2.2} />
+                    Log again
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          }
+        </WorkBody>
       </main>
     </>
   );

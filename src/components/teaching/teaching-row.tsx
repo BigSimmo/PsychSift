@@ -128,7 +128,10 @@ export function TeachingUndoBar({
       <button
         type="button"
         onClick={onUndo}
-        className={cn("min-h-tap min-w-tap shrink-0 px-3 text-sm font-medium text-[color:var(--primary)]", focusRing)}
+        className={cn(
+          "min-h-tap min-w-tap shrink-0 px-3 text-sm font-medium text-[color:var(--mode-identity)]",
+          focusRing,
+        )}
       >
         Undo
       </button>

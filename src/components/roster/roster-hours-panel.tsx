@@ -119,6 +119,7 @@ export function RosterHoursPanel({
   extra,
   partial,
   payAnchored,
+  onCallExcluded = false,
   onRetry,
 }: {
   readonly shifts: readonly OnCallShift[];
@@ -127,6 +128,8 @@ export function RosterHoursPanel({
   readonly extra: RosterExtraTimeState;
   readonly partial: boolean;
   readonly payAnchored: boolean;
+  /** On-call shifts fall in the fortnight but are not rostered hours, so the total says so. */
+  readonly onCallExcluded?: boolean;
   readonly onRetry: () => void;
 }) {
   return (
@@ -159,6 +162,14 @@ export function RosterHoursPanel({
                 </span>
               ) : extra.status === "error" ? (
                 <span className="ml-auto text-xs text-[color:var(--text-muted)]">extra time not loaded</span>
+              ) : null}
+              {onCallExcluded ? (
+                <span
+                  className="basis-full text-xs text-[color:var(--text-muted)]"
+                  data-testid="roster-hours-on-call-note"
+                >
+                  On call isn&apos;t counted here.
+                </span>
               ) : null}
             </p>
           </section>

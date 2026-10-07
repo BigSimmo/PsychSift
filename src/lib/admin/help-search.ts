@@ -22,3 +22,20 @@ export function matchesHelpQuery(text: string, query: string): boolean {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   return words.every((word) => variants(word).some((variant) => haystack.includes(variant)));
 }
+
+/**
+ * The everyday words a query also looks for ("hungry" also looks for food,
+ * cafeteria, vending, meal, dinner and eat), so Help can say why a row
+ * matched. Words the query already holds are left out. Nothing is sent
+ * anywhere.
+ */
+export function helpQueryAlsoLooksFor(query: string): string[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const also = new Set<string>();
+  for (const word of words) {
+    const group = groups.find((members) => members.includes(word));
+    if (!group) continue;
+    for (const member of group) if (!words.includes(member)) also.add(member);
+  }
+  return [...also];
+}

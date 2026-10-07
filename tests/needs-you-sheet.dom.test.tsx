@@ -238,7 +238,9 @@ describe("Notification centre behaviours", () => {
     myDay.items = mixed();
     render(<NeedsYouSheet open onClose={vi.fn()} returnFocusRef={returnFocusRef} />);
     expect(screen.getByTestId("needs-you-area-all").textContent).toContain("5");
-    expect(screen.getByTestId("needs-you-area-my-work").textContent).toBe("Admin2");
+    // work-mode redesign, owner request 6 Oct 2026: WorkChip puts a screen-reader
+    // space between the label and its count, so the text reads "Admin 2".
+    expect(screen.getByTestId("needs-you-area-my-work").textContent).toBe("Admin 2");
     fireEvent.click(screen.getByTestId("needs-you-area-teaching"));
     expect(screen.getByTestId("needs-you-area-teaching").getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByTestId("needs-you-item-my-work:date:bls")).toBeNull();

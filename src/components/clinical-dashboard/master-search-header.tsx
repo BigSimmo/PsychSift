@@ -2874,7 +2874,16 @@ export function MasterSearchHeader({
           ) : null}
         </div>
 
-        <div className="universal-header-trailing relative flex min-w-0 shrink-0 items-center justify-end gap-1.5 justify-self-end sm:gap-2">
+        <div
+          className={cn(
+            "universal-header-trailing relative flex min-w-0 shrink-0 items-center justify-end gap-1.5 justify-self-end sm:gap-2",
+            // Search my work measures this column on wide screens: it opens out to its labelled
+            // pill only when the pill fits beside the bell, so at large text it stays a round
+            // icon instead of running under the mode switcher. Stretched to the column so the
+            // measurement is the room there is, not the controls' own width.
+            appModeHasWorkSearch(selectedAppMode.id) && "lg:@container/header-trailing lg:justify-self-stretch",
+          )}
+        >
           {/* The one extension point in this row.
               A page that owns a control belonging in the header portals it here
               through `UniversalHeaderTrailingPortal`; CSS then hides the new-chat

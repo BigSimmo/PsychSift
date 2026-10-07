@@ -44,7 +44,16 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
   ],
   [
     "/admin/compliance/export",
-    "Reached from the 'Export a copy for yourself' ModeRow on Admin Compliance (ADMIN_PAGE_HREFS.complianceExport), which this Link-only scan does not model.",
+    "Reached from the Export row (an AdminRow, a next/link wrapper) on Admin Compliance (ADMIN_PAGE_HREFS.complianceExport), which this Link-only scan does not model.",
+  ],
+  // Work-mode redesign, owner request 6 Oct 2026: New job's Leaving links became AdminRows.
+  [
+    "/admin/new-job/records",
+    "Reached from the 'Your Admin records' row (an AdminRow, a next/link wrapper) in New job's Leaving section, which this Link-only scan does not model.",
+  ],
+  [
+    "/admin/new-job/pack",
+    "Reached from the 'Credential pack' row (an AdminRow, a next/link wrapper) in New job's Leaving section, which this Link-only scan does not model.",
   ],
   [
     "/roster/join",

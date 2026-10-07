@@ -306,3 +306,18 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
     expect(screen.getByTestId("admin-new-job-leaving-pack-link").getAttribute("href")).toBe("/admin/new-job/pack");
   });
 });
+
+// Work-mode redesign, owner request 6 Oct 2026: the credentials wallet moved
+// from Today to New job, beside the credential pack it feeds.
+describe("AdminNewJobPage credentials wallet", () => {
+  it("shows the wallet to a signed-in reader, beside Leaving's credential pack", () => {
+    render(<AdminNewJobPage now={NOW} />);
+    expect(screen.getByTestId("admin-credentials-wallet")).toBeTruthy();
+  });
+
+  it("never shows the wallet on example records", () => {
+    Object.assign(entryState, { demoMode: true });
+    render(<AdminNewJobPage now={NOW} />);
+    expect(screen.queryByTestId("admin-credentials-wallet")).toBeNull();
+  });
+});

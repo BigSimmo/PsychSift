@@ -1,19 +1,19 @@
 "use client";
 
-import { CalendarDays, Info } from "lucide-react";
+import { CalendarDays, ChevronRight, Info, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { focusRing } from "@/components/card-recipes";
-import { dashSurface } from "@/components/dashboard-kit/recipes";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { listNames } from "@/components/my-day/my-day-page-parts";
-import { AreaIcon, DateBlock, QuietFoot, QuietTextLink } from "@/components/my-day/my-day-quiet";
-import { StripDay } from "@/components/my-day/my-day-today-cards";
+import { clashWithShifts } from "@/components/my-day/my-day-clash";
+import { AreaIcon, DateBlock, QuietFoot, quietCard } from "@/components/my-day/my-day-quiet";
+import { MonthView, MyDaySegmented, StripDay, type DayDetail } from "@/components/my-day/my-day-today-cards";
 import { cmeRoutineItemsThrough } from "@/components/my-day/sources/cme";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { kindOf } from "@/components/roster/roster-format";
@@ -29,16 +29,10 @@ import { appModeDefinition } from "@/lib/app-modes";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
 import { dueCountsByDate } from "@/lib/my-day/dashboard";
-import { kindsByDate as kindsByDateOf } from "@/lib/my-day/figures";
-import { mergeMyDayItems } from "@/lib/my-day/merge";
+import { addMonths, kindsByDate as kindsByDateOf, monthTitle } from "@/lib/my-day/figures";
+import { duePerthDate, mergeMyDayItems } from "@/lib/my-day/merge";
 import { perthWeekday, shiftTitle, weekdayTime } from "@/lib/my-day/quiet-figures";
-import {
-  groupByPerthDay,
-  myDayItemWeekDate,
-  myDayWeekDates,
-  myDayWeekDayLabel,
-  myDayWeekRangeLabel,
-} from "@/lib/my-day/week";
+import { myDayItemWeekDate, myDayWeekDates, myDayWeekDayLabel, myDayWeekRangeLabel } from "@/lib/my-day/week";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
@@ -56,9 +50,17 @@ const MyDayWeekSample = dynamic(
  * A shift belongs to the day it starts, as on a printed roster.
  */
 export function MyDayWeekPage({ now }: { now?: Date } = {}) {
+  const [view, setView] = useState<WeekView>("week");
+  const [shownMonth, setShownMonth] = useState<string | null>(null);
+  const showView = (next: WeekView) => {
+    setView(next);
+    // A return to Month starts on this month again, as the calendar does.
+    setShownMonth(null);
+  };
+  const viewProps = { view, onView: showView, shownMonth, onMonth: setShownMonth };
   return (
     <MyDayFrame
-      title="This week"
+      title={view === "month" ? "This month" : "This week"}
       testId="my-day-week"
       now={now}
       signedOutSample={{
@@ -68,6 +70,7 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
           <MyDayWeekSample now={at} testId="my-day-week-ready">
             {(sample) => (
               <MyDayWeekDays
+                {...viewProps}
                 now={at}
                 shifts={sample.sources.roster.shifts}
                 sessions={sample.sources.teaching.ahead ?? []}
@@ -80,18 +83,51 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
           </MyDayWeekSample>
         ),
       }}
-      subtitle={(at) => myDayWeekRangeLabel(perthDateOf(at))}
+      subtitle={(at) =>
+        view === "month"
+          ? monthBandLine(shownMonth ?? perthDateOf(at).slice(0, 7), perthDateOf(at).slice(0, 7))
+          : myDayWeekRangeLabel(perthDateOf(at))
+      }
     >
-      {(at) => <MyDayWeekBody now={at} />}
+      {(at) => <MyDayWeekBody now={at} {...viewProps} />}
     </MyDayFrame>
   );
 }
 
-function MyDayWeekBody({ now }: { now: Date }) {
+type WeekView = "week" | "month";
+
+interface WeekViewProps {
+  readonly view: WeekView;
+  readonly onView: (view: WeekView) => void;
+  /** The month the calendar shows ("2026-11"), or null for this month. */
+  readonly shownMonth: string | null;
+  readonly onMonth: (month: string) => void;
+}
+
+/** "October 2026", or "November 2026 · next month" once the calendar has moved on. */
+function monthBandLine(month: string, current: string): string {
+  if (month === current) return monthTitle(month);
+  if (month === addMonths(current, 1)) return `${monthTitle(month)} · next month`;
+  if (month === addMonths(current, -1)) return `${monthTitle(month)} · last month`;
+  return monthTitle(month);
+}
+
+/** The last day of a month ("2026-10" to "2026-10-31"). */
+function monthEnd(month: string): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const days = new Date(Date.UTC(year!, monthNumber!, 0)).getUTCDate();
+  return `${month}-${String(days).padStart(2, "0")}`;
+}
+
+function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
   const today = perthDateOf(now);
   const dates = useMemo(() => myDayWeekDates(today), [today]);
   const lastDate = dates[dates.length - 1]!;
-  const range = useMemo(() => ({ from: today, to: lastDate }), [today, lastDate]);
+  const month = viewProps.view === "month" ? (viewProps.shownMonth ?? today.slice(0, 7)) : null;
+  // The month view reads the whole month shown, as well as the seven days.
+  const from = month && `${month}-01` < today ? `${month}-01` : today;
+  const to = month && monthEnd(month) > lastDate ? monthEnd(month) : lastDate;
+  const range = useMemo(() => ({ from, to }), [from, to]);
 
   const items = useMyDayItems({ enabled: true, now });
   const shifts = useRosterShifts(range);
@@ -140,8 +176,8 @@ function MyDayWeekBody({ now }: { now: Date }) {
     teaching.retry();
   };
 
-  return (
-    <div className="grid gap-5" data-testid="my-day-week-ready">
+  const notices = (
+    <>
       {items.demoMode || shifts.demoMode ? (
         <ModeNotice testId="my-day-week-demo-notice">Demo data: these items are invented examples.</ModeNotice>
       ) : null}
@@ -165,8 +201,14 @@ function MyDayWeekBody({ now }: { now: Date }) {
           Teaching isn&apos;t available yet, so its sessions aren&apos;t shown.
         </ModeNotice>
       ) : null}
+    </>
+  );
 
+  return (
+    <div className="grid gap-2.5" data-testid="my-day-week-ready">
       <MyDayWeekDays
+        {...viewProps}
+        notices={notices}
         now={now}
         shifts={showShifts ? shifts.shifts : []}
         sessions={teaching.week ? [...teaching.week.sessions, ...teaching.week.relocated] : []}
@@ -195,6 +237,8 @@ type AgendaEntry = {
   /** A state in words ("Date passed", "Cancelled"), shown in amber when `warn`. */
   readonly state: string | null;
   readonly warn: boolean;
+  /** A session that starts as on call ends, or runs across it: said in amber under the row. */
+  readonly clash: string | null;
   readonly href: string;
   readonly testId: string;
 };
@@ -219,12 +263,13 @@ function shiftEntry(shift: MyShift): AgendaEntry {
     detail: kind === "leave" ? null : untilWords(shift.startsAt, shift.endsAt),
     state: null,
     warn: false,
+    clash: null,
     href: "/roster/shifts",
     testId: `my-day-week-shift-${shift.id}`,
   };
 }
 
-function teachingEntry(session: SessionSummaryRead): AgendaEntry {
+function teachingEntry(session: SessionSummaryRead, shifts: readonly MyShift[]): AgendaEntry {
   const cancelled = session.status === "cancelled";
   return {
     key: `teaching:${session.occurrenceId}`,
@@ -237,6 +282,7 @@ function teachingEntry(session: SessionSummaryRead): AgendaEntry {
     detail: [session.venue, session.isPresenter ? "you lead" : null].filter(Boolean).join(" · ") || null,
     state: cancelled ? "Cancelled" : null,
     warn: cancelled,
+    clash: cancelled || session.allDay ? null : clashWithShifts(shifts, session.startsAt, session.endsAt),
     href: sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
     testId: `my-day-week-session-${session.occurrenceId}`,
   };
@@ -266,6 +312,7 @@ function itemEntry(item: MyDayItem): AgendaEntry {
     detail: item.detail && !(overdue && /passed|overdue/i.test(item.detail)) ? item.detail : null,
     state,
     warn: overdue,
+    clash: null,
     href: item.href,
     testId: `my-day-item-${item.id}`,
   };
@@ -288,71 +335,111 @@ function byTimeOfDay(entries: readonly AgendaEntry[]): AgendaEntry[] {
 
 function AgendaRow({ entry, done }: { readonly entry: AgendaEntry; readonly done: boolean }) {
   return (
-    <li>
+    <li className="min-w-0">
       <Link
         href={entry.href}
         data-testid={entry.testId}
         data-done={done ? "" : undefined}
         className={cn(
           focusRing,
-          "grid min-h-13 min-w-0 grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-2 rounded-md py-2 no-underline",
+          "grid min-h-12 min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-baseline gap-x-2 rounded-md py-1.5 no-underline",
         )}
       >
-        <span className={cn("text-sm nums", done ? "text-[color:var(--dash-faint)]" : "text-[color:var(--dash-ink)]")}>
-          {entry.time}
-        </span>
+        <span className="text-xs font-bold text-[color:var(--work-ink)] nums">{entry.time}</span>
         <span className="grid min-w-0">
           <span
             className={cn(
-              "flex min-w-0 items-baseline gap-1.5 text-base-minus",
-              done ? "text-[color:var(--dash-muted)]" : "text-[color:var(--dash-ink)]",
+              "min-w-0 text-sm-minus leading-snug break-words",
+              done ? "font-semibold text-[color:var(--text-muted)]" : "font-bold text-[color:var(--work-ink)]",
             )}
           >
+            {entry.title}
+          </span>
+          <span className="flex min-w-0 items-baseline gap-1.5 text-2xs leading-snug text-[color:var(--text-muted)]">
             <span
               aria-hidden="true"
               data-mode-identity={entry.identity}
-              className="size-1.5 shrink-0 -translate-y-0.5 rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]"
+              className="size-1.5 shrink-0 -translate-y-px rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]"
             />
-            <span className="min-w-0 break-words">{entry.title}</span>
+            <span className="min-w-0 break-words">
+              {entry.area}
+              {entry.state ? (
+                <>
+                  {" · "}
+                  <span className={entry.warn ? "font-semibold text-[color:var(--warning-text)]" : undefined}>
+                    {entry.state}
+                  </span>
+                </>
+              ) : null}
+              {entry.detail ? ` · ${entry.detail}` : null}
+            </span>
           </span>
-          <span className="break-words text-sm text-[color:var(--dash-muted)]">
-            {entry.area}
-            {entry.state ? (
-              <>
-                {" · "}
-                <span className={entry.warn ? "font-medium text-[color:var(--dash-amber)]" : undefined}>
-                  {entry.state}
-                </span>
-              </>
-            ) : null}
-            {entry.detail ? ` · ${entry.detail}` : null}
-          </span>
+          {entry.clash ? (
+            <span
+              className="mt-1 flex min-w-0 items-start gap-1.5 text-2xs font-semibold text-[color:var(--warning-text)]"
+              data-testid={`my-day-week-clash-${entry.key}`}
+            >
+              <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+              <span className="min-w-0 break-words">{entry.clash}</span>
+            </span>
+          ) : null}
         </span>
       </Link>
     </li>
   );
 }
 
-/** The blue line across today at the present minute. */
+/** The line across today at the present minute, in My Day's colour. */
 function NowLine({ now }: { readonly now: Date }) {
   return (
     <li
       aria-hidden="true"
       data-testid="my-day-week-now"
-      className="grid min-h-8 grid-cols-[3.25rem_minmax(0,1fr)_auto] items-center gap-x-2 text-xs text-[color:var(--dash-blue)] nums"
+      className="flex min-h-7 items-center gap-2 text-2xs font-bold text-[color:var(--mode-identity)] nums"
     >
-      <span>{perthTimeOf(now)}</span>
-      <span className="h-px bg-[color:var(--dash-blue)] forced-colors:bg-[CanvasText]" />
-      <span>now</span>
+      <span>{`${perthTimeOf(now)} now`}</span>
+      <span className="h-px min-w-0 flex-1 bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]" />
     </li>
   );
 }
 
+/** Every row for one Perth date, in time order: the agenda's day, or the month's chosen day. */
+function entriesOn(
+  date: string,
+  shifts: readonly MyShift[],
+  sessions: readonly SessionSummaryRead[],
+  items: readonly MyDayItem[],
+  itemDate: (item: MyDayItem) => string | null,
+): AgendaEntry[] {
+  return byTimeOfDay([
+    ...shifts.filter((shift) => perthDateOf(shift.startsAt) === date).map(shiftEntry),
+    ...[...sessions]
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title))
+      .filter((session) => perthDateKey(session.startsAt) === date)
+      .map((session) => teachingEntry(session, shifts)),
+    ...items.filter((item) => itemDate(item) === date).map(itemEntry),
+  ]);
+}
+
+/** A row of the month's chosen day, in the same words as the agenda. */
+function dayDetail(entry: AgendaEntry): DayDetail {
+  return {
+    key: entry.key,
+    mode: entry.identity,
+    title: entry.time && entry.time !== "All day" ? `${entry.title} ${entry.time}` : entry.title,
+    subtitle: [entry.state, entry.area, entry.detail, entry.clash].filter(Boolean).join(" · ") || undefined,
+    passed: entry.warn,
+    href: entry.href,
+    actionLabel: "Open",
+  };
+}
+
 /**
- * The seven days as a strip (the same codes as Today), then one list with a
- * date block per day and its timed rows, then a pointer to Roster. Drawn from
- * whatever shifts, sessions and items it is given: the reader's own, or the
- * signed-out sample.
+ * Week or Month. Week: the seven days as a strip (the same codes as Today),
+ * then one card with a date block per day and its timed rows, then a pointer
+ * to Roster. Month: the calendar of shifts and due dates, and the chosen
+ * day's rows. Drawn from whatever shifts, sessions and items it is given: the
+ * reader's own, or the signed-out sample.
  */
 export function MyDayWeekDays({
   now,
@@ -362,6 +449,11 @@ export function MyDayWeekDays({
   cmeRoutines,
   reminders,
   rosterKnown,
+  view = "week",
+  onView,
+  shownMonth = null,
+  onMonth,
+  notices,
 }: {
   readonly now: Date;
   readonly shifts: readonly MyShift[];
@@ -371,33 +463,29 @@ export function MyDayWeekDays({
   readonly reminders: ReminderSettings;
   /** False when the roster did not load: the strip shows no false "off" and empty days say why. */
   readonly rosterKnown: boolean;
-}) {
+  /** Notices drawn under the Week and Month switch. */
+  readonly notices?: ReactNode;
+} & Partial<WeekViewProps>) {
   const today = perthDateOf(now);
   const dates = useMemo(() => myDayWeekDates(today), [today]);
   const lastDate = dates[dates.length - 1]!;
+  const month = shownMonth ?? today.slice(0, 7);
+  // CPD routines are listed as far ahead as the page shows.
+  const through = view === "month" && monthEnd(month) > lastDate ? monthEnd(month) : lastDate;
   const merged = useMemo(
-    () => mergeMyDayItems([items, cmeRoutineItemsThrough(cmeRoutines, lastDate, now, reminders)]),
-    [items, cmeRoutines, lastDate, now, reminders],
+    () => mergeMyDayItems([items, cmeRoutineItemsThrough(cmeRoutines, through, now, reminders)]),
+    [items, cmeRoutines, through, now, reminders],
   );
-  const entriesByDay = useMemo(() => {
-    const dayShifts = groupByPerthDay(shifts, dates, (shift) => perthDateOf(shift.startsAt));
-    const daySessions = groupByPerthDay(
-      [...sessions].sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title)),
-      dates,
-      (session) => perthDateKey(session.startsAt),
-    );
-    const dayItems = groupByPerthDay(merged, dates, (item) => myDayItemWeekDate(item, today, lastDate));
-    return new Map(
-      dates.map((date) => [
-        date,
-        byTimeOfDay([
-          ...(dayShifts.get(date) ?? []).map(shiftEntry),
-          ...(daySessions.get(date) ?? []).map(teachingEntry),
-          ...(dayItems.get(date) ?? []).map(itemEntry),
+  const entriesByDay = useMemo(
+    () =>
+      new Map(
+        dates.map((date) => [
+          date,
+          entriesOn(date, shifts, sessions, merged, (item) => myDayItemWeekDate(item, today, lastDate)),
         ]),
-      ]),
-    );
-  }, [shifts, sessions, merged, dates, today, lastDate]);
+      ),
+    [shifts, sessions, merged, dates, today, lastDate],
+  );
   const kindsByDate = useMemo(
     () => kindsByDateOf(shifts.map((shift) => ({ startsAt: shift.startsAt, kind: kindOf(shift) }))),
     [shifts],
@@ -413,79 +501,130 @@ export function MyDayWeekDays({
         perthDateOf(new Date(Date.parse(shift.endsAt) - 1).toISOString()) === date,
     );
   const at = now.getTime();
+  const detailFor = (date: string): DayDetail[] =>
+    entriesOn(date, shifts, sessions, merged, (item) => {
+      // What is already late waits on today, as in the week.
+      const due = duePerthDate(item.due);
+      return due !== null && due < today ? today : due;
+    }).map(dayDetail);
 
   return (
-    <div className={cn(dashSurface, "my-day-quiet grid gap-4")}>
-      <ol role="list" className="grid grid-cols-7 gap-0.5 text-center" data-testid="my-day-week-strip">
-        {dates.map((date) => (
-          <StripDay
-            key={date}
-            date={date}
-            today={today}
-            kinds={rosterKnown ? (kindsByDate.get(date) ?? []) : null}
-            due={dueByDate.get(date) ?? 0}
-          />
-        ))}
-      </ol>
+    <div className="grid min-w-0 gap-2.5">
+      {onView ? (
+        <MyDaySegmented
+          options={[
+            ["week", "Week"],
+            ["month", "Month"],
+          ]}
+          value={view}
+          onChange={onView}
+          label="Show the week or the month"
+          testId="my-day-week-view"
+        />
+      ) : null}
+      {notices}
+      {view === "month" ? (
+        <MonthView
+          today={today}
+          kindsByDate={rosterKnown ? kindsByDate : null}
+          dueByDate={dueByDate}
+          detailFor={detailFor}
+          onMonth={onMonth}
+        />
+      ) : (
+        <>
+          <ol role="list" className="grid grid-cols-7 gap-1 text-center" data-testid="my-day-week-strip">
+            {dates.map((date) => (
+              <StripDay
+                key={date}
+                date={date}
+                today={today}
+                kinds={rosterKnown ? (kindsByDate.get(date) ?? []) : null}
+                due={dueByDate.get(date) ?? 0}
+              />
+            ))}
+          </ol>
 
-      <ul role="list" className="grid min-w-0 [&>li+li]:border-t [&>li+li]:border-[color:var(--dash-line)]">
-        {dates.map((date) => {
-          const entries = entriesByDay.get(date) ?? [];
-          const isToday = date === today;
-          const nowIndex = isToday ? entries.findIndex((entry) => entry.startsAt !== null && entry.startsAt > at) : -1;
-          const ending = entries.length === 0 ? endsOn(date) : undefined;
-          return (
-            <li
-              key={date}
-              data-testid={`my-day-week-day-${date}`}
-              className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-3 py-2.5"
-            >
-              <h2 className="sr-only">{myDayWeekDayLabel(date, today)}</h2>
-              <span className="pt-2">
-                <DateBlock number={Number(date.slice(8, 10))} word={perthWeekday(date)} today={isToday} />
-              </span>
-              {entries.length > 0 ? (
-                <ul role="list" className="grid min-w-0 [&>li+li]:border-t [&>li+li]:border-[color:var(--dash-line)]">
-                  {entries.map((entry, index) => (
-                    <Fragment key={entry.key}>
-                      {index === nowIndex ? <NowLine now={now} /> : null}
-                      <AgendaRow
-                        entry={entry}
-                        done={(entry.endsAt ?? entry.startsAt ?? Number.POSITIVE_INFINITY) <= at}
-                      />
-                    </Fragment>
-                  ))}
-                  {isToday && nowIndex === -1 && entries.some((entry) => entry.startsAt !== null) ? (
-                    <NowLine now={now} />
-                  ) : null}
-                </ul>
-              ) : (
-                <p
-                  className="flex min-h-12 items-center text-sm text-[color:var(--dash-muted)]"
-                  data-testid={`my-day-week-empty-${date}`}
+          <ul
+            role="list"
+            data-testid="my-day-week-agenda"
+            className={cn(quietCard, "grid min-w-0 px-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]")}
+          >
+            {dates.map((date) => {
+              const entries = entriesByDay.get(date) ?? [];
+              const isToday = date === today;
+              const nowIndex = isToday
+                ? entries.findIndex((entry) => entry.startsAt !== null && entry.startsAt > at)
+                : -1;
+              const ending = entries.length === 0 ? endsOn(date) : undefined;
+              return (
+                <li
+                  key={date}
+                  data-testid={`my-day-week-day-${date}`}
+                  className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 py-2"
                 >
-                  {!rosterKnown
-                    ? "Roster not loaded, so shifts are not shown"
-                    : ending
-                      ? `${shiftTitle(kindOf(ending))} ends ${perthTimeOf(ending.endsAt)} · nothing else on`
-                      : "Nothing on"}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                  <h2 className="sr-only">{myDayWeekDayLabel(date, today)}</h2>
+                  <span className="pt-1">
+                    <DateBlock number={Number(date.slice(8, 10))} word={perthWeekday(date)} today={isToday} />
+                  </span>
+                  {entries.length > 0 ? (
+                    <ul role="list" className="grid min-w-0">
+                      {entries.map((entry, index) => (
+                        <Fragment key={entry.key}>
+                          {index === nowIndex ? <NowLine now={now} /> : null}
+                          <AgendaRow
+                            entry={entry}
+                            done={(entry.endsAt ?? entry.startsAt ?? Number.POSITIVE_INFINITY) <= at}
+                          />
+                        </Fragment>
+                      ))}
+                      {isToday && nowIndex === -1 && entries.some((entry) => entry.startsAt !== null) ? (
+                        <NowLine now={now} />
+                      ) : null}
+                    </ul>
+                  ) : (
+                    <p
+                      className="flex min-h-10 items-center text-xs text-[color:var(--text-muted)]"
+                      data-testid={`my-day-week-empty-${date}`}
+                    >
+                      {!rosterKnown
+                        ? "Roster not loaded, so shifts are not shown"
+                        : ending
+                          ? `${shiftTitle(kindOf(ending))} ends ${perthTimeOf(ending.endsAt)} · nothing else on`
+                          : "Nothing on"}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
 
-      <div className="grid gap-3 border-t border-[color:var(--dash-line)] pt-2">
-        <div className="flex min-h-12 min-w-0 items-center gap-3" data-testid="my-day-week-footer">
-          <AreaIcon icon={CalendarDays} />
-          <p className="min-w-0 flex-1 text-base-minus text-[color:var(--dash-ink)]">All your shifts are in Roster</p>
-          <QuietTextLink href="/roster" ariaLabel="Open Roster">
-            Open Roster
-          </QuietTextLink>
-        </div>
-        <QuietFoot icon={Info}>From Roster, Teaching, CPD and Admin. Each item opens the page that owns it.</QuietFoot>
-      </div>
+          <Link
+            href="/roster"
+            aria-label="Open Roster: all your shifts, swaps, leave and your team"
+            data-testid="my-day-week-footer"
+            className={cn(
+              quietCard,
+              focusRing,
+              "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
+            )}
+          >
+            <AreaIcon mode="roster" icon={CalendarDays} />
+            <span className="grid min-w-0 flex-1">
+              <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">
+                All your shifts are in Roster
+              </span>
+              <span className="text-2xs text-[color:var(--text-muted)]">Swaps, leave and your team</span>
+            </span>
+            <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
+          </Link>
+          <div className="px-1">
+            <QuietFoot icon={Info}>
+              From Roster, Teaching, CPD and Admin. Each item opens the page that owns it.
+            </QuietFoot>
+          </div>
+        </>
+      )}
     </div>
   );
 }

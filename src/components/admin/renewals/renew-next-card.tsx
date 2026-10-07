@@ -1,129 +1,92 @@
-import { AdminStatusWord } from "@/components/admin/admin-status-word";
-import { AdminWindowBar } from "@/components/admin/renewals/window-bar";
-import { focusRing } from "@/components/card-recipes";
-import { modeModuleSurface } from "@/components/mode-kit/recipes";
-import { Button } from "@/components/ui/button";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
-import { formatRecordedDate } from "@/lib/admin/renewal-dates";
-import {
-  renewNextDateLine,
-  renewNextNothingDueLine,
-  renewNextThenLine,
-  renewWindowProgress,
-  type RenewNext,
-  type RenewNextItem,
-} from "@/lib/admin/renew-next";
+import { Check } from "lucide-react";
+
+import { AdminSection, adminStyles } from "@/components/admin/admin-kit";
+import { requirementActionLine } from "@/components/admin/renewals/urgency";
+import { WorkCard, WorkDateRow, WorkEmpty } from "@/components/mode-kit/work";
+import { onCallTeachingDateParts } from "@/lib/on-call/teaching-schedule";
+import { renewNextNothingDueLine, type RenewNext } from "@/lib/admin/renew-next";
+import type { RequirementChecklistRow } from "@/lib/admin/requirements";
+
+/** How many later dates "Coming later" lists. */
+const COMING_LATER = 4;
 
 /**
- * The renewal window as one bar: from the day renewing opens to the recorded
- * date, with today marked. Decorative; the date line above says the same in words.
- */
-function WindowBar({ item, today }: { readonly item: RenewNextItem; readonly today: string }) {
-  const progress = renewWindowProgress(item, today);
-  if (progress === null || !item.startOn) return null;
-  return (
-    <div className="grid gap-1" data-testid="admin-renew-next-window">
-      <AdminWindowBar progress={progress} />
-      <span className={cn(textMuted, "flex justify-between gap-2 text-xs")}>
-        <span>{`Start renewing ${formatRecordedDate(item.startOn)}`}</span>
-        <span>{`${item.bucket === "date-passed" ? "Date passed" : "Renew by"} ${formatRecordedDate(item.row.expiresOn)}`}</span>
-      </span>
-    </div>
-  );
-}
-
-/**
- * Renewals' top card (5 Oct mock-up v2, screen 1; screen 24 when nothing is
- * due): the one item to act on, its window, one filled button, and what comes
- * after it. The button records the renewal in the same sheet the list uses.
+ * Renewals' top card when nothing is due (Josh's locked mockup, "Nothing
+ * due"): a calm empty state that names the next date ahead and how many items
+ * still have no date, so it never reads as all clear, then "Coming later" with
+ * the soonest recorded dates. While something IS due, the Needs action list
+ * leads the page instead and this renders nothing (Today's hero carries
+ * "Renew next").
  */
 export function RenewNextCard({
   next,
   notRecorded,
-  today,
-  canEdit,
-  onRenew,
+  rows,
+  now,
   onOpen,
+  onShowAll,
 }: {
   readonly next: RenewNext;
   /** Items with no date recorded, said beside "Nothing to renew right now" so it never reads as all clear. */
   readonly notRecorded: number;
-  readonly today: string;
-  readonly canEdit: boolean;
-  readonly onRenew: (item: RenewNextItem) => void;
-  readonly onOpen: (item: RenewNextItem) => void;
+  /** The checklist's rows, for "Coming later". */
+  readonly rows: readonly RequirementChecklistRow[];
+  readonly now: Date;
+  readonly onOpen: (row: RequirementChecklistRow) => void;
+  /** "All N": takes the reader to the full list below. */
+  readonly onShowAll: () => void;
 }) {
-  if (next.kind === "nothing-due") {
-    return (
-      <section
-        aria-labelledby="admin-renew-next-heading"
-        className={cn(modeModuleSurface, "grid min-w-0 gap-1 p-4")}
-        data-testid="admin-renew-next-nothing-due"
-      >
-        <h2 id="admin-renew-next-heading" className="text-base-minus font-medium text-[color:var(--text-heading)]">
-          Nothing to renew right now
-        </h2>
-        <p className={cn(textMuted, "text-sm")}>
-          {next.next
-            ? renewNextNothingDueLine(next.next)
-            : "No renewal dates are recorded yet. Dates you record appear here."}
-        </p>
-        {notRecorded > 0 ? (
-          <p className={cn(textMuted, "text-sm")} data-testid="admin-renew-next-not-recorded">
-            {`${notRecorded} ${notRecorded === 1 ? "item has" : "items have"} no date recorded yet.`}
-          </p>
-        ) : null}
-      </section>
-    );
-  }
-
-  const { item, then } = next;
+  if (next.kind !== "nothing-due") return null;
+  const later = rows
+    .filter((row): row is RequirementChecklistRow & { expiresOn: string } => Boolean(row.expiresOn))
+    .sort((a, b) => a.expiresOn.localeCompare(b.expiresOn))
+    .slice(0, COMING_LATER);
   return (
-    <section
-      aria-labelledby="admin-renew-next-heading"
-      className={cn(modeModuleSurface, "grid min-w-0 gap-3 p-4")}
-      data-testid="admin-renew-next"
-    >
-      <div className="grid min-w-0 gap-1">
-        <p className={eyebrowText}>Renew next</p>
-        <h2
-          id="admin-renew-next-heading"
-          className="text-lg font-semibold break-words text-[color:var(--text-heading)]"
+    <>
+      <WorkCard testId="admin-renew-next-nothing-due">
+        <section aria-labelledby="admin-renew-next-heading">
+          <WorkEmpty
+            icon={Check}
+            title={<span id="admin-renew-next-heading">Nothing to renew right now</span>}
+            body={
+              <>
+                {next.next
+                  ? renewNextNothingDueLine(next.next)
+                  : "No renewal dates are recorded yet. Dates you record appear here."}
+                {notRecorded > 0 ? (
+                  <span className="mt-1 block" data-testid="admin-renew-next-not-recorded">
+                    {`${notRecorded} ${notRecorded === 1 ? "item has" : "items have"} no date recorded yet.`}
+                  </span>
+                ) : null}
+              </>
+            }
+          />
+        </section>
+      </WorkCard>
+      {later.length > 0 ? (
+        <AdminSection
+          label="Coming later"
+          action={{ label: `All ${rows.length}`, onClick: onShowAll }}
+          testId="admin-renew-next-later"
         >
-          {item.row.item.title}
-        </h2>
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <AdminStatusWord bucket={item.bucket} testId="admin-renew-next-status" />
-          <span className={cn(textMuted, "text-sm")} data-testid="admin-renew-next-date">
-            {renewNextDateLine(item, today)}
-          </span>
-        </div>
-      </div>
-      <WindowBar item={item} today={today} />
-      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-        {canEdit ? (
-          <Button variant="primary" onClick={() => onRenew(item)} testId="admin-renew-next-renewed">
-            Record new date
-          </Button>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => onOpen(item)}
-          className={cn(focusRing, "min-h-12 px-1 text-sm font-medium text-[color:var(--clinical-accent)]")}
-          data-testid="admin-renew-next-how"
-        >
-          How to renew
-        </button>
-      </div>
-      {then ? (
-        <p
-          className={"border-t border-[color:var(--border)] pt-3 text-sm text-[color:var(--text)]"}
-          data-testid="admin-renew-next-then"
-        >
-          <span className={textMuted}>Then: </span>
-          {renewNextThenLine(then, today)}
-        </p>
+          <WorkCard as="ul">
+            {later.map((row) => {
+              const { day, month } = onCallTeachingDateParts(row.expiresOn);
+              return (
+                <li key={row.item.id}>
+                  <WorkDateRow
+                    month={month}
+                    day={day}
+                    title={row.item.title}
+                    sub={<span className={adminStyles.mono}>{requirementActionLine(row, now)}</span>}
+                    onClick={() => onOpen(row)}
+                  />
+                </li>
+              );
+            })}
+          </WorkCard>
+        </AdminSection>
       ) : null}
-    </section>
+    </>
   );
 }

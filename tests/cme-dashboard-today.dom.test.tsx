@@ -92,14 +92,16 @@ describe("Today", () => {
     const rows = within(list)
       .getAllByRole("listitem")
       .filter((row) => row.getAttribute("data-met") === "false");
+    // work-mode redesign, owner request 6 Oct 2026: the next step leads the card with its own
+    // Log button, then the rest biggest gap first, each ending in its action word.
     expect(rows.map((row) => row.textContent?.replace(/\u00a0/g, " "))).toEqual([
+      "Big gap requirement0 of 20 hLog",
       "Hours in total39 h to go",
-      "Big gap requirement0 of 20 h",
       "Small gap requirement9 of 10 h",
-      "Professional development planNot started",
+      "Professional development planNot startedStart",
       // No evidence counts were loaded, so the check says so rather than guessing.
-      "Evidence kept for each activityNot checked",
-      "Copied to your CPD home2 activities not marked copied",
+      "Evidence kept for each activityNot checkedShow",
+      "Copied to your CPD home2 activities not marked copiedCopy",
     ]);
     const done = screen.getByTestId("cme-requirements-done");
     expect(done.tagName).toBe("DETAILS");
@@ -131,6 +133,16 @@ describe("Today", () => {
     const next = screen.getAllByTestId("cme-next-action");
     expect(next).toHaveLength(1);
     expect(next[0]).toHaveTextContent(/Big gap requirement/);
+  });
+
+  it("shows Also for you by default and hides it when Customise hides it", () => {
+    // work-mode redesign, owner request 6 Oct 2026 (B2): "Also for you" is its own module.
+    const { unmount } = render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
+    expect(screen.getByTestId("cme-also-for-you")).toBeInTheDocument();
+    unmount();
+    window.localStorage.setItem(cmeModuleOrderStorageKey, JSON.stringify({ v: 2, shown: ["requirements"] }));
+    render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
+    expect(screen.queryByTestId("cme-calendar-link")).toBeNull();
   });
 
   it("opens a task row on the setup screen", () => {
@@ -193,8 +205,9 @@ describe("the summary's catch-up line", () => {
       "Your routines will likely add 6 h. See how they would close the gap",
     );
     // 39 h over 103 days (14.7 weeks).
+    // work-mode redesign, owner request 6 Oct 2026: the mock-up's "to go · a week" line, read as two sentences.
     expect(within(summary).getByTestId("cme-pace-sentence")).toHaveTextContent(
-      "39 h to go, about 2.7 h a week. After routines, 33 h is still to find.",
+      "39 h to go · about 2.7 h a week. After routines, 33 h is still to find",
     );
     expect(summary).not.toHaveTextContent(/ahead|behind/i);
     const bar = within(summary).getByTestId("cme-summary-bar");
@@ -202,10 +215,12 @@ describe("the summary's catch-up line", () => {
     expect(bar.querySelector('[data-category="routines"]')).not.toBeNull();
   });
 
-  it("sits in one card before the one filled button", () => {
+  it("sits in one card, with the one filled Log an activity button in the dock", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
     const summary = screen.getByTestId("cme-year-summary");
-    expect(summary.nextElementSibling).toBe(screen.getByTestId("cme-log-activity"));
+    // work-mode redesign, owner request 6 Oct 2026: the button moved from under the card to the dock.
+    expect(summary.tagName).toBe("SECTION");
+    expect(screen.getByTestId("cme-log-activity").closest(".work-dock")).not.toBeNull();
   });
 
   it("gives no weekly figure in the first four weeks", () => {

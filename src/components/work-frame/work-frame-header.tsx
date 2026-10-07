@@ -475,12 +475,20 @@ function useTabsThatFit(navRef: RefObject<HTMLElement | null>, extras: readonly 
       const room =
         nav.clientWidth - (Number.parseFloat(style.paddingLeft) || 0) - (Number.parseFloat(style.paddingRight) || 0);
       const items = Array.from(nav.children) as HTMLElement[];
+      // A tab's share of the row: its box, its own margins (tabs reach into the
+      // gaps with negative margins) and the gap after it.
+      const share = (item: HTMLElement) => {
+        const own = getComputedStyle(item);
+        return (
+          item.offsetWidth + (Number.parseFloat(own.marginLeft) || 0) + (Number.parseFloat(own.marginRight) || 0) + gap
+        );
+      };
       let used = items
         .filter((item) => item.dataset.tab !== "extra")
-        .reduce((total, item, index) => total + item.offsetWidth + (index > 0 ? gap : 0), 0);
+        .reduce((total, item) => total + share(item), -gap);
       let count = 0;
       for (const item of items.filter((element) => element.dataset.tab === "extra")) {
-        const width = item.offsetWidth + gap;
+        const width = share(item);
         if (used + width > room - FIT_SPARE) break;
         used += width;
         count += 1;

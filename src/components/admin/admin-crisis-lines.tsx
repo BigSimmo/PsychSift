@@ -3,7 +3,7 @@
 import { Phone } from "lucide-react";
 import { useState } from "react";
 
-import { cardSurface, focusRing } from "@/components/card-recipes";
+import { focusRing } from "@/components/card-recipes";
 import { spokenModeNumber } from "@/components/mode-kit/dates";
 import { ModeDialSheet } from "@/components/mode-kit/dial-sheet";
 import {
@@ -98,7 +98,8 @@ function CrisisLineRow({ contact }: { contact: PublicCrisisContact }) {
 
 /**
  * Crisis lines, first on every state of Help (spec: "Crisis lines sit at the
- * top, reusing the app's existing crisis list"). A plain white card — no tint,
+ * top, reusing the app's existing crisis list"). A flat white work card (work-mode
+ * redesign, owner request 6 Oct 2026), no tint,
  * no red border — where 000 alone gets the kit's quiet-red emergency disc and
  * dot, and every other number the neutral disc. Never filtered by "Find in
  * Help", and never hidden by a failed load: this section renders before that
@@ -106,8 +107,8 @@ function CrisisLineRow({ contact }: { contact: PublicCrisisContact }) {
  */
 export function AdminCrisisLines() {
   return (
-    <section data-testid="admin-help-crisis" aria-label="Crisis lines" className={cn(cardSurface, "overflow-hidden")}>
-      <ul role="list">
+    <section data-testid="admin-help-crisis" aria-label="Crisis lines" className="work-card overflow-hidden">
+      <ul role="list" className="pt-2">
         {WA_CRISIS_CONTACTS.map((contact) => (
           <CrisisLineRow key={contact.id} contact={contact} />
         ))}

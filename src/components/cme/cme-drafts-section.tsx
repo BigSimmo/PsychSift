@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2, TriangleAlert } from "lucide-react";
+import { PencilLine, Trash2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -9,7 +9,7 @@ import { CmeNote } from "@/components/cme/cme-flat-list";
 import { Button } from "@/components/ui/button";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
-import { cn, eyebrowText, InlineNotice, textMuted } from "@/components/ui-primitives";
+import { InlineNotice } from "@/components/ui-primitives";
 import { formatCalendarDateLong, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
 import {
@@ -182,66 +182,68 @@ function DraftRow({
   }
 
   return (
-    <li
-      className="flex flex-col gap-3 border-t border-[color:var(--border)] py-3 first:border-t-0"
-      data-testid={`cme-draft-${draft.id}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="line-clamp-2 text-sm font-medium text-[color:var(--text-heading)]">{draftTitle(draft)}</p>
-          <p className={cn(textMuted, "mt-0.5 text-xs")}>
+    <li className="grid min-w-0" data-testid={`cme-draft-${draft.id}`}>
+      <div className="work-row">
+        <span aria-hidden="true" className="cpd-lead" data-tone="mode">
+          <PencilLine aria-hidden="true" strokeWidth={2} />
+        </span>
+        <span className="work-row__text">
+          <span className="work-row__title line-clamp-2">{draftTitle(draft)}</span>
+          <span className="work-row__sub">
             Last edited {formatCalendarDateLong(perthCalendarDate(new Date(draft.updatedAt)))}
-          </p>
+          </span>
           {draft.followUpOn ? (
-            <p className={cn(textMuted, "mt-1 text-xs")}>Follow up {formatCalendarDateLong(draft.followUpOn)}</p>
+            <span className="work-row__sub">Follow up {formatCalendarDateLong(draft.followUpOn)}</span>
           ) : null}
-          {draft.waitingNote ? <p className="mt-1 text-sm text-[color:var(--text)]">{draft.waitingNote}</p> : null}
-        </div>
+          {draft.waitingNote ? <span className="work-row__sub">{draft.waitingNote}</span> : null}
+        </span>
         <Link
           href={`/cme/new?draft=${draft.id}`}
           data-testid={`cme-draft-continue-${draft.id}`}
-          className="min-h-tap inline-flex shrink-0 items-center text-sm-minus font-medium text-[color:var(--clinical-accent)]"
+          className="work-button min-h-tap shrink-0"
+          data-variant="tinted"
         >
           Continue
         </Link>
       </div>
+      <div className="grid gap-3 px-3 pb-3">
+        {!demoMode ? (
+          <WaitingOnControls
+            idPrefix={`cme-draft-${draft.id}`}
+            value={{ waitingOn, waitingNote, followUpOn }}
+            disabled={busy}
+            onWaitingOnChange={(next) => {
+              setWaitingOn(next);
+              void save({ waitingOn: next, waitingNote, followUpOn });
+            }}
+            onWaitingNoteChange={setWaitingNote}
+            onWaitingNoteBlur={() => void save({ waitingOn, waitingNote, followUpOn })}
+            onFollowUpOnChange={(next) => {
+              setFollowUpOn(next);
+              void save({ waitingOn, waitingNote, followUpOn: next });
+            }}
+          />
+        ) : null}
 
-      {!demoMode ? (
-        <WaitingOnControls
-          idPrefix={`cme-draft-${draft.id}`}
-          value={{ waitingOn, waitingNote, followUpOn }}
-          disabled={busy}
-          onWaitingOnChange={(next) => {
-            setWaitingOn(next);
-            void save({ waitingOn: next, waitingNote, followUpOn });
-          }}
-          onWaitingNoteChange={setWaitingNote}
-          onWaitingNoteBlur={() => void save({ waitingOn, waitingNote, followUpOn })}
-          onFollowUpOnChange={(next) => {
-            setFollowUpOn(next);
-            void save({ waitingOn, waitingNote, followUpOn: next });
-          }}
-        />
-      ) : null}
+        {error ? <InlineNotice tone="neutral">{error}</InlineNotice> : null}
 
-      {error ? <InlineNotice tone="neutral">{error}</InlineNotice> : null}
-
-      {!demoMode ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            icon={Trash2}
-            busy={busy}
-            busyLabel="Deleting…"
-            onClick={() => void remove()}
-            testId={`cme-draft-delete-${draft.id}`}
-          >
-            Delete
-          </Button>
-        </div>
-      ) : null}
+        {!demoMode ? (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              icon={Trash2}
+              busy={busy}
+              busyLabel="Deleting…"
+              onClick={() => void remove()}
+              testId={`cme-draft-delete-${draft.id}`}
+            >
+              Delete
+            </Button>
+          </div>
+        ) : null}
+      </div>
     </li>
   );
 }
@@ -268,8 +270,8 @@ export function CmeDraftsSection({
 
   if (loadFailed) {
     return (
-      <section className="mt-6" data-testid="cme-drafts-section" aria-labelledby="cme-drafts-heading">
-        <h2 id="cme-drafts-heading" className={cn(eyebrowText, "mb-2")}>
+      <section className="grid gap-1.5" data-testid="cme-drafts-section" aria-labelledby="cme-drafts-heading">
+        <h2 id="cme-drafts-heading" className="work-label m-0">
           Drafts
         </h2>
         <div data-testid="cme-drafts-load-failed">
@@ -296,17 +298,20 @@ export function CmeDraftsSection({
   }
 
   return (
-    <section className="mt-6" data-testid="cme-drafts-section" aria-labelledby="cme-drafts-heading">
-      <h2 id="cme-drafts-heading" className={cn(eyebrowText, "mb-2")}>
-        Drafts
+    <section className="grid gap-1.5" data-testid="cme-drafts-section" aria-labelledby="cme-drafts-heading">
+      <h2 id="cme-drafts-heading" className="work-label m-0">
+        <span>
+          Drafts · <span className="nums font-normal">{items.length}</span>
+        </span>
       </h2>
-      <div className="flex flex-col gap-5">
+      <div className="grid gap-2.5">
         {sections.map((group) => (
-          <div key={group.key} data-testid={`cme-drafts-group-${group.key}`}>
-            <h3 className="text-sm font-semibold text-[color:var(--text)]">
+          <div key={group.key} data-testid={`cme-drafts-group-${group.key}`} className="grid gap-1">
+            {/* The one group needs no sub-heading of its own unless others wait on someone. */}
+            <h3 className={sections.length > 1 ? "cpd-hint m-0 font-semibold" : "sr-only"}>
               {`${WAITING_GROUP_LABEL[group.key]} · ${group.drafts.length}`}
             </h3>
-            <ul className="mt-1 flex flex-col">
+            <ul role="list" className="work-card work-rows m-0 grid p-0">
               {group.drafts.map((draft) => (
                 <DraftRow
                   key={draft.id}

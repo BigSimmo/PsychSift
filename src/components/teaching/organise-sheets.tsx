@@ -18,11 +18,10 @@ import {
   type OrganiseRead,
   type SeriesRow,
 } from "@/components/teaching/organise-model";
-import { T5List, T5Row } from "@/components/teaching/t5-kit";
+import { T5List, T5Row, T5Button } from "@/components/teaching/t5-kit";
 import { perthDateKey, shortDayLabel, timeRange } from "@/components/teaching/teaching-dates";
 import { TeachingSwitch } from "@/components/teaching/teaching-modules";
 import { withUnit } from "@/components/teaching/teaching-number";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
@@ -156,23 +155,23 @@ export function ChangeSheet({
         {risks.map((risk) => (
           <div key={risk.rule} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
             <ModeNotice tone="warning">{risk.text}</ModeNotice>
-            <Button size="sm" onClick={() => (risk.rule === "room" ? room : time).current?.focus()}>
+            <T5Button size="sm" onClick={() => (risk.rule === "room" ? room : time).current?.focus()}>
               Fix
-            </Button>
+            </T5Button>
           </div>
         ))}
         <CheckedLine at={now} count={risks.length} />
         {!changes && risks.length === 0 ? (
           <p className={cn("text-sm", textMuted)}>Change the date, time or room first.</p>
         ) : null}
-        <Button
+        <T5Button
           variant="primary"
           block
           disabled={risks.length > 0 || !changes}
           onClick={() => onPost(draft, memberCount)}
         >
           {`Post to ${membersWord(memberCount)}`}
-        </Button>
+        </T5Button>
       </div>
     </Sheet>
   );
@@ -383,9 +382,16 @@ export function SeriesSheet({
           </fieldset>
         ) : null}
         {error ? <ModeNotice tone="warning">{error}</ModeNotice> : null}
-        <Button variant="primary" block busy={busy} busyLabel="Saving" disabled={missingId} onClick={() => void save()}>
+        <T5Button
+          variant="primary"
+          block
+          busy={busy}
+          busyLabel="Saving"
+          disabled={missingId}
+          onClick={() => void save()}
+        >
           Save series
-        </Button>
+        </T5Button>
       </div>
     </Sheet>
   );
@@ -468,9 +474,16 @@ export function GroupSheet({
           </fieldset>
         ) : null}
         {error ? <ModeNotice tone="warning">{error}</ModeNotice> : null}
-        <Button variant="primary" block busy={busy} busyLabel="Saving" disabled={missingId} onClick={() => void save()}>
+        <T5Button
+          variant="primary"
+          block
+          busy={busy}
+          busyLabel="Saving"
+          disabled={missingId}
+          onClick={() => void save()}
+        >
           Save group
-        </Button>
+        </T5Button>
       </div>
     </Sheet>
   );
@@ -565,9 +578,9 @@ export function InviteSheet({
             <p className={cn("text-sm", textMuted)}>
               {`Give them this code. They sign in with ${made.email} and enter it under Join with invitation. It works until ${shortDayLabel(perthDateKey(made.expiresAt))}, and only once.`}
             </p>
-            <Button block onClick={() => void copy(made.code)}>
+            <T5Button block onClick={() => void copy(made.code)}>
               {copied ? "Copied" : "Copy code"}
-            </Button>
+            </T5Button>
           </>
         ) : (
           <>
@@ -579,9 +592,9 @@ export function InviteSheet({
               onChange={(e) => setEmail(e.target.value)}
             />
             {error ? <ModeNotice tone="warning">{error}</ModeNotice> : null}
-            <Button variant="primary" block busy={busy} busyLabel="Creating" onClick={() => void create()}>
+            <T5Button variant="primary" block busy={busy} busyLabel="Creating" onClick={() => void create()}>
               Create invitation
-            </Button>
+            </T5Button>
           </>
         )}
       </div>

@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
-import { Sheet } from "@/components/ui/sheet";
+import { AdminSheet } from "@/components/admin/admin-kit";
+import { WorkButton } from "@/components/mode-kit/work";
 import { TextField } from "@/components/ui/text-field";
 import { cn, controlDisabled, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
@@ -155,7 +155,7 @@ export function AdminRenewedSheet({
   }
 
   return (
-    <Sheet
+    <AdminSheet
       open={open}
       onClose={handleClose}
       title={entry ? `Renewed: ${subjectTitle}` : `New expiry date`}
@@ -165,16 +165,15 @@ export function AdminRenewedSheet({
         saved ? null : (
           <div className="grid gap-2">
             {error ? <InlineNotice tone="neutral">{error}</InlineNotice> : null}
-            <Button
+            <WorkButton
               variant="primary"
-              block
-              busy={busy}
-              disabled={!canSave}
+              size="wide"
               onClick={() => void save()}
               testId="admin-renewed-save"
+              disabled={busy || !canSave}
             >
               {error ? "Retry" : "Save new date"}
-            </Button>
+            </WorkButton>
           </div>
         )
       }
@@ -188,9 +187,9 @@ export function AdminRenewedSheet({
             {`Recorded as expiring ${formatRecordedDate(date)} · as you typed it`}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={addToCalendar} testId="admin-renewed-calendar">
+            <WorkButton variant="secondary" onClick={addToCalendar} testId="admin-renewed-calendar">
               Add to my calendar
-            </Button>
+            </WorkButton>
             {saved ? (
               <button
                 type="button"
@@ -234,6 +233,6 @@ export function AdminRenewedSheet({
           />
         </div>
       )}
-    </Sheet>
+    </AdminSheet>
   );
 }

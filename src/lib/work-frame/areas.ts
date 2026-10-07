@@ -203,10 +203,10 @@ const myDay: WorkArea = {
         {
           id: "my-day-profile",
           label: "Work profile",
+          short: "Profile",
           sub: "Stage, workplaces",
           icon: "user",
           href: "/my-day/profile",
-          band: false,
         },
         {
           id: "my-day-alerts",
@@ -214,7 +214,6 @@ const myDay: WorkArea = {
           sub: "Brief, quiet hours",
           icon: "bell",
           href: "/my-day/alerts",
-          band: false,
         },
         {
           id: "my-day-privacy",
@@ -251,7 +250,16 @@ const roster: WorkArea = {
       items: [
         { id: "today", label: "Today", sub: "Your shift today", icon: "sun", href: "/roster/today" },
         { id: "shifts", label: "My shifts", sub: "Week by week", icon: "layers", href: "/roster/shifts" },
-        { id: "requests", label: "Leave", sub: "Leave and requests", icon: "flag", href: "/roster/requests" },
+        {
+          id: "requests",
+          label: "Leave",
+          sub: "Leave and requests",
+          icon: "flag",
+          href: "/roster/requests",
+          // The page is Leave and requests (swaps, dates and shift changes too), so the band
+          // names it that from the first paint, not only once the page sets its heading.
+          title: "Leave and requests",
+        },
         {
           id: "hours",
           label: "Hours and rest",
@@ -294,8 +302,8 @@ const roster: WorkArea = {
       items: [
         {
           id: "calendar",
-          label: "Calendar sync",
-          sub: "Phone calendar",
+          label: "Teaching and expiries",
+          sub: "Add to your calendar",
           icon: "link",
           href: "/roster/calendar",
           band: false,
@@ -567,20 +575,40 @@ const assessments: WorkArea = {
         {
           id: "assess-times",
           label: "Your times",
-          sub: "For the window",
+          sub: "From 26 Oct",
           icon: "clock",
           href: "/teaching/assessments?view=times&as=supervisor",
           paths: ["/teaching/assessments"],
           query: { view: "times" },
         },
         {
+          id: "assess-record",
+          label: "Doctor record",
+          short: "Record",
+          sub: "Year targets",
+          icon: "file",
+          href: "/teaching/assessments?view=record&as=supervisor",
+          paths: ["/teaching/assessments"],
+          query: { view: "record" },
+        },
+        {
           id: "assess-history",
           label: "History",
-          sub: "Every assessment",
+          sub: "All you signed",
           icon: "history",
           href: "/teaching/assessments?view=all",
           paths: ["/teaching/assessments"],
           query: { view: "all" },
+        },
+        {
+          id: "assess-words",
+          label: "Help and words",
+          short: "Words",
+          sub: "How to rate",
+          icon: "book",
+          href: "/teaching/assessments?view=words",
+          paths: ["/teaching/assessments"],
+          query: { view: "words" },
         },
         {
           id: "assess-help",
@@ -647,7 +675,15 @@ const cpd: WorkArea = {
       paths: ["/cme", "/cme/calendar"],
       title: "CPD",
     },
-    { id: "log", label: "Log", sub: "Activities", icon: "list", href: "/cme/log", paths: ["/cme/log", "/cme/new"] },
+    {
+      id: "log",
+      label: "Log",
+      sub: "Activities",
+      icon: "list",
+      href: "/cme/log",
+      // To finish and Routines sit under Log's switch, so Log stays the current tab there.
+      paths: ["/cme/log", "/cme/log/", "/cme/new", "/cme/routines"],
+    },
     { id: "learning", label: "Learning", sub: "Courses on offer", icon: "compass", href: "/cme/learning" },
   ],
   groups: [
@@ -676,10 +712,17 @@ const cpd: WorkArea = {
           sub: "Drafts and teaching",
           icon: "clipboard",
           href: "/cme/log?tab=finish",
-          paths: ["/cme/log"],
-          query: { tab: "finish" },
+          // Never the current page: the Log tab is, with the switch below the band naming To finish.
+          paths: [],
         },
-        { id: "routines", label: "Routines", sub: "Regular activities", icon: "repeat", href: "/cme/routines" },
+        {
+          id: "routines",
+          label: "Routines",
+          sub: "Regular activities",
+          icon: "repeat",
+          href: "/cme/routines",
+          paths: [],
+        },
       ],
     },
     {

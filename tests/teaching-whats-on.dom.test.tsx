@@ -80,7 +80,9 @@ describe("TeachingWhatsOn", () => {
     serve([onAir, later]);
     render(<TeachingWhatsOn demoMode={false} />);
     const now = await waitFor(() => byId("teaching-whats-on-now"));
-    expect(within(now).getByRole("link", { name: "Join on Teams" })).toHaveAttribute("href", onAir.joinUrl);
+    // Work-mode redesign, owner request 6 Oct 2026: Join is a hero action that says it opens a new tab,
+    // and a session row's link carries its time and service as well as its title.
+    expect(within(now).getByRole("link", { name: /^Join on Teams/ })).toHaveAttribute("href", onAir.joinUrl);
     const list = byId("teaching-whats-on-list");
     expect(within(list).getByText("Journal club")).toBeInTheDocument();
     expect(within(list).getByText("Hospital C psychiatry · Library")).toBeInTheDocument();
@@ -109,7 +111,7 @@ describe("TeachingWhatsOn", () => {
     serve([later]);
     render(<TeachingWhatsOn demoMode={false} />);
     await screen.findByRole("button", { name: "Add Journal club to my week" });
-    expect(screen.getByRole("link", { name: "Journal club" })).toHaveAttribute("href", `/teaching/session/${LATER}`);
+    expect(screen.getByRole("link", { name: /Journal club/ })).toHaveAttribute("href", `/teaching/session/${LATER}`);
   });
 
   it("puts the plus back and says why when the add fails", async () => {

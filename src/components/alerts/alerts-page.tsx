@@ -37,7 +37,7 @@ export function AlertsPage({ now }: { now?: Date } = {}) {
       testId="my-day-alerts"
       now={now}
       wide
-      subtitle={() => "What can reach your phone, and when"}
+      subtitle={() => "What reaches your phone, and when"}
       signedOut={{
         title: "Sign in to get alerts",
         body: "Alerts come from your own roster and records, so they need your account. Nothing is sent to this device while you're signed out.",
@@ -146,7 +146,6 @@ function AlertsBody({ now }: { now: Date }) {
             onSelect={() => setSheet({ kind: "reminders" })}
             testId="alerts-your-reminders"
           />
-          <AlertsQuietRow title="Open shifts" reason="Arrives with Open shifts" testId="alerts-area-open-shifts" />
           <AlertsQuietRow title="Mental Health Act timers" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="Rest-break warnings" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="CPD coaching" reason="Locked until clinical sign-off" />

@@ -37,7 +37,8 @@ describe("signed-out Teaching sample, the default", () => {
     signedOutWith();
     const cookieWrite = vi.spyOn(document, "cookie", "set");
     render(<TeachingSampleChrome cookieSample={false} />);
-    expect(screen.getByTestId("teaching-signed-out-sample")).toHaveTextContent("Sign in to see your teaching");
+    // Work-mode redesign, owner request 6 Oct 2026: the banner reads "Sample, not your data".
+    expect(screen.getByTestId("teaching-signed-out-sample")).toHaveTextContent("Sample, not your data");
     expect(screen.queryByTestId("teaching-sample-leave")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(screen.getByTestId("sign-in-dialog")).toBeInTheDocument();

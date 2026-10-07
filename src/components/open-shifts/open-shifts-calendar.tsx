@@ -107,7 +107,7 @@ export function OpenShiftsCalendar({
           {DOW.map((letter, index) => (
             <div
               key={DOW_FULL[index]}
-              className="pb-1 text-[0.59375rem] font-bold tracking-[0.06em] text-[color:var(--text-muted)]"
+              className="pb-1 text-[0.59375rem] font-bold tracking-label text-[color:var(--text-muted)]"
             >
               {letter}
             </div>
@@ -148,9 +148,9 @@ export function OpenShiftsCalendar({
                     disabled={!inRange}
                     onClick={() => onSelect(date)}
                     className={cn(
-                      "mx-auto grid min-h-12 w-full max-w-12 content-start justify-items-center gap-[3px] rounded-[11px] pb-[5px] pt-[3px] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--mode-identity)] motion-safe:transition-colors",
+                      "mx-auto grid min-h-12 w-full max-w-12 content-start justify-items-center gap-0.75 rounded-md pb-1.25 pt-0.75 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--mode-identity)] motion-safe:transition-colors",
                       isSelected &&
-                        "bg-[color:var(--mode-identity-soft)] shadow-[inset_0_0_0_1px_var(--mode-identity)] forced-colors:outline-2 forced-colors:-outline-offset-2 forced-colors:outline-[Highlight]",
+                        "bg-[color:var(--mode-identity-soft)] shadow-[var(--work-edge-inset)_var(--mode-identity)] forced-colors:outline-2 forced-colors:-outline-offset-2 forced-colors:outline-[Highlight]",
                     )}
                   >
                     <b
@@ -164,7 +164,7 @@ export function OpenShiftsCalendar({
                             : "font-normal text-[color:var(--text-muted)]",
                         rostered &&
                           !isToday &&
-                          "shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border forced-colors:border-[CanvasText]",
+                          "shadow-[var(--work-edge-inset-strong)_var(--mode-identity)] forced-colors:border forced-colors:border-[CanvasText]",
                       )}
                     >
                       {Number(date.slice(8))}
