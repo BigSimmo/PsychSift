@@ -60,46 +60,105 @@ function ownShiftWords(own: readonly RosterAssignment[]): string {
 
 /**
  * Who is on now (mockup `rost_team`, "On now"): colleagues whose rostered
- * shift covers this moment, from the same team read as tomorrow's list. No
- * phone buttons: the roster holds no numbers, so the list ends with the
- * signpost to On Call's phone numbers instead. Hidden while nobody is on.
+ * shift covers this moment. Then, when a shift of yours starts later today,
+ * "On with you tonight" (or "today"): the colleagues whose shifts overlap it.
+ * One team read over today and its neighbours feeds both. No phone buttons:
+ * the roster holds no numbers, so the page ends with the signpost to On
+ * Call's phone numbers instead. Each list hides while it has nobody in it.
  */
-function OnNow({ team, actorId, now }: { team: RosterTeam; actorId: string | null; now: Date }) {
+function TeamToday({ team, actorId, now }: { team: RosterTeam; actorId: string | null; now: Date }) {
   const today = perthDateOf(now);
   const range = useMemo(() => ({ from: addDaysToDate(today, -1), to: addDaysToDate(today, 1) }), [today]);
   const read = useRosterRead(team.serviceId, "assignments", range);
   if (read.status !== "ready") return null;
-  const rows = (Array.isArray(read.data?.assignments) ? read.data.assignments : [])
-    .filter(
-      (row) =>
-        row.userId !== null &&
-        row.userId !== actorId &&
-        Date.parse(row.startsAt) <= now.getTime() &&
-        Date.parse(row.endsAt) > now.getTime(),
-    )
+  const at = now.getTime();
+  const rows = Array.isArray(read.data?.assignments) ? read.data.assignments : [];
+  const colleague = (row: (typeof rows)[number]) => row.userId !== null && row.userId !== actorId;
+  const onNow = rows
+    .filter((row) => colleague(row) && Date.parse(row.startsAt) <= at && Date.parse(row.endsAt) > at)
     .sort((a, b) => a.endsAt.localeCompare(b.endsAt));
-  if (!rows.length) return null;
+  const laterMine = actorId
+    ? rows
+        .filter((row) => row.userId === actorId && Date.parse(row.startsAt) > at && perthDateOf(row.startsAt) === today)
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    : [];
+  const withYou = laterMine.length
+    ? rows
+        .filter(
+          (row) =>
+            colleague(row) &&
+            laterMine.some(
+              (mine) =>
+                Date.parse(row.startsAt) < Date.parse(mine.endsAt) &&
+                Date.parse(row.endsAt) > Date.parse(mine.startsAt),
+            ),
+        )
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    : [];
+  const first = laterMine[0];
+  const tonight =
+    !!first &&
+    (first.kind === "night" || first.kind === "on_call" || Number(perthTimeOf(first.startsAt).slice(0, 2)) >= 17);
+  const withYouTitle = tonight ? "On with you tonight" : "On with you today";
+  const endWords = (row: (typeof rows)[number]) =>
+    `until ${perthTimeOf(row.endsAt)}${perthDateOf(row.endsAt) !== today ? ` ${formatPerthDay(perthDateOf(row.endsAt))}` : ""}`;
   return (
-    <section aria-labelledby="roster-team-now" className="grid gap-3" data-testid="roster-team-on-now">
-      <RosterSectionHead
-        id="roster-team-now"
-        title="On now"
-        right={<span className="nums text-[0.71875rem] text-[color:var(--text-muted)]">{formatPerthDay(today)}</span>}
-      />
-      <RosterList label="On now">
-        {rows.map((row) => {
-          const name = row.name ?? "Name not available";
-          return (
-            <RosterRow
-              key={row.id}
-              lead={<RosterInitials name={name} />}
-              title={name}
-              sub={`${SHIFT_KIND_LABEL[row.kind]} · until ${perthTimeOf(row.endsAt)}${perthDateOf(row.endsAt) !== today ? ` ${formatPerthDay(perthDateOf(row.endsAt))}` : ""}`}
-            />
-          );
-        })}
-      </RosterList>
-    </section>
+    <>
+      {onNow.length ? (
+        <section aria-labelledby="roster-team-now" className="grid gap-3" data-testid="roster-team-on-now">
+          <RosterSectionHead
+            id="roster-team-now"
+            title="On now"
+            right={
+              <span className="nums text-[0.71875rem] text-[color:var(--text-muted)]">{formatPerthDay(today)}</span>
+            }
+          />
+          <RosterList label="On now">
+            {onNow.map((row) => {
+              const name = row.name ?? "Name not available";
+              return (
+                <RosterRow
+                  key={row.id}
+                  lead={<RosterInitials name={name} />}
+                  title={name}
+                  sub={`${SHIFT_KIND_LABEL[row.kind]} · ${endWords(row)}`}
+                />
+              );
+            })}
+          </RosterList>
+        </section>
+      ) : null}
+      {first ? (
+        <section aria-labelledby="roster-team-with-you" className="grid gap-3" data-testid="roster-team-with-you">
+          <RosterSectionHead
+            id="roster-team-with-you"
+            title={withYouTitle}
+            right={
+              <span className="nums text-[0.71875rem] text-[color:var(--text-muted)]">
+                {`Your ${SHIFT_KIND_LABEL[first.kind].toLowerCase()} · ${formatShiftRange(first)}`}
+              </span>
+            }
+          />
+          {withYou.length ? (
+            <RosterList label={withYouTitle}>
+              {withYou.map((row) => {
+                const name = row.name ?? "Name not available";
+                return (
+                  <RosterRow
+                    key={row.id}
+                    lead={<RosterInitials name={name} />}
+                    title={name}
+                    sub={`${SHIFT_KIND_LABEL[row.kind]} · ${formatShiftRange(row)}`}
+                  />
+                );
+              })}
+            </RosterList>
+          ) : (
+            <RosterNote icon={Users}>Nobody else on the team is rostered with you.</RosterNote>
+          )}
+        </section>
+      ) : null}
+    </>
   );
 }
 
@@ -294,7 +353,7 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
             ) : (
               <p className="px-1 text-sm text-[color:var(--text-muted)]">{selected.name}</p>
             )}
-            <OnNow key={`now-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
+            <TeamToday key={`today-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
             <OnTomorrow key={`tomorrow-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
             <Suspense fallback={<RosterNote icon={Users}>Loading the team roster…</RosterNote>}>
               <TeamCalendarSection team={selected} actorId={actorId} now={now} />
