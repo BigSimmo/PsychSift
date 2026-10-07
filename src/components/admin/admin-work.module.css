@@ -809,3 +809,17 @@
   color: var(--text);
   font-size: var(--text-sm);
 }
+
+/* Coming up's month labels inside its card ("Date passed", "Oct 2026"). */
+.monthHead {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  margin: 0;
+  padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 3) calc(var(--spacing) * 0.5);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

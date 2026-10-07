@@ -445,7 +445,6 @@
         "src/components/AccessibleTable.tsx",
         "src/components/admin/admin-compliance-export-page.tsx",
         "src/components/admin/admin-compliance-page.tsx",
-        "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-help-page.tsx",
         "src/components/admin/admin-load-failed.tsx",
         "src/components/admin/admin-new-job-page.tsx",
@@ -2375,7 +2374,6 @@
         "src/components/AccessibleTable.tsx",
         "src/components/DocumentManagementActions.tsx",
         "src/components/DocumentViewer.tsx",
-        "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-kit.tsx",
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/alerts/alerts-sheets.tsx",
@@ -2846,7 +2844,6 @@
         "src/components/ui/catalogue-toolbar.tsx"
       ],
       "productImportFiles": [
-        "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-help-page.tsx",
         "src/components/admin/admin-quick-add-sheet.tsx",
         "src/components/admin/admin-renewed-sheet.tsx",

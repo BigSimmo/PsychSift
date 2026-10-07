@@ -179,43 +179,61 @@ export function AdminRowButton({
   label,
   icon: Icon,
   onClick,
+  href,
   testId,
   accessibleLabel,
   variant = "secondary",
 }: {
   readonly label: string;
   readonly icon?: LucideIcon;
-  readonly onClick: () => void;
   readonly testId?: string;
   /** The full spoken name when the visible word is short ("Add date for Hand hygiene"). */
   readonly accessibleLabel?: string;
   readonly variant?: "secondary" | "tinted";
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-testid={testId}
-      aria-label={accessibleLabel}
-      data-variant={variant}
-      className={cn("work-button min-h-tap shrink-0 px-3", styles.pill)}
-    >
+} & ({ readonly onClick: () => void; readonly href?: never } | { readonly href: string; readonly onClick?: never })) {
+  const shared = {
+    "data-testid": testId,
+    "aria-label": accessibleLabel,
+    "data-variant": variant,
+    className: cn("work-button min-h-tap shrink-0 px-3", styles.pill),
+  };
+  const inner = (
+    <>
       {Icon ? <Icon aria-hidden="true" strokeWidth={2.2} /> : null}
       {label}
+    </>
+  );
+  if (href !== undefined) {
+    return (
+      <Link href={href} {...shared}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} {...shared}>
+      {inner}
     </button>
   );
 }
 
-/** The round call button at a row's end: dials. */
+/** The round call button at a row's end: a phone link, or a button that opens the dial sheet. */
 export function AdminCallButton({
   tel,
+  onClick,
   label,
   testId,
 }: {
-  readonly tel: string;
   readonly label: string;
   readonly testId?: string;
-}) {
+} & ({ readonly tel: string; readonly onClick?: never } | { readonly onClick: () => void; readonly tel?: never })) {
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={styles.call} aria-label={label} data-testid={testId}>
+        <Phone aria-hidden="true" strokeWidth={2} />
+      </button>
+    );
+  }
   return (
     <a href={tel} className={styles.call} aria-label={label} data-testid={testId}>
       <Phone aria-hidden="true" strokeWidth={2} />
