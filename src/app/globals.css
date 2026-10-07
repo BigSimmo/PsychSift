@@ -1446,6 +1446,47 @@ body {
   --work-shift-t: #93cba8;
 }
 
+/* Work-mode glass, hairline, shadow and toast colours (work-mode redesign,
+   owner request 6 Oct 2026). The recipes that use them are in work-mode.css;
+   the colour values live here, in the token layer, scoped like those recipes
+   so nothing reaches a clinical mode. Flat by the owner's decision: a card has
+   a barely visible shadow, a sheet and the dock one very soft lift. */
+:root[data-work-frame],
+[data-work-frame],
+.work-band,
+.work-more-sheet,
+.universal-header[data-work-frame] {
+  --work-glass-fill: rgb(255 255 255 / 72%);
+  --work-glass-line: rgb(16 26 41 / 9%);
+  --work-shadow-card: 0 1px 2px rgb(16 26 41 / 3%);
+  --work-shadow-float: 0 1px 2px rgb(16 26 41 / 4%), 0 8px 24px -12px rgb(16 26 41 / 18%);
+  /* The More sheet's close circle. */
+  --work-close-fill: rgb(16 26 41 / 6%);
+}
+
+.dark:root[data-work-frame],
+.dark [data-work-frame],
+.dark .work-band,
+.dark .work-more-sheet,
+.dark .universal-header[data-work-frame] {
+  --work-glass-fill: color-mix(in srgb, var(--surface-raised) 78%, transparent);
+  --work-glass-line: rgb(255 255 255 / 10%);
+  --work-shadow-card: none;
+  --work-shadow-float: 0 12px 32px -12px rgb(0 0 0 / 60%);
+  --work-close-fill: rgb(255 255 255 / 8%);
+}
+
+/* On the coloured hero and the dark Undo toast (both themes): white ink at
+   set strengths, and the toast's own dark ink. */
+:root {
+  --work-ring-track-on-hero: rgb(255 255 255 / 22%);
+  --work-toast-fill: rgb(16 26 41 / 92%);
+  --work-toast-shadow: 0 10px 24px -12px rgb(16 26 41 / 50%);
+  --work-toast-body: rgb(255 255 255 / 78%);
+  --work-toast-dismiss: rgb(255 255 255 / 70%);
+  --work-toast-hover-fill: rgb(255 255 255 / 10%);
+}
+
 /* The work-mode palette partners (work-mode redesign, owner request 6 Oct
    2026). A mode with no work palette falls back to its identity, so these are
    safe to read anywhere. Dark themes derive every partner from the dark
