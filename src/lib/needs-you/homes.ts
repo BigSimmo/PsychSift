@@ -10,7 +10,10 @@ import type { AppModeId } from "@/lib/app-modes";
 const STAFF_WORK_HOME_PATHS: Partial<Record<AppModeId, readonly string[]>> = {
   "my-day": ["/my-day"],
   roster: ["/roster"],
-  "my-work": ["/admin/renewals"],
+  // Admin's home is Today at /admin (work-mode redesign, owner request 6 Oct
+  // 2026). Renewals, the old home, keeps its bell so existing links still
+  // land on a page that has one.
+  "my-work": ["/admin", "/admin/renewals"],
   teaching: ["/teaching"],
   cme: ["/cme"],
   "on-call": ["/on-call", "/on-call/whos-on"],

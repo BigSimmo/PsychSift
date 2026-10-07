@@ -118,7 +118,7 @@ export default function OnCallNowSignedOutExample() {
           Made-up example from here down
         </h2>
         <p className={cn(modeSecondaryText, "flex min-h-12 items-center gap-2")}>
-          <MapPin aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <MapPin aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           <span className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>
             {example.hospital}
           </span>
@@ -127,18 +127,18 @@ export default function OnCallNowSignedOutExample() {
 
       <div className={cn(modeModuleSurface, "grid min-w-0 gap-2 p-3")} data-testid="on-call-now-example-emergency">
         <p className="flex min-w-0 items-center gap-2">
-          <Shield aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <Shield aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           <span className={cn(modeNameText, "text-base-minus font-semibold text-[color:var(--text-heading)]")}>
             {example.emergency.title}
           </span>
         </p>
         <p className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-2">
-          <Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           <ExampleNumber value={example.emergency.mobile} />
           <span className={modeSecondaryText}>from your mobile</span>
         </p>
         <p className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-2">
-          <Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           <span className={cn(modeNumberText, "text-[color:var(--text-heading)]")}>
             {`Dial ${example.emergency.wardCode}`}
           </span>
@@ -225,7 +225,7 @@ export default function OnCallNowSignedOutExample() {
           <OnCallRow
             key={label}
             title={label}
-            leading={<Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+            leading={<Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
           />
         ))}
       </OnCallGroupedList>

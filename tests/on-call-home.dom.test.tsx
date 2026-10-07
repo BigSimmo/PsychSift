@@ -597,7 +597,9 @@ describe("On Call home tools after the header ellipsis left", () => {
     render(<OnCallHome now={new Date("2026-06-01T09:00:00+08:00")} />);
     expect(screen.getByTestId("on-call-now-footer-shifts").getAttribute("href")).toBe("/roster");
     expect(screen.getByTestId("on-call-now-footer-card").getAttribute("href")).toBe("/on-call/card");
-    expect(screen.getByTestId("on-call-now-footer-calendar").getAttribute("href")).toBe("/on-call/calendar");
+    // Amended for the work-mode redesign wiring audit (owner request 6 Oct 2026):
+    // straight to the real page, not through the /on-call/calendar redirect.
+    expect(screen.getByTestId("on-call-now-footer-calendar").getAttribute("href")).toBe("/roster/calendar");
   });
 });
 

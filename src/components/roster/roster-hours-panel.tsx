@@ -13,6 +13,7 @@ import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-v
 import { formatSpanWords } from "@/lib/roster/shifts-overview";
 
 import { formatHours } from "./roster-format";
+import { RosterPayslipCheck } from "./roster-payslip-check";
 import {
   RosterDateLead,
   RosterLinkWord,
@@ -165,6 +166,13 @@ export function RosterHoursPanel({
       >
         <ExtraTime extra={extra} summary={summary} />
       </RosterHoursRestCheck>
+      <RosterPayslipCheck
+        shifts={shifts}
+        summary={summary}
+        extraLoaded={extra.status === "ready"}
+        partial={partial}
+        payAnchored={payAnchored}
+      />
     </div>
   );
 }

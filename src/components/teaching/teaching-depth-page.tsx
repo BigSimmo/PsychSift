@@ -10,9 +10,25 @@ import type { TeachingResource } from "@/components/teaching/use-teaching-resour
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 import { useAuthSession } from "@/lib/supabase/client";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import { modeSecondaryNavigationEntries } from "@/lib/mode-secondary-navigation";
 
-const TAB_LABELS: ReadonlySet<string> = new Set(modeSecondaryNavigationEntries("teaching").map((entry) => entry.label));
+/**
+ * Page names the band already shows, so a depth page with one of these titles
+ * keeps its h1 for screen readers only. Written out rather than read from the
+ * mode pill's registry: since the work-mode redesign (owner request 6 Oct 2026)
+ * that registry lists only the frame's three pinned tabs, while the band still
+ * names these pages.
+ */
+const TAB_LABELS: ReadonlySet<string> = new Set([
+  "Today",
+  "Week",
+  "Logbook",
+  "This week",
+  "Presenting",
+  "Assessments",
+  "My record",
+  "Resources",
+  "Organise",
+]);
 
 /**
  * A depth page's submit, held at the bottom of the screen inside the page's own flow (not fixed chrome),

@@ -91,10 +91,10 @@ const phoneSwitchInSheet = (on: boolean) => <OnCallHospitalPhoneSwitch on={on} t
 
 /** A row's leading mark: its short badge when the label carries one, a shield on emergency rows, else a phone. */
 function rowLeading(item: HandbookItem, emergencyGroup: boolean): ReactNode {
-  if (emergencyGroup) return <Shield aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />;
+  if (emergencyGroup) return <Shield aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />;
   const badge = onCallRowBadge(item);
   if (badge) return <span className={onCallBadge}>{badge}</span>;
-  return <Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />;
+  return <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />;
 }
 
 function HandbookCallRow({
@@ -405,7 +405,10 @@ export function OnCallCallPage() {
         )}
         {!searching && tab === "hospital" && groups.length > 1 ? (
           <nav aria-label="Departments" data-testid="on-call-call-departments">
-            <ul className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 [-webkit-overflow-scrolling:touch]">
+            <ul
+              data-no-tab-swipe
+              className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 [-webkit-overflow-scrolling:touch]"
+            >
               {groups.map((group) => (
                 <li key={group.slug} className="shrink-0">
                   <a
@@ -521,20 +524,20 @@ export function OnCallCallPage() {
 
       {searching ? null : (
         <div className="grid min-w-0 gap-4" data-testid="on-call-call-more">
-          <ul role="list" className="min-w-0">
+          <ul role="list" className="work-card min-w-0">
             <OnCallIsobarRow />
             <OnCallRow
               href="/on-call/who-is-who"
               title="Who's who"
               subtitle="What the short role names mean"
-              leading={<Users aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              leading={<Users aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
               testId="on-call-call-whos-who"
             />
             <OnCallRow
               href="/on-call/card"
               title="Pocket card"
               subtitle="The numbers flagged for it, to print"
-              leading={<Printer aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              leading={<Printer aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
               testId="on-call-call-pocket-card"
             />
             <OnCallRow
@@ -547,7 +550,7 @@ export function OnCallCallPage() {
                     : "None due for a check"
                   : undefined
               }
-              leading={<ListChecks aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              leading={<ListChecks aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
               testId="on-call-call-check"
             />
           </ul>

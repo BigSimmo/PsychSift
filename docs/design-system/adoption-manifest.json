@@ -356,7 +356,6 @@
         "src/components/my-day/my-day-week-page.tsx",
         "src/components/on-call/call/didnt-connect.tsx",
         "src/components/on-call/handover/handover-page.tsx",
-        "src/components/on-call/kit/handbook-state.tsx",
         "src/components/on-call/now/hospital-shift-updates.tsx",
         "src/components/on-call/on-call-contacts-section.tsx",
         "src/components/on-call/on-call-entry-editor.tsx",
@@ -533,7 +532,6 @@
         "src/components/my-day/my-day-week-page.tsx",
         "src/components/on-call/call/didnt-connect.tsx",
         "src/components/on-call/handover/handover-page.tsx",
-        "src/components/on-call/kit/handbook-state.tsx",
         "src/components/on-call/now/hospital-shift-updates.tsx",
         "src/components/on-call/on-call-contacts-section.tsx",
         "src/components/on-call/on-call-entry-editor.tsx",
@@ -1187,8 +1185,7 @@
         "src/components/cme/cme-routines-page.tsx",
         "src/components/document-viewer/document-visuals-panel.tsx",
         "src/components/dsm/dsm-search-page.tsx",
-        "src/components/mode-home-template.tsx",
-        "src/components/on-call/service-page.tsx"
+        "src/components/mode-home-template.tsx"
       ],
       "productImportFiles": [
         "src/components/ClinicalDashboard.tsx",
@@ -1209,8 +1206,7 @@
         "src/components/cme/cme-routines-page.tsx",
         "src/components/document-viewer/document-visuals-panel.tsx",
         "src/components/dsm/dsm-search-page.tsx",
-        "src/components/mode-home-template.tsx",
-        "src/components/on-call/service-page.tsx"
+        "src/components/mode-home-template.tsx"
       ],
       "designSync": {
         "listedInSourceMap": true,
@@ -2429,6 +2425,7 @@
         "src/components/roster/requests/roster-leave-sheet.tsx",
         "src/components/roster/roster-add-sheet.tsx",
         "src/components/roster/roster-code-chooser.tsx",
+        "src/components/roster/roster-day-sheet.tsx",
         "src/components/roster/roster-new-button.tsx",
         "src/components/roster/roster-share-button.tsx",
         "src/components/roster/roster-shifts-page.tsx",
@@ -2546,6 +2543,7 @@
         "src/components/roster/requests/roster-leave-sheet.tsx",
         "src/components/roster/roster-add-sheet.tsx",
         "src/components/roster/roster-code-chooser.tsx",
+        "src/components/roster/roster-day-sheet.tsx",
         "src/components/roster/roster-new-button.tsx",
         "src/components/roster/roster-share-button.tsx",
         "src/components/roster/roster-shifts-page.tsx",

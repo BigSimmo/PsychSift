@@ -10,7 +10,7 @@ import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { onCallCalendarEvents } from "@/lib/on-call/calendar-events";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -47,7 +47,7 @@ export function OnCallCalendarPage({ now: nowProp }: { now?: Date } = {}) {
         </p>
         {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
         {loading && entries.length === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarDays}
             title="Loading your calendar"
             body="Fetching sessions and dates."

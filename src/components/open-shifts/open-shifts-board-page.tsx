@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { WorkButton, WorkCard, WorkChip, WorkChips, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { useRosterNow } from "@/components/roster/roster-format";
 import { boardWeek, type BoardCellStatus } from "@/lib/open-shifts/board";
 import { addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -33,17 +34,51 @@ const STATUS: Readonly<Record<BoardCellStatus, { label: string; className: strin
   reported: { label: "Reported", className: "border-[color:var(--warning-border)] bg-[color:var(--surface-raised)]" },
 };
 
+type BoardFilter = "all" | BoardCellStatus;
+
+const FILTERS: readonly { id: BoardFilter; label: string; none: string }[] = [
+  { id: "all", label: "All", none: "posted" },
+  { id: "open", label: "Open", none: "open" },
+  { id: "requested", label: "Requested", none: "requested" },
+  { id: "unfilled", label: "Unfilled", none: "unfilled in the next 48 h" },
+  { id: "filled", label: "Filled", none: "filled" },
+  { id: "reported", label: "Reported", none: "reported" },
+];
+
 /** The week board for roster managers: their teams' open shifts by site and day, on a wide screen. */
 export function OpenShiftsBoardPage() {
   const state = usePostedShifts();
   const nowMs = useRosterNow().getTime();
   const today = perthDateOf(new Date(nowMs));
   const [weekOffset, setWeekOffset] = useState(0);
+  // Board chips (mockup `rost_board`, work-mode redesign 6 Oct 2026): counts add up to All.
+  const [filter, setFilter] = useState<BoardFilter>("all");
   const week = useMemo(
     () => boardWeek(state.shifts, addDaysToDate(today, weekOffset * 7), new Date(nowMs)),
     [state.shifts, today, weekOffset, nowMs],
   );
   const weekTitle = `${formatDayShort(week.days[0]!)} to ${formatDayShort(week.days[6]!)}`;
+  const rows = useMemo(
+    () =>
+      filter === "all"
+        ? week.rows
+        : week.rows
+            .map((row) => ({ ...row, cells: row.cells.map((cell) => cell.filter((item) => item.status === filter)) }))
+            .filter((row) => row.cells.some((cell) => cell.length > 0)),
+    [week.rows, filter],
+  );
+  const unfilled = useMemo(
+    () =>
+      week.rows
+        .flatMap((row) =>
+          row.cells
+            .flat()
+            .flatMap((item) => (item.status === "unfilled" ? [{ ...item, site: row.site, team: row.team }] : [])),
+        )
+        .sort((a, b) => a.shift.startsAt.localeCompare(b.shift.startsAt)),
+    [week.rows],
+  );
+  const active = FILTERS.find((item) => item.id === filter)!;
 
   return (
     <div className="mx-auto w-full max-w-6xl pb-10" data-mode-identity="open-shifts">
@@ -94,33 +129,19 @@ export function OpenShiftsBoardPage() {
                 <ChevronRight aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
               </button>
             </div>
-            <ul
-              className="flex flex-wrap gap-x-5 gap-y-1 text-sm nums text-[color:var(--text-muted)]"
-              aria-label="This week"
-            >
-              <li>
-                <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.all}</b> posted
-              </li>
-              <li>
-                <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.open}</b> open
-              </li>
-              <li>
-                <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.requested}</b> requested
-              </li>
-              <li>
-                <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.unfilled}</b> unfilled, next
-                48 h
-              </li>
-              <li>
-                <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.filled}</b> filled
-              </li>
-              {week.counts.reported ? (
-                <li>
-                  <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.reported}</b> reported, not
-                  posted yet
-                </li>
-              ) : null}
-            </ul>
+            <WorkChips label="Show on the board" scroll>
+              {FILTERS.filter((item) => item.id !== "reported" || week.counts.reported > 0).map((item) => (
+                <WorkChip
+                  key={item.id}
+                  selected={filter === item.id}
+                  onClick={() => setFilter(item.id)}
+                  count={week.counts[item.id]}
+                  testId={`open-shifts-board-chip-${item.id}`}
+                >
+                  {item.label}
+                </WorkChip>
+              ))}
+            </WorkChips>
           </div>
 
           {week.rows.length === 0 ? (
@@ -129,6 +150,13 @@ export function OpenShiftsBoardPage() {
                 ? `None this week in the teams read. Couldn't read ${state.failedTeams.join(", ")}.`
                 : "No shifts posted this week."}
             </p>
+          ) : rows.length === 0 ? (
+            <div className="grid justify-items-start gap-2 px-3 py-6" data-testid="open-shifts-board-none">
+              <p className="m-0 text-sm text-[color:var(--text-muted)]">None {active.none} this week.</p>
+              <WorkButton variant="quiet" onClick={() => setFilter("all")}>
+                Show all
+              </WorkButton>
+            </div>
           ) : (
             <div className="mt-3 overflow-x-auto px-3">
               <table className="w-full min-w-4xl table-fixed border-collapse text-sm">
@@ -153,7 +181,7 @@ export function OpenShiftsBoardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {week.rows.map((row) => (
+                  {rows.map((row) => (
                     <tr key={row.key}>
                       <th scope="row" className="border-b border-[color:var(--border)] py-2 pr-2 text-left align-top">
                         <span className="block font-medium text-[color:var(--text-heading)]">{row.site}</span>
@@ -176,7 +204,7 @@ export function OpenShiftsBoardPage() {
                                     {status === "unfilled" ? "Unfilled" : STATUS[status].label}
                                   </span>
                                   <span className="nums text-xs text-[color:var(--text-heading)]">
-                                    {`${perthTimeOf(shift.startsAt)}–${perthTimeOf(shift.endsAt)}`}
+                                    {`${perthTimeOf(shift.startsAt)} to ${perthTimeOf(shift.endsAt)}`}
                                   </span>
                                   {shift.claimantName ? (
                                     <span className="truncate text-xs text-[color:var(--text-muted)]">
@@ -195,6 +223,30 @@ export function OpenShiftsBoardPage() {
               </table>
             </div>
           )}
+          {unfilled.length ? (
+            <section
+              className="grid gap-2 px-3 pt-4"
+              aria-labelledby="open-shifts-board-unfilled"
+              data-testid="open-shifts-board-unfilled"
+            >
+              <WorkSectionLabel id="open-shifts-board-unfilled" count={unfilled.length}>
+                Unfilled, next 48 h
+              </WorkSectionLabel>
+              <WorkCard as="ul">
+                {unfilled.map(({ shift, site, team }) => (
+                  <li key={shift.id}>
+                    <WorkIconRow
+                      icon={TriangleAlert}
+                      tone="amber"
+                      title={`${formatDayShort(perthDateOf(shift.startsAt))} · ${perthTimeOf(shift.startsAt)} to ${perthTimeOf(shift.endsAt)}`}
+                      sub={[site, team].filter(Boolean).join(" · ")}
+                      href={postedShiftHref(shift.serviceId, shift.id)}
+                    />
+                  </li>
+                ))}
+              </WorkCard>
+            </section>
+          ) : null}
           <p className="px-3 pt-3 text-xs text-[color:var(--text-muted)]">
             Shows shifts posted in Open shifts only, not the whole roster.
           </p>

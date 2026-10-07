@@ -11,7 +11,7 @@ import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
 import { ON_CALL_VIEW_TITLES } from "@/components/on-call/on-call-section-identity";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText, floatingControl, textMuted } from "@/components/ui-primitives";
 import { formatClinicalDate } from "@/lib/source-metadata";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -90,7 +90,7 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
         </p>
 
         {loading && entries.length === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarCheck}
             title="Loading your entries"
             body="Fetching what needs checking."
@@ -101,7 +101,7 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
         ) : entries.length === 0 ? (
           // No entries is not the same as nothing due: there was nothing to
           // assess, so this must never read as though a check happened.
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarCheck}
             title={signedOut ? "Sign in to see your checks" : "No entries yet"}
             body={
@@ -112,14 +112,14 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
             testId="on-call-check-no-entries"
           />
         ) : queue.assessed === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarCheck}
             title="Nothing here for you to check"
             body="None of these entries is one you can confirm. Compliance records are kept on Compliance instead."
             testId="on-call-check-none-assessed"
           />
         ) : queue.total === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarCheck}
             title="Nothing due for a check"
             body={`${queue.assessed === 1 ? "Your one entry was" : `All ${queue.assessed} of your entries were`} checked in the last twelve months, and none comes due in the next 30 days.`}

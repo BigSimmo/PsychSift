@@ -75,7 +75,8 @@ export function OnCallEntryRow({
         <span
           aria-hidden
           className={cn(
-            "mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
+            // A flat teal tint circle (work-mode redesign, owner request 6 Oct 2026).
+            "mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
             stackOnPhone && "hidden sm:grid",
           )}
         >
@@ -109,7 +110,14 @@ export function OnCallEntryRow({
 
   if (href?.startsWith("/")) {
     return (
-      <Link href={href} data-testid={testId} className={rowClassName} onClick={handleActivate} {...anchorProps}>
+      <Link
+        href={href}
+        data-testid={testId}
+        data-on-call-entry-card=""
+        className={rowClassName}
+        onClick={handleActivate}
+        {...anchorProps}
+      >
         {content}
       </Link>
     );
@@ -117,7 +125,14 @@ export function OnCallEntryRow({
 
   if (href) {
     return (
-      <a href={href} data-testid={testId} className={rowClassName} onClick={handleActivate} {...anchorProps}>
+      <a
+        href={href}
+        data-testid={testId}
+        data-on-call-entry-card=""
+        className={rowClassName}
+        onClick={handleActivate}
+        {...anchorProps}
+      >
         {content}
       </a>
     );
@@ -132,6 +147,7 @@ export function OnCallEntryRow({
           onClick();
         }}
         data-testid={testId}
+        data-on-call-entry-card=""
         className={rowClassName}
       >
         {content}
@@ -142,6 +158,7 @@ export function OnCallEntryRow({
   return (
     <div
       data-testid={testId}
+      data-on-call-entry-card=""
       className={cn(cardSurface, cardPadding.standard, "flex min-h-tap w-full min-w-0 items-start gap-3")}
     >
       {content}

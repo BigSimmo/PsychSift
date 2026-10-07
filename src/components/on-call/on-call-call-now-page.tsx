@@ -31,7 +31,7 @@ import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
 import { useHospitalHandbook, type HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { rememberOnCallYouCalled, type OnCallYouCalled } from "@/lib/on-call/call-marks";
 import {
@@ -230,7 +230,7 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
   let body: ReactNode;
   if (ladders.length === 0 && stillLoading) {
     body = (
-      <EmptyState
+      <OnCallEmptyState
         icon={Phone}
         title="Loading your ladders"
         body="Fetching the hospital's escalation steps and your own."
@@ -245,7 +245,7 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
     body = (
       <>
         <OnCallHandbookState handbook={handbook} page="now" />
-        <EmptyState
+        <OnCallEmptyState
           icon={Phone}
           title="No escalation steps yet"
           body="Your hospital has not published a ladder here. Add a scenario to your Playbook, with who to call and when, and it will appear here."
@@ -267,6 +267,7 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
         <div
           role="group"
           aria-label="Situations"
+          data-no-tab-swipe
           className="-mx-1 flex gap-1.5 overflow-x-auto px-1"
           data-testid="on-call-now-scenarios"
         >
@@ -323,7 +324,7 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
               <OnCallRow
                 title="Calling a consultant"
                 subtitle="The handover headings · in People"
-                leading={<BookOpen aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+                leading={<BookOpen aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
                 href="/on-call/call"
                 testId="on-call-now-consultant-link"
               />

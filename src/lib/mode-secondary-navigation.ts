@@ -166,8 +166,10 @@ export const modeSecondaryNavigationRegistry = {
     { id: "whoswho", label: "Who's who", href: "/on-call/who-is-who", group: "more" },
     { id: "orientation", label: "Orientation checklists", href: "/on-call/orientation", group: "more" },
   ],
-  // CPD's five pages. Older /cme/* addresses remain routed and map to their
-  // owning page below. Like On Call's, they are registered so the mode
+  // CPD's three pinned pages, matching the work-mode frame's tabs (work-mode
+  // redesign, owner request 6 Oct 2026, `src/lib/work-frame/areas.ts`). Plan,
+  // Report and CPD's other pages sit in the frame's More sheet. Older /cme/*
+  // addresses remain routed; the Log family maps to Log below. Like On Call's, they are registered so the mode
   // pill's section level can open them, but CPD is deliberately absent from
   // `MODE_NAV_ADOPTED_MODES` below: no page mounts the shared bar, because the
   // pill already opens exactly these and a rail repeating them would be two
@@ -177,15 +179,10 @@ export const modeSecondaryNavigationRegistry = {
   // Year check, Routines, Calendar, Training and Programme are tabs reached
   // from their parent pages. Customise and the annual summary stay secondary.
   cme: [
-    // The year overview, named Year rather than Today: My Day is the one Today
-    // (modes review, phase 2b).
-    { id: "year", label: "Year", href: "/cme" },
+    // The year overview, named Summary as the work-mode mockup names it.
+    { id: "year", label: "Summary", href: "/cme" },
     { id: "log", label: "Log", href: "/cme/log" },
-    { id: "plan", label: "Plan", href: "/cme/plan" },
-    // Named as the mock-up names them (Josh, 5 Oct 2026): Courses lists the
-    // learning on offer; Report is the year check, and Set up opens from it.
-    { id: "learning", label: "Courses", href: "/cme/learning" },
-    { id: "setup", label: "Report", href: "/cme/check" },
+    { id: "learning", label: "Learning", href: "/cme/learning" },
   ],
   // Teaching's pages, for the mode pill's page list, like CME's. Teaching is
   // absent from `MODE_NAV_ADOPTED_MODES`: the pill already opens these, so no
@@ -196,13 +193,14 @@ export const modeSecondaryNavigationRegistry = {
   // record (Logbook, Feedback, Weekly CPD review). The folded pages' routes stay,
   // so bookmarks keep working; /teaching/week renders This week itself.
   // Assessments (5 Oct assessments build) sits after Presenting (Josh, 6 Oct).
+  // Work-mode redesign (owner request 6 Oct 2026): the pill lists the frame's
+  // three pinned tabs, Today, Week and Logbook. Presenting, Assessments,
+  // Resources, Organise and the rest sit in the frame's More sheet, which
+  // still hides Organise from anyone who is not an organiser or admin.
   teaching: [
-    { id: "today", label: "This week", href: "/teaching" },
-    { id: "teach", label: "Presenting", href: "/teaching/teach" },
-    { id: "assessments", label: "Assessments", href: "/teaching/assessments" },
-    { id: "logbook", label: "My record", href: "/teaching/logbook" },
-    { id: "resources", label: "Resources", href: "/teaching/resources" },
-    { id: "organise", label: "Organise", href: "/teaching/organise" },
+    { id: "today", label: "Today", href: "/teaching" },
+    { id: "week", label: "Week", href: "/teaching/week" },
+    { id: "logbook", label: "Logbook", href: "/teaching/logbook" },
   ],
   // Psychiatry's hub has three pages, switched with ?page= (like My Day). The
   // band draws them as its underline tabs; each section the hub gathers keeps
@@ -215,11 +213,12 @@ export const modeSecondaryNavigationRegistry = {
   medicines: [],
   // Admin keeps the internal mode id for existing preferences and links.
   "my-work": [
-    // No Today tab: My Day is the one Today (modes review, phase 2b).
+    // The work-mode frame's three pinned tabs (work-mode redesign, owner
+    // request 6 Oct 2026): Today leads, as the mockup shows. Compliance, Export
+    // and Help sit in the frame's More sheet.
+    { id: "admin-today", label: "Today", href: "/admin" },
     { id: "renewals", label: "Renewals", href: "/admin/renewals" },
-    { id: "admin-compliance", label: "Compliance", href: "/admin/compliance" },
     { id: "new-job", label: "New job", href: "/admin/new-job" },
-    { id: "help", label: "Help", href: "/admin/help" },
   ],
   // Roster's pages, registered so the mode pill's section sheet can open them.
   // Manage is deliberately absent: this registry is the same for everyone and
@@ -258,12 +257,12 @@ export const modeSecondaryNavigationRegistry = {
   // no in-page navigation header: the section sheet is how a reader moves
   // between them. Ids are prefixed so they stay unique across modes.
   "my-day": [
-    // My Day's own three pages, which it switches with ?page= (and by swipe).
-    // Week opens from Today's This week card and Hours from Me's hours card, so
-    // each keeps its parent tab current.
+    // The work-mode frame's three pinned tabs, as real routes (work-mode
+    // redesign, owner request 6 Oct 2026). The old ?page=work and ?page=me
+    // pages moved into the frame's More sheet, and their links keep working.
     { id: "my-day-today", label: "Today", href: "/my-day" },
-    { id: "my-day-work", label: "Work", href: "/my-day?page=work" },
-    { id: "my-day-me", label: "Me", href: "/my-day?page=me" },
+    { id: "my-day-week", label: "Week", href: "/my-day/week" },
+    { id: "my-day-hours", label: "Hours", href: "/my-day/hours" },
   ],
   // Open shifts' pages. Post is for Roster team managers only: the registry is
   // the same for everyone, so `modePageVisible` hides it until an Open shifts
@@ -467,16 +466,10 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     return ON_CALL_ACTIVE_IDS[pathname] ?? null;
   }
   if (modeId === "cme") {
-    if (
-      pathname === "/cme/log" ||
-      pathname.startsWith("/cme/log/") ||
-      pathname === "/cme/routines" ||
-      pathname === "/cme/new"
-    )
-      return "log";
-    if (pathname === "/cme/training" || pathname === "/cme/calendar" || pathname === "/cme/plan") return "plan";
+    // The frame's Log tab owns Log and New (`areas.ts`); Routines, Plan, Report
+    // and the rest are More pages, so no pinned tab is current on them.
+    if (pathname === "/cme/log" || pathname.startsWith("/cme/log/") || pathname === "/cme/new") return "log";
     if (pathname === "/cme/learning") return "learning";
-    if (pathname === "/cme/check" || pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
     // Exact match only, for the same reason On Call's home is: a prefix test
     // here would mark Year current on every CPD route as well as its own.
     if (pathname === "/cme") return "year";
@@ -484,28 +477,18 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
   }
   if (modeId === "teaching") {
     // Exact match only, as for On Call and CME: a prefix test would mark
-    // This week current on every Teaching route as well as its own.
-    if (pathname === "/teaching" || pathname === "/teaching/week" || pathname === "/teaching/whats-on") return "today";
-    if (pathname === "/teaching/resources" || pathname.startsWith("/teaching/resources/")) return "resources";
-    if (pathname === "/teaching/assessments") return "assessments";
-    if (pathname === "/teaching/exam-prep") return "resources";
-    if (pathname === "/teaching/teach" || pathname === "/teaching/supervision") return "teach";
-    if (
-      pathname === "/teaching/logbook" ||
-      pathname === "/teaching/review" ||
-      pathname === "/teaching/feedback" ||
-      pathname === "/teaching/term"
-    )
-      return "logbook";
-    if (pathname === "/teaching/import" || pathname === "/teaching/organise") return "organise";
+    // Today current on every Teaching route as well as its own. Only the
+    // frame's three pinned tabs can be current; More pages name none.
+    if (pathname === "/teaching") return "today";
+    if (pathname === "/teaching/week") return "week";
+    if (pathname === "/teaching/logbook") return "logbook";
     return null;
   }
   if (modeId === "my-work") {
+    if (pathname === "/admin") return "admin-today";
     if (pathname === "/admin/renewals") return "renewals";
-    if (pathname === "/admin/compliance" || pathname === "/admin/compliance/export") return "admin-compliance";
     if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records" || pathname === "/admin/new-job/pack")
       return "new-job";
-    if (pathname === "/admin/help") return "help";
     return null;
   }
   if (modeId === "psychiatry") {
@@ -517,10 +500,8 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
   if (modeId === "my-day") {
     // Exact matches only, for the same reason Roster's are: a prefix test would
     // mark Today current on every My Day route as well as its own.
-    // The address carries no ?page= here, so on /my-day the page itself names
-    // Work or Me through useModeBandCurrentTab.
-    if (pathname === "/my-day/week") return "my-day-today";
-    if (pathname === "/my-day/hours") return "my-day-me";
+    if (pathname === "/my-day/week") return "my-day-week";
+    if (pathname === "/my-day/hours") return "my-day-hours";
     if (pathname === "/my-day") return "my-day-today";
     return null;
   }

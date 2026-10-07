@@ -228,6 +228,22 @@ it("Plan leave shows the team staffing check for the picked dates, never a safe 
   expect(check.textContent).toContain("safe number isn't set in PsychSift");
 });
 
+it("checks planned leave against my team shifts: the clash, its day, and who else is off", async () => {
+  // Work-mode redesign, owner request 6 Oct 2026: the Plan leave sheet's Checks card.
+  const user = userEvent.setup();
+  reads.requests.swaps = [];
+  render(<RosterRequestsPage />);
+  await user.click(screen.getByRole("button", { name: "New" }));
+  await user.click(screen.getByTestId("roster-new-entry-leave"));
+  await user.type(screen.getByLabelText("From"), "2026-11-06");
+  await user.type(screen.getByLabelText("To"), "2026-11-08");
+  const clashes = await screen.findByTestId("roster-leave-check-clashes");
+  expect(clashes.textContent).toContain("Clashes with 1 shift");
+  expect(clashes.textContent).toContain("Sat 7 Nov");
+  expect(screen.getByTestId("roster-leave-check-back")).toBeTruthy();
+  expect(await screen.findByText("2 of the team are already off these dates")).toBeTruthy();
+});
+
 it("shows leave as loading, not as empty, until the leave read answers", async () => {
   let answer: (response: Response) => void = () => undefined;
   vi.stubGlobal(

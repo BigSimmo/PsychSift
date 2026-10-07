@@ -19,6 +19,7 @@ import { NowCrisisLines } from "@/components/on-call/now/crisis-lines";
 import { NowEmergencyPin } from "@/components/on-call/now/emergency-pin";
 import { NowNeedsYou, onCallNeedsYouAnswered, useOnCallCallMarks } from "@/components/on-call/now/needs-you";
 import { NowRightNow } from "@/components/on-call/now/right-now";
+import { NowShiftClock } from "@/components/on-call/now/shift-clock";
 import { NowShiftPulseCard } from "@/components/on-call/now/shift-pulse-card";
 import { NowShiftShortcuts } from "@/components/on-call/now/shift-shortcuts";
 import { NowFooter, NowWhoToCall, type OnCallSituation } from "@/components/on-call/now/systems-down";
@@ -33,7 +34,7 @@ import { ON_CALL_SERVER_ANCHOR } from "@/components/on-call/on-call-dates";
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { onCallCallNowScenarios, onCallCallNowSteps } from "@/lib/on-call/call-now";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -62,7 +63,8 @@ import { msUntilOnCallShiftContextChange, onCallShiftContext, useOnCallShiftPick
  *  2. the hospital's pinned emergency route, above everything else;
  *  3. the public crisis lines whenever the hospital's own numbers are not on
  *     screen (loading, a failure, or none recorded);
- *  4. "Right now", the one dark hero: who covers this hour;
+ *  4. "Right now", the one dark hero: who covers this hour, then "Your
+ *     shift", the countdown to the end of the reader's own rostered shift;
  *  5. "Needs you", only while a call to a rung of the reader's ladder waits;
  *  6. "Your usual", four tiles;
  *  7. "Your team", three roles;
@@ -329,16 +331,21 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
           }
           nowSurface="own"
           now={
-            ready || handbookLoading ? (
-              <NowRightNow
-                status={ready ? "ready" : "loading"}
-                answer={answer}
-                hours={handbook.hours ?? null}
-                hospitalPeriod={hospitalPeriod}
-                hospitalName={hospitalName}
-                now={now}
-              />
-            ) : null
+            <>
+              {ready || handbookLoading ? (
+                <NowRightNow
+                  status={ready ? "ready" : "loading"}
+                  answer={answer}
+                  hours={handbook.hours ?? null}
+                  hospitalPeriod={hospitalPeriod}
+                  hospitalName={hospitalName}
+                  now={now}
+                />
+              ) : null}
+              {/* Your own rostered shift, counting down to its end. Drawn only
+                  while a rostered shift is on, whatever the handbook's state. */}
+              <NowShiftClock context={context} now={now} />
+            </>
           }
           needsYouNode={
             <>
@@ -414,7 +421,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             {signedOut ? (
               <OnCallSignedOut icon={ON_CALL_HOME_ICON} testId="on-call-home-signed-out" />
             ) : (
-              <EmptyState
+              <OnCallEmptyState
                 icon={ON_CALL_HOME_ICON}
                 title="Your On Call hub is empty"
                 actions={

@@ -11,7 +11,7 @@ import { onCallViewForEntry } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { BrowserPrintButton, PrintOutput, PrintSection } from "@/components/ui/print-output";
 import { OnCallCardQr } from "@/components/on-call/on-call-card-qr";
@@ -161,7 +161,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
           // Nothing cached yet and the first fetch still in flight. Asserting
           // "nothing is flagged" here would be a claim about the entry set that
           // this component cannot yet make.
-          <EmptyState
+          <OnCallEmptyState
             icon={Phone}
             title="Loading the card"
             body="Fetching the entries flagged for this card."
@@ -172,7 +172,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
         ) : signedOut && entries.length === 0 ? (
           <OnCallSignedOut icon={Phone} testId="on-call-card-signed-out" />
         ) : groups.length === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={Phone}
             title="Nothing is flagged for the card yet"
             body="Open an entry in Contacts, Playbook, Referrals, Orientation, Teaching or Admin and flag it for the card to have it appear here. Compliance requirements and Who's who explainers can never appear on the card, and nor can personal numbers or anything overdue for checking."

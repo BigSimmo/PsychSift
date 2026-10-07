@@ -408,8 +408,11 @@ describe("modules", () => {
     const heading = screen.getByRole("heading", { level: 2 });
     expect(heading).toHaveTextContent(/^Emergency · 2$/);
     expect(screen.getByTestId("group")).toHaveAttribute("aria-labelledby", heading.id);
-    // Flat on the page: the list itself carries no raised card.
-    expect(screen.getByRole("list").className).not.toMatch(/rounded|shadow|surface-raised/);
+    // Amended for the work-mode redesign, owner request 6 Oct 2026: the rows
+    // sit in the kit's flat white hairline card (`work-card`, no lift), not
+    // loose on the page and not the raised module card.
+    expect(screen.getByRole("list").className).toMatch(/\bwork-card\b/);
+    expect(screen.getByRole("list").className).not.toMatch(/shadow|surface-raised/);
     expect(screen.getByTestId("row-1").className).toMatch(/min-h-12/);
     expect(screen.getByTestId("row-1").className).not.toMatch(/min-h-13/);
     expect(screen.getByTestId("row-2").className).toMatch(/min-h-13/);

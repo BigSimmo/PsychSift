@@ -27,7 +27,7 @@ export function OnCallHospitalLine({
   if (!name) return null;
   const canChange = handbook.hospitals.length > 1;
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-3 px-3" data-testid={testId}>
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 px-1" data-testid={testId}>
       <p className={cn(modeNameText, "min-w-0 break-words text-base-minus text-[color:var(--text-heading)]")}>{name}</p>
       {canChange ? (
         <>

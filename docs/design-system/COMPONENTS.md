@@ -1058,7 +1058,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `AnswerFooter`           | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `Breadcrumb`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             172 |
+| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             171 |
 | `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
 | `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
 | `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |              12 |
@@ -1070,7 +1070,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `DisclosureGroup`        | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `DoseLine`               | answer   | yes   | yes                | no                    | yes            | no                 |               0 |
 | `DownloadLink`           | controls | yes   | yes                | no                    | yes            | no                 |               0 |
-| `EmptyState`             | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              20 |
+| `EmptyState`             | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              19 |
 | `ErrorState`             | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `ErrorSummary`           | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `ExternalTextLink`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
@@ -1094,7 +1094,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `SearchField`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              28 |
 | `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              17 |
-| `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             114 |
+| `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             115 |
 | `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `SourceDesignationBadge` | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `SourceProvenance`       | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |

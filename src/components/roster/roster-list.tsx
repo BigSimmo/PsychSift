@@ -3,15 +3,17 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { modeModuleSurface, modePressable } from "@/components/mode-kit/recipes";
+import { modePressable } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 
 /**
- * Roster's list pieces, in the calm style of the Roster mock-up: one hairline
- * card per list, rows with a date or icon lead, a bold first line, a muted
- * second line and a quiet trailing word. Colour only where it means something:
- * the roster violet for a link word, amber for a hours-and-rest warning.
- * Every interactive row is a 56px target (at least the 48px minimum).
+ * Roster's list pieces, drawn as the work-mode kit (work-mode redesign, owner
+ * request 6 Oct 2026; flat, per the owner's 19:58 note): one white hairline
+ * card per list, rows with a date tile or a flat tinted icon circle, a bold
+ * first line, a muted second line and a quiet trailing word. Colour only
+ * where it means something: the roster violet for a link word and the date
+ * tile's weekday, amber for an hours-and-rest warning. Every interactive row
+ * is at least the 48px tap floor.
  */
 
 /** A section heading: a small uppercase label and an optional link or note on the right. */
@@ -27,14 +29,14 @@ export function RosterSectionHead({
   readonly isNew?: boolean;
 }) {
   return (
-    <div className="-mb-2 mt-1 flex min-h-12 min-w-0 items-center justify-between gap-3 px-1">
+    <div className="-my-2 flex min-h-12 min-w-0 items-center justify-between gap-3 px-1">
       <h2
         id={id}
-        className="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-[color:var(--text-muted)]"
+        className="flex min-w-0 items-center gap-1.5 text-[0.625rem] font-bold uppercase leading-4 tracking-[0.1em] text-[color:var(--text-muted)]"
       >
         {title}
         {isNew ? (
-          <span className="rounded-sm border border-[color:var(--border-strong)] px-1 text-2xs font-semibold normal-case tracking-normal">
+          <span className="rounded-full bg-[color:var(--mode-identity-soft)] px-1.5 text-2xs font-bold normal-case tracking-normal text-[color:var(--mode-identity)]">
             New
           </span>
         ) : null}
@@ -67,7 +69,7 @@ export function RosterLinkWord({
 }) {
   const className = cn(
     focusRing,
-    "inline-grid min-h-12 min-w-12 items-center justify-center whitespace-nowrap rounded-md px-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline disabled:text-[color:var(--disabled)]",
+    "inline-grid min-h-12 min-w-12 items-center justify-center whitespace-nowrap rounded-md px-1 text-xs font-bold text-[color:var(--mode-identity)] no-underline disabled:text-[color:var(--disabled)]",
   );
   if (href)
     return (
@@ -101,7 +103,7 @@ export function RosterList({
   readonly label?: string;
 }) {
   return (
-    <ul role="list" aria-label={label} className={cn(modeModuleSurface, "shadow-none")} data-testid={testId}>
+    <ul role="list" aria-label={label} className="work-card m-0 list-none p-0" data-testid={testId}>
       {children}
     </ul>
   );
@@ -110,14 +112,11 @@ export function RosterList({
 /** The day lead: weekday over the date number. */
 export function RosterDateLead({ weekday, day }: { readonly weekday: string; readonly day: number }) {
   return (
-    <span className="grid w-9 shrink-0 justify-items-center leading-tight">
-      <span
-        aria-hidden="true"
-        className="text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]"
-      >
+    <span className="work-date">
+      <span aria-hidden="true" className="work-date__month">
         {weekday}
       </span>
-      <span aria-hidden="true" className="nums text-lg-minus font-semibold text-[color:var(--text-heading)]">
+      <span aria-hidden="true" className="work-date__day text-[color:var(--text-heading)]">
         {day}
       </span>
       {/* Read as "Mon 5," so a row that is not a control still says its day. */}
@@ -126,7 +125,7 @@ export function RosterDateLead({ weekday, day }: { readonly weekday: string; rea
   );
 }
 
-/** The icon lead: a 36px soft square; amber for a hours-and-rest warning. */
+/** The icon lead: a flat tinted circle in the roster violet; amber for a hours-and-rest warning. */
 export function RosterIconLead({
   icon: Icon,
   tone = "neutral",
@@ -137,19 +136,15 @@ export function RosterIconLead({
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-md forced-colors:border",
-        tone === "warning"
-          ? "bg-[color:var(--warning-soft)] text-[color:var(--warning-text)]"
-          : "bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))] text-[color:var(--text-muted)]",
-      )}
+      className="work-ic forced-colors:border"
+      data-tone={tone === "warning" ? "amber" : undefined}
     >
-      <Icon aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
+      <Icon aria-hidden="true" strokeWidth={2} />
     </span>
   );
 }
 
-/** Grey initials for a colleague: no photo, no colour. */
+/** Initials for a colleague on a soft violet circle: no photo. */
 export function RosterInitials({ name }: { readonly name: string }) {
   const initials = name
     .replace(/^Dr\.?\s+/i, "D ")
@@ -161,7 +156,7 @@ export function RosterInitials({ name }: { readonly name: string }) {
   return (
     <span
       aria-hidden="true"
-      className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))] text-xs font-semibold text-[color:var(--text-muted)]"
+      className="grid size-[1.875rem] shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[0.6875rem] font-bold text-[color:var(--mode-identity)] forced-colors:border"
     >
       {initials}
     </span>
@@ -207,11 +202,11 @@ export function RosterRow({
   const body = (
     <>
       {lead}
-      <span className="grid min-w-0 flex-1 py-1">
+      <span className="grid min-w-0 flex-1 py-0.5">
         <span
           className={cn(
-            "nums break-words text-base-minus leading-5",
-            dim ? "font-medium text-[color:var(--text-muted)]" : "font-semibold text-[color:var(--text-heading)]",
+            "nums break-words text-sm leading-5",
+            dim ? "font-medium text-[color:var(--text-muted)]" : "font-bold text-[color:var(--text-heading)]",
           )}
         >
           {title}
@@ -219,7 +214,7 @@ export function RosterRow({
         {sub ? (
           <span
             className={cn(
-              "break-words text-sm leading-5",
+              "break-words text-[0.71875rem] leading-4",
               tone === "warning" ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)]",
             )}
           >
@@ -228,14 +223,16 @@ export function RosterRow({
         ) : null}
       </span>
       {trail ? (
-        <span className="shrink-0 whitespace-nowrap text-xs text-[color:var(--text-muted)]">{trail}</span>
+        <span className="shrink-0 whitespace-nowrap text-[0.6875rem] font-semibold text-[color:var(--text-muted)]">
+          {trail}
+        </span>
       ) : null}
     </>
   );
-  const rowClass = "flex min-h-14 min-w-0 items-center gap-3 px-4 py-2";
+  const rowClass = "flex min-h-14 min-w-0 items-center gap-2.5 px-3 py-2";
   const chevron =
     !trail && !action ? (
-      <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+      <ChevronRight aria-hidden="true" strokeWidth={2} className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
     ) : null;
   const hairline =
     "relative before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden";
@@ -292,18 +289,18 @@ export function RosterNote({
       role={role}
       data-testid={testId}
       className={cn(
-        "flex min-w-0 items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm text-[color:var(--text)] forced-colors:border",
+        "flex min-w-0 items-start gap-2.5 rounded-[var(--work-radius-card,14px)] border px-3 py-2.5 text-[0.78125rem] leading-5 text-[color:var(--text)] forced-colors:border",
         tone === "warning"
-          ? "border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)]"
-          : "bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]",
+          ? "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)]"
+          : "border-[color:var(--border)] bg-[color:var(--surface-raised)]",
       )}
     >
       <Icon
         aria-hidden="true"
-        strokeWidth={1.6}
+        strokeWidth={2}
         className={cn(
           "mt-0.5 size-icon-md shrink-0",
-          tone === "warning" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]",
+          tone === "warning" ? "text-[color:var(--warning-text)]" : "text-[color:var(--mode-identity)]",
         )}
       />
       <div className="grid min-w-0 gap-1 break-words">{children}</div>
@@ -314,7 +311,7 @@ export function RosterNote({
 /** Small grey footnote text under a section. */
 export function RosterFootnote({ children, testId }: { readonly children: ReactNode; readonly testId?: string }) {
   return (
-    <p className="mx-1 text-xs text-[color:var(--text-muted)]" data-testid={testId}>
+    <p className="mx-1 text-[0.71875rem] font-medium leading-snug text-[color:var(--text-muted)]" data-testid={testId}>
       {children}
     </p>
   );
@@ -323,12 +320,12 @@ export function RosterFootnote({ children, testId }: { readonly children: ReactN
 /** The one filled button a screen may have, in the roster violet. */
 export const rosterFilledButton = cn(
   focusRing,
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--mode-identity)] bg-[color:var(--mode-identity)] px-4 text-base-minus font-semibold text-[color:var(--mode-identity-contrast)] no-underline forced-colors:border-[ButtonBorder]",
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[color:var(--work-primary,var(--mode-identity))] bg-[color:var(--work-primary,var(--mode-identity))] px-4 text-sm font-bold text-[color:var(--work-primary-text,var(--mode-identity-contrast))] no-underline forced-colors:border-[ButtonBorder]",
 );
 
 /** A plain bordered button. */
 export const rosterOutlineButton = cn(
   focusRing,
   modePressable,
-  "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 text-balance rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-2.5 text-center text-base-minus font-semibold text-[color:var(--text-heading)] no-underline disabled:text-[color:var(--disabled)]",
+  "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 text-balance rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-2.5 text-center text-sm font-bold text-[color:var(--text-heading)] no-underline disabled:text-[color:var(--disabled)]",
 );

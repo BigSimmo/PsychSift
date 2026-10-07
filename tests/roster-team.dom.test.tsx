@@ -176,4 +176,55 @@ describe("Roster team journey", () => {
       "D day · E evening · N night · C on call · L leave · W other work · blank is off.",
     );
   });
+  it("lists who is on now, until when, and hides the list when nobody is on", async () => {
+    mockTeam();
+    // 23:00 Perth on Thu 15 Oct: Sam's night (21:30 to 08:00) covers it.
+    const { unmount } = render(<RosterTeamPage now={new Date("2026-10-15T15:00:00Z")} />);
+    const list = await screen.findByTestId("roster-team-on-now");
+    expect(screen.getByRole("heading", { name: "On now" })).toBeTruthy();
+    expect(list.textContent).toContain("Dr Sam Example");
+    expect(list.textContent).toContain("Night · until 08:00");
+    unmount();
+    mockTeam();
+    // 12:00 Perth on Fri 16 Oct: the night has ended.
+    render(<RosterTeamPage now={new Date("2026-10-16T04:00:00Z")} />);
+    expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
+    expect(screen.queryByTestId("roster-team-on-now")).toBeNull();
+  });
+  it("says there is no team yet and offers Join a team, with no detail reads", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ actorId: "alex", teams: [] })),
+    );
+    render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
+    const empty = await screen.findByTestId("roster-team-no-team");
+    expect(empty.textContent).toContain("No team yet");
+    expect(empty.querySelector('a[href="/roster/join"]')?.textContent).toContain("Join a team");
+    expect(vi.mocked(fetch).mock.calls.every(([url]) => url === "/api/roster/team")).toBe(true);
+  });
+  it("lists who is on with you later today, and only when a shift of yours starts later today", async () => {
+    const mine = {
+      ...samsNight,
+      id: "mine",
+      userId: "alex",
+      name: "Alex Example",
+      startsAt: "2026-10-15T17:00:00+08:00",
+      endsAt: "2026-10-15T23:00:00+08:00",
+      shiftCode: "E",
+      kind: "evening",
+    };
+    mockTeam(true, false, [samsNight, mine]);
+    // 08:00 Perth on Thu 15 Oct: Alex starts at 17:00, Sam's night from 21:30 overlaps it.
+    const { unmount } = render(<RosterTeamPage now={new Date("2026-10-15T00:00:00Z")} />);
+    const section = await screen.findByTestId("roster-team-with-you");
+    expect(screen.getByRole("heading", { name: "On with you tonight" })).toBeTruthy();
+    expect(section.textContent).toContain("Your evening");
+    expect(section.textContent).toContain("Dr Sam Example");
+    unmount();
+    mockTeam(true, false, [samsNight, mine]);
+    // 18:00 Perth: Alex's shift is on now, so the On now list covers it instead.
+    render(<RosterTeamPage now={new Date("2026-10-15T10:00:00Z")} />);
+    expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
+    expect(screen.queryByTestId("roster-team-with-you")).toBeNull();
+  });
 });

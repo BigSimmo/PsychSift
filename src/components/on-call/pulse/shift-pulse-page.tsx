@@ -466,7 +466,7 @@ export function OnCallShiftPulsePage() {
               <OnCallRow
                 title={`Stayed past ${perthWhen(shift.last.endsAt, false)}?`}
                 subtitle="Your shifts and hours are in Roster"
-                leading={<Clock aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+                leading={<Clock aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
                 href="/roster"
                 testId="on-call-pulse-roster"
               />

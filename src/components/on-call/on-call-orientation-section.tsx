@@ -17,7 +17,7 @@ import {
   onCallOrientationCategoryFacet,
   sortOnCallEntries,
 } from "@/components/on-call/on-call-page-sections";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
   onCallDetailsSchemaFor,
@@ -77,6 +77,7 @@ function OrientationCard({
       // class right except `forced-colors:border`, so in Windows High Contrast
       // the card edge disappeared.
       className={cn(cardSurface, "grid grid-cols-[minmax(0,1fr)] gap-3 p-4")}
+      data-on-call-entry-card=""
       data-testid={`on-call-orientation-card-${entry.slug}`}
     >
       <header className="flex items-start justify-between gap-3">
@@ -171,7 +172,7 @@ export function OnCallOrientationSection({
 
   if (allOrientation.length === 0) {
     return (
-      <EmptyState
+      <OnCallEmptyState
         icon={BookOpen}
         title="No orientation manuals yet"
         body="Manuals you add will appear here as a shelf, filed into folders you name, each optionally carrying your own pinned summary above it."

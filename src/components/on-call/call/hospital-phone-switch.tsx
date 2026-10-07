@@ -32,7 +32,7 @@ export function OnCallHospitalPhoneSwitch({
     <OnCallGroupedList testId={testId}>
       <li className={cn(modeInsetHairline, modeRowHeight.double, "flex min-w-0 items-center gap-3 pl-3 pr-1")}>
         <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
-          <Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
         </span>
         <span className="grid min-w-0 flex-1 gap-0.5">
           <span className={cn(modeNameText, "break-words text-base-minus text-[color:var(--text-heading)]")}>
