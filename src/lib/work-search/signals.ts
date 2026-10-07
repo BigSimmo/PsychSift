@@ -212,6 +212,17 @@ export function clinicalSearchHref(query: string): string {
 }
 
 /**
+ * Patient details that also ask a clinical question ("clozapine UR 4471823"): the
+ * screen offers clinical search as well as Clear, but empty. The typed text never
+ * goes into the link, so it never reaches the address, history or a provider.
+ */
+export function patientClinicalHandOff(query: string): string | null {
+  const trimmed = query.trim();
+  if (!looksLikePatientDetails(trimmed) || !looksClinical(trimmed)) return null;
+  return "/?mode=answer&focus=1";
+}
+
+/**
  * What the search screen may do with what was typed. Patient details are never
  * looked up or answered. A clinical question is still looked up in the reader's
  * own records (an "ECT list" can be on their roster) but gets no work answer.

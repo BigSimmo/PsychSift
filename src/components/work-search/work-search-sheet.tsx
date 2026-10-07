@@ -57,6 +57,23 @@ import { documentsSearchHref } from "@/lib/document-flow-routes";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/perth-time";
 import { answerWorkQuestion, type WorkAnswer } from "@/lib/work-search/answers";
 import { workSearchAreaLabels, workSearchAreas, type WorkAreaRead, type WorkSearchArea } from "@/lib/work-search/model";
+import {
+  clearedNoticeOwed,
+  clearRecents,
+  closedByNavigating,
+  forgetRecent,
+  holdHistoryStep,
+  holdsHistoryStep,
+  markKeystroke,
+  measureKeystrokeToResults,
+  measureOpenToFirstResult,
+  noteClosing,
+  recentsFor,
+  rememberQuery,
+  resumableSearch,
+  takeClearedFlag,
+  takeHistoryStep,
+} from "@/lib/work-search/memory";
 import { searchWorkPages } from "@/lib/work-search/pages";
 import {
   buildWorkSearchIndex,
@@ -69,7 +86,12 @@ import {
   workSearchCounts,
   workSearchNothingFound,
 } from "@/lib/work-search/search";
-import { clinicalSearchHref, looksLikePatientDetails, workSearchGate } from "@/lib/work-search/signals";
+import {
+  clinicalSearchHref,
+  looksLikePatientDetails,
+  patientClinicalHandOff,
+  workSearchGate,
+} from "@/lib/work-search/signals";
 
 /**
  * "Search my work", restyled to the locked work-mode mockup (work-mode
@@ -130,97 +152,6 @@ const GROUP_PREVIEW = 4;
 /** A single group opens fuller, but still not to every record at once. */
 const SINGLE_GROUP_PREVIEW = 12;
 const PAGES_PREVIEW = 3;
-
-/**
- * Recent searches and the last unfinished search, kept in this tab's memory only:
- * never in browser storage, because a shared ward computer cannot tell a typed
- * patient name from a word. Both belong to one account (auth epoch) and are
- * dropped when another signs in. Anything that looks like patient details, or
- * that found nothing, is never kept.
- */
-let recentMemory: { epoch: number; list: string[] } = { epoch: -1, list: [] };
-/** Set as the search closes: true when a result was opened, so focus is left to the new page. */
-let navigatedAway = false;
-let lastSearch: { epoch: number; query: string; at: number } | null = null;
-/**
- * "Cleared what you typed": set when patient details were cleared from the box
- * (left there, or the search closed or hidden with them in it), so the next
- * opening says so. A flag only, never the text, and in this tab's memory only.
- */
-let clearedPatientDetails: { epoch: number } | null = null;
-const RECENT_LIMIT = 5;
-const RESUME_FOR_MS = 5 * 60 * 1000;
-
-function recentsFor(epoch: number): string[] {
-  return recentMemory.epoch === epoch ? recentMemory.list : [];
-}
-
-function rememberQuery(query: string, epoch: number) {
-  const trimmed = query.trim();
-  if (trimmed.length < 2 || looksLikePatientDetails(trimmed)) return;
-  const list = recentsFor(epoch);
-  recentMemory = {
-    epoch,
-    list: [trimmed, ...list.filter((value) => value.toLowerCase() !== trimmed.toLowerCase())].slice(0, RECENT_LIMIT),
-  };
-}
-
-/**
- * As the search closes: keep an unfinished search for a few minutes (never patient details), and when
- * patient details were left in the box, drop them and leave the flag for "Cleared what you typed".
- */
-function noteClosing(query: string, epoch: number, navigated: boolean) {
-  const current = query.trim();
-  const hasPatientDetails = Boolean(current) && looksLikePatientDetails(current);
-  lastSearch = !navigated && current && !hasPatientDetails ? { epoch, query: current, at: Date.now() } : null;
-  if (hasPatientDetails) clearedPatientDetails = { epoch };
-  navigatedAway = navigated;
-}
-
-/** Spends the "Cleared what you typed" flag once the opening that shows it has read it. */
-function takeClearedFlag(epoch: number): boolean {
-  const owed = clearedPatientDetails?.epoch === epoch;
-  clearedPatientDetails = null;
-  return owed;
-}
-
-/** Whether the open search added a history step (so Back closes it). One search is open at a time. */
-let historyStepHeld = false;
-
-function holdHistoryStep() {
-  historyStepHeld = true;
-}
-
-function holdsHistoryStep(): boolean {
-  return historyStepHeld;
-}
-
-/** Gives up the history step: true when there was one to give up. */
-function takeHistoryStep(): boolean {
-  const held = historyStepHeld;
-  historyStepHeld = false;
-  return held;
-}
-
-/** Timings kept on the device (the browser's own performance timeline), never sent. Names carry no typed text. */
-function measure(name: string, from: string) {
-  try {
-    if (performance.getEntriesByName(from, "mark").length === 0) return;
-    if (performance.getEntriesByName(name, "measure").length > 40) performance.clearMeasures(name);
-    performance.measure(name, from);
-    performance.clearMarks(from);
-  } catch {
-    // A browser without the timeline simply records nothing.
-  }
-}
-
-function mark(name: string) {
-  try {
-    performance.mark(name);
-  } catch {
-    // As above.
-  }
-}
 
 /** Which area a no-match query was most likely about, for "Open …" in Try instead. */
 function guessArea(query: string, fallback: WorkSearchArea): WorkSearchArea {
@@ -440,7 +371,7 @@ export interface WorkSearchSheetProps {
 }
 
 function returnFocusAfterClose(): HTMLElement | null {
-  return navigatedAway ? document.getElementById("main-content") : null;
+  return closedByNavigating() ? document.getElementById("main-content") : null;
 }
 
 function usesFinePointer(): boolean {
@@ -469,9 +400,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const epoch = records.epoch;
   const accent = currentArea ?? "my-day";
   // Reopened within a few minutes, the last search comes back (selected, so typing replaces it).
-  const [query, setQuery] = useState(() =>
-    lastSearch && lastSearch.epoch === epoch && Date.now() - lastSearch.at < RESUME_FOR_MS ? lastSearch.query : "",
-  );
+  const [query, setQuery] = useState(() => resumableSearch(epoch));
   // The results follow the box after a short pause, so a fast typist is never held up.
   const [settledQuery, setSettledQuery] = useState(query);
   // An emptied box empties the results at once; anything typed follows after the pause.
@@ -485,7 +414,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const [exactFor, setExactFor] = useState<string | null>(null);
   const [liveText, setLiveText] = useState("");
   /** "Cleared what you typed", shown until the next keystroke. */
-  const [clearedNotice, setClearedNotice] = useState(() => clearedPatientDetails?.epoch === epoch);
+  const [clearedNotice, setClearedNotice] = useState(() => clearedNoticeOwed(epoch));
   const [offline, setOffline] = useState(isOffline);
   const [signInOpen, setSignInOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -526,6 +455,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const gate = workSearchGate(trimmed);
   const patient = patientNow || gate.patient;
   const clinical = !patient && gate.clinical;
+  // Patient details with a clinical question in them: clinical search is offered too, empty.
+  const clinicalHandOff = patientClinicalHandOff(query);
   const searchable = gate.search && !patient;
   const exact = exactFor !== null && exactFor === trimmed;
 
@@ -671,11 +602,11 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   useEffect(() => {
     if (firstResultShown.current || !showsRecords) return;
     firstResultShown.current = true;
-    measure("work-search:open-to-first-result", "work-search:open");
+    measureOpenToFirstResult();
   }, [showsRecords]);
   // Runs after the render in which the results caught up with the box, so it times the whole key-to-screen path.
   useEffect(() => {
-    if (searchQuery === query && query.trim()) measure("work-search:keystroke-to-results", "work-search:key");
+    if (searchQuery === query && query.trim()) measureKeystrokeToResults();
   }, [searchQuery, query]);
 
   // Spoken once the typing settles, not on every key.
@@ -852,6 +783,19 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
       >
         Clear
       </WorkButton>
+      {clinicalHandOff ? (
+        <Link
+          href={clinicalHandOff}
+          onClick={onPlainClick(() => close(true))}
+          data-testid="work-search-patient-clinical"
+          className="work-button"
+          data-variant="secondary"
+          data-size="wide"
+        >
+          <BookOpen aria-hidden="true" strokeWidth={2} />
+          Ask clinical search without them
+        </Link>
+      ) : null}
       <SectionLabel id="work-search-never">Never searched</SectionLabel>
       <ul aria-labelledby="work-search-never" className="m-0 flex list-none flex-wrap gap-1.5 p-0">
         {(
@@ -996,7 +940,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 type="search"
                 value={query}
                 onChange={(event) => {
-                  mark("work-search:key");
+                  markKeystroke();
                   setQuery(event.target.value);
                   setExpanded(null);
                   setClearedNotice(false);
@@ -1172,7 +1116,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                     action={
                       <LabelAction
                         onClick={() => {
-                          recentMemory = { epoch, list: [] };
+                          clearRecents(epoch);
                           setRecents([]);
                           setLiveText("Recent searches cleared.");
                           inputRef.current?.focus();
@@ -1199,7 +1143,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                         <button
                           type="button"
                           onClick={() => {
-                            recentMemory = { epoch, list: recentsFor(epoch).filter((item) => item !== value) };
+                            forgetRecent(value, epoch);
                             setRecents(recentsFor(epoch));
                             inputRef.current?.focus();
                           }}
