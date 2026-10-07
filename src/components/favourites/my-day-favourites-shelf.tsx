@@ -6,9 +6,11 @@ import { useId, useRef, useState } from "react";
 
 import { AddWorkPageSheet } from "@/components/favourites/add-work-page-sheet";
 import { FavouritesShelf } from "@/components/favourites/favourites-shelf";
-import { shelfItems } from "@/components/favourites/favourites-view-model";
+import { favouriteScopeOf, shelfItems } from "@/components/favourites/favourites-view-model";
 import { useFavouritesShelf } from "@/components/favourites/use-favourites-shelf";
+import { useNumberSheets } from "@/components/favourites/use-number-sheets";
 import { WorkButton } from "@/components/mode-kit/work";
+import { useFavouritesLayout } from "@/lib/favourites/favourites-local";
 
 /**
  * The Favourites shelf on My Day Today (owner request 7 Oct 2026: one saved
@@ -16,19 +18,23 @@ import { WorkButton } from "@/components/mode-kit/work";
  * the My Day Favourites page, then the same eight tiles the Favourites page
  * draws, in the same order.
  *
- * Signed out, only this phone's saved work pages show, and nothing at all
- * when there are none. A failed clinical read keeps the work pages and says
+ * Signed out, only this phone's saved work pages and numbers show, and
+ * nothing at all when there are none. A number's tile opens Call and Copy.
+ * The shelf holds four or eight tiles, pins in the order the person arranged
+ * them (both set in Customise Favourites, kept on this phone). A failed clinical read keeps the work pages and says
  * so in one amber line with Retry.
  */
 export function MyDayFavouritesShelf() {
   const { items, status, signedIn, retry, recordOpen } = useFavouritesShelf();
+  const layout = useFavouritesLayout();
   const headingId = useId();
   const [adding, setAdding] = useState(false);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
-  // Signed out, clinical items are not this reader's: keep only the work pages on this phone.
-  const visible = signedIn ? items : items.filter((item) => Boolean(item.workKey));
-  const shelf = shelfItems(visible);
+  // Signed out, clinical items are not this reader's: keep only the work pages and numbers on this phone.
+  const visible = signedIn ? items : items.filter((item) => favouriteScopeOf(item) === "work");
+  const shelf = shelfItems(visible, layout.shelfSize, layout.pinOrder);
+  const numberSheets = useNumberSheets(visible);
   const loading = signedIn && status === "loading" && visible.length === 0;
   const failed = signedIn && (status === "error" || status === "partial" || status === "unauthorized");
 
@@ -69,7 +75,9 @@ export function MyDayFavouritesShelf() {
         <FavouritesShelf
           items={shelf}
           onOpen={recordOpen}
+          onOpenNumber={numberSheets.openNumber}
           onAdd={openAdd}
+          limit={layout.shelfSize}
           aria-labelledby={headingId}
           testId="my-day-favourites-shelf"
         />
@@ -107,6 +115,7 @@ export function MyDayFavouritesShelf() {
         </div>
       ) : null}
 
+      {numberSheets.sheets}
       <AddWorkPageSheet
         open={adding}
         onClose={() => setAdding(false)}

@@ -123,7 +123,7 @@ export function checkNumberDraft(draft: NumberDraft): NumberDraftProblems {
     if (problem) problems.label = problem;
   }
   if (!number) problems.number = "Add the number.";
-  else if (!/^[+\d][\d\s()+.-]*$/.test(number) || dialableDigits(number).replace("+", "").length < 3) {
+  else if (!/^[+(\d][\d\s()+.-]*$/.test(number) || dialableDigits(number).replace("+", "").length < 3) {
     problems.number = "Use digits, with spaces or brackets if you like.";
   } else if (number.length > 24) problems.number = "That is longer than a phone number.";
   if (note) {

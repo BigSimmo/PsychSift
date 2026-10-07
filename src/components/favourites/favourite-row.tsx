@@ -19,6 +19,7 @@ import { FavouriteExampleTag } from "@/components/clinical-dashboard/favourite-e
 import { FavouriteTypeTile } from "@/components/favourites/favourite-type-tile";
 import { favouriteKindLabel } from "@/components/favourites/favourites-launchpad";
 import {
+  favouriteScopeOf,
   isSourceBacked,
   recentTimeLabel,
   type FavouriteItem,
@@ -52,10 +53,10 @@ function RowBody({
   /** Lets the row's control describe itself with this line, which its label would otherwise hide. */
   metaId?: string;
 }) {
-  const isWork = item.type === "Work page";
+  const isWork = favouriteScopeOf(item) === "work";
   const kind = favouriteKindLabel(item);
   const lead = view === "type" && !isWork ? item.description : kind;
-  // A work page has no set: it shows its work area instead, and where it lives.
+  // A work page or number has no set: it shows its work area or digits instead, and where it lives.
   const setLabel = showSet && !isWork ? ` · ${item.set}` : "";
   return (
     <>
@@ -67,6 +68,9 @@ function RowBody({
           </span>
           {item.example ? <FavouriteExampleTag /> : null}
         </span>
+        {item.note ? (
+          <span className="block min-w-0 truncate text-xs text-[color:var(--text-muted)]">{item.note}</span>
+        ) : null}
         <span id={metaId} className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <span className="flex min-w-0 items-center gap-1 text-xs font-medium text-[color:var(--text-muted)]">
             {item.pinned ? (
@@ -83,6 +87,7 @@ function RowBody({
             ) : null}
             <span className="min-w-0 truncate">
               {time ? <span className="nums">{time} · </span> : null}
+              {item.numberId && item.phone ? <span className="font-mono">{item.phone} · </span> : null}
               {lead}
               {setLabel}
             </span>

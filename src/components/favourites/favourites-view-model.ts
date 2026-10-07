@@ -129,9 +129,16 @@ export function isSourceBacked(item: FavouriteItem): boolean {
 export function matchesFavouriteSearch(item: FavouriteItem, searchTerm: string): boolean {
   const term = searchTerm.trim().toLowerCase();
   if (!term) return true;
-  return [item.title, item.description, item.type, item.set, item.evidence].some((field) =>
-    field.toLowerCase().includes(term),
-  );
+  return [
+    item.title,
+    item.description,
+    item.type,
+    item.set,
+    item.evidence,
+    item.note ?? "",
+    item.phone ?? "",
+    item.originalTitle ?? "",
+  ].some((field) => field.toLowerCase().includes(term));
 }
 
 function byTitle(first: FavouriteItem, second: FavouriteItem) {

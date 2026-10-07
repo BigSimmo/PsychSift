@@ -174,7 +174,7 @@ describe("work pages on the Favourites page", () => {
         .getAllByTestId("favourites-shelf-tile")
         .some((tile) => tile.getAttribute("href") === first!.item.href),
     ).toBe(true);
-    expect(screen.getByText(/Work pages stay on this phone/)).toBeInTheDocument();
+    expect(screen.getByText(/Work pages, numbers, names, notes and layout stay on this phone/)).toBeInTheDocument();
   });
 
   it("keeps work pages out of the set chips, and offers no Move or Copy for them", async () => {

@@ -177,6 +177,46 @@ describe("My Day Favourites page", () => {
     expect(screen.getAllByTestId("my-day-favourites-row")).toHaveLength(3);
   });
 
+  it("switches between All, Clinical and Work, and a number row opens Call and Copy", async () => {
+    vi.useRealTimers();
+    accountSets.current = [{ id: "set-ward", name: "Ward round", sortOrder: 0 }];
+    shelfState.current = state({
+      items: [
+        clinical("delirium", "Delirium", { setId: "set-ward", set: "Ward round", note: "Check the CAM first" }),
+        workPage("renewals", "Renewals"),
+        {
+          ...clinical("number:n1", "Psych liaison pager"),
+          type: "Number",
+          tabId: "work",
+          set: "Numbers",
+          href: "tel:64572210",
+          numberId: "n1",
+          phone: "6457 2210",
+        },
+      ],
+    });
+    render(<MyDayFavouritesPage />);
+    const user = userEvent.setup();
+
+    const scope = screen.getByTestId("my-day-favourites-scope");
+    expect(within(scope).getByRole("radio", { name: "All" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getAllByTestId("my-day-favourites-row")).toHaveLength(3);
+    expect(screen.getByText("Check the CAM first")).toBeInTheDocument();
+
+    await user.click(within(scope).getByRole("radio", { name: "Clinical" }));
+    expect(screen.getAllByTestId("my-day-favourites-row")).toHaveLength(1);
+    expect(screen.getByTestId("my-day-favourites-set-chip")).toBeInTheDocument();
+
+    await user.click(within(scope).getByRole("radio", { name: "Work" }));
+    const rows = screen.getAllByTestId("my-day-favourites-row");
+    expect(rows).toHaveLength(2);
+    expect(screen.queryByTestId("my-day-favourites-set-chip")).toBeNull();
+    const numberRow = rows.find((row) => row.textContent?.includes("Psych liaison pager"))!;
+    expect(within(numberRow).getByText("6457 2210")).toHaveClass("font-mono");
+    await user.click(numberRow);
+    expect(await screen.findByTestId("number-actions-sheet")).toBeInTheDocument();
+  });
+
   it("when nothing is saved, offers Add a work page and Browse services", async () => {
     vi.useRealTimers();
     render(<MyDayFavouritesPage />);

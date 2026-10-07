@@ -1,11 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, Copy, Folder, FolderPlus, Layers, Pin, PinOff, X, type LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Copy,
+  Folder,
+  FolderPlus,
+  Layers,
+  PenLine,
+  Pin,
+  PinOff,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { FavouriteTypeTile } from "@/components/favourites/favourite-type-tile";
-import { isSourceBacked, UNSORTED_SET_NAME, type FavouriteItem } from "@/components/favourites/favourites-view-model";
+import {
+  favouriteScopeOf,
+  isSourceBacked,
+  UNSORTED_SET_NAME,
+  type FavouriteItem,
+} from "@/components/favourites/favourites-view-model";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
@@ -62,8 +79,10 @@ function RowText({ title, sub }: { title: ReactNode; sub?: ReactNode }) {
 const setNamesNote = "Name sets by workflow, never by patient. Set names are saved to your account.";
 
 /**
- * Open, pin, move, copy and remove for one favourite. A work page cannot go
- * into a set and has no source to copy, so those two rows are left out for it.
+ * Open, pin, edit, move, copy and remove for one favourite. A work page or a
+ * number cannot go into a set and has no source to copy, so those two rows are
+ * left out for it. Edit gives it the person's own name and note, kept on this
+ * phone; when renamed, its own title shows as "Original".
  */
 export function FavouriteActionsSheet({
   item,
@@ -75,6 +94,7 @@ export function FavouriteActionsSheet({
   onCopyCitation,
   onMove,
   onRemove,
+  onEdit,
   returnFocusTarget,
 }: {
   item: FavouriteItem;
@@ -89,14 +109,16 @@ export function FavouriteActionsSheet({
   onCopyCitation: (item: FavouriteItem) => Promise<boolean>;
   onMove: (item: FavouriteItem) => void;
   onRemove: (item: FavouriteItem) => void;
+  /** Rename it and add a note. Omitted where the item cannot be changed, such as an example. */
+  onEdit?: (item: FavouriteItem) => void;
 }) {
   const nameId = useId();
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const actionLabel = item.action === "Copy" ? "Open" : item.action;
-  const isWork = item.type === "Work page";
+  const isWork = favouriteScopeOf(item) === "work";
   const pinLabel = item.pinned ? "Unpin from My Day" : "Pin to My Day";
   const description = isWork
-    ? [item.areaName ?? "Work page", "This phone"].join(" · ")
+    ? [item.type === "Number" ? (item.phone ?? "Number") : (item.areaName ?? "Work page"), "This phone"].join(" · ")
     : [item.type, item.set, isSourceBacked(item) ? "Source-backed" : ""].filter(Boolean).join(" · ");
 
   return (
@@ -115,6 +137,17 @@ export function FavouriteActionsSheet({
       <span id={nameId} className="sr-only">
         Actions for {item.title}
       </span>
+      {item.originalTitle ? (
+        <p
+          className="m-0 truncate px-1 pb-2 text-xs text-[color:var(--text-muted)]"
+          data-testid="favourite-original-title"
+        >
+          Original: {item.originalTitle}
+        </p>
+      ) : null}
+      {item.note ? (
+        <p className="m-0 line-clamp-3 px-1 pb-2 text-sm text-[color:var(--text-muted)]">{item.note}</p>
+      ) : null}
       <div className={actionCard}>
         <Link
           href={item.href}
@@ -141,6 +174,12 @@ export function FavouriteActionsSheet({
           <ActionIcon icon={item.pinned ? PinOff : Pin} />
           <RowText title={pinLabel} sub="Pinned items sit first on My Day" />
         </button>
+        {onEdit ? (
+          <button type="button" className={actionRow} onClick={() => onEdit(item)}>
+            <ActionIcon icon={PenLine} />
+            <RowText title="Edit name and note" sub="Kept on this phone" />
+          </button>
+        ) : null}
         {canMutate && !isWork ? (
           <button type="button" aria-label="Move to a set" className={actionRow} onClick={() => onMove(item)}>
             <ActionIcon icon={Folder} />

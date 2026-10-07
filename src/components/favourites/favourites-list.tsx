@@ -42,6 +42,9 @@ export function FavouritesList({
   canMove = canMutate,
   handlers,
   reorder,
+  srHeading = "Saved favourites",
+  idPrefix = "favourites-group",
+  testId = "favourites-list",
 }: {
   groups: FavouriteGroup[];
   view: FavouritesView;
@@ -62,6 +65,11 @@ export function FavouritesList({
     /** Called once when a drag ends somewhere new, with the group's full new order. */
     onDrop?: (items: FavouriteItem[]) => void;
   };
+  /** The screen-reader heading over the groups. Null when the host draws a visible heading instead. */
+  srHeading?: string | null;
+  /** Keeps group heading ids unique when the page draws more than one list. */
+  idPrefix?: string;
+  testId?: string;
 }) {
   const [drag, setDrag] = useState<{ groupId: string; from: number; to: number; dy: number; height: number } | null>(
     null,
@@ -114,20 +122,20 @@ export function FavouritesList({
   }
 
   return (
-    <div className="grid gap-2.5" data-testid="favourites-list">
+    <div className="grid gap-2.5" data-testid={testId}>
       {/* Keeps the h3 group headings in a proper outline. */}
-      <h2 className="sr-only">Saved favourites</h2>
+      {srHeading ? <h2 className="sr-only">{srHeading}</h2> : null}
       {groups.map((group) => (
         <section
           key={group.id}
-          aria-labelledby={group.label ? `favourites-group-${group.id}` : undefined}
+          aria-labelledby={group.label ? `${idPrefix}-${group.id}` : undefined}
           aria-label={group.label ? undefined : "Favourites"}
           className="grid gap-1.5"
         >
           {group.label ? (
             <WorkSectionLabel
               as="h3"
-              id={`favourites-group-${group.id}`}
+              id={`${idPrefix}-${group.id}`}
               count={view === "type" ? <span className="nums">{group.items.length}</span> : undefined}
             >
               {group.label}
