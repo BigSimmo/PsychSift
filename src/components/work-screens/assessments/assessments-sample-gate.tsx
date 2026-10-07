@@ -1,5 +1,6 @@
 "use client";
 
+import { AssessmentsSupervisorBack } from "@/components/work-screens/assessments/assessments-back";
 import type { ReactNode } from "react";
 
 import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
@@ -26,20 +27,40 @@ export function AssessmentsSampleGate({
 }) {
   const auth = useAuthSession();
   const { active } = useExampleData("assess");
-  if (demoMode) return <>{render()}</>;
+  if (demoMode)
+    return (
+      <>
+        <AssessmentsSupervisorBack />
+        {render()}
+      </>
+    );
   // Until the sign-in status is known, hold the page's space: a signed-out visitor sees example records,
   // so the "not connected" notice must not flash first.
   if (auth.status === "loading")
-    return <WorkScreenLoading label="Loading Assessments" testId="work-screens-assessments-gate-loading" rows={3} />;
-  if (active) return <>{render()}</>;
+    return (
+      <>
+        <AssessmentsSupervisorBack />
+        <WorkScreenLoading label="Loading Assessments" testId="work-screens-assessments-gate-loading" rows={3} />
+      </>
+    );
+  if (active)
+    return (
+      <>
+        <AssessmentsSupervisorBack />
+        {render()}
+      </>
+    );
   // Off: the shared gate draws its "not connected" notice, inside the page's own frame.
   return (
-    <main className="min-w-0" data-testid="work-screens-assessments-not-kept">
-      <WorkBody>
-        <ExampleOnlyGate area="assess" what={what}>
-          {render()}
-        </ExampleOnlyGate>
-      </WorkBody>
-    </main>
+    <>
+      <AssessmentsSupervisorBack />
+      <main className="min-w-0" data-testid="work-screens-assessments-not-kept">
+        <WorkBody>
+          <ExampleOnlyGate area="assess" what={what}>
+            {render()}
+          </ExampleOnlyGate>
+        </WorkBody>
+      </main>
+    </>
   );
 }
