@@ -945,7 +945,7 @@ export function MyDaySegmented<T extends string>({
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
 /** "Friday 9 October". */
-function longDay(date: string): string {
+export function longDay(date: string): string {
   const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
   return `${DAY_NAMES[weekday]} ${Number(date.slice(8, 10))} ${monthTitle(date.slice(0, 7)).split(" ")[0]}`;
 }

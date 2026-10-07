@@ -19,6 +19,7 @@ import { pinnedHelpItems } from "@/components/admin/admin-pinned-numbers";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { EndOfShiftCard } from "@/components/alerts/end-of-shift-card";
 import { focusRing } from "@/components/card-recipes";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { useWorkUndoToast } from "@/components/mode-kit/work";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
 import {
@@ -39,6 +40,7 @@ import {
   CustomiseRow,
   FlagCard,
   HeroCard,
+  longDay,
   type HeroEndOfShift,
   type HeroFinishedShift,
   type HeroNextTeaching,
@@ -141,7 +143,7 @@ export interface MyDayDashboardProps {
   /** Opens the Customise sheet from the "Customise My Day" row. */
   readonly onCustomise?: () => void;
   /** Opens Remind me, with the words to start from (a Needs you row's title). */
-  readonly onRemindMe?: (text?: string) => void;
+  readonly onRemindMe?: (text?: string, shiftEndsAt?: string | null) => void;
   /** Opens Your reminders, from the end-of-shift card. */
   readonly onOpenReminders?: () => void;
   /** Reminders still to do on this phone, for the end-of-shift card. */
@@ -214,7 +216,7 @@ export function MyDayDashboard({
   sources,
   checked,
   onCustomise,
-  onRemindMe,
+  onRemindMe: openRemindMe,
   onOpenReminders,
   pendingReminders,
   newJob = null,
@@ -524,6 +526,18 @@ export function MyDayDashboard({
         }
       : null;
   const onCallNow = Boolean(heroShift && shiftRunning && kindOf(heroShift) === "on_call");
+  // The band names On shift and My records; on call, On shift says so.
+  useModeBandHeading(
+    page === "work"
+      ? { eyebrow: longDay(today), title: onCallNow ? "On call now" : "On shift" }
+      : page === "me"
+        ? { eyebrow: "Leave, hours, CPD and dates", title: "My records" }
+        : null,
+  );
+  // Remind me offers "End of shift" while a rostered shift is running.
+  const onRemindMe = openRemindMe
+    ? (text?: string) => openRemindMe(text, heroShift && shiftRunning ? heroShift.endsAt : null)
+    : undefined;
 
   // ---------------------------------------------------------------- first steps
   // Every source answered and none holds anything: a new reader, so the page says where to start.
