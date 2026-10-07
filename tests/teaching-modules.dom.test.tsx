@@ -208,7 +208,8 @@ describe("DayRail", () => {
     );
     const wednesday = screen.getByRole("button", { name: "Wed 30, 2 sessions" });
     expect(wednesday).toHaveAttribute("aria-pressed", "true");
-    expect(wednesday.className).toContain("text-[color:var(--primary)]");
+    // Work-mode redesign, owner request 6 Oct 2026: the picked day is the Teaching colour, not product blue.
+    expect(wednesday.className).toContain("text-[color:var(--mode-identity)]");
     const tuesday = screen.getByRole("button", { name: "Tue 29, no sessions" });
     expect(tuesday.className).toContain("text-[color:var(--text-muted)]");
     fireEvent.click(tuesday);
