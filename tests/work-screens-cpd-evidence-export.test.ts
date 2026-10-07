@@ -8,9 +8,12 @@ import {
   evidenceRowLine,
   evidenceView,
   fileCountWords,
+  needsEvidenceEmpty,
   parseEvidenceCategory,
+  parseEvidenceOrder,
   parseEvidenceStatus,
 } from "@/lib/work-screens/cpd/evidence";
+import { cpdExportPatientFlags } from "@/lib/work-screens/cpd/patient-check";
 import { withoutExampleRecords } from "@/lib/work-screens/cpd/sample";
 import {
   cpdCsvFileName,
@@ -86,6 +89,7 @@ describe("CPD evidence view", () => {
     expect(attachTarget(one)).toEqual({ kind: "entry", href: "/cme/log/a#cme-evidence-heading" });
     expect(attachTarget(evidenceView(entries, 2026, { category: "all", status: "all", order: "newest" }))).toEqual({
       kind: "list",
+      clearFilters: false,
     });
     expect(
       attachTarget(evidenceView([entries[1]!], 2026, { category: "all", status: "all", order: "newest" })),
@@ -164,5 +168,104 @@ describe("CPD export", () => {
     const early = cpdYearEndState(set, new Date("2026-10-07T04:00:00Z"));
     expect(early.kind).toBe("not-yet");
     if (early.kind === "not-yet") expect(early.from).toMatch(/December 2026/);
+  });
+});
+
+describe("CPD evidence, adversarial review fixes", () => {
+  const all = { category: "all", status: "all", order: "newest" } as const;
+
+  it("never says every activity has evidence when some evidence was not counted", () => {
+    const uncounted = [entries[1]!, entries[2]!];
+    const view = evidenceView(uncounted, 2026, all);
+    expect(view.missing).toBe(0);
+    expect(needsEvidenceEmpty(view, false).title).toBe("None known to need evidence");
+    expect(needsEvidenceEmpty(view, false).body).toBe("Evidence was not counted for 1 activity. Open it to check.");
+    const demo = evidenceView(DEMO_CME_ENTRIES, 2026, all);
+    expect(demo.unknown).toBe(demo.total);
+    expect(needsEvidenceEmpty(demo, false).title).not.toMatch(/Every activity/);
+    expect(needsEvidenceEmpty(evidenceView([entries[1]!], 2026, all), false).title).toBe("Every activity has evidence");
+    expect(needsEvidenceEmpty(evidenceView([entries[1]!], 2026, all), true).title).toBe("Nothing here needs evidence");
+  });
+
+  it("clears the filters when they hide every activity that needs evidence", () => {
+    const educationalHidden = evidenceView(entries.slice(1), 2026, { ...all, category: "educational" });
+    expect(educationalHidden.missing).toBe(1);
+    expect(attachTarget(educationalHidden)).toEqual({ kind: "list", clearFilters: true });
+    const onlyAttached = evidenceView(entries, 2026, { ...all, status: "attached" });
+    expect(attachTarget(onlyAttached)).toEqual({ kind: "list", clearFilters: true });
+    expect(attachTarget(evidenceView(entries, 2026, all))).toEqual({ kind: "list", clearFilters: false });
+  });
+
+  it("keeps the sort order in the address", () => {
+    expect(evidenceHref({ year: 2026, order: "oldest" })).toBe("/cme/evidence?year=2026&order=oldest");
+    expect(evidenceHref({ year: 2026, order: "newest" })).toBe("/cme/evidence?year=2026");
+    expect(parseEvidenceOrder("oldest")).toBe("oldest");
+    expect(parseEvidenceOrder("sideways")).toBe("newest");
+  });
+
+  it("counts a certificate as a file and explains a missing certificate beside other files", () => {
+    const cert = entry({ id: "cert", date: "2026-08-01", evidenceCount: 0, certificateCount: 1 });
+    const files = entry({ id: "files", date: "2026-08-02", evidenceCount: 2, certificateCount: 0 });
+    const view = evidenceView([cert, files], 2026, all);
+    expect(view.has[0]!.files).toBe(1);
+    expect(fileCountWords(view.has[0]!.files)).toBe("1 file");
+    expect(view.needs[0]!.id).toBe("files");
+    expect(evidenceRowLine(view.needs[0]!)).toMatch(/· 2 files, no certificate$/);
+    expect(evidenceRowLine(evidenceView([entries[0]!], 2026, all).needs[0]!)).not.toMatch(/certificate/);
+  });
+});
+
+describe("CPD export, adversarial review fixes", () => {
+  const set = {
+    year: 2026,
+    confirmedOn: "2026-02-03",
+    confirmedSource: "Medical Board",
+  } as unknown as CmeRequirementSet;
+
+  it("writes a CSV Excel reads: byte-order mark, CRLF lines, quoted cells, formulas kept literal", () => {
+    const risky = [
+      entry({ id: "r1", date: "2026-02-01", title: '=HYPERLINK("x")', reflection: "+1 point" }),
+      entry({ id: "r2", date: "2026-02-02", title: "-2 talk", reflection: "@SUM(A1)" }),
+      entry({ id: "r3", date: "2026-02-03", title: "  =cmd", reflection: 'Said "fine", then left' }),
+    ];
+    const csv = cpdYearCsv(risky, set);
+    expect(csv.startsWith("\uFEFF")).toBe(true);
+    expect(csv.endsWith("\r\n")).toBe(true);
+    expect(csv.split("\r\n")).toHaveLength(5);
+    expect(csv).not.toMatch(/[^\r]\n/);
+    expect(csv).toContain('"\'=HYPERLINK(""x"")"');
+    expect(csv).toContain('"\'+1 point"');
+    expect(csv).toContain('"\'-2 talk"');
+    expect(csv).toContain('"\'@SUM(A1)"');
+    expect(csv).toContain('"\'  =cmd"');
+    expect(csv).toContain('"Said ""fine"", then left"');
+    for (const line of csv.slice(1).trimEnd().split("\r\n")) {
+      for (const cell of line.match(/"(?:[^"]|"")*"/g) ?? []) expect(cell).not.toMatch(/^"[=+\-@]/);
+    }
+  });
+
+  it("puts every exported title and reflection through the shared patient-detail check", () => {
+    const flagged = cpdExportPatientFlags(
+      [
+        entry({ id: "ok", date: "2026-03-01", title: "RANZCP ECT workshop", reflection: "Useful refresher." }),
+        entry({ id: "t", date: "2026-03-02", title: "Case review for Mrs Smith", reflection: "" }),
+        entry({
+          id: "r",
+          date: "2026-03-03",
+          title: "Peer review",
+          reflection: "Discussed a 45 year old male in bed 12",
+        }),
+        entry({ id: "example:1", date: "2026-03-04", title: "Mrs Jones, UMRN D4678677", reflection: "" }),
+        entry({ id: "past", date: "2025-03-04", title: "Mrs Jones review", reflection: "" }),
+        entry({ id: "gone", date: "2026-03-05", title: "Mrs Brown review", archivedAt: "2026-03-06T00:00:00Z" }),
+      ],
+      2026,
+    );
+    expect(flagged.map((f) => [f.id, f.field])).toEqual([
+      ["t", "title"],
+      ["r", "reflection"],
+    ]);
+    expect(flagged[0]!.problem.title).toBeTruthy();
+    expect(cpdExportPatientFlags(DEMO_CME_ENTRIES, 2026)).toEqual([]);
   });
 });

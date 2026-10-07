@@ -30,6 +30,7 @@ import {
   evidenceRowLine,
   evidenceView,
   fileCountWords,
+  needsEvidenceEmpty,
   type EvidenceCategoryFilter,
   type EvidenceOrder,
   type EvidenceRow,
@@ -49,13 +50,16 @@ export type CpdEvidencePageProps = {
   readonly unconfigured?: boolean;
   readonly initialCategory?: EvidenceCategoryFilter;
   readonly initialStatus?: EvidenceStatusFilter;
+  readonly initialOrder?: EvidenceOrder;
 };
 
 function CountTile({ value, label, testId }: { value: number; label: string; testId: string }) {
   return (
     <WorkCard padded testId={testId} className="grid min-w-0 gap-0.5 text-center">
-      <b className="nums text-2xl font-semibold leading-none text-[color:var(--text-heading)]">{value}</b>
-      <span className={cn(textMuted, "text-xs")}>{label}</span>
+      <b className="nums text-2xl font-semibold leading-none text-[color:var(--text-heading)] [overflow-wrap:anywhere]">
+        {value}
+      </b>
+      <span className={cn(textMuted, "text-xs [overflow-wrap:anywhere]")}>{label}</span>
     </WorkCard>
   );
 }
@@ -79,7 +83,7 @@ function rowFor(row: EvidenceRow, offline: boolean) {
       <WorkDateRow
         month={tile.month}
         day={tile.day}
-        title={row.title}
+        title={<span className="[overflow-wrap:anywhere]">{row.title}</span>}
         sub={evidenceRowLine(row)}
         end={end}
         href={row.href}
@@ -103,12 +107,13 @@ export function CpdEvidencePage({
   unconfigured = false,
   initialCategory = "all",
   initialStatus = "all",
+  initialOrder = "newest",
 }: CpdEvidencePageProps) {
   const online = useOnlineStatus();
   const offline = !online;
   const [category, setCategory] = useState<EvidenceCategoryFilter>(initialCategory);
   const [status, setStatus] = useState<EvidenceStatusFilter>(initialStatus);
-  const [order, setOrder] = useState<EvidenceOrder>("newest");
+  const [order, setOrder] = useState<EvidenceOrder>(initialOrder);
   const [showAll, setShowAll] = useState(false);
   const needsRef = useRef<HTMLElement>(null);
   const view = useMemo(
@@ -116,26 +121,52 @@ export function CpdEvidencePage({
     [entries, year, category, status, order],
   );
   useModeBandHeading({
-    eyebrow: view.total ? `${view.attached} of ${view.total} activities` : `Year ${year}`,
+    // "0 of 41" would read as none having evidence when none was counted (the demo), so only a count
+    // that was made is put in the band.
+    eyebrow: !view.total
+      ? `Year ${year}`
+      : view.unknown === view.total
+        ? view.total === 1
+          ? "1 activity"
+          : `${view.total} activities`
+        : `${view.attached} of ${view.total} activities`,
     title: "Evidence",
   });
 
   const remember = useCallback(
-    (next: { category?: EvidenceCategoryFilter; status?: EvidenceStatusFilter }) => {
-      const href = evidenceHref({ year, category: next.category ?? category, status: next.status ?? status });
+    (next: { category?: EvidenceCategoryFilter; status?: EvidenceStatusFilter; order?: EvidenceOrder }) => {
+      const href = evidenceHref({
+        year,
+        category: next.category ?? category,
+        status: next.status ?? status,
+        order: next.order ?? order,
+      });
       try {
         window.history.replaceState(window.history.state, "", href);
       } catch {
-        // The address is a convenience; the filter still applies on the page.
+        // The address is a convenience. The filter still applies on the page.
       }
     },
-    [category, status, year],
+    [category, order, status, year],
   );
 
   const target = attachTarget(view);
   const attachedShown = showAll ? view.has : view.has.slice(0, ATTACHED_PREVIEW);
   const yearChips = [...new Set([year, ...years])].sort((a, b) => b - a);
   const filtered = category !== "all" || status !== "all";
+  const needsEmpty = needsEvidenceEmpty(view, filtered);
+
+  function attachFromList(clearFilters: boolean) {
+    if (clearFilters) {
+      setCategory("all");
+      setStatus("all");
+      remember({ category: "all", status: "all" });
+    }
+    window.requestAnimationFrame(() => {
+      needsRef.current?.scrollIntoView({ block: "start", behavior: resolveScrollBehavior() });
+      needsRef.current?.focus({ preventScroll: true });
+    });
+  }
 
   return (
     <main className="min-w-0" data-testid="cpd-evidence-page">
@@ -158,24 +189,29 @@ export function CpdEvidencePage({
         {yearChips.length > 1 ? (
           <WorkChips scroll label="Year">
             {yearChips.map((y) => (
-              <WorkChip key={y} href={evidenceHref({ year: y, category, status })} current={y === year}>
+              <WorkChip key={y} href={evidenceHref({ year: y, category, status, order })} current={y === year}>
                 {String(y)}
               </WorkChip>
             ))}
           </WorkChips>
         ) : null}
 
-        {unconfigured || view.total === 0 ? (
+        {view.total === 0 ? (
           <WorkEmpty
             icon={FileText}
             title={`No activities logged in ${year}`}
-            body="Evidence is added to an activity. Log one first, then attach its certificate."
+            body={
+              unconfigured
+                ? "Set up the year first, then log an activity and attach its certificate."
+                : "Evidence is added to an activity. Log one first, then attach its certificate."
+            }
             action={
-              unconfigured ? (
+              // The demo is read-only, so it offers neither setting up nor logging.
+              demoMode ? null : unconfigured ? (
                 <WorkButton href={`/cme/setup?year=${year}`} testId="cpd-evidence-setup">
                   Set up your year
                 </WorkButton>
-              ) : demoMode ? null : (
+              ) : (
                 <WorkButton href="/cme/new" icon={Plus} testId="cpd-evidence-log">
                   Log an activity
                 </WorkButton>
@@ -185,7 +221,11 @@ export function CpdEvidencePage({
           />
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2" data-testid="cpd-evidence-counts">
+            {/* Tiles at least 6rem wide, so large text or a four-figure count drops a column, never scrolls sideways. */}
+            <div
+              className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-2"
+              data-testid="cpd-evidence-counts"
+            >
               <CountTile value={view.total} label="Activities" testId="cpd-evidence-count-total" />
               <CountTile value={view.attached} label="With evidence" testId="cpd-evidence-count-attached" />
               <CountTile value={view.missing} label="Missing" testId="cpd-evidence-count-missing" />
@@ -224,7 +264,11 @@ export function CpdEvidencePage({
               ))}
               <WorkChip
                 selected={order === "oldest"}
-                onClick={() => setOrder(order === "oldest" ? "newest" : "oldest")}
+                onClick={() => {
+                  const next: EvidenceOrder = order === "oldest" ? "newest" : "oldest";
+                  setOrder(next);
+                  remember({ order: next });
+                }}
                 testId="cpd-evidence-order"
               >
                 Oldest first
@@ -248,11 +292,25 @@ export function CpdEvidencePage({
                 ) : (
                   <WorkEmpty
                     icon={CheckCircle2}
-                    title={filtered ? "Nothing here needs evidence" : "Every activity has evidence"}
-                    body={filtered ? "Try another type to see the rest." : undefined}
+                    title={needsEmpty.title}
+                    body={needsEmpty.body}
                     testId="cpd-evidence-all-done"
                   />
                 )}
+              </section>
+            ) : null}
+
+            {status === "attached" && !view.has.length ? (
+              <section className="grid min-w-0 gap-1.5" aria-labelledby="cpd-evidence-has">
+                <WorkSectionLabel id="cpd-evidence-has" count={0}>
+                  Has evidence
+                </WorkSectionLabel>
+                <WorkEmpty
+                  icon={Paperclip}
+                  title={category === "all" ? "No activity has evidence yet" : "None of this type has evidence yet"}
+                  body="Open an activity to attach its certificate."
+                  testId="cpd-evidence-has-empty"
+                />
               </section>
             ) : null}
 
@@ -290,14 +348,17 @@ export function CpdEvidencePage({
             ) : null}
 
             <WorkCard as="ul">
-              <li className="min-w-0">
-                <WorkIconRow
-                  icon={Paperclip}
-                  title="See them in the log"
-                  sub="The log filtered to activities with no evidence"
-                  href={`/cme/log?fix=evidence&year=${year}`}
-                />
-              </li>
+              {view.missing ? (
+                <li className="min-w-0">
+                  <WorkIconRow
+                    icon={Paperclip}
+                    title="See them in the log"
+                    sub="The log filtered to activities with no evidence"
+                    href={`/cme/log?fix=evidence&year=${year}`}
+                    testId="cpd-evidence-log-link"
+                  />
+                </li>
+              ) : null}
               <li className="min-w-0">
                 <WorkIconRow icon={FileText} title="Year check" sub="Every target and record check" href="/cme/check" />
               </li>
@@ -322,16 +383,7 @@ export function CpdEvidencePage({
             ) : (
               <WorkButton
                 icon={Paperclip}
-                onClick={() => {
-                  if (status === "attached") {
-                    setStatus("all");
-                    remember({ status: "all" });
-                  }
-                  window.requestAnimationFrame(() => {
-                    needsRef.current?.scrollIntoView({ block: "start", behavior: resolveScrollBehavior() });
-                    needsRef.current?.focus({ preventScroll: true });
-                  });
-                }}
+                onClick={() => attachFromList(target.clearFilters)}
                 testId="cpd-evidence-attach"
               >
                 Attach evidence

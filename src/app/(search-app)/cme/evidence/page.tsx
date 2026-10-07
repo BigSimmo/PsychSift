@@ -4,7 +4,7 @@ import { CmeStateNotice } from "@/components/cme/cme-state-notice";
 import { CpdEvidencePage } from "@/components/work-screens/cpd/cpd-evidence-page";
 import { cpdYearOf } from "@/lib/cme/cpd-year";
 import { loadCmePageData } from "@/lib/cme/load-cme-page-data";
-import { parseEvidenceCategory, parseEvidenceStatus } from "@/lib/work-screens/cpd/evidence";
+import { parseEvidenceCategory, parseEvidenceOrder, parseEvidenceStatus } from "@/lib/work-screens/cpd/evidence";
 
 export const metadata: Metadata = {
   title: "Evidence | CPD | PsychSift",
@@ -19,7 +19,12 @@ function firstValue(value: string | string[] | undefined): string | undefined {
 export default async function CmeEvidenceRoute({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string | string[]; category?: string | string[]; show?: string | string[] }>;
+  searchParams: Promise<{
+    year?: string | string[];
+    category?: string | string[];
+    show?: string | string[];
+    order?: string | string[];
+  }>;
 }) {
   const query = await searchParams;
   const raw = firstValue(query.year)?.trim();
@@ -37,16 +42,21 @@ export default async function CmeEvidenceRoute({
     );
   }
   const current = cpdYearOf(data.now);
+  const category = parseEvidenceCategory(firstValue(query.category));
+  const status = parseEvidenceStatus(firstValue(query.show));
+  const order = parseEvidenceOrder(firstValue(query.order));
   return (
     <CpdEvidencePage
-      key={data.year}
+      // A link to other filters (a shared address, Back) starts the page afresh from that address.
+      key={`${data.year}:${category}:${status}:${order}`}
       entries={data.entries}
       year={data.year}
       years={data.availableYears ?? [current, data.year]}
       demoMode={data.demoMode}
       unconfigured={data.state === "unconfigured"}
-      initialCategory={parseEvidenceCategory(firstValue(query.category))}
-      initialStatus={parseEvidenceStatus(firstValue(query.show))}
+      initialCategory={category}
+      initialStatus={status}
+      initialOrder={order}
     />
   );
 }

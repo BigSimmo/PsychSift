@@ -1,7 +1,7 @@
 "use client";
 
-import { CalendarDays, Copy, Download, FileText, Lock, Plus, Printer, Send, WifiOff } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CalendarDays, Copy, Download, FileText, Lock, Plus, Send, ShieldAlert, WifiOff } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 
 import { CmeCategoryBar } from "@/components/cme/cme-progress-visuals";
 import { CmeYearClosePanel } from "@/components/cme/cme-year-close-panel";
@@ -24,6 +24,8 @@ import { evaluateYear } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries } from "@/lib/cme/export";
 import type { CmeEntry, CmeRequirementSet, CmeYearClose } from "@/lib/cme/types";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { dateTile } from "@/lib/work-screens/cpd/evidence";
+import { cpdExportPatientFlags, type CpdPatientFlag } from "@/lib/work-screens/cpd/patient-check";
 import {
   cpdCsvFileName,
   cpdExportSummary,
@@ -48,9 +50,17 @@ export type CpdExportPageProps = {
  * printable summary. Copy to the CPD home, CPD dates and closing the year link to the screens that
  * already do them. Labelled as a plain personal summary: no college format is claimed.
  */
+/** Flagged activities listed by name before "and N more". */
+export const FLAGGED_PREVIEW = 5;
+/** A second tap inside this window is the same tap, so a double tap saves one file. */
+const REPEAT_TAP_MS = 1500;
+
 export function CpdExportPage({ set, entries, years, goalCount, close, now, demoMode }: CpdExportPageProps) {
   const online = useOnlineStatus();
-  const [saved, setSaved] = useState<string | null>(null);
+  // Always in the page, so the words are announced when they change rather than when the node appears.
+  const [saved, setSaved] = useState("");
+  const [flags, setFlags] = useState<readonly CpdPatientFlag[] | null>(null);
+  const lastSave = useRef(0);
   const year = set.year;
   const summary = useMemo(() => cpdExportSummary(entries, year), [entries, year]);
   const active = useMemo(() => activeCmeYearEntries(entries, year), [entries, year]);
@@ -59,14 +69,30 @@ export function CpdExportPage({ set, entries, years, goalCount, close, now, demo
   useModeBandHeading({ eyebrow: `Year ${year}`, title: "Export" });
   const yearChips = [...new Set([year, ...years])].sort((a, b) => b - a);
 
-  function downloadCsv() {
+  function saveCsv() {
+    const at = Date.now();
+    if (at - lastSave.current < REPEAT_TAP_MS) return;
+    lastSave.current = at;
     const name = cpdCsvFileName(year, demoMode);
     try {
       downloadTextFile(cpdYearCsv(entries, set), name, "text/csv;charset=utf-8");
-      setSaved(`Saved ${name}. Check your downloads.`);
+      setSaved(`${name} is downloading. Check your downloads.`);
     } catch {
+      lastSave.current = 0;
       setSaved("The file could not be made on this device. Try again.");
     }
+  }
+
+  /** The CSV carries every title and reflection, so the shared patient-detail check reads them first. */
+  function downloadCsv() {
+    const found = cpdExportPatientFlags(entries, year);
+    if (found.length) {
+      setFlags(found);
+      setSaved("");
+      return;
+    }
+    setFlags(null);
+    saveCsv();
   }
 
   return (
@@ -129,22 +155,72 @@ export function CpdExportPage({ set, entries, years, goalCount, close, now, demo
             <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
               <WorkButton
                 variant="secondary"
-                icon={Printer}
+                icon={FileText}
                 href={`/cme/summary?year=${year}`}
                 testId="cpd-export-print"
               >
-                Printable page
+                Save as PDF
               </WorkButton>
               <WorkButton variant="secondary" icon={Download} onClick={downloadCsv} testId="cpd-export-csv">
                 Download CSV
               </WorkButton>
             </div>
-            <p className={cn(textMuted, "text-xs")}>On the printable page, choose Save as PDF, or Share on a phone.</p>
-            {saved ? (
-              <p role="status" className="text-xs text-[color:var(--text)]" data-testid="cpd-export-saved">
-                {saved}
-              </p>
+            <p className={cn(textMuted, "text-xs")}>
+              Save as PDF opens the printable page. Choose Save as PDF there, or Share on a phone.
+            </p>
+            {flags ? (
+              <div role="alert" className="grid gap-2" data-testid="cpd-export-patient-check">
+                <p className="flex items-start gap-2 text-sm font-semibold text-[color:var(--text-heading)]">
+                  <ShieldAlert aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0" strokeWidth={1.8} />
+                  <span>
+                    {flags.length === 1
+                      ? "1 activity may hold a patient detail"
+                      : `${flags.length} activities may hold a patient detail`}
+                  </span>
+                </p>
+                <p className={cn(textMuted, "text-xs")}>
+                  Open each to check it before you keep or share the file. This check catches some details, not all.
+                </p>
+                <WorkCard as="ul">
+                  {flags.slice(0, FLAGGED_PREVIEW).map((flag) => {
+                    const tile = dateTile(flag.date);
+                    return (
+                      <li key={flag.id} className="min-w-0">
+                        <WorkDateRow
+                          month={tile.month}
+                          day={tile.day}
+                          title={<span className="[overflow-wrap:anywhere]">{flag.title}</span>}
+                          sub={flag.field === "title" ? "Check the title" : "Check the reflection"}
+                          href={`/cme/log/${encodeURIComponent(flag.id)}`}
+                          testId={`cpd-export-flag-${flag.id}`}
+                        />
+                      </li>
+                    );
+                  })}
+                </WorkCard>
+                {flags.length > FLAGGED_PREVIEW ? (
+                  <p className={cn(textMuted, "text-xs")}>And {flags.length - FLAGGED_PREVIEW} more.</p>
+                ) : null}
+                <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+                  <WorkButton
+                    variant="secondary"
+                    onClick={() => {
+                      setFlags(null);
+                      saveCsv();
+                    }}
+                    testId="cpd-export-csv-anyway"
+                  >
+                    Download anyway
+                  </WorkButton>
+                  <WorkButton variant="quiet" onClick={() => setFlags(null)} testId="cpd-export-csv-cancel">
+                    Not now
+                  </WorkButton>
+                </div>
+              </div>
             ) : null}
+            <p role="status" className="min-h-4 text-xs text-[color:var(--text)]" data-testid="cpd-export-saved">
+              {saved}
+            </p>
           </WorkCard>
         )}
 
@@ -153,7 +229,7 @@ export function CpdExportPage({ set, entries, years, goalCount, close, now, demo
           <li className="min-w-0">
             <WorkIconRow
               icon={Copy}
-              title="Copy the next one"
+              title="Copy to your CPD home"
               sub={
                 summary.notCopied
                   ? `${summary.notCopied} not marked copied`

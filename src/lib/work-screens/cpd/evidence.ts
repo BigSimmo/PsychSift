@@ -43,6 +43,10 @@ export function parseEvidenceStatus(value: string | null | undefined): EvidenceS
   return value === "missing" || value === "attached" ? value : "all";
 }
 
+export function parseEvidenceOrder(value: string | null | undefined): EvidenceOrder {
+  return value === "oldest" ? "oldest" : "newest";
+}
+
 export type EvidenceRowState = "missing" | "attached" | "unknown";
 
 export interface EvidenceRow {
@@ -51,6 +55,7 @@ export interface EvidenceRow {
   readonly title: string;
   readonly categories: readonly CmeCategory[];
   readonly hours: number;
+  /** Evidence files on the activity, certificates included. Null when they were not counted. */
   readonly files: number | null;
   readonly state: EvidenceRowState;
   /** Where the activity's evidence is added: the activity page, at its evidence section. */
@@ -95,7 +100,8 @@ function toRow(entry: CmeEntry): EvidenceRow {
     title: entry.title,
     categories: cmeCategories.filter((c) => present.has(c)),
     hours: round2(entry.allocations.reduce((sum, a) => sum + a.hours, 0)),
-    files: entry.evidenceCount ?? null,
+    // A certificate is an evidence file, so a counted certificate is never "0 files".
+    files: entry.evidenceCount === undefined ? null : Math.max(entry.evidenceCount, entry.certificateCount ?? 0),
     state: evidenceRowState(entry),
     href: evidenceEntryHref(entry.id),
   };
@@ -135,11 +141,34 @@ function statusMatches(filter: Exclude<EvidenceStatusFilter, "all">, state: Evid
   return filter === state;
 }
 
-/** "Educational · 1 h", or "Educational and Reviewing · 2.5 h". */
+/**
+ * "Educational · 1 h", or "Educational and Reviewing · 2.5 h". An activity that needs evidence but
+ * already holds other files says so ("· 2 files, no certificate"), so its Attach is not a puzzle.
+ */
 export function evidenceRowLine(row: EvidenceRow): string {
   const words = row.categories.map((c) => EVIDENCE_CATEGORY_WORDS[c]);
   const kind = words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : (words[0] ?? "No hours");
-  return `${kind} · ${row.hours} h`;
+  const line = `${kind} · ${row.hours} h`;
+  return row.state === "missing" && row.files ? `${line} · ${fileCountWords(row.files)}, no certificate` : line;
+}
+
+/**
+ * The empty state under "Needs evidence". "Every activity has evidence" is said only when every
+ * activity was counted: an activity whose evidence was not counted (the demo, the sample) is never
+ * claimed as covered.
+ */
+export function needsEvidenceEmpty(view: EvidenceView, filtered: boolean): { title: string; body?: string } {
+  if (view.unknown > 0) {
+    return {
+      title: "None known to need evidence",
+      body:
+        view.unknown === 1
+          ? "Evidence was not counted for 1 activity. Open it to check."
+          : `Evidence was not counted for ${view.unknown} activities. Open each to check.`,
+    };
+  }
+  if (filtered) return { title: "Nothing here needs evidence", body: "Try another type to see the rest." };
+  return { title: "Every activity has evidence" };
 }
 
 /** "1 file", "3 files". */
@@ -148,11 +177,17 @@ export function fileCountWords(files: number | null): string {
   return files === 1 ? "1 file" : `${files} files`;
 }
 
-/** Where the dock's "Attach evidence" goes: straight to the one activity, or to the list when several need it. */
-export function attachTarget(view: EvidenceView): { kind: "entry"; href: string } | { kind: "list" } | null {
+/**
+ * Where the dock's "Attach evidence" goes: straight to the one activity, or to the list when several
+ * need it. `clearFilters` says the filters hide every activity that needs evidence, so the list is shown
+ * unfiltered rather than landing on "Nothing here needs evidence".
+ */
+export function attachTarget(
+  view: EvidenceView,
+): { kind: "entry"; href: string } | { kind: "list"; clearFilters: boolean } | null {
   if (view.missing === 0) return null;
   if (view.needs.length === 1) return { kind: "entry", href: view.needs[0]!.href };
-  return { kind: "list" };
+  return { kind: "list", clearFilters: view.needs.length === 0 };
 }
 
 /** The year page's own address with its filters, so Back and a shared link keep them. */
@@ -160,11 +195,13 @@ export function evidenceHref(params: {
   year?: number | null;
   category?: EvidenceCategoryFilter;
   status?: EvidenceStatusFilter;
+  order?: EvidenceOrder;
 }): string {
   const search = new URLSearchParams();
   if (params.year) search.set("year", String(params.year));
   if (params.category && params.category !== "all") search.set("category", params.category);
   if (params.status && params.status !== "all") search.set("show", params.status);
+  if (params.order === "oldest") search.set("order", "oldest");
   const query = search.toString();
   return query ? `/cme/evidence?${query}` : "/cme/evidence";
 }
