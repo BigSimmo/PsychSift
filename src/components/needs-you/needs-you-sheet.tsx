@@ -55,7 +55,7 @@ import { needsYouWaitingCopy } from "@/lib/needs-you/groups";
  * header bell's sheet, upgraded from the shared "Needs you" sheet. One glass
  * sheet titled Notifications, with a settings link to Alerts; a segmented
  * control (All, Action needed, Updates); area chips with counts; the items
- * grouped Overdue, Today, This week and Later, each row in its area's colour
+ * grouped Overdue, Today, This week and Coming up, each row in its area's colour
  * and opening the page that owns it; Snooze to the next working day and Remind
  * me from any row. On Call keeps its own group and wording (nothing there
  * claims anything about the reader's standing), and its own week-long snooze.
@@ -387,7 +387,14 @@ export function NotificationCentreBody({ feed, active, onNavigate }: Notificatio
             </>
           ) : null}
 
-          {summary.count === 0 ? (
+          {summary.count === 0 && feed.failed.length > 0 ? (
+            // Something did not load, so an empty list is not "all caught up".
+            <WorkEmpty
+              icon={CheckCheck}
+              title="Nothing in what loaded"
+              body={<span data-testid="needs-you-empty-partial">The areas that loaded have nothing for you.</span>}
+            />
+          ) : summary.count === 0 ? (
             <WorkEmpty
               icon={CheckCheck}
               title="You're all caught up"
