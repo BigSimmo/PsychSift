@@ -21,7 +21,17 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { WorkButton, WorkEmpty, WorkTag } from "@/components/mode-kit/work";
@@ -172,6 +182,24 @@ function takeClearedFlag(epoch: number): boolean {
   const owed = clearedPatientDetails?.epoch === epoch;
   clearedPatientDetails = null;
   return owed;
+}
+
+/** Whether the open search added a history step (so Back closes it). One search is open at a time. */
+let historyStepHeld = false;
+
+function holdHistoryStep() {
+  historyStepHeld = true;
+}
+
+function holdsHistoryStep(): boolean {
+  return historyStepHeld;
+}
+
+/** Gives up the history step: true when there was one to give up. */
+function takeHistoryStep(): boolean {
+  const held = historyStepHeld;
+  historyStepHeld = false;
+  return held;
 }
 
 /** Timings kept on the device (the browser's own performance timeline), never sent. Names carry no typed text. */
@@ -529,6 +557,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   }, [patientNow]);
 
   // Coming back online retries the areas that could not be reached.
+  const router = useRouter();
   const retry = records.retry;
   useEffect(() => {
     const onOnline = () => {
@@ -566,7 +595,37 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
 
   const close = (navigated: boolean) => {
     noteClosing(query, epoch, navigated);
+    // Closed in place (Cancel, Esc, the backdrop): take back the history step the opening added.
+    if (!navigated && takeHistoryStep()) window.history.back();
     onClose(navigated);
+  };
+  const closeFromBack = useEffectEvent(() => close(false));
+
+  // The phone's back gesture or button closes the search rather than leaving the page under it: the
+  // opening adds one history step (same address), and going back from it closes the search.
+  useEffect(() => {
+    const state: unknown = window.history.state;
+    const marked = typeof state === "object" && state !== null && "workSearch" in state;
+    if (!marked) window.history.pushState({ ...(state as object | null), workSearch: true }, "");
+    holdHistoryStep();
+    const onPopState = () => {
+      if (takeHistoryStep()) closeFromBack();
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Opening a result replaces that history step, so Back from the result returns to the page in one press.
+  const replaceHistoryStep = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!holdsHistoryStep() || event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = (event.target as Element).closest<HTMLAnchorElement>("a[href]");
+    if (!anchor || anchor.target || anchor.hasAttribute("download")) return;
+    const url = new URL(anchor.href);
+    if (url.origin !== window.location.origin) return;
+    event.preventDefault();
+    takeHistoryStep();
+    router.replace(`${url.pathname}${url.search}${url.hash}`);
   };
   const found = hits.length > 0 || pageHits.length > 0 || Boolean(answer && !answer.unavailable);
   const openResult = () => {
@@ -893,6 +952,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
     >
       <div
         ref={rootRef}
+        onClickCapture={replaceHistoryStep}
         data-work-search-root=""
         data-work-frame="srch"
         data-mode-identity={accent}
@@ -1037,11 +1097,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                         />
                       )}
                       {label}
-                      {typed && count > 0 ? (
-                        <span className={cn("text-2xs font-bold tabular-nums", selected ? "opacity-70" : "opacity-80")}>
-                          {count}
-                        </span>
-                      ) : null}
+                      {typed && count > 0 ? <span className="text-2xs font-bold tabular-nums">{count}</span> : null}
                     </span>
                   </button>
                 );

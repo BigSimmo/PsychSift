@@ -132,9 +132,7 @@ function HeroDate({ date }: { date: string }) {
       aria-hidden="true"
       className="grid h-15 w-14 shrink-0 content-center justify-items-center rounded-2xl bg-[color:color-mix(in_srgb,currentColor_16%,transparent)] leading-none tabular-nums ring-1 ring-inset ring-[color:color-mix(in_srgb,currentColor_22%,transparent)]"
     >
-      <span className="mb-1 text-3xs font-bold uppercase tracking-widest opacity-80">
-        {MONTH_SHORT[day.getUTCMonth()]}
-      </span>
+      <span className="mb-1 text-3xs font-bold uppercase tracking-widest">{MONTH_SHORT[day.getUTCMonth()]}</span>
       <span className="text-2xl font-bold tracking-tight">{day.getUTCDate()}</span>
     </span>
   );
@@ -181,11 +179,11 @@ function AnswerHero({ answer, onOpen }: { answer: WorkAnswer; onOpen: () => void
         <div className="min-w-0 flex-1">
           <h3 className="m-0 text-lg-minus font-bold leading-tight tracking-tight">{answer.headline}</h3>
           {lines.map((line) => (
-            <p key={line} className="m-0 mt-0.5 text-xs tabular-nums opacity-85">
+            <p key={line} className="m-0 mt-0.5 text-xs tabular-nums">
               {line}
             </p>
           ))}
-          {sub ? <p className="m-0 mt-0.5 text-xs opacity-85">{sub}</p> : null}
+          {sub ? <p className="m-0 mt-0.5 text-xs">{sub}</p> : null}
           {pill ? (
             <p className="m-0 mt-1.5 inline-block rounded-full bg-[color:color-mix(in_srgb,currentColor_18%,transparent)] px-2 py-0.5 text-2xs font-bold tabular-nums">
               {pill}
@@ -295,8 +293,13 @@ function FreeWeek({ days, label }: { days: readonly WorkAnswerDay[]; label: stri
         const date = new Date(`${day.date}T00:00:00Z`);
         const free = day.free && day.inRange;
         return (
-          <li key={day.date} className={cn("min-w-0", !day.inRange && "opacity-45")}>
-            <span className="work-week__day" {...(free ? { "data-selected": "" } : {})}>
+          <li key={day.date} className="min-w-0">
+            <span
+              className="work-week__day"
+              {...(free ? { "data-selected": "" } : {})}
+              // Days outside the question keep full-contrast text and get a dashed outline instead of fading.
+              style={day.inRange ? undefined : { borderStyle: "dashed" }}
+            >
               <span aria-hidden="true">{WEEKDAY_SHORT[date.getUTCDay()]?.toUpperCase()}</span>
               <span aria-hidden="true" className="work-week__num">
                 {date.getUTCDate()}
