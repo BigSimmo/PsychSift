@@ -446,7 +446,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const requireClient = useCallback(async () => {
     const loaded = await ensureClient().catch(() => undefined);
-    if (loaded) return loaded;
+    if (loaded) {
+      // A retry after a failed first load must still install the auth listener.
+      setClient(loaded);
+      return loaded;
+    }
     setNotice(null);
     if (loaded === undefined) {
       setStatus("error");
