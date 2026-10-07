@@ -26,6 +26,24 @@ import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
  * in place, so the host can put it in its page header.
  */
 
+/** The glass capsule the phone pill floats in (work-mode redesign, owner request 6 Oct 2026). */
+const floatCapsule = cn(
+  "sm:contents max-sm:flex max-sm:rounded-full max-sm:p-1",
+  "max-sm:bg-[color:var(--work-glass-fill)] max-sm:shadow-[var(--work-edge-inset)_var(--work-glass-line),var(--work-shadow-float)]",
+  "max-sm:[-webkit-backdrop-filter:var(--work-glass-blur)] max-sm:[backdrop-filter:var(--work-glass-blur)]",
+);
+
+/**
+ * The room a host page leaves at its foot on phones, so the floating New never
+ * covers the last card: the pill (48px), its capsule and its 0.75rem lift,
+ * with a little air. The dock's own clearance is reserved separately. While
+ * the footer layer is scrolled away the button is too, so the page keeps only
+ * its ordinary padding.
+ */
+export function useRosterNewButtonClearance(): string {
+  return usePhoneFooterLayerScrollHidden() === true ? "max-sm:pb-4" : "max-sm:pb-24";
+}
+
 export type RosterNewEntry = {
   readonly id: string;
   readonly label: string;
@@ -146,8 +164,9 @@ export function RosterNewButton({
           className={cn(
             // Phones: a fixed box in the footer layer, bottom right. Its own
             // padding clears the safe area or a visible search dock (whichever is
-            // taller). Requests and Swaps own the matching visible page clearance;
-            // it collapses with this layer when the footer scroll signal hides it.
+            // taller). Each host page leaves the matching room at its foot with
+            // `useRosterNewButtonClearance`, which collapses with this layer when the
+            // footer scroll signal hides it.
             "phone-footer-layer pointer-events-none max-sm:bottom-0 max-sm:right-0 max-sm:z-[var(--z-chrome)] max-sm:pb-[calc(0.75rem+max(var(--safe-area-bottom),var(--mobile-composer-reserve,0rem)))] max-sm:pr-4",
             "max-sm:transition-[transform,opacity] motion-reduce:transition-none print:hidden",
             hidden
@@ -157,24 +176,29 @@ export function RosterNewButton({
             "sm:contents",
           )}
         >
-          <button
-            ref={opener}
-            type="button"
-            data-mode-identity="roster"
-            data-testid={testId}
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            aria-controls={open ? sheetId : undefined}
-            onClick={() => setOpen(true)}
-            className={cn(
-              primaryControl,
-              "pointer-events-auto min-h-12 bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)] hover:bg-[color:var(--mode-identity)] max-sm:rounded-full max-sm:px-5 max-sm:shadow-[var(--e4)]",
-              hidden && "max-sm:pointer-events-none",
-            )}
-          >
-            <Plus aria-hidden="true" className="size-icon-sm" />
-            {label}
-          </button>
+          {/* Phones: the work frame's flat glass float (WorkDock's capsule recipe):
+              glass fill, a hairline, the flat float shadow, and the violet pill
+              inside. sm+: no capsule, the button sits in the page header. */}
+          <span className={floatCapsule}>
+            <button
+              ref={opener}
+              type="button"
+              data-mode-identity="roster"
+              data-testid={testId}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              aria-controls={open ? sheetId : undefined}
+              onClick={() => setOpen(true)}
+              className={cn(
+                primaryControl,
+                "pointer-events-auto min-h-12 bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)] hover:bg-[color:var(--mode-identity)] max-sm:rounded-full max-sm:px-5 max-sm:shadow-none",
+                hidden && "max-sm:pointer-events-none",
+              )}
+            >
+              <Plus aria-hidden="true" className="size-icon-sm" />
+              {label}
+            </button>
+          </span>
         </div>
       </PhoneFooterLayerPortal>
 

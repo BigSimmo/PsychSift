@@ -36,7 +36,7 @@ import { summariseToday, type TodaySummary } from "@/lib/roster/today";
 
 import { RosterSignInNotice } from "./invite/roster-sign-in-notice";
 import { RosterAddSheet, type RosterAddView } from "./roster-add-sheet";
-import { RosterNewButton } from "./roster-new-button";
+import { RosterNewButton, useRosterNewButtonClearance } from "./roster-new-button";
 import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
 import { RosterTodayTeam } from "./team/roster-today-team";
 import { formatDateSpan, formatDuration, kindOf, shiftTimes, useRosterNow } from "./roster-format";
@@ -372,6 +372,7 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const links = useRosterLinks();
   const settings = useRosterSettings();
   const [importing, setImporting] = useState(false);
+  const newButtonClearance = useRosterNewButtonClearance();
   const [addView, setAddView] = useState<RosterAddView | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [refreshingLink, setRefreshingLink] = useState(false);
@@ -629,7 +630,11 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
     ) : null;
 
   return (
-    <InformationPageShell testId="roster-today-main" width="narrow">
+    <InformationPageShell
+      testId="roster-today-main"
+      width="narrow"
+      className={!importing && canEdit ? newButtonClearance : undefined}
+    >
       <TodayShell
         mode="roster"
         modeName="Roster"

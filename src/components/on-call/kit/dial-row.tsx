@@ -83,46 +83,6 @@ const LARGE_TEXT = {
 } as const;
 
 /**
- * The red emergency dot and the starred mark before a name. Each sits in a box
- * one title line tall (`h-5`, the title's `leading-5`), so when a long name
- * wraps the mark stays level with its first line instead of centring between
- * the lines.
- */
-function TitleMarks({
-  emergency,
-  starred,
-  testId,
-}: {
-  readonly emergency: boolean;
-  readonly starred: boolean;
-  readonly testId: string;
-}) {
-  return (
-    <>
-      {emergency ? (
-        <span aria-hidden="true" className="flex h-5 shrink-0 items-center">
-          <span data-testid={`${testId}-emergency-dot`} className={cn(modeDot, "bg-[color:var(--danger)]")} />
-        </span>
-      ) : null}
-      {starred ? (
-        <span className="flex h-5 shrink-0 items-center">
-          <Star
-            aria-label="Starred"
-            data-testid={`${testId}-star`}
-            className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
-          />
-        </span>
-      ) : null}
-    </>
-  );
-}
-
-/**
- * A personal entry's resolved number, as the same dial the handbook rows use,
- * so a reader's own numbers and the hospital's draw through one row.
- */
-
-/**
  * "000 · Australia-wide · 24 hours". Every part carries its dot in front, and
  * the row is pulled left by one dot's width inside a clipping box, so the dot
  * of whichever part starts a line falls outside it: a wrap never leaves a dot
@@ -300,7 +260,24 @@ export function OnCallDialRow({
           )}
         >
           <span className="flex min-w-0 items-start gap-1.5">
-            <TitleMarks emergency={emergency} starred={starred} testId={testId} />
+            {emergency ? (
+              // mt-1.75 centres the 6px dot on the title's first 20px line (leading-5), so
+              // it stays level with that line when a long name wraps at large text.
+              <span
+                aria-hidden="true"
+                data-testid={`${testId}-emergency-dot`}
+                className={cn(modeDot, "mt-1.75 bg-[color:var(--danger)]")}
+              />
+            ) : null}
+            {starred ? (
+              <span className="flex h-5 shrink-0 items-center">
+                <Star
+                  aria-label="Starred"
+                  data-testid={`${testId}-star`}
+                  className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
+                />
+              </span>
+            ) : null}
             <span
               className={cn(
                 modeNameText,
@@ -316,7 +293,24 @@ export function OnCallDialRow({
         // No number: plain text, never a dimmed button.
         <span data-dial-row-title="" className="grid min-h-12 min-w-0 flex-1 content-center gap-0.5 py-1">
           <span className="flex min-w-0 items-start gap-1.5">
-            <TitleMarks emergency={emergency} starred={starred} testId={testId} />
+            {emergency ? (
+              // mt-1.75 centres the 6px dot on the title's first 20px line (leading-5), so
+              // it stays level with that line when a long name wraps at large text.
+              <span
+                aria-hidden="true"
+                data-testid={`${testId}-emergency-dot`}
+                className={cn(modeDot, "mt-1.75 bg-[color:var(--danger)]")}
+              />
+            ) : null}
+            {starred ? (
+              <span className="flex h-5 shrink-0 items-center">
+                <Star
+                  aria-label="Starred"
+                  data-testid={`${testId}-star`}
+                  className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
+                />
+              </span>
+            ) : null}
             <span
               className={cn(
                 modeNameText,
