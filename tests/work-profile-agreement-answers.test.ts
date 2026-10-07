@@ -80,6 +80,15 @@ describe("Ask the agreement: verbatim quotes only", () => {
     expect(agreementClause("15(6)(g)")?.lines).toHaveLength(4);
     expect(agreementClause("99(1)(a)")).toBeNull();
   });
+
+  it("gives 15(6)(c), (d) and (e) their own heading, from what each clause says", () => {
+    const labels = ["15(6)(c)", "15(6)(d)", "15(6)(e)"].map((clause) => agreementClause(clause)?.labels);
+    expect(labels).toEqual([["Longest shift"], ["Shift starting after noon"], ["After noon, by written agreement"]]);
+    // The quoted words themselves are untouched.
+    expect(agreementClause("15(6)(e)")?.lines[0]?.text).toBe(
+      FATIGUE_RULE_SET.rules.maxShiftHoursAfterNoon.exception.quote,
+    );
+  });
 });
 
 describe("matching questions to the checked clauses", () => {

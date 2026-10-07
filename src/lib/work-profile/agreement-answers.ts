@@ -43,6 +43,12 @@ export interface AgreementLine {
   readonly text: string;
   readonly clause: string;
   readonly ruleId: FatigueRuleId;
+  /**
+   * A short heading for this one clause, where a topic quotes several clauses that say different things
+   * (15(6)(c), (d) and (e) under Longest shift). Taken from what the clause says. The topic label is used
+   * when it is absent.
+   */
+  readonly label?: string;
 }
 
 export interface AgreementTopic {
@@ -56,8 +62,8 @@ export interface AgreementTopic {
 
 const R = FATIGUE_RULE_SET.rules;
 
-function line(ruleId: FatigueRuleId, clause: string, text: string): AgreementLine {
-  return { ruleId, clause, text };
+function line(ruleId: FatigueRuleId, clause: string, text: string, label?: string): AgreementLine {
+  return label ? { ruleId, clause, text, label } : { ruleId, clause, text };
 }
 
 export const AGREEMENT_TOPICS: readonly AgreementTopic[] = [
@@ -81,12 +87,18 @@ export const AGREEMENT_TOPICS: readonly AgreementTopic[] = [
     label: "Longest shift",
     keywords: ["longest shift", "shift length", "consecutive hours", "after noon", "long shift"],
     lines: [
-      line("maxShiftHours", R.maxShiftHours.clause, R.maxShiftHours.quote),
-      line("maxShiftHoursAfterNoon", R.maxShiftHoursAfterNoon.clause, R.maxShiftHoursAfterNoon.quote),
+      line("maxShiftHours", R.maxShiftHours.clause, R.maxShiftHours.quote, "Longest shift"),
+      line(
+        "maxShiftHoursAfterNoon",
+        R.maxShiftHoursAfterNoon.clause,
+        R.maxShiftHoursAfterNoon.quote,
+        "Shift starting after noon",
+      ),
       line(
         "maxShiftHoursAfterNoon",
         R.maxShiftHoursAfterNoon.exception.clause,
         R.maxShiftHoursAfterNoon.exception.quote,
+        "After noon, by written agreement",
       ),
     ],
   },
@@ -139,7 +151,8 @@ export function agreementClauses(): readonly AgreementClause[] {
   for (const topic of AGREEMENT_TOPICS) {
     for (const item of topic.lines) {
       const entry = byClause.get(item.clause) ?? { labels: [], lines: [] };
-      if (!entry.labels.includes(topic.label)) entry.labels.push(topic.label);
+      const label = item.label ?? topic.label;
+      if (!entry.labels.includes(label)) entry.labels.push(label);
       if (!entry.lines.some((existing) => existing.text === item.text)) entry.lines.push(item);
       byClause.set(item.clause, entry);
     }
