@@ -128,9 +128,17 @@ export function buildReadyForDayOne(own: readonly OnCallEntry[], now: Date): Rea
         return { id, title, state: "left-out", status: "Nothing listed yet", detail: "Add logins in New job", href: "/admin/new-job", action: "Open" };
       }
       if (done === logins.length) {
-        return { id, title, state: "recorded", status: `All ${logins.length} done`, detail: null, href: "/admin/new-job", action: "Open" };
+        return { id, title, state: "recorded", status: "All done", detail: `${logins.length} of ${logins.length} done`, href: "/admin/new-job", action: "Open" };
       }
-      return { id, title, state: "in-progress", status: `${done} of ${logins.length} done`, detail: "The hospital sets these up", href: "/admin/new-job", action: "Open" };
+      return {
+        id,
+        title,
+        state: "in-progress",
+        status: "In progress",
+        detail: `${done} of ${logins.length} done. The hospital sets these up`,
+        href: "/admin/new-job",
+        action: "Open",
+      };
     }
     const href = `/admin/renewals?item=${id}`;
     if (notForJob.has(id)) {
@@ -140,7 +148,7 @@ export function buildReadyForDayOne(own: readonly OnCallEntry[], now: Date): Rea
     if (!item) return { id, title, state: "to-do", status: "Not recorded yet", detail: null, href, action: "Record" };
     const { state, status } = catalogueStatus(item, startsOn);
     const detail = item.row.expiresOn ? `Your date ${formatRecordedDate(item.row.expiresOn)}` : null;
-    return { id, title, state, status, detail, href, action: state === "recorded" ? "Open" : item.bucket === "not-recorded" ? "Record" : "Renewed" };
+    return { id, title, state, status, detail, href, action: state === "recorded" ? "Open" : item.bucket === "not-recorded" ? "Record" : "Update" };
   });
 
   const count = (state: ReadyState) => items.filter((item) => item.state === state).length;
