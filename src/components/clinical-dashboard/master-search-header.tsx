@@ -2729,15 +2729,7 @@ export function MasterSearchHeader({
               <SelectedAppModeIcon aria-hidden="true" className="size-icon-md" strokeWidth={2.25} />
             </span>
             <span className="min-w-0">
-              {workPill ? (
-                // Work areas show the area only (owner pick, 7 Oct 2026): the
-                // underlined tab, or More carrying the page's name, already says
-                // which page, so the pill keeps one width as you move between
-                // tabs. The page stays in the accessible name above.
-                <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                  {workPill.area}
-                </span>
-              ) : activeModePage ? (
+              {activeModePage ? (
                 // Page first, mode underneath. The order is the point: the big
                 // line answers "where am I", which changes, and the small
                 // coloured line answers "which mode", which does not. Reversing

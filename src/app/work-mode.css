@@ -519,13 +519,9 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   width: auto;
   min-width: 0;
   /* Room for the longest area name ("Assessments") beside two round
-     buttons on a 390px phone, without truncating it, and for a short one
-     ("Roster") at 320px now the pill names the area only. Never narrower than
-     a tap, so at large text sizes the badge still shows when the name cannot. */
-  max-width: max(var(--spacing-tap, 3rem), min(15rem, calc(100vw - 11rem)));
-  /* The name's track sizes to the name itself, so a name that fits is never
-     cut short by rounding; it shortens only once the pill reaches its limit. */
-  grid-template-columns: auto minmax(0, max-content) auto;
+     buttons on a 390px phone, without truncating it. Never narrower than a
+     tap, so at large text sizes the badge still shows when the name cannot. */
+  max-width: max(var(--spacing-tap, 3rem), min(15rem, calc(100vw - 14rem)));
   gap: calc(var(--spacing) * 1.75);
   padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 1.5);
   border-color: transparent;
