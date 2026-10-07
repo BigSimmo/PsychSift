@@ -19,6 +19,8 @@ import {
   postedShiftHref,
 } from "./open-shifts-ui";
 import { usePostedShifts } from "./use-posted-shifts";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 const STATUS: Readonly<Record<BoardCellStatus, { label: string; className: string }>> = {
   requested: {
@@ -47,9 +49,10 @@ const FILTERS: readonly { id: BoardFilter; label: string; none: string }[] = [
 
 /** The week board for roster managers: their teams' open shifts by site and day, on a wide screen. */
 export function OpenShiftsBoardPage() {
+  const { zone } = useWorkTimeZone();
   const state = usePostedShifts();
   const nowMs = useRosterNow().getTime();
-  const today = perthDateOf(new Date(nowMs));
+  const today = zonedDateOf(nowMs, zone);
   const [weekOffset, setWeekOffset] = useState(0);
   // Board chips (mockup `rost_board`, work-mode redesign 6 Oct 2026): counts add up to All.
   const [filter, setFilter] = useState<BoardFilter>("all");

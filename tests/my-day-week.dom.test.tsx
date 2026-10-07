@@ -48,6 +48,8 @@ vi.mock("@/components/teaching/use-teaching-week", () => ({ useTeachingWeek: () 
 
 vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
   useAppPreferences: () => ({ preferences: { reminders: DEFAULT_REMINDER_SETTINGS } }),
+  readAppPreferences: () => ({ timeZone: "Australia/Perth" }),
+  subscribeAppPreferences: () => () => undefined,
 }));
 
 const auth = vi.hoisted(() => ({ status: "authenticated", authEpoch: 1 }));

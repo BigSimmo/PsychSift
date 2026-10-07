@@ -41,7 +41,6 @@ import { useHospitalHandbook, type HospitalHandbookState } from "@/components/on
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
-import { formatOnCallTime } from "@/lib/on-call/display-dates";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -50,6 +49,8 @@ import { searchHandbookItems } from "@/lib/on-call/handbook-search";
 import { msUntilOnCallPeriodChange, resolveOnCallNumber, type HandbookDial } from "@/lib/on-call/number-resolver";
 import { buildOnCallReviewQueue } from "@/lib/on-call/review-queue";
 import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
+import { zonedTimeOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /** The entry editor loads only when "Add your own number" is tapped, so People's first paint does not carry it. */
 const OnCallEntryEditor = dynamic(
@@ -250,6 +251,7 @@ function MineCallRow({
  * live in Now's "Log a call" sheet; the old link to them is sent on there.
  */
 export function OnCallCallPage() {
+  const { zone } = useWorkTimeZone();
   const router = useRouter();
   const account = useOptionalAccountData();
   const handbook = useHospitalHandbook();
@@ -282,9 +284,9 @@ export function OnCallCallPage() {
   // Re-read the clock when the in-hours period starts or ends (holidays count),
   // so a page left open shows your own numbers on the right daytime or after-hours line.
   useEffect(() => {
-    const timer = window.setTimeout(() => setClock(new Date()), msUntilOnCallPeriodChange(clock));
+    const timer = window.setTimeout(() => setClock(new Date()), msUntilOnCallPeriodChange(clock, zone));
     return () => window.clearTimeout(timer);
-  }, [clock]);
+  }, [clock, zone]);
   const searching = query.trim().length > 0;
   const ready = handbook.status === "ready";
   const name = hospitalName(handbook);
@@ -350,7 +352,7 @@ export function OnCallCallPage() {
       <OnCallGroupedList
         eyebrow="Cover"
         count={cover.length}
-        note={hydrated ? `Cover as of ${formatOnCallTime(hospitalNow)}` : undefined}
+        note={hydrated ? `Cover as of ${zonedTimeOf(hospitalNow, zone)}` : undefined}
         testId="on-call-call-cover"
       >
         {cover.map((item) => (

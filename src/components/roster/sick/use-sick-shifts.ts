@@ -11,8 +11,9 @@ import {
   type SickShift,
   type SickTeamRead,
 } from "@/lib/roster/sick/sick-report";
-import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterOpenShift, RosterOverview, RosterTeam } from "@/lib/roster/team/model";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { zonedDateOf } from "@/lib/work-time/format";
 
 /**
  * Everything the Sick for tomorrow page reads: for each confirmed team, my
@@ -63,7 +64,8 @@ export function useSickShifts(now: Date): SickShiftsState & { readonly reload: (
   const teams = useRosterTeams();
   const [generation, setGeneration] = useState(0);
   const reload = useCallback(() => setGeneration((value) => value + 1), []);
-  const today = perthDateOf(now);
+  const { zone } = useWorkTimeZone();
+  const today = zonedDateOf(now, zone);
   const [answer, setAnswer] = useState<{ key: string; state: Loaded } | null>(null);
 
   const enabled = useMemo(() => teams.data?.teams.filter((team) => team.enabled) ?? [], [teams.data]);

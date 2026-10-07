@@ -41,7 +41,6 @@ import { Button } from "@/components/ui/button";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { reportAreaData, useExampleData } from "@/lib/example-data/store";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { isSnoozed, parseMyDayPage, snoozeUntil, type MyDaySnoozes } from "@/lib/my-day/dashboard";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
@@ -56,6 +55,8 @@ import {
 import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
 import { addDaysToDate, formatPerthDay, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { useAuthSession } from "@/lib/supabase/client";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
@@ -388,12 +389,13 @@ function BandButton({
 }
 
 export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const { status: authStatus, authEpoch } = useAuthSession();
   const enabled = myDayEnabledForAuth(authStatus);
   // Only a local demo build with no sign-in may show invented examples.
   const allowSample = authStatus === "unconfigured";
   const now = useMyDayNow(nowProp);
-  const today = perthCalendarDate(now);
+  const today = zonedDateOf(now, zone);
   const state = useMyDayItems({ enabled, now });
   // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
   // answer changes, never on the minute tick.

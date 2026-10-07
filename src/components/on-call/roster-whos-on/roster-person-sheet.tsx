@@ -20,6 +20,8 @@ import {
 } from "@/lib/on-call/roster-whos-on";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 function Fact({ label, value, testId }: { readonly label: string; readonly value: string; readonly testId?: string }) {
   return (
@@ -36,11 +38,11 @@ function Fact({ label, value, testId }: { readonly label: string; readonly value
 }
 
 /** "Until Wed 08:30" while on, "From 21:00" before, "Finished 08:30" after. */
-function headline(row: RosterWhosOnRow, now: Date): string {
+function headline(row: RosterWhosOnRow, now: Date, zone: string): string {
   const at = now.getTime();
   const endDay = perthDateOf(row.endsAt);
   const startDay = perthDateOf(row.startsAt);
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   if (row.onNow) return `Until ${endDay === today ? "" : `${formatPerthDay(endDay)} `}${perthTimeOf(row.endsAt)}`;
   if (Date.parse(row.startsAt) > at)
     return `From ${startDay === today ? "" : `${formatPerthDay(startDay)} `}${perthTimeOf(row.startsAt)}`;
@@ -85,6 +87,7 @@ export function RosterPersonSheet({
   readonly onClose: () => void;
   readonly returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
+  const { zone } = useWorkTimeZone();
   const toast = useOptionalToast();
   const [reporting, setReporting] = useState(false);
   const [reason, setReason] = useState<RosterReportReason | null>(null);
@@ -147,7 +150,7 @@ export function RosterPersonSheet({
               className="nums text-lg font-semibold text-[color:var(--text-heading)]"
               data-testid="on-call-roster-person-headline"
             >
-              {headline(row, now)}
+              {headline(row, now, zone)}
             </p>
             <p className="nums text-sm text-[color:var(--text-muted)]">
               {row.span}

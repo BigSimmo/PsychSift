@@ -15,6 +15,7 @@ import { cn, textMuted } from "@/components/ui-primitives";
 import { onCallCalendarEvents } from "@/lib/on-call/calendar-events";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { msUntilNextOnCallLocalDay, onCallLocalDateKey } from "@/lib/on-call/local-date";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * CALENDAR — teaching sessions and recorded expiry dates on one month view,
@@ -24,6 +25,7 @@ import { msUntilNextOnCallLocalDay, onCallLocalDateKey } from "@/lib/on-call/loc
  */
 const CALENDAR_TITLE = "Teaching and expiry dates";
 export function OnCallCalendarPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const { entries, loading, isOffline, loadError, retry, cachedAt } = useOnCallEntries();
   // Moves at midnight, so a calendar left open overnight does not keep calling
   // yesterday "today". A pinned `now` is the caller's to move.
@@ -31,10 +33,10 @@ export function OnCallCalendarPage({ now: nowProp }: { now?: Date } = {}) {
   const now = nowProp ?? tick;
   useEffect(() => {
     if (nowProp) return;
-    const timer = setTimeout(() => setTick(new Date()), msUntilNextOnCallLocalDay(now));
+    const timer = setTimeout(() => setTick(new Date()), msUntilNextOnCallLocalDay(now, zone));
     return () => clearTimeout(timer);
-  }, [nowProp, now]);
-  const today = onCallLocalDateKey(now);
+  }, [nowProp, now, zone]);
+  const today = onCallLocalDateKey(now, zone);
   const events = useMemo(() => onCallCalendarEvents(entries, today), [entries, today]);
 
   return (

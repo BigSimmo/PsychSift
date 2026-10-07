@@ -15,6 +15,7 @@ import {
   type CmeEvidence,
   type CmeEvidenceKind,
 } from "@/lib/cme/evidence-model";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 export function CmeEvidencePanel({
   entryId,
@@ -320,6 +321,7 @@ function EvidenceFileRow({
   canRemove: boolean;
   onRemoved: (updated: CmeEvidence) => void;
 }) {
+  const { zone } = useWorkTimeZone();
   const [removing, setRemoving] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -330,7 +332,9 @@ function EvidenceFileRow({
   if (item.removedAt) {
     return (
       <li className="grid gap-0.5 p-3" data-testid={`cme-evidence-removed-${item.id}`}>
-        <p className={cn(textMuted, "text-sm font-medium")}>File removed on {formatRemovedDate(item.removedAt)}</p>
+        <p className={cn(textMuted, "text-sm font-medium")}>
+          File removed on {formatRemovedDate(item.removedAt, zone)}
+        </p>
         <p className={cn(textMuted, "break-words text-xs")}>Reason: {item.removalReason}</p>
       </li>
     );
@@ -459,9 +463,9 @@ function cmeEvidenceKindLabel(kind: CmeEvidenceKind): string {
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
-function formatRemovedDate(iso: string): string {
+function formatRemovedDate(iso: string, zone: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
     ? iso
-    : date.toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Perth" });
+    : date.toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: zone });
 }

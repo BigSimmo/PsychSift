@@ -10,20 +10,12 @@ import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { DEVICE_NAMES } from "@/lib/alerts/phone-state";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { formatZonedDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 
-const PERTH_TIME = new Intl.DateTimeFormat("en-AU", {
-  timeZone: "Australia/Perth",
-  weekday: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-/** "Sun 16:02", Perth time. */
-function whenArrived(iso: string): string {
-  const parts = PERTH_TIME.formatToParts(new Date(iso));
-  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get("weekday")} ${get("hour")}:${get("minute")}`;
+/** "Sun 16:02", work-zone time. */
+function whenArrived(iso: string, zone: string): string {
+  return `${formatZonedDay(zonedDateOf(iso, zone)).slice(0, 3)} ${zonedTimeOf(iso, zone)}`;
 }
 
 type Step = { readonly title: string; readonly detail: string };
@@ -124,6 +116,7 @@ function Footnote({ children, testId }: { readonly children: React.ReactNode; re
  * now; a check that failed says so and never reads as "off".
  */
 export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: PhoneAlerts; readonly shared: boolean }) {
+  const { zone } = useWorkTimeZone();
   const device = DEVICE_NAMES[alerts.device];
   const eyebrow = alerts.device === "computer" ? "This computer" : "This phone";
   const sharedLabel = alerts.device === "computer" ? "This is a shared computer" : "This is a shared device";
@@ -186,7 +179,9 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
               : state === "on"
                 ? [
                     `On for this ${device}`,
-                    alerts.lastTestArrivedAt ? `last test arrived ${whenArrived(alerts.lastTestArrivedAt)}` : null,
+                    alerts.lastTestArrivedAt
+                      ? `last test arrived ${whenArrived(alerts.lastTestArrivedAt, zone)}`
+                      : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")

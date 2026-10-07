@@ -13,6 +13,8 @@ import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
 import { formatShiftRange } from "@/components/roster/roster-format";
 import { RosterChangeRows } from "@/components/roster/roster-change-rows";
 import { teamChangeNotices } from "@/lib/roster/what-changed";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 function TeamSummary({
   team,
@@ -27,7 +29,8 @@ function TeamSummary({
   enabledTeams: readonly RosterTeam[];
   myShifts: readonly RosterDisplayShift[];
 }) {
-  const today = perthDateOf(now);
+  const { zone } = useWorkTimeZone();
+  const today = zonedDateOf(now, zone);
   const overview = useRosterRead(team.serviceId, "overview");
   const shifts = useRosterRead(team.serviceId, "assignments", {
     from: addDaysToDate(today, -1),

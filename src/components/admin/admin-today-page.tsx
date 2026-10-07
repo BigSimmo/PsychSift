@@ -34,11 +34,11 @@ import {
   selectRenewNext,
   selectRequirementsSummary,
 } from "@/lib/admin/today-selectors";
-import { perthHour } from "@/lib/clock-time";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
+import { zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Admin's Today (work-mode redesign, owner request 6 Oct 2026), the first of
@@ -86,8 +86,8 @@ function TodayLoadingSkeleton() {
   );
 }
 
-function greetingFor(now: Date): string {
-  const hour = perthHour(now);
+function greetingFor(now: Date, zone: string): string {
+  const hour = Number(zonedTimeOf(now, zone).slice(0, 2));
   return hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 18 ? "Good afternoon" : "Good evening";
 }
 
@@ -107,19 +107,20 @@ function HelpRow() {
 }
 
 export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const state = useOnCallEntries();
   const { isAuthenticated } = useAccountData();
   const [tick, setTick] = useState(() => new Date());
   const now = nowProp ?? tick;
   useEffect(() => {
     if (nowProp) return;
-    const timer = setTimeout(() => setTick(new Date()), msUntilNextOnCallLocalDay(now));
+    const timer = setTimeout(() => setTick(new Date()), msUntilNextOnCallLocalDay(now, zone));
     return () => clearTimeout(timer);
-  }, [nowProp, now]);
-  const today = perthCalendarDate(now);
+  }, [nowProp, now, zone]);
+  const today = zonedDateOf(now, zone);
   const load = adminLoadState(state);
   const bandShown = useModeBandShown();
-  const greeting = greetingFor(now);
+  const greeting = greetingFor(now, zone);
   const dateEcho = formatDateEcho(today);
   useModeBandHeading({ eyebrow: dateEcho, title: greeting });
 

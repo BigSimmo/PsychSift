@@ -8,6 +8,8 @@ import { DEFAULT_REMINDER_SETTINGS } from "@/lib/reminders/settings-model";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
   useAppPreferences: () => ({ preferences: { reminders: DEFAULT_REMINDER_SETTINGS }, setPreference: vi.fn() }),
+  readAppPreferences: () => ({ timeZone: "Australia/Perth" }),
+  subscribeAppPreferences: () => () => undefined,
 }));
 vi.mock("@/components/cme/cme-quick-log", () => ({
   CmeQuickLog: () => null,

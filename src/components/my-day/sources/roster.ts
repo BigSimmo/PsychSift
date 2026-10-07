@@ -7,11 +7,14 @@ import { fetchRosterRead, type RosterTeamsPayload } from "@/components/roster/us
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
 import { fatigueMyDayItems, ruleEnginesOn, type MyDayRuleShift } from "@/lib/my-day/rule-items";
-import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, formatPerthDay } from "@/lib/roster/shifts/perth-time";
 import type { RosterManage, RosterOverview, RosterRequests, RosterTeam } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
 import { useAuthSession } from "@/lib/supabase/client";
 import { sharedGet } from "@/lib/shared-get";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /** What one team contributes: the same reads Roster Today's team strip makes. */
 export interface RosterMyDayTeamInput {
@@ -37,9 +40,13 @@ export interface RosterMyDayInput {
  * (decisions-in-strip, managers only) and the 14-day roster cutoff nudge.
  * Sample data yields nothing.
  */
-export function rosterMyDayItems(input: RosterMyDayInput, now: Date): MyDayItem[] {
+export function rosterMyDayItems(
+  input: RosterMyDayInput,
+  now: Date,
+  zone: string = currentWorkTimeZone(),
+): MyDayItem[] {
   if (input.sample) return [];
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   const items: MyDayItem[] = [];
   for (const { team, overview, requests, manage } of input.teams) {
     for (const swap of requests?.swaps ?? []) {
@@ -172,6 +179,7 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
   retry: () => void;
 } {
   const { authEpoch } = useAuthSession();
+  const { zone } = useWorkTimeZone();
   const [stored, setStored] = useState<{ epoch: number; loaded: Loaded } | null>(null);
   const [generation, setGeneration] = useState(0);
   const retry = useCallback(() => setGeneration((value) => value + 1), []);
@@ -190,7 +198,7 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
   if (!stored || stored.epoch !== authEpoch) return { result: loading, retry };
   const loaded = stored.loaded;
   if (loaded.status === "ready") {
-    return { result: { mode: "roster", status: "ready", items: rosterMyDayItems(loaded.input, now) }, retry };
+    return { result: { mode: "roster", status: "ready", items: rosterMyDayItems(loaded.input, now, zone) }, retry };
   }
   return { result: { mode: "roster", status: loaded.status, items: [] }, retry };
 }

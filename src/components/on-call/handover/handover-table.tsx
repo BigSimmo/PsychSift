@@ -29,6 +29,7 @@ import {
   type OnCallHandoverPatient,
 } from "@/lib/on-call/handover";
 import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /*
  * THE TABLE: a shift header, one table with the patient column frozen, what
@@ -396,6 +397,7 @@ export function OnCallHandoverTable({
   readonly toTeam: string | null;
   readonly onEdit: (patient: OnCallHandoverPatient) => void;
 }) {
+  const { zone } = useWorkTimeZone();
   const [view, setView] = useState<"table" | "cards">("table");
   const [paste, setPaste] = useState<"word" | "text">("word");
   const [destination, setDestination] = useState<OnCallHandoverDestination>("copy");
@@ -472,7 +474,7 @@ export function OnCallHandoverTable({
         monochrome
         confidential
         printedAt={`Printed ${new Intl.DateTimeFormat("en-AU", {
-          timeZone: "Australia/Perth",
+          timeZone: zone,
           dateStyle: "medium",
           timeStyle: "short",
         }).format(new Date())}`}

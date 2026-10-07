@@ -38,12 +38,13 @@ import { cn } from "@/components/ui-primitives";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { useOnCallLinkedDocumentsState } from "@/lib/on-call/linked-documents";
 import { onCallEntryFreshness, type OnCallEntry, onCallEntryIsEditable } from "@/lib/on-call/entry-model";
-import { onCallLocalDateKey } from "@/lib/on-call/local-date";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { selectUpcomingTeachingSessions } from "@/lib/on-call/teaching-schedule";
 import { partitionLogisticsEntries } from "@/lib/on-call/compliance";
 import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
 import { isAdminWorkforceExplainer } from "@/lib/admin/placement";
+import { zonedToday } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * The entry editor loads on the first Add or Edit tap and then stays mounted,
@@ -189,6 +190,7 @@ const ON_CALL_ADD_HINT: Partial<Record<OnCallPageView, string>> = {
  * `isAuthenticated`, because their routes require one.
  */
 export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
+  const { zone } = useWorkTimeZone();
   const { isAuthenticated } = useAccountData();
   const [editorState, setEditorState] = useState<{ open: boolean; entry: OnCallEntry | null }>({
     open: false,
@@ -245,8 +247,8 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   // `selectUpcomingTeachingSessions` rolls a recurring session forward from its
   // anchor rather than letting it vanish the afternoon its date passes.
   const upcomingTeaching = useMemo(
-    () => (view === "education" ? selectUpcomingTeachingSessions(entries, onCallLocalDateKey(new Date())) : []),
-    [view, entries],
+    () => (view === "education" ? selectUpcomingTeachingSessions(entries, zonedToday(zone)) : []),
+    [view, entries, zone],
   );
 
   // Overdue entries in THIS view, which is what "mark all as still correct"

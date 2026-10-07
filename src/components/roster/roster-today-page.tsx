@@ -59,6 +59,8 @@ import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
 import { restCuesByTeam, type RestCue } from "@/lib/roster/rest-cues";
 import { importChangeNotices } from "@/lib/roster/what-changed";
 import { RosterChangeRows } from "./roster-change-rows";
+import { zonedDateOf, zonedWallToIso } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Roster Today: where am I working, when, answered with no taps. The lead
@@ -154,8 +156,9 @@ function RosterFreshness({
 }
 
 function DayLine({ shift, now }: { readonly shift: OnCallShift; readonly now: Date }) {
-  const today = perthDateOf(now);
-  const dayStart = Date.parse(`${today}T00:00:00+08:00`);
+  const { zone } = useWorkTimeZone();
+  const today = zonedDateOf(now, zone);
+  const dayStart = Date.parse(zonedWallToIso(today, "00:00", zone) ?? `${today}T00:00:00+08:00`);
   const start = Math.max(0, (Date.parse(shift.startsAt) - dayStart) / DAY_MS);
   const end = Math.min(1, (Date.parse(shift.endsAt) - dayStart) / DAY_MS);
   const at = Math.min(1, Math.max(0, (now.getTime() - dayStart) / DAY_MS));
@@ -383,6 +386,7 @@ function greetingFor(now: Date): { readonly text: string; readonly icon: typeof 
 }
 
 export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const now = useRosterNow(pinnedNow);
   const shifts = useRosterShifts();
   const teams = useRosterTeams();
@@ -427,7 +431,7 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
     setSaved("Refreshed");
   }
 
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   const byId = useMemo(() => new Map(shifts.shifts.map((shift) => [shift.id, shift])), [shifts.shifts]);
   // Each team's own rules judge its own shifts, the same cues the Shifts page shows. The default
   // shift read already reaches 21 days back, the longest any team rule looks.

@@ -11,11 +11,13 @@ import { formatHours, gapTimes, hoursBetween, kindLabel } from "@/lib/open-shift
 import { parseOffer } from "@/lib/open-shifts/parse-offer";
 import { rosterCheckFor } from "@/lib/open-shifts/roster-check";
 import type { FatigueShift } from "@/lib/roster/fatigue-rules";
-import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { useOnlineStatus } from "@/lib/use-online-status";
 
 import { SignInAction } from "./open-shifts-sign-in";
 import { CheckLine, FootAction, OPEN_SHIFTS_HREF, SubHeader, formatShiftTimes } from "./open-shifts-ui";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 const KINDS = ["day", "evening", "night", "on_call", "other"] as const;
 type Kind = (typeof KINDS)[number];
@@ -30,13 +32,14 @@ const field =
  * phone and never sent or saved.
  */
 export function OpenShiftsLogPage() {
+  const { zone } = useWorkTimeZone();
   const signedOut = useSignedOut();
   const shifts = useRosterShifts();
   const offline = !useOnlineStatus();
   const router = useRouter();
   const id = useId();
   const nowMs = useRosterNow().getTime();
-  const today = perthDateOf(new Date(nowMs));
+  const today = zonedDateOf(nowMs, zone);
   const [message, setMessage] = useState("");
   const [readNote, setReadNote] = useState<string | null>(null);
   const [place, setPlace] = useState("");

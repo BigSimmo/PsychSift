@@ -3,8 +3,10 @@
 import { useMemo } from "react";
 
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
-import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment } from "@/lib/roster/team/model";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * "Who's on now": colleagues rostered on at this moment on the reader's first
@@ -62,11 +64,12 @@ export function colleaguesOnNow(
 }
 
 export function useMyDayWhosOn(now: Date): MyDayWhosOn {
+  const { zone } = useWorkTimeZone();
   const teams = useRosterTeams();
   const payload = teams.status === "ready" ? teams.data : null;
   const team =
     payload && !payload.sample ? ((payload.teams ?? []).find((candidate) => candidate.enabled) ?? null) : null;
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   const read = useRosterRead(team?.serviceId ?? null, "assignments", {
     from: addDaysToDate(today, -1),
     to: addDaysToDate(today, 1),

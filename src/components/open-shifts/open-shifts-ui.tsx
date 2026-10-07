@@ -15,6 +15,8 @@ import {
 } from "@/lib/open-shifts/model";
 import type { RosterCheck } from "@/lib/open-shifts/roster-check";
 import { MONTHS, WEEKDAYS, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 
 /*
  * The pieces every Open shifts page shares, so the last screen is drawn from
@@ -78,9 +80,10 @@ export function formatShiftTimes(startsAt: string, endsAt: string): string {
 }
 
 /** "Starts in 2 days", "Starts today", "Starts tomorrow". */
-export function startsIn(startsAt: string, now: Date): string {
+export function startsIn(startsAt: string, now: Date, zone: string = currentWorkTimeZone()): string {
   const days = Math.round(
-    (Date.parse(`${perthDateOf(startsAt)}T00:00:00Z`) - Date.parse(`${perthDateOf(now)}T00:00:00Z`)) / 86_400_000,
+    (Date.parse(`${zonedDateOf(startsAt, zone)}T00:00:00Z`) - Date.parse(`${zonedDateOf(now, zone)}T00:00:00Z`)) /
+      86_400_000,
   );
   if (days <= 0) return "Starts today";
   if (days === 1) return "Starts tomorrow";

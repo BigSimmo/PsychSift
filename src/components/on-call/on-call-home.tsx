@@ -51,6 +51,7 @@ import {
 import { msUntilOnCallPeriodChange, resolveOnCallNumber, type OnCallNumberFields } from "@/lib/on-call/number-resolver";
 import { useOnCallUsual } from "@/lib/on-call/recent-storage";
 import { msUntilOnCallShiftContextChange, onCallShiftContext, useOnCallShiftPick } from "@/lib/on-call/shift-context";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * Now, the On Call mode home (v6 figure "Now"): who to ring, at this hospital,
@@ -162,6 +163,7 @@ export function OnCallHome(props: { now?: Date } = {}) {
 }
 
 function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -185,18 +187,21 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   );
   // Roster's example roster (a doctor with no shifts of their own) is never a real shift here.
   const rosterShifts = useMemo(() => (shifts.status === "ready" && !shifts.sample ? shifts.shifts : []), [shifts]);
-  const context = useMemo(() => onCallShiftContext({ shifts: rosterShifts, pick, now }), [rosterShifts, pick, now]);
+  const context = useMemo(
+    () => onCallShiftContext({ shifts: rosterShifts, pick, now, zone }),
+    [rosterShifts, pick, now, zone],
+  );
   useEffect(() => {
     if (pinnedNow || !mounted) return;
     const delay = Math.min(
       60_000 - (now.getTime() % 60_000),
-      msUntilOnCallPeriodChange(now),
-      msUntilNextOnCallLocalDay(now),
-      msUntilOnCallShiftContextChange({ shifts: rosterShifts, pick, now }),
+      msUntilOnCallPeriodChange(now, zone),
+      msUntilNextOnCallLocalDay(now, zone),
+      msUntilOnCallShiftContextChange({ shifts: rosterShifts, pick, now, zone }),
     );
     const timer = setTimeout(() => setTick(new Date()), delay);
     return () => clearTimeout(timer);
-  }, [pinnedNow, now, rosterShifts, pick, mounted]);
+  }, [pinnedNow, now, rosterShifts, pick, mounted, zone]);
 
   const usual = useOnCallUsual(context.shiftKey);
   const marks = useOnCallCallMarks(now);

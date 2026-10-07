@@ -35,6 +35,8 @@ import { perthWeekday, shiftTitle, weekdayTime } from "@/lib/my-day/quiet-figure
 import { myDayItemWeekDate, myDayWeekDates, myDayWeekDayLabel, myDayWeekRangeLabel } from "@/lib/my-day/week";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /** The signed-out sample, downloaded only when a signed-out visitor opens this page. */
 const MyDayWeekSample = dynamic(
@@ -118,7 +120,8 @@ function monthEnd(month: string): string {
 }
 
 function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
-  const today = perthDateOf(now);
+  const { zone } = useWorkTimeZone();
+  const today = zonedDateOf(now, zone);
   const dates = useMemo(() => myDayWeekDates(today), [today]);
   const lastDate = dates[dates.length - 1]!;
   const month = viewProps.view === "month" ? (viewProps.shownMonth ?? today.slice(0, 7)) : null;
@@ -464,7 +467,8 @@ export function MyDayWeekDays({
   /** Notices drawn under the Week and Month switch. */
   readonly notices?: ReactNode;
 } & Partial<WeekViewProps>) {
-  const today = perthDateOf(now);
+  const { zone } = useWorkTimeZone();
+  const today = zonedDateOf(now, zone);
   const dates = useMemo(() => myDayWeekDates(today), [today]);
   const lastDate = dates[dates.length - 1]!;
   const month = shownMonth ?? today.slice(0, 7);
@@ -496,7 +500,7 @@ export function MyDayWeekDays({
       (shift) =>
         kindOf(shift) !== "leave" &&
         perthDateOf(shift.startsAt) < date &&
-        perthDateOf(new Date(Date.parse(shift.endsAt) - 1).toISOString()) === date,
+        zonedDateOf(Date.parse(shift.endsAt) - 1, zone) === date,
     );
   const at = now.getTime();
   const detailFor = (date: string): DayDetail[] =>
