@@ -27,16 +27,17 @@ function alerts(overrides: Partial<PhoneAlerts>): PhoneAlerts {
 afterEach(cleanup);
 
 describe("This phone", () => {
-  it("screen 11: an iPhone not on the Home Screen gets three steps and a locked test", async () => {
+  // Wiring audit, work-mode redesign (owner request 6 Oct 2026): no dead controls, so the locked
+  // "Send test alert" is not drawn until the steps are done.
+  it("screen 11: an iPhone not on the Home Screen gets three steps and no test button yet", () => {
     const value = alerts({ state: "needs-home-screen", enabled: false });
     render(<AlertsDeviceSection alerts={value} shared={false} />);
     expect(screen.getByText("Alerts aren't set up on this iPhone yet")).toBeTruthy();
     expect(screen.getByText("Tap Share in Safari")).toBeTruthy();
     expect(screen.getByText("Add to Home Screen")).toBeTruthy();
     expect(screen.getByText("Tap Allow")).toBeTruthy();
-    const locked = screen.getByTestId("alerts-test-locked");
-    expect(locked.getAttribute("aria-disabled")).toBe("true");
-    await userEvent.click(locked);
+    expect(screen.queryByTestId("alerts-test-locked")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Send test alert" })).toBeNull();
     expect(value.sendTest).not.toHaveBeenCalled();
   });
 

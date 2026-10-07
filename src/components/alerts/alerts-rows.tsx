@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, Lock } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -66,9 +66,15 @@ export function AlertsQuietRow({
 }) {
   return (
     <li
-      className={cn(modeInsetHairline, modeRowHeight.double, "flex min-w-0 items-center pl-3 pr-1")}
+      className={cn(modeInsetHairline, modeRowHeight.double, "flex min-w-0 items-center gap-x-3 pl-3 pr-1")}
       data-testid={testId}
     >
+      <span
+        aria-hidden="true"
+        className="grid size-7 shrink-0 place-items-center rounded-full bg-[color:var(--work-wash)] text-[color:var(--text-muted)]"
+      >
+        <Lock aria-hidden="true" className="size-3.5" />
+      </span>
       <span className="grid min-w-0 flex-1 gap-0.5 py-1">
         <span className={cn(modeNameText, "break-words text-base-minus leading-5 text-[color:var(--text-muted)]")}>
           {title}

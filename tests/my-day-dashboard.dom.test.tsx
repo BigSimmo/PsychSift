@@ -2,7 +2,7 @@
 
 // My Day dashboard cards (design review v13, concept D: Today, Work and Me
 // pages): each card hides when its source has nothing or does not exist,
-// Edit hides and restores cards (kept on this device, cleared at an account
+// Customise hides and restores cards (kept on this device, cleared at an account
 // transition), "Needs you" is capped at three with "All N", and "Later"
 // moves a row to tomorrow on this device with an undo.
 //
@@ -22,6 +22,7 @@ vi.mock("@/components/on-call/handover/call-log", () => ({ useOnCallCallLog: () 
 
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { resetMyDayDeviceStateForTesting } from "@/components/my-day/my-day-device-state";
+import { MyDayCustomiseSheet } from "@/components/my-day/my-day-sheets";
 import type { MyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import {
@@ -115,7 +116,6 @@ function props(overrides: Partial<MyDayDashboardProps> = {}): MyDayDashboardProp
     items: [],
     sources: EMPTY_SOURCES,
     checked: ["On Call", "Admin"],
-    editing: false,
     onShowAll: vi.fn(),
     onRetry: vi.fn(),
     ...overrides,
@@ -234,7 +234,8 @@ describe("MyDayDashboard cards", () => {
     );
     expect(screen.queryByTestId("my-day-card-shift")).toBeNull();
     const hero = screen.getByTestId("my-day-card-up-next");
-    expect(hero.className).toContain("dash-hero");
+    // work-mode redesign, owner request 6 Oct 2026: the hero is the work-mode hero card.
+    expect(hero.className).toContain("work-hero");
     expect(within(hero).getByTestId("my-day-ribbon")).toBeTruthy();
     expect(within(hero).getByTestId("my-day-ribbon-now")).toBeTruthy();
     expect(within(hero).getByTestId("my-day-shift-countdown").textContent).toBe("Starts in 4 h 20 min");
@@ -365,7 +366,8 @@ describe("MyDayDashboard cards", () => {
     expect(cpd.textContent).toContain("Educational14 h");
     expect(cpd.textContent).toContain("Reviewing performance9 h");
     expect(cpd.textContent).toContain("Measuring outcomes9 h");
-    expect(cpd.textContent).toContain("To go by 31 Dec18 h");
+    // work-mode redesign, owner request 6 Oct 2026: the hours to go move into the card's foot, with the weekly pace.
+    expect(cpd.textContent).toContain("18 h to go by 31 Dec");
     expect(cpd.textContent).toContain("Your 50 h target is the one you confirmed in CPD.");
     expect(screen.getByTestId("my-day-cpd").getAttribute("href")).toBe("/cme?from=my-day");
     expect(screen.getByTestId("my-day-cpd-ring")).toBeTruthy();
@@ -422,19 +424,21 @@ describe("MyDayDashboard cards", () => {
   it("says when the phone is offline, and the time the page loaded", () => {
     const online = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
     render(<MyDayDashboard {...props({ checkedAt: "14:05" })} />);
+    // work-mode redesign, owner request 6 Oct 2026: the offline note's second sentence is the mockup's.
     expect(screen.getByTestId("my-day-offline").textContent).toBe(
-      "You are offlineThis is My Day as it loaded at 14:05. Reload when you are back online to see changes.",
+      "You are offlineThis is My Day as it loaded at 14:05. New items appear when you are back online.",
     );
     online.mockRestore();
   });
 
-  it("opens the show-and-hide mode from the Customise row at the bottom", () => {
-    const onToggleEditing = vi.fn();
-    render(<MyDayDashboard {...props({ onToggleEditing })} />);
+  // work-mode redesign, owner request 6 Oct 2026: the row opens the Customise sheet in place of the inline Edit mode.
+  it("opens the Customise sheet from the Customise row at the bottom", () => {
+    const onCustomise = vi.fn();
+    render(<MyDayDashboard {...props({ onCustomise })} />);
     const row = screen.getByTestId("my-day-customise");
     expect(row.textContent).toContain("Show or hide these cards");
     fireEvent.click(row);
-    expect(onToggleEditing).toHaveBeenCalledTimes(1);
+    expect(onCustomise).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -471,7 +475,9 @@ describe("Needs you", () => {
     expect(screen.queryByTestId("my-day-item-a")).toBeNull();
     // The next row moves up so the card still shows three.
     expect(screen.getByTestId("my-day-item-d")).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toContain("Hidden until tomorrow: Title a");
+    // work-mode redesign, owner request 6 Oct 2026: the note under Needs you reads "1 hidden until tomorrow" over the item's title.
+    expect(screen.getByRole("status").textContent).toContain("1 hidden until tomorrow");
+    expect(screen.getByRole("status").textContent).toContain("Title a");
     expect(JSON.parse(window.localStorage.getItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY)!)).toEqual({ a: "2026-10-04" });
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
@@ -508,23 +514,29 @@ describe("Needs you", () => {
   });
 });
 
-describe("Edit mode", () => {
-  it("hides a card, lists it as a chip while editing, and restores it", () => {
-    const { rerender } = render(<MyDayDashboard {...props({ editing: true })} />);
-    expect(screen.getByTestId("my-day-hidden-cards").textContent).toContain("Hidden cards wait here.");
-    fireEvent.click(screen.getByRole("button", { name: "Hide Quick actions" }));
+// work-mode redesign, owner request 6 Oct 2026: the inline Edit mode (Hide buttons on cards, chips to restore) became the
+// Customise sheet, one switch per card over the same hidden-card list on this device.
+describe("Customise", () => {
+  it("hides a card with its switch, keeps it hidden, and restores it", () => {
+    render(
+      <>
+        <MyDayDashboard {...props()} />
+        <MyDayCustomiseSheet open onClose={() => undefined} today={TODAY} />
+      </>,
+    );
+    expect(screen.getByTestId("my-day-customise-sheet").textContent).toContain("Hidden cards wait here.");
+    const toggle = screen.getByRole("switch", { name: /Quick actions/ });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
     expect(screen.queryByTestId("my-day-card-quick-actions")).toBeNull();
-    expect(screen.getByRole("button", { name: "Show Quick actions" }).textContent).toContain("Quick actions");
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
     expect(JSON.parse(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY)!)).toEqual(["quick-actions"]);
-
-    // Outside edit mode the card stays hidden and no chip or Hide button shows.
-    rerender(<MyDayDashboard {...props({ editing: false })} />);
-    expect(screen.queryByTestId("my-day-card-quick-actions")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Show Quick actions" })).toBeNull();
+    // No card carries its own Hide button any more.
     expect(screen.queryByRole("button", { name: /^Hide / })).toBeNull();
+    // Needs you is always on: no switch.
+    expect(screen.queryByRole("switch", { name: /Needs you/ })).toBeNull();
 
-    rerender(<MyDayDashboard {...props({ editing: true })} />);
-    fireEvent.click(screen.getByRole("button", { name: "Show Quick actions" }));
+    fireEvent.click(toggle);
     expect(screen.getByTestId("my-day-card-quick-actions")).toBeTruthy();
     expect(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY)).toBeNull();
   });
@@ -544,11 +556,18 @@ describe("Edit mode", () => {
     expect(screen.queryByTestId("my-day-card-up-next")?.textContent ?? "").not.toContain("Registrar teaching");
   });
 
-  it("says how to bring cards back when every shown card is hidden", () => {
+  // work-mode redesign, owner request 6 Oct 2026: Needs you can no longer be hidden, so the all-hidden line is shown on My records.
+  it("keeps Needs you on Today, and says how to bring cards back when every shown card is hidden", () => {
     window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["quick-actions", "needs-you"]));
     render(<MyDayDashboard {...props()} />);
+    expect(shownCards()).toEqual(["needs-you"]);
+    cleanup();
+    window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["cpd-month", "quick-note"]));
+    render(<MyDayDashboard {...props({ page: "me", sources: { ...EMPTY_SOURCES, cpd: READY_CPD } })} />);
     expect(shownCards()).toEqual([]);
-    expect(screen.getByTestId("my-day-all-hidden").textContent).toContain("Choose Edit to bring them back.");
+    expect(screen.getByTestId("my-day-all-hidden").textContent).toContain(
+      "Choose Customise My Day to bring them back.",
+    );
   });
 
   it("forgets hidden cards and moved rows at an account transition", () => {
@@ -566,8 +585,9 @@ describe("Edit mode", () => {
 
   // Codex review on #3234 (item 2): when storage works, a missing key is the truth.
   it("brings a card back when another tab restores it", () => {
-    render(<MyDayDashboard {...props({ editing: true })} />);
-    fireEvent.click(screen.getByRole("button", { name: "Hide Quick actions" }));
+    // work-mode redesign, owner request 6 Oct 2026: hidden from the Customise sheet in place of the card's own Hide button.
+    window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["quick-actions"]));
+    render(<MyDayDashboard {...props()} />);
     expect(screen.queryByTestId("my-day-card-quick-actions")).toBeNull();
     act(() => {
       window.localStorage.removeItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY);
@@ -685,9 +705,10 @@ describe("Work cards", () => {
     );
     const card = screen.getByTestId("my-day-card-calls");
     expect(card.textContent).toContain("On call tonight");
-    expect(card.textContent).toContain("Calls logged2");
-    expect(card.textContent).toContain("Still open1");
-    expect(card.textContent).toContain("Counts only · this device");
+    // work-mode redesign, owner request 6 Oct 2026: four figures, Left, Logged, Open and Handover, and "this phone".
+    expect(card.textContent).toContain("Logged2");
+    expect(card.textContent).toContain("Open1");
+    expect(card.textContent).toContain("Counts only · this phone");
     // Tonight's on call ends 08:30 Sunday: that is the handover.
     expect(card.textContent).toContain("HandoverSun 08:30");
     // The notes themselves stay in On Call, and the page says so.

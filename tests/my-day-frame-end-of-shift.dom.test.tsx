@@ -18,6 +18,8 @@ const shiftsState = vi.hoisted(() => ({
   },
 }));
 
+// work-mode redesign, owner request 6 Oct 2026: My Day's pages offer More's Customise, which navigates to Today.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-shifts", () => ({
   useRosterShifts: () => shiftsState.current,
 }));

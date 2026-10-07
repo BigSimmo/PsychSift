@@ -58,6 +58,16 @@ describe("myDayActionLabel", () => {
     expect(myDayActionLabel({ mode: "my-work", title: "Medical registration renewal" })).toBe("Open");
     expect(myDayActionLabel({ mode: "on-call", title: "Handover course" })).toBe("Open");
   });
+
+  // Work-mode redesign, owner request 6 Oct 2026: more verbs, read from the item's id.
+  it("says Answer for a swap, Prep for teaching prep, Renew for a recorded date and Sign for a form", () => {
+    expect(myDayActionLabel({ id: "roster:swap:1", mode: "roster", title: "Sam asks to swap" })).toBe("Answer");
+    expect(myDayActionLabel({ id: "teaching:prep:1", mode: "teaching", title: "Prepare your talk" })).toBe("Prep");
+    expect(myDayActionLabel({ id: "my-work:date:1", mode: "my-work", title: "Medical registration" })).toBe("Renew");
+    expect(myDayActionLabel({ id: "my-work:date:2", mode: "my-work", title: "Basic life support" })).toBe("Book");
+    expect(myDayActionLabel({ id: "on-call:x", mode: "on-call", title: "Leave form for Friday" })).toBe("Sign");
+    expect(myDayActionLabel({ id: "roster:manage:1", mode: "roster", title: "2 waiting in Manage" })).toBe("Open");
+  });
 });
 
 describe("buildDayRibbon", () => {

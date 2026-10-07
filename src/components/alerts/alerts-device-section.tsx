@@ -8,7 +8,7 @@ import { modeModuleSurface, modeInsetHairline } from "@/components/mode-kit/reci
 import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
-import { cn, eyebrowText, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { cn, eyebrowText } from "@/components/ui-primitives";
 import { DEVICE_NAMES } from "@/lib/alerts/phone-state";
 
 const PERTH_TIME = new Intl.DateTimeFormat("en-AU", {
@@ -118,27 +118,6 @@ function Footnote({ children, testId }: { readonly children: React.ReactNode; re
   );
 }
 
-/** The test button while it cannot work yet: reachable by keyboard, with its reason read out. */
-function LockedTestButton({ reason }: { readonly reason: string }) {
-  return (
-    <>
-      <Button
-        variant="secondary"
-        block
-        aria-disabled="true"
-        onClick={ignoreUnavailableActivation}
-        aria-describedby="alerts-test-locked-reason"
-        testId="alerts-test-locked"
-      >
-        Send test alert
-      </Button>
-      <span id="alerts-test-locked-reason" className="sr-only">
-        {reason}
-      </span>
-    </>
-  );
-}
-
 /**
  * "This phone" (or "This computer"): screens 8, 11 and 12, and the computer
  * view's shared-computer switch. Every state says what is true on THIS device
@@ -182,7 +161,6 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
           }
           testId={`alerts-device-${state}-steps`}
         />
-        <LockedTestButton reason={blocked ? "Turn alerts back on first" : "The test unlocks after step 3"} />
         {/* Remind me does not need phone alerts, so a shared device can always be marked as one. */}
         <ModeGroupedList testId="alerts-shared-list">{sharedRow}</ModeGroupedList>
         <Footnote>

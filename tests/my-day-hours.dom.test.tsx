@@ -16,6 +16,8 @@ type Shifts = {
   teamMessage?: string | null;
 };
 const shiftsState = vi.hoisted(() => ({ current: undefined as unknown as Shifts }));
+// work-mode redesign, owner request 6 Oct 2026: My Day's pages offer More's Customise, which navigates to Today.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-shifts", () => ({ useRosterShifts: () => shiftsState.current }));
 
 const overview = vi.hoisted(() => ({ anchor: null as string | null, status: "ready" as string }));
@@ -68,6 +70,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+// work-mode redesign, owner request 6 Oct 2026: date ranges read "5 to 11 Oct" (visible copy uses "to", not a dash).
 describe("MyDayHoursPage", () => {
   it("shows this week's and this fortnight's rostered hours and the next leave", () => {
     setShifts({
@@ -84,11 +87,11 @@ describe("MyDayHoursPage", () => {
     });
     render(<MyDayHoursPage now={NOW} />);
     expect(screen.getByRole("heading", { level: 1, name: "Hours" })).toBeTruthy();
-    expect(screen.getByTestId("my-day-hours-week").textContent).toContain("5–11 Oct");
+    expect(screen.getByTestId("my-day-hours-week").textContent).toContain("5 to 11 Oct");
     expect(screen.getByTestId("my-day-hours-week").textContent).toContain("26");
-    expect(screen.getByTestId("my-day-hours-fortnight").textContent).toContain("28 Sep – 11 Oct");
+    expect(screen.getByTestId("my-day-hours-fortnight").textContent).toContain("28 Sep to 11 Oct");
     expect(screen.getByTestId("my-day-hours-fortnight").textContent).toContain("34");
-    expect(screen.getByTestId("my-day-hours-leave").textContent).toContain("12–13 Oct");
+    expect(screen.getByTestId("my-day-hours-leave").textContent).toContain("12 to 13 Oct");
     expect(screen.getByTestId("my-day-hours-footer").textContent).toContain("not pay");
   });
 
@@ -97,7 +100,7 @@ describe("MyDayHoursPage", () => {
     setShifts({ shifts: [day("2026-10-05")] });
     render(<MyDayHoursPage now={NOW} />);
     // 1 Oct start: fortnights run 1-14 Oct.
-    expect(screen.getByTestId("my-day-hours-fortnight").textContent).toContain("1–14 Oct");
+    expect(screen.getByTestId("my-day-hours-fortnight").textContent).toContain("1 to 14 Oct");
   });
 
   it("bounds the leave claim to the 40 days fetched when none is rostered", () => {
@@ -123,7 +126,7 @@ describe("MyDayHoursPage", () => {
     render(<MyDayHoursPage now={NOW} />);
     expect(screen.getByTestId("my-day-hours-settings-failed")).toBeTruthy();
     expect(screen.getByTestId("my-day-hours-fortnight").textContent).toContain("Unavailable");
-    expect(screen.getByTestId("my-day-hours-week").textContent).toContain("5–11 Oct");
+    expect(screen.getByTestId("my-day-hours-week").textContent).toContain("5 to 11 Oct");
   });
 
   it("keeps the page loading while the pay-fortnight settings load", () => {
@@ -182,7 +185,8 @@ describe("MyDayHoursPage", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     render(<MyDayHoursPage now={NOW} />);
     expect(screen.getByTestId("my-day-hours-signed-out")).toBeTruthy();
-    expect(await screen.findByTestId("my-day-hours-ready")).toBeTruthy();
+    // The sample is a lazily loaded module; a cold first import can take over the default one second here.
+    expect(await screen.findByTestId("my-day-hours-ready", {}, { timeout: 8000 })).toBeTruthy();
     expect(screen.getByTestId("my-day-hours-week")).toBeTruthy();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();

@@ -9,28 +9,90 @@ import { cn } from "@/components/ui-primitives";
 import type { MyDaySourceMode } from "@/lib/my-day/model";
 
 /*
- * My Day's quiet pieces (mock-up v2, 5 October 2026): flat sections with a
- * small-capitals label, lists with hairline dividers, grey icons with an area
- * dot, and text links in place of pill buttons. One filled button per screen.
- * They read the `--dash-*` tokens, so they belong inside `.dash-surface`.
+ * My Day's pieces in the work-mode look (work-mode redesign, owner request
+ * 6 Oct 2026): white cards with a hairline, small-capitals labels, flat tinted
+ * icon circles in the colour of the area that owns a row, date tiles and small
+ * tinted pill buttons. Flat by the owner's decision: no lift, no gloss.
+ *
+ * Colours come from tokens only: the work frame's `--work-*` recipes and the
+ * area palettes (`--mode-identity*`), selected by `data-mode-identity`. The
+ * frame sets My Day's palette on the page, so a piece with no area is blue.
  */
 
-/** A text link or button: 13px, the link colour, with a 48px tap area round its words. */
+/** A text link or button: the area colour, with a 48px tap area round its words. */
 export const quietLink = cn(
   focusRing,
-  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-sm font-medium text-[color:var(--dash-blue)] no-underline hover:underline",
+  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-xs font-bold text-[color:var(--mode-identity)] no-underline hover:underline",
 );
 
 /** The same, in the muted colour, for the quieter of two actions ("Later"). */
-export const quietLinkMuted = cn(quietLink, "text-[color:var(--dash-muted)]");
+export const quietLinkMuted = cn(
+  focusRing,
+  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-2xs font-bold text-[color:var(--text-muted)] no-underline hover:underline",
+);
+
+/**
+ * A small tinted pill ("Answer", "Renew"): 28px drawn, with a 48px tap area
+ * round it, so a row keeps its height.
+ */
+export const quietPill = cn(
+  focusRing,
+  "relative inline-flex h-7 items-center justify-center whitespace-nowrap rounded-full bg-[color:var(--mode-identity-soft)] px-3 text-xs font-bold text-[color:var(--mode-identity)] no-underline before:absolute before:inset-x-0 before:-inset-y-2.5 before:content-[''] forced-colors:border",
+);
+
+/** The same pill in white with a hairline, for a secondary action ("Review", "Add"). */
+export const quietPillQuiet = cn(
+  quietPill,
+  "border border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] text-[color:var(--work-ink)]",
+);
+
+/** The amber pill for a lapsed or late item's one action ("Book"). */
+export const quietPillAmber = cn(
+  quietPill,
+  "border border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] text-[color:var(--warning-text)]",
+);
 
 /** The one filled button on a screen. */
 export const quietPrimary = cn(
   focusRing,
-  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-dash-title no-underline",
+  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full bg-[color:var(--work-primary)] px-4 text-sm font-bold text-[color:var(--work-primary-text)] no-underline forced-colors:border",
 );
 
-/** Small capitals over a section, with an optional count and a link at the right. */
+/** The small-capitals label line: the words at the left, a count, a link at the right. */
+export function QuietLabel({
+  id,
+  title,
+  count,
+  aside,
+  as: Tag = "h2",
+}: {
+  readonly id?: string;
+  readonly title: ReactNode;
+  readonly count?: ReactNode;
+  readonly aside?: ReactNode;
+  readonly as?: "h2" | "h3" | "p";
+}) {
+  return (
+    <div className="flex min-h-4 min-w-0 items-center justify-between gap-2.5">
+      <Tag id={id} className="m-0 min-w-0 text-3xs font-bold tracking-widest text-[color:var(--text-muted)] uppercase">
+        {title}
+        {count ? <span className="ml-1.5 text-2xs font-semibold tracking-normal normal-case nums">{count}</span> : null}
+      </Tag>
+      {aside ? <div className="-my-4 flex shrink-0 items-center gap-1">{aside}</div> : null}
+    </div>
+  );
+}
+
+/** The card recipe: white, a hairline, the work radius, a barely visible shadow. */
+export const quietCard =
+  "min-w-0 overflow-hidden rounded-[var(--work-radius-card)] border border-[color:var(--work-line)] bg-[color:var(--work-surface)] shadow-[var(--work-shadow-card)] forced-colors:border";
+
+/**
+ * A section. `card` (the default) puts the label inside one padded card with
+ * its content, as the mockup's This week, CPD and Renewals cards are. `rows`
+ * puts the label above and the content in a card of rows (Needs you). `bare`
+ * puts the label above content that brings its own cards.
+ */
 export function QuietSection({
   title,
   count,
@@ -38,53 +100,67 @@ export function QuietSection({
   onHide,
   testId,
   className,
+  variant = "card",
   children,
 }: {
   readonly title: string;
   readonly count?: string;
   readonly aside?: ReactNode;
-  /** Edit mode only: shows a Hide button beside the label. */
+  /** Hides the card (a Hide button beside the label). */
   readonly onHide?: () => void;
   readonly testId?: string;
   readonly className?: string;
+  readonly variant?: "card" | "rows" | "bare";
   readonly children: ReactNode;
 }) {
   const headingId = useId();
-  const editing = onHide !== undefined;
+  const label = (
+    <QuietLabel
+      id={headingId}
+      title={title}
+      count={count}
+      aside={
+        aside || onHide ? (
+          <>
+            {aside}
+            {onHide ? <QuietHideButton label={title} onHide={onHide} testId={testId} inline /> : null}
+          </>
+        ) : undefined
+      }
+    />
+  );
+  if (variant === "card") {
+    return (
+      <section
+        aria-labelledby={headingId}
+        data-testid={testId}
+        className={cn(quietCard, "relative grid content-start gap-1.5 px-3.5 py-3", className)}
+      >
+        {label}
+        {children}
+      </section>
+    );
+  }
   return (
     <section
       aria-labelledby={headingId}
       data-testid={testId}
-      className={cn(
-        "relative grid min-w-0 content-start gap-1",
-        editing && "rounded-xl outline-2 outline-offset-4 outline-dashed outline-[color:var(--dash-line-strong)]",
-        className,
-      )}
+      className={cn("relative grid min-w-0 content-start gap-2", className)}
     >
-      <div className="flex min-h-6 min-w-0 items-center justify-between gap-2.5">
-        <h2 id={headingId} className="text-2xs font-dash-title uppercase tracking-wider text-[color:var(--dash-faint)]">
-          {title}
-          {count ? (
-            <span className="ml-1.5 text-xs font-medium normal-case tracking-normal text-[color:var(--dash-muted)]">
-              {count}
-            </span>
-          ) : null}
-        </h2>
-        <div className={cn("-my-3 flex shrink-0 items-center gap-1", editing && "mr-10")}>{aside}</div>
-      </div>
-      {children}
-      {editing ? <QuietHideButton label={title} onHide={onHide} testId={testId} /> : null}
+      <div className="px-1">{label}</div>
+      {variant === "rows" ? <div className={quietCard}>{children}</div> : children}
     </section>
   );
 }
 
-/** The edit mode's Hide button: a small face inside a 48px tap area. */
+/** A Hide button: a small round face inside a 48px tap area. */
 export function QuietHideButton({
   label,
   onHide,
   testId,
   onHero = false,
   inset = false,
+  inline = false,
 }: {
   readonly label: string;
   readonly onHide: () => void;
@@ -92,6 +168,8 @@ export function QuietHideButton({
   readonly onHero?: boolean;
   /** Sits inside its box, so it cannot overlap a parent's own Hide button. */
   readonly inset?: boolean;
+  /** Sits in the label line instead of the corner. */
+  readonly inline?: boolean;
 }) {
   return (
     <button
@@ -101,8 +179,8 @@ export function QuietHideButton({
       data-testid={testId ? `${testId}-hide` : undefined}
       className={cn(
         focusRing,
-        "absolute grid size-12 place-items-center rounded-full",
-        inset ? "top-0 right-0" : "-top-3 -right-3",
+        "grid size-12 place-items-center rounded-full",
+        inline ? "relative -mr-3" : cn("absolute", inset ? "top-0 right-0" : "-top-3 -right-3"),
       )}
     >
       <span
@@ -110,8 +188,8 @@ export function QuietHideButton({
         className={cn(
           "grid size-6 place-items-center rounded-full forced-colors:border",
           onHero
-            ? "bg-[color:var(--dash-hero-ink)] text-[color:var(--dash-hero-2)]"
-            : "bg-[color:var(--dash-ink)] text-[color:var(--dash-page)]",
+            ? "bg-[color:var(--mode-identity-contrast)] text-[color:var(--mode-identity)]"
+            : "bg-[color:var(--work-wash)] text-[color:var(--text-muted)]",
         )}
       >
         <X aria-hidden="true" className="size-icon-xs" />
@@ -120,16 +198,21 @@ export function QuietHideButton({
   );
 }
 
-/** A flat list: rows divided by hairlines, no box. */
+/**
+ * Rows divided by hairlines. In a card of rows each row carries the card's
+ * side padding; `inset` rows sit inside a padded card and carry none.
+ */
 export function QuietList({
   label,
   testId,
   className,
+  inset = false,
   children,
 }: {
   readonly label?: string;
   readonly testId?: string;
   readonly className?: string;
+  readonly inset?: boolean;
   readonly children: ReactNode;
 }) {
   return (
@@ -137,7 +220,11 @@ export function QuietList({
       role="list"
       aria-label={label}
       data-testid={testId}
-      className={cn("grid min-w-0 [&>li+li]:border-t [&>li+li]:border-[color:var(--dash-line)]", className)}
+      className={cn(
+        "m-0 grid min-w-0 list-none p-0 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]",
+        inset ? "[&>li]:px-0" : "[&>li]:px-3",
+        className,
+      )}
     >
       {children}
     </ul>
@@ -145,9 +232,9 @@ export function QuietList({
 }
 
 /**
- * One row: an optional lead (icon or date block), a title and a line under
- * it, optional text actions under those, and an optional end (a link, a call
- * button). Titles wrap rather than cut off.
+ * One row: an optional lead (icon or date tile), a bold title and a small
+ * line under it, optional actions under those, and an optional end (a pill, a
+ * tag, a call button). Titles wrap rather than cut off.
  */
 export function QuietRow({
   lead,
@@ -173,59 +260,72 @@ export function QuietRow({
     <li
       data-testid={testId}
       data-done={done ? "" : undefined}
-      className={cn("flex min-h-13 min-w-0 items-center gap-3 py-2", className)}
+      className={cn("flex min-h-12 min-w-0 items-center gap-2.5 py-2", className)}
     >
       {lead}
       <span className="grid min-w-0 flex-1">
         <span
           className={cn(
-            "break-words text-base-minus leading-snug",
-            done ? "text-[color:var(--dash-faint)]" : "font-medium text-[color:var(--dash-ink)]",
+            "text-sm-minus leading-tight break-words",
+            done ? "font-semibold text-[color:var(--text-muted)]" : "font-bold text-[color:var(--work-ink)]",
           )}
         >
           {title}
         </span>
         {subtitle ? (
-          <span
-            className={cn(
-              "mt-px break-words text-sm",
-              done ? "text-[color:var(--dash-faint)]" : "text-[color:var(--dash-muted)]",
-            )}
-          >
-            {subtitle}
-          </span>
+          <span className="mt-px text-2xs leading-snug break-words text-[color:var(--text-muted)]">{subtitle}</span>
         ) : null}
         {actions ? <span className="-my-2 flex flex-wrap items-center gap-x-4.5">{actions}</span> : null}
       </span>
       {end ? (
-        <span className="flex shrink-0 items-center gap-3 text-sm text-[color:var(--dash-faint)]">{end}</span>
+        <span className="flex shrink-0 items-center gap-2 text-2xs font-semibold text-[color:var(--text-muted)]">
+          {end}
+        </span>
       ) : null}
     </li>
   );
 }
 
 /**
- * A grey outline icon with a small dot in the area's colour: colour marks
- * meaning, not decoration. Decorative; the row says the same thing in words.
+ * A flat tinted circle with the icon in the colour of the area that owns the
+ * row: colour marks where a tap goes. Decorative; the row says it in words.
  */
-export function AreaIcon({ mode, icon: Icon }: { readonly mode?: MyDaySourceMode; readonly icon: LucideIcon }) {
+export function AreaIcon({
+  mode,
+  icon: Icon,
+  tone,
+  size = "md",
+}: {
+  readonly mode?: MyDaySourceMode;
+  readonly icon: LucideIcon;
+  /** A status tint in place of the area colour. */
+  readonly tone?: "amber" | "red" | "green" | "neutral";
+  readonly size?: "md" | "lg";
+}) {
   return (
     <span
       aria-hidden="true"
-      className="relative grid size-8 shrink-0 place-items-center text-[color:var(--dash-faint)]"
+      data-mode-identity={mode}
+      className={cn(
+        "grid shrink-0 place-items-center rounded-full forced-colors:border",
+        size === "lg" ? "size-9" : "size-7.5",
+        tone === "amber"
+          ? "bg-[color:var(--warning-bg)] text-[color:var(--warning-text)]"
+          : tone === "red"
+            ? "bg-[color:var(--danger-bg)] text-[color:var(--danger-text)]"
+            : tone === "green"
+              ? "bg-[color:var(--success-bg)] text-[color:var(--success-text)]"
+              : tone === "neutral"
+                ? "bg-[color:var(--work-wash)] text-[color:var(--text-muted)]"
+                : "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
+      )}
     >
-      <Icon aria-hidden="true" className="size-icon-md" strokeWidth={1.6} />
-      {mode ? (
-        <span
-          data-mode-identity={mode}
-          className="absolute right-px bottom-0.5 size-2 rounded-full bg-[color:var(--mode-identity)] ring-2 ring-[color:var(--dash-page)] forced-colors:bg-[CanvasText]"
-        />
-      ) : null}
+      <Icon aria-hidden="true" className={size === "lg" ? "size-4" : "size-3.75"} strokeWidth={2} />
     </span>
   );
 }
 
-/** A date block: the day number over a small-capitals word ("14 / NOV", "6 / TUE"). */
+/** A date tile: a small-capitals word over the day number ("OCT / 18", "TUE / 6"). */
 export function DateBlock({
   number,
   word,
@@ -235,38 +335,40 @@ export function DateBlock({
   readonly number: number | string;
   readonly word: string;
   readonly today?: boolean;
-  /** Tints the block in the area's colour (used for today). */
+  /** Colours the word in that area's colour. */
   readonly mode?: MyDaySourceMode;
 }) {
   return (
     <span
       aria-hidden="true"
       data-mode-identity={mode}
-      className={cn(
-        "grid w-9 shrink-0 justify-items-center leading-none",
-        today ? "text-[color:var(--dash-blue)]" : "text-[color:var(--dash-ink)]",
-      )}
+      className="grid w-8.5 shrink-0 justify-items-center text-center leading-none"
     >
-      <span className="text-base font-dash-title nums">{number}</span>
+      <span className="text-3xs font-bold tracking-wider text-[color:var(--mode-identity)] uppercase">{word}</span>
       <span
         className={cn(
-          "mt-1 text-2xs font-dash-title uppercase tracking-wider",
-          today ? "text-[color:var(--dash-blue)]" : "text-[color:var(--dash-faint)]",
+          "mt-0.5 text-base font-bold nums",
+          today ? "text-[color:var(--mode-identity)]" : "text-[color:var(--work-ink)]",
         )}
       >
-        {word}
+        {number}
       </span>
     </span>
   );
 }
 
-/** A grey note: an icon, a bold line and a line under it, and an optional link. Amber when something failed. */
+/**
+ * A note strip: an icon circle, a bold line and a line under it, and an
+ * optional action. Grey by default; `warn` makes it amber (late or failed),
+ * `danger` adds a red icon (a lapsed credential).
+ */
 export function QuietNote({
   icon: Icon,
   title,
   body,
   action,
   warn = false,
+  danger = false,
   testId,
   role,
 }: {
@@ -275,32 +377,51 @@ export function QuietNote({
   readonly body?: ReactNode;
   readonly action?: ReactNode;
   readonly warn?: boolean;
+  readonly danger?: boolean;
   readonly testId?: string;
   readonly role?: "status" | "alert";
 }) {
+  const tinted = warn || danger;
   return (
     <div
       data-testid={testId}
       role={role}
       data-warn={warn ? "" : undefined}
+      data-danger={danger ? "" : undefined}
       className={cn(
-        "flex min-w-0 items-start gap-2.5 rounded-xl border bg-[color:var(--dash-raised)] px-3 py-2.5 forced-colors:border",
-        warn ? "border-[color:var(--dash-warn-line)]" : "border-[color:var(--dash-line)]",
+        "flex min-w-0 items-center gap-2.5 rounded-[var(--work-radius-card)] px-3 py-2.5 forced-colors:border",
+        tinted
+          ? "border border-[color:var(--warning-border)] bg-[color:var(--warning-bg)]"
+          : "bg-[color:var(--work-wash)]",
       )}
     >
-      <Icon
+      <span
         aria-hidden="true"
         className={cn(
-          "mt-px size-icon-sm shrink-0",
-          warn ? "text-[color:var(--dash-amber)]" : "text-[color:var(--dash-muted)]",
+          "grid size-7.5 shrink-0 place-items-center rounded-full",
+          danger
+            ? "bg-[color:var(--danger-bg)] text-[color:var(--danger-text)]"
+            : warn
+              ? "bg-[color:var(--work-surface)] text-[color:var(--warning-text)]"
+              : "bg-[color:var(--work-surface)] text-[color:var(--text-muted)]",
         )}
-        strokeWidth={1.6}
-      />
-      <span className="grid min-w-0 flex-1">
-        <span className="break-words text-base-minus font-dash-title text-[color:var(--dash-ink)]">{title}</span>
-        {body ? <span className="mt-px break-words text-sm text-[color:var(--dash-muted)]">{body}</span> : null}
+      >
+        <Icon aria-hidden="true" className="size-3.75" strokeWidth={2} />
       </span>
-      {action ? <span className="-my-2 self-center">{action}</span> : null}
+      <span className="grid min-w-0 flex-1">
+        <span
+          className={cn(
+            "text-sm-minus leading-tight font-bold break-words",
+            tinted ? "text-[color:var(--warning-text)]" : "text-[color:var(--work-ink)]",
+          )}
+        >
+          {title}
+        </span>
+        {body ? (
+          <span className="mt-px text-2xs leading-snug break-words text-[color:var(--text-muted)]">{body}</span>
+        ) : null}
+      </span>
+      {action ? <span className="-my-2 shrink-0 self-center">{action}</span> : null}
     </div>
   );
 }
@@ -308,8 +429,44 @@ export function QuietNote({
 /** Small print under a section, with a small icon. */
 export function QuietFoot({ icon: Icon, children }: { readonly icon: LucideIcon; readonly children: ReactNode }) {
   return (
-    <p className="flex min-w-0 items-start gap-1.5 text-xs text-[color:var(--dash-faint)]">
-      <Icon aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.6} />
+    <p className="m-0 flex min-w-0 items-start gap-1.75 px-1 text-2xs leading-snug font-medium text-[color:var(--text-muted)]">
+      <Icon aria-hidden="true" className="mt-px size-3.25 shrink-0" strokeWidth={2} />
+      <span className="min-w-0 break-words">{children}</span>
+    </p>
+  );
+}
+
+/**
+ * The "Checked 07:40 · On Call, Roster" line: a green dot when every source
+ * answered, amber when one did not, grey when nothing is set up or the data
+ * is a sample.
+ */
+export function QuietStamp({
+  tone,
+  testId,
+  children,
+}: {
+  readonly tone: "ok" | "warn" | "off";
+  readonly testId?: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <p
+      data-testid={testId}
+      data-tone={tone}
+      className="m-0 flex min-w-0 items-center gap-1.5 px-0.5 text-2xs font-semibold text-[color:var(--text-muted)]"
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-1.75 shrink-0 rounded-full forced-colors:bg-[CanvasText]",
+          tone === "ok"
+            ? "bg-[color:var(--success-text)]"
+            : tone === "warn"
+              ? "bg-[color:var(--warning-text)]"
+              : "bg-[color:var(--neutral-400)]",
+        )}
+      />
       <span className="min-w-0 break-words">{children}</span>
     </p>
   );
@@ -328,12 +485,12 @@ export function QuietKeyValue({
   return (
     <span
       className={cn(
-        "flex min-w-0 justify-between gap-2.5 text-sm text-[color:var(--dash-muted)]",
-        total && "mt-0.5 border-t border-[color:var(--dash-line)] pt-1.5",
+        "flex min-w-0 justify-between gap-2.5 text-xs text-[color:var(--text-muted)]",
+        total && "mt-0.5 border-t border-[color:var(--work-line)] pt-1.5",
       )}
     >
       <span className="min-w-0 break-words">{label}</span>
-      <span className="shrink-0 font-dash-title text-[color:var(--dash-ink)] nums">{value}</span>
+      <span className="shrink-0 font-bold text-[color:var(--work-ink)] nums">{value}</span>
     </span>
   );
 }
@@ -371,7 +528,7 @@ export function QuietRing({
           r={radius}
           fill="none"
           strokeWidth={stroke}
-          className="stroke-[color:var(--dash-line)]"
+          className="stroke-[color:var(--work-wash)]"
         />
         {clamped > 0 ? (
           <circle
@@ -382,10 +539,7 @@ export function QuietRing({
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${clamped * circumference} ${circumference}`}
-            className={cn(
-              mode ? "stroke-[color:var(--mode-identity)]" : "stroke-[color:var(--dash-blue)]",
-              "forced-colors:stroke-[CanvasText]",
-            )}
+            className="stroke-[color:var(--mode-identity)] forced-colors:stroke-[CanvasText]"
           />
         ) : null}
       </svg>
@@ -399,17 +553,25 @@ export function QuietTextLink({
   href,
   children,
   muted = false,
+  pill = false,
   ariaLabel,
   testId,
 }: {
   readonly href: string;
   readonly children: ReactNode;
   readonly muted?: boolean;
+  /** Drawn as a small tinted pill ("Renew"). */
+  readonly pill?: boolean;
   readonly ariaLabel?: string;
   readonly testId?: string;
 }) {
   return (
-    <Link href={href} aria-label={ariaLabel} data-testid={testId} className={muted ? quietLinkMuted : quietLink}>
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      data-testid={testId}
+      className={pill ? quietPill : muted ? quietLinkMuted : quietLink}
+    >
       {children}
     </Link>
   );

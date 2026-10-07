@@ -189,7 +189,6 @@ const myDay: WorkArea = {
           sub: "Stage, workplaces",
           icon: "user",
           href: "/my-day/profile",
-          band: false,
         },
         {
           id: "my-day-alerts",
@@ -197,7 +196,6 @@ const myDay: WorkArea = {
           sub: "Brief, quiet hours",
           icon: "bell",
           href: "/my-day/alerts",
-          band: false,
         },
         {
           id: "my-day-privacy",
