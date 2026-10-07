@@ -1,12 +1,13 @@
 "use client";
 
+import { T5Button } from "@/components/teaching/t5-kit";
+
 import { withUnit } from "./teaching-number";
 import { Check, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
@@ -119,11 +120,11 @@ export function TeachingCpdBridgeSheet({
       testId={testId}
       footer={
         savedResult ? (
-          <Button block onClick={onClose} testId={`${testId}-done`}>
+          <T5Button block onClick={onClose} testId={`${testId}-done`}>
             Done
-          </Button>
+          </T5Button>
         ) : (
-          <Button
+          <T5Button
             variant="primary"
             block
             busy={busy}
@@ -132,7 +133,7 @@ export function TeachingCpdBridgeSheet({
             testId={`${testId}-log-button`}
           >
             {`Log ${withUnit(hours.toFixed(1), "h")} to CPD`}
-          </Button>
+          </T5Button>
         )
       }
     >

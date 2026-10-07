@@ -22,6 +22,7 @@ import {
   T5Panel,
   T5Row,
   T5Section,
+  T5Button,
 } from "@/components/teaching/t5-kit";
 import { mondayOf, perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
@@ -31,7 +32,6 @@ import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingSignedOut } from "@/components/teaching/use-teaching-sample";
 import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
-import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
@@ -119,13 +119,13 @@ function ExamForm({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary">
+        <T5Button type="submit" variant="primary">
           {exam ? "Save" : "Start the countdown"}
-        </Button>
+        </T5Button>
         {onDone ? (
-          <Button type="button" variant="secondary" onClick={onDone}>
+          <T5Button type="button" variant="secondary" onClick={onDone}>
             Cancel
-          </Button>
+          </T5Button>
         ) : null}
       </div>
     </form>
@@ -410,11 +410,11 @@ function GroupForm({ group, update, onDone }: { group: ExamPrepState["group"]; u
       <TextField label="Where" maxLength={120} value={place} onChange={(event) => setPlace(event.target.value)} />
       <NoPatientDetailsMark />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary">
+        <T5Button type="submit" variant="primary">
           Save
-        </Button>
+        </T5Button>
         {group ? (
-          <Button
+          <T5Button
             type="button"
             variant="ghost"
             onClick={() => {
@@ -423,11 +423,11 @@ function GroupForm({ group, update, onDone }: { group: ExamPrepState["group"]; u
             }}
           >
             Clear
-          </Button>
+          </T5Button>
         ) : null}
-        <Button type="button" variant="ghost" onClick={onDone}>
+        <T5Button type="button" variant="ghost" onClick={onDone}>
           Cancel
-        </Button>
+        </T5Button>
       </div>
     </form>
   );

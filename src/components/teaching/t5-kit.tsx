@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, ChevronRight, Info, ShieldCheck, TriangleAlert, WifiOff, type LucideIcon } from "lucide-react";
+import { Check, ChevronRight, Info, Loader2, ShieldCheck, TriangleAlert, WifiOff, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import type { ButtonProps, ButtonVariant } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import type { AppModeId } from "@/lib/app-modes";
 
@@ -626,5 +627,74 @@ export function T5Hours({ children }: { children: ReactNode }) {
     >
       {children}
     </span>
+  );
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+const T5_FACE: Record<ButtonVariant, "primary" | "secondary" | "quiet" | "amber"> = {
+  primary: "primary",
+  secondary: "secondary",
+  toolbar: "quiet",
+  ghost: "quiet",
+  danger: "amber",
+};
+
+/**
+ * The shared work-button face (`.work-button` in work-mode.css) as attributes, for a link or a file
+ * label that must look like a button. `block` is the full-width `wide` size.
+ */
+export function t5ButtonFace({ variant = "secondary", block = false }: { variant?: ButtonVariant; block?: boolean }) {
+  return {
+    className: "work-button no-underline",
+    "data-variant": T5_FACE[variant],
+    "data-size": block ? "wide" : undefined,
+  } as const;
+}
+
+/**
+ * Teaching's form buttons on the shared flat work-button face (work-mode redesign, owner request 6
+ * Oct 2026). It keeps the app Button's props (busy, block, icons, ref, aria) so a form swaps without
+ * losing behaviour; only the face changes. Ghost becomes the quiet text button, danger the amber one.
+ */
+export function T5Button({
+  variant = "secondary",
+  // The work face has one height; the old size prop is accepted and dropped so it never reaches the DOM.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  size: _size,
+  children,
+  icon: Icon,
+  trailingIcon: TrailingIcon,
+  block = false,
+  busy = false,
+  busyLabel,
+  className,
+  disabled,
+  type,
+  ref,
+  testId,
+  ...props
+}: ButtonProps) {
+  const face = t5ButtonFace({ variant, block });
+  return (
+    <button
+      {...props}
+      ref={ref}
+      data-testid={testId}
+      type={type ?? "button"}
+      disabled={busy || disabled}
+      aria-busy={busy || undefined}
+      className={cn(face.className, className)}
+      data-variant={face["data-variant"]}
+      data-size={face["data-size"]}
+    >
+      {busy ? (
+        <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
+      ) : Icon ? (
+        <Icon aria-hidden="true" />
+      ) : null}
+      <span>{busy && busyLabel ? busyLabel : children}</span>
+      {!busy && TrailingIcon ? <TrailingIcon aria-hidden="true" /> : null}
+    </button>
   );
 }

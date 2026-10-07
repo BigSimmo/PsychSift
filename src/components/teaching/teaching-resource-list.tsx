@@ -15,11 +15,10 @@ import {
   resourceWriteError,
   type AddKind,
 } from "@/components/teaching/resources-model";
-import { T5Icon, T5List, T5Row } from "@/components/teaching/t5-kit";
+import { T5Icon, T5List, T5Row, T5Button } from "@/components/teaching/t5-kit";
 import type { SessionDetailRead } from "@/components/teaching/teaching-reads";
 import { TeachingRow } from "@/components/teaching/teaching-row";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
@@ -296,9 +295,9 @@ export function AddResourceSheet({
       onClose={onClose}
       title="Add a resource"
       footer={
-        <Button variant="primary" block disabled={!ready} busy={busy} busyLabel="Adding" onClick={() => void add()}>
+        <T5Button variant="primary" block disabled={!ready} busy={busy} busyLabel="Adding" onClick={() => void add()}>
           Add
-        </Button>
+        </T5Button>
       }
     >
       <div className="grid gap-3">

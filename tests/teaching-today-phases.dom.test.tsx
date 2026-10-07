@@ -259,7 +259,7 @@ describe("Week's roster clashes", () => {
     expect(screen.getByTestId(`teaching-week-row-${OCC}`)).toHaveTextContent("After a night");
   });
 
-  it("remembers Whole service on this phone", async () => {
+  it("remembers Whole service while you move between pages, without writing to the device", async () => {
     window.localStorage.clear();
     const mine = session({ isPresenter: true });
     const other = session({ occurrenceId: "99999999-9999-4999-8999-999999999999", title: "Grand rounds" });
@@ -281,6 +281,8 @@ describe("Week's roster clashes", () => {
     await screen.findByTestId("teaching-week-list");
     expect(screen.getByRole("button", { name: "Whole service" })).toHaveAttribute("aria-pressed", "true");
     expect(within(screen.getByTestId("teaching-week-list")).getByText("Grand rounds")).toBeInTheDocument();
-    window.localStorage.clear();
+    expect(window.localStorage.length).toBe(0);
+    // Put the choice back so no later test starts on Whole service.
+    fireEvent.click(screen.getByRole("button", { name: "Mine" }));
   });
 });

@@ -79,7 +79,7 @@ import type { WhatsOnRow } from "@/lib/teaching/model";
  *
  * Nothing of the week is kept on the phone. If the connection drops after the week has loaded, the
  * page keeps showing that read and says the time it loaded, rather than pretending to be current.
- * The only thing remembered on this phone is the Mine or Whole service choice.
+ * Nothing is kept on the phone at all: the Mine or Whole service choice lasts for this visit only.
  */
 
 // "Mine" comes first. Sessions carry no training-level field (only What's on rows do), so Mine is the
@@ -89,24 +89,19 @@ const FILTERS = [
   { value: "all", label: "Whole service" },
 ] as const;
 
-/** This phone's last Mine or Whole service choice (a convenience only; nothing breaks without it). */
-const FILTER_KEY = "psychsift:teaching-week-filter";
+/**
+ * The last Mine or Whole service choice, kept in memory for this visit only, so it survives moving
+ * between Teaching pages. It is never written to the device: Teaching allows one device key only
+ * (What's on's level, see teaching-search-privacy.test.ts), and a convenience is not worth a second.
+ */
+let rememberedFilter: WeekFilter | null = null;
 
 function storedFilter(): WeekFilter | null {
-  try {
-    const value = window.localStorage.getItem(FILTER_KEY);
-    return value === "all" || value === "presenting" ? value : null;
-  } catch {
-    return null;
-  }
+  return rememberedFilter;
 }
 
 function storeFilter(value: WeekFilter) {
-  try {
-    window.localStorage.setItem(FILTER_KEY, value);
-  } catch {
-    // Private window or blocked storage: the choice simply is not remembered.
-  }
+  rememberedFilter = value;
 }
 
 type WhatsOnRead = { sessions: WhatsOnRow[] };

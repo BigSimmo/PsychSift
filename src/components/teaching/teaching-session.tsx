@@ -18,7 +18,7 @@ import {
   sessionWhen,
 } from "@/components/teaching/session-view-model";
 import { ActionStrip, type TeachingAction } from "@/components/teaching/teaching-actions";
-import { T5Icon, T5Kicker, T5List, T5Note, T5Panel, T5Row, T5Section } from "@/components/teaching/t5-kit";
+import { T5Icon, T5Kicker, T5List, T5Note, T5Panel, T5Row, T5Section, T5Button } from "@/components/teaching/t5-kit";
 import { TeachingCodeSheet } from "@/components/teaching/teaching-code-sheet";
 import { AttendanceTileRow } from "@/components/teaching/teaching-modules";
 import { TeachingNavHeader } from "@/components/teaching/teaching-nav-header";
@@ -32,7 +32,6 @@ import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useDelayedPost } from "@/components/teaching/use-delayed-post";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
-import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
 import {
@@ -449,7 +448,7 @@ function RegisterSheet({
                   subtitle={attendanceLabels[row.method]}
                   trailing={
                     userId ? (
-                      <Button
+                      <T5Button
                         variant="ghost"
                         aria-label={`Remove ${name}`}
                         busy={removing === userId}
@@ -458,7 +457,7 @@ function RegisterSheet({
                         onClick={() => remove(userId, name)}
                       >
                         Remove
-                      </Button>
+                      </T5Button>
                     ) : undefined
                   }
                 />
@@ -473,9 +472,9 @@ function RegisterSheet({
             className="flex items-center justify-between gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1 pr-1 pl-3"
           >
             <span className="text-sm text-[color:var(--text-heading)]">{`${delayed.pending}.`}</span>
-            <Button variant="ghost" onClick={undo}>
+            <T5Button variant="ghost" onClick={undo}>
               Undo
-            </Button>
+            </T5Button>
           </div>
         ) : null}
         {error ? (
