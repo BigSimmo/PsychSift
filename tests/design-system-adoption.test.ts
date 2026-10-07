@@ -1509,7 +1509,9 @@ describe("design-system adoption manifest", () => {
     // 177 -> 188: the rest of junior features round 2: Admin Contract, Leave wallet, Starter pack and
     // Ready for day one, CPD Home, Job applications and its CV, On Call First week and Who's on from the
     // roster, Ask the agreement, and the Teaching term folder.
-    expect(manifest.routeCoverage.discovered).toHaveLength(188);
+    // 188 -> 205: work mode integration (7 Oct 2026): the 14 wiring screens, My Day Favourites,
+    // Set up Work and Help.
+    expect(manifest.routeCoverage.discovered).toHaveLength(205);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);
