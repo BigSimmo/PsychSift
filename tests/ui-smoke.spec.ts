@@ -2065,6 +2065,13 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(new Set(iconGeometry.map(({ tile }) => tile.join("x")))).toEqual(new Set(["40x40"]));
     expect(new Set(iconGeometry.map(({ glyph }) => glyph?.join("x")))).toEqual(new Set(["20x20"]));
 
+    await sideToggle.getByRole("button", { name: "Work", exact: true }).click();
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^On Call\b/ })).toBeAttached();
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toHaveCount(0);
+    await sideToggle.getByRole("button", { name: "Clinical", exact: true }).click();
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toBeAttached();
+
     const closeButton = modeSheet.getByRole("button", { name: "Close mode menu" });
     const closeGeometry = await closeButton.evaluate((button) => {
       const bounds = button.getBoundingClientRect();
@@ -2078,11 +2085,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(closeGeometry.height).toBeGreaterThanOrEqual(44);
     expect(Number.parseFloat(closeGeometry.radius)).toBeGreaterThanOrEqual(22);
 
-    // Work shows My Day and On Call, and Clinical brings the reference back.
+    // Work is one list with On Call in it and no heading of its own (#3351), and
+    // Clinical brings the reference back.
     await sideToggle.getByRole("button", { name: "Work", exact: true }).click();
-    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toHaveCount(0);
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^On Call\b/ })).toBeAttached();
     await expect(modeOptions.first()).toContainText("My Day");
     await sideToggle.getByRole("button", { name: "Clinical", exact: true }).click();
     await expect(modeOptions).toHaveCount(modeCount);
@@ -4655,46 +4662,27 @@ test.describe("PsychSift UI smoke coverage", () => {
     await appModeButton.click();
     const modeDialog = page.getByRole("dialog", { name: "Choose app mode" });
     const appModeMenu = modeDialog.getByRole("menu", { name: "Choose app mode" });
-    const modeSearch = modeDialog.getByRole("textbox", { name: "Find a mode" });
     await expect(modeDialog).toBeVisible();
     await expect(appModeMenu).toBeVisible();
-    await expect(modeSearch).toBeFocused();
-    // The Clinical and Work toggle opens on Answer's side: 19 clinical modes.
-    await expect(modeDialog.getByRole("status")).toHaveText("19 clinical modes");
+    await expect(modeDialog.getByRole("textbox", { name: "Find a mode" })).toHaveCount(0);
+    await expect(modeDialog.getByRole("radio", { name: "Clinical" })).toBeChecked();
+    await expect(modeDialog.getByRole("status")).toHaveText("19 in Clinical");
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading")).toHaveCount(3);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
-    await modeDialog.getByRole("button", { name: "Work", exact: true }).click();
-    await expect(modeDialog.getByRole("status")).toHaveText("7 work modes");
-    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading")).toHaveCount(2);
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toBeAttached();
-    await modeDialog.getByRole("button", { name: "Clinical", exact: true }).click();
-    await modeSearch.focus();
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toHaveCount(0);
 
-    // Typing searches both sides, so a mode is never hidden behind the toggle.
-
-    await modeSearch.fill("d");
-    await expect(modeDialog.getByRole("status")).toHaveText("9 matches");
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(9);
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Differentials\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^DSM-5 Diagnosis\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
-    // "Medicines & tools", the hub that leads its group, carries a "d" too.
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines & tools\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
-    // "CPD" carries a "d" too (the mode's label was "CME" before the RANZCP rename).
+    await modeDialog.getByRole("radio", { name: "Work" }).click();
+    await expect(modeDialog.getByRole("status")).toHaveText("7 in Work");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Admin\b/ })).toBeAttached();
-    // "My Day" carries a "d" too.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
-    await modeDialog.getByRole("button", { name: "Clear mode search" }).click();
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toHaveCount(0);
+    await modeDialog.getByRole("radio", { name: "Clinical" }).click();
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
 
     const answerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
@@ -4708,9 +4696,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Services\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Favourites\b/ })).toBeFocused();
-    await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Favourites\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Psychiatry\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
@@ -4738,12 +4726,10 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     await appModeButton.click();
     await expect(appModeMenu).toBeVisible();
-    // Opening schedules the search autofocus in a requestAnimationFrame. Focusing an
-    // option before that frame runs lets the autofocus steal focus back into the search
-    // box, where Tab is not a dismiss key, so the menu stays open and this fails.
-    await expect(modeSearch).toBeFocused();
+    // Opening focuses the current mode on the next frame. Wait for that before Tab,
+    // or a late focus move keeps the menu open.
     const reopenedAnswerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
-    await reopenedAnswerMode.focus();
+    await expect(reopenedAnswerMode).toBeFocused();
     await expect(reopenedAnswerMode).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(appModeMenu).toBeHidden();

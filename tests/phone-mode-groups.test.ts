@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { appModeDefinitions, appModeIds, type AppModeId } from "@/lib/app-modes";
-import { modeSideOf, modesOnSide, orderByPhoneModeGroups, phoneModeGroups } from "@/lib/phone-mode-groups";
+import { appModeIds, type AppModeId } from "@/lib/app-modes";
+import {
+  modeMenuSideForMode,
+  modeMenuSides,
+  orderByPhoneModeGroups,
+  orderModesForSide,
+  phoneModeGroups,
+  phoneModeGroupsForSide,
+} from "@/lib/phone-mode-groups";
 
 /**
  * The phone mode sheet renders a grouped list rather than the flat
@@ -32,47 +39,41 @@ describe("phone mode groups", () => {
     expect(new Set(groupIds).size).toBe(groupIds.length);
   });
 
-  it("draws five doors: My Day with the work areas, On Call alone, then Search, Psychiatry, Medicines & tools", () => {
+  it("draws Clinical as Search, Psychiatry and Medicines, and Work as one list with On Call in it", () => {
     const groupOf = (modeId: AppModeId) =>
       phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId));
-    // Modes review, phase 1: the work areas sit behind My Day, which leads.
+    expect(modeMenuSides.map((side) => side.id)).toEqual(["clinical", "work"]);
+    expect(phoneModeGroupsForSide("clinical").map((group) => group.id)).toEqual(["find", "psychiatry", "care"]);
+    expect(phoneModeGroupsForSide("work").map((group) => group.id)).toEqual(["work"]);
+    expect(groupOf("on-call")?.side).toBe("work");
     expect(groupOf("my-day")).toMatchObject({
-      id: "my-day",
-      label: "My Day",
-      modeIds: ["my-day", "roster", "open-shifts", "teaching", "cme", "my-work"],
+      id: "work",
+      showHeading: false,
+      modeIds: ["my-day", "cme", "open-shifts", "roster", "my-work", "on-call", "teaching"],
     });
-    // On Call stays a door of its own, second, so the urgent screen is never buried.
-    expect(groupOf("on-call")).toMatchObject({ id: "on-call", label: "On Call", modeIds: ["on-call"] });
-    // First Nations culturally safe care is clinical guidance, beside diagnosis and formulation.
     expect(groupOf("first-nations")?.id).toBe("psychiatry");
     expect(groupOf("prescribing")).toMatchObject({ id: "care", label: "Medicines & tools" });
-    expect(phoneModeGroups.map((group) => group.id)).toEqual(["my-day", "on-call", "find", "psychiatry", "care"]);
+    expect(groupOf("favourites")?.modeIds).toEqual(["answer", "documents", "services", "sources", "favourites"]);
+    expect(groupOf("tools")?.modeIds).toEqual([
+      "medicines",
+      "prescribing",
+      "tools",
+      "calculators",
+      "factsheets",
+      "dictionary",
+    ]);
+    expect(phoneModeGroups.map((group) => group.id)).toEqual(["find", "psychiatry", "care", "work"]);
+    expect(modeMenuSideForMode("on-call")).toBe("work");
+    expect(modeMenuSideForMode("answer")).toBe("clinical");
   });
 
   it("orders modes the way the grouped menus draw them, for arrow-key focus", () => {
     const registryOrder = appModeIds.map((id) => ({ id }));
     expect(orderByPhoneModeGroups(registryOrder).map((mode) => mode.id)).toEqual(groupedModeIds);
-    // A session that hides some modes keeps the drawn order for the rest.
+    // A session that hides some modes keeps the drawn order for the rest: Clinical, then Work.
     const someModes = (["cme", "psychiatry", "forms", "answer"] as const).map((id) => ({ id }));
-    expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["cme", "answer", "psychiatry", "forms"]);
-  });
-});
-
-describe("Clinical and Work toggle sides", () => {
-  it("puts the clinician's own day on Work and the reference on Clinical", () => {
-    const work = phoneModeGroups.filter((group) => group.side === "work").map((group) => group.id);
-    expect(work).toEqual(["my-day", "on-call"]);
-    expect(modeSideOf("cme")).toBe("work");
-    expect(modeSideOf("on-call")).toBe("work");
-    expect(modeSideOf("answer")).toBe("clinical");
-    expect(modeSideOf("dictionary")).toBe("clinical");
-  });
-
-  it("keeps the drawn order inside one side", () => {
-    const modes = orderByPhoneModeGroups(appModeDefinitions);
-    const clinical = modesOnSide(modes, "clinical").map((mode) => mode.id);
-    expect(clinical[0]).toBe("answer");
-    expect(clinical).not.toContain("my-day");
-    expect(modesOnSide(modes, "work").length + clinical.length).toBe(modes.length);
+    expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["answer", "psychiatry", "forms", "cme"]);
+    expect(orderModesForSide(someModes, "work").map((mode) => mode.id)).toEqual(["cme"]);
+    expect(orderModesForSide(someModes, "clinical").map((mode) => mode.id)).toEqual(["answer", "psychiatry", "forms"]);
   });
 });

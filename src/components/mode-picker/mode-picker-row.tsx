@@ -1,7 +1,7 @@
 import { BriefcaseMedical, Check, ChevronDown, ChevronUp, Stethoscope, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
-import { modeSideLabels, modeSides, type ModeSide } from "@/lib/phone-mode-groups";
+import { modeMenuSides, type ModeMenuSideId } from "@/lib/phone-mode-groups";
 
 /**
  * One row of the mode pill's menu: the phone sheet's "Choose mode" level, the
@@ -49,6 +49,7 @@ export function ModePickerRowContent({
   icon: Icon,
   label,
   hint,
+  showHint = false,
   active,
   phone,
   modeIconId,
@@ -56,8 +57,10 @@ export function ModePickerRowContent({
 }: {
   icon: LucideIcon;
   label: string;
-  /** Phone only: one short line under the name. */
+  /** One short line under the name: always on the phone, on the desktop only with `showHint`. */
   hint?: string;
+  /** Work's short list shows the line on the desktop too (#3351). Clinical stays compact. */
+  showHint?: boolean;
   active: boolean;
   phone: boolean;
   /** Only the mode list stamps this; the section list has no per-mode hook to offer. */
@@ -91,7 +94,7 @@ export function ModePickerRowContent({
         <span className="block truncate text-sm font-semibold tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
           {label}
         </span>
-        {phone && hint ? (
+        {(phone || showHint) && hint ? (
           <span className="mt-0.5 block truncate text-xs font-medium leading-4 text-[color:var(--text-muted)]">
             {hint}
           </span>
@@ -217,7 +220,7 @@ export function ModePickerCurrentMode({
   );
 }
 
-const modeSideIcons: Record<ModeSide, LucideIcon> = {
+const modeSideIcons: Record<ModeMenuSideId, LucideIcon> = {
   clinical: Stethoscope,
   work: BriefcaseMedical,
 };
@@ -235,8 +238,8 @@ export function ModePickerSideToggle({
   onChange,
   phone,
 }: {
-  side: ModeSide;
-  onChange: (side: ModeSide) => void;
+  side: ModeMenuSideId;
+  onChange: (side: ModeMenuSideId) => void;
   phone: boolean;
 }) {
   return (
@@ -251,7 +254,7 @@ export function ModePickerSideToggle({
           : "h-10 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)]",
       )}
     >
-      {modeSides.map((option) => {
+      {modeMenuSides.map(({ id: option, label }) => {
         const pressed = option === side;
         const Icon = modeSideIcons[option];
         return (
@@ -270,7 +273,7 @@ export function ModePickerSideToggle({
             )}
           >
             <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
-            {modeSideLabels[option]}
+            {label}
           </button>
         );
       })}

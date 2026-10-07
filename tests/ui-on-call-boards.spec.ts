@@ -332,9 +332,7 @@ test.describe("02 More, 03 All modes — the pill owns page switching", () => {
     const menu = page.locator("#app-mode-menu");
     await expect(menu).toBeVisible();
     await expect(menu).toHaveAttribute("aria-label", /Choose app mode/);
-    await expect(
-      page.getByTestId("app-mode-side-toggle").getByRole("button", { name: "Work", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(menu.getByRole("radio", { name: "Work" })).toBeChecked();
     await expect(menu.getByRole("menuitemradio", { name: /^On Call\b/ })).toHaveAttribute("aria-checked", "true");
     await expect(page.getByTestId("app-mode-section-list")).toHaveCount(0);
   });
