@@ -1,5 +1,5 @@
 {
-  "$comment": "Client JS bundle-size budgets captured from a known-good production build. `production` guards aggregate user-facing chunks, `routes` guards the Lighthouse journeys and the main work-mode pages (added by the work-mode speed review, 7 Oct 2026) against route-local growth, and `mockups` is a looser design-scratch hygiene ceiling. Refresh intentionally with `npm run check:bundle-budget -- --update`.",
+  "$comment": "Client JS bundle-size budgets captured from a known-good production build. `production` guards aggregate user-facing chunks, `routes` guards the Lighthouse journeys and the main work-mode pages (added by the work-mode speed review, 7 Oct 2026) against route-local growth (route baselines lowered about 100 KB on 8 Oct 2026 when the sign-in library moved out of the first load, so that saving cannot quietly regrow), and `mockups` is a looser design-scratch hygiene ceiling. Refresh intentionally with `npm run check:bundle-budget -- --update`.",
   "enforce": true,
   "production": {
     "gzipBytes": 5057435,
@@ -22,55 +22,55 @@
   },
   "routes": {
     "/": {
-      "gzipBytes": 337647,
+      "gzipBytes": 229182,
       "tolerancePct": 10
     },
     "/documents/search": {
-      "gzipBytes": 342594,
+      "gzipBytes": 231601,
       "tolerancePct": 10
     },
     "/my-day": {
-      "gzipBytes": 543121,
+      "gzipBytes": 444857,
       "tolerancePct": 10
     },
     "/my-day/week": {
-      "gzipBytes": 569367,
+      "gzipBytes": 481356,
       "tolerancePct": 10
     },
     "/roster": {
-      "gzipBytes": 460164,
+      "gzipBytes": 361951,
       "tolerancePct": 10
     },
     "/roster/shifts": {
-      "gzipBytes": 460434,
+      "gzipBytes": 362217,
       "tolerancePct": 10
     },
     "/open-shifts": {
-      "gzipBytes": 418038,
+      "gzipBytes": 320160,
       "tolerancePct": 10
     },
     "/on-call": {
-      "gzipBytes": 489787,
+      "gzipBytes": 389216,
       "tolerancePct": 10
     },
     "/on-call/handover": {
-      "gzipBytes": 520491,
+      "gzipBytes": 422726,
       "tolerancePct": 10
     },
     "/teaching": {
-      "gzipBytes": 444907,
+      "gzipBytes": 345601,
       "tolerancePct": 10
     },
     "/teaching/assessments": {
-      "gzipBytes": 533674,
+      "gzipBytes": 432014,
       "tolerancePct": 10
     },
     "/cme": {
-      "gzipBytes": 482172,
+      "gzipBytes": 384066,
       "tolerancePct": 10
     },
     "/admin": {
-      "gzipBytes": 450355,
+      "gzipBytes": 350344,
       "tolerancePct": 10
     }
   },
