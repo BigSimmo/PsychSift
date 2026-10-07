@@ -16,8 +16,10 @@ import { complianceFixture } from "./helpers/on-call-entry-fixture";
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin/contract",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(search.value),
 }));
+
+const search = vi.hoisted(() => ({ value: "" }));
 
 const account = vi.hoisted(() => ({ isAuthenticated: true }));
 vi.mock("@/components/account-data-provider", () => ({
@@ -90,6 +92,7 @@ beforeEach(() => {
     cachedAt: null,
   });
   account.isAuthenticated = true;
+  search.value = "";
   calls = [];
   leavePayload = { leave: [] };
   failWrites = false;
@@ -285,6 +288,13 @@ describe("ContractEndPage", () => {
     vi.mocked(fetch).mockImplementationOnce(async () => new Response("no", { status: 500 }));
     render(<ContractEndPage now={NOW} />);
     expect(await screen.findByTestId("admin-contract-leave-failed")).toBeTruthy();
+  });
+
+  it("opens the question a link names, such as the parental leave card's", () => {
+    entryState.entries = [contractRow()];
+    search.value = "question=parental-leave";
+    render(<ContractEndPage now={NOW} />);
+    expect(screen.getByTestId("admin-contract-question-text").textContent).toContain("parental leave");
   });
 
   it("downloads a calendar file named contract-end.ics", () => {

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen,
   Copy,
+  EyeOff,
   ExternalLink,
   HeartHandshake,
   History,
@@ -25,6 +26,7 @@ import {
   copyLabel,
   JuniorFootNote,
   JuniorSectionLabel,
+  JuniorUndoBar,
   PatientDetailCatch,
   useCopy,
   useOnline,
@@ -89,10 +91,15 @@ function RosterBookings({ type, leave, today }: { type: LeaveType; leave: Junior
   if (!kind) return null;
   const rows =
     leave.status === "ready"
-      ? leave.leave.filter((item) => item.kind === kind && item.endsOn >= today).sort((a, b) => (a.startsOn < b.startsOn ? -1 : 1))
+      ? leave.leave
+          .filter((item) => item.kind === kind && item.endsOn >= today)
+          .sort((a, b) => (a.startsOn < b.startsOn ? -1 : 1))
       : [];
   return (
-    <div className="grid gap-1.5 border-t border-[color:var(--border)] pt-3" data-testid={`admin-leave-${type.id}-booked`}>
+    <div
+      className="grid gap-1.5 border-t border-[color:var(--border)] pt-3"
+      data-testid={`admin-leave-${type.id}-booked`}
+    >
       <p className={eyebrowText}>Booked in Roster</p>
       {leave.status === "loading" ? (
         <p className={cn(textMuted, "text-sm")}>Loading from Roster</p>
@@ -109,7 +116,9 @@ function RosterBookings({ type, leave, today }: { type: LeaveType; leave: Junior
                   ? formatDateEcho(row.startsOn)
                   : `${formatDateEcho(row.startsOn).replace(/\s\d{4}$/, "")} to ${formatDateEcho(row.endsOn)}`}
               </span>
-              <span className="rounded-md border border-[color:var(--border)] px-2 py-0.5 text-xs">{ROSTER_LEAVE_STATUS_WORDS[row.status]}</span>
+              <span className="rounded-md border border-[color:var(--border)] px-2 py-0.5 text-xs">
+                {ROSTER_LEAVE_STATUS_WORDS[row.status]}
+              </span>
             </li>
           ))}
         </ul>
@@ -183,7 +192,9 @@ function MessageFields({
         />
       ) : null}
       {type.id === "parental" ? (
-        <p className={cn(textMuted, "text-xs")}>Private. This date is not saved anywhere and is only in the message if you copy it.</p>
+        <p className={cn(textMuted, "text-xs")}>
+          Private. This date is not saved anywhere and is only in the message if you copy it.
+        </p>
       ) : null}
     </div>
   );
@@ -193,10 +204,16 @@ function MessageFields({
 function MessagePreview({ text, testId }: { text: string; testId: string }) {
   const parts = text.split(/(\[[^\]]+\])/g);
   return (
-    <p className="whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm leading-6" data-testid={testId}>
+    <p
+      className="whitespace-pre-line rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm leading-6"
+      data-testid={testId}
+    >
       {parts.map((part, index) =>
         /^\[[^\]]+\]$/.test(part) ? (
-          <span key={index} className="rounded border border-dashed border-[color:var(--border-strong)] px-1 text-[color:var(--text-muted)]">
+          <span
+            key={index}
+            className="rounded border border-dashed border-[color:var(--border-strong)] px-1 text-[color:var(--text-muted)]"
+          >
             {part.slice(1, -1)}
           </span>
         ) : (
@@ -218,6 +235,7 @@ function OpenCard({
   today,
   contractEndsOn,
   online,
+  onHide,
 }: {
   type: LeaveType;
   fields: LeaveMessageFields;
@@ -229,6 +247,8 @@ function OpenCard({
   today: string;
   contractEndsOn: string | null;
   online: boolean;
+  /** Only the discreet card offers Hide. */
+  onHide?: () => void;
 }) {
   const headingId = useId();
   const { copy, stateFor } = useCopy();
@@ -261,7 +281,10 @@ function OpenCard({
           type="button"
           onClick={onClose}
           aria-label={`Close ${type.front}`}
-          className={cn(focusRing, "grid size-12 shrink-0 place-items-center rounded-full text-[color:var(--text-muted)]")}
+          className={cn(
+            focusRing,
+            "grid size-12 shrink-0 place-items-center rounded-full text-[color:var(--text-muted)]",
+          )}
           data-testid="admin-leave-close"
         >
           <X aria-hidden="true" className="size-icon-md" />
@@ -277,7 +300,10 @@ function OpenCard({
         <p className="text-sm text-[color:var(--text)]">{type.fullName}</p>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[color:var(--border)] pt-3" data-testid={`admin-leave-${type.id}-entitlement`}>
+      <div
+        className="flex flex-wrap items-center justify-between gap-2 border-t border-[color:var(--border)] pt-3"
+        data-testid={`admin-leave-${type.id}-entitlement`}
+      >
         <span className="text-sm">
           What you can take{" "}
           <span className="rounded border border-dashed border-[color:var(--border-strong)] px-1.5 text-xs text-[color:var(--text-muted)]">
@@ -289,7 +315,10 @@ function OpenCard({
           target="_blank"
           rel="noreferrer noopener"
           aria-disabled={online ? undefined : "true"}
-          className={cn(focusRing, "inline-flex min-h-12 items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]")}
+          className={cn(
+            focusRing,
+            "inline-flex min-h-12 items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]",
+          )}
         >
           Check your agreement
           <ExternalLink aria-hidden="true" className="size-icon-sm" />
@@ -302,8 +331,24 @@ function OpenCard({
         <div className="grid gap-1.5 border-t border-[color:var(--border)] pt-3">
           <p className={eyebrowText}>Your contract</p>
           <ContractEndEntryLink
-            line={contractEndsOn ? `Ends ${formatDateEcho(contractEndsOn)}. Ask if it includes your planned leave` : "Add your end date, then ask about leave"}
+            line={
+              contractEndsOn
+                ? `Ends ${formatDateEcho(contractEndsOn)}. Ask if it includes your planned leave`
+                : "Add your end date, then ask about leave"
+            }
           />
+          {contractEndsOn ? (
+            <Link
+              href="/admin/contract?question=parental-leave"
+              className={cn(
+                focusRing,
+                "inline-flex min-h-12 w-fit items-center text-sm font-medium text-[color:var(--clinical-accent)]",
+              )}
+              data-testid="admin-leave-parental-question"
+            >
+              Open the parental leave question
+            </Link>
+          ) : null}
         </div>
       ) : null}
 
@@ -323,7 +368,11 @@ function OpenCard({
           ))}
         </ol>
         {type.rosterHref ? (
-          <Link href="/roster/requests" className={cn(buttonFaceClass({ variant: "secondary", size: "sm" }), "w-fit")} data-testid={`admin-leave-${type.id}-roster`}>
+          <Link
+            href="/roster/requests"
+            className={cn(buttonFaceClass({ variant: "secondary", size: "sm" }), "w-fit")}
+            data-testid={`admin-leave-${type.id}-roster`}
+          >
             Plan it in Roster
           </Link>
         ) : null}
@@ -379,7 +428,9 @@ function OpenCard({
               void copy(
                 message,
                 "message",
-                gaps > 0 ? `Message copied, with ${gaps === 1 ? "1 gap" : `${gaps} gaps`} to fill.` : "Message copied. Paste it into your email.",
+                gaps > 0
+                  ? `Message copied, with ${gaps === 1 ? "1 gap" : `${gaps} gaps`} to fill.`
+                  : "Message copied. Paste it into your email.",
               )
             }
             testId={`admin-leave-${type.id}-copy`}
@@ -390,7 +441,10 @@ function OpenCard({
         {blocked ? null : (
           <a
             href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`}
-            className={cn(focusRing, "inline-flex min-h-12 w-fit items-center gap-2 text-sm font-medium text-[color:var(--clinical-accent)]")}
+            className={cn(
+              focusRing,
+              "inline-flex min-h-12 w-fit items-center gap-2 text-sm font-medium text-[color:var(--clinical-accent)]",
+            )}
             data-testid={`admin-leave-${type.id}-email`}
           >
             <Mail aria-hidden="true" className="size-icon-sm" />
@@ -400,12 +454,21 @@ function OpenCard({
       </div>
 
       {type.discreet ? (
-        <div className="grid gap-2 border-t border-[color:var(--border)] pt-3" data-testid="admin-leave-confidential-help">
+        <div
+          className="grid gap-2 border-t border-[color:var(--border)] pt-3"
+          data-testid="admin-leave-confidential-help"
+        >
           <Link href="/admin/help" className={cn(buttonFaceClass({ variant: "secondary" }), "w-full justify-start")}>
             Help and support, crisis lines first
           </Link>
+          {onHide ? (
+            <Button variant="ghost" icon={EyeOff} onClick={onHide} testId="admin-leave-hide">
+              Hide this card
+            </Button>
+          ) : null}
           <p className={cn(textMuted, "text-xs")}>
-            This card asks you for nothing and keeps nothing. It is never offered in search, alerts or recent pages.
+            This card asks you for nothing and keeps nothing. It is never offered in search, alerts or recent pages, and
+            its name stays out of the address bar.
           </p>
         </div>
       ) : null}
@@ -437,10 +500,15 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
   const contract = selectContractEnd(own);
   const contractEndsOn = contract ? (complianceExpiresOn(contract) ?? null) : null;
   const leave = useJuniorRosterLeave(true);
+  // Hidden cards live in memory only: Admin keeps nothing on the device.
+  const [hidden, setHidden] = useState<readonly LeaveTypeId[]>([]);
+  const [undo, setUndo] = useState<{ id: number; type: LeaveTypeId } | null>(null);
+  const undoId = useRef(0);
   const stackRef = useRef<HTMLUListElement>(null);
   const lastOpened = useRef<LeaveTypeId | null>(null);
 
-  // A link to another card (search, the contract page) opens it.
+  // A link to another card (search, the contract page) opens it. Only a
+  // change in the address does this; the page's own writes are expected.
   const urlCard = fromUrl?.id ?? null;
   const [seenUrlCard, setSeenUrlCard] = useState(urlCard);
   if (urlCard !== seenUrlCard) {
@@ -452,10 +520,11 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
     if (id) lastOpened.current = id;
     setOpenId(id);
     const params = new URLSearchParams(searchParams?.toString() ?? "");
-    if (id) params.set("card", id);
+    // The discreet card's name never goes into the address bar or browser history.
+    if (id && !leaveTypeById(id)?.discreet) params.set("card", id);
     else params.delete("card");
     const query = params.toString();
-    setSeenUrlCard(id);
+    setSeenUrlCard(params.get("card") as LeaveTypeId | null);
     router.replace(query ? `${pathname}?${query}` : (pathname ?? "/admin/leave"), { scroll: false });
   }
 
@@ -466,19 +535,34 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
     header?.focus();
   }, [openId]);
 
+  function hide(id: LeaveTypeId) {
+    lastOpened.current = null;
+    setHidden((current) => (current.includes(id) ? current : [...current, id]));
+    open(null);
+    undoId.current += 1;
+    setUndo({ id: undoId.current, type: id });
+  }
+  function show(id: LeaveTypeId) {
+    setHidden((current) => current.filter((value) => value !== id));
+  }
+
   const openType = openId ? leaveTypeById(openId) : null;
-  const others = LEAVE_TYPES.filter((type) => type.id !== openId);
+  const visible = LEAVE_TYPES.filter((type) => !hidden.includes(type.id));
+  const others = visible.filter((type) => type.id !== openId);
 
   return (
     <InformationPageShell testId="admin-leave-main">
       <div className="grid gap-1">
-        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Leave wallet</PageTitleUnderBand>
+        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+          Leave wallet
+        </PageTitleUnderBand>
         <p className={cn(textMuted, "text-sm")}>Every leave type, how to apply, and a ready message</p>
       </div>
 
       {!online ? (
         <div className={cn(cardSurface, "p-3 text-sm")} role="status" data-testid="admin-leave-offline">
-          <b className="font-semibold text-[color:var(--text-heading)]">You are offline.</b> The cards and Copy still work. Links open when you are back online.
+          <b className="font-semibold text-[color:var(--text-heading)]">You are offline.</b> The cards and Copy still
+          work. Links open when you are back online.
         </div>
       ) : null}
 
@@ -496,6 +580,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
             today={today}
             contractEndsOn={contractEndsOn}
             online={online}
+            onHide={openType.discreet ? () => hide(openType.id) : undefined}
           />
           <button
             type="button"
@@ -522,7 +607,10 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
               href={LEAVE_AGREEMENT.url}
               target="_blank"
               rel="noreferrer noopener"
-              className={cn(focusRing, "inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]")}
+              className={cn(
+                focusRing,
+                "inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]",
+              )}
               data-testid="admin-leave-agreement"
             >
               Open your agreement ({LEAVE_AGREEMENT.citation})
@@ -530,11 +618,14 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
             </a>
           </div>
 
-          <JuniorSectionLabel count={`${LEAVE_TYPES.length} cards`} action={<span className={cn(textMuted, "text-xs")}>Tap a card to open it</span>}>
+          <JuniorSectionLabel
+            count={`${visible.length} cards`}
+            action={<span className={cn(textMuted, "text-xs")}>Tap a card to open it</span>}
+          >
             Your wallet
           </JuniorSectionLabel>
           <ul ref={stackRef} aria-label="Leave cards" className="grid" data-testid="admin-leave-stack">
-            {LEAVE_TYPES.map((type, index) => (
+            {visible.map((type, index) => (
               <li key={type.id} className={cn(index > 0 && "-mt-2")}>
                 <button
                   type="button"
@@ -557,8 +648,42 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
               </li>
             ))}
           </ul>
+          {hidden.length > 0 ? (
+            <div
+              className={cn(cardSurface, "flex min-h-12 items-center gap-3 px-3 py-2")}
+              data-testid="admin-leave-hidden"
+            >
+              <EyeOff
+                aria-hidden="true"
+                strokeWidth={1.5}
+                className="size-icon-sm shrink-0 text-[color:var(--text-muted)]"
+              />
+              <span className="grid min-w-0 flex-1">
+                <span className="text-sm font-medium text-[color:var(--text-heading)]">
+                  {hidden.length === 1 ? "1 hidden card" : `${hidden.length} hidden cards`}
+                </span>
+                <span className={cn(textMuted, "text-xs")}>Hidden while this page is open. It is back next time.</span>
+              </span>
+              <Button variant="secondary" size="sm" onClick={() => setHidden([])} testId="admin-leave-show-hidden">
+                Show
+              </Button>
+            </div>
+          ) : null}
         </>
       )}
+
+      {undo ? (
+        <JuniorUndoBar
+          key={undo.id}
+          label="Card hidden"
+          onUndo={() => {
+            show(undo.type);
+            setUndo(null);
+          }}
+          onDismiss={() => setUndo(null)}
+          testId="admin-leave-undo"
+        />
+      ) : null}
 
       <JuniorFootNote testId="admin-leave-foot">
         Ready messages are copied for you to send. PsychSift never sends them and keeps nothing you type here.

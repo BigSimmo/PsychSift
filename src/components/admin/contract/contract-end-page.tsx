@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Bell, CalendarPlus, ChevronRight, FileClock, Layers, Mail, PenLine, Send, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
@@ -192,6 +193,15 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
 
   const [sheet, setSheet] = useState<SheetName>(null);
   const [question, setQuestion] = useState<ContractQuestion | null>(null);
+  // A link from another page (the parental leave card) opens one question.
+  const searchParams = useSearchParams();
+  const questionParam = searchParams?.get("question") ?? null;
+  const [seenQuestionParam, setSeenQuestionParam] = useState<string | null>(null);
+  if (questionParam !== seenQuestionParam) {
+    setSeenQuestionParam(questionParam);
+    const linked = CONTRACT_QUESTIONS.find((item) => item.id === questionParam);
+    if (linked) setQuestion(linked);
+  }
   const [undo, setUndo] = useState<Undo | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
