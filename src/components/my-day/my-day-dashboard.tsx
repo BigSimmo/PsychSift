@@ -1,20 +1,45 @@
 "use client";
 
-import { Plus, TriangleAlert, WifiOff } from "lucide-react";
+import {
+  Award,
+  CalendarDays,
+  GraduationCap,
+  History,
+  Shield,
+  Sparkles,
+  TriangleAlert,
+  UserRound,
+  WifiOff,
+  type LucideIcon,
+} from "lucide-react";
+import Link from "next/link";
 import { Fragment, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { pinnedHelpItems } from "@/components/admin/admin-pinned-numbers";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
+import { EndOfShiftCard } from "@/components/alerts/end-of-shift-card";
 import { focusRing } from "@/components/card-recipes";
-import { dashMuted } from "@/components/dashboard-kit/recipes";
+import { useWorkUndoToast } from "@/components/mode-kit/work";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
-import { QuietNote, quietLink } from "@/components/my-day/my-day-quiet";
+import {
+  AreaIcon,
+  QuietFoot,
+  QuietLabel,
+  QuietList,
+  QuietNote,
+  QuietSection,
+  QuietTextLink,
+  quietCard,
+  quietLink,
+} from "@/components/my-day/my-day-quiet";
+import { MY_DAY_ALWAYS_ON, MyDayLaterSheet } from "@/components/my-day/my-day-sheets";
 import { listNames } from "@/components/my-day/my-day-page-parts";
 import {
   CpdRingsCard,
   CustomiseRow,
   FlagCard,
   HeroCard,
+  type HeroEndOfShift,
   type HeroFinishedShift,
   type HeroNextTeaching,
   NeedsYouCard,
@@ -43,15 +68,16 @@ import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { kindOf } from "@/components/roster/roster-format";
 import { sessionHref } from "@/components/teaching/teaching-view-model";
-import { cn } from "@/components/ui-primitives";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
+import type { NewJobProgress } from "@/lib/admin/new-job-progress";
+import { endOfShiftCard } from "@/lib/alerts/end-of-shift";
 import { displayPhoneNumber } from "@/lib/admin/phone-display";
 import { useAdminPins } from "@/lib/admin/pins";
 import {
   dueCountsByDate,
   isSnoozed,
-  MY_DAY_CARD_LABELS,
   MY_DAY_PAGE_CARDS,
+  nextRosteredDay,
   selectNeedsYou,
   selectUpNext,
   snoozeUntil,
@@ -71,24 +97,25 @@ import {
 } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
 import { weekRows } from "@/lib/my-day/quiet-figures";
+import { withMyDayReturn } from "@/lib/my-day/return-link";
 import { myDayWeekDates } from "@/lib/my-day/week";
 import type { MyDayItem } from "@/lib/my-day/model";
 import { nextTeachingSession } from "@/lib/my-day/next-teaching";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { isWorkedKind, type ShiftKind } from "@/lib/roster/shift-kind";
-import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { summariseToday } from "@/lib/roster/today";
 import type { RosterDisplayShift } from "@/lib/roster/team/team-view";
 import type { SessionSummary } from "@/lib/teaching/model";
 
 /**
- * My Day as a modular dashboard in three pages, Today, Work and Me (design
- * review v13, concept D), in the dashboard style
- * (`src/components/dashboard-kit/`, TOKENS.md §7.2).
+ * My Day's three card pages, Today, On shift (`?page=work`) and My records
+ * (`?page=me`), in the flat work-mode design (work-mode redesign, owner
+ * request 6 Oct 2026).
  *
  * Every card reads a real source and hides itself when that source has
- * nothing, or does not exist in this build. "Edit" hides or restores cards;
- * the choice stays on this device for this account only.
+ * nothing, or does not exist in this build. The Customise sheet hides or
+ * restores cards; the choice stays on this device for this account only.
  *
  * Read-only towards the server: the only things here that change anything
  * are "Later" (moves a row to tomorrow on this device, with Undo) and the
@@ -111,9 +138,16 @@ export interface MyDayDashboardProps {
   readonly sources: MyDayDashboardSources;
   /** Names of the My Day sources that were checked, for the empty "Needs you" line. */
   readonly checked: readonly string[];
-  readonly editing: boolean;
-  /** Opens or closes the show-and-hide mode from the "Customise My Day" row. */
-  readonly onToggleEditing?: () => void;
+  /** Opens the Customise sheet from the "Customise My Day" row. */
+  readonly onCustomise?: () => void;
+  /** Opens Remind me, with the words to start from (a Needs you row's title). */
+  readonly onRemindMe?: (text?: string) => void;
+  /** Opens Your reminders, from the end-of-shift card. */
+  readonly onOpenReminders?: () => void;
+  /** Reminders still to do on this phone, for the end-of-shift card. */
+  readonly pendingReminders?: number;
+  /** The New job countdown for My records. */
+  readonly newJob?: NewJobProgress | null;
   /** When the sources last answered, "14:05", for the "Checked … at" line. */
   readonly checkedAt?: string | null;
   /** A My Day item source failed, so the Needs you count is "at least". */
@@ -165,7 +199,7 @@ function teachingEvent(session: SessionSummary): MyDayTimedEvent {
   };
 }
 
-const ALL_HIDDEN = "Every card is hidden. Choose Edit to bring them back.";
+const ALL_HIDDEN = "Every card is hidden. Choose Customise My Day to bring them back.";
 const WORK_EMPTY =
   "Nothing for Work yet. Tonight's calls, pinned numbers, your team and your next talk show here once they exist.";
 
@@ -179,8 +213,11 @@ export function MyDayDashboard({
   helpItems = NO_HELP,
   sources,
   checked,
-  editing,
-  onToggleEditing,
+  onCustomise,
+  onRemindMe,
+  onOpenReminders,
+  pendingReminders,
+  newJob = null,
   checkedAt = null,
   incomplete: itemsIncomplete = false,
   page = "today",
@@ -200,8 +237,15 @@ export function MyDayDashboard({
           setSampleSnoozes((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id !== itemId))),
       }
     : stored;
-  const onHide = (id: MyDayCardId) => (editing ? () => device.setHidden(id, true) : undefined);
-  const [undo, setUndo] = useState<{ readonly id: string; readonly title: string } | null>(null);
+  // Cards are hidden from the Customise sheet now, so no card draws its own hide button.
+  const isHidden = (id: MyDayCardId) => !MY_DAY_ALWAYS_ON.has(id) && device.hidden.has(id);
+  const [hiddenNote, setHiddenNote] = useState<{
+    readonly id: string;
+    readonly title: string;
+    readonly until: string;
+  } | null>(null);
+  const [laterItem, setLaterItem] = useState<MyDayItem | null>(null);
+  const toast = useWorkUndoToast();
 
   // ---------------------------------------------------------------- roster and the hero
   const rosterReady = sources.roster.status === "ready";
@@ -336,10 +380,34 @@ export function MyDayDashboard({
   // ---------------------------------------------------------------- items
   const needsYou = selectNeedsYou(items, device.snoozes, today);
   const flagItems = selectFlagItems(items, (id) => isSnoozed(device.snoozes, id, today));
-  const later = (item: MyDayItem) => {
-    device.snooze(item.id, snoozeUntil(now));
-    setUndo({ id: item.id, title: item.title });
+  const tomorrow = addDaysToDate(today, 1);
+  // The next rostered day, offered by Later only when it is not tomorrow (and only from a roster that loaded).
+  const workingDay = useMemo(
+    () =>
+      rosterReady
+        ? nextRosteredDay(
+            shifts.map((shift) => ({ startsAt: shift.startsAt, kind: kindOf(shift) })),
+            today,
+          )
+        : null,
+    [rosterReady, shifts, today],
+  );
+  const offerWorkingDay = workingDay !== null && workingDay !== tomorrow;
+  const untilWords = (until: string) => (until === tomorrow ? "tomorrow" : formatPerthDay(until));
+  const moveLater = (item: MyDayItem, until: string) => {
+    device.snooze(item.id, until);
+    setLaterItem(null);
+    setHiddenNote({ id: item.id, title: item.title, until });
+    toast?.(`${item.title} moved to ${untilWords(until)}`, () => {
+      device.unsnooze(item.id);
+      setHiddenNote((current) => (current?.id === item.id ? null : current));
+    });
   };
+  const later = (item: MyDayItem) => {
+    if (offerWorkingDay) setLaterItem(item);
+    else moveLater(item, snoozeUntil(now));
+  };
+  const snoozedCount = needsYou.total - needsYou.waiting;
   const runway = useMemo(() => renewalsRunway(renewals, today), [renewals, today]);
 
   // ---------------------------------------------------------------- work
@@ -413,7 +481,8 @@ export function MyDayDashboard({
   // Today's next session can be Up next itself: hiding "next-up" hides that panel too.
   const heroUpNext = upNext?.event.id.startsWith("teaching:") && device.hidden.has("next-up") ? null : upNext;
   // The next session lives in the hero as a glass panel; hiding "next-up" hides the panel.
-  const heroNext: HeroNextTeaching | null = useMemo(() => {
+  // Plain values, not memos: `leadShift` is worked out fresh each render.
+  const heroNext: HeroNextTeaching | null = (() => {
     if (!nextUp || device.hidden.has("next-up")) return null;
     const date = perthDateOf(nextUp.startsAt);
     const times = nextUp.allDay ? "" : `, ${perthTimeOf(nextUp.startsAt)} to ${perthTimeOf(nextUp.endsAt)}`;
@@ -425,8 +494,52 @@ export function MyDayDashboard({
       href: href ?? "/teaching/week",
       where: [nextUp.venue, nextUp.isPresenter ? "you lead" : null].filter(Boolean).join(" · "),
       actionLabel: href ? "Details" : "See in Week",
+      clash: nextUp.allDay ? null : clashLine(leadShift, nextUp.startsAt, nextUp.endsAt),
     };
-  }, [nextUp, device.hidden]);
+  })();
+  const heroUpNextWithClash =
+    heroUpNext && heroUpNext.event.source === "teaching"
+      ? { ...heroUpNext, clash: clashLine(leadShift, heroUpNext.event.startsAt, heroUpNext.event.endsAt) }
+      : heroUpNext;
+
+  // ---------------------------------------------------------------- end of shift
+  // The last half hour of a rostered shift that has started: the hero turns to handover.
+  const endOfShift = useMemo(
+    () =>
+      rosterReady
+        ? endOfShiftCard(
+            now,
+            shifts
+              .filter((shift) => kindOf(shift) !== "leave")
+              .map((shift) => ({ label: shiftName(kindOf(shift)), startsAt: shift.startsAt, endsAt: shift.endsAt })),
+          )
+        : null,
+    [rosterReady, shifts, now],
+  );
+  const heroEnd: HeroEndOfShift | null =
+    endOfShift && heroShift && shiftRunning
+      ? {
+          ...endOfShift,
+          calls: kindOf(heroShift) === "on_call" ? { logged: callTotal, open: callOpen } : null,
+        }
+      : null;
+  const onCallNow = Boolean(heroShift && shiftRunning && kindOf(heroShift) === "on_call");
+
+  // ---------------------------------------------------------------- first steps
+  // Every source answered and none holds anything: a new reader, so the page says where to start.
+  const firstSteps =
+    !sample &&
+    !itemsIncomplete &&
+    checked.length > 0 &&
+    items.length === 0 &&
+    renewals.length === 0 &&
+    rosterReady &&
+    shifts.length === 0 &&
+    sources.teaching.status === "ready" &&
+    teachingSessions.length === 0 &&
+    ahead.length === 0 &&
+    cpd.status === "ready" &&
+    cpd.targetHours === 0;
 
   const visible: Record<MyDayCardId, boolean> = {
     "up-next": heroUpNext !== null || leadShift !== null || heroNext !== null || finished !== null,
@@ -434,7 +547,8 @@ export function MyDayDashboard({
     "next-up": nextUp !== null && !device.hidden.has("up-next"),
     flag: flagItems.length > 0,
     "quick-actions": true,
-    "this-week": rosterReady || rows.length > 0 || weekHasDue,
+    // A roster that failed still gets its place, with a line saying shifts are not shown.
+    "this-week": sources.roster.status === "failed" || rosterReady || rows.length > 0 || weekHasDue,
     "needs-you": true,
     cpd: cpdReady,
     renewals: runway.length > 0,
@@ -445,7 +559,7 @@ export function MyDayDashboard({
     // During on call the next talk has its own section; otherwise it leads "Coming up".
     "next-talk": nextTalk !== null && handoverAt !== null,
     "coming-up": handoverAt === null && (nextTalk !== null || nextOnCall !== null),
-    glance: nextLeave !== null || nextRenewal !== null,
+    glance: nextLeave !== null || nextRenewal !== null || newJob !== null || weekHours.totalHours > 0,
     hours: rosterReady && (weekHours.totalHours > 0 || fortnightHours.totalHours > 0),
     credentials: renewals.length > 0,
     "cpd-month": cpdReady,
@@ -469,92 +583,133 @@ export function MyDayDashboard({
   ].filter((name): name is string => name !== null);
   // Any source missing or part-read: counts are "at least", never a clean "nothing due".
   const incomplete = itemsIncomplete || rosterFailed || failed.length > 0 || partial.length > 0;
+  const missing = [rosterFailed ? "Roster" : null, ...failed].filter((name): name is string => name !== null);
   const online = useOnline();
   const desktop = useDesktop();
+  const offlineAt = online ? null : (checkedAt ?? null);
 
   const cards: Record<MyDayCardId, () => ReactNode> = {
     "up-next": () => (
-      <HeroCard
-        shift={heroShift}
-        running={shiftRunning}
-        upNext={heroUpNext}
-        nextTeaching={heroNext}
-        finished={finished}
-        nextShift={nextShift}
-        now={now}
-        onHide={onHide("up-next")}
-        onHideNextTeaching={onHide("next-up")}
-      />
+      <>
+        <HeroCard
+          shift={heroShift}
+          running={shiftRunning}
+          upNext={heroUpNextWithClash}
+          nextTeaching={heroNext}
+          finished={finished}
+          nextShift={nextShift}
+          endOfShift={heroEnd}
+          offlineAt={offlineAt}
+          sample={Boolean(sample)}
+          now={now}
+        />
+        {endOfShift && page === "today" && !sample ? (
+          <EndOfShiftCard shift={endOfShift} pendingReminders={pendingReminders} onOpenReminders={onOpenReminders} />
+        ) : null}
+      </>
     ),
     // Drawn inside the hero (see `heroNext`), so the card itself draws nothing.
     "next-up": () => null,
-    flag: () => <FlagCard items={flagItems} today={today} onHide={onHide("flag")} />,
-    "quick-actions": () => <QuickActionsCard onHide={onHide("quick-actions")} />,
-    "this-week": () => (
-      <ThisWeekCard
-        week={week}
-        today={today}
-        kindsByDate={kindsByDate}
-        dueByDate={dueByDate}
-        rows={rows}
-        detailFor={detailFor}
-        onHide={onHide("this-week")}
-      />
+    flag: () => <FlagCard items={flagItems} today={today} />,
+    "quick-actions": () => (
+      <QuickActionsCard onCall={onCallNow} onRemindMe={onRemindMe ? () => onRemindMe() : undefined} />
     ),
-    "needs-you": () => (
-      <NeedsYouCard
-        shown={needsYou.shown}
-        waiting={needsYou.waiting}
-        total={needsYou.total}
-        checked={checked}
-        checkedAt={checkedAt}
-        incomplete={incomplete}
-        today={today}
-        undo={undo}
-        onLater={later}
-        onUndo={() => {
-          if (undo) device.unsnooze(undo.id);
-          setUndo(null);
-        }}
-        onShowAll={onShowAll}
-        onRetry={retryAll}
-        onHide={onHide("needs-you")}
-      />
-    ),
+    "this-week": () =>
+      rosterFailed ? (
+        <QuietSection title="This week" testId="my-day-card-this-week">
+          <p
+            className="m-0 text-xs font-semibold text-[color:var(--text-muted)]"
+            data-testid="my-day-week-roster-failed"
+          >
+            Roster not loaded, so shifts are not shown.
+          </p>
+          <div>
+            <QuietTextLink href={withMyDayReturn("/roster")} pill>
+              Open Roster
+            </QuietTextLink>
+          </div>
+        </QuietSection>
+      ) : (
+        <ThisWeekCard
+          week={week}
+          today={today}
+          kindsByDate={kindsByDate}
+          dueByDate={dueByDate}
+          rows={rows}
+          detailFor={detailFor}
+        />
+      ),
+    "needs-you": () =>
+      firstSteps ? (
+        <FirstSteps />
+      ) : (
+        <NeedsYouCard
+          shown={needsYou.shown}
+          waiting={needsYou.waiting}
+          total={needsYou.total}
+          checked={checked}
+          checkedAt={checkedAt}
+          incomplete={incomplete}
+          missing={missing}
+          offline={!online}
+          today={today}
+          hidden={
+            hiddenNote && snoozedCount > 0
+              ? { ...hiddenNote, until: untilWords(hiddenNote.until), count: snoozedCount }
+              : null
+          }
+          inlineUndo={toast === null}
+          onLater={later}
+          onUndo={() => {
+            if (hiddenNote) device.unsnooze(hiddenNote.id);
+            setHiddenNote(null);
+          }}
+          onRemindMe={onRemindMe}
+          onShowAll={onShowAll}
+          onRetry={retryAll}
+        />
+      ),
     cpd: () => (
       <CpdRingsCard
         loggedHours={cpd.loggedHours}
         targetHours={cpd.targetHours}
         byCategory={cpd.byCategory}
-        onHide={onHide("cpd")}
+        categoryTargets={cpd.categoryTargets}
+        today={today}
+        year={cpd.year}
       />
     ),
-    renewals: () => <RenewalsRunwayCard points={runway} today={today} onHide={onHide("renewals")} />,
+    renewals: () => <RenewalsRunwayCard points={runway} today={today} />,
     calls: () => (
       <CallsCard
         total={callTotal}
         open={callOpen}
         handoverAt={handoverAt}
         shiftStartsAt={handoverAt && leadShift ? leadShift.startsAt : null}
-        onHide={onHide("calls")}
       />
     ),
-    "pinned-numbers": () => <PinnedNumbersCard numbers={pinnedNumbers} onHide={onHide("pinned-numbers")} />,
-    "whos-on": () => <WhosOnCard colleagues={whosOn?.colleagues ?? []} onHide={onHide("whos-on")} />,
-    "next-talk": () =>
-      nextTalk ? <NextTalkCard session={nextTalk} today={today} onHide={onHide("next-talk")} /> : null,
-    "coming-up": () => <ComingUpCard talk={nextTalk} onCall={nextOnCall} today={today} onHide={onHide("coming-up")} />,
-    glance: () => <GlanceCard leave={nextLeave} renewal={nextRenewal} today={today} onHide={onHide("glance")} />,
+    "pinned-numbers": () => <PinnedNumbersCard numbers={pinnedNumbers} offline={!online} />,
+    "whos-on": () => <WhosOnCard colleagues={whosOn?.colleagues ?? []} />,
+    "next-talk": () => (nextTalk ? <NextTalkCard session={nextTalk} today={today} /> : null),
+    "coming-up": () => <ComingUpCard talk={nextTalk} onCall={nextOnCall} today={today} />,
+    glance: () => (
+      <GlanceCard
+        leave={nextLeave}
+        renewal={nextRenewal}
+        weekHours={rosterReady && weekHours.totalHours > 0 ? weekHours.totalHours : null}
+        newJob={newJob}
+        today={today}
+      />
+    ),
     hours: () => (
       <HoursCard
         week={weekHours}
         fortnight={fortnightHours}
         weekShifts={shiftsIn(weekHours)}
         fortnightShifts={shiftsIn(fortnightHours)}
-        onHide={onHide("hours")}
       />
     ),
-    credentials: () => <CredentialsCard rows={renewals} today={today} onHide={onHide("credentials")} />,
+    credentials: () => <CredentialsCard rows={renewals} today={today} />,
     "cpd-month": () => (
       <CpdMonthCard
         byMonth={cpd.byMonth}
@@ -564,15 +719,14 @@ export function MyDayDashboard({
         projected={cpd.closed ? null : cpdProjectedHours(cpd.loggedHours, today)}
         closed={cpd.closed === true}
         currentMonth={Number(today.slice(5, 7)) - 1}
-        onHide={onHide("cpd-month")}
       />
     ),
-    "quick-note": () => <QuickNoteCard onHide={onHide("quick-note")} />,
+    "quick-note": () => <QuickNoteCard />,
   };
 
   const pageCards: readonly MyDayCardId[] = MY_DAY_PAGE_CARDS[page];
-  const shownIds = pageCards.filter((id) => visible[id] && !device.hidden.has(id));
-  const hiddenIds = pageCards.filter((id) => device.hidden.has(id));
+  const shownIds = pageCards.filter((id) => visible[id] && !isHidden(id));
+  const hiddenIds = pageCards.filter((id) => isHidden(id));
 
   const drawCards = (ids: readonly MyDayCardId[]) => ids.map((id) => <Fragment key={id}>{cards[id]()}</Fragment>);
   // Today on a computer: two set columns, the day on the left and the planning on the right.
@@ -581,7 +735,7 @@ export function MyDayDashboard({
   const rightIds = shownIds.filter((id) => !TODAY_LEFT.has(id));
 
   return (
-    <div className="grid gap-3" data-testid="my-day-dashboard" data-page={page}>
+    <div className="grid min-w-0 gap-2.5" data-testid="my-day-dashboard" data-page={page}>
       {online ? null : (
         <QuietNote
           icon={WifiOff}
@@ -590,8 +744,8 @@ export function MyDayDashboard({
           title="You are offline"
           body={
             checkedAt
-              ? `This is My Day as it loaded at ${checkedAt}. Reload when you are back online to see changes.`
-              : "Reload when you are back online to see changes."
+              ? `This is My Day as it loaded at ${checkedAt}. New items appear when you are back online.`
+              : "New items appear when you are back online."
           }
         />
       )}
@@ -611,8 +765,8 @@ export function MyDayDashboard({
         />
       ) : null}
       {failed.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className={dashMuted} data-testid="my-day-card-failed">
+        <div className="flex flex-wrap items-center gap-x-3 px-1">
+          <p className="m-0 text-xs text-[color:var(--text-muted)]" data-testid="my-day-card-failed">
             {`Couldn't load ${listNames(failed)}, so ${failed.length === 1 ? "that card is" : "those cards are"} not shown.`}
           </p>
           <button type="button" onClick={retryAll} className={quietLink} data-testid="my-day-card-retry">
@@ -621,67 +775,140 @@ export function MyDayDashboard({
         </div>
       ) : null}
       {partial.length > 0 ? (
-        <p className={dashMuted} data-testid="my-day-card-partial">
+        <p className="m-0 px-1 text-xs text-[color:var(--text-muted)]" data-testid="my-day-card-partial">
           {`Couldn't load ${listNames(partial)}, so these cards may be missing some of it.`}
         </p>
       ) : null}
       {twoColumns ? (
-        <div
-          className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start gap-6"
-          data-editing={editing ? "" : undefined}
-          data-testid="my-day-columns"
-        >
-          <div className="grid min-w-0 gap-5">{drawCards(leftIds)}</div>
-          <div className="grid min-w-0 gap-5">{drawCards(rightIds)}</div>
+        <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start gap-5" data-testid="my-day-columns">
+          <div className="grid min-w-0 gap-2.5">{drawCards(leftIds)}</div>
+          <div className="grid min-w-0 gap-2.5">{drawCards(rightIds)}</div>
         </div>
       ) : (
         <div
-          className={cn(
-            "grid gap-5",
-            page !== "today" && "lg:block lg:columns-2 lg:gap-6 lg:*:mb-5 lg:*:break-inside-avoid",
-          )}
-          data-editing={editing ? "" : undefined}
+          className={
+            page === "today"
+              ? "grid min-w-0 gap-2.5"
+              : "grid min-w-0 gap-2.5 lg:block lg:columns-2 lg:gap-5 lg:*:mb-2.5 lg:*:break-inside-avoid"
+          }
         >
           {drawCards(shownIds)}
           {page === "work" && shownIds.includes("calls") ? <CallNotesFoot /> : null}
         </div>
       )}
-      {shownIds.length === 0 && !editing ? (
-        <p className={cn(dashMuted, "px-1")} data-testid="my-day-all-hidden">
+      {shownIds.length === 0 ? (
+        <p className="m-0 px-1 text-xs text-[color:var(--text-muted)]" data-testid="my-day-all-hidden">
           {page === "work" && hiddenIds.length === 0 ? WORK_EMPTY : ALL_HIDDEN}
         </p>
       ) : null}
-      {editing ? (
-        <div className="grid gap-2" data-testid="my-day-hidden-cards">
-          <p className={dashMuted}>
-            {hiddenIds.length > 0
-              ? "Hidden cards. Choose one to bring it back."
-              : "Choose × on a card to hide it. Hidden cards wait here."}
-          </p>
-          {hiddenIds.length > 0 ? (
-            <ul role="list" className="flex flex-wrap gap-2">
-              {hiddenIds.map((id) => (
-                <li key={id}>
-                  <button
-                    type="button"
-                    onClick={() => device.setHidden(id, false)}
-                    aria-label={`Show ${MY_DAY_CARD_LABELS[id]}`}
-                    data-testid={`my-day-restore-${id}`}
-                    className={cn(
-                      focusRing,
-                      "inline-flex min-h-12 items-center gap-1 rounded-full border border-dashed border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-4 text-sm font-dash-title text-[color:var(--dash-muted)]",
-                    )}
-                  >
-                    <Plus aria-hidden="true" className="size-icon-sm" />
-                    {MY_DAY_CARD_LABELS[id]}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
+      {page === "today" && incomplete ? (
+        <QuietFoot icon={History}>A missing card means not checked, not nothing due.</QuietFoot>
       ) : null}
-      {onToggleEditing ? <CustomiseRow editing={editing} onToggle={onToggleEditing} /> : null}
+      {onCustomise ? <CustomiseRow onOpen={onCustomise} /> : null}
+      <MyDayLaterSheet
+        item={laterItem}
+        tomorrow={tomorrow}
+        nextWorkingDay={workingDay ?? tomorrow}
+        onClose={() => setLaterItem(null)}
+        onPick={moveLater}
+        onRemindMe={(item) => {
+          setLaterItem(null);
+          onRemindMe?.(item.title);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * The hero's clash line: a teaching session that starts as on call (or a
+ * night) ends, or runs into it. A day shift with lunchtime teaching is not a
+ * clash, so only on call and nights count.
+ */
+function clashLine(shift: RosterDisplayShift | null, startsAt: string, endsAt: string): string | null {
+  if (!shift) return null;
+  const kind = kindOf(shift);
+  if (kind !== "on_call" && kind !== "night") return null;
+  const name = kind === "on_call" ? "on call" : "your night shift";
+  const shiftStart = Date.parse(shift.startsAt);
+  const shiftEnd = Date.parse(shift.endsAt);
+  const start = Date.parse(startsAt);
+  const end = Date.parse(endsAt);
+  if (![shiftStart, shiftEnd, start, end].every(Number.isFinite)) return null;
+  if (Math.abs(start - shiftEnd) <= 60_000) return `Starts as ${name} ends.`;
+  if (start < shiftEnd && end > shiftStart) return `Runs into ${name}, which ends ${perthTimeOf(shift.endsAt)}.`;
+  return null;
+}
+
+interface FirstStep {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly href: string;
+  readonly icon: LucideIcon;
+  readonly mode?: "roster" | "teaching" | "cme" | "my-work";
+}
+
+const FIRST_STEPS: readonly FirstStep[] = [
+  {
+    title: "Import your roster",
+    subtitle: "Shifts, on call and leave",
+    href: "/roster",
+    icon: CalendarDays,
+    mode: "roster",
+  },
+  {
+    title: "Follow your team's teaching",
+    subtitle: "Sessions open to your service",
+    href: "/teaching/whats-on",
+    icon: GraduationCap,
+    mode: "teaching",
+  },
+  { title: "Set up your CPD year", subtitle: "Your target and plan", href: "/cme/setup", icon: Award, mode: "cme" },
+  {
+    title: "Record renewal dates",
+    subtitle: "Registration, life support, checks",
+    href: "/admin/renewals?record=missing",
+    icon: Shield,
+    mode: "my-work",
+  },
+  {
+    title: "Choose your stage",
+    subtitle: "Tailors Teaching and training rows",
+    href: "/my-day/profile",
+    icon: UserRound,
+  },
+];
+
+/** A new reader with nothing anywhere yet: where to start, each row opening the page that sets it up. */
+function FirstSteps() {
+  return (
+    <div className="grid min-w-0 gap-2.5" data-testid="my-day-first-steps">
+      <div className={`${quietCard} grid justify-items-center gap-1 px-4 py-5 text-center`}>
+        <AreaIcon icon={Sparkles} size="lg" />
+        <h2 className="m-0 mt-1 text-base font-bold text-[color:var(--work-ink)]">Your day starts here</h2>
+        <p className="m-0 max-w-xs text-xs text-[color:var(--text-muted)]">
+          Set up the areas you use and My Day fills itself. Nothing here is required.
+        </p>
+      </div>
+      <section aria-labelledby="my-day-first-steps-label" className="grid min-w-0 gap-1.5">
+        <QuietLabel id="my-day-first-steps-label" title="First steps" />
+        <QuietList className={quietCard}>
+          {FIRST_STEPS.map((step) => (
+            <li key={step.href} className="min-w-0 p-0!">
+              <Link
+                href={withMyDayReturn(step.href)}
+                className={`${focusRing} flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2 text-inherit no-underline`}
+              >
+                <AreaIcon icon={step.icon} mode={step.mode} />
+                <span className="grid min-w-0 flex-1">
+                  <span className="text-sm-minus font-bold break-words text-[color:var(--work-ink)]">{step.title}</span>
+                  <span className="text-2xs break-words text-[color:var(--text-muted)]">{step.subtitle}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </QuietList>
+      </section>
     </div>
   );
 }
