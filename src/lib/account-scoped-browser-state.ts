@@ -116,6 +116,12 @@ export const CPD_HOME_SEND_STORAGE_KEY = "psychsift:cpd:cpd-home-v1";
  * on every field. Kept on this device only; cleared at every account transition.
  */
 export const CPD_APPLICATIONS_STORAGE_KEY = "psychsift:cpd:applications-v1";
+/**
+ * localStorage — On Call's "Your first week" pack: per hospital (`service:site` ids), which of the
+ * five fixed sections the doctor marked read, and when. Section ids and times only, never a title,
+ * a name or a number. Cleared at sign-out, session expiry and account switch.
+ */
+export const ON_CALL_FIRST_WEEK_READ_STORAGE_KEY = "psychsift:on-call:first-week-read-v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -190,6 +196,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
   removeQuietly(() => window.localStorage, CPD_HOME_SEND_STORAGE_KEY);
   removeQuietly(() => window.localStorage, CPD_APPLICATIONS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, ON_CALL_FIRST_WEEK_READ_STORAGE_KEY);
   stripAccountScopedPreferences();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
