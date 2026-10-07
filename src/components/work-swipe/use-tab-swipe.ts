@@ -20,11 +20,12 @@ import type { WorkArea } from "@/lib/work-frame/areas";
  *     going, the destination tab lights once the swipe will land, and a light
  *     haptic tick marks that moment where the phone supports it. On the first
  *     or last tab the underline barely moves and nothing navigates.
- *   - The slide-in cue now waits for the new page instead of a fixed 400ms,
- *     which on a slow load expired before the page arrived.
+ *   - The slide-in plays on the page that arrives, not the one leaving, and
+ *     no longer expires on a slow load before the new page shows.
  *
- * Swipes that start on a field, a slider, a sheet, the top bar or anything that
- * scrolls sideways itself are ignored; `data-no-tab-swipe` opts any region out.
+ * Swipes that start on a field, a slider, a drawing surface, the top bar or
+ * anything that scrolls sideways itself are ignored, as is every touch while a
+ * sheet is open. `data-no-tab-swipe` opts any other region out.
  */
 
 /** Touches this close to either screen edge belong to the phone's own back and forward swipe. */
@@ -40,24 +41,39 @@ export const SWIPE_FLICK_SPEED = 0.45;
 /** How far the underline may lean, in pixels, and how much less at the first or last tab. */
 const LEAN_MAX = 12;
 const EDGE_RESISTANCE = 0.25;
-/** The slide-in cue is cleared when the new page arrives, or after this as a fallback. */
-const CUE_FALLBACK_MS = 1200;
+/** A swipe's slide-in plays on the page that arrives within this long of letting go. */
+const CUE_WINDOW_MS = 1500;
+/** How long the slide-in cue stays on the arriving page (its animation is 240ms). */
+const CUE_HOLD_MS = 320;
 
 function scrollsSideways(element: Element | null): boolean {
   for (let node = element; node && node !== document.body; node = node.parentElement) {
     if (!(node instanceof HTMLElement)) continue;
     if (node.closest("[data-no-tab-swipe]")) return true;
-    const overflowX = getComputedStyle(node).overflowX;
+    const style = getComputedStyle(node);
+    // A surface that takes the finger itself (a signature pad, a drawing canvas).
+    if (style.touchAction === "none") return true;
+    const overflowX = style.overflowX;
     if ((overflowX === "auto" || overflowX === "scroll") && node.scrollWidth > node.clientWidth + 1) return true;
   }
   return false;
 }
 
+/**
+ * My Day's Today page still swipes between its own Today, On shift and My
+ * records panels (`MyDaySwipePanel`). Two swipes on one gesture would rewrite
+ * the address and navigate at once, so the panel's own swipe wins there until
+ * the integrator decides which one stays.
+ */
+const OWN_SWIPE_REGIONS = "#my-day-panel";
+
 export function swipeBlocked(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return true;
+  // Any open modal (a sheet, its dimmed backdrop included) owns every touch.
+  if (target.ownerDocument.querySelector('[aria-modal="true"]')) return true;
   if (
     target.closest(
-      'input, textarea, select, [contenteditable="true"], [role="slider"], [role="dialog"], header, [data-no-tab-swipe]',
+      `input, textarea, select, canvas, [contenteditable="true"], [role="slider"], [role="dialog"], header, [data-no-tab-swipe], ${OWN_SWIPE_REGIONS}`,
     )
   )
     return true;
@@ -72,16 +88,20 @@ export type SwipeSample = { x: number; t: number };
  */
 export function swipeOutcome({
   dx,
+  dy = 0,
   width,
   recent,
 }: {
   /** Total horizontal travel, negative to the left. */
   dx: number;
+  /** Total vertical travel. A gesture that ended up mostly vertical is not a swipe. */
+  dy?: number;
   width: number;
   /** The last samples of the gesture, oldest first, for its release speed. */
   recent: readonly SwipeSample[];
 }): "next" | "previous" | null {
   const distance = Math.abs(dx);
+  if (distance <= Math.abs(dy) * 1.5) return null;
   const direction = dx < 0 ? "next" : "previous";
   const first = recent[0];
   const last = recent[recent.length - 1];
@@ -105,71 +125,82 @@ function tick() {
 export function useTabSwipe(area: WorkArea, tabIndex: number) {
   const router = useRouter();
   const pathname = usePathname();
-  const cueTimer = useRef<number | null>(null);
+  const pendingCue = useRef<{ direction: "next" | "previous"; at: number } | null>(null);
 
-  // The new page has arrived: let its slide-in run, then clear the cue.
+  // The new page has arrived: play its slide-in now, never on the page leaving.
   useEffect(() => {
+    const cue = pendingCue.current;
+    pendingCue.current = null;
+    if (!cue || performance.now() - cue.at > CUE_WINDOW_MS) return;
     const root = document.documentElement;
-    if (!root.dataset.workSwipe) return;
-    if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
-    cueTimer.current = window.setTimeout(() => {
+    root.dataset.workSwipe = cue.direction;
+    const timer = window.setTimeout(() => {
+      if (root.dataset.workSwipe === cue.direction) delete root.dataset.workSwipe;
+    }, CUE_HOLD_MS);
+    return () => {
+      window.clearTimeout(timer);
       delete root.dataset.workSwipe;
-      cueTimer.current = null;
-    }, 320);
+    };
   }, [pathname]);
 
   useEffect(() => {
     if (tabIndex < 0) return;
-    const root = document.documentElement;
     type Gesture = {
       x: number;
       y: number;
       scrollY: number;
       axis: "x" | "y" | null;
       armed: boolean;
+      leaning: boolean;
       samples: SwipeSample[];
     };
     let gesture: Gesture | null = null;
 
-    const tabLinks = () => document.querySelectorAll<HTMLElement>('[data-testid="mode-band-tabs"] .work-band__tab');
-    const markTarget = (index: number | null) => {
-      tabLinks().forEach((link, i) => {
+    const tabsNav = () => document.querySelector<HTMLElement>('[data-testid="mode-band-tabs"]');
+    const markTarget = (nav: HTMLElement | null, index: number | null) => {
+      nav?.querySelectorAll<HTMLElement>(".work-band__tab").forEach((link, i) => {
         if (i === index) link.dataset.swipeTarget = "true";
         else delete link.dataset.swipeTarget;
       });
     };
+    // Lean state lives on the tabs bar, not <html>, so a drag restyles one small subtree.
     const clearLean = () => {
-      root.style.removeProperty("--work-swipe-lean");
-      delete root.dataset.workSwiping;
-      markTarget(null);
+      const nav = tabsNav();
+      if (!nav) return;
+      nav.style.removeProperty("--work-swipe-lean");
+      delete nav.dataset.swiping;
+      markTarget(nav, null);
     };
     const reset = () => {
+      const wasLeaning = gesture?.leaning;
       gesture = null;
-      clearLean();
+      if (wasLeaning) clearLean();
     };
 
     const onStart = (event: TouchEvent) => {
+      reset();
       const touch = event.touches[0];
-      if (event.touches.length !== 1 || !touch) return reset();
+      if (event.touches.length !== 1 || !touch) return;
       if (
         touch.clientX < SWIPE_EDGE_GUARD ||
         touch.clientX > window.innerWidth - SWIPE_EDGE_GUARD ||
         swipeBlocked(event.target)
       )
-        return reset();
+        return;
       gesture = {
         x: touch.clientX,
         y: touch.clientY,
         scrollY: window.scrollY,
         axis: null,
         armed: false,
+        leaning: false,
         samples: [{ x: touch.clientX, t: event.timeStamp }],
       };
     };
 
     const onMove = (event: TouchEvent) => {
       const g = gesture;
-      if (!g) return;
+      if (!g || g.axis === "y") return;
       const touch = event.touches[0];
       if (event.touches.length !== 1 || !touch) return reset();
       const dx = touch.clientX - g.x;
@@ -178,27 +209,32 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
         if (Math.abs(dx) < SWIPE_AXIS_SLOP && Math.abs(dy) < SWIPE_AXIS_SLOP) return;
         // Ties go to scrolling: only a clearly sideways start is a swipe.
         g.axis = Math.abs(dx) > Math.abs(dy) * 1.5 ? "x" : "y";
+        if (g.axis === "y") return;
       }
-      if (g.axis === "y" || Math.abs(window.scrollY - g.scrollY) > 4) {
-        // A scroll, or the page moved under the finger: never a tab change.
+      if (Math.abs(window.scrollY - g.scrollY) > 4) {
+        // The page moved under the finger: a scroll, never a tab change.
         g.axis = "y";
-        clearLean();
+        if (g.leaning) clearLean();
+        g.leaning = false;
         return;
       }
       g.samples.push({ x: touch.clientX, t: event.timeStamp });
       while (g.samples.length > 2 && event.timeStamp - g.samples[0]!.t > 90) g.samples.shift();
 
+      const nav = tabsNav();
+      if (!nav) return;
       const targetIndex = tabIndex + (dx < 0 ? 1 : -1);
       const target = area.tabs[targetIndex];
       const reach = Math.max(SWIPE_DISTANCE_MIN, window.innerWidth * SWIPE_DISTANCE_SHARE);
       const progress = Math.min(1, Math.abs(dx) / reach);
       const lean = Math.sign(dx) * -1 * progress * LEAN_MAX * (target ? 1 : EDGE_RESISTANCE);
-      root.dataset.workSwiping = "true";
-      root.style.setProperty("--work-swipe-lean", `${lean.toFixed(1)}px`);
+      g.leaning = true;
+      nav.dataset.swiping = "true";
+      nav.style.setProperty("--work-swipe-lean", `${lean.toFixed(1)}px`);
       const armed = Boolean(target?.href) && progress >= 1;
       if (armed && !g.armed) tick();
+      if (armed !== g.armed) markTarget(nav, armed ? targetIndex : null);
       g.armed = armed;
-      markTarget(armed ? targetIndex : null);
     };
 
     const onEnd = (event: TouchEvent) => {
@@ -206,9 +242,9 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
       reset();
       const touch = event.changedTouches[0];
       if (!g || !touch || g.axis !== "x") return;
-      const dx = touch.clientX - g.x;
       const outcome = swipeOutcome({
-        dx,
+        dx: touch.clientX - g.x,
+        dy: touch.clientY - g.y,
         width: window.innerWidth,
         recent: [...g.samples, { x: touch.clientX, t: event.timeStamp }],
       });
@@ -216,12 +252,7 @@ export function useTabSwipe(area: WorkArea, tabIndex: number) {
       const tab = area.tabs[tabIndex + (outcome === "next" ? 1 : -1)];
       if (!tab?.href) return;
       if (!g.armed) tick();
-      root.dataset.workSwipe = outcome;
-      if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
-      cueTimer.current = window.setTimeout(() => {
-        delete root.dataset.workSwipe;
-        cueTimer.current = null;
-      }, CUE_FALLBACK_MS);
+      pendingCue.current = { direction: outcome, at: performance.now() };
       router.push(tab.href);
     };
 

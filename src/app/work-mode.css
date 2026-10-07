@@ -321,7 +321,7 @@ html[data-work-frame] .universal-header[data-work-frame]::after {
     transition: transform var(--duration-fast, 160ms) var(--ease-out, ease-out);
   }
 
-  html[data-work-swiping] .work-band__tab[aria-current="page"]::after {
+  .work-band__tabs[data-swiping] .work-band__tab[aria-current="page"]::after {
     transform: translateX(var(--work-swipe-lean, 0px));
     transition: none;
   }
@@ -330,6 +330,12 @@ html[data-work-frame] .universal-header[data-work-frame]::after {
 /* The tab a swipe will land on, once letting go would land there. */
 .work-band__tab[data-swipe-target] {
   color: var(--work-ink);
+}
+
+@media (forced-colors: active) {
+  .work-band__tab[data-swipe-target] {
+    text-decoration: underline;
+  }
 }
 
 @keyframes work-swipe-in {

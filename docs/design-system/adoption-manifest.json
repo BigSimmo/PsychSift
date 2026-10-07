@@ -2543,6 +2543,7 @@
         "tests/ui-smoke.spec.ts",
         "tests/ui-style-contract.spec.ts",
         "tests/viewport-fill-contract.test.ts",
+        "tests/work-tab-swipe-blocked.dom.test.tsx",
         "tests/xlsx-extraction-budget.test.ts"
       ],
       "baseline": {
