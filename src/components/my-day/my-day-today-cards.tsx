@@ -1408,7 +1408,10 @@ export function NeedsYouRow({
             href={withMyDayReturn(item.href)}
             aria-label={`${action}: ${item.title}`}
             data-testid={`my-day-open-${item.id}`}
-            className={lapsed ? quietPillAmber : quietPill}
+            // Later's 48px box is pulled up under this pill. Raising the pill keeps the
+            // whole drawn pill the pill's own target (axe target-size), and ending its
+            // tap layer at its bottom edge leaves the word Later to Later.
+            className={cn(lapsed ? quietPillAmber : quietPill, onLater && "z-10 before:bottom-0")}
           >
             {action}
           </Link>

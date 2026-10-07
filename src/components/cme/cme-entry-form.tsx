@@ -628,7 +628,13 @@ export function CmeEntryForm({
           event.currentTarget.requestSubmit();
         }
       }}
-      className="flex flex-col gap-5"
+      className={cn(
+        "flex flex-col gap-5",
+        // With Save pinned to the bottom, a field reached by Tab scrolls clear of
+        // the bar instead of stopping hidden behind it (WCAG 2.4.11). The pinned
+        // Save itself is left out so focusing it never scrolls the page.
+        !actionContainer && stickySave && "[&_:is(input,textarea,select,button):not([type=submit])]:scroll-mb-32",
+      )}
       noValidate
     >
       <ConfirmDialog
