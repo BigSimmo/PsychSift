@@ -87,8 +87,14 @@ const VIEWS: readonly AssessmentsView[] = [
 
 /** Views that are the doctor's own: they never take the supervisor's side. */
 const DOCTOR_ONLY: ReadonlySet<AssessmentsView> = new Set(["hub", "reqs", "term", "request", "book", "report"]);
-/** The tabs: with no `as` in the address they keep whoever's assessments were last shown. */
+/** The tabs show the role switch. */
 const TAB_VIEWS: ReadonlySet<AssessmentsView> = new Set(["home", "progress"]);
+/**
+ * Screens both sides have (the tabs, History, Help and words, Get help): with no `as`
+ * in the address they keep whoever's assessments were last shown, so a supervisor who
+ * opens one from the tabs or More stays the supervisor.
+ */
+const ROLE_KEPT: ReadonlySet<AssessmentsView> = new Set(["home", "progress", "all", "words", "help"]);
 
 const DATE_OPTIONS = [
   { value: "-1", label: "Mon 5 Oct (week 6)" },
@@ -99,7 +105,7 @@ const DATE_OPTIONS = [
 export function resolveRole(view: AssessmentsView, as: string | null, remembered: Role): Role {
   if (DOCTOR_ONLY.has(view)) return "doctor";
   if (as === "supervisor" || as === "doctor") return as;
-  return TAB_VIEWS.has(view) ? remembered : "doctor";
+  return ROLE_KEPT.has(view) ? remembered : "doctor";
 }
 
 function Screen(props: ScreenProps & { view: AssessmentsView }) {
