@@ -937,3 +937,32 @@ html[data-mode-identity="cme"] .work-chip__count {
   color: var(--mode-identity);
   opacity: 1;
 }
+
+/* Report hero: one dot per check, the done ones filled white (mock-up cpd_report). */
+.cpd-dots {
+  display: flex;
+  gap: calc(var(--spacing) * 1.5);
+}
+
+.cpd-dots > i {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  opacity: 0.7;
+}
+
+.cpd-dots > i[data-done="true"] {
+  background: currentColor;
+  opacity: 1;
+}
+
+@media (forced-colors: active) {
+  .cpd-dots > i {
+    border: 1px solid CanvasText;
+  }
+
+  .cpd-dots > i[data-done="true"] {
+    background: CanvasText;
+  }
+}

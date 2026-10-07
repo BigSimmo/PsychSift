@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { ModeBandAction } from "@/components/mode-band/mode-band";
+import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { cn } from "@/components/ui-primitives";
 import type { CmeCategory } from "@/lib/cme/types";
 
@@ -313,4 +313,13 @@ export function CmeToggleRow({
       <span aria-hidden="true" className="cpd-switch" />
     </button>
   );
+}
+
+/**
+ * Sets the band's eyebrow and title from a server-rendered page. Renders
+ * nothing; a client page calls `useModeBandHeading` directly.
+ */
+export function CmeBandHeading({ eyebrow, title }: { readonly eyebrow: string; readonly title: string }) {
+  useModeBandHeading({ eyebrow, title });
+  return null;
 }
