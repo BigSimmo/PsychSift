@@ -48,12 +48,15 @@ export const initialTraineeState: TraineeState = { extras: initialExtras, sessio
 export type TraineeAction =
   | { type: "extras"; action: ExtrasAction }
   | { type: "confirm"; id: string; offline: boolean }
+  /** Back online: a confirmation kept as To send starts its 10 second Undo. */
+  | { type: "confirm-send"; id: string }
   | { type: "confirm-commit"; id: string }
   | { type: "confirm-undo"; id: string }
   | { type: "ask"; id: string; ask: CorrectionAsk }
   | { type: "ask-undo"; id: string }
   | { type: "correction"; id: string; to: Exclude<CorrectionStatus, "waiting"> }
-  | { type: "correction-undo"; id: string };
+  /** Undo puts the correction back as it was before (waiting, or Later). */
+  | { type: "correction-undo"; id: string; to: Exclude<CorrectionStatus, "confirmed"> };
 
 export function sessionStatus(state: TraineeState, session: SampleSession): SessionStatus {
   return state.sessions[session.id] ?? (session.confirmed ? "confirmed" : "waiting");
@@ -67,6 +70,8 @@ export function traineeReducer(state: TraineeState, a: TraineeAction): TraineeSt
       return { ...state, extras: extrasReducer(state.extras, a.action) };
     case "confirm":
       return current(a.id) === "waiting" ? put(a.id, a.offline ? "queued" : "sending") : state;
+    case "confirm-send":
+      return current(a.id) === "queued" ? put(a.id, "sending") : state;
     case "confirm-commit":
       return current(a.id) === "sending" || current(a.id) === "queued" ? put(a.id, "confirmed") : state;
     case "confirm-undo":
@@ -81,18 +86,24 @@ export function traineeReducer(state: TraineeState, a: TraineeAction): TraineeSt
       delete asks[a.id];
       return { ...put(a.id, "waiting"), asks };
     }
-    case "correction":
-      return (state.corrections[a.id] ?? "waiting") === "waiting"
-        ? { ...state, corrections: { ...state.corrections, [a.id]: a.to } }
-        : state;
+    case "correction": {
+      // A correction left for Later can still be confirmed. Only an open one can be left for Later.
+      const was = state.corrections[a.id] ?? "waiting";
+      const allowed = a.to === "confirmed" ? was !== "confirmed" : was === "waiting";
+      return allowed ? { ...state, corrections: { ...state.corrections, [a.id]: a.to } } : state;
+    }
     case "correction-undo":
-      return { ...state, corrections: { ...state.corrections, [a.id]: "waiting" } };
+      return { ...state, corrections: { ...state.corrections, [a.id]: a.to } };
   }
 }
 
 export interface TraineeView {
   readonly row: OverviewDoctor;
-  /** True when the sample supervisor ("you") supervises this doctor, so you can confirm and sign. */
+  /**
+   * True when the sample supervisor ("you") supervises this doctor, so you can confirm supervision and
+   * review corrections. Requests the doctor asked of you show either way: any consultant can be asked for
+   * an EPA, and the inbox already shows them to you.
+   */
   readonly yours: boolean;
   readonly timeline: ReturnType<typeof doctorTimeline>;
   readonly waiting: readonly InboxRequest[];
@@ -103,11 +114,6 @@ export interface TraineeView {
   readonly correctionStatus: CorrectionStatus;
   /** Sessions confirmed so far, in minutes, from this sample only. */
   readonly confirmedMinutes: number;
-}
-
-/** The doctor ids this screen knows, in the overview's order. */
-export function traineeIds(s: AssessmentsState): string[] {
-  return overviewDoctors(s).map((row) => row.id);
 }
 
 export function traineeView(s: AssessmentsState, state: TraineeState, id: string): TraineeView | null {
@@ -123,8 +129,8 @@ export function traineeView(s: AssessmentsState, state: TraineeState, id: string
     row,
     yours,
     timeline: doctorTimeline(row),
-    waiting: yours ? requests.filter(isWaiting) : [],
-    answered: yours ? requests.filter((item) => !isWaiting(item)) : [],
+    waiting: requests.filter(isWaiting),
+    answered: requests.filter((item) => !isWaiting(item)),
     toConfirm,
     recent,
     correction: supervision?.correction ?? null,

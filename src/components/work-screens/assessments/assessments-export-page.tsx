@@ -108,7 +108,8 @@ export function AssessmentsExportPage() {
     files.forEach((file, index) => {
       const text = file.id === "epas" ? epaCsv(s, options, date) : statusCsv(s, options, date);
       // A short gap between files, so a browser that allows one download per tap still offers both.
-      window.setTimeout(() => downloadTextFile("﻿" + text, file.name, "text/csv;charset=utf-8"), index * 400);
+      // Each file carries its own byte-order mark, so none is added here.
+      window.setTimeout(() => downloadTextFile(text, file.name, "text/csv;charset=utf-8"), index * 400);
     });
     setSaved(
       files.length === 1
@@ -268,7 +269,7 @@ export function AssessmentsExportPage() {
           </li>
         </WorkCard>
         <p className={cn(textMuted, "px-1 text-center text-xs")}>
-          Files are made on this phone. Made-up records are left out of them. Nothing is uploaded or sent.
+          Files are made on this device. Made-up records are left out of them. Nothing is uploaded or sent.
         </p>
       </WorkBody>
     </main>

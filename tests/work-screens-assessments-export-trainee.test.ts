@@ -7,6 +7,8 @@ import {
   epaCsv,
   epaExportRows,
   exportBlocker,
+  exportDoctors,
+  statusExportRows,
   exportPreview,
   statusCsv,
   exportButtonLabel,
@@ -37,6 +39,26 @@ describe("assessments export", () => {
     expect(statusCsv(s, DEFAULT_ASSESSMENTS_EXPORT, "7 Oct 2026")).not.toContain("Dr Ben Ortiz");
     expect(exportPreview(s, DEFAULT_ASSESSMENTS_EXPORT)).toMatchObject({ saveable: 0 });
     expect(exportBlocker(s, DEFAULT_ASSESSMENTS_EXPORT)).toBe(EXAMPLE_NOT_SAVED);
+  });
+
+  it("holds your own doctors only, never another consultant's", () => {
+    expect(exportDoctors(s).map((d) => d.id)).toEqual(["sam", "ben", "mia"]);
+    const rows = statusExportRows(s, DEFAULT_ASSESSMENTS_EXPORT);
+    expect(rows.map((r) => r.supervisor)).toEqual(["Dr Priya Nair", "Dr Priya Nair", "Dr Priya Nair"]);
+    expect(statusExportRows(s, { ...DEFAULT_ASSESSMENTS_EXPORT, doctor: "ravi" })).toEqual([]);
+  });
+
+  it("starts each file with exactly one byte-order mark and never calls kept rows made up", () => {
+    const status = statusCsv(s, DEFAULT_ASSESSMENTS_EXPORT, "7 Oct 2026");
+    const epas = epaCsv(s, DEFAULT_ASSESSMENTS_EXPORT, "7 Oct 2026");
+    for (const csv of [status, epas]) {
+      expect(csv.startsWith("\uFEFF")).toBe(true);
+      expect(csv.startsWith("\uFEFF\uFEFF")).toBe(false);
+      expect(csv.endsWith("\r\n")).toBe(true);
+    }
+    expect(status).not.toContain("Made-up example");
+    expect(status.split("\r\n")[0]).toBe('\uFEFF"Term status","7 Oct 2026"');
+    expect(status).toContain("None recorded for this choice");
   });
 
   it("has no EPAs or forms for a doctor the sample holds no records for", () => {
@@ -74,12 +96,17 @@ describe("supervisor's view of a trainee", () => {
     expect(traineeView(s, initialTraineeState, "nobody")).toBeNull();
   });
 
-  it("shows status only for a doctor another consultant supervises", () => {
+  it("shows status, and only what they asked of you, for a doctor another consultant supervises", () => {
     const view = traineeView(s, initialTraineeState, "ravi")!;
     expect(view.yours).toBe(false);
-    expect(view.waiting).toEqual([]);
+    // Ravi asked you for an EPA (it is in your inbox), so it shows here too. Sessions and corrections do not.
+    expect(view.waiting.map((r) => r.id)).toEqual(["ravi-epa-3"]);
     expect(view.toConfirm).toEqual([]);
+    expect(view.recent).toEqual([]);
+    expect(view.correction).toBeNull();
     expect(view.timeline.map((t) => t.id)).toEqual(["mid", "epas", "end"]);
+    // A doctor who asked you nothing shows status only.
+    expect(traineeView(s, initialTraineeState, "tom")!.waiting).toEqual([]);
   });
 
   it("counts what waits for you: requests, sessions and an open correction", () => {
@@ -134,8 +161,26 @@ describe("supervisor's view of a trainee", () => {
     });
     expect(traineeView(s, confirmed, "ben")!.correctionStatus).toBe("confirmed");
     expect(traineeReducer(confirmed, { type: "correction", id: "example:ben-c1", to: "later" })).toBe(confirmed);
-    const undone = traineeReducer(confirmed, { type: "correction-undo", id: "example:ben-c1" });
+    const undone = traineeReducer(confirmed, { type: "correction-undo", id: "example:ben-c1", to: "waiting" });
     expect(traineeView(s, undone, "ben")!.correctionStatus).toBe("waiting");
+  });
+
+  it("confirms a correction that was left for later, and Undo puts it back to Later", () => {
+    const later = traineeReducer(initialTraineeState, { type: "correction", id: "example:ben-c1", to: "later" });
+    expect(traineeReducer(later, { type: "correction", id: "example:ben-c1", to: "later" })).toBe(later);
+    const confirmed = traineeReducer(later, { type: "correction", id: "example:ben-c1", to: "confirmed" });
+    expect(traineeView(s, confirmed, "ben")!.correctionStatus).toBe("confirmed");
+    const undone = traineeReducer(confirmed, { type: "correction-undo", id: "example:ben-c1", to: "later" });
+    expect(traineeView(s, undone, "ben")!.correctionStatus).toBe("later");
+  });
+
+  it("starts a kept confirmation's 10 seconds only from To send", () => {
+    const queued = traineeReducer(initialTraineeState, { type: "confirm", id: "example:sam-s3", offline: true });
+    const sending = traineeReducer(queued, { type: "confirm-send", id: "example:sam-s3" });
+    expect(sending.sessions["example:sam-s3"]).toBe("sending");
+    expect(traineeReducer(initialTraineeState, { type: "confirm-send", id: "example:sam-s3" })).toBe(
+      initialTraineeState,
+    );
   });
 
   it("answers an EPA request through the inbox's own reducer", () => {

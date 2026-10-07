@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { WorkBody, WorkButton, WorkEmpty } from "@/components/mode-kit/work";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 import { cn, textMuted } from "@/components/ui-primitives";
+import { WorkScreenLoading } from "@/components/work-screens/work-screen-loading";
 import { useAuthSession } from "@/lib/supabase/client";
 
 /**
@@ -53,5 +54,9 @@ function Gate({ demoMode, render }: { demoMode: boolean; render: () => ReactNode
 export function AssessmentsSampleGate({ demoMode, render }: { demoMode: boolean; render: () => ReactNode }) {
   const auth = useAuthSession();
   const demo = useTeachingDemoMode(demoMode);
+  // Until the sign-in status is known, hold the page's space: a signed-out visitor would otherwise see the
+  // signed-in "can't be kept" notice flash before the made-up records arrive.
+  if (!demo && auth.status === "loading")
+    return <WorkScreenLoading label="Loading Assessments" testId="work-screens-assessments-gate-loading" rows={3} />;
   return <Gate key={`${auth.authEpoch}:${demo}`} demoMode={demo} render={render} />;
 }

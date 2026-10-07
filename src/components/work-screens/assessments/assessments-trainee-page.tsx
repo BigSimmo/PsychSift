@@ -47,6 +47,7 @@ import {
   type CantReason,
   type InboxRequest,
 } from "@/lib/teaching/assessments/inbox";
+import { readyToSend } from "@/lib/teaching/assessments/extras";
 import { initialAssessmentsState } from "@/lib/teaching/assessments/model";
 import { CELL_WORDS, type CellStatus } from "@/lib/teaching/assessments/overview";
 import { SAMPLE_DOCTOR } from "@/lib/teaching/assessments/sample";
@@ -67,6 +68,18 @@ import {
 
 /** Ten seconds to take a send back, as everywhere else in Assessments. */
 export const TRAINEE_UNDO_MS = 10_000;
+
+/** What Undo says once the send has gone: the toast can outlive the 10 seconds while it has focus. */
+export const ALREADY_SENT = "Already sent, so it can't be undone here.";
+
+/** Action buttons sit side by side, and stack once large text needs the room. */
+const ACTIONS = "flex flex-wrap gap-2 [&>*]:flex-[1_1_8rem]";
+
+/** The row's line for a request that opens elsewhere. */
+function opensIn(item: InboxRequest): string {
+  if (item.open.kind === "href") return item.open.view === "side" ? "Opens side by side" : "Opens the end-of-term form";
+  return "Opens in the inbox";
+}
 
 const CELL_TONE: Record<CellStatus, WorkTone> = { done: "green", due: "mode", overdue: "red", not_yet: "neutral" };
 const ROW_TONE: Record<ReturnType<typeof inboxRowStatus>["tone"], WorkTone> = {
@@ -185,6 +198,8 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
   const online = useOnlineStatus();
   const toast = useWorkUndoToast();
   const timers = useRef(new Map<string, number>());
+  // Every send that can still be taken back: held for its 10 seconds, or kept as To send while offline.
+  const live = useRef(new Set<string>());
   const view = useMemo(() => traineeView(s, state, doctorId), [s, state, doctorId]);
   useModeBandHeading(
     view
@@ -211,35 +226,78 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
   const hold = useCallback((key: string, commit: () => void) => {
     const existing = timers.current.get(key);
     if (existing) window.clearTimeout(existing);
+    live.current.add(key);
     timers.current.set(
       key,
       window.setTimeout(() => {
         timers.current.delete(key);
+        live.current.delete(key);
         commit();
       }, TRAINEE_UNDO_MS),
     );
   }, []);
 
-  const cancel = useCallback((key: string) => {
+  /** Takes a send back if it has not gone yet. False once it has gone. */
+  const cancel = useCallback((key: string): boolean => {
     const timer = timers.current.get(key);
     if (timer) window.clearTimeout(timer);
     timers.current.delete(key);
+    return live.current.delete(key);
   }, []);
 
-  // Back online: anything kept as To send goes, still with its 10 second Undo.
+  /** An Undo that works while the send is still waiting, and says so plainly once it has gone. */
+  const undoable = useCallback(
+    (key: string, undo: () => void) => () => {
+      if (cancel(key)) undo();
+      else tell(ALREADY_SENT);
+    },
+    [cancel, tell],
+  );
+
+  // The latest records, for the "online" event below, which fires outside a render.
+  const latest = useRef(state);
   useEffect(() => {
-    if (!online) return;
-    for (const [id, status] of Object.entries(state.sessions))
-      if (status === "queued") dispatch({ type: "confirm-commit", id });
-    for (const [id, answer] of Object.entries(state.extras.answers))
-      if (answer.status === "queued" && answer.level) {
-        dispatch({
-          type: "extras",
-          action: { type: "inbox-send", id, level: answer.level, text: answer.text, at: clockNow() },
-        });
-        hold(`answer:${id}`, () => dispatch({ type: "extras", action: { type: "inbox-commit", id } }));
-      }
-  }, [online, state.sessions, state.extras.answers, hold]);
+    latest.current = state;
+  }, [state]);
+
+  // Back online: anything kept as To send starts its 10 seconds, with one Undo for all of it.
+  const resume = useCallback(() => {
+    const current = latest.current;
+    const resumed: (() => boolean)[] = [];
+    for (const [id, status] of Object.entries(current.sessions)) {
+      const key = `session:${id}`;
+      // Already counting down (a second "online" before the page redrew) is left alone.
+      if (status !== "queued" || timers.current.has(key)) continue;
+      dispatch({ type: "confirm-send", id });
+      hold(key, () => dispatch({ type: "confirm-commit", id }));
+      resumed.push(() => (cancel(key) ? (dispatch({ type: "confirm-undo", id }), true) : false));
+    }
+    for (const { id, level, text } of readyToSend(current.extras.answers)) {
+      const key = `answer:${id}`;
+      if (timers.current.has(key)) continue;
+      dispatch({ type: "extras", action: { type: "inbox-send", id, level, text, at: clockNow() } });
+      hold(key, () => dispatch({ type: "extras", action: { type: "inbox-commit", id } }));
+      resumed.push(() =>
+        cancel(key) ? (dispatch({ type: "extras", action: { type: "inbox-undo", id } }), true) : false,
+      );
+    }
+    if (!resumed.length) return;
+    tell(
+      resumed.length === 1
+        ? "Back online. Sending what you kept in 10 s"
+        : `Back online. Sending ${resumed.length} kept items in 10 s`,
+      () => {
+        // Run every undo, not just until the first one works.
+        const undone = resumed.map((undo) => undo()).filter(Boolean).length;
+        if (!undone) tell(ALREADY_SENT);
+      },
+    );
+  }, [hold, cancel, tell]);
+
+  useEffect(() => {
+    window.addEventListener("online", resume);
+    return () => window.removeEventListener("online", resume);
+  }, [resume]);
 
   if (!view) {
     return (
@@ -259,6 +317,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
 
   const { row } = view;
   const first = row.name.replace(/^Dr /, "").split(" ")[0] ?? row.name;
+  const showRequests = view.yours || view.waiting.length > 0;
   const waiting = waitingCount(view, state);
   const openItem = (id: string) => view.waiting.find((item) => item.id === id) ?? null;
 
@@ -273,23 +332,23 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
     if (!draft?.level) return;
     const text = draft.text.trim();
     setSheet(null);
+    const key = `answer:${item.id}`;
+    const undo = undoable(key, () => dispatch({ type: "extras", action: { type: "inbox-undo", id: item.id } }));
     if (!online) {
       dispatch({ type: "extras", action: { type: "inbox-queue", id: item.id, level: draft.level, text } });
-      tell(`Kept to send to ${item.doctor.name} when you are back online`, () =>
-        dispatch({ type: "extras", action: { type: "inbox-undo", id: item.id } }),
-      );
+      live.current.add(key);
+      tell(`Kept to send to ${item.doctor.name} when you are back online`, undo);
       return;
     }
     dispatch({ type: "extras", action: { type: "inbox-send", id: item.id, level: draft.level, text, at: clockNow() } });
-    hold(`answer:${item.id}`, () => dispatch({ type: "extras", action: { type: "inbox-commit", id: item.id } }));
-    tell(`Sending to ${item.doctor.name} in 10 s`, () => {
-      cancel(`answer:${item.id}`);
-      dispatch({ type: "extras", action: { type: "inbox-undo", id: item.id } });
-    });
+    hold(key, () => dispatch({ type: "extras", action: { type: "inbox-commit", id: item.id } }));
+    tell(`Sending to ${item.doctor.name} in 10 s`, undo);
   }
 
   function passOn(item: InboxRequest, reason: CantReason, suggestion: string | null) {
     setSheet(null);
+    // Passing on an answer kept as To send means it no longer goes.
+    cancel(`answer:${item.id}`);
     dispatch({ type: "extras", action: { type: "inbox-cant", id: item.id, reason, suggestion } });
     tell(reason === "not_this_week" ? `Moved to Later, back ${LATER_WHEN}` : "Passed on", () =>
       dispatch({ type: "extras", action: { type: "inbox-restore", id: item.id } }),
@@ -298,20 +357,22 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
 
   function confirmSession(session: SampleSession) {
     setNote(null);
+    // A second tap before the page redraws must not start a second 10 seconds or a second toast.
+    if (sessionStatus(state, session) !== "waiting") return;
+    const key = `session:${session.id}`;
+    const undo = undoable(key, () => dispatch({ type: "confirm-undo", id: session.id }));
     dispatch({ type: "confirm", id: session.id, offline: !online });
     if (!online) {
-      tell("Kept to confirm when you are back online", () => dispatch({ type: "confirm-undo", id: session.id }));
+      live.current.add(key);
+      tell("Kept to confirm when you are back online", undo);
       return;
     }
-    hold(`session:${session.id}`, () => dispatch({ type: "confirm-commit", id: session.id }));
-    tell(`Confirming ${session.date} in 10 s`, () => {
-      cancel(`session:${session.id}`);
-      dispatch({ type: "confirm-undo", id: session.id });
-    });
+    hold(key, () => dispatch({ type: "confirm-commit", id: session.id }));
+    tell(`Confirming ${session.date} in 10 s`, undo);
   }
 
   function sendAsk(id: string) {
-    if (!ask.field) return;
+    if (!ask.field || !online) return;
     setSheet(null);
     dispatch({ type: "ask", id, ask: { field: ask.field, note: ask.note.trim() } });
     setAsk({ field: "", note: "" });
@@ -321,10 +382,13 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
   function settleCorrection(to: "confirmed" | "later") {
     if (!view?.correction) return;
     const id = view.correction.id;
+    const was = view.correctionStatus;
     setSheet(null);
+    // Already left for later, "Not now" just closes. Confirming needs a connection.
+    if (was === "confirmed" || was === to || (to === "confirmed" && !online)) return;
     dispatch({ type: "correction", id, to });
     tell(to === "confirmed" ? "Correction confirmed. The original is kept beside it." : "Left for later", () =>
-      dispatch({ type: "correction-undo", id }),
+      dispatch({ type: "correction-undo", id, to: was }),
     );
   }
 
@@ -335,6 +399,13 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
   const draft = answerItem ? (drafts[answerItem.id] ?? { level: null, text: "" }) : null;
   const draftProblem = draft ? patientDetailProblem(draft.text) : null;
   const askProblem = patientDetailProblem(ask.note);
+  const askBlocker = !ask.field
+    ? "Choose what looks wrong."
+    : askProblem
+      ? "Take out the patient details to send."
+      : !online
+        ? "You're offline. Ask once you are back online."
+        : null;
   const answerBlocker = !draft
     ? null
     : !draft.level
@@ -352,7 +423,10 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
           <WorkCard padded testId="assessments-trainee-offline">
             <p className="flex items-start gap-2 text-sm text-[color:var(--text)]">
               <WifiOff aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0" strokeWidth={1.8} />
-              <span>You&apos;re offline. What you send waits here as To send and goes when you are back online.</span>
+              <span>
+                You&apos;re offline. Answers and confirmations wait here as To send and go when you are back online.
+                Corrections need a connection.
+              </span>
             </p>
           </WorkCard>
         ) : null}
@@ -372,7 +446,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
           <span className={cn(textMuted, "text-sm")}>
             {row.grade} · {row.unit} · supervised by {view.yours ? "you" : row.supervisor}
           </span>
-          {view.yours ? (
+          {view.yours || waiting ? (
             <span className={cn(textMuted, "text-sm")} data-testid="assessments-trainee-waiting-count">
               {waiting ? `${waiting} waiting for you` : "Nothing waiting for you"}
             </span>
@@ -397,11 +471,12 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
         {!view.yours ? (
           <WorkCard padded testId="assessments-trainee-not-yours">
             <p className="text-sm text-[color:var(--text)]">
-              {row.name} is supervised by {row.supervisor}. Only their term supervisor reviews, confirms and signs. You
-              can see status only.
+              {row.name} is supervised by {row.supervisor}. Only their term supervisor confirms supervision and signs
+              their forms. You see their status, and anything they asked of you.
             </p>
           </WorkCard>
-        ) : (
+        ) : null}
+        {showRequests ? (
           <>
             <WorkSectionLabel count={view.waiting.length}>Asked of you</WorkSectionLabel>
             {view.waiting.length ? (
@@ -424,7 +499,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
                         <WorkIconRow
                           icon={FileText}
                           title={item.title}
-                          sub="Opens in the end-of-term form"
+                          sub={opensIn(item)}
                           href={`/teaching/assessments?view=${item.open.kind === "href" ? item.open.view : "inbox"}&as=supervisor`}
                           testId={`assessments-trainee-request-${item.id}`}
                         />
@@ -440,7 +515,10 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
                 testId="assessments-trainee-no-requests"
               />
             )}
-
+          </>
+        ) : null}
+        {view.yours ? (
+          <>
             <WorkSectionLabel count={view.toConfirm.length}>Supervision to confirm</WorkSectionLabel>
             {view.toConfirm.length ? (
               <WorkCard as="ul" testId="assessments-trainee-sessions">
@@ -458,7 +536,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
                         <span className={cn(textMuted, "text-xs")}>Topics: {session.topics.join(", ")}</span>
                       </div>
                       {status === "waiting" ? (
-                        <div className="flex flex-wrap gap-2">
+                        <div className={ACTIONS}>
                           <WorkButton
                             icon={CircleCheck}
                             onClick={() => confirmSession(session)}
@@ -477,7 +555,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
                             testId={`assessments-trainee-ask-${session.id}`}
                             aria-label={`Ask for a correction to ${session.date}`}
                           >
-                            Ask for a correction
+                            Ask to correct
                           </WorkButton>
                         </div>
                       ) : (
@@ -554,21 +632,21 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
                 </WorkCard>
               </>
             ) : null}
-
-            {view.answered.length ? (
-              <>
-                <WorkSectionLabel count={view.answered.length}>Done</WorkSectionLabel>
-                <WorkCard as="ul" testId="assessments-trainee-done">
-                  {view.answered.map((item) => (
-                    <li key={item.id} className="min-w-0">
-                      <WorkIconRow icon={Send} tone="neutral" title={item.title} sub={item.doneLine ?? "Answered"} />
-                    </li>
-                  ))}
-                </WorkCard>
-              </>
-            ) : null}
           </>
-        )}
+        ) : null}
+
+        {view.answered.length ? (
+          <>
+            <WorkSectionLabel count={view.answered.length}>Done</WorkSectionLabel>
+            <WorkCard as="ul" testId="assessments-trainee-done">
+              {view.answered.map((item) => (
+                <li key={item.id} className="min-w-0">
+                  <WorkIconRow icon={Send} tone="neutral" title={item.title} sub={item.doneLine ?? "Answered"} />
+                </li>
+              ))}
+            </WorkCard>
+          </>
+        ) : null}
 
         <WorkSectionLabel>Related</WorkSectionLabel>
         <WorkCard as="ul">
@@ -661,7 +739,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
             <p className={cn(textMuted, "text-center text-xs")}>
               Sends after 10 seconds, with Undo. Made-up: nothing reaches anyone.
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={ACTIONS}>
               <WorkButton
                 variant="secondary"
                 icon={Clock}
@@ -745,7 +823,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
             <p className="text-sm text-[color:var(--text)]">
               This form is not built into the sample, so it can be moved to Later or passed on, not filled in here.
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={ACTIONS}>
               <WorkButton variant="secondary" icon={Clock} onClick={() => passOn(statusItem, "not_this_week", null)}>
                 Later
               </WorkButton>
@@ -798,14 +876,15 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
               size="wide"
               icon={Send}
               onClick={() => sendAsk(askSession.id)}
-              disabled={!ask.field || askProblem !== null}
+              disabled={askBlocker !== null}
               testId="assessments-trainee-ask-send"
             >
               Ask {first}
             </WorkButton>
-            {!ask.field ? <p className={cn(textMuted, "text-center text-sm")}>Choose what looks wrong.</p> : null}
-            {ask.field && askProblem ? (
-              <p className={cn(textMuted, "text-center text-sm")}>Take out the patient details to send.</p>
+            {askBlocker ? (
+              <p className={cn(textMuted, "text-center text-sm")} data-testid="assessments-trainee-ask-blocker">
+                {askBlocker}
+              </p>
             ) : null}
           </div>
         ) : null}
@@ -849,7 +928,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
               <ShieldCheck aria-hidden="true" className="size-icon-xs shrink-0" /> The original record is kept beside
               the correction.
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={ACTIONS}>
               <WorkButton
                 variant="secondary"
                 onClick={() => settleCorrection("later")}
@@ -857,10 +936,19 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
               >
                 Not now
               </WorkButton>
-              <WorkButton onClick={() => settleCorrection("confirmed")} testId="assessments-trainee-correction-confirm">
+              <WorkButton
+                onClick={() => settleCorrection("confirmed")}
+                disabled={!online}
+                testId="assessments-trainee-correction-confirm"
+              >
                 Confirm correction
               </WorkButton>
             </div>
+            {!online ? (
+              <p className={cn(textMuted, "text-center text-sm")} data-testid="assessments-trainee-correction-offline">
+                You&apos;re offline. Confirm once you are back online.
+              </p>
+            ) : null}
           </div>
         ) : null}
       </Sheet>

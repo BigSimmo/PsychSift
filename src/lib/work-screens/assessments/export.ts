@@ -1,8 +1,14 @@
 import { cmeCsvCell } from "@/lib/cme/export";
 import { epa as epaInfo, supervisionLevelName } from "@/lib/teaching/assessments/content";
 import { epaRecords, stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
-import { overviewCsv, overviewDoctors } from "@/lib/teaching/assessments/overview";
-import { CURRENT_TERM, SAMPLE_DOCTOR, SAMPLE_MIDTERM, SAMPLE_TERMS } from "@/lib/teaching/assessments/sample";
+import { overviewDoctors, type OverviewDoctor } from "@/lib/teaching/assessments/overview";
+import {
+  CURRENT_TERM,
+  SAMPLE_DOCTOR,
+  SAMPLE_MIDTERM,
+  SAMPLE_SUPERVISOR,
+  SAMPLE_TERMS,
+} from "@/lib/teaching/assessments/sample";
 import { exampleId, withoutExampleRecords } from "@/lib/work-screens/assessments/sample";
 
 /*
@@ -44,8 +50,23 @@ export interface ExportDoctor {
   readonly name: string;
 }
 
+/**
+ * The doctors this supervisor supervises: "your supervision records" never hold another consultant's
+ * doctors. The DCT's term overview is where every doctor's status lives.
+ */
+function yourDoctors(s: AssessmentsState): OverviewDoctor[] {
+  return overviewDoctors(s).filter((row) => row.supervisor === SAMPLE_SUPERVISOR.name);
+}
+
+/** The byte-order mark tells Excel the file is UTF-8, so "1 of 2" (no-break space) opens as written. */
+const BOM = "\uFEFF";
+
+function toCsv(lines: readonly (readonly string[])[]): string {
+  return BOM + lines.map((line) => line.map(cmeCsvCell).join(",")).join("\r\n") + "\r\n";
+}
+
 export function exportDoctors(s: AssessmentsState): ExportDoctor[] {
-  return overviewDoctors(s)
+  return yourDoctors(s)
     .map((row) => ({ id: row.id, name: row.name }))
     .sort((a, b) => Number(b.id === "sam") - Number(a.id === "sam") || a.name.localeCompare(b.name));
 }
@@ -90,16 +111,28 @@ export function epaCsv(s: AssessmentsState, options: AssessmentsExportOptions, d
   ];
   if (lines.length === 2) lines.push(["None recorded for this choice"]);
   lines.push([], ["Supervision levels only. Feedback text is never exported here."]);
-  return lines.map((line) => line.map(cmeCsvCell).join(",")).join("\r\n") + "\r\n";
+  return toCsv(lines);
 }
 
+/**
+ * Your doctors' term status, status only. Built here rather than with the overview's own CSV, because
+ * that file is headed "Made-up example" and these files only ever hold the rows that are not made up.
+ */
 export function statusCsv(s: AssessmentsState, options: AssessmentsExportOptions, dateLabel: string): string {
-  return overviewCsv(withoutExampleRecords(statusExportRows(s, options)), dateLabel);
+  const rows = withoutExampleRecords(statusExportRows(s, options));
+  const lines: string[][] = [
+    ["Term status", dateLabel],
+    ["Doctor", "Grade", "Unit", "Mid-term", "EPAs this term", "End-of-term"],
+    ...rows.map((r) => [r.name, r.grade, r.unit, r.mid.detail, r.epas.detail, r.end.detail]),
+  ];
+  if (lines.length === 2) lines.push(["None recorded for this choice"]);
+  lines.push([], ["Status only: what is done, due or overdue. No ratings or comments."]);
+  return toCsv(lines);
 }
 
-/** Every doctor's term status for the choice, each marked as an example record (the sample's doctors). */
+/** Your doctors' term status for the choice, each marked as an example record (the sample's doctors). */
 export function statusExportRows(s: AssessmentsState, options: AssessmentsExportOptions) {
-  return overviewDoctors(s)
+  return yourDoctors(s)
     .filter((r) => options.doctor === "all" || r.id === options.doctor)
     .map((r) => ({ ...r, id: exampleId(r.id) }));
 }
