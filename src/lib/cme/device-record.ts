@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import {
   CPD_APPLICATIONS_STORAGE_KEY,
   CPD_HOME_SEND_STORAGE_KEY,
   subscribeAccountTransition,
 } from "@/lib/account-scoped-browser-state";
-import { useSharedDevice } from "@/lib/alerts/shared-device";
+import { isSharedDevice, SHARED_DEVICE_CHANGE_EVENT, useSharedDevice } from "@/lib/alerts/shared-device";
 import {
   EMPTY_APPLICATIONS,
   isValidApplications,
@@ -35,6 +35,12 @@ import {
  * - the made-up sample (local demo build), so every control can be tried;
  * - a device marked shared ("This is a shared computer" in Alerts), because a
  *   referee's name must not sit on a ward computer for the next person.
+ *
+ * Marking a device shared also REMOVES both records already saved on it
+ * (`clearCpdDeviceRecordsIfShared`), not just hides them. The Alerts switch
+ * lives outside CPD and clears only Remind me, so this module listens for the
+ * switch itself: on load, on the switch's change event, on a storage event
+ * from another tab, and whenever a CPD page sees the device is shared.
  */
 
 export type CmeDeviceMode = "device" | "sample" | "shared";
@@ -78,6 +84,33 @@ function write(key: string, value: string): void {
   notify();
 }
 
+const CPD_DEVICE_KEYS = [CPD_APPLICATIONS_STORAGE_KEY, CPD_HOME_SEND_STORAGE_KEY] as const;
+
+/** On a device marked shared, removes CPD's saved records. True when the device is shared. */
+export function clearCpdDeviceRecordsIfShared(): boolean {
+  if (!isSharedDevice()) return false;
+  let removed = false;
+  for (const key of CPD_DEVICE_KEYS) {
+    memory.delete(key);
+    try {
+      if (window.localStorage.getItem(key) !== null) {
+        window.localStorage.removeItem(key);
+        removed = true;
+      }
+    } catch {
+      // Storage refused: nothing was kept there to remove.
+    }
+  }
+  if (removed) notify();
+  return true;
+}
+
+if (typeof window !== "undefined") {
+  clearCpdDeviceRecordsIfShared();
+  window.addEventListener(SHARED_DEVICE_CHANGE_EVENT, () => clearCpdDeviceRecordsIfShared());
+  window.addEventListener("storage", () => clearCpdDeviceRecordsIfShared());
+}
+
 const serverSnapshot = () => null;
 
 export interface CmeDeviceRecord<T> {
@@ -97,6 +130,9 @@ function useCmeDeviceRecord<T>(
 ): CmeDeviceRecord<T> {
   const shared = useSharedDevice();
   const local = sample ?? (shared ? empty : null);
+  useEffect(() => {
+    if (shared) clearCpdDeviceRecordsIfShared();
+  }, [shared]);
   const [localState, setLocalState] = useState<T | null>(null);
   const localRef = useRef<T | null>(null);
   const hydrated = useSyncExternalStore(

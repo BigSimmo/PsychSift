@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { cpdTextLooksLikePatient } from "@/lib/cme/patient-detail-check";
 
 /**
  * Job applications season (#22): the doctor's own plan for one recruitment
@@ -13,8 +13,14 @@ import { looksLikePatientDetails } from "@/lib/work-search/signals";
  *
  * Referees are colleagues, so their name and role are kept, with a status the
  * doctor sets and a short dated history. A name may not carry digits, so a
- * record, bed or phone number cannot hide in it; every other free-text field
- * goes through the same patient-detail reading the work search uses.
+ * record, bed or phone number cannot hide in it, and the part after its title
+ * goes through the CPD patient-detail reading (`cpdTextLooksLikePatient`: the
+ * work search's check, the Remind me check and age with sex). A title and
+ * surname ("Dr Smith", and "Mr Smith" too, because surgeons are Mr or Ms) is
+ * the point of the field, so it is the one shape the name check lets through.
+ * Every other free-text field (role, where a date came from, the statement)
+ * goes through the same reading, letting only hospital and service capitals
+ * ("RPH", "FSH") through, which the reminder check would read as initials.
  */
 
 export const APPLICATION_STAGES = [
@@ -137,8 +143,6 @@ export function isValidApplications(state: ApplicationsState): boolean {
 
 export type ApplicationTextProblem = { readonly title: string; readonly body: string };
 
-const AGE_SEX = /\b\d{1,3}\s?(?:yo|y\/o)\b|\b\d{1,3}\s?yrs?\s?[MFmf]\b|\b\d{1,3}[MF]\b/;
-
 /**
  * Null when the words read as safe. Otherwise a short reason, in the style of
  * the Remind me catch: the field cannot hold a patient detail.
@@ -149,7 +153,7 @@ export function applicationTextProblem(
 ): ApplicationTextProblem | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
-  if (looksLikePatientDetails(trimmed, thisYear) || AGE_SEX.test(trimmed))
+  if (cpdTextLooksLikePatient(trimmed, thisYear, { allowCapitals: true }))
     return {
       title: "This looks like a patient detail",
       body: "Leave out names, record numbers, bed numbers and dates of birth. Nothing about a patient belongs here.",
@@ -159,8 +163,13 @@ export function applicationTextProblem(
 
 const TITLES = /^(?:dr|doctor|prof|professor|a\/prof|assoc(?:iate)?\.?\s+prof(?:essor)?|mr|mrs|ms|mx|miss)\.?\s+/i;
 
-/** A referee's name: letters only (no digits, so no number can hide in it), and never empty. */
-export function refereeNameProblem(name: string): ApplicationTextProblem | null {
+/**
+ * A referee's name: letters only (no digits, so no number can hide in it), never empty, and the
+ * part after the title read for patient details. "Dr J Smith" is a colleague's initial and
+ * surname, so that one finding is allowed; capitals alone ("JS"), dotted initials ("J.S.") and an
+ * age with sex are not.
+ */
+export function refereeNameProblem(name: string, thisYear = new Date().getFullYear()): ApplicationTextProblem | null {
   const trimmed = name.trim();
   if (!trimmed) return { title: "Add a name", body: "Type the referee's name, for example Dr Grant." };
   if (/\d/.test(trimmed))
@@ -174,6 +183,11 @@ export function refereeNameProblem(name: string): ApplicationTextProblem | null 
   const rest = trimmed.replace(TITLES, "");
   if (/\b(?:dob|urn|umrn|mrn|bed)\b/i.test(rest))
     return { title: "Only the name goes here", body: "Leave out record numbers, bed numbers and dates of birth." };
+  if (cpdTextLooksLikePatient(rest, thisYear, { allowName: true }))
+    return {
+      title: "This looks like a patient detail",
+      body: "Only the referee's name goes here, for example Dr Grant. Leave out initials, ages and anything about a patient.",
+    };
   return null;
 }
 
@@ -214,10 +228,13 @@ export function outOfOrderStages(state: ApplicationsState): ApplicationStageId[]
   return flagged;
 }
 
-/** The season's year: the start date's year when added, otherwise the next calendar year. */
-export function seasonYear(state: ApplicationsState, today: string): number {
+/**
+ * The season's year: the start date's year once the doctor adds it. Null until then, because
+ * a guess (next calendar year) is wrong for anyone applying for a mid-year post.
+ */
+export function seasonYear(state: ApplicationsState): number | null {
   const start = seasonDateFor(state, "start");
-  return start ? Number(start.on.slice(0, 4)) : Number(today.slice(0, 4)) + 1;
+  return start ? Number(start.on.slice(0, 4)) : null;
 }
 
 export type RailItem =
@@ -325,6 +342,63 @@ export function removeReferee(state: ApplicationsState, id: string): Application
   return { ...state, referees: state.referees.filter((referee) => referee.id !== id) };
 }
 
+/* Undo, as the inverse of one change only: a nudge or any other change made since is kept. */
+
+/** Puts back a removed referee at the place it was. Nothing changes if it is already there. */
+export function restoreReferee(state: ApplicationsState, referee: Referee, index: number): ApplicationsState {
+  if (state.referees.some((existing) => existing.id === referee.id)) return state;
+  const referees = [...state.referees];
+  referees.splice(Math.min(Math.max(index, 0), referees.length), 0, referee);
+  return { ...state, referees };
+}
+
+/**
+ * Reverses one edit of a referee: the name, role and status go back to `before`, and the status
+ * event that edit added (if any) is taken out. Nudges and other events recorded since stay.
+ */
+export function undoRefereeEdit(
+  state: ApplicationsState,
+  before: Referee,
+  addedStatus: RefereeHistory | null,
+): ApplicationsState {
+  return {
+    ...state,
+    referees: state.referees.map((referee) => {
+      if (referee.id !== before.id) return referee;
+      let history = referee.history;
+      if (addedStatus) {
+        let at = -1;
+        history.forEach((event, index) => {
+          if (
+            event.kind === "status" &&
+            addedStatus.kind === "status" &&
+            event.status === addedStatus.status &&
+            event.on === addedStatus.on
+          )
+            at = index;
+        });
+        if (at >= 0) history = [...history.slice(0, at), ...history.slice(at + 1)];
+      }
+      return { ...referee, name: before.name, role: before.role, status: before.status, history };
+    }),
+  };
+}
+
+/** Reverses one date change: the stage goes back to `before`, or is removed if it was new. */
+export function undoSeasonDate(
+  state: ApplicationsState,
+  stage: ApplicationStageId,
+  before: SeasonDate | null,
+): ApplicationsState {
+  return before ? upsertSeasonDate(state, before) : removeSeasonDate(state, stage);
+}
+
+/** When the doctor first asked this referee, or null if never: the date the request went. */
+export function firstAskedOn(referee: Referee): string | null {
+  for (const event of referee.history) if (event.kind === "status" && event.status === "asked") return event.on;
+  return null;
+}
+
 /** When the doctor last asked (or nudged) this referee, or null if never. */
 export function lastAskedOn(referee: Referee): string | null {
   let last: string | null = null;
@@ -373,11 +447,21 @@ export function refereeLine(referee: Referee, today: string): string {
   return `${refereeStatusLabel(referee.status)} ${when}`;
 }
 
-/** A short, polite follow-up the doctor pastes into their own email. */
+/**
+ * A short, polite follow-up the doctor pastes into their own email. The time words come from
+ * when the request was first sent, not from the last nudge: none under a week, "from last
+ * week" at 7 to 13 days, and the date after that.
+ */
 export function nudgeMessage(referee: Referee, today: string): string {
-  const asked = lastAskedOn(referee);
-  const when = asked ? (daysBetween(asked, today) <= 7 ? "last week" : `on ${shortDate(asked, today)}`) : "recently";
-  return `Hi ${referee.name}, just checking you got my referee request from ${when}. Happy to send anything that helps. Thanks`;
+  const asked = firstAskedOn(referee) ?? lastAskedOn(referee);
+  const days = asked ? daysBetween(asked, today) : null;
+  const request =
+    asked === null || days === null || days < 7
+      ? "my referee request"
+      : days <= 13
+        ? "my referee request from last week"
+        : `the referee request I sent on ${shortDate(asked, today)}`;
+  return `Hi ${referee.name}, just checking you got ${request}. Happy to send anything that helps. Thanks.`;
 }
 
 /* ---------------------------------------------------------------- hooks for other areas */
@@ -395,7 +479,8 @@ export type ApplicationsNeedsYouItem = {
 };
 
 /**
- * For the Notification centre: a date with Remind me on, from a week before
+ * Ready for the Notification centre, NOT WIRED YET (the main build owns it; the page says
+ * "at the top of this page only" until it is). A date with Remind me on, from a week before
  * to the day itself; and a referee asked five or more days ago with no reply.
  */
 export function applicationsNeedsYouItems(state: ApplicationsState, today: string): ApplicationsNeedsYouItem[] {

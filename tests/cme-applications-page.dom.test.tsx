@@ -8,7 +8,7 @@ import { ApplicationsEntryLink } from "@/components/cme/applications/application
 import { ApplicationsPage } from "@/components/cme/applications/applications-page";
 import { ApplicationsTodayCard } from "@/components/cme/applications/applications-today-card";
 import { ToastProvider } from "@/components/ui/toast";
-import { CPD_APPLICATIONS_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
+import { CPD_APPLICATIONS_STORAGE_KEY, CPD_HOME_SEND_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import { setSharedDevice } from "@/lib/alerts/shared-device";
 import * as clipboard from "@/lib/copy-to-clipboard";
 
@@ -158,6 +158,63 @@ describe("Job applications season", () => {
     });
     expect(copy).toHaveBeenCalledWith(expect.stringContaining("Hi Dr Grant, just checking"));
     expect(stored().referees[0].history.at(-1)).toEqual({ kind: "nudge", on: "2026-10-06" });
+  });
+
+  it("Undo reverses only its own change, keeping a nudge copied since", async () => {
+    localStorage.setItem(
+      CPD_APPLICATIONS_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        dates: [],
+        referees: [
+          { id: "r1", name: "Dr Moss", role: "", status: "not-asked", history: [] },
+          {
+            id: "r2",
+            name: "Dr Grant",
+            role: "",
+            status: "asked",
+            history: [{ kind: "status", status: "asked", on: "2026-10-01" }],
+          },
+        ],
+        statement: "",
+        hiddenCvLines: [],
+      }),
+    );
+    vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    renderPage();
+    fireEvent.click(screen.getAllByTestId("applications-referee")[0]!);
+    fireEvent.click(screen.getByTestId("applications-referee-status-asked"));
+    fireEvent.click(screen.getByTestId("applications-referee-save"));
+    expect(stored().referees[0].status).toBe("asked");
+    fireEvent.click(screen.getByTestId("applications-nudge-open"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("applications-nudge-copy"));
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(stored().referees[0]).toMatchObject({ status: "not-asked", history: [] });
+    expect(stored().referees[1].history.at(-1)).toEqual({ kind: "nudge", on: "2026-10-06" });
+  });
+
+  it("never guesses the season year, and says the reminder shows on this page only", () => {
+    renderPage();
+    expect(screen.getByTestId("applications-no-start").textContent).toContain("Add a start date");
+    expect(document.body.textContent).not.toMatch(/Season 2027/);
+    fireEvent.click(screen.getByTestId("applications-add-date"));
+    const sheet = screen.getByTestId("applications-date-sheet");
+    expect(sheet.textContent).toContain("at the top of this page only");
+    expect(sheet.textContent).not.toContain("Notifications");
+  });
+
+  it("removes the saved applications and CPD Home records when the device is marked shared", () => {
+    localStorage.setItem(CPD_APPLICATIONS_STORAGE_KEY, JSON.stringify({ version: 1 }));
+    localStorage.setItem(CPD_HOME_SEND_STORAGE_KEY, JSON.stringify({ version: 1, files: [] }));
+    renderPage();
+    act(() => setSharedDevice(true));
+    expect(localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
+    // Turning the switch off does not bring them back.
+    act(() => setSharedDevice(false));
+    expect(localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)).toBeNull();
   });
 
   it("shows the made-up sample in the demo build and keeps nothing", () => {

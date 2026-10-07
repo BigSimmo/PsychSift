@@ -21,11 +21,15 @@ import {
   refereeNameProblem,
   removeReferee,
   removeSeasonDate,
+  restoreReferee,
   sampleApplications,
   seasonRail,
   seasonYear,
   setRefereeStatus,
   shortDate,
+  undoRefereeEdit,
+  undoSeasonDate,
+  updateRefereeDetails,
   upsertSeasonDate,
   type ApplicationsState,
   type SeasonDate,
@@ -56,6 +60,20 @@ describe("patient-detail checks", () => {
     expect(refereeNameProblem("Dr Grant 0412 345 678")).toMatchObject({ title: "A name has no numbers" });
     expect(refereeNameProblem("grant@example.org")).not.toBeNull();
     expect(refereeNameProblem("Dr Grant DOB")).not.toBeNull();
+  });
+
+  it("reads the part after the title with both patient-detail checks, allowing a title and surname", () => {
+    // "Mr Smith" stays allowed: surgeons are Mr or Ms, and a colleague's title and surname is the field.
+    for (const name of ["Dr Smith", "Mr Smith", "Ms Patel", "Dr J Smith", "Prof Jane Lowe"])
+      expect(refereeNameProblem(name), name).toBeNull();
+    for (const name of ["JS", "Dr J.S.", "J.S."])
+      expect(refereeNameProblem(name), name).toMatchObject({ title: "This looks like a patient detail" });
+  });
+
+  it("reads a role or source with both checks, letting hospital capitals through", () => {
+    expect(applicationTextProblem("Consultant, RPH")).toBeNull();
+    for (const bad of ["Consultant, call 0412 345 678", "Saw J.S. on the ward", "34 y.o. male"])
+      expect(applicationTextProblem(bad), bad).not.toBeNull();
   });
 });
 
@@ -105,9 +123,22 @@ describe("season dates", () => {
     expect(outOfOrderStages(state)).toEqual(["interviews"]);
   });
 
-  it("reads the season year from the start date, or next year", () => {
-    expect(seasonYear(EMPTY_APPLICATIONS, today)).toBe(2027);
-    expect(seasonYear(upsertSeasonDate(EMPTY_APPLICATIONS, date("start", "2028-02-01")), today)).toBe(2028);
+  it("reads the season year from the start date only, never guessing one", () => {
+    expect(seasonYear(EMPTY_APPLICATIONS)).toBeNull();
+    expect(seasonYear(upsertSeasonDate(EMPTY_APPLICATIONS, date("close", "2026-10-30")))).toBeNull();
+    expect(seasonYear(upsertSeasonDate(EMPTY_APPLICATIONS, date("start", "2028-02-01")))).toBe(2028);
+  });
+
+  it("undoes one date change only", () => {
+    const before = upsertSeasonDate(EMPTY_APPLICATIONS, date("close", "2026-10-30"));
+    const changed = upsertSeasonDate(before, date("close", "2026-11-02"));
+    const later = upsertSeasonDate(changed, date("interviews", "2026-11-20"));
+    const undone = undoSeasonDate(later, "close", before.dates[0]!);
+    expect(undone.dates.map((item) => [item.stage, item.on])).toEqual([
+      ["close", "2026-10-30"],
+      ["interviews", "2026-11-20"],
+    ]);
+    expect(undoSeasonDate(later, "interviews", null).dates.map((item) => item.stage)).toEqual(["close"]);
   });
 
   it("finds the next date for a Today card", () => {
@@ -146,11 +177,49 @@ describe("referees", () => {
     expect(quietReferees(recordNudge(state, "r1", today), today)).toEqual([]);
   });
 
-  it("writes a polite nudge with no patient detail and the doctor's own sign-off left to them", () => {
-    const text = nudgeMessage(withGrant().referees[0]!, today);
-    expect(text).toBe(
-      "Hi Dr Grant, just checking you got my referee request from last week. Happy to send anything that helps. Thanks",
+  it("writes a polite nudge with no patient detail, with time words that fit", () => {
+    const grant = withGrant().referees[0]!;
+    // Asked 5 days ago: no time words.
+    expect(nudgeMessage(grant, today)).toBe(
+      "Hi Dr Grant, just checking you got my referee request. Happy to send anything that helps. Thanks.",
     );
+    expect(nudgeMessage(grant, "2026-10-01")).toContain("got my referee request.");
+    expect(nudgeMessage(grant, "2026-10-09")).toContain("got my referee request from last week.");
+    // Two weeks on: the date it was sent.
+    expect(nudgeMessage(grant, "2026-10-20")).toContain("got the referee request I sent on Thu 1 Oct.");
+    expect(
+      nudgeMessage({ ...grant, history: [{ kind: "status", status: "asked", on: "2026-09-20" }] }, "2026-10-07"),
+    ).toBe(
+      "Hi Dr Grant, just checking you got the referee request I sent on Sun 20 Sep. Happy to send anything that helps. Thanks.",
+    );
+  });
+
+  it("dates a nudge from the first request, not the last nudge", () => {
+    const nudged = recordNudge(withGrant(), "r1", "2026-10-25").referees[0]!;
+    expect(nudgeMessage(nudged, "2026-10-26")).toContain("I sent on Thu 1 Oct");
+  });
+
+  it("undoes a referee edit without losing a nudge recorded since, and puts a removed referee back", () => {
+    let state = addReferee(withGrant(), { name: "Dr Moss", role: "", status: "asked" }, "2026-10-01", "r2");
+    const before = state.referees[0]!;
+    state = setRefereeStatus(
+      updateRefereeDetails(state, "r1", { name: "Dr Grant", role: "Head" }),
+      "r1",
+      "agreed",
+      today,
+    );
+    // A nudge for another referee, and one for this one, copied before Undo.
+    state = recordNudge(recordNudge(state, "r2", today), "r1", today);
+    const undone = undoRefereeEdit(state, before, { kind: "status", status: "agreed", on: today });
+    expect(undone.referees[0]).toMatchObject({ status: "asked", role: "Consultant" });
+    expect(undone.referees[0]!.history).toEqual([
+      { kind: "status", status: "asked", on: "2026-10-01" },
+      { kind: "nudge", on: today },
+    ]);
+    expect(undone.referees[1]!.history.at(-1)).toEqual({ kind: "nudge", on: today });
+    const removed = removeReferee(undone, "r1");
+    expect(restoreReferee(removed, undone.referees[0]!, 0).referees.map((r) => r.id)).toEqual(["r1", "r2"]);
+    expect(restoreReferee(undone, undone.referees[0]!, 0).referees).toHaveLength(2);
   });
 });
 
@@ -395,5 +464,21 @@ describe("CV", () => {
       today,
     });
     expect(thisYear[0]!.lines.map((line) => line.sub)).toEqual(["2 sessions recorded in 2026", "2026"]);
+  });
+
+  it("keeps a supervision and a term that span the whole of This year", () => {
+    const sections = buildCv({
+      entries: [],
+      terms: [{ id: "t1", number: 3, unit: "Ward 4", site: "", startsOn: "2025-12-01", endsOn: "2027-01-31" }],
+      talks: [],
+      supervising: [{ pairingId: "p1", startsOn: "2025-08-01", endsOn: "2027-02-01" }],
+      statement: "",
+      range: "year",
+      today: "2026-10-07",
+    });
+    expect(sections.find((section) => section.id === "terms")?.lines).toHaveLength(1);
+    expect(sections.find((section) => section.id === "teaching")?.lines.map((line) => [line.title, line.sub])).toEqual([
+      ["Supervisor to 1 registrar", "2026"],
+    ]);
   });
 });

@@ -34,11 +34,36 @@ export function looksLikeAgeAndSex(text: string): boolean {
   return AGE_SEX.some((pattern) => pattern.test(text));
 }
 
+function reminderFindings(text: string): string[] {
+  const problem = checkReminderText(text);
+  if (!problem) return [];
+  return problem.title
+    .replace(/^This looks like /, "")
+    .split(/, | and /)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+export type CpdPatientCheckOptions = {
+  /** A referee's name is a title and surname by design ("Dr J Smith"), so the "a name" finding is allowed. */
+  readonly allowName?: boolean;
+  /**
+   * A role or a source names a hospital or service in capitals ("RPH", "FSH"), which the Remind me
+   * check reads as initials. Bare two- and three-letter capitals are read past; dotted initials
+   * ("J.S."), and every other finding, still count.
+   */
+  readonly allowCapitals?: boolean;
+};
+
 /** True when the words read as holding a patient detail. Empty text is never flagged. */
-export function cpdTextLooksLikePatient(text: string, thisYear = new Date().getFullYear()): boolean {
+export function cpdTextLooksLikePatient(
+  text: string,
+  thisYear = new Date().getFullYear(),
+  options: CpdPatientCheckOptions = {},
+): boolean {
   const trimmed = text.trim();
   if (!trimmed) return false;
-  return (
-    looksLikePatientDetails(trimmed, thisYear) || checkReminderText(trimmed) !== null || looksLikeAgeAndSex(trimmed)
-  );
+  if (looksLikePatientDetails(trimmed, thisYear) || looksLikeAgeAndSex(trimmed)) return true;
+  const read = options.allowCapitals ? trimmed.replace(/\b[A-Z]{2,3}\b(?!\.)/g, " ") : trimmed;
+  return reminderFindings(read).some((finding) => !(options.allowName && finding === "a name"));
 }
