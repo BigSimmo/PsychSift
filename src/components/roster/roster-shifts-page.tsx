@@ -355,6 +355,12 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shifts.shifts, extra.records, fortnight.start, fortnight.end],
   );
+  // On call from home is not rostered hours (isWorkedKind), so a fortnight of on-call
+  // shifts reads 0 h. The fortnight then says so instead of looking empty.
+  const onCallExcluded = shifts.shifts.some((shift) => {
+    const date = perthDateOf(shift.startsAt);
+    return kindOf(shift) === "on_call" && date >= summary.start && date <= summary.end;
+  });
   const overview = useMemo(() => shifts.shifts.map(toOverview), [shifts.shifts]);
   const byId = useMemo(() => new Map(shifts.shifts.map((shift) => [shift.id, shift])), [shifts.shifts]);
   // Every day a leave entry covers; one ending at midnight does not reach the next day.
@@ -486,6 +492,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               extra={extra}
               partial={partial}
               payAnchored={Boolean(payAnchor)}
+              onCallExcluded={onCallExcluded}
               onRetry={() => void shifts.reload()}
             />
           )}
@@ -722,6 +729,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               extraStatus={extra.status}
               partial={partial}
               payAnchored={Boolean(payAnchor)}
+              onCallExcluded={onCallExcluded}
             />
 
             <RosterSectionHead title="Roster tools" />
