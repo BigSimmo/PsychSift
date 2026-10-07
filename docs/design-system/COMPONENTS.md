@@ -1058,10 +1058,10 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `AnswerFooter`           | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `Breadcrumb`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             152 |
+| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             151 |
 | `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
 | `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
-| `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               7 |
+| `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               6 |
 | `Citation`               | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `CitationList`           | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `ConfirmDialog`          | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
@@ -1093,7 +1093,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `SafeBoldText`           | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
 | `SearchField`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              22 |
-| `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
+| `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              15 |
 | `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             101 |
 | `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `SourceDesignationBadge` | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
@@ -1102,7 +1102,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `StageList`              | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `StatusMark`             | source   | yes   | yes                | inherited-global-root | yes            | no                 |               6 |
 | `Tabs`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
-| `TextField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              44 |
+| `TextField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              43 |
 | `TextLink`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `ToastRegion`            | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `ToggleSwitch`           | controls | yes   | yes                | inherited-global-root | yes            | no                 |               2 |

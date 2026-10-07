@@ -423,7 +423,6 @@
         "src/components/teaching/teaching-scan-landing.tsx",
         "src/components/teaching/teaching-session.tsx",
         "src/components/teaching/teaching-supervision-admin.tsx",
-        "src/components/teaching/teaching-supervision.tsx",
         "src/components/teaching/teaching-teach.tsx",
         "src/components/teaching/teaching-term.tsx",
         "src/components/teaching/teaching-this-week.tsx",
@@ -579,7 +578,6 @@
         "src/components/teaching/teaching-scan-landing.tsx",
         "src/components/teaching/teaching-session.tsx",
         "src/components/teaching/teaching-supervision-admin.tsx",
-        "src/components/teaching/teaching-supervision.tsx",
         "src/components/teaching/teaching-term.tsx",
         "src/components/teaching/teaching-this-week.tsx",
         "src/components/therapy-compass/pathway-picker-sheet.tsx",
@@ -767,7 +765,6 @@
         "src/components/clinical-dashboard/result-filter-control.tsx",
         "src/components/favourites/favourites-set-chips.tsx",
         "src/components/teaching/teaching-exam-prep.tsx",
-        "src/components/teaching/teaching-supervision.tsx",
         "src/components/therapy-compass/recommend-scenario-fields.tsx",
         "src/components/therapy-compass/screens/sheets-screen.tsx"
       ],
@@ -776,7 +773,6 @@
         "src/components/clinical-dashboard/result-filter-control.tsx",
         "src/components/favourites/favourites-set-chips.tsx",
         "src/components/teaching/teaching-exam-prep.tsx",
-        "src/components/teaching/teaching-supervision.tsx",
         "src/components/therapy-compass/recommend-scenario-fields.tsx",
         "src/components/therapy-compass/screens/sheets-screen.tsx"
       ],
@@ -2209,7 +2205,6 @@
         "src/components/teaching/teaching-organise.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
         "src/components/teaching/teaching-resources.tsx",
-        "src/components/teaching/teaching-supervision.tsx",
         "src/components/ui/catalogue-toolbar.tsx"
       ],
       "productImportFiles": [
@@ -2227,7 +2222,6 @@
         "src/components/teaching/teaching-organise.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
         "src/components/teaching/teaching-resources.tsx",
-        "src/components/teaching/teaching-supervision.tsx",
         "src/components/ui/catalogue-toolbar.tsx"
       ],
       "designSync": {
@@ -2851,7 +2845,6 @@
         "src/components/teaching/teaching-resources.tsx",
         "src/components/teaching/teaching-scan-landing.tsx",
         "src/components/teaching/teaching-session.tsx",
-        "src/components/teaching/teaching-supervision.tsx",
         "src/components/teaching/teaching-term.tsx",
         "src/components/ui/catalogue-toolbar.tsx"
       ],
@@ -2897,7 +2890,6 @@
         "src/components/teaching/teaching-resources.tsx",
         "src/components/teaching/teaching-scan-landing.tsx",
         "src/components/teaching/teaching-session.tsx",
-        "src/components/teaching/teaching-supervision.tsx",
         "src/components/teaching/teaching-term.tsx",
         "src/components/ui/catalogue-toolbar.tsx"
       ],
