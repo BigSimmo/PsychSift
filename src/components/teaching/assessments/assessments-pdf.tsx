@@ -156,14 +156,14 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
     kind = params.get("kind") === "mid" ? "mid" : "eot";
     f = fromPast(SAMPLE_PAST_FORMS[term.id as "t1" | "t2" | "t3"]![kind]);
     supSig = sig(term.supervisor.replace("Dr ", ""));
-    docSig = sig("Sam Lee");
+    docSig = sig("Sam Karri");
     supDate = docDate = (kind === "eot" ? term.signed : term.midSigned) ?? "";
   } else if (of === "mid") {
     term = CURRENT_TERM;
     kind = "mid";
     f = fromPast(SAMPLE_MIDTERM.sup);
-    supSig = sig("Priya Nair");
-    docSig = sig("Sam Lee");
+    supSig = sig("Robin Wattle");
+    docSig = sig("Sam Karri");
     supDate = docDate = SAMPLE_MIDTERM.date;
   } else if (of === "eot") {
     term = CURRENT_TERM;

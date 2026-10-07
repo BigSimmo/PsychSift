@@ -156,7 +156,7 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
         This term
       </SectionLabel>
       <List>
-        <StepRow state="ok" title="Beginning-of-term talk" detail="Wed 2 Sep with Dr Nair. Goals agreed." />
+        <StepRow state="ok" title="Beginning-of-term talk" detail="Wed 2 Sep with Dr Wattle. Goals agreed." />
         <StepRow
           state="ok"
           title="Mid-term assessment"
@@ -195,7 +195,7 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
         <Row
           icon={Target}
           title="Request an EPA"
-          subtitle="From Dr Nair or a registrar"
+          subtitle="From Dr Wattle or a registrar"
           onClick={() => openSheet({ kind: "epa", pick: 1 })}
         />
         <Row icon={ListIcon} title="All assessments" subtitle="Every form and EPA, by term" href={viewHref("all")} />

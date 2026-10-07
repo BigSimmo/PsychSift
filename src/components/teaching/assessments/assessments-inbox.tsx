@@ -382,8 +382,8 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
         </List>
       )}
       <SmallPrint>
-        Status here. Open a request to see what was asked. Dr Ben Ortiz, Dr Mia Chen, Dr Ravi Kaur and Dr Ella Okafor
-        are made-up. Nothing is sent to anyone.
+        Status here. Open a request to see what was asked. Dr Ash Zamia, Dr Frankie Mulga, Dr Rowan Sheoak and Dr
+        Charlie Balga are made-up. Nothing is sent to anyone.
       </SmallPrint>
       <Sheet
         open={open !== null}

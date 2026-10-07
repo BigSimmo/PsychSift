@@ -1,4 +1,4 @@
-/** "Dr Tran Nguyen" to "TN", "Sam" to "S". Initials only, drawn from the roster's own name. */
+/** "Dr Jordan Tuart" to "JT", "Sam" to "S". Initials only, drawn from the roster's own name. */
 export function rosterInitials(name: string | null): string {
   if (!name) return "";
   const words = name

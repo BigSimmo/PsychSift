@@ -45,10 +45,10 @@ describe("consultant inbox", () => {
     renderWith(<AssessmentsInbox {...props(windowOpen)} />);
     const inbox = screen.getByTestId("assessments-inbox");
     expect(within(inbox).getByRole("heading", { name: "Overdue · 1" })).toBeInTheDocument();
-    expect(within(inbox).getByRole("button", { name: /Dr Ben Ortiz · Mid-term assessment/ })).toBeInTheDocument();
+    expect(within(inbox).getByRole("button", { name: /Dr Ash Zamia · Mid-term assessment/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "EPAs · 3" }));
-    expect(screen.queryByRole("button", { name: /Dr Ben Ortiz/ })).toBeNull();
-    expect(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Dr Ash Zamia/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ })).toBeInTheDocument();
   });
 
   it("puts the sort with its label, above the lists it orders", () => {
@@ -62,7 +62,7 @@ describe("consultant inbox", () => {
 
   it("opens a request in one tap, catches patient details, and sends with Undo", async () => {
     renderWith(<AssessmentsInbox {...props(windowOpen)} />);
-    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     const send = within(sheet).getByTestId("assessments-inbox-send");
     expect(send).toBeDisabled();
@@ -76,10 +76,10 @@ describe("consultant inbox", () => {
     fireEvent.change(within(sheet).getByLabelText(/A few lines/), { target: { value: "Calm, clear escalation." } });
     expect(within(sheet).queryByRole("alert")).toBeNull();
     fireEvent.click(send);
-    expect(await screen.findByTestId("toast")).toHaveTextContent(/Sending to Dr Mia Chen in 10/);
+    expect(await screen.findByTestId("toast")).toHaveTextContent(/Sending to Dr Frankie Mulga in 10/);
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     // Undone: back in the list, and the answer is kept for reopening.
-    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     const again = await screen.findByTestId("assessments-inbox-feedback");
     expect(within(again).getByLabelText(/A few lines/)).toHaveValue("Calm, clear escalation.");
     fireEvent.click(within(again).getByTestId("assessments-inbox-send"));
@@ -99,22 +99,22 @@ describe("consultant inbox", () => {
     ].reduce(assessmentsReducer, windowOpen);
     const p = props(s);
     renderWith(<AssessmentsInbox {...p} />);
-    fireEvent.click(screen.getByRole("button", { name: /Dr Sam Lee · EPA 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Sam Karri · EPA 1/ }));
     expect(p.openSheet).toHaveBeenCalledWith({ kind: "supepa", index: 0 });
-    fireEvent.click(screen.getByRole("button", { name: /Dr Sam Lee · End-of-term assessment/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Sam Karri · End-of-term assessment/ }));
     expect(p.go).toHaveBeenCalledWith("/teaching/assessments?view=form&as=supervisor");
   });
 
   it("moves a request to Later and says Nothing waiting once all are answered", async () => {
     renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
-    for (const name of [/Dr Mia Chen/, /Dr Ella Okafor/, /Dr Ravi Kaur/]) {
+    for (const name of [/Dr Frankie Mulga/, /Dr Charlie Balga/, /Dr Rowan Sheoak/]) {
       fireEvent.click(screen.getByRole("button", { name }));
       fireEvent.click(await screen.findByRole("button", { name: "Can't do this one" }));
       fireEvent.click(await screen.findByRole("radio", { name: /Better from another consultant/ }));
       fireEvent.click(screen.getByTestId("assessments-inbox-cant-send"));
     }
     expect(screen.getByRole("radio", { name: /Waiting · 1/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Dr Ben Ortiz/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Ash Zamia/ }));
     expect(await screen.findByTestId("assessments-inbox-status")).toHaveTextContent("isn't built into the sample");
   });
 
@@ -135,10 +135,10 @@ describe("consultant inbox", () => {
 describe("consultant inbox, more behaviours", () => {
   it("gives every row a status rail and one tag", () => {
     renderWith(<AssessmentsInbox {...props(windowOpen)} />);
-    const ben = screen.getByRole("button", { name: /Dr Ben Ortiz · Mid-term assessment/ }).closest("li")!;
+    const ben = screen.getByRole("button", { name: /Dr Ash Zamia · Mid-term assessment/ }).closest("li")!;
     expect(ben).toHaveAttribute("data-rail", "overdue");
     expect(within(ben).getByText("Overdue")).toBeInTheDocument();
-    const ella = screen.getByRole("button", { name: /Dr Ella Okafor · EPA 4/ }).closest("li")!;
+    const ella = screen.getByRole("button", { name: /Dr Charlie Balga · EPA 4/ }).closest("li")!;
     expect(ella).toHaveAttribute("data-rail", "long");
   });
 
@@ -149,13 +149,13 @@ describe("consultant inbox, more behaviours", () => {
     const names = within(waiting)
       .getAllByRole("button")
       .map((b) => b.textContent ?? "");
-    expect(names[0]).toMatch(/^.*Dr Ben Ortiz/);
-    expect(names.at(-1)).toMatch(/Dr Ravi Kaur/);
+    expect(names[0]).toMatch(/^.*Dr Ash Zamia/);
+    expect(names.at(-1)).toMatch(/Dr Rowan Sheoak/);
   });
 
   it("moves a request to Later from the sheet, with Undo", async () => {
     renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
-    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Later" }));
     expect(await screen.findByText("Moved to Later · back Mon 08:00")).toBeInTheDocument();
     const later = screen.getByRole("list", { name: "Later" });
@@ -166,13 +166,13 @@ describe("consultant inbox, more behaviours", () => {
 
   it("passes a request on with a suggested colleague, showing what the doctor sees", async () => {
     renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
-    fireEvent.click(screen.getByRole("button", { name: /Dr Ella Okafor · EPA 4/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Charlie Balga · EPA 4/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Can't do this one" }));
     const sheet = await screen.findByTestId("assessments-inbox-cant");
     expect(within(sheet).getByRole("radio", { name: /I did not see this work/ })).toBeChecked();
-    fireEvent.click(within(sheet).getByRole("button", { name: "Dr Hana Ito" }));
+    fireEvent.click(within(sheet).getByRole("button", { name: "Dr Morgan Grevillea" }));
     expect(within(sheet).getByTestId("assessments-inbox-cant-preview")).toHaveTextContent(
-      "Dr Ella Okafor seesNot able to assess this one, as I did not see this work. Try Dr Hana Ito.",
+      "Dr Charlie Balga seesNot able to assess this one, as I did not see this work. Try Dr Morgan Grevillea.",
     );
     // Not this week takes no suggestion and becomes Move to Later.
     fireEvent.click(within(sheet).getByRole("radio", { name: /Not this week/ }));
@@ -181,8 +181,8 @@ describe("consultant inbox, more behaviours", () => {
     fireEvent.click(within(sheet).getByRole("radio", { name: /I did not see this work/ }));
     fireEvent.click(within(sheet).getByTestId("assessments-inbox-cant-send"));
     fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
-    expect(screen.getByText("Not seen by you · suggested Dr Hana Ito")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Dr Ella Okafor · EPA 4/ }));
+    expect(screen.getByText("Not seen by you · suggested Dr Morgan Grevillea")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Dr Charlie Balga · EPA 4/ }));
     const preview = await screen.findByTestId("assessments-inbox-doctor");
     expect(preview).toHaveTextContent("Your supervisor passed this on");
     fireEvent.click(within(preview).getByRole("button", { name: "Move back to my inbox" }));
@@ -193,18 +193,18 @@ describe("consultant inbox, more behaviours", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
-    fireEvent.click(screen.getByRole("button", { name: /Dr Ravi Kaur · EPA 3/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Rowan Sheoak · EPA 3/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     fireEvent.click(within(sheet).getByRole("radio", { name: "Minimal" }));
     fireEvent.change(within(sheet).getByLabelText(/A few lines/), { target: { value: "Safe, tidy prescribing." } });
-    expect(within(sheet).getByTestId("assessments-inbox-send")).toHaveTextContent("Send to Dr Ravi Kaur");
+    expect(within(sheet).getByTestId("assessments-inbox-send")).toHaveTextContent("Send to Dr Rowan Sheoak");
     fireEvent.click(within(sheet).getByTestId("assessments-inbox-send"));
     expect(screen.getByTestId("assessments-inbox-sending")).toHaveTextContent("Sending 1 answer");
     await act(async () => {
       vi.advanceTimersByTime(10_500);
     });
     fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Dr Ravi Kaur · EPA 3/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Rowan Sheoak · EPA 3/ }));
     const view = await screen.findByTestId("assessments-inbox-doctor");
     expect(view).toHaveTextContent("Your supervisor answered");
     expect(view).toHaveTextContent("Minimal supervision");
@@ -217,7 +217,7 @@ describe("consultant inbox, more behaviours", () => {
 
   it("offers Edit and Remove it when a few lines hold patient details", async () => {
     renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
-    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     const box = within(sheet).getByLabelText(/A few lines/);
     fireEvent.change(box, { target: { value: "Calm review of the man in bed 12 overnight, escalated early" } });
@@ -234,11 +234,11 @@ describe("consultant inbox, more behaviours", () => {
     const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
     expect(screen.getByTestId("assessments-inbox-offline")).toHaveTextContent("No connection");
-    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
     fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
-    const mia = screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ });
+    const mia = screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ });
     expect(mia).toHaveTextContent("To send");
     online.mockReturnValue(true);
     await act(async () => {
@@ -259,16 +259,16 @@ describe("consultant inbox, more behaviours", () => {
       </ToastProvider>,
     );
     expect(screen.queryByTestId("assessments-inbox-dct")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Priya Nair about Dr Ben Ortiz's mid-term" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Robin Wattle about Dr Ash Zamia's mid-term" }));
     const banner = await screen.findByTestId("assessments-inbox-dct");
-    expect(banner).toHaveTextContent(/Reminder from the DCTDr Ben Ortiz · mid-term · \d\d:\d\d/);
+    expect(banner).toHaveTextContent(/Reminder from the DCTDr Ash Zamia · mid-term · \d\d:\d\d/);
     fireEvent.click(within(banner).getByRole("button", { name: "Open" }));
     expect(await screen.findByTestId("assessments-inbox-status")).toBeInTheDocument();
   });
 
   it("says Nothing waiting with a way to see what was done", async () => {
     renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
-    for (const name of [/Dr Mia Chen/, /Dr Ella Okafor/, /Dr Ravi Kaur/, /Dr Ben Ortiz/]) {
+    for (const name of [/Dr Frankie Mulga/, /Dr Charlie Balga/, /Dr Rowan Sheoak/, /Dr Ash Zamia/]) {
       fireEvent.click(screen.getByRole("button", { name }));
       fireEvent.click(await screen.findByRole("button", { name: "Can't do this one" }));
       fireEvent.click(screen.getByTestId("assessments-inbox-cant-send"));
@@ -281,9 +281,9 @@ describe("consultant inbox, more behaviours", () => {
   });
 });
 
-/** Answers Dr Mia Chen's EPA with a level and presses Send. */
+/** Answers Dr Frankie Mulga's EPA with a level and presses Send. */
 async function sendMia() {
-  fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
   const sheet = await screen.findByTestId("assessments-inbox-feedback");
   fireEvent.click(within(sheet).getByRole("radio", { name: "Proximal" }));
   fireEvent.click(within(sheet).getByTestId("assessments-inbox-send"));
@@ -338,7 +338,7 @@ describe("consultant inbox, the 10-second Undo", () => {
     expect(screen.getByTestId("assessments-inbox-sending")).toHaveTextContent("Sending 1 answer");
     fireEvent.click(screen.getByTestId("assessments-inbox-undo-sending"));
     expect(screen.queryByTestId("assessments-inbox-sending")).toBeNull();
-    expect(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ })).toBeInTheDocument();
     // Sent again and pushed off again: it goes when its own 10 seconds end, once.
     await sendMia();
     fireEvent.click(screen.getByRole("button", { name: "Push others" }));
@@ -391,7 +391,7 @@ describe("consultant inbox, the 10-second Undo", () => {
       );
     }
     renderWith(<Switcher />);
-    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
     fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
@@ -500,7 +500,7 @@ describe("pretend sends never lost, rushed or repeated", () => {
         </AssessmentsExtrasProvider>
       </ToastProvider>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Omar Ahmed about Dr Ravi Kaur's mid-term" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Quinn Wandoo about Dr Rowan Sheoak's mid-term" }));
     expect(await screen.findByRole("button", { name: "Undo" })).toBeInTheDocument();
     view.rerender(
       <ToastProvider>
@@ -514,7 +514,7 @@ describe("pretend sends never lost, rushed or repeated", () => {
     const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     try {
       renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
-      fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
       const sheet = await screen.findByTestId("assessments-inbox-feedback");
       fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
       fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
@@ -532,12 +532,12 @@ describe("pretend sends never lost, rushed or repeated", () => {
     const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     try {
       renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
-      fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
       let sheet = await screen.findByTestId("assessments-inbox-feedback");
       fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
       fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
       // Reopen the queued answer and edit it; the connection comes back while the sheet is open.
-      fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
       sheet = await screen.findByTestId("assessments-inbox-feedback");
       fireEvent.change(within(sheet).getByLabelText(/A few lines/), { target: { value: "Halve to ½ tab, x² ﬁne…" } });
       online.mockReturnValue(true);
@@ -550,7 +550,7 @@ describe("pretend sends never lost, rushed or repeated", () => {
         vi.advanceTimersByTime(10_500);
       });
       fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
-      fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga/ }));
       expect(await screen.findByText("Halve to ½ tab, x² ﬁne…")).toBeInTheDocument();
     } finally {
       online.mockRestore();
@@ -581,14 +581,14 @@ describe("term overview", () => {
 
   it("reminds the supervisor in one tap, once a day, with Undo", async () => {
     renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
-    const remind = screen.getByRole("button", { name: "Remind Dr Omar Ahmed about Dr Ravi Kaur's mid-term" });
+    const remind = screen.getByRole("button", { name: "Remind Dr Quinn Wandoo about Dr Rowan Sheoak's mid-term" });
     fireEvent.click(remind);
-    expect(await screen.findByText("Reminder to Dr Omar Ahmed about Dr Ravi Kaur's mid-term")).toBeInTheDocument();
-    const done = screen.getByRole("button", { name: "Dr Omar Ahmed reminded today about Dr Ravi Kaur" });
+    expect(await screen.findByText("Reminder to Dr Quinn Wandoo about Dr Rowan Sheoak's mid-term")).toBeInTheDocument();
+    const done = screen.getByRole("button", { name: "Dr Quinn Wandoo reminded today about Dr Rowan Sheoak" });
     expect(done).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(
-      screen.getByRole("button", { name: "Remind Dr Omar Ahmed about Dr Ravi Kaur's mid-term" }),
+      screen.getByRole("button", { name: "Remind Dr Quinn Wandoo about Dr Rowan Sheoak's mid-term" }),
     ).toBeInTheDocument();
   });
 
@@ -606,7 +606,7 @@ describe("term overview", () => {
     fireEvent.click(screen.getByRole("button", { name: "On track · 1" }));
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     fireEvent.click(screen.getByRole("radio", { name: "Supervisors" }));
-    expect(screen.getByRole("button", { name: "Remind Dr Hana Ito about 2 forms" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remind Dr Morgan Grevillea about 2 forms" })).toBeInTheDocument();
   });
 
   it("keeps on-track doctors behind Show more, and opens them on a tap", () => {
@@ -627,31 +627,31 @@ describe("term overview", () => {
 
   it("reminds several supervisors at once, showing the exact status-only message", async () => {
     renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
-    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Omar Ahmed about Dr Ravi Kaur's mid-term" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Quinn Wandoo about Dr Rowan Sheoak's mid-term" }));
     fireEvent.click(screen.getByRole("radio", { name: "Supervisors" }));
     expect(screen.getByText("1 already reminded today")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "3 doctors · mid-term 1 done, 1 due, 1 overdue" })).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("assessments-overview-bulk-open"));
     const bulk = await screen.findByTestId("assessments-overview-bulk");
-    // Dr Ahmed was reminded today: shown, unticked, marked Today.
-    expect(within(bulk).queryByRole("checkbox", { name: /Dr Omar Ahmed/ })).toBeNull();
+    // Dr Wandoo was reminded today: shown, unticked, marked Today.
+    expect(within(bulk).queryByRole("checkbox", { name: /Dr Quinn Wandoo/ })).toBeNull();
     expect(within(bulk).getByText("Today")).toBeInTheDocument();
     expect(within(bulk).getByTestId("assessments-overview-bulk-message")).toHaveTextContent(
       /assessment is (overdue|due .*)\. Please finish it in Assessments/,
     );
     const send = within(bulk).getByTestId("assessments-overview-bulk-send");
     expect(send).toHaveTextContent("Send 2 reminders");
-    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Hana Ito/ }));
-    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Priya Nair/ }));
+    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Morgan Grevillea/ }));
+    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Robin Wattle/ }));
     expect(send).toBeDisabled();
     expect(within(bulk).getByText("Tick at least one supervisor.")).toBeInTheDocument();
-    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Hana Ito/ }));
+    fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Morgan Grevillea/ }));
     fireEvent.click(send);
     expect(await screen.findByText("1 reminder sent to supervisors")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /Sent · 3/ }));
     const sent = screen.getByTestId("assessments-overview-sent");
-    expect(within(sent).getAllByText("Dr Hana Ito")).toHaveLength(2);
-    expect(within(sent).getByText("Dr Omar Ahmed")).toBeInTheDocument();
+    expect(within(sent).getAllByText("Dr Morgan Grevillea")).toHaveLength(2);
+    expect(within(sent).getByText("Dr Quinn Wandoo")).toBeInTheDocument();
   });
 
   it("shows one doctor's status timeline, private content, and Remind once a day", async () => {
@@ -660,7 +660,7 @@ describe("term overview", () => {
     });
     renderWith(<AssessmentsTermOverview {...p} />);
     const page = screen.getByTestId("assessments-overview-doctor");
-    expect(within(page).getByRole("heading", { name: "Dr Tom Fraser" })).toBeInTheDocument();
+    expect(within(page).getByRole("heading", { name: "Dr Taylor Kwongan" })).toBeInTheDocument();
     expect(within(page).getByText("Overdue since Fri 2 Oct")).toBeInTheDocument();
     expect(within(page).getByText("Content stays private")).toBeInTheDocument();
     expect(within(page).getByRole("link", { name: /Open Clinical Learning Australia/ })).toHaveAttribute(
@@ -669,10 +669,12 @@ describe("term overview", () => {
     );
     expect(within(page).getByText("No reminders yet.")).toBeInTheDocument();
     fireEvent.click(within(page).getByTestId("assessments-overview-doctor-remind"));
-    expect(await screen.findByText("Reminder to Dr Hana Ito about Dr Tom Fraser's mid-term")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Reminder to Dr Morgan Grevillea about Dr Taylor Kwongan's mid-term"),
+    ).toBeInTheDocument();
     expect(within(page).getByTestId("assessments-overview-doctor-remind")).toBeDisabled();
     expect(within(page).getByText("Reminded today. One reminder a day per form.")).toBeInTheDocument();
-    expect(within(page).getByText("Dr Hana Ito reminded")).toBeInTheDocument();
+    expect(within(page).getByText("Dr Morgan Grevillea reminded")).toBeInTheDocument();
   });
 
   it("says plainly when a doctor link is not in the list", () => {
@@ -704,10 +706,10 @@ describe("term overview", () => {
         /Status as of \d\d:\d\d\. Reminders can't be sent while offline\. Try again when you are back online\./,
       );
       expect(screen.getByTestId("assessments-overview-offline")).not.toHaveTextContent(/wait/);
-      const bell = screen.getByRole("button", { name: "Reminder unavailable offline: Dr Ravi Kaur" });
+      const bell = screen.getByRole("button", { name: "Reminder unavailable offline: Dr Rowan Sheoak" });
       expect(bell).toHaveAttribute("aria-disabled", "true");
       fireEvent.click(bell);
-      expect(screen.queryByText(/Reminder to Dr Omar Ahmed/)).toBeNull();
+      expect(screen.queryByText(/Reminder to Dr Quinn Wandoo/)).toBeNull();
     } finally {
       online.mockRestore();
     }

@@ -8,7 +8,7 @@ import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
  * supervisor in one list, opened in one tap, answered with a supervision level and a few lines.
  *
  * MADE-UP SAMPLE ONLY. Like the rest of /teaching/assessments it runs on invented doctors in page memory:
- * nothing is fetched, saved or sent, and the page says so. Dr Sam Lee's requests come from the sample's own
+ * nothing is fetched, saved or sent, and the page says so. Dr Sam Karri's requests come from the sample's own
  * story (the end-of-term form and any EPA Sam asked for), so they open the real sample screens; the other
  * doctors are short made-up EPA requests answered here. A voice note is not built (it would need the
  * microphone and somewhere to keep audio, which PsychSift does not have).
@@ -26,7 +26,7 @@ export const CANT_REASONS: readonly { id: CantReason; title: string; detail: str
 ];
 
 /** Made-up colleagues a request can be passed to (the sample's other consultants). */
-export const SUGGESTED_COLLEAGUES: readonly string[] = ["Dr Omar Ahmed", "Dr Hana Ito"];
+export const SUGGESTED_COLLEAGUES: readonly string[] = ["Dr Quinn Wandoo", "Dr Morgan Grevillea"];
 
 /** When Later brings a request back, on the made-up calendar. */
 export const LATER_WHEN = "Mon 08:00";
@@ -96,7 +96,7 @@ type MadeUp = Omit<InboxRequest, "status" | "doneLine" | "age" | "overdue"> & { 
 const MADE_UP: readonly MadeUp[] = [
   {
     id: "mia-epa-2",
-    doctor: { name: "Dr Mia Chen", initials: "MC", grade: "PGY2" },
+    doctor: { name: "Dr Frankie Mulga", initials: "FM", grade: "PGY2" },
     kind: "epa",
     epa: 2,
     title: `EPA 2 · ${epaInfo(2).title}`,
@@ -108,7 +108,7 @@ const MADE_UP: readonly MadeUp[] = [
   },
   {
     id: "ella-epa-4",
-    doctor: { name: "Dr Ella Okafor", initials: "EO", grade: "PGY1" },
+    doctor: { name: "Dr Charlie Balga", initials: "CB", grade: "PGY1" },
     kind: "epa",
     epa: 4,
     title: `EPA 4 · ${epaInfo(4).title}`,
@@ -120,7 +120,7 @@ const MADE_UP: readonly MadeUp[] = [
   },
   {
     id: "ravi-epa-3",
-    doctor: { name: "Dr Ravi Kaur", initials: "RK", grade: "PGY1" },
+    doctor: { name: "Dr Rowan Sheoak", initials: "RS", grade: "PGY1" },
     kind: "epa",
     epa: 3,
     title: `EPA 3 · ${epaInfo(3).title}`,
@@ -138,11 +138,11 @@ const SAM = { name: SAMPLE_DOCTOR.name, initials: SAMPLE_DOCTOR.initials, grade:
 export function inboxRequests(s: AssessmentsState, answers: Readonly<Record<string, InboxAnswer>>): InboxRequest[] {
   const today = sampleDayOffset(s.now);
   const items: InboxRequest[] = [];
-  // Dr Ben Ortiz's mid-term: the same made-up row the supervisor home shows, overdue once the window opens.
+  // Dr Ash Zamia's mid-term: the same made-up row the supervisor home shows, overdue once the window opens.
   const benOverdue = s.now >= 0;
   items.push({
     id: "ben-mid",
-    doctor: { name: "Dr Ben Ortiz", initials: "BO", grade: "PGY2" },
+    doctor: { name: "Dr Ash Zamia", initials: "AZ", grade: "PGY2" },
     kind: "form",
     epa: null,
     title: "Mid-term assessment",
@@ -387,7 +387,7 @@ export function claCopyText(item: InboxRequest, answer: InboxAnswer): string {
 
 export interface DctReminder {
   readonly key: string;
-  /** "Dr Ben Ortiz · mid-term" */
+  /** "Dr Ash Zamia · mid-term" */
   readonly text: string;
   readonly at: string;
   /** The inbox request it is about, when it is in the list. */
@@ -396,7 +396,7 @@ export interface DctReminder {
 
 /**
  * Reminders the term overview sent to this supervisor, newest first, matched to the inbox request they are
- * about (Ben's mid-term, Sam's end-of-term once Sam asked).
+ * about (Ash's mid-term, Sam's end-of-term once Sam asked).
  */
 export function dctRemindersFor(
   reminders: readonly {

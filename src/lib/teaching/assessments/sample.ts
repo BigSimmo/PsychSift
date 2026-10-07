@@ -17,14 +17,14 @@ import {
  * moved into the end-of-term booking window to walk the rest of the steps.
  */
 
-export const SAMPLE_DOCTOR = { name: "Dr Sam Lee", first: "Sam", initials: "SL", grade: "PGY1" } as const;
+export const SAMPLE_DOCTOR = { name: "Dr Sam Karri", first: "Sam", initials: "SK", grade: "PGY1" } as const;
 export const SAMPLE_SUPERVISOR = {
-  name: "Dr Priya Nair",
-  short: "Dr Nair",
-  initials: "PN",
+  name: "Dr Robin Wattle",
+  short: "Dr Wattle",
+  initials: "RW",
   role: "Consultant psychiatrist · term supervisor",
 } as const;
-export const SAMPLE_REGISTRAR = { name: "Dr Jo Park", role: "Psychiatry registrar" } as const;
+export const SAMPLE_REGISTRAR = { name: "Dr Jo Banksia", role: "Psychiatry registrar" } as const;
 
 export type TermId = "t1" | "t2" | "t3" | "t4" | "t5";
 export type SampleTerm = {
@@ -53,7 +53,7 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     to: "12 Apr",
     weeks: 10,
     status: "done",
-    supervisor: "Dr Tom Reid",
+    supervisor: "Dr Alex Jarrah",
     midSigned: "6 Mar",
     signed: "21 Apr",
   },
@@ -67,7 +67,7 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     to: "21 Jun",
     weeks: 10,
     status: "done",
-    supervisor: "Dr Ana Silva",
+    supervisor: "Dr Casey Marri",
     midSigned: "15 May",
     signed: "30 Jun",
   },
@@ -81,7 +81,7 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     to: "30 Aug",
     weeks: 10,
     status: "done",
-    supervisor: "Dr Lena Hart",
+    supervisor: "Dr Jordan Tuart",
     midSigned: "24 Jul",
     signed: "7 Sep",
   },
@@ -95,7 +95,7 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     to: "8 Nov",
     weeks: 10,
     status: "current",
-    supervisor: "Dr Priya Nair",
+    supervisor: "Dr Robin Wattle",
   },
   {
     id: "t5",
@@ -107,7 +107,7 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     to: "31 Jan 2027",
     weeks: 12,
     status: "next",
-    supervisor: "Dr Omar Khan",
+    supervisor: "Dr Riley Boronia",
   },
 ];
 
@@ -126,14 +126,14 @@ export type EpaRecord = {
 };
 
 export const SAMPLE_EPA_RECORDS: readonly EpaRecord[] = [
-  { term: "t1", epa: 1, by: "Dr Tom Reid", role: "consultant", level: "proximal" },
-  { term: "t1", epa: 2, by: "Dr Kim Lau", role: "registrar", level: "direct" },
-  { term: "t2", epa: 1, by: "Dr Ana Silva", role: "consultant", level: "minimal" },
-  { term: "t2", epa: 3, by: "Dr Raj Patel", role: "registrar", level: "proximal" },
-  { term: "t2", epa: 4, by: "Dr Ana Silva", role: "consultant", level: "minimal" },
-  { term: "t3", epa: 1, by: "Dr Lena Hart", role: "consultant", level: "minimal" },
-  { term: "t3", epa: 2, by: "Dr Sean Wu", role: "registrar", level: "proximal" },
-  { term: "t4", epa: 3, by: "Dr Priya Nair", role: "term supervisor", level: "minimal" },
+  { term: "t1", epa: 1, by: "Dr Alex Jarrah", role: "consultant", level: "proximal" },
+  { term: "t1", epa: 2, by: "Dr Kim Yate", role: "registrar", level: "direct" },
+  { term: "t2", epa: 1, by: "Dr Casey Marri", role: "consultant", level: "minimal" },
+  { term: "t2", epa: 3, by: "Dr Lee Mallee", role: "registrar", level: "proximal" },
+  { term: "t2", epa: 4, by: "Dr Casey Marri", role: "consultant", level: "minimal" },
+  { term: "t3", epa: 1, by: "Dr Jordan Tuart", role: "consultant", level: "minimal" },
+  { term: "t3", epa: 2, by: "Dr Pat Tingle", role: "registrar", level: "proximal" },
+  { term: "t4", epa: 3, by: "Dr Robin Wattle", role: "term supervisor", level: "minimal" },
 ];
 
 /** The end-of-term booking window: weekday, date, month, week of term. */
