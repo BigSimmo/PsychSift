@@ -161,7 +161,7 @@ export function OpenShiftsCalendar({
                           ? "bg-[color:var(--mode-identity)] font-bold text-[color:var(--mode-identity-contrast)] forced-colors:border"
                           : inMonth && !past
                             ? "font-semibold text-[color:var(--text-heading)]"
-                            : "font-normal text-[color:var(--text-muted)] opacity-70",
+                            : "font-normal text-[color:var(--text-muted)]",
                         rostered &&
                           !isToday &&
                           "shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border forced-colors:border-[CanvasText]",

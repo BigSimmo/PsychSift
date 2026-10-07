@@ -161,7 +161,7 @@ function DayLine({ shift, now }: { readonly shift: OnCallShift; readonly now: Da
           style={{ left: `${at * 100}%` }}
         />
       </span>
-      <span className="nums flex justify-between text-[0.625rem] opacity-80">
+      <span className="nums flex justify-between text-[0.625rem] opacity-90">
         <span>00</span>
         <span>06</span>
         <span>12</span>
@@ -177,9 +177,9 @@ function ShiftTimes({ shift }: { readonly shift: OnCallShift }) {
   return (
     <span className="nums flex flex-wrap items-baseline gap-x-1.5 text-[1.375rem] font-bold leading-tight tracking-[-0.02em]">
       <span>{start}</span>
-      <span className="text-sm font-semibold opacity-80">to</span>
+      <span className="text-sm font-semibold opacity-90">to</span>
       <span>{end}</span>
-      {plusOne ? <span className="text-xs font-semibold opacity-80">+1</span> : null}
+      {plusOne ? <span className="text-xs font-semibold opacity-90">+1</span> : null}
     </span>
   );
 }
@@ -333,7 +333,7 @@ function Hero({
             {leadShift && lead.state !== "day_off" ? <DayLine shift={leadShift} now={now} /> : null}
             {summary.nextWeekendOff ? (
               <p className="m-0 text-xs">
-                <span className="opacity-80">Weekend off · </span>
+                <span className="opacity-90">Weekend off · </span>
                 <span className="nums font-semibold">
                   {formatDateSpan(summary.nextWeekendOff.saturday, summary.nextWeekendOff.sunday)}
                 </span>

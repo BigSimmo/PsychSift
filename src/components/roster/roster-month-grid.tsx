@@ -287,7 +287,7 @@ export function RosterMonthGrid({
                         isToday
                           ? "bg-[color:var(--mode-identity)] font-bold text-[color:var(--mode-identity-contrast)] forced-colors:border"
                           : past || notLoaded
-                            ? "text-[color:var(--text-muted)] opacity-70"
+                            ? "text-[color:var(--text-muted)]"
                             : weekend
                               ? "text-[color:var(--text-muted)]"
                               : "text-[color:var(--text-heading)]",
@@ -306,9 +306,6 @@ export function RosterMonthGrid({
                       <RosterShiftChip
                         kind={kinds[0] ?? entry?.ghost ?? null}
                         dashed={entry?.swapAsked || (!kinds.length && Boolean(entry?.ghost))}
-                        className={
-                          !kinds.length && entry?.ghost ? "opacity-70" : past && !isToday ? "opacity-60" : undefined
-                        }
                       />
                     )}
                     {holiday ? (
