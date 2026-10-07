@@ -2,6 +2,8 @@ import { evaluateYear } from "@/lib/cme/evaluate";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { addDaysToDate, formatPerthDay, MONTHS, perthDateOf, perthTimeOf } from "@/lib/perth-time";
 import type { ShiftKind } from "@/lib/roster/shift-kind";
+import { cmeWeeklyPace } from "@/lib/cme/pace";
+import { withinOneEdit } from "@/lib/work-search/terms";
 import {
   TEACHING_LOOKAHEAD_DAYS,
   workSearchAreaLabels,
@@ -68,6 +70,10 @@ export interface WorkAnswer {
   readonly calendar?: WorkItem;
   /** What a failed area may have left out, for the notice above the card: "Your talks". */
   readonly missing?: string;
+  /** A ring for the answer's hero: "17.5" over "h to go", drawn at `fraction` full. */
+  readonly ring?: { readonly value: string; readonly unit: string; readonly fraction: number };
+  /** Words in the question read as another word one letter out: "nihgts" as "nights". */
+  readonly readAs?: readonly { readonly typed: string; readonly read: string }[];
 }
 
 export interface WorkAnswerDay {
@@ -88,7 +94,7 @@ export interface WorkAnswerProgress {
 }
 
 const SHIFT_WORDS: ReadonlyArray<[RegExp, ShiftKind, string, string, WorkAnswerIcon]> = [
-  [/\b(?:nights?|night shifts?|ns|nites?)\b/, "night", "night", "nights", "night"],
+  [/\b(?:nights?|night shifts?|nightshifts?|night duty|ns|nites?|overnights?)\b/, "night", "night", "nights", "night"],
   [/\b(?:evenings?|lates)\b/, "evening", "evening", "evenings", "evening"],
   [/\bon[- ]?calls?\b/, "on_call", "on-call shift", "on-call shifts", "on-call"],
   [/\b(?:day shifts?|days)\b(?! off)/, "day", "day shift", "day shifts", "shift"],
@@ -758,13 +764,37 @@ function cpdHours(input: WorkAnswerInput): WorkAnswer {
     .sort((a, b) => Number(a.met) - Number(b.met) || (a.fraction ?? 0) - (b.fraction ?? 0));
   const reached = progress.filter((row) => row.met).length;
   const short = status.unmet.length;
+  const logged = Math.round(status.totalHours * 10) / 10;
+  const toGo = Math.max(0, Math.round((set.totalHours - status.totalHours) * 10) / 10);
+  // Plain arithmetic on the reader's own hours and target, never a verdict (as CPD's own pace line).
+  const pace = cmeWeeklyPace({
+    targetHours: set.totalHours,
+    loggedHours: status.totalHours,
+    today: input.today,
+    year: set.year,
+  });
   return {
     area: "cme",
     icon: "cpd",
     label: `CPD ${set.year}`,
     headline: short === 0 ? "Every target reached" : `${short} ${short === 1 ? "target" : "targets"} still short`,
     sub: `${reached} of ${status.statuses.length} targets met so far this year`,
-    meta: [],
+    meta:
+      set.totalHours > 0
+        ? [
+            `${formatHours(logged)} of ${formatHours(set.totalHours)} h logged`,
+            ...(pace ? [`About ${formatHours(pace.weeklyHours)} h a week to 31 Dec`] : []),
+          ]
+        : [],
+    ...(set.totalHours > 0
+      ? {
+          ring: {
+            value: toGo > 0 ? formatHours(toGo) : formatHours(logged),
+            unit: toGo > 0 ? "h to go" : "h logged",
+            fraction: Math.min(1, status.totalHours / set.totalHours),
+          },
+        }
+      : {}),
     progress,
     items: [],
     understood,
@@ -774,6 +804,11 @@ function cpdHours(input: WorkAnswerInput): WorkAnswer {
   };
 }
 
+/** "32.5", "50": hours with at most one decimal, no trailing ".0". */
+function formatHours(hours: number): string {
+  return String(Math.round(hours * 10) / 10);
+}
+
 /** Words that mean the question is about something other than shifts, even with "next" or "day" in it. */
 const NOT_ABOUT_SHIFTS = /\b(teaching|session|meeting|form|cpd|cme|talk|presenting|renewal|course|exam|journal)\b/;
 
@@ -781,10 +816,17 @@ function route(text: string, input: WorkAnswerInput): WorkAnswer | null {
   const asksWhen = /\b(next|when|upcoming)\b/.test(text);
   if (/\b(presenting|my talks?|am i presenting|my presentations?)\b/.test(text)) return presenting(input);
   if (/\b(due|renewals?|renew|expir\w*|overdue)\b/.test(text)) return due(input, text);
-  if (/\b(cpd|cme)\b/.test(text) && /\b(hours?|left|need|short|target|targets|on track)\b/.test(text)) {
+  if (
+    (/\b(cpd|cme|pd|points)\b/.test(text) &&
+      /\b(hours?|left|need|short|target|targets|on track|points)\b/.test(text)) ||
+    /\bhow many (?:more )?hours (?:do i |have i )?(?:still |left|remaining|need|to go)\b/.test(text) ||
+    /\b(?:am i on track|cpd targets?|cme targets?)\b/.test(text)
+  ) {
     return cpdHours(input);
   }
-  if (asksWhen && /\b(leave|holidays?|annual leave|vacation)\b/.test(text)) return nextLeave(input);
+  if (asksWhen && /\b(leave|holidays?|annual leave|vacation|al|a\/l|pdl|study leave|time off)\b/.test(text)) {
+    return nextLeave(input);
+  }
   if (NOT_ABOUT_SHIFTS.test(text)) return null;
 
   const range = parseDateRange(text, input.today);
@@ -811,6 +853,80 @@ function route(text: string, input: WorkAnswerInput): WorkAnswer | null {
   return null;
 }
 
+/** The words the built-in questions turn on, for reading a typo in a question. */
+const QUESTION_VOCABULARY = [
+  "nights",
+  "night",
+  "evenings",
+  "evening",
+  "shift",
+  "shifts",
+  "working",
+  "rostered",
+  "roster",
+  "tomorrow",
+  "tonight",
+  "today",
+  "weekend",
+  "month",
+  "leave",
+  "holiday",
+  "holidays",
+  "vacation",
+  "annual",
+  "presenting",
+  "presentation",
+  "renewal",
+  "renewals",
+  "expiring",
+  "expiry",
+  "overdue",
+  "hours",
+  "targets",
+  "target",
+  "short",
+  "upcoming",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+/** Ordinary words one letter from a question word, never read as it: "might" is not "night". */
+const NOT_TYPOS = new Set([
+  "might",
+  "right",
+  "light",
+  "eight",
+  "fight",
+  "sight",
+  "tight",
+  "shirt",
+  "shore",
+  "swift",
+  "shaft",
+  "lease",
+  "mouth",
+  "louts",
+  "hoots",
+]);
+
+function correctQuestion(text: string): { text: string; readAs: { typed: string; read: string }[] } | null {
+  const readAs: { typed: string; read: string }[] = [];
+  const words = text.split(" ").map((word) => {
+    if (word.length < 5 || NOT_TYPOS.has(word) || /\d/.test(word)) return word;
+    if ((QUESTION_VOCABULARY as readonly string[]).includes(word)) return word;
+    const read = QUESTION_VOCABULARY.find((candidate) => withinOneEdit(word, candidate));
+    if (!read) return word;
+    readAs.push({ typed: word, read });
+    return read;
+  });
+  return readAs.length > 0 ? { text: words.join(" "), readAs } : null;
+}
+
 /** The built-in answer for `query`, or null when it is not one of the known question shapes. */
 export function answerWorkQuestion(query: string, input: WorkAnswerInput): WorkAnswer | null {
   const text = query
@@ -820,7 +936,12 @@ export function answerWorkQuestion(query: string, input: WorkAnswerInput): WorkA
     .replace(/\s+/g, " ")
     .trim();
   if (text.length < 3) return null;
-  const answer = route(text, input);
+  // A question with a word one letter out ("when am i next on nihgts") is read
+  // with the word corrected, and the answer says which word it read as what.
+  // The corrected reading wins: the misspelt word is usually the one that matters.
+  const corrected = correctQuestion(text);
+  const fixed = corrected ? route(corrected.text, input) : null;
+  const answer = fixed && corrected ? { ...fixed, readAs: corrected.readAs } : route(text, input);
   if (!answer || answer.unavailable) return answer;
   // Invented records are never presented as the reader's own.
   const sampleArea =
