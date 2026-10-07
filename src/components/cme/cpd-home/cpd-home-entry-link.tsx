@@ -28,8 +28,11 @@ export function CpdHomeEntryLink({ year }: { readonly year?: number }) {
           Send to AMA CPD Home
         </span>
         <span className="text-sm leading-5 text-[color:var(--text-muted)]">CSV now · format to confirm</span>
+        {/* Under the words, not beside them, so the tag never squeezes the row on a 320 px phone. */}
+        <span className="mt-1 justify-self-start">
+          <PendingTag>Not checked</PendingTag>
+        </span>
       </span>
-      <PendingTag>Not checked</PendingTag>
       <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
     </Link>
   );
