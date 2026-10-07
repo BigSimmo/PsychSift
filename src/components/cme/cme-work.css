@@ -193,6 +193,19 @@ html.dark[data-mode-identity="cme"] {
   overflow-wrap: anywhere;
 }
 
+/* A row whose label carries a second line (Targets): the label wraps and the
+   value keeps its own width. */
+.cpd-kv--wrap > dt {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cpd-kv--wrap > dd {
+  flex: none;
+  max-width: 45%;
+}
+
 /* The quiet grey hint under a block. */
 .cpd-hint {
   margin: 0;

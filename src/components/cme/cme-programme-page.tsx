@@ -123,7 +123,7 @@ function targetRows(requirement: CmeRequirement): TargetRow[] {
 
 function TargetRowView({ row }: { row: TargetRow }) {
   return (
-    <div id={`cme-requirement-${row.id}`} className={cn(inPageAnchor, "cpd-kv items-start")}>
+    <div id={`cme-requirement-${row.id}`} className={cn(inPageAnchor, "cpd-kv cpd-kv--wrap")}>
       <dt className="min-w-0">
         <span className="block">{row.label}</span>
         {row.meta ? <span className="work-row__sub block">{row.meta}</span> : null}
