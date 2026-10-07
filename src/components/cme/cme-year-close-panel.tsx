@@ -181,7 +181,7 @@ export function CmeYearClosePanel({
     ) : (
       <section className={cn(cardSurface, "mt-4 p-4 text-sm")} data-testid="cme-year-closed-record">
         <p>
-          {year} was closed on {formatInstantDate(closedAt)}. Its closing snapshot could not be read just now; it has
+          {year} was closed on {formatInstantDate(closedAt)}. Its closing snapshot could not be read just now. It has
           not been changed.
         </p>
       </section>
@@ -235,7 +235,7 @@ export function CmeYearClosePanel({
             id="cme-year-close-note"
             hint={
               unmetCount > 0
-                ? `${unmetCount} ${unmetCount === 1 ? "target is" : "targets are"} not reached yet. A note — leave, illness, anything — goes on the record where an explanation belongs. It does not reduce the requirement.`
+                ? `${unmetCount} ${unmetCount === 1 ? "target is" : "targets are"} not reached yet. A note about leave, illness or anything else goes on the record where an explanation belongs. It does not reduce the requirement.`
                 : "A note goes on the record where an explanation belongs. It does not reduce any requirement."
             }
           >

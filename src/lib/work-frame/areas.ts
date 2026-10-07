@@ -589,8 +589,6 @@ const cpd: WorkArea = {
           href: "/cme/routines",
           paths: [],
         },
-        { id: "evidence", label: "Evidence", sub: "Certificates and files", icon: "folder", href: "/cme/evidence" },
-        { id: "export", label: "Export", sub: "PDF, CSV, MyCPD", icon: "upload", href: "/cme/export" },
       ],
     },
     {
