@@ -402,8 +402,8 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                 When does your contract end?
               </h2>
               <p className="max-w-prose text-sm text-[color:var(--text)]">
-                Add the end date from your letter once. You get a reminder 3 months and 6 weeks before, with a list of
-                what to ask.
+                Add the end date from your letter once. From 3 months before, it shows on Admin Today and here, with a
+                list of what to ask. Add the dates to your calendar for an alert.
               </p>
               {canWrite ? (
                 <Button variant="primary" onClick={() => setSheet("add")} testId="admin-contract-add">
@@ -418,7 +418,11 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
             <JuniorSectionLabel>What you get</JuniorSectionLabel>
             <ul className={cn(cardSurface, "overflow-hidden")}>
               {[
-                { icon: Bell, title: "Two calm reminders", sub: "3 months and 6 weeks before the end" },
+                {
+                  icon: Bell,
+                  title: "Two reminder dates",
+                  sub: "3 months and 6 weeks before. On Admin Today, and in your calendar if you add them",
+                },
                 { icon: Layers, title: "A list of what to ask", sub: "Including planned parental leave" },
                 { icon: Send, title: "A ready message", sub: "Copy it to Medical Workforce yourself" },
               ].map((row) => (
@@ -584,7 +588,15 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   date={mark.date}
                   on={mark.on}
                   disabled={!canWrite || busy || status.daysLeft < 0}
-                  reason={!canWrite ? readOnlyReason : status.daysLeft < 0 ? "The end date has passed." : null}
+                  reason={
+                    !canWrite
+                      ? readOnlyReason
+                      : status.daysLeft < 0
+                        ? "The end date has passed."
+                        : busy
+                          ? "Saving your last change."
+                          : null
+                  }
                   onToggle={() => void toggleReminder(mark.kind === "three-months" ? "threeMonths" : "sixWeeks")}
                   testId={`admin-contract-switch-${mark.kind}`}
                 />

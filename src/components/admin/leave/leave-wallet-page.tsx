@@ -60,7 +60,7 @@ import {
   type LeaveType,
   type LeaveTypeId,
 } from "@/lib/admin/leave-types";
-import { selectAdminOwnEntries } from "@/lib/admin/own-entries";
+import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
@@ -86,8 +86,12 @@ function CardIcon({ icon }: { icon: LeaveIcon }) {
   );
 }
 
+/** What Roster holds for the doctor, or that they are signed out and nothing was asked for. */
+type ShownRosterLeave = JuniorRosterLeaveState | { readonly status: "signed-out" };
+const SIGNED_OUT_LEAVE: ShownRosterLeave = { status: "signed-out" };
+
 /** The doctor's own bookings in Roster for the two kinds Roster holds. */
-function RosterBookings({ type, leave, today }: { type: LeaveType; leave: JuniorRosterLeaveState; today: string }) {
+function RosterBookings({ type, leave, today }: { type: LeaveType; leave: ShownRosterLeave; today: string }) {
   const kind = type.id === "annual" ? "annual" : type.id === "conference" ? "pd_leave" : null;
   if (!kind) return null;
   const rows =
@@ -102,7 +106,11 @@ function RosterBookings({ type, leave, today }: { type: LeaveType; leave: Junior
       data-testid={`admin-leave-${type.id}-booked`}
     >
       <p className={eyebrowText}>Booked in Roster</p>
-      {leave.status === "loading" ? (
+      {leave.status === "signed-out" ? (
+        <p className={cn(textMuted, "text-sm")} data-testid={`admin-leave-${type.id}-booked-signed-out`}>
+          Sign in to see what Roster holds.
+        </p>
+      ) : leave.status === "loading" ? (
         <p className={cn(textMuted, "text-sm")}>Loading from Roster</p>
       ) : leave.status === "failed" ? (
         <p className={cn(textMuted, "text-sm")}>Could not load your leave from Roster.</p>
@@ -152,7 +160,8 @@ function MessageFields({
         />
       ) : null}
       {type.slots.includes("firstDay") ? (
-        <div className={cn("grid gap-2", type.slots.includes("lastDay") && "grid-cols-2")}>
+        <div className={cn("grid gap-2", type.slots.includes("lastDay") && "min-[360px]:grid-cols-2")}>
+          {/* Side by side from 360 px, stacked below, where two native date fields do not fit. */}
           <TextField
             type="date"
             label={type.id === "parental" ? "From about" : "First day"}
@@ -235,7 +244,6 @@ function OpenCard({
   leave,
   today,
   contractEndsOn,
-  online,
   onHide,
 }: {
   type: LeaveType;
@@ -244,10 +252,9 @@ function OpenCard({
   edited: string | null;
   onEdited: (value: string | null) => void;
   onClose: () => void;
-  leave: JuniorRosterLeaveState;
+  leave: ShownRosterLeave;
   today: string;
   contractEndsOn: string | null;
-  online: boolean;
   /** Only the discreet card offers Hide. */
   onHide?: () => void;
 }) {
@@ -315,7 +322,6 @@ function OpenCard({
           href={LEAVE_AGREEMENT.url}
           target="_blank"
           rel="noreferrer noopener"
-          aria-disabled={online ? undefined : "true"}
           className={cn(
             focusRing,
             "inline-flex min-h-12 items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]",
@@ -499,7 +505,11 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
   const own = useMemo(() => selectAdminOwnEntries(entries), [entries]);
   const contract = selectContractEnd(own);
   const contractEndsOn = contract ? (complianceExpiresOn(contract) ?? null) : null;
-  const leave = useJuniorRosterLeave(true);
+  // Roster is asked only for a signed-in reader; signed out, the cards say so instead of "could not load".
+  const loadState = adminLoadState(entries);
+  const signedOut = loadState === "signed-out";
+  const rosterLeave = useJuniorRosterLeave(loadState !== "loading" && !signedOut);
+  const leave: ShownRosterLeave = signedOut ? SIGNED_OUT_LEAVE : rosterLeave;
   // Hidden cards live in memory only: Admin keeps nothing on the device.
   const [hidden, setHidden] = useState<readonly LeaveTypeId[]>([]);
   const [undo, setUndo] = useState<{ id: number; type: LeaveTypeId } | null>(null);
@@ -510,6 +520,16 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
   // A link to another card (search, the contract page) opens it. Only a
   // change in the address does this; the page's own writes are expected.
   const urlCard = fromUrl?.id ?? null;
+  // A link that names the discreet card (typed, or from history) opens it, then its name leaves the address
+  // bar and the history entry at once.
+  const discreetInUrl = Boolean(fromUrl?.discreet);
+  useEffect(() => {
+    if (!discreetInUrl) return;
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.delete("card");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : (pathname ?? "/admin/leave"), { scroll: false });
+  }, [discreetInUrl, pathname, router, searchParams]);
   const [seenUrlCard, setSeenUrlCard] = useState(urlCard);
   if (urlCard !== seenUrlCard) {
     setSeenUrlCard(urlCard);
@@ -579,7 +599,6 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
             leave={leave}
             today={today}
             contractEndsOn={contractEndsOn}
-            online={online}
             onHide={openType.discreet ? () => hide(openType.id) : undefined}
           />
           <button
