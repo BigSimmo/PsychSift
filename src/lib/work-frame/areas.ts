@@ -250,6 +250,16 @@ const roster: WorkArea = {
       items: [
         { id: "calendar", label: "Calendar sync", sub: "Phone calendar", icon: "link", href: "/roster/calendar", band: false },
         { id: "join", label: "Join a team", sub: "Invite code", icon: "qr", href: "/roster/join", band: false },
+        {
+          id: "manage",
+          label: "Manage team",
+          sub: "Managers",
+          icon: "clipboard",
+          href: "/roster/manage",
+          // Roster managers are the teams' Open shifts posters; the page keeps its own header.
+          gate: "open-shifts-poster",
+          band: false,
+        },
         { id: "settings", label: "Settings", sub: "Alerts and data", icon: "settings", href: "/roster/settings" },
       ],
     },
