@@ -130,7 +130,7 @@ describe("Ask the agreement page", () => {
     const answer = screen.getByTestId("agreement-answer");
     expect(within(answer).getByRole("heading", { name: "Not in the clauses PsychSift has checked" })).toBeTruthy();
     expect(within(answer).getByTestId("agreement-unchecked-line").textContent).toContain(
-      "Overtime is not in the clauses PsychSift has checked.",
+      "PsychSift hasn’t checked the clauses on overtime.",
     );
     expect(within(answer).getByTestId("agreement-open-pdf").getAttribute("href")).toBe(FATIGUE_RULE_SET.source.url);
     expect(answer.querySelectorAll("q")).toHaveLength(0);

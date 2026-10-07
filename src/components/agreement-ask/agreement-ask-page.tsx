@@ -273,7 +273,7 @@ export function AgreementAskPage() {
               }}
               onClear={clear}
               clearLabel="Clear question"
-              placeholder="Ask about breaks, shifts or nights"
+              placeholder="Breaks, shifts or nights"
               maxLength={AGREEMENT_QUESTION_LIMIT}
               autoComplete="off"
               enterKeyHint="go"
@@ -432,14 +432,16 @@ export function AgreementAskPage() {
               {answer ? "Ask something else" : "Try asking"}
             </AgreementSectionLabel>
             <ul role="list" className={agreementCard} data-testid="agreement-try">
-              {AGREEMENT_SUGGESTED_QUESTIONS.slice(0, answer ? 3 : 4).map((question) => (
-                <AgreementRowButton
-                  key={question}
-                  icon={MessageCircleQuestion}
-                  title={question}
-                  onSelect={() => askSuggested(question)}
-                />
-              ))}
+              {AGREEMENT_SUGGESTED_QUESTIONS.filter((question) => question !== askedText)
+                .slice(0, answer ? 3 : 4)
+                .map((question) => (
+                  <AgreementRowButton
+                    key={question}
+                    icon={MessageCircleQuestion}
+                    title={question}
+                    onSelect={() => askSuggested(question)}
+                  />
+                ))}
             </ul>
           </section>
         ) : null}

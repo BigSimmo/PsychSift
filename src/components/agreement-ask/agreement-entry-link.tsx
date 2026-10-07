@@ -26,7 +26,7 @@ export function AgreementEntryLink({ className }: { readonly className?: string 
         aria-hidden="true"
         className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
       >
-        <Scale strokeWidth={1.75} className="size-icon-sm" />
+        <Scale aria-hidden="true" strokeWidth={1.75} className="size-icon-sm" />
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
         <span className="text-sm font-medium leading-5 text-[color:var(--text-heading)]">Ask the agreement</span>

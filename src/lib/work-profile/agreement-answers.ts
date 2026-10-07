@@ -401,6 +401,16 @@ export function agreementSignOffState(gate: RuleGate = restRulesGate()): Agreeme
   };
 }
 
+/** Drops a preposition left dangling where the patient detail was cut out: "late with after nights". */
+function tidySafer(text: string): string | null {
+  const tidy = text
+    .replace(/\b(?:with|for|about|from|by|of|re)\s+(?=(?:after|before|with|for|about|on|in|at|from)\b)/gi, "")
+    .replace(/\s+(?:with|for|about|from|by|of|re|and)\s*[?.!]?$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return tidy.split(" ").length >= 2 ? tidy : null;
+}
+
 export type AgreementQuestionCheck =
   | { readonly kind: "empty" }
   | { readonly kind: "too-short" }
@@ -417,7 +427,7 @@ export function checkAgreementQuestion(question: string, thisYear = new Date().g
   if (!text) return { kind: "empty" };
   const problem: ReminderTextProblem | null = checkReminderText(text);
   if (looksLikePatientDetails(text, thisYear) || problem) {
-    const safer = problem?.suggestion ?? null;
+    const safer = problem?.suggestion ? tidySafer(problem.suggestion) : null;
     const stillUnsafe = safer ? looksLikePatientDetails(safer, thisYear) || checkReminderText(safer) !== null : true;
     return {
       kind: "patient",
@@ -488,16 +498,15 @@ export function answerAgreementTopic(id: AgreementTopicId, options: AgreementAns
   };
 }
 
-/** Plain sentence naming what was not checked: "Overtime and Pay and allowances are not…". */
+/** Plain sentence naming what was not checked: "PsychSift hasn't checked the clauses on overtime." */
 export function uncheckedSentence(unchecked: readonly UncheckedTopic[]): string {
   if (!unchecked.length) return "This is not in the clauses PsychSift has checked.";
-  const names = unchecked.map((topic, index) => (index === 0 ? topic.label : topic.label.toLowerCase()));
-  const list = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-  return `${list} ${names.length === 1 ? "is" : "are"} not in the clauses PsychSift has checked.`;
+  const names = unchecked.map((topic) => topic.label.toLowerCase());
+  const list = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
+  return `PsychSift hasn’t checked the clauses on ${list}.`;
 }
 
-export const AGREEMENT_CHECKED_SCOPE =
-  "PsychSift has checked only the hours and rest parts of clause 15 (Hours of duty).";
+export const AGREEMENT_CHECKED_SCOPE = "So far only the hours and rest parts of clause 15 (Hours of duty) are checked.";
 
 /** Questions offered before typing. Each one matches a checked topic, so none leads to a dead end. */
 export const AGREEMENT_SUGGESTED_QUESTIONS: readonly string[] = [

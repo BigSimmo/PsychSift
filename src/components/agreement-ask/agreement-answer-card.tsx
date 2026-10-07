@@ -126,8 +126,8 @@ export const AgreementAnswerCard = forwardRef<HTMLHeadingElement, AgreementAnswe
               Not in the clauses PsychSift has checked
             </h2>
             <p className="max-w-sm text-sm leading-5 text-[color:var(--text)]" data-testid="agreement-unchecked-line">
-              {uncheckedSentence(answer.unchecked)} {AGREEMENT_CHECKED_SCOPE} PsychSift won’t guess, so open the
-              agreement and read it yourself.
+              {uncheckedSentence(answer.unchecked)} {AGREEMENT_CHECKED_SCOPE} Rather than guess, open the agreement and
+              read it yourself.
             </p>
             <AgreementPdfLink
               href={answer.source.url}

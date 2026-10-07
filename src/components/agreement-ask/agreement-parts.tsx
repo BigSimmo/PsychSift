@@ -39,7 +39,7 @@ export function AgreementIconCircle({
         tone === "warning" && "bg-[color:var(--warning-soft)] text-[color:var(--warning-text)]",
       )}
     >
-      <Icon strokeWidth={1.75} className={size === "lg" ? "size-icon-md" : "size-icon-sm"} />
+      <Icon aria-hidden="true" strokeWidth={1.75} className={size === "lg" ? "size-icon-md" : "size-icon-sm"} />
     </span>
   );
 }

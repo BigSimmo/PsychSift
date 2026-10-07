@@ -158,6 +158,13 @@ describe("the patient-detail catch", () => {
     if (safer.kind === "patient" && safer.safer) expect(checkAgreementQuestion(safer.safer, 2026).kind).toBe("ok");
   });
 
+  it("tidies the safer wording where the detail was cut out", () => {
+    expect(checkAgreementQuestion("stayed late with UR 4471823 after nights", 2026)).toMatchObject({
+      safer: "stayed late after nights",
+    });
+    expect(checkAgreementQuestion("UR 4471823", 2026)).toMatchObject({ kind: "patient", safer: null });
+  });
+
   it("ordinary work words pass", () => {
     for (const question of ["Can I work 5 nights in ED", "AMA WA rules", "PGY2 RMO break between shifts"]) {
       expect(checkAgreementQuestion(question, 2026).kind, question).toBe("ok");
@@ -211,7 +218,7 @@ describe("sign-off, source and copy", () => {
 
   it("the not-checked copy says so, points to the agreement and ends with the union, with no phone number", () => {
     const text = agreementAnswerCopyText(answerAgreementQuestion("overtime?", opts));
-    expect(text).toContain("Overtime is not in the clauses PsychSift has checked.");
+    expect(text).toContain("PsychSift hasn’t checked the clauses on overtime.");
     expect(text).toContain("Open the agreement");
     expect(text).toMatch(/AMA \(WA\), your union\.$/);
     expect(text).not.toMatch(/\d{4} ?\d{3,4}/);
@@ -235,7 +242,7 @@ describe("sign-off, source and copy", () => {
         { id: "overtime", label: "Overtime" },
         { id: "pay", label: "Pay and allowances" },
       ]),
-    ).toBe("Overtime and pay and allowances are not in the clauses PsychSift has checked.");
+    ).toBe("PsychSift hasn’t checked the clauses on overtime or pay and allowances.");
   });
 
   it("a topic opened directly answers with that topic", () => {
