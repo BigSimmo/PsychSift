@@ -1,11 +1,12 @@
 /** @vitest-environment jsdom */
 
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
+import { setWorkFramePill } from "@/components/work-frame/work-frame-store";
 import { LAST_APP_MODE_STORAGE_KEY } from "@/components/clinical-dashboard/use-last-app-mode";
 import { appModeSelectionHref, visibleAppModeDefinitionsForSession, type AppModeId } from "@/lib/app-modes";
 import { modesOnSide, orderByPhoneModeGroups } from "@/lib/phone-mode-groups";
@@ -314,5 +315,28 @@ describe("mode menu destination prefetch", () => {
     await new Promise((resolve) => setTimeout(resolve, 120));
     expect(outside).toHaveFocus();
     expect(trigger).not.toHaveFocus();
+  });
+});
+
+describe("work area mode pill", () => {
+  afterEach(() => {
+    act(() => setWorkFramePill(null));
+  });
+
+  it("shows only the area name, in its colour, when the band names no page (pill 4b)", () => {
+    act(() => setWorkFramePill({ modeId: "my-day", area: "My Day", page: null }));
+    render(<MasterSearchHeader {...headerProps()} searchMode="my-day" />);
+    const trigger = screen.getByRole("button", { name: "Mode My Day" });
+    const areaOnly = within(trigger).getByTestId("universal-header-mode-area-only");
+    expect(areaOnly).toHaveTextContent("My Day");
+    expect(areaOnly.className).toContain("text-[color:var(--clinical-accent)]");
+    expect(within(trigger).queryByText("Mode")).toBeNull();
+  });
+
+  it("keeps the page over the area while the band still names a page", () => {
+    act(() => setWorkFramePill({ modeId: "my-day", area: "My Day", page: "Week" }));
+    render(<MasterSearchHeader {...headerProps()} searchMode="my-day" />);
+    const trigger = screen.getByRole("button", { name: "Mode My Day, page Week" });
+    expect(within(trigger).queryByTestId("universal-header-mode-area-only")).toBeNull();
   });
 });

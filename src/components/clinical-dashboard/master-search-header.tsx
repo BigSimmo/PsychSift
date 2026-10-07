@@ -630,7 +630,16 @@ export function MasterSearchHeader({
     ? { modeId: selectedAppMode.id, area: routeWorkFrame.area.name, page: routeWorkFrame.page.label }
     : null;
   const workPill = (workFramePill?.modeId === selectedAppMode.id ? workFramePill : null) ?? routeWorkPill;
-  const activeModePage = workPill?.page ? { id: "work-frame", label: workPill.page } : registryModePage;
+  // A work band that publishes no page asks for the area alone (Josh, 7 Oct
+  // 2026, pill 4b: the underlined tab already names the page), so the
+  // registry's page is not used as a fallback there.
+  const activeModePage = workPill
+    ? workPill.page
+      ? { id: "work-frame", label: workPill.page }
+      : null
+    : registryModePage;
+  /** The area-only pill: a work area's name, alone, in its own colour. */
+  const pillShowsAreaOnly = Boolean(workPill) && !activeModePage;
   const pillModeLabel = workPill?.area ?? selectedAppMode.label;
   /** A mode that shows no results has nowhere for a new conversation to land. */
   const modeHasConversation = selectedAppMode.search.resultsSurface !== "none";
@@ -2755,6 +2764,16 @@ export function MasterSearchHeader({
                     {pillModeLabel}
                   </span>
                 </>
+              ) : pillShowsAreaOnly ? (
+                // Pill 4b (Josh, 7 Oct 2026): just the area, in the area's colour,
+                // in normal lettering. No "Mode" eyebrow: the coloured name and
+                // badge already say what this control is.
+                <span
+                  data-testid="universal-header-mode-area-only"
+                  className="block truncate text-base-minus font-semibold leading-5 text-[color:var(--clinical-accent)]"
+                >
+                  {pillModeLabel}
+                </span>
               ) : (
                 <>
                   <span className="hidden truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--text-muted)] sm:block">
@@ -2769,7 +2788,12 @@ export function MasterSearchHeader({
             <ChevronDown
               aria-hidden="true"
               className={cn(
-                "size-icon-md text-[color:var(--decoration-soft)] transition-transform motion-reduce:transition-none",
+                "transition-transform motion-reduce:transition-none",
+                // The area-only pill's chevron is smaller and quieter, so the
+                // coloured name carries the control.
+                pillShowsAreaOnly
+                  ? "size-icon-sm text-[color:color-mix(in_srgb,var(--neutral-400)_60%,var(--neutral-500))]"
+                  : "size-icon-md text-[color:var(--decoration-soft)]",
                 modeMenuOpen && "rotate-180",
               )}
             />
