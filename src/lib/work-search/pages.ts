@@ -43,10 +43,13 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "rost:shifts": ["shifts", "my roster"],
   "rost:requests": ["leave", "annual leave", "al", "holiday", "request", "book leave", "pdl", "study leave"],
   "rost:hours": ["overtime", "rest", "fatigue", "safe hours"],
-  "rost:open-shifts-browse": ["extra shifts", "locum", "open shifts", "available shifts"],
-  "rost:open-shifts-mine": ["booked", "asked"],
-  "rost:open-shifts-log": ["log shift", "extra shift worked"],
-  "rost:open-shifts-alerts": ["notify", "shift alerts"],
+  "open:open-shifts-browse": ["extra shifts", "locum", "open shifts", "available shifts"],
+  "open:open-shifts-mine": ["booked", "asked"],
+  "open:open-shifts-log": ["log shift", "extra shift worked"],
+  "open:open-shifts-alerts": ["notify", "shift alerts"],
+  "manage:manage-inbox": ["approve", "approvals", "manager", "manage roster"],
+  "manage:manage-cover": ["gaps", "unfilled", "sick cover"],
+  "manage:manage-team": ["publish", "team settings", "people"],
   "rost:calendar": ["sync", "ical", "ics", "phone calendar", "google calendar", "outlook"],
   "rost:join": ["invite", "code", "join"],
   "rost:settings": ["preferences"],
@@ -105,7 +108,16 @@ export function workSearchPages(): readonly WorkSearchPage[] {
   if (pagesMemory) return pagesMemory;
   const pages: WorkSearchPage[] = [];
   const seen = new Set<string>();
-  for (const [areaId, area] of Object.entries(WORK_AREAS) as [WorkAreaId, (typeof WORK_AREAS)[WorkAreaId]][]) {
+  const areas = Object.entries(WORK_AREAS) as [WorkAreaId, (typeof WORK_AREAS)[WorkAreaId]][];
+  // An inner area whose way in is gated (Manage team, for roster managers) is gated as a whole.
+  const gatedAreas = new Set(
+    areas
+      .flatMap(([, area]) => area.groups.flatMap((group) => group.items))
+      .filter((item) => item.opens && item.gate)
+      .map((item) => item.opens),
+  );
+  for (const [areaId, area] of areas) {
+    if (gatedAreas.has(areaId)) continue;
     const items = [...area.tabs, ...area.groups.flatMap((group) => group.items)];
     for (const item of items) {
       // Actions run on a page, and gated pages may not be the reader's: neither is offered.

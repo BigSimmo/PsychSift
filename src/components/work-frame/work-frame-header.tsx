@@ -21,18 +21,20 @@ import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import {
   rememberedWorkAreaPage,
   rememberWorkAreaPage,
+  usePageBackClaimed,
   setWorkFramePill,
   useWorkFrameActionsVersion,
   workFrameActionHandler,
 } from "@/components/work-frame/work-frame-store";
+import { useWorkTabPicks } from "@/components/work-frame/work-tab-picks";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
 import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";
 import type { AppModeId } from "@/lib/app-modes";
 import {
-  WORK_FRAME_MAX_TABS,
+  WORK_TAB_PICKS_MAX,
   workAreaParent,
-  workFrameExtraTabs,
-  workFrameTabIndex,
+  workFrameTabChoices,
+  workFrameTabRow,
   workFrameTabLabel,
   type WorkArea,
   type WorkFrameGate,
@@ -105,16 +107,15 @@ export function WorkFrameHeader({
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const gateOpen = useGateOpen();
-  const extras = useMemo(
-    () =>
-      workFrameExtraTabs(area)
-        .filter((item) => gateOpen(item.gate))
-        .slice(0, WORK_FRAME_MAX_TABS - area.tabs.length),
-    [area, gateOpen],
+  const [picked, setPicked] = useWorkTabPicks(area.id);
+  const { first, extras } = useMemo(
+    () => workFrameTabRow(area, picked, (item) => gateOpen(item.gate)),
+    [area, picked, gateOpen],
   );
-  const fit = useTabsThatFit(navRef, extras);
+  const fit = useTabsThatFit(navRef, [...first, ...extras].map((item) => item.id).join(" "));
+  const shownTabs = useMemo(() => [...first, ...extras.slice(0, fit)], [first, extras, fit]);
   const currentId = current?.id ?? null;
-  const onTab = workFrameTabIndex(area, currentId) >= 0 || extras.slice(0, fit).some((item) => item.id === currentId);
+  const onTab = shownTabs.some((item) => item.id === currentId);
   const onMorePage = !onTab && current !== null;
   const parent = workAreaParent(area);
 
@@ -144,7 +145,7 @@ export function WorkFrameHeader({
         tabIndex={out ? -1 : undefined}
         aria-current={!out && item.id === currentId ? "page" : undefined}
       >
-        {kind === "extra" ? workFrameTabLabel(item) : item.label}
+        {workFrameTabLabel(item)}
         {count > 0 ? (
           <span className="mode-band__badge work-band__count">
             <span aria-hidden="true">{count}</span>
@@ -178,7 +179,7 @@ export function WorkFrameHeader({
       </div>
       {status}
       <nav ref={navRef} aria-label={`${area.name} pages`} className="work-band__tabs" data-testid="mode-band-tabs">
-        {area.tabs.map((item) => tab(item, "pinned", false))}
+        {first.map((item) => tab(item, "pinned", false))}
         {extras.map((item, index) => tab(item, "extra", index >= fit))}
         <button
           ref={moreButtonRef}
@@ -200,6 +201,9 @@ export function WorkFrameHeader({
         area={area}
         currentId={currentId}
         counts={counts}
+        tabs={shownTabs}
+        first={first}
+        onPick={setPicked}
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
         returnFocusRef={moreButtonRef}
@@ -218,12 +222,13 @@ function parentHref(parent: WorkArea): string {
  * button, in place of the menu, and back to the parent area where you left it.
  */
 function WorkFrameBack({ parent }: { parent: WorkArea }) {
+  const claimed = usePageBackClaimed();
   const host = useSyncExternalStore(
     subscribeNever,
     () => document.getElementById(universalHeaderLeadingSlotId),
     () => null,
   );
-  if (!host) return null;
+  if (!host || claimed) return null;
   return createPortal(
     <Link
       href={parentHref(parent)}
@@ -244,6 +249,12 @@ export type WorkMoreSheetProps = {
   readonly currentId: string | null;
   /** To-do counts by item id, as the band shows them; absent while counts are hidden. */
   readonly counts?: Readonly<Record<string, number>>;
+  /** The tabs the row shows right now, at this width. Defaults to the area's own three. */
+  readonly tabs?: readonly WorkFrameItem[];
+  /** The row's first three, which the reader may choose. */
+  readonly first?: readonly WorkFrameItem[];
+  /** Saves the reader's first tabs; an empty list goes back to the area's own. Absent, no Change button. */
+  readonly onPick?: (ids: readonly string[]) => void;
   readonly open: boolean;
   readonly onClose: () => void;
   readonly returnFocusRef?: RefObject<HTMLElement | null>;
@@ -259,13 +270,25 @@ type SheetGroup = { readonly label: string; readonly items: readonly WorkFrameIt
  * focus trap; Escape, the close button, the dim backdrop and a drag down on
  * the grip all close it, and focus returns to More.
  */
-export function WorkMoreSheet({ area, currentId, counts, open, onClose, returnFocusRef }: WorkMoreSheetProps) {
+export function WorkMoreSheet({
+  area,
+  currentId,
+  counts,
+  tabs = area.tabs,
+  first = area.tabs,
+  onPick,
+  open,
+  onClose,
+  returnFocusRef,
+}: WorkMoreSheetProps) {
   const gateOpen = useGateOpen();
   const actionsVersion = useWorkFrameActionsVersion();
   const parent = workAreaParent(area);
   const [query, setQuery] = useState("");
+  const [draft, setDraft] = useState<readonly string[] | null>(null);
   const close = useCallback(() => {
     setQuery("");
+    setDraft(null);
     onClose();
   }, [onClose]);
   const groups = useMemo<readonly SheetGroup[]>(() => {
@@ -273,11 +296,20 @@ export function WorkMoreSheet({ area, currentId, counts, open, onClose, returnFo
     void actionsVersion;
     const visible = (item: WorkFrameItem) =>
       gateOpen(item.gate) && (item.action ? workFrameActionHandler(item.action) !== null : Boolean(item.href));
-    const all: readonly SheetGroup[] = [{ label: "Tabs", items: area.tabs, tabs: true }, ...area.groups];
+    // The Tabs row mirrors the tab row as it stands at this width; each page shows once.
+    const inRow = new Set(tabs.map((item) => item.id));
+    const all: readonly SheetGroup[] = [
+      { label: "Tabs", items: tabs, tabs: true },
+      ...(area.tabs.some((item) => !inRow.has(item.id))
+        ? [{ label: "Other pages", items: area.tabs.filter((item) => !inRow.has(item.id)) }]
+        : []),
+      ...area.groups.map((group) => ({ ...group, items: group.items.filter((item) => !inRow.has(item.id)) })),
+    ];
     return all
       .map((group) => ({ ...group, items: group.items.filter(visible) }))
       .filter((group) => group.items.length > 0);
-  }, [area, gateOpen, actionsVersion]);
+  }, [area, tabs, gateOpen, actionsVersion]);
+  const choices = useMemo(() => workFrameTabChoices(area).filter((item) => gateOpen(item.gate)), [area, gateOpen]);
   const needle = query.trim().toLowerCase();
   const shown = needle
     ? groups
@@ -303,63 +335,181 @@ export function WorkMoreSheet({ area, currentId, counts, open, onClose, returnFo
       bodyClassName="work-more-sheet__body"
     >
       <div data-mode-identity={area.identity} className="work-more-sheet__groups">
-        <label className="work-more-sheet__search">
-          <Search aria-hidden="true" strokeWidth={2} />
-          <span className="sr-only">Find a page</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={`Find a ${area.name} page`}
-            autoComplete="off"
-            enterKeyHint="search"
-            data-testid="work-more-search"
+        {draft && onPick ? (
+          <WorkTabPicker
+            area={area}
+            choices={choices}
+            draft={draft}
+            onChange={setDraft}
+            onDone={(ids) => {
+              onPick(ids);
+              setDraft(null);
+            }}
           />
-        </label>
-        {shown.map((group) => (
-          <section key={group.label} aria-label={group.label} className="work-more-sheet__group">
-            <h3 className="work-label">{group.label}</h3>
-            <ul className={group.tabs ? "work-more-sheet__grid work-more-sheet__grid--tabs" : "work-more-sheet__grid"}>
-              {group.items.map((item) =>
-                item.opens ? (
-                  <li key={item.id} className="work-more-sheet__wide">
-                    <WorkMoreAreaRow item={item} onClose={close} />
-                  </li>
+        ) : (
+          <>
+            <label className="work-more-sheet__search">
+              <Search aria-hidden="true" strokeWidth={2} />
+              <span className="sr-only">Find a page</span>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={`Find a ${area.name} page`}
+                autoComplete="off"
+                enterKeyHint="search"
+                data-testid="work-more-search"
+              />
+            </label>
+            {shown.map((group) => (
+              <section key={group.label} aria-label={group.label} className="work-more-sheet__group">
+                {group.tabs && onPick && !needle && choices.length > WORK_TAB_PICKS_MAX ? (
+                  <div className="work-more-sheet__head">
+                    <h3 className="work-label">{group.label}</h3>
+                    <button
+                      type="button"
+                      className="work-more-sheet__edit"
+                      onClick={() => setDraft(first.map((item) => item.id))}
+                      data-testid="work-tabs-change"
+                    >
+                      Change<span className="sr-only"> your first tabs</span>
+                    </button>
+                  </div>
                 ) : (
-                  <li key={item.id} className="min-w-0">
-                    <WorkMoreTile
-                      item={item}
-                      current={item.id === currentId}
-                      count={counts?.[item.id] ?? 0}
-                      compact={group.tabs === true}
-                      onClose={close}
-                    />
-                  </li>
-                ),
-              )}
-            </ul>
-          </section>
-        ))}
-        {needle && shown.length === 0 ? (
-          <p role="status" className="work-more-sheet__none">
-            No {area.name} page called &ldquo;{query.trim()}&rdquo;. AI Search in the header finds your records.
-          </p>
-        ) : null}
-        {parent && !needle ? (
-          <section aria-label={`Leave ${area.name}`} className="work-more-sheet__group">
-            <Link href={parentHref(parent)} className="work-more-area" onClick={close} data-testid="work-more-back">
-              <span aria-hidden="true" className="work-ic work-ic--sm work-more-area__back">
-                <ChevronLeft aria-hidden="true" strokeWidth={2.25} />
-              </span>
-              <span className="work-more-tile__text">
-                <span className="work-more-tile__name">Back to {parent.name}</span>
-                <span className="work-more-tile__sub">Where you left it</span>
-              </span>
-            </Link>
-          </section>
-        ) : null}
+                  <h3 className="work-label">{group.label}</h3>
+                )}
+                <ul
+                  className={group.tabs ? "work-more-sheet__grid work-more-sheet__grid--tabs" : "work-more-sheet__grid"}
+                >
+                  {group.items.map((item) =>
+                    item.opens ? (
+                      <li key={item.id} className="work-more-sheet__wide">
+                        <WorkMoreAreaRow item={item} onClose={close} />
+                      </li>
+                    ) : (
+                      <li key={item.id} className="min-w-0">
+                        <WorkMoreTile
+                          item={item}
+                          current={item.id === currentId}
+                          count={counts?.[item.id] ?? 0}
+                          compact={group.tabs === true}
+                          onClose={close}
+                        />
+                      </li>
+                    ),
+                  )}
+                </ul>
+              </section>
+            ))}
+            {needle && shown.length === 0 ? (
+              <p role="status" className="work-more-sheet__none">
+                No {area.name} page called &ldquo;{query.trim()}&rdquo;. AI Search in the header finds your records.
+              </p>
+            ) : null}
+            {parent && !needle ? (
+              <section aria-label={`Leave ${area.name}`} className="work-more-sheet__group">
+                <Link href={parentHref(parent)} className="work-more-area" onClick={close} data-testid="work-more-back">
+                  <span aria-hidden="true" className="work-ic work-ic--sm work-more-area__back">
+                    <ChevronLeft aria-hidden="true" strokeWidth={2.25} />
+                  </span>
+                  <span className="work-more-tile__text">
+                    <span className="work-more-tile__name">Back to {parent.name}</span>
+                    <span className="work-more-tile__sub">Where you left it</span>
+                  </span>
+                </Link>
+              </section>
+            ) : null}
+          </>
+        )}
       </div>
     </Sheet>
+  );
+}
+
+/**
+ * Choosing an area's first tabs: every page that can be a tab, tap to put it
+ * in the next of three first slots or take it out. Done saves, Reset goes back
+ * to the area's own. Further tabs still join by width, in More's order.
+ */
+function WorkTabPicker({
+  area,
+  choices,
+  draft,
+  onChange,
+  onDone,
+}: {
+  area: WorkArea;
+  choices: readonly WorkFrameItem[];
+  draft: readonly string[];
+  onChange: (ids: readonly string[]) => void;
+  onDone: (ids: readonly string[]) => void;
+}) {
+  const full = draft.length >= WORK_TAB_PICKS_MAX;
+  const own = area.tabs.map((item) => item.id);
+  const isOwn = draft.length === own.length && draft.every((id, index) => id === own[index]);
+  return (
+    <section aria-labelledby="work-tab-picker-title" className="work-more-sheet__group" data-testid="work-tab-picker">
+      <h3 id="work-tab-picker-title" className="work-label">
+        Your first tabs
+      </h3>
+      <p className="work-more-sheet__hint" role="status">
+        {full
+          ? "Three chosen. Tap one to take it out, then pick another."
+          : `Tap up to three, in order. Then more join as your screen allows.`}
+      </p>
+      <ul className="work-more-sheet__grid">
+        {choices.map((item) => {
+          const slot = draft.indexOf(item.id);
+          const picked = slot >= 0;
+          const Icon = workFrameIcons[item.icon];
+          return (
+            <li key={item.id} className="min-w-0">
+              <button
+                type="button"
+                className="work-more-tile work-more-tile--pick"
+                aria-pressed={picked}
+                aria-disabled={!picked && full ? true : undefined}
+                data-picked={picked ? "" : undefined}
+                onClick={() => {
+                  if (picked) onChange(draft.filter((id) => id !== item.id));
+                  else if (!full) onChange([...draft, item.id]);
+                }}
+              >
+                <span aria-hidden="true" className="work-ic work-ic--sm">
+                  <Icon aria-hidden="true" strokeWidth={2} />
+                </span>
+                <span className="work-more-tile__text">
+                  <span className="work-more-tile__name">{workFrameTabLabel(item)}</span>
+                </span>
+                <span aria-hidden="true" className="work-more-tile__slot">
+                  {picked ? slot + 1 : ""}
+                </span>
+                {picked ? <span className="sr-only">, tab {slot + 1}</span> : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="work-more-sheet__actions">
+        <button
+          type="button"
+          className="work-more-sheet__edit"
+          disabled={isOwn}
+          onClick={() => onDone([])}
+          data-testid="work-tabs-reset"
+        >
+          Reset
+        </button>
+        <button
+          type="button"
+          className="work-more-sheet__done"
+          onClick={() => onDone(isOwn ? [] : draft)}
+          data-testid="work-tabs-done"
+        >
+          Done
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -460,12 +610,11 @@ const FIT_SPARE = 8;
  * measured but hidden. Re-measured whenever the row or a tab changes size.
  * Before measuring (server render) none show, so the row only ever grows.
  */
-function useTabsThatFit(navRef: RefObject<HTMLElement | null>, extras: readonly WorkFrameItem[]): number {
+function useTabsThatFit(navRef: RefObject<HTMLElement | null>, key: string): number {
   const [fit, setFit] = useState(0);
-  const key = extras.map((item) => item.id).join(" ");
   useLayoutEffect(() => {
     const nav = navRef.current;
-    if (!nav || !key || typeof ResizeObserver === "undefined") {
+    if (!nav || !nav.querySelector('[data-tab="extra"]') || typeof ResizeObserver === "undefined") {
       setFit(0);
       return;
     }

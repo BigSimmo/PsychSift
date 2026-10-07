@@ -15,16 +15,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 import { createElement, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { ModeBandAction, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
 import { WorkGlassButton } from "@/components/mode-kit/work";
 import { universalHeaderLeadingSlotId } from "@/components/work-frame/work-frame-header";
+import { useClaimWorkFrameBack } from "@/components/work-frame/work-frame-store";
 import { RATING_LABELS, type Rating } from "@/lib/teaching/assessments/content";
 import { looksLikePatientDetails } from "@/lib/teaching/assessments/model";
-import { workAreaFor, workFrameCurrentItem, workFrameTabIndex } from "@/lib/work-frame/areas";
 import { withUnit } from "@/components/teaching/teaching-number";
 
 /*
@@ -38,16 +37,6 @@ import { withUnit } from "@/components/teaching/teaching-number";
 /* ------------------------------------------------------------ the header */
 
 const subscribeNever = () => () => {};
-
-/** True when the work frame already draws a back button on this page (a page reached from More). */
-function useFrameDrawsBack(): boolean {
-  const pathname = usePathname() ?? "";
-  const search = useSearchParams()?.toString() ?? "";
-  const area = workAreaFor("teaching", pathname);
-  if (!area) return false;
-  const current = workFrameCurrentItem(area, pathname, search);
-  return workFrameTabIndex(area, current?.id ?? null) < 0;
-}
 
 export type AssessHeaderProps = {
   /** The small line over the band title ("Step 3 of 8"). */
@@ -70,7 +59,9 @@ export type AssessHeaderProps = {
 export function AssessHeader({ eyebrow, title, back, action }: AssessHeaderProps) {
   const shown = useModeBandShown();
   useModeBandHeading({ eyebrow, title });
-  const frameBack = useFrameDrawsBack();
+  // A screen with its own way back takes the top bar's left button from the
+  // frame's arrow to Teaching, so there is only ever one.
+  useClaimWorkFrameBack(Boolean(back) && shown);
   const host = useSyncExternalStore(
     subscribeNever,
     () => document.getElementById(universalHeaderLeadingSlotId),
@@ -112,7 +103,7 @@ export function AssessHeader({ eyebrow, title, back, action }: AssessHeaderProps
   return (
     <>
       {heading}
-      {backLink && host && !frameBack ? createPortal(backLink, host) : null}
+      {backLink && host ? createPortal(backLink, host) : null}
       {action ? (
         <ModeBandAction>
           {() => (

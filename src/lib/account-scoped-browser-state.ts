@@ -104,6 +104,11 @@ export const TEACHING_TERM_TRACKER_STORAGE_KEY = "psychsift:teaching:term-tracke
  * progress and the next study group. Kept on this device only.
  */
 export const TEACHING_EXAM_PREP_STORAGE_KEY = "psychsift:teaching:exam-prep-v1";
+/**
+ * localStorage — the work frame's chosen first tabs per area (which pages sit first in each tab row).
+ * Page ids only, never records. Kept on this device only.
+ */
+export const WORK_TAB_PICKS_STORAGE_KEY = "psychsift:work:tab-picks-v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -176,6 +181,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, WORK_TAB_PICKS_STORAGE_KEY);
   stripAccountScopedPreferences();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }

@@ -8,7 +8,10 @@ import {
   workFrameCurrentItem,
   workFrameExtraTabs,
   workFrameTabLabel,
+  workFrameTabRow,
+  parseWorkTabPicks,
 } from "@/lib/work-frame/areas";
+import { searchWorkPages, workSearchPages } from "@/lib/work-search/pages";
 
 // Navigation follow-up, owner request 7 Oct 2026: the fourth tab names the More
 // page you're on, big groups are inner areas with their own tabs, and a swipe
@@ -64,5 +67,38 @@ describe("work frame navigation", () => {
     expect(labels("day")).not.toContain("Reminders");
     const hours = workFrameCurrentItem(WORK_AREAS.rost, "/roster", "view=hours")!;
     expect(workFrameTabLabel(hours)).toBe("Hours");
+  });
+
+  it("lists inner area pages in AI Search, but never a manager's pages", () => {
+    const ids = workSearchPages().map((page) => page.id);
+    expect(ids).toContain("open:open-shifts-browse");
+    expect(ids.some((id) => id.startsWith("manage:"))).toBe(false);
+    expect(searchWorkPages("locum")[0]?.page.href).toBe("/open-shifts");
+  });
+
+  it("puts the reader's chosen tabs first, then the area's own, then the rest by width", () => {
+    const all = () => true;
+    const ids = (row: ReturnType<typeof workFrameTabRow>) =>
+      [row.first, row.extras].map((items) => items.map((item) => item.id));
+    const own = workFrameTabRow(WORK_AREAS.rost, undefined, all);
+    expect(own.first.map((item) => item.id)).toEqual(WORK_AREAS.rost.tabs.map((item) => item.id));
+    const leave = workFrameTabRow(WORK_AREAS.rost, ["requests"], all);
+    expect(ids(leave)[0]).toEqual(["requests", ...WORK_AREAS.rost.tabs.slice(0, 2).map((item) => item.id)]);
+    // The displaced own tab leads the extras; nothing shows twice, never more than six.
+    expect(ids(leave)[1][0]).toBe(WORK_AREAS.rost.tabs[2].id);
+    expect(new Set([...ids(leave)[0], ...ids(leave)[1]]).size).toBe(leave.first.length + leave.extras.length);
+    expect(leave.first.length + leave.extras.length).toBeLessThanOrEqual(6);
+    // Gone, gated or repeated picks are skipped, and the row still starts with three.
+    const odd = workFrameTabRow(WORK_AREAS.rost, ["nope", "requests", "requests"], (item) => item.id !== "month");
+    expect(odd.first.map((item) => item.id)).toEqual(["requests", "team", "swaps"]);
+  });
+
+  it("reads stored tab picks defensively", () => {
+    expect(parseWorkTabPicks(null)).toEqual({});
+    expect(parseWorkTabPicks("not json")).toEqual({});
+    expect(parseWorkTabPicks("[1,2]")).toEqual({});
+    expect(parseWorkTabPicks(JSON.stringify({ rost: ["a", "a", 3, "b", "c", "d"], nowhere: ["x"] }))).toEqual({
+      rost: ["a", "b", "c"],
+    });
   });
 });

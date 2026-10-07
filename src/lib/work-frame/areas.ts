@@ -1084,3 +1084,55 @@ export function workFrameExtraTabs(area: WorkArea): readonly WorkFrameItem[] {
         item.paths?.length !== 0,
     );
 }
+
+/** How many of an area's first tabs the reader may choose. */
+export const WORK_TAB_PICKS_MAX = 3;
+
+/** The reader's chosen first tabs, by area: item ids in the order picked. */
+export type WorkTabPicks = Readonly<Partial<Record<WorkAreaId, readonly string[]>>>;
+
+/** Every page that may sit in an area's tab row: its own tabs, then the plain More pages. */
+export function workFrameTabChoices(area: WorkArea): readonly WorkFrameItem[] {
+  return [...area.tabs, ...workFrameExtraTabs(area)];
+}
+
+/**
+ * The tab row before width is measured: the three first tabs, then the extra
+ * tabs that join as the screen allows. The reader's picks take the first
+ * slots in the order chosen, then the area's own tabs fill any left, so the
+ * row always starts with three. A pick that is gone, gated or repeated is
+ * skipped, never shown.
+ */
+export function workFrameTabRow(
+  area: WorkArea,
+  picked: readonly string[] | undefined,
+  allowed: (item: WorkFrameItem) => boolean,
+): { readonly first: readonly WorkFrameItem[]; readonly extras: readonly WorkFrameItem[] } {
+  const choices = workFrameTabChoices(area).filter(allowed);
+  const first: WorkFrameItem[] = [];
+  const take = (item: WorkFrameItem | undefined) => {
+    if (item && first.length < WORK_TAB_PICKS_MAX && !first.includes(item)) first.push(item);
+  };
+  for (const id of picked ?? []) take(choices.find((item) => item.id === id));
+  for (const item of choices) take(item);
+  const extras = choices.filter((item) => !first.includes(item)).slice(0, WORK_FRAME_MAX_TABS - first.length);
+  return { first, extras };
+}
+
+/** Reads stored picks, dropping anything malformed: unknown areas, non-strings, more than the maximum. */
+export function parseWorkTabPicks(raw: string | null): WorkTabPicks {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const picks: Partial<Record<WorkAreaId, readonly string[]>> = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!(key in WORK_AREAS) || !Array.isArray(value)) continue;
+      const ids = [...new Set(value.filter((id): id is string => typeof id === "string" && id.length <= 64))];
+      if (ids.length > 0) picks[key as WorkAreaId] = ids.slice(0, WORK_TAB_PICKS_MAX);
+    }
+    return picks;
+  } catch {
+    return {};
+  }
+}
