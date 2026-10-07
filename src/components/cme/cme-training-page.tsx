@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import { cardSurface, focusRing } from "@/components/card-recipes";
+import { focusRing } from "@/components/card-recipes";
 import { CmeFlatList, CmeGroup, CmeGroupLabel, CmeNote, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
 import { CmeRotationTrack, CmeTrainingTimeline } from "@/components/cme/cme-training-timeline";
 import { CmeDateField, useCmeDateChecks } from "@/components/cme/cme-date-field";
@@ -71,7 +71,8 @@ import {
   type TrainingPeriodKind,
   type TrainingPeriodProblem,
 } from "@/lib/cme/training-timeline";
-import { cmePageTitle } from "@/components/cme/cme-page-frame";
+import { CmeBandHeading, CmeHint } from "@/components/cme/cme-work-kit";
+import { WorkBody } from "@/components/mode-kit/work";
 
 /**
  * TRAINING — the trainee's own record of their training: stages, rotations
@@ -441,7 +442,7 @@ export function CmeTrainingPage({
     <form
       onSubmit={(event) => void savePeriod(event)}
       noValidate
-      className={cn(cardSurface, "mt-3 space-y-4 p-4")}
+      className="work-card work-card--pad mt-3 space-y-4"
       data-testid="cme-training-period-form"
     >
       <h3
@@ -545,7 +546,7 @@ export function CmeTrainingPage({
     <form
       onSubmit={(event) => void saveMilestone(event)}
       noValidate
-      className={cn(cardSurface, "mt-3 space-y-4 p-4")}
+      className="work-card work-card--pad mt-3 space-y-4"
       data-testid="cme-training-milestone-form"
     >
       <h3
@@ -659,348 +660,354 @@ export function CmeTrainingPage({
   }
 
   return (
-    <main data-testid="cme-training" data-mode-identity="cme" className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
-      <h1 className={cmePageTitle}>Training</h1>
-      <p className={cn(textMuted, "mt-1 text-sm")}>
-        Your own record of your training. It is not the college&apos;s record, and nothing here changes your CPD
-        targets.
-      </p>
-      {sampleView ? (
-        <p className="mt-1 text-sm-minus text-[color:var(--text-muted)]" data-testid="cme-training-example-switch">
-          {sampleView === "registrar" ? "A psychiatry registrar example. " : "A junior doctor example. "}
-          <CmeTextLink href={sampleView === "registrar" ? "/cme/training?example=intern" : "/cme/training"}>
-            {sampleView === "registrar" ? "See the junior doctor example" : "See the registrar example"}
-          </CmeTextLink>
-        </p>
-      ) : null}
-
-      <div className="mt-6 grid gap-6">
-        {error ? (
-          <CmeNote tone="warn" role="alert" icon={<AlertTriangle aria-hidden="true" strokeWidth={1.6} />}>
-            {error}
-          </CmeNote>
+    <main data-testid="cme-training" data-mode-identity="cme" className="w-full">
+      <CmeBandHeading
+        eyebrow={sampleView ? "Sample record" : rotation ? rotation.label : "Your own record"}
+        title="Training"
+      />
+      <WorkBody>
+        <h1 className="sr-only">Training</h1>
+        <CmeHint>
+          Your own record of your training. It is not the college&apos;s record, and nothing here changes your CPD
+          targets.
+        </CmeHint>
+        {sampleView ? (
+          <p className="mt-1 text-sm-minus text-[color:var(--text-muted)]" data-testid="cme-training-example-switch">
+            {sampleView === "registrar" ? "A psychiatry registrar example. " : "A junior doctor example. "}
+            <CmeTextLink href={sampleView === "registrar" ? "/cme/training?example=intern" : "/cme/training"}>
+              {sampleView === "registrar" ? "See the junior doctor example" : "See the registrar example"}
+            </CmeTextLink>
+          </p>
         ) : null}
 
-        {showRegistrar && isEmpty ? (
-          <CmeNote
-            testId="cme-training-empty"
-            icon={<GraduationCap aria-hidden="true" strokeWidth={1.6} />}
-            title="Nothing is preloaded here."
-          >
-            Enter your own stages, rotations, breaks and milestones from your college&apos;s current requirements. The
-            page then shows where you are, your training time so far, and what is due next.
-          </CmeNote>
-        ) : null}
+        <div className="grid gap-5">
+          {error ? (
+            <CmeNote tone="warn" role="alert" icon={<AlertTriangle aria-hidden="true" strokeWidth={1.6} />}>
+              {error}
+            </CmeNote>
+          ) : null}
 
-        {showRegistrar && rotation ? (
-          <CmeGroup label={`This rotation · ${rotation.label}`} testId="cme-training-this-rotation">
-            <div className={cardShell}>
-              {rotationWithEnd ? (
-                <CmeRotationTrack rotation={rotationWithEnd} today={today} marker={rotationMilestone?.projectedOn} />
-              ) : (
-                <p className={cn(textMuted, "text-sm-minus")}>
-                  This rotation has no end date yet, so it cannot be drawn. Add one with Edit below.
-                </p>
-              )}
-              {rotationMilestone || rotation.endsOn ? (
-                <CmeFlatList label="Dates in this rotation">
-                  {rotationMilestone ? (
-                    <RecordRow
-                      testId="cme-training-rotation-milestone"
-                      lead={<CalendarDays aria-hidden="true" strokeWidth={1.6} />}
-                      title={rotationMilestone.milestone.label}
-                      subtitle={`Your milestone · ${formatCmeRowDate(rotationMilestone.projectedOn, today)}, ${timeUntil(
-                        today,
-                        rotationMilestone.projectedOn,
-                      )}${rotationMilestone.milestone.dueKind === "fte-months" ? " (estimated from your FTE)" : ""}`}
-                    />
-                  ) : null}
-                  {rotation.endsOn ? (
-                    <RecordRow
-                      testId="cme-training-rotation-end"
-                      lead={<ClipboardList aria-hidden="true" strokeWidth={1.6} />}
-                      title="End of rotation"
-                      subtitle={`${formatCmeRowDate(rotation.endsOn, today)} · ${timeUntil(today, rotation.endsOn)}`}
-                    />
-                  ) : null}
-                </CmeFlatList>
-              ) : null}
-            </div>
-          </CmeGroup>
-        ) : null}
+          {showRegistrar && isEmpty ? (
+            <CmeNote
+              testId="cme-training-empty"
+              icon={<GraduationCap aria-hidden="true" strokeWidth={1.6} />}
+              title="Nothing is preloaded here."
+            >
+              Enter your own stages, rotations, breaks and milestones from your college&apos;s current requirements. The
+              page then shows where you are, your training time so far, and what is due next.
+            </CmeNote>
+          ) : null}
 
-        {assessments.status === "sample" && assessments.view === "registrar" ? (
-          <>
-            <CmeRegistrarEpaSummary registrar={assessments.registrar} />
-            <CmeRegistrarEpaList
-              registrar={assessments.registrar}
-              onSampleAction={sampleAction}
-              sampleMessage={sampleMessage}
-            />
-          </>
-        ) : null}
-        {assessments.status === "not-recorded" ? <CmeRegistrarEpasNotRecorded /> : null}
-
-        {showRegistrar ? (
-          <CmeGroup
-            label="Your training record"
-            testId="cme-training-position"
-            end={
-              periodEditing ? null : (
-                <CmeTextLink onClick={() => openPeriod()} testId="cme-training-add-period">
-                  Add <span className="sr-only">stage, rotation or break</span>
-                </CmeTextLink>
-              )
-            }
-          >
-            <CmeFlatList label="Your training record">
-              <DisclosureRow
-                testId="cme-training-record-periods"
-                controls={periodsSectionId}
-                open={periodsOpen}
-                onToggle={() => setPeriodsOpen((open) => !open)}
-                lead={<Layers aria-hidden="true" strokeWidth={1.6} />}
-                title="Stages, rotations and breaks"
-                subtitle={trainingRecordSummary(periods, position, today)}
-              />
-              <DisclosureRow
-                testId="cme-training-record-milestones"
-                controls={milestonesSectionId}
-                open={milestonesOpen}
-                onToggle={() => setMilestonesOpen((open) => !open)}
-                lead={<CalendarDays aria-hidden="true" strokeWidth={1.6} />}
-                title="Milestones"
-                subtitle={milestoneSummary(milestones, next, today)}
-              />
-              <RecordLinkRow
-                testId="cme-training-portal"
-                href={TRAINING_PORTAL_HREF}
-                external
-                lead={<ArrowUpRight aria-hidden="true" strokeWidth={1.6} />}
-                title="Open your college training portal"
-                subtitle="InTrain is the official record"
-              />
-            </CmeFlatList>
-          </CmeGroup>
-        ) : null}
-
-        {showRegistrar && periodsOpen ? (
-          <section id={periodsSectionId} aria-label="Stages, rotations and breaks" className="grid min-w-0 gap-1">
-            <CmeGroupLabel as="h3" label="Stages, rotations and breaks" />
-            {isEmpty ? null : (
-              <CmeFlatList label="Where you are">
-                <RecordRow
-                  lead={<Layers aria-hidden="true" strokeWidth={1.6} />}
-                  title={
-                    <span data-testid="cme-training-stage">
-                      {position.stage ? position.stage.label : "No stage covers today"}
-                    </span>
-                  }
-                  subtitle={
-                    position.onBreak && position.breakPeriod ? (
-                      <span data-testid="cme-training-on-break">
-                        On a break: {position.breakPeriod.label}. Your training clock is paused.
-                      </span>
-                    ) : position.rotation ? (
-                      <span data-testid="cme-training-rotation">
-                        {position.rotation.label}
-                        {position.rotationIndex !== null && position.rotationCount !== null
-                          ? `, rotation ${position.rotationIndex} of ${position.rotationCount}`
-                          : ""}
-                        {position.rotation.fte < 1 ? `, at ${formatFte(position.rotation.fte)}` : ""}
-                      </span>
-                    ) : (
-                      "No rotation covers today."
-                    )
-                  }
-                />
-                <RecordRow
-                  lead={<Clock aria-hidden="true" strokeWidth={1.6} />}
-                  title="Training time so far"
-                  subtitle="Only rotations count. Half-time counts half, and breaks pause the clock."
-                  end={
-                    <span
-                      data-testid="cme-training-clock"
-                      className="nums whitespace-nowrap text-sm font-normal text-[color:var(--text-heading)]"
-                    >
-                      {formatFteMonths(clock)}
-                    </span>
-                  }
-                />
-              </CmeFlatList>
-            )}
-            {storedProblems.length > 0 ? (
-              <CmeNote tone="warn" icon={<AlertTriangle aria-hidden="true" strokeWidth={1.6} />}>
-                <span data-testid="cme-training-timeline-problems">
-                  Your timeline has a problem to fix: {storedProblems.map((problem) => problem.message).join(" ")}
-                </span>
-              </CmeNote>
-            ) : null}
-            {orderedPeriods.length > 0 ? (
-              <div className={cn(cardShell, "mt-1")}>
-                <CmeTrainingTimeline periods={periods} today={today} />
+          {showRegistrar && rotation ? (
+            <CmeGroup label={`This rotation · ${rotation.label}`} testId="cme-training-this-rotation">
+              <div className={cardShell}>
+                {rotationWithEnd ? (
+                  <CmeRotationTrack rotation={rotationWithEnd} today={today} marker={rotationMilestone?.projectedOn} />
+                ) : (
+                  <p className={cn(textMuted, "text-sm-minus")}>
+                    This rotation has no end date yet, so it cannot be drawn. Add one with Edit below.
+                  </p>
+                )}
+                {rotationMilestone || rotation.endsOn ? (
+                  <CmeFlatList label="Dates in this rotation">
+                    {rotationMilestone ? (
+                      <RecordRow
+                        testId="cme-training-rotation-milestone"
+                        lead={<CalendarDays aria-hidden="true" strokeWidth={1.6} />}
+                        title={rotationMilestone.milestone.label}
+                        subtitle={`Your milestone · ${formatCmeRowDate(rotationMilestone.projectedOn, today)}, ${timeUntil(
+                          today,
+                          rotationMilestone.projectedOn,
+                        )}${rotationMilestone.milestone.dueKind === "fte-months" ? " (estimated from your FTE)" : ""}`}
+                      />
+                    ) : null}
+                    {rotation.endsOn ? (
+                      <RecordRow
+                        testId="cme-training-rotation-end"
+                        lead={<ClipboardList aria-hidden="true" strokeWidth={1.6} />}
+                        title="End of rotation"
+                        subtitle={`${formatCmeRowDate(rotation.endsOn, today)} · ${timeUntil(today, rotation.endsOn)}`}
+                      />
+                    ) : null}
+                  </CmeFlatList>
+                ) : null}
               </div>
-            ) : null}
-            {orderedPeriods.length > 0 ? (
-              <CmeFlatList testId="cme-training-periods" label="Stages, rotations and breaks" className="mt-1">
-                {orderedPeriods.map((period) => {
-                  const rowProblems = storedProblems.filter((problem) => problem.periodIds.includes(period.id));
-                  return (
-                    <RecordRow
-                      key={period.id}
-                      title={period.label}
-                      subtitle={
-                        <>
-                          {`${periodKindLabels[period.kind]} · ${periodDates(period)}`}
-                          {period.kind === "rotation" ? ` · ${formatFte(period.fte)}` : ""}
-                          {rowProblems.length > 0 ? (
-                            <span className="block font-medium text-[color:var(--warning)]">
-                              Overlaps another period. Change a date to fix it.
-                            </span>
-                          ) : null}
-                        </>
-                      }
-                      end={
-                        <CmeTextLink onClick={() => openPeriod(period)}>
-                          Edit <span className="sr-only">{period.label}</span>
-                        </CmeTextLink>
-                      }
-                    />
-                  );
-                })}
-              </CmeFlatList>
-            ) : (
-              <p className={cn(textMuted, "text-sm-minus")}>No periods yet.</p>
-            )}
-            {periodForm}
-          </section>
-        ) : null}
+            </CmeGroup>
+          ) : null}
 
-        {showRegistrar && milestonesOpen ? (
-          <section id={milestonesSectionId} aria-label="Milestones" className="grid min-w-0 gap-1">
-            <CmeGroupLabel
-              as="h3"
-              label="Milestones"
+          {assessments.status === "sample" && assessments.view === "registrar" ? (
+            <>
+              <CmeRegistrarEpaSummary registrar={assessments.registrar} />
+              <CmeRegistrarEpaList
+                registrar={assessments.registrar}
+                onSampleAction={sampleAction}
+                sampleMessage={sampleMessage}
+              />
+            </>
+          ) : null}
+          {assessments.status === "not-recorded" ? <CmeRegistrarEpasNotRecorded /> : null}
+
+          {showRegistrar ? (
+            <CmeGroup
+              label="Your training record"
+              testId="cme-training-position"
               end={
-                milestoneEditing ? null : (
-                  <CmeTextLink onClick={() => openMilestone()} testId="cme-training-add-milestone">
-                    Add <span className="sr-only">milestone</span>
+                periodEditing ? null : (
+                  <CmeTextLink onClick={() => openPeriod()} testId="cme-training-add-period">
+                    Add <span className="sr-only">stage, rotation or break</span>
                   </CmeTextLink>
                 )
               }
-            />
-            {isEmpty ? null : (
-              <p data-testid="cme-training-next" className="text-sm-minus text-[color:var(--text-muted)]">
-                <span className="font-medium text-[color:var(--text-heading)]">
-                  {next ? `Next due: ${next.milestone.label}. ` : "Next due: "}
-                </span>
-                <span
-                  data-testid="cme-training-next-detail"
-                  className={next?.overdue ? "font-medium text-[color:var(--text-heading)]" : undefined}
-                >
-                  {next
-                    ? nextDueDetail(next, today)
-                    : milestones.length === 0
-                      ? "No milestones yet."
-                      : "Every milestone is marked done."}
-                </span>
-              </p>
-            )}
-            {milestones.length > 0 ? (
-              <CmeFlatList testId="cme-training-milestones" label="Milestones">
-                {milestones.map((milestone) => (
+            >
+              <CmeFlatList label="Your training record">
+                <DisclosureRow
+                  testId="cme-training-record-periods"
+                  controls={periodsSectionId}
+                  open={periodsOpen}
+                  onToggle={() => setPeriodsOpen((open) => !open)}
+                  lead={<Layers aria-hidden="true" strokeWidth={1.6} />}
+                  title="Stages, rotations and breaks"
+                  subtitle={trainingRecordSummary(periods, position, today)}
+                />
+                <DisclosureRow
+                  testId="cme-training-record-milestones"
+                  controls={milestonesSectionId}
+                  open={milestonesOpen}
+                  onToggle={() => setMilestonesOpen((open) => !open)}
+                  lead={<CalendarDays aria-hidden="true" strokeWidth={1.6} />}
+                  title="Milestones"
+                  subtitle={milestoneSummary(milestones, next, today)}
+                />
+                <RecordLinkRow
+                  testId="cme-training-portal"
+                  href={TRAINING_PORTAL_HREF}
+                  external
+                  lead={<ArrowUpRight aria-hidden="true" strokeWidth={1.6} />}
+                  title="Open your college training portal"
+                  subtitle="InTrain is the official record"
+                />
+              </CmeFlatList>
+            </CmeGroup>
+          ) : null}
+
+          {showRegistrar && periodsOpen ? (
+            <section id={periodsSectionId} aria-label="Stages, rotations and breaks" className="grid min-w-0 gap-1">
+              <CmeGroupLabel as="h3" label="Stages, rotations and breaks" />
+              {isEmpty ? null : (
+                <CmeFlatList label="Where you are">
                   <RecordRow
-                    key={milestone.id}
-                    lead={<CmeRowMark state={milestone.completedOn ? "done" : "open"} />}
-                    title={milestone.label}
-                    subtitle={
-                      milestone.completedOn
-                        ? `You marked it done on ${formatCalendarDateLong(milestone.completedOn)}`
-                        : ["Your milestone", milestoneDueText(milestone)].filter(Boolean).join(" · ")
+                    lead={<Layers aria-hidden="true" strokeWidth={1.6} />}
+                    title={
+                      <span data-testid="cme-training-stage">
+                        {position.stage ? position.stage.label : "No stage covers today"}
+                      </span>
                     }
-                    end={
-                      <>
-                        {milestone.completedOn ? (
-                          <CmeTextLink onClick={() => void setCompleted(milestone, null)}>
-                            Not done<span className="sr-only">: {milestone.label}</span>
-                          </CmeTextLink>
-                        ) : (
-                          <CmeTextLink onClick={() => void setCompleted(milestone, today)}>
-                            Mark done<span className="sr-only">: {milestone.label}</span>
-                          </CmeTextLink>
-                        )}
-                        <CmeTextLink onClick={() => openMilestone(milestone)}>
-                          Edit <span className="sr-only">{milestone.label}</span>
-                        </CmeTextLink>
-                      </>
+                    subtitle={
+                      position.onBreak && position.breakPeriod ? (
+                        <span data-testid="cme-training-on-break">
+                          On a break: {position.breakPeriod.label}. Your training clock is paused.
+                        </span>
+                      ) : position.rotation ? (
+                        <span data-testid="cme-training-rotation">
+                          {position.rotation.label}
+                          {position.rotationIndex !== null && position.rotationCount !== null
+                            ? `, rotation ${position.rotationIndex} of ${position.rotationCount}`
+                            : ""}
+                          {position.rotation.fte < 1 ? `, at ${formatFte(position.rotation.fte)}` : ""}
+                        </span>
+                      ) : (
+                        "No rotation covers today."
+                      )
                     }
                   />
-                ))}
-              </CmeFlatList>
-            ) : (
-              <p className={cn(textMuted, "text-sm-minus")}>No milestones yet.</p>
-            )}
-            {milestoneForm}
-          </section>
-        ) : null}
+                  <RecordRow
+                    lead={<Clock aria-hidden="true" strokeWidth={1.6} />}
+                    title="Training time so far"
+                    subtitle="Only rotations count. Half-time counts half, and breaks pause the clock."
+                    end={
+                      <span
+                        data-testid="cme-training-clock"
+                        className="nums whitespace-nowrap text-sm font-normal text-[color:var(--text-heading)]"
+                      >
+                        {formatFteMonths(clock)}
+                      </span>
+                    }
+                  />
+                </CmeFlatList>
+              )}
+              {storedProblems.length > 0 ? (
+                <CmeNote tone="warn" icon={<AlertTriangle aria-hidden="true" strokeWidth={1.6} />}>
+                  <span data-testid="cme-training-timeline-problems">
+                    Your timeline has a problem to fix: {storedProblems.map((problem) => problem.message).join(" ")}
+                  </span>
+                </CmeNote>
+              ) : null}
+              {orderedPeriods.length > 0 ? (
+                <div className={cn(cardShell, "mt-1")}>
+                  <CmeTrainingTimeline periods={periods} today={today} />
+                </div>
+              ) : null}
+              {orderedPeriods.length > 0 ? (
+                <CmeFlatList testId="cme-training-periods" label="Stages, rotations and breaks" className="mt-1">
+                  {orderedPeriods.map((period) => {
+                    const rowProblems = storedProblems.filter((problem) => problem.periodIds.includes(period.id));
+                    return (
+                      <RecordRow
+                        key={period.id}
+                        title={period.label}
+                        subtitle={
+                          <>
+                            {`${periodKindLabels[period.kind]} · ${periodDates(period)}`}
+                            {period.kind === "rotation" ? ` · ${formatFte(period.fte)}` : ""}
+                            {rowProblems.length > 0 ? (
+                              <span className="block font-medium text-[color:var(--warning)]">
+                                Overlaps another period. Change a date to fix it.
+                              </span>
+                            ) : null}
+                          </>
+                        }
+                        end={
+                          <CmeTextLink onClick={() => openPeriod(period)}>
+                            Edit <span className="sr-only">{period.label}</span>
+                          </CmeTextLink>
+                        }
+                      />
+                    );
+                  })}
+                </CmeFlatList>
+              ) : (
+                <p className={cn(textMuted, "text-sm-minus")}>No periods yet.</p>
+              )}
+              {periodForm}
+            </section>
+          ) : null}
 
-        {assessments.status === "sample" && assessments.view === "intern" ? (
-          <>
-            <CmeInternThisTerm intern={assessments.intern} today={today} />
-            <CmeInternEpaAssessments
-              intern={assessments.intern}
-              onSampleAction={sampleAction}
-              sampleMessage={sampleMessage}
-            />
-            <CmeInternExperience intern={assessments.intern} />
-          </>
-        ) : null}
-        {assessments.status === "not-recorded" ? <CmeInternNotRecorded /> : null}
-
-        {sampleView === "registrar" ? null : (
-          <CmeGroup
-            label="Your CPD rule"
-            testId="cme-training-cpd-rule"
-            end={<RuleSource source="Medical Board" checkedOn={CPD_CATEGORY_RULE_SET.source.checkedOn} />}
-          >
-            <CmeFlatList label="Your CPD rule">
-              <RecordRow
-                testId="cme-training-cpd-rule-result"
-                title={
-                  cpdRule.lane === "trainee"
-                    ? "Trainee in an accredited college programme"
-                    : cpdRule.lane === "everyone"
-                      ? "Everyone else"
-                      : "Not worked out here"
-                }
-                subtitle={
-                  cpdRule.lane === "trainee"
-                    ? "Covered by your training"
-                    : cpdRule.lane === "everyone"
-                      ? CPD_STANDARD_RULE_TEXT
-                      : "The Report lists each rule"
+          {showRegistrar && milestonesOpen ? (
+            <section id={milestonesSectionId} aria-label="Milestones" className="grid min-w-0 gap-1">
+              <CmeGroupLabel
+                as="h3"
+                label="Milestones"
+                end={
+                  milestoneEditing ? null : (
+                    <CmeTextLink onClick={() => openMilestone()} testId="cme-training-add-milestone">
+                      Add <span className="sr-only">milestone</span>
+                    </CmeTextLink>
+                  )
                 }
               />
-            </CmeFlatList>
-            <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-training-cpd-rule-basis">
-              {sampleView === "intern"
-                ? "Whether an intern's or PGY2's programme covers their CPD is not worked out here yet, so no rule is ticked."
-                : cpdRule.basis}
-            </p>
-          </CmeGroup>
-        )}
+              {isEmpty ? null : (
+                <p data-testid="cme-training-next" className="text-sm-minus text-[color:var(--text-muted)]">
+                  <span className="font-medium text-[color:var(--text-heading)]">
+                    {next ? `Next due: ${next.milestone.label}. ` : "Next due: "}
+                  </span>
+                  <span
+                    data-testid="cme-training-next-detail"
+                    className={next?.overdue ? "font-medium text-[color:var(--text-heading)]" : undefined}
+                  >
+                    {next
+                      ? nextDueDetail(next, today)
+                      : milestones.length === 0
+                        ? "No milestones yet."
+                        : "Every milestone is marked done."}
+                  </span>
+                </p>
+              )}
+              {milestones.length > 0 ? (
+                <CmeFlatList testId="cme-training-milestones" label="Milestones">
+                  {milestones.map((milestone) => (
+                    <RecordRow
+                      key={milestone.id}
+                      lead={<CmeRowMark state={milestone.completedOn ? "done" : "open"} />}
+                      title={milestone.label}
+                      subtitle={
+                        milestone.completedOn
+                          ? `You marked it done on ${formatCalendarDateLong(milestone.completedOn)}`
+                          : ["Your milestone", milestoneDueText(milestone)].filter(Boolean).join(" · ")
+                      }
+                      end={
+                        <>
+                          {milestone.completedOn ? (
+                            <CmeTextLink onClick={() => void setCompleted(milestone, null)}>
+                              Not done<span className="sr-only">: {milestone.label}</span>
+                            </CmeTextLink>
+                          ) : (
+                            <CmeTextLink onClick={() => void setCompleted(milestone, today)}>
+                              Mark done<span className="sr-only">: {milestone.label}</span>
+                            </CmeTextLink>
+                          )}
+                          <CmeTextLink onClick={() => openMilestone(milestone)}>
+                            Edit <span className="sr-only">{milestone.label}</span>
+                          </CmeTextLink>
+                        </>
+                      }
+                    />
+                  ))}
+                </CmeFlatList>
+              ) : (
+                <p className={cn(textMuted, "text-sm-minus")}>No milestones yet.</p>
+              )}
+              {milestoneForm}
+            </section>
+          ) : null}
 
-        {showIntern ? <CmeInternLinks teaching={sampleView === "intern"} /> : null}
+          {assessments.status === "sample" && assessments.view === "intern" ? (
+            <>
+              <CmeInternThisTerm intern={assessments.intern} today={today} />
+              <CmeInternEpaAssessments
+                intern={assessments.intern}
+                onSampleAction={sampleAction}
+                sampleMessage={sampleMessage}
+              />
+              <CmeInternExperience intern={assessments.intern} />
+            </>
+          ) : null}
+          {assessments.status === "not-recorded" ? <CmeInternNotRecorded /> : null}
 
-        <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-training-footer">
-          {demoMode ? "" : "Saved privately in your PsychSift account. "}
-          {sampleView === "registrar"
-            ? "Your Director of Training has the final word on every requirement."
-            : sampleView === "intern"
-              ? "Your term supervisor and medical education unit have the final word."
-              : "Your Director of Training, term supervisor or medical education unit has the final word on every requirement."}
-        </p>
-      </div>
+          {sampleView === "registrar" ? null : (
+            <CmeGroup
+              label="Your CPD rule"
+              testId="cme-training-cpd-rule"
+              end={<RuleSource source="Medical Board" checkedOn={CPD_CATEGORY_RULE_SET.source.checkedOn} />}
+            >
+              <CmeFlatList label="Your CPD rule">
+                <RecordRow
+                  testId="cme-training-cpd-rule-result"
+                  title={
+                    cpdRule.lane === "trainee"
+                      ? "Trainee in an accredited college programme"
+                      : cpdRule.lane === "everyone"
+                        ? "Everyone else"
+                        : "Not worked out here"
+                  }
+                  subtitle={
+                    cpdRule.lane === "trainee"
+                      ? "Covered by your training"
+                      : cpdRule.lane === "everyone"
+                        ? CPD_STANDARD_RULE_TEXT
+                        : "The Report lists each rule"
+                  }
+                />
+              </CmeFlatList>
+              <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-training-cpd-rule-basis">
+                {sampleView === "intern"
+                  ? "Whether an intern's or PGY2's programme covers their CPD is not worked out here yet, so no rule is ticked."
+                  : cpdRule.basis}
+              </p>
+            </CmeGroup>
+          )}
+
+          {showIntern ? <CmeInternLinks teaching={sampleView === "intern"} /> : null}
+
+          <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-training-footer">
+            {demoMode ? "" : "Saved privately in your PsychSift account. "}
+            {sampleView === "registrar"
+              ? "Your Director of Training has the final word on every requirement."
+              : sampleView === "intern"
+                ? "Your term supervisor and medical education unit have the final word."
+                : "Your Director of Training, term supervisor or medical education unit has the final word on every requirement."}
+          </p>
+        </div>
+      </WorkBody>
 
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -1098,8 +1105,7 @@ const TRAINING_RULE_FIGURES = {
 } as const;
 
 /** The quiet card the mock-up puts around a drawing and its rows. */
-const cardShell =
-  "grid min-w-0 gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4 forced-colors:border-[CanvasText]";
+const cardShell = "work-card work-card--pad grid min-w-0 gap-3";
 
 /** A rule figure's source and check month, always marked as not signed off. */
 function RuleSource({ source, checkedOn }: { readonly source: string; readonly checkedOn: string | null }) {
