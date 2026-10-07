@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -132,10 +132,12 @@ describe("CME learning directory page", () => {
       />,
     );
     expect(screen.getAllByTestId("cme-learning-item")).toHaveLength(2);
-    expect(screen.getByText("Every specialty")).toBeInTheDocument();
-    // One quiet link says how many the preset hides and brings them back in one tap.
+    // work-mode redesign, owner request 6 Oct 2026: the specialty filter is two
+    // chips, "Psychiatry and open to all" and "Every specialty" with the count it adds.
+    expect(screen.getByRole("heading", { name: "Every specialty" })).toBeInTheDocument();
     const widen = screen.getByTestId("cme-learning-all-specialties");
-    expect(widen).toHaveTextContent("Show 1 from other specialties");
+    expect(widen).toHaveTextContent("1 more");
+    expect(screen.getByTestId("cme-learning-psychiatry-only")).toHaveAttribute("aria-pressed", "true");
     await user.click(widen);
     expect(screen.getAllByTestId("cme-learning-item")).toHaveLength(3);
     await user.click(screen.getByTestId("cme-learning-psychiatry-only"));
@@ -216,7 +218,8 @@ describe("CME learning directory page", () => {
     expect(screen.getByTestId("cme-learning-unconfirmed")).toBeInTheDocument();
   });
 
-  it("chips the next two, then splits this year from next year with the year shown", () => {
+  it("chips the next two, then splits this year from next year with the year shown", async () => {
+    const user = userEvent.setup();
     render(
       <CmeLearningPage
         items={[
@@ -240,6 +243,42 @@ describe("CME learning directory page", () => {
     expect(nextYear).toHaveTextContent("Wed 3 Feb 2027");
     expect(nextYear).toHaveTextContent("Online · watch any time");
     expect(screen.getByTestId("cme-learning-next")).toHaveTextContent("Sun 27 Sep, all day");
-    expect(within(nextYear).getAllByRole("link", { name: "Log as CPD" })).toHaveLength(2);
+    // work-mode redesign, owner request 6 Oct 2026: rows after the next two open
+    // the course sheet, which carries Log as CPD.
+    expect(within(nextYear).queryByRole("link", { name: "Log as CPD" })).toBeNull();
+    await user.click(within(nextYear).getByRole("button", { name: "D" }));
+    const sheet = await screen.findByTestId("cme-learning-sheet");
+    expect(within(sheet).getByRole("link", { name: "Log as CPD" }).getAttribute("href")).toContain("/cme/new?");
+    expect(sheet).toHaveTextContent("Opening a course logs nothing.");
+  });
+
+  it("opens a course sheet from a row with When, Where, Cost and the organiser's page, logging nothing", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    render(
+      <CmeLearningPage
+        items={[
+          item({ id: "a", title: "A", startsOn: "2026-09-27" }),
+          item({ id: "b", title: "B", startsOn: "2026-10-16" }),
+          item({ id: "c", title: "Later course", startsOn: "2026-12-01", costNote: null }),
+        ]}
+        lastCheckedOn="2026-09-26"
+        nowIso={NOW_ISO}
+      />,
+    );
+    const row = within(screen.getByTestId("cme-learning-later-this-year")).getByRole("button", {
+      name: "Later course",
+    });
+    await user.click(row);
+    const sheet = await screen.findByTestId("cme-learning-sheet");
+    expect(sheet).toHaveTextContent("Event · Synthetic provider");
+    expect(sheet).toHaveTextContent("Tue 1 Dec, all day");
+    expect(sheet).toHaveTextContent("Not listed");
+    expect(within(sheet).getByRole("link", { name: /Organiser page/ })).toHaveAttribute("target", "_blank");
+    expect(within(sheet).getByRole("button", { name: "Add to calendar" })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("cme-learning-sheet")).toBeNull());
+    await waitFor(() => expect(row).toHaveFocus());
   });
 });
