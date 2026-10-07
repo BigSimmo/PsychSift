@@ -160,7 +160,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           className,
         )}
       >
-        <WorkSearchGlyph className="size-icon-md" />
+        <WorkSearchGlyph className="size-icon-lg" />
         <span className="hidden text-sm-minus text-[color:var(--text-muted)] @min-[20.75rem]/header-trailing:inline">
           AI Search
         </span>
