@@ -1218,7 +1218,11 @@ export function MasterSearchHeader({
     setModeSideChoice(null);
     setUsesPhoneSearchLayout(phoneLayout);
     setModeMenuFocusIndex(selectedModeIndex);
-    setModeSheetView(modeOwnPagesAvailable ? "sections" : "modes");
+    // In a work area the tabs and More already move between pages, so the pill
+    // opens on the area list with the Clinical and Work toggle (Josh, 7 Oct
+    // 2026, "Area list first"). Elsewhere a mode's own pages still come first.
+    const inWorkArea = Boolean(workAreaFor(selectedAppMode.id, currentPathname ?? ""));
+    setModeSheetView(modeOwnPagesAvailable && !inWorkArea ? "sections" : "modes");
     setModeMenuOpen(true);
     if (!phoneLayout) {
       cancelModeMenuFocus();

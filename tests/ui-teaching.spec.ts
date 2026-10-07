@@ -93,7 +93,7 @@ test("On Call's legacy teaching calendar opens Teaching's This week", async ({ p
   await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
 });
 
-test("Teaching's five tabs reach Presenting, My record, Resources and Organise", async ({ page }) => {
+test("Teaching's tabs and More reach Presenting, My record and Resources", async ({ page }) => {
   await page.goto("/teaching");
   await expect(visibleByTestId(page, "teaching-hero")).toBeVisible({ timeout: 20_000 });
   for (const [id, path, testId] of [
@@ -101,8 +101,15 @@ test("Teaching's five tabs reach Presenting, My record, Resources and Organise",
     ["logbook", "/teaching/logbook", "teaching-logbook"],
     ["resources", "/teaching/resources", "teaching-resources"],
   ] as const) {
-    await page.getByRole("button", { name: /^Mode Teaching/ }).click();
-    await visibleByTestId(page, `app-mode-section-${id}`).click();
+    // The pill opens the area list in a work area (Josh, 7 Oct 2026), so a
+    // page is reached from its tab, or from More when it has no tab.
+    const tab = visibleByTestId(page, "mode-band-tabs").locator(`a[href="${path}"]`);
+    if ((await tab.count()) > 0) {
+      await tab.click();
+    } else {
+      await visibleByTestId(page, "work-frame-more").click();
+      await page.getByRole("dialog").locator(`a[href="${path}"]`).click();
+    }
     await expect(page).toHaveURL(path);
     await expect(visibleByTestId(page, testId)).toBeVisible({ timeout: 20_000 });
     await expectNoSidewaysScroll(page, id);

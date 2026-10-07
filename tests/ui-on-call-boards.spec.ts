@@ -320,21 +320,21 @@ test.describe("Coming up — moved off Home to Teaching (plan C25)", () => {
 });
 
 test.describe("02 More, 03 All modes — the pill owns page switching", () => {
-  test("opens this mode's own sections from the pill, with one tap back to all modes", async ({ page }) => {
+  test("opens the area list from the pill, on the Work side, with pages left to the tabs", async ({ page }) => {
     await openBoard(page, ROUTES.contacts, DESKTOP);
     await page.getByRole("button", { name: /Mode/ }).first().click();
 
-    // In a mode that owns its own pages the pill opens THOSE, drawn like the
-    // switcher everywhere else, rather than making a reader step in from the
-    // full mode list every time they want another section.
-    const sections = page.locator("#app-mode-menu");
-    await expect(sections).toBeVisible();
-    await expect(sections).toHaveAttribute("aria-label", /On Call pages/);
-    await expect(sections.getByRole("link", { name: "Now" })).toBeVisible();
-
-    // And never a dead end: the level above is one control away.
-    await page.getByTestId("app-mode-popover-back").click();
-    await expect(page.locator("#app-mode-menu")).toHaveAttribute("aria-label", /Choose app mode/);
+    // In a work area the tabs and More already move between this area's pages,
+    // so the pill opens on the area list (Josh, 7 Oct 2026, "Area list first"),
+    // on the Work side because On Call is a work area.
+    const menu = page.locator("#app-mode-menu");
+    await expect(menu).toBeVisible();
+    await expect(menu).toHaveAttribute("aria-label", /Choose app mode/);
+    await expect(
+      page.getByTestId("app-mode-side-toggle").getByRole("button", { name: "Work", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(menu.getByRole("menuitemradio", { name: /^On Call\b/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("app-mode-section-list")).toHaveCount(0);
   });
 
   test("carries no second bar repeating those same destinations", async ({ page }) => {
