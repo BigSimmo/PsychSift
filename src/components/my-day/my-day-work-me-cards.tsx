@@ -1,6 +1,17 @@
 "use client";
 
-import { ChevronRight, Clock, FileText, Info, Lock, Moon, Phone, Shield, TriangleAlert, WifiOff } from "lucide-react";
+import {
+  ChevronRight,
+  Clock,
+  FileText,
+  Lock,
+  Moon,
+  Phone,
+  Shield,
+  TrendingUp,
+  TriangleAlert,
+  WifiOff,
+} from "lucide-react";
 import Link from "next/link";
 import { useId, useState, useSyncExternalStore } from "react";
 
@@ -661,6 +672,9 @@ const TAG_TONE = {
   green: "bg-[color:var(--success-bg)] text-[color:var(--success-text)]",
 } as const;
 
+/** The wallet shows the five soonest dates; the rest wait in Admin. */
+const CREDENTIAL_ROWS = 5;
+
 /** Admin's recorded dates, one row each with a status tag. Dates only: no registration numbers are kept here. */
 export function CredentialsCard({ rows, today }: { readonly rows: readonly RenewalRow[]; readonly today: string }) {
   return (
@@ -674,40 +688,55 @@ export function CredentialsCard({ rows, today }: { readonly rows: readonly Renew
         role="list"
         className="m-0 grid min-w-0 list-none p-0 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]"
       >
-        {rows.map((row) => {
-          const passed = row.date < today;
-          const tag = credentialTag(row.date, today);
-          return (
-            <li key={row.entryId} className="min-w-0">
-              <Link
-                href={withMyDayReturn(row.href)}
-                className={cn(
-                  focusRing,
-                  "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2 text-inherit no-underline",
-                )}
-              >
-                <AreaIcon mode="my-work" icon={passed ? TriangleAlert : Shield} tone={passed ? "red" : undefined} />
-                <span className="grid min-w-0 flex-1">
-                  <span className="text-sm-minus leading-tight font-bold break-words text-[color:var(--work-ink)]">
-                    {row.title}
+        {[...rows]
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .slice(0, CREDENTIAL_ROWS)
+          .map((row) => {
+            const passed = row.date < today;
+            const tag = credentialTag(row.date, today);
+            return (
+              <li key={row.entryId} className="min-w-0">
+                <Link
+                  href={withMyDayReturn(row.href)}
+                  className={cn(
+                    focusRing,
+                    "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2 text-inherit no-underline",
+                  )}
+                >
+                  <AreaIcon mode="my-work" icon={Shield} />
+                  <span className="grid min-w-0 flex-1">
+                    <span className="text-sm-minus leading-tight font-bold break-words text-[color:var(--work-ink)]">
+                      {row.title}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-2xs break-words",
+                        passed ? "font-semibold text-[color:var(--danger-text)]" : "text-[color:var(--text-muted)]",
+                      )}
+                    >
+                      {`${passed ? "Date passed" : "Recorded date"} ${Number(row.date.slice(8, 10))} ${shortMonth(row.date)} ${row.date.slice(0, 4)}`}
+                    </span>
                   </span>
                   <span
                     className={cn(
-                      "text-2xs break-words",
-                      passed ? "font-bold text-[color:var(--danger-text)]" : "text-[color:var(--text-muted)]",
+                      "shrink-0 rounded-full px-2 py-0.5 text-3xs font-bold tracking-wide uppercase",
+                      TAG_TONE[tag.tone],
                     )}
                   >
-                    {`${passed ? "Date passed" : "Recorded date"} ${Number(row.date.slice(8, 10))} ${shortMonth(row.date)} ${row.date.slice(0, 4)}`}
+                    {tag.text}
                   </span>
-                </span>
-                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-3xs font-bold", TAG_TONE[tag.tone])}>
-                  {tag.text}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
+                </Link>
+              </li>
+            );
+          })}
       </ul>
+      {rows.length > CREDENTIAL_ROWS ? (
+        <div className="border-t border-[color:var(--work-line)] px-3 py-1">
+          <QuietTextLink href={withMyDayReturn("/admin/renewals")} testId="my-day-credentials-more">
+            {`${rows.length - CREDENTIAL_ROWS} more in Admin`}
+          </QuietTextLink>
+        </div>
+      ) : null}
       <div className="px-3.5 pb-2.5">
         <QuietFoot icon={Lock}>Dates from Admin. No registration numbers are kept on My Day.</QuietFoot>
       </div>
@@ -743,7 +772,6 @@ export function CpdMonthCard({
 }) {
   const pace = targetHours > 0 ? targetHours / 12 : null;
   const max = Math.max(1, pace ?? 0, ...byMonth);
-  const most = byMonth.reduce((best, hours, index) => (hours > (byMonth[best] ?? 0) ? index : best), 0);
   const height = 50;
   const paceY = pace !== null ? height - (pace / max) * height : null;
   return (
@@ -760,8 +788,15 @@ export function CpdMonthCard({
             </span>
             {`of ${hoursText(targetHours)} h this year`}
           </span>
-          {(byMonth[most] ?? 0) > 0 ? (
-            <span className="text-2xs font-semibold text-[color:var(--text-muted)] nums">{`most ${hoursText(byMonth[most] ?? 0)} h · ${MONTH_NAMES[most]}`}</span>
+          {targetHours > 0 && loggedHours < targetHours ? (
+            <span
+              className="text-xs font-bold text-[color:var(--warning-text)] nums"
+              data-testid="my-day-cpd-month-to-go"
+            >
+              {`${hoursText(targetHours - loggedHours)} h to go`}
+            </span>
+          ) : targetHours > 0 ? (
+            <span className="text-xs font-bold text-[color:var(--success-text)]">Target hours logged</span>
           ) : null}
         </p>
         <div aria-hidden="true" className="relative">
@@ -825,7 +860,7 @@ export function CpdMonthCard({
             .filter(Boolean)
             .join(", ")}
         </p>
-        <QuietFoot icon={Info}>
+        <QuietFoot icon={TrendingUp}>
           {projected !== null
             ? `At this rate, about ${projected} h by 31 Dec. This is a straight-line estimate from what you have logged.${pace !== null ? ` Dashed line is the pace for ${hoursText(targetHours)} h.` : ""}`
             : closed
