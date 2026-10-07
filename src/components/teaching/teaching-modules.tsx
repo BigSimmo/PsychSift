@@ -458,7 +458,7 @@ export function DayRail({
             <span
               className={cn(
                 modeNumberText,
-                "grid size-8 place-items-center rounded-full text-sm-minus font-bold",
+                "grid size-8 place-items-center rounded-full text-sm font-bold",
                 selected &&
                   "bg-[color:var(--work-primary)] text-[color:var(--work-primary-text)] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]",
               )}

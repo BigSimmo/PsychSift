@@ -115,7 +115,7 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
               <div className="flex items-center gap-3">
                 <T5Icon icon={FileSpreadsheet} />
                 <div className="grid min-w-0 gap-0.5">
-                  <p className="text-sm-minus font-bold leading-tight break-words text-[color:var(--text-heading)]">
+                  <p className="text-sm font-bold leading-tight break-words text-[color:var(--text-heading)]">
                     {fileName ?? "No file chosen"}
                   </p>
                   <p className="text-xs leading-snug text-[color:var(--text-muted)]">
@@ -204,7 +204,7 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
                     <li key={row.line} className="flex items-start gap-3 px-3 py-2.5">
                       <T5Icon icon={failed ? TriangleAlert : Check} tone={failed ? "red" : "green"} />
                       <div className="grid min-w-0 gap-0.5">
-                        <p className="text-sm-minus font-bold leading-tight break-words text-[color:var(--text-heading)]">
+                        <p className="text-sm font-bold leading-tight break-words text-[color:var(--text-heading)]">
                           {row.title || `Line ${row.line}`}
                         </p>
                         {ready ? (

@@ -135,7 +135,7 @@ function LinkAction({
  */
 const HERO_FACE = {
   primary:
-    "text-[color:var(--mode-identity)] before:bg-[color:var(--surface-raised)] dark:text-[color:var(--surface-raised)] dark:before:bg-[color:var(--text-heading)]",
+    "text-[color:var(--work-hero-action-ink,var(--mode-identity))] before:bg-[color:var(--work-hero-action-fill,var(--surface-raised))]",
   secondary:
     "text-current before:border before:border-[color:color-mix(in_srgb,currentColor_22%,transparent)] before:bg-[color:color-mix(in_srgb,currentColor_14%,transparent)]",
   text: "text-current underline underline-offset-4",
@@ -164,7 +164,7 @@ function WorkAction({
       ? {
           className: cn(
             "inline-flex min-h-12 w-full items-center justify-center gap-1.5 rounded-full px-3 text-xs font-bold no-underline",
-            "relative isolate before:absolute before:inset-x-0 before:inset-y-1.75 before:-z-10 before:rounded-full before:content-[''] disabled:opacity-60",
+            "relative isolate before:absolute before:inset-x-0 before:inset-y-1.75 before:[z-index:var(--work-z-under)] before:rounded-full before:content-[''] disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:before:border-transparent disabled:before:bg-[color:var(--surface-subtle)]",
             HERO_FACE[emphasis],
             focusRing,
           ),
