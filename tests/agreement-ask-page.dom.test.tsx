@@ -141,6 +141,32 @@ describe("Ask the agreement page", () => {
     expect(screen.getByTestId("agreement-answer").querySelectorAll("q").length).toBe(2);
   });
 
+  it("a pay question answers not checked first, with any rest quote below and labelled as possibly related", () => {
+    render(<AgreementAskPage />);
+    askTyped("Do I get paid for working 7 nights in a row?");
+    const answer = screen.getByTestId("agreement-answer");
+    expect(within(answer).getByRole("heading", { name: "Not in the clauses PsychSift has checked" })).toBeTruthy();
+    const line = within(answer).getByTestId("agreement-unchecked-line");
+    expect(line.textContent).toContain("pay");
+    const related = within(answer).getByTestId("agreement-related");
+    expect(related.textContent).toContain("Possibly related, not an answer to your question");
+    expect(line.compareDocumentPosition(related) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Every quote sits inside the possibly-related part, never above the not-checked line.
+    const quotes = [...answer.querySelectorAll("q")];
+    expect(quotes.length).toBeGreaterThan(0);
+    for (const quote of quotes) expect(related.contains(quote)).toBe(true);
+  });
+
+  it("a mixed question names the unchecked part before any quote", () => {
+    render(<AgreementAskPage />);
+    askTyped("Is there a limit on overtime hours in a week?");
+    const answer = screen.getByTestId("agreement-answer");
+    const line = within(answer).getByTestId("agreement-unchecked-line");
+    const firstQuote = answer.querySelector("q")!;
+    expect(firstQuote).toBeTruthy();
+    expect(line.compareDocumentPosition(firstQuote) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("catches patient details as you type, never answers them, and clears in place", () => {
     render(<AgreementAskPage />);
     type("stayed late with UR 4471823 after nights");

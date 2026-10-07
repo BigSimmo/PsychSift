@@ -131,6 +131,18 @@ describe("your dates", () => {
     ).toMatch(/passed/);
   });
 
+  it("catches hidden patient details in a date name, and lets a body in capitals through", () => {
+    for (const name of ["Ｍｒｓ Ｓｍｉｔｈ", "bed\u200B12 review", "45 year old male", "patient John Smith"]) {
+      expect(
+        validateStarterDate({ kind: "other", name, date: "2026-12-01", leadTimeDays: 42 }, TODAY).nameProblem,
+        name,
+      ).toBeTruthy();
+    }
+    for (const name of ["AHPRA renewal", "WWC check", "RPH orientation"]) {
+      expect(validateStarterDate({ kind: "other", name, date: "2026-12-01", leadTimeDays: 42 }, TODAY)).toEqual({});
+    }
+  });
+
   it("writes a catalogue date as a private row with the chosen reminder", () => {
     const body = buildStarterDateBody({ kind: "visa-end", name: "", date: "2027-01-14", leadTimeDays: 90 }, "abc");
     expect(body?.slug).toMatch(new RegExp(`^${STARTER_DATE_SLUG_PREFIX}img-visa-requirements-abc$`));
@@ -192,6 +204,26 @@ describe("ready for day one", () => {
     expect(text).toContain("Not checked with issuers");
     expect(text).not.toContain("2027");
     expect(text).not.toContain("30 Sep");
+  });
+
+  it("keeps all nine items in the fixed order, bank and tax included, in the bar and the copy", () => {
+    const ready = buildReadyForDayOne([startRow], NOW);
+    expect(ready.items.map((item) => item.id)).toEqual([
+      "medical-registration-renewal",
+      "working-with-children-check",
+      "criminal-record-screening",
+      "immunisation-requirements",
+      "respirator-fit-testing",
+      "resuscitation-competence",
+      "contract",
+      "bank-and-tax",
+      "logins",
+    ]);
+    const bank = ready.items.find((item) => item.id === "bank-and-tax");
+    expect(bank).toMatchObject({ state: "left-out", status: "Not tracked here" });
+    const lines = readyStatusText(ready, NOW).split("\n").slice(2);
+    expect(lines.map((line) => line.split(":")[0])).toEqual(ready.items.map((item) => item.title));
+    expect(lines).toContain("Bank and tax: Not tracked here");
   });
 
   it("raises needs-you only within four weeks of the start", () => {

@@ -5,6 +5,7 @@ import { rosterField } from "@/components/roster/roster-ui";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { RosterLeaveStaffingCheck } from "@/components/roster/staffing/roster-leave-staffing-check";
 import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment, RosterTeam } from "@/lib/roster/team/model";
@@ -296,6 +297,17 @@ function LeaveSession({
           <p>
             {overlap} of the team {overlap === 1 ? "is" : "are"} already off these dates
           </p>
+        ) : null}
+        {serviceId && valid ? (
+          <section className="grid gap-2" aria-label="Team staffing on these dates" data-testid="leave-staffing-check">
+            <RosterLeaveStaffingCheck
+              serviceId={serviceId}
+              actorId={actorId || null}
+              startsOn={startsOn}
+              endsOn={endsOn}
+              today={perthDateOf(new Date())}
+            />
+          </section>
         ) : null}
         {serviceId && valid && covered.length ? (
           <section className="grid gap-2">

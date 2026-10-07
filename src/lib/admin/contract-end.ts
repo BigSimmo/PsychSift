@@ -1,6 +1,7 @@
 import type { z } from "zod";
 
-import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
+import type { ReminderTextProblem } from "@/lib/alerts/remind-me";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import { complianceExpiryHistory, fullBody } from "@/lib/admin/renewals";
 import { complianceLeadTimeDays, formatDateEcho, utcDay } from "@/lib/admin/renewal-dates";
 import { addDays, addMonthsClamped, type CalendarEvent } from "@/lib/calendar/calendar-event";
@@ -358,13 +359,14 @@ export function validateContractForm(input: ContractFormInput, today: string): C
   if (employer.length > CONTRACT_EMPLOYER_LIMIT)
     errors.employer = `Keep the employer to ${CONTRACT_EMPLOYER_LIMIT} characters.`;
   else if (employer) {
-    const problem = checkReminderText(employer);
+    // An employer is a hospital or service, often in capitals ("RPH", "FSH").
+    const problem = checkPatientDetail(employer, { allowCapitals: true });
     if (problem) errors.employerProblem = problem;
   }
   const note = input.note.trim();
   if (note.length > CONTRACT_NOTE_LIMIT) errors.note = `Keep the note to ${CONTRACT_NOTE_LIMIT} characters.`;
   else if (note) {
-    const problem = checkReminderText(note);
+    const problem = checkPatientDetail(note);
     if (problem) errors.noteProblem = { ...problem, body: "Notes here cannot hold patient details." };
   }
   return errors;
@@ -429,7 +431,7 @@ export function buildContractEditBody(entry: OnCallEntry, input: ContractFormInp
 
 export type ContractRenewResult =
   | { ok: true; body: UpdateBody }
-  | { ok: false; reason: "missing" | "malformed" | "unchanged" | "not-later" | "passed" };
+  | { ok: false; reason: "missing" | "malformed" | "unchanged" | "not-later" | "passed" | "too-far" };
 
 /**
  * "Got a new contract?": a later end date. Both reminders move with it, the
@@ -449,6 +451,8 @@ export function buildContractRenewBody(
   if (previous === next) return { ok: false, reason: "unchanged" };
   if (previous && next < previous) return { ok: false, reason: "not-later" };
   if (next < today) return { ok: false, reason: "passed" };
+  // The same limit as the add form, so a mistyped year (2099) is caught here too.
+  if (daysBetween(today, next) > MAX_YEARS_AHEAD * 366) return { ok: false, reason: "too-far" };
   const reminders = contractReminders(entry);
   const fields = reminderFields(next, reminders, entry.tags);
   const history = previous
@@ -475,6 +479,7 @@ export const CONTRACT_RENEW_REASON: Record<Exclude<ContractRenewResult, { ok: tr
   unchanged: "That is the end date already recorded.",
   "not-later": "A new contract ends after the old one. To fix a typo, use Edit dates.",
   passed: "That date has passed. Check the year on the letter.",
+  "too-far": "That is more than 10 years away. Check the year.",
 };
 
 /** A reminder switch flipped. */
@@ -600,10 +605,16 @@ export function buildContractAskedBody(
 }
 
 /** Questions that can go in a message and are not marked as asked yet. */
+/**
+ * Questions the doctor must choose to include: never ticked to start with. Asking about planned parental leave
+ * tells the employer about the plan, which is the doctor's own choice to share.
+ */
+export const CONTRACT_OPT_IN_QUESTIONS: readonly ContractQuestionId[] = ["parental-leave"];
+
 export function contractOpenAskable(asked: readonly ContractQuestionId[]): ContractQuestionId[] {
-  return CONTRACT_QUESTIONS.filter((question) => question.ask && !asked.includes(question.id)).map(
-    (question) => question.id,
-  );
+  return CONTRACT_QUESTIONS.filter(
+    (question) => question.ask && !asked.includes(question.id) && !CONTRACT_OPT_IN_QUESTIONS.includes(question.id),
+  ).map((question) => question.id);
 }
 
 /** The message for Medical Workforce, built from the chosen questions. No personal dates other than the end. */

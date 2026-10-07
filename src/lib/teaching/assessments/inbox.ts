@@ -1,8 +1,7 @@
-import { checkReminderText } from "@/lib/alerts/remind-me";
 import { epa as epaInfo, type EpaNumber, type SupervisionLevel } from "@/lib/teaching/assessments/content";
-import { looksLikePatientDetails, stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
+import { stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, SAMPLE_SUPERVISOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
-import { looksLikePatientDetails as searchLooksLikePatientDetails } from "@/lib/work-search/signals";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /*
  * The consultant inbox (feature 16, mock-up nf_assess_inbox): every assessment request waiting for the
@@ -316,79 +315,20 @@ export const FEEDBACK_MAX_CHARS = 500;
 
 export type FeedbackProblem = { title: string; body: string; suggestion: string | null };
 
-/*
- * Pasted text often carries characters a reader cannot see: zero-width spaces, joiners, soft hyphens,
- * direction marks, and full-width letters and digits ("Ｍｒｓ", "１２３４５６７"). Each one can hide a name or a
- * number from a pattern check while the doctor still reads it plainly. So the text is folded first (NFKC
- * turns full-width and other look-alike forms into plain letters and digits, and a no-break space into a
- * space), then the invisible characters go.
- */
-const INVISIBLE = /[\p{Cf}\u115F\u1160\u2800\u3164\uFFA0]/gu;
-
-/** The feedback as it is checked and sent: folded to plain characters, invisible ones removed. */
-export function cleanFeedbackText(text: string): string {
-  return text.normalize("NFKC").replace(INVISIBLE, "").trim();
-}
-
-/** Ages written out in words: "45 year old male", "45-year-old", "aged 45", "45 y.o. woman". */
-const AGE_WORDS = [
-  /\b\d{1,3}\s*[-\u2010\u2011]?\s*(?:years?|yrs?|y)\s*[-\u2010\u2011]?\s*old\b/i,
-  /\b(?:aged?|age:)\s*\d{1,3}\b/i,
-  /\b\d{1,3}\s*(?:y\.\s?o\.?|yo)\s*(?:male|female|man|woman|boy|girl)\b/i,
-];
-/** Words after "Patient" that are not a name ("Patient Safety week"). */
-const NOT_A_NAME = new Set(["Safety", "Care", "Centred", "Centered", "Experience", "Feedback", "Journey", "Flow"]);
-/** "Patient John Smith", "Pt: Smith", "client Jones": a capitalised word straight after the patient. */
-const PATIENT_NAME = /\b(?:[Pp]atient|PATIENT|[Pp]t|PT|[Cc]lient|[Cc]onsumer)\b\s*[:.-]?\s+(\p{Lu}[\p{L}'-]+)/gu;
-
-function hasPatientName(text: string): boolean {
-  for (const match of text.matchAll(PATIENT_NAME)) if (!NOT_A_NAME.has(match[1]!)) return true;
-  return false;
-}
-
-function problemIn(text: string): FeedbackProblem | null {
-  const found = checkReminderText(text);
-  if (found)
-    return {
-      title: found.title,
-      body: "Feedback can't hold patient details. This check catches some details, not all.",
-      suggestion: found.suggestion,
-    };
-  if (AGE_WORDS.some((pattern) => pattern.test(text)))
-    return {
-      title: "This looks like an age",
-      body: "Feedback can't hold patient details. This check catches some details, not all.",
-      suggestion: null,
-    };
-  if (hasPatientName(text))
-    return {
-      title: "This looks like a name",
-      body: "Feedback can't hold patient details. This check catches some details, not all.",
-      suggestion: null,
-    };
-  if (looksLikePatientDetails(text) || searchLooksLikePatientDetails(text))
-    return {
-      title: "This may be patient details",
-      body: "It looks like a record number, a date, a title and name, or a bed number. Remove it to send.",
-      suggestion: null,
-    };
-  return null;
-}
-
 /**
- * The patient-detail catch for a few lines of feedback: the reminder check (names, initials, ages, dates
- * of birth, phone, bed and record numbers), the assessment form's own check and the search screen's, plus
- * ages in words and "Patient <Name>". It reads the folded text twice: once with the invisible characters
- * removed ("Sm\u200Bith" is "Smith") and once with each one as a space ("Mr\u200BSmith" is "Mr Smith"). It says
- * plainly that it catches some details, not all.
+ * The patient-detail catch for a few lines of feedback: the shared work-text check
+ * (`src/lib/work-text/patient-detail-check.ts`), the one every work-mode free-text field uses. It reads a
+ * cleaned copy (look-alike and invisible characters folded away) and never changes what is saved or sent: the
+ * answer goes exactly as typed ("½" stays "½"). It says plainly that it catches some details, not all.
  */
 export function feedbackProblem(text: string): FeedbackProblem | null {
-  if (!text.trim()) return null;
-  const folded = text.normalize("NFKC");
-  const joined = folded.replace(INVISIBLE, "");
-  const spaced = folded.replace(INVISIBLE, " ");
-  if (!joined.trim()) return null;
-  return problemIn(joined) ?? (spaced === joined ? null : problemIn(spaced));
+  const found = checkPatientDetail(text);
+  if (!found) return null;
+  return {
+    title: found.title,
+    body: "Feedback can't hold patient details. This check catches some details, not all.",
+    suggestion: found.suggestion,
+  };
 }
 
 /** Why Send is not available yet, in plain words; null when it can go. */

@@ -7,6 +7,7 @@ import {
   buildContractEditBody,
   buildContractRemindersBody,
   buildContractRenewBody,
+  CONTRACT_RENEW_REASON,
   CONTRACT_ASKED_TAG_PREFIX,
   CONTRACT_END_SLUG_PREFIX,
   CONTRACT_QUESTIONS,
@@ -119,6 +120,34 @@ describe("contract form", () => {
     expect(errors.noteProblem).toBeTruthy();
   });
 
+  it("catches patient details hidden by invisible or full-width characters, and ages in words", () => {
+    for (const note of [
+      "Mrs\u200BSmith",
+      "ｂｅｄ １２",
+      "45 year old male",
+      "patient John Smith",
+      "J Smith",
+      "45M",
+      "Room 4",
+    ]) {
+      const errors = validateContractForm({ endsOn: END, employer: "", note, reminders: BOTH_REMINDERS_ON }, TODAY);
+      expect(errors.noteProblem, note).toBeTruthy();
+    }
+  });
+
+  it("lets a hospital in capitals and ordinary admin words through", () => {
+    for (const employer of ["RPH", "Fiona Stanley Hospital (FSH)", "KGH"]) {
+      expect(validateContractForm({ endsOn: END, employer, note: "", reminders: BOTH_REMINDERS_ON }, TODAY)).toEqual(
+        {},
+      );
+    }
+    for (const note of ["MET call roster", "Copy of contract on my USB", "RPH orientation"]) {
+      expect(validateContractForm({ endsOn: END, employer: "", note, reminders: BOTH_REMINDERS_ON }, TODAY)).toEqual(
+        {},
+      );
+    }
+  });
+
   it("creates one private compliance row with the end date and the reminder lead time", () => {
     const body = buildContractCreateBody({ endsOn: END, employer: "", note: "", reminders: BOTH_REMINDERS_ON }, "zz9");
     expect(body.slug).toBe(`${CONTRACT_END_SLUG_PREFIX}zz9`);
@@ -166,7 +195,8 @@ describe("asked, waiting", () => {
   });
 
   it("builds the message from the questions still open", () => {
-    expect(contractOpenAskable([])).toEqual(["training-program", "parental-leave", "untaken-leave", "in-writing"]);
+    // Planned parental leave is the doctor's to share, so it is never ticked to start with.
+    expect(contractOpenAskable([])).toEqual(["training-program", "untaken-leave", "in-writing"]);
     expect(contractOpenAskable(["training-program", "parental-leave"])).toEqual(["untaken-leave", "in-writing"]);
   });
 
@@ -191,6 +221,12 @@ describe("new contract", () => {
     expect(buildContractRenewBody(row, END, TODAY)).toEqual({ ok: false, reason: "unchanged" });
     expect(buildContractRenewBody(row, "2026-12-01", TODAY)).toEqual({ ok: false, reason: "not-later" });
     expect(buildContractRenewBody(row, "", TODAY)).toEqual({ ok: false, reason: "missing" });
+  });
+
+  it("refuses a new end date more than 10 years away, as the add form does", () => {
+    const row = contractRow(END);
+    expect(buildContractRenewBody(row, "2099-01-31", TODAY)).toEqual({ ok: false, reason: "too-far" });
+    expect(CONTRACT_RENEW_REASON["too-far"]).toMatch(/10 years/);
   });
 });
 

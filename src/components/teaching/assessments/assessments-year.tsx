@@ -251,7 +251,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
       </List>
       <SmallPrint>
         Counts are EPAs recorded in PsychSift. Any recorded only in Clinical Learning Australia (CLA) won&apos;t show
-        here. A &quot;direct supervision&quot; result is recorded as feedback for that moment; it is not a fail on its
+        here. A &quot;direct supervision&quot; result is recorded as feedback for that moment. It is not a fail on its
         own.
       </SmallPrint>
 

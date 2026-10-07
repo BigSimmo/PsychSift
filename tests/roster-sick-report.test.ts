@@ -10,9 +10,11 @@ import {
   sickButtonLabel,
   sickCandidates,
   sickDayWord,
+  sickDefaultPick,
   sickErrorWords,
   sickMessage,
   sickNeedsYouItems,
+  sickPageTitle,
   sickPhase,
   sickShiftTitle,
   sickTimeline,
@@ -24,6 +26,8 @@ import type { RosterAssignment, RosterOpenShift } from "@/lib/roster/team/model"
 
 // Tue 6 Oct 2026, 19:30 in Perth (UTC+8).
 const NOW = new Date("2026-10-06T11:30:00Z");
+// Wed 7 Oct 2026, 00:30 in Perth.
+const AFTER_MIDNIGHT = new Date("2026-10-06T16:30:00Z");
 const ME = "5e000000-0000-4000-8000-000000000001";
 const OTHER = "5e000000-0000-4000-8000-000000000002";
 const TEAM = { serviceId: "5e000000-0000-4000-8000-000000000003", name: "Ward 4" };
@@ -126,11 +130,16 @@ describe("words", () => {
     expect(isShortNotice(tomorrowDay.startsAt, NOW)).toBe(false);
   });
 
+  it("flags a same-day shift as short notice too, such as 08:00 seen at 00:30", () => {
+    expect(isShortNotice(tomorrowDay.startsAt, AFTER_MIDNIGHT)).toBe(true);
+    expect(isShortNotice(dayAfter.startsAt, AFTER_MIDNIGHT)).toBe(false);
+  });
+
   it("labels the button for what is picked", () => {
     expect(sickButtonLabel([], NOW)).toBe("Pick a shift first");
     expect(sickButtonLabel([tomorrowDay], NOW)).toBe("I'm sick for tomorrow");
-    expect(sickButtonLabel([tonightCall], NOW)).toBe("I'm sick tonight");
-    expect(sickButtonLabel([{ startsAt: "2026-10-06T08:00:00Z" }], NOW)).toBe("I'm sick today");
+    expect(sickButtonLabel([tonightCall], NOW)).toBe("I'm sick for tonight's shift");
+    expect(sickButtonLabel([{ startsAt: "2026-10-06T08:00:00Z" }], NOW)).toBe("I'm sick for today's shift");
     expect(sickButtonLabel([tonightCall, tomorrowDay], NOW)).toBe("I'm sick for both");
     expect(sickButtonLabel([tonightCall, tomorrowDay, dayAfter], NOW)).toBe("I'm sick for all 3");
   });
@@ -143,12 +152,39 @@ describe("words", () => {
     expect(managerWord([{ name: "   " }])).toBe("your roster managers");
   });
 
-  it("writes a message with the shift only, never a reason", () => {
-    const text = sickMessage([tonightCall, tomorrowDay], NOW);
+  it("before anything is sent, the message asks for cover and never claims a report", () => {
+    const text = sickMessage(
+      [
+        { ...tonightCall, reported: false },
+        { ...tomorrowDay, reported: false },
+      ],
+      NOW,
+    );
     expect(text).toBe(
-      "Hi, I'm unwell and can't work my on call shift tonight (21:00 to Wed 08:00) and day shift on Wed 7 (08:00 to 16:30). I've reported it in PsychSift Roster so it can go on Open shifts.",
+      "Hi, I'm unwell and can't work my on call shift tonight (21:00 to Wed 08:00) and day shift on Wed 7 (08:00 to 16:30). They aren't reported in PsychSift Roster yet. Could you arrange cover?",
+    );
+    expect(text).not.toMatch(/I've reported/);
+    expect(sickMessage([{ ...tomorrowDay, reported: false }], NOW)).toBe(
+      "Hi, I'm unwell and can't work my day shift on Wed 7 (08:00 to 16:30). It isn't reported in PsychSift Roster yet. Could you arrange cover?",
     );
     expect(sickMessage([], NOW)).toBe("");
+  });
+
+  it("says reported only for a shift whose report went through", () => {
+    expect(sickMessage([{ ...tomorrowDay, reported: true }], NOW)).toBe(
+      "Hi, I'm unwell and can't work my day shift on Wed 7 (08:00 to 16:30). I've reported it in PsychSift Roster so it can go on Open shifts.",
+    );
+    expect(
+      sickMessage(
+        [
+          { ...tomorrowDay, reported: true },
+          { ...tonightCall, reported: false },
+        ],
+        NOW,
+      ),
+    ).toBe(
+      "Hi, I'm unwell and can't work my on call shift tonight (21:00 to Wed 08:00) and day shift on Wed 7 (08:00 to 16:30). I've reported the day shift on Wed 7 (08:00 to 16:30) in PsychSift Roster so it can go on Open shifts. The on call shift tonight (21:00 to Wed 08:00) isn't reported there. Could you arrange cover for it?",
+    );
   });
 
   it("turns refusal codes into plain words and never shows a raw code", () => {
@@ -241,5 +277,30 @@ describe("hand-offs", () => {
   it("offers static search records for both pages", () => {
     expect(ROSTER_FEATURE_SEARCH_RECORDS.map((record) => record.href)).toEqual(["/roster/sick", "/roster/staffing"]);
     expect(ROSTER_FEATURE_SEARCH_RECORDS[0]!.keywords).toContain("unwell");
+  });
+});
+
+describe("which shift is ticked first", () => {
+  it("after midnight, today's 08:00 shift comes before tomorrow's", () => {
+    const thursday = dayAfter; // Thu 08:00
+    expect(sickDefaultPick([thursday, tomorrowDay], AFTER_MIDNIGHT)).toBe(tomorrowDay);
+    expect(sickButtonLabel([tomorrowDay], AFTER_MIDNIGHT)).toBe("I'm sick for today's shift");
+    expect(sickPageTitle([tomorrowDay], AFTER_MIDNIGHT)).toBe("Sick today");
+    expect(isShortNotice(tomorrowDay.startsAt, AFTER_MIDNIGHT)).toBe(true);
+    // Picking Thursday instead is worded for tomorrow.
+    expect(sickButtonLabel([thursday], AFTER_MIDNIGHT)).toBe("I'm sick for tomorrow");
+    expect(sickPageTitle([thursday], AFTER_MIDNIGHT)).toBe("Sick for tomorrow");
+  });
+
+  it("in the evening, tomorrow's shift is ticked and tonight's is left as an option", () => {
+    expect(sickDefaultPick([tonightCall, tomorrowDay], NOW)).toBe(tomorrowDay);
+    expect(sickDefaultPick([tonightCall], NOW)).toBe(tonightCall);
+  });
+
+  it("before the evening, the next shift that has not started is ticked", () => {
+    const morning = new Date("2026-10-06T02:00:00Z"); // Tue 10:00
+    expect(sickDefaultPick([tomorrowDay, tonightCall], morning)).toBe(tonightCall);
+    expect(sickDefaultPick([startedAlready, tomorrowDay], new Date("2026-10-06T11:00:00Z"))).toBe(tomorrowDay);
+    expect(sickDefaultPick([], NOW)).toBeUndefined();
   });
 });

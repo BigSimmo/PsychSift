@@ -9,11 +9,19 @@ import { useAuthSession } from "@/lib/supabase/client";
 
 /*
  * The sick report, held for 10 seconds under Undo and then sent: one
- * `open.report` per picked shift, with `keepalive`. Same contract as Roster's
- * held swap (`useDelayedRosterAction`): leaving the page (`pagehide`) or
- * changing accounts cancels a report that has not gone yet, so it is never
- * sent by someone who walked away, and another account can never send it.
- * "Send now" skips the rest of the wait. Only one report can be held.
+ * `open.report` per picked shift, with `keepalive`. "Send now" skips the rest
+ * of the wait. Only one report can be held.
+ *
+ * Leaving does not cancel it (the spec: "Closing the app during the window
+ * still sends"). On `pagehide`, on the page going out of view (phone locked,
+ * app switched) and on leaving this page inside the app, a held report is sent
+ * straight away with `keepalive`, so the request outlives the page. The result
+ * shows when the doctor comes back, and Take back (`open.cancel`) is still
+ * offered then. If there is no connection when it is due, it is kept in memory
+ * as "Not sent yet" and goes the moment the signal returns, while this page is
+ * open. Nothing is kept on the device. A change of account drops anything held
+ * or waiting, so another account can never send it. Every path takes the
+ * report out of the hold before posting, so it is never sent twice.
  */
 
 export type SickSendResult = {
@@ -23,7 +31,11 @@ export type SickSendResult = {
   readonly error: string | null;
 };
 
+/** Why it went: the 10 seconds ran out, Send now, the doctor left the page, or the signal came back. */
+export type SickSendHow = "timer" | "now" | "left" | "online";
+
 type Held = { shifts: readonly SickShift[]; timer: number; tick: number; endsAt: number };
+type Entry = { readonly shifts: readonly SickShift[]; readonly authEpoch: number };
 
 /** The session when an `AuthProvider` is mounted; signed out in a bare render. */
 function useAuthIfAvailable(): { status: string; authEpoch: number } {
@@ -36,24 +48,34 @@ function useAuthIfAvailable(): { status: string; authEpoch: number } {
   }
 }
 
-export function useSickSend(onDone: (results: SickSendResult[]) => void): {
+const isOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
+
+export function useSickSend(onDone: (results: SickSendResult[], how: SickSendHow) => void): {
   /** Seconds left on the hold, or null when nothing is held. */
   readonly secondsLeft: number | null;
   readonly held: readonly SickShift[];
+  /** Due to go but there was no connection: sends when the signal returns. */
+  readonly waiting: readonly SickShift[];
   readonly sending: boolean;
   readonly canSend: boolean;
   readonly schedule: (shifts: readonly SickShift[]) => boolean;
   readonly undo: () => boolean;
   readonly sendNow: () => void;
+  /** Drops a report that is waiting for the signal. */
+  readonly cancelWaiting: () => boolean;
 } {
   const auth = useAuthIfAvailable();
   const heldRef = useRef<Held | null>(null);
+  const waitingRef = useRef<readonly SickShift[] | null>(null);
   const inFlight = useRef(false);
   const done = useRef(onDone);
+  const epoch = useRef(auth.authEpoch);
   useEffect(() => {
     done.current = onDone;
-  }, [onDone]);
-  const [held, setHeld] = useState<{ shifts: readonly SickShift[]; authEpoch: number } | null>(null);
+    epoch.current = auth.authEpoch;
+  });
+  const [held, setHeld] = useState<Entry | null>(null);
+  const [waiting, setWaiting] = useState<Entry | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -69,15 +91,13 @@ export function useSickSend(onDone: (results: SickSendResult[]) => void): {
     return current;
   }, []);
 
-  const send = useCallback(() => {
-    const current = clear();
-    if (!current) return;
+  const post = useCallback((shifts: readonly SickShift[], how: SickSendHow) => {
     inFlight.current = true;
     setSending(true);
     void (async () => {
       const results: SickSendResult[] = [];
       // One at a time, so a refusal of the first never leaves the second half-sent.
-      for (const shift of current.shifts) {
+      for (const shift of shifts) {
         const answer = await postRosterAction(
           shift.serviceId,
           { action: "open.report", assignmentId: shift.assignmentId },
@@ -91,15 +111,38 @@ export function useSickSend(onDone: (results: SickSendResult[]) => void): {
       }
       inFlight.current = false;
       setSending(false);
-      done.current(results);
+      done.current(results, how);
     })();
-  }, [clear]);
+  }, []);
+
+  const send = useCallback(
+    (how: SickSendHow) => {
+      // Out of the hold first: whichever path gets here second finds nothing to send.
+      const current = clear();
+      if (!current) return;
+      if (isOffline()) {
+        // No connection when it was due: keep it, never drop it silently.
+        waitingRef.current = current.shifts;
+        setWaiting({ shifts: current.shifts, authEpoch: epoch.current });
+        return;
+      }
+      post(current.shifts, how);
+    },
+    [clear, post],
+  );
 
   const schedule = useCallback(
     (shifts: readonly SickShift[]) => {
-      if (!shifts.length || heldRef.current || inFlight.current || auth.status !== "authenticated") return false;
+      if (
+        !shifts.length ||
+        heldRef.current ||
+        waitingRef.current ||
+        inFlight.current ||
+        auth.status !== "authenticated"
+      )
+        return false;
       const endsAt = Date.now() + ROSTER_UNDO_MS;
-      const timer = window.setTimeout(send, ROSTER_UNDO_MS);
+      const timer = window.setTimeout(() => send("timer"), ROSTER_UNDO_MS);
       const tick = window.setInterval(() => {
         setSecondsLeft(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
       }, 250);
@@ -113,24 +156,73 @@ export function useSickSend(onDone: (results: SickSendResult[]) => void): {
 
   const undo = useCallback(() => clear() !== null, [clear]);
 
+  const cancelWaiting = useCallback(() => {
+    if (!waitingRef.current) return false;
+    waitingRef.current = null;
+    setWaiting(null);
+    return true;
+  }, []);
+
+  // Leaving or hiding the page sends a held report now, rather than losing it.
+  const sendRef = useRef(send);
   useEffect(() => {
-    const leave = () => void clear();
+    sendRef.current = send;
+  }, [send]);
+  useEffect(() => {
+    const leave = () => {
+      if (heldRef.current) sendRef.current("left");
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") leave();
+    };
     window.addEventListener("pagehide", leave);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       window.removeEventListener("pagehide", leave);
-      clear();
+      document.removeEventListener("visibilitychange", onVisibility);
+      // Leaving this page inside the app (a tab, Back) sends it too.
+      leave();
     };
-    // A new account (epoch) or sign-out drops anything still held.
-  }, [clear, auth.authEpoch, auth.status]);
+  }, []);
 
-  const visible = auth.status === "authenticated" && held?.authEpoch === auth.authEpoch ? held.shifts : [];
+  // A report waiting for the signal goes the moment it returns.
+  const hasWaiting = waiting !== null;
+  useEffect(() => {
+    if (!hasWaiting) return;
+    const onOnline = () => {
+      const shifts = waitingRef.current;
+      if (!shifts || inFlight.current) return;
+      waitingRef.current = null;
+      setWaiting(null);
+      post(shifts, "online");
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [hasWaiting, post]);
+
+  // A new account (epoch) or sign-out drops anything still held or waiting, unsent.
+  const authKey = `${auth.status}:${auth.authEpoch}`;
+  const lastAuth = useRef(authKey);
+  useEffect(() => {
+    if (lastAuth.current === authKey) return;
+    lastAuth.current = authKey;
+    clear();
+    waitingRef.current = null;
+    setWaiting(null);
+  }, [authKey, clear]);
+
+  const mine = (entry: Entry | null) =>
+    auth.status === "authenticated" && entry?.authEpoch === auth.authEpoch ? entry.shifts : [];
+  const visible = mine(held);
   return {
     secondsLeft: visible.length ? secondsLeft : null,
     held: visible,
+    waiting: mine(waiting),
     sending,
     canSend: auth.status === "authenticated",
     schedule,
     undo,
-    sendNow: send,
+    sendNow: () => send("now"),
+    cancelWaiting,
   };
 }

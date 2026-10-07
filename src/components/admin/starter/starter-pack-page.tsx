@@ -21,6 +21,7 @@ import {
   slugSuffix,
   useCopy,
   useOnline,
+  useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
 import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
 import { StarterDateSheet } from "@/components/admin/starter/starter-date-sheet";
@@ -32,7 +33,6 @@ import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
-import { checkReminderText } from "@/lib/alerts/remind-me";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho, formatRelativeDate } from "@/lib/admin/renewal-dates";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
@@ -55,6 +55,7 @@ import {
 } from "@/lib/admin/starter-pack";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 type Undo = { id: number; label: string; run: () => Promise<void> };
 
@@ -211,7 +212,8 @@ function SuggestWord({ initial }: { initial: string }) {
   const { copy, stateFor } = useCopy();
   const word = value.trim();
   const tooLong = word.length > STARTER_SUGGEST_LIMIT;
-  const problem = word && !tooLong ? checkReminderText(word) : null;
+  // Words from home are often capitals ("SHO", "RMO").
+  const problem = word && !tooLong ? checkPatientDetail(word, { allowCapitals: true }) : null;
   const blocked = !word || tooLong || Boolean(problem);
   return (
     <div className={cn(cardSurface, "grid gap-2 p-3")} data-testid="admin-starter-suggest">
@@ -264,8 +266,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
   const searchParams = useSearchParams();
   const wordParam = searchParams?.get("word") ?? "";
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const today = perthCalendarDate(nowProp ?? mountedAt);
+  const today = perthCalendarDate(useJuniorNow(nowProp));
   const loadState = adminLoadState(state);
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const rows = useMemo(() => selectStarterDates(own), [own]);
@@ -290,6 +291,12 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
   const [failure, setFailure] = useState<string | null>(null);
   const [signInOpen, setSignInOpen] = useState(false);
   const undoId = useRef(0);
+  // The entries as they are now, for an Undo that runs up to ten seconds after the save: anything changed in
+  // between (another date saved, a reload) must survive the Undo.
+  const entriesRef = useRef(state.entries);
+  useEffect(() => {
+    entriesRef.current = state.entries;
+  }, [state.entries]);
 
   // A link from search lands on the words with the word already typed.
   useEffect(() => {
@@ -311,7 +318,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
         label: starterSavedLine(title, input.date, input.leadTimeDays),
         run: async () => {
           await deleteEntry(saved.id);
-          cacheOnCallEntries(state.entries.filter((entry) => entry.id !== saved.id));
+          cacheOnCallEntries(entriesRef.current.filter((entry) => entry.id !== saved.id));
         },
       });
       return null;
@@ -365,7 +372,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
             How the hospital works, the words people use, your own dates in one place, and who to ask. General guidance:
             your hospital&apos;s orientation is the final word.
           </p>
-          <nav aria-label="On this page" className="grid grid-cols-2 gap-2">
+          <nav aria-label="On this page" className="grid gap-2 min-[360px]:grid-cols-2">
             {JUMPS.map((jump) => (
               <a
                 key={jump.href}

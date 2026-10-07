@@ -231,7 +231,7 @@ function Pairing({
               options={TYPE_OPTIONS}
             />
             <TopicChips
-              legend="Topics (optional, up to five; no patient details)"
+              legend="Topics (optional, up to five, no patient details)"
               value={topics}
               onChange={setTopics}
               disabled={inert}
@@ -449,7 +449,7 @@ function SupervisionPage({ demoMode }: { demoMode: boolean }) {
   return (
     <TeachingDepthPage title="Supervision" demoMode={demoMode} resource={resource} ready={!!pairings && !!today}>
       <p>
-        Log teaching topics only, never patient details. Confirmation records the supervisor&apos;s acknowledgement; it
+        Log teaching topics only, never patient details. Confirmation records the supervisor&apos;s acknowledgement. It
         does not award CPD credit.
       </p>
       {pairings?.length === 0 ? (

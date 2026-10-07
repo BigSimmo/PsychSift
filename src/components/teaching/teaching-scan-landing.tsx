@@ -10,7 +10,6 @@ import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { perthDateKey, perthTime, shortDayLabel } from "@/components/teaching/teaching-dates";
 import { CheckinRecorded, wasAlreadyCheckedIn } from "@/components/teaching/checkin/checkin-recorded";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
-import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { Button, buttonFaceClass } from "@/components/ui/button";
@@ -233,6 +232,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
                   <ModeNotice tone="warning">{emailError}</ModeNotice>
                 </div>
               ) : null}
+              {todayLink}
             </div>
           ) : (
             <form
@@ -256,6 +256,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               <Button type="submit" variant="primary" block busy={sending} busyLabel="Sending">
                 Email me a sign-in link
               </Button>
+              {todayLink}
             </form>
           )
         ) : null}
@@ -275,7 +276,20 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
         ) : null}
 
         {state.kind === "offline" ? (
-          <TeachingStateNotice state="offline" onRetry={() => retry(state.retry, opened)} />
+          // A scan opens a fresh tab with no history, so this state has its own way out as well as Try again.
+          <div className="grid gap-2" data-testid="teaching-scan-offline">
+            <div role="alert">
+              <ModeNotice tone="warning">
+                {state.retry === "complete"
+                  ? "No connection. Your scan is kept on this phone for 10 minutes. Try again when you are back online."
+                  : "No connection. Try again when you are back online, while the check-in code is still showing."}
+              </ModeNotice>
+            </div>
+            <Button variant="secondary" block onClick={() => retry(state.retry, opened)}>
+              Try again
+            </Button>
+            {todayLink}
+          </div>
         ) : null}
       </div>
     </InformationPageShell>

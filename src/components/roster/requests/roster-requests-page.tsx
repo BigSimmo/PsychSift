@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { RosterStaffingEntryLink } from "@/components/roster/staffing/roster-staffing-entry";
 import { SwapFlowSheet } from "@/components/roster/swaps/swap-flow-sheet";
 import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterNow } from "@/components/roster/roster-format";
@@ -374,6 +375,7 @@ export function RosterRequestsPage() {
             title="Leave"
             right={<RosterLinkWord onClick={() => setSheet({ kind: "leave" })}>Plan leave</RosterLinkWord>}
           />
+          {enabled.length ? <RosterStaffingEntryLink /> : null}
           {currentLeave.length ? (
             <RosterList label="Leave">{currentLeave.map(leaveRow)}</RosterList>
           ) : teams.status === "loading" || (teams.status === "ready" && leaveState === "loading") ? (

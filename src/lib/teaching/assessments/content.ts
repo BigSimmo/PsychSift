@@ -123,7 +123,7 @@ export const DOMAINS: readonly Domain[] = [
       outcome(
         "2.6",
         "Safe workplace culture",
-        "Help keep work safe and supportive; know the policies on bullying, harassment and discrimination.",
+        "Help keep work safe and supportive. Know the policies on bullying, harassment and discrimination.",
       ),
       outcome(
         "2.7",

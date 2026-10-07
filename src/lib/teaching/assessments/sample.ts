@@ -292,7 +292,7 @@ export const SAMPLE_PAST_FORMS: Record<"t1" | "t2" | "t3", { mid: PastForm; eot:
     ),
     eot: past(
       { 1: 3, 2: 4, 3: 3, 4: 3 },
-      "Calm in resuscitation; clear, structured handovers.",
+      "Calm in resuscitation. Clear, structured handovers.",
       "Commit to a plan sooner and escalate early when unsure.",
       "sat",
     ),
@@ -306,7 +306,7 @@ export const SAMPLE_PAST_FORMS: Record<"t1" | "t2" | "t3", { mid: PastForm; eot:
     ),
     eot: past(
       { 1: 4, 2: 4, 3: 3, 4: 3 },
-      "Excellent ward organisation; safe prescribing of fluids and analgesia.",
+      "Excellent ward organisation. Safe prescribing of fluids and analgesia.",
       "Present cases concisely on the morning round.",
       "sat",
     ),

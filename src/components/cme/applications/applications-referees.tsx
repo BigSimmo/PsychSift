@@ -11,7 +11,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import {
-  applicationTextProblem,
+  refereeRoleProblem,
   daysBetween,
   lastAskedOn,
   NAME_LIMIT,
@@ -182,16 +182,15 @@ function RefereeSheetBody({
   const [tried, setTried] = useState(false);
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
   const nameProblem = name.trim() || tried ? refereeNameProblem(name) : null;
-  const roleProblem = applicationTextProblem(role);
+  const roleProblem = refereeRoleProblem(role);
   const canSave = !refereeNameProblem(name) && !roleProblem;
   const unchanged =
     referee && referee.name === name.trim() && referee.role === role.trim() && referee.status === status;
   const askedOn = referee && referee.status === "asked" ? lastAskedOn(referee) : null;
   const waitingDays = askedOn ? daysBetween(askedOn, today) : null;
-  const nudge =
-    referee && referee.status === "asked"
-      ? nudgeMessage({ ...referee, name: name.trim() || referee.name }, today)
-      : null;
+  // Built from the saved name only, which has passed the patient-detail check. A name being typed is
+  // not in the message until it is saved.
+  const nudge = referee && referee.status === "asked" ? nudgeMessage(referee, today) : null;
 
   function save() {
     setTried(true);

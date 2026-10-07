@@ -1506,7 +1506,10 @@ describe("design-system adoption manifest", () => {
     // 174 -> 175: Roster opens on Shifts; its Today page moved to `/roster/today`.
     // 175 -> 177: Roster Sick for tomorrow (`/roster/sick`) and Team staffing (`/roster/staffing`),
     // junior features round 2 (work-mode redesign, owner request 6 Oct 2026).
-    expect(manifest.routeCoverage.discovered).toHaveLength(177);
+    // 177 -> 188: the rest of junior features round 2: Admin Contract, Leave wallet, Starter pack and
+    // Ready for day one, CPD Home, Job applications and its CV, On Call First week and Who's on from the
+    // roster, Ask the agreement, and the Teaching term folder.
+    expect(manifest.routeCoverage.discovered).toHaveLength(188);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

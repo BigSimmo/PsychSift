@@ -178,6 +178,22 @@ describe("Roster Shifts", () => {
     expect(within(sheet).getAllByTestId("roster-who-can-cover").at(-1)).toHaveTextContent("Who can cover?");
   });
 
+  it("offers Sick for tomorrow from the roster home to a doctor on a team", async () => {
+    mockShifts([]);
+    mockTeamWindow("2026-09-21", "2026-10-27", ["2026-10-15"]);
+    render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
+    const entry = await screen.findByTestId("roster-sick-entry");
+    expect(entry).toHaveAttribute("href", "/roster/sick");
+    expect(entry).toHaveTextContent("Sick for tomorrow?");
+  });
+
+  it("does not offer Sick for tomorrow without a team, since nobody could be told", async () => {
+    mockShifts([]);
+    render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
+    await screen.findByTestId("roster-shifts-empty");
+    expect(screen.queryByTestId("roster-sick-entry")).toBeNull();
+  });
+
   it("loads the newly selected week before saying it has no team shifts", async () => {
     mockShifts([]);
     // Each week is read 21 days back (team rule lookback) and through the

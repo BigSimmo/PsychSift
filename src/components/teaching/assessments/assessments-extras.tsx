@@ -11,13 +11,13 @@ import {
   useState,
   type Dispatch,
   type ReactNode,
-  type RefObject,
 } from "react";
 
 import { List, Row, SectionLabel, viewHref } from "@/components/teaching/assessments/assessments-parts";
+import { PendingSends, inUndoMessage } from "@/components/teaching/assessments/pending-sends";
 import { UNDO_MS } from "@/components/teaching/use-delayed-post";
 import { announce } from "@/components/ui/live-announcer";
-import { useOptionalToast, type ToastApi } from "@/components/ui/toast";
+import { useOptionalToast } from "@/components/ui/toast";
 import type { SupervisionLevel } from "@/lib/teaching/assessments/content";
 import {
   extrasReducer,
@@ -26,7 +26,7 @@ import {
   type ExtrasAction,
   type ExtrasState,
 } from "@/lib/teaching/assessments/extras";
-import { cleanFeedbackText, inboxRequests, isWaiting } from "@/lib/teaching/assessments/inbox";
+import { inboxRequests, isWaiting } from "@/lib/teaching/assessments/inbox";
 import type { AssessmentsState } from "@/lib/teaching/assessments/model";
 import { perthTime } from "@/lib/teaching/time";
 import { useOnlineStatus } from "@/lib/use-online-status";
@@ -38,122 +38,240 @@ import { useOnlineStatus } from "@/lib/use-online-status";
 
 export type SendEntry = { id: string; level: SupervisionLevel; text: string };
 
+/** An Undo for something already done on the page (Later, Can't do, a reminder), taken back on tap. */
+export type UndoOffer = {
+  readonly title: string;
+  readonly body: string;
+  /** Puts it back. Runs only while Assessments is still open. */
+  readonly undo: () => void;
+  /** Said once it is put back. */
+  readonly undone: string;
+};
+
 type ExtrasContextValue = {
   extras: ExtrasState;
   dispatchExtras: Dispatch<ExtrasAction>;
   /** Starts the 10-second pretend send for one or more answers, under one Undo message. */
   sendAnswers: (entries: readonly SendEntry[], title: string) => void;
+  /** Takes back every send still in its 10 seconds, the inbox's own Undo beside "Sending". */
+  undoSends: () => void;
+  /** Shows an Undo message that closes, silently, if Assessments closes first. */
+  offerUndo: (offer: UndoOffer) => void;
+  /** The answer whose sheet is open, so a reconnect does not send an older copy from under it. */
+  setEditing: (id: string | null) => void;
 };
 
 const ExtrasContext = createContext<ExtrasContextValue | null>(null);
 
-type UndoContext = {
-  toast: ToastApi | null;
-  dispatch: Dispatch<ExtrasAction>;
-  /** False once Assessments has closed: nothing is dispatched or announced after that. */
-  mounted: RefObject<boolean>;
-  /** The Undo messages still showing. */
-  pending: Set<string>;
-};
-
-/** Shows the Undo message for a pretend send, and commits the send only when the message's own time is up. */
-function showUndo(context: UndoContext, entries: readonly SendEntry[], title: string, ms: number = UNDO_MS): void {
-  const { toast, dispatch, mounted, pending } = context;
-  const commit = () => {
-    for (const entry of entries) dispatch({ type: "inbox-commit", id: entry.id });
-  };
-  if (!toast) {
-    commit();
-    return;
-  }
-  const pushedAt = Date.now();
-  let id = "";
-  id = toast.push({
-    tone: "info",
-    title,
-    body: "Made-up: nothing reaches anyone.",
-    duration: ms,
-    action: {
-      label: "Undo",
-      onAction: () => {
-        pending.delete(id);
-        if (!mounted.current) return;
-        for (const entry of entries) dispatch({ type: "inbox-undo", id: entry.id });
-        announce("Not sent. Your answer is kept for when you reopen it.");
-      },
-    },
-    onClose: (reason) => {
-      if (!pending.delete(id) || !mounted.current || reason === "action") return;
-      const elapsed = Date.now() - pushedAt;
-      // Pushed off the stack by other messages before its time: put it back with the time it had left.
-      if (reason === "timeout" && elapsed < ms) {
-        showUndo(context, entries, title, ms - elapsed);
-        return;
-      }
-      commit();
-    },
-  });
-  pending.add(id);
-}
+const SENT_BODY = "Made-up: nothing reaches anyone.";
 
 /**
- * Owns the pretend sends for every assessments view, not only the inbox screen, so:
- * - an answer kept as To send while offline goes when the connection is back on any assessments screen;
- * - the send commits only when its Undo message has run its own 10 seconds (the message's timer pauses
- *   while it is touched or focused, so the send waits too); a message pushed off the stack early by other
- *   messages is put back with the time it had left, never treated as time up;
- * - leaving Assessments closes any Undo message still showing, so an Undo can never claim to keep an answer
- *   on a page that is gone. Like the rest of the sample, nothing was stored, so nothing is lost.
+ * Owns the pretend sends and every Undo message for all the assessments views, not only the inbox screen:
+ * - each send runs on the provider's own clock (`PendingSends`), registered before its message shows, so the
+ *   shared message stack pushing a message off can never drop, repeat or rush a send;
+ * - one send per answer: an answer already sending, or already sent, is never sent again;
+ * - an answer kept as To send while offline goes when the connection is back on any assessments screen, or
+ *   when the page comes back into view online, unless its sheet is open (the doctor's newer words go instead);
+ * - leaving Assessments closes every Undo message (sends, Later, Can't do and reminders), and nothing is
+ *   dispatched or announced after that. Like the rest of the sample, nothing was stored, so nothing is lost.
  */
 export function AssessmentsExtrasProvider({ children }: { children: ReactNode }) {
   const [extras, dispatchExtras] = useReducer(extrasReducer, initialExtras);
   const toast = useOptionalToast();
   const toastRef = useRef(toast);
   const mounted = useRef(true);
-  const pending = useRef(new Set<string>());
+  const offers = useRef(new Set<string>());
   const answersRef = useRef(extras.answers);
+  const editing = useRef<string | null>(null);
+  // The send clock lives in a ref and is made on first use, outside render.
+  const clockRef = useRef<PendingSends | null>(null);
+  const sendClock = useCallback((): PendingSends => {
+    clockRef.current ??= new PendingSends();
+    return clockRef.current;
+  }, []);
 
   useEffect(() => {
     toastRef.current = toast;
     answersRef.current = extras.answers;
   });
 
-  const sendAnswers = useCallback((entries: readonly SendEntry[], title: string) => {
-    if (!entries.length) return;
-    const at = clockNow();
-    const clean = entries.map((entry) => ({ ...entry, text: cleanFeedbackText(entry.text) }));
-    for (const entry of clean) dispatchExtras({ type: "inbox-send", ...entry, at });
-    showUndo({ toast: toastRef.current, dispatch: dispatchExtras, mounted, pending: pending.current }, clean, title);
+  useEffect(() => {
+    sendClock().onDue = (send) => {
+      if (!mounted.current) return;
+      for (const id of send.ids) dispatchExtras({ type: "inbox-commit", id });
+      if (send.toastId) toastRef.current?.dismiss(send.toastId);
+    };
+  }, [sendClock]);
+
+  // Every send waits while the doctor touches or focuses an Undo message, as the message itself does.
+  const hold = useRef({ pointer: false, focus: false });
+  const recheckHold = useCallback(() => {
+    // A message can leave while it is held (pushed off, or its send went). Read the page again rather than
+    // wait for a pointer or focus event that may never come, so a send is never held by a message that is gone.
+    hold.current.pointer = document.querySelector('[data-testid="toast"]:hover') !== null;
+    hold.current.focus = inUndoMessage(document.activeElement);
+    sendClock().hold(hold.current.pointer || hold.current.focus);
+  }, [sendClock]);
+  useEffect(() => {
+    const sends = sendClock();
+    const state = hold.current;
+    const update = () => sends.hold(state.pointer || state.focus);
+    const onOver = (event: PointerEvent) => {
+      state.pointer = inUndoMessage(event.target);
+      update();
+    };
+    const onOut = (event: PointerEvent) => {
+      if (!inUndoMessage(event.relatedTarget)) state.pointer = false;
+      update();
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      state.focus = inUndoMessage(event.target);
+      update();
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      if (!inUndoMessage(event.relatedTarget)) state.focus = false;
+      update();
+    };
+    document.addEventListener("pointerover", onOver);
+    document.addEventListener("pointerout", onOut);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("pointerover", onOver);
+      document.removeEventListener("pointerout", onOut);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, [sendClock]);
+
+  const sendAnswers = useCallback(
+    (entries: readonly SendEntry[], title: string) => {
+      const sends = sendClock();
+      // One send per answer: skip any already in its 10 seconds, or no longer waiting to go.
+      const fresh = entries.filter((entry) => {
+        const status = answersRef.current[entry.id]?.status ?? "waiting";
+        return !sends.has(entry.id) && (status === "waiting" || status === "queued" || status === "later");
+      });
+      if (!fresh.length) return;
+      const at = clockNow();
+      // Saved exactly as typed. The patient-detail check reads a cleaned copy and never changes this text.
+      for (const entry of fresh) dispatchExtras({ type: "inbox-send", ...entry, at });
+      const key = sends.start(fresh.map((entry) => entry.id));
+      const api = toastRef.current;
+      if (!api) return;
+      const toastId = api.push({
+        tone: "info",
+        title,
+        body: SENT_BODY,
+        // The provider's clock ends it, so the stack never times it out on its own.
+        duration: 0,
+        action: {
+          label: "Undo",
+          onAction: () => {
+            const send = sends.cancel(key);
+            if (!send || !mounted.current) return;
+            for (const id of send.ids) dispatchExtras({ type: "inbox-undo", id });
+            announce("Not sent. Your answer is kept for when you reopen it.");
+          },
+        },
+        onClose: (reason) => {
+          const send = sends.get(key);
+          if (!send || reason === "action") return;
+          // Dismissed by hand: it goes now. Pushed off the stack: it keeps its own time, Undo stays on the inbox.
+          if (reason === "dismiss") sends.finishNow(key);
+          else send.toastId = null;
+          window.setTimeout(recheckHold, 0);
+        },
+      });
+      const send = sends.get(key);
+      if (send) send.toastId = toastId;
+    },
+    [sendClock, recheckHold],
+  );
+
+  const undoSends = useCallback(() => {
+    const undone = sendClock().cancelAll();
+    if (!undone.length) return;
+    for (const send of undone) {
+      for (const id of send.ids) dispatchExtras({ type: "inbox-undo", id });
+      if (send.toastId) toastRef.current?.dismiss(send.toastId);
+    }
+    announce("Not sent. Your answer is kept for when you reopen it.");
+  }, [sendClock]);
+
+  const offerUndo = useCallback((offer: UndoOffer) => {
+    const api = toastRef.current;
+    if (!api) return;
+    let id = "";
+    id = api.push({
+      tone: "info",
+      title: offer.title,
+      body: offer.body,
+      duration: UNDO_MS,
+      action: {
+        label: "Undo",
+        onAction: () => {
+          if (!mounted.current) return;
+          offer.undo();
+          announce(offer.undone);
+        },
+      },
+      onClose: () => offers.current.delete(id),
+    });
+    offers.current.add(id);
   }, []);
 
-  // Back online: everything kept as "To send" goes, under one Undo, wherever in Assessments the doctor is.
-  // An answer with no supervision level is never given one: it stays as To send and says why.
+  const setEditing = useCallback((id: string | null) => {
+    editing.current = id;
+  }, []);
+
+  // Back online: everything kept as "To send" goes, under one Undo, wherever in Assessments the doctor is. The
+  // page coming back into view online does the same, in case the browser missed the online event while the tab
+  // slept. An answer with no supervision level is never given one: it stays as To send and says why.
   useEffect(() => {
-    const onOnline = () => {
-      const ready = readyToSend(answersRef.current);
+    const sends = sendClock();
+    const flush = () => {
+      if (!navigator.onLine) return;
+      const ready = readyToSend(answersRef.current).filter(
+        (entry) => entry.id !== editing.current && !sends.has(entry.id),
+      );
       if (!ready.length) return;
       sendAnswers(
         ready,
         `Back online · sending ${ready.length === 1 ? "1 answer" : `${ready.length} answers`} in 10 s`,
       );
     };
-    window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
-  }, [sendAnswers]);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") flush();
+    };
+    window.addEventListener("online", flush);
+    window.addEventListener("pageshow", flush);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("online", flush);
+      window.removeEventListener("pageshow", flush);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [sendAnswers, sendClock]);
 
   useEffect(() => {
     mounted.current = true;
-    const open = pending.current;
+    const open = offers.current;
     return () => {
       mounted.current = false;
+      for (const send of sendClock().cancelAll()) if (send.toastId) toastRef.current?.dismiss(send.toastId);
       for (const id of [...open]) {
         open.delete(id);
         toastRef.current?.dismiss(id);
       }
     };
-  }, []);
+  }, [sendClock]);
 
-  return <ExtrasContext.Provider value={{ extras, dispatchExtras, sendAnswers }}>{children}</ExtrasContext.Provider>;
+  return (
+    <ExtrasContext.Provider value={{ extras, dispatchExtras, sendAnswers, undoSends, offerUndo, setEditing }}>
+      {children}
+    </ExtrasContext.Provider>
+  );
 }
 
 export function useAssessmentsExtras(): ExtrasContextValue {

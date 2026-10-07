@@ -194,7 +194,7 @@ export function SupervisorHome({ s, dispatch, openSheet }: ScreenProps) {
         />
       </List>
       <SmallPrint>
-        Dr Ben Ortiz and Dr Mia Chen are made-up examples of a list; their forms aren&apos;t built into this sample.
+        Dr Ben Ortiz and Dr Mia Chen are made-up examples of a list. Their forms aren&apos;t built into this sample.
       </SmallPrint>
       <AssessmentsSampleViewsNav s={s} />
       <SectionLabel end={<TextLink href={viewHref("times", asSup)}>Set times</TextLink>}>Meetings</SectionLabel>

@@ -36,20 +36,23 @@ import {
   reportFor,
   sickButtonLabel,
   sickDayWord,
+  sickDefaultPick,
   sickErrorWords,
   sickMessage,
+  sickPageTitle,
   sickPhase,
   sickShiftTitle,
   sickTimeline,
   sickTimes,
   sickWindow,
   startsInWords,
+  type SickShift,
 } from "@/lib/roster/sick/sick-report";
 
 import { SickAction } from "./sick-action";
 import { SickShiftPicker } from "./sick-shift-picker";
 import { SickTimeline } from "./sick-timeline";
-import { useSickSend, type SickSendResult } from "./use-sick-send";
+import { useSickSend, type SickSendHow, type SickSendResult } from "./use-sick-send";
 import { useSickShifts, type SickReportItem } from "./use-sick-shifts";
 
 /**
@@ -93,9 +96,9 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
   const [outcome, setOutcome] = useState<Outcome>(null);
   const [failures, setFailures] = useState<readonly SickSendResult[]>([]);
   const [takingBack, setTakingBack] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  // "Send when I'm back online": held in memory while this page is open, never on the phone.
-  const [queued, setQueued] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  // "Send when I'm back online": the picked shifts, held in memory while this page is open, never on the phone.
+  const [queued, setQueued] = useState<readonly SickShift[] | null>(null);
   const sendWhenOnline = useRef<() => void>(() => undefined);
   const reload = data.reload;
 
@@ -132,8 +135,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
   }, [ready, now]);
 
   const pickable = rows.filter((row) => !row.existing).map((row) => row.shift);
-  const tomorrow = to;
-  const defaultPick = pickable.find((shift) => perthDateOf(shift.startsAt) === tomorrow) ?? pickable[0];
+  const defaultPick = sickDefaultPick(pickable, now);
   const pickedIds = picked ?? new Set(defaultPick ? [defaultPick.assignmentId] : []);
   const pickedShifts = pickable.filter((shift) => pickedIds.has(shift.assignmentId));
 
@@ -146,13 +148,17 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
         : "your roster managers";
 
   // The hold keeps the latest of this in a ref, so a plain function is enough.
-  const onDone = (results: SickSendResult[]) => {
+  const onDone = (results: SickSendResult[], how: SickSendHow) => {
     const okCount = results.filter((result) => result.ok).length;
     const bad = results.filter((result) => !result.ok);
     setFailures(bad);
-    setPicked(null);
+    // Sent shifts drop out of the list. Failed ones stay ticked to try again, and nothing else is ticked for the doctor.
+    setPicked(new Set(bad.map((result) => result.shift.assignmentId)));
     if (okCount && !bad.length) {
-      const text = `Sent at ${perthTimeOf(new Date())}. ${capital(who)} ${who === "your roster managers" ? "are" : "is"} told.`;
+      const when =
+        how === "left" ? " when you left the page" : how === "online" ? " when your connection came back" : "";
+      const told = `${capital(who)} ${who === "your roster managers" ? "are" : "is"} told.`;
+      const text = `Sent at ${perthTimeOf(new Date())}${when}. ${told}${how === "left" || how === "online" ? " You can still take it back below." : ""}`;
       setOutcome({ tone: "done", text });
       announce(text);
     } else if (okCount) {
@@ -183,10 +189,11 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
     };
   }, [reload, waiting]);
 
-  const allToday = pickable.length > 0 && pickable.every((shift) => perthDateOf(shift.startsAt) === from);
-  const title = allToday ? "Sick today" : "Sick for tomorrow";
+  const title = sickPageTitle(pickedShifts.length ? pickedShifts : pickable, now);
   const heldShifts = send.held;
   const holding = send.secondsLeft !== null;
+  const waitingShifts = send.waiting;
+  const locked = holding || send.sending || queued !== null || waitingShifts.length > 0;
 
   const blockedReason = !ready
     ? null
@@ -194,11 +201,13 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
       ? "This is an example team, so nothing can be sent. Phone your roster manager to report sick."
       : !send.canSend
         ? "Sign in to send this. Until then, phone your roster manager."
-        : !online
-          ? "No connection, so nothing can be sent. Phone your roster manager instead."
-          : pickedShifts.length === 0
-            ? "Pick at least one shift."
-            : null;
+        : waitingShifts.length
+          ? "Your report above is waiting for a connection. Phone your roster manager as well."
+          : !online
+            ? "No connection, so nothing can be sent. Phone your roster manager instead."
+            : pickedShifts.length === 0
+              ? "Pick at least one shift."
+              : null;
 
   const shortNotice = pickedShifts.filter((shift) => isShortNotice(shift.startsAt, now));
   const timelineShifts = holding ? heldShifts : pickedShifts;
@@ -210,25 +219,40 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
     !ready?.sample &&
     !signedOutSample &&
     !holding &&
-    !send.sending;
+    !send.sending &&
+    !waitingShifts.length;
 
   useEffect(() => {
     sendWhenOnline.current = () => {
-      setQueued(false);
+      const shifts = (queued ?? []).filter((shift) => Date.parse(shift.startsAt) > Date.now());
+      setQueued(null);
       setOutcome(null);
       setFailures([]);
-      if (send.schedule(pickedShifts)) announce(`Back online. Sending to ${who} in 10 seconds. Undo to stop it.`);
+      if (!shifts.length) {
+        // The shift started before the signal came back: say so, never let the queued note just vanish.
+        const text = "Not sent. The shift has started. Phone your roster manager.";
+        setOutcome({ tone: "warning", text });
+        announce(text, { priority: "assertive" });
+        return;
+      }
+      if (send.schedule(shifts)) announce(`Back online. Sending to ${who} in 10 seconds. Undo to stop it.`);
+      else {
+        const text = "Not sent. Phone your roster manager.";
+        setOutcome({ tone: "warning", text });
+        announce(text, { priority: "assertive" });
+      }
     };
   });
+  const isQueued = queued !== null;
   useEffect(() => {
-    if (!queued) return;
+    if (!isQueued) return;
     const onOnline = () => sendWhenOnline.current();
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, [queued]);
+  }, [isQueued]);
 
   function toggle(id: string) {
-    if (holding || send.sending) return;
+    if (locked) return;
     const next = new Set(pickedIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -268,25 +292,21 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
     reload();
   }
 
-  async function copyMessage() {
-    const personal = ready?.personal ?? [];
-    const message = sickMessage(
-      [
-        ...pickedShifts,
-        ...personal.map((shift) => ({
-          startsAt: shift.startsAt,
-          endsAt: shift.endsAt,
-          kind: inferShiftKind({ startsAt: shift.startsAt, endsAt: shift.endsAt, title: shift.title }),
-        })),
-      ],
-      now,
-    );
+  // Only what the doctor picked, plus reports that actually went through and are still live.
+  const liveSent = sent.filter((item) => isLiveReport(item.open));
+  const messageShifts = [
+    ...pickedShifts.map((shift) => ({ ...shift, reported: false })),
+    ...liveSent.map((item) => ({ ...item.open, reported: true })),
+  ];
+  const messageReported = liveSent.length > 0;
+
+  async function copyMessage(message: string, key: string) {
     if (!message) return;
     try {
       await copyTextToClipboard(message);
-      setCopied(true);
+      setCopied(key);
       announce("Message copied");
-      window.setTimeout(() => setCopied(false), 2500);
+      window.setTimeout(() => setCopied(null), 2500);
     } catch {
       announce("Couldn't copy. Select the text instead.", { priority: "assertive" });
     }
@@ -329,7 +349,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                       Sends when you are back online, with 10 seconds to undo. Only while this page stays open, so phone
                       as well if the shift is soon.
                     </p>
-                    <RosterLinkWord onClick={() => setQueued(false)} testId="sick-queue-cancel">
+                    <RosterLinkWord onClick={() => setQueued(null)} testId="sick-queue-cancel">
                       Don&apos;t send
                     </RosterLinkWord>
                   </div>
@@ -338,7 +358,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                     type="button"
                     className={cn(rosterOutlineButton, "justify-self-start px-4")}
                     onClick={() => {
-                      setQueued(true);
+                      setQueued(pickedShifts);
                       announce("It will send when you are back online, with 10 seconds to undo.");
                     }}
                     data-testid="sick-queue"
@@ -346,6 +366,26 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                     Send when I&apos;m back online
                   </button>
                 ) : null}
+              </RosterNote>
+            ) : null}
+
+            {waitingShifts.length ? (
+              <RosterNote icon={WifiOff} tone="warning" role="alert" testId="sick-waiting">
+                <p className="font-semibold">Not sent yet</p>
+                <p>
+                  There was no connection when your report for{" "}
+                  {waitingShifts.map((shift) => sickShiftTitle(shift, now)).join(" and ")} was due to go. It sends as
+                  soon as you are back online, while this page stays open. Your roster manager doesn&apos;t know yet, so
+                  phone as well.
+                </p>
+                <RosterLinkWord
+                  onClick={() => {
+                    if (send.cancelWaiting()) announce("Not sent. Your shift is unchanged.");
+                  }}
+                  testId="sick-waiting-cancel"
+                >
+                  Don&apos;t send
+                </RosterLinkWord>
               </RosterNote>
             ) : null}
 
@@ -371,7 +411,13 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                     who={managerWord(ready.managersByService.get(item.serviceId))}
                     showTeam={ready.teams.length > 1}
                     busy={takingBack === item.open.id}
-                    blocked={ready.sample || signedOutSample || !online}
+                    blocked={
+                      ready.sample || signedOutSample
+                        ? "This is an example team, so nothing can be taken back. Phone your roster manager."
+                        : !online
+                          ? "No connection, so it can't be taken back now. Phone your roster manager."
+                          : null
+                    }
                     onTakeBack={() => void takeBack(item)}
                   />
                 ))}
@@ -406,7 +452,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                   }
                 />
                 <SickShiftPicker
-                  disabled={holding || send.sending}
+                  disabled={locked}
                   onToggle={toggle}
                   rows={rows.map(({ shift, existing }) => ({
                     id: shift.assignmentId,
@@ -470,7 +516,10 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                   sending={send.sending}
                 />
                 {holding ? (
-                  <RosterFootnote>Leave this page in the next 10 seconds and nothing is sent.</RosterFootnote>
+                  <RosterFootnote>
+                    Leave this page or lock your phone and it sends straight away. You can still take it back here
+                    afterwards.
+                  </RosterFootnote>
                 ) : null}
               </>
             ) : null}
@@ -510,6 +559,34 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                       key={shift.id}
                       title={`${sickDayWord(shift.startsAt, now)} · ${shift.title}`}
                       sub={`${sickTimes(shift)}${shift.workplace ? ` · ${shift.workplace}` : ""}. On your own roster copy only, so PsychSift can't tell anyone. Phone your manager.`}
+                      action={
+                        <RosterLinkWord
+                          onClick={() =>
+                            void copyMessage(
+                              sickMessage(
+                                [
+                                  {
+                                    startsAt: shift.startsAt,
+                                    endsAt: shift.endsAt,
+                                    kind: inferShiftKind({
+                                      startsAt: shift.startsAt,
+                                      endsAt: shift.endsAt,
+                                      title: shift.title,
+                                    }),
+                                    reported: false,
+                                  },
+                                ],
+                                now,
+                              ),
+                              shift.id,
+                            )
+                          }
+                          label={`Copy a message about ${sickDayWord(shift.startsAt, now)} · ${shift.title}`}
+                          testId="sick-personal-copy"
+                        >
+                          {copied === shift.id ? "Copied" : "Copy message"}
+                        </RosterLinkWord>
+                      }
                     />
                   ))}
                 </RosterList>
@@ -521,16 +598,24 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
               </RosterNote>
             ) : null}
 
-            {pickedShifts.length || ready.personal.length ? (
-              <button
-                type="button"
-                onClick={() => void copyMessage()}
-                className={cn(rosterOutlineButton, "w-full")}
-                data-testid="sick-copy"
-              >
-                <ClipboardCopy aria-hidden="true" className="size-icon-md" />
-                {copied ? "Copied" : "Copy a message for your manager"}
-              </button>
+            {messageShifts.length ? (
+              <div className="grid gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => void copyMessage(sickMessage(messageShifts, now), "team")}
+                  className={cn(rosterOutlineButton, "w-full")}
+                  aria-describedby="sick-copy-note"
+                  data-testid="sick-copy"
+                >
+                  <ClipboardCopy aria-hidden="true" className="size-icon-md" />
+                  {copied === "team" ? "Copied" : "Copy a message for your manager"}
+                </button>
+                <p id="sick-copy-note" className="mx-1 text-xs text-[color:var(--text-muted)]">
+                  {messageReported
+                    ? "Names only the shifts you picked or reported. It says reported only for a report that went through."
+                    : "Nothing is sent from here yet, so the message asks your manager to arrange cover."}
+                </p>
+              </div>
             ) : null}
 
             <RosterNote icon={Info} role="note">
@@ -578,10 +663,12 @@ function SentReport({
   readonly who: string;
   readonly showTeam: boolean;
   readonly busy: boolean;
-  readonly blocked: boolean;
+  /** Why Take back can't be used now, or null. */
+  readonly blocked: string | null;
   readonly onTakeBack: () => void;
 }) {
   const phase = sickPhase(item.open);
+  const reasonId = `sick-take-back-reason-${item.open.id}`;
   const covered = phase === "covered";
   return (
     <article
@@ -623,14 +710,20 @@ function SentReport({
           </span>
           <button
             type="button"
-            className={cn(rosterOutlineButton, "shrink-0 px-4")}
-            onClick={onTakeBack}
-            disabled={busy || blocked}
+            className={cn(rosterOutlineButton, "shrink-0 px-4", blocked && "cursor-not-allowed")}
+            onClick={busy || blocked ? undefined : onTakeBack}
+            aria-disabled={busy || blocked ? "true" : undefined}
+            aria-describedby={blocked ? reasonId : undefined}
             aria-busy={busy || undefined}
           >
             {busy ? "Taking back" : "Take back"}
           </button>
         </div>
+      ) : null}
+      {isLiveReport(item.open) && blocked ? (
+        <p id={reasonId} className="px-4 pb-3 text-sm text-[color:var(--text)]">
+          {blocked}
+        </p>
       ) : covered ? (
         <p className="border-t border-[color:var(--border)] px-4 py-3 text-sm text-[color:var(--text-muted)]">
           Covered from the in-house pool. Your roster no longer shows this shift. Rest.

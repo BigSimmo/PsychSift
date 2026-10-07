@@ -110,6 +110,49 @@ describe("Attendance recorded, after a scan", () => {
   });
 });
 
+describe("the scan page always has a way out", () => {
+  it("offline: says the scan is kept for 10 minutes, with Try again and Go to Today", async () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      serveFetch((url) => {
+        if (url === "/api/teaching/checkin/open")
+          return json(200, {
+            occurrenceId: OCC,
+            title: "Registrar teaching",
+            startsAt: DURING.toISOString(),
+            stream: "room",
+          });
+        if (url === "/api/teaching/checkin/complete") throw new TypeError("Failed to fetch");
+        return null;
+      });
+      render(<TeachingScanLanding token="tok-1" />);
+      const offline = await screen.findByTestId("teaching-scan-offline");
+      expect(offline).toHaveTextContent("Your scan is kept on this phone for 10 minutes.");
+      expect(offline).not.toHaveTextContent(/7 days/);
+      expect(within(offline).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+      expect(within(offline).getByRole("link", { name: "Go to Today" })).toHaveAttribute("href", "/teaching");
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it("waiting for sign-in: Go to Today is there before and after the link is sent", async () => {
+    serveFetch((url) =>
+      url === "/api/teaching/checkin/open"
+        ? json(200, { occurrenceId: OCC, title: "Registrar teaching", startsAt: DURING.toISOString(), stream: "room" })
+        : url === "/api/teaching/checkin/complete"
+          ? json(401, { error: "Sign in", message: "Sign in", code: "teaching_signed_out" })
+          : null,
+    );
+    render(<TeachingScanLanding token="tok-1" />);
+    fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "dr@example.org" } });
+    expect(screen.getByRole("link", { name: "Go to Today" })).toHaveAttribute("href", "/teaching");
+    fireEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
+    expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to Today" })).toHaveAttribute("href", "/teaching");
+  });
+});
+
 describe("Attendance recorded, on the session page", () => {
   it("appears after a typed code, beside the phase module's own label", async () => {
     serveFetch((url, body) => {
