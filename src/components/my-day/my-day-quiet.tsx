@@ -266,7 +266,7 @@ export function QuietRow({
       <span className="grid min-w-0 flex-1">
         <span
           className={cn(
-            "text-sm-minus leading-tight break-words",
+            "text-sm leading-tight break-words",
             done ? "font-semibold text-[color:var(--text-muted)]" : "font-bold text-[color:var(--work-ink)]",
           )}
         >
@@ -411,7 +411,7 @@ export function QuietNote({
       <span className="grid min-w-0 flex-1">
         <span
           className={cn(
-            "text-sm-minus leading-tight font-bold break-words",
+            "text-sm leading-tight font-bold break-words",
             tinted ? "text-[color:var(--warning-text)]" : "text-[color:var(--work-ink)]",
           )}
         >

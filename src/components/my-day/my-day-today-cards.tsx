@@ -98,17 +98,18 @@ const heroEyebrow = "text-3xs font-bold uppercase tracking-widest";
 /** A see-through white wash on the hero, in either theme (it follows the hero's own text colour). */
 const heroWash = "bg-[color-mix(in_srgb,currentColor_14%,transparent)]";
 
-/** The hero's white button ("Log a call", "Details"). */
+/** The hero's white button ("Log a call", "Details"): a 36px pill, its tap stretched to 48px by the
+ * `before:` layer. A smaller pill stretches that layer further, so the tap never drops under 48px. */
 const heroButton = cn(
   focusRing,
-  "relative inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[color:var(--mode-identity-contrast)] px-3.5 text-xs font-bold text-[color:var(--mode-identity)] no-underline before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] forced-colors:border",
+  "relative inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[color:var(--mode-identity-contrast)] px-3.5 text-xs font-bold text-[color:var(--mode-identity)] no-underline before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] forced-colors:border",
 );
 
 /** The hero's glass button beside the white one ("Handover"). */
 const heroGlassButton = cn(
   focusRing,
   heroWash,
-  "relative inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-xs font-bold text-inherit no-underline ring-1 ring-[color-mix(in_srgb,currentColor_22%,transparent)] before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] ring-inset forced-colors:border",
+  "relative inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-xs font-bold text-inherit no-underline shadow-[var(--work-edge-inset)_color-mix(in_srgb,currentColor_22%,transparent)] before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] forced-colors:border",
 );
 
 // ---------------------------------------------------------------- the blue card
@@ -147,7 +148,7 @@ function HeroRing({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={(circumference * (1 - clamped)).toFixed(1)}
-          className="stroke-current motion-safe:transition-[stroke-dashoffset] motion-safe:duration-500"
+          className="stroke-current"
         />
       </svg>
       <span className="relative grid leading-none" data-testid={testId}>
@@ -315,7 +316,7 @@ function HeroPanel({
   return (
     <div
       className={cn(
-        "relative mt-3 grid gap-0.5 rounded-xl px-3 py-2.5 ring-1 ring-[color-mix(in_srgb,currentColor_14%,transparent)] ring-inset forced-colors:border",
+        "relative mt-3 grid gap-0.5 rounded-xl px-3 py-2.5 shadow-[var(--work-edge-inset)_color-mix(in_srgb,currentColor_14%,transparent)] forced-colors:border",
         "bg-[color-mix(in_srgb,currentColor_10%,transparent)]",
       )}
       data-testid={testId}
@@ -323,14 +324,14 @@ function HeroPanel({
       <span className={cn(heroEyebrow, onHide && "pr-8")}>{eyebrow}</span>
       <span className="flex min-w-0 items-center justify-between gap-2.5">
         <span className="grid min-w-0">
-          <span className="text-sm font-bold leading-snug tracking-tight break-words">{title}</span>
+          <span className="text-sm-minus font-bold leading-snug tracking-tight break-words">{title}</span>
           {where ? <span className="mt-px text-2xs break-words">{where}</span> : null}
         </span>
         <Link
           href={withMyDayReturn(href)}
           aria-label={`${actionLabel}: ${title}`}
           data-testid={openTestId}
-          className={cn(heroButton, "min-h-7 px-3")}
+          className={cn(heroButton, "h-7 px-3 before:-inset-y-2.5")}
         >
           {actionLabel}
         </Link>
@@ -995,7 +996,7 @@ export function MonthView({
     <div className="grid gap-2.5" data-testid="my-day-month">
       <div className={cn(quietCard, "grid gap-2 px-3 py-3")}>
         <div className="flex items-center justify-between">
-          <h3 id={titleId} className="m-0 text-sm font-bold text-[color:var(--work-ink)]">
+          <h3 id={titleId} className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">
             {monthTitle(month)}
           </h3>
           {/* The month change is announced from a hidden line, not the visible heading (SPEC §9.2). */}
@@ -1139,7 +1140,7 @@ function MonthDay({
           isToday
             ? "bg-[color:var(--mode-identity)] font-bold text-[color:var(--mode-identity-contrast)]"
             : selected
-              ? "font-bold text-[color:var(--mode-identity)] ring-[1.5px] ring-[color:var(--mode-identity)] ring-inset"
+              ? "font-bold text-[color:var(--mode-identity)] shadow-[var(--work-edge-inset-strong)_var(--mode-identity)]"
               : weekend
                 ? "font-semibold text-[color:var(--text-muted)]"
                 : "font-semibold text-[color:var(--work-ink)]",
@@ -1417,7 +1418,7 @@ export function NeedsYouRow({
               onClick={() => onLater(item)}
               aria-label={`Later: ${item.title}`}
               data-testid={`my-day-later-${item.id}`}
-              className={cn(quietLinkMuted, "-my-2.5 min-h-10 pr-0.5")}
+              className={cn(quietLinkMuted, "-my-3.5 pr-0.5")}
             >
               Later
             </button>
