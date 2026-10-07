@@ -16,7 +16,7 @@ follow "Refresh Figma after a change" below.
 
 ## Where things are in Figma
 
-- File key: `YOKQKUyYMvpTYLsU1pgVUv`
+- Design file: https://www.figma.com/design/YOKQKUyYMvpTYLsU1pgVUv
 - Page ids (used by the Figma tool and by the `--swap` option):
 
 | Page                  | Id     |
@@ -85,7 +85,7 @@ anything or use Node features. `build-calls.mjs` shrinks them and adds the data 
    They are written to `.tmp-visual/figma-sync/calls`. The run lists each file and its size, and
    fails if any file is too big for one Figma call (50,000 characters).
 
-4. Paste each call file into the Figma `use_figma` tool for file `YOKQKUyYMvpTYLsU1pgVUv`, one
+4. Paste each call file into the Figma `use_figma` tool for the design file above, one
    file per call, in this order:
    1. `icons-01.js`, `icons-02.js` and so on first. They add the icon components to page `7:3`
       and skip any icon already there.
