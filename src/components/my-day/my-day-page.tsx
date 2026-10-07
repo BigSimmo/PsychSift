@@ -3,7 +3,7 @@
 import { History, LogIn, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
@@ -18,7 +18,7 @@ import {
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { useWorkUndoToast } from "@/components/mode-kit/work";
-import { MyDayDashboard } from "@/components/my-day/my-day-dashboard";
+import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
 import { listNames, myDayModeLabel, useMyDayNow } from "@/components/my-day/my-day-page-parts";
 import {
@@ -33,7 +33,7 @@ import {
 } from "@/components/my-day/my-day-quiet";
 import { MyDayCustomiseSheet, MyDayQuickAddSheet } from "@/components/my-day/my-day-sheets";
 import { NeedsYouRow } from "@/components/my-day/my-day-today-cards";
-import { useMyDayDashboardSources, type MyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
+import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { cn } from "@/components/ui-primitives";
@@ -323,25 +323,13 @@ function MyDayFullList({
 
 // ---------------------------------------------------------------- the page
 
-/**
- * The dashboard's own reads, mounted only for an enabled reader and remounted
- * per sign-in. Mounted as soon as My Day starts its own reads, not once they
- * have answered: both read Roster and CPD, so starting together makes them one
- * request each (sharedGet) and the cards fill without a second wait.
- */
-function MyDayDashboardSourcesScope({
-  today,
-  now,
+/** The dashboard's own reads, mounted only for an enabled reader and remounted per sign-in. */
+function MyDayDashboardView({
   allowSample,
-  children,
-}: {
-  readonly today: string;
-  readonly now: Date;
-  readonly allowSample: boolean;
-  readonly children: (sources: MyDayDashboardSources) => ReactNode;
-}) {
-  const sources = useMyDayDashboardSources({ today, now, allowSample });
-  return <>{children(sources)}</>;
+  ...props
+}: Omit<MyDayDashboardProps, "sources"> & { readonly allowSample: boolean }) {
+  const sources = useMyDayDashboardSources({ today: props.today, now: props.now, allowSample });
+  return <MyDayDashboard {...props} sources={sources} />;
 }
 
 const LONG_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
@@ -592,90 +580,85 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
           </div>
         ) : null}
 
-        {enabled && !sampleView ? (
-          <MyDayDashboardSourcesScope key={authEpoch} today={today} now={now} allowSample={allowSample}>
-            {(sources) =>
-              ready ? (
-                <div className="grid min-w-0 gap-2.5" data-testid="my-day-ready">
-                  {/* "Set up Work": the first thing on Today, for the new work mode only. */}
-                  {view === "dashboard" && page === "today" ? (
-                    <NewWorkModeOnly>
-                      <WorkSetupPromptCard />
-                    </NewWorkModeOnly>
-                  ) : null}
-                  {failed.length > 0 ? (
-                    <QuietNote
-                      icon={TriangleAlert}
-                      warn
-                      role="alert"
-                      testId="my-day-failed-notice"
-                      title={`Couldn't load: ${failed.join(", ")}.`}
-                      body={
-                        checked.length > 0
-                          ? "Needs you may be incomplete. Showing the rest."
-                          : "Nothing here can be relied on until it loads."
-                      }
-                      action={
-                        checked.length > 0 ? (
-                          <button type="button" onClick={state.retry} className={quietLink}>
-                            Try again
-                          </button>
-                        ) : null
-                      }
-                    />
-                  ) : null}
-                  {view === "all" ? (
-                    <MyDayFullList
-                      items={items}
-                      today={today}
-                      now={now}
-                      checked={checked}
-                      checkedAt={loaded.at}
-                      missing={failed}
-                      onBack={closeFullList}
-                      onRetry={state.retry}
-                    />
-                  ) : (
-                    <MyDayDashboard
-                      sources={sources}
-                      now={now}
-                      today={today}
-                      items={items}
-                      renewals={renewals}
-                      helpItems={helpItems}
-                      checked={checked}
-                      checkedAt={loaded.at}
-                      incomplete={failed.length > 0}
-                      page={page}
-                      onShowAll={showAll}
-                      onRetry={state.retry}
-                      onCustomise={page === "today" ? () => setSheet("customise") : undefined}
-                      onRemindMe={openRemindMe}
-                      onOpenReminders={() => setSheet("reminders")}
-                      pendingReminders={pendingReminders}
-                      newJob={state.newJob}
-                    />
-                  )}
+        {ready ? (
+          <div className="grid min-w-0 gap-2.5" data-testid="my-day-ready">
+            {/* "Set up Work": the first thing on Today, for the new work mode only. */}
+            {view === "dashboard" && page === "today" ? (
+              <NewWorkModeOnly>
+                <WorkSetupPromptCard />
+              </NewWorkModeOnly>
+            ) : null}
+            {failed.length > 0 ? (
+              <QuietNote
+                icon={TriangleAlert}
+                warn
+                role="alert"
+                testId="my-day-failed-notice"
+                title={`Couldn't load: ${failed.join(", ")}.`}
+                body={
+                  checked.length > 0
+                    ? "Needs you may be incomplete. Showing the rest."
+                    : "Nothing here can be relied on until it loads."
+                }
+                action={
+                  checked.length > 0 ? (
+                    <button type="button" onClick={state.retry} className={quietLink}>
+                      Try again
+                    </button>
+                  ) : null
+                }
+              />
+            ) : null}
+            {view === "all" ? (
+              <MyDayFullList
+                items={items}
+                today={today}
+                now={now}
+                checked={checked}
+                checkedAt={loaded.at}
+                missing={failed}
+                onBack={closeFullList}
+                onRetry={state.retry}
+              />
+            ) : (
+              <MyDayDashboardView
+                key={authEpoch}
+                allowSample={allowSample}
+                now={now}
+                today={today}
+                items={items}
+                renewals={renewals}
+                helpItems={helpItems}
+                checked={checked}
+                checkedAt={loaded.at}
+                incomplete={failed.length > 0}
+                page={page}
+                onShowAll={showAll}
+                onRetry={state.retry}
+                onCustomise={page === "today" ? () => setSheet("customise") : undefined}
+                onRemindMe={openRemindMe}
+                onOpenReminders={() => setSheet("reminders")}
+                pendingReminders={pendingReminders}
+                newJob={state.newJob}
+              />
+            )}
 
-                  {/* One notice at the top at most; the quieter context is one line of small print here. */}
-                  {demoNote || notYet.length > 0 ? (
-                    <p
-                      className="m-0 max-w-reading px-1 text-xs text-[color:var(--text-muted)]"
-                      data-testid="my-day-small-print"
-                    >
-                      {demoNote ? <span data-testid="my-day-demo-notice">Demo data: invented examples.</span> : null}
-                      {demoNote && notYet.length > 0 ? " " : null}
-                      {notYet.length > 0 ? (
-                        <span data-testid="my-day-unavailable-notice">
-                          {`${listNames(notYet)} ${notYet.length > 1 || rosterUnavailable ? "aren't" : "isn't"} available yet.`}
-                        </span>
-                      ) : null}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null
-            }
-          </MyDayDashboardSourcesScope>
+            {/* One notice at the top at most; the quieter context is one line of small print here. */}
+            {demoNote || notYet.length > 0 ? (
+              <p
+                className="m-0 max-w-reading px-1 text-xs text-[color:var(--text-muted)]"
+                data-testid="my-day-small-print"
+              >
+                {demoNote ? <span data-testid="my-day-demo-notice">Demo data: invented examples.</span> : null}
+                {demoNote && notYet.length > 0 ? " " : null}
+                {notYet.length > 0 ? (
+                  <span data-testid="my-day-unavailable-notice">
+                    {`${listNames(notYet)} ${notYet.length > 1 || rosterUnavailable ? "aren't" : "isn't"} available yet.`}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
