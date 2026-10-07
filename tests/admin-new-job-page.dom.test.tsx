@@ -102,6 +102,13 @@ describe("AdminNewJobPage", () => {
     expect(within(row as HTMLElement).getAllByText(loginOwn.title).length).toBeGreaterThan(0);
   });
 
+  it("leads to Ready for day one and the starter pack from Before", () => {
+    render(<AdminNewJobPage now={NOW} />);
+    const before = document.getElementById("admin-new-job-before") as HTMLElement;
+    expect(within(before).getByTestId("admin-ready-entry")).toHaveAttribute("href", "/admin/new-job/ready");
+    expect(within(before).getByTestId("admin-starter-entry")).toHaveAttribute("href", "/admin/new-job/starter");
+  });
+
   it("shows the shared login row read-only, with no edit control or tick", () => {
     render(<AdminNewJobPage now={NOW} />);
     expect(screen.getByText(/^Shared by another doctor · /)).toBeTruthy();

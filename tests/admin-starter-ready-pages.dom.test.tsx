@@ -179,6 +179,28 @@ describe("ReadyForDayOnePage", () => {
     expect(screen.getByTestId("admin-ready-bar").getAttribute("aria-label")).toMatch(/^2 of 8 recorded/);
     expect(screen.getByTestId("admin-ready-starts").textContent).toContain("Starts Mon 2 Nov 2026");
     expect(screen.getByTestId("admin-ready-item-medical-registration-renewal")).toBeTruthy();
+    // Nine segments in the fixed order on every card, the ones not counted greyed in place.
+    const segments = Array.from(screen.getByTestId("admin-ready-bar").children);
+    expect(segments).toHaveLength(9);
+    expect(segments[7]?.getAttribute("data-state")).toBe("left-out");
+  });
+
+  it("will not copy example records as a status, and says why", () => {
+    Object.assign(entryState, { demoMode: true });
+    entryState.entries = [startRow()];
+    render(<ReadyForDayOnePage now={NOW} />);
+    const copy = screen.getByTestId("admin-ready-copy");
+    expect(copy).toHaveAttribute("aria-disabled", "true");
+    expect(copy).toHaveAccessibleDescription(/example records/);
+    fireEvent.click(copy);
+    expect(copyText).not.toHaveBeenCalled();
+  });
+
+  it("links to sharing with Medical Workforce", () => {
+    entryState.entries = [startRow()];
+    render(<ReadyForDayOnePage now={NOW} />);
+    expect(screen.getByTestId("admin-ready-sharing-link")).toHaveAttribute("href", "/admin/sharing");
+    expect(screen.getByTestId("admin-ready-workforce-note")).not.toHaveTextContent("not built");
   });
 
   it("copies status words only for Medical Workforce", async () => {

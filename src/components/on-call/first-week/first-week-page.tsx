@@ -184,7 +184,7 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
       await copyTextToClipboard(text);
       say("Note copied. Paste it into a message to your department. Nothing was sent.");
     } catch {
-      toast?.push({ tone: "error", title: "Could not copy. Your browser blocked the clipboard." });
+      toast?.push({ tone: "danger", title: "Could not copy. Your browser blocked the clipboard." });
     }
   };
   const toggleLandAlert = () => {

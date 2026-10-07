@@ -30,6 +30,7 @@ import {
   PatientDetailCatch,
   useCopy,
   useOnline,
+  useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
 import {
   ROSTER_LEAVE_STATUS_WORDS,
@@ -489,8 +490,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const online = useOnline();
-  const mountedAt = useMemo(() => new Date(), []);
-  const today = perthCalendarDate(nowProp ?? mountedAt);
+  const today = perthCalendarDate(useJuniorNow(nowProp));
   const fromUrl = leaveTypeById(searchParams?.get("card"));
   const [openId, setOpenId] = useState<LeaveTypeId | null>(fromUrl?.id ?? null);
   const [drafts, setDrafts] = useState<Partial<Record<LeaveTypeId, LeaveMessageFields>>>({});

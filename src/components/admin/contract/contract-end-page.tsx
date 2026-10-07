@@ -25,6 +25,7 @@ import {
   JuniorUndoBar,
   patchEntry,
   slugSuffix,
+  useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
 import {
   ROSTER_LEAVE_KIND_WORDS,
@@ -174,8 +175,7 @@ function ReminderSwitch({
 export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   const today = perthCalendarDate(now);
   const loadState = adminLoadState(state);
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);

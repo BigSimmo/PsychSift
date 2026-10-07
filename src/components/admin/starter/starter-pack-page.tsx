@@ -21,6 +21,7 @@ import {
   slugSuffix,
   useCopy,
   useOnline,
+  useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
 import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
 import { StarterDateSheet } from "@/components/admin/starter/starter-date-sheet";
@@ -265,8 +266,7 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
   const searchParams = useSearchParams();
   const wordParam = searchParams?.get("word") ?? "";
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const today = perthCalendarDate(nowProp ?? mountedAt);
+  const today = perthCalendarDate(useJuniorNow(nowProp));
   const loadState = adminLoadState(state);
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const rows = useMemo(() => selectStarterDates(own), [own]);
