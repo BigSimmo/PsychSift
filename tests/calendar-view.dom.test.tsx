@@ -25,7 +25,7 @@ describe("calendar view", () => {
     const day = screen.getByTestId("calendar-view-day");
     expect(day).toHaveTextContent("Friday 25 September · Today");
     expect(day).toHaveTextContent("Grand round");
-    expect(day).toHaveTextContent("12:30 pm");
+    expect(day).toHaveTextContent("12:30");
     expect(screen.getByRole("button", { name: "Tuesday 15 September, 1 event" })).toBeInTheDocument();
   });
 
