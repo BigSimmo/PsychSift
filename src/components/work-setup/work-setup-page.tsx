@@ -2,15 +2,14 @@
 
 import "@/components/work-setup/work-setup.css";
 
-import { Check, ChevronLeft, Compass, LogIn } from "lucide-react";
+import { Check, Compass, LogIn } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { WorkButton, WorkCard, WorkDock, WorkIconRow } from "@/components/mode-kit/work";
-import { universalHeaderLeadingSlotId } from "@/components/work-frame/work-frame-header";
 import { useSetupExampleData, useSetupTimeZone } from "@/components/work-setup/shared-settings";
+import { TopBarBack } from "@/components/work-setup/top-bar-back";
 import { useWorkSetupProgress } from "@/components/work-setup/use-work-setup-progress";
 import { WORK_SETUP_STEP_COPY, workSetupStepHref } from "@/components/work-setup/work-setup-copy";
 import { WORK_SETUP_STEP_BODY, type WorkSetupStepContext } from "@/components/work-setup/work-setup-steps";
@@ -82,31 +81,6 @@ function StepProgress({ progress, step }: { readonly progress: WorkSetupProgress
         return <li key={item} className="work-setup__segment" data-state={state} />;
       })}
     </ol>
-  );
-}
-
-/**
- * The step back, drawn in the top bar's round left button in place of the
- * menu, the same slot a page reached from More uses for its back button.
- */
-function SetupHeaderBack({ label, onBack }: { readonly label: string; readonly onBack: () => void }) {
-  const host = useSyncExternalStore(
-    subscribeNothing,
-    () => document.getElementById(universalHeaderLeadingSlotId),
-    () => null,
-  );
-  if (!host) return null;
-  return createPortal(
-    <button
-      type="button"
-      className="universal-header-icon-control work-frame-back"
-      aria-label={label}
-      onClick={onBack}
-      data-testid="work-setup-back"
-    >
-      <ChevronLeft aria-hidden="true" className="size-icon-lg" strokeWidth={2.25} />
-    </button>,
-    host,
   );
 }
 
@@ -259,7 +233,7 @@ export function WorkSetupPage() {
 
   return (
     <div className="work-setup" data-mode-identity="my-day" data-testid="work-setup" data-step={step}>
-      <SetupHeaderBack label={backLabel} onBack={onBack} />
+      <TopBarBack label={backLabel} onBack={onBack} testId="work-setup-back" />
       <div className="work-setup__top">
         <p className="work-setup__where" data-testid="work-setup-position">
           {framed ? `Step ${position} of ${counted.length}` : "Set up Work"}

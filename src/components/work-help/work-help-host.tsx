@@ -33,7 +33,12 @@ export function WorkHelpHost() {
     idle(() => void loadSheet().catch(() => undefined));
   }, []);
   if (!area) return null;
-  // Open shifts lives inside Roster's frame but has its own help.
-  const topic = pathname?.startsWith("/open-shifts") ? workHelpTopic("open-shifts") : null;
+  // Open shifts lives inside Roster's frame and has its own help.
+  // Assessments sits inside Teaching's frame but has its own help too.
+  const topic = pathname?.startsWith("/open-shifts")
+    ? workHelpTopic("open-shifts")
+    : pathname?.startsWith("/teaching/assessments")
+      ? workHelpTopic("assess")
+      : null;
   return <WorkHelpSheet topic={topic ?? workHelpTopicForArea(area)} open onClose={closeWorkHelp} />;
 }
