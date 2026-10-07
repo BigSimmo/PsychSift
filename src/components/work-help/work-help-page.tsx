@@ -28,6 +28,7 @@ import { questionDomId, WorkHelpTopicPage } from "@/components/work-help/work-he
 import { setupZoneLabel, useSetupExampleData, useSetupTimeZone } from "@/components/work-setup/shared-settings";
 import { useWorkSetupProgress } from "@/components/work-setup/use-work-setup-progress";
 import { WORK_SETUP_HREF, workSetupStepHref } from "@/components/work-setup/work-setup-copy";
+import { TopBarBack } from "@/components/work-setup/top-bar-back";
 import { ExampleSwitch } from "@/components/work-setup/work-setup-steps";
 import {
   helpSearchTerms,
@@ -365,6 +366,11 @@ export function WorkHelpPage() {
 
   return (
     <div className="work-help" data-mode-identity="my-day" data-testid="work-help">
+      {bandShown ? null : topic ? (
+        <TopBarBack label="All help" href={WORK_HELP_HREF} testId="work-help-top-back" />
+      ) : (
+        <TopBarBack label="Back to My Day" href="/my-day" testId="work-help-top-back" />
+      )}
       {bandShown ? (
         <h1 className="sr-only">{topic ? `${topic.title} help` : "Help"}</h1>
       ) : (
