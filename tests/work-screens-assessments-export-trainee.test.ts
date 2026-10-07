@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { EXAMPLE_ASSESSMENTS_SUPERVISION } from "@/lib/example-data/datasets/assessments-supervision";
 import { initialAssessmentsState } from "@/lib/teaching/assessments/model";
+import { SAMPLE_SUPERVISOR } from "@/lib/teaching/assessments/sample";
 import {
   DEFAULT_ASSESSMENTS_EXPORT,
   EXAMPLE_NOT_SAVED,
@@ -28,6 +29,8 @@ import {
 
 const s = initialAssessmentsState();
 const supervision = EXAMPLE_ASSESSMENTS_SUPERVISION;
+/** Names come from the shared example list, so read them rather than pinning them. */
+const doctorName = (id: string) => exportDoctors(s).find((d) => d.id === id)?.name ?? "";
 
 describe("assessments export", () => {
   it("marks every exported row as an example and leaves them all out of the files", () => {
@@ -38,7 +41,7 @@ describe("assessments export", () => {
     expect(csv).toContain("None recorded for this choice");
     expect(csv).toContain("Feedback text is never exported here.");
     for (const row of rows) expect(csv).not.toContain(row.by);
-    expect(statusCsv(s, DEFAULT_ASSESSMENTS_EXPORT, "7 Oct 2026")).not.toContain("Dr Ben Ortiz");
+    expect(statusCsv(s, DEFAULT_ASSESSMENTS_EXPORT, "7 Oct 2026")).not.toContain(doctorName("ben"));
     expect(exportPreview(s, DEFAULT_ASSESSMENTS_EXPORT)).toMatchObject({ saveable: 0 });
     expect(exportBlocker(s, DEFAULT_ASSESSMENTS_EXPORT)).toBe(EXAMPLE_NOT_SAVED);
   });
@@ -46,7 +49,11 @@ describe("assessments export", () => {
   it("holds your own doctors only, never another consultant's", () => {
     expect(exportDoctors(s).map((d) => d.id)).toEqual(["sam", "ben", "mia"]);
     const rows = statusExportRows(s, DEFAULT_ASSESSMENTS_EXPORT);
-    expect(rows.map((r) => r.supervisor)).toEqual(["Dr Priya Nair", "Dr Priya Nair", "Dr Priya Nair"]);
+    expect(rows.map((r) => r.supervisor)).toEqual([
+      SAMPLE_SUPERVISOR.name,
+      SAMPLE_SUPERVISOR.name,
+      SAMPLE_SUPERVISOR.name,
+    ]);
     expect(statusExportRows(s, { ...DEFAULT_ASSESSMENTS_EXPORT, doctor: "ravi" })).toEqual([]);
   });
 
