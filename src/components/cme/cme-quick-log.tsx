@@ -270,6 +270,7 @@ export function CmeQuickLog({
         open={open}
         onClose={() => setOpen(false)}
         title="Log an activity"
+        description={`Counts toward ${set.year}`}
         placement="responsive-right"
         mobilePlacement="bottom"
         footer={<div ref={setActionContainer} data-testid="cme-quick-log-actions" />}

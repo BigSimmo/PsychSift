@@ -582,32 +582,39 @@ export function CmeEntryForm({
     void performSave(proposed);
   }
 
+  // In a sheet footer the mockup names the hours ("Save 1 h") once they are
+  // chosen. The page form keeps its own label.
+  const saveLabel = actionContainer && statedHours > 0 ? `Save ${statedHours}\u00a0h` : submitLabel;
+  const saveButton = (
+    <Button
+      type="submit"
+      form={formId}
+      variant="primary"
+      // aria-disabled rather than disabled: Save keeps its Tab stop, so the
+      // reason under it can be reached by keyboard (docs/wiring-conventions.md).
+      // handleSubmit refuses to save while !canSave.
+      aria-disabled={!canSave || undefined}
+      busy={saving}
+      busyLabel="Saving…"
+      block
+      aria-describedby={saveBlockedReason ? "cme-entry-save-blocked" : undefined}
+    >
+      {saveLabel}
+    </Button>
+  );
+  const saveReason = saveBlockedReason ? (
+    <p
+      id="cme-entry-save-blocked"
+      data-testid="cme-entry-save-blocked"
+      className={cn("mt-2 text-center text-xs", textMuted)}
+    >
+      {saveBlockedReason}
+    </p>
+  ) : null;
   const saveControl = (
     <>
-      <Button
-        type="submit"
-        form={formId}
-        variant="primary"
-        // aria-disabled rather than disabled: Save keeps its Tab stop, so the
-        // reason under it can be reached by keyboard (docs/wiring-conventions.md).
-        // handleSubmit refuses to save while !canSave.
-        aria-disabled={!canSave || undefined}
-        busy={saving}
-        busyLabel="Saving…"
-        block
-        aria-describedby={saveBlockedReason ? "cme-entry-save-blocked" : undefined}
-      >
-        {submitLabel}
-      </Button>
-      {saveBlockedReason ? (
-        <p
-          id="cme-entry-save-blocked"
-          data-testid="cme-entry-save-blocked"
-          className={cn("mt-2 text-center text-xs", textMuted)}
-        >
-          {saveBlockedReason}
-        </p>
-      ) : null}
+      {saveButton}
+      {saveReason}
     </>
   );
 
@@ -916,22 +923,27 @@ export function CmeEntryForm({
 
       {actionContainer ? (
         createPortal(
-          <div className="grid gap-2">
-            {saveControl}
-            {onSaveDraft ? (
-              <Button
-                type="button"
-                variant="secondary"
-                busy={savingDraft}
-                busyLabel="Saving draft…"
-                disabled={saving || (!title.trim() && !reflection.trim())}
-                onClick={() => void handleSaveDraft()}
-                testId="cme-entry-save-draft"
-                block
-              >
-                Keep as draft
-              </Button>
-            ) : null}
+          <div>
+            <div className="flex gap-2">
+              {onSaveDraft ? (
+                <div className="min-w-0 flex-1">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    busy={savingDraft}
+                    busyLabel="Saving draft…"
+                    disabled={saving || (!title.trim() && !reflection.trim())}
+                    onClick={() => void handleSaveDraft()}
+                    testId="cme-entry-save-draft"
+                    block
+                  >
+                    Save as draft
+                  </Button>
+                </div>
+              ) : null}
+              <div className="min-w-0 flex-[1.4]">{saveButton}</div>
+            </div>
+            {saveReason}
           </div>,
           actionContainer,
         )

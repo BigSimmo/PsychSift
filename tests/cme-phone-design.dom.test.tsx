@@ -77,6 +77,10 @@ const ENTRIES: readonly CmeEntry[] = [
   }),
 ];
 
+// work-mode redesign, owner request 6 Oct 2026: once hours are chosen the
+// sheet's Save names them ("Save 1 h"); before that it reads "Save entry".
+const SAVE_NAMED = /^save (entry|[\d.]+\s+h)$/i;
+
 describe("the dashboard's progress picture", () => {
   it("keeps the coloured category bar off Today", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={new Date("2026-09-01T02:00:00Z")} />);
@@ -180,7 +184,8 @@ describe("quick log", () => {
     await user.click(screen.getByTestId("cme-quick-log-button"));
     const sheet = await screen.findByTestId("cme-quick-log-sheet");
     await user.type(within(sheet).getByLabelText(/what was it/i), "Unfinished seminar");
-    await user.click(within(sheet).getByRole("button", { name: "Keep as draft" }));
+    // work-mode redesign, owner request 6 Oct 2026: the sheet footer reads "Save as draft".
+    await user.click(within(sheet).getByRole("button", { name: "Save as draft" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(fetchMock).toHaveBeenCalledWith("/api/cme/drafts", expect.objectContaining({ method: "POST" }));
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).payload.title).toBe("Unfinished seminar");
@@ -199,7 +204,7 @@ describe("quick log", () => {
     await user.type(within(sheet).getByLabelText(/what was it/i), "Grand round");
     await user.click(within(sheet).getByRole("button", { name: "1" }));
     await user.click(within(sheet).getByRole("button", { name: "Educational" }));
-    await user.click(within(sheet).getByRole("button", { name: /save entry/i }));
+    await user.click(within(sheet).getByRole("button", { name: SAVE_NAMED }));
 
     await waitFor(() => expect(screen.getByTestId("cme-quick-log-saved")).toHaveTextContent("Saved to your log."));
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -227,7 +232,7 @@ describe("quick log", () => {
     const sheet = await screen.findByTestId("cme-quick-log-sheet");
     await user.click(within(sheet).getByRole("button", { name: /synthetic seminar/i }));
     expect(within(sheet).getByLabelText(/what was it/i)).toHaveValue("Synthetic seminar");
-    expect(within(sheet).getByRole("button", { name: /save entry/i })).not.toHaveAttribute("aria-disabled", "true");
+    expect(within(sheet).getByRole("button", { name: SAVE_NAMED })).not.toHaveAttribute("aria-disabled", "true");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -242,7 +247,7 @@ describe("quick log", () => {
     await user.type(within(sheet).getByLabelText(/what was it/i), "Grand round");
     await user.click(within(sheet).getByRole("button", { name: "1" }));
     await user.click(within(sheet).getByRole("button", { name: "Educational" }));
-    await user.click(within(sheet).getByRole("button", { name: /save entry/i }));
+    await user.click(within(sheet).getByRole("button", { name: SAVE_NAMED }));
     expect(await within(sheet).findByText("The record could not be saved yet.")).toBeInTheDocument();
     expect(within(sheet).getByLabelText(/what was it/i)).toHaveValue("Grand round");
     expect(navigation.refresh).not.toHaveBeenCalled();
