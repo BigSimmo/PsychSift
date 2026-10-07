@@ -117,6 +117,14 @@ export const CPD_HOME_SEND_STORAGE_KEY = "psychsift:cpd:cpd-home-v1";
  */
 export const CPD_APPLICATIONS_STORAGE_KEY = "psychsift:cpd:applications-v1";
 /**
+ * localStorage — the work-mode example data switch: the user's choice (on, off or none yet) and work-area
+ * ids only, never record content. Example records themselves are never stored. Cleared at every account
+ * transition with its cookie, so the next person starts on their own default.
+ */
+export const EXAMPLE_DATA_STORAGE_KEY = "psychsift:work:example-data-v1";
+/** Cookie — mirrors the switch for server-rendered pages. A display preference, never read by any API. */
+export const EXAMPLE_DATA_COOKIE = "psychsift_example_data";
+/**
  * localStorage — On Call's "Your first week" pack: per hospital (`service:site` ids), which of the
  * five fixed sections the doctor marked read, and when. Section ids and times only, never a title,
  * a name or a number. Cleared at sign-out, session expiry and account switch.
@@ -129,7 +137,8 @@ export const ON_CALL_FIRST_WEEK_READ_STORAGE_KEY = "psychsift:on-call:first-week
  * only those fields go at a transition.
  */
 export const APP_PREFERENCES_STORAGE_KEY = "clinical-kb-preferences";
-export const ACCOUNT_SCOPED_PREFERENCE_KEYS = ["workStage", "ranzcpStage"] as const;
+/** `timeZone` is the work time zone: the next person on this browser starts on the Perth default, not this one's zone. */
+export const ACCOUNT_SCOPED_PREFERENCE_KEYS = ["workStage", "ranzcpStage", "timeZone"] as const;
 
 function stripAccountScopedPreferences(): void {
   try {
@@ -197,6 +206,12 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, CPD_HOME_SEND_STORAGE_KEY);
   removeQuietly(() => window.localStorage, CPD_APPLICATIONS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, ON_CALL_FIRST_WEEK_READ_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, EXAMPLE_DATA_STORAGE_KEY);
+  try {
+    document.cookie = `${EXAMPLE_DATA_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  } catch {
+    // No document (a worker) or cookies blocked: nothing was set.
+  }
   stripAccountScopedPreferences();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
