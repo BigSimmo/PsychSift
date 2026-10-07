@@ -17,8 +17,9 @@ import {
 } from "@/components/mode-kit/work";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { cn, textMuted } from "@/components/ui-primitives";
-import { AssessmentsSampleLine } from "@/components/work-screens/assessments/assessments-sample-gate";
 import { downloadTextFile } from "@/lib/admin/download-file";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { initialAssessmentsState, todayLabel } from "@/lib/teaching/assessments/model";
 import {
   DEFAULT_ASSESSMENTS_EXPORT,
@@ -97,6 +98,7 @@ export function AssessmentsExportPage() {
   const files = exportFiles(options);
   const blocker = exportBlocker(s, options);
   const preview = exportPreview(s, options);
+  const exampleActive = useExampleData("assess").active;
   useModeBandHeading({ eyebrow: "Your supervision records", title: "Export" });
   const set = (patch: Partial<AssessmentsExportOptions>) => {
     setSaved(null);
@@ -104,6 +106,7 @@ export function AssessmentsExportPage() {
   };
 
   function save() {
+    if (!guardExampleAction(exampleActive, "export")) return;
     const date = todayLabel(s);
     files.forEach((file, index) => {
       const text = file.id === "epas" ? epaCsv(s, options, date) : statusCsv(s, options, date);
@@ -122,7 +125,6 @@ export function AssessmentsExportPage() {
     <main className="min-w-0" data-testid="assessments-export-page">
       <WorkBody>
         <h1 className="sr-only">Export your supervision records</h1>
-        <AssessmentsSampleLine />
 
         <WorkSectionLabel>Include</WorkSectionLabel>
         <WorkCard as="ul" testId="assessments-export-include">

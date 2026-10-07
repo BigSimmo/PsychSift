@@ -6,7 +6,7 @@
  */
 import { activeCmeYearEntries } from "@/lib/cme/export";
 import type { CmeEntry } from "@/lib/cme/types";
-import { withoutExampleRecords } from "@/lib/work-screens/cpd/sample";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
 import { checkPatientDetail, type PatientDetailProblem } from "@/lib/work-text/patient-detail-check";
 
 export { checkPatientDetail, looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";

@@ -1,4 +1,4 @@
-import { withoutExampleRecords } from "@/lib/work-screens/admin/sample";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
 import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { complianceExpiresOn, isComplianceEntry } from "@/lib/on-call/compliance";
 import { isOnCallHttpUrl, type OnCallEntry } from "@/lib/on-call/entry-model";

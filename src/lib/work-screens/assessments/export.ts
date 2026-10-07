@@ -1,4 +1,5 @@
 import { cmeCsvCell } from "@/lib/cme/export";
+import { exampleId, withoutExampleRecords } from "@/lib/example-data/guards";
 import { epa as epaInfo, supervisionLevelName } from "@/lib/teaching/assessments/content";
 import { epaRecords, stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
 import { overviewDoctors, type OverviewDoctor } from "@/lib/teaching/assessments/overview";
@@ -9,7 +10,6 @@ import {
   SAMPLE_SUPERVISOR,
   SAMPLE_TERMS,
 } from "@/lib/teaching/assessments/sample";
-import { exampleId, withoutExampleRecords } from "@/lib/work-screens/assessments/sample";
 
 /*
  * Assessments › Export (`/teaching/assessments/export`, mock-ups assess_export and assess_pdf): the

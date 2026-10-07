@@ -14,7 +14,7 @@ import {
   parseEvidenceStatus,
 } from "@/lib/work-screens/cpd/evidence";
 import { cpdExportPatientFlags } from "@/lib/work-screens/cpd/patient-check";
-import { withoutExampleRecords } from "@/lib/work-screens/cpd/sample";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
 import {
   cpdCsvFileName,
   cpdYearCsv,

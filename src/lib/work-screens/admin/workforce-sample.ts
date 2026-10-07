@@ -2,8 +2,9 @@
  * Admin · Workforce, the health service's side (mockup `admin_hs*`): what
  * Medical Workforce staff would see once doctors share with them. There is no
  * store for another person's records, no workforce role and no sharing link
- * yet, so every row is INVENTED SAMPLE DATA, kept in sample.ts with "example:"
- * ids, read from nowhere and kept nowhere. The page says so on every view.
+ * yet, so every row is example data from the shared registry
+ * (`src/lib/example-data/datasets/admin-workforce.ts`, "example:" ids), read
+ * from nowhere and kept nowhere, behind the example-only gate.
  *
  * Going live needs Josh's approval for: a health-service account role, tables
  * for doctors' shares and requests (a migration), and the sharing switch on
@@ -23,7 +24,6 @@ export interface WorkforceDoctorItem {
 
 export interface WorkforceDoctor {
   readonly id: string;
-  readonly initials: string;
   readonly name: string;
   readonly role: "Consultant" | "Registrar" | "Resident";
   readonly team: string;

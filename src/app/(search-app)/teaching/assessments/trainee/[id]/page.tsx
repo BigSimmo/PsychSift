@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 
 import { AssessmentsTraineeScreen } from "@/components/work-screens/assessments/assessments-screens";
-import { teachingDemoMode } from "@/lib/teaching/sample";
+import { isDemoMode } from "@/lib/env";
+import { exampleDataOn } from "@/lib/example-data/server";
 
 export const metadata: Metadata = {
   title: "Doctor | Assessments | PsychSift",
-  description: "Review a doctor's requests, confirm supervision and ask for a correction. Made-up example records.",
+  description: "Review a doctor's requests, confirm supervision and ask for a correction. Example records only.",
   robots: { index: false, follow: false },
 };
 
@@ -20,5 +21,7 @@ function safeDecode(id: string): string {
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <AssessmentsTraineeScreen demoMode={await teachingDemoMode()} doctorId={safeDecode(id)} />;
+  return (
+    <AssessmentsTraineeScreen demoMode={isDemoMode() || (await exampleDataOn("assess"))} doctorId={safeDecode(id)} />
+  );
 }

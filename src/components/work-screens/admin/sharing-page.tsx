@@ -49,7 +49,7 @@ import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-import { sharingSample } from "@/lib/work-screens/admin/sample";
+import { guardExampleAction, type ExampleBlockedAction } from "@/lib/example-data/guards";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   emptyPaperwork,
@@ -80,7 +80,7 @@ import {
  */
 export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
   usePaperworkHeading("Sharing", "Not live yet · you send it yourself");
-  const page = usePaperworkPage(sharingSample);
+  const page = usePaperworkPage("admin.sharing");
   const { store, entriesState, own, online } = page;
   const say = usePaperworkSay();
   const now = useMemo(() => pinned ?? new Date(), [pinned]);
@@ -185,9 +185,10 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
    * Nothing leaves the page from the signed-out or demo sample, and nothing
    * with a patient detail in the doctor's own words (an issuer's name).
    */
-  function mayLeave(pack: SharePack): boolean {
+  function mayLeave(pack: SharePack, kind: ExampleBlockedAction): boolean {
     if (store.sample) {
-      say(EXAMPLE_NOT_SENT, undefined, "warning");
+      // With the example data switch on, its banner explains. Otherwise the page does.
+      if (guardExampleAction(page.examplesShown, kind)) say(EXAMPLE_NOT_SENT, undefined, "warning");
       return false;
     }
     const problem = firstAdminPatientProblem(sharePackOwnWords(views, pack.audience), { allowCapitals: true });
@@ -203,7 +204,7 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
   }
 
   function download(pack: SharePack) {
-    if (!mayLeave(pack)) return;
+    if (!mayLeave(pack, "export")) return;
     downloadTextFile(pack.text, sharePackFileName(pack, now), "text/plain;charset=utf-8");
     logShare(pack, "download");
     say(`File saved. Attach it to your message to ${pack.to}.`);
@@ -211,7 +212,7 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
 
   function copy(pack: SharePack) {
     return once(async () => {
-      if (!mayLeave(pack)) return;
+      if (!mayLeave(pack, "copy")) return;
       try {
         await copyTextToClipboard(pack.text);
         logShare(pack, "copy");
@@ -254,7 +255,7 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
           <a
             href={shareMailtoHref(pack, email)}
             onClick={(event) => {
-              if (mayLeave(pack)) logShare(pack, "email");
+              if (mayLeave(pack, "send")) logShare(pack, "email");
               else event.preventDefault();
             }}
             className="work-button"
@@ -279,7 +280,9 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Sharing
       </PageTitleUnderBand>
-      {page.signedOut ? <PaperworkSampleNotice what="sharing choices" testId="admin-sharing-signed-out" /> : null}
+      {page.signedOut ? (
+        <PaperworkSampleNotice what="sharing choices" testId="admin-sharing-signed-out" examples={page.examplesShown} />
+      ) : null}
       {page.demo ? <PaperworkDemoNotice testId="admin-sharing-demo" /> : null}
 
       <WorkCard padded testId="admin-sharing-not-live">

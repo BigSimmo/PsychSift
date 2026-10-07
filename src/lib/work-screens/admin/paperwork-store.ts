@@ -9,7 +9,7 @@ import {
   parsePaperwork,
   type AdminPaperwork,
 } from "@/lib/work-screens/admin/paperwork-model";
-import { withoutExampleRecords } from "@/lib/work-screens/admin/sample";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
 
 /**
  * Where Admin's own-paperwork record lives: this device, for this account.
@@ -128,10 +128,14 @@ export interface AdminPaperworkStore {
 
 const serverSnapshot = () => null;
 
-export function useAdminPaperwork(sample: AdminPaperwork | null): AdminPaperworkStore {
-  const [sampleState, setSampleState] = useState<AdminPaperwork | null>(sample);
+export function useAdminPaperwork(sample: AdminPaperwork | null, holding = false): AdminPaperworkStore {
+  // The page's own copy of the in-memory record, tied to the record it started from, so a new one (the
+  // example data switch turned on or off) starts again rather than keeping the old copy's changes.
+  const [sampleState, setSampleState] = useState<{ base: AdminPaperwork; value: AdminPaperwork } | null>(
+    sample ? { base: sample, value: sample } : null,
+  );
   // The latest sample copy, so two changes in one tap (a change and its Undo) both land.
-  const sampleRef = useRef<AdminPaperwork | null>(sample);
+  const sampleRef = useRef<{ base: AdminPaperwork; value: AdminPaperwork } | null>(sampleState);
   const hydrated = useSyncExternalStore(
     subscribe,
     () => true,
@@ -143,11 +147,14 @@ export function useAdminPaperwork(sample: AdminPaperwork | null): AdminPaperwork
 
   const update = useCallback(
     (change: (current: AdminPaperwork) => AdminPaperwork): boolean => {
+      // Waiting for the in-memory record: nothing to change yet, and nothing may reach the device.
+      if (holding) return false;
       if (sample) {
-        const next = change(sampleRef.current ?? sample);
+        const current = sampleRef.current?.base === sample ? sampleRef.current.value : sample;
+        const next = change(current);
         if (!isValidPaperwork(next)) return false;
-        sampleRef.current = next;
-        setSampleState(next);
+        sampleRef.current = { base: sample, value: next };
+        setSampleState(sampleRef.current);
         return true;
       }
       const next = withoutStoredExamples(change(parsePaperwork(read())));
@@ -155,21 +162,24 @@ export function useAdminPaperwork(sample: AdminPaperwork | null): AdminPaperwork
       write(JSON.stringify(next));
       return true;
     },
-    [sample],
+    [sample, holding],
   );
 
   const forget = useCallback(() => {
+    if (holding) return;
     if (sample) {
-      sampleRef.current = sample;
-      setSampleState(sample);
+      sampleRef.current = { base: sample, value: sample };
+      setSampleState(sampleRef.current);
       return;
     }
     removeStored();
     notify();
-  }, [sample]);
+  }, [sample, holding]);
 
+  if (holding) return { state: null, sample: true, unsaved: false, update, forget };
   if (sample) {
-    return { state: sampleState ?? sample, sample: true, unsaved: false, update, forget };
+    const value = sampleState?.base === sample ? sampleState.value : sample;
+    return { state: value, sample: true, unsaved: false, update, forget };
   }
   return { state: hydrated ? stored : null, sample: false, unsaved, update, forget };
 }

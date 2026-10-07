@@ -1,47 +1,85 @@
 /** @vitest-environment jsdom */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ToastProvider } from "@/components/ui/toast";
 import { AssessmentsSampleGate } from "@/components/work-screens/assessments/assessments-sample-gate";
+import { AssessmentsTraineeScreen } from "@/components/work-screens/assessments/assessments-screens";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 
 const auth = vi.hoisted(() => ({ status: "loading", authEpoch: 0 }));
 const redirect = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
-vi.mock("next/navigation", () => ({ redirect }));
+vi.mock("next/navigation", () => ({ redirect, useRouter: () => ({ refresh: vi.fn() }) }));
 
 function renderGate(demoMode = false) {
-  return render(<AssessmentsSampleGate demoMode={demoMode} render={() => <p data-testid="sample-page">Sample</p>} />);
+  return render(
+    <AssessmentsSampleGate
+      demoMode={demoMode}
+      what="Assessments Export"
+      render={() => <p data-testid="sample-page">Sample</p>}
+    />,
+  );
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
+  resetExampleDataForTests();
   auth.status = "loading";
   redirect.mockClear();
 });
 
-describe("Assessments made-up records gate", () => {
-  it("holds the page's space while the sign-in status is unknown, instead of flashing the signed-in notice", () => {
+describe("Assessments example-only gate", () => {
+  it("holds the page's space while the sign-in status is unknown, instead of flashing the not-connected notice", () => {
     renderGate();
     expect(screen.getByTestId("work-screens-assessments-gate-loading")).toBeInTheDocument();
     expect(screen.queryByTestId("work-screens-assessments-not-kept")).toBeNull();
   });
 
-  it("shows made-up records to a signed-out visitor, and offers them to a signed-in doctor", () => {
+  it("shows example records to a signed-out visitor, and the shared not-connected state otherwise", () => {
     auth.status = "signed_out";
     const { unmount } = renderGate();
     expect(screen.getByTestId("sample-page")).toBeInTheDocument();
     unmount();
     auth.status = "authenticated";
     renderGate();
-    expect(screen.getByTestId("work-screens-assessments-not-kept")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("work-screens-assessments-try"));
+    expect(screen.getByTestId("work-screens-assessments-not-kept")).toHaveTextContent(
+      "Assessments Export is not connected yet",
+    );
+    expect(screen.queryByTestId("sample-page")).toBeNull();
+    // The shared gate offers a look with example data, which shows the page at once.
+    act(() => screen.getByTestId("example-only-gate-look").click());
     expect(screen.getByTestId("sample-page")).toBeInTheDocument();
+  });
+
+  it("follows the one example data switch: on shows the records signed in, off hides them signed out", () => {
+    auth.status = "authenticated";
+    act(() => setExampleDataOn(true));
+    const { unmount } = renderGate();
+    expect(screen.getByTestId("sample-page")).toBeInTheDocument();
+    unmount();
+    auth.status = "signed_out";
+    act(() => setExampleDataOn(false));
+    renderGate();
+    expect(screen.getByTestId("work-screens-assessments-not-kept")).toBeInTheDocument();
   });
 
   it("goes straight to the records in the demo, whatever the sign-in status", () => {
     renderGate(true);
     expect(screen.getByTestId("sample-page")).toBeInTheDocument();
+  });
+
+  it("reads the trainee view's example supervision from the shared registry, holding the space meanwhile", async () => {
+    auth.status = "signed_out";
+    render(
+      <ToastProvider>
+        <AssessmentsTraineeScreen demoMode={false} doctorId="sam" />
+      </ToastProvider>,
+    );
+    expect(screen.getByTestId("assessments-trainee-loading")).toBeInTheDocument();
+    expect(await screen.findByTestId("assessments-trainee-confirm-example:sam-s3")).toBeInTheDocument();
   });
 });
 

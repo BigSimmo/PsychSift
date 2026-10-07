@@ -19,7 +19,7 @@ export const ADMIN_PAPERWORK_VERSION = 1 as const;
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
 const shortText = (max: number) => z.string().trim().max(max);
-/** Own records use plain ids. Sample records (sample.ts) start "example:" and are never stored. */
+/** Own records use plain ids. Example records (the registry's admin datasets) start "example:" and are never stored. */
 const id = z.string().regex(/^(?:example:)?[a-z0-9-]{1,48}$/);
 
 /* -------------------------------------------------------------- requests */

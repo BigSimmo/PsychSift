@@ -13,8 +13,10 @@ import { cn, fieldControlPlain, fieldLabel } from "@/components/ui-primitives";
 import { adminLoadState, selectAdminOwnEntries, type AdminLoadState } from "@/lib/admin/own-entries";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries, type OnCallEntriesState } from "@/lib/on-call/entry-store";
+import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
+import { markRealRecordAdded, reportAreaData, useExampleData } from "@/lib/example-data/store";
 import { useOnlineStatus } from "@/lib/use-online-status";
-import type { AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
+import { emptyPaperwork, type AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
 import { adminPatientProblem, type AdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import type { PatientDetailCheckOptions } from "@/lib/work-text/patient-detail-check";
 import {
@@ -34,33 +36,94 @@ export interface PaperworkPage {
   readonly entries: OnCallEntriesState;
   readonly own: readonly OnCallEntry[];
   readonly entriesState: AdminLoadState;
-  /** Signed out (or session ended): the page shows its sample and keeps nothing. */
+  /** Signed out (or session ended): the page keeps nothing, and shows example records if they are on. */
   readonly signedOut: boolean;
   /** The local demo build: example records, nothing saved. */
   readonly demo: boolean;
+  /**
+   * True while Admin's example data switch is on for this page's records (signed out, or the demo
+   * build). Exports, copies and sends then go through `guardExampleAction`, which opens the example
+   * data banner's "turn it off" sheet.
+   */
+  readonly examplesShown: boolean;
   readonly online: boolean;
   readonly store: AdminPaperworkStore;
 }
 
+/** The registry datasets that fill Admin's own-paperwork pages with example records. */
+export type AdminPaperworkDatasetKey =
+  "admin.requests" | "admin.sharing" | "admin.documents" | "admin.pay" | "admin.tax";
+
+/** Any record at all, so the page can tell the example data switch that Admin holds real data. */
+function holdsRecords(record: AdminPaperwork): boolean {
+  return (
+    record.requests.length > 0 ||
+    record.documents.length > 0 ||
+    record.payslips.length > 0 ||
+    record.sharing.log.length > 0 ||
+    Object.values(record.tax).some((year) => year.expenses.length > 0)
+  );
+}
+
 /**
  * The one wiring every own-paperwork page shares: the entries read, the
- * signed-out and demo samples, the online hint, and the device record. A
+ * example records, the online hint, and the device record. Signed in, the
+ * page always shows the doctor's own device record. Signed out (or in the
+ * demo build) it keeps everything in page memory: the registry's example
+ * records while Admin's example data is on, else an empty record. A
  * signed-out session removes the device record, so a shared computer never
  * shows the last doctor's paperwork.
  */
-export function usePaperworkPage(sample: () => AdminPaperwork): PaperworkPage {
+export function usePaperworkPage(dataset: AdminPaperworkDatasetKey): PaperworkPage {
   const entries = useOnCallEntries();
   const signedOutSample = useSignedOutSample();
   const signedOut = signedOutSample || entries.signedOut;
   const demo = entries.demoMode;
-  const sampleRecord = useMemo(() => (signedOut || demo ? sample() : null), [signedOut, demo, sample]);
-  const store = useAdminPaperwork(sampleRecord);
+  const exampleActive = useExampleData("admin").active;
+  const inMemory = signedOut || demo;
+  const wantsExamples = demo || (signedOut && exampleActive);
+  const examples = useRegistryDataset(dataset, wantsExamples);
+  const empty = useMemo(() => emptyPaperwork(), []);
+  // Examples that did not load (a file not downloaded offline) fall back to an empty page memory.
+  const memoryRecord = !inMemory
+    ? null
+    : !wantsExamples || examples.status === "error"
+      ? empty
+      : examples.status === "ready"
+        ? examples.data
+        : null;
+  // Keyed on the record, so the switch turning on or off starts the page's memory again.
+  const store = useAdminPaperwork(memoryRecord, inMemory && memoryRecord === null);
   const online = useOnlineStatus();
   const own = useMemo(() => selectAdminOwnEntries(entries), [entries]);
   useEffect(() => {
     if (signedOut) forgetAdminPaperworkOnDevice();
   }, [signedOut]);
-  return { entries, own, entriesState: adminLoadState(entries), signedOut, demo, online, store };
+  const realRecords = !store.sample && store.state !== null && holdsRecords(store.state);
+  useEffect(() => {
+    // Only "has data" is reported: an empty paperwork record says nothing about Admin's renewals.
+    if (realRecords) reportAreaData("admin", "has-data");
+  }, [realRecords]);
+  const realUpdate = store.update;
+  const update = useCallback(
+    (change: (current: AdminPaperwork) => AdminPaperwork): boolean => {
+      const ok = realUpdate(change);
+      if (ok && !store.sample) markRealRecordAdded("admin");
+      return ok;
+    },
+    [realUpdate, store.sample],
+  );
+  const wrapped = useMemo(() => ({ ...store, update }), [store, update]);
+  return {
+    entries,
+    own,
+    entriesState: adminLoadState(entries),
+    signedOut,
+    demo,
+    examplesShown: wantsExamples && exampleActive,
+    online,
+    store: wrapped,
+  };
 }
 
 /** Sets the band's title and eyebrow for a page the work frame does not list yet. */
@@ -83,12 +146,26 @@ export function usePaperworkSay() {
 
 /* ------------------------------------------------------------ notices */
 
-/** The signed-out box above a page's sample. */
-export function PaperworkSampleNotice({ what, testId }: { readonly what: string; readonly testId: string }) {
+/**
+ * The signed-out box above a page. The example data banner labels example records, so this says only
+ * what is kept and where.
+ */
+export function PaperworkSampleNotice({
+  what,
+  testId,
+  examples,
+}: {
+  readonly what: string;
+  readonly testId: string;
+  /** Whether example records show below. */
+  readonly examples: boolean;
+}) {
   return (
     <SignedOutSampleNotice title={`Sign in to keep your ${what}`} testId={testId}>
-      Below is a sample made of invented examples. You can try every control and nothing is saved. Signed in, your own
-      records are kept on this phone for your account only.
+      {examples
+        ? "You can try every control on the examples below and nothing is saved."
+        : "Nothing is kept while you are signed out."}{" "}
+      Signed in, your own records are kept on this phone for your account only.
     </SignedOutSampleNotice>
   );
 }

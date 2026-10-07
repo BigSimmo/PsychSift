@@ -64,7 +64,7 @@ import {
   type DocumentDraft,
 } from "@/lib/work-screens/admin/documents";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-import { documentsSample, isExampleRecord, withoutExampleRecords } from "@/lib/work-screens/admin/sample";
+import { guardExampleAction, isExampleRecord, withoutExampleRecords } from "@/lib/example-data/guards";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   DOCUMENT_FOLDERS,
@@ -94,7 +94,7 @@ function blankDraft(document?: AdminDocument): DocumentDraft {
  */
 export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
   usePaperworkHeading("Documents", "Private until you share it");
-  const page = usePaperworkPage(documentsSample);
+  const page = usePaperworkPage("admin.documents");
   const { store, online } = page;
   const say = usePaperworkSay();
   const today = perthDateOf(pinned ?? new Date());
@@ -140,6 +140,7 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
     );
   }
   function saveList() {
+    if (!guardExampleAction(page.examplesShown, "export")) return;
     const own = withoutExampleRecords(documents);
     const problem = firstAdminPatientProblem(
       own.flatMap((document) => [document.title, document.keptAt, document.note, document.url]),
@@ -158,7 +159,9 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Documents
       </PageTitleUnderBand>
-      {page.signedOut ? <PaperworkSampleNotice what="document list" testId="admin-documents-signed-out" /> : null}
+      {page.signedOut ? (
+        <PaperworkSampleNotice what="document list" testId="admin-documents-signed-out" examples={page.examplesShown} />
+      ) : null}
       {page.demo ? <PaperworkDemoNotice testId="admin-documents-demo" /> : null}
       {!online ? (
         <PaperworkOfflineNote testId="admin-documents-offline">

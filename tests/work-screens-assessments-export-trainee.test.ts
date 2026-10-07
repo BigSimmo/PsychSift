@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { EXAMPLE_ASSESSMENTS_SUPERVISION } from "@/lib/example-data/datasets/assessments-supervision";
 import { initialAssessmentsState } from "@/lib/teaching/assessments/model";
 import {
   DEFAULT_ASSESSMENTS_EXPORT,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/work-screens/assessments/trainee";
 
 const s = initialAssessmentsState();
+const supervision = EXAMPLE_ASSESSMENTS_SUPERVISION;
 
 describe("assessments export", () => {
   it("marks every exported row as an example and leaves them all out of the files", () => {
@@ -93,11 +95,11 @@ describe("assessments export", () => {
 
 describe("supervisor's view of a trainee", () => {
   it("returns null for a doctor not in the sample", () => {
-    expect(traineeView(s, initialTraineeState, "nobody")).toBeNull();
+    expect(traineeView(s, initialTraineeState, "nobody", supervision)).toBeNull();
   });
 
   it("shows status, and only what they asked of you, for a doctor another consultant supervises", () => {
-    const view = traineeView(s, initialTraineeState, "ravi")!;
+    const view = traineeView(s, initialTraineeState, "ravi", supervision)!;
     expect(view.yours).toBe(false);
     // Ravi asked you for an EPA (it is in your inbox), so it shows here too. Sessions and corrections do not.
     expect(view.waiting.map((r) => r.id)).toEqual(["ravi-epa-3"]);
@@ -106,15 +108,15 @@ describe("supervisor's view of a trainee", () => {
     expect(view.correction).toBeNull();
     expect(view.timeline.map((t) => t.id)).toEqual(["mid", "epas", "end"]);
     // A doctor who asked you nothing shows status only.
-    expect(traineeView(s, initialTraineeState, "tom")!.waiting).toEqual([]);
+    expect(traineeView(s, initialTraineeState, "tom", supervision)!.waiting).toEqual([]);
   });
 
   it("counts what waits for you: requests, sessions and an open correction", () => {
-    const ben = traineeView(s, initialTraineeState, "ben")!;
+    const ben = traineeView(s, initialTraineeState, "ben", supervision)!;
     expect(ben.yours).toBe(true);
     expect(ben.correction?.proposed).toBe("90 min");
     expect(waitingCount(ben, initialTraineeState)).toBe(ben.waiting.length + 1);
-    const mia = traineeView(s, initialTraineeState, "mia")!;
+    const mia = traineeView(s, initialTraineeState, "mia", supervision)!;
     expect(mia.waiting.some((r) => r.id === "mia-epa-2")).toBe(true);
     expect(waitingCount(mia, initialTraineeState)).toBe(mia.waiting.length + 1);
   });
@@ -127,7 +129,7 @@ describe("supervisor's view of a trainee", () => {
     state = traineeReducer(state, { type: "confirm", id: "example:sam-s3", offline: true });
     expect(state.sessions["example:sam-s3"]).toBe("queued");
     state = traineeReducer(state, { type: "confirm-commit", id: "example:sam-s3" });
-    const view = traineeView(s, state, "sam")!;
+    const view = traineeView(s, state, "sam", supervision)!;
     expect(view.toConfirm).toEqual([]);
     expect(view.confirmedMinutes).toBe(210);
     expect(hoursWords(view.confirmedMinutes)).toBe("3.5\u00a0h");
@@ -159,19 +161,19 @@ describe("supervisor's view of a trainee", () => {
       id: "example:ben-c1",
       to: "confirmed",
     });
-    expect(traineeView(s, confirmed, "ben")!.correctionStatus).toBe("confirmed");
+    expect(traineeView(s, confirmed, "ben", supervision)!.correctionStatus).toBe("confirmed");
     expect(traineeReducer(confirmed, { type: "correction", id: "example:ben-c1", to: "later" })).toBe(confirmed);
     const undone = traineeReducer(confirmed, { type: "correction-undo", id: "example:ben-c1", to: "waiting" });
-    expect(traineeView(s, undone, "ben")!.correctionStatus).toBe("waiting");
+    expect(traineeView(s, undone, "ben", supervision)!.correctionStatus).toBe("waiting");
   });
 
   it("confirms a correction that was left for later, and Undo puts it back to Later", () => {
     const later = traineeReducer(initialTraineeState, { type: "correction", id: "example:ben-c1", to: "later" });
     expect(traineeReducer(later, { type: "correction", id: "example:ben-c1", to: "later" })).toBe(later);
     const confirmed = traineeReducer(later, { type: "correction", id: "example:ben-c1", to: "confirmed" });
-    expect(traineeView(s, confirmed, "ben")!.correctionStatus).toBe("confirmed");
+    expect(traineeView(s, confirmed, "ben", supervision)!.correctionStatus).toBe("confirmed");
     const undone = traineeReducer(confirmed, { type: "correction-undo", id: "example:ben-c1", to: "later" });
-    expect(traineeView(s, undone, "ben")!.correctionStatus).toBe("later");
+    expect(traineeView(s, undone, "ben", supervision)!.correctionStatus).toBe("later");
   });
 
   it("starts a kept confirmation's 10 seconds only from To send", () => {
@@ -188,7 +190,7 @@ describe("supervisor's view of a trainee", () => {
       type: "extras",
       action: { type: "inbox-send", id: "mia-epa-2", level: "proximal", text: "Clear plan.", at: "10:00" },
     });
-    const view = traineeView(s, sent, "mia")!;
+    const view = traineeView(s, sent, "mia", supervision)!;
     expect(view.waiting.some((r) => r.id === "mia-epa-2")).toBe(false);
     expect(view.answered.some((r) => r.id === "mia-epa-2")).toBe(true);
   });

@@ -1,30 +1,13 @@
 /*
- * Every made-up record the Assessments work screens add, in one place, so the shared example-data
- * registry can take them over in one move. Every id starts "example:". The doctors, forms and EPAs
- * themselves are the existing sample's (`src/lib/teaching/assessments`); only the supervision rows
- * below are new. Topics only, never patient details.
- *
- * Anything built from a list to leave the page (a file, copied text, a notification) goes through
- * `withoutExampleRecords`, which the shared helper will replace.
+ * Example supervision for the Assessments supervisor's view of a trainee
+ * (`/teaching/assessments/trainee/[id]`): the sessions waiting for the example supervisor's sign-off
+ * and a correction one doctor proposed. Keyed by the doctor ids of the existing Assessments sample
+ * (`src/lib/teaching/assessments/sample.ts`), which holds the doctors themselves. Every id starts
+ * "example:". Topics only, never patient details. Read through the registry,
+ * `loadExampleDataset("assessments.supervision")`.
  */
 
-export const EXAMPLE_ID_PREFIX = "example:";
-
-/** The id with the example prefix, added once. */
-export function exampleId(id: string): string {
-  return id.startsWith(EXAMPLE_ID_PREFIX) ? id : `${EXAMPLE_ID_PREFIX}${id}`;
-}
-
-export function isExampleRecord(record: { readonly id: string }): boolean {
-  return record.id.startsWith(EXAMPLE_ID_PREFIX);
-}
-
-/** Drops made-up records from anything that leaves the page. */
-export function withoutExampleRecords<T extends { readonly id: string }>(records: readonly T[]): T[] {
-  return records.filter((record) => !isExampleRecord(record));
-}
-
-export interface SampleSession {
+export interface ExampleSupervisionSession {
   readonly id: string;
   readonly date: string;
   readonly minutes: number;
@@ -34,7 +17,7 @@ export interface SampleSession {
   readonly confirmed: boolean;
 }
 
-export interface SampleCorrection {
+export interface ExampleSupervisionCorrection {
   readonly id: string;
   readonly date: string;
   readonly kind: "Individual" | "Group";
@@ -45,13 +28,15 @@ export interface SampleCorrection {
   readonly confirmedOn: string;
 }
 
-export interface SampleSupervision {
-  readonly sessions: readonly SampleSession[];
-  readonly correction: SampleCorrection | null;
+export interface ExampleSupervision {
+  readonly sessions: readonly ExampleSupervisionSession[];
+  readonly correction: ExampleSupervisionCorrection | null;
 }
 
-/** Made-up supervision for the doctors the sample supervisor supervises, keyed by overview doctor id. */
-export const SAMPLE_SUPERVISION: Readonly<Record<string, SampleSupervision>> = {
+export type ExampleSupervisionByDoctor = Readonly<Record<string, ExampleSupervision>>;
+
+/** Supervision for the doctors the example supervisor supervises, keyed by overview doctor id. */
+export const EXAMPLE_ASSESSMENTS_SUPERVISION: ExampleSupervisionByDoctor = {
   sam: {
     sessions: [
       {

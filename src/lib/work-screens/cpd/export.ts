@@ -1,7 +1,7 @@
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries, formatCmeYearCsv } from "@/lib/cme/export";
 import { canCloseCmeYear, cmeYearClosableFromLabel } from "@/lib/cme/year-close";
-import { withoutExampleRecords } from "@/lib/work-screens/cpd/sample";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
 import { cmeCategories, type CmeCategory, type CmeEntry, type CmeRequirementSet } from "@/lib/cme/types";
 
 /*

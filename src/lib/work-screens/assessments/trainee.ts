@@ -3,9 +3,16 @@ import { inboxRequests, isWaiting, type InboxRequest } from "@/lib/teaching/asse
 import type { AssessmentsState } from "@/lib/teaching/assessments/model";
 import { doctorTimeline, overviewDoctors, type OverviewDoctor } from "@/lib/teaching/assessments/overview";
 import { SAMPLE_SUPERVISOR } from "@/lib/teaching/assessments/sample";
-import { SAMPLE_SUPERVISION, type SampleCorrection, type SampleSession } from "@/lib/work-screens/assessments/sample";
+import type {
+  ExampleSupervisionByDoctor,
+  ExampleSupervisionCorrection as SampleCorrection,
+  ExampleSupervisionSession as SampleSession,
+} from "@/lib/example-data/datasets/assessments-supervision";
 
-export type { SampleCorrection, SampleSession } from "@/lib/work-screens/assessments/sample";
+export type {
+  ExampleSupervisionCorrection as SampleCorrection,
+  ExampleSupervisionSession as SampleSession,
+} from "@/lib/example-data/datasets/assessments-supervision";
 
 /*
  * Assessments › one doctor, as their supervisor sees it (`/teaching/assessments/trainee/[id]`, mock-ups
@@ -14,9 +21,9 @@ export type { SampleCorrection, SampleSession } from "@/lib/work-screens/assessm
  * to correct a record. Reached from the consultant inbox.
  *
  * MADE-UP SAMPLE ONLY, in page memory. The doctors, their status and their requests are the sample's
- * own (`overview.ts`, `inbox.ts`). The supervision sessions are new made-up rows for this screen, kept
- * with ids starting "example:" in `./sample.ts`,
- * labelled as such on the page: supervision for real lives in Teaching › Supervision, and a supervisor's
+ * own (`overview.ts`, `inbox.ts`). The supervision sessions are example rows for this screen, read
+ * through the shared registry (`loadExampleDataset("assessments.supervision")`) with ids starting
+ * "example:", and passed in here: supervision for real lives in Teaching › Supervision, and a supervisor's
  * trainees have no store yet. Nothing here is kept or sent.
  */
 
@@ -116,12 +123,17 @@ export interface TraineeView {
   readonly confirmedMinutes: number;
 }
 
-export function traineeView(s: AssessmentsState, state: TraineeState, id: string): TraineeView | null {
+export function traineeView(
+  s: AssessmentsState,
+  state: TraineeState,
+  id: string,
+  supervisionByDoctor: ExampleSupervisionByDoctor,
+): TraineeView | null {
   const row = overviewDoctors(s).find((r) => r.id === id);
   if (!row) return null;
   const yours = row.supervisor === SAMPLE_SUPERVISOR.name;
   const requests = inboxRequests(s, state.extras.answers).filter((item) => item.doctor.name === row.name);
-  const supervision = yours ? SAMPLE_SUPERVISION[id] : undefined;
+  const supervision = yours ? supervisionByDoctor[id] : undefined;
   const sessions = supervision?.sessions ?? [];
   const toConfirm = sessions.filter((x) => sessionStatus(state, x) !== "confirmed");
   const recent = sessions.filter((x) => sessionStatus(state, x) === "confirmed");

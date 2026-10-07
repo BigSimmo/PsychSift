@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, Copy, Download, FileText, Lock, Plus, Send, ShieldAlert, WifiOff } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CmeCategoryBar } from "@/components/cme/cme-progress-visuals";
 import { CmeYearClosePanel } from "@/components/cme/cme-year-close-panel";
@@ -23,6 +23,8 @@ import { downloadTextFile } from "@/lib/admin/download-file";
 import { evaluateYear } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries } from "@/lib/cme/export";
 import type { CmeEntry, CmeRequirementSet, CmeYearClose } from "@/lib/cme/types";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { reportAreaData } from "@/lib/example-data/store";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { dateTile } from "@/lib/work-screens/cpd/evidence";
 import { cpdExportPatientFlags, type CpdPatientFlag } from "@/lib/work-screens/cpd/patient-check";
@@ -41,6 +43,7 @@ export type CpdExportPageProps = {
   readonly goalCount: number;
   readonly close: CmeYearClose | null;
   readonly now: Date;
+  /** Example (or demo) records: the page shows them, but nothing built from them leaves the page. */
   readonly demoMode: boolean;
 };
 
@@ -68,8 +71,15 @@ export function CpdExportPage({ set, entries, years, goalCount, close, now, demo
   const yearEnd = cpdYearEndState(set, now);
   useModeBandHeading({ eyebrow: `Year ${year}`, title: "Export" });
   const yearChips = [...new Set([year, ...years])].sort((a, b) => b - a);
+  // Real records read from the account mean CPD holds real data. One year with none says nothing about
+  // the others, so an empty year is never reported as an empty area.
+  const hasRealRecords = !demoMode && entries.length > 0;
+  useEffect(() => {
+    if (hasRealRecords) reportAreaData("cpd", "has-data");
+  }, [hasRealRecords]);
 
   function saveCsv() {
+    if (!guardExampleAction(demoMode, "export")) return;
     const at = Date.now();
     if (at - lastSave.current < REPEAT_TAP_MS) return;
     lastSave.current = at;
@@ -85,6 +95,7 @@ export function CpdExportPage({ set, entries, years, goalCount, close, now, demo
 
   /** The CSV carries every title and reflection, so the shared patient-detail check reads them first. */
   function downloadCsv() {
+    if (!guardExampleAction(demoMode, "export")) return;
     const found = cpdExportPatientFlags(entries, year);
     if (found.length) {
       setFlags(found);
@@ -99,11 +110,6 @@ export function CpdExportPage({ set, entries, years, goalCount, close, now, demo
     <main className="min-w-0" data-testid="cpd-export-page">
       <WorkBody>
         <h1 className="sr-only">Export {year}</h1>
-        {demoMode ? (
-          <p className={cn(textMuted, "text-sm")} data-testid="cpd-export-demo">
-            Synthetic demonstration, not a personal CPD record.
-          </p>
-        ) : null}
         {!online ? (
           <WorkCard padded testId="cpd-export-offline">
             <p className="flex items-start gap-2 text-sm text-[color:var(--text)]">

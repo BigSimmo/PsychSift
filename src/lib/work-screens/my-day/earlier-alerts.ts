@@ -467,28 +467,3 @@ function pageName(path: string): string {
   if (path === "/my-day/alerts") return "Alerts";
   return "My Day";
 }
-
-/**
- * The signed-out sample: invented alerts built in the browser from `now`, read
- * from no server and kept nowhere (the mock-up's own rows).
- */
-export function sampleEarlierAlerts(now: number): EarlierAlert[] {
-  const today = perthDateOf(now);
-  const at = (daysBack: number, time: string) => {
-    const date = addDaysToDate(today, -daysBack);
-    return Date.parse(`${date}T${time}:00+08:00`);
-  };
-  const rows: [AlertCode, number, string, boolean][] = [
-    ["brief", 0, "07:00", true],
-    ["request", 1, "18:12", false],
-    ["brief", 1, "07:00", true],
-    ["reminder", 2, "14:00", true],
-    ["changed", 5, "16:40", false],
-  ];
-  return rows
-    .map(([code, daysBack, time, opened]) => {
-      const when = at(daysBack, time);
-      return { id: `${code}:${when}`, code, at: when, approx: false, openedAt: opened ? when + 60_000 : null };
-    })
-    .filter((alert) => alert.at <= now);
-}

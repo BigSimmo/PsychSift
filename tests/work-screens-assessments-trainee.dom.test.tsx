@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AssessmentsTraineePage } from "@/components/work-screens/assessments/assessments-trainee-page";
 import { ToastProvider } from "@/components/ui/toast";
+import { EXAMPLE_ASSESSMENTS_SUPERVISION } from "@/lib/example-data/datasets/assessments-supervision";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -23,7 +24,7 @@ function setOnline(on: boolean) {
 function renderPage(id: string) {
   return render(
     <ToastProvider>
-      <AssessmentsTraineePage doctorId={id} />
+      <AssessmentsTraineePage doctorId={id} supervision={EXAMPLE_ASSESSMENTS_SUPERVISION} />
     </ToastProvider>,
   );
 }
@@ -31,7 +32,8 @@ function renderPage(id: string) {
 describe("supervisor's view of a trainee", () => {
   it("answers an EPA request, blocks patient details, and sends with Undo", async () => {
     renderPage("mia");
-    expect(screen.getByTestId("work-screens-assessments-sample")).toHaveTextContent(/Made-up/);
+    // The frame's example data banner labels the records, so the page carries no banner of its own.
+    expect(screen.queryByTestId("work-screens-assessments-sample")).toBeNull();
     fireEvent.click(screen.getByTestId("assessments-trainee-request-mia-epa-2"));
     const sheet = await screen.findByTestId("assessments-trainee-answer-sheet");
     const send = within(sheet).getByTestId("assessments-trainee-answer-send");

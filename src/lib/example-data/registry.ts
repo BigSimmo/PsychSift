@@ -1,4 +1,6 @@
 import type { CmeRoutine } from "@/lib/cme/routines";
+import type { ExampleWorkforce } from "@/lib/example-data/datasets/admin-workforce";
+import type { ExampleSupervisionByDoctor } from "@/lib/example-data/datasets/assessments-supervision";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import type { OpenShiftListing } from "@/lib/open-shifts/model";
@@ -8,6 +10,8 @@ import type { EpaRecord } from "@/lib/teaching/assessments/sample";
 import type { SessionSummary } from "@/lib/teaching/model";
 import type { TermTrackerState } from "@/lib/teaching/term-tracker";
 import type { WorkAreaId } from "@/lib/work-frame/areas";
+import type { AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
+import type { EarlierAlert } from "@/lib/work-screens/my-day/earlier-alerts";
 import { DEFAULT_WORK_TIME_ZONE } from "@/lib/work-time/zones";
 import { zonedDateOf } from "@/lib/work-time/format";
 
@@ -35,9 +39,17 @@ export type ExampleDatasets = {
   "teaching.sessions": SessionSummary[];
   "teaching.termTracker": TermTrackerState;
   "assessments.epaRecords": readonly EpaRecord[];
+  "assessments.supervision": ExampleSupervisionByDoctor;
   "cpd.entries": readonly CmeEntry[];
   "cpd.year": CmeRequirementSet;
   "cpd.routines": readonly CmeRoutine[];
+  "myDay.earlierAlerts": EarlierAlert[];
+  "admin.requests": AdminPaperwork;
+  "admin.sharing": AdminPaperwork;
+  "admin.documents": AdminPaperwork;
+  "admin.pay": AdminPaperwork;
+  "admin.tax": AdminPaperwork;
+  "admin.workforce": ExampleWorkforce;
 };
 
 export type ExampleDatasetKey = keyof ExampleDatasets;
@@ -62,9 +74,19 @@ const LOADERS: { [K in ExampleDatasetKey]: Loader<K> } = {
   "teaching.termTracker": async (now, zone) =>
     (await import("@/lib/teaching/term-tracker")).sampleTermTracker(zonedDateOf(now, zone)),
   "assessments.epaRecords": async () => (await import("@/lib/teaching/assessments/sample")).SAMPLE_EPA_RECORDS,
+  "assessments.supervision": async () =>
+    (await import("@/lib/example-data/datasets/assessments-supervision")).EXAMPLE_ASSESSMENTS_SUPERVISION,
   "cpd.entries": async () => (await import("@/lib/cme/demo-year")).DEMO_CME_ENTRIES,
   "cpd.year": async () => (await import("@/lib/cme/demo-year")).DEMO_CME_YEAR,
   "cpd.routines": async () => (await import("@/lib/cme/demo-year")).DEMO_CME_ROUTINES,
+  "myDay.earlierAlerts": async (now, zone) =>
+    (await import("@/lib/example-data/datasets/my-day-earlier-alerts")).exampleEarlierAlerts(now.getTime(), zone),
+  "admin.requests": async () => (await import("@/lib/example-data/datasets/admin-paperwork")).exampleRequests(),
+  "admin.sharing": async () => (await import("@/lib/example-data/datasets/admin-paperwork")).exampleSharing(),
+  "admin.documents": async () => (await import("@/lib/example-data/datasets/admin-paperwork")).exampleDocuments(),
+  "admin.pay": async () => (await import("@/lib/example-data/datasets/admin-paperwork")).examplePayslips(),
+  "admin.tax": async () => (await import("@/lib/example-data/datasets/admin-paperwork")).exampleTax(),
+  "admin.workforce": async () => (await import("@/lib/example-data/datasets/admin-workforce")).exampleWorkforce(),
 };
 
 /** Which area each dataset belongs to, so a screen only shows it while that area's example data is on. */
@@ -76,9 +98,17 @@ export const EXAMPLE_DATASET_AREA: { readonly [K in ExampleDatasetKey]: WorkArea
   "teaching.sessions": "teach",
   "teaching.termTracker": "teach",
   "assessments.epaRecords": "assess",
+  "assessments.supervision": "assess",
   "cpd.entries": "cpd",
   "cpd.year": "cpd",
   "cpd.routines": "cpd",
+  "myDay.earlierAlerts": "day",
+  "admin.requests": "admin",
+  "admin.sharing": "admin",
+  "admin.documents": "admin",
+  "admin.pay": "admin",
+  "admin.tax": "admin",
+  "admin.workforce": "admin",
 };
 
 export const EXAMPLE_DATASET_KEYS = Object.keys(LOADERS) as ExampleDatasetKey[];

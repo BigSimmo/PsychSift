@@ -35,7 +35,9 @@ import {
 } from "@/components/mode-kit/work";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { useEarlierAlerts } from "@/components/work-screens/my-day/use-earlier-alerts";
+import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
 import type { AppModeId } from "@/lib/app-modes";
+import { reportAreaData, useExampleData } from "@/lib/example-data/store";
 import { MY_DAY_ALL_VIEW_HREF, withMyDayReturn } from "@/lib/my-day/return-link";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import {
@@ -48,7 +50,6 @@ import {
   filterAlerts,
   groupAlertsByDay,
   isAreaFilter,
-  sampleEarlierAlerts,
   visibleAlerts,
   type AreaFilter,
   type EarlierAlert,
@@ -91,29 +92,65 @@ function readPermission(): string {
 }
 
 export function EarlierAlertsPage({ now }: { now?: Date } = {}) {
+  const exampleActive = useExampleData("day").active;
   return (
     <MyDayFrame
       title="Earlier alerts"
       testId="my-day-earlier-alerts"
       now={now}
       subtitle={() => "Everything that buzzed this phone, last 7 days"}
-      signedOutSample={{
-        notice:
-          "These alerts are invented. Signed in, this lists the alerts that reached this phone, kept on the phone for 7 days.",
-        render: (at) => <SampleList now={at} />,
+      // Signed out, the example alerts show only while My Day's example data is on. The frame's example
+      // data banner labels them, so this notice only says what the page holds once signed in.
+      signedOutSample={
+        exampleActive
+          ? {
+              notice: "Signed in, this lists the alerts that reached this phone, kept on the phone for 7 days.",
+              render: (at) => <ExampleList now={at} />,
+            }
+          : undefined
+      }
+      signedOut={{
+        title: "Sign in to see your alerts",
+        body: "Signed in, this lists the alerts that reached this phone, kept on the phone for 7 days.",
       }}
     >
-      {(at) => <EarlierAlertsBody now={at} />}
+      {(at) => <EarlierAlertsBody now={at} exampleActive={exampleActive} />}
     </MyDayFrame>
   );
 }
 
-function SampleList({ now }: { now: Date }) {
-  const alerts = useMemo(() => sampleEarlierAlerts(now.getTime()), [now]);
-  return <AlertDays alerts={alerts} now={now} />;
+/** The example alerts from the shared registry, read only: nothing to open, remove or keep. */
+function ExampleList({ now }: { now: Date }) {
+  const read = useRegistryDataset("myDay.earlierAlerts", true);
+  const alerts = useMemo(() => (read.status === "ready" ? visibleAlerts(read.data, now.getTime()) : []), [read, now]);
+  if (read.status === "error")
+    return (
+      <div className="grid gap-2" data-testid="earlier-alerts-example-error">
+        <ModeNotice tone="warning">Couldn&apos;t load the example alerts.</ModeNotice>
+        <div>
+          <WorkButton variant="secondary" icon={RotateCcw} onClick={read.retry} testId="earlier-alerts-example-retry">
+            Try again
+          </WorkButton>
+        </div>
+      </div>
+    );
+  if (read.status !== "ready")
+    return (
+      <>
+        <span role="status" className="sr-only">
+          Loading earlier alerts
+        </span>
+        <ModeModuleSkeleton rows={4} twoLine eyebrow testId="earlier-alerts-example-loading" />
+      </>
+    );
+  return (
+    <div data-testid="earlier-alerts-example">
+      <AlertDays alerts={alerts} now={now} />
+    </div>
+  );
 }
 
-function EarlierAlertsBody({ now }: { now: Date }) {
+function EarlierAlertsBody({ now, exampleActive }: { now: Date; exampleActive: boolean }) {
   const state = useEarlierAlerts();
   const online = useOnlineStatus();
   const permission = useSyncExternalStore(subscribeNever, readPermission, () => "default");
@@ -133,6 +170,12 @@ function EarlierAlertsBody({ now }: { now: Date }) {
   const readyRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const focusAfter = useRef<number | null>(null);
+  // Alerts kept for this account on this phone are real My Day data. An empty list says nothing about
+  // the rest of My Day, so it is never reported as an empty area.
+  const hasRealAlerts = state.loaded && !state.shared && alerts.length > 0;
+  useEffect(() => {
+    if (hasRealAlerts) reportAreaData("day", "has-data");
+  }, [hasRealAlerts]);
 
   // After a Remove or Clear the tapped control is gone: move focus to the row that took its place
   // (or the page, when the list is empty), never leaving a keyboard or screen reader user nowhere.
@@ -185,7 +228,9 @@ function EarlierAlertsBody({ now }: { now: Date }) {
         </ModeNotice>
       ) : null}
 
-      {state.shared ? (
+      {exampleActive && !hasRealAlerts ? (
+        <ExampleList now={now} />
+      ) : state.shared ? (
         <WorkEmpty
           icon={Users}
           testId="earlier-alerts-shared"

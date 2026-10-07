@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EarlierAlertsPage } from "@/components/work-screens/my-day/earlier-alerts-page";
 import { ToastProvider } from "@/components/ui/toast";
 import { ACCOUNT_TRANSITION_EVENT } from "@/lib/account-scoped-browser-state";
+import { areaDataState, resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import {
   EARLIER_ALERTS_STORAGE_KEY,
   EMPTY_SNAPSHOT,
@@ -89,6 +90,7 @@ function renderPage() {
 
 beforeEach(() => {
   window.localStorage.clear();
+  resetExampleDataForTests();
   worker.shown = [];
   worker.fail = false;
   worker.listeners.clear();
@@ -267,13 +269,37 @@ describe("Earlier alerts page", () => {
     expect(await screen.findByTestId("earlier-alert-changed")).toBeTruthy();
   });
 
-  it("shows the signed-out sample without reading or keeping anything", async () => {
+  it("shows the signed-out example alerts without reading or keeping anything", async () => {
     auth.current = { status: "signed_out", authEpoch: 1, session: null };
     worker.shown = [notification("changed", 3)];
     renderPage();
     expect(await screen.findByTestId("my-day-earlier-alerts-signed-out-sample")).toBeTruthy();
+    expect(await screen.findByTestId("earlier-alerts-example")).toBeTruthy();
     expect(screen.queryByTestId("earlier-alert-remove")).toBeNull();
     expect(window.localStorage.getItem(EARLIER_ALERTS_STORAGE_KEY)).toBeNull();
+  });
+
+  it("signed out with example data off, asks to sign in and shows no made-up alerts", async () => {
+    auth.current = { status: "signed_out", authEpoch: 1, session: null };
+    act(() => setExampleDataOn(false));
+    renderPage();
+    expect(await screen.findByTestId("my-day-earlier-alerts-signed-out")).toBeTruthy();
+    expect(screen.queryByTestId("earlier-alerts-example")).toBeNull();
+  });
+
+  it("signed in with example data on and nothing kept, shows the example alerts read only", async () => {
+    act(() => setExampleDataOn(true));
+    renderPage();
+    expect(await screen.findByTestId("earlier-alerts-example")).toBeTruthy();
+    expect(screen.queryByTestId("earlier-alert-remove")).toBeNull();
+    expect(screen.queryByTestId("earlier-alerts-clear")).toBeNull();
+  });
+
+  it("reports My Day as holding real data once real alerts are kept, so the auto examples step aside", async () => {
+    worker.shown = [notification("changed", 3)];
+    renderPage();
+    expect(await screen.findByTestId("earlier-alert-changed")).toBeTruthy();
+    expect(areaDataState("day")).toBe("has-data");
   });
 
   it("links back to Alerts and to Needs you", async () => {

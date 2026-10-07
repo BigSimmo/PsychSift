@@ -45,7 +45,7 @@ import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-import { isExampleRecord, requestsSample } from "@/lib/work-screens/admin/sample";
+import { guardExampleAction, isExampleRecord, type ExampleBlockedAction } from "@/lib/example-data/guards";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   dropRecord,
@@ -122,7 +122,7 @@ const PATIENT_NOT_SENT = "This request may hold a patient detail, so nothing was
 
 export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   usePaperworkHeading("Requests", "You send them, PsychSift keeps track");
-  const page = usePaperworkPage(requestsSample);
+  const page = usePaperworkPage("admin.requests");
   const { store, online } = page;
   const say = usePaperworkSay();
   const now = useMemo(() => pinned ?? new Date(), [pinned]);
@@ -160,6 +160,13 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
     say(message, () => replace(before));
   }
 
+  /**
+   * True when an example request was stopped by the example data switch, whose banner then explains.
+   * Otherwise (the demo build) `blockedReason` says why on the page.
+   */
+  function exampleBlocked(request: AdminRequest, kind: ExampleBlockedAction): boolean {
+    return isExampleRecord(request) && !guardExampleAction(page.examplesShown, kind);
+  }
   /** Null when the request may leave the page, else what was said instead. */
   function blockedReason(request: AdminRequest): string | null {
     if (isExampleRecord(request)) return EXAMPLE_NOT_SENT;
@@ -168,6 +175,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   }
   function sendByCopy(request: AdminRequest) {
     return once(async () => {
+      if (exampleBlocked(request, "copy")) return;
       const blocked = blockedReason(request);
       if (blocked) return say(blocked, undefined, "warning");
       try {
@@ -182,6 +190,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   }
   /** Returns false when the email draft must not open. */
   function sendByEmail(request: AdminRequest): boolean {
+    if (exampleBlocked(request, "send")) return false;
     const blocked = blockedReason(request);
     if (blocked) {
       say(blocked, undefined, "warning");
@@ -192,6 +201,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   }
   function chase(request: AdminRequest) {
     return once(async () => {
+      if (exampleBlocked(request, "copy")) return;
       const blocked = blockedReason(request);
       if (blocked) return say(blocked, undefined, "warning");
       try {
@@ -245,7 +255,9 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Requests
       </PageTitleUnderBand>
-      {signedOut ? <PaperworkSampleNotice what="requests" testId="admin-requests-signed-out" /> : null}
+      {signedOut ? (
+        <PaperworkSampleNotice what="requests" testId="admin-requests-signed-out" examples={page.examplesShown} />
+      ) : null}
       {page.demo ? <PaperworkDemoNotice testId="admin-requests-demo" /> : null}
       {!online ? (
         <PaperworkOfflineNote testId="admin-requests-offline">

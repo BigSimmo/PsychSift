@@ -17,9 +17,9 @@ import {
   WorkEmpty,
   WorkIconRow,
   WorkSectionLabel,
-  WorkTag,
 } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
+import { ExampleTag } from "@/components/example-data/example-tag";
 import { cn, fieldLabel } from "@/components/ui-primitives";
 import {
   anyPatientProblem,
@@ -39,7 +39,7 @@ import {
 import { downloadTextFile } from "@/lib/admin/download-file";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-import { isExampleRecord, taxSample, withoutExampleRecords } from "@/lib/work-screens/admin/sample";
+import { guardExampleAction, isExampleRecord, withoutExampleRecords } from "@/lib/example-data/guards";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   dropRecord,
@@ -77,7 +77,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
  * them, not tax advice. No thresholds or rates: the ATO pages are linked.
  */
 export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
-  const page = usePaperworkPage(taxSample);
+  const page = usePaperworkPage("admin.tax");
   const { store, online } = page;
   const say = usePaperworkSay();
   const today = perthDateOf(pinned ?? new Date());
@@ -138,6 +138,7 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
     );
   }
   function savePack() {
+    if (!guardExampleAction(page.examplesShown, "export")) return;
     const own = withoutExampleRecords(year.expenses);
     const problem = firstAdminPatientProblem(
       own.map((expense) => expense.title),
@@ -158,7 +159,9 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
   return (
     <WorkBody testId="admin-tax">
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Tax</PageTitleUnderBand>
-      {page.signedOut ? <PaperworkSampleNotice what="tax checklist" testId="admin-tax-signed-out" /> : null}
+      {page.signedOut ? (
+        <PaperworkSampleNotice what="tax checklist" testId="admin-tax-signed-out" examples={page.examplesShown} />
+      ) : null}
       {page.demo ? <PaperworkDemoNotice testId="admin-tax-demo" /> : null}
       {!online ? (
         <PaperworkOfflineNote testId="admin-tax-offline">
@@ -189,7 +192,7 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
           <WorkCard padded testId="admin-tax-total">
             <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
               Work expenses you added
-              {year.expenses.some(isExampleRecord) ? <WorkTag tone="neutral">Example figures</WorkTag> : null}
+              {year.expenses.some(isExampleRecord) ? <ExampleTag /> : null}
             </p>
             <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
               <b className="nums text-2xl font-semibold text-[color:var(--text-heading)]">
@@ -317,7 +320,7 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
             <WorkCard padded testId="admin-tax-by-kind">
               {year.expenses.some(isExampleRecord) ? (
                 <p className="mb-2">
-                  <WorkTag tone="neutral">Example figures</WorkTag>
+                  <ExampleTag />
                 </p>
               ) : null}
               <dl className="grid gap-1 text-sm">

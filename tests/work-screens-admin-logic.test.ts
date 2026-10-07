@@ -25,18 +25,15 @@ import {
 import { buildSharePack, MAILTO_BODY_LIMIT, shareGroupViews, shareMailtoHref } from "@/lib/work-screens/admin/sharing";
 import { documentsListText } from "@/lib/work-screens/admin/documents";
 import {
-  documentsSample,
-  isExampleRecord,
-  paySample,
-  requestsSample,
-  sharingSample,
-  taxSample,
-  withoutExampleRecords,
-  WORKFORCE_SAMPLE_CONTRACT_ENDS,
-  WORKFORCE_SAMPLE_DOCTORS,
-  WORKFORCE_SAMPLE_EXTENSIONS,
-  WORKFORCE_SAMPLE_STARTERS,
-} from "@/lib/work-screens/admin/sample";
+  exampleDocuments as documentsSample,
+  examplePayslips as paySample,
+  exampleRequests as requestsSample,
+  exampleSharing as sharingSample,
+  exampleTax as taxSample,
+} from "@/lib/example-data/datasets/admin-paperwork";
+import { exampleWorkforce } from "@/lib/example-data/datasets/admin-workforce";
+import { isExampleRecord, withoutExampleRecords } from "@/lib/example-data/guards";
+import { EXAMPLE_PEOPLE } from "@/lib/example-data/people";
 import { ATO_LINKS, financialYearKey, parseDollars, taxPackCsv } from "@/lib/work-screens/admin/tax";
 import { decideExtension, filterDoctors, WORKFORCE_SAMPLE_LABEL } from "@/lib/work-screens/admin/workforce-sample";
 import { dropRecord, putBack } from "@/lib/work-screens/admin/paperwork-model";
@@ -237,6 +234,13 @@ describe("Documents", () => {
   });
 });
 
+const {
+  doctors: WORKFORCE_SAMPLE_DOCTORS,
+  extensions: WORKFORCE_SAMPLE_EXTENSIONS,
+  starters: WORKFORCE_SAMPLE_STARTERS,
+  contractEnds: WORKFORCE_SAMPLE_CONTRACT_ENDS,
+} = exampleWorkforce();
+
 describe("Workforce sample", () => {
   it("is labelled a sample and offers no export", async () => {
     expect(WORKFORCE_SAMPLE_LABEL).toBe("Sample, not your hospital's data");
@@ -250,12 +254,12 @@ describe("Workforce sample", () => {
         doctor.items.some((item) => item.status === "extension"),
       ),
     ).toBe(true);
-    expect(filterDoctors(WORKFORCE_SAMPLE_DOCTORS, "all", "clinic b").map((doctor) => doctor.id)).toEqual([
-      "example:doctor-eli",
+    expect(filterDoctors(WORKFORCE_SAMPLE_DOCTORS, "all", "ward b").map((doctor) => doctor.id)).toEqual([
+      "example:doctor-marri",
     ]);
-    const decided = decideExtension(WORKFORCE_SAMPLE_EXTENSIONS, "example:ext-ben", "granted", "2026-10-30");
-    expect(decided.find((entry) => entry.id === "example:ext-ben")?.decision).toBe("granted");
-    expect(WORKFORCE_SAMPLE_EXTENSIONS.find((entry) => entry.id === "example:ext-ben")?.decision).toBe("waiting");
+    const decided = decideExtension(WORKFORCE_SAMPLE_EXTENSIONS, "example:ext-karri", "granted", "2026-10-30");
+    expect(decided.find((entry) => entry.id === "example:ext-karri")?.decision).toBe("granted");
+    expect(WORKFORCE_SAMPLE_EXTENSIONS.find((entry) => entry.id === "example:ext-karri")?.decision).toBe("waiting");
   });
 });
 
@@ -281,9 +285,11 @@ describe("Example records", () => {
     expect(paperwork.every(isValidPaperwork)).toBe(true);
   });
 
-  it("uses invented names only", () => {
-    const names = [...WORKFORCE_SAMPLE_DOCTORS, ...WORKFORCE_SAMPLE_STARTERS].map((doctor) => doctor.name);
-    expect(names.every((name) => /Example|Sample|Placeholder|Testcase|Demo|Mock/.test(name))).toBe(true);
+  it("uses the standard example people only", () => {
+    const names = [...WORKFORCE_SAMPLE_DOCTORS, ...WORKFORCE_SAMPLE_STARTERS, ...WORKFORCE_SAMPLE_CONTRACT_ENDS].map(
+      (doctor) => doctor.name,
+    );
+    expect(names.every((name) => (EXAMPLE_PEOPLE as readonly string[]).includes(name))).toBe(true);
   });
 
   it("are dropped from every file and copied list", () => {

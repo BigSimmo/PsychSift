@@ -36,7 +36,7 @@ import {
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
-import { AssessmentsSampleLine } from "@/components/work-screens/assessments/assessments-sample-gate";
+import type { ExampleSupervisionByDoctor } from "@/lib/example-data/datasets/assessments-supervision";
 import { SUPERVISION_LEVELS, epa as epaInfo, type SupervisionLevel } from "@/lib/teaching/assessments/content";
 import {
   CANT_REASONS,
@@ -184,7 +184,14 @@ function NoteField({
  * (your sign-off), review a correction the doctor proposed, or ask the doctor to correct a record.
  * Every send waits 10 seconds with Undo, and waits as To send while offline. Made-up records only.
  */
-export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string }) {
+export function AssessmentsTraineePage({
+  doctorId,
+  supervision,
+}: {
+  readonly doctorId: string;
+  /** The example supervision, from the shared registry (`assessments.supervision`). */
+  readonly supervision: ExampleSupervisionByDoctor;
+}) {
   const s = useMemo(() => initialAssessmentsState(), []);
   const [state, dispatch] = useReducer(traineeReducer, initialTraineeState);
   const [sheet, setSheet] = useState<SheetState>(null);
@@ -200,7 +207,7 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
   const timers = useRef(new Map<string, number>());
   // Every send that can still be taken back: held for its 10 seconds, or kept as To send while offline.
   const live = useRef(new Set<string>());
-  const view = useMemo(() => traineeView(s, state, doctorId), [s, state, doctorId]);
+  const view = useMemo(() => traineeView(s, state, doctorId, supervision), [s, state, doctorId, supervision]);
   useModeBandHeading(
     view
       ? { eyebrow: `${view.row.grade} · ${view.row.unit}`, title: view.row.name }
@@ -303,7 +310,6 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
     return (
       <main className="min-w-0" data-testid="assessments-trainee-unknown">
         <WorkBody>
-          <AssessmentsSampleLine />
           <WorkEmpty
             icon={UserRound}
             title="No doctor with this link in the sample"
@@ -418,7 +424,6 @@ export function AssessmentsTraineePage({ doctorId }: { readonly doctorId: string
     <main className="min-w-0" data-testid="assessments-trainee-page">
       <WorkBody>
         <h1 className="sr-only">{row.name}</h1>
-        <AssessmentsSampleLine>Made-up example doctor and records. Nothing is saved or sent.</AssessmentsSampleLine>
         {!online ? (
           <WorkCard padded testId="assessments-trainee-offline">
             <p className="flex items-start gap-2 text-sm text-[color:var(--text)]">

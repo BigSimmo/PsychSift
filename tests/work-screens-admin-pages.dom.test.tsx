@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider } from "@/components/ui/toast";
 import { ACCOUNT_TRANSITION_EVENT } from "@/lib/account-scoped-browser-state";
+import { EXAMPLE_BLOCKED_EVENT } from "@/lib/example-data/guards";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import { ADMIN_PAPERWORK_STORAGE_KEY, forgetAdminPaperworkOnDevice } from "@/lib/work-screens/admin/paperwork-store";
 import { complianceFixture } from "./helpers/on-call-entry-fixture";
 
@@ -16,7 +18,7 @@ const clipboard = vi.hoisted(() => ({ copy: vi.fn(async (text: string) => void t
 vi.mock("@/lib/copy-to-clipboard", () => ({ copyTextToClipboard: clipboard.copy }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin/sharing",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
   useSearchParams: () => search.params,
 }));
 
@@ -37,6 +39,14 @@ const storeState = vi.hoisted(() => ({
   demoMode: false,
   cachedAt: null as string | null,
   retry: () => {},
+}));
+// The example data switch reads the sign-in status. Signed out here follows the entries store's flag.
+vi.mock("@/lib/supabase/client", () => ({
+  useAuthSession: () => ({
+    status: storeState.signedOut ? "signed_out" : "authenticated",
+    session: null,
+    authEpoch: 0,
+  }),
 }));
 vi.mock("@/lib/on-call/entry-store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/on-call/entry-store")>()),
@@ -87,6 +97,7 @@ function stored(): Record<string, unknown> | null {
 beforeEach(() => {
   forgetAdminPaperworkOnDevice();
   window.localStorage.clear();
+  resetExampleDataForTests();
   clipboard.copy.mockClear();
   storeState.entries = [];
   storeState.loading = false;
@@ -137,12 +148,21 @@ describe("Admin Sharing", () => {
     expect(screen.queryByTestId("admin-sharing-groups")).toBeNull();
   });
 
-  it("signed out shows the sample and writes nothing to the device", () => {
+  it("signed out shows the example records and writes nothing to the device", async () => {
     storeState.signedOut = true;
     window.localStorage.setItem(ADMIN_PAPERWORK_STORAGE_KEY, JSON.stringify({ version: 1, requests: [] }));
     withToasts(<AdminSharingPage now={NOW} />);
     expect(screen.getByTestId("admin-sharing-signed-out")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("admin-sharing-switch-checks"));
+    fireEvent.click(await screen.findByTestId("admin-sharing-switch-checks"));
+    expect(window.localStorage.getItem(ADMIN_PAPERWORK_STORAGE_KEY)).toBeNull();
+  });
+
+  it("signed out with example data off shows no example records and still writes nothing", async () => {
+    act(() => setExampleDataOn(false));
+    storeState.signedOut = true;
+    withToasts(<AdminRequestsPage now={NOW} />);
+    expect(screen.getByTestId("admin-requests-signed-out").textContent).toContain("Nothing is kept");
+    expect(screen.queryByText("Basic life support")).toBeNull();
     expect(window.localStorage.getItem(ADMIN_PAPERWORK_STORAGE_KEY)).toBeNull();
   });
 });
@@ -259,29 +279,31 @@ describe("Admin Tax", () => {
 });
 
 describe("Admin Workforce", () => {
-  it("opens on a plain explanation with a link back, and the sample only behind one tap", () => {
+  it("opens on a plain explanation with a link back, and the example only behind the example-only gate", async () => {
     withToasts(<AdminWorkforcePage />);
     expect(screen.getByTestId("admin-workforce-gate").textContent).toContain("It is not live");
     expect(screen.getByTestId("admin-workforce-back").getAttribute("href")).toBe("/admin");
+    expect(screen.getByTestId("example-only-gate").textContent).toContain("Workforce is not connected yet");
     expect(screen.queryByTestId("admin-workforce-sample-label")).toBeNull();
-    fireEvent.click(screen.getByTestId("admin-workforce-toggle"));
-    expect(screen.getByTestId("admin-workforce-sample-label").textContent).toContain(
+    act(() => screen.getByTestId("example-only-gate-look").click());
+    expect((await screen.findByTestId("admin-workforce-sample-label")).textContent).toContain(
       "Sample, not your hospital's data",
     );
     expect(screen.queryByTestId("admin-workforce-export")).toBeNull();
     expect(screen.getByTestId("admin-workforce").textContent).not.toMatch(/Dr Josh|Ward 4/);
   });
 
-  it("decides an extension in memory with Undo, and writes nothing", () => {
-    search.params = new URLSearchParams("view=sample");
+  it("decides an extension in memory with Undo, and writes nothing", async () => {
+    storeState.signedOut = true;
     withToasts(<AdminWorkforcePage />);
-    fireEvent.click(screen.getByTestId("admin-workforce-view-extensions"));
+    fireEvent.click(await screen.findByTestId("admin-workforce-view-extensions"));
     expect(screen.getAllByTestId("admin-workforce-extension")).toHaveLength(3);
     fireEvent.click(screen.getAllByTestId("admin-workforce-grant")[0]!);
     expect(screen.getAllByTestId("admin-workforce-extension")).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(screen.getAllByTestId("admin-workforce-extension")).toHaveLength(3);
-    expect(window.localStorage.length).toBe(0);
+    // The example data switch's own record is the only thing on the device, never a decision.
+    expect(Object.keys(window.localStorage).filter((key) => !key.includes("example"))).toEqual([]);
   });
 });
 
@@ -366,13 +388,20 @@ describe("Adversarial review fixes", () => {
 
   it("copies nothing from the signed-out sample pack, and notes no send", async () => {
     storeState.signedOut = true;
+    const blocked: string[] = [];
+    const listen = (event: Event) => blocked.push(String((event as CustomEvent).detail));
+    window.addEventListener(EXAMPLE_BLOCKED_EVENT, listen);
     withToasts(<AdminSharingPage now={NOW} />);
+    const copy = await screen.findByTestId("admin-sharing-workforce-copy");
     const logRows = screen.queryAllByTestId("admin-sharing-log-row").length;
     await act(async () => {
-      fireEvent.click(screen.getByTestId("admin-sharing-workforce-copy"));
+      fireEvent.click(copy);
     });
+    window.removeEventListener(EXAMPLE_BLOCKED_EVENT, listen);
     expect(clipboard.copy).not.toHaveBeenCalled();
-    expect(screen.getByText(/This is an example, so nothing was copied, sent or saved/)).toBeTruthy();
+    // The example data banner explains, so the page adds no toast of its own.
+    expect(blocked).toEqual(["copy"]);
+    expect(screen.queryByText(/This is an example, so nothing was copied, sent or saved/)).toBeNull();
     expect(screen.queryAllByTestId("admin-sharing-log-row")).toHaveLength(logRows);
   });
 

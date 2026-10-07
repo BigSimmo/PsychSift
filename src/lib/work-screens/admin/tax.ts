@@ -1,4 +1,4 @@
-import { withoutExampleRecords } from "@/lib/work-screens/admin/sample";
+import { withoutExampleRecords } from "@/lib/example-data/guards";
 import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import {
   EXPENSE_KINDS,

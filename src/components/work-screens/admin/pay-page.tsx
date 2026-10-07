@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { ExampleTag } from "@/components/example-data/example-tag";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import {
@@ -55,7 +56,7 @@ import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-import { isExampleRecord, paySample } from "@/lib/work-screens/admin/sample";
+import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 import {
   dropRecord,
   newPaperworkId,
@@ -97,7 +98,7 @@ type RosterRead =
  */
 export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
   usePaperworkHeading("Pay", "Payslip hours against your roster");
-  const page = usePaperworkPage(paySample);
+  const page = usePaperworkPage("admin.pay");
   const { store, online } = page;
   const say = usePaperworkSay();
   const now = useMemo(() => pinned ?? new Date(), [pinned]);
@@ -180,8 +181,11 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
     );
   }
   async function copyMessage(check: PayslipCheck) {
-    if (isExampleRecord(check))
+    if (isExampleRecord(check)) {
+      // With the example data switch on, its banner explains. Otherwise (the demo build) the page does.
+      if (!guardExampleAction(page.examplesShown, "copy")) return;
       return say("This is an example, so nothing was copied. Sign in to check your own payslip.");
+    }
     try {
       await copyTextToClipboard(payrollMessage(check));
       say("Message copied. Paste it to payroll. Nothing was sent.");
@@ -197,7 +201,9 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
   return (
     <WorkBody testId="admin-pay">
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Pay</PageTitleUnderBand>
-      {page.signedOut ? <PaperworkSampleNotice what="payslip checks" testId="admin-pay-signed-out" /> : null}
+      {page.signedOut ? (
+        <PaperworkSampleNotice what="payslip checks" testId="admin-pay-signed-out" examples={page.examplesShown} />
+      ) : null}
       {page.demo || shifts.demoMode ? <PaperworkDemoNotice testId="admin-pay-demo" /> : null}
       {!online ? (
         <PaperworkOfflineNote testId="admin-pay-offline">
@@ -255,7 +261,7 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-lg font-semibold text-[color:var(--text-heading)]">
             {payslipResultWord(latestResult, latest.resolved)}
-            {isExampleRecord(latest) ? <WorkTag tone="neutral">Example</WorkTag> : null}
+            {isExampleRecord(latest) ? <ExampleTag /> : null}
           </p>
           <dl className="mt-2 grid gap-1 text-sm">
             <div className="flex justify-between gap-3">

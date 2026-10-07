@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEMO_CME_ENTRIES, DEMO_CME_YEAR } from "@/lib/cme/demo-year";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
+import { EXAMPLE_BLOCKED_EVENT } from "@/lib/example-data/guards";
+import { areaDataState, resetExampleDataForTests } from "@/lib/example-data/store";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/cme/evidence",
@@ -54,6 +56,8 @@ const counted: CmeEntry[] = [
 
 beforeEach(() => {
   download.calls = [];
+  window.localStorage.clear();
+  resetExampleDataForTests();
   window.history.replaceState(null, "", "/cme/evidence");
   window.requestAnimationFrame = (callback: FrameRequestCallback) => {
     callback(0);
@@ -222,5 +226,29 @@ describe("CPD Export page", () => {
     expect(download.calls[0]!.content).not.toContain("Made-up workshop");
     expect(screen.getByTestId("cpd-export-print").textContent).toBe("Save as PDF");
     expect(screen.getByTestId("cpd-export-copy-next").textContent).toContain("Copy to your CPD home");
+  });
+
+  it("with example records showing, saves no file and asks the example data banner to explain", () => {
+    const blocked: string[] = [];
+    const listen = (event: Event) => blocked.push(String((event as CustomEvent).detail));
+    window.addEventListener(EXAMPLE_BLOCKED_EVENT, listen);
+    try {
+      render(<CpdExportPage {...props} entries={DEMO_CME_ENTRIES} demoMode />);
+      expect(screen.queryByTestId("cpd-export-demo")).toBeNull();
+      fireEvent.click(screen.getByTestId("cpd-export-csv"));
+      expect(download.calls).toHaveLength(0);
+      expect(blocked).toEqual(["export"]);
+      expect(areaDataState("cpd")).toBe("unknown");
+    } finally {
+      window.removeEventListener(EXAMPLE_BLOCKED_EVENT, listen);
+    }
+  });
+
+  it("reports that CPD holds real data once real records are read, and never reports an empty year", () => {
+    render(<CpdExportPage {...props} entries={[]} />);
+    expect(areaDataState("cpd")).toBe("unknown");
+    cleanup();
+    render(<CpdExportPage {...props} entries={[entry({ id: "real", date: "2026-03-01" })]} />);
+    expect(areaDataState("cpd")).toBe("has-data");
   });
 });

@@ -3,6 +3,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { withoutExampleRecords } from "@/lib/example-data/guards";
+import { loadExampleDataset } from "@/lib/example-data/registry";
+
 import {
   ALERT_CODES,
   ALERT_MATCH_MS,
@@ -22,7 +25,6 @@ import {
   parseEarlierAlerts,
   removeAlert,
   restoreAlerts,
-  sampleEarlierAlerts,
   serializeEarlierAlerts,
   storedEarlierAlertsOwner,
   visibleAlerts,
@@ -185,10 +187,11 @@ describe("Earlier alerts view", () => {
     expect(filterAlerts(rows, "all")).toHaveLength(rows.length);
   });
 
-  it("builds a sample that is never in the future", () => {
-    const sample = sampleEarlierAlerts(NOW);
+  it("builds example alerts that are never in the future, each with an example id", async () => {
+    const sample = await loadExampleDataset("myDay.earlierAlerts", new Date(NOW), "Australia/Perth");
     expect(sample.length).toBeGreaterThan(0);
     expect(sample.every((row) => row.at <= NOW)).toBe(true);
+    expect(withoutExampleRecords(sample)).toEqual([]);
   });
 });
 

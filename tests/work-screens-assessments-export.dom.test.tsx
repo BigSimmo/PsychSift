@@ -1,7 +1,9 @@
 /** @vitest-environment jsdom */
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => ({ status: "signed_out", authEpoch: 0 }) }));
 
 import { AssessmentsExportPage } from "@/components/work-screens/assessments/assessments-export-page";
 import { EXAMPLE_NOT_SAVED } from "@/lib/work-screens/assessments/export";

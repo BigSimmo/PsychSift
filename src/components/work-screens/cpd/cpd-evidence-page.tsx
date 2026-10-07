@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, FileText, Lock, Paperclip, Plus, WifiOff } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   WorkBody,
@@ -19,6 +19,7 @@ import {
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { cn, textMuted } from "@/components/ui-primitives";
 import type { CmeEntry } from "@/lib/cme/types";
+import { reportAreaData } from "@/lib/example-data/store";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import {
@@ -116,6 +117,12 @@ export function CpdEvidencePage({
   const [order, setOrder] = useState<EvidenceOrder>(initialOrder);
   const [showAll, setShowAll] = useState(false);
   const needsRef = useRef<HTMLElement>(null);
+  // Real records read from the account mean CPD holds real data. An empty year says nothing about the
+  // others, so it is never reported as an empty area.
+  const hasRealRecords = !demoMode && entries.length > 0;
+  useEffect(() => {
+    if (hasRealRecords) reportAreaData("cpd", "has-data");
+  }, [hasRealRecords]);
   const view = useMemo(
     () => evidenceView(entries, year, { category, status, order }),
     [entries, year, category, status, order],
@@ -172,11 +179,6 @@ export function CpdEvidencePage({
     <main className="min-w-0" data-testid="cpd-evidence-page">
       <WorkBody>
         <h1 className="sr-only">Evidence for {year}</h1>
-        {demoMode ? (
-          <p className={cn(textMuted, "text-sm")} data-testid="cpd-evidence-demo">
-            Synthetic demonstration. Evidence is not stored or counted in the demo.
-          </p>
-        ) : null}
         {offline ? (
           <WorkCard padded testId="cpd-evidence-offline">
             <p className="flex items-start gap-2 text-sm text-[color:var(--text)]">
