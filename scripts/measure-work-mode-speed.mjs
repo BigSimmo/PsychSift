@@ -17,8 +17,9 @@
  *   NEXT_PUBLIC_DEMO_MODE=true RAG_PROVIDER_MODE=offline npx next start -p 4310
  *   node scripts/measure-work-mode-speed.mjs --base http://127.0.0.1:4310 --out speed.json
  *
- * Used by the work-mode speed review to set and re-check the budgets in
- * docs/performance/work-mode-budget.md. Not part of CI.
+ * Used by the work-mode speed review to set and re-check its phone budgets.
+ * The enforced half of that budget is the per-route JS in bundle-budget.json
+ * (npm run check:bundle-budget). This script is not part of CI.
  */
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
