@@ -2,7 +2,11 @@
 
 import { useSyncExternalStore } from "react";
 
-import { REMIND_ME_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
+import {
+  CPD_APPLICATIONS_STORAGE_KEY,
+  CPD_HOME_SEND_STORAGE_KEY,
+  REMIND_ME_STORAGE_KEY,
+} from "@/lib/account-scoped-browser-state";
 
 /**
  * "This is a shared computer": kept on this device only, never on the account,
@@ -41,6 +45,9 @@ export function setSharedDevice(shared: boolean): void {
       window.localStorage.setItem(STORAGE_KEY, "1");
       // A shared device keeps no notes, including ones saved before it was marked.
       window.localStorage.removeItem(REMIND_ME_STORAGE_KEY);
+      // Referee names, the statement and CPD Home send marks stay off a shared device too.
+      window.localStorage.removeItem(CPD_APPLICATIONS_STORAGE_KEY);
+      window.localStorage.removeItem(CPD_HOME_SEND_STORAGE_KEY);
     } else window.localStorage.removeItem(STORAGE_KEY);
   } catch {
     // Storage refused (private mode): the switch simply does not stick.

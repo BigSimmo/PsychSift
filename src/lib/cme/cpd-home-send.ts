@@ -7,6 +7,13 @@ import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { cpdTextLooksLikePatient } from "@/lib/cme/patient-detail-check";
 
 /**
+ * Activity titles name courses and colleges in capitals ("ECT workshop", "RANZCP congress"), which
+ * the initials check would read as a patient. Bare capitals are read past in titles only. Dotted
+ * initials, record numbers, ages and every other finding still block the file.
+ */
+const TITLE_CHECK = { allowCapitals: true } as const;
+
+/**
  * Send CPD to AMA CPD Home (#11).
  *
  * NOBODY HAS CHECKED WHAT AMA CPD HOME CAN IMPORT. Nothing in this repository
@@ -103,7 +110,7 @@ export function cpdHomeRowProblems(
   const problems: CpdHomeRowProblem[] = [];
   for (const row of rows) {
     const activity = row.activity || "Untitled activity";
-    if (cpdTextLooksLikePatient(row.activity, thisYear))
+    if (cpdTextLooksLikePatient(row.activity, thisYear, TITLE_CHECK))
       problems.push({
         entryId: row.entryId,
         activity: /^\d{4}-\d{2}-\d{2}$/.test(row.date) ? `Activity on ${row.date}` : "An activity",
@@ -132,7 +139,9 @@ export function reflectionsToLeaveOut(rows: readonly CpdHomeRow[], thisYear: num
 
 /** The ids of activities whose title reads like a patient detail. No file or copy holds them. */
 export function titlesToHoldBack(entries: readonly CmeEntry[], thisYear: number): Set<string> {
-  return new Set(entries.filter((entry) => cpdTextLooksLikePatient(entry.title, thisYear)).map((entry) => entry.id));
+  return new Set(
+    entries.filter((entry) => cpdTextLooksLikePatient(entry.title, thisYear, TITLE_CHECK)).map((entry) => entry.id),
+  );
 }
 
 export type CpdHomeFileOptions = {

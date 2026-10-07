@@ -195,6 +195,23 @@ describe("CPD Home file", () => {
     expect(text).toContain("Grand round");
   });
 
+  it.each(["APA webinar", "CBT for OCD workshop", "RANZCP congress day 2", "MSE and DBT skills"])(
+    "keeps course and college capitals in a title: %s",
+    (title) => {
+      const rows = [entry("a", "2026-04-01", { title })];
+      expect(cpdHomeRowProblems(cpdHomeRows(rows, 2026), 2026)).toEqual([]);
+      expect([...titlesToHoldBack(rows, 2026)]).toEqual([]);
+    },
+  );
+
+  it("still holds back dotted initials and an age with sex in a title", () => {
+    const rows = [
+      entry("d", "2026-04-01", { title: "Case review with J.S." }),
+      entry("e", "2026-04-02", { title: "Discussed a 45 year old male" }),
+    ];
+    expect([...titlesToHoldBack(rows, 2026)].sort()).toEqual(["d", "e"]);
+  });
+
   it("names files by year and scope", () => {
     expect(cpdHomeFileName(2026, "all", "2026-10-06")).toBe("cpd-log-2026.csv");
     expect(cpdHomeFileName(2026, "new", "2026-10-06")).toBe("cpd-log-2026-new-2026-10-06.csv");

@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 
-import { REMIND_ME_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
+import {
+  CPD_APPLICATIONS_STORAGE_KEY,
+  CPD_HOME_SEND_STORAGE_KEY,
+  REMIND_ME_STORAGE_KEY,
+} from "@/lib/account-scoped-browser-state";
 import { isSharedDevice, setSharedDevice } from "@/lib/alerts/shared-device";
 
 describe("marking a device as shared", () => {
@@ -12,6 +16,14 @@ describe("marking a device as shared", () => {
     setSharedDevice(true);
     expect(isSharedDevice()).toBe(true);
     expect(window.localStorage.getItem(REMIND_ME_STORAGE_KEY)).toBeNull();
+  });
+
+  it("removes Job applications and CPD Home records, even with no CPD page open", () => {
+    window.localStorage.setItem(CPD_APPLICATIONS_STORAGE_KEY, JSON.stringify({ referees: [{ name: "Dr Lowe" }] }));
+    window.localStorage.setItem(CPD_HOME_SEND_STORAGE_KEY, "{}");
+    setSharedDevice(true);
+    expect(window.localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)).toBeNull();
+    expect(window.localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
   });
 
   it("keeps notes when the switch is turned off", () => {
