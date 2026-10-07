@@ -12,6 +12,7 @@ import {
   WorkSectionLabel,
   WorkTag,
 } from "@/components/mode-kit/work";
+import { useExampleData } from "@/lib/example-data/store";
 import {
   PREVIEW_ROLES,
   PREVIEW_ROLE_INFO,
@@ -65,6 +66,12 @@ export function WorkRolesPage() {
     }
   };
   const saved = unsavedRole === null;
+  // The one example data switch. Reviewer and admin screens only make sense with it on.
+  const example = useExampleData();
+  const chooseRole = (next: PreviewRole) => {
+    choose(next);
+    if (next !== "junior" && example.mode !== "on") example.turnOn();
+  };
 
   const info = PREVIEW_ROLE_INFO[role];
   const screens = PREVIEW_ROLE_SCREENS[role];
@@ -98,7 +105,7 @@ export function WorkRolesPage() {
               key={id}
               icon={ROLE_ICON[id]}
               selected={role === id}
-              onClick={() => choose(id)}
+              onClick={() => chooseRole(id)}
               testId={`work-roles-pick-${id}`}
             >
               {PREVIEW_ROLE_INFO[id].label}
@@ -111,15 +118,30 @@ export function WorkRolesPage() {
             {info.label}
           </p>
           <p className="text-sm text-[var(--work-ink-muted)]">{info.sub}</p>
-          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[var(--work-ink-muted)]">
-            <WorkTag tone={role === "junior" ? "neutral" : "amber"}>{role === "junior" ? "Data" : "Sample"}</WorkTag>
-            {info.data}
-          </p>
+          <p className="mt-2 text-sm text-[var(--work-ink-muted)]">{info.data}</p>
           {saved ? null : (
             <p className="mt-2 text-sm text-[var(--work-ink-muted)]" data-testid="work-roles-not-saved">
               This browser blocks saving, so the choice lasts until you leave this page.
             </p>
           )}
+        </WorkCard>
+
+        <WorkSectionLabel>Example data</WorkSectionLabel>
+        <WorkCard padded testId="work-roles-example">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="min-w-0 flex-1 text-sm text-[var(--work-ink)]">
+              {example.mode === "on"
+                ? "On. Every area shows example records, marked as examples, and nothing can be sent or exported."
+                : "Off. Areas show only your own records."}
+            </p>
+            <WorkChip
+              selected={example.mode === "on"}
+              onClick={example.mode === "on" ? example.turnOff : example.turnOn}
+              testId="work-roles-example-toggle"
+            >
+              {example.mode === "on" ? "Turn off" : "Turn on"}
+            </WorkChip>
+          </div>
         </WorkCard>
 
         <WorkSectionLabel count={screens.length}>Screens</WorkSectionLabel>

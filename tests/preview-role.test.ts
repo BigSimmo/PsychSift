@@ -63,9 +63,9 @@ describe("preview role", () => {
     expect(readPreviewRole(store)).toBe("admin");
   });
 
-  it("only links supervisor and admin screens that carry sample data or a server check", () => {
+  it("only links supervisor screens that run on example records", () => {
     for (const screen of PREVIEW_ROLE_SCREENS.supervisor.filter((s) => s.ready)) {
-      expect(screen.href).toContain("as=supervisor");
+      expect(screen.href).toMatch(/as=supervisor|^\/teaching\/assessments\/trainee\//);
     }
     const hrefs = Object.values(PREVIEW_ROLE_SCREENS).flatMap((list) => list.map((s) => s.href));
     expect(new Set(hrefs).size).toBe(hrefs.length);

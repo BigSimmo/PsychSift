@@ -5,7 +5,8 @@
  * It is a lens, never a permission. Nothing here is sent to a server, read by a
  * server, or checked by any access rule. It only chooses which screens the
  * `/mockups/work-roles` page offers, and adds the `as=supervisor` view switch the
- * Assessments screens already accept for their labelled sample data. Real access
+ * Assessments screens already accept. Example records come from the one example
+ * data switch (`src/lib/example-data/`), never from here. Real access
  * stays with the server (roster manager role, owner scope, row level security).
  *
  * Off in production. `/mockups/**` is already blocked there by `src/proxy.ts`,
@@ -28,17 +29,17 @@ export const PREVIEW_ROLE_INFO: Record<PreviewRole, PreviewRoleInfo> = {
   junior: {
     label: "Junior doctor",
     sub: "Your own day, roster, teaching, CPD and admin",
-    data: "Your own records, or the demo set when no account is connected",
+    data: "Your own records, or example records while example data is on",
   },
   supervisor: {
     label: "Reviewer or supervisor",
     sub: "Assessments sent to you and the term overview",
-    data: "Labelled sample doctors only. Nothing is sent",
+    data: "Example doctors only. Nothing is sent",
   },
   admin: {
     label: "Admin",
     sub: "Medical Workforce and roster manager screens",
-    data: "Labelled sample staff only. Nothing is sent",
+    data: "Example staff only. Nothing is sent",
   },
 };
 
@@ -71,9 +72,9 @@ const SUPERVISOR_SCREENS: readonly PreviewRoleScreen[] = [
   },
   {
     label: "One trainee's record",
-    href: "/teaching/assessments/trainee/sample",
-    sub: "Built on the wiring branch",
-    ready: false,
+    href: "/teaching/assessments/trainee/sam",
+    sub: "Requests, supervision and timeline for one doctor",
+    ready: true,
   },
 ];
 
@@ -87,14 +88,14 @@ const ADMIN_SCREENS: readonly PreviewRoleScreen[] = [
   {
     label: "Workforce",
     href: "/admin/workforce",
-    sub: "New starters and what is missing. Built on the wiring branch",
-    ready: false,
+    sub: "New starters and what is missing",
+    ready: true,
   },
   {
     label: "Sharing",
     href: "/admin/sharing",
-    sub: "Who can see what. Built on the wiring branch",
-    ready: false,
+    sub: "Who can see what",
+    ready: true,
   },
 ];
 
