@@ -63,7 +63,59 @@ export type OnCallDialRowProps = {
   readonly now?: Date;
   readonly testId: string;
   readonly className?: string;
+  /**
+   * The leading glyph only repeats what the row already says (a phone glyph,
+   * the 000 badge beside the number 000), so at large text it gives its width
+   * back to the name rather than squeezing it.
+   */
+  readonly decorativeLeading?: boolean;
 };
+
+/**
+ * At large text (the row narrower than 16rem, which a 320px phone only reaches
+ * once text is enlarged) the call disc wraps onto its own line under the name
+ * instead of squeezing the name into a sliver that breaks inside words. At
+ * normal text the row is unchanged.
+ */
+const LARGE_TEXT = {
+  disc: "@max-[16rem]:basis-full @max-[16rem]:justify-end",
+  decorativeLeading: "@max-[16rem]:hidden",
+} as const;
+
+/**
+ * The red emergency dot and the starred mark before a name. Each sits in a box
+ * one title line tall (`h-5`, the title's `leading-5`), so when a long name
+ * wraps the mark stays level with its first line instead of centring between
+ * the lines.
+ */
+function TitleMarks({
+  emergency,
+  starred,
+  testId,
+}: {
+  readonly emergency: boolean;
+  readonly starred: boolean;
+  readonly testId: string;
+}) {
+  return (
+    <>
+      {emergency ? (
+        <span aria-hidden="true" className="flex h-5 shrink-0 items-center">
+          <span data-testid={`${testId}-emergency-dot`} className={cn(modeDot, "bg-[color:var(--danger)]")} />
+        </span>
+      ) : null}
+      {starred ? (
+        <span className="flex h-5 shrink-0 items-center">
+          <Star
+            aria-label="Starred"
+            data-testid={`${testId}-star`}
+            className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
+          />
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 /**
  * A personal entry's resolved number, as the same dial the handbook rows use,
@@ -165,6 +217,7 @@ export function OnCallDialRow({
   now,
   testId,
   className,
+  decorativeLeading = false,
 }: OnCallDialRowProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const calledAt = useOnCallYouCalledAt(id);
@@ -216,12 +269,18 @@ export function OnCallDialRow({
       className={cn(
         modeInsetHairline,
         lineParts.length > 0 ? modeRowHeight.double : modeRowHeight.single,
-        "flex min-w-0 items-center gap-x-3 pl-3 pr-1",
+        "@container flex min-w-0 flex-wrap items-center gap-x-3 pl-3 pr-1",
         className,
       )}
     >
       {leading ? (
-        <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "flex w-9 shrink-0 items-center justify-center",
+            decorativeLeading && LARGE_TEXT.decorativeLeading,
+          )}
+        >
           {leading}
         </span>
       ) : null}
@@ -240,21 +299,8 @@ export function OnCallDialRow({
             "grid min-h-12 min-w-0 flex-1 content-center gap-0.5 rounded-md py-1 text-left",
           )}
         >
-          <span className="flex min-w-0 items-center gap-1.5">
-            {emergency ? (
-              <span
-                aria-hidden="true"
-                data-testid={`${testId}-emergency-dot`}
-                className={cn(modeDot, "bg-[color:var(--danger)]")}
-              />
-            ) : null}
-            {starred ? (
-              <Star
-                aria-label="Starred"
-                data-testid={`${testId}-star`}
-                className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
-              />
-            ) : null}
+          <span className="flex min-w-0 items-start gap-1.5">
+            <TitleMarks emergency={emergency} starred={starred} testId={testId} />
             <span
               className={cn(
                 modeNameText,
@@ -269,21 +315,8 @@ export function OnCallDialRow({
       ) : (
         // No number: plain text, never a dimmed button.
         <span data-dial-row-title="" className="grid min-h-12 min-w-0 flex-1 content-center gap-0.5 py-1">
-          <span className="flex min-w-0 items-center gap-1.5">
-            {emergency ? (
-              <span
-                aria-hidden="true"
-                data-testid={`${testId}-emergency-dot`}
-                className={cn(modeDot, "bg-[color:var(--danger)]")}
-              />
-            ) : null}
-            {starred ? (
-              <Star
-                aria-label="Starred"
-                data-testid={`${testId}-star`}
-                className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
-              />
-            ) : null}
+          <span className="flex min-w-0 items-start gap-1.5">
+            <TitleMarks emergency={emergency} starred={starred} testId={testId} />
             <span
               className={cn(
                 modeNameText,
@@ -298,7 +331,7 @@ export function OnCallDialRow({
       )}
 
       {hasNumber || trailingAction ? (
-        <span className="flex shrink-0 items-center">
+        <span className={cn("flex shrink-0 items-center", LARGE_TEXT.disc)}>
           {callRoute?.tel ? (
             <a
               href={callRoute.tel}
