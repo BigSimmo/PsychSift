@@ -505,6 +505,8 @@ export function RosterRequestsPage() {
         teams={enabled}
         actorId={actorId ?? ""}
         assignments={myAssignments}
+        assignmentsReady={assignments.status === "ready"}
+        loadedTo={range.to}
         initialDate={sheet?.kind === "leave" ? sheet.date : undefined}
         initialTo={sheet?.kind === "leave" ? sheet.to : undefined}
         existing={leave.find((item) => item.id === sheet?.leaveId)}
