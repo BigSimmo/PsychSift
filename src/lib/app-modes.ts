@@ -715,6 +715,9 @@ export const appModeDefinitions = [
   },
   {
     id: "open-shifts",
+    // Search my work sits top right on every work page, Open shifts included
+    // (work-mode redesign, owner request 7 Oct 2026).
+    workSearch: true,
     label: "Open shifts",
     description: "Extra shifts advertised in your Roster teams: browse, apply, get alerts and post",
     href: "/open-shifts",
