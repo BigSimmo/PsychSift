@@ -181,6 +181,16 @@ describe("Presenting", () => {
     const panel = await screen.findByTestId("teaching-next-talk");
     expect(panel).toHaveTextContent(/Ready to present\s*4\sof 4 · patient check open/);
     fireEvent.click(within(panel).getByRole("button", { name: "I have checked: no patient details" }));
+    // Work-mode redesign, owner request 6 Oct 2026: the check opens a sheet of four ticks, and only
+    // ticking all four enables the confirm. Nothing is sent until then.
+    const sheet = await screen.findByRole("dialog", { name: "No patient details" });
+    const confirm = within(sheet).getByRole("button", { name: "I have checked my material" });
+    expect(confirm).toBeDisabled();
+    const checks = within(sheet).getAllByRole("checkbox");
+    expect(checks).toHaveLength(4);
+    for (const check of checks) fireEvent.click(check);
+    expect(posts).toEqual([]);
+    fireEvent.click(confirm);
     await waitFor(() => expect(posts).toEqual([{ action: "readiness.deid.confirm", occurrenceId: OCC }]));
     await waitFor(() => expect(panel).not.toHaveTextContent("patient check open"));
     expect(panel).toHaveTextContent(/No patient details in the slides\. You confirmed this on \d+\s\w{3}\./);
