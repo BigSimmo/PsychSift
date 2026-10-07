@@ -76,7 +76,7 @@ describe("consultant inbox", () => {
       vi.advanceTimersByTime(10_500);
     });
     fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
-    expect(screen.getByText("Proximal, with a few lines")).toBeInTheDocument();
+    expect(screen.getByText(/^Sent \d\d:\d\d · Proximal, with a few lines$/)).toBeInTheDocument();
   });
 
   it("opens Sam's EPA in the sample's own sheet and Sam's form on its screen", () => {
@@ -99,7 +99,8 @@ describe("consultant inbox", () => {
     for (const name of [/Dr Mia Chen/, /Dr Ella Okafor/, /Dr Ravi Kaur/]) {
       fireEvent.click(screen.getByRole("button", { name }));
       fireEvent.click(await screen.findByRole("button", { name: "Can't do this one" }));
-      fireEvent.click(await screen.findByRole("button", { name: /Better from another consultant/ }));
+      fireEvent.click(await screen.findByRole("radio", { name: /Better from another consultant/ }));
+      fireEvent.click(screen.getByTestId("assessments-inbox-cant-send"));
     }
     expect(screen.getByRole("radio", { name: /Waiting · 1/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Dr Ben Ortiz/ }));
@@ -117,6 +118,155 @@ describe("consultant inbox", () => {
       "href",
       "/teaching/assessments?view=overview&as=supervisor",
     );
+  });
+});
+
+describe("consultant inbox, more behaviours", () => {
+  it("gives every row a status rail and one tag", () => {
+    renderWith(<AssessmentsInbox {...props(windowOpen)} />);
+    const ben = screen.getByRole("button", { name: /Dr Ben Ortiz · Mid-term assessment/ }).closest("li")!;
+    expect(ben).toHaveAttribute("data-rail", "overdue");
+    expect(within(ben).getByText("Overdue")).toBeInTheDocument();
+    const ella = screen.getByRole("button", { name: /Dr Ella Okafor · EPA 4/ }).closest("li")!;
+    expect(ella).toHaveAttribute("data-rail", "long");
+  });
+
+  it("sorts by doctor with the segmented control", () => {
+    renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Doctor" }));
+    const waiting = screen.getByRole("list", { name: "Waiting" });
+    const names = within(waiting)
+      .getAllByRole("button")
+      .map((b) => b.textContent ?? "");
+    expect(names[0]).toMatch(/^.*Dr Ben Ortiz/);
+    expect(names.at(-1)).toMatch(/Dr Ravi Kaur/);
+  });
+
+  it("moves a request to Later from the sheet, with Undo", async () => {
+    renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Later" }));
+    expect(await screen.findByText("Moved to Later · back Mon 08:00")).toBeInTheDocument();
+    const later = screen.getByRole("list", { name: "Later" });
+    expect(within(later).getByText("Later · Mon 08:00")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.queryByRole("list", { name: "Later" })).toBeNull();
+  });
+
+  it("passes a request on with a suggested colleague, showing what the doctor sees", async () => {
+    renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("button", { name: /Dr Ella Okafor · EPA 4/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Can't do this one" }));
+    const sheet = await screen.findByTestId("assessments-inbox-cant");
+    expect(within(sheet).getByRole("radio", { name: /I did not see this work/ })).toBeChecked();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Dr Hana Ito" }));
+    expect(within(sheet).getByTestId("assessments-inbox-cant-preview")).toHaveTextContent(
+      "Dr Ella Okafor seesNot able to assess this one, as I did not see this work. Try Dr Hana Ito.",
+    );
+    // Not this week takes no suggestion and becomes Move to Later.
+    fireEvent.click(within(sheet).getByRole("radio", { name: /Not this week/ }));
+    expect(within(sheet).queryByRole("group", { name: "Suggest someone" })).toBeNull();
+    expect(within(sheet).getByTestId("assessments-inbox-cant-send")).toHaveTextContent("Move to Later");
+    fireEvent.click(within(sheet).getByRole("radio", { name: /I did not see this work/ }));
+    fireEvent.click(within(sheet).getByTestId("assessments-inbox-cant-send"));
+    fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
+    expect(screen.getByText("Not seen by you · suggested Dr Hana Ito")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Dr Ella Okafor · EPA 4/ }));
+    const preview = await screen.findByTestId("assessments-inbox-doctor");
+    expect(preview).toHaveTextContent("Your supervisor passed this on");
+    fireEvent.click(within(preview).getByRole("button", { name: "Move back to my inbox" }));
+    expect(screen.getByRole("radio", { name: /Waiting · 4/ })).toBeInTheDocument();
+  });
+
+  it("shows what the doctor sees once sent, and copies it for Clinical Learning Australia", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("button", { name: /Dr Ravi Kaur · EPA 3/ }));
+    const sheet = await screen.findByTestId("assessments-inbox-feedback");
+    fireEvent.click(within(sheet).getByRole("radio", { name: "Minimal" }));
+    fireEvent.change(within(sheet).getByLabelText(/A few lines/), { target: { value: "Safe, tidy prescribing." } });
+    expect(within(sheet).getByTestId("assessments-inbox-send")).toHaveTextContent("Send to Dr Ravi Kaur");
+    fireEvent.click(within(sheet).getByTestId("assessments-inbox-send"));
+    expect(screen.getByTestId("assessments-inbox-sending")).toHaveTextContent("Sending 1 answer");
+    await act(async () => {
+      vi.advanceTimersByTime(10_500);
+    });
+    fireEvent.click(screen.getByRole("radio", { name: /Done · 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Dr Ravi Kaur · EPA 3/ }));
+    const view = await screen.findByTestId("assessments-inbox-doctor");
+    expect(view).toHaveTextContent("Your supervisor answered");
+    expect(view).toHaveTextContent("Minimal supervision");
+    expect(view).toHaveTextContent("Safe, tidy prescribing.");
+    fireEvent.click(within(view).getByTestId("assessments-inbox-copy-cla"));
+    await act(async () => {});
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Supervision needed: Minimal"));
+    expect(within(view).getByTestId("assessments-inbox-copy-cla")).toHaveTextContent("Copied");
+  });
+
+  it("offers Edit and Remove it when a few lines hold patient details", async () => {
+    renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    const sheet = await screen.findByTestId("assessments-inbox-feedback");
+    const box = within(sheet).getByLabelText(/A few lines/);
+    fireEvent.change(box, { target: { value: "Calm review of the man in bed 12 overnight, escalated early" } });
+    const problem = within(sheet).getByTestId("assessments-inbox-problem");
+    expect(problem).toHaveTextContent("This looks like a bed number");
+    fireEvent.click(within(problem).getByRole("button", { name: "Edit" }));
+    expect(box).toHaveFocus();
+    fireEvent.click(within(problem).getByRole("button", { name: "Remove it" }));
+    expect((box as HTMLTextAreaElement).value).not.toMatch(/bed 12/);
+    expect(within(sheet).queryByTestId("assessments-inbox-problem")).toBeNull();
+  });
+
+  it("keeps an answer as To send while offline, and sends it with Undo when back online", async () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+    expect(screen.getByTestId("assessments-inbox-offline")).toHaveTextContent("No connection");
+    fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
+    const sheet = await screen.findByTestId("assessments-inbox-feedback");
+    fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
+    fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
+    const mia = screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ });
+    expect(mia).toHaveTextContent("To send");
+    online.mockReturnValue(true);
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    expect(await screen.findByText("Back online · sending 1 answer in 10 s")).toBeInTheDocument();
+    expect(screen.queryByTestId("assessments-inbox-offline")).toBeNull();
+    online.mockRestore();
+  });
+
+  it("brings a reminder sent from the term overview into the inbox banner", async () => {
+    render(
+      <ToastProvider>
+        <AssessmentsExtrasProvider>
+          <AssessmentsTermOverview {...props(initialAssessmentsState())} />
+          <AssessmentsInbox {...props(initialAssessmentsState())} />
+        </AssessmentsExtrasProvider>
+      </ToastProvider>,
+    );
+    expect(screen.queryByTestId("assessments-inbox-dct")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Remind Dr Priya Nair about Dr Ben Ortiz's mid-term" }));
+    const banner = await screen.findByTestId("assessments-inbox-dct");
+    expect(banner).toHaveTextContent(/Reminder from the DCTDr Ben Ortiz · mid-term · \d\d:\d\d/);
+    fireEvent.click(within(banner).getByRole("button", { name: "Open" }));
+    expect(await screen.findByTestId("assessments-inbox-status")).toBeInTheDocument();
+  });
+
+  it("says Nothing waiting with a way to see what was done", async () => {
+    renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+    for (const name of [/Dr Mia Chen/, /Dr Ella Okafor/, /Dr Ravi Kaur/, /Dr Ben Ortiz/]) {
+      fireEvent.click(screen.getByRole("button", { name }));
+      fireEvent.click(await screen.findByRole("button", { name: "Can't do this one" }));
+      fireEvent.click(screen.getByTestId("assessments-inbox-cant-send"));
+    }
+    const empty = screen.getByTestId("assessments-inbox-empty");
+    expect(empty).toHaveTextContent("Nothing waiting");
+    fireEvent.click(within(empty).getByRole("button", { name: "See done" }));
+    expect(screen.getByRole("radio", { name: /Done · 4/ })).toBeChecked();
+    expect(screen.getAllByText("Passed on")).toHaveLength(4);
   });
 });
 

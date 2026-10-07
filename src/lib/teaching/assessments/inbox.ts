@@ -151,9 +151,10 @@ export function inboxRequests(s: AssessmentsState, answers: Readonly<Record<stri
     due: benOverdue ? "Overdue since Fri 16 Oct" : "Due Fri 16 Oct",
     dueDay: 11,
     overdue: benOverdue,
-    status: "waiting",
+    // Its form is not built into the sample, so it can only be moved to Later or passed on, never answered.
+    status: benStatus(answers["ben-mid"]),
     open: { kind: "status" },
-    doneLine: null,
+    doneLine: answers["ben-mid"] ? doneLineFor(answers["ben-mid"]) : null,
   });
   if (s.request.sent) {
     const st = stage(s);
@@ -204,6 +205,10 @@ export function inboxRequests(s: AssessmentsState, answers: Readonly<Record<stri
     });
   }
   return items;
+}
+
+function benStatus(answer: InboxAnswer | undefined): InboxStatus {
+  return answer && (answer.status === "later" || answer.status === "passed") ? answer.status : "waiting";
 }
 
 function dayText(now: number): string {
