@@ -32,11 +32,7 @@ function NoFiguresPlaceholder() {
   const bar = "block h-3 rounded-sm bg-[color:var(--surface-inset)]";
   return (
     <>
-      <div
-        aria-hidden="true"
-        data-testid="cme-state-placeholder"
-        className="grid gap-3.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4"
-      >
+      <div aria-hidden="true" data-testid="cme-state-placeholder" className="work-card work-card--pad grid gap-3.5">
         <span className={cn(bar, "w-2/5")} />
         <span className={cn(bar, "h-5 w-[70%]")} />
         <span className={cn(bar, "h-2.5 w-full")} />
