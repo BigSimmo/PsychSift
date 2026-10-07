@@ -95,6 +95,7 @@ import {
   SAMPLE_TERMS,
   WINDOW_DAYS,
 } from "@/lib/teaching/assessments/sample";
+import { withUnit } from "@/components/teaching/teaching-number";
 
 const DOC = SAMPLE_DOCTOR;
 const asSup = { as: "supervisor" };
@@ -166,7 +167,7 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
     sub =
       st === "requested"
         ? `${DOC.grade}. ${DOC.first} asked you on ${dayLabel(Math.max(0, s.request.sentOn))}. You rate first.`
-        : `${DOC.grade}. Your draft is saved at step ${s.sup.step + 1} of ${FORM_TOTAL}.`;
+        : `${DOC.grade}. Your draft is saved at step ${withUnit(s.sup.step + 1, "of")} ${FORM_TOTAL}.`;
     actions = (
       <>
         <WorkButton variant="secondary" icon={PenLine} href={viewHref("form", asSup)}>
@@ -243,7 +244,7 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
           value={`${done}/${FORM_TOTAL}`}
           label="steps"
           fraction={done / FORM_TOTAL}
-          accessibleLabel={`${done} of ${FORM_TOTAL} form steps done`}
+          accessibleLabel={`${withUnit(done, "of")} ${FORM_TOTAL} form steps done`}
         />
       }
       footer={<div className="assess-hero-actions">{actions}</div>}
@@ -272,7 +273,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
   const last = windowDay(WINDOW_DAYS.length - 1);
   return (
     <>
-      <AssessHeader eyebrow={`Term 4 · week ${termWeek(s)} of 10`} title="Assessments" />
+      <AssessHeader eyebrow={`Term 4 · week ${withUnit(termWeek(s), "of")} 10`} title="Assessments" />
       <SamHero s={s} dispatch={dispatch} go={go} />
       <SectionLabel end={<SectionNote>{epaRows.length + 2}</SectionNote>}>Requests</SectionLabel>
       <List label="Requests">
@@ -414,7 +415,7 @@ function TalkingPoints({ s }: { s: AssessmentsState }) {
         {talkingPoints(self, s.sup, DOC.first).map((t, i) => (
           <li key={t} className="work-row">
             <span aria-hidden="true" className="work-ic" data-tone="neutral">
-              <b className="text-xs tabular-nums">{i + 1}</b>
+              <b className="text-xs font-bold tabular-nums">{i + 1}</b>
             </span>
             <span className="work-row__text">
               <span className="text-sm text-[color:var(--text-heading)]">{t}</span>
@@ -703,7 +704,7 @@ export function SupervisorProgress({ s }: ScreenProps) {
       <AssessPair
         initials={DOC.initials}
         name={DOC.name}
-        sub={`${DOC.grade} · term 4 of 5`}
+        sub={`${DOC.grade} · term ${withUnit(4, "of")} 5`}
         tag={epa1ThisTerm(s) ? undefined : <WorkTag tone="amber">EPA 1</WorkTag>}
         href={viewHref("record", asSup)}
         lines={
@@ -715,12 +716,20 @@ export function SupervisorProgress({ s }: ScreenProps) {
                   fraction: Math.min(1, thisTerm / 2),
                   tone: epa1ThisTerm(s) ? undefined : "amber",
                 },
-                { label: "Form", value: `${stepsDone(s)} of ${FORM_TOTAL}`, fraction: stepsDone(s) / FORM_TOTAL },
+                {
+                  label: "Form",
+                  value: `${withUnit(stepsDone(s), "of")} ${FORM_TOTAL}`,
+                  fraction: stepsDone(s) / FORM_TOTAL,
+                },
               ]
             : [
-                { label: "Weeks", value: `${weeks} of ${YEAR_WEEKS}`, fraction: weeks / YEAR_WEEKS },
-                { label: "EPAs", value: `${total} of ${yearTarget}`, fraction: total / yearTarget },
-                { label: "Kinds", value: `${kindsDone(SAMPLE_TERMS)} of 4`, fraction: kindsDone(SAMPLE_TERMS) / 4 },
+                { label: "Weeks", value: `${withUnit(weeks, "of")} ${YEAR_WEEKS}`, fraction: weeks / YEAR_WEEKS },
+                { label: "EPAs", value: `${withUnit(total, "of")} ${yearTarget}`, fraction: total / yearTarget },
+                {
+                  label: "Kinds",
+                  value: `${withUnit(kindsDone(SAMPLE_TERMS), "of")} 4`,
+                  fraction: kindsDone(SAMPLE_TERMS) / 4,
+                },
               ]
         }
       />
@@ -731,15 +740,18 @@ export function SupervisorProgress({ s }: ScreenProps) {
         </>
       ) : (
         <>
-          <AssessKeyValue k="End-of-term forms" v={`${countersigned} of 5 countersigned`} />
-          <AssessKeyValue k="Leave" v={`${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} days`} />
+          <AssessKeyValue k="End-of-term forms" v={`${withUnit(countersigned, "of")} 5 countersigned`} />
+          <AssessKeyValue
+            k="Leave"
+            v={`${withUnit(SAMPLE_LEAVE.used, "of")} ${withUnit(SAMPLE_LEAVE.limit, "days")}`}
+          />
         </>
       )}
     </div>
   );
   return (
     <>
-      <AssessHeader eyebrow={`Term 4 · week ${week} of 10`} title="Progress" />
+      <AssessHeader eyebrow={`Term 4 · week ${withUnit(week, "of")} 10`} title="Progress" />
       <AssessSegmented
         label="Show"
         value={range}
@@ -816,7 +828,7 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
         </div>
         <div className="assess-stat">
           <b>
-            {w} <small>{`of ${YEAR_WEEKS} weeks`}</small>
+            {w} <small>{`of ${withUnit(YEAR_WEEKS, "weeks")}`}</small>
           </b>
         </div>
         <AssessMeter fraction={w / YEAR_WEEKS} />
@@ -835,7 +847,7 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
           {pending && pending.who === "sup" ? "By Sun 8 Nov. Requested from you." : "By Sun 8 Nov. Needed every term."}
         </AssessCallout>
       )}
-      <SectionLabel end={<SectionNote>{`${kindsDone(SAMPLE_TERMS)} of 4`}</SectionNote>}>
+      <SectionLabel end={<SectionNote>{`${withUnit(kindsDone(SAMPLE_TERMS), "of")} 4`}</SectionNote>}>
         Kinds of experience
       </SectionLabel>
       <KindsStrip kinds={kinds} />
@@ -856,7 +868,7 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
             <li key={x.id} className="min-w-0">
               <div className="work-row">
                 <span aria-hidden="true" className="work-ic" data-tone="neutral">
-                  <b className="text-xs tabular-nums">{x.id}</b>
+                  <b className="text-xs font-bold tabular-nums">{x.id}</b>
                 </span>
                 <span className="work-row__text">
                   <span className="work-row__title">{x.title}</span>
@@ -872,9 +884,9 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
         <h3 id="assess-term-forms" className="work-label assess-card-head">
           Term assessments
         </h3>
-        <AssessKeyValue k="Mid-term" v={`${midTermsSigned} of 4 so far`} />
-        <AssessKeyValue k="End-of-term" v={`${countersigned} of 5 countersigned`} />
-        <AssessKeyValue k="Leave" v={`${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} days`} />
+        <AssessKeyValue k="Mid-term" v={`${withUnit(midTermsSigned, "of")} 4 so far`} />
+        <AssessKeyValue k="End-of-term" v={`${withUnit(countersigned, "of")} 5 countersigned`} />
+        <AssessKeyValue k="Leave" v={`${withUnit(SAMPLE_LEAVE.used, "of")} ${withUnit(SAMPLE_LEAVE.limit, "days")}`} />
       </section>
       <AssessNote icon={ShieldCheck}>Counts are records here. CLA stays the official record.</AssessNote>
       <WorkDock>

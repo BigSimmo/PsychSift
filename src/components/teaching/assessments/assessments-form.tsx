@@ -74,6 +74,7 @@ import {
   SAMPLE_REGISTRAR_NOTE,
   SAMPLE_SUPERVISOR,
 } from "@/lib/teaching/assessments/sample";
+import { withUnit } from "@/components/teaching/teaching-number";
 
 const DOC = SAMPLE_DOCTOR;
 const SUP = SAMPLE_SUPERVISOR.short;
@@ -205,7 +206,7 @@ function DomainStep({ s, dispatch, who, k }: StepProps & { k: DomainNumber }) {
   return (
     <>
       {sup && !supReady(s) ? <BlindNote /> : null}
-      <StepTitle kicker={`Domain ${k} of 4`} title={d.title} sub={d.subtitle} />
+      <StepTitle kicker={`Domain ${withUnit(k, "of")} 4`} title={d.title} sub={d.subtitle} />
       <SectionLabel
         end={
           <span className="flex gap-3">
@@ -235,7 +236,9 @@ function DomainStep({ s, dispatch, who, k }: StepProps & { k: DomainNumber }) {
           ? "Not seen directly? Use other evidence, or leave it unticked (not applicable)."
           : "Tick the ones you could give an example of."}
       </AssessNote>
-      <SectionLabel end={<SectionNote>{`${f.ticks[k].length} of ${d.outcomes.length} ticked`}</SectionNote>}>
+      <SectionLabel
+        end={<SectionNote>{`${withUnit(f.ticks[k].length, "of")} ${d.outcomes.length} ticked`}</SectionNote>}
+      >
         {sup ? "Rating for this domain" : "How would you rate yourself?"}
       </SectionLabel>
       <RatingScale
@@ -362,7 +365,7 @@ function ReviewRows({
     <List label="Your answers">
       {DOMAINS.map((d) => {
         const rating = f.ratings[d.n];
-        const words = `${f.ticks[d.n].length} of ${d.outcomes.length} outcomes · ${rating ? RATING_LABELS[rating - 1] : "not rated"}`;
+        const words = `${withUnit(f.ticks[d.n].length, "of")} ${withUnit(d.outcomes.length, "outcomes")} · ${rating ? RATING_LABELS[rating - 1] : "not rated"}`;
         const tone = !rating
           ? "text-[color:var(--text-muted)]"
           : sup && rating <= 2
@@ -539,7 +542,7 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
   return (
     <>
       <AssessHeader
-        eyebrow={locked ? "View only" : `Step ${stepIndex + 1} of ${total}`}
+        eyebrow={locked ? "View only" : `Step ${withUnit(stepIndex + 1, "of")} ${total}`}
         title={sup ? `${DOC.first}'s end-of-term` : "Rate yourself"}
         back={{ href: back, label: sup ? "To do" : "End-of-term" }}
         action={
