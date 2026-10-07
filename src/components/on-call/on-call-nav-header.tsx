@@ -1,6 +1,7 @@
 "use client";
 
 import { InPageNavHeader } from "@/components/in-page-nav/in-page-nav-header";
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import type { PageSection } from "@/components/in-page-nav/page-section-index";
 import { useInPageSectionNav } from "@/components/in-page-nav/use-in-page-section-nav";
 import { BrowserPrintButton } from "@/components/ui/print-output";
@@ -38,6 +39,12 @@ import { BrowserPrintButton } from "@/components/ui/print-output";
  * its print row.
  */
 export function OnCallCardNavHeader() {
+  // Under the work-mode band (work-mode redesign, owner request 6 Oct 2026)
+  // the band already names the page and its round back button returns to
+  // On Call, so a second bar would say both again. The card keeps its own
+  // "Print card" button on the page.
+  const underBand = useModeBandShown();
+  if (underBand) return null;
   return (
     <InPageNavHeader
       back={{ href: "/on-call", label: "On Call" }}
@@ -62,6 +69,11 @@ export function OnCallCardNavHeader() {
  * for the same one-claimant reason as the two headers around it.
  */
 export function OnCallToolNavHeader({ title, testIdPrefix }: { title: string; testIdPrefix: string }) {
+  // A tool page the work-mode band draws (Who to call now) already has the
+  // band's title and its round back button, so the bar would repeat both.
+  // Pages that keep their own header (`band: false`) still get it.
+  const underBand = useModeBandShown();
+  if (underBand) return null;
   return <InPageNavHeader back={{ href: "/on-call", label: "On Call" }} title={title} testIdPrefix={testIdPrefix} />;
 }
 
