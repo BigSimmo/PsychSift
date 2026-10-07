@@ -240,13 +240,13 @@
 .notify-row__actions {
   display: grid;
   gap: 0.5rem;
-  padding: 0 0.75rem 0.75rem 3.25rem;
+  padding: 0 0.75rem 0.75rem;
 }
 
 .notify-row__buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.375rem;
+  column-gap: 0.5rem;
 }
 
 .notify-row__hint {
@@ -261,9 +261,10 @@
   color: var(--warning-text);
 }
 
-@media (max-width: 380px) {
+/* Wider screens line the options up under the title. */
+@media (min-width: 420px) {
   .notify-row__actions {
-    padding-left: 0.75rem;
+    padding-left: 3.25rem;
   }
 }
 

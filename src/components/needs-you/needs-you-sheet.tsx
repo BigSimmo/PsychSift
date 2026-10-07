@@ -44,6 +44,7 @@ import {
   notificationSegments,
   notificationUrgency,
   type NotificationArea,
+  type NotificationGroup,
   type NotificationItem,
   type NotificationSegment,
 } from "@/lib/needs-you/feed";
@@ -212,6 +213,37 @@ function NotificationCentreSheet({
     showNote(`Snoozed to ${snoozeDayLabel}`, () => feed.unsnooze(item.id));
   };
 
+  const renderGroup = (group: NotificationGroup) => (
+    <section
+      key={group.urgency}
+      aria-labelledby={`needs-you-urgency-${group.urgency}`}
+      className="notify-group"
+      data-testid={`needs-you-urgency-${group.urgency}`}
+    >
+      <WorkSectionLabel as="h3" id={`needs-you-urgency-${group.urgency}`} count={group.items.length}>
+        {group.label}
+      </WorkSectionLabel>
+      <ul className="work-card work-rows notify-list">
+        {group.items.map((item) => (
+          <NotificationRow
+            key={item.id}
+            item={item}
+            now={feed.now}
+            snoozeLabel={`Snooze to ${snoozeDayLabel}`}
+            reminders={feed.reminders}
+            expanded={expanded === item.id}
+            onToggle={() => setExpanded((current) => (current === item.id ? null : item.id))}
+            onCollapse={() => setExpanded(null)}
+            onNavigate={navigate}
+            onSnooze={() => snooze(item)}
+            onNote={showNote}
+            getReminders={getReminders}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+
   return (
     <Sheet
       open={open}
@@ -357,6 +389,7 @@ function NotificationCentreSheet({
               />
             ) : (
               <>
+                {groups.filter((group) => group.urgency !== "later").map(renderGroup)}
                 {onCallShown.length > 0 ? (
                   <section aria-labelledby="needs-you-group-on-call" className="notify-group notify-oncall">
                     <WorkSectionLabel as="h3" id="needs-you-group-on-call" count={onCallShown.length}>
@@ -377,36 +410,7 @@ function NotificationCentreSheet({
                     </div>
                   </section>
                 ) : null}
-                {groups.map((group) => (
-                  <section
-                    key={group.urgency}
-                    aria-labelledby={`needs-you-urgency-${group.urgency}`}
-                    className="notify-group"
-                    data-testid={`needs-you-urgency-${group.urgency}`}
-                  >
-                    <WorkSectionLabel as="h3" id={`needs-you-urgency-${group.urgency}`} count={group.items.length}>
-                      {group.label}
-                    </WorkSectionLabel>
-                    <ul className="work-card work-rows notify-list">
-                      {group.items.map((item) => (
-                        <NotificationRow
-                          key={item.id}
-                          item={item}
-                          now={feed.now}
-                          snoozeLabel={`Snooze to ${snoozeDayLabel}`}
-                          reminders={feed.reminders}
-                          expanded={expanded === item.id}
-                          onToggle={() => setExpanded((current) => (current === item.id ? null : item.id))}
-                          onCollapse={() => setExpanded(null)}
-                          onNavigate={navigate}
-                          onSnooze={() => snooze(item)}
-                          onNote={showNote}
-                          getReminders={getReminders}
-                        />
-                      ))}
-                    </ul>
-                  </section>
-                ))}
+                {groups.filter((group) => group.urgency === "later").map(renderGroup)}
               </>
             )}
 
@@ -710,7 +714,7 @@ function RowActions({
         ) : null}
         {remindable ? (
           <WorkButton
-            variant="secondary"
+            variant={choosing ? "tinted" : "secondary"}
             icon={Bell}
             onClick={() => {
               setChoosing((value) => !value);

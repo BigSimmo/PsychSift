@@ -87,7 +87,7 @@ export function NeedsYouButton({ modeId, className }: { modeId: AppModeId; class
           className,
         )}
       >
-        <Bell aria-hidden="true" className="size-icon-lg" strokeWidth={2.25} />
+        <Bell aria-hidden="true" className="size-icon-md" strokeWidth={2} />
         {badge ? (
           <span
             aria-hidden="true"
