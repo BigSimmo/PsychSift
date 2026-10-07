@@ -1,0 +1,264 @@
+/* Work help: the help centre (/my-day/help) and the help sheet. Flat cards,
+   tokens only. The sheet borrows the More sheet's glass classes. */
+
+.work-help {
+  display: grid;
+  gap: calc(var(--spacing) * 5);
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: calc(var(--spacing) * 4) var(--work-gutter-right) calc(var(--spacing) * 8) var(--work-gutter-left);
+  padding-bottom: max(calc(var(--spacing) * 8), var(--safe-area-bottom, 0px));
+}
+
+.work-help__title {
+  margin: 0;
+  font-size: var(--text-2xl-minus, 1.375rem);
+  font-weight: 600;
+  line-height: var(--work-leading-heading);
+  color: var(--work-ink);
+}
+
+.work-help__summary,
+.work-help__foot {
+  margin: 0;
+  font-size: var(--text-sm, 0.8125rem);
+  line-height: var(--work-leading-body);
+  color: var(--work-ink-muted);
+}
+
+.work-help__foot {
+  font-size: var(--text-xs, 0.75rem);
+}
+
+.work-help__back {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: calc(var(--spacing) * 1);
+  min-height: var(--spacing-tap, 3rem);
+  margin: calc(var(--spacing) * -3) 0 calc(var(--spacing) * -2) calc(var(--spacing) * -1);
+  padding: 0 calc(var(--spacing) * 1);
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 600;
+  color: var(--mode-identity-deep, var(--mode-identity));
+  text-decoration: none;
+}
+
+.work-help__back:focus-visible,
+.work-help__a-link:focus-visible,
+.work-help__q-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--work-radius-focus);
+}
+
+.work-help__dot {
+  width: calc(var(--spacing) * 2.5);
+  height: calc(var(--spacing) * 2.5);
+  flex: none;
+  margin: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 1);
+  border-radius: var(--radius-pill);
+  background: var(--mode-identity);
+}
+
+.work-help__end {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  color: var(--mode-identity-deep, var(--mode-identity));
+  white-space: nowrap;
+}
+
+.work-help__clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.work-help__mark {
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--mode-identity) 45%, transparent);
+  text-underline-offset: 2px;
+}
+
+/* Search field: a flat field, 48px tall, 16px text so iOS never zooms. */
+.work-help__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.work-help__search-icon {
+  position: absolute;
+  left: calc(var(--spacing) * 3.5);
+  width: calc(var(--spacing) * 4.5);
+  height: calc(var(--spacing) * 4.5);
+  color: var(--work-ink-muted);
+  pointer-events: none;
+}
+
+.work-help__search-input {
+  width: 100%;
+  min-height: var(--spacing-tap, 3rem);
+  padding: 0 calc(var(--spacing) * 12) 0 calc(var(--spacing) * 10.5);
+  border: 1px solid var(--work-line-strong);
+  border-radius: var(--work-radius-field);
+  background: var(--work-surface);
+  font: inherit;
+  font-size: 1rem;
+  color: var(--work-ink);
+  appearance: none;
+}
+
+.work-help__search-input::placeholder {
+  color: var(--work-ink-muted);
+}
+
+.work-help__search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.work-help__search-input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.work-help__search-clear {
+  position: absolute;
+  right: 0;
+  display: grid;
+  width: var(--spacing-tap, 3rem);
+  height: var(--spacing-tap, 3rem);
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--work-ink-muted);
+  cursor: pointer;
+}
+
+.work-help__search-clear:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -4px;
+  border-radius: var(--work-radius-field);
+}
+
+/* Tabs card: the tab's name over one line. */
+.work-help__tab {
+  display: grid;
+  gap: calc(var(--spacing) * 0.5);
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3.5);
+  border-top: 1px solid var(--work-line);
+}
+
+.work-help__tab:first-child {
+  border-top: 0;
+}
+
+.work-help__tab-name {
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 700;
+  line-height: var(--work-leading-row);
+  color: var(--work-ink);
+}
+
+.work-help__tab-body {
+  font-size: var(--text-xs, 0.75rem);
+  line-height: var(--work-leading-row-sub);
+  color: var(--work-ink-muted);
+}
+
+/* Questions: each opens its answer in place. */
+.work-help__q {
+  border-top: 1px solid var(--work-line);
+  scroll-margin-top: calc(var(--spacing) * 24);
+}
+
+.work-help__q:first-child {
+  border-top: 0;
+}
+
+.work-help__q-heading {
+  margin: 0;
+  font: inherit;
+}
+
+.work-help__q-button {
+  display: flex;
+  width: 100%;
+  min-height: var(--spacing-tap, 3rem);
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3.5);
+  border: 0;
+  background: transparent;
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 700;
+  line-height: var(--work-leading-row);
+  color: var(--work-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.work-help__q-chev {
+  width: calc(var(--spacing) * 4);
+  height: calc(var(--spacing) * 4);
+  flex: none;
+  color: var(--decoration-soft, var(--work-ink-muted));
+  transition: transform var(--duration-fast, 150ms) ease;
+}
+
+.work-help__q[data-open] .work-help__q-chev {
+  transform: rotate(90deg);
+}
+
+.work-help__a {
+  display: grid;
+  gap: calc(var(--spacing) * 2);
+  padding: 0 calc(var(--spacing) * 3.5) calc(var(--spacing) * 3.5);
+}
+
+.work-help__a[hidden] {
+  display: none;
+}
+
+.work-help__a p {
+  margin: 0;
+  font-size: var(--text-sm, 0.8125rem);
+  line-height: var(--work-leading-body);
+  color: var(--work-ink);
+}
+
+.work-help__a-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: calc(var(--spacing) * 1);
+  min-height: var(--spacing-tap, 3rem);
+  margin: calc(var(--spacing) * -2) 0 calc(var(--spacing) * -3);
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 600;
+  color: var(--mode-identity-deep, var(--mode-identity));
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .work-help__q-chev {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .work-help__dot {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+  }
+  .work-help__mark {
+    forced-color-adjust: none;
+    background: Mark;
+    color: MarkText;
+  }
+}
