@@ -123,3 +123,21 @@ export function decideExtension(
     extension.id === id ? { ...extension, decision, ...(decidedTo ? { decidedTo } : {}) } : extension,
   );
 }
+
+/**
+ * What a reminder can ask a doctor about: items not yet recorded, requested or not shared. An item with an
+ * extension asked is left out, because the doctor already asked for more time (mockup `hRemind`, `hBulk`).
+ */
+export function remindableItems(doctor: WorkforceDoctor): WorkforceDoctorItem[] {
+  return doctor.items.filter((entry) => entry.status !== "recorded" && entry.status !== "extension");
+}
+
+function listWords(titles: readonly string[]): string {
+  if (titles.length <= 1) return titles[0] ?? "";
+  return `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
+}
+
+/** The exact words the doctor would see. Status words only: never a file, a number or a health detail. */
+export function workforceReminderMessage(titles: readonly string[]): string {
+  return `From Medical Workforce. We still need ${listWords(titles)}. Add the dates in your Admin, or ask for more time if you need it.`;
+}

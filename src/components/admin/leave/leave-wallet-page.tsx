@@ -45,6 +45,7 @@ import { Button, buttonFaceClass } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { cn, eyebrowText, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import { selectContractEnd } from "@/lib/admin/contract-end";
+import { isExampleRecord } from "@/lib/example-data/guards";
 import {
   checkLeaveMessage,
   EMPTY_LEAVE_FIELDS,
@@ -245,6 +246,7 @@ function OpenCard({
   leave,
   today,
   contractEndsOn,
+  contractExample = false,
   onHide,
 }: {
   type: LeaveType;
@@ -256,12 +258,14 @@ function OpenCard({
   leave: ShownRosterLeave;
   today: string;
   contractEndsOn: string | null;
+  /** The end date is an example record's: shown on the card, never put into a message that can be copied. */
+  contractExample?: boolean;
   /** Only the discreet card offers Hide. */
   onHide?: () => void;
 }) {
   const headingId = useId();
   const { copy, stateFor } = useCopy();
-  const generated = leaveMessage(type, fields, { contractEndsOn });
+  const generated = leaveMessage(type, fields, { contractEndsOn: contractExample ? null : contractEndsOn });
   const message = edited ?? generated;
   const fieldErrors = validateLeaveFields(type, fields);
   const messageProblem = edited !== null ? checkLeaveMessage(edited) : null;
@@ -601,6 +605,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
             leave={leave}
             today={today}
             contractEndsOn={contractEndsOn}
+            contractExample={contract ? isExampleRecord(contract) : false}
             onHide={openType.discreet ? () => hide(openType.id) : undefined}
           />
           <button
