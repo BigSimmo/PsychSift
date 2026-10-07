@@ -653,7 +653,13 @@ Status and counts only, nothing new is stored, and a failed read marks only its 
 term assessments and EPAs, one route switched by `?view=` and `?as=supervisor`. It runs only on
 made-up records held in page memory: nothing is fetched, saved or sent, and signed-in readers see
 an honest "can't be kept yet" notice with an opt-in to the made-up records. The printable form
-(`assessments-pdf.tsx`) is lazy-loaded.
+(`assessments-pdf.tsx`) is lazy-loaded. Two added sample views sit on the same route, reached from
+the supervisor home: `?view=inbox&as=supervisor` (the consultant inbox: every request in one list,
+opened in one tap, answered with a supervision level and a few lines checked for patient details,
+sent after 10 seconds with Undo; `inbox.ts`) and `?view=overview&as=supervisor` (the term overview
+for a DCT or MEU: status tags only, a mid-term meter with its screen-reader sentence, a one-tap
+Remind with Undo limited to one a day per form, and a status-only CSV; `overview.ts`). Their page
+memory is `extras.ts`, kept apart from the sample's own reducer. Nothing is sent by either.
 
 `api.ts` and `repository.ts` wrap every database call and map its errors to plain words;
 `request.ts` parses request bodies while keeping Teaching's own plain messages, and

@@ -14,6 +14,9 @@ import { AssessmentForm } from "@/components/teaching/assessments/assessments-fo
 import { AskSupervisor, BookMeeting, EndOfTermSteps } from "@/components/teaching/assessments/assessments-steps";
 import { AssessmentReport, SignForm } from "@/components/teaching/assessments/assessments-report";
 import { ConcernsHelp, AssessmentsSheets, type SheetState } from "@/components/teaching/assessments/assessments-help";
+import { AssessmentsExtrasProvider } from "@/components/teaching/assessments/assessments-extras";
+import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-inbox";
+import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
 import { SideBySide, SupervisorHome, SupervisorTimes } from "@/components/teaching/assessments/assessments-supervisor";
 import { viewHref, type AssessmentsView } from "@/components/teaching/assessments/assessments-parts";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
@@ -60,6 +63,8 @@ const VIEWS: readonly AssessmentsView[] = [
   "help",
   "times",
   "side",
+  "inbox",
+  "overview",
 ];
 
 const DATE_OPTIONS = [
@@ -69,6 +74,9 @@ const DATE_OPTIONS = [
 
 function Screen(props: ScreenProps & { view: AssessmentsView }) {
   const { view, role } = props;
+  // The two added sample views (features 16 and 4) read the same made-up records from either role.
+  if (view === "inbox") return <AssessmentsInbox {...props} />;
+  if (view === "overview") return <AssessmentsTermOverview {...props} />;
   if (role === "supervisor") {
     if (view === "form") return <AssessmentForm {...props} who="sup" />;
     if (view === "sign") return <SignForm {...props} who="sup" />;
@@ -186,7 +194,9 @@ function AssessmentsApp() {
           ]}
         />
       ) : null}
-      <Screen {...props} view={view} />
+      <AssessmentsExtrasProvider>
+        <Screen {...props} view={view} />
+      </AssessmentsExtrasProvider>
       <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />
     </div>
   );

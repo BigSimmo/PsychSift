@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
+import { AssessmentsSampleViewsNav } from "@/components/teaching/assessments/assessments-extras";
 import { ComparisonChart } from "@/components/teaching/assessments/assessments-report";
 import {
   Card,
@@ -195,6 +196,7 @@ export function SupervisorHome({ s, dispatch, openSheet }: ScreenProps) {
       <SmallPrint>
         Dr Ben Ortiz and Dr Mia Chen are made-up examples of a list; their forms aren&apos;t built into this sample.
       </SmallPrint>
+      <AssessmentsSampleViewsNav s={s} />
       <SectionLabel end={<TextLink href={viewHref("times", asSup)}>Set times</TextLink>}>Meetings</SectionLabel>
       <List>
         {s.booking ? (
