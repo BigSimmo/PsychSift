@@ -51,6 +51,7 @@ import {
   type EpaRecord,
   type SampleTerm,
 } from "@/lib/teaching/assessments/sample";
+import { withUnit } from "@/components/teaching/teaching-number";
 
 /** Green only once the DCT has countersigned the term. */
 const SIGNED_PILL = <Pill pill={{ label: "Satisfactory · countersigned", tone: "ok" }} />;
@@ -118,7 +119,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
         </div>
         <div className="assess-stat">
           <b>
-            {w} <small>{`of ${YEAR_WEEKS} weeks`}</small>
+            {w} <small>{`of ${withUnit(YEAR_WEEKS, "weeks")}`}</small>
           </b>
         </div>
         <AssessMeter fraction={w / YEAR_WEEKS} />

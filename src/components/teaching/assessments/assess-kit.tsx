@@ -25,6 +25,7 @@ import { universalHeaderLeadingSlotId } from "@/components/work-frame/work-frame
 import { RATING_LABELS, type Rating } from "@/lib/teaching/assessments/content";
 import { looksLikePatientDetails } from "@/lib/teaching/assessments/model";
 import { workAreaFor, workFrameCurrentItem, workFrameTabIndex } from "@/lib/work-frame/areas";
+import { withUnit } from "@/components/teaching/teaching-number";
 
 /*
  * Assessments' own pieces (work-mode redesign, owner request 6 Oct 2026), drawn
@@ -354,7 +355,7 @@ export function StepBar({ total, current }: { readonly total: number; readonly c
       aria-valuemin={1}
       aria-valuemax={total}
       aria-valuenow={current + 1}
-      aria-valuetext={`Step ${current + 1} of ${total}`}
+      aria-valuetext={`Step ${withUnit(current + 1, "of")} ${total}`}
     >
       {Array.from({ length: total }, (_, i) => (
         <i key={i} data-state={i < current ? "done" : i === current ? "now" : undefined} />

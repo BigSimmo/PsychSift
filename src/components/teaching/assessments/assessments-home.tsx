@@ -37,6 +37,7 @@ import {
   SAMPLE_SUPERVISOR,
   SAMPLE_TERMS,
 } from "@/lib/teaching/assessments/sample";
+import { withUnit } from "@/components/teaching/teaching-number";
 
 /** Week of term on a line: the mid-term mark, and the last two weeks shaded as the booking window. */
 export function TermTrack({ week }: { week: number }) {
@@ -101,22 +102,22 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
   const started = stage(s) !== "start";
   return (
     <>
-      <AssessHeader eyebrow={`${SAMPLE_DOCTOR.grade} 2026 · term 4 of 5`} title={t.name} />
+      <AssessHeader eyebrow={`${SAMPLE_DOCTOR.grade} 2026 · term ${withUnit(4, "of")} 5`} title={t.name} />
       <WorkHero
         testId="assess-doctor-hero"
         eyebrow={`${t.categoryName} (${t.category})`}
-        title={`Week ${week} of 10`}
+        title={`Week ${withUnit(week, "of")} 10`}
         sub={`${windowOpen(s) ? "Booking is open until Fri 6 Nov." : "Booking opens Mon 26 Oct."} Form due to your MEU Fri 20 Nov.`}
         ring={
           <WorkRing
             value={weeks}
             label={`of ${YEAR_WEEKS} wk`}
             fraction={weeks / YEAR_WEEKS}
-            accessibleLabel={`${weeks} of ${YEAR_WEEKS} weeks done this year`}
+            accessibleLabel={`${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} done this year`}
           />
         }
         href={viewHref("reqs")}
-        aria-label={`Week ${week} of 10. ${weeks} of ${YEAR_WEEKS} weeks done this year. Open year requirements.`}
+        aria-label={`Week ${withUnit(week, "of")} 10. ${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} done this year. Open year requirements.`}
       />
 
       <SectionLabel end={<TextLink href={viewHref("term", { term: "t4" })}>Term details</TextLink>}>
@@ -147,8 +148,8 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
       <List label="Your year">
         <Row
           icon={Activity}
-          title={`${weeks} of ${YEAR_WEEKS} weeks · ${kindsDone(SAMPLE_TERMS)} of 4 kinds`}
-          subtitle={`${epaRecords(s).length} EPAs here, at least ${epaNeedMore(s)} more. Leave ${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} days.`}
+          title={`${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} · ${withUnit(kindsDone(SAMPLE_TERMS), "of")} 4 kinds`}
+          subtitle={`${epaRecords(s).length} EPAs here, at least ${epaNeedMore(s)} more. Leave ${withUnit(SAMPLE_LEAVE.used, "of")} ${withUnit(SAMPLE_LEAVE.limit, "days")}.`}
           tag={epa1ThisTerm(s) ? <WorkTag tone="neutral">On track</WorkTag> : <WorkTag tone="amber">1 to do</WorkTag>}
           href={viewHref("reqs")}
         />

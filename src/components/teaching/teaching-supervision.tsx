@@ -189,7 +189,7 @@ function TopicChips({
     <fieldset disabled={disabled} className="assess-field m-0 min-w-0 border-0 p-0">
       <legend className="assess-field__label">
         <span>{legend}</span>
-        <small className="shrink-0 whitespace-nowrap font-semibold text-[color:var(--text-muted)] tabular-nums">{`${value.length} of ${MAX_TOPICS}`}</small>
+        <small className="shrink-0 whitespace-nowrap font-bold text-[color:var(--text-muted)] tabular-nums">{`${withUnit(value.length, "of")} ${MAX_TOPICS}`}</small>
       </legend>
       <div className="work-chips">
         {supervisionTopics.map((topic) => {
@@ -253,7 +253,7 @@ function MinutesField({
         </WorkButton>
         <input
           id={id}
-          className="assess-txt min-w-0 flex-1 text-center tabular-nums"
+          className="assess-txt min-w-0 flex-1 text-center font-normal tabular-nums"
           type="number"
           inputMode="numeric"
           value={value}
@@ -401,14 +401,14 @@ function PairingCard({ pairing }: { pairing: SupervisionPairingView }) {
             ? [
                 {
                   label: "Confirmed",
-                  value: `${hours(pairing.confirmedMinutes)} of ${withUnit(target, "h")}`,
+                  value: `${withUnit(hours(pairing.confirmedMinutes), "of")} ${withUnit(target, "h")}`,
                   fraction: Math.min(1, confirmedHours / target),
                 },
               ]
             : undefined
         }
       >
-        <p className="m-0 text-sm text-[color:var(--text-heading)] tabular-nums">
+        <p className="m-0 text-sm font-normal text-[color:var(--text-heading)] tabular-nums">
           Confirmed: {hours(pairing.confirmedMinutes)} · Pending: {hours(pairing.pendingMinutes)}
         </p>
       </AssessPair>
@@ -447,7 +447,11 @@ function RecentList({
   return (
     <>
       <SectionLabel
-        end={entries.length > RECENT ? <SectionNote>{`${shown.length} of ${entries.length}`}</SectionNote> : undefined}
+        end={
+          entries.length > RECENT ? (
+            <SectionNote>{`${withUnit(shown.length, "of")} ${entries.length}`}</SectionNote>
+          ) : undefined
+        }
       >{`Recent · ${other}`}</SectionLabel>
       <ul className="work-card work-rows m-0 list-none p-0" aria-label={`Recent sessions with ${other}`}>
         {shown.map((entry) => {
@@ -461,7 +465,8 @@ function RecentList({
               </span>
               <div className="work-row__text">
                 <p className="work-row__title m-0">
-                  {shortDayLabel(entry.date)} · <span className="tabular-nums">{withUnit(entry.minutes, "min")}</span> ·{" "}
+                  {shortDayLabel(entry.date)} ·{" "}
+                  <span className="font-bold tabular-nums">{withUnit(entry.minutes, "min")}</span> ·{" "}
                   {supervisionTypeLabels[entry.type]} · {STATUS_LABELS[entry.status]}
                 </p>
                 {entry.topics.length > 0 ? <span className="work-row__sub">{topicList(entry.topics)}</span> : null}
