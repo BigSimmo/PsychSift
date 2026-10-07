@@ -2,22 +2,29 @@ import { useId } from "react";
 
 import { cn } from "@/components/ui-primitives";
 
+/** A coordinate to three places, so the drawn path stays short and exact. */
+function n(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
 /** One four-point star with concave curved sides, centred on (x, y), radius r, curve factor f. */
 function starPath(x: number, y: number, r: number, f: number): string {
   const k = r * f;
+  const [top, right, bottom, left] = [n(y - r), n(x + r), n(y + r), n(x - r)];
+  const [kx1, kx2, ky1, ky2] = [n(x + k), n(x - k), n(y - k), n(y + k)];
   return [
-    `M ${x} ${y - r}`,
-    `Q ${x + k} ${y - k} ${x + r} ${y}`,
-    `Q ${x + k} ${y + k} ${x} ${y + r}`,
-    `Q ${x - k} ${y + k} ${x - r} ${y}`,
-    `Q ${x - k} ${y - k} ${x} ${y - r}`,
+    `M ${x} ${top}`,
+    `Q ${kx1} ${ky1} ${right} ${y}`,
+    `Q ${kx1} ${ky2} ${x} ${bottom}`,
+    `Q ${kx2} ${ky2} ${left} ${y}`,
+    `Q ${kx2} ${ky1} ${x} ${top}`,
     "Z",
   ].join(" ");
 }
 
 const LENS = { cx: 10.7, cy: 14.2, r: 5.1 } as const;
 // The handle leaves the ring at 45 degrees, down and to the right.
-const HANDLE_FROM = { x: LENS.cx + LENS.r * Math.SQRT1_2, y: LENS.cy + LENS.r * Math.SQRT1_2 } as const;
+const HANDLE_FROM = { x: n(LENS.cx + LENS.r * Math.SQRT1_2), y: n(LENS.cy + LENS.r * Math.SQRT1_2) } as const;
 const HANDLE_TO = { x: 17.706, y: 21.206 } as const;
 const BIG_STAR = starPath(14.6, 6.6, 4.3, 0.18);
 const SMALL_STAR = starPath(9, 4, 2.3, 0.2);
