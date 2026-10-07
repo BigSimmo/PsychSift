@@ -73,6 +73,11 @@ export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
 /** localStorage — My Day's earlier alerts the reader cleared or read (alert ids and times). */
 export const MY_DAY_EARLIER_ALERTS_STORAGE_KEY = "psychsift:my-day:earlier-alerts-v1";
 /**
+ * localStorage — Admin paperwork (wiring thread's paperwork-store.ts): the doctor's own
+ * requests, documents list and pay and tax checklists. Kept on this device only.
+ */
+export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
+/**
  * localStorage — Remind me notes: short text and a due time, kept on this
  * device only. The sheet refuses initials, bed and record numbers and names,
  * and a shared device keeps none; cleared at every account transition.
@@ -177,6 +182,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_SNOOZED_ITEMS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_EARLIER_ALERTS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, ADMIN_PAPERWORK_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
