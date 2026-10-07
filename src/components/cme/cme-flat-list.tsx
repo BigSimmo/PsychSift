@@ -162,9 +162,12 @@ export function CmeFlatRow({
   muted = false,
   testId,
   className,
+  linkEnd,
 }: {
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
+  /** Drawn inside the link in place of the chevron: a button face ("Show") the whole row answers to. */
+  readonly linkEnd?: ReactNode;
   readonly lead?: ReactNode;
   /** A bare icon lead sits in a grey circle, or the mode's copper tint. */
   readonly leadTone?: "neutral" | "mode";
@@ -192,7 +195,7 @@ export function CmeFlatRow({
         <Link href={href} data-testid={testId} className={cn("work-row min-h-tap min-w-0 flex-1", end ? "pr-1" : "")}>
           {leadSlot}
           {text}
-          {end ? null : <ChevronRight aria-hidden="true" className="work-row__chev" />}
+          {linkEnd ?? (end ? null : <ChevronRight aria-hidden="true" className="work-row__chev" />)}
         </Link>
         {end ? <span className="flex shrink-0 items-center pr-3">{end}</span> : null}
       </li>

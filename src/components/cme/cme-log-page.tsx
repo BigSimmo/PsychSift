@@ -1,12 +1,24 @@
 "use client";
 
-import { Check, ChevronDown, Download, Ellipsis, FileText, Plus } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  Download,
+  Ellipsis,
+  FileText,
+  NotebookPen,
+  Paperclip,
+  Plus,
+  Presentation,
+  ShieldCheck,
+  SlidersHorizontal,
+} from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { focusRing } from "@/components/card-recipes";
 import { CmeDraftsSection } from "@/components/cme/cme-drafts-section";
-import { CmeFlatList, CmeFlatRow, CmeGroup, CmeNote, CmeTextLink } from "@/components/cme/cme-flat-list";
+import { CmeFlatList, CmeFlatRow, CmeGroup, CmeTextLink } from "@/components/cme/cme-flat-list";
 import { CmeLogCopySheet } from "@/components/cme/cme-log-copy-sheet";
 import { CmeLogMonthList } from "@/components/cme/cme-log-entry-list";
 import { CmeLogMonthChart } from "@/components/cme/cme-log-month-chart";
@@ -15,18 +27,24 @@ import {
   ATTENTION_FILTERS,
   CATEGORY_OPTIONS,
   cmeCpdHomeWords,
-  cmeFilledButton,
+  formatHoursShort,
   groupByMonth,
   type CategoryFilter,
   type CmeLogAttention,
 } from "@/components/cme/cme-log-shared";
 import { CmeMissedSessionsSection } from "@/components/cme/cme-missed-sessions-section";
-import { buttonFaceClass } from "@/components/ui/button";
+import { useCmeFinishCount } from "@/components/cme/cme-page-tabs";
+import { CME_LOG_TRIGGER_ATTRIBUTE, CmeQuickLog } from "@/components/cme/cme-quick-log";
+import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
+import { CmeBandAction, CmeBanner, CmeHint, CmeNoteLine } from "@/components/cme/cme-work-kit";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useWorkUndoToast, WorkBody } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import { SearchField } from "@/components/ui/text-field";
-import { cn, EmptyState, InlineNotice, textMuted } from "@/components/ui-primitives";
+import { cn, InlineNotice } from "@/components/ui-primitives";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
-import type { CmeDraft } from "@/lib/cme/drafts";
+import { groupDrafts, type CmeDraft } from "@/lib/cme/drafts";
+import { totalAllocatedHours } from "@/lib/cme/evaluate";
 import type { CmeMissedSession } from "@/lib/cme/missed-sessions";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
@@ -68,9 +86,13 @@ export type CmeLogPageProps = {
    * panel (mock-up screen 02 has one filled button, "Log an activity"), so routines are not read here.
    */
   readonly routines?: readonly CmeRoutine[];
+  /** The loader's clock. When given, Log an activity opens the quick-log sheet, as on Summary. */
+  readonly nowIso?: string;
+  /** Ask Teaching for its count of sessions not yet logged (never in the demo or in isolated tests). */
+  readonly loadTeachingCount?: boolean;
 };
 
-type SheetSection = "year" | "category";
+type SheetSection = "all" | "category";
 
 /**
  * LOG — every activity the owner has recorded, by year (mock-up screen 02).
@@ -107,6 +129,9 @@ export function CmeLogPage({
   recordsFailed = false,
   today = perthCalendarDate(new Date()),
   initialTab = "activities",
+  routines = [],
+  nowIso,
+  loadTeachingCount = false,
 }: CmeLogPageProps) {
   const showFinish = initialTab === "finish";
   const wide = useWideLogLayout();
@@ -207,7 +232,7 @@ export function CmeLogPage({
     if (!response.ok) throw new Error("Could not save the copied status.");
   }
 
-  /** Called only from the copy sheet's "Mark copied, next" — never on a copy alone. */
+  /** Called only from the copy sheet's "Mark copied, next", never on a copy alone. */
   async function markCopied(id: string) {
     if (demoMode) throw new Error("Demo records are read-only.");
     await patchCopied(id, true);
@@ -215,20 +240,27 @@ export function CmeLogPage({
     setLastCopiedId(id);
   }
 
-  async function undoCopied() {
-    if (!lastCopiedId) return;
-    const copiedId = lastCopiedId;
-    await patchCopied(copiedId, false);
-    setCopiedOverride((current) => ({ ...current, [copiedId]: false }));
-    setLastCopiedId(null);
+  async function undoCopiedId(id: string) {
+    await patchCopied(id, false);
+    setCopiedOverride((current) => ({ ...current, [id]: false }));
+    setLastCopiedId((current) => (current === id ? null : current));
   }
 
-  async function undoFromPage() {
-    if (!lastCopiedId || copyBusy) return;
+  async function undoCopied() {
+    if (!lastCopiedId) return;
+    await undoCopiedId(lastCopiedId);
+  }
+
+  /** Undo from the page: the toast's Undo, or the inline one without a toast. Focus returns to the row. */
+  async function undoFromPage(id: string | null = lastCopiedId) {
+    if (!id || copyBusy) return;
     setCopyBusy(true);
     setCopyError(null);
     try {
-      await undoCopied();
+      await undoCopiedId(id);
+      window.requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>(`[data-testid="cme-log-row-${id}"]`)?.focus(),
+      );
     } catch {
       setCopyError("Could not undo the marked-copied status. Try again.");
     } finally {
@@ -242,6 +274,41 @@ export function CmeLogPage({
     setCopySession((session) => session + 1);
     setCopyOpen(true);
   }
+
+  // Closing the copy sheet after marking one says so in the work toast, with Undo
+  // (mock-up cpd_logUndo). Without the app's toast the page keeps its own line.
+  const undoToast = useWorkUndoToast();
+  function closeCopySheet() {
+    setCopyOpen(false);
+    if (!undoToast || !lastCopiedId) return;
+    const id = lastCopiedId;
+    const title = entriesById.get(id)?.title ?? "activity";
+    undoToast(`Marked copied · ${title}`, () => void undoFromPage(id));
+    setLastCopiedId(null);
+  }
+
+  // The band: the page name, and what the year holds or what is left to finish.
+  const activeYear = useMemo(
+    () => visibleEntries.filter((entry) => !entry.archivedAt && entry.date.startsWith(`${effectiveYear}-`)),
+    [visibleEntries, effectiveYear],
+  );
+  const teachingCount = useCmeTeachingUnloggedCount(loadTeachingCount && !demoMode);
+  const openMissed = missedSessions.filter((session) => session.replacementEntryId === null).length;
+  const draftsToDo = groupDrafts(drafts).nextAction.length;
+  const finishCount = draftsToDo + openMissed + (teachingCount ?? 0);
+  useCmeFinishCount(finishCount > 0 ? finishCount : null);
+  const tidyCounts = ATTENTION_FILTERS.map((filter) => ({ filter, count: activeYear.filter(filter.matches).length }));
+  const tidyCount = tidyCounts.reduce((sum, item) => sum + item.count, 0);
+  useModeBandHeading({
+    eyebrow: showFinish
+      ? `${finishCount} to finish · ${tidyCount} to tidy`
+      : `${activeYear.length} ${activeYear.length === 1 ? "activity" : "activities"} · ${formatHoursShort(totalAllocatedHours(activeYear))} h`,
+    title: "Log",
+  });
+
+  const quickLog = Boolean(nowIso) && set.confirmedOn !== "";
+  const logTrigger = quickLog ? { [CME_LOG_TRIGGER_ATTRIBUTE]: "" } : {};
+  const openFilter = useCallback(() => setSheetSection("all"), []);
 
   const panelProps = {
     availableYears,
@@ -259,24 +326,49 @@ export function CmeLogPage({
     showArchived,
   };
 
-  return (
-    <main
-      data-testid="cme-log-page"
-      data-mode-identity="cme"
-      className={cn(
-        "mx-auto w-full max-w-3xl px-4 pb-[calc(max(1rem,env(safe-area-inset-bottom))+2rem)] pt-6 sm:px-6",
-        !showFinish && "lg:max-w-5xl",
-      )}
+  const yearChip = (
+    <button
+      ref={yearButtonRef}
+      type="button"
+      onClick={openFilter}
+      data-testid="cme-log-open-filters"
+      aria-haspopup="dialog"
+      aria-label={`Year: ${yearLabel}. Choose a year`}
+      className="work-chip cpd-chip-on min-h-12 lg:hidden"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <PageTitleUnderBand className={cmePageTitle}>{showFinish ? "To finish" : "Log"}</PageTitleUnderBand>
-          {showFinish ? null : (
-            <p className={cn(textMuted, "mt-1 text-sm")}>Every activity you have recorded, by year.</p>
-          )}
-        </div>
-        {showFinish ? null : (
-          // A native button rather than `IconButton`, which takes no ref: the More sheet returns focus here.
+      <span className="nums font-normal">{yearLabel}</span>
+      <ChevronDown aria-hidden="true" strokeWidth={2.2} />
+    </button>
+  );
+
+  const activities = (
+    <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-8">
+      {wide ? (
+        <aside
+          aria-label="Filter your log"
+          data-testid="cme-log-filter-column"
+          className="hidden lg:sticky lg:top-4 lg:block"
+        >
+          <CmeLogFilterPanel
+            {...panelProps}
+            attention={{ value: attention, onChange: setAttention }}
+            onShowArchived={setShowArchived}
+          />
+        </aside>
+      ) : null}
+      <div className="grid min-w-0 gap-2.5">
+        <div className="flex items-center gap-1">
+          <div data-testid="cme-log-search" className="min-w-0 flex-1">
+            <SearchField
+              label="Search your log"
+              placeholder="Search titles and reflections"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onClear={() => setQuery("")}
+              clearLabel="Clear the log search"
+            />
+          </div>
+          {/* A native button rather than `IconButton`, which takes no ref: the More sheet returns focus here. */}
           <button
             ref={moreButtonRef}
             type="button"
@@ -284,33 +376,292 @@ export function CmeLogPage({
             aria-haspopup="dialog"
             onClick={() => setMoreOpen(true)}
             data-testid="cme-log-more"
-            className="-mr-2 grid size-tap min-h-tap shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] transition-colors duration-[var(--duration-instant)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+            className="grid size-tap min-h-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] hover:bg-[color:var(--work-wash)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity)]"
           >
             <Ellipsis aria-hidden="true" className="size-icon-md" />
           </button>
-        )}
-      </div>
-      <div role="status" data-testid="cme-log-saved">
-        {justSaved ? (
-          <p className="mt-3 inline-flex min-h-tap items-center gap-2 rounded-lg bg-[color:var(--clinical-accent-soft)] px-3 text-sm font-semibold text-[color:var(--clinical-accent)]">
-            <Check aria-hidden="true" className="size-icon-sm" />
-            Saved to your log.
-          </p>
+        </div>
+
+        <div role="group" aria-label="Narrow the log" className="work-chips flex-wrap">
+          {yearChip}
+          <button
+            ref={categoryButtonRef}
+            type="button"
+            onClick={() => setSheetSection("category")}
+            aria-haspopup="dialog"
+            data-testid="cme-log-category-chip"
+            className={cn("work-chip min-h-12 lg:hidden", categoryFilter !== "all" && "cpd-chip-on")}
+          >
+            {categoryLabel}
+            <ChevronDown aria-hidden="true" strokeWidth={2.2} />
+          </button>
+          {!showArchived ? (
+            <div role="group" aria-label="Needs attention" data-testid="cme-log-attention" className="contents">
+              {ATTENTION_FILTERS.map((filter) => {
+                const count = yearEntries.filter(filter.matches).length;
+                const pressed = attention === filter.value;
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    aria-pressed={pressed}
+                    data-testid={`cme-log-attention-${filter.value}`}
+                    onClick={() => setAttention(pressed ? null : filter.value)}
+                    className="work-chip min-h-12"
+                  >
+                    {pressed ? <Check aria-hidden="true" strokeWidth={2.4} /> : null}
+                    {filter.label}
+                    <span className="work-chip__count nums font-normal">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
+        {showArchived ? (
+          <CmeHint testId="cme-log-archived-help">
+            Archived activities keep their records and evidence. They add nothing to totals, downloads and annual
+            summaries. Open one to restore it.
+          </CmeHint>
         ) : null}
-        {missedLinkFailed ? (
-          <div className="mt-3" data-testid="cme-log-missed-unlinked">
-            <InlineNotice tone="warning">
-              The activity was saved, but it could not be linked to the missed session. Link it from Missed teaching and
-              supervision below.
-            </InlineNotice>
+
+        {!allYears && !showArchived && groups.length > 0 ? (
+          <CmeLogMonthChart
+            year={effectiveYear}
+            groups={groups}
+            today={today}
+            filtered={trimmedQuery.length > 0 || attentionFilter !== null || categoryFilter !== "all"}
+          />
+        ) : null}
+
+        {!showArchived && uncopied.length > 0 ? (
+          <div className="cpd-sug" data-testid="cme-log-copy-help">
+            <span aria-hidden="true" className="work-ic">
+              <Copy aria-hidden="true" strokeWidth={2} />
+            </span>
+            <span className="work-row__text">
+              <span className="work-row__title">
+                <span className="nums font-normal">{uncopied.length}</span>
+                {` not marked copied`}
+                <span className="sr-only">{` to ${cpdHome.name}`}</span>
+              </span>
+              <span className="work-row__sub">
+                {`Copy one, paste it into ${cpdHome.name}, then mark it copied. PsychSift sends nothing to ${cpdHome.college}.`}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={openCopySheet}
+              data-testid="cme-log-copy-next"
+              className="work-button min-h-tap shrink-0"
+              data-variant="tinted"
+            >
+              Copy next
+            </button>
           </div>
         ) : null}
+        {lastCopiedId && !copyOpen && !undoToast ? (
+          <div role="status" data-testid="cme-log-copy-done" className="cpd-ban">
+            <Check aria-hidden="true" strokeWidth={2} />
+            <span>Marked copied.</span>
+            <button
+              type="button"
+              disabled={copyBusy}
+              onClick={() => void undoFromPage()}
+              className="work-label__link min-h-tap"
+            >
+              Undo
+            </button>
+          </div>
+        ) : null}
+        {copyError ? (
+          <p role="alert" className="cpd-hint">
+            {copyError}
+          </p>
+        ) : null}
+
+        <div className="grid gap-3">
+          {groups.length === 0 ? (
+            <div className="work-card" data-testid="cme-log-empty">
+              <div className="work-empty">
+                <span aria-hidden="true" className="work-empty__badge">
+                  <NotebookPen aria-hidden="true" strokeWidth={2} />
+                </span>
+                <p className="work-empty__title">
+                  {yearEntries.length === 0
+                    ? showArchived
+                      ? `No archived activities in ${yearLabel}.`
+                      : `Nothing logged for ${effectiveYear} yet.`
+                    : "Nothing matched your search and filter."}
+                </p>
+                <p className="work-empty__body">
+                  {yearEntries.length === 0
+                    ? showArchived
+                      ? "Activities you archive appear here."
+                      : "Log your first activity for this year to see it here."
+                    : "Try a shorter word, or clear the category filter."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <CmeLogMonthList groups={groups} today={today} showYear={allYears} />
+          )}
+        </div>
+
+        <div data-testid="cme-log-privacy-reminder">
+          <CmeNoteLine icon={ShieldCheck}>
+            Reflections are yours: leave out patient names, dates of birth and record numbers.
+          </CmeNoteLine>
+        </div>
+        <span className="flex justify-center">
+          <CmeTextLink onClick={() => setShowArchived((value) => !value)} testId="cme-log-show-archived">
+            {showArchived ? "Back to active activities" : "Show archived"}
+          </CmeTextLink>
+        </span>
       </div>
-      {allYearsFailed ? (
-        <p role="status" className={cn(textMuted, "mt-2 text-sm")}>
-          All years could not be loaded. This year is still available.
-        </p>
+    </div>
+  );
+
+  const finish = (
+    <>
+      {teachingCount !== null && teachingCount > 0 ? (
+        <CmeGroup label={`Teaching to log · ${teachingCount}`} testId="cme-finish-teaching">
+          <CmeFlatList>
+            <CmeFlatRow
+              href="/teaching/review"
+              lead={<Presentation aria-hidden="true" strokeWidth={2} />}
+              leadTone="mode"
+              title="Teaching you gave"
+              subtitle={`${teachingCount} ${teachingCount === 1 ? "session is" : "sessions are"} not logged yet`}
+            />
+          </CmeFlatList>
+        </CmeGroup>
       ) : null}
+      <div id="cme-drafts">
+        <CmeDraftsSection
+          // Re-seeded whenever a refresh brings a different draft list, so its groups never go stale.
+          key={drafts.map((draft) => `${draft.id}:${draft.updatedAt}`).join("|")}
+          drafts={drafts}
+          demoMode={demoMode}
+          loadFailed={recordsFailed}
+        />
+      </div>
+      {tidyCount > 0 ? (
+        <CmeGroup label={`Records to tidy · ${tidyCount}`} testId="cme-finish-tidy">
+          <CmeFlatList>
+            {tidyCounts.map(({ filter, count }) => {
+              if (!count) return null;
+              const subtitle = `${count} ${count === 1 ? "activity" : "activities"} in ${effectiveYear}`;
+              const Icon = filter.value === "copy" ? Copy : filter.value === "reflection" ? NotebookPen : Paperclip;
+              const lead = <Icon aria-hidden="true" strokeWidth={2} />;
+              if (filter.value === "copy") {
+                return (
+                  <li key={filter.value} className="work-row min-w-0" data-testid="cme-finish-attention-copy">
+                    <span className="cpd-lead">{lead}</span>
+                    <span className="work-row__text">
+                      <span className="work-row__title">{filter.label}</span>
+                      <span className="work-row__sub nums">{subtitle}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={openCopySheet}
+                      className="work-button min-h-tap shrink-0"
+                      data-variant="tinted"
+                    >
+                      Copy next
+                    </button>
+                  </li>
+                );
+              }
+              return (
+                <CmeFlatRow
+                  key={filter.value}
+                  href={`/cme/log?year=${effectiveYear}&fix=${filter.value}`}
+                  testId={`cme-finish-attention-${filter.value}`}
+                  lead={lead}
+                  title={filter.label}
+                  subtitle={subtitle}
+                  linkEnd={
+                    <span aria-hidden="true" className="work-button pointer-events-none" data-variant="secondary">
+                      Show
+                    </span>
+                  }
+                />
+              );
+            })}
+          </CmeFlatList>
+        </CmeGroup>
+      ) : null}
+      <CmeMissedSessionsSection
+        sessions={missedSessions}
+        entries={entries
+          .filter((entry) => !entry.archivedAt)
+          .map((entry) => ({ id: entry.id, title: entry.title, date: entry.date }))}
+        state={recordsFailed ? "load-failed" : "ready"}
+        demoMode={demoMode}
+      />
+    </>
+  );
+
+  return (
+    <main data-testid="cme-log-page" data-mode-identity="cme" className="w-full">
+      {showFinish ? null : (
+        <CmeBandAction
+          icon={SlidersHorizontal}
+          label="Filter your log"
+          onClick={openFilter}
+          testId="cme-log-filter-action"
+        />
+      )}
+      <WorkBody>
+        <PageTitleUnderBand className={cmePageTitle}>{showFinish ? "To finish" : "Log"}</PageTitleUnderBand>
+        <div role="status" data-testid="cme-log-saved" className="contents">
+          {justSaved ? <CmeBanner icon={Check}>Saved to your log.</CmeBanner> : null}
+          {missedLinkFailed ? (
+            <div data-testid="cme-log-missed-unlinked">
+              <InlineNotice tone="warning">
+                The activity was saved, but it could not be linked to the missed session. Link it from Missed teaching
+                and supervision below.
+              </InlineNotice>
+            </div>
+          ) : null}
+        </div>
+        {allYearsFailed ? (
+          <p role="status" className="cpd-hint">
+            All years could not be loaded. This year is still available.
+          </p>
+        ) : null}
+
+        {showFinish ? finish : activities}
+
+        <div className="work-dock" role="group" aria-label="Log actions">
+          <div className="work-dock__capsule">
+            <Link
+              href={`/cme/new?year=${set.year}`}
+              data-testid="cme-log-new-entry"
+              className="work-button min-h-tap"
+              data-variant="primary"
+              {...logTrigger}
+            >
+              <Plus aria-hidden="true" strokeWidth={2.2} />
+              <span>Log an activity</span>
+            </Link>
+            {!showFinish && !showArchived && uncopied.length > 0 ? (
+              <button
+                type="button"
+                onClick={openCopySheet}
+                data-testid="cme-log-dock-copy"
+                className="work-button min-h-tap"
+                data-variant="secondary"
+              >
+                <Copy aria-hidden="true" strokeWidth={2.2} />
+                Copy next
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </WorkBody>
 
       {!showFinish ? (
         <>
@@ -323,296 +674,101 @@ export function CmeLogPage({
             returnFocusRef={moreButtonRef}
             testId="cme-log-more-sheet"
           >
-            <div className="grid gap-2 text-sm">
+            <div className="work-card work-rows">
               <a
                 href={`/api/cme/export?year=${effectiveYear}`}
                 download
                 data-testid="cme-log-download-csv"
-                className={moreRow}
+                className="work-row min-h-tap"
               >
-                <Download aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-                Download CSV
+                <span className="cpd-lead">
+                  <Download aria-hidden="true" strokeWidth={2} />
+                </span>
+                <span className="work-row__text">
+                  <span className="work-row__title">Download CSV</span>
+                  <span aria-hidden="true" className="work-row__sub">
+                    Every activity in {effectiveYear}, for a spreadsheet
+                  </span>
+                </span>
               </a>
               <Link
                 href={`/cme/summary?year=${effectiveYear}`}
                 data-testid="cme-log-annual-summary"
-                className={moreRow}
+                className="work-row min-h-tap"
               >
-                <FileText aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-                Annual summary
+                <span className="cpd-lead">
+                  <FileText aria-hidden="true" strokeWidth={2} />
+                </span>
+                <span className="work-row__text">
+                  <span className="work-row__title">Annual summary</span>
+                  <span aria-hidden="true" className="work-row__sub">
+                    A page to print or save as PDF
+                  </span>
+                </span>
               </Link>
             </div>
           </Sheet>
           <Sheet
             open={sheetSection !== null && !wide}
             onClose={() => setSheetSection(null)}
-            title={sheetSection === "category" ? "Show a category" : "Choose a year"}
+            title={sheetSection === "category" ? "Category" : "Filter"}
+            description={`${yearEntries.length} ${yearEntries.length === 1 ? "activity" : "activities"} in ${yearLabel}`}
             placement="responsive-right"
             mobilePlacement="bottom"
             returnFocusRef={sheetSection === "category" ? categoryButtonRef : yearButtonRef}
             testId="cme-log-filter-sheet"
             footer={
-              <button
-                type="button"
-                onClick={() => setSheetSection(null)}
-                className={cn(buttonFaceClass({ variant: "secondary", block: true }))}
-              >
-                Show {filtered.length} {filtered.length === 1 ? "activity" : "activities"}
-              </button>
-            }
-          >
-            <CmeLogFilterPanel {...panelProps} section={sheetSection ?? "year"} />
-          </Sheet>
-          <CmeLogCopySheet
-            key={copySession}
-            open={copyOpen}
-            onClose={() => setCopyOpen(false)}
-            candidates={uncopied}
-            lookup={(id) => entriesById.get(id)}
-            set={set}
-            demoMode={demoMode}
-            onMark={markCopied}
-            onUndo={undoCopied}
-            lastMarkedId={lastCopiedId}
-          />
-        </>
-      ) : null}
-
-      {showFinish ? (
-        <>
-          <CmeGroup label="Activities needing attention" className="mt-5">
-            <CmeFlatList>
-              {ATTENTION_FILTERS.map((filter) => {
-                const count = yearEntries.filter(filter.matches).length;
-                if (!count) return null;
-                const href =
-                  filter.value === "copy"
-                    ? `/cme/log?year=${effectiveYear}&copy=todo`
-                    : `/cme/log?year=${effectiveYear}&fix=${filter.value}`;
-                return (
-                  <CmeFlatRow
-                    key={filter.value}
-                    href={href}
-                    testId={`cme-finish-attention-${filter.value}`}
-                    title={filter.label}
-                    subtitle={`${count} ${count === 1 ? "activity" : "activities"} in ${effectiveYear}`}
-                  />
-                );
-              })}
-            </CmeFlatList>
-          </CmeGroup>
-          <div id="cme-drafts" className="mt-5">
-            <CmeDraftsSection
-              // Re-seeded whenever a refresh brings a different draft list, so its groups never go stale.
-              key={drafts.map((draft) => `${draft.id}:${draft.updatedAt}`).join("|")}
-              drafts={drafts}
-              demoMode={demoMode}
-              loadFailed={recordsFailed}
-            />
-          </div>
-        </>
-      ) : null}
-
-      {!showFinish ? (
-        <div className="mt-4 lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-8">
-          {wide ? (
-            <aside
-              aria-label="Filter your log"
-              data-testid="cme-log-filter-column"
-              className="hidden lg:sticky lg:top-4 lg:block"
-            >
-              <CmeLogFilterPanel {...panelProps} />
-            </aside>
-          ) : null}
-          <div className="grid min-w-0 gap-4">
-            <div className="flex items-center gap-2.5">
-              <button
-                ref={yearButtonRef}
-                type="button"
-                onClick={() => setSheetSection("year")}
-                data-testid="cme-log-open-filters"
-                aria-haspopup="dialog"
-                aria-label={`Year: ${yearLabel}. Choose a year`}
-                className={cn(
-                  focusRing,
-                  "inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-md border border-[color:var(--border-strong)] px-4 text-sm font-semibold text-[color:var(--text-heading)] lg:hidden",
-                )}
-              >
-                <span className="nums font-normal">{yearLabel}</span>
-                <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-4" />
-              </button>
-              <Link
-                href={`/cme/new?year=${set.year}`}
-                data-testid="cme-log-new-entry"
-                className={cn(focusRing, cmeFilledButton, "flex-1 lg:flex-none")}
-              >
-                <Plus aria-hidden="true" strokeWidth={1.6} className="size-4 shrink-0" />
-                <span>Log an activity</span>
-              </Link>
-            </div>
-
-            <div data-testid="cme-log-search" className="min-w-0">
-              <SearchField
-                label="Search your log"
-                placeholder="Search titles and reflections"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onClear={() => setQuery("")}
-                clearLabel="Clear the log search"
-              />
-            </div>
-
-            <div role="group" aria-label="Narrow the log" className="flex flex-wrap gap-x-2">
-              <button
-                ref={categoryButtonRef}
-                type="button"
-                onClick={() => setSheetSection("category")}
-                aria-haspopup="dialog"
-                data-testid="cme-log-category-chip"
-                className={cn(chipButton, "lg:hidden")}
-              >
-                {/* Always drawn as the chosen chip: it shows the category in force, "All categories" included. */}
-                <span className={cn(chipFace, chipFaceOn)}>
-                  {categoryLabel}
-                  <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-3.5" />
-                </span>
-              </button>
-              {!showArchived ? (
-                <div role="group" aria-label="Needs attention" data-testid="cme-log-attention" className="contents">
-                  {ATTENTION_FILTERS.map((filter) => {
-                    const count = yearEntries.filter(filter.matches).length;
-                    const pressed = attention === filter.value;
-                    return (
-                      <button
-                        key={filter.value}
-                        type="button"
-                        aria-pressed={pressed}
-                        data-testid={`cme-log-attention-${filter.value}`}
-                        onClick={() => setAttention(pressed ? null : filter.value)}
-                        className={chipButton}
-                      >
-                        <span className={cn(chipFace, pressed && chipFaceOn)}>
-                          {filter.label}
-                          <span className="nums font-normal text-[color:var(--text-heading)]">{count}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
-
-            {showArchived ? (
-              <p className={cn(textMuted, "text-sm-minus")} data-testid="cme-log-archived-help">
-                Archived activities keep their records and evidence. They add nothing to totals, downloads and annual
-                summaries. Open one to restore it.
-              </p>
-            ) : null}
-
-            {!allYears && !showArchived && groups.length > 0 ? (
-              <CmeLogMonthChart
-                year={effectiveYear}
-                groups={groups}
-                today={today}
-                filtered={trimmedQuery.length > 0 || attentionFilter !== null || categoryFilter !== "all"}
-              />
-            ) : null}
-
-            {!showArchived && uncopied.length > 0 ? (
-              <CmeNote
-                testId="cme-log-copy-help"
-                icon={<Check aria-hidden="true" strokeWidth={1.6} />}
-                title={`${uncopied.length} ${uncopied.length === 1 ? "activity" : "activities"} not marked copied to ${cpdHome.name}`}
-              >
-                <span>
-                  Copy one, paste it into {cpdHome.name}, then mark it copied. PsychSift sends nothing to{" "}
-                  {cpdHome.college}.
-                </span>
-                <span className="-my-3 flex">
-                  <CmeTextLink wrap onClick={openCopySheet} testId="cme-log-copy-next">
-                    Copy the next one
-                  </CmeTextLink>
-                </span>
-              </CmeNote>
-            ) : null}
-            {lastCopiedId && !copyOpen ? (
-              <div role="status" data-testid="cme-log-copy-done" className="flex flex-wrap items-center gap-2 text-sm">
-                <span>Marked copied.</span>
+              <div className="cpd-two">
                 <button
                   type="button"
-                  disabled={copyBusy}
-                  onClick={() => void undoFromPage()}
-                  className="min-h-tap font-medium text-[color:var(--clinical-accent)] underline underline-offset-2"
+                  className="work-button min-h-tap"
+                  data-variant="secondary"
+                  data-testid="cme-log-filter-clear"
+                  onClick={() => {
+                    setCategoryFilter("all");
+                    setAttention(null);
+                    setShowArchived(false);
+                    setAllYears(false);
+                  }}
                 >
-                  Undo
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  className="work-button min-h-tap"
+                  data-variant="primary"
+                  data-testid="cme-log-filter-show"
+                  onClick={() => setSheetSection(null)}
+                >
+                  Show <span className="nums font-normal">{filtered.length}</span>
                 </button>
               </div>
-            ) : null}
-            {copyError ? (
-              <p role="alert" className="text-sm">
-                {copyError}
-              </p>
-            ) : null}
-
-            <div className="mt-1 flex flex-col gap-6">
-              {groups.length === 0 ? (
-                <EmptyState
-                  testId="cme-log-empty"
-                  title={
-                    yearEntries.length === 0
-                      ? showArchived
-                        ? `No archived activities in ${yearLabel}.`
-                        : `Nothing logged for ${effectiveYear} yet.`
-                      : "Nothing matched your search and filter."
-                  }
-                  body={
-                    yearEntries.length === 0
-                      ? showArchived
-                        ? "Activities you archive appear here."
-                        : "Log your first activity for this year to see it here."
-                      : "Try a shorter word, or clear the category filter."
-                  }
-                />
-              ) : (
-                <CmeLogMonthList groups={groups} today={today} showYear={allYears} />
-              )}
-            </div>
-
-            <div className="grid justify-items-start">
-              <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-log-privacy-reminder">
-                Reflections are yours: leave out patient names, dates of birth and record numbers.
-              </p>
-              <span className="-mt-2.5 flex">
-                <CmeTextLink onClick={() => setShowArchived((value) => !value)} testId="cme-log-show-archived">
-                  {showArchived ? "Back to active activities" : "Show archived"}
-                </CmeTextLink>
-              </span>
-            </div>
-          </div>
-        </div>
+            }
+          >
+            <CmeLogFilterPanel
+              {...panelProps}
+              section={sheetSection ?? "all"}
+              attention={{ value: attention, onChange: setAttention }}
+              onShowArchived={setShowArchived}
+            />
+          </Sheet>
+        </>
       ) : null}
-      {showFinish ? (
-        <div className="mt-8">
-          <CmeMissedSessionsSection
-            sessions={missedSessions}
-            entries={entries
-              .filter((entry) => !entry.archivedAt)
-              .map((entry) => ({ id: entry.id, title: entry.title, date: entry.date }))}
-            state={recordsFailed ? "load-failed" : "ready"}
-            demoMode={demoMode}
-          />
-        </div>
+      <CmeLogCopySheet
+        key={copySession}
+        open={copyOpen}
+        onClose={closeCopySheet}
+        candidates={uncopied}
+        lookup={(id) => entriesById.get(id)}
+        set={set}
+        demoMode={demoMode}
+        onMark={markCopied}
+        onUndo={undoCopied}
+        lastMarkedId={lastCopiedId}
+      />
+      {quickLog ? (
+        <CmeQuickLog set={set} entries={entries} routines={routines} nowIso={nowIso} demoMode={demoMode} />
       ) : null}
     </main>
   );
 }
-
-/** A chip's 48 px tap area around its 32 px face (mock-up `.chip`). */
-const chipButton = cn(focusRing, "inline-flex min-h-12 items-center rounded-md");
-const chipFace =
-  "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-[color:var(--border-strong)] px-3 text-sm-minus text-[color:var(--text-muted)]";
-const chipFaceOn = "border-[color:var(--text-heading)] text-[color:var(--text-heading)]";
-
-/** One row of the More sheet: a full-width 48 px choice, the label at 500 beside its icon. */
-const moreRow =
-  "flex min-h-tap w-full items-center gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-left font-medium text-[color:var(--text-heading)] transition-colors duration-[var(--duration-instant)] hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-raised)]";

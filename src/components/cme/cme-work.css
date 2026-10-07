@@ -920,3 +920,20 @@ html [data-mode-identity="cme"] .work-dock__capsule > .work-button,
 html[data-mode-identity="cme"] .work-dock__capsule > .work-button {
   min-height: var(--spacing-tap, 3rem);
 }
+
+/* A chip that names the choice in force (the Log's year): drawn as chosen. */
+.work-chip.cpd-chip-on {
+  color: var(--mode-identity);
+}
+
+.work-chip.cpd-chip-on::before {
+  background: var(--mode-identity-soft);
+  box-shadow: inset 0 0 0 1px var(--mode-identity-border);
+}
+
+/* Chip counts in the mode colour, as the mock-up draws them. */
+html [data-mode-identity="cme"] .work-chip__count,
+html[data-mode-identity="cme"] .work-chip__count {
+  color: var(--mode-identity);
+  opacity: 1;
+}
