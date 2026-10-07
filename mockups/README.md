@@ -33,10 +33,11 @@ picked — kept as-is rather than guessed at.
 
 ### Full prototype apps (out of scope for cleanup)
 
-| Route            | What it is                                                                                                                                           |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `development/**` | Developer hub — reads repo status (docs index, ingestion status, task ledger, review records, route map). Linked from Settings for signed-in admins. |
-| `care-plan/**`   | Fully synthetic care-planning prototype (management/patient/safety plans, presentations, review), richly cross-linked.                               |
+| Route            | What it is                                                                                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `development/**` | Developer hub — reads repo status (docs index, ingestion status, task ledger, review records, route map). Linked from Settings for signed-in admins.                                                             |
+| `care-plan/**`   | Fully synthetic care-planning prototype (management/patient/safety plans, presentations, review), richly cross-linked.                                                                                           |
+| `work-roles`     | Preview-only work-mode role switcher (junior doctor, reviewer or supervisor, admin). Links to each role's screens on sample data, never changes real permissions. Blocked in production with every other mockup. |
 
 ### Redirects
 

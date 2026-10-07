@@ -498,6 +498,10 @@ into Search my work records. Pages use `FavouritesShelf` and `WorkPageFavouriteB
 progress on the device (an account-scoped key). `src/lib/work-help/` holds the plain-language help
 topics per work area (`topics/*.ts`), read by `/my-day/help` and the Help item in each More sheet.
 
+**Preview role (testing aid).** `src/lib/preview-role/preview-role.ts` lets a reviewer look at work
+mode as a junior doctor, a supervisor or an admin from `/mockups/work-roles`. A lens, never a
+permission: nothing reaches a server, and it is inert in production.
+
 **Work screens added by the wiring pass.** `src/lib/work-screens/` holds the pure models and sample
 records for the screens the work-mode wiring pass added: `admin/` (Requests, Sharing, Documents, Pay,
 Tax, Workforce), `assessments/` (Export, a supervisor's view of a trainee), `cpd/` (Evidence, Export)
