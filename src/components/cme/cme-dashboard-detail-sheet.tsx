@@ -176,7 +176,9 @@ export function CmeTodayDetailSheet({
                     }
                     title={scenario.title}
                     subtitle={`${scenario.occurrences} × ${formatCmeHours(scenario.hoursPerOccurrence)} h = ${formatCmeHours(scenario.projectedHours)} h by 31 Dec${scenario.closesGap ? "" : ", short of the gap on its own"}`}
-                    end={<b className="nums whitespace-nowrap text-sm-minus">{`${formatCmeHours(scenario.projectedHours)} h`}</b>}
+                    end={
+                      <b className="nums whitespace-nowrap text-sm-minus">{`${formatCmeHours(scenario.projectedHours)} h`}</b>
+                    }
                   />
                 ))}
               </CmeFlatList>

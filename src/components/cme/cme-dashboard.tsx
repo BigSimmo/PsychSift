@@ -558,7 +558,11 @@ export function CmeDashboard({
     });
   }
   if (set.confirmedOn && (home.kind === "ranzcp" || home.name)) {
-    aboutFacts.push({ label: "CPD home", value: home.kind === "ranzcp" ? "RANZCP" : home.name, testId: "cme-cpd-home" });
+    aboutFacts.push({
+      label: "CPD home",
+      value: home.kind === "ranzcp" ? "RANZCP" : home.name,
+      testId: "cme-cpd-home",
+    });
   }
   if (!nothingLogged && shows("audited-today")) {
     aboutFacts.push({

@@ -515,7 +515,14 @@ const cpd: WorkArea = {
       paths: ["/cme", "/cme/calendar"],
       title: "CPD",
     },
-    { id: "log", label: "Log", sub: "Activities", icon: "list", href: "/cme/log", paths: ["/cme/log", "/cme/log/", "/cme/new"] },
+    {
+      id: "log",
+      label: "Log",
+      sub: "Activities",
+      icon: "list",
+      href: "/cme/log",
+      paths: ["/cme/log", "/cme/log/", "/cme/new"],
+    },
     { id: "learning", label: "Learning", sub: "Courses on offer", icon: "compass", href: "/cme/learning" },
   ],
   groups: [

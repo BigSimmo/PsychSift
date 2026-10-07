@@ -309,7 +309,9 @@ export function CmeWhatsLeft({
     >
       <CmeFlatList label="What's left">
         {left.length === 0 ? (
-          <li className="work-row text-sm-minus text-[color:var(--text-muted)]">Everything in the year check is done.</li>
+          <li className="work-row text-sm-minus text-[color:var(--text-muted)]">
+            Everything in the year check is done.
+          </li>
         ) : null}
         {left.map((row) => (
           <Row key={row.id} row={row} isNext={row.id === nextStepRowId} year={set.year} onOpenDetail={onOpenDetail} />
