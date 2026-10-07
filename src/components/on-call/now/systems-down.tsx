@@ -27,7 +27,7 @@ export type OnCallSituation = { readonly id: string; readonly title: string; rea
 export function NowWhoToCall({ situations }: { readonly situations: readonly OnCallSituation[] }) {
   return (
     <section aria-labelledby="on-call-now-who-heading" className="grid min-w-0 gap-1" data-testid="on-call-now-who">
-      <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-3">
+      <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-1">
         <h2 id="on-call-now-who-heading" className={eyebrowText}>
           Who do I call now?
         </h2>
@@ -37,7 +37,7 @@ export function NowWhoToCall({ situations }: { readonly situations: readonly OnC
         </Link>
       </div>
       {situations.length > 0 ? (
-        <ul role="list" className="flex min-w-0 flex-wrap gap-x-2 px-3">
+        <ul role="list" className="flex min-w-0 flex-wrap gap-x-2 px-1">
           {situations.map((situation) => (
             <li key={situation.id} className="min-w-0">
               <Link

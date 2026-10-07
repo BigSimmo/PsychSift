@@ -174,6 +174,7 @@ function Table({
   const cellBase = "border-b border-[color:var(--border)] px-3 py-3 align-top text-sm text-[color:var(--text)]";
   return (
     <div
+      data-no-tab-swipe
       className="max-w-full overflow-x-auto rounded-md print:overflow-visible"
       tabIndex={0}
       aria-label="Handover table, scrolls sideways"
@@ -367,6 +368,7 @@ function PastePreview({
         </figure>
       ) : (
         <pre
+          data-no-tab-swipe
           className="max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-wash)] p-3 font-mono text-xs leading-5 text-[color:var(--text-heading)] forced-colors:border"
           data-testid="on-call-handover-paste-text"
           tabIndex={0}

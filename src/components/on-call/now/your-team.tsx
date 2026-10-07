@@ -116,7 +116,7 @@ export function NowYourTeam({
   );
   return (
     <section aria-labelledby={headingId} className="grid min-w-0 gap-1" data-testid="on-call-now-team">
-      <div className="flex min-h-12 min-w-0 items-center justify-between gap-2 px-3">
+      <div className="flex min-h-12 min-w-0 items-center justify-between gap-2 px-1">
         <h2 id={headingId} className={cn(eyebrowText, "min-w-0 break-words")}>
           Also on tonight
         </h2>
@@ -126,7 +126,7 @@ export function NowYourTeam({
           </Link>
         ) : null}
       </div>
-      <ul role="list" className="min-w-0">
+      <ul role="list" className="work-card min-w-0">
         {rows.length > 0 ? (
           rows.map((item) => {
             const badge = onCallRoleBadge(item.parsed.label);
@@ -177,7 +177,7 @@ export function NowYourTeam({
         )}
       </ul>
       {rows.length > 0 || myTeam ? (
-        <p className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-2 px-3")}>
+        <p className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-2 px-1")}>
           <span className="min-w-0 break-words">{myTeam ? `Your team: ${myTeam}` : "No team chosen"}</span>
           <button
             type="button"

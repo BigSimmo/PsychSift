@@ -112,7 +112,7 @@ export function NowNeedsYou({
   return (
     <section
       aria-labelledby="on-call-now-needs-you-heading"
-      className="grid min-w-0 gap-2 px-3"
+      className="work-card work-card--pad grid min-w-0 gap-2"
       data-testid="on-call-now-needs-you"
     >
       <div className="flex min-w-0 items-start gap-3" data-testid="on-call-now-needs-you-row">

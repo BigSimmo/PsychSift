@@ -267,6 +267,7 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
         <div
           role="group"
           aria-label="Situations"
+          data-no-tab-swipe
           className="-mx-1 flex gap-1.5 overflow-x-auto px-1"
           data-testid="on-call-now-scenarios"
         >

@@ -203,7 +203,12 @@ export function OnCallFindPage() {
             {searching ? `${resultCount} ${resultCount === 1 ? "result" : "results"}` : ""}
           </p>
           {searching ? null : (
-            <nav aria-label="Jump to" className="-mx-1 min-w-0 overflow-x-auto" data-testid="on-call-find-jumps">
+            <nav
+              aria-label="Jump to"
+              data-no-tab-swipe
+              className="-mx-1 min-w-0 overflow-x-auto"
+              data-testid="on-call-find-jumps"
+            >
               <ul role="list" className="flex w-max gap-2 px-1">
                 {jumps.map((jump) => (
                   <li key={jump.label}>

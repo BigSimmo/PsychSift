@@ -405,7 +405,10 @@ export function OnCallCallPage() {
         )}
         {!searching && tab === "hospital" && groups.length > 1 ? (
           <nav aria-label="Departments" data-testid="on-call-call-departments">
-            <ul className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 [-webkit-overflow-scrolling:touch]">
+            <ul
+              data-no-tab-swipe
+              className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 [-webkit-overflow-scrolling:touch]"
+            >
               {groups.map((group) => (
                 <li key={group.slug} className="shrink-0">
                   <a
@@ -521,7 +524,7 @@ export function OnCallCallPage() {
 
       {searching ? null : (
         <div className="grid min-w-0 gap-4" data-testid="on-call-call-more">
-          <ul role="list" className="min-w-0">
+          <ul role="list" className="work-card min-w-0">
             <OnCallIsobarRow />
             <OnCallRow
               href="/on-call/who-is-who"

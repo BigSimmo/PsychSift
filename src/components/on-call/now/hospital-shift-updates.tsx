@@ -40,7 +40,7 @@ export function HospitalShiftUpdates({
   return (
     <>
       {mismatch && dismissed !== promptKey ? (
-        <section className="grid gap-2 px-3" data-testid="on-call-roster-site-prompt">
+        <section className="grid gap-2 px-1" data-testid="on-call-roster-site-prompt">
           <p className="text-sm text-[color:var(--text-heading)]">
             Your roster says {workplace}; you are viewing {current}. Check the hospital before calling.
           </p>
