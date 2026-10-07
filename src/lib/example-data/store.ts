@@ -304,3 +304,9 @@ export function resetExampleDataForTests(): void {
   reports.clear();
   reportsVersion += 1;
 }
+
+/** Re-renders when an area's real-data state changes: "unknown", "empty" or "has-data". */
+export function useAreaFirstUse(area: WorkAreaId): AreaDataState {
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return snapshot === "server" ? "unknown" : areaDataState(area);
+}
