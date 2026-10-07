@@ -138,8 +138,20 @@ describe("From your team roster", () => {
     expect(rows[2]).not.toHaveTextContent("on now");
     expect(list).not.toHaveTextContent("Leave");
     expect(list).not.toHaveTextContent("Dr On Leave");
-    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("From your team roster");
-    expect(screen.getByTestId("on-call-roster-whos-on").querySelector(".work-label__count")).toHaveTextContent("3");
+    // One heading for the list, never a hidden h1 and a visible h2 saying the same thing.
+    expect(screen.getAllByRole("heading").map((heading) => heading.textContent)).toEqual([
+      "Who is on, from your team roster",
+    ]);
+    expect(screen.getByRole("region", { name: "Who is on, from your team roster" })).toBeInTheDocument();
+    expect(screen.getByTestId("on-call-roster-whos-on")).toHaveTextContent("From your team roster");
+    // The count says what it counts.
+    expect(screen.getByTestId("on-call-roster-whos-on").querySelector(".work-label__count")).toHaveTextContent(
+      "3 shifts",
+    );
+    // Names sit on the row, never inside the rail, where a short shift would clip them.
+    for (const rail of within(list).getAllByRole("img")) expect(rail.textContent).toBe("");
+    // A visible way back to Who's on.
+    expect(screen.getByTestId("on-call-roster-back")).toHaveAttribute("href", "/on-call/whos-on");
     // The now marker sits on today's rails only.
     expect(screen.getAllByTestId("on-call-roster-now-mark").length).toBe(3);
     // A full list with nobody missing needs no switchboard prompt.

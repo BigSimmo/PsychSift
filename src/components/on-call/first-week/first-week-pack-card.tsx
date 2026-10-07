@@ -3,6 +3,7 @@
 import {
   CalendarDays,
   Check,
+  ChevronRight,
   ChevronsUp,
   ClipboardCheck,
   KeyRound,
@@ -107,6 +108,19 @@ function ReadTick() {
   );
 }
 
+/**
+ * A status beside the row's arrow. The kit drops its chevron when a row has an end, so every row that opens a
+ * section keeps the same arrow as its neighbours (the Logins row with "1 to do" used to lose it).
+ */
+function WithArrow({ children }: { readonly children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-2">
+      {children}
+      <ChevronRight aria-hidden="true" className="work-row__chev" strokeWidth={2} />
+    </span>
+  );
+}
+
 function statusEnd(
   section: FirstWeekSection,
   readAt: string | undefined,
@@ -115,11 +129,26 @@ function statusEnd(
 ): ReactNode | undefined {
   if (section.count === 0) return undefined;
   const status = firstWeekSectionStatus(section, readAt);
-  if (status === "changed") return <WorkTag>Changed</WorkTag>;
-  if (status === "read") return <ReadTick />;
+  if (status === "changed")
+    return (
+      <WithArrow>
+        <WorkTag>Changed</WorkTag>
+      </WithArrow>
+    );
+  if (status === "read")
+    return (
+      <WithArrow>
+        <ReadTick />
+      </WithArrow>
+    );
   if (section.id === "logins" && loginsState === "ready") {
     const { ready, own } = firstWeekLoginCounts(logins);
-    if (own - ready > 0) return <WorkTag tone="amber">{`${own - ready} to do`}</WorkTag>;
+    if (own - ready > 0)
+      return (
+        <WithArrow>
+          <WorkTag tone="amber">{`${own - ready} to do`}</WorkTag>
+        </WithArrow>
+      );
   }
   return undefined;
 }
@@ -157,7 +186,7 @@ export function FirstWeekPackCard({
 }) {
   const startsOn = phase.kind === "no-date" ? null : phase.startsOn;
   return (
-    <WorkCard as="section" aria-label="Your first week" testId="on-call-first-week-pack">
+    <WorkCard as="section" testId="on-call-first-week-pack">
       <div className="flex items-center gap-3 border-b border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] px-3 py-3">
         <DateTile startsOn={startsOn} />
         <div className="grid min-w-0 flex-1 gap-0.5">
@@ -167,7 +196,8 @@ export function FirstWeekPackCard({
           >
             {firstWeekEyebrow(phase)}
           </p>
-          <h2 className="text-lg font-semibold leading-6 text-[color:var(--text-heading)]">Your first week</h2>
+          {/* The page's one h1: the visible title, so screen readers hear "Your first week" once. */}
+          <h1 className="text-lg font-semibold leading-6 text-[color:var(--text-heading)]">Your first week</h1>
           {hospitalName ? <p className="break-words text-sm text-[color:var(--text)]">{hospitalName}</p> : null}
           {startLine}
           {pendingText !== null ? null : <FirstWeekProgressStrip progress={progress} />}
