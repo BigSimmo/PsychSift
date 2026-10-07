@@ -4,6 +4,7 @@ import { Bell, Check, Clock, Copy, Inbox, Send, TriangleAlert, UserRound, WifiOf
 import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import { WorkEmpty } from "@/components/mode-kit/work";
 import { useAssessmentsExtras, useOfflineSince } from "@/components/teaching/assessments/assessments-extras";
 import {
   Inset,
@@ -300,26 +301,19 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
             </div>
           ) : null}
           {waiting.length === 0 ? (
-            <div
-              data-testid="assessments-inbox-empty"
-              className="grid justify-items-center gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-4 py-6 text-center"
-            >
-              <span
-                aria-hidden="true"
-                className="grid size-11 place-items-center rounded-full bg-[color:var(--success-bg)] text-[color:var(--success-text)]"
-              >
-                <Check aria-hidden="true" className="size-icon-md" strokeWidth={2} />
-              </span>
-              <b className="text-base font-semibold text-[color:var(--text-heading)]">Nothing waiting</b>
-              <p className={cn(secondaryText, "max-w-80")}>
-                Doctors ask from their Assessments page. You&apos;ve answered every request in this made-up list.
-              </p>
-              {done.length ? (
-                <Button variant="secondary" size="sm" onClick={() => setTab("done")}>
-                  See done
-                </Button>
-              ) : null}
-            </div>
+            <WorkEmpty
+              icon={Check}
+              testId="assessments-inbox-empty"
+              title="Nothing waiting"
+              body="Doctors ask from their Assessments page. You've answered every request in this made-up list."
+              action={
+                done.length ? (
+                  <Button variant="secondary" size="sm" onClick={() => setTab("done")}>
+                    See done
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : shown.length === 0 ? (
             <Inset tone="plain" title="None match this filter">
               <TextLink onClick={() => setFilter("all")}>Show all</TextLink>
@@ -375,7 +369,7 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
       )}
       <SmallPrint>
         Status here. Open a request to see what was asked. Dr Ben Ortiz, Dr Mia Chen, Dr Ravi Kaur and Dr Ella Okafor
-        are made-up; nothing is sent to anyone.
+        are made-up. Nothing is sent to anyone.
       </SmallPrint>
       <Sheet
         open={open !== null}

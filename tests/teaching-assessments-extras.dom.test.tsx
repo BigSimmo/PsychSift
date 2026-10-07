@@ -508,8 +508,9 @@ describe("term overview", () => {
     try {
       renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
       expect(screen.getByTestId("assessments-overview-offline")).toHaveTextContent(
-        /Status as of \d\d:\d\d\. Reminders wait until you are back online\./,
+        /Status as of \d\d:\d\d\. Reminders can't be sent while offline\. Try again when you are back online\./,
       );
+      expect(screen.getByTestId("assessments-overview-offline")).not.toHaveTextContent(/wait/);
       const bell = screen.getByRole("button", { name: "Reminder unavailable offline: Dr Ravi Kaur" });
       expect(bell).toHaveAttribute("aria-disabled", "true");
       fireEvent.click(bell);
@@ -517,6 +518,44 @@ describe("term overview", () => {
     } finally {
       online.mockRestore();
     }
+  });
+
+  it("gives the Supervisors tab's Remind its reason when it cannot open", () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+      fireEvent.click(screen.getByRole("radio", { name: "Supervisors" }));
+      const remind = screen.getByTestId("assessments-overview-bulk-open");
+      expect(remind).toHaveAttribute("aria-disabled", "true");
+      expect(remind).toHaveAccessibleDescription("Can't send while offline. Try again when you are back online.");
+      fireEvent.click(remind);
+      expect(screen.queryByTestId("assessments-overview-bulk")).toBeNull();
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it("says why Remind is unavailable once every supervisor was reminded today", async () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Supervisors" }));
+    fireEvent.click(screen.getByTestId("assessments-overview-bulk-open"));
+    fireEvent.click(await screen.findByTestId("assessments-overview-bulk-send"));
+    const remind = screen.getByTestId("assessments-overview-bulk-open");
+    expect(remind).toHaveAttribute("aria-disabled", "true");
+    expect(remind).toHaveAccessibleDescription("Everyone with a due or overdue form was reminded today.");
+  });
+
+  it("starts the download from the tap before the export sheet closes", async () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    fireEvent.click(screen.getByRole("button", { name: "Export status" }));
+    const link = screen.getByTestId("assessments-overview-csv");
+    expect(decodeURIComponent(link.getAttribute("href")!)).toMatch(/^data:text\/csv;charset=utf-8,\uFEFF"Made-up/);
+    fireEvent.click(link);
+    expect(link).toBeInTheDocument();
+    await act(async () => {
+      vi.advanceTimersByTime(10);
+    });
+    expect(screen.queryByTestId("assessments-overview-export")).toBeNull();
   });
 
   it("starts the Sent tab empty with an honest note", () => {

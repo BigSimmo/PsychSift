@@ -230,7 +230,9 @@ describe("term overview", () => {
 
   it("exports a status-only CSV labelled as made-up", () => {
     const csv = overviewCsv(overviewDoctors(at(-1)), "Mon 5 Oct");
-    expect(csv.split("\r\n")[0]).toBe('"Made-up example, not real doctors","Mon 5 Oct"');
+    // The UTF-8 mark first, so Excel opens "1 of 2" (no-break space) as written.
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv.slice(1).split("\r\n")[0]).toBe('"Made-up example, not real doctors","Mon 5 Oct"');
     expect(csv).toContain('"Doctor","Grade","Unit","Supervisor","Mid-term","EPAs this term","End-of-term"');
     expect(csv).not.toMatch(/rating|comment/i);
   });
@@ -374,7 +376,10 @@ describe("term overview reminders, export and words", () => {
     const rows = overviewDoctors(at(-1));
     const all = bulkRecipients(rows, [], -1);
     expect(all.map((x) => x.supervisor)).toEqual(["Dr Hana Ito", "Dr Omar Ahmed", "Dr Priya Nair"]);
-    expect(all.find((x) => x.supervisor === "Dr Omar Ahmed")!.line).toBe("Dr Ravi Kaur · overdue since fri 2 oct");
+    expect(all.find((x) => x.supervisor === "Dr Omar Ahmed")!.line).toBe("Dr Ravi Kaur · overdue since Fri 2 Oct");
+    // Several forms for one supervisor are joined with commas: no semicolons in anything shown.
+    for (const recipient of all) expect(recipient.line).not.toContain(";");
+    expect(all.find((x) => x.supervisor === "Dr Hana Ito")!.line).toMatch(/^Dr [^,]+ · [^,]+, Dr /);
     const ahmedKeys = all.find((x) => x.supervisor === "Dr Omar Ahmed")!.items.map((i) => i.key);
     const after = bulkRecipients(rows, ahmedKeys, -1);
     const ahmed = after.find((x) => x.supervisor === "Dr Omar Ahmed")!;
