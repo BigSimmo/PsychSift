@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
 
-import { OnCallSampleNotice } from "@/components/on-call/on-call-sample-notice";
 import { ModeBand } from "@/components/mode-band/mode-band";
+import { OnCallExampleDataScope } from "@/lib/on-call/entry-store";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <ModeBand modeId="my-work" homePath="/admin">
-      <OnCallSampleNotice mode="admin" />
-      {children}
+      <OnCallExampleDataScope>{children}</OnCallExampleDataScope>
     </ModeBand>
   );
 }

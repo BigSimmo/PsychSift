@@ -28,7 +28,7 @@ function sampleState(): OpenShiftsState {
     roster: sampleRoster(NOW),
     rosterStatus: "ready",
     readAt: NOW,
-    sample: "signed-out",
+    sample: "example",
     offline: false,
     failedTeams: [],
     refreshFailed: false,

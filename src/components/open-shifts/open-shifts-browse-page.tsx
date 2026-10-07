@@ -30,6 +30,7 @@ import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 import { OpenShiftsCalendar } from "./open-shifts-calendar";
 import { clearSavedFilters, readSavedFilters, saveFilters } from "./open-shifts-saved-filters";
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { SignInAction } from "./open-shifts-sign-in";
 import { FlatList, ListSkeleton, Note, ShiftRow, advertHref, formatDayLong, formatDayShort } from "./open-shifts-ui";
 import { LoadFailed, NoTeam, openShiftsStatus } from "./open-shifts-states";
@@ -48,6 +49,7 @@ const chipOn = `${chip} border-[color:var(--mode-identity)] bg-[color:var(--mode
 
 export function OpenShiftsBrowsePage() {
   const state = useOpenShifts();
+  const signedOut = useSignedOut();
   const now = useRosterNow();
   const today = perthDateOf(now);
   const { end: windowEnd } = windowOf(today);
@@ -127,7 +129,9 @@ export function OpenShiftsBrowsePage() {
         </div>
       ) : null}
 
-      {state.status === "no-team" ? (
+      {state.status === "signed-out" ? (
+        <SignInAction label="Sign in to see open shifts" />
+      ) : state.status === "no-team" ? (
         <NoTeam />
       ) : state.status === "error" ? (
         <LoadFailed message={state.message} onRetry={state.reload} />
@@ -387,7 +391,7 @@ export function OpenShiftsBrowsePage() {
             </>
           ) : null}
 
-          {state.sample === "signed-out" ? <SignInAction label="Sign in to request shifts" /> : null}
+          {signedOut ? <SignInAction label="Sign in to request shifts" /> : null}
 
           {sheetLoaded ? (
             <OpenShiftsFiltersSheet

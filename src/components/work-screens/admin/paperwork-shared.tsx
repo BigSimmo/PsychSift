@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, type ReactNode } from "
 import { focusRing } from "@/components/card-recipes";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
-import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { WorkButton } from "@/components/mode-kit/work";
 import { useOptionalToast } from "@/components/ui/toast";
 import { cn, fieldControlPlain, fieldLabel } from "@/components/ui-primitives";
@@ -76,8 +76,7 @@ function holdsRecords(record: AdminPaperwork): boolean {
  */
 export function usePaperworkPage(dataset: AdminPaperworkDatasetKey): PaperworkPage {
   const entries = useOnCallEntries();
-  const signedOutSample = useSignedOutSample();
-  const signedOut = signedOutSample || entries.signedOut;
+  const signedOut = useSignedOut() || entries.signedOut;
   const demo = entries.demoMode;
   const exampleActive = useExampleData("admin").active;
   const inMemory = signedOut || demo;

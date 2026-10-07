@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2, SlidersHorizontal } from "lucide-react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -41,6 +40,7 @@ import {
   type WorkArea,
   type WorkFrameItem,
 } from "@/lib/work-frame/areas";
+import { ExampleDataBanner } from "@/components/example-data/example-data-banner";
 import { WorkFrameHeader } from "@/components/work-frame/work-frame-header";
 import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
 
@@ -408,6 +408,7 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
                 // The area's palette for everything on its pages: custom
                 // properties inherit through `contents`, so this adds no box.
                 <div data-mode-identity={area.identity} data-work-frame={area.id} className="contents">
+                  <ExampleDataBanner area={area.id} />
                   {children}
                 </div>
               ) : (
@@ -665,30 +666,10 @@ export type ModeBandStatusValue =
   /** Never say "Saved" when a save failed. The whole line retries. */
   | { kind: "error"; onRetry: () => void }
   | { kind: "loading" }
-  /** Signed out: the page shows invented records. */
+  /** The page shows example records: counts are hidden, and the banner under the band says so. */
   | { kind: "sample" }
   /** A plain factual line, e.g. "Practice only · nothing here is saved yet". */
   | { kind: "text"; text: string; info?: boolean };
-
-// The sign-in dialog loads only when someone asks for it.
-const AccountSetupDialog = dynamic(
-  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
-  { ssr: false },
-);
-
-function SampleLine() {
-  const [signInOpen, setSignInOpen] = useState(false);
-  return (
-    <span className="mode-band__sentence">
-      Made-up example records ·{" "}
-      <button type="button" className="mode-band__inline-action" onClick={() => setSignInOpen(true)}>
-        Sign in
-      </button>{" "}
-      to keep your own
-      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
-    </span>
-  );
-}
 
 function StatusLine({ value }: { value: ModeBandStatusValue }) {
   const time = useClientTime({ updateInterval: 60_000 });
@@ -737,7 +718,8 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
     case "loading":
       return <span role="img" aria-label="Loading your records" className="mode-band__loading" />;
     case "sample":
-      return <SampleLine />;
+      // The example data banner under the band says it once; this only hides counts.
+      return null;
     case "text":
       return (
         <span className="mode-band__saved">

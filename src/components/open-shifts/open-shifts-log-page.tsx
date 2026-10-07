@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState } from "react";
 
-import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { kindOf, useRosterNow } from "@/components/roster/roster-format";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ const field =
  * phone and never sent or saved.
  */
 export function OpenShiftsLogPage() {
-  const signedOut = useSignedOutSample();
+  const signedOut = useSignedOut();
   const shifts = useRosterShifts();
   const offline = !useOnlineStatus();
   const router = useRouter();

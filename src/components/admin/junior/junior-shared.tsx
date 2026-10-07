@@ -12,6 +12,7 @@ import { cn, eyebrowText, floatingControl, textMuted } from "@/components/ui-pri
 import type { ReminderTextProblem } from "@/lib/alerts/remind-me";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { isExampleRecord } from "@/lib/example-data/guards";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
 
 /**
@@ -44,7 +45,13 @@ export async function createEntry(body: unknown): Promise<OnCallEntry> {
   );
 }
 
+/** Belt and braces: an example row is never written to the account. */
+function refuseExampleWrite(id: string): void {
+  if (isExampleRecord(id)) throw new Error("Example records can't be changed. Turn example data off to edit your own.");
+}
+
 export async function patchEntry(id: string, body: unknown): Promise<OnCallEntry> {
+  refuseExampleWrite(id);
   return entryFrom(
     await fetch(`/api/on-call/entries/${id}`, {
       method: "PATCH",
@@ -55,6 +62,7 @@ export async function patchEntry(id: string, body: unknown): Promise<OnCallEntry
 }
 
 export async function deleteEntry(id: string): Promise<void> {
+  refuseExampleWrite(id);
   const response = await fetch(`/api/on-call/entries/${id}`, { method: "DELETE" });
   if (!response.ok) throw await parseApiErrorResponse(response);
 }

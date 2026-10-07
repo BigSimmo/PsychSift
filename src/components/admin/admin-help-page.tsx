@@ -26,7 +26,7 @@ import { buildAdminHelpItems, type AdminHelpItem, type AdminHelpTab } from "@/li
 import { helpQueryAlsoLooksFor, matchesHelpQuery } from "@/lib/admin/help-search";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { ADMIN_STATEWIDE_SUPPORT } from "@/lib/admin/statewide-support";
-import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { cacheOnCallEntries, isOnCallExampleEntry, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry, OnCallSection } from "@/lib/on-call/entry-model";
 import { ON_CALL_IN_HOURS_END_HOUR, isOnCallOutOfHours } from "@/lib/on-call/home-modules";
 
@@ -109,6 +109,7 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
   }, [filtered]);
 
   function upsertCachedEntry(entry: OnCallEntry) {
+    if (isOnCallExampleEntry(entry)) return;
     const next = entries.some((existing) => existing.id === entry.id)
       ? entries.map((existing) => (existing.id === entry.id ? entry : existing))
       : [...entries, entry];

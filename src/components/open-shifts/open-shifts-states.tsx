@@ -15,10 +15,9 @@ import type { OpenShiftsState } from "./use-open-shifts";
  */
 
 export function openShiftsStatus(state: OpenShiftsState): ModeBandStatusValue | null {
-  if (state.sample === "signed-out") return { kind: "sample" };
-  if (state.sample === "release-held") {
-    return { kind: "text", text: "Made-up example records · team rosters aren't open to real staff yet", info: true };
-  }
+  // The example data banner carries the "made up" wording; the status line only hides counts.
+  if (state.sample === "example") return { kind: "sample" };
+  if (state.sample === "release-held") return { kind: "sample" };
   if (state.offline) return { kind: "offline" };
   if (state.refreshFailed && state.readAt) {
     return { kind: "failed", text: `Couldn't refresh · showing the list from ${perthTimeOf(state.readAt)}` };
