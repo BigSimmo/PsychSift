@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { looksLikePatientDetails, workSearchGate } from "@/lib/work-search/signals";
+import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * The patient-detail check behind the amber "Looks like patient details" state
@@ -156,5 +157,65 @@ describe("workSearchGate", () => {
 
   it("does nothing for an empty box", () => {
     expect(workSearchGate("   ")).toEqual({ patient: false, clinical: false, search: false, answer: false });
+  });
+});
+
+describe("the search gate reads the shared patient-detail check", () => {
+  // Final review (7 Oct 2026): the search used only its own patterns, so look-alike letters, hidden
+  // characters, "Patient John" and "bed twelve" were searched and kept in Recent while every note field
+  // refused them. The gate now hands the text to the one shared check as well.
+  const sharedCatches = [
+    "D467 8677",
+    "bed twelve",
+    "Bed: 12",
+    "Cot 3",
+    "forty five year old",
+    "js 45m",
+    "Pt: Smith",
+    "Patient John",
+    "client Jones",
+    "pt js",
+    "pt J S",
+    "Мr Smith",
+    "M​r Smith",
+    "Ｍｒｓ Ｓｍｉｔｈ",
+    "U​R 4471823",
+    "１２３４５６７",
+    "Mr.Smith",
+    "MrSmith",
+    "Jane, 45, ward 3",
+    "J o h n",
+    "1 2 3 4 5 6 7",
+    "J. Smith",
+    "Ρt Smith",
+  ];
+
+  it.each(sharedCatches)("flags %s in the search, as the shared check does", (text) => {
+    expect(looksLikePatientDetail(text), text).toBe(true);
+    expect(looksLikePatientDetails(text, YEAR), text).toBe(true);
+    expect(workSearchGate(text).search, text).toBe(false);
+  });
+
+  it("never lets the search pass what the shared check flags, apart from what a search looks up", () => {
+    // Phone, pager and extension numbers (On Call contacts), dates within a few years (the roster) and
+    // bare capitals ("AL", "SL") are read past in the search only.
+    const lookedUp = [
+      "0412 345 678",
+      "9224 1000",
+      "pager 44101",
+      "ext 61234",
+      "12/10/2026",
+      "12 Oct 2026",
+      "AL next week",
+    ];
+    for (const text of lookedUp) expect(looksLikePatientDetails(text, YEAR), text).toBe(false);
+    for (const text of [...sharedCatches, "UR 4471823", "DOB 3/4/81", "12/03/1980", "Mrs Brown bed 4", "JS 45M"]) {
+      if (looksLikePatientDetail(text)) expect(looksLikePatientDetails(text, YEAR), text).toBe(true);
+    }
+  });
+
+  it("still reads a title in capitals as software, not a person", () => {
+    expect(looksLikePatientDetails("MS Word template", YEAR)).toBe(false);
+    expect(looksLikePatientDetail("MS Word template", { allowCapitals: true })).toBe(false);
   });
 });

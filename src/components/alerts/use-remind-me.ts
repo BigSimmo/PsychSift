@@ -3,14 +3,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 import { REMIND_ME_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
-import {
-  checkReminderText,
-  normalizeReminders,
-  remindersFull,
-  REMIND_ME_TEXT_LIMIT,
-  type Reminder,
-} from "@/lib/alerts/remind-me";
+import { normalizeReminders, remindersFull, REMIND_ME_TEXT_LIMIT, type Reminder } from "@/lib/alerts/remind-me";
 import { isSharedDevice, SHARED_DEVICE_CHANGE_EVENT } from "@/lib/alerts/shared-device";
+import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * Remind me notes on this device. The words never leave it: only the due time
@@ -124,7 +119,7 @@ export function useRemindMe() {
 
   const add = useCallback((text: string, dueAt: string): SaveReminderResult => {
     const words = text.trim().slice(0, REMIND_ME_TEXT_LIMIT);
-    if (!words || checkReminderText(words)) return "unsafe";
+    if (!words || looksLikePatientDetail(words)) return "unsafe";
     if (isSharedDevice()) return "shared-device";
     const current = snapshot();
     if (remindersFull(current)) return "full";

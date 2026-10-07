@@ -1,5 +1,5 @@
 import { checkReminderText, type ReminderTextProblem } from "@/lib/alerts/remind-me";
-import { looksLikePatientDetails } from "@/lib/work-search/signals";
+import { matchesPatientPatterns } from "@/lib/work-search/patient-patterns";
 import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
@@ -18,7 +18,7 @@ import { currentWorkYear } from "@/lib/work-time/current-zone";
  * - the Remind me check (`checkReminderText`): initials, dotted initials, an
  *   initial and surname, a title and surname, ages, full dates, phone, bed and
  *   record numbers;
- * - the work search's (`looksLikePatientDetails`): labelled record numbers,
+ * - the work search's raw patterns (`matchesPatientPatterns`): labelled record numbers,
  *   beds, dates of birth, Medicare-shaped numbers, a title and name;
  * - ages and sex in the shapes a clinical note takes ("45 year old male",
  *   "forty five year old", "34 y.o. woman", "aged 45");
@@ -440,7 +440,8 @@ function reminderProblem(text: string, options: PatientDetailCheckOptions): Pati
   const masked = maskAbbreviations(text, abbreviations);
   const lowered: string[] = [];
   const read = options.allowCapitals
-    ? masked.replace(/\b[A-Z]{2,3}\b(?!\.)/g, (word) => {
+    ? // A title in capitals ("MS Word", "MRS") stays as typed: lowered, it would read as "ms Word", a title and name.
+      masked.replace(/\b(?!(?:MRS?|MS|MX)\b)[A-Z]{2,3}\b(?!\.)/g, (word) => {
         lowered.push(word);
         return word.toLowerCase();
       })
@@ -488,7 +489,7 @@ function problemIn(text: string, options: PatientDetailCheckOptions): PatientDet
     return { title: "This looks like a record number", body: DEFAULT_BODY, suggestion: null };
   if (PLACE_IN_WORDS.test(places))
     return { title: "This looks like a bed number", body: DEFAULT_BODY, suggestion: null };
-  if (looksLikePatientDetails(places, options.thisYear ?? currentWorkYear()))
+  if (matchesPatientPatterns(places, options.thisYear ?? currentWorkYear()))
     return {
       title: "This may be patient details",
       body: "It looks like a record number, a date of birth, a title and name, or a bed number. Remove it to go on.",

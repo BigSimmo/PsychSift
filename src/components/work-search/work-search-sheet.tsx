@@ -34,6 +34,7 @@ import {
 } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
+import { readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { WorkButton, WorkEmpty, WorkTag } from "@/components/mode-kit/work";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkSearchRecords } from "@/components/work-search/use-work-search-records";
@@ -412,7 +413,9 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const searchQuery = query.trim() === "" ? "" : settledQuery;
   const [filter, setFilter] = useState<WorkSearchArea | "all">("all");
   const [expanded, setExpanded] = useState<WorkSearchArea | "pages" | null>(null);
-  const [recents, setRecents] = useState(() => recentsFor(epoch));
+  // Privacy's "Save recent searches" off: nothing is kept, and nothing kept before is shown.
+  const keepRecents = readAppPreferences().saveRecentSearches;
+  const [recents, setRecents] = useState(() => (keepRecents ? recentsFor(epoch) : []));
   const [scrolled, setScrolled] = useState(false);
   const [chipsMore, setChipsMore] = useState(false);
   /** The query "Search for … exactly" was tapped for: one-letter-out matching is off until it changes. */
@@ -533,7 +536,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
 
   const close = (navigated: boolean) => {
     // Search history never keeps a query run over example records.
-    noteClosing(query, epoch, navigated, Date.now(), !records.sample);
+    noteClosing(query, epoch, navigated, Date.now(), !records.sample && keepRecents);
     // Closed in place (Cancel, Esc, the backdrop): take back the history step the opening added.
     if (!navigated && takeHistoryStep()) window.history.back();
     onClose(navigated);
@@ -568,7 +571,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   };
   const found = hits.length > 0 || pageHits.length > 0 || Boolean(answer && !answer.unavailable);
   const openResult = () => {
-    if (!records.sample) rememberQuery(query, epoch);
+    if (!records.sample && keepRecents) rememberQuery(query, epoch);
     close(true);
   };
   const resetScroll = () => bodyRef.current?.scrollTo({ top: 0 });
@@ -916,15 +919,16 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             scrolled ? "border-[color:var(--border)]" : "border-transparent",
           )}
         >
-          <div className="flex items-center gap-2.5">
+          {/* At large text sizes Cancel moves under the field rather than squeezing what was typed out of sight. */}
+          <div className="flex flex-wrap items-center gap-x-2.5">
             <form
               role="search"
               aria-label="My work"
               onSubmit={(event) => {
                 event.preventDefault();
                 if (patient) return;
-                if (found && !records.sample) rememberQuery(query, epoch);
-                setRecents(recentsFor(epoch));
+                if (found && !records.sample && keepRecents) rememberQuery(query, epoch);
+                setRecents(keepRecents ? recentsFor(epoch) : []);
                 // With a keyboard and mouse, Enter opens the top result; on a phone it puts the keyboard away.
                 if (usesFinePointer()) {
                   rootRef.current
@@ -935,7 +939,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 }
               }}
               data-warn={patient ? "" : undefined}
-              className={cn(fieldShell, patient ? fieldRingWarn : fieldRing)}
+              className={cn(fieldShell, "min-w-40", patient ? fieldRingWarn : fieldRing)}
             >
               <WorkSearchGlyph
                 className={cn(
@@ -998,7 +1002,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             <button
               type="button"
               onClick={() => close(false)}
-              className="min-h-12 shrink-0 px-1 text-base font-semibold text-[color:var(--mode-identity)] lg:hidden"
+              className="ml-auto min-h-12 shrink-0 px-1 text-base font-semibold text-[color:var(--mode-identity)] lg:hidden"
             >
               Cancel
             </button>

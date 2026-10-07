@@ -34,6 +34,7 @@ import type { WorkProfileData, WorkProfilePreferences } from "@/components/work-
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { JURISDICTION_OPTIONS, workStageLabel } from "@/lib/account-preferences";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
+import { countAllRecents, forgetAllRecents } from "@/lib/work-search/memory";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { ROSTER_GRADES } from "@/lib/roster/team/model";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -400,8 +401,10 @@ export function PrivacyPanel({
   );
 
   const clearSearches = () => {
-    const count = countRecentQueries();
+    // Clinical search's recent queries and AI Search's Recent (kept in this tab's memory) together.
+    const count = countRecentQueries() + countAllRecents();
     clearRecentQueries();
+    forgetAllRecents();
     setCleared(count > 0 ? "Recent searches cleared" : "No recent searches to clear");
   };
 
