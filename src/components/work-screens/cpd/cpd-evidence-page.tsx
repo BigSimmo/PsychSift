@@ -116,6 +116,7 @@ export function CpdEvidencePage({
   const [status, setStatus] = useState<EvidenceStatusFilter>(initialStatus);
   const [order, setOrder] = useState<EvidenceOrder>(initialOrder);
   const [showAll, setShowAll] = useState(false);
+  const [showAllUnknown, setShowAllUnknown] = useState(false);
   const needsRef = useRef<HTMLElement>(null);
   // Real records read from the account mean CPD holds real data. An empty year says nothing about the
   // others, so it is never reported as an empty area.
@@ -159,6 +160,7 @@ export function CpdEvidencePage({
 
   const target = attachTarget(view);
   const attachedShown = showAll ? view.has : view.has.slice(0, ATTACHED_PREVIEW);
+  const unknownShown = showAllUnknown ? view.notCounted : view.notCounted.slice(0, ATTACHED_PREVIEW);
   const yearChips = [...new Set([year, ...years])].sort((a, b) => b - a);
   const filtered = category !== "all" || status !== "all";
   const needsEmpty = needsEvidenceEmpty(view, filtered);
@@ -340,11 +342,22 @@ export function CpdEvidencePage({
 
             {view.notCounted.length ? (
               <section className="grid min-w-0 gap-1.5" aria-labelledby="cpd-evidence-unknown">
-                <WorkSectionLabel id="cpd-evidence-unknown" count={view.notCounted.length}>
+                <WorkSectionLabel
+                  id="cpd-evidence-unknown"
+                  count={view.notCounted.length}
+                  action={
+                    view.notCounted.length > ATTACHED_PREVIEW
+                      ? {
+                          label: showAllUnknown ? "Show fewer" : `All ${view.notCounted.length}`,
+                          onClick: () => setShowAllUnknown(!showAllUnknown),
+                        }
+                      : undefined
+                  }
+                >
                   Evidence not counted
                 </WorkSectionLabel>
                 <WorkCard as="ul" testId="cpd-evidence-unknown-list">
-                  {view.notCounted.map((row) => rowFor(row, offline))}
+                  {unknownShown.map((row) => rowFor(row, offline))}
                 </WorkCard>
               </section>
             ) : null}

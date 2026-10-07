@@ -79,6 +79,18 @@ describe("CPD Evidence page", () => {
     expect(screen.queryByTestId("cpd-evidence-attach")).toBeNull();
   });
 
+  it("a long list of activities whose evidence is not counted shows a short preview with All to open the rest", () => {
+    render(<CpdEvidencePage entries={DEMO_CME_ENTRIES} year={2026} years={[2026, 2025]} demoMode />);
+    const list = screen.getByTestId("cpd-evidence-unknown-list");
+    expect(list.querySelectorAll("li").length).toBe(8);
+    const section = list.closest("section");
+    const all = Array.from(section?.querySelectorAll("button") ?? []).find((b) => /^All \d+/.test(b.textContent ?? ""));
+    expect(all).toBeTruthy();
+    fireEvent.click(all!);
+    expect(screen.getByTestId("cpd-evidence-unknown-list").querySelectorAll("li").length).toBeGreaterThan(8);
+    expect(screen.getByRole("button", { name: /Show fewer/ })).toBeTruthy();
+  });
+
   it("an unconfigured year that already holds activities lists them rather than saying none were logged", () => {
     render(<CpdEvidencePage entries={counted} year={2026} years={[2026]} demoMode={false} unconfigured />);
     expect(screen.queryByTestId("cpd-evidence-empty")).toBeNull();
