@@ -68,18 +68,16 @@ export function sickCandidates(reads: readonly SickTeamRead[], actorId: string, 
             day <= to
           );
         })
-        .map(
-          (row): SickShift => ({
-            assignmentId: row.id,
-            serviceId: team.serviceId,
-            teamName: team.name,
-            startsAt: row.startsAt,
-            endsAt: row.endsAt,
-            shiftCode: row.shiftCode,
-            kind: row.kind,
-            siteName: row.siteName,
-          }),
-        ),
+        .map((row): SickShift => ({
+          assignmentId: row.id,
+          serviceId: team.serviceId,
+          teamName: team.name,
+          startsAt: row.startsAt,
+          endsAt: row.endsAt,
+          shiftCode: row.shiftCode,
+          kind: row.kind,
+          siteName: row.siteName,
+        })),
     )
     .sort(byStart);
 }

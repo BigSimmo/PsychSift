@@ -332,8 +332,8 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
               <RosterNote icon={Info} testId="sick-no-team">
                 <p className="font-semibold">No team roster yet</p>
                 <p>
-                  Sick reports go to your team&apos;s roster managers. Join your team to send one from here. Until
-                  then, phone your manager.
+                  Sick reports go to your team&apos;s roster managers. Join your team to send one from here. Until then,
+                  phone your manager.
                 </p>
                 <Link
                   href="/roster/join"
@@ -399,7 +399,8 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                 {shortNotice.length && !holding ? (
                   <RosterNote icon={Clock} tone="warning" testId="sick-short-notice">
                     <p className="font-semibold">
-                      {sickDayWord(shortNotice[0]!.startsAt, now)} starts in {startsInWords(shortNotice[0]!.startsAt, now)}
+                      {sickDayWord(shortNotice[0]!.startsAt, now)} starts in{" "}
+                      {startsInWords(shortNotice[0]!.startsAt, now)}
                     </p>
                     <p>
                       Short notice. Phone your roster manager as well, so the gap is found in time. The shift still goes
@@ -566,7 +567,9 @@ function SentReport({
         <div className="flex min-h-14 items-center gap-3 border-t border-[color:var(--border)] px-4 py-2">
           <span className="grid min-w-0 flex-1">
             <span className="text-sm font-semibold text-[color:var(--text-heading)]">Feeling better?</span>
-            <span className="text-xs text-[color:var(--text-muted)]">Take it back while nobody has taken the shift</span>
+            <span className="text-xs text-[color:var(--text-muted)]">
+              Take it back while nobody has taken the shift
+            </span>
           </span>
           <button
             type="button"

@@ -9,6 +9,7 @@ import {
   sickWindow,
   type SickPersonalShift,
   type SickShift,
+  type SickTeamRead,
 } from "@/lib/roster/sick/sick-report";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterOpenShift, RosterOverview, RosterTeam } from "@/lib/roster/team/model";
@@ -63,7 +64,7 @@ export function useSickShifts(now: Date): SickShiftsState & { readonly reload: (
   const [generation, setGeneration] = useState(0);
   const reload = useCallback(() => setGeneration((value) => value + 1), []);
   const today = perthDateOf(now);
-  const [answer, setAnswer] = useState<{ key: string; state: SickShiftsState } | null>(null);
+  const [answer, setAnswer] = useState<{ key: string; state: Loaded } | null>(null);
 
   const enabled = useMemo(() => teams.data?.teams.filter((team) => team.enabled) ?? [], [teams.data]);
   const actorId = teams.data?.actorId ?? null;
@@ -100,12 +101,10 @@ export function useSickShifts(now: Date): SickShiftsState & { readonly reload: (
         });
         return;
       }
-      const at = new Date();
       const reads = rows.map((row) => ({
         team: row.team,
         assignments: row.assignments.ok ? row.assignments.data.assignments : [],
       }));
-      const candidates = actorId ? sickCandidates(reads, actorId, at) : [];
       const reports = rows.flatMap((row) =>
         row.requests.ok
           ? row.requests.data.openShifts.map((open) => ({
@@ -125,8 +124,6 @@ export function useSickShifts(now: Date): SickShiftsState & { readonly reload: (
               workplace: shift.workplace ?? null,
             }))
           : [];
-      // Shifts already reported are on a team roster too, even once they are no longer mine.
-      const teamTimes = [...candidates, ...reports.map((item) => item.open)];
       setAnswer({
         key,
         state: {
@@ -134,14 +131,14 @@ export function useSickShifts(now: Date): SickShiftsState & { readonly reload: (
           teams: enabled,
           sample,
           actorId,
-          candidates,
+          reads,
           reports,
-          personal: personalOnlyShifts(ownShifts, teamTimes, at),
+          ownShifts,
           personalFailed: !!own && !own.ok && !own.signedOut,
           managersByService: new Map(
             rows.map((row) => [row.team.serviceId, row.overview.ok ? row.overview.data.managers : undefined]),
           ),
-          readAt: at,
+          readAt: new Date(),
         },
       });
     });
@@ -162,5 +159,22 @@ export function useSickShifts(now: Date): SickShiftsState & { readonly reload: (
       reload: teams.reload,
     };
   if (!answer || answer.key !== key) return { status: "loading", reload };
-  return { ...answer.state, reload };
+  return { ...derive(answer.state, now), reload };
+}
+
+type Loaded =
+  | Exclude<SickShiftsState, { status: "ready" } | { status: "loading" }>
+  | (Omit<Extract<SickShiftsState, { status: "ready" }>, "candidates" | "personal"> & {
+      readonly reads: readonly SickTeamRead[];
+      readonly ownShifts: readonly SickPersonalShift[];
+    });
+
+/** Worked out against the clock on every render, so a shift that starts while the page is open drops out. */
+function derive(loaded: Loaded, now: Date): SickShiftsState {
+  if (loaded.status !== "ready") return loaded;
+  const { reads, ownShifts, ...rest } = loaded;
+  const candidates = loaded.actorId ? sickCandidates(reads, loaded.actorId, now) : [];
+  // Shifts already reported are on a team roster too, even once they are no longer mine.
+  const teamTimes = [...candidates, ...loaded.reports.map((item) => item.open)];
+  return { ...rest, candidates, personal: personalOnlyShifts(ownShifts, teamTimes, now) };
 }

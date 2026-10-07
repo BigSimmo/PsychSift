@@ -170,7 +170,8 @@ const monthOf = (date: string) => MONTH_WORDS[Number(date.slice(5, 7)) - 1]!;
 /** `Thu 22 Oct`, `Wed 21 to Thu 22 Oct`, or `Mon 30 Nov to Tue 1 Dec`. */
 export function spanWords(span: StaffingWindow): string {
   if (span.from === span.to) return `${shortDay(span.from)} ${monthOf(span.from)}`;
-  if (span.from.slice(0, 7) === span.to.slice(0, 7)) return `${shortDay(span.from)} to ${shortDay(span.to)} ${monthOf(span.to)}`;
+  if (span.from.slice(0, 7) === span.to.slice(0, 7))
+    return `${shortDay(span.from)} to ${shortDay(span.to)} ${monthOf(span.to)}`;
   return `${shortDay(span.from)} ${monthOf(span.from)} to ${shortDay(span.to)} ${monthOf(span.to)}`;
 }
 
@@ -196,7 +197,8 @@ export function staffingDayLabel(day: StaffingDay, leave: StaffingWindow | null)
 
 /** The one-line result for the picked dates. */
 export function leaveStaffingWords(result: LeaveStaffing): { readonly lead: string; readonly rest: string } {
-  if (result.kind === "unchecked") return { lead: "Can't check yet.", rest: "The roster isn't published for these dates." };
+  if (result.kind === "unchecked")
+    return { lead: "Can't check yet.", rest: "The roster isn't published for these dates." };
   const plural = (n: number) => `${n} ${n === 1 ? "person" : "people"}`;
   if (result.kind === "partial")
     return {

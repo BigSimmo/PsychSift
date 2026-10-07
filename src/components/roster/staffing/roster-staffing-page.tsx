@@ -27,11 +27,9 @@ import {
   dayCount,
   isIsoDate,
   leaveStaffing,
-  mondayOf,
   shortDay,
   spanWords,
   staffingWindow,
-  sundayOf,
   type StaffingWindow,
 } from "@/lib/roster/staffing/team-staffing";
 
@@ -62,7 +60,6 @@ const subscribeSearch = (notify: () => void) => {
 };
 const searchSnapshot = () => window.location.search;
 const serverSearchSnapshot = () => "";
-
 
 function MiniBars({ counts }: { readonly counts: readonly number[] }) {
   const top = Math.max(1, ...counts);
@@ -123,9 +120,8 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
   const leave: StaffingWindow | null = from && !problem ? { from, to: end } : null;
   const span = staffingWindow(today, leave);
   const staffing = useTeamStaffing(serviceId, span, actorId);
-  const shown = leave
-    ? staffing.days.filter((day) => day.date >= mondayOf(leave.from) && day.date <= sundayOf(leave.to))
-    : staffing.days;
+  // The whole read window, so a run can be extended into the next week with a tap.
+  const shown = staffing.days;
   const result = leave && staffing.status === "ready" ? leaveStaffing(staffing.days, leave) : null;
   const options = leave && staffing.status === "ready" ? alternativeDates(staffing.days, leave, today) : [];
 
@@ -160,7 +156,11 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
               <p>{teams.message ?? "Your teams couldn't be checked."}</p>
             </RosterNote>
             {teams.status === "error" ? (
-              <button type="button" className={cn(rosterOutlineButton, "justify-self-start px-4")} onClick={teams.reload}>
+              <button
+                type="button"
+                className={cn(rosterOutlineButton, "justify-self-start px-4")}
+                onClick={teams.reload}
+              >
                 Try again
               </button>
             ) : null}
@@ -224,7 +224,12 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                       type="date"
                       value={from}
                       min={today}
-                      onChange={(event) => setDates({ from: event.target.value, to: to && to >= event.target.value ? to : event.target.value })}
+                      onChange={(event) =>
+                        setDates({
+                          from: event.target.value,
+                          to: to && to >= event.target.value ? to : event.target.value,
+                        })
+                      }
                       className={rosterField}
                     />
                   </label>
@@ -240,7 +245,11 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                   </label>
                 </div>
                 {problem ? (
-                  <p role="alert" className="mx-1 text-sm text-[color:var(--warning-text)]" data-testid="staffing-problem">
+                  <p
+                    role="alert"
+                    className="mx-1 text-sm text-[color:var(--warning-text)]"
+                    data-testid="staffing-problem"
+                  >
                     {problem}
                   </p>
                 ) : (
@@ -260,7 +269,7 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                   right={
                     staffing.readAt ? (
                       <span className="nums text-xs text-[color:var(--text-muted)]">
-                        {leave ? spanWords({ from: mondayOf(leave.from), to: sundayOf(leave.to) }) : "Next 3 weeks"}
+                        {leave ? spanWords(span) : "Next 3 weeks"}
                         {" · "}Rechecked {perthTimeOf(staffing.readAt)}
                       </span>
                     ) : undefined

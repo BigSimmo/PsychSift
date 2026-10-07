@@ -48,8 +48,6 @@ export function RosterSickEntryLink({
 /** For a Today page: `tomorrowShift` is e.g. "Wed 7 · Day", from data the page already holds. */
 export function SickTomorrowTodayCard({ tomorrowShift }: { readonly tomorrowShift?: string | null }) {
   return (
-    <RosterSickEntryLink
-      sub={tomorrowShift ? `${tomorrowShift}. One tap tells your roster managers` : undefined}
-    />
+    <RosterSickEntryLink sub={tomorrowShift ? `${tomorrowShift}. One tap tells your roster managers` : undefined} />
   );
 }
