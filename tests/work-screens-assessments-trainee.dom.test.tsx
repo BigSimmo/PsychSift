@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AssessmentsTraineePage } from "@/components/work-screens/assessments/assessments-trainee-page";
 import { ToastProvider } from "@/components/ui/toast";
 import { EXAMPLE_ASSESSMENTS_SUPERVISION } from "@/lib/example-data/datasets/assessments-supervision";
+import { initialAssessmentsState } from "@/lib/teaching/assessments/model";
+import { exportDoctors } from "@/lib/work-screens/assessments/export";
+
+/** Names come from the shared example list, so read them rather than pinning them. */
+const doctorName = (id: string) => exportDoctors(initialAssessmentsState()).find((d) => d.id === id)?.name ?? "missing";
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -49,7 +55,7 @@ describe("supervisor's view of a trainee", () => {
     });
     expect(within(sheet).queryByTestId("assessments-trainee-patient-detail")).toBeNull();
     fireEvent.click(send);
-    expect(await screen.findByText(/Sending to Dr Mia Chen in 10/)).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`Sending to ${escape(doctorName("mia"))} in 10`))).toBeInTheDocument();
     expect(screen.queryByTestId("assessments-trainee-request-mia-epa-2")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(screen.getByTestId("assessments-trainee-request-mia-epa-2")).toBeInTheDocument();
@@ -75,7 +81,7 @@ describe("supervisor's view of a trainee", () => {
     fireEvent.click(within(sheet).getByTestId("assessments-trainee-ask-field-length"));
     expect(send).not.toBeDisabled();
     fireEvent.click(send);
-    expect(await screen.findByText(/Correction asked of Dr Sam Lee/)).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`Correction asked of ${escape(doctorName("sam"))}`))).toBeInTheDocument();
     expect(screen.getByText(/Correction asked · Length/)).toBeInTheDocument();
   });
 
