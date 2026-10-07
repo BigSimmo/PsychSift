@@ -2766,7 +2766,7 @@ export function MasterSearchHeader({
                 </>
               ) : pillShowsAreaOnly ? (
                 // Pill 4b (Josh, 7 Oct 2026): just the area, in the area's colour,
-                // in normal lettering. No "Mode" eyebrow: the coloured name and
+                // in normal lettering, at 600 like every other line of the pill. No "Mode" eyebrow: the coloured name and
                 // badge already say what this control is.
                 <span
                   data-testid="universal-header-mode-area-only"
