@@ -104,6 +104,12 @@ export const TEACHING_TERM_TRACKER_STORAGE_KEY = "psychsift:teaching:term-tracke
  * progress and the next study group. Kept on this device only.
  */
 export const TEACHING_EXAM_PREP_STORAGE_KEY = "psychsift:teaching:exam-prep-v1";
+/**
+ * localStorage — On Call's "Your first week" pack: per hospital (`service:site` ids), which of the
+ * five fixed sections the doctor marked read, and when. Section ids and times only, never a title,
+ * a name or a number. Cleared at sign-out, session expiry and account switch.
+ */
+export const ON_CALL_FIRST_WEEK_READ_STORAGE_KEY = "psychsift:on-call:first-week-read-v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -176,6 +182,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, ON_CALL_FIRST_WEEK_READ_STORAGE_KEY);
   stripAccountScopedPreferences();
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
