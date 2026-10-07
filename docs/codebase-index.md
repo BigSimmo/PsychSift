@@ -463,6 +463,15 @@ side swipe. Styles and the area palettes' partner tokens live in `src/app/work-m
 shared content pieces (cards, rows, hero, rings, chips, buttons, dock, week strip, Undo toast) are
 in `src/components/mode-kit/work.tsx`. Clinical modes keep the old band.
 
+**Example data and the work time zone.** `src/lib/example-data/` is the one example data switch for
+every work area: `store.ts` (the switch, an auto default for new accounts and signed-out visitors,
+per-area state, the cookie server pages read through `server.ts`), `registry.ts` (every example
+dataset, dynamic imports only), `guards.ts` (example ids, `withoutExampleRecords`, the blocked-action
+guard) and `people.ts` (the obviously made-up names and places). The banner, switch and first-use
+states are in `src/components/example-data/` and `src/components/work-first-use/`.
+`src/lib/work-time/` holds the work time zone (Perth by default, saved as `preferences.timeZone`) and
+the zone-aware date and time helpers every shift and "today" uses instead of the device clock.
+
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
 records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto

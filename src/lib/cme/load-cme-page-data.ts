@@ -29,6 +29,7 @@ import { cmeYearConfigurationState } from "@/lib/cme/year-configuration";
 import { canOfferCmeYearEnd } from "@/lib/cme/year-close-actions";
 import type { CmeEntry, CmeRequirementSet, CmeYearClose } from "@/lib/cme/types";
 import { isDemoMode } from "@/lib/env";
+import { exampleDataOn } from "@/lib/example-data/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -137,7 +138,7 @@ async function load(
   entryId?: string,
   options: CmeRecordsOptions = {},
 ): Promise<CmePageData & { entry: CmeEntry | null }> {
-  if (isDemoMode()) {
+  if (isDemoMode() || (await exampleDataOn("cpd"))) {
     const entry = entryId ? (DEMO_CME_ENTRIES.find((e) => e.id === entryId) ?? null) : null;
     const targetYear = entry ? Number(entry.date.slice(0, 4)) : (year ?? DEMO_CME_YEAR.year);
     return {
