@@ -596,10 +596,12 @@ a.assess-pair__top:focus-visible {
   border-radius: var(--radius-pill);
 }
 .assess-sc > i[data-who="you"] {
+  left: calc(8px + (var(--assess-you) - 1) / 4 * (100% - 16px));
   background: var(--mode-identity);
   box-shadow: 0 0 0 2px var(--work-surface);
 }
 .assess-sc > i[data-who="them"] {
+  left: calc(8px + (var(--assess-them) - 1) / 4 * (100% - 16px));
   background: var(--work-surface);
   box-shadow:
     inset 0 0 0 2.5px var(--work-ink-muted),
@@ -607,6 +609,8 @@ a.assess-pair__top:focus-visible {
 }
 .assess-sc > s {
   position: absolute;
+  left: calc(8px + (var(--assess-lo) - 1) / 4 * (100% - 16px));
+  width: calc((var(--assess-hi) - var(--assess-lo)) / 4 * (100% - 16px));
   top: 7px;
   height: 2px;
   background: var(--work-line-strong);
@@ -1011,6 +1015,19 @@ input.assess-txt {
   flex: 1;
   gap: calc(var(--spacing) * 1.5);
 }
+/* Skeleton line lengths: a title, then a shorter line under it. */
+.assess-skel__row i:first-child {
+  width: 62%;
+}
+.assess-skel__row i:last-child {
+  width: 38%;
+}
+.assess-skel > i:nth-of-type(1) {
+  width: 80%;
+}
+.assess-skel > i:nth-of-type(2) {
+  width: 55%;
+}
 @media (prefers-reduced-motion: no-preference) {
   .assess-skel i,
   .assess-skel__row > b {
@@ -1088,7 +1105,8 @@ input.assess-txt {
   border-radius: var(--radius-xs);
   background: currentColor;
   transform-origin: left;
-  animation: assess-drain var(--assess-drain-ms) linear forwards;
+  /* Ten seconds: the hold every held send uses. */
+  animation: assess-drain calc(var(--duration-deliberate) * 100 / 3) linear forwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .assess-undo__drain > i {
@@ -1156,7 +1174,7 @@ input.assess-txt {
 .work-hero .work-button[data-variant="tinted"]::before {
   inset: calc(var(--spacing) * 0.75) 0;
   background: color-mix(in srgb, var(--surface-raised) 18%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface-raised) 30%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--surface-raised) 30%, transparent);
 }
 .work-hero .work-button:focus-visible {
   outline: 2px solid currentColor;

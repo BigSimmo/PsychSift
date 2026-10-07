@@ -626,7 +626,7 @@ export function SupervisorTimes({ s, dispatch, go }: ScreenProps) {
             <span className="work-row__title">Mon 26 Oct to Fri 6 Nov</span>
             <span className="work-row__sub">Tap times to offer them. Doctors book 30 minutes.</span>
           </span>
-          <span className="work-row__end" aria-live="polite">
+          <span className="work-row__end">
             <WorkTag>{`${offered} offered`}</WorkTag>
           </span>
         </div>

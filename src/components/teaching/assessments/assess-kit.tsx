@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { createElement, useSyncExternalStore, type ReactNode } from "react";
+import { createElement, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { ModeBandAction, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
@@ -620,8 +620,6 @@ export function AssessTextField({
 
 /* ------------------------------------------------------ side by side */
 
-const scalePos = (rating: number) => `calc(8px + ${(rating - 1) / 4} * (100% - 16px))`;
-
 /**
  * One domain on a 1 to 5 line: a filled dot for you (the supervisor), a ring
  * for the doctor, a grey bar between when they differ. Neutral: never green
@@ -652,17 +650,18 @@ export function CompareRow({
         className="assess-sc"
         role="img"
         aria-label={`${youName}: ${you}. ${themName}: ${them ?? "none"}. Out of 5.`}
+        style={
+          {
+            "--assess-you": you,
+            "--assess-them": them ?? you,
+            "--assess-lo": Math.min(you, them ?? you),
+            "--assess-hi": Math.max(you, them ?? you),
+          } as CSSProperties
+        }
       >
-        {them !== null && them !== you ? (
-          <s
-            style={{
-              left: scalePos(Math.min(you, them)),
-              width: `calc(${Math.abs(you - them) / 4} * (100% - 16px))`,
-            }}
-          />
-        ) : null}
-        {them !== null ? <i data-who="them" style={{ left: scalePos(them) }} /> : null}
-        <i data-who="you" style={{ left: scalePos(you) }} />
+        {them !== null && them !== you ? <s /> : null}
+        {them !== null ? <i data-who="them" /> : null}
+        <i data-who="you" />
       </div>
     </div>
   );
@@ -792,8 +791,8 @@ function SkelRow() {
     <div className="assess-skel__row">
       <b />
       <div>
-        <i style={{ width: "62%" }} />
-        <i style={{ width: "38%" }} />
+        <i />
+        <i />
       </div>
     </div>
   );
@@ -802,11 +801,11 @@ function SkelRow() {
 /** The loading shape of the To do tab: a hero, then two cards of rows. */
 export function AssessSkeleton({ label = "Loading assessments" }: { readonly label?: string }) {
   return (
-    <div className="grid gap-[0.5625rem]" role="status" aria-label={label} aria-busy="true">
-      <div className="work-card assess-skel h-[146px] content-center">
+    <div className="grid gap-2" role="status" aria-label={label} aria-busy="true">
+      <div className="work-card assess-skel min-h-36 content-center">
         <SkelRow />
-        <i style={{ width: "80%" }} />
-        <i style={{ width: "55%" }} />
+        <i />
+        <i />
       </div>
       <div className="work-card assess-skel">
         <SkelRow />
@@ -832,24 +831,17 @@ export function AssessUndoBar({
   children,
   srText,
   onUndo,
-  durationMs,
   icon: Icon,
   testId,
 }: {
   readonly children: ReactNode;
   readonly srText?: string;
   readonly onUndo: () => void;
-  readonly durationMs: number;
   readonly icon?: LucideIcon;
   readonly testId?: string;
 }) {
   return (
-    <div
-      role="status"
-      data-testid={testId}
-      className="assess-undo fixed"
-      style={{ ["--assess-drain-ms" as string]: `${durationMs}ms` }}
-    >
+    <div role="status" data-testid={testId} className="assess-undo fixed">
       {Icon ? <Icon aria-hidden="true" strokeWidth={2} /> : null}
       <span className="assess-undo__text">
         {children}

@@ -808,7 +808,6 @@ function SupervisionPage({ demoMode }: { demoMode: boolean }) {
       {sender.holding ? (
         <AssessUndoBar
           testId="teaching-supervision-pending"
-          durationMs={SUPERVISION_UNDO_MS}
           srText="Waiting 10 seconds before sending. Leaving this page cancels the unsent change."
           onUndo={sender.undo}
         >
