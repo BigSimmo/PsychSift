@@ -56,16 +56,17 @@ describe("mode pages sheet recipes", () => {
   });
 
   it("keeps the pill's page and mode lines at 600", () => {
-    // All four text lines of the pill: page, mode, the "Mode" eyebrow and the
-    // mode name. The owner's rule is nothing heavier than 600 in the shared pill.
+    // All five text lines of the pill: a work area's name, page, mode, the
+    // "Mode" eyebrow and the mode name. The owner's rule is nothing heavier
+    // than 600 in the shared pill.
     const source = readFileSync(
       path.join(process.cwd(), "src/components/clinical-dashboard/master-search-header.tsx"),
       "utf8",
     );
-    const start = source.indexOf("{activeModePage ? (");
+    const start = source.indexOf("{workPill ? (");
     const pill = source.slice(start, source.indexOf("<ChevronDown", start));
     expect(pill.length).toBeGreaterThan(0);
     expect(pill).not.toMatch(/font-(bold|extrabold|black)/);
-    expect(pill.match(/font-semibold/g)).toHaveLength(4);
+    expect(pill.match(/font-semibold/g)).toHaveLength(5);
   });
 });
