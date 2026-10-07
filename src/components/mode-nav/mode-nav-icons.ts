@@ -1,5 +1,4 @@
 import {
-  UserRound,
   BedDouble,
   Ban,
   Bell,
@@ -23,7 +22,6 @@ import {
   LayoutGrid,
   LibraryBig,
   ListChecks,
-  LifeBuoy,
   MessageCircle,
   Network,
   NotebookPen,
@@ -34,17 +32,16 @@ import {
   Search,
   Settings,
   Sparkles,
-  SlidersHorizontal,
   SquarePlus,
   Stethoscope,
   Sunrise,
   Scale,
-  Target,
   Users,
   UsersRound,
   Waypoints,
   Wrench,
   type LucideIcon,
+  Clock,
 } from "lucide-react";
 
 import {
@@ -126,17 +123,16 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   // (`cmeSections` in `cme/cme-nav-header.tsx`, and the dashboard's own module
   // icons), so a destination wears one mark in the mode sheet and inside the
   // page it opens.
+  // Work-mode redesign (owner request 6 Oct 2026): the pill lists the frame's
+  // three pinned tabs, Summary, Log and Learning.
   year: CalendarDays,
   log: NotebookPen,
-  plan: Target,
   learning: Presentation,
-  setup: ListChecks,
-  // Admin's page destinations in the mode picker.
+  // Admin's page destinations in the mode picker: the frame's Today, Renewals
+  // and New job. Today wears the mode's own Sunrise, as My Day's does.
+  "admin-today": Sunrise,
   renewals: ON_CALL_VIEW_ICONS.compliance,
-  // Compliance groups every requirement a health service asks for: a checklist on a clipboard.
-  "admin-compliance": ClipboardCheck,
   "new-job": BriefcaseBusiness,
-  help: LifeBuoy,
   // Roster. Today is the mode home a shift opens to; Shifts reuses the mode's
   // own CalendarRange mark (`category-identity.ts`); Team is the people on the
   // roster; Swaps & leave is the swap arrows (Requests now lives under it);
@@ -151,8 +147,8 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   // My Day. Today wears the mode's own Sunrise (as Admin's Today does), Week the
   // seven-day range, Hours the clock.
   "my-day-today": Sunrise,
-  "my-day-work": BriefcaseBusiness,
-  "my-day-me": UserRound,
+  "my-day-week": CalendarDays,
+  "my-day-hours": Clock,
   // Psychiatry's three hub pages.
   "psychiatry-ask": Search,
   "psychiatry-tools": Wrench,
@@ -174,12 +170,10 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   "open-shifts-mine": CalendarCheck,
   "open-shifts-alerts": Bell,
   "open-shifts-post": SquarePlus,
-  // Teaching shares the Today calendar icon with Roster.
+  // Teaching shares the Today calendar icon with Roster. Its pill lists the
+  // frame's three pinned tabs (work-mode redesign, owner request 6 Oct 2026).
+  week: CalendarDays,
   logbook: NotebookText,
-  organise: SlidersHorizontal,
-  resources: LibraryBig,
-  teach: Presentation,
-  assessments: ClipboardCheck,
 };
 
 /**

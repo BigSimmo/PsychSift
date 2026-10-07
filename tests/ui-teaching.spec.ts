@@ -93,19 +93,27 @@ test("On Call's legacy teaching calendar opens Teaching's This week", async ({ p
   await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
 });
 
-test("Teaching's five tabs reach Presenting, My record, Resources and Organise", async ({ page }) => {
+// work-mode redesign, owner request 6 Oct 2026: the pill lists the frame's three pinned tabs (Today,
+// Week, Logbook), and Presenting and Resources moved into the frame's More sheet.
+test("Teaching's pinned tabs and More reach Presenting, My record and Resources", async ({ page }) => {
   await page.goto("/teaching");
   await expect(visibleByTestId(page, "teaching-hero")).toBeVisible({ timeout: 20_000 });
-  for (const [id, path, testId] of [
-    ["teach", "/teaching/teach", "teaching-presenting"],
-    ["logbook", "/teaching/logbook", "teaching-logbook"],
-    ["resources", "/teaching/resources", "teaching-resources"],
+  await page.getByRole("button", { name: /^Mode Teaching/ }).click();
+  await visibleByTestId(page, "app-mode-section-logbook").click();
+  await expect(page).toHaveURL("/teaching/logbook");
+  await expect(visibleByTestId(page, "teaching-logbook")).toBeVisible({ timeout: 20_000 });
+  await expectNoSidewaysScroll(page, "logbook");
+  for (const [name, path, testId] of [
+    ["Presenting", "/teaching/teach", "teaching-presenting"],
+    ["Resources", "/teaching/resources", "teaching-resources"],
   ] as const) {
-    await page.getByRole("button", { name: /^Mode Teaching/ }).click();
-    await visibleByTestId(page, `app-mode-section-${id}`).click();
+    await visibleByTestId(page, "work-frame-more").click();
+    await visibleByTestId(page, "work-more-sheet")
+      .getByRole("link", { name: new RegExp(`^${name}`) })
+      .click();
     await expect(page).toHaveURL(path);
     await expect(visibleByTestId(page, testId)).toBeVisible({ timeout: 20_000 });
-    await expectNoSidewaysScroll(page, id);
+    await expectNoSidewaysScroll(page, name);
   }
 });
 

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { appModeDefinitions, appModeHomeHref } from "@/lib/app-modes";
 import { HUB_PANELS } from "@/lib/developer-area/hub-panels";
 import { modeSecondaryNavigationRegistry } from "@/lib/mode-secondary-navigation";
+import { WORK_AREAS, workAreaItems } from "@/lib/work-frame/areas";
 import { colourCodingReferenceHref } from "@/lib/reference-routes";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
 import { collectSiteMapData } from "../scripts/generate-site-map";
@@ -551,6 +552,16 @@ builderTargets.add(pathOnly(colourCodingReferenceHref()));
 for (const entries of Object.values(modeSecondaryNavigationRegistry)) {
   for (const entry of entries) {
     if ("href" in entry && entry.href) builderTargets.add(pathOnly(entry.href));
+  }
+}
+
+// The work-mode frame's tabs and More sheet are data too (work-mode redesign,
+// owner request 6 Oct 2026): `WORK_AREAS` hrefs render as <Link>s in the band
+// and the More sheet, so pages that left the mode pill's registry for More
+// (Admin Compliance, Teaching Organise and Assessments) are reached there.
+for (const area of Object.values(WORK_AREAS)) {
+  for (const item of workAreaItems(area)) {
+    if (item.href) builderTargets.add(pathOnly(item.href));
   }
 }
 

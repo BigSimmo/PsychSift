@@ -51,11 +51,12 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Who's who",
     "Orientation checklists",
   ],
-  cme: ["Year", "Log", "Plan", "Courses", "Report"],
-  teaching: ["This week", "Presenting", "Assessments", "My record", "Resources", "Organise"],
+  // work-mode redesign, owner request 6 Oct 2026: CPD, Teaching, Admin and My Day list the frame's three pinned tabs.
+  cme: ["Summary", "Log", "Learning"],
+  teaching: ["Today", "Week", "Logbook"],
   psychiatry: ["Ask", "Tools", "Saved"],
   medicines: [],
-  "my-work": ["Renewals", "Compliance", "New job", "Help"],
+  "my-work": ["Today", "Renewals", "New job"],
   roster: ["Shifts", "Swaps & leave", "Team", "Settings", "Today"],
   "first-nations": [
     "Bedside",
@@ -68,7 +69,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Going home",
     "End of life",
   ],
-  "my-day": ["Today", "Work", "Me"],
+  "my-day": ["Today", "Week", "Hours"],
   "open-shifts": ["Browse", "My shifts", "Alerts", "Post"],
 };
 
@@ -160,27 +161,23 @@ describe("mode secondary navigation registry", () => {
     });
   });
 
-  it("keeps every older CPD address under one of the five current pages", () => {
-    expect(modeSecondaryNavigationRegistry.cme.map(({ label }) => label)).toEqual([
-      "Year",
-      "Log",
-      "Plan",
-      "Courses",
-      "Report",
-    ]);
+  it("keeps every older CPD address under one of the three pinned pages, or none", () => {
+    // work-mode redesign, owner request 6 Oct 2026: the pill lists the frame's Summary, Log and Learning; the
+    // other CPD pages live in the frame's More sheet, so no pinned tab is current there.
+    expect(modeSecondaryNavigationRegistry.cme.map(({ label }) => label)).toEqual(["Summary", "Log", "Learning"]);
     for (const [pathname, page] of [
       ["/cme", "year"],
-      ["/cme/check", "setup"],
+      ["/cme/check", null],
       ["/cme/log", "log"],
       ["/cme/log/example", "log"],
-      ["/cme/routines", "log"],
+      ["/cme/routines", null],
       ["/cme/new", "log"],
-      ["/cme/plan", "plan"],
-      ["/cme/calendar", "plan"],
-      ["/cme/training", "plan"],
+      ["/cme/plan", null],
+      ["/cme/calendar", null],
+      ["/cme/training", null],
       ["/cme/learning", "learning"],
-      ["/cme/setup", "setup"],
-      ["/cme/programme", "setup"],
+      ["/cme/setup", null],
+      ["/cme/programme", null],
     ] as const) {
       expect(activeModeSecondaryNavigationId("cme", pathname)).toBe(page);
     }
@@ -618,10 +615,9 @@ describe("mode secondary navigation registry", () => {
   it("does not grow the mode menus past their current pages", () => {
     const visible = (modeId: AppModeId) =>
       modeSecondaryNavigationEntries(modeId).filter((entry) => entry.href && !entry.hidden);
-    // Teaching v5 (5 Oct mock-up): five tabs plus Assessments; What's on, Supervision, Feedback, Term and Exam prep sit behind them.
-    expect(visible("teaching")).toHaveLength(6);
-    // Compliance joined Admin with the 5 Oct mock-up (Renewals · Compliance · New job · Help).
-    expect(visible("my-work")).toHaveLength(4);
+    // work-mode redesign, owner request 6 Oct 2026: Teaching and Admin list the frame's three pinned tabs; the rest sit in More.
+    expect(visible("teaching")).toHaveLength(3);
+    expect(visible("my-work")).toHaveLength(3);
     expect(visible("roster")).toHaveLength(5);
     expect(visible("first-nations")).toHaveLength(9);
     expect(visible("my-day")).toHaveLength(3);
@@ -802,17 +798,19 @@ describe("Roster mode secondary navigation active destinations", () => {
 
 describe("My Day mode secondary navigation", () => {
   it("registers Today, Week and Hours with unique ids and their own addresses", () => {
+    // work-mode redesign, owner request 6 Oct 2026: Week and Hours are the frame's pinned tabs, as real routes.
     expect(modeSecondaryNavigationRegistry["my-day"]).toEqual([
       { id: "my-day-today", label: "Today", href: "/my-day" },
-      { id: "my-day-work", label: "Work", href: "/my-day?page=work" },
-      { id: "my-day-me", label: "Me", href: "/my-day?page=me" },
+      { id: "my-day-week", label: "Week", href: "/my-day/week" },
+      { id: "my-day-hours", label: "Hours", href: "/my-day/hours" },
     ]);
   });
 
   it("marks each page current by exact match only", () => {
     expect(activeModeSecondaryNavigationId("my-day", "/my-day")).toBe("my-day-today");
-    expect(activeModeSecondaryNavigationId("my-day", "/my-day/week")).toBe("my-day-today");
-    expect(activeModeSecondaryNavigationId("my-day", "/my-day/hours")).toBe("my-day-me");
+    // work-mode redesign, owner request 6 Oct 2026: Week and Hours are their own tabs now.
+    expect(activeModeSecondaryNavigationId("my-day", "/my-day/week")).toBe("my-day-week");
+    expect(activeModeSecondaryNavigationId("my-day", "/my-day/hours")).toBe("my-day-hours");
     expect(activeModeSecondaryNavigationId("my-day", "/my-day/other")).toBeNull();
   });
 
