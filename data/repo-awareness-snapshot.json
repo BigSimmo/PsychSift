@@ -334,6 +334,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/new-job/starter",
+        "file": "src/app/(search-app)/admin/new-job/starter/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/development/ledger",
         "file": "src/app/mockups/development/ledger/page.tsx",
         "area": "mockup"
@@ -429,9 +434,19 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/new-job/ready",
+        "file": "src/app/(search-app)/admin/new-job/ready/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan/reviews",
         "file": "src/app/mockups/care-plan/reviews/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/teaching/term/folder",
+        "file": "src/app/(search-app)/teaching/term/folder/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/universal-search-redesign",
@@ -584,6 +599,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/contract",
+        "file": "src/app/(search-app)/admin/contract/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/roster",
         "file": "src/app/(search-app)/roster/page.tsx",
         "area": "product"
@@ -697,6 +717,11 @@
         "path": "/mockups/dictionary-browse-header",
         "file": "src/app/mockups/dictionary-browse-header/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/on-call/first-week",
+        "file": "src/app/(search-app)/on-call/first-week/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/c/complete",
@@ -864,6 +889,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/leave",
+        "file": "src/app/(search-app)/admin/leave/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/calculators-popup-sheet",
         "file": "src/app/mockups/calculators-popup-sheet/page.tsx",
         "area": "mockup"
@@ -901,6 +931,11 @@
       {
         "path": "/teaching/display/[token]",
         "file": "src/app/(display)/teaching/display/[token]/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/on-call/whos-on/roster",
+        "file": "src/app/(search-app)/on-call/whos-on/roster/page.tsx",
         "area": "product"
       },
       {
