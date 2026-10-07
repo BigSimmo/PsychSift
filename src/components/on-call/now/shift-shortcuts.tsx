@@ -41,10 +41,17 @@ export function NowShiftShortcuts() {
   const drafted = useOnCallHandoverDraftCount();
 
   // Arriving with #log-a-call (My Day's quick action) opens the sheet once.
+  // So does the hash arriving while Now is already open (a link to it tapped
+  // from this page, or the browser's Forward), which no remount would catch.
   useEffect(() => {
-    if (typeof window === "undefined" || window.location.hash !== ON_CALL_LOG_A_CALL_HASH) return;
+    if (typeof window === "undefined") return;
+    const openOnHash = () => {
+      if (window.location.hash === ON_CALL_LOG_A_CALL_HASH) setOpen(true);
+    };
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOpen(true);
+    openOnHash();
+    window.addEventListener("hashchange", openOnHash);
+    return () => window.removeEventListener("hashchange", openOnHash);
   }, []);
 
   const close = () => {
