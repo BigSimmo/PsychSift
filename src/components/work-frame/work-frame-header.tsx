@@ -2,7 +2,6 @@
 
 import { Check, ChevronDown, ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -16,6 +15,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { Sheet } from "@/components/ui/sheet";
+import { useTabSwipe } from "@/components/work-swipe/use-tab-swipe";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import {
   setWorkFramePill,
@@ -292,80 +292,4 @@ function WorkMoreTile({ item, current, onClose }: { item: WorkFrameItem; current
       {body}
     </Link>
   );
-}
-
-/* ------------------------------------------------------------- side swipe */
-
-/** A horizontal swipe must travel this far, and twice as far as it drifts down. */
-const SWIPE_DISTANCE = 72;
-/** Touches that start this close to a screen edge belong to the phone's own back gesture. */
-const EDGE_GUARD = 24;
-
-function scrollsSideways(element: Element | null): boolean {
-  for (let node = element; node && node !== document.body; node = node.parentElement) {
-    if (!(node instanceof HTMLElement)) continue;
-    if (node.closest("[data-no-tab-swipe]")) return true;
-    const overflowX = getComputedStyle(node).overflowX;
-    if ((overflowX === "auto" || overflowX === "scroll") && node.scrollWidth > node.clientWidth + 1) return true;
-  }
-  return false;
-}
-
-function swipeBlocked(target: EventTarget | null): boolean {
-  if (!(target instanceof Element)) return true;
-  if (target.closest('input, textarea, select, [contenteditable="true"], [role="slider"], [role="dialog"], header'))
-    return true;
-  return scrollsSideways(target);
-}
-
-/**
- * Swiping sideways on a phone moves between an area's three pinned tabs, as
- * real navigations, only while one of those tabs is open. A swipe that starts
- * on something that scrolls sideways itself (a week strip, a chip row, a
- * table), on a field, a slider or a sheet, or at the screen's very edge is
- * left alone. Marked `data-no-tab-swipe` opts any other region out.
- */
-function useTabSwipe(area: WorkArea, tabIndex: number) {
-  const router = useRouter();
-  const pathname = usePathname();
-  useEffect(() => {
-    if (tabIndex < 0) return;
-    let start: { x: number; y: number; t: number } | null = null;
-    const onStart = (event: TouchEvent) => {
-      const touch = event.touches[0];
-      if (event.touches.length !== 1 || !touch) {
-        start = null;
-        return;
-      }
-      if (touch.clientX < EDGE_GUARD || touch.clientX > window.innerWidth - EDGE_GUARD || swipeBlocked(event.target)) {
-        start = null;
-        return;
-      }
-      start = { x: touch.clientX, y: touch.clientY, t: event.timeStamp };
-    };
-    const onEnd = (event: TouchEvent) => {
-      const touch = event.changedTouches[0];
-      const began = start;
-      start = null;
-      if (!began || !touch) return;
-      const dx = touch.clientX - began.x;
-      const dy = touch.clientY - began.y;
-      if (Math.abs(dx) < SWIPE_DISTANCE || Math.abs(dx) < Math.abs(dy) * 2 || event.timeStamp - began.t > 700) return;
-      const next = tabIndex + (dx < 0 ? 1 : -1);
-      const tab = area.tabs[next];
-      if (!tab?.href) return;
-      const root = document.documentElement;
-      root.dataset.workSwipe = dx < 0 ? "next" : "previous";
-      window.setTimeout(() => {
-        if (root.dataset.workSwipe) delete root.dataset.workSwipe;
-      }, 400);
-      router.push(tab.href);
-    };
-    window.addEventListener("touchstart", onStart, { passive: true });
-    window.addEventListener("touchend", onEnd, { passive: true });
-    return () => {
-      window.removeEventListener("touchstart", onStart);
-      window.removeEventListener("touchend", onEnd);
-    };
-  }, [area, tabIndex, router, pathname]);
 }
