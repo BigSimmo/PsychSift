@@ -658,6 +658,8 @@ const assessments: WorkArea = {
       sub: "Forms to finish",
       icon: "check-list",
       href: "/teaching/assessments",
+      // A supervisor's page for one doctor sits under To do, so the band and its back arrow show there too.
+      paths: ["/teaching/assessments", "/teaching/assessments/trainee/"],
       title: "Assessments",
     },
     {
