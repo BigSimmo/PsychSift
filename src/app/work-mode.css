@@ -70,7 +70,11 @@
   /* The hero and the primary button: the mode colour, or a gentle two-stop
      gradient. In dark themes the identity is a light tint, so both fall back to
      a deep mix that keeps white text readable. */
-  --work-hero-from: var(--mode-identity-2);
+  /* The light start of the hero is pulled a third of the way back toward the
+     identity, so white text keeps 4.5:1 or better at the gradient's palest
+     corner, where the eyebrow and title start (CPD, the palest, was 4.05:1
+     and is now 4.56:1). */
+  --work-hero-from: color-mix(in srgb, var(--mode-identity-2) 65%, var(--mode-identity));
   --work-hero-to: var(--mode-identity-deep);
   --work-primary: var(--mode-identity);
   --work-primary-text: var(--mode-identity-contrast);
@@ -914,7 +918,6 @@ a.work-hero:focus-visible {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  opacity: 0.82;
 }
 
 .work-hero__title {
@@ -927,7 +930,6 @@ a.work-hero:focus-visible {
 .work-hero__sub {
   font-size: var(--text-xs, 0.75rem);
   line-height: var(--work-leading-hero-sub);
-  opacity: 0.86;
 }
 
 .work-hero__foot {
@@ -987,7 +989,6 @@ a.work-hero:focus-visible {
   font-size: 0.59375rem;
   font-weight: 600;
   line-height: var(--work-leading-none);
-  opacity: 0.8;
 }
 
 .work-mring {
@@ -1123,9 +1124,9 @@ a.work-hero:focus-visible {
   height: 0.8125rem;
 }
 
+/* Full strength: at 80% a selected chip's count fell to 3.5:1 on its tint. */
 .work-chip__count {
   font-variant-numeric: tabular-nums;
-  opacity: 0.8;
 }
 
 .work-chip:focus-visible {
