@@ -7,7 +7,7 @@ import { cn } from "@/components/ui-primitives";
 
 /**
  * The way in to Job applications, for the CPD More sheet ("Your year" group,
- * label "Jobs") or the Summary page. A literal link, so the route is reachable
+ * label "Jobs") or the Summary page (mounted there). A literal link, so the route is reachable
  * wherever the main build places it.
  */
 export function ApplicationsEntryLink() {

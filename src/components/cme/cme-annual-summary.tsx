@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { cardSurface } from "@/components/card-recipes";
+import { ApplicationsEntryLink } from "@/components/cme/applications/applications-entry-link";
+import { CpdHomeEntryLink } from "@/components/cme/cpd-home/cpd-home-entry-link";
 import { CmeYearClosePanel } from "@/components/cme/cme-year-close-panel";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
@@ -129,6 +131,10 @@ export function CmeAnnualSummary({
           Opens your device&apos;s print screen. Choose Save as PDF, or Share on a phone, to send it to your college or
           keep a copy.
         </p>
+        <nav aria-label="More from your CPD year" className="mt-4 grid gap-2" data-testid="cme-summary-more">
+          <CpdHomeEntryLink year={set.year} />
+          <ApplicationsEntryLink />
+        </nav>
       </div>
 
       <header className="grid gap-1">
