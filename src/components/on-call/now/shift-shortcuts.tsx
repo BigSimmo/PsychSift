@@ -48,7 +48,6 @@ export function NowShiftShortcuts() {
     const openOnHash = () => {
       if (window.location.hash === ON_CALL_LOG_A_CALL_HASH) setOpen(true);
     };
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     openOnHash();
     window.addEventListener("hashchange", openOnHash);
     return () => window.removeEventListener("hashchange", openOnHash);
