@@ -1,26 +1,33 @@
 "use client";
 
-import Link from "next/link";
-import { ChevronRight, Copy } from "lucide-react";
+import { ClipboardList, Copy, FileText, LogIn } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
+import {
+  AdminCallButton,
+  AdminNote,
+  AdminPage,
+  AdminRow,
+  AdminSection,
+  AdminSkeleton,
+  adminStyles,
+} from "@/components/admin/admin-kit";
+import { AdminCredentialsWallet } from "@/components/admin/admin-credentials-wallet";
 import { AdminNavHeader } from "@/components/admin/admin-nav-header";
 import { ADMIN_NEW_JOB_SECTIONS } from "@/components/admin/admin-page-sections";
 import { AdminShowAll } from "@/components/admin/admin-show-all";
+import { AdminStatusIcon } from "@/components/admin/admin-status-tag";
 import { AdminNewJobStart } from "@/components/admin/new-job/admin-new-job-start";
 import { AdminNewJobStepRow } from "@/components/admin/new-job/admin-new-job-step-row";
 import { AdminSavedUndoBar } from "@/components/admin/new-job/admin-saved-undo-bar";
-import { cardSurface, focusRing } from "@/components/card-recipes";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { WorkButton, WorkCard, WorkEmpty, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
 import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/components/ui-primitives";
 import { selectNewJobRows } from "@/lib/admin/help-items";
 import { selectNewJobStart, setNewJobStart, setNewJobStepDone } from "@/lib/admin/new-job-progress";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
@@ -55,32 +62,53 @@ async function patchEntry(id: string, body: unknown): Promise<OnCallEntry> {
   return parsed.data;
 }
 
+function initialsOf(title: string): string {
+  const words = title.split(/\s+/).filter((word) => /^[A-Za-z]/.test(word));
+  return words
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+/** A job contact: initials, the name and role, the number, and a round call button. */
 function ContactRow({ entry }: { entry: OnCallEntry }) {
   const details =
     typeof entry.details === "object" && entry.details !== null ? (entry.details as Record<string, unknown>) : {};
   const phone = typeof details.phone === "string" ? details.phone : null;
   const telHref = onCallTelHref(phone ?? undefined);
+  const placeholder = phone ? isOnCallPlaceholderNumber(phone) : false;
+  const display = phone ? displayPhoneNumber(phone, "own-list") : null;
   return (
     <li
       id={onCallEntryAnchorId(entry.id)}
       tabIndex={-1}
-      className="grid min-w-0 gap-0.5 border-b border-[color:var(--border)] px-3 py-2 last:border-b-0"
+      className={adminStyles.rowItem}
       data-testid={`admin-new-job-contact-${entry.slug}`}
     >
-      <span className="break-words text-sm font-medium text-[color:var(--text-heading)]">{entry.title}</span>
-      {entry.subtitle ? <span className={cn(textMuted, "text-sm")}>{entry.subtitle}</span> : null}
-      {phone && isOnCallPlaceholderNumber(phone) ? (
-        <span className="nums inline w-fit text-sm text-[color:var(--text)]">
-          {displayPhoneNumber(phone, "own-list")}
+      <div className="work-row">
+        <span aria-hidden="true" className={adminStyles.initials}>
+          {initialsOf(entry.title)}
         </span>
-      ) : phone ? (
-        <a href={telHref ?? `tel:${phone}`} className="nums inline w-fit text-sm text-[color:var(--text)]">
-          {displayPhoneNumber(phone, "own-list")}
-        </a>
+        <span className="work-row__text">
+          <span className="work-row__title">{entry.title}</span>
+          {entry.subtitle ? <span className="work-row__sub">{entry.subtitle}</span> : null}
+          {display && !placeholder ? (
+            <a href={telHref ?? `tel:${phone}`} className={cn("work-row__sub tabular-nums", adminStyles.mono)}>
+              {display}
+            </a>
+          ) : display ? (
+            <span className={cn("work-row__sub tabular-nums", adminStyles.mono)}>{display}</span>
+          ) : null}
+          <span className="work-row__sub">
+            {entry.lastVerifiedAt ? `Updated ${formatUpdatedMonth(entry.lastVerifiedAt)}` : "No date recorded"}
+          </span>
+        </span>
+      </div>
+      {display && !placeholder && telHref ? (
+        <div className={adminStyles.rowAction}>
+          <AdminCallButton tel={telHref} label={`Call ${entry.title}, ${display}`} />
+        </div>
       ) : null}
-      <span className={cn(textMuted, "text-xs")}>
-        {entry.lastVerifiedAt ? `Updated ${formatUpdatedMonth(entry.lastVerifiedAt)}` : "No date recorded"}
-      </span>
     </li>
   );
 }
@@ -120,36 +148,38 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
       ? `${needsActionPhrase(needsAction)} in Compliance overall.`
       : null;
   return (
-    <Link
-      href={ADMIN_PAGE_HREFS.compliance}
-      data-testid="admin-new-job-paperwork"
-      className={cn(
-        cardSurface,
-        focusRing,
-        "flex min-h-12 items-center gap-2 px-3 py-2.5 no-underline text-[color:var(--text-heading)]",
-      )}
-    >
-      <span className="grid min-w-0 flex-1 gap-0.5">
-        <span className="text-sm font-medium">{title}</span>
-        <span className="text-sm text-[color:var(--text)]" data-testid="admin-new-job-paperwork-count">
-          {countLine}
-        </span>
-        {nextJob && toDo.length > 0 ? (
-          <span className={cn(textMuted, "text-xs")} data-testid="admin-new-job-paperwork-names">
-            {`Before ${formatRecordedDate(nextJob.startsOn)}: ${namesLine(toDo.map((todo) => todo.item.row.item.title))}`}
-          </span>
-        ) : null}
-        {alsoLine ? (
-          <span className="text-xs text-[color:var(--text)]" data-testid="admin-new-job-paperwork-also">
-            {alsoLine}
-          </span>
-        ) : null}
-        <span className={cn(textMuted, "text-xs")}>
-          Dates you entered, not a check. Your service&apos;s list may differ.
-        </span>
-      </span>
-      <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-    </Link>
+    <WorkCard as="ul">
+      <AdminRow
+        lead={
+          nextJob && toDo.length > 0 ? (
+            <AdminStatusIcon status="start-renewing" />
+          ) : (
+            <WorkIconCircle icon={ClipboardList} />
+          )
+        }
+        title={title}
+        href={ADMIN_PAGE_HREFS.compliance}
+        testId="admin-new-job-paperwork"
+        sub={
+          <>
+            <span className="block" data-testid="admin-new-job-paperwork-count">
+              {countLine}
+            </span>
+            {nextJob && toDo.length > 0 ? (
+              <span className="block" data-testid="admin-new-job-paperwork-names">
+                {`Before ${formatRecordedDate(nextJob.startsOn)}: ${namesLine(toDo.map((todo) => todo.item.row.item.title))}`}
+              </span>
+            ) : null}
+            {alsoLine ? (
+              <span className="block" data-testid="admin-new-job-paperwork-also">
+                {alsoLine}
+              </span>
+            ) : null}
+            <span className="block">Dates you entered, not a check. Your service&apos;s list may differ.</span>
+          </>
+        }
+      />
+    </WorkCard>
   );
 }
 
@@ -270,11 +300,11 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <>
-      <AdminNavHeader title="New job" sections={ADMIN_NEW_JOB_SECTIONS} />
-      <InformationPageShell testId="admin-new-job-main">
+      <AdminPage testId="admin-new-job-main">
         <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
           New job
         </PageTitleUnderBand>
+        <AdminNavHeader title="New job" sections={ADMIN_NEW_JOB_SECTIONS} />
 
         <AdminNewJobStart
           startsOn={start?.startsOn ?? null}
@@ -284,67 +314,80 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
           onSignIn={() => setSignInOpen(true)}
           onSave={handleSetStart}
           onClear={() => void handleClearStart()}
+          done={doneCount}
+          total={totalCount}
         />
 
         {toggleError ? (
-          <p role="alert" className="text-sm text-[color:var(--text)]" data-testid="admin-new-job-error">
-            {toggleError}
-          </p>
+          <WorkCard padded>
+            <p role="alert" className="work-row__sub m-0" data-testid="admin-new-job-error">
+              {toggleError}
+            </p>
+          </WorkCard>
         ) : null}
 
         {loadState === "failed" ? (
           <AdminLoadFailed reason={state.loadError} onRetry={retry} testId="admin-new-job-load-failed" />
         ) : loadState === "loading" ? (
           // Design point 11: skeletons while loading, never "Nothing here yet".
-          <ModeModuleSkeleton rows={5} twoLine eyebrow testId="admin-new-job-loading" />
-        ) : loadState === "signed-out" ? (
-          <div data-testid="admin-new-job-signed-out">
-            <p>Sign in to see your New job records. They are kept for your signed-in account only.</p>
-            <Button variant="primary" onClick={() => setSignInOpen(true)}>
-              Sign in
-            </Button>
+          <div className={adminStyles.column} data-testid="admin-new-job-loading" aria-busy="true">
+            <span className="sr-only">Loading New job</span>
+            <AdminSkeleton className="h-16" />
+            <AdminSkeleton className="h-56" />
           </div>
+        ) : loadState === "signed-out" ? (
+          <WorkCard testId="admin-new-job-signed-out">
+            <WorkEmpty
+              icon={LogIn}
+              title="Sign in to see your New job records"
+              body="They are kept for your signed-in account only."
+              action={
+                <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)}>
+                  Sign in
+                </WorkButton>
+              }
+            />
+          </WorkCard>
         ) : (
           <>
             <section
               id="admin-new-job-before"
               aria-labelledby="admin-new-job-before-heading"
-              className={cn(inPageAnchor, "grid gap-3")}
+              className={cn(inPageAnchor, adminStyles.column)}
             >
-              <h2 id="admin-new-job-before-heading" className={eyebrowText}>
+              <h2 id="admin-new-job-before-heading" className="sr-only">
                 Before
               </h2>
 
-              {totalCount > 0 ? (
-                <p
-                  className="text-sm font-medium text-[color:var(--text-heading)]"
-                  data-testid="admin-new-job-progress"
-                >
-                  {`Logins and access: ${doneCount} of ${totalCount} done`}
-                </p>
-              ) : null}
-
               <PaperworkSignpost overview={overview} />
 
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className={eyebrowText}>Logins and access</h3>
-                  {ownLogins.length > 0 ? (
-                    <span className={cn(textMuted, "nums text-xs")} data-testid="admin-new-job-logins-left">
-                      {leftCount} left
-                    </span>
-                  ) : null}
-                </div>
-                {rows.logins.length === 0 ? (
-                  <p className={cn(textMuted, "text-sm")}>
-                    Nothing here yet. Your service&apos;s logins and access items appear here once your service is set
-                    up in Admin.
+              <AdminSection
+                as="h3"
+                label="Before · logins and access"
+                count={
+                  ownLogins.length > 0 ? (
+                    <span data-testid="admin-new-job-logins-left">{`${leftCount} left`}</span>
+                  ) : undefined
+                }
+              >
+                {totalCount > 0 ? (
+                  <p className="work-row__sub m-0 px-1" data-testid="admin-new-job-progress">
+                    {`Logins and access: ${doneCount} of ${totalCount} done`}
                   </p>
+                ) : null}
+                {rows.logins.length === 0 ? (
+                  <WorkCard padded>
+                    <p className="work-row__sub m-0">
+                      Nothing here yet. Your service&apos;s logins and access items appear here once your service is set
+                      up in Admin.
+                    </p>
+                  </WorkCard>
                 ) : (
                   <AdminShowAll
                     items={rows.logins}
                     label="Logins and access"
                     testId="admin-new-job-logins"
+                    listClassName="work-card work-rows"
                     anchorIdOf={(row) => onCallEntryAnchorId(row.entry.id)}
                     renderItem={(row) => (
                       <AdminNewJobStepRow
@@ -361,70 +404,70 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                     )}
                   />
                 )}
-              </div>
+              </AdminSection>
 
-              <div className="grid gap-2">
-                <h3 className={eyebrowText}>Contacts for this job</h3>
+              {/* The credentials wallet moved here from Today (work-mode redesign,
+                  owner request 6 Oct 2026), beside the pack it feeds. */}
+              {isAuthenticated && !state.demoMode ? <AdminCredentialsWallet /> : null}
+
+              <AdminSection as="h3" label="Contacts for this job" count={rows.contacts.length || undefined}>
                 {rows.contacts.length === 0 ? (
-                  <p className={cn(textMuted, "text-sm")}>Nothing recorded yet.</p>
+                  <WorkCard padded>
+                    <p className="work-row__sub m-0">Nothing recorded yet.</p>
+                  </WorkCard>
                 ) : (
-                  <ul className={cn(cardSurface, "overflow-hidden")} data-testid="admin-new-job-contacts">
+                  <WorkCard as="ul" testId="admin-new-job-contacts">
                     {rows.contacts.map((entry) => (
                       <ContactRow key={entry.id} entry={entry} />
                     ))}
-                  </ul>
+                  </WorkCard>
                 )}
-              </div>
+              </AdminSection>
             </section>
 
             <section
               id="admin-new-job-leaving"
               aria-labelledby="admin-new-job-leaving-heading"
-              className={cn(inPageAnchor, "grid gap-3")}
+              className={cn(inPageAnchor, adminStyles.section)}
             >
-              <h2 id="admin-new-job-leaving-heading" className={eyebrowText}>
-                Leaving
-              </h2>
-              {/* One tappable card: the explanation and the way to Your Admin records. */}
-              <Link
-                href="/admin/new-job/records"
-                data-testid="admin-new-job-records-link"
-                className={cn(
-                  cardSurface,
-                  focusRing,
-                  "flex min-h-12 items-center gap-2 px-3 py-2.5 no-underline text-[color:var(--text-heading)]",
-                )}
-              >
-                <Copy aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-                <span className="grid min-w-0 flex-1 gap-0.5">
-                  <span className="text-sm text-[color:var(--text)]" data-testid="admin-new-job-leaving-notice">
-                    Changing site or starting a new job? Take these with you from PsychSift:
-                  </span>
-                  <span className="text-sm font-medium">Your Admin records</span>
-                  <span className={cn(textMuted, "text-xs")} data-testid="admin-new-job-leaving-checklist">
-                    Registration numbers and renewal dates · Contacts and logins you saved · New job ticks. Not
-                    included: hospital files, patient information, or anything you did not type here.
-                  </span>
-                </span>
-                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-              </Link>
-              <Link
-                href="/admin/new-job/pack"
-                data-testid="admin-new-job-leaving-pack-link"
-                className={cn(
-                  focusRing,
-                  "inline-flex min-h-12 w-fit items-center px-1 text-sm text-[color:var(--clinical-accent)] underline-offset-2 hover:underline",
-                )}
-              >
-                Credential pack, as a PDF on this device
-              </Link>
+              <WorkSectionLabel id="admin-new-job-leaving-heading">Leaving</WorkSectionLabel>
+              <WorkCard as="ul">
+                {/* One tappable row: the explanation and the way to Your Admin records. */}
+                <AdminRow
+                  lead={<WorkIconCircle icon={Copy} />}
+                  href="/admin/new-job/records"
+                  testId="admin-new-job-records-link"
+                  title={
+                    <>
+                      <span className="work-row__sub block" data-testid="admin-new-job-leaving-notice">
+                        Changing site or starting a new job? Take these with you from PsychSift:
+                      </span>
+                      <span className="block">Your Admin records</span>
+                    </>
+                  }
+                  sub={
+                    <span data-testid="admin-new-job-leaving-checklist">
+                      Registration numbers and renewal dates · Contacts and logins you saved · New job ticks. Not
+                      included: hospital files, patient information, or anything you did not type here.
+                    </span>
+                  }
+                />
+                <AdminRow
+                  lead={<WorkIconCircle icon={FileText} />}
+                  href="/admin/new-job/pack"
+                  testId="admin-new-job-leaving-pack-link"
+                  title="Credential pack"
+                  sub="As a PDF on this device"
+                />
+              </WorkCard>
+              <AdminNote>Hospital files and patient information are never included.</AdminNote>
             </section>
           </>
         )}
-      </InformationPageShell>
+      </AdminPage>
 
       {/* Mounted only where a sign-in control is offered (it needs the auth provider, as on Today). */}
-      {startReadOnlyReason === "signed-out" ? (
+      {startReadOnlyReason === "signed-out" || loadState === "signed-out" ? (
         <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
       ) : null}
 

@@ -461,6 +461,12 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
 
 // Work-mode redesign, owner request 6 Oct 2026: the additions to Today.
 describe("AdminTodayPage work-mode additions", () => {
+  it("no longer carries the credentials wallet, which moved to New job", () => {
+    state.entries = [registration, indemnity];
+    render(<AdminTodayPage now={NOW} />);
+    expect(screen.queryByTestId("admin-credentials-wallet")).toBeNull();
+  });
+
   it("links the Overtime row to Roster's extra time view", () => {
     state.entries = [registration];
     render(<AdminTodayPage now={NOW} />);
