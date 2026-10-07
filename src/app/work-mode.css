@@ -528,6 +528,16 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   }
 }
 
+/* Centre if it fits (7 Oct 2026): on a phone the pill stays in the true centre
+   whenever it fits between the menu and the bell and AI Search, and moves left
+   only as far as it must, so it never runs under the bell. A long name
+   shortens once there is no more room. */
+@media (max-width: 639px) {
+  .universal-header[data-work-frame] .universal-header-row {
+    grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+  }
+}
+
 /* Round glass buttons: a 48px tap, a 44px glass circle. */
 .universal-header[data-work-frame] .universal-header-icon-control {
   position: relative;
