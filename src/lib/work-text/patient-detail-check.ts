@@ -48,8 +48,67 @@ export type PatientDetailProblem = ReminderTextProblem;
 
 const DEFAULT_BODY = "This can't hold patient details. This check catches some details, not all.";
 
-/** Format and invisible characters: zero-width space and joiners, soft hyphen, BOM, direction marks, filler letters. */
-const INVISIBLE = /[\p{Cf}ᅟᅠ⠀ㅤﾠ]/gu;
+/**
+ * Characters that can sit inside a word without changing how it reads: format and invisible characters
+ * (zero-width space and joiners, soft hyphen, BOM, direction marks, filler letters), combining marks and
+ * variation selectors, and emoji with their skin-tone modifiers.
+ */
+const INVISIBLE = /[\p{Cf}\p{M}\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u115F\u1160\u2800\u3164\uFFA0]/gu;
+
+/** Cyrillic and Greek letters that look like Latin ones, read as the Latin letter ("\u041Cr" is "Mr"). */
+const LOOK_ALIKES: Readonly<Record<string, string>> = {
+  "\u0410": "A",
+  "\u0412": "B",
+  "\u0415": "E",
+  "\u041A": "K",
+  "\u041C": "M",
+  "\u041D": "H",
+  "\u041E": "O",
+  "\u0420": "P",
+  "\u0421": "C",
+  "\u0422": "T",
+  "\u0425": "X",
+  "\u0423": "Y",
+  "\u0405": "S",
+  "\u0406": "I",
+  "\u0408": "J",
+  "\u0430": "a",
+  "\u0435": "e",
+  "\u043E": "o",
+  "\u0440": "p",
+  "\u0441": "c",
+  "\u0443": "y",
+  "\u0445": "x",
+  "\u0455": "s",
+  "\u0456": "i",
+  "\u0458": "j",
+  "\u04BB": "h",
+  "\u0501": "d",
+  "\u0391": "A",
+  "\u0392": "B",
+  "\u0395": "E",
+  "\u0396": "Z",
+  "\u0397": "H",
+  "\u0399": "I",
+  "\u039A": "K",
+  "\u039C": "M",
+  "\u039D": "N",
+  "\u039F": "O",
+  "\u03A1": "P",
+  "\u03A4": "T",
+  "\u03A5": "Y",
+  "\u03A7": "X",
+  "\u03BF": "o",
+  "\u03BD": "v",
+  "\u03B9": "i",
+  "\u03BA": "k",
+  "\u03C1": "p",
+  "\u03C4": "t",
+  "\u03C5": "u",
+  "\u03C7": "x",
+  "\u03B1": "a",
+};
+const LOOK_ALIKE = new RegExp(`[${Object.keys(LOOK_ALIKES).join("")}]`, "gu");
 
 /**
  * Two- and three-letter capitals that are WA workplaces and everyday admin words, not initials, on top of
@@ -83,7 +142,7 @@ const NUMBER_WORD =
 
 const AGE_SEX: readonly RegExp[] = [
   // "34yo", "34 y.o.", "34 y/o".
-  /\b\d{1,3}\s?(?:yo|y\/o|y\.o\.?)(?=[\s,.;:)]|$)/i,
+  /\b\d{1,3}\s?-?\s?(?:yo|y\/o|y\.o\.?)(?=[\s,.;:)]|$)/i,
   // "34 year old", "5-year-old", "34 yrs old".
   /\b\d{1,3}\s*[-‐‑]?\s*(?:years?|yrs?|y)\s*[-‐‑]?\s*old\b/i,
   // "forty five year old", "twenty-two years old".
@@ -106,7 +165,20 @@ const PLACE_IN_WORDS = new RegExp(`\\b(?:bed|bay|room|rm|cubicle)\\s+${NUMBER_WO
 const GLUED_RECORD = /\b(?:u\.?r\.?n?|umrn|mrn)\s*[:#-]?\s*\d{3,}/i;
 
 /** A WA UMRN typed bare: one capital letter then seven digits ("D4678677", "U1234567"). */
-const BARE_UMRN = /\b[A-Z]\d{7}\b/;
+const BARE_UMRN = /\b[A-Z][\s-]?\d(?:[\s-]?\d){6}\b/;
+
+/** A labelled record number broken by spaces ("UMRN 123 4567", "MRN 12 345"). */
+const SPACED_RECORD = /\b(?:u\.?r\.?n?|umrn|mrn)\b\.?\s*[:#-]?\s*\d(?:[\s-]?\d){4,}/i;
+
+/** A title run straight into a name ("Mr.Smith", "Mrs.Jones"), or a title and an initial ("Mrs S"). */
+const TITLE_GLUED = /\b(?:mrs?|ms|mx|miss|master)\.\p{L}{2,}/iu;
+const TITLE_INITIAL = /\b(?:[Mm][Rr][Ss]?|[Mm][SsXx]|[Mm]iss|[Mm]aster)\b\.?\s*\p{Lu}\.?(?=$|[\s,.;:)])/u;
+
+/** A bed, bay or room with a colon or other mark before its number ("Bed: 12", "Room #4"). */
+const MARKED_PLACE = /\b(?:bed|bay|room|rm|cubicle|cube)\s*[:#.-]\s*\d+/i;
+
+/** An Australian mobile or landline in international form ("+61 412 345 678", "0061 8 9224 1234"). */
+const INTERNATIONAL_PHONE = /(?:\+|\b00)\s?61[\s-]?(?:\(0\)[\s-]?)?\d(?:[\s-]?\d){8}\b/;
 
 /**
  * Initials straight after a patient word, in any case or spaced: "pt js 45m", "pt J S 45 M", "patient ab".
@@ -135,9 +207,22 @@ const NOT_A_NAME = new Set(["Safety", "Care", "Centred", "Centered", "Experience
 /** "Patient John Smith", "Pt: Smith", "client Jones": a capitalised word straight after the patient. */
 const PATIENT_NAME = /\b(?:[Pp]atient|PATIENT|[Pp]t|PT|[Cc]lient|[Cc]onsumer)\b\s*[:.-]?\s+(\p{Lu}[\p{L}'-]+)/gu;
 
-/** The text as it is checked: folded to plain characters, invisible ones removed. */
+/** The text as the check reads it: folded, look-alike letters as Latin, invisible characters removed. Never saved. */
 export function normaliseWorkText(text: string): string {
-  return text.normalize("NFKC").replace(INVISIBLE, "");
+  return readings(text).joined;
+}
+
+/**
+ * The two readings the check takes. Folded first (NFKC, then decomposed so accents come apart from their
+ * letters), look-alike letters read as Latin, then the invisible characters either removed or read as a space.
+ * For checking only: never store or show these in place of what was typed.
+ */
+function readings(text: string): { joined: string; spaced: string } {
+  const folded = text
+    .normalize("NFKC")
+    .normalize("NFKD")
+    .replace(LOOK_ALIKE, (letter) => LOOK_ALIKES[letter] ?? letter);
+  return { joined: folded.replace(INVISIBLE, ""), spaced: folded.replace(INVISIBLE, " ") };
 }
 
 /** True when the words hold an age, or an age and sex, in a clinical note's shape. */
@@ -168,9 +253,22 @@ function unmaskAbbreviations(text: string): string {
   return out;
 }
 
+/** Capitals read past with allowCapitals go back as typed in the safer wording ("kgh" is "KGH" again). */
+function restoreCapitals(text: string, words: readonly string[]): string {
+  let out = text;
+  for (const word of new Set(words)) out = out.replace(new RegExp(`\\b${word.toLowerCase()}\\b`, "g"), word);
+  return out;
+}
+
 function reminderProblem(text: string, options: PatientDetailCheckOptions): PatientDetailProblem | null {
   const masked = maskAbbreviations(text);
-  const read = options.allowCapitals ? masked.replace(/\b[A-Z]{2,3}\b(?!\.)/g, (word) => word.toLowerCase()) : masked;
+  const lowered: string[] = [];
+  const read = options.allowCapitals
+    ? masked.replace(/\b[A-Z]{2,3}\b(?!\.)/g, (word) => {
+        lowered.push(word);
+        return word.toLowerCase();
+      })
+    : masked;
   const problem = checkReminderText(read);
   if (!problem) return null;
   const findings = problem.title
@@ -183,7 +281,7 @@ function reminderProblem(text: string, options: PatientDetailCheckOptions): Pati
   return {
     title: `This looks like ${joinFindings(findings)}`,
     body: DEFAULT_BODY,
-    suggestion: problem.suggestion ? unmaskAbbreviations(problem.suggestion) : null,
+    suggestion: problem.suggestion ? restoreCapitals(unmaskAbbreviations(problem.suggestion), lowered) : null,
   };
 }
 
@@ -195,7 +293,13 @@ function problemIn(text: string, options: PatientDetailCheckOptions): PatientDet
   if (looksLikeAgeAndSex(trimmed)) return { title: "This looks like an age", body: DEFAULT_BODY, suggestion: null };
   if (hasPatientName(trimmed)) return { title: "This looks like a name", body: DEFAULT_BODY, suggestion: null };
   if (hasPatientInitials(trimmed)) return { title: "This looks like initials", body: DEFAULT_BODY, suggestion: null };
-  if (BARE_UMRN.test(trimmed))
+  if (TITLE_GLUED.test(trimmed) || TITLE_INITIAL.test(trimmed))
+    return { title: "This looks like a name", body: DEFAULT_BODY, suggestion: null };
+  if (INTERNATIONAL_PHONE.test(trimmed))
+    return { title: "This looks like a phone number", body: DEFAULT_BODY, suggestion: null };
+  if (MARKED_PLACE.test(trimmed))
+    return { title: "This looks like a bed number", body: DEFAULT_BODY, suggestion: null };
+  if (BARE_UMRN.test(trimmed) || SPACED_RECORD.test(trimmed))
     return { title: "This looks like a record number", body: DEFAULT_BODY, suggestion: null };
   if (GLUED_RECORD.test(trimmed))
     return { title: "This looks like a record number", body: DEFAULT_BODY, suggestion: null };
@@ -216,10 +320,12 @@ function problemIn(text: string, options: PatientDetailCheckOptions): PatientDet
  */
 export function checkPatientDetail(text: string, options: PatientDetailCheckOptions = {}): PatientDetailProblem | null {
   if (!text.trim()) return null;
-  const folded = text.normalize("NFKC");
-  const joined = folded.replace(INVISIBLE, "");
-  const spaced = folded.replace(INVISIBLE, " ");
-  return problemIn(joined, options) ?? (spaced === joined ? null : problemIn(spaced, options));
+  const { joined, spaced } = readings(text);
+  const problem = problemIn(joined, options) ?? (spaced === joined ? null : problemIn(spaced, options));
+  // The check reads a folded copy only. The text the doctor typed is never changed, so a safer wording built
+  // from the folded copy ("\u00BD" read as "1\u20442") is offered only when folding changed nothing.
+  if (problem && problem.suggestion && joined !== text) return { ...problem, suggestion: null };
+  return problem;
 }
 
 /** True when the words read as holding a patient detail. */

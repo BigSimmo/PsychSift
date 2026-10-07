@@ -413,7 +413,7 @@ export function ContractAskSheet({
       testId="admin-contract-ask"
       footer={
         <div className="grid gap-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-2 min-[360px]:grid-cols-2">
             <Button
               variant="secondary"
               icon={Copy}
@@ -479,7 +479,11 @@ export function ContractAskSheet({
               />
               <span className="min-w-0 flex-1">{question.title}</span>
               {asked.includes(question.id) ? <span className={cn(textMuted, "text-xs")}>Asked</span> : null}
-              {question.id === "parental-leave" ? <span className={cn(textMuted, "text-xs")}>No dates</span> : null}
+              {question.id === "parental-leave" ? (
+                <span className={cn(textMuted, "text-xs")} data-testid="admin-contract-ask-parental-note">
+                  Only if you want to ask. No dates
+                </span>
+              ) : null}
             </label>
           ))}
         </fieldset>

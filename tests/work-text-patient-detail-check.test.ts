@@ -29,6 +29,22 @@ describe("shared patient-detail check for work free text", () => {
     ["age with a spaced sex letter", "45 M"],
     ["a bare WA UMRN", "D4678677"],
     ["another bare UMRN", "U1234567 seen"],
+    ["title run into a name", "Mr.Smith"],
+    ["title run into a name, Mrs", "Mrs.Jones"],
+    ["a bed with a colon", "Bed: 12"],
+    ["Cyrillic M in a title", "\u041Cr Smith"],
+    ["Cyrillic P in Patient", "\u0420atient John Smith"],
+    ["Cyrillic e in Bed", "B\u0435d 12"],
+    ["Greek capitals in a title", "\u039C\u03A1 Smith"],
+    ["an emoji inside a name", "Mr S\u{1F600}mith"],
+    ["a combining mark inside a name", "Mr Sm\u0301ith"],
+    ["a variation selector inside a name", "Mr Smi\uFE0Fth"],
+    ["an age in words with a hyphen", "forty-five year old man"],
+    ["a hyphenated yo with a sex letter", "45-yo M"],
+    ["a title and an initial", "Mrs S"],
+    ["an international mobile", "+61 412 345 678"],
+    ["a UMRN broken by spaces", "D 467 8677"],
+    ["a labelled UMRN broken by spaces", "UMRN 123 4567"],
   ])("catches %s", (_label, text) => {
     expect(checkPatientDetail(text)).not.toBeNull();
     expect(looksLikePatientDetail(text)).toBe(true);
@@ -46,6 +62,9 @@ describe("shared patient-detail check for work free text", () => {
     "SHO",
     "visa condition review",
     "patient was seen",
+    "MS Teams call at 2",
+    "Zoë from HR",
+    "Night 2100 to 0800, RDO Friday",
     "Pt is on the ward",
     "js", // lower case is read as initials only after a patient word
     "RDO",
@@ -83,6 +102,18 @@ describe("shared patient-detail check for work free text", () => {
     const problem = checkPatientDetail("JS needs RPH letter");
     expect(problem?.title).toBe("This looks like initials");
     expect(problem?.suggestion).toBe("needs RPH letter");
+  });
+
+  it("never offers a safer wording built from a folded copy of what was typed", () => {
+    // "½" folds to "1⁄2"; Use this wording must never put that in the doctor's text.
+    const folded = checkPatientDetail("JS ½ day");
+    expect(folded).not.toBeNull();
+    expect(folded?.suggestion).toBeNull();
+    expect(checkPatientDetail("JS half day")?.suggestion).toBe("half day");
+  });
+
+  it("puts capitals read past back as typed in the safer wording", () => {
+    expect(checkPatientDetail("KGH bed 4 tonight", { allowCapitals: true })?.suggestion).toBe("KGH tonight");
   });
 
   it("folds look-alike characters and drops invisible ones", () => {

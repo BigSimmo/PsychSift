@@ -348,7 +348,7 @@ function ThisWeekBody({
         {sessions.length === 0 ? (
           <T5Empty>
             {partial
-              ? "None loaded. Sessions shared from On Call are missing; try again."
+              ? "None loaded. Sessions shared from On Call are missing. Try again."
               : filter === "presenting"
                 ? `You are not presenting from ${weekTitle(days[0], days[days.length - 1])}.`
                 : `No sessions are booked for ${weekTitle(days[0], days[days.length - 1])} yet. They appear here as soon as an organiser adds them.`}

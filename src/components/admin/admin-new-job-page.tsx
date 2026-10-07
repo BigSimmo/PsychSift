@@ -39,6 +39,8 @@ import { onCallEntrySchema, type OnCallEntry, type OnCallSection } from "@/lib/o
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { ReadyForDayOneEntryLink } from "@/components/admin/ready/ready-entry-link";
+import { StarterPackEntryLink } from "@/components/admin/starter/starter-pack-entry-link";
 
 type UndoState = { id: number; entryId: string; restore: unknown; label: string };
 
@@ -315,6 +317,9 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                 Before
               </h2>
 
+              {/* Ready for day one (round 2 feature 21): what is recorded and what is still to do. */}
+              <ReadyForDayOneEntryLink />
+
               {totalCount > 0 ? (
                 <p
                   className="text-sm font-medium text-[color:var(--text-heading)]"
@@ -362,6 +367,9 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                   />
                 )}
               </div>
+
+              {/* The starter pack (round 2 feature 14), above the contacts as the spec places it. */}
+              <StarterPackEntryLink />
 
               <div className="grid gap-2">
                 <h3 className={eyebrowText}>Contacts for this job</h3>

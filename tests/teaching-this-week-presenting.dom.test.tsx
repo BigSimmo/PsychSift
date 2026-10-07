@@ -133,7 +133,7 @@ describe("This week", () => {
     render(<TeachingThisWeek demoMode={false} />);
     expect(await screen.findByTestId("teaching-week-partial")).toBeInTheDocument();
     const list = screen.getByTestId("teaching-week-list");
-    expect(list).toHaveTextContent("None loaded. Sessions shared from On Call are missing; try again.");
+    expect(list).toHaveTextContent("None loaded. Sessions shared from On Call are missing. Try again.");
     expect(list).not.toHaveTextContent(/No sessions are booked/);
   });
 

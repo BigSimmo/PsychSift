@@ -206,6 +206,26 @@ describe("ready for day one", () => {
     expect(text).not.toContain("30 Sep");
   });
 
+  it("keeps all nine items in the fixed order, bank and tax included, in the bar and the copy", () => {
+    const ready = buildReadyForDayOne([startRow], NOW);
+    expect(ready.items.map((item) => item.id)).toEqual([
+      "medical-registration-renewal",
+      "working-with-children-check",
+      "criminal-record-screening",
+      "immunisation-requirements",
+      "respirator-fit-testing",
+      "resuscitation-competence",
+      "contract",
+      "bank-and-tax",
+      "logins",
+    ]);
+    const bank = ready.items.find((item) => item.id === "bank-and-tax");
+    expect(bank).toMatchObject({ state: "left-out", status: "Not tracked here" });
+    const lines = readyStatusText(ready, NOW).split("\n").slice(2);
+    expect(lines.map((line) => line.split(":")[0])).toEqual(ready.items.map((item) => item.title));
+    expect(lines).toContain("Bank and tax: Not tracked here");
+  });
+
   it("raises needs-you only within four weeks of the start", () => {
     const later = onCallEntryFixture({
       section: "logistics",

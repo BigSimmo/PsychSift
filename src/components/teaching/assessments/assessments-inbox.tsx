@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, Check, Clock, Copy, Inbox, Send, TriangleAlert, UserRound, WifiOff, X } from "lucide-react";
-import { useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { WorkEmpty } from "@/components/mode-kit/work";
@@ -23,13 +23,11 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { UNDO_MS } from "@/components/teaching/use-delayed-post";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
-import { useToast } from "@/components/ui/toast";
 import { cn, fieldControlPlain } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { SUPERVISION_LEVELS, epa as epaInfo, type SupervisionLevel } from "@/lib/teaching/assessments/content";
@@ -44,7 +42,6 @@ import {
   dctRemindersFor,
   doctorSees,
   doctorView,
-  cleanFeedbackText,
   feedbackProblem,
   filterCounts,
   inboxRequests,
@@ -137,8 +134,7 @@ function InboxRow({ item, onOpen }: { item: InboxRequest; onOpen: () => void }) 
 }
 
 export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
-  const { extras, dispatchExtras, sendAnswers } = useAssessmentsExtras();
-  const toast = useToast();
+  const { extras, dispatchExtras, sendAnswers, undoSends, offerUndo, setEditing } = useAssessmentsExtras();
   const offlineSince = useOfflineSince();
   const [tab, setTab] = useState<"waiting" | "done">("waiting");
   const [filter, setFilter] = useState<InboxFilter>("all");
@@ -157,6 +153,12 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
   const rest = shown.filter((i) => !i.overdue && i.status !== "later");
   const open = sheet ? (items.find((i) => i.id === sheet.id) ?? null) : null;
   const dct = dctRemindersFor(extras.reminders, items);
+
+  // While an answer's sheet is open, a reconnect does not send its older To send copy from under it.
+  useEffect(() => {
+    setEditing(sheet && sheet.mode !== "doctor" ? sheet.id : null);
+    return () => setEditing(null);
+  }, [sheet, setEditing]);
 
   function openItem(item: InboxRequest) {
     if (item.open.kind === "sheet") openSheet({ kind: "supepa", index: item.open.index });
@@ -180,7 +182,8 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
       return next;
     });
     if (offlineSince) {
-      dispatchExtras({ type: "inbox-queue", id: item.id, level: draft.level, text: cleanFeedbackText(draft.text) });
+      // Kept exactly as typed. The patient-detail check reads a cleaned copy and never changes this text.
+      dispatchExtras({ type: "inbox-queue", id: item.id, level: draft.level, text: draft.text });
       announce(`Kept to send to ${item.doctor.name} when you are back online.`);
       return;
     }
@@ -198,18 +201,11 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
       reason === "not_this_week"
         ? `Moved to Later · back ${LATER_WHEN}`
         : `${item.doctor.name} sees: ${doctorSees(reason, suggestion)}`;
-    toast.push({
-      tone: "info",
+    offerUndo({
       title,
       body: "Made-up: nothing reaches anyone.",
-      duration: UNDO_MS,
-      action: {
-        label: "Undo",
-        onAction: () => {
-          dispatchExtras({ type: "inbox-restore", id: item.id });
-          announce("Back in your inbox.");
-        },
-      },
+      undo: () => dispatchExtras({ type: "inbox-restore", id: item.id }),
+      undone: "Back in your inbox.",
     });
   }
 
@@ -295,8 +291,14 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
           </div>
           {sending.length ? (
             <div role="status" className="grid gap-1.5 px-1" data-testid="assessments-inbox-sending">
-              <span className={secondaryText}>
-                {`Sending ${sending.length === 1 ? "1 answer" : `${sending.length} answers`}. Undo is on the message at the bottom.`}
+              <span className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <span className={secondaryText}>
+                  {`Sending ${sending.length === 1 ? "1 answer" : `${sending.length} answers`} in 10 s.`}
+                </span>
+                {/* Undo here as well as on the message, so it stays in reach if the message is pushed off. */}
+                <Button variant="secondary" size="sm" onClick={undoSends} testId="assessments-inbox-undo-sending">
+                  Undo sending
+                </Button>
               </span>
             </div>
           ) : null}

@@ -199,6 +199,23 @@ describe("referees", () => {
     expect(nudgeMessage(nudged, "2026-10-26")).toContain("I sent on Thu 1 Oct");
   });
 
+  it("dates a nudge from the current request, not an earlier one that was answered", () => {
+    const grant = withGrant().referees[0]!;
+    const again: typeof grant = {
+      ...grant,
+      status: "asked",
+      history: [
+        { kind: "status", status: "asked", on: "2025-03-01" },
+        { kind: "status", status: "agreed", on: "2025-03-05" },
+        { kind: "status", status: "asked", on: "2026-10-01" },
+      ],
+    };
+    const message = nudgeMessage(again, "2026-10-09");
+    expect(message).toContain("got my referee request from last week.");
+    expect(message).not.toContain("2025");
+    expect(message).not.toContain("Mar");
+  });
+
   it("undoes a referee edit without losing a nudge recorded since, and puts a removed referee back", () => {
     let state = addReferee(withGrant(), { name: "Dr Moss", role: "", status: "asked" }, "2026-10-01", "r2");
     const before = state.referees[0]!;
@@ -464,6 +481,38 @@ describe("CV", () => {
       today,
     });
     expect(thisYear[0]!.lines.map((line) => line.sub)).toEqual(["2 sessions recorded in 2026", "2026"]);
+  });
+
+  it("holds back a talk or outcome title that reads like a patient detail from the copy, and counts it", () => {
+    const sections = buildCv({
+      entries: [
+        {
+          id: "e9",
+          date: "2026-05-01",
+          title: "Case review of Mr Smith 45M, UMRN 1234567",
+          allocations: [{ category: "measuring", hours: 2 }],
+          reflection: "",
+          costCents: null,
+          transcribed: false,
+          routineId: null,
+          documentId: null,
+          buckets: [],
+        },
+      ],
+      terms: [],
+      talks: [{ occurrenceId: "t9", title: "Case presentation: pt JS 45M", startsAt: "2026-04-01T02:00:00.000Z" }],
+      statement: "",
+      range: "year",
+      today,
+    });
+    const held = sections.flatMap((section) => section.lines).filter((line) => line.heldBack);
+    expect(held.map((line) => line.id).sort()).toEqual(["cpd:entry:e9", "talk:t9"]);
+    expect(held.find((line) => line.id === "cpd:entry:e9")!.heldBack!.fixHref).toBe("/cme/log/e9?edit=1");
+    const plain = cvPlainText(sections, new Set());
+    expect(plain.heldBackCount).toBe(2);
+    expect(plain.text).not.toContain("pt JS");
+    expect(plain.text).not.toContain("Mr Smith");
+    expect(plain.text).not.toContain("UMRN");
   });
 
   it("keeps a supervision and a term that span the whole of This year", () => {

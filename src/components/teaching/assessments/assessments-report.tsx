@@ -244,7 +244,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
       {ipap ? (
         <Inset tone="warm" title="Under the form, these ratings mean an improvement plan (IPAP) is needed">
           It is extra support with agreed goals and a review date. It is recorded, and the Assessment Review Panel sees
-          it at the end of the year. Your DCT or MEU will contact you; you can also start the conversation.
+          it at the end of the year. Your DCT or MEU will contact you. You can also start the conversation.
         </Inset>
       ) : null}
       <SectionLabel>{`You and ${SUP}`}</SectionLabel>
@@ -292,7 +292,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
         Adding goals to next term is not built yet.
       </p>
       <SmallPrint>
-        Your self-assessment is shared only with {SUP}. Only the supervisor&apos;s form goes to the MEU; PsychSift
+        Your self-assessment is shared only with {SUP}. Only the supervisor&apos;s form goes to the MEU. PsychSift
         doesn&apos;t send it for you.
       </SmallPrint>
       <SectionLabel>Signatures</SectionLabel>

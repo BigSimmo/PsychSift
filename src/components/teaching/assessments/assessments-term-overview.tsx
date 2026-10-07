@@ -37,13 +37,11 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { UNDO_MS } from "@/components/teaching/use-delayed-post";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
-import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui-primitives";
 import { remindedKeys } from "@/lib/teaching/assessments/extras";
 import { termWeek, todayLabel, type PillTone } from "@/lib/teaching/assessments/model";
@@ -277,26 +275,18 @@ export function AssessmentsTermOverview(props: ScreenProps) {
 
 /** Shared by the grid, the supervisors list and one doctor's page: pretend reminders, with Undo. */
 function useReminders(s: ScreenProps["s"]) {
-  const { extras, dispatchExtras } = useAssessmentsExtras();
-  const toast = useToast();
+  const { extras, dispatchExtras, offerUndo } = useAssessmentsExtras();
   const keys = remindedKeys(extras);
   const offlineSince = useOfflineSince();
 
   function send(records: ReminderRecord[], title: string) {
     if (!records.length || offlineSince) return;
     dispatchExtras({ type: "remind", records });
-    toast.push({
-      tone: "info",
+    offerUndo({
       title,
       body: "Made-up: nothing is sent. One reminder a day per form.",
-      duration: UNDO_MS,
-      action: {
-        label: "Undo",
-        onAction: () => {
-          dispatchExtras({ type: "unremind", keys: records.map((r) => r.key) });
-          announce("Reminder taken back.");
-        },
-      },
+      undo: () => dispatchExtras({ type: "unremind", keys: records.map((r) => r.key) }),
+      undone: "Reminder taken back.",
     });
   }
 
@@ -433,15 +423,18 @@ function OverviewHome({ s }: ScreenProps) {
                         className={cn(focusRing, GRID, "min-h-15 min-w-0 flex-1 rounded-lg py-2.5 pl-3.5 no-underline")}
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
+                          {/* Below 360 px the initials give way, so the name has room to be read in full. */}
                           <span
                             aria-hidden="true"
-                            className="grid size-9 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-semibold text-[color:var(--text-heading)]"
+                            className="grid size-9 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-semibold text-[color:var(--text-heading)] max-[359px]:hidden"
                           >
                             {row.initials}
                           </span>
                           <span className="grid min-w-0">
-                            <span className={cn(titleText, "truncate")}>{row.name}</span>
-                            <span className={cn(secondaryText, "truncate text-xs")}>
+                            <span className={cn(titleText, "break-words")} data-testid="assessments-overview-name">
+                              {row.name}
+                            </span>
+                            <span className={cn(secondaryText, "break-words text-xs")}>
                               {at ? `Reminded ${at}` : `${row.grade} · ${row.supervisor}`}
                             </span>
                           </span>

@@ -8,6 +8,7 @@ import { useAccountData } from "@/components/account-data-provider";
 import { AdminCredentialsWallet } from "@/components/admin/admin-credentials-wallet";
 import { AdminPinnedNumbers } from "@/components/admin/admin-pinned-numbers";
 import { AdminSetupSheet } from "@/components/admin/admin-setup-sheet";
+import { AdminWorkAndLeaveGroup } from "@/components/admin/junior/work-and-leave-group";
 import { TodayAtAGlance } from "@/components/admin/today/today-at-a-glance";
 import { TodayComingUpModule } from "@/components/admin/today/today-coming-up-module";
 import { TodayNeedsYouModule } from "@/components/admin/today/today-needs-you-module";
@@ -172,6 +173,7 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
               {isAuthenticated && !state.demoMode ? <AdminCredentialsWallet /> : null}
               <AdminPinnedNumbers items={helpItems} testId="admin-today-pinned" />
               <TodayRequirementsModule summary={requirementsSummary} />
+              <AdminWorkAndLeaveGroup />
             </>
           }
           state={todayState}

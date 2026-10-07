@@ -113,7 +113,7 @@ export function RosterPersonSheet({
       });
       close();
     } catch {
-      toast?.push({ tone: "error", title: "Could not copy. Your browser blocked the clipboard." });
+      toast?.push({ tone: "danger", title: "Could not copy. Your browser blocked the clipboard." });
     }
   };
 

@@ -191,6 +191,49 @@ describe("LeaveWalletPage", () => {
     expect(await screen.findByText("Could not load your leave from Roster.")).toBeTruthy();
   });
 
+  it("asks a signed-out reader to sign in, and never asks Roster", () => {
+    Object.assign(entryState, { signedOut: true });
+    try {
+      render(<LeaveWalletPage now={NOW} />);
+      fireEvent.click(screen.getByTestId("admin-leave-card-annual"));
+      expect(screen.getByTestId("admin-leave-annual-booked-signed-out")).toHaveTextContent(
+        "Sign in to see what Roster holds.",
+      );
+      expect(screen.queryByText("Could not load your leave from Roster.")).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      Object.assign(entryState, { signedOut: false });
+    }
+  });
+
+  it("opens the confidential card from a link, then takes its name out of the address", () => {
+    search.value = "card=confidential";
+    render(<LeaveWalletPage now={NOW} />);
+    expect(screen.getByTestId("admin-leave-open-confidential")).toBeTruthy();
+    expect(router.replace).toHaveBeenCalledWith("/admin/leave", { scroll: false });
+    expect(search.value).not.toContain("confidential");
+  });
+
+  it("keeps the agreement link a plain working link offline, with the reason in the banner", () => {
+    setOnline(false);
+    render(<LeaveWalletPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-leave-card-annual"));
+    const link = within(screen.getByTestId("admin-leave-annual-entitlement")).getByRole("link", {
+      name: /Check your agreement/,
+    });
+    expect(link).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByTestId("admin-leave-offline")).toHaveTextContent("Links open when you are back online");
+  });
+
+  it("stacks the two date fields on a narrow phone", () => {
+    render(<LeaveWalletPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-leave-card-annual"));
+    const first = screen.getByLabelText("First day");
+    const row = first.closest(".grid.gap-2");
+    expect(row?.className).toContain("min-[360px]:grid-cols-2");
+    expect(row?.className.split(" ")).not.toContain("grid-cols-2");
+  });
+
   it("closes the card and puts focus back on its header", () => {
     render(<LeaveWalletPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-leave-card-exam"));
