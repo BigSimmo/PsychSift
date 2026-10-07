@@ -582,7 +582,7 @@ describe("Week", () => {
     render(<TeachingWeekScreen demoMode={false} />);
     const list = await waitFor(() => byId("teaching-relocated"));
     fireEvent.click(await within(list).findByRole("button", { name: /Registrar tutorial/ }));
-    expect(screen.getByTestId("on-call-editor")).toHaveTextContent(ENTRY);
+    expect(await screen.findByTestId("on-call-editor")).toHaveTextContent(ENTRY);
     const handbook = await waitFor(() => byId("teaching-handbook"));
     expect(within(handbook).getByRole("link", { name: /Friday registrar teaching/ })).toHaveAttribute(
       "href",

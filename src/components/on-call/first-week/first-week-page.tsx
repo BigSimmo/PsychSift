@@ -68,8 +68,10 @@ function Toggle({
       >
         <span
           className={cn(
-            "absolute size-5 rounded-full bg-[color:var(--surface-raised)] transition-[left] duration-[var(--duration-instant)] motion-reduce:transition-none",
-            on ? "left-[1.0625rem]" : "left-0.5",
+            // Slid with a transform rather than `left` so the move stays on the compositor;
+            // 0.125rem + 0.9375rem lands on the same 1.0625rem as before.
+            "absolute left-0.5 size-5 rounded-full bg-[color:var(--surface-raised)] transition-transform duration-[var(--duration-instant)] motion-reduce:transition-none",
+            on ? "translate-x-[0.9375rem]" : "translate-x-0",
           )}
         />
       </span>

@@ -22,7 +22,7 @@ import {
   RosterSectionHead,
   rosterOutlineButton,
 } from "@/components/roster/roster-list";
-import { SwapAnswerCard } from "@/components/roster/swaps/swap-flow-sheet";
+import { SwapAnswerCard } from "@/components/roster/swaps/swap-answer-card";
 import { SwapProgressLine } from "@/components/roster/swaps/swap-progress-line";
 import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterRead, useRosterTeams, postRosterAction } from "@/components/roster/use-roster-team";

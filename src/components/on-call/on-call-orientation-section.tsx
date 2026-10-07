@@ -7,7 +7,7 @@ import Link from "next/link";
 
 import { cardInteractive, cardSurface } from "@/components/card-recipes";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import type { OnCallLinkedDocument } from "@/components/on-call/on-call-playbook-section";
 import { OnCallChecklist, type OnCallChecklistItem } from "@/components/on-call/on-call-checklist";
 import { onCallEntryGroups } from "@/components/on-call/on-call-entry-groups";

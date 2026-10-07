@@ -5,6 +5,7 @@ import { useRosterTeams, rosterTeamUrl } from "./use-roster-team";
 import { mergeMyShifts, type RosterDisplayShift } from "@/lib/roster/team/team-view";
 import { rosterAssignmentsSchema, type RosterAssignment, type RosterTeam } from "@/lib/roster/team/model";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { sharedGet } from "@/lib/shared-get";
 
 import type {
   OnCallManualShiftRequest,
@@ -92,7 +93,7 @@ type Loaded = Payload | "signed-out" | "error" | "aborted";
 
 async function fetchShifts(signal?: AbortSignal): Promise<Loaded> {
   try {
-    const response = await fetch(ROSTER_SHIFTS_URL, { cache: "no-store", signal });
+    const response = await sharedGet(ROSTER_SHIFTS_URL, { signal });
     if (response.status === 401) return "signed-out";
     if (!response.ok) return "error";
     return await readPayload(response);
@@ -127,8 +128,7 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
     void Promise.all(
       enabled.map(async (team) => {
         const query = new URLSearchParams({ what: "assignments", from, to });
-        const response = await fetch(`${rosterTeamUrl(team.serviceId)}?${query}`, {
-          cache: "no-store",
+        const response = await sharedGet(`${rosterTeamUrl(team.serviceId)}?${query}`, {
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("team unavailable");

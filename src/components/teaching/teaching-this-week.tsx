@@ -1,13 +1,13 @@
 "use client";
 
 import { CalendarDays, ChevronLeft, ChevronRight, Network } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { withUnit } from "@/components/teaching/teaching-number";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { focusOnCallEntryFromHash, onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import {
   T5Actions,
@@ -77,6 +77,12 @@ import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-mod
 import { useAuthSession } from "@/lib/supabase/client";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
 import type { TeachingWeekResponse, WhatsOnRow } from "@/lib/teaching/model";
+
+/** The On Call entry editor loads on first open and then stays mounted, so its Sheet still returns focus on close. */
+const OnCallEntryEditor = dynamic(
+  () => import("@/components/on-call/on-call-entry-editor").then((module) => module.OnCallEntryEditor),
+  { ssr: false },
+);
 
 /*
  * This week (mock-up v5 screen 01): the session on now with one-tap check in, then every session this
@@ -211,6 +217,8 @@ function ThisWeekBody({
   const [chosenFilter, setFilter] = useState<WeekFilter | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [editor, setEditor] = useState<{ entry: OnCallEntry | null } | null>(null);
+  const [editorMounted, setEditorMounted] = useState(false);
+  if (editor !== null && !editorMounted) setEditorMounted(true);
   const live = view.demo === "off";
   const ready = live && view.status === "ready";
   const relocated = useRelocatedTeaching(ready);
@@ -462,20 +470,22 @@ function ThisWeekBody({
             teams={week.teams}
             onChanged={view.retry}
           />
-          <OnCallEntryEditor
-            open={editor !== null}
-            onClose={() => setEditor(null)}
-            section="education"
-            entry={editor?.entry ?? null}
-            onSaved={() => {
-              setEditor(null);
-              retry();
-            }}
-            onDeleted={() => {
-              setEditor(null);
-              retry();
-            }}
-          />
+          {editorMounted ? (
+            <OnCallEntryEditor
+              open={editor !== null}
+              onClose={() => setEditor(null)}
+              section="education"
+              entry={editor?.entry ?? null}
+              onSaved={() => {
+                setEditor(null);
+                retry();
+              }}
+              onDeleted={() => {
+                setEditor(null);
+                retry();
+              }}
+            />
+          ) : null}
         </>
       ) : null}
     </>

@@ -15,7 +15,7 @@ import { OnCallEntryRow } from "@/components/on-call/on-call-entry-row";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
 import { onCallGroupAnchorId } from "@/components/on-call/on-call-page-anchors";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { cn, eyebrowText, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {

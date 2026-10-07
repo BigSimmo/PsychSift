@@ -11,6 +11,7 @@ import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/
 import type { RosterManage, RosterOverview, RosterRequests, RosterTeam } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
 import { useAuthSession } from "@/lib/supabase/client";
+import { sharedGet } from "@/lib/shared-get";
 
 /** What one team contributes: the same reads Roster Today's team strip makes. */
 export interface RosterMyDayTeamInput {
@@ -96,7 +97,7 @@ type OwnShifts = { ok: true; shifts: MyDayRuleShift[] | undefined } | { ok: fals
  */
 async function loadOwnShifts(signal: AbortSignal): Promise<OwnShifts> {
   try {
-    const response = await fetch("/api/roster/shifts", { cache: "no-store", signal });
+    const response = await sharedGet("/api/roster/shifts", { signal });
     if (!response.ok) return { ok: false };
     const body = (await response.json().catch(() => null)) as {
       shifts?: unknown;
@@ -126,7 +127,7 @@ async function loadRoster(signal: AbortSignal, withOwnShifts: boolean): Promise<
 async function loadRosterTeams(signal: AbortSignal): Promise<Loaded | null> {
   let response: Response;
   try {
-    response = await fetch("/api/roster/team", { cache: "no-store", signal });
+    response = await sharedGet("/api/roster/team", { signal });
   } catch {
     return signal.aborted ? null : { status: "failed" };
   }

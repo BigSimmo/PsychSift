@@ -12,7 +12,7 @@ import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
 import { allocateOnCallGroupSlug, onCallGroupAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { onCallAdminCategoryLabel } from "@/components/on-call/on-call-page-sections";
 import { OnCallPrivateFlag } from "@/components/on-call/on-call-private-flag";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { ExternalTextLink } from "@/components/ui/link";
 import { cn, eyebrowText, metadataPillDensity, textMuted, toolbarButton } from "@/components/ui-primitives";

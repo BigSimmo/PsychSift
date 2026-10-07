@@ -50,7 +50,7 @@ describe("On Call Now, signed out", () => {
     expect(banner.textContent).toContain("Made-up example");
     expect(banner.textContent).toContain("cannot be called");
     act(() => screen.getByRole("button", { name: "Sign in" }).click());
-    expect(screen.getByTestId("mock-sign-in-dialog")).toBeTruthy();
+    expect(await screen.findByTestId("mock-sign-in-dialog")).toBeTruthy();
     cleanup();
 
     auth.status = "expired";

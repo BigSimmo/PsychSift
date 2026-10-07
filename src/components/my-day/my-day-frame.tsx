@@ -1,12 +1,11 @@
 "use client";
 
 import { LogIn } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { EndOfShiftCard } from "@/components/alerts/end-of-shift-card";
-import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
@@ -19,6 +18,17 @@ import { endOfShiftCard, type ShiftWindow } from "@/lib/alerts/end-of-shift";
 import { myDayEnabledForAuth, myDayNeedsSignIn } from "@/lib/my-day/model";
 import { useAuthSession } from "@/lib/supabase/client";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+
+/* The sign-in dialog and the two reminder sheets are closed at first paint, so each loads only when first opened. */
+const AccountSetupDialog = dynamic(
+  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
+  { ssr: false },
+);
+const loadRemindMeSheets = () => import("@/components/alerts/remind-me-sheet");
+const RemindMeSheet = dynamic(() => loadRemindMeSheets().then((module) => module.RemindMeSheet), { ssr: false });
+const YourRemindersSheet = dynamic(() => loadRemindMeSheets().then((module) => module.YourRemindersSheet), {
+  ssr: false,
+});
 
 const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6";
 /** A two-column page on a computer (Alerts); the phone layout is unchanged. */
@@ -120,7 +130,7 @@ export function MyDayFrame({
                 </Button>
               }
             />
-            <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+            {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
           </div>
         ) : null}
 
@@ -134,6 +144,9 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
   const shiftsState = useRosterShifts();
   const { reminders } = useRemindMe();
   const [sheet, setSheet] = useState<"reminders" | "remind-me" | null>(null);
+  // Once a reminder sheet has opened both stay mounted, as before, so moving between them is unchanged.
+  const [sheetsMounted, setSheetsMounted] = useState(false);
+  if (sheet !== null && !sheetsMounted) setSheetsMounted(true);
 
   const shiftWindows: readonly ShiftWindow[] = useMemo(
     () =>
@@ -147,6 +160,17 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
 
   const endOfShift = useMemo(() => endOfShiftCard(now, shiftWindows), [now, shiftWindows]);
   const openReminders = useMemo(() => reminders.filter((item) => !item.doneAt), [reminders]);
+  const hasEndOfShift = endOfShift !== null;
+  useEffect(() => {
+    // The end-of-shift card is the way into the reminder sheets: fetch them quietly while it shows.
+    if (!hasEndOfShift) return;
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(() => void loadRemindMeSheets().catch(() => undefined));
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(() => void loadRemindMeSheets().catch(() => undefined), 1500);
+    return () => window.clearTimeout(timer);
+  }, [hasEndOfShift]);
 
   return (
     <>
@@ -158,18 +182,22 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
         />
       ) : null}
       {children(now)}
-      <YourRemindersSheet
-        open={sheet === "reminders"}
-        onClose={() => setSheet(null)}
-        now={now}
-        onAdd={() => setSheet("remind-me")}
-      />
-      <RemindMeSheet
-        open={sheet === "remind-me"}
-        onClose={() => setSheet("reminders")}
-        now={now}
-        shiftEndsAt={endOfShift?.endsAt ?? null}
-      />
+      {sheetsMounted ? (
+        <>
+          <YourRemindersSheet
+            open={sheet === "reminders"}
+            onClose={() => setSheet(null)}
+            now={now}
+            onAdd={() => setSheet("remind-me")}
+          />
+          <RemindMeSheet
+            open={sheet === "remind-me"}
+            onClose={() => setSheet("reminders")}
+            now={now}
+            shiftEndsAt={endOfShift?.endsAt ?? null}
+          />
+        </>
+      ) : null}
     </>
   );
 }

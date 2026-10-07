@@ -10,18 +10,13 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
-import { ServiceAdminPanel } from "@/components/on-call/service-admin-panel";
-import { ServiceCheckingPanel } from "@/components/on-call/service-checking-panel";
-import { ServiceEntryEditor } from "@/components/on-call/service-entry-editor";
-import { ServiceGovernancePanel } from "@/components/on-call/service-governance-panel";
+import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ServiceHandbook } from "@/components/on-call/service-handbook";
-import { ServiceImportPanel } from "@/components/on-call/service-import-panel";
-import { ServiceOrientationPanel } from "@/components/on-call/service-orientation-panel";
 import { focusOnCallEntryFromHash } from "@/components/on-call/on-call-page-anchors";
 import { cardSurface, focusRing } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
@@ -43,6 +38,42 @@ import {
   type ServiceSummary,
 } from "@/lib/on-call/service-model";
 import { useAuthSession } from "@/lib/supabase/client";
+
+/**
+ * Only the Handbook shows by default. Every other panel, and the in-place entry
+ * editor, is fetched once the service detail is in (and only the ones this
+ * member can open), so it is ready before the tap without weighing on first load.
+ */
+const serviceEntryEditor = preloadablePanel(() =>
+  import("@/components/on-call/service-entry-editor").then((module) => module.ServiceEntryEditor),
+);
+const serviceImportPanel = preloadablePanel(() =>
+  import("@/components/on-call/service-import-panel").then((module) => module.ServiceImportPanel),
+);
+const serviceCheckingPanel = preloadablePanel(() =>
+  import("@/components/on-call/service-checking-panel").then((module) => module.ServiceCheckingPanel),
+);
+const serviceOrientationPanel = preloadablePanel(() =>
+  import("@/components/on-call/service-orientation-panel").then((module) => module.ServiceOrientationPanel),
+);
+const serviceGovernancePanel = preloadablePanel(() =>
+  import("@/components/on-call/service-governance-panel").then((module) => module.ServiceGovernancePanel),
+);
+const serviceAdminPanel = preloadablePanel(() =>
+  import("@/components/on-call/service-admin-panel").then((module) => module.ServiceAdminPanel),
+);
+const ServiceEntryEditor = serviceEntryEditor.Panel;
+const ServiceImportPanel = serviceImportPanel.Panel;
+const ServiceCheckingPanel = serviceCheckingPanel.Panel;
+const ServiceOrientationPanel = serviceOrientationPanel.Panel;
+const ServiceGovernancePanel = serviceGovernancePanel.Panel;
+const ServiceAdminPanel = serviceAdminPanel.Panel;
+
+/** The sign-in dialog loads on first open and then stays mounted, so its close still returns focus. */
+const AccountSetupDialog = dynamic(
+  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
+  { ssr: false },
+);
 
 type WorkspaceTab = "handbook" | "import" | "checking" | "orientation" | "review" | "admin" | "services";
 type LoadState = "loading" | "ready" | "signed-out" | "unavailable";
@@ -101,6 +132,8 @@ export function ServicePage({
   const [tab, setTab] = useState<WorkspaceTab>("handbook");
   const [editingEntry, setEditingEntry] = useState<ServiceEntry | null | undefined>(undefined);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [accountMounted, setAccountMounted] = useState(false);
+  if (accountOpen && !accountMounted) setAccountMounted(true);
   const [error, setError] = useState<string | null>(null);
   const [serviceName, setServiceName] = useState("");
   const [siteName, setSiteName] = useState("");
@@ -296,6 +329,23 @@ export function ServicePage({
     detail &&
     (detail.membership.role === "editor" || detail.membership.role === "admin" || detail.membership.clinicalReviewer),
   );
+  const hasDetail = detail !== null;
+  useEffect(() => {
+    if (!hasDetail) return;
+    const preloads: Array<() => Promise<unknown>> = [serviceOrientationPanel.preload];
+    if (canEdit) {
+      preloads.push(
+        serviceEntryEditor.preload,
+        serviceImportPanel.preload,
+        serviceCheckingPanel.preload,
+        serviceAdminPanel.preload,
+      );
+    }
+    if (canReview) preloads.push(serviceGovernancePanel.preload);
+    // A failed prefetch is not an error: the tap that needs the panel loads it again.
+    for (const preload of preloads) void preload().catch(() => undefined);
+  }, [hasDetail, canEdit, canReview]);
+
   const visibleTabs = useMemo(
     () =>
       workspaceTabs.filter((item) => {
@@ -462,7 +512,7 @@ export function ServicePage({
             </Button>
           }
         />
-        <AccountSetupDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
+        {accountMounted ? <AccountSetupDialog open={accountOpen} onClose={() => setAccountOpen(false)} /> : null}
         <OnCallCrisisLines />
       </InformationPageShell>
     );

@@ -1,7 +1,8 @@
 "use client";
 
 import { Plus, TriangleAlert, WifiOff } from "lucide-react";
-import { Fragment, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import { Fragment, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { pinnedHelpItems } from "@/components/admin/admin-pinned-numbers";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
@@ -24,20 +25,7 @@ import {
   ThisWeekCard,
   type DayDetail,
 } from "@/components/my-day/my-day-today-cards";
-import {
-  CallNotesFoot,
-  CallsCard,
-  ComingUpCard,
-  CpdMonthCard,
-  CredentialsCard,
-  GlanceCard,
-  HoursCard,
-  NextTalkCard,
-  PinnedNumbersCard,
-  QuickNoteCard,
-  WhosOnCard,
-  type PinnedNumber,
-} from "@/components/my-day/my-day-work-me-cards";
+import type { PinnedNumber } from "@/components/my-day/my-day-work-me-cards";
 import type { MyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
@@ -80,6 +68,34 @@ import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/pe
 import { summariseToday } from "@/lib/roster/today";
 import type { RosterDisplayShift } from "@/lib/roster/team/team-view";
 import type { SessionSummary } from "@/lib/teaching/model";
+
+/*
+ * The Work and Me cards draw only on those two pages, so they load in their own chunk. They still
+ * render on the server, so a direct link to ?page=work or ?page=me draws the same first HTML, and
+ * Today fetches the chunk quietly once idle so switching pages never waits on it.
+ */
+const loadWorkMeCards = () => import("@/components/my-day/my-day-work-me-cards");
+const CallNotesFoot = dynamic(() => loadWorkMeCards().then((m) => m.CallNotesFoot));
+const CallsCard = dynamic(() => loadWorkMeCards().then((m) => m.CallsCard));
+const ComingUpCard = dynamic(() => loadWorkMeCards().then((m) => m.ComingUpCard));
+const CpdMonthCard = dynamic(() => loadWorkMeCards().then((m) => m.CpdMonthCard));
+const CredentialsCard = dynamic(() => loadWorkMeCards().then((m) => m.CredentialsCard));
+const GlanceCard = dynamic(() => loadWorkMeCards().then((m) => m.GlanceCard));
+const HoursCard = dynamic(() => loadWorkMeCards().then((m) => m.HoursCard));
+const NextTalkCard = dynamic(() => loadWorkMeCards().then((m) => m.NextTalkCard));
+const PinnedNumbersCard = dynamic(() => loadWorkMeCards().then((m) => m.PinnedNumbersCard));
+const QuickNoteCard = dynamic(() => loadWorkMeCards().then((m) => m.QuickNoteCard));
+const WhosOnCard = dynamic(() => loadWorkMeCards().then((m) => m.WhosOnCard));
+
+function preloadWorkMeCards(): () => void {
+  const load = () => void loadWorkMeCards().catch(() => undefined);
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(load);
+    return () => window.cancelIdleCallback(id);
+  }
+  const timer = window.setTimeout(load, 1500);
+  return () => window.clearTimeout(timer);
+}
 
 /**
  * My Day as a modular dashboard in three pages, Today, Work and Me (design
@@ -188,6 +204,7 @@ export function MyDayDashboard({
   onRetry,
   sample,
 }: MyDayDashboardProps) {
+  useEffect(preloadWorkMeCards, []);
   const stored = useMyDayDeviceState(today);
   // The signed-out sample keeps "Later" for this page only, so nothing one visitor does is kept for the next.
   const [sampleSnoozes, setSampleSnoozes] = useState<MyDaySnoozes>({});

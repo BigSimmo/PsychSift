@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
@@ -10,7 +11,6 @@ import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { ModeStateLabel } from "@/components/mode-kit/state-label";
-import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { TeachingCalendarSheet } from "@/components/teaching/teaching-calendar-sheet";
 import { addDays, mondayOf, perthDateKey, perthTime, shortDayLabel } from "@/components/teaching/teaching-dates";
 import {
@@ -39,6 +39,12 @@ import { useTeachingWeek, type TeachingWeekState } from "@/components/teaching/u
 import { Button } from "@/components/ui/button";
 import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
+
+/** The On Call entry editor loads on first open and then stays mounted, so its Sheet still returns focus on close. */
+const OnCallEntryEditor = dynamic(
+  () => import("@/components/on-call/on-call-entry-editor").then((module) => module.OnCallEntryEditor),
+  { ssr: false },
+);
 
 /*
  * Week: the day rail, Whole service / Presenting, every remaining day grouped
@@ -105,6 +111,8 @@ function WeekBody({
   const [day, setDay] = useState<string | null>(null);
   const [pastShown, setPastShown] = useState<string | null>(null);
   const [editor, setEditor] = useState<{ entry: OnCallEntry | null } | null>(null);
+  const [editorMounted, setEditorMounted] = useState(false);
+  if (editor !== null && !editorMounted) setEditorMounted(true);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const live = view.demo === "off";
@@ -329,20 +337,22 @@ function WeekBody({
             teams={week.teams}
             onChanged={view.retry}
           />
-          <OnCallEntryEditor
-            open={editor !== null}
-            onClose={() => setEditor(null)}
-            section="education"
-            entry={editor?.entry ?? null}
-            onSaved={() => {
-              setEditor(null);
-              refresh();
-            }}
-            onDeleted={() => {
-              setEditor(null);
-              refresh();
-            }}
-          />
+          {editorMounted ? (
+            <OnCallEntryEditor
+              open={editor !== null}
+              onClose={() => setEditor(null)}
+              section="education"
+              entry={editor?.entry ?? null}
+              onSaved={() => {
+                setEditor(null);
+                refresh();
+              }}
+              onDeleted={() => {
+                setEditor(null);
+                refresh();
+              }}
+            />
+          ) : null}
         </>
       ) : null}
     </>

@@ -11,6 +11,7 @@ import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { useAuthSession } from "@/lib/supabase/client";
 import type { SessionSummary, TeachingWeekResponse } from "@/lib/teaching/model";
+import { sharedGet } from "@/lib/shared-get";
 
 /**
  * The reads the dashboard cards add to My Day's own items, each made the way
@@ -90,7 +91,7 @@ type CpdLoaded =
   | { status: "unavailable" | "failed" };
 
 async function readJson(url: string, signal: AbortSignal): Promise<Record<string, unknown> | "unauthorized" | null> {
-  const response = await fetch(url, { cache: "no-store", signal });
+  const response = await sharedGet(url, { signal });
   if (response.status === 401) return "unauthorized";
   if (!response.ok) return null;
   return (await response.json().catch(() => null)) as Record<string, unknown> | null;

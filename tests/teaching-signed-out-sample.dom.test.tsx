@@ -33,14 +33,14 @@ function signedOutWith(status: "signed_out" | "expired" = "signed_out") {
 }
 
 describe("signed-out Teaching sample, the default", () => {
-  it("shows the shared sign-in notice above every page, with no Leave the sample and no cookie", () => {
+  it("shows the shared sign-in notice above every page, with no Leave the sample and no cookie", async () => {
     signedOutWith();
     const cookieWrite = vi.spyOn(document, "cookie", "set");
     render(<TeachingSampleChrome cookieSample={false} />);
     expect(screen.getByTestId("teaching-signed-out-sample")).toHaveTextContent("Sign in to see your teaching");
     expect(screen.queryByTestId("teaching-sample-leave")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(screen.getByTestId("sign-in-dialog")).toBeInTheDocument();
+    expect(await screen.findByTestId("sign-in-dialog")).toBeInTheDocument();
     expect(cookieWrite).not.toHaveBeenCalled();
   });
 

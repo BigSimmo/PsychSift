@@ -463,6 +463,11 @@ side swipe. Styles and the area palettes' partner tokens live in `src/app/work-m
 shared content pieces (cards, rows, hero, rings, chips, buttons, dock, week strip, Undo toast) are
 in `src/components/mode-kit/work.tsx`. Clinical modes keep the old band.
 
+**Work free-text check.** `src/lib/work-text/patient-detail-check.ts` is the one patient-detail check
+for every work-mode free-text field that is stored, copied, exported or sent (`checkPatientDetail`,
+`looksLikePatientDetail`): WA UMRNs, beds, age with sex, "Pt <Name>" and look-alike characters, while
+workplace abbreviations pass.
+
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
 records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto

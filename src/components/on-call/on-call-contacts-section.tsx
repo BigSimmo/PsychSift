@@ -6,7 +6,7 @@ import { Pencil, Phone, Plus, Printer } from "lucide-react";
 import { OnCallEntryRow } from "@/components/on-call/on-call-entry-row";
 import { OnCallFreshnessBadge } from "@/components/on-call/on-call-freshness-badge";
 import { OnCallPrivateFlag } from "@/components/on-call/on-call-private-flag";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import { Button } from "@/components/ui/button";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { OnCallCallDisc } from "@/components/on-call/on-call-call-disc";

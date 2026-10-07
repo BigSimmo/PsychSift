@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 
 import { cardSurface, focusRing } from "@/components/card-recipes";
 import { CmeCategoryLegend, CmeYearSummary } from "@/components/cme/cme-dashboard-catch-up";
@@ -212,7 +212,31 @@ export function CmeDashboard({
   const [detail, setDetail] = useState<CmeTodayDetail>(null);
   const { moduleIds } = useCmeModuleOrder();
   const shows = (moduleId: CmeDashboardModuleId) => moduleIds.includes(moduleId);
-  const { totalHours, statuses, unmet } = evaluateYear({ set, entries });
+  const today = perthCalendarDate(now);
+  // The year's sums and plans walk every entry, so they are worked out once per change of input, not per render.
+  const derived = useMemo(() => {
+    const evaluation = evaluateYear({ set, entries });
+    const catchUpPlan = buildCmeCatchUpPlan({ set, entries, routines, today });
+    return {
+      evaluation,
+      yearCheck: buildCmeYearCheck(set, entries),
+      categoryHours: hoursByCategory(entries),
+      nextDate: expandEvents(cmeCalendarEvents({ set, entries, routines }).exported, {
+        start: today,
+        end: addDays(today, 400),
+      })[0],
+      catchUp: catchUpPlan,
+      // The same rule as the pace line: no weekly figure in the first four weeks or the last week.
+      weeklyPace: cmeWeeklyPace({
+        targetHours: set.totalHours,
+        loggedHours: evaluation.totalHours,
+        today,
+        year: set.year,
+      }),
+      gapScenarios: cmeRoutineGapScenarios(routines, catchUpPlan.hoursToGo, undefined, { today, year: set.year }),
+    };
+  }, [set, entries, routines, today]);
+  const { totalHours, statuses, unmet } = derived.evaluation;
   const inRequestedYear = cpdYearOf(now) === set.year;
   const yearEntries = entries.filter((entry) => !entry.archivedAt && entry.date.startsWith(`${set.year}-`));
   const culturallySafePracticeToLog = set.requirements.some(
@@ -229,7 +253,6 @@ export function CmeDashboard({
   const underBand = useModeBandShown();
   // The drafts waiting to be finished live under Log, so its tab carries them.
   useModeBandCount("log", draftsToFinish);
-  const today = perthCalendarDate(now);
   const loggedToday = entries.filter((entry) => !entry.archivedAt && entry.date === today);
   const loggedTodayHours = loggedToday.reduce(
     (sum, entry) => sum + entry.allocations.reduce((inner, allocation) => inner + allocation.hours, 0),
@@ -263,7 +286,7 @@ export function CmeDashboard({
   const nextStep = computeCmeNextStep({ set, unmet, now, totalHours });
   // The year-end checklist (copying, self-evaluation, goal carry, next year, summary) opens from the Year page.
   const offerYearEnd = canOfferCmeYearEnd(set, now);
-  const yearCheck = buildCmeYearCheck(set, entries);
+  const { yearCheck } = derived;
   // The step rides inside "What's left" while that list is shown; hidden in
   // Customise (or before anything is logged), the standalone row carries it instead.
   const showWhatsLeft = hasTarget && !nothingLogged && shows("requirements");
@@ -272,16 +295,8 @@ export function CmeDashboard({
   const yearChips = hasTarget ? buildCmeYearChips({ year: set.year, yearCheck, draftsToFinish }) : [];
   const chips = nothingLogged ? yearChips.filter((chip) => chip.id === "drafts") : yearChips;
 
-  const nextDate = expandEvents(cmeCalendarEvents({ set, entries, routines }).exported, {
-    start: today,
-    end: addDays(today, 400),
-  })[0];
-
-  const catchUp = buildCmeCatchUpPlan({ set, entries, routines, today });
-  // The same rule as the pace line: no weekly figure in the first four weeks or the last week.
-  const weeklyPace = cmeWeeklyPace({ targetHours: set.totalHours, loggedHours: totalHours, today, year: set.year });
+  const { nextDate, catchUp, weeklyPace, gapScenarios } = derived;
   const totalGap = catchUp.hoursToGo;
-  const gapScenarios = cmeRoutineGapScenarios(routines, totalGap, undefined, { today, year: set.year });
 
   function handleLogRoutine(routine: CmeRoutine) {
     onLogRoutine(routineLogPrefill(routine, now));
@@ -346,7 +361,7 @@ export function CmeDashboard({
       today={today}
       loggedHours={totalHours}
       targetHours={set.totalHours}
-      categoryHours={hoursByCategory(entries)}
+      categoryHours={derived.categoryHours}
       plan={catchUp}
       weeklyHours={weeklyPace !== null && weeklyPace.weeksLeft >= 1 ? weeklyPace.weeklyHours : null}
       entries={entries}
@@ -579,7 +594,7 @@ export function CmeDashboard({
 
   const byCategory = !hasTarget ? (
     <CmeGroup label="Logged by category" testId="cme-logged-by-category">
-      <CmeCategoryLegend categoryHours={hoursByCategory(entries)} label="Logged by category" />
+      <CmeCategoryLegend categoryHours={derived.categoryHours} label="Logged by category" />
     </CmeGroup>
   ) : null;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeftRight, CalendarDays, CalendarOff, CalendarX2, HandHelping, Inbox, Info, Plane } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
@@ -8,7 +9,6 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { RosterStaffingEntryLink } from "@/components/roster/staffing/roster-staffing-entry";
-import { SwapFlowSheet } from "@/components/roster/swaps/swap-flow-sheet";
 import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterNow } from "@/components/roster/roster-format";
 import {
@@ -27,14 +27,35 @@ import { cn } from "@/components/ui-primitives";
 import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterLeave } from "@/lib/roster/leave";
 
-import { RosterDatesSheet } from "./roster-dates-sheet";
-import { RosterGiveAwaySheet } from "./roster-give-away-sheet";
-import { RosterLeaveSheet } from "./roster-leave-sheet";
 import { RosterSentBar, type SentReceipt } from "./roster-sent-bar";
 import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 import { RosterNewButton } from "@/components/roster/roster-new-button";
 import { usePhoneFooterLayerScrollHidden } from "@/components/clinical-dashboard/phone-footer-layer-portal";
+
+/* Each sheet draws nothing while closed, so each loads only once first opened (and quietly when the page is idle). */
+const loadSwapFlowSheet = () => import("@/components/roster/swaps/swap-flow-sheet");
+const loadDatesSheet = () => import("./roster-dates-sheet");
+const loadGiveAwaySheet = () => import("./roster-give-away-sheet");
+const loadLeaveSheet = () => import("./roster-leave-sheet");
+const SwapFlowSheet = dynamic(() => loadSwapFlowSheet().then((m) => m.SwapFlowSheet), { ssr: false });
+const RosterDatesSheet = dynamic(() => loadDatesSheet().then((m) => m.RosterDatesSheet), { ssr: false });
+const RosterGiveAwaySheet = dynamic(() => loadGiveAwaySheet().then((m) => m.RosterGiveAwaySheet), { ssr: false });
+const RosterLeaveSheet = dynamic(() => loadLeaveSheet().then((m) => m.RosterLeaveSheet), { ssr: false });
+
+function preloadSheets(): () => void {
+  const load = () => {
+    for (const loader of [loadLeaveSheet, loadDatesSheet, loadGiveAwaySheet, loadSwapFlowSheet]) {
+      void loader().catch(() => undefined);
+    }
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(load);
+    return () => window.cancelIdleCallback(id);
+  }
+  const timer = window.setTimeout(load, 1500);
+  return () => window.clearTimeout(timer);
+}
 
 type Start = "swap" | "give_away" | "cant_make" | "dates" | "leave";
 type ActiveSheet = {
@@ -143,6 +164,21 @@ export function RosterRequestsPage() {
   const [leave, setLeave] = useState<RosterLeave[]>([]);
   const [leaveState, setLeaveState] = useState<"loading" | "ready" | "error">("loading");
   const [sheet, setSheet] = useState<ActiveSheet>(null);
+  useEffect(preloadSheets, []);
+  // Once a sheet has opened it stays mounted, as all of them were before, so reopening behaves the same.
+  const [opened, setOpened] = useState({ giveAway: false, dates: false, leave: false });
+  const giveAwayOpen = sheet?.kind === "give_away" || sheet?.kind === "cant_make";
+  if (
+    (giveAwayOpen && !opened.giveAway) ||
+    (sheet?.kind === "dates" && !opened.dates) ||
+    (sheet?.kind === "leave" && !opened.leave)
+  ) {
+    setOpened({
+      giveAway: opened.giveAway || giveAwayOpen,
+      dates: opened.dates || sheet?.kind === "dates",
+      leave: opened.leave || sheet?.kind === "leave",
+    });
+  }
   const [sent, setSent] = useState<SentReceipt | null>(null);
   const clearSent = useCallback(() => setSent(null), []);
   const leaveReadSequence = useRef(0);
@@ -480,40 +516,46 @@ export function RosterRequestsPage() {
               initialColleagueId={sheet?.person}
             />
           ) : null}
-          <RosterGiveAwaySheet
-            open={sheet?.kind === "give_away" || sheet?.kind === "cant_make"}
-            onClose={() => setSheet(null)}
-            serviceId={serviceId}
-            actorId={actorId}
-            initialAssignmentId={sheet?.assignment}
-            urgent={sheet?.kind === "cant_make"}
-            onSent={onSent}
-          />
-          <RosterDatesSheet
-            open={sheet?.kind === "dates"}
-            onClose={() => setSheet(null)}
-            serviceId={serviceId}
-            actorId={actorId}
-            initialDate={sheet?.kind === "dates" ? sheet.date : undefined}
-            toDate={sheet?.kind === "dates" ? sheet.to : undefined}
-            initialKind={sheet?.kind === "dates" ? sheet.dateKind : undefined}
-            onSent={onSent}
-          />
+          {opened.giveAway ? (
+            <RosterGiveAwaySheet
+              open={giveAwayOpen}
+              onClose={() => setSheet(null)}
+              serviceId={serviceId}
+              actorId={actorId}
+              initialAssignmentId={sheet?.assignment}
+              urgent={sheet?.kind === "cant_make"}
+              onSent={onSent}
+            />
+          ) : null}
+          {opened.dates ? (
+            <RosterDatesSheet
+              open={sheet?.kind === "dates"}
+              onClose={() => setSheet(null)}
+              serviceId={serviceId}
+              actorId={actorId}
+              initialDate={sheet?.kind === "dates" ? sheet.date : undefined}
+              toDate={sheet?.kind === "dates" ? sheet.to : undefined}
+              initialKind={sheet?.kind === "dates" ? sheet.dateKind : undefined}
+              onSent={onSent}
+            />
+          ) : null}
         </>
       ) : null}
-      <RosterLeaveSheet
-        open={sheet?.kind === "leave"}
-        onClose={() => setSheet(null)}
-        teams={enabled}
-        actorId={actorId ?? ""}
-        assignments={myAssignments}
-        initialDate={sheet?.kind === "leave" ? sheet.date : undefined}
-        initialTo={sheet?.kind === "leave" ? sheet.to : undefined}
-        existing={leave.find((item) => item.id === sheet?.leaveId)}
-        onSent={onSent}
-        onSaved={(entry) => setLeave((old) => [...old.filter((item) => item.id !== entry.id), entry])}
-        onDeleted={(id) => setLeave((old) => old.filter((item) => item.id !== id))}
-      />
+      {opened.leave ? (
+        <RosterLeaveSheet
+          open={sheet?.kind === "leave"}
+          onClose={() => setSheet(null)}
+          teams={enabled}
+          actorId={actorId ?? ""}
+          assignments={myAssignments}
+          initialDate={sheet?.kind === "leave" ? sheet.date : undefined}
+          initialTo={sheet?.kind === "leave" ? sheet.to : undefined}
+          existing={leave.find((item) => item.id === sheet?.leaveId)}
+          onSent={onSent}
+          onSaved={(entry) => setLeave((old) => [...old.filter((item) => item.id !== entry.id), entry])}
+          onDeleted={(id) => setLeave((old) => old.filter((item) => item.id !== id))}
+        />
+      ) : null}
     </InformationPageShell>
   );
 }

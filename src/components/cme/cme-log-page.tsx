@@ -166,14 +166,23 @@ export function CmeLogPage({
     [visibleEntries, effectiveYear, allYears, showArchived],
   );
 
+  // Lowercased once per year shown, not once per keystroke.
+  const searchIndex = useMemo(
+    () =>
+      yearEntries.map((entry) => ({
+        entry,
+        title: entry.title.toLowerCase(),
+        reflection: entry.reflection.toLowerCase(),
+      })),
+    [yearEntries],
+  );
   const trimmedQuery = query.trim().toLowerCase();
   const searched = useMemo(() => {
     if (trimmedQuery.length === 0) return yearEntries;
-    return yearEntries.filter(
-      (entry) =>
-        entry.title.toLowerCase().includes(trimmedQuery) || entry.reflection.toLowerCase().includes(trimmedQuery),
-    );
-  }, [yearEntries, trimmedQuery]);
+    return searchIndex
+      .filter(({ title, reflection }) => title.includes(trimmedQuery) || reflection.includes(trimmedQuery))
+      .map(({ entry }) => entry);
+  }, [yearEntries, searchIndex, trimmedQuery]);
 
   const filtered = useMemo(() => {
     return searched.filter(
@@ -191,6 +200,10 @@ export function CmeLogPage({
       yearEntries
         .filter((entry) => !entry.transcribed && !entry.archivedAt)
         .sort((a, b) => b.date.localeCompare(a.date)),
+    [yearEntries],
+  );
+  const attentionCounts = useMemo(
+    () => new Map(ATTENTION_FILTERS.map((filter) => [filter.value, yearEntries.filter(filter.matches).length])),
     [yearEntries],
   );
 
@@ -383,7 +396,7 @@ export function CmeLogPage({
           <CmeGroup label="Activities needing attention" className="mt-5">
             <CmeFlatList>
               {ATTENTION_FILTERS.map((filter) => {
-                const count = yearEntries.filter(filter.matches).length;
+                const count = attentionCounts.get(filter.value) ?? 0;
                 if (!count) return null;
                 const href =
                   filter.value === "copy"
@@ -480,7 +493,7 @@ export function CmeLogPage({
               {!showArchived ? (
                 <div role="group" aria-label="Needs attention" data-testid="cme-log-attention" className="contents">
                   {ATTENTION_FILTERS.map((filter) => {
-                    const count = yearEntries.filter(filter.matches).length;
+                    const count = attentionCounts.get(filter.value) ?? 0;
                     const pressed = attention === filter.value;
                     return (
                       <button

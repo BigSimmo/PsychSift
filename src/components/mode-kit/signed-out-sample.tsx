@@ -1,13 +1,19 @@
 "use client";
 
 import { LogIn } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { DashTag } from "@/components/dashboard-kit/icon-chip";
 import { dashSurface } from "@/components/dashboard-kit/recipes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
+
+// The sign-in dialog loads only when someone asks for it.
+const AccountSetupDialog = dynamic(
+  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
+  { ssr: false },
+);
 
 /**
  * The one signed-out sample box every personal mode shares (My Day set the
@@ -57,7 +63,7 @@ export function SignedOutSampleNotice({
           Sign in
         </Button>
       </div>
-      <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
     </div>
   );
 }
