@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, CloudOff, RotateCw } from "lucide-react";
-import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
@@ -15,11 +14,37 @@ import type {
   HospitalHandbookState,
   HospitalHandbookStatus,
 } from "@/components/on-call/use-hospital-handbook";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
-import { Button, buttonFaceClass } from "@/components/ui/button";
+import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { cn } from "@/components/ui-primitives";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 const ON_CALL_SERVICE_HREF = "/on-call/service";
+
+/**
+ * A handbook state as the work-mode empty card (work-mode redesign, owner
+ * request 6 Oct 2026): one white hairline card, a flat teal badge, the words,
+ * and one pill action.
+ */
+function StateCard({
+  icon,
+  title,
+  body,
+  action,
+  testId,
+}: {
+  readonly icon: LucideIcon;
+  readonly title: string;
+  readonly body?: string;
+  readonly action: ReactNode;
+  readonly testId: string;
+}) {
+  return (
+    <WorkCard testId={testId}>
+      <WorkEmpty icon={icon} title={title} body={body} action={action} />
+    </WorkCard>
+  );
+}
 
 function SignInState({
   page,
@@ -33,14 +58,10 @@ function SignInState({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <EmptyState
+      <StateCard
         icon={ON_CALL_HUB_PAGE_ICONS[page]}
         title={title}
-        actions={
-          <Button variant="primary" onClick={() => setOpen(true)}>
-            Sign in
-          </Button>
-        }
+        action={<WorkButton onClick={() => setOpen(true)}>Sign in</WorkButton>}
         testId={testId}
       />
       <AccountSetupDialog open={open} onClose={() => setOpen(false)} />
@@ -91,28 +112,28 @@ export function OnCallHandbookState({
       );
     case "no-service":
       return (
-        <EmptyState
+        <StateCard
           icon={ON_CALL_HUB_PAGE_ICONS[page]}
           title="You are not in a hospital handbook yet."
           body="Ask your hospital's handbook admin for an invite."
-          actions={
-            <Link href={ON_CALL_SERVICE_HREF} className={cn(buttonFaceClass({ variant: "secondary" }), "no-underline")}>
+          action={
+            <WorkButton variant="secondary" href={ON_CALL_SERVICE_HREF}>
               Manage service
-            </Link>
+            </WorkButton>
           }
           testId={testId}
         />
       );
     case "unavailable":
       return (
-        <EmptyState
+        <StateCard
           icon={CloudOff}
           title="Hospital numbers could not be loaded."
           body="Hospital numbers need a connection. If you cannot connect, use a hospital phone or ask the ward team for switchboard."
-          actions={
-            <Button type="button" variant="secondary" icon={RotateCw} onClick={handbook.retry}>
+          action={
+            <WorkButton variant="secondary" icon={RotateCw} onClick={handbook.retry}>
               Try again
-            </Button>
+            </WorkButton>
           }
           testId={testId}
         />
