@@ -176,4 +176,30 @@ describe("Roster team journey", () => {
       "D day · E evening · N night · C on call · L leave · W other work · blank is off.",
     );
   });
+  it("lists who is on now, until when, and hides the list when nobody is on", async () => {
+    mockTeam();
+    // 23:00 Perth on Thu 15 Oct: Sam's night (21:30 to 08:00) covers it.
+    const { unmount } = render(<RosterTeamPage now={new Date("2026-10-15T15:00:00Z")} />);
+    const list = await screen.findByTestId("roster-team-on-now");
+    expect(screen.getByRole("heading", { name: "On now" })).toBeTruthy();
+    expect(list.textContent).toContain("Dr Sam Example");
+    expect(list.textContent).toContain("Night · until 08:00");
+    unmount();
+    mockTeam();
+    // 12:00 Perth on Fri 16 Oct: the night has ended.
+    render(<RosterTeamPage now={new Date("2026-10-16T04:00:00Z")} />);
+    expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
+    expect(screen.queryByTestId("roster-team-on-now")).toBeNull();
+  });
+  it("says there is no team yet and offers Join a team, with no detail reads", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ actorId: "alex", teams: [] })),
+    );
+    render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
+    const empty = await screen.findByTestId("roster-team-no-team");
+    expect(empty.textContent).toContain("No team yet");
+    expect(empty.querySelector('a[href="/roster/join"]')?.textContent).toContain("Join a team");
+    expect(vi.mocked(fetch).mock.calls.every(([url]) => url === "/api/roster/team")).toBe(true);
+  });
 });

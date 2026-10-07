@@ -351,3 +351,22 @@ describe("SwapProgressLine", () => {
     expect(screen.queryByText(/Waiting on/)).toBeNull();
   });
 });
+
+describe("Swaps page with no confirmed team", () => {
+  it("says there is no team yet and offers Join a team instead of empty sections", () => {
+    const saved = teamsState.data.teams.splice(0);
+    try {
+      render(<RosterSwapsPage />);
+      const empty = screen.getByTestId("roster-swaps-no-team");
+      expect(empty.textContent).toContain("No team yet");
+      expect(
+        within(empty)
+          .getByRole("link", { name: /Join a team/ })
+          .getAttribute("href"),
+      ).toBe("/roster/join");
+      expect(screen.queryByRole("heading", { name: "Waiting on you" })).toBeNull();
+    } finally {
+      teamsState.data.teams.push(...saved);
+    }
+  });
+});
