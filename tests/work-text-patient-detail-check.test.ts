@@ -23,6 +23,12 @@ describe("shared patient-detail check for work free text", () => {
     ["a mobile number with no spaces", "0412345678"],
     ["a landline", "(08) 9224 1234"],
     ["bare initials", "JS to call back"],
+    ["lower-case initials after pt", "pt js 45m"],
+    ["spaced initials after pt", "pt J S 45 M"],
+    ["lower-case initials after patient", "patient ab review"],
+    ["age with a spaced sex letter", "45 M"],
+    ["a bare WA UMRN", "D4678677"],
+    ["another bare UMRN", "U1234567 seen"],
   ])("catches %s", (_label, text) => {
     expect(checkPatientDetail(text)).not.toBeNull();
     expect(looksLikePatientDetail(text)).toBe(true);
@@ -39,10 +45,25 @@ describe("shared patient-detail check for work free text", () => {
     "Dr Lowe is on instead",
     "SHO",
     "visa condition review",
+    "patient was seen",
+    "Pt is on the ward",
+    "js", // lower case is read as initials only after a patient word
+    "RDO",
+    "IVF leave",
+    "Ask about OSCE dates",
+    "ECT list",
+    "RANZCP exam",
     "",
     "   ",
   ])("lets ordinary work text through: %j", (text) => {
     expect(checkPatientDetail(text)).toBeNull();
+  });
+
+  it("lets common course and leave capitals through with allowCapitals", () => {
+    for (const text of ["RDO", "IVF", "OSCE", "ECT", "RANZCP", "RDO on Friday, IVF leave, OSCE and RANZCP"])
+      expect(checkPatientDetail(text, { allowCapitals: true })).toBeNull();
+    // Capitals read past are still initials after a patient word.
+    expect(checkPatientDetail("Pt JS", { allowCapitals: true })).not.toBeNull();
   });
 
   it("reads past hospital capitals only when the field allows them", () => {

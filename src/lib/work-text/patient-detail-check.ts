@@ -21,7 +21,9 @@ import { looksLikePatientDetails } from "@/lib/work-search/signals";
  *   beds, dates of birth, Medicare-shaped numbers, a title and name;
  * - ages and sex in the shapes a clinical note takes ("45 year old male",
  *   "forty five year old", "34 y.o. woman", "aged 45");
- * - "Patient John", "Pt: Smith", "client Jones";
+ * - "Patient John", "Pt: Smith", "client Jones", and initials after a patient word in any case
+ *   ("pt js", "pt J S");
+ * - a WA UMRN typed bare, one capital then seven digits ("D4678677");
  * - a bed or room written in words ("bed twelve").
  *
  * It leans towards a false alarm on purpose. A flagged word costs one edit; a
@@ -70,6 +72,8 @@ export const WORKPLACE_ABBREVIATIONS: readonly string[] = [
   "TBA",
   "RSO",
   "DPE",
+  "RDO",
+  "IVF",
 ];
 
 const ABBREVIATION = new RegExp(`\\b(?:${WORKPLACE_ABBREVIATIONS.join("|")})\\b`, "g");
@@ -91,6 +95,8 @@ const AGE_SEX: readonly RegExp[] = [
   // "34 yrs F", "34M". Capital M or F only, so "30m webinar" (minutes) passes.
   /\b\d{1,3}\s?yrs?\s?[MFmf]\b/,
   /\b\d{1,3}[MF]\b/,
+  // "45 M", "45 F": a spaced sex letter, capital only.
+  /\b\d{1,3}\s[MF]\b/,
 ];
 
 /** A bed, bay or room written in words: "bed twelve", "room four". */
@@ -98,6 +104,31 @@ const PLACE_IN_WORDS = new RegExp(`\\b(?:bed|bay|room|rm|cubicle)\\s+${NUMBER_WO
 
 /** A record number with its label run straight on ("UR1234567", "MRN:12345"), which the word-boundary checks miss. */
 const GLUED_RECORD = /\b(?:u\.?r\.?n?|umrn|mrn)\s*[:#-]?\s*\d{3,}/i;
+
+/** A WA UMRN typed bare: one capital letter then seven digits ("D4678677", "U1234567"). */
+const BARE_UMRN = /\b[A-Z]\d{7}\b/;
+
+/**
+ * Initials straight after a patient word, in any case or spaced: "pt js 45m", "pt J S 45 M", "patient ab".
+ * Lower case counts only here; ordinary short words after it ("patient was seen") are left alone.
+ */
+const PATIENT_INITIALS = /\b(?:patient|pt|client|consumer)\b\s*[:.-]?\s+([a-z]{2,3}|[a-z]\.?\s[a-z])\b\.?/giu;
+const SHORT_WORDS = new Set(
+  (
+    "a an as at be by do go he if in is it me my no of on or so to up us we am are was has had his her its " +
+    "for and but not can may who why how all any one two few new old our out off own saw see say get got let " +
+    "put ran run sat set too use via yet now day bed ed icu gp ok re per did the"
+  ).split(" "),
+);
+
+function hasPatientInitials(text: string): boolean {
+  for (const match of text.matchAll(PATIENT_INITIALS)) {
+    const found = match[1]!.toLowerCase();
+    if (/\s/.test(found)) return true;
+    if (!SHORT_WORDS.has(found)) return true;
+  }
+  return false;
+}
 
 /** Words after "Patient" that are not a name ("Patient Safety week"). */
 const NOT_A_NAME = new Set(["Safety", "Care", "Centred", "Centered", "Experience", "Feedback", "Journey", "Flow"]);
@@ -163,6 +194,9 @@ function problemIn(text: string, options: PatientDetailCheckOptions): PatientDet
   if (fromReminder) return fromReminder;
   if (looksLikeAgeAndSex(trimmed)) return { title: "This looks like an age", body: DEFAULT_BODY, suggestion: null };
   if (hasPatientName(trimmed)) return { title: "This looks like a name", body: DEFAULT_BODY, suggestion: null };
+  if (hasPatientInitials(trimmed)) return { title: "This looks like initials", body: DEFAULT_BODY, suggestion: null };
+  if (BARE_UMRN.test(trimmed))
+    return { title: "This looks like a record number", body: DEFAULT_BODY, suggestion: null };
   if (GLUED_RECORD.test(trimmed))
     return { title: "This looks like a record number", body: DEFAULT_BODY, suggestion: null };
   if (PLACE_IN_WORDS.test(trimmed))
