@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-06"
+    "committed_at": "2026-10-07"
   },
   "routes": {
     "modes": [
@@ -342,6 +342,11 @@
         "path": "/mockups/privacy-page-directions",
         "file": "src/app/mockups/privacy-page-directions/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/cme/cpd-home",
+        "file": "src/app/(search-app)/cme/cpd-home/page.tsx",
+        "area": "product"
       },
       {
         "path": "/teaching/resources/[collectionId]",
@@ -1009,6 +1014,11 @@
         "area": "product"
       },
       {
+        "path": "/cme/applications",
+        "file": "src/app/(search-app)/cme/applications/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/development/corpus-health",
         "file": "src/app/mockups/development/corpus-health/page.tsx",
         "area": "mockup"
@@ -1061,6 +1071,11 @@
       {
         "path": "/formulation/[slug]",
         "file": "src/app/(search-app)/formulation/[slug]/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/cme/applications/cv",
+        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
         "area": "product"
       },
       {
