@@ -61,6 +61,8 @@ const cpdHome = (sources: ReturnType<typeof useFeatureNotificationSources>) =>
   sources.find((source) => source.id === "cpd-home");
 
 beforeEach(() => {
+  // The suite runner sets the demo build flag; these cases are a real signed-in build.
+  vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "false");
   localStorage.clear();
   sharedGet.mockReset();
   sharedGet.mockResolvedValue(
@@ -69,6 +71,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   act(() => setSharedDevice(false));
 });
 

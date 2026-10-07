@@ -2,7 +2,7 @@
 
 // My Day's Teaching source: a demo-mode refusal is "unavailable", a real error is "failed".
 import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   byUrl: {} as Record<string, { status: string; code: string | null }>,
@@ -34,6 +34,8 @@ const now = new Date("2026-10-03T04:00:00Z");
 
 describe("useTeachingMyDaySource in the synthetic demo", () => {
   beforeEach(() => {
+    // The suite runner sets the demo build flag; only the second case is the local demo build.
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "false");
     mocks.asked = [];
     mocks.authStatus = "authenticated";
     mocks.byUrl = {
@@ -41,6 +43,10 @@ describe("useTeachingMyDaySource in the synthetic demo", () => {
       "/api/teaching/depth?view=teach": { status: "error", code: "demo_mode_unavailable" },
       "/api/teaching/depth?view=feedback-open": { status: "error", code: "demo_mode_unavailable" },
     };
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("reads a demo-mode refusal as unavailable, not as a failed read", () => {

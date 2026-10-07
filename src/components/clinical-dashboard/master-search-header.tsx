@@ -81,8 +81,9 @@ import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text"
 import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
-import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
-import { workAreaFor, workFrameForRoute } from "@/lib/work-frame/areas";
+import { useHeaderModePill } from "@/components/clinical-dashboard/master-search-header-mode-pill";
+import { useScopeDocumentList } from "@/components/clinical-dashboard/master-search-header-scope-documents";
+import { workAreaFor } from "@/lib/work-frame/areas";
 import { modePickerHint } from "@/lib/mode-picker-hints";
 import {
   modePickerCardClass,
@@ -128,7 +129,6 @@ import {
   modePagesTileClass,
 } from "@/components/clinical-dashboard/mode-pages-sheet-classes";
 import {
-  activeModeSecondaryNavigationId,
   groupModeSecondaryNavigationEntries,
   modeSecondaryNavigationEntries,
   visibleModeSecondaryNavigationEntries,
@@ -152,7 +152,6 @@ import type { CommandSurfacePlacement } from "@/lib/search-command-surface";
 import { useCommandDropdownDisplayableByPlacement } from "@/components/clinical-dashboard/use-command-dropdown-displayable";
 import type { ClinicalDocument, ClinicalQueryMode } from "@/lib/types";
 import { type SearchScopeFilters } from "@/lib/search-scope";
-import { tagSearchText } from "@/lib/document-tags";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
 
 // Shared between the composer input's aria-describedby and the rendered
@@ -577,60 +576,14 @@ export function MasterSearchHeader({
    * needs no fetch of its own (F24). False on the server.
    */
   const onCallEditor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
-  /**
-   * Which of this mode's pages the reader is on, when the pill lists pages.
-   *
-   * The pill then NAMES THAT PAGE rather than the mode. In a mode whose pages
-   * are the whole product — On Call's nine — the mode's name was the one thing
-   * on the screen the reader never needed: they know they are on call. Where
-   * they are inside it is what the row above the page should say, and the pill
-   * is the control that changes it, so the two belong in the same place.
-   *
-   * `null` on an unmatched path (a record route, a page with no registry entry)
-   * and the pill falls back to naming the mode, which is the honest answer when
-   * no registered page is current.
-   */
-  const activeModePageId = modeOwnPagesAvailable
-    ? activeModeSecondaryNavigationId(selectedAppMode.id, currentPathname ?? "")
-    : null;
-  const registryModePage = activeModePageId
-    ? (modeOwnPages.find((page) => page.id === activeModePageId) ?? null)
-    : null;
-  /**
-   * A work area's frame names the page and the area itself (work-mode
-   * redesign, owner request 6 Oct 2026): "Swaps" over "ROSTER", and Open
-   * shifts' pages over Roster, Assessments' over its own name. Published by
-   * the band while it is up; null elsewhere, so every other mode is unchanged.
-   */
-  const workFramePill = useWorkFramePill();
-  /**
-   * The work area and page this address draws, decided from the mode and
-   * address alone so it is in the server HTML. The band publishes the same
-   * names once it has mounted; until then (server render, first paint) the
-   * pill reads them from here, so it never flashes the registry's page name
-   * ("Shifts" over "Roster") before settling on the frame's. Only where the
-   * band will actually draw a framed page: a `band: false` page or one with no
-   * frame item keeps the registry naming it has after hydration too.
-   */
-  const routeWorkArea = workAreaFor(selectedAppMode.id, currentPathname ?? "");
-  const routeWorkFrame = workFrameForRoute(selectedAppMode.id, currentPathname ?? "");
-  const routeWorkFramed = routeWorkFrame !== null;
-  const routeWorkPill = routeWorkFrame
-    ? // The band publishes the area alone (pill 4b), so the first paint names the area alone too.
-      { modeId: selectedAppMode.id, area: routeWorkFrame.area.name, page: null }
-    : null;
-  const workPill = (workFramePill?.modeId === selectedAppMode.id ? workFramePill : null) ?? routeWorkPill;
-  // A work band that publishes no page asks for the area alone (Josh, 7 Oct
-  // 2026, pill 4b: the underlined tab already names the page), so the
-  // registry's page is not used as a fallback there.
-  const activeModePage = workPill
-    ? workPill.page
-      ? { id: "work-frame", label: workPill.page }
-      : null
-    : registryModePage;
-  /** The area-only pill: a work area's name, alone, in its own colour. */
-  const pillShowsAreaOnly = Boolean(workPill) && !activeModePage;
-  const pillModeLabel = workPill?.area ?? selectedAppMode.label;
+  /** What the mode pill names (the page, the mode or a work area) and this address's work frame. */
+  const { activeModePage, pillShowsAreaOnly, pillModeLabel, routeWorkArea, routeWorkFrame, routeWorkFramed } =
+    useHeaderModePill({
+      modeId: selectedAppMode.id,
+      modeLabel: selectedAppMode.label,
+      pathname: currentPathname ?? "",
+      modeOwnPages,
+    });
   /** A mode that shows no results has nowhere for a new conversation to land. */
   const modeHasConversation = selectedAppMode.search.resultsSurface !== "none";
   const pendingModeSelectionFocusRef = useRef<AppModeId | null>(null);
@@ -640,15 +593,6 @@ export function MasterSearchHeader({
   const actionMenuSheetReturnFocusRef = useRef<HTMLElement | null>(null);
   const scopeFilterInputRef = useRef<HTMLInputElement | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const selectedDocumentIdSet = useMemo(() => new Set(selectedDocumentIds), [selectedDocumentIds]);
-  const documentById = useMemo(() => new Map(documents.map((document) => [document.id, document])), [documents]);
-  const selectedDocuments = useMemo(
-    () =>
-      selectedDocumentIds
-        .map((id) => documentById.get(id))
-        .filter((document): document is ClinicalDocument => Boolean(document)),
-    [documentById, selectedDocumentIds],
-  );
 
   useEffect(() => {
     const pendingMode = pendingModeSelectionFocusRef.current;
@@ -672,61 +616,14 @@ export function MasterSearchHeader({
       if (settledFrame !== null) window.cancelAnimationFrame(settledFrame);
     };
   }, [modeMenuOpen, searchMode]);
-  const scopeSummary = selectedDocumentIds.length === 0 ? "All documents" : `${selectedDocumentIds.length} scoped`;
-  const scopePreview = useMemo(
-    () =>
-      selectedDocuments
-        .slice(0, 2)
-        .map((document) => document?.title.replace(/^Synthetic /, ""))
-        .filter(Boolean)
-        .join(", "),
-    [selectedDocuments],
-  );
-  const normalizedScopeFilter = scopeFilter.trim().toLowerCase();
-  const recentlyUpdatedDocuments = useMemo(
-    () =>
-      [...documents].sort((a, b) => {
-        const bTime = Date.parse(b.updated_at || b.created_at || "");
-        const aTime = Date.parse(a.updated_at || a.created_at || "");
-        return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
-      }),
-    [documents],
-  );
-  const documentSearchTextById = useMemo(
-    () =>
-      new Map(
-        documents.map((document) => [
-          document.id,
-          [document.title, document.file_name, document.description, tagSearchText(document)]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase(),
-        ]),
-      ),
-    [documents],
-  );
-  const matchingDocuments = useMemo(
-    () =>
-      normalizedScopeFilter
-        ? recentlyUpdatedDocuments.filter((document) =>
-            documentSearchTextById.get(document.id)?.includes(normalizedScopeFilter),
-          )
-        : recentlyUpdatedDocuments,
-    [documentSearchTextById, normalizedScopeFilter, recentlyUpdatedDocuments],
-  );
-  const largeScopeSet = documents.length > 12;
-  const requireScopeFilter = largeScopeSet && !normalizedScopeFilter;
-  const visibleScopeDocuments = useMemo(
-    () =>
-      [
-        ...selectedDocuments,
-        ...(requireScopeFilter ? [] : matchingDocuments.filter((document) => !selectedDocumentIdSet.has(document.id))),
-      ].slice(0, 12),
-    [matchingDocuments, requireScopeFilter, selectedDocumentIdSet, selectedDocuments],
-  );
-  const hiddenScopeMatchCount = requireScopeFilter
-    ? Math.max(0, selectedDocuments.length ? documents.length - selectedDocumentIds.length : documents.length)
-    : Math.max(0, matchingDocuments.length - visibleScopeDocuments.length);
+  const {
+    scopeSummary,
+    scopePreview,
+    matchingDocuments,
+    requireScopeFilter,
+    visibleScopeDocuments,
+    hiddenScopeMatchCount,
+  } = useScopeDocumentList({ documents, selectedDocumentIds, scopeFilter });
   const activeLabelFilterCount = labelScopeFilterFields.filter((field) => scopeFilters[field.key]?.length).length;
   const activeQuickFilterCount =
     (scopeFilters.sourceStatuses?.length ? 1 : 0) + (scopeFilters.locality ? 1 : 0) + activeLabelFilterCount;
