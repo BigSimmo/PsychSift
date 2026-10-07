@@ -135,10 +135,9 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
   return (
     <span
       className={cn(
-        "relative isolate inline-flex shrink-0 rounded-full",
+        "relative inline-flex shrink-0 rounded-full",
         // While the note shows, a soft halo in the page's colour draws the eye to the button it is about.
-        coach &&
-          "before:absolute before:-inset-1 before:-z-10 before:rounded-full before:bg-[color:color-mix(in_srgb,var(--mode-identity,var(--focus))_20%,transparent)] before:shadow-[0_0_0_6px_color-mix(in_srgb,var(--mode-identity,var(--focus))_8%,transparent)] before:content-['']",
+        coach && "ring-4 ring-[color:color-mix(in_srgb,var(--mode-identity,var(--focus))_20%,transparent)]",
       )}
     >
       <button

@@ -114,13 +114,14 @@ export function AnswerSource({ answer }: { answer: WorkAnswer }) {
   );
 }
 
-/** The hero's buttons: a white filled one and a see-through one, 48px taps with 34px shapes. */
-const heroButton =
-  "relative isolate inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 px-3 text-xs font-bold before:absolute before:inset-x-0 before:inset-y-1.5 before:-z-10 before:rounded-full before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)] focus-visible:rounded-full";
-const heroButtonSolid = cn(heroButton, "text-[color:var(--mode-identity)] before:bg-[color:var(--surface-raised)]");
-const heroButtonGhost = cn(
-  heroButton,
-  "before:bg-[color:color-mix(in_srgb,currentColor_14%,transparent)] before:shadow-[inset_0_0_0_1px_color-mix(in_srgb,currentColor_22%,transparent)]",
+/** The hero's buttons: a white filled one and a see-through one, 48px taps with 36px shapes. */
+const tap = "group inline-flex min-h-12 min-w-0 items-center focus-visible:outline-none";
+const face =
+  "inline-flex h-9 w-full min-w-0 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-bold group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-[color:var(--focus)] forced-colors:outline-1 forced-colors:outline-[ButtonBorder]";
+const heroFaceSolid = cn(face, "bg-[color:var(--surface-raised)] text-[color:var(--mode-identity)]");
+const heroFaceGhost = cn(
+  face,
+  "bg-[color:color-mix(in_srgb,currentColor_14%,transparent)] ring-1 ring-inset ring-[color:color-mix(in_srgb,currentColor_22%,transparent)]",
 );
 
 /** The big glass date tile in the hero: month over day. */
@@ -129,7 +130,7 @@ function HeroDate({ date }: { date: string }) {
   return (
     <span
       aria-hidden="true"
-      className="grid h-15 w-14 shrink-0 content-center justify-items-center rounded-2xl bg-[color:color-mix(in_srgb,currentColor_16%,transparent)] leading-none tabular-nums shadow-[inset_0_0_0_1px_color-mix(in_srgb,currentColor_22%,transparent)]"
+      className="grid h-15 w-14 shrink-0 content-center justify-items-center rounded-2xl bg-[color:color-mix(in_srgb,currentColor_16%,transparent)] leading-none tabular-nums ring-1 ring-inset ring-[color:color-mix(in_srgb,currentColor_22%,transparent)]"
     >
       <span className="mb-1 text-3xs font-bold uppercase tracking-widest opacity-80">
         {MONTH_SHORT[day.getUTCMonth()]}
@@ -201,23 +202,22 @@ function AnswerHero({ answer, onOpen }: { answer: WorkAnswer; onOpen: () => void
       {answer.action || calendar ? (
         <div className={cn("mt-2 grid gap-2", answer.action && calendar ? "grid-cols-2" : "grid-cols-1")}>
           {answer.action ? (
-            <Link
-              href={answer.action.href}
-              onClick={onPlainClick(onOpen)}
-              data-work-search-primary=""
-              className={heroButtonSolid}
-            >
-              {(() => {
-                const Icon = ANSWER_ICONS[answer.icon];
-                return <Icon aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />;
-              })()}
-              <span className="truncate">{answer.action.label}</span>
+            <Link href={answer.action.href} onClick={onPlainClick(onOpen)} data-work-search-primary="" className={tap}>
+              <span className={heroFaceSolid}>
+                {(() => {
+                  const Icon = ANSWER_ICONS[answer.icon];
+                  return <Icon aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />;
+                })()}
+                <span className="truncate">{answer.action.label}</span>
+              </span>
             </Link>
           ) : null}
           {calendar ? (
-            <button type="button" onClick={() => addToCalendar(calendar)} className={heroButtonGhost}>
-              <CalendarPlus aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />
-              <span className="truncate">{answer.calendar ? "Add to calendar" : "Add next shift"}</span>
+            <button type="button" onClick={() => addToCalendar(calendar)} className={tap}>
+              <span className={heroFaceGhost}>
+                <CalendarPlus aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />
+                <span className="truncate">{answer.calendar ? "Add to calendar" : "Add next shift"}</span>
+              </span>
             </button>
           ) : null}
         </div>
@@ -319,8 +319,11 @@ function FreeWeek({ days, label }: { days: readonly WorkAnswerDay[]; label: stri
   );
 }
 
-const cardButton =
-  "relative isolate inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-1.5 px-3 text-xs font-bold text-[color:var(--text-heading)] before:absolute before:inset-x-0 before:inset-y-1.5 before:-z-10 before:rounded-full before:bg-[color:var(--surface-raised)] before:shadow-[inset_0_0_0_1px_var(--border-strong)] before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)] focus-visible:rounded-full";
+const cardTap = cn(tap, "flex-1");
+const cardFace = cn(
+  face,
+  "bg-[color:var(--surface-raised)] text-[color:var(--text-heading)] ring-1 ring-inset ring-[color:var(--border-strong)]",
+);
 
 function DaysOffCard({ answer, onOpen }: { answer: WorkAnswer; onOpen: () => void }) {
   return (
@@ -346,13 +349,17 @@ function DaysOffCard({ answer, onOpen }: { answer: WorkAnswer; onOpen: () => voi
         </div>
       ) : null}
       <div className="mt-1 flex gap-2">
-        <Link href="/roster" onClick={onPlainClick(onOpen)} data-work-search-primary="" className={cardButton}>
-          <CalendarDays aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />
-          Open Roster
+        <Link href="/roster" onClick={onPlainClick(onOpen)} data-work-search-primary="" className={cardTap}>
+          <span className={cardFace}>
+            <CalendarDays aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />
+            Open Roster
+          </span>
         </Link>
-        <Link href="/roster/requests" onClick={onPlainClick(onOpen)} className={cardButton}>
-          <Plane aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />
-          Book leave
+        <Link href="/roster/requests" onClick={onPlainClick(onOpen)} className={cardTap}>
+          <span className={cardFace}>
+            <Plane aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />
+            Book leave
+          </span>
         </Link>
       </div>
     </section>

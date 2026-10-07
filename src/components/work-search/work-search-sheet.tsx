@@ -423,13 +423,16 @@ function isOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
-/** The pill field: a 48px tap row, a glass pill with a ring in the page's colour (amber for patient details). */
+/**
+ * The pill field: a 42px glass pill with a ring in the page's colour (amber for patient details) and a
+ * soft halo just outside it. Its buttons keep 48px taps, overhanging the pill by 3px top and bottom.
+ */
 const fieldShell =
-  "search-shell relative isolate flex min-h-12 min-w-0 flex-1 items-center gap-2 pl-3.5 pr-0.5 before:absolute before:inset-x-0 before:inset-y-0.5 before:-z-10 before:rounded-full before:bg-[color:var(--surface-raised)] before:content-['']";
+  "search-shell my-0.75 flex h-10.5 min-w-0 flex-1 items-center gap-2 rounded-full bg-[color:var(--surface-raised)] pl-3.5 pr-0.5 ring-inset outline-4 forced-colors:outline-1 forced-colors:outline-[CanvasText]";
 const fieldRing =
-  "before:shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--mode-identity)_55%,transparent),0_0_0_4px_color-mix(in_srgb,var(--mode-identity)_10%,transparent)] focus-within:before:shadow-[inset_0_0_0_2px_var(--mode-identity),0_0_0_4px_color-mix(in_srgb,var(--mode-identity)_16%,transparent)]";
+  "ring-2 ring-[color:color-mix(in_srgb,var(--mode-identity)_45%,transparent)] outline-[color:color-mix(in_srgb,var(--mode-identity)_10%,transparent)] focus-within:ring-[color:var(--mode-identity)] focus-within:outline-[color:color-mix(in_srgb,var(--mode-identity)_16%,transparent)]";
 const fieldRingWarn =
-  "before:shadow-[inset_0_0_0_2px_var(--warning),0_0_0_4px_color-mix(in_srgb,var(--warning)_14%,transparent)]";
+  "ring-2 ring-[color:var(--warning)] outline-[color:color-mix(in_srgb,var(--warning)_14%,transparent)]";
 
 export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: WorkSearchSheetProps) {
   const [now, setNow] = useState(() => Date.now());
@@ -801,7 +804,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
         ).map(([Icon, label]) => (
           <li
             key={label}
-            className="inline-flex h-7.5 items-center gap-1.5 rounded-full bg-[color:var(--surface-raised)] px-3 text-xs font-semibold text-[color:var(--text-muted)] shadow-[inset_0_0_0_1px_var(--border-strong)]"
+            className="inline-flex h-7.5 items-center gap-1.5 rounded-full bg-[color:var(--surface-raised)] px-3 text-xs font-semibold text-[color:var(--text-muted)] ring-1 ring-inset ring-[color:var(--border-strong)]"
           >
             <Icon aria-hidden="true" className="size-3.5" strokeWidth={2.2} />
             {label}
@@ -952,7 +955,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 autoCapitalize="none"
                 spellCheck={false}
                 className={cn(
-                  "search-shell-input min-w-0 flex-1 bg-transparent py-3 text-base font-semibold text-[color:var(--text-heading)] outline-none placeholder:font-normal placeholder:text-[color:var(--text-muted)] [&::-webkit-search-cancel-button]:hidden",
+                  "search-shell-input min-w-0 flex-1 bg-transparent py-2.25 text-base font-semibold text-[color:var(--text-heading)] outline-none placeholder:font-normal placeholder:text-[color:var(--text-muted)] [&::-webkit-search-cancel-button]:hidden",
                   patient ? "caret-[color:var(--warning)]" : "caret-[color:var(--mode-identity)]",
                 )}
               />
@@ -964,7 +967,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   type="button"
                   onClick={() => (patient ? clearPatientDetails(false) : runQuery(""))}
                   aria-label="Clear search"
-                  className="grid size-12 shrink-0 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-[color:var(--focus)]"
+                  className="-my-0.75 grid size-12 shrink-0 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-[color:var(--focus)]"
                 >
                   <span className="grid size-5.5 place-items-center rounded-full bg-[color:color-mix(in_srgb,var(--text-heading)_14%,transparent)] text-[color:var(--surface-raised)]">
                     <X aria-hidden="true" className="size-3" strokeWidth={3} />
@@ -976,7 +979,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 onClick={() => close(false)}
                 aria-label="Close search"
                 title="Close (Esc)"
-                className="hidden min-h-12 shrink-0 items-center px-2 lg:inline-flex"
+                className="-my-0.75 hidden min-h-12 shrink-0 items-center px-2 lg:inline-flex"
               >
                 <kbd className={keyCap}>esc</kbd>
               </button>
@@ -1016,25 +1019,30 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                       resetScroll();
                     }}
                     data-mode-identity={area === "all" ? undefined : area}
-                    className={cn(
-                      "relative isolate inline-flex min-h-12 shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 text-xs font-semibold before:absolute before:inset-x-0 before:inset-y-2.5 before:-z-10 before:rounded-full before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-[6px] focus-visible:outline-[color:var(--focus)] focus-visible:rounded-full forced-colors:before:border forced-colors:before:border-[ButtonBorder]",
-                      selected
-                        ? "text-[color:var(--surface-raised)] before:bg-[color:var(--text-heading)] forced-colors:before:border-[Highlight]"
-                        : "text-[color:var(--text-muted)] before:bg-[color:color-mix(in_srgb,var(--surface-raised)_85%,transparent)] before:shadow-[inset_0_0_0_1px_var(--border-strong)]",
-                    )}
+                    className="group inline-flex min-h-12 shrink-0 items-center focus-visible:outline-none"
                   >
-                    {area === "all" ? null : (
-                      <span
-                        aria-hidden="true"
-                        className="size-1.75 shrink-0 rounded-full bg-[color:var(--mode-identity)]"
-                      />
-                    )}
-                    {label}
-                    {typed && count > 0 ? (
-                      <span className={cn("text-2xs font-bold tabular-nums", selected ? "opacity-70" : "opacity-80")}>
-                        {count}
-                      </span>
-                    ) : null}
+                    {/* A 28px pill inside the 48px tap. */}
+                    <span
+                      className={cn(
+                        "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-semibold group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-[color:var(--focus)] forced-colors:outline-1 forced-colors:outline-[ButtonBorder]",
+                        selected
+                          ? "bg-[color:var(--text-heading)] text-[color:var(--surface-raised)] forced-colors:outline-[Highlight]"
+                          : "bg-[color:color-mix(in_srgb,var(--surface-raised)_85%,transparent)] text-[color:var(--text-muted)] ring-1 ring-inset ring-[color:var(--border-strong)]",
+                      )}
+                    >
+                      {area === "all" ? null : (
+                        <span
+                          aria-hidden="true"
+                          className="size-1.75 shrink-0 rounded-full bg-[color:var(--mode-identity)]"
+                        />
+                      )}
+                      {label}
+                      {typed && count > 0 ? (
+                        <span className={cn("text-2xs font-bold tabular-nums", selected ? "opacity-70" : "opacity-80")}>
+                          {count}
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
                 );
               })}
@@ -1141,7 +1149,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                             inputRef.current?.focus();
                           }}
                           aria-label={`Remove ${value} from recent searches`}
-                          className="grid size-12 shrink-0 place-items-center text-[color:var(--text-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-[color:var(--focus)]"
+                          className="grid size-12 shrink-0 place-items-center text-[color:var(--text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-[color:var(--focus)]"
                         >
                           <X aria-hidden="true" className="size-4" strokeWidth={2} />
                         </button>
