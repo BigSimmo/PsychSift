@@ -141,8 +141,8 @@ describe("Teaching mode registration", () => {
     expect(APP_MODE_ICON.teaching).toBe("presentation");
     expect(APP_MODE_ACCENT.teaching).toBe("rose");
     expect(sharedHomePresentation.teaching.suggestions).toEqual(["grand round", "journal club", "case conference"]);
-    // Behind the My Day door, beside CPD (modes review, phase 1).
-    expect(phoneModeGroups.find((group) => group.id === "my-day")?.modeIds).toEqual(
+    // In the Work list, beside CPD.
+    expect(phoneModeGroups.find((group) => group.id === "work")?.modeIds).toEqual(
       expect.arrayContaining(["teaching", "cme"]),
     );
     expect(siteContentModeExclusions.find((entry) => entry.modeId === "teaching")).toMatchObject({
