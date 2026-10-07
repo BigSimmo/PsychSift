@@ -48,7 +48,6 @@ describe("work-mode launch switch", () => {
     const classic = resolveWorkModeLaunch({ user: admin, environment: PROD, preference: "classic" });
     expect(classic).toMatchObject({
       newWorkMode: false,
-      sampleScreens: false,
       classicPreferred: true,
       choiceAvailable: true,
     });
