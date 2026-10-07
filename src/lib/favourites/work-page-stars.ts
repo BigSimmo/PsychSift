@@ -210,6 +210,21 @@ export function recordWorkPageOpened(key: string, now: number = Date.now()): voi
   write(current.map((star) => (workPageStarKey(star.areaId, star.itemId) === key ? { ...star, openedAt: now } : star)));
 }
 
+/**
+ * Removes every saved work page from this device. Sign-out already does this
+ * through `clearAccountScopedBrowserStorage` (the key is listed there); this is
+ * for callers that clear on their own, such as a "clear this device" action.
+ */
+export function clearWorkPageStars(): void {
+  cache = null;
+  try {
+    window.localStorage.removeItem(WORK_PAGE_FAVOURITES_STORAGE_KEY);
+  } catch {
+    // Storage blocked: there is nothing stored to remove.
+  }
+  notify();
+}
+
 /** Test seam: forget the cache and subscribers between tests. */
 export function resetWorkPageStarsForTesting(): void {
   cache = null;
@@ -240,6 +255,8 @@ export function starrableWorkPages(): { area: WorkArea; items: (WorkFrameItem & 
     for (const item of workAreaItems(area)) {
       // Items that lead into another area are that area's pages; list them there.
       if (!item.href || item.leadsTo || seen.has(item.id)) continue;
+      // Favourites itself is where saved pages are listed; saving it would point at itself.
+      if (item.href.split(/[?#]/)[0] === "/my-day/favourites") continue;
       seen.add(item.id);
       items.push({ ...item, href: item.href });
     }

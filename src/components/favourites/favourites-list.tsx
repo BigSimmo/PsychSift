@@ -11,6 +11,7 @@ import {
   type FavouriteItem,
   type FavouritesView,
 } from "@/components/favourites/favourites-view-model";
+import { WorkSectionLabel } from "@/components/mode-kit/work";
 import { cn } from "@/components/ui-primitives";
 
 const focusRing =
@@ -38,6 +39,7 @@ export function FavouritesList({
   openSwipeId,
   onOpenSwipeChange,
   canMutate,
+  canMove = canMutate,
   handlers,
   reorder,
 }: {
@@ -51,6 +53,8 @@ export function FavouritesList({
   openSwipeId: string | null;
   onOpenSwipeChange: (id: string | null) => void;
   canMutate: (item: FavouriteItem) => boolean;
+  /** Whether an item can go into a set. Defaults to `canMutate`. */
+  canMove?: (item: FavouriteItem) => boolean;
   handlers: FavouritesListHandlers;
   reorder?: {
     pending: boolean;
@@ -110,28 +114,26 @@ export function FavouritesList({
   }
 
   return (
-    <div className="grid gap-4" data-testid="favourites-list">
-      {/* Keeps the h3 group headings in a proper outline when Quick launch is hidden. */}
+    <div className="grid gap-2.5" data-testid="favourites-list">
+      {/* Keeps the h3 group headings in a proper outline. */}
       <h2 className="sr-only">Saved favourites</h2>
       {groups.map((group) => (
         <section
           key={group.id}
           aria-labelledby={group.label ? `favourites-group-${group.id}` : undefined}
           aria-label={group.label ? undefined : "Favourites"}
-          className="grid gap-2"
+          className="grid gap-1.5"
         >
           {group.label ? (
-            <h3
+            <WorkSectionLabel
+              as="h3"
               id={`favourites-group-${group.id}`}
-              className="flex items-baseline justify-between px-1 text-xs font-semibold uppercase tracking-label text-[color:var(--text-muted)]"
+              count={view === "type" ? <span className="nums">{group.items.length}</span> : undefined}
             >
               {group.label}
-              {view === "type" ? (
-                <span className="nums font-medium normal-case tracking-normal">{group.items.length}</span>
-              ) : null}
-            </h3>
+            </WorkSectionLabel>
           ) : null}
-          <ul className="divide-y divide-[color:var(--border)] overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-[var(--e1)]">
+          <ul className="work-card work-rows">
             {group.items.map((item, index) => (
               <FavouriteRow
                 key={item.id}
@@ -145,6 +147,7 @@ export function FavouritesList({
                 swipeOpen={openSwipeId === item.id}
                 onSwipeOpenChange={(open) => onOpenSwipeChange(open ? item.id : null)}
                 canMutate={canMutate(item)}
+                canMove={canMove(item)}
                 {...handlers}
                 reorder={
                   reorder
@@ -168,15 +171,22 @@ export function FavouritesList({
   );
 }
 
-/** Floating bar for Select mode: pin, move or remove everything ticked. */
+/**
+ * Floating bar for Select mode: pin, move or remove everything ticked. A
+ * floating layer, so it takes the work-mode glass; the actions inside are flat.
+ * Move is offered only when something ticked can go into a set.
+ */
 export function FavouritesSelectBar({
   count,
+  canMove = true,
   onPin,
   onMove,
   onRemove,
   onDone,
 }: {
   count: number;
+  /** False when nothing ticked can be moved, such as only work pages. */
+  canMove?: boolean;
   onPin: () => void;
   onMove: () => void;
   onRemove: () => void;
@@ -184,7 +194,7 @@ export function FavouritesSelectBar({
 }) {
   const none = count === 0;
   const action = cn(
-    "inline-flex min-h-tap items-center gap-1.5 rounded-xl px-3 text-sm font-semibold disabled:text-[color:var(--disabled)]",
+    "inline-flex min-h-tap items-center gap-1.5 rounded-full px-3.5 text-sm font-bold disabled:text-[color:var(--disabled)]",
     focusRing,
   );
   return (
@@ -192,46 +202,54 @@ export function FavouritesSelectBar({
       role="group"
       aria-label="Selected favourites"
       data-testid="favourites-select-bar"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[var(--z-chrome)] mx-auto flex max-w-lg items-center gap-1.5 rounded-2xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] p-2 shadow-[var(--e4)]"
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[var(--z-chrome)] mx-auto flex max-w-lg items-center gap-1 rounded-full border border-[color:var(--work-glass-line)] bg-[color:var(--work-glass-fill)] p-1 shadow-[var(--work-shadow-float)] backdrop-blur-xl"
     >
       <button
         type="button"
         onClick={onDone}
         aria-label="Leave select mode"
         className={cn(
-          "grid size-tap shrink-0 place-items-center rounded-xl text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]",
+          "grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] active:bg-[color:var(--work-wash)]",
           focusRing,
         )}
       >
         <X className="size-icon-md" aria-hidden="true" />
       </button>
-      <span className="nums min-w-0 flex-1 truncate text-sm font-semibold text-[color:var(--text-heading)]">
+      <span className="nums min-w-0 flex-1 truncate text-sm font-bold text-[color:var(--work-ink)]">
         {none ? "Tap to select" : `${count} selected`}
       </span>
       <button
         type="button"
         disabled={none}
         onClick={onPin}
-        className={cn(action, "bg-[color:var(--surface-inset)] text-[color:var(--text-heading)]")}
+        className={cn(action, "text-[color:var(--work-ink)] active:bg-[color:var(--work-wash)]")}
       >
         <Pin className="size-icon-sm max-[359px]:hidden" aria-hidden="true" />
         Pin
       </button>
-      <button
-        type="button"
-        disabled={none}
-        onClick={onMove}
-        className={cn(action, "bg-[color:var(--surface-inset)] text-[color:var(--text-heading)]")}
-      >
-        <Folder className="size-icon-sm max-[359px]:hidden" aria-hidden="true" />
-        Move
-      </button>
+      {canMove ? (
+        <button
+          type="button"
+          disabled={none}
+          onClick={onMove}
+          className={cn(
+            action,
+            "bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] disabled:bg-[color:var(--work-wash)]",
+          )}
+        >
+          <Folder className="size-icon-sm max-[359px]:hidden" aria-hidden="true" />
+          Move
+        </button>
+      ) : null}
       <button
         type="button"
         disabled={none}
         onClick={onRemove}
         aria-label={none ? "Remove selected" : `Remove ${count} selected`}
-        className={cn(action, "min-w-tap justify-center bg-[color:var(--danger-soft)] text-[color:var(--danger)]")}
+        className={cn(
+          action,
+          "min-w-tap justify-center text-[color:var(--danger)] active:bg-[color:var(--danger-soft)]",
+        )}
       >
         <Trash2 className="size-icon-sm" aria-hidden="true" />
       </button>

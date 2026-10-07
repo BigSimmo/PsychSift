@@ -49,11 +49,14 @@ describe("favourite row actions sheet", () => {
 
     const dialog = screen.getByRole("dialog", { name: /Actions for/ });
     expect(within(dialog).queryByRole("menu")).toBeNull();
-    const copy = within(dialog).getByRole("button", { name: "Copy citation" });
-    const move = within(dialog).getByRole("button", { name: /Move to set/ });
-    copy.focus();
+    const pin = within(dialog).getByRole("button", { name: "Pin to My Day" });
+    const move = within(dialog).getByRole("button", { name: /Move to a set/ });
+    const copy = within(dialog).getByRole("button", { name: "Copy link with source" });
+    pin.focus();
     await user.tab();
     expect(move).toHaveFocus();
+    await user.tab();
+    expect(copy).toHaveFocus();
     await user.click(move);
     expect(onMove).toHaveBeenCalledWith(item);
   });

@@ -124,7 +124,7 @@ function ShelfTile({
           <span className="line-clamp-2 break-words text-xs font-bold leading-tight text-[color:var(--work-ink)]">
             {label}
           </span>
-          <span className="mt-0.5 block truncate text-2xs font-semibold text-[color:var(--work-ink-muted)]">
+          <span className="mt-0.5 block min-w-0 truncate text-2xs font-semibold text-[color:var(--text-muted)]">
             {item.example ? "Example" : tileSub(item)}
           </span>
         </span>
@@ -179,13 +179,13 @@ export function FavouritesShelf({
           >
             <span
               aria-hidden="true"
-              className="grid size-11 place-items-center rounded-full bg-[color:var(--work-surface)] text-[color:var(--work-ink-muted)] ring-[1.5px] ring-inset ring-[color:var(--work-line-strong)]"
+              className="grid size-10 place-items-center rounded-full bg-[color:var(--work-surface)] text-[color:var(--text-muted)] ring-[1.5px] ring-inset ring-[color:var(--work-line-strong)]"
             >
               <Plus className="size-icon-md" strokeWidth={2} aria-hidden="true" />
             </span>
             <span className="block w-full min-w-0">
               <span className="block text-xs font-bold leading-tight text-[color:var(--work-ink)]">{addLabel}</span>
-              <span className="mt-0.5 block truncate text-2xs font-semibold text-[color:var(--work-ink-muted)]">
+              <span className="mt-0.5 block truncate text-2xs font-semibold text-[color:var(--text-muted)]">
                 Work page
               </span>
             </span>

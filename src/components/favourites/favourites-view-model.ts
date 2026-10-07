@@ -5,7 +5,7 @@ import type { FavouriteContentType } from "@/lib/favourites-client-contract";
 
 /**
  * Pure logic behind the Favourites page: what is in the list, how it is grouped,
- * what Continue and Quick launch show, and the one-line summary under the title.
+ * what Continue and the My Day pins show, and the one-line summary under the title.
  * Kept free of React so every ordering rule can be pinned by a plain unit test.
  */
 
@@ -38,7 +38,7 @@ export type FavouriteItem = {
   href: string;
   icon: LucideIcon;
   pinned?: boolean;
-  /** Epoch ms the item joined Quick launch, used to keep tiles in pin order. */
+  /** Epoch ms the item was pinned to My Day, used to keep tiles in pin order. */
   pinnedAt?: number | null;
   contentType?: FavouriteContentType;
   contentKey?: string;
@@ -73,6 +73,7 @@ export type FavouriteSetChip = {
 };
 
 export const UNSORTED_SET_NAME = "Unsorted";
+/** How many favourites can be pinned to My Day at once, clinical and work pages together. */
 export const QUICK_LAUNCH_LIMIT = 4;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -219,23 +220,10 @@ export function quickLaunchHasRoom(items: readonly FavouriteItem[]): boolean {
   return items.filter((item) => item.pinned).length < QUICK_LAUNCH_LIMIT;
 }
 
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
-
-/** The single summary line under the page title. */
-export function favouritesSummary({
-  itemCount,
-  setCount,
-  quickLaunchCount,
-}: {
-  itemCount: number;
-  setCount: number;
-  quickLaunchCount: number;
-}): string {
+/** The single summary line under the page title, for example "11 saved · 2 pinned". */
+export function favouritesSummary({ itemCount, pinnedCount }: { itemCount: number; pinnedCount: number }): string {
   const parts = [`${itemCount} saved`];
-  if (setCount > 0) parts.push(plural(setCount, "set", "sets"));
-  if (quickLaunchCount > 0) parts.push(`${quickLaunchCount} in quick launch`);
+  if (pinnedCount > 0) parts.push(`${pinnedCount} pinned`);
   return parts.join(" · ");
 }
 

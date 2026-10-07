@@ -26,7 +26,7 @@ export function FavouriteTypeTile({ item, size = "md" }: { item: FavouriteItem; 
       data-mode-identity={item.type === "Work page" ? item.identity : undefined}
       className={cn(
         "grid shrink-0 place-items-center rounded-full",
-        size === "sm" ? "size-6" : size === "lg" ? "size-10" : size === "xl" ? "size-11" : "size-9",
+        size === "sm" ? "size-6" : size === "lg" ? "size-10" : size === "xl" ? "size-10" : "size-9",
         tileTone[item.type],
       )}
     >

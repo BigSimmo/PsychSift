@@ -40,7 +40,8 @@ describe("favourites empty rendering", () => {
 
     // An empty library is not a search that missed: it says how to save the first item.
     expect(screen.getAllByTestId("favourites-empty-library")).toHaveLength(1);
-    expect(screen.getAllByText("No favourites yet")).toHaveLength(1);
+    expect(screen.getAllByText("Save what you open most")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Add a work page" })).toBeVisible();
     expect(screen.queryByTestId("favourites-empty-matches")).toBeNull();
     expect(screen.queryByText("No favourites match")).toBeNull();
   });
