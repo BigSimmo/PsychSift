@@ -55,11 +55,13 @@ describe("Week board chips", () => {
     ];
     render(<OpenShiftsBoardPage />);
     const chip = (id: string) => screen.getByTestId(`open-shifts-board-chip-${id}`);
-    expect(chip("all").textContent).toBe("All4");
-    expect(chip("open").textContent).toBe("Open1");
-    expect(chip("unfilled").textContent).toBe("Unfilled1");
-    expect(chip("requested").textContent).toBe("Requested1");
-    expect(chip("filled").textContent).toBe("Filled1");
+    // work-mode redesign, owner request 6 Oct 2026: WorkChip puts a screen-reader
+    // space between the label and its count, so the text reads "All 4".
+    expect(chip("all").textContent).toBe("All 4");
+    expect(chip("open").textContent).toBe("Open 1");
+    expect(chip("unfilled").textContent).toBe("Unfilled 1");
+    expect(chip("requested").textContent).toBe("Requested 1");
+    expect(chip("filled").textContent).toBe("Filled 1");
     expect(screen.queryByTestId("open-shifts-board-chip-reported")).toBeNull();
     expect(chip("all").getAttribute("aria-pressed")).toBe("true");
 
