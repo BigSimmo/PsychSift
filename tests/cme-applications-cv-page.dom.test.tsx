@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationsCvPage } from "@/components/cme/applications/applications-cv-page";
@@ -37,9 +37,55 @@ const teaching = vi.hoisted(() => ({
     retry: vi.fn(),
   },
 }));
+// The CV reads three Teaching endpoints: talks given, the attendance logbook and supervision.
+const other = vi.hoisted(() => {
+  const read = (data: unknown) => ({
+    status: "ready" as string,
+    data,
+    code: null,
+    refreshing: false,
+    retry: (() => undefined) as () => void,
+  });
+  return { logbook: read({ attendance: [] }), supervision: read({ pairings: [] }) };
+});
 vi.mock("@/components/teaching/use-teaching-resource", () => ({
-  useTeachingResource: () => teaching.value,
+  useTeachingResource: (url: string | null) =>
+    url?.includes("view=logbook")
+      ? other.logbook
+      : url?.includes("view=supervision")
+        ? other.supervision
+        : teaching.value,
 }));
+
+// Admin's records: only the registration renewal row matters to the CV.
+const admin = vi.hoisted(() => ({
+  state: {
+    entries: [] as unknown[],
+    loading: false,
+    loadError: null as "offline" | "failed" | null,
+    retry: (() => undefined) as () => void,
+    demoMode: false,
+  },
+  expiresOn: undefined as string | undefined,
+}));
+vi.mock("@/lib/on-call/entry-store", () => ({ useOnCallEntries: () => admin.state }));
+vi.mock("@/lib/admin/requirements", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/admin/requirements")>();
+  return {
+    ...actual,
+    requirementChecklistRows: () =>
+      admin.expiresOn
+        ? [
+            {
+              item: { id: "medical-registration-renewal" },
+              entry: {},
+              expiresOn: admin.expiresOn,
+              state: "needs-action",
+            },
+          ]
+        : [],
+  };
+});
 
 const now = new Date("2026-10-06T05:00:00Z");
 
@@ -76,6 +122,10 @@ describe("CV that fills itself", () => {
   beforeEach(() => {
     localStorage.clear();
     teaching.value.status = "ready";
+    other.logbook = { ...other.logbook, status: "ready", data: { attendance: [] }, retry: vi.fn() };
+    other.supervision = { ...other.supervision, status: "ready", data: { pairings: [] }, retry: vi.fn() };
+    admin.state = { ...admin.state, loading: false, loadError: null, retry: vi.fn() };
+    admin.expiresOn = undefined;
     localStorage.setItem(
       TEACHING_TERM_TRACKER_STORAGE_KEY,
       JSON.stringify({
@@ -190,10 +240,68 @@ describe("CV that fills itself", () => {
     }
   });
 
+  it("adds Admin's registration date, teaching attended and registrars supervised, each marked with its source", () => {
+    admin.expiresOn = "2027-09-30";
+    other.logbook = {
+      ...other.logbook,
+      data: {
+        attendance: [
+          { occurrenceId: "a1", startsAt: "2026-03-04T01:00:00.000Z" },
+          { occurrenceId: "a2", startsAt: "2026-05-04T01:00:00.000Z" },
+        ],
+      },
+    };
+    other.supervision = {
+      ...other.supervision,
+      data: {
+        pairings: [
+          {
+            pairingId: "p1",
+            access: "supervisor",
+            registrarName: "Dr Example Registrar",
+            startsOn: "2026-02-02",
+            endsOn: "2026-08-01",
+          },
+          { pairingId: "p2", access: "registrar", registrarName: "Me", startsOn: "2026-02-02", endsOn: "2026-08-01" },
+        ],
+      },
+    };
+    renderCv();
+    const cv = screen.getByTestId("applications-cv");
+    expect(cv.textContent).toContain("Renewal date you recorded: 30 Sep 2027");
+    expect(cv.textContent).toContain("2 sessions recorded in 2026");
+    expect(cv.textContent).toContain("Supervisor to 1 registrar");
+    // A registrar's name never reaches the CV.
+    expect(cv.textContent).not.toContain("Dr Example Registrar");
+    for (const source of ["From Admin", "From Teaching", "From Assessments", "From CPD"])
+      expect(screen.getAllByRole("img", { name: source }).length).toBeGreaterThan(0);
+  });
+
+  it("says when Admin did not load, and retries it", () => {
+    admin.state = { ...admin.state, loadError: "failed" };
+    renderCv();
+    const problem = screen.getByTestId("applications-cv-admin-failed");
+    expect(problem.textContent).toContain("registration date is not shown");
+    fireEvent.click(within(problem).getByRole("button", { name: "Try again" }));
+    expect(admin.state.retry).toHaveBeenCalled();
+    expect(screen.getByTestId("applications-cv").textContent).not.toContain("Medical registration");
+  });
+
+  it("retries only the Teaching reads that failed", () => {
+    other.logbook = { ...other.logbook, status: "offline" };
+    renderCv();
+    const problem = screen.getByTestId("applications-cv-teaching-failed");
+    expect(problem.textContent).toContain("offline");
+    fireEvent.click(within(problem).getByRole("button", { name: "Try again" }));
+    expect(other.logbook.retry).toHaveBeenCalled();
+    expect(teaching.value.retry).not.toHaveBeenCalled();
+  });
+
   it("gives every control a 48px tap target", () => {
     const { container } = renderCv();
+    // The kit's buttons take their 48px height from work-mode.css (work-mode redesign, owner request 6 Oct 2026).
     const short = [...container.querySelectorAll<HTMLElement>("button, a[href]")].filter(
-      (node) => !/\b(?:min-h-(?:12|13|tap)|size-(?:12|tap))\b/.test(node.className),
+      (node) => !/\b(?:min-h-(?:12|13|tap)|size-(?:12|tap)|work-button)\b/.test(node.className),
     );
     expect(short.map((node) => node.outerHTML.slice(0, 80))).toEqual([]);
   });

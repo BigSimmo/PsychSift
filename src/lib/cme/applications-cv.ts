@@ -4,17 +4,20 @@ import type { CmeEntry } from "@/lib/cme/types";
 /**
  * The CV that fills itself (#22): lines built only from records the doctor
  * already keeps in PsychSift. Nothing is written for them except the order:
- * terms from the Teaching term tracker, teaching they gave from Teaching,
- * hours and outcome work from the CPD log, and a personal statement only in
- * their own words. Any line can be hidden; hidden lines stay on screen struck
+ * the registration renewal date they recorded in Admin, terms from the
+ * Teaching term tracker, teaching they gave and attended from Teaching,
+ * registrars they supervise (Assessments), hours and outcome work from the
+ * CPD log, and a personal statement only in their own words. Any line can be hidden; hidden lines stay on screen struck
  * through so they can be shown again, and are left out of every copy and print.
  */
 
-export type CvSource = "cpd" | "teaching" | "terms" | "you";
+export type CvSource = "admin" | "terms" | "teaching" | "assessments" | "cpd" | "you";
 export const cvSourceLabels: Record<CvSource, string> = {
-  cpd: "CPD",
-  teaching: "Teaching",
+  admin: "Admin",
   terms: "Term tracker",
+  teaching: "Teaching",
+  assessments: "Assessments",
+  cpd: "CPD",
   you: "Your words",
 };
 
@@ -40,6 +43,12 @@ export type CvTerm = {
   readonly endsOn: string;
 };
 export type CvTalk = { readonly occurrenceId: string; readonly title: string; readonly startsAt: string };
+/** A teaching session the doctor's attendance was recorded at (Teaching logbook). */
+export type CvAttended = { readonly occurrenceId: string; readonly startsAt: string };
+/** A supervision pairing where the doctor is the supervisor. Never the registrar's name. */
+export type CvSupervising = { readonly pairingId: string; readonly startsOn: string; readonly endsOn: string };
+/** The medical registration renewal date the doctor recorded in Admin. */
+export type CvRegistration = { readonly expiresOn: string };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 const OUTCOME_LINE_LIMIT = 6;
@@ -69,6 +78,9 @@ export function buildCv(input: {
   readonly entries: readonly CmeEntry[];
   readonly terms: readonly CvTerm[];
   readonly talks: readonly CvTalk[];
+  readonly attended?: readonly CvAttended[];
+  readonly supervising?: readonly CvSupervising[];
+  readonly registration?: CvRegistration | null;
   readonly statement: string;
   readonly range: CvRange;
   readonly today: string;
@@ -77,6 +89,22 @@ export function buildCv(input: {
   const firstYear = cvFirstYear(input.range, thisYear);
   const inRange = (on: string) => Number(on.slice(0, 4)) >= firstYear && on <= `${thisYear}-12-31`;
   const sections: CvSection[] = [];
+
+  // Only a date still to come: a passed renewal date is something to fix in Admin, not a CV line.
+  const registration = input.registration;
+  if (registration && /^\d{4}-\d{2}-\d{2}$/.test(registration.expiresOn) && registration.expiresOn >= input.today)
+    sections.push({
+      id: "registration",
+      title: "Registration",
+      lines: [
+        {
+          id: "admin:registration",
+          title: "Medical registration",
+          sub: `Renewal date you recorded: ${dayMonthYear(registration.expiresOn)}`,
+          source: "admin",
+        },
+      ],
+    });
 
   const terms = input.terms
     .filter((term) => inRange(term.endsOn) || inRange(term.startsOn))
@@ -98,17 +126,48 @@ export function buildCv(input: {
     .map((talk) => ({ ...talk, on: perthDateOfInstant(talk.startsAt) }))
     .filter((talk) => talk.on <= input.today && inRange(talk.on))
     .sort((a, b) => b.on.localeCompare(a.on));
-  if (talks.length)
-    sections.push({
-      id: "teaching",
-      title: "Teaching you gave",
-      lines: talks.map((talk) => ({
-        id: `talk:${talk.occurrenceId}`,
-        title: talk.title,
-        sub: dayMonthYear(talk.on),
-        source: "teaching" as const,
-      })),
+  const teachingLines: CvLine[] = talks.map((talk) => ({
+    id: `talk:${talk.occurrenceId}`,
+    title: talk.title,
+    sub: dayMonthYear(talk.on),
+    source: "teaching" as const,
+  }));
+  const attendedDays = [
+    ...new Map(
+      (input.attended ?? [])
+        .map((session) => ({ ...session, on: perthDateOfInstant(session.startsAt) }))
+        .filter((session) => session.on <= input.today && inRange(session.on))
+        .map((session) => [session.occurrenceId, session.on] as const),
+    ).values(),
+  ];
+  const attendedYears = [...new Set(attendedDays.map((on) => Number(on.slice(0, 4))))].sort((a, b) => b - a);
+  for (const year of attendedYears) {
+    const count = attendedDays.filter((on) => on.startsWith(`${year}-`)).length;
+    teachingLines.push({
+      id: `attended:${year}`,
+      title: "Teaching sessions attended",
+      sub: `${count} ${count === 1 ? "session" : "sessions"} recorded in ${year}`,
+      source: "teaching",
     });
+  }
+  const supervising = (input.supervising ?? []).filter(
+    (pairing) => pairing.startsOn <= input.today && (inRange(pairing.startsOn) || inRange(pairing.endsOn)),
+  );
+  if (supervising.length) {
+    const years = supervising.flatMap((pairing) => [
+      Math.max(Number(pairing.startsOn.slice(0, 4)), firstYear),
+      Math.min(Number(pairing.endsOn.slice(0, 4)), thisYear),
+    ]);
+    const from = Math.min(...years);
+    const to = Math.max(...years);
+    teachingLines.push({
+      id: "supervising",
+      title: `Supervisor to ${supervising.length} ${supervising.length === 1 ? "registrar" : "registrars"}`,
+      sub: from === to ? String(from) : `${from} to ${to}`,
+      source: "assessments",
+    });
+  }
+  if (teachingLines.length) sections.push({ id: "teaching", title: "Teaching", lines: teachingLines });
 
   const active = input.entries.filter((entry) => !entry.archivedAt && inRange(entry.date) && entry.date <= input.today);
   const years = [...new Set(active.map((entry) => Number(entry.date.slice(0, 4))))].sort((a, b) => b - a);

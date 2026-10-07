@@ -317,8 +317,83 @@ describe("CV", () => {
     expect(hiddenCount).toBe(1);
     expect(shownCount).toBe(4);
     expect(text).not.toContain("Catatonia");
-    expect(text).not.toContain("Teaching you gave");
+    // The Teaching section had one line, so hiding it drops the heading too.
+    expect(text).not.toContain("Teaching");
     expect(text).toContain("- Clozapine audit (Measuring outcomes · 2026)");
     expect(toggleHiddenLine(["talk:o1"], "talk:o1")).toEqual([]);
+  });
+
+  it("adds the registration date recorded in Admin, only while it is still to come", () => {
+    const withDate = buildCv({
+      entries: [],
+      terms: [],
+      talks: [],
+      registration: { expiresOn: "2027-09-30" },
+      statement: "",
+      range: "two",
+      today,
+    });
+    expect(withDate[0]).toEqual({
+      id: "registration",
+      title: "Registration",
+      lines: [
+        {
+          id: "admin:registration",
+          title: "Medical registration",
+          sub: "Renewal date you recorded: 30 Sep 2027",
+          source: "admin",
+        },
+      ],
+    });
+    // Never "current" or "valid": it is the doctor's own recorded date, not a check with the Board.
+    expect(JSON.stringify(withDate)).not.toMatch(/current|valid|verified/i);
+    for (const expiresOn of ["2026-01-01", "not a date"])
+      expect(
+        buildCv({ entries: [], terms: [], talks: [], registration: { expiresOn }, statement: "", range: "two", today }),
+      ).toEqual([]);
+  });
+
+  it("counts teaching attended per year, once per session, and registrars supervised without names", () => {
+    const attended = [
+      { occurrenceId: "a1", startsAt: "2026-03-04T01:00:00.000Z" },
+      { occurrenceId: "a1", startsAt: "2026-03-04T01:00:00.000Z" },
+      { occurrenceId: "a2", startsAt: "2026-05-04T01:00:00.000Z" },
+      { occurrenceId: "a3", startsAt: "2025-05-04T01:00:00.000Z" },
+      { occurrenceId: "a4", startsAt: "2026-12-04T01:00:00.000Z" },
+      { occurrenceId: "a5", startsAt: "2022-05-04T01:00:00.000Z" },
+    ];
+    const supervising = [
+      { pairingId: "p1", startsOn: "2026-02-02", endsOn: "2026-08-01" },
+      { pairingId: "p2", startsOn: "2025-08-04", endsOn: "2026-02-01" },
+      { pairingId: "p3", startsOn: "2027-02-01", endsOn: "2027-08-01" },
+    ];
+    const sections = buildCv({
+      entries: [],
+      terms: [],
+      talks,
+      attended,
+      supervising,
+      statement: "",
+      range: "two",
+      today,
+    });
+    const teaching = sections.find((section) => section.id === "teaching")!;
+    expect(teaching.lines.map((line) => [line.title, line.sub, line.source])).toEqual([
+      ["Catatonia", "30 Sep 2026", "teaching"],
+      ["Teaching sessions attended", "2 sessions recorded in 2026", "teaching"],
+      ["Teaching sessions attended", "1 session recorded in 2025", "teaching"],
+      ["Supervisor to 2 registrars", "2025 to 2026", "assessments"],
+    ]);
+    const thisYear = buildCv({
+      entries: [],
+      terms: [],
+      talks: [],
+      attended,
+      supervising,
+      statement: "",
+      range: "year",
+      today,
+    });
+    expect(thisYear[0]!.lines.map((line) => line.sub)).toEqual(["2 sessions recorded in 2026", "2026"]);
   });
 });

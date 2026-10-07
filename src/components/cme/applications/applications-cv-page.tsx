@@ -3,6 +3,8 @@
 import {
   Award,
   BookOpen,
+  Briefcase,
+  ClipboardCheck,
   Copy,
   Eye,
   EyeOff,
@@ -26,6 +28,7 @@ import {
   QuietNote,
   useUndoNotice,
 } from "@/components/cme/cpd-feature-kit";
+import { WorkButton } from "@/components/mode-kit/work";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -39,26 +42,48 @@ import {
   cvRangeLabels,
   cvSourceLabels,
   toggleHiddenLine,
+  type CvAttended,
   type CvRange,
+  type CvRegistration,
   type CvSource,
+  type CvSupervising,
   type CvTalk,
   type CvTerm,
 } from "@/lib/cme/applications-cv";
+import { selectAdminOwnEntries } from "@/lib/admin/own-entries";
+import { ADMIN_REQUIREMENTS_CATALOGUE, requirementChecklistRows } from "@/lib/admin/requirements";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { useApplicationsStore } from "@/lib/cme/device-record";
 import type { CmeEntry } from "@/lib/cme/types";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
-import { demoTeach } from "@/lib/teaching/depth-demo";
-import type { TeachRead } from "@/lib/teaching/depth-model";
+import { useOnCallEntries } from "@/lib/on-call/entry-store";
+import { demoTeachingLogbook } from "@/lib/teaching/demo-programme";
+import { demoSupervision, demoTeach } from "@/lib/teaching/depth-demo";
+import type { SupervisionPairingView, TeachRead } from "@/lib/teaching/depth-model";
+import type { LogbookRow } from "@/lib/teaching/model";
 import { sampleTermTracker } from "@/lib/teaching/term-tracker";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
 
 const SOURCE_ICON: Record<CvSource, typeof Award> = {
-  cpd: Award,
-  teaching: BookOpen,
+  admin: Briefcase,
   terms: GraduationCap,
+  teaching: BookOpen,
+  assessments: ClipboardCheck,
+  cpd: Award,
   you: PenLine,
 };
+
+/** Where each source's line takes its tint from: the area it comes from. */
+const SOURCE_MODE: Record<CvSource, string> = {
+  admin: "my-work",
+  terms: "teaching",
+  teaching: "teaching",
+  assessments: "teaching",
+  cpd: "cme",
+  you: "cme",
+};
+
+const REGISTRATION_ITEM_ID = "medical-registration-renewal";
 
 function savePdf() {
   const previousTitle = document.title;
@@ -102,10 +127,34 @@ export function ApplicationsCvPage({
   const termSample = useMemo(() => (demoMode ? sampleTermTracker(today) : null), [demoMode, today]);
   const { state: termState } = useTermTrackerStore(termSample);
   const teach = useTeachingResource<TeachRead>(demoMode ? null : "/api/teaching/depth?view=teach");
+  const logbook = useTeachingResource<{ attendance: LogbookRow[] }>(demoMode ? null : "/api/teaching?view=logbook");
+  const supervision = useTeachingResource<{ pairings: SupervisionPairingView[] }>(
+    demoMode ? null : "/api/teaching/depth?view=supervision",
+  );
+  const onCall = useOnCallEntries();
   const talks: CvTalk[] = useMemo(() => {
     if (demoMode) return demoTeach(today, now).taught;
     return teach.data?.taught ?? [];
   }, [demoMode, now, teach.data, today]);
+  const attended: CvAttended[] = useMemo(() => {
+    if (demoMode) return demoTeachingLogbook(now);
+    return logbook.data?.attendance ?? [];
+  }, [demoMode, logbook.data, now]);
+  const supervising: CvSupervising[] = useMemo(() => {
+    const pairings = demoMode ? demoSupervision(today) : (supervision.data?.pairings ?? []);
+    // The pairing's dates only: the registrar's name never reaches the CV.
+    return pairings
+      .filter((pairing) => pairing.access === "supervisor")
+      .map(({ pairingId, startsOn, endsOn }) => ({ pairingId, startsOn, endsOn }));
+  }, [demoMode, supervision.data, today]);
+  const adminFailed = !onCall.loading && Boolean(onCall.loadError);
+  const registration: CvRegistration | null = useMemo(() => {
+    if (onCall.loading || onCall.loadError) return null;
+    const row = requirementChecklistRows(ADMIN_REQUIREMENTS_CATALOGUE, selectAdminOwnEntries(onCall)).find(
+      (candidate) => candidate.item.id === REGISTRATION_ITEM_ID,
+    );
+    return row?.expiresOn ? { expiresOn: row.expiresOn } : null;
+  }, [onCall]);
   const terms: readonly CvTerm[] = useMemo(() => termState?.terms ?? [], [termState]);
   const [range, setRange] = useState<CvRange>("two");
   const [statementOpen, setStatementOpen] = useState(false);
@@ -113,12 +162,36 @@ export function ApplicationsCvPage({
   const statement = store.state?.statement ?? "";
   const hidden = useMemo(() => new Set(store.state?.hiddenCvLines ?? []), [store.state?.hiddenCvLines]);
   const sections = useMemo(
-    () => buildCv({ entries: cpdFailed ? [] : entries, terms, talks, statement, range, today }),
-    [cpdFailed, entries, range, statement, talks, terms, today],
+    () =>
+      buildCv({
+        entries: cpdFailed ? [] : entries,
+        terms,
+        talks,
+        attended,
+        supervising,
+        registration,
+        statement,
+        range,
+        today,
+      }),
+    [attended, cpdFailed, entries, range, registration, statement, supervising, talks, terms, today],
   );
   const lineCount = cvLineCount(sections);
   const plain = cvPlainText(sections, hidden);
-  const teachingState = demoMode ? "ready" : teach.status;
+  // Teaching is one source to the reader: any of its three reads failing says so once.
+  const teachingReads = [teach, logbook, supervision];
+  const teachingState = demoMode
+    ? "ready"
+    : teachingReads.some((read) => read.status === "loading" || read.status === "idle")
+      ? "loading"
+      : teachingReads.some((read) => read.status === "offline")
+        ? "offline"
+        : teachingReads.some((read) => read.status === "error" || read.status === "setup")
+          ? "error"
+          : "ready";
+  const retryTeaching = () => {
+    for (const read of teachingReads) if (read.status !== "ready") read.retry();
+  };
 
   function toggle(id: string, title: string) {
     const wasHidden = hidden.has(id);
@@ -196,7 +269,7 @@ export function ApplicationsCvPage({
         {(Object.keys(cvSourceLabels) as CvSource[]).map((source) => {
           const Icon = SOURCE_ICON[source];
           return (
-            <li key={source} className="inline-flex items-center gap-1.5">
+            <li key={source} className="inline-flex items-center gap-1.5" data-mode-identity={SOURCE_MODE[source]}>
               <Icon aria-hidden="true" strokeWidth={1.75} className="size-3.5 text-[color:var(--mode-identity)]" />
               {cvSourceLabels[source]}
             </li>
@@ -216,10 +289,21 @@ export function ApplicationsCvPage({
           testId="applications-cv-teaching-failed"
           text={
             teachingState === "offline"
-              ? "You are offline, so teaching you gave is not shown."
-              : "Teaching did not load, so teaching you gave is not shown."
+              ? "You are offline, so teaching lines are not shown."
+              : "Teaching did not load, so teaching lines are not shown."
           }
-          onRetry={teach.retry}
+          onRetry={retryTeaching}
+        />
+      ) : null}
+      {adminFailed ? (
+        <LoadProblem
+          testId="applications-cv-admin-failed"
+          text={
+            onCall.loadError === "offline"
+              ? "You are offline, so your registration date from Admin is not shown."
+              : "Admin did not load, so your registration date is not shown."
+          }
+          onRetry={onCall.retry}
         />
       ) : null}
 
@@ -291,6 +375,7 @@ export function ApplicationsCvPage({
                     <span
                       role="img"
                       aria-label={`From ${cvSourceLabels[line.source]}`}
+                      data-mode-identity={SOURCE_MODE[line.source]}
                       className={cn(
                         "cpd-cv-screen-only grid size-6 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
                         isHidden && "opacity-50",
@@ -323,7 +408,7 @@ export function ApplicationsCvPage({
         ))}
         {teachingState === "loading" ? (
           <p role="status" className="cpd-cv-screen-only px-3 py-3 text-sm text-[color:var(--text-muted)]">
-            Loading teaching you gave
+            Loading your teaching
           </p>
         ) : null}
         <div className="cpd-cv-screen-only px-3 pb-3 pt-1">
@@ -355,12 +440,12 @@ export function ApplicationsCvPage({
       <QuietNote icon={Shield}>No patient details. Check it before you send.</QuietNote>
 
       <ActionDock testId="applications-cv-dock">
-        <Button icon={Copy} onClick={copyText} testId="applications-cv-copy">
+        <WorkButton variant="secondary" icon={Copy} onClick={copyText} testId="applications-cv-copy">
           Copy as text
-        </Button>
-        <Button variant="primary" icon={Printer} onClick={savePdf} testId="applications-cv-pdf">
+        </WorkButton>
+        <WorkButton icon={Printer} onClick={savePdf} testId="applications-cv-pdf">
           Save as PDF
-        </Button>
+        </WorkButton>
       </ActionDock>
 
       <StatementSheet

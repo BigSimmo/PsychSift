@@ -12,6 +12,8 @@ import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import {
   applicationTextProblem,
+  daysBetween,
+  lastAskedOn,
   NAME_LIMIT,
   nudgeMessage,
   REFEREE_STATUSES,
@@ -184,6 +186,8 @@ function RefereeSheetBody({
   const canSave = !refereeNameProblem(name) && !roleProblem;
   const unchanged =
     referee && referee.name === name.trim() && referee.role === role.trim() && referee.status === status;
+  const askedOn = referee && referee.status === "asked" ? lastAskedOn(referee) : null;
+  const waitingDays = askedOn ? daysBetween(askedOn, today) : null;
   const nudge =
     referee && referee.status === "asked"
       ? nudgeMessage({ ...referee, name: name.trim() || referee.name }, today)
@@ -298,6 +302,14 @@ function RefereeSheetBody({
           <div className="grid gap-1">
             <p className="text-sm font-medium text-[color:var(--text-heading)]">History</p>
             <ol className={flatCard} data-testid="applications-referee-history">
+              {waitingDays !== null && waitingDays > 0 ? (
+                <li className={cn(flatRow, "justify-between text-sm")} data-testid="applications-referee-waiting">
+                  <span className="text-[color:var(--warning)]">No reply yet</span>
+                  <span className="nums text-[color:var(--text-muted)]">
+                    {waitingDays} {waitingDays === 1 ? "day" : "days"}
+                  </span>
+                </li>
+              ) : null}
               {[...referee.history]
                 .reverse()
                 .slice(0, 8)

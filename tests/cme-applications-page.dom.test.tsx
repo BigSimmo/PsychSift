@@ -152,6 +152,7 @@ describe("Job applications season", () => {
     renderPage();
     expect(screen.getByTestId("applications-quiet").textContent).toContain("Dr Grant has not replied");
     fireEvent.click(screen.getByTestId("applications-nudge-open"));
+    expect(screen.getByTestId("applications-referee-waiting").textContent).toBe("No reply yet5 days");
     await act(async () => {
       fireEvent.click(screen.getByTestId("applications-nudge-copy"));
     });
