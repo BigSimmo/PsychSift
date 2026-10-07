@@ -1082,8 +1082,12 @@ export function MonthView({
                 }
                 end={
                   detail.href ? (
-                    <QuietTextLink href={detail.href} pill ariaLabel={`${detail.actionLabel}: ${detail.title}`}>
-                      {detail.actionLabel}
+                    <QuietTextLink
+                      href={detail.href}
+                      pill
+                      ariaLabel={`${detail.actionLabel ?? "Open"}: ${detail.title}`}
+                    >
+                      {detail.actionLabel ?? "Open"}
                     </QuietTextLink>
                   ) : undefined
                 }

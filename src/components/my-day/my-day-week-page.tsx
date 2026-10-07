@@ -430,6 +430,7 @@ function dayDetail(entry: AgendaEntry): DayDetail {
     subtitle: [entry.state, entry.area, entry.detail, entry.clash].filter(Boolean).join(" · ") || undefined,
     passed: entry.warn,
     href: entry.href,
+    actionLabel: "Open",
   };
 }
 
@@ -501,7 +502,11 @@ export function MyDayWeekDays({
     );
   const at = now.getTime();
   const detailFor = (date: string): DayDetail[] =>
-    entriesOn(date, shifts, sessions, merged, (item) => duePerthDate(item.due)).map(dayDetail);
+    entriesOn(date, shifts, sessions, merged, (item) => {
+      // What is already late waits on today, as in the week.
+      const due = duePerthDate(item.due);
+      return due !== null && due < today ? today : due;
+    }).map(dayDetail);
 
   return (
     <div className="grid min-w-0 gap-2.5">
