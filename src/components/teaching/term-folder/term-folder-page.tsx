@@ -368,7 +368,8 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
       <T5Note icon="shield" className="mt-4">
         {`${FOLDER_PRIVACY_LINE} Built from your check-ins, supervision logs and the term you keep on this phone. Nothing new is saved.`}
       </T5Note>
-      <T5Meta className="mt-1 text-xs">
+      {/* Indented to the note's text, past its shield icon and gap, so the two lines read as one block. */}
+      <T5Meta className="mt-1 pl-5.5 text-xs">
         {`${withUnit(folder.sessions.length, folder.sessions.length === 1 ? "session" : "sessions")} and ${withUnit(folder.supervision.length, folder.supervision.length === 1 ? "supervision entry" : "supervision entries")} go into the CSV.`}
       </T5Meta>
     </>

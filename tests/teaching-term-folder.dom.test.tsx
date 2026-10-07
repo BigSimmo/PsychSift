@@ -11,6 +11,7 @@ vi.mock("@/components/teaching/teaching-nav-header", () => ({ TeachingNavHeader:
 
 import { TermFolderEntryLink } from "@/components/teaching/term-folder/term-folder-entry-link";
 import { TermFolderPage } from "@/components/teaching/term-folder/term-folder-page";
+import { FolderMeter } from "@/components/teaching/term-folder/term-folder-parts";
 import { ToastProvider } from "@/components/ui/toast";
 import { TEACHING_TERM_TRACKER_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import { sampleTermTracker } from "@/lib/teaching/term-tracker";
@@ -243,5 +244,24 @@ describe("term evidence folder page", () => {
     render(<TermFolderPage demoMode termId={null} />);
     const coming = await screen.findByTestId("term-folder-coming");
     expect(within(coming).getByText("Term ends")).toBeInTheDocument();
+  });
+});
+
+describe("term folder meter legend", () => {
+  it("gives a not-started key a visible edge, the same as its segment", () => {
+    render(
+      <FolderMeter
+        parts={[
+          { id: "details", status: "complete" },
+          { id: "epas", status: "not_started" },
+        ]}
+        counts={{ complete: 1, on_track: 0, to_fix: 0, not_updating: 0, not_started: 1 }}
+        label="1 of 2 complete"
+      />,
+    );
+    const segment = screen.getByTestId("term-folder-meter").querySelector('[data-status="not_started"]')!;
+    expect(segment.className).toContain("border-[color:var(--decoration-soft)]");
+    const key = screen.getByText("1 not started").previousElementSibling!;
+    expect(key.className).toContain("border-[color:var(--decoration-soft)]");
   });
 });

@@ -14,10 +14,10 @@ import {
   Row,
   ScreenHeader,
   SectionLabel,
-  SectionNote,
   SmallPrint,
   TextLink,
   WhyNot,
+  labelText,
   secondaryText,
   titleText,
   viewHref,
@@ -139,6 +139,7 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
   const [tab, setTab] = useState<"waiting" | "done">("waiting");
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [sort, setSort] = useState<InboxSort>("oldest");
+  const sortLabelId = useId();
   const [sheet, setSheet] = useState<SheetMode>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
 
@@ -322,20 +323,31 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
             </Inset>
           ) : (
             <>
+              {/* The sort sits with its label above the lists it orders, so the order and its control read together. */}
+              {waiting.length > 1 ? (
+                <div
+                  className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5"
+                  data-testid="assessments-inbox-sort"
+                >
+                  <span id={sortLabelId} className={cn(labelText, "px-1")}>
+                    Sort
+                  </span>
+                  <div className="min-w-0 flex-1 basis-56">
+                    <SegmentedControl
+                      ariaLabelledBy={sortLabelId}
+                      layout="equal"
+                      value={sort}
+                      onChange={setSort}
+                      options={SORTS.map((o) => ({ value: o.value, label: o.label }))}
+                    />
+                  </div>
+                </div>
+              ) : null}
               {section("Overdue", overdue)}
-              {section("Waiting", rest, <SectionNote>{SORTS.find((o) => o.value === sort)!.label} first</SectionNote>)}
+              {section("Waiting", rest)}
               {section("Later", later)}
             </>
           )}
-          {waiting.length > 1 ? (
-            <SegmentedControl
-              label="Sort"
-              layout="equal"
-              value={sort}
-              onChange={setSort}
-              options={SORTS.map((o) => ({ value: o.value, label: o.label }))}
-            />
-          ) : null}
         </>
       ) : done.length === 0 ? (
         <Inset tone="plain" title="Nothing answered yet">

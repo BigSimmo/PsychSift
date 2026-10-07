@@ -51,6 +51,15 @@ describe("consultant inbox", () => {
     expect(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ })).toBeInTheDocument();
   });
 
+  it("puts the sort with its label, above the lists it orders", () => {
+    renderWith(<AssessmentsInbox {...props(windowOpen)} />);
+    const sort = screen.getByTestId("assessments-inbox-sort");
+    expect(within(sort).getByRole("radiogroup", { name: "Sort" })).toBeInTheDocument();
+    const firstList = screen.getAllByRole("list")[0]!;
+    expect(sort.compareDocumentPosition(firstList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(/first$/)).toBeNull();
+  });
+
   it("opens a request in one tap, catches patient details, and sends with Undo", async () => {
     renderWith(<AssessmentsInbox {...props(windowOpen)} />);
     fireEvent.click(screen.getByRole("button", { name: /Dr Mia Chen · EPA 2/ }));
@@ -581,6 +590,15 @@ describe("term overview", () => {
     expect(
       screen.getByRole("button", { name: "Remind Dr Omar Ahmed about Dr Ravi Kaur's mid-term" }),
     ).toBeInTheDocument();
+  });
+
+  it("labels the bell column and says how the chips count differently from the mid-term totals", () => {
+    renderWith(<AssessmentsTermOverview {...props(initialAssessmentsState())} />);
+    expect(screen.getByText("Remind")).toBeInTheDocument();
+    expect(screen.getByText("Mid-term assessments only")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Filter doctors" })).toHaveAccessibleDescription(
+      "Doctors, counted by their most urgent form of any kind",
+    );
   });
 
   it("filters by status and groups by supervisor", () => {

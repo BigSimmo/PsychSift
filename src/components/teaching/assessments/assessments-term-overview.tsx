@@ -219,7 +219,8 @@ function GridHead() {
         <span className="text-center">EPAs</span>
         <span className="text-center">End</span>
       </span>
-      <span className="w-12 shrink-0" />
+      {/* The bell column: a bell to remind, a tick once reminded today. */}
+      <span className="w-12 shrink-0 text-center tracking-normal">Remind</span>
     </div>
   );
 }
@@ -333,6 +334,7 @@ function OverviewHome({ s }: ScreenProps) {
   const recipients = bulkRecipients(rows, r.keys, s.now);
   const toRemind = recipients.filter((x) => !x.remindedToday);
   const remindWhyId = useId();
+  const filterNoteId = useId();
   // Why Remind cannot open, in words beside it, never a silent grey button.
   const remindWhyNot = r.offlineSince
     ? "Can't send while offline. Try again when you are back online."
@@ -364,7 +366,7 @@ function OverviewHome({ s }: ScreenProps) {
         <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">
           {`${rows.length} doctors · ${counts.overdue} overdue`}
         </h2>
-        <span className="text-sm font-medium text-[color:var(--text-heading)]">Mid-term assessments</span>
+        <span className="text-sm font-medium text-[color:var(--text-heading)]">Mid-term assessments only</span>
         <MixBar {...summary} testId="assessments-overview-meter" />
         <Totals {...summary} />
         <KeyValue k="EPAs at the term target" v={`${epasMet}\u00a0of ${rows.length}`} />
@@ -388,7 +390,16 @@ function OverviewHome({ s }: ScreenProps) {
       ) : null}
       {tab === "doctors" ? (
         <>
-          <div role="group" aria-label="Filter doctors" className="flex flex-wrap gap-1.5">
+          {/* The chips count doctors by any form, so they differ from the mid-term totals above. Said, not left to guess. */}
+          <p className={cn(secondaryText, "-mb-1 px-1 text-xs")} id={filterNoteId}>
+            Doctors, counted by their most urgent form of any kind
+          </p>
+          <div
+            role="group"
+            aria-label="Filter doctors"
+            aria-describedby={filterNoteId}
+            className="flex flex-wrap gap-1.5"
+          >
             {OVERVIEW_FILTERS.map((f) => (
               <ChoiceChip key={f.id} pressed={filter === f.id} onPressedChange={() => setFilter(f.id)}>
                 {`${f.label} · ${counts[f.id]}`}
