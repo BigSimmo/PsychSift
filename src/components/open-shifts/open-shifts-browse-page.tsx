@@ -29,6 +29,7 @@ import { rosterCoveredUntil } from "@/lib/open-shifts/roster-check";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 import { OpenShiftsCalendar } from "./open-shifts-calendar";
+import { clearSavedFilters, readSavedFilters, saveFilters } from "./open-shifts-saved-filters";
 import { SignInAction } from "./open-shifts-sign-in";
 import { FlatList, ListSkeleton, Note, ShiftRow, advertHref, formatDayLong, formatDayShort } from "./open-shifts-ui";
 import { LoadFailed, NoTeam, openShiftsStatus } from "./open-shifts-states";
@@ -51,6 +52,22 @@ export function OpenShiftsBrowsePage() {
   const today = perthDateOf(now);
   const { end: windowEnd } = windowOf(today);
   const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_FILTERS);
+  // Remembered choices (spec B2) apply to your own list only, never the signed-out example.
+  const remember = state.status === "ready" && state.sample === null;
+  const [restored, setRestored] = useState(false);
+  if (remember && !restored) {
+    setRestored(true);
+    const saved = readSavedFilters();
+    if (saved) setFilters(saved);
+  }
+  function chooseFilters(next: BrowseFilters) {
+    setFilters(next);
+    if (remember) saveFilters(next);
+  }
+  function resetFilters() {
+    setFilters(DEFAULT_FILTERS);
+    clearSavedFilters();
+  }
   const [sheetOpen, setSheetOpen] = useState(false);
   // Loaded on first open, then kept mounted so closing can hand focus back to the chip that opened it.
   const [sheetLoaded, setSheetLoaded] = useState(false);
@@ -138,7 +155,7 @@ export function OpenShiftsBrowsePage() {
                 type="button"
                 aria-pressed={filters.hideClashes}
                 className={filters.hideClashes ? chipOn : chipOff}
-                onClick={() => setFilters({ ...filters, hideClashes: !filters.hideClashes })}
+                onClick={() => chooseFilters({ ...filters, hideClashes: !filters.hideClashes })}
               >
                 <Shield aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
                 No clashes
@@ -189,7 +206,7 @@ export function OpenShiftsBrowsePage() {
               {filterCount ? (
                 <button
                   type="button"
-                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  onClick={resetFilters}
                   className="inline-flex min-h-12 items-center font-medium text-[color:var(--mode-identity)]"
                 >
                   Reset
@@ -377,7 +394,7 @@ export function OpenShiftsBrowsePage() {
               open={sheetOpen}
               onClose={() => setSheetOpen(false)}
               filters={filters}
-              onChange={setFilters}
+              onChange={chooseFilters}
               summary={summary}
               myGrade={myGrade}
             />
