@@ -18,9 +18,11 @@ import { MONTHS, WEEKDAYS, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/
 
 /*
  * The pieces every Open shifts page shares, so the last screen is drawn from
- * the same parts as the first: flat lists with inset hairlines, one type
- * scale, colour only where it means something (green no problem, amber a
- * roster flag, red an overlap), thin icons, 48px tap areas.
+ * the same parts as the first. Drawn as Roster's work-mode kit (work-mode
+ * redesign, owner request 6 Oct 2026): white hairline cards, the mockup's
+ * time column and flag line, one type scale, colour only where it means
+ * something (amber a roster flag, red an overlap; "No flags" stays neutral),
+ * 48px tap areas.
  */
 
 export const OPEN_SHIFTS_HREF = "/open-shifts";
@@ -139,8 +141,8 @@ export function CheckLine({ check }: { check: RosterCheck }) {
   const { tone, text } = checkSummary(check);
   const Icon = TONE_ICON[tone];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${TONE_CLASS[tone]}`}>
-      <Icon aria-hidden="true" strokeWidth={1.6} className="size-icon-xs shrink-0" />
+    <span className={`inline-flex items-center gap-1.5 text-[0.71875rem] font-semibold ${TONE_CLASS[tone]}`}>
+      <Icon aria-hidden="true" strokeWidth={2} className="size-icon-xs shrink-0" />
       {text}
     </span>
   );
@@ -153,10 +155,10 @@ export function ToneIcon({ tone }: { tone: CheckTone }) {
 
 // ------------------------------------------------------------------ rows
 
-/** A flat list: rows sit on the page with inset hairlines, no card. */
+/** A list on one white hairline card, rows divided by inset hairlines. */
 export function FlatList({ children, label }: { children: ReactNode; label?: string }) {
   return (
-    <ul className="flex flex-col" aria-label={label}>
+    <ul className="work-card m-0 flex list-none flex-col p-0" aria-label={label}>
       {children}
     </ul>
   );
@@ -184,23 +186,27 @@ export function ShiftRow({
     <li className={modeInsetHairline}>
       <Link
         href={href}
-        className={`flex min-h-13 items-start gap-4 px-3 py-3.5 no-underline ${modePressable} focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus-ring,var(--command))]`}
+        className={`flex min-h-12 items-start gap-2.5 px-3 py-2.5 no-underline ${modePressable} focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--mode-identity)]`}
       >
-        <span className="flex w-12 shrink-0 flex-col text-xs nums text-[color:var(--text-muted)]">
-          <span className="font-semibold text-[color:var(--text-heading)]">{perthTimeOf(listing.startsAt)}</span>
-          <span>{perthTimeOf(listing.endsAt)}</span>
-          <span>{formatHours(hours)}</span>
+        <span className="nums flex w-11 shrink-0 flex-col text-[0.6875rem] font-semibold leading-tight text-[color:var(--text-muted)]">
+          <span className="text-[0.8125rem] font-bold text-[color:var(--text-heading)]">
+            {perthTimeOf(listing.startsAt)}
+          </span>
+          <span className="mt-0.5">{perthTimeOf(listing.endsAt)}</span>
+          <span className="mt-0.5">{formatHours(hours)}</span>
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-base-minus font-medium text-[color:var(--text-heading)]">{shiftTitle(listing)}</span>
-          <span className="text-sm text-[color:var(--text-muted)]">{shiftPlace(listing)}</span>
-          {meta ? <span className="text-sm text-[color:var(--text-muted)]">{meta}</span> : null}
-          {status ?? (check ? <span className="mt-1">{<CheckLine check={check} />}</span> : null)}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-[0.8125rem] font-bold leading-snug text-[color:var(--text-heading)]">
+            {shiftTitle(listing)}
+          </span>
+          <span className="text-[0.71875rem] text-[color:var(--text-muted)]">{shiftPlace(listing)}</span>
+          {meta ? <span className="text-[0.71875rem] text-[color:var(--text-muted)]">{meta}</span> : null}
+          {status ?? (check ? <span className="mt-1.5">{<CheckLine check={check} />}</span> : null)}
         </span>
         <ChevronRight
           aria-hidden="true"
-          strokeWidth={1.6}
-          className="mt-3 size-icon-md shrink-0 text-[color:var(--decoration-soft)]"
+          strokeWidth={2}
+          className="mt-1 size-3.5 shrink-0 text-[color:var(--decoration-soft)]"
         />
       </Link>
     </li>
@@ -212,10 +218,12 @@ export function SectionHeading({ children, count, id }: { children: ReactNode; c
   return (
     <h2
       id={id}
-      className="mt-6 flex items-baseline justify-between px-3 pb-1 text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]"
+      className="mt-3 flex items-baseline justify-between px-1 pb-1.5 text-[0.625rem] font-bold uppercase leading-4 tracking-[0.1em] text-[color:var(--text-muted)]"
     >
       <span>{children}</span>
-      {count !== undefined ? <span className="nums font-medium">{count}</span> : null}
+      {count !== undefined ? (
+        <span className="nums text-[0.71875rem] font-semibold normal-case tracking-normal">{count}</span>
+      ) : null}
     </h2>
   );
 }
@@ -232,7 +240,7 @@ export function Note({
 }) {
   return (
     <div
-      className={`flex items-start gap-2.5 px-3 py-3 text-sm ${tone === "warn" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]"}`}
+      className={`flex items-start gap-2.5 px-1 py-2 text-[0.75rem] font-medium leading-snug ${tone === "warn" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]"}`}
     >
       <span className="mt-0.5 shrink-0">{icon}</span>
       <div className="min-w-0">{children}</div>
@@ -257,11 +265,11 @@ export function SubHeader({
       <Link
         href={backHref}
         aria-label={`Back to ${backLabel}`}
-        className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-md text-[color:var(--mode-identity)] focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
+        className="work-glass-button inline-flex min-h-12 min-w-12 items-center justify-center rounded-full text-[color:var(--text-heading)] focus-visible:outline-2 focus-visible:outline-[color:var(--mode-identity)]"
       >
         <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-lg" />
       </Link>
-      <h1 className="min-w-0 flex-1 text-base font-semibold text-[color:var(--text-heading)]">{title}</h1>
+      <h1 className="min-w-0 flex-1 text-lg font-bold tracking-tight text-[color:var(--text-heading)]">{title}</h1>
       {action}
     </div>
   );
@@ -294,16 +302,16 @@ export function Switch({
     >
       <span
         aria-hidden="true"
-        className={`relative inline-block h-7 w-12 rounded-full border transition-colors duration-[var(--duration-instant)] forced-colors:border-[CanvasText] forced-colors:[forced-color-adjust:none] ${
+        className={`relative inline-block h-7 w-12 rounded-full border transition-colors duration-[var(--duration-instant)] motion-reduce:transition-none forced-colors:border-[CanvasText] forced-colors:[forced-color-adjust:none] ${
           checked
-            ? "border-[color:var(--command)] bg-[color:var(--command)] forced-colors:bg-[Highlight]"
+            ? "border-[color:var(--mode-identity)] bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight]"
             : "border-[color:var(--border-strong)] bg-[color:var(--surface-inset)] forced-colors:bg-[Canvas]"
         } group-disabled:border-[color:var(--border)] group-disabled:bg-[color:var(--surface-subtle)] forced-colors:group-disabled:border-[GrayText]`}
       >
         <span
           className={`absolute top-0.5 left-0.5 size-5.5 rounded-full shadow-[var(--e1)] transition-transform duration-[var(--duration-instant)] motion-reduce:transition-none group-disabled:bg-[color:var(--disabled)] group-disabled:shadow-none forced-colors:group-disabled:bg-[GrayText] ${
             checked
-              ? "translate-x-5 bg-[color:var(--command-contrast)] forced-colors:bg-[HighlightText]"
+              ? "translate-x-5 bg-[color:var(--mode-identity-contrast)] forced-colors:bg-[HighlightText]"
               : "bg-[color:var(--surface-raised)] forced-colors:bg-[CanvasText]"
           }`}
         />
@@ -315,9 +323,9 @@ export function Switch({
 /** The one filled action at the foot of a screen, with an optional grey line under it. */
 export function FootAction({ children, note }: { children: ReactNode; note?: ReactNode }) {
   return (
-    <div className="mt-6 flex flex-col gap-2 px-3 pb-6">
+    <div className="mt-4 flex flex-col gap-2 px-1 pb-6">
       {children}
-      {note ? <p className="text-center text-sm text-[color:var(--text-muted)]">{note}</p> : null}
+      {note ? <p className="text-center text-[0.71875rem] font-medium text-[color:var(--text-muted)]">{note}</p> : null}
     </div>
   );
 }
@@ -325,11 +333,11 @@ export function FootAction({ children, note }: { children: ReactNode; note?: Rea
 /** Loading rows: the shape of the list, never "nothing open". */
 export function ListSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <div role="status" aria-label="Loading open shifts" className="flex flex-col gap-3 px-3 py-4">
+    <div role="status" aria-label="Loading open shifts" className="flex flex-col gap-2 py-2">
       {Array.from({ length: rows }, (_, index) => (
         <div
           key={index}
-          className="h-14 animate-pulse rounded-md bg-[color:var(--surface-inset)] motion-reduce:animate-none"
+          className="h-14 animate-pulse rounded-[var(--work-radius-card,14px)] bg-[color:var(--surface-wash)] motion-reduce:animate-none"
         />
       ))}
     </div>
