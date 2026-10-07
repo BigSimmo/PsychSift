@@ -1,5 +1,7 @@
 "use client";
 
+import { T5Button, t5ButtonFace } from "@/components/teaching/t5-kit";
+
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -12,7 +14,6 @@ import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
-import { Button, buttonFaceClass } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { ApiClientError } from "@/lib/api-client-error";
@@ -141,7 +142,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
 
   const opened = state.opened;
   const todayLink = (
-    <Link href="/teaching" className={cn(buttonFaceClass({ variant: "ghost", block: true }), "no-underline")}>
+    <Link href="/teaching" {...t5ButtonFace({ variant: "ghost", block: true })}>
       Go to Today
     </Link>
   );
@@ -177,7 +178,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
                 You can log this session to CPD once it has ended at {perthTime(sessionEndsAt)}.
               </p>
             ) : null}
-            <Button
+            <T5Button
               variant="primary"
               block
               disabled={!hasEnded}
@@ -185,10 +186,10 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               data-testid="teaching-scan-cpd-bridge-open"
             >
               {hasEnded ? "Log to CPD" : "Available once session ends"}
-            </Button>
+            </T5Button>
             <Link
               href={`/teaching/session/${state.mark.occurrenceId}`}
-              className={cn(buttonFaceClass({ variant: "secondary", block: true }), "no-underline")}
+              {...t5ButtonFace({ variant: "secondary", block: true })}
             >
               Open the session
             </Link>
@@ -211,7 +212,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               <ModeNotice>
                 Check your email. Open the link on this phone, in this browser, within 10 minutes.
               </ModeNotice>
-              <Button
+              <T5Button
                 variant="secondary"
                 block
                 busy={sending}
@@ -219,10 +220,10 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
                 onClick={() => void sendLink(opened)}
               >
                 Send again
-              </Button>
-              <Button variant="ghost" block onClick={() => setState({ kind: "sign-in", opened, sent: false })}>
+              </T5Button>
+              <T5Button variant="ghost" block onClick={() => setState({ kind: "sign-in", opened, sent: false })}>
                 Use a different email
-              </Button>
+              </T5Button>
               {emailError ? (
                 <div role="alert">
                   <ModeNotice tone="warning">{emailError}</ModeNotice>
@@ -248,9 +249,9 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
                 enterKeyHint="send"
                 error={emailError ?? undefined}
               />
-              <Button type="submit" variant="primary" block busy={sending} busyLabel="Sending">
+              <T5Button type="submit" variant="primary" block busy={sending} busyLabel="Sending">
                 Email me a sign-in link
-              </Button>
+              </T5Button>
             </form>
           )
         ) : null}
@@ -261,9 +262,9 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               <ModeNotice tone="warning">{state.message}</ModeNotice>
             </div>
             {state.retry ? (
-              <Button variant="secondary" block onClick={() => retry(state.retry ?? "complete", opened)}>
+              <T5Button variant="secondary" block onClick={() => retry(state.retry ?? "complete", opened)}>
                 Try again
-              </Button>
+              </T5Button>
             ) : null}
             {todayLink}
           </div>

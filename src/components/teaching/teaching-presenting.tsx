@@ -4,9 +4,10 @@ import { Users } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
+import { WorkButton, WorkRing } from "@/components/mode-kit/work";
+import { ActionStrip } from "@/components/teaching/teaching-actions";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import {
-  T5Actions,
   T5BigFigure,
   T5Check,
   T5Date,
@@ -25,7 +26,6 @@ import {
   T5Panel,
   T5Row,
   T5Section,
-  T5Steps,
 } from "@/components/teaching/t5-kit";
 import { dayParts, perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
@@ -46,7 +46,7 @@ import {
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
-import { Button } from "@/components/ui/button";
+import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { useAuthSession } from "@/lib/supabase/client";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
@@ -70,7 +70,7 @@ const AFTER_SHOWN = 3;
  * past talks landed, and your supervision hours. It replaces Teach and the Supervision landing; the
  * full Supervision page (logging, confirming, corrections) stays one tap away.
  *
- * Feedback is counts only: pace and usefulness, shown 7 days after a talk once 3 or more people have
+ * Feedback is counts only: pace and usefulness, shown 7 days after a talk once 5 or more people have
  * answered (the server's rule in `feedback.totals`), never a name or an individual answer.
  */
 
@@ -216,6 +216,7 @@ function NextTalk({
   const [local, setLocal] = useState<Readiness>({ items: talk.items, deidConfirmedAt: talk.deidConfirmedAt });
   const [pending, setPending] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [deidOpen, setDeidOpen] = useState(false);
   // `localRef` is what the reader sees now; `confirmed` is the server's last answer; `queue` sends one
   // write at a time, in the order the reader made them (the same queue Teach used).
   const localRef = useRef(local);
@@ -265,64 +266,158 @@ function NextTalk({
 
   const ready = readinessItems.filter((item) => local.items.includes(item)).length;
   const action = readinessAction(local);
+  const confirmDeid = () =>
+    save({ action: "readiness.deid.confirm" }, (current) => ({
+      ...current,
+      deidConfirmedAt: current.deidConfirmedAt ?? new Date().toISOString(),
+    }));
+  // Work-mode redesign, owner request 6 Oct 2026: the talk is the page's hero (with how ready it is as
+  // a ring), and the checklist is its own card under it. The patient-details check opens a short
+  // sheet of four checks, so four ticks never read as ready on their own.
   return (
-    <T5Panel label={isNext ? "Your next talk" : "Your talk"} testId="teaching-next-talk" id="teaching-next-talk-panel">
-      <T5Kicker>{talkKicker(talk, now, today, isNext)}</T5Kicker>
-      <T5Heading>{talk.title}</T5Heading>
-      <T5Meta>{talkMeta(talk)}</T5Meta>
-      <T5Pair label="Ready to present" value={readinessCount(local)} />
-      <T5Steps
-        total={readinessItems.length}
-        filled={ready}
-        label={`${readinessCount(local)}${local.deidConfirmedAt ? " ready" : ""}`}
-      />
-      <T5List className="my-0.5" testId="teaching-readiness">
-        {readinessItems.map((item) => (
-          <T5Check
-            key={item}
-            label={presentingItemLabels[item]}
-            meta={talk.itemNotes?.[item]}
-            checked={local.items.includes(item)}
-            onChange={(done) => setItem(item, done)}
+    <div id="teaching-next-talk-panel" data-testid="teaching-next-talk" className="grid scroll-mt-32 gap-y-2.25">
+      <T5Panel hero label={isNext ? "Your next talk" : "Your talk"}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="grid min-w-0 gap-1">
+            <T5Kicker>{talkKicker(talk, now, today, isNext)}</T5Kicker>
+            <T5Heading>{talk.title}</T5Heading>
+            <T5Meta>{talkMeta(talk)}</T5Meta>
+          </div>
+          <WorkRing
+            value={`${ready}/${readinessItems.length}`}
+            label="ready"
+            fraction={ready / readinessItems.length}
+            accessibleLabel={`${readinessCount(local)}${local.deidConfirmedAt ? " ready" : ""}`}
           />
-        ))}
-      </T5List>
-      <T5Actions>
+        </div>
+        <ActionStrip
+          surface="hero"
+          className="mt-1"
+          actions={[
+            // The slides link sits with the talk's materials on its session page.
+            ...(local.items.includes("slides_link")
+              ? [{ id: "slides", label: "Open slides", href: `/teaching/session/${talk.occurrenceId}` }]
+              : []),
+            {
+              id: "code",
+              label: "Check-in code",
+              href: `/teaching/session/${talk.occurrenceId}/check-in`,
+              emphasis: local.items.includes("slides_link") ? ("secondary" as const) : ("primary" as const),
+            },
+          ]}
+        />
+      </T5Panel>
+      <T5Section label="Ready to present" right={readinessCount(local)}>
+        <T5List testId="teaching-readiness">
+          {readinessItems.map((item) => (
+            <T5Check
+              key={item}
+              label={presentingItemLabels[item]}
+              meta={talk.itemNotes?.[item]}
+              checked={local.items.includes(item)}
+              onChange={(done) => setItem(item, done)}
+            />
+          ))}
+        </T5List>
         {action ? (
-          <Button
-            variant="primary"
-            onClick={() =>
-              action.kind === "deid"
-                ? save({ action: "readiness.deid.confirm" }, (current) => ({
-                    ...current,
-                    deidConfirmedAt: current.deidConfirmedAt ?? new Date().toISOString(),
-                  }))
-                : setItem(action.item, true)
-            }
+          <WorkButton
+            size="wide"
+            onClick={() => (action.kind === "deid" ? setDeidOpen(true) : setItem(action.item, true))}
           >
             {action.label}
-          </Button>
+          </WorkButton>
         ) : null}
-        {/* The slides link sits with the talk's materials on its session page. */}
-        {local.items.includes("slides_link") ? (
-          <T5Link href={`/teaching/session/${talk.occurrenceId}`}>Open slides</T5Link>
-        ) : null}
-        <T5Link href={`/teaching/session/${talk.occurrenceId}/check-in`}>Check-in code</T5Link>
-      </T5Actions>
-      <T5Note icon="shield" className="mt-0.5">
-        {local.deidConfirmedAt
-          ? deidConfirmedNote(local.deidConfirmedAt)
-          : "Prepare your aims and reading list outside PsychSift. Do not upload slides, patient details or Teams passcodes."}
-      </T5Note>
-      <p role="status" className={cn("text-sm text-[color:var(--text-muted)]", pending === 0 && "sr-only")}>
-        {pending > 0 ? "Saving…" : ""}
-      </p>
-      {error ? (
-        <p role="alert" className="text-sm font-medium text-[color:var(--text-heading)]">
-          {error}
+        <T5Note icon="shield">
+          {local.deidConfirmedAt
+            ? deidConfirmedNote(local.deidConfirmedAt)
+            : "Prepare your aims and reading list outside PsychSift. Do not upload slides, patient details or Teams passcodes."}
+        </T5Note>
+        <p role="status" className={cn("text-xs text-[color:var(--text-muted)]", pending === 0 && "sr-only")}>
+          {pending > 0 ? "Saving…" : ""}
         </p>
-      ) : null}
-    </T5Panel>
+        {error ? (
+          <p role="alert" className="text-xs font-semibold text-[color:var(--danger-text)]">
+            {error}
+          </p>
+        ) : null}
+      </T5Section>
+      <DeidSheet
+        open={deidOpen}
+        onClose={() => setDeidOpen(false)}
+        title={talk.title}
+        onConfirm={() => {
+          setDeidOpen(false);
+          confirmDeid();
+        }}
+      />
+    </div>
+  );
+}
+
+const DEID_CHECKS = [
+  "Cases changed so no one can be identified",
+  "No names, dates, record numbers or photos",
+  "No ward, bed or rare detail that points to a person",
+  "No Teams passcodes on slides",
+] as const;
+
+/** The patient-details check before a talk: four ticks, then one confirm. Nothing here is uploaded. */
+function DeidSheet({
+  open,
+  onClose,
+  title,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  onConfirm: () => void;
+}) {
+  const [ticked, setTicked] = useState<ReadonlySet<number>>(new Set());
+  const all = ticked.size === DEID_CHECKS.length;
+  return (
+    <Sheet
+      open={open}
+      onClose={() => {
+        setTicked(new Set());
+        onClose();
+      }}
+      title="No patient details"
+      description={title}
+    >
+      <div data-mode-identity="teaching" className="grid gap-3 pb-2">
+        <T5List testId="teaching-deid-checks">
+          {DEID_CHECKS.map((label, index) => (
+            <T5Check
+              key={label}
+              label={label}
+              checked={ticked.has(index)}
+              onChange={(done) =>
+                setTicked((previous) => {
+                  const next = new Set(previous);
+                  if (done) next.add(index);
+                  else next.delete(index);
+                  return next;
+                })
+              }
+            />
+          ))}
+        </T5List>
+        <T5Note tone="notice" icon="shield">
+          Slides stay outside PsychSift. Only the link is kept.
+        </T5Note>
+        <WorkButton
+          size="wide"
+          disabled={!all}
+          onClick={() => {
+            setTicked(new Set());
+            onConfirm();
+          }}
+        >
+          I have checked my material
+        </WorkButton>
+      </div>
+    </Sheet>
   );
 }
 

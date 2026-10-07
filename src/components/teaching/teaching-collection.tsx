@@ -1,5 +1,7 @@
 "use client";
 
+import { T5Button } from "@/components/teaching/t5-kit";
+
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -27,7 +29,6 @@ import { useDelayedPost } from "@/components/teaching/use-delayed-post";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
-import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import type { CollectionRead, ResourceRow } from "@/lib/teaching/model";
@@ -185,12 +186,12 @@ export function TeachingCollection({
         )}
         {canEdit && data.collection ? (
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="primary" block onClick={() => setAdding(true)}>
+            <T5Button variant="primary" block onClick={() => setAdding(true)}>
               Add a resource
-            </Button>
-            <Button variant="secondary" block aria-pressed={removing} onClick={() => setRemoving((on) => !on)}>
+            </T5Button>
+            <T5Button variant="secondary" block aria-pressed={removing} onClick={() => setRemoving((on) => !on)}>
               {removing ? "Done" : "Remove items"}
-            </Button>
+            </T5Button>
           </div>
         ) : null}
         {adding && owner && data.collection ? (
@@ -220,7 +221,7 @@ export function TeachingCollection({
           className={cn(
             modeTapArea,
             focusRing,
-            "justify-self-start gap-1 pr-2 text-sm font-medium text-[color:var(--primary)] no-underline",
+            "justify-self-start gap-1 pr-2 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
           )}
         >
           <ChevronLeft aria-hidden="true" className="size-icon-md" />

@@ -238,7 +238,10 @@ describe("Today", () => {
     );
     render(<TeachingToday demoMode={false} />);
     const hero = await screen.findByTestId("teaching-hero");
-    expect(hero).toHaveTextContent("Seminar room 1 · Hospital A psychiatry · check-in opens 12:15");
+    // Work-mode redesign, owner request 6 Oct 2026: the hero's meta line is the time, place and
+    // service, and when check-in opens is its own note under it.
+    expect(hero).toHaveTextContent("12:30 to 13:30 · Seminar room 1 · Hospital A psychiatry");
+    expect(hero).toHaveTextContent("Check-in opens 12:15 · also online");
     expect(await within(hero).findByRole("link", { name: /^Join on Teams/ })).toHaveAttribute("href", JOIN);
     expect(rawText(screen.getByRole("link", { name: /Rest of this week/ }))).toContain(`1${NB}more session`);
     expect(screen.queryByTestId(/^teaching-row-/)).toBeNull();

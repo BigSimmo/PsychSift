@@ -16,6 +16,7 @@ vi.mock("@/components/on-call/on-call-entry-editor", () => ({
 
 import { TeachingPresenting } from "@/components/teaching/teaching-presenting";
 import { TeachingThisWeek } from "@/components/teaching/teaching-this-week";
+import { TeachingToday } from "@/components/teaching/teaching-today";
 
 import {
   DURING,
@@ -51,13 +52,15 @@ describe("This week", () => {
       if (url.startsWith("/api/teaching?view=week")) return json(200, week());
       return sideReads(url);
     });
-    render(<TeachingThisWeek demoMode={false} />);
+    // Work-mode redesign, owner request 6 Oct 2026: the session on now moved from Week to Today, whose
+    // hero names both ways in ("Check in with code", "Check in without code").
+    render(<TeachingToday demoMode={false} />);
     const hero = await screen.findByTestId("teaching-hero");
-    expect(within(hero).getByRole("link", { name: "Type the code instead" })).toHaveAttribute(
+    expect(within(hero).getByRole("link", { name: "Check in with code" })).toHaveAttribute(
       "href",
       `/teaching/session/${OCC}?check-in=scan`,
     );
-    fireEvent.click(within(hero).getByRole("button", { name: "Check in" }));
+    fireEvent.click(within(hero).getByRole("button", { name: "Check in without code" }));
     await waitFor(() => expect(posts).toEqual([{ action: "attendance.self", occurrenceId: OCC }]));
     expect(await within(hero).findByRole("status")).toHaveTextContent("Checked in.");
   });
@@ -89,9 +92,10 @@ describe("This week", () => {
   it("offers only the code in the 15 minutes before the start, when the server refuses one tap", async () => {
     vi.setSystemTime(new Date("2026-09-30T04:20:00Z"));
     serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? json(200, week()) : sideReads(url)));
-    render(<TeachingThisWeek demoMode={false} />);
+    // Work-mode redesign, owner request 6 Oct 2026: the session about to start is Today's hero now.
+    render(<TeachingToday demoMode={false} />);
     const hero = await screen.findByTestId("teaching-hero");
-    expect(within(hero).getByRole("link", { name: "Check in with the code" })).toHaveAttribute(
+    expect(within(hero).getByRole("link", { name: "Check in with code" })).toHaveAttribute(
       "href",
       `/teaching/session/${OCC}?check-in=scan`,
     );
@@ -177,6 +181,16 @@ describe("Presenting", () => {
     const panel = await screen.findByTestId("teaching-next-talk");
     expect(panel).toHaveTextContent(/Ready to present\s*4\sof 4 · patient check open/);
     fireEvent.click(within(panel).getByRole("button", { name: "I have checked: no patient details" }));
+    // Work-mode redesign, owner request 6 Oct 2026: the check opens a sheet of four ticks, and only
+    // ticking all four enables the confirm. Nothing is sent until then.
+    const sheet = await screen.findByRole("dialog", { name: "No patient details" });
+    const confirm = within(sheet).getByRole("button", { name: "I have checked my material" });
+    expect(confirm).toBeDisabled();
+    const checks = within(sheet).getAllByRole("checkbox");
+    expect(checks).toHaveLength(4);
+    for (const check of checks) fireEvent.click(check);
+    expect(posts).toEqual([]);
+    fireEvent.click(confirm);
     await waitFor(() => expect(posts).toEqual([{ action: "readiness.deid.confirm", occurrenceId: OCC }]));
     await waitFor(() => expect(panel).not.toHaveTextContent("patient check open"));
     expect(panel).toHaveTextContent(/No patient details in the slides\. You confirmed this on \d+\s\w{3}\./);

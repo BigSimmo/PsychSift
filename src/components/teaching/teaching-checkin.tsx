@@ -1,5 +1,7 @@
 "use client";
 
+import { T5Button, t5ButtonFace } from "@/components/teaching/t5-kit";
+
 import { Copy, ExternalLink, MonitorUp, MonitorX, Share2 } from "lucide-react";
 import { useState } from "react";
 
@@ -23,7 +25,6 @@ import {
 } from "@/components/teaching/use-checkin-code";
 import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useWakeLock } from "@/components/teaching/use-wake-lock";
-import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { checkinScanPath } from "@/lib/teaching/checkin-token";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
@@ -208,7 +209,7 @@ function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number
       </section>
       {counts ? <AttendanceTileRow label="Attendance so far" tiles={attendanceTiles(counts, expected)} /> : null}
       <section aria-label="Shared screen" className="grid gap-2" data-testid="teaching-checkin-shared">
-        <Button
+        <T5Button
           variant="secondary"
           block
           icon={shared ? MonitorX : MonitorUp}
@@ -218,7 +219,7 @@ function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number
           testId="teaching-checkin-share"
         >
           {shared ? "Stop sharing" : "Show on a shared screen"}
-        </Button>
+        </T5Button>
         <p className={cn("text-sm", textMuted)}>
           {shared
             ? `Link works until ${perthTime(shared.expiresAt)}. Stopping makes it stop working.`
@@ -230,20 +231,20 @@ function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number
               href={shared.path}
               target="_blank"
               rel="noreferrer"
-              className={cn(buttonFaceClass({ variant: "secondary", block: true }), "no-underline")}
+              {...t5ButtonFace({ variant: "secondary", block: true })}
             >
-              <ExternalLink aria-hidden="true" className="size-icon-md shrink-0" />
+              <ExternalLink aria-hidden="true" />
               <span>Open the shared screen</span>
               <span className="sr-only"> (opens in a new tab)</span>
             </a>
             <div className="grid gap-2 @min-[17rem]:auto-cols-fr @min-[17rem]:grid-flow-col">
-              <Button variant="ghost" block icon={Copy} onClick={() => void copyLink()}>
+              <T5Button variant="ghost" block icon={Copy} onClick={() => void copyLink()}>
                 Copy link
-              </Button>
+              </T5Button>
               {canShare ? (
-                <Button variant="ghost" block icon={Share2} onClick={() => void shareLink()}>
+                <T5Button variant="ghost" block icon={Share2} onClick={() => void shareLink()}>
                   Share…
-                </Button>
+                </T5Button>
               ) : null}
             </div>
             {copied === "copied" ? (
