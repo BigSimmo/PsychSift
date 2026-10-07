@@ -1,0 +1,45 @@
+name: Preview deploy smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: "Preview deployment URL (Vercel, Netlify, or staging preview)"
+        required: true
+        type: string
+
+concurrency:
+  group: preview-smoke-${{ github.event.inputs.preview_url || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  preview-smoke:
+    name: Preview deploy smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup UI e2e environment
+        uses: ./.github/actions/setup-ui-e2e
+
+      - name: Run user journeys against preview deployment
+        env:
+          PREVIEW_URL: ${{ github.event.inputs.preview_url }}
+        run: npm run test:e2e:preview -- --url "${{ github.event.inputs.preview_url }}"
+
+      - name: Upload preview smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: preview-smoke-diagnostics-${{ github.run_id }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore

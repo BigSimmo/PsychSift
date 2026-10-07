@@ -5,10 +5,13 @@ import { appName, localProjectId, stableProjectPort } from "../src/lib/local-ser
 const projectRoot = path.resolve(__dirname, "..");
 const ensureScript = path.join(projectRoot, "scripts", "ensure-local-server.mjs");
 const localUrlPattern = /^http:\/\/(?:localhost|127\.0\.0\.1):\d+$/;
+const previewUrlPattern = /^https:\/\/[a-zA-Z0-9-._]+(?::\d+)?$/;
 const identityScript = `
 const http = require("node:http");
-const url = process.argv[1] + "/api/local-project-id";
-const request = http.get(url, { timeout: 15000 }, (response) => {
+const https = require("node:https");
+const rawUrl = process.argv[1] + "/api/local-project-id";
+const client = rawUrl.startsWith("https:") ? https : http;
+const request = client.get(rawUrl, { timeout: 15000 }, (response) => {
   let body = "";
   response.setEncoding("utf8");
   response.on("data", (chunk) => { body += chunk; });
@@ -82,12 +85,19 @@ function findExistingLocalProjectUrl() {
 }
 
 export function getPlaywrightBaseUrl({ allowEnsure = true }: { allowEnsure?: boolean } = {}) {
-  const configuredBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
+  const previewEnvUrl = process.env.PLAYWRIGHT_PREVIEW_URL || process.env.PREVIEW_URL || process.env.VERCEL_URL;
+  const configuredBaseUrl =
+    process.env.PLAYWRIGHT_BASE_URL ||
+    (previewEnvUrl ? (previewEnvUrl.startsWith("http") ? previewEnvUrl : `https://${previewEnvUrl}`) : undefined);
   if (configuredBaseUrl) {
-    if (!localUrlPattern.test(configuredBaseUrl)) {
+    const isLocal = localUrlPattern.test(configuredBaseUrl);
+    const isPreview = previewUrlPattern.test(configuredBaseUrl) || process.env.ALLOW_PREVIEW_URL === "true";
+    if (!isLocal && !isPreview) {
       throw new Error(`PLAYWRIGHT_BASE_URL must be a localhost URL, received: ${configuredBaseUrl}`);
     }
-    verifyLocalProjectIdentity(configuredBaseUrl);
+    if (isLocal) {
+      verifyLocalProjectIdentity(configuredBaseUrl);
+    }
     return configuredBaseUrl;
   }
 
