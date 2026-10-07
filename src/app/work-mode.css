@@ -681,6 +681,26 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   }
 }
 
+/* The area-only pill on a phone (Josh, 7 Oct 2026, "No badge on phones"):
+   the badge is hidden there, so the name and chevron take its place, with the
+   padding evened up now no round badge sits at the left edge. "Assessments"
+   fits whole at 320px. */
+@media (max-width: 639px) {
+  .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] {
+    grid-template-columns: minmax(0, max-content) auto;
+    gap: calc(var(--spacing) * 1.25);
+    padding: 0 calc(var(--spacing) * 2.5) 0 calc(var(--spacing) * 3.5);
+  }
+
+  /* Large text: the chevron is hidden too, so the name has the pill alone. */
+  @container work-bar (max-width: 17rem) {
+    .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] {
+      grid-template-columns: minmax(0, 1fr);
+      padding: calc(var(--spacing) * 0.5) calc(var(--spacing) * 2.5);
+    }
+  }
+}
+
 /* ---------------------------------------------------------- More sheet */
 
 .work-more-sheet.work-more-sheet {
