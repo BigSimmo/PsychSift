@@ -32,6 +32,7 @@ import type { WorkAreaId } from "@/lib/work-frame/areas";
  * they just saved must never be hidden behind made-up ones.
  */
 
+export type ExampleDataSnapshot = Stored;
 export type ExampleDataMode = "auto" | "on" | "off";
 export type AreaDataState = "unknown" | "empty" | "has-data";
 
@@ -178,6 +179,20 @@ export function setExampleDataOn(on: boolean): void {
   write({ ...current, choice: on ? "on" : "off", addedWhileOn: on ? [] : current.addedWhileOn });
 }
 
+/** The stored record as it is now, for an Undo that must put back exactly this (including "no choice yet"). */
+export function snapshotExampleData(): Stored {
+  return read();
+}
+
+/** Put back a record taken with `snapshotExampleData`, so Undo after Turn off returns auto mode to auto. */
+export function restoreExampleData(snapshot: Stored): void {
+  write(snapshot);
+  if (snapshot.choice === null) {
+    // Auto mode's cookie is synced by the banner; clear the explicit one Turn off wrote.
+    setCookie("");
+  }
+}
+
 /**
  * Call after a REAL record is saved in an area. While the switch is on, that
  * area goes back to the user's own data, and in auto mode the area is
@@ -303,6 +318,7 @@ export function resetExampleDataForTests(): void {
   cookieValue = null;
   reports.clear();
   reportsVersion += 1;
+  notify();
 }
 
 /** Re-renders when an area's real-data state changes: "unknown", "empty" or "has-data". */

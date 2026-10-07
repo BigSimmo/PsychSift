@@ -133,6 +133,19 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     keywords: "animation reduce motion vestibular transitions accessibility",
   },
   {
+    id: "settings-row-time-zone",
+    section: "app-preferences",
+    label: "Time zone",
+    keywords:
+      "timezone clock perth awst aest sydney melbourne brisbane adelaide darwin hobart roster shift times daylight saving",
+  },
+  {
+    id: "settings-row-example-data",
+    section: "app-preferences",
+    label: "Example data",
+    keywords: "sample demo made up fake test data look around explore tour work mode",
+  },
+  {
     id: "settings-row-recent-searches-on-home",
     section: "personalisation",
     label: "Recent searches on home",
