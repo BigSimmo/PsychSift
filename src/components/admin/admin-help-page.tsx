@@ -15,9 +15,9 @@ import { ADMIN_HELP_SECTIONS } from "@/components/admin/admin-page-sections";
 import { AdminPinnedNumbers } from "@/components/admin/admin-pinned-numbers";
 import { AdminShowAll } from "@/components/admin/admin-show-all";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { ModeBandAction, PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { WorkButton, WorkEmpty, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkButton, WorkEmpty, WorkGlassButton, WorkSectionLabel } from "@/components/mode-kit/work";
 import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { TextField } from "@/components/ui/text-field";
@@ -100,6 +100,10 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
     cacheOnCallEntries(entries.filter((existing) => existing.id !== id));
   }
 
+  function openNewEntry() {
+    setEditorState({ open: true, entry: null, section: "logistics" });
+  }
+
   function openEditor(item: AdminHelpItem) {
     if (!item.entry) return;
     setEditorState({ open: true, entry: item.entry, section: item.entry.section });
@@ -131,14 +135,24 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
             />
           </div>
           {canAdd ? (
-            <WorkButton
-              variant="secondary"
-              icon={Plus}
-              testId="admin-help-add"
-              onClick={() => setEditorState({ open: true, entry: null, section: "logistics" })}
-            >
-              Add your own
-            </WorkButton>
+            // The band's plus when the band is shown (spec item 6), otherwise a plain button beside the box.
+            <ModeBandAction>
+              {(underBand) =>
+                underBand ? (
+                  <WorkGlassButton
+                    icon={Plus}
+                    label="Add your own"
+                    onClick={openNewEntry}
+                    className="work-band__action"
+                    testId="admin-help-add"
+                  />
+                ) : (
+                  <WorkButton variant="secondary" icon={Plus} testId="admin-help-add" onClick={openNewEntry}>
+                    Add your own
+                  </WorkButton>
+                )
+              }
+            </ModeBandAction>
           ) : null}
         </div>
         {searching && loadState !== "failed" ? (
