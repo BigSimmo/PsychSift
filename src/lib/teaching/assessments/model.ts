@@ -316,7 +316,7 @@ export function endOfTermSteps(s: AssessmentsState): Step[] {
     meetingHeld(s)
       ? step("ok", "Meet and discuss", meetingDate(s)!)
       : s.booking
-        ? step("now", "Meet and discuss", `${bookingLabel(s.booking)} · Ward 4 office`)
+        ? step("now", "Meet and discuss", `${bookingLabel(s.booking)} · Ward A office`)
         : windowOpen(s)
           ? step("now", "Book and meet", "Open until Fri 6 Nov")
           : step("lock", "Book and meet", "Booking opens Mon 26 Oct"),
@@ -413,7 +413,7 @@ export type ComparisonRow = {
 
 /**
  * Self against supervisor, domain by domain. `view` is whose screen it is: the
- * doctor reads "Dr Nair: 1 higher", the supervisor reads "You: 1 higher".
+ * doctor reads "Dr Wattle: 1 higher", the supervisor reads "You: 1 higher".
  */
 export function compareRatings(
   selfRatings: Ratings | Record<DomainNumber, Rating> | null,

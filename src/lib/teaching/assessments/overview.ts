@@ -8,7 +8,7 @@ import { DEFAULT_EPA_TARGETS } from "@/lib/teaching/term-tracker";
  * end-of-term for the term as status tags only, with a one-tap Remind to the supervisor and Undo.
  *
  * MADE-UP SAMPLE ONLY, in page memory. Status and counts only: ratings, comments and goals are never part
- * of this view, so they cannot leak from it. Dr Sam Lee's row follows the sample's own story; the other
+ * of this view, so they cannot leak from it. Dr Sam Karri's row follows the sample's own story; the other
  * doctors and supervisors are invented. A reminder here is pretend: nothing is sent to anyone.
  */
 
@@ -51,8 +51,8 @@ export interface OverviewDoctor {
 }
 
 const NAIR = SAMPLE_SUPERVISOR.name;
-const AHMED = "Dr Omar Ahmed";
-const ITO = "Dr Hana Ito";
+const WANDOO = "Dr Quinn Wandoo";
+const GREVILLEA = "Dr Morgan Grevillea";
 
 type Fixed = {
   id: string;
@@ -70,8 +70,8 @@ type Fixed = {
 const FIXED: readonly Fixed[] = [
   {
     id: "ben",
-    name: "Dr Ben Ortiz",
-    initials: "BO",
+    name: "Dr Ash Zamia",
+    initials: "AZ",
     grade: "PGY2",
     unit: "Psychiatry",
     supervisor: NAIR,
@@ -80,8 +80,8 @@ const FIXED: readonly Fixed[] = [
   },
   {
     id: "mia",
-    name: "Dr Mia Chen",
-    initials: "MC",
+    name: "Dr Frankie Mulga",
+    initials: "FM",
     grade: "PGY2",
     unit: "Psychiatry",
     supervisor: NAIR,
@@ -90,51 +90,51 @@ const FIXED: readonly Fixed[] = [
   },
   {
     id: "ravi",
-    name: "Dr Ravi Kaur",
-    initials: "RK",
+    name: "Dr Rowan Sheoak",
+    initials: "RS",
     grade: "PGY1",
     unit: "General medicine",
-    supervisor: AHMED,
+    supervisor: WANDOO,
     mid: { due: "Fri 2 Oct", overdueFrom: -1 },
     epas: 0,
   },
   {
     id: "ella",
-    name: "Dr Ella Okafor",
-    initials: "EO",
+    name: "Dr Charlie Balga",
+    initials: "CB",
     grade: "PGY1",
     unit: "General medicine",
-    supervisor: AHMED,
+    supervisor: WANDOO,
     mid: { done: "Fri 2 Oct" },
     epas: 1,
   },
   {
     id: "tom",
-    name: "Dr Tom Fraser",
-    initials: "TF",
+    name: "Dr Taylor Kwongan",
+    initials: "TK",
     grade: "PGY1",
     unit: "Emergency",
-    supervisor: ITO,
+    supervisor: GREVILLEA,
     mid: { due: "Fri 2 Oct", overdueFrom: -1 },
     epas: 2,
   },
   {
     id: "lucy",
-    name: "Dr Lucy Webb",
-    initials: "LW",
+    name: "Dr Drew Hakea",
+    initials: "DH",
     grade: "PGY2",
     unit: "Emergency",
-    supervisor: ITO,
+    supervisor: GREVILLEA,
     mid: { due: "Fri 16 Oct", overdueFrom: 0 },
     epas: 2,
   },
   {
     id: "noah",
-    name: "Dr Noah Singh",
-    initials: "NS",
+    name: "Dr Lou Quandong",
+    initials: "LQ",
     grade: "PGY1",
     unit: "Surgery",
-    supervisor: ITO,
+    supervisor: GREVILLEA,
     mid: { done: "Wed 30 Sep" },
     epas: 3,
   },
@@ -379,7 +379,7 @@ export interface BulkRecipient {
   readonly items: readonly { readonly row: OverviewDoctor; readonly form: FormKind; readonly key: string }[];
   /** Every form for this supervisor was already reminded today, so they start unticked and cannot be sent again. */
   readonly remindedToday: boolean;
-  /** "Dr Ravi Kaur · overdue since Fri 2 Oct" */
+  /** "Dr Rowan Sheoak · overdue since Fri 2 Oct" */
   readonly line: string;
 }
 

@@ -8,9 +8,13 @@ import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { ContractEndEntryLink } from "@/components/admin/contract/contract-entry-link";
 import {
   copyLabel,
+  JuniorBackLink,
   JuniorFootNote,
+  juniorFlatPanel,
+  JuniorLinkChevron,
   JuniorNotice,
   JuniorSectionLabel,
+  juniorTextLinkClass,
   useCopy,
   useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
@@ -19,7 +23,6 @@ import { cardSurface, focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -137,6 +140,7 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <>
       <InformationPageShell testId="admin-ready-main">
+        <JuniorBackLink href="/admin/new-job" label="New job" testId="admin-ready-back" />
         <div className="grid gap-1">
           <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
             Ready for day one
@@ -170,12 +174,7 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
               </p>
             ) : null}
 
-            <ModeFeaturedModule
-              as="section"
-              mode="my-work"
-              className="grid min-w-0 gap-3 p-4"
-              testId="admin-ready-hero"
-            >
+            <section className={cn(juniorFlatPanel, "grid min-w-0 gap-3 p-4")} data-testid="admin-ready-hero">
               <div className="flex items-end justify-between gap-3">
                 <div className="grid gap-0.5">
                   <h2 className={eyebrowText}>Before you start</h2>
@@ -225,21 +224,16 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
                 </Button>
               </div>
               <p className={cn(textMuted, "text-xs")}>Status words only. No dates of your checks, numbers or files.</p>
-            </ModeFeaturedModule>
+            </section>
 
             {!ready.startsOn ? (
               <JuniorNotice
                 title="Add your start date"
                 testId="admin-ready-no-start"
                 action={
-                  <Link
-                    href="/admin/new-job"
-                    className={cn(
-                      focusRing,
-                      "inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--clinical-accent)]",
-                    )}
-                  >
+                  <Link href="/admin/new-job" className={juniorTextLinkClass}>
                     Set it in New job
+                    <JuniorLinkChevron />
                   </Link>
                 }
               >
@@ -268,15 +262,9 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
               title="Medical Workforce sees this only if you share it"
               testId="admin-ready-workforce-note"
               action={
-                <Link
-                  href="/admin/sharing"
-                  className={cn(
-                    focusRing,
-                    "inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--clinical-accent)]",
-                  )}
-                  data-testid="admin-ready-sharing-link"
-                >
+                <Link href="/admin/sharing" className={juniorTextLinkClass} data-testid="admin-ready-sharing-link">
                   Share with Medical Workforce
+                  <JuniorLinkChevron />
                 </Link>
               }
             >

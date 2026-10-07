@@ -148,7 +148,7 @@ function SignatureMark({ who, mid, s }: { who: "sup" | "doc"; mid: boolean; s: S
   if (mid)
     return (
       <span className="text-base text-[color:var(--text-heading)] italic">
-        {who === "sup" ? "Priya Nair" : "Sam Lee"}
+        {who === "sup" ? "Robin Wattle" : "Sam Karri"}
       </span>
     );
   const sig = s.sigs[who];

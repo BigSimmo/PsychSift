@@ -16,19 +16,24 @@ export const OFFSET_MS = PERTH_OFFSET_MS;
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
-/** `YYYY-MM-DD` + `HH:MM` in Perth → ISO instant, or null for an impossible date or time. */
-export function perthWallToIso(date: string, time: string): string | null {
-  return sharedPerthWallToIso(date, time);
+/*
+ * Each wrapper passes `zone` through; leaving it out reads the work time zone
+ * (Perth by default). See `@/lib/perth-time`.
+ */
+
+/** `YYYY-MM-DD` + `HH:MM` on the work zone's wall clock → ISO instant, or null for an impossible date or time. */
+export function perthWallToIso(date: string, time: string, zone?: string): string | null {
+  return sharedPerthWallToIso(date, time, zone);
 }
 
-/** The Perth calendar date of an instant, `YYYY-MM-DD`. */
-export function perthDateOf(instant: string | Date): string {
-  return sharedPerthDateOf(instant);
+/** The work-zone calendar date of an instant, `YYYY-MM-DD`. */
+export function perthDateOf(instant: string | Date, zone?: string): string {
+  return sharedPerthDateOf(instant, zone);
 }
 
-/** The Perth wall-clock time of an instant, `HH:MM`. */
-export function perthTimeOf(instant: string | Date): string {
-  return sharedPerthTimeOf(instant);
+/** The work-zone wall-clock time of an instant, `HH:MM`. */
+export function perthTimeOf(instant: string | Date, zone?: string): string {
+  return sharedPerthTimeOf(instant, zone);
 }
 
 /** `YYYY-MM-DD` plus `days`. */
@@ -41,6 +46,6 @@ export function formatPerthDay(date: string): string {
   return sharedFormatPerthDay(date);
 }
 
-export function perthCalendarDate(date: string | Date): string {
-  return sharedPerthCalendarDate(date);
+export function perthCalendarDate(date: string | Date, zone?: string): string {
+  return sharedPerthCalendarDate(date, zone);
 }

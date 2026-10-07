@@ -28,7 +28,9 @@ const SEGMENT: Record<FolderStatus, string> = {
   to_fix: "bg-[color:var(--warning)] forced-colors:bg-[Mark]",
   not_updating:
     "border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] forced-colors:border-[CanvasText]",
-  not_started: "bg-[color:var(--surface-inset)] forced-colors:border forced-colors:border-[CanvasText]",
+  // The decoration grey edge gives an empty segment, and its legend key, at least 3:1 against the card.
+  not_started:
+    "border border-[color:var(--decoration-soft)] bg-[color:var(--surface-inset)] forced-colors:border-[CanvasText]",
 };
 
 const LEGEND_ORDER: readonly FolderStatus[] = ["complete", "on_track", "to_fix", "not_updating", "not_started"];

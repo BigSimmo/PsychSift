@@ -274,6 +274,17 @@ describe("Job applications season", () => {
     expect(stored()).toBeNull();
   });
 
+  it("says when this browser is not keeping changes, instead of Kept on this phone", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("refused", "SecurityError");
+    });
+    renderPage();
+    expect(screen.getByTestId("applications-mode-note").textContent).toBe(
+      "This browser is not keeping changes. They last until you leave the page.",
+    );
+    expect(screen.getByTestId("applications-kept-note").textContent).not.toContain("Kept on this phone");
+  });
+
   it("links to the CV and to support, and every control has a 48px tap target", () => {
     const { container } = renderPage();
     expect(screen.getByTestId("applications-cv-link").getAttribute("href")).toBe("/cme/applications/cv");

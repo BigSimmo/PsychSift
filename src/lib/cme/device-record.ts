@@ -43,10 +43,18 @@ import {
  * from another tab, and whenever a CPD page sees the device is shared.
  */
 
-export type CmeDeviceMode = "device" | "sample" | "shared";
+/**
+ * - device: saved in this browser;
+ * - memory: this browser refused storage (private window, blocked site data), so changes last
+ *   until the page is left and the page must say so;
+ * - sample, shared: see above.
+ */
+export type CmeDeviceMode = "device" | "memory" | "sample" | "shared";
 
 const listeners = new Set<() => void>();
 const memory = new Map<string, string>();
+/** Keys whose last read or write the browser refused, so they live in `memory` only. */
+const refused = new Set<string>();
 subscribeAccountTransition(() => memory.clear());
 
 function notify(): void {
@@ -70,6 +78,7 @@ function read(key: string): string | null {
     if (stored === null) memory.delete(key);
     return stored;
   } catch {
+    refused.add(key);
     return memory.get(key) ?? null;
   }
 }
@@ -78,8 +87,10 @@ function write(key: string, value: string): void {
   memory.set(key, value);
   try {
     window.localStorage.setItem(key, value);
+    refused.delete(key);
   } catch {
-    // Storage refused: the change lasts for this page only.
+    // Storage refused: the change lasts for this page only, and the page says so.
+    refused.add(key);
   }
   notify();
 }
@@ -141,6 +152,11 @@ function useCmeDeviceRecord<T>(
     () => false,
   );
   const raw = useSyncExternalStore(subscribe, () => read(key), serverSnapshot);
+  const storageRefused = useSyncExternalStore(
+    subscribe,
+    () => refused.has(key),
+    () => false,
+  );
   const stored = useMemo(() => parse(raw), [parse, raw]);
 
   const update = useCallback(
@@ -161,7 +177,7 @@ function useCmeDeviceRecord<T>(
     [isValid, key, local, parse],
   );
 
-  const mode: CmeDeviceMode = sample ? "sample" : shared ? "shared" : "device";
+  const mode: CmeDeviceMode = sample ? "sample" : shared ? "shared" : storageRefused ? "memory" : "device";
   if (local) return { state: localState ?? local, update, mode };
   return { state: hydrated ? stored : null, update, mode };
 }

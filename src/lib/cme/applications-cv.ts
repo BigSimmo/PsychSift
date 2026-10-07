@@ -83,9 +83,10 @@ function dayMonthYear(on: string): string {
   return `${day} ${MONTHS[month - 1]} ${year}`;
 }
 
+/** "8 h", joined by a no-break space so a narrow phone never puts the number and the unit on two lines. */
 function formatHours(value: number): string {
   const rounded = Math.round(value * 100) / 100;
-  return `${rounded} h`;
+  return `${rounded}\u00a0h`;
 }
 
 /** The first year a range keeps, given the current year. */

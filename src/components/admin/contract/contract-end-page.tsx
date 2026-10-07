@@ -19,10 +19,12 @@ import {
   createEntry,
   deleteEntry,
   errorWords,
+  JuniorBackLink,
   JuniorFootNote,
   JuniorNotice,
   JuniorSectionLabel,
   JuniorUndoBar,
+  juniorFlatPanel,
   patchEntry,
   slugSuffix,
   useJuniorNow,
@@ -36,7 +38,6 @@ import { cardSurface, focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { Button } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
@@ -164,6 +165,30 @@ function ReminderSwitch({
   );
 }
 
+/** Why the page is read-only, with a way to sign in when that is what would change it. */
+function ReadOnlyLine({
+  reason,
+  onSignIn,
+  className,
+}: {
+  reason: string | null;
+  onSignIn?: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("grid justify-items-start gap-1", className)}>
+      <p className={cn(textMuted, "text-sm")} data-testid="admin-contract-read-only">
+        {reason}
+      </p>
+      {onSignIn ? (
+        <Button variant="secondary" onClick={onSignIn} testId="admin-contract-sign-in">
+          Sign in
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Contract end tracker, `/admin/contract` (junior feature #6). The end date
  * from the letter, a calm countdown strip with the 3 month and 6 week
@@ -207,6 +232,9 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   const [busy, setBusy] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
   const undoId = useRef(0);
+  // Signing in is what makes this page yours, so the read-only line offers it whenever nobody is signed in
+  // (example records included). Signed in on example records, signing in again would change nothing.
+  const signInAction = !isAuthenticated ? () => setSignInOpen(true) : undefined;
   const leave = useJuniorRosterLeave(loadState === "ready" && Boolean(endsOn));
 
   function upsert(saved: OnCallEntry) {
@@ -362,6 +390,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <>
       <InformationPageShell testId="admin-contract-main">
+        <JuniorBackLink href="/admin" label="Admin Today" testId="admin-contract-back" />
         <div className="grid gap-1">
           <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
             Contract end
@@ -410,9 +439,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   Add end date
                 </Button>
               ) : (
-                <p className={cn(textMuted, "text-sm")} data-testid="admin-contract-read-only">
-                  {readOnlyReason}
-                </p>
+                <ReadOnlyLine reason={readOnlyReason} onSignIn={signInAction} className="justify-items-center" />
               )}
             </div>
             <JuniorSectionLabel>What you get</JuniorSectionLabel>
@@ -448,12 +475,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
           </>
         ) : (
           <>
-            <ModeFeaturedModule
-              as="section"
-              mode="my-work"
-              className="grid min-w-0 gap-3 p-4"
-              testId="admin-contract-hero"
-            >
+            <section className={cn(juniorFlatPanel, "grid min-w-0 gap-3 p-4")} data-testid="admin-contract-hero">
               <div className="flex items-start justify-between gap-3">
                 <div className="grid min-w-0 gap-1">
                   <h2 className={eyebrowText}>
@@ -470,15 +492,15 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   ) : null}
                 </div>
                 <div className="grid shrink-0 justify-items-end text-right" data-testid="admin-contract-days">
-                  <b className="nums text-3xl-minus font-semibold leading-none text-[color:var(--text-heading)]">
+                  <span className="nums text-3xl-minus font-semibold leading-none text-[color:var(--text-heading)]">
                     {daysLeftWords(status).big}
-                  </b>
+                  </span>
                   <span className={cn(textMuted, "text-xs")}>{daysLeftWords(status).small}</span>
                 </div>
               </div>
               <ContractStrip strip={strip} />
               <p
-                className="flex items-start gap-2 rounded-lg bg-[color:var(--surface-raised)] px-3 py-2 text-sm text-[color:var(--text)]"
+                className="flex items-start gap-2 rounded-lg border border-[color:var(--border)] px-3 py-2 text-sm text-[color:var(--text)]"
                 data-testid="admin-contract-panel"
               >
                 <Bell
@@ -535,12 +557,8 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
                   </Button>
                 )}
               </div>
-              {!canWrite && readOnlyReason ? (
-                <p className={cn(textMuted, "text-xs")} data-testid="admin-contract-read-only">
-                  {readOnlyReason}
-                </p>
-              ) : null}
-            </ModeFeaturedModule>
+              {!canWrite && readOnlyReason ? <ReadOnlyLine reason={readOnlyReason} onSignIn={signInAction} /> : null}
+            </section>
 
             <JuniorSectionLabel
               count={
@@ -756,9 +774,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
         onClose={() => setQuestion(null)}
       />
 
-      {loadState === "signed-out" ? (
-        <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
-      ) : null}
+      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
 
       {undo ? (
         <JuniorUndoBar

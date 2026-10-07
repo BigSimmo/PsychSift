@@ -101,6 +101,12 @@ afterEach(() => {
 });
 
 describe("StarterPackPage", () => {
+  it("goes back to New job, and gives every word group chip a full tap target", () => {
+    render(<StarterPackPage now={NOW} />);
+    expect(screen.getByTestId("admin-starter-back").getAttribute("href")).toBe("/admin/new-job");
+    expect(screen.getByTestId("admin-starter-group-all").className).toContain("min-w-12");
+  });
+
   it("finds Pager from the word from home", () => {
     render(<StarterPackPage now={NOW} />);
     fireEvent.change(screen.getByTestId("admin-starter-word-search"), { target: { value: "bleep" } });
@@ -165,10 +171,21 @@ describe("StarterPackPage", () => {
     expect((screen.getByTestId("admin-starter-suggest-word") as HTMLInputElement).value).toBe("zzqx");
     fireEvent.change(screen.getByTestId("admin-starter-suggest-word"), { target: { value: "Mr Smith bed 4" } });
     expect(screen.getByTestId("admin-starter-suggest-problem")).toBeTruthy();
-    expect((screen.getByTestId("admin-starter-suggest-copy") as HTMLButtonElement).disabled).toBe(true);
+    // Off, and it says why: aria-disabled keeps it reachable, the reason line is read with it.
+    const copyButton = () => screen.getByTestId("admin-starter-suggest-copy");
+    expect(copyButton().getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByTestId("admin-starter-suggest-reason").textContent).toBe(
+      "Copy is off until the patient detail is gone.",
+    );
+    expect(copyButton().getAttribute("aria-describedby")).toBe("admin-starter-suggest-reason");
+    fireEvent.click(copyButton());
+    expect(copyText).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByTestId("admin-starter-suggest-word"), { target: { value: "" } });
+    expect(screen.getByTestId("admin-starter-suggest-reason").textContent).toBe("Type a word first.");
     fireEvent.change(screen.getByTestId("admin-starter-suggest-word"), { target: { value: "tea trolley" } });
     expect(screen.queryByTestId("admin-starter-suggest-problem")).toBeNull();
-    expect((screen.getByTestId("admin-starter-suggest-copy") as HTMLButtonElement).disabled).toBe(false);
+    expect(copyButton().getAttribute("aria-disabled")).toBeNull();
+    expect(screen.queryByTestId("admin-starter-suggest-reason")).toBeNull();
     fireEvent.click(screen.getByTestId("admin-starter-suggest-copy"));
     await waitFor(() => expect(copyText).toHaveBeenCalledWith(expect.stringContaining('"tea trolley"')));
   });
@@ -203,6 +220,7 @@ describe("ReadyForDayOnePage", () => {
     const segments = Array.from(screen.getByTestId("admin-ready-bar").children);
     expect(segments).toHaveLength(9);
     expect(segments[7]?.getAttribute("data-state")).toBe("left-out");
+    expect(screen.getByTestId("admin-ready-back").getAttribute("href")).toBe("/admin/new-job");
   });
 
   it("will not copy example records as a status, and says why", () => {

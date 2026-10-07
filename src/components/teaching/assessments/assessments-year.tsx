@@ -218,7 +218,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
           title="From a term supervisor or specialist this term"
           value={
             fromSpecialist
-              ? `Done: EPA ${fromSpecialist.epa} with ${fromSpecialist.by.replace("Dr Priya Nair", SAMPLE_SUPERVISOR.short)}`
+              ? `Done: EPA ${fromSpecialist.epa} with ${fromSpecialist.by.replace("Dr Robin Wattle", SAMPLE_SUPERVISOR.short)}`
               : "None recorded here yet"
           }
           percent={fromSpecialist ? 100 : 0}
@@ -445,7 +445,7 @@ function allItems(s: AssessmentsState): Item[] {
     term: t4,
     type: "mid",
     title: "Mid-term",
-    detail: "Signed Fri 2 Oct · Dr Priya Nair",
+    detail: "Signed Fri 2 Oct · Dr Robin Wattle",
     href: viewHref("report", { of: "mid" }),
   });
   for (const record of epasInTerm(s, "t4")) items.push({ term: t4, type: "epa", record });

@@ -41,7 +41,10 @@ const STALE_AFTER_MS = 5 * 60_000;
 /** While the page is open, visible and online, the roster is read again this often. */
 const REFRESH_EVERY_MS = 2 * 60_000;
 
-/** The cover rail: where the shift sits on the day, its name inside, and the now marker. */
+/**
+ * The cover rail: where the shift sits on the day, and the now marker. The name is on the row above, never
+ * inside the bar, where a short shift would clip it and the now marker would cross it.
+ */
 function Rail({
   row,
   nowMark,
@@ -56,22 +59,20 @@ function Rail({
     <span
       role="img"
       aria-label={rosterRailLabel(row)}
-      className="relative mt-2 block h-5 overflow-hidden rounded-md bg-[color:var(--surface-wash)]"
+      className="relative mt-2 block h-3 overflow-hidden rounded-md bg-[color:var(--surface-wash)]"
     >
       <span
         aria-hidden="true"
         className={cn(
-          "absolute inset-y-0 flex items-center overflow-hidden whitespace-nowrap rounded-md px-1.5 text-2xs font-semibold",
+          "absolute inset-y-0 rounded-md",
           gap
             ? "border border-dashed border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] text-[color:var(--warning-text)]"
             : row.isMe
-              ? "bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]"
-              : "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
+              ? "bg-[color:var(--mode-identity)]"
+              : "border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)]",
         )}
         style={{ left: `${row.rail.left}%`, width: `${row.rail.width}%` }}
-      >
-        {gap ? "Nobody rostered" : row.isMe ? "You" : row.name}
-      </span>
+      />
       {nowMark !== null && !stale ? (
         <span
           aria-hidden="true"
@@ -258,12 +259,18 @@ export function OnCallRosterWhosOnSection({
   switchboard = null,
   hospitalName = null,
   variant = "full",
+  pageHeadingId,
 }: {
   readonly now: Date;
   /** The hospital's switchboard, to ring when the list cannot say who is on. */
   readonly switchboard?: HandbookItem | null;
   readonly hospitalName?: string | null;
   readonly variant?: "full" | "now";
+  /**
+   * When the page's own h1 already names this list, its id: the small label then stays visible but is not a
+   * second heading, so screen readers hear the name once.
+   */
+  readonly pageHeadingId?: string;
 }) {
   const teams = useRosterTeams();
   const online = useOnlineStatus();
@@ -608,12 +615,19 @@ export function OnCallRosterWhosOnSection({
   return (
     <section
       className="grid min-w-0 gap-2"
-      aria-labelledby="on-call-roster-heading"
+      aria-labelledby={pageHeadingId ?? "on-call-roster-heading"}
       data-testid={variant === "now" ? "on-call-roster-right-now" : "on-call-roster-whos-on"}
     >
       <WorkSectionLabel
         id="on-call-roster-heading"
-        count={listShown && coverage === "published" ? <span className="nums">{rows.length}</span> : undefined}
+        as={pageHeadingId ? "p" : "h2"}
+        count={
+          listShown && coverage === "published" ? (
+            <span className="nums">
+              {variant === "now" ? `${rows.length} on now` : `${rows.length} ${rows.length === 1 ? "shift" : "shifts"}`}
+            </span>
+          ) : undefined
+        }
         action={
           variant === "now"
             ? { label: "All roles", href: ROSTER_WHOS_ON_HREF }
@@ -622,7 +636,13 @@ export function OnCallRosterWhosOnSection({
               : undefined
         }
       >
-        {variant === "now" ? "Right now, from your roster" : "From your team roster"}
+        {pageHeadingId ? (
+          <span aria-hidden="true">From your team roster</span>
+        ) : variant === "now" ? (
+          "Right now, from your roster"
+        ) : (
+          "From your team roster"
+        )}
       </WorkSectionLabel>
       {sample ? (
         <WorkCard padded>

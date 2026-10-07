@@ -51,7 +51,7 @@ export function ContractStrip({
           )}
           style={{ left: percent(mark.position) }}
         >
-          <b className="font-semibold text-[color:var(--text-heading)]">{mark.label}</b>
+          <span className="font-semibold text-[color:var(--text-heading)]">{mark.label}</span>
           <span className="nums">{mark.on ? shortDate(mark.date) : "Off"}</span>
         </span>
       ))}

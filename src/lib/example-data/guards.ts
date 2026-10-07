@@ -15,7 +15,8 @@ type WithId = { readonly id?: unknown; readonly sample?: unknown; readonly examp
  * records too, so the guards treat them exactly like `example:` ids. Real
  * records have server-made UUIDs and never start with these.
  */
-const LEGACY_EXAMPLE_PREFIXES = ["sample-", "sample:", "demo-", "demo:"] as const;
+/** `00000000-0000-4000-8000-` is the On Call demo corpus's fixed UUID range (its `demo-` is only in the slug). */
+const LEGACY_EXAMPLE_PREFIXES = ["sample-", "sample:", "demo-", "demo:", "00000000-0000-4000-8000-"] as const;
 
 function isExampleId(id: string): boolean {
   return id.startsWith(EXAMPLE_ID_PREFIX) || LEGACY_EXAMPLE_PREFIXES.some((prefix) => id.startsWith(prefix));

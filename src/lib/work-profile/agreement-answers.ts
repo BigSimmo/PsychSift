@@ -5,6 +5,7 @@ import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF, type FatigueRuleId } from "@/
 import { checkPatientDetail, looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 import type { WorkSearchArea } from "@/lib/work-search/model";
 import { restRulesGate } from "@/lib/work-profile/model";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * Ask the agreement, without AI.
@@ -43,6 +44,12 @@ export interface AgreementLine {
   readonly text: string;
   readonly clause: string;
   readonly ruleId: FatigueRuleId;
+  /**
+   * A short heading for this one clause, where a topic quotes several clauses that say different things
+   * (15(6)(c), (d) and (e) under Longest shift). Taken from what the clause says. The topic label is used
+   * when it is absent.
+   */
+  readonly label?: string;
 }
 
 export interface AgreementTopic {
@@ -56,8 +63,8 @@ export interface AgreementTopic {
 
 const R = FATIGUE_RULE_SET.rules;
 
-function line(ruleId: FatigueRuleId, clause: string, text: string): AgreementLine {
-  return { ruleId, clause, text };
+function line(ruleId: FatigueRuleId, clause: string, text: string, label?: string): AgreementLine {
+  return label ? { ruleId, clause, text, label } : { ruleId, clause, text };
 }
 
 export const AGREEMENT_TOPICS: readonly AgreementTopic[] = [
@@ -81,12 +88,18 @@ export const AGREEMENT_TOPICS: readonly AgreementTopic[] = [
     label: "Longest shift",
     keywords: ["longest shift", "shift length", "consecutive hours", "after noon", "long shift"],
     lines: [
-      line("maxShiftHours", R.maxShiftHours.clause, R.maxShiftHours.quote),
-      line("maxShiftHoursAfterNoon", R.maxShiftHoursAfterNoon.clause, R.maxShiftHoursAfterNoon.quote),
+      line("maxShiftHours", R.maxShiftHours.clause, R.maxShiftHours.quote, "Longest shift"),
+      line(
+        "maxShiftHoursAfterNoon",
+        R.maxShiftHoursAfterNoon.clause,
+        R.maxShiftHoursAfterNoon.quote,
+        "Shift starting after noon",
+      ),
       line(
         "maxShiftHoursAfterNoon",
         R.maxShiftHoursAfterNoon.exception.clause,
         R.maxShiftHoursAfterNoon.exception.quote,
+        "After noon, by written agreement",
       ),
     ],
   },
@@ -139,7 +152,8 @@ export function agreementClauses(): readonly AgreementClause[] {
   for (const topic of AGREEMENT_TOPICS) {
     for (const item of topic.lines) {
       const entry = byClause.get(item.clause) ?? { labels: [], lines: [] };
-      if (!entry.labels.includes(topic.label)) entry.labels.push(topic.label);
+      const label = item.label ?? topic.label;
+      if (!entry.labels.includes(label)) entry.labels.push(label);
       if (!entry.lines.some((existing) => existing.text === item.text)) entry.lines.push(item);
       byClause.set(item.clause, entry);
     }
@@ -456,7 +470,7 @@ export type AgreementQuestionCheck =
  * runs the work search's and the reminder check's readings, ages, "pt" with initials and bare record
  * numbers. Leaning towards a false alarm is deliberate: it costs one tap.
  */
-export function checkAgreementQuestion(question: string, thisYear = new Date().getFullYear()): AgreementQuestionCheck {
+export function checkAgreementQuestion(question: string, thisYear = currentWorkYear()): AgreementQuestionCheck {
   const text = question.trim();
   if (!text) return { kind: "empty" };
   const problem = checkPatientDetail(text, { thisYear });
@@ -487,7 +501,7 @@ function readsAsPatientDetail(text: string, thisYear: number): boolean {
  * inside it does, so the mark covers the detail and not the words around it. Empty when the
  * detail cannot be pinned to three words or fewer; the catch still shows, unmarked.
  */
-export function agreementPatientSpans(question: string, thisYear = new Date().getFullYear()): AgreementTextSpan[] {
+export function agreementPatientSpans(question: string, thisYear = currentWorkYear()): AgreementTextSpan[] {
   const tokens = [...question.matchAll(/\S+/g)].map((match) => {
     const word = match[0];
     const lead = word.match(/^[("'[]+/)?.[0].length ?? 0;

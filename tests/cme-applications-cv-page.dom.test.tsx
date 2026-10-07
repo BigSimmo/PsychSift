@@ -163,7 +163,7 @@ describe("CV that fills itself", () => {
     const cv = screen.getByTestId("applications-cv");
     expect(cv.textContent).toContain("Adult inpatient, Example Hospital");
     expect(cv.textContent).toContain("Catatonia");
-    expect(cv.textContent).toContain("2026: 5 h logged, 2 activities");
+    expect(cv.textContent).toContain("2026: 5\u00a0h logged, 2 activities");
     expect(cv.textContent).toContain("Clozapine audit");
     await act(async () => {
       fireEvent.click(screen.getByTestId("applications-cv-copy"));
@@ -385,6 +385,14 @@ describe("CV that fills itself", () => {
       (node) => !/\b(?:min-h-(?:12|13|tap)|size-(?:12|tap)|work-button)\b/.test(node.className),
     );
     expect(short.map((node) => node.outerHTML.slice(0, 80))).toEqual([]);
+  });
+
+  it("keeps a focused row control clear of the sticky Copy and Save as PDF dock", () => {
+    renderCv();
+    // The phone focus rule in globals.css reads this as the focused control's bottom scroll margin.
+    expect(screen.getByTestId("applications-cv").className).toContain(
+      "[--phone-focus-bottom-clearance:calc(5.5rem+max(0.875rem,var(--safe-area-bottom)))]",
+    );
   });
 
   it("prints only the CV through the device's print screen", () => {

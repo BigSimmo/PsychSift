@@ -3,8 +3,10 @@ import { z } from "zod";
 import { formatEntryForCpdHome } from "@/lib/cme/clipboard";
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries, cmeCsvCell } from "@/lib/cme/export";
+import { formatCmeRowDate } from "@/lib/cme/cpd-year";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { cpdTextLooksLikePatient, cpdTitleLooksLikePatient } from "@/lib/cme/patient-detail-check";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
 
 /**
  * Send CPD to AMA CPD Home (#11).
@@ -96,17 +98,18 @@ export const CPD_HOME_TITLE_PATIENT_PROBLEM = "Title looks like a patient detail
  * because the title is in every row of every file and copy. Its row is named by date, so the
  * flagged words are not shown again.
  */
-export function cpdHomeRowProblems(
-  rows: readonly CpdHomeRow[],
-  thisYear = new Date().getFullYear(),
-): CpdHomeRowProblem[] {
+export function cpdHomeRowProblems(rows: readonly CpdHomeRow[], thisYear = currentWorkYear()): CpdHomeRowProblem[] {
   const problems: CpdHomeRowProblem[] = [];
   for (const row of rows) {
     const activity = row.activity || "Untitled activity";
     if (cpdTitleLooksLikePatient(row.activity, thisYear))
       problems.push({
         entryId: row.entryId,
-        activity: /^\d{4}-\d{2}-\d{2}$/.test(row.date) ? `Activity on ${row.date}` : "An activity",
+        // Named by its Australian date with the year ("Activity on Mon 2 Mar 2026"); no "today"
+        // is passed, so the year is always shown.
+        activity: /^\d{4}-\d{2}-\d{2}$/.test(row.date)
+          ? `Activity on ${formatCmeRowDate(row.date, "")}`
+          : "An activity",
         problem: CPD_HOME_TITLE_PATIENT_PROBLEM,
       });
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date))

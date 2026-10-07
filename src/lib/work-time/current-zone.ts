@@ -12,12 +12,20 @@ export function currentWorkTimeZone(): string {
   if (typeof window === "undefined") return DEFAULT_WORK_TIME_ZONE;
   try {
     const raw = window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
+    // The shared Perth helpers default to this on every call, hundreds per roster
+    // render, so the parse is skipped while the stored preferences are unchanged.
+    if (raw === lastRaw) return lastZone;
     const zone = raw ? (JSON.parse(raw) as { timeZone?: unknown } | null)?.timeZone : undefined;
-    return isWorkTimeZone(zone) ? zone : DEFAULT_WORK_TIME_ZONE;
+    lastRaw = raw;
+    lastZone = isWorkTimeZone(zone) ? zone : DEFAULT_WORK_TIME_ZONE;
+    return lastZone;
   } catch {
     return DEFAULT_WORK_TIME_ZONE;
   }
 }
+
+let lastRaw: string | null = null;
+let lastZone: string = DEFAULT_WORK_TIME_ZONE;
 
 /**
  * This calendar year in the work time zone, for lib defaults that need a work

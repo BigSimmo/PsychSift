@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { cpdTextLooksLikePatient, cpdTitleLooksLikePatient } from "@/lib/cme/patient-detail-check";
 import { checkPatientDetail, looksLikePatientDetail, normaliseWorkText } from "@/lib/work-text/patient-detail-check";
 
 describe("shared patient-detail check for work free text", () => {
@@ -118,5 +119,132 @@ describe("shared patient-detail check for work free text", () => {
 
   it("folds look-alike characters and drops invisible ones", () => {
     expect(normaliseWorkText("ｂｅｄ​１２")).toBe("bed12");
+  });
+
+  describe("round 4: shapes the Teaching review found still passing", () => {
+    it.each([
+      "MrSmith",
+      "Mr-Smith",
+      "Mr/Smith",
+      "Cot 3",
+      "Chair 4",
+      "cot: 2",
+      "J\u{1F600}o\u{1F600}h\u{1F600}n Smith",
+      "J o h n Smith",
+      "JS45M",
+      "JS 45 M",
+      "js 45m",
+      "js45f",
+      "Jane, 45, ward 3",
+      "Saw Jane, 45",
+      "SMITH, John",
+      "O'BRIEN, Mary",
+      "the patient, John, was",
+      "9123 4567",
+      "6457-1234",
+      "record 12 34 567",
+      "file no 12 34 567",
+      "1 2 3 4 5 6 7",
+    ])("catches %s", (text) => {
+      expect(looksLikePatientDetail(text)).toBe(true);
+    });
+
+    it.each([
+      "Smith J",
+      "John S.",
+      "MET call",
+      "RDO",
+      "IVF",
+      "RPH orientation",
+      "MS Teams call",
+      "Zoë from HR",
+      "MRIs this week",
+      "MSc in psychiatry",
+      "MasterClass on ECT",
+      "in 45m",
+      "mtg 30m",
+      "Chair 2 sessions",
+      "Hi Sarah, 2 things to do",
+      "Monday, 12, then Tuesday",
+      "URGENT, Please call",
+      "Plan A or B",
+      "Call 1300 555 123",
+      "Shifts 2026 to 2027",
+      "The patient was seen",
+    ])("passes %s", (text) => {
+      expect(looksLikePatientDetail(text)).toBe(false);
+    });
+
+    it("still reads a colleague's initial and surname past with allowName", () => {
+      expect(looksLikePatientDetail("Dr J Smith lecture", { allowName: true })).toBe(false);
+    });
+
+    it("keeps the body honest that it catches some details, not all", () => {
+      expect(checkPatientDetail("MrSmith")?.body).toContain("catches some details, not all");
+      expect(checkPatientDetail("1 2 3 4 5 6 7")?.body).toContain("catches some details, not all");
+    });
+
+    it("never turns an ordinary word into a workplace capital in the safer wording", () => {
+      // "It" and "Ed" are ordinary words here, not the IT department or the ED.
+      expect(checkPatientDetail("JS said It was Ed")?.suggestion).toBe("said It was Ed");
+      expect(checkPatientDetail("JS needs IT and ED")?.suggestion).toBe("needs IT and ED");
+    });
+  });
+
+  describe("two-letter work capitals", () => {
+    it.each(["AI in psychiatry", "OT and PT workshop", "QI project", "QA audit", "NZ and UK training", "EU rules"])(
+      "passes %s in the shared check and in CPD",
+      (text) => {
+        expect(looksLikePatientDetail(text)).toBe(false);
+        expect(cpdTextLooksLikePatient(text, 2026)).toBe(false);
+        expect(cpdTitleLooksLikePatient(text, 2026)).toBe(false);
+      },
+    );
+
+    it("still reads two capitals that are a person's initials", () => {
+      expect(looksLikePatientDetail("Supervision of JS")).toBe(true);
+      expect(cpdTextLooksLikePatient("Supervision of JS", 2026)).toBe(true);
+      expect(cpdTitleLooksLikePatient("Supervision of JS", 2026)).toBe(true);
+      expect(looksLikePatientDetail("pt OT")).toBe(false);
+      expect(looksLikePatientDetail("pt js")).toBe(true);
+    });
+
+    it("reads PDL (professional development leave) past as a work word", () => {
+      expect(looksLikePatientDetail("PDL")).toBe(false);
+      expect(looksLikePatientDetail("PDL on Friday for the conference")).toBe(false);
+      expect(looksLikePatientDetail("PDL with JS")).toBe(true);
+    });
+  });
+
+  describe("teaching and meeting venues", () => {
+    it.each([
+      "Seminar room 1",
+      "Meeting room 2",
+      "Conference room 3",
+      "Tutorial room 4",
+      "Training room 5",
+      "Lecture theatre 2",
+      "Board room 1",
+      "Boardroom 1",
+      "Seminar Room 1",
+      "seminar room: 1",
+      "Seminar room one",
+      "Teaching in Seminar room 1 at 2pm",
+      "Meeting room 2 with the RPH team",
+    ])("does not read %s as a bed", (text) => {
+      expect(checkPatientDetail(text)).toBeNull();
+    });
+
+    it("still flags a bare room or bed, and a bed beside a venue", () => {
+      expect(checkPatientDetail("Room 4")?.title).toBe("This looks like a bed number");
+      expect(checkPatientDetail("Bed 12")?.title).toBe("This looks like a bed number");
+      expect(checkPatientDetail("Meeting room 2 bed 12")?.title).toBe("This looks like a bed number");
+    });
+
+    it("still flags a name beside a venue, and keeps the venue in the safer wording", () => {
+      const problem = checkPatientDetail("Seminar room 1, Mrs Smith");
+      expect(problem?.title).toBe("This looks like a name");
+      if (problem?.suggestion) expect(problem.suggestion).toContain("Seminar room 1");
+    });
   });
 });

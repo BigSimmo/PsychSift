@@ -31,7 +31,7 @@ vi.mock("@/components/account-data-provider", () => ({
 }));
 
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
-  AccountSetupDialog: () => null,
+  AccountSetupDialog: () => <div data-testid="account-setup-dialog" />,
 }));
 
 vi.mock("@/components/roster/use-roster-team", () => ({
@@ -338,6 +338,21 @@ describe("ContractEndPage", () => {
     expect(screen.getByTestId("admin-contract-switch-six-weeks").getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(screen.getByTestId("admin-contract-question-in-writing"));
     expect(screen.queryByTestId("admin-contract-question-mark")).toBeNull();
+  });
+
+  it("goes back to Admin Today, and offers sign-in when example records are shown to nobody signed in", () => {
+    Object.assign(entryState, { demoMode: true, entries: [] });
+    account.isAuthenticated = false;
+    try {
+      render(<ContractEndPage now={NOW} />);
+      expect(screen.getByTestId("admin-contract-back").getAttribute("href")).toBe("/admin");
+      expect(screen.getByTestId("admin-contract-read-only").textContent).toContain("Sign in to track");
+      expect(screen.queryByTestId("account-setup-dialog")).toBeNull();
+      fireEvent.click(screen.getByTestId("admin-contract-sign-in"));
+      expect(screen.getByTestId("account-setup-dialog")).toBeTruthy();
+    } finally {
+      account.isAuthenticated = true;
+    }
   });
 
   it("says why a failed save did not land", async () => {

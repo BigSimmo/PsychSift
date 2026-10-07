@@ -194,7 +194,6 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
     return typeof details === "object" && details !== null && (details as { done?: unknown }).done === true;
   }).length;
   const totalCount = ownLogins.length;
-  const leftCount = totalCount - doneCount;
   // Write to the row the date is read from, so a new or cleared date is never ignored.
   const startEntry = start?.entry ?? ownLogins[0]?.entry ?? null;
   // Why the start date cannot be set, said under the start line. Example
@@ -320,23 +319,15 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
               {/* Ready for day one (round 2 feature 21): what is recorded and what is still to do. */}
               <ReadyForDayOneEntryLink />
 
-              {totalCount > 0 ? (
-                <p
-                  className="text-sm font-medium text-[color:var(--text-heading)]"
-                  data-testid="admin-new-job-progress"
-                >
-                  {`Logins and access: ${doneCount} of ${totalCount} done`}
-                </p>
-              ) : null}
-
               <PaperworkSignpost overview={overview} />
 
               <div className="grid gap-2">
                 <div className="flex items-center justify-between px-1">
                   <h3 className={eyebrowText}>Logins and access</h3>
-                  {ownLogins.length > 0 ? (
-                    <span className={cn(textMuted, "nums text-xs")} data-testid="admin-new-job-logins-left">
-                      {leftCount} left
+                  {/* The count sits beside its own label, once: no second "Logins and access" line above it. */}
+                  {totalCount > 0 ? (
+                    <span className={cn(textMuted, "nums text-xs")} data-testid="admin-new-job-progress">
+                      {`${doneCount} of ${totalCount} done`}
                     </span>
                   ) : null}
                 </div>
@@ -350,6 +341,7 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                     items={rows.logins}
                     label="Logins and access"
                     testId="admin-new-job-logins"
+                    listClassName={cn(cardSurface, "overflow-hidden")}
                     anchorIdOf={(row) => onCallEntryAnchorId(row.entry.id)}
                     renderItem={(row) => (
                       <AdminNewJobStepRow
@@ -421,10 +413,11 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                 data-testid="admin-new-job-leaving-pack-link"
                 className={cn(
                   focusRing,
-                  "inline-flex min-h-12 w-fit items-center px-1 text-sm text-[color:var(--clinical-accent)] underline-offset-2 hover:underline",
+                  "inline-flex min-h-12 w-fit items-center gap-1 px-1 text-sm font-medium text-[color:var(--clinical-accent)] underline decoration-1 underline-offset-2",
                 )}
               >
                 Credential pack, as a PDF on this device
+                <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0" />
               </Link>
             </section>
           </>

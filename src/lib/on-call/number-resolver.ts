@@ -1,4 +1,7 @@
+import { onCallZonedHourStart } from "@/lib/on-call/local-date";
 import { isWaPublicHoliday } from "@/lib/on-call/wa-public-holidays";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 
 /**
  * One number rule for On Call: which half of the day it is, which number a row
@@ -34,21 +37,22 @@ export type OnCallPeriod = "in-hours" | "after-hours";
  * direct one is exactly the "two different numbers for one role" problem the
  * precedence comment on `resolveOnCallNumber` exists to prevent.
  *
- * Read in the **viewer's own zone**, via `getDay`/`getHours` rather than their
- * UTC counterparts, for the same reason `onCallLocalDateKey` does: the question
- * is what time it is for the registrar holding the phone in Perth, not what time
- * it is on whatever server rendered the page. A UTC reading would hand a Perth
- * registrar the daytime number at 1am (UTC+8 puts local midnight at 16:00 UTC,
- * squarely inside a UTC working day).
+ * Read in the **work time zone** (Perth unless the doctor chose another), for
+ * the same reason `onCallLocalDateKey` is: the question is what time it is on
+ * the hospital's wall clock. Not UTC, which would hand a Perth registrar the
+ * daytime number at 1am (UTC+8 puts local midnight at 16:00 UTC, squarely inside
+ * a UTC working day), and not the phone's own zone, which after a trip east
+ * would call 06:00 Perth "in hours" because the phone says 08:00.
  *
  * Deliberately approximate: it knows nothing of public holidays or a particular
  * department's roster. It is the weekday primitive; `onCallPeriod` adds the WA
  * public holidays and is the rule screens should use.
  */
-export function isOnCallOutOfHours(now: Date = new Date()): boolean {
-  const day = now.getDay(); // 0 = Sunday … 6 = Saturday, in the viewer's zone.
+export function isOnCallOutOfHours(now: Date = new Date(), zone: string = currentWorkTimeZone()): boolean {
+  // 0 = Sunday … 6 = Saturday, for the calendar date in the work zone.
+  const day = new Date(`${zonedDateOf(now, zone)}T00:00:00.000Z`).getUTCDay();
   if (day === 0 || day === 6) return true;
-  const hour = now.getHours();
+  const hour = Number(zonedTimeOf(now, zone).slice(0, 2));
   return hour < ON_CALL_IN_HOURS_START_HOUR || hour >= ON_CALL_IN_HOURS_END_HOUR;
 }
 
@@ -58,8 +62,8 @@ export function isOnCallOutOfHours(now: Date = new Date()): boolean {
  * rebuilt hub pages all read this, so no two screens can offer different
  * numbers for one role at the same moment.
  */
-export function onCallPeriod(now: Date = new Date()): OnCallPeriod {
-  return isOnCallOutOfHours(now) || isWaPublicHoliday(now) ? "after-hours" : "in-hours";
+export function onCallPeriod(now: Date = new Date(), zone: string = currentWorkTimeZone()): OnCallPeriod {
+  return isOnCallOutOfHours(now, zone) || isWaPublicHoliday(now, zone) ? "after-hours" : "in-hours";
 }
 
 /**
@@ -74,14 +78,13 @@ export function onCallPeriod(now: Date = new Date()): OnCallPeriod {
  * guarantee that is to ask it. Always strictly positive, so a timer built on it
  * can never spin; standing exactly on 17:00 returns the time to the NEXT flip.
  */
-export function msUntilOnCallPeriodChange(now: Date = new Date()): number {
-  const current = onCallPeriod(now);
-  const probe = new Date(now.getTime());
-  probe.setMinutes(0, 0, 0);
+export function msUntilOnCallPeriodChange(now: Date = new Date(), zone: string = currentWorkTimeZone()): number {
+  const current = onCallPeriod(now, zone);
+  const probe = new Date(onCallZonedHourStart(now, zone));
   // Eight days bounds the longest real run (Christmas to the substitute Monday) with room to spare.
   for (let step = 0; step < 24 * 8; step += 1) {
-    probe.setHours(probe.getHours() + 1);
-    if (onCallPeriod(probe) !== current) return probe.getTime() - now.getTime();
+    probe.setTime(probe.getTime() + 60 * 60 * 1000);
+    if (onCallPeriod(probe, zone) !== current) return probe.getTime() - now.getTime();
   }
   // Unreachable while the rule keeps a weekday working day, but a caller must
   // still get a usable delay rather than a zero that would spin a timer.

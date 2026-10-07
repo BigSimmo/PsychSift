@@ -140,6 +140,13 @@ describe("Your first week, the pack", () => {
     expect(screen.getByTestId("on-call-first-week-row-escalate")).toHaveTextContent("1 emergency line");
     expect(screen.getByTestId("on-call-first-week-row-logins")).toHaveTextContent("1 of 2 ready");
     expect(screen.getByTestId("on-call-first-week-row-logins")).toHaveTextContent("1 to do");
+    // Every row that opens a section ends in the same arrow, the Logins row with its "to do" tag too.
+    for (const row of screen.getAllByTestId(/^on-call-first-week-row-/))
+      expect(row.querySelector(".work-row__chev")).not.toBeNull();
+    // "Your first week" is one heading, the visible one, never a hidden copy as well.
+    expect(screen.getAllByRole("heading", { name: "Your first week" })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your first week");
+    expect(screen.getByTestId("on-call-first-week-page-back")).toHaveAttribute("href", "/on-call");
     const strip = screen.getByRole("progressbar", { name: "Sections read" });
     expect(strip).toHaveAttribute("aria-valuetext", "0 of 5 sections read");
     expect(screen.getByTestId("on-call-first-week-row-who")).toHaveAttribute("href", "/on-call/first-week?section=who");

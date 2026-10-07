@@ -104,7 +104,8 @@ export function RefereeList({
                 <span className="truncate text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
                   {referee.name}
                 </span>
-                <span className="truncate text-sm leading-5 text-[color:var(--text-muted)]">
+                {/* Wraps, never truncates: "no reply in 6 days" is the key fact, even on a 320 px phone. */}
+                <span className="break-words text-sm leading-5 text-[color:var(--text-muted)]">
                   {refereeLine(referee, today)}
                 </span>
               </span>

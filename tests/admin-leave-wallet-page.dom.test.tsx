@@ -73,6 +73,7 @@ describe("LeaveWalletPage", () => {
     expect(within(screen.getByTestId("admin-leave-stack")).getAllByRole("button")).toHaveLength(8);
     expect(screen.getByTestId("admin-leave-sign-off").textContent).toContain("Figures are not shown yet");
     expect(screen.getByTestId("admin-leave-agreement").getAttribute("href")).toMatch(/^https:\/\//);
+    expect(screen.getByTestId("admin-leave-back").getAttribute("href")).toBe("/admin");
   });
 
   it("opens a card on top, with the rest as a thin pile", () => {

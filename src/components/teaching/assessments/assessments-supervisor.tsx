@@ -84,10 +84,10 @@ export function SupervisorHome({ s, dispatch, openSheet }: ScreenProps) {
   const overdue = s.now >= 0;
   const ben = (
     <Row
-      avatar="BO"
+      avatar="AZ"
       title={
         <>
-          Dr Ben Ortiz · <span className="font-normal">mid-term</span>
+          Dr Ash Zamia · <span className="font-normal">mid-term</span>
         </>
       }
       subtitle={`PGY2 · ${overdue ? "was due to the MEU Fri 16 Oct" : "due to the MEU Fri 16 Oct"}`}
@@ -187,14 +187,15 @@ export function SupervisorHome({ s, dispatch, openSheet }: ScreenProps) {
         )}
         {overdue ? null : ben}
         <Row
-          avatar="MC"
-          title="Dr Mia Chen · EPA 2"
+          avatar="FM"
+          title="Dr Frankie Mulga · EPA 2"
           subtitle="Acutely unwell patient · asked Fri 2 Oct"
           tag={<Pill pill={{ label: "New", tone: "accent" }} />}
         />
       </List>
       <SmallPrint>
-        Dr Ben Ortiz and Dr Mia Chen are made-up examples of a list. Their forms aren&apos;t built into this sample.
+        Dr Ash Zamia and Dr Frankie Mulga are made-up examples of a list. Their forms aren&apos;t built into this
+        sample.
       </SmallPrint>
       <AssessmentsSampleViewsNav s={s} />
       <SectionLabel end={<TextLink href={viewHref("times", asSup)}>Set times</TextLink>}>Meetings</SectionLabel>
@@ -266,7 +267,7 @@ export function SideBySide({ s, dispatch }: ScreenProps) {
               icon={CalendarDays}
               iconTone="ok"
               title="Booked"
-              subtitle={`${bookingLabel(s.booking)} · Ward 4 office`}
+              subtitle={`${bookingLabel(s.booking)} · Ward A office`}
             />
           ) : (
             <Row

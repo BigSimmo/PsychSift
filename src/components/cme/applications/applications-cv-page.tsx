@@ -314,7 +314,14 @@ export function ApplicationsCvPage({
         />
       ) : null}
 
-      <article className={cn(flatCard, "cpd-cv-print overflow-hidden")} data-testid="applications-cv">
+      {/* A row control reached by Tab scrolls clear of the sticky Copy and Save as PDF dock, not under it. */}
+      <article
+        className={cn(
+          flatCard,
+          "cpd-cv-print overflow-hidden [--phone-focus-bottom-clearance:calc(5.5rem+max(0.875rem,var(--safe-area-bottom)))]",
+        )}
+        data-testid="applications-cv"
+      >
         <header className="border-b border-[color:var(--border)] px-3 py-3">
           <h2 className="text-lg font-semibold text-[color:var(--text-heading)]">Curriculum vitae</h2>
           <p className="cpd-cv-screen-only text-sm text-[color:var(--text-muted)]">

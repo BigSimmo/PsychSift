@@ -41,6 +41,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   cpdHomeActivityText,
   cpdHomeAllText,
@@ -100,7 +101,7 @@ type FileFlow =
 type Failure = { readonly title: string; readonly body: string; readonly retry: boolean };
 
 function hoursWords(value: number): string {
-  return `${Math.round(value * 100) / 100} h`;
+  return `${Math.round(value * 100) / 100}\u00a0h`;
 }
 
 function activityWords(count: number): string {
@@ -163,6 +164,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   const sample = useMemo(() => (demoMode ? EMPTY_CPD_HOME_SEND : null), [demoMode]);
   const store = useCpdHomeSendStore(sample);
   const notify = useUndoNotice();
+  const online = useOnlineStatus();
   const yearEntries = useMemo(() => activeCmeYearEntries(entries, set.year), [entries, set.year]);
   const history = store.state ? cpdHomeFilesForYear(store.state, set.year) : [];
   const lastAdded = store.state ? lastAddedFile(store.state, set.year) : null;
@@ -248,7 +250,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       return;
     }
     if (problems.length) {
-      announce("No file was made. Some activities are missing details.");
+      announce("No file was made. Some activities need fixing first.");
       return;
     }
     // A snapshot: what is checked is exactly what goes in the file, even if the page changes meanwhile.
@@ -274,7 +276,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           body: "An activity is missing its date, hours or category, or its title looks like a patient detail. Nothing was changed.",
           retry: false,
         });
-        announce("No file was made. An activity is missing details.", { priority: "assertive" });
+        announce("No file was made. Some activities need fixing first.", { priority: "assertive" });
         return;
       }
       done = next;
@@ -296,7 +298,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
         addedAt: null,
       };
       setFlow({ phase: "ready", file, text });
-      announce(`File ready, ${total} ${total === 1 ? "row" : "rows"}. Tap Download file.`);
+      announce(`File made, ${total} ${total === 1 ? "row" : "rows"}. Tap Download file.`);
     };
     window.setTimeout(step, CHECK_STEP_MS);
   }
@@ -384,13 +386,22 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
     }
   }
 
+  // Short labels with the count in the control's count column, so all three fit at 320 px. The
+  // full wording ("since 2 Mar") stays in the accessible name and in the Last file line above.
   const scopeOptions = [
-    { value: "all" as const, label: `All of ${set.year} · ${yearEntries.length}` },
+    {
+      value: "all" as const,
+      label: "All",
+      hint: `${yearEntries.length} ${yearEntries.length === 1 ? "activity" : "activities"} in ${set.year}`,
+      hintLabel: String(yearEntries.length),
+    },
     ...(lastAdded
       ? [
           {
             value: "new" as const,
-            label: `New since ${formatCmeRowDate(perthCalendarDate(new Date(lastAdded.addedAt!)), today).replace(/^\w+ /, "")} · ${notYetAdded.length}`,
+            label: "New",
+            hint: `${notYetAdded.length} new since ${formatCmeRowDate(perthCalendarDate(new Date(lastAdded.addedAt!)), today).replace(/^\w+ /, "")}`,
+            hintLabel: String(notYetAdded.length),
           },
         ]
       : []),
@@ -519,7 +530,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       </section>
 
       {scope !== "chosen" && scopeEntries.length > 0 ? (
-        <section aria-labelledby="cpd-home-activities" className="grid gap-2">
+        <section aria-labelledby="cpd-home-activities" className="grid min-w-0 gap-2 [&>.work-label]:flex-wrap">
           <SectionLabel
             id="cpd-home-activities"
             count={`${scopeEntries.length} · ${hoursWords(totalHours)}`}
@@ -807,18 +818,34 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
               <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
                 Full CPD export
               </span>
-              <span className="text-sm leading-5 text-[color:var(--text-muted)]">
-                Every column, for your own records
+              <span
+                className="text-sm leading-5 text-[color:var(--text-muted)]"
+                data-testid="cpd-home-full-export-note"
+              >
+                {online ? "Every column, for your own records" : "Needs a connection. The file above works offline."}
               </span>
             </span>
-            <a
-              href={`/api/cme/export?year=${set.year}`}
-              download
-              data-testid="cpd-home-full-export"
-              className={buttonFaceClass({ variant: "secondary", size: "sm" })}
-            >
-              CSV
-            </a>
+            {/* This file comes from the server, so it waits for a connection. The browser reporting offline is
+                reliable in that direction; it never blocks the CSV above, which is made on the phone. */}
+            {online ? (
+              <a
+                href={`/api/cme/export?year=${set.year}`}
+                download
+                data-testid="cpd-home-full-export"
+                className={buttonFaceClass({ variant: "secondary", size: "sm" })}
+              >
+                CSV
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                data-testid="cpd-home-full-export"
+                className={buttonFaceClass({ variant: "secondary", size: "sm" })}
+              >
+                CSV
+              </button>
+            )}
           </li>
         </ul>
       </section>
@@ -828,7 +855,9 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           ? "Made on this phone. Nothing is sent for you. The list of files keeps dates and counts, never your words."
           : store.mode === "shared"
             ? "This is marked as a shared device, so the list of files is not kept. Nothing is sent for you."
-            : "Sample record. Files made here are not kept, and nothing is sent."}
+            : store.mode === "memory"
+              ? "This browser is not keeping changes. They last until you leave the page. Nothing is sent for you."
+              : "Sample record. Files made here are not kept, and nothing is sent."}
       </QuietNote>
 
       <ActionDock testId="cpd-home-dock">
@@ -898,7 +927,8 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                 className="grid grid-cols-[5.5rem_1fr_3rem] gap-2 border-t border-[color:var(--border)] px-3 py-2"
               >
                 <span role="cell" className="nums text-[color:var(--text-muted)]">
-                  {row.date}
+                  {/* Shown the Australian way without the year, which the page already names. The file keeps the ISO date. */}
+                  {/^\d{4}-\d{2}-\d{2}$/.test(row.date) ? formatCmeRowDate(row.date, row.date) : row.date}
                 </span>
                 <span role="cell" className="grid min-w-0 text-[color:var(--text-heading)]">
                   <span className="font-medium">{row.activity}</span>
@@ -921,12 +951,12 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       <Sheet
         open={flow !== null}
         onClose={() => (flow?.phase === "making" ? cancelMaking() : setFlow(null))}
-        title={flow?.phase === "making" ? "Making your file" : ready ? "File ready" : "Download started"}
+        title={flow?.phase === "making" ? "Making your file" : ready ? "Your file" : "Download started"}
         description={
           flow?.phase === "making"
             ? flow.name
             : ready
-              ? `${ready.file.name}, checked and ready`
+              ? `${ready.file.name}, every row checked`
               : "Your browser should have saved it to your downloads"
         }
         testId="cpd-home-saved-sheet"
@@ -980,12 +1010,12 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                   data-testid="cpd-home-progress"
                   className="h-2 min-w-0 flex-1 appearance-none overflow-hidden rounded-full bg-[color:var(--surface-subtle)] [&::-moz-progress-bar]:bg-[color:var(--mode-identity)] [&::-webkit-progress-bar]:bg-[color:var(--surface-subtle)] [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-[color:var(--mode-identity)]"
                 />
-                <span className="shrink-0 text-sm font-medium nums text-[color:var(--text-heading)]">
+                <span className="shrink-0 text-sm font-normal nums text-[color:var(--text-heading)]">
                   {flow.done} of {flow.total} rows
                 </span>
               </div>
               <p className="text-sm text-[color:var(--text-muted)]">
-                Checking each row has a date, hours and a category
+                Checking each row has a date, hours, a category and a safe title
               </p>
             </div>
           </div>
@@ -1064,7 +1094,9 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
               <QuietNote icon={Lock}>
                 {store.mode === "shared"
                   ? "Shared device: marking added lasts for this page only."
-                  : "Sample record: marking added is not kept."}
+                  : store.mode === "memory"
+                    ? "This browser is not keeping changes. Marking added lasts until you leave the page."
+                    : "Sample record: marking added is not kept."}
               </QuietNote>
             ) : null}
           </div>
