@@ -364,7 +364,12 @@ export function WorkChip(props: WorkChipProps) {
     <>
       {Icon ? <Icon aria-hidden="true" strokeWidth={2.2} /> : null}
       {children}
-      {count !== undefined ? <span className="work-chip__count">{count}</span> : null}
+      {count !== undefined ? (
+        <span className="work-chip__count">
+          <span className="sr-only"> </span>
+          {count}
+        </span>
+      ) : null}
     </>
   );
   if (props.href !== undefined) {
