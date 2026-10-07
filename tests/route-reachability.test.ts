@@ -34,6 +34,11 @@ const srcRoot = path.join(repoRoot, "src");
 
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
+  // Alerts work, owner approval 7 Oct 2026.
+  [
+    "/my-day/alerts/earlier",
+    "Kept for old links only: it redirects new work mode readers to /my-day/notifications/earlier (the Notifications area's Earlier tab), and the launch switch 404s it for classic readers.",
+  ],
   [
     "/my-day/week",
     "Reached from the 'Open week' QuietTextLink (a next/link wrapper) on My Day's This week card, which this Link-only scan does not model. The header tabs are My Day's own Today, Work and Me pages.",

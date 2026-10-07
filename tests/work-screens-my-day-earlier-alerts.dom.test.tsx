@@ -308,6 +308,20 @@ describe("Earlier alerts page", () => {
     expect(screen.getByTestId("earlier-alerts-needs-you-link").getAttribute("href")).toBe("/my-day?view=all");
   });
 
+  // Alerts work, owner approval 7 Oct 2026: inside My Day › Notifications the
+  // band's To do and Settings tabs carry those links, so the page drops its own.
+  it("leaves out its Related links as the Earlier tab of Notifications", async () => {
+    worker.shown = [notification("changed", 3)];
+    render(
+      <ToastProvider>
+        <EarlierAlertsPage inFrame />
+      </ToastProvider>,
+    );
+    expect(await screen.findByTestId("earlier-alert-changed")).toBeTruthy();
+    expect(screen.queryByTestId("earlier-alerts-settings-link")).toBeNull();
+    expect(screen.queryByTestId("earlier-alerts-needs-you-link")).toBeNull();
+  });
+
   it("takes a double tap on Remove as one tap, so the row that slides up under the finger stays", async () => {
     worker.shown = [notification("changed", 3), notification("request", 4), notification("brief", 5)];
     const user = userEvent.setup();

@@ -52,6 +52,14 @@ describe("workFrameCurrentItem", () => {
     expect(workFrameCurrentItem(day, "/my-day/profile", "")?.id).toBe("my-day-profile");
   });
 
+  it("ticks each Notifications tab on its own page", () => {
+    const notify = WORK_AREAS.notify;
+    expect(workFrameCurrentItem(notify, "/my-day/notifications", "")?.id).toBe("notify-todo");
+    expect(workFrameCurrentItem(notify, "/my-day/notifications/earlier", "?area=roster")?.id).toBe("notify-earlier");
+    expect(workFrameCurrentItem(notify, "/my-day/notifications/settings", "")?.id).toBe("notify-settings");
+    expect(workFrameForRoute("my-day", "/my-day/notifications")?.page.title).toBe("Notifications");
+  });
+
   it("names the features' pages as their own items, not a tab", () => {
     expect(workFrameCurrentItem(WORK_AREAS.cpd, "/cme/applications/cv", "")?.id).toBe("applications");
     expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/new-job/ready", "")?.id).toBe("admin-ready");

@@ -56,6 +56,8 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   // Setup walkthrough and help centre.
   { path: "/my-day/setup", owner: "walkthrough-help" },
   { path: "/my-day/help", owner: "walkthrough-help" },
+  // Notifications: To do, Earlier and Settings, and everything below them.
+  { path: "/my-day/notifications", owner: "alerts" },
 ];
 
 function pathMatches(pathname: string, entryPath: string): boolean {
