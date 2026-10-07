@@ -89,6 +89,37 @@ describe("Teaching assessments: home on Mon 5 Oct (week 6)", () => {
     const twice = assessmentsReducer(once, { type: "request-epa", epa: 1, who: "reg" });
     expect(twice.epaRequests).toHaveLength(1);
   });
+
+  it("lets the supervisor record an EPA without a request, and Undo removes it", () => {
+    const saved = assessmentsReducer(s, { type: "record-epa-direct", epa: 1, level: "minimal", note: " Clear plans " });
+    expect(epaRecords(saved)).toHaveLength(9);
+    expect(saved.epaRequests[0]).toMatchObject({
+      epa: 1,
+      who: "sup",
+      status: "done",
+      direct: true,
+      note: "Clear plans",
+    });
+    expect(doctorActions(saved)).toBe(1);
+    const undone = assessmentsReducer(saved, { type: "undo-record-epa", index: 0 });
+    expect(undone.epaRequests).toHaveLength(0);
+    expect(epaRecords(undone)).toHaveLength(8);
+  });
+
+  it("puts a requested EPA back to waiting on Undo, keeping the doctor's request", () => {
+    const requested = assessmentsReducer(s, { type: "request-epa", epa: 1, who: "sup" });
+    const recorded = assessmentsReducer(requested, {
+      type: "record-epa",
+      index: 0,
+      level: "direct",
+      note: "Keep it up",
+    });
+    expect(recorded.epaRequests[0]).toMatchObject({ status: "done", level: "direct", note: "Keep it up" });
+    const undone = assessmentsReducer(recorded, { type: "undo-record-epa", index: 0 });
+    expect(undone.epaRequests).toEqual([{ epa: 1, who: "sup", status: "requested" }]);
+    // A second Undo changes nothing.
+    expect(assessmentsReducer(undone, { type: "undo-record-epa", index: 0 })).toBe(undone);
+  });
 });
 
 describe("Teaching assessments: the end-of-term story", () => {
