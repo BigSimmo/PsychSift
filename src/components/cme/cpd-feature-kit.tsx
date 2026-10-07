@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
@@ -83,7 +83,10 @@ const iconToneClass: Record<IconTone, string> = {
 /** The flat tint circle: soft fill, area-colour glyph, nothing else. */
 export function IconCircle({ icon: Icon, tone = "mode" }: { readonly icon: LucideIcon; readonly tone?: IconTone }) {
   return (
-    <span aria-hidden="true" className={cn("grid size-9 shrink-0 place-items-center rounded-full", iconToneClass[tone])}>
+    <span
+      aria-hidden="true"
+      className={cn("grid size-9 shrink-0 place-items-center rounded-full", iconToneClass[tone])}
+    >
       <Icon aria-hidden="true" strokeWidth={1.75} className="size-icon-md" />
     </span>
   );
@@ -143,7 +146,15 @@ export function PendingTag({ children }: { readonly children: ReactNode }) {
 }
 
 /** A one-line note with an icon, quiet text. */
-export function QuietNote({ icon: Icon, children, testId }: { readonly icon: LucideIcon; readonly children: ReactNode; readonly testId?: string }) {
+export function QuietNote({
+  icon: Icon,
+  children,
+  testId,
+}: {
+  readonly icon: LucideIcon;
+  readonly children: ReactNode;
+  readonly testId?: string;
+}) {
   return (
     <p data-testid={testId} className="flex items-start gap-2 px-1 text-sm leading-5 text-[color:var(--text-muted)]">
       <Icon aria-hidden="true" strokeWidth={1.5} className="mt-0.5 size-icon-sm shrink-0" />
@@ -170,7 +181,11 @@ export function PatientDetailCatch({
       data-testid={testId}
       className="flex min-w-0 items-start gap-2.5 rounded-lg border border-[color:var(--warning)] bg-[color:var(--surface-raised)] p-3"
     >
-      <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--warning)]" />
+      <TriangleAlert
+        aria-hidden="true"
+        strokeWidth={1.5}
+        className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--warning)]"
+      />
       <span className="grid min-w-0 gap-1">
         <span className="text-sm font-semibold leading-5 text-[color:var(--text-heading)]">{problem.title}</span>
         <span className="text-sm leading-5 text-[color:var(--text)]">{problem.body}</span>
@@ -238,14 +253,26 @@ export function ActionDock({ children, testId }: { readonly children: ReactNode;
  */
 export function useUndoNotice() {
   const toast = useOptionalToast();
+  // Only the latest change can be undone: an older Undo would restore a state from
+  // before a later change and silently throw that later change away.
+  const lastUndo = useRef<string | null>(null);
   return (message: string, onUndo?: () => void) => {
     if (toast) {
-      toast.push({
+      if (onUndo && lastUndo.current) toast.dismiss(lastUndo.current);
+      const id = toast.push({
         tone: "success",
         title: message,
         duration: onUndo ? 10_000 : 4_000,
-        ...(onUndo ? { action: { label: "Undo", onAction: onUndo } } : {}),
+        ...(onUndo
+          ? {
+              action: { label: "Undo", onAction: onUndo },
+              onClose: () => {
+                if (lastUndo.current === id) lastUndo.current = null;
+              },
+            }
+          : {}),
       });
+      lastUndo.current = onUndo ? id : lastUndo.current;
       return;
     }
     announce(message);

@@ -9,7 +9,13 @@ export type HandoffFileState = "none" | "saved";
  * works today, then CPD Home drawn dashed, because what it can import has not
  * been checked. One picture, read as one sentence by a screen reader.
  */
-export function CpdHomeHandoffStrip({ activities, file }: { readonly activities: number; readonly file: HandoffFileState }) {
+export function CpdHomeHandoffStrip({
+  activities,
+  file,
+}: {
+  readonly activities: number;
+  readonly file: HandoffFileState;
+}) {
   const activityWords = `${activities} ${activities === 1 ? "activity" : "activities"}`;
   return (
     <div
@@ -27,7 +33,12 @@ export function CpdHomeHandoffStrip({ activities, file }: { readonly activities:
         className="absolute left-1/2 right-[16.7%] top-6 border-t-2 border-dashed border-[color:var(--border-strong)]"
       />
       <Node icon={Award} title="Your log" sub={activityWords} state="done" />
-      <Node icon={FileSpreadsheet} title="CSV file" sub={file === "saved" ? "Saved" : "Not made yet"} state={file === "saved" ? "done" : "open"} />
+      <Node
+        icon={FileSpreadsheet}
+        title="CSV file"
+        sub={file === "saved" ? "Saved" : "Not made yet"}
+        state={file === "saved" ? "done" : "open"}
+      />
       <Node icon={ExternalLink} title="CPD Home" sub="To confirm" state="unchecked" />
     </div>
   );
@@ -52,7 +63,8 @@ function Node({
           state === "done" &&
             "border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
           state === "open" && "border-2 border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
-          state === "unchecked" && "border-2 border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
+          state === "unchecked" &&
+            "border-2 border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
         )}
       >
         <Icon aria-hidden="true" strokeWidth={1.75} className="size-icon-md" />

@@ -23,7 +23,6 @@ import {
   addReferee,
   agreedCount,
   APPLICATION_STAGES,
-  APPLICATIONS_CV_HREF,
   applicationsNeedsYouItems,
   newApplicationsId,
   quietReferees,
@@ -141,7 +140,8 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
   const reminders = applicationsNeedsYouItems(state, today).filter((item) => item.id.includes(":date:"));
   const empty = state.dates.length === 0 && state.referees.length === 0;
   const full = state.referees.length >= REFEREE_LIMIT;
-  const openReferee = refereeSheet.open && refereeSheet.id ? (state.referees.find((r) => r.id === refereeSheet.id) ?? null) : null;
+  const openReferee =
+    refereeSheet.open && refereeSheet.id ? (state.referees.find((r) => r.id === refereeSheet.id) ?? null) : null;
 
   return (
     <CpdFeaturePage
@@ -166,7 +166,9 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
           <IconCircle icon={CalendarDays} />
           <span className="grid min-w-0 flex-1">
             <span className="text-base-minus font-medium text-[color:var(--text-heading)]">{item.title}</span>
-            <span className="text-sm text-[color:var(--text-muted)]">{item.dueOn ? shortDate(item.dueOn, today) : null}</span>
+            <span className="text-sm text-[color:var(--text-muted)]">
+              {item.dueOn ? shortDate(item.dueOn, today) : null}
+            </span>
           </span>
         </section>
       ))}
@@ -179,12 +181,18 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
         >
           <IconCircle icon={Bell} tone="amber" />
           <span className="grid min-w-0 flex-1 basis-40">
-            <span className="text-base-minus font-medium text-[color:var(--text-heading)]">{referee.name} has not replied</span>
+            <span className="text-base-minus font-medium text-[color:var(--text-heading)]">
+              {referee.name} has not replied
+            </span>
             <span className="text-sm text-[color:var(--text-muted)]">
               <span className="nums">{days}</span> days since you asked
             </span>
           </span>
-          <Button size="sm" onClick={() => setRefereeSheet({ open: true, id: referee.id })} testId="applications-nudge-open">
+          <Button
+            size="sm"
+            onClick={() => setRefereeSheet({ open: true, id: referee.id })}
+            testId="applications-nudge-open"
+          >
             Nudge
           </Button>
         </section>
@@ -196,18 +204,28 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
           className={cn(flatCard, "grid justify-items-center gap-3 px-4 py-8 text-center")}
         >
           <IconCircle icon={CalendarDays} />
-          <h2 className="text-base-minus font-semibold text-[color:var(--text-heading)]">Plan your application season</h2>
+          <h2 className="text-base-minus font-semibold text-[color:var(--text-heading)]">
+            Plan your application season
+          </h2>
           <p className="max-w-80 text-sm text-[color:var(--text-muted)]">
             Add the dates from the advert, the people you will ask, and check your CV.
           </p>
-          <Button variant="primary" icon={Plus} onClick={() => setDateSheet({ open: true, stage: "close" })} testId="applications-first-date">
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => setDateSheet({ open: true, stage: "close" })}
+            testId="applications-first-date"
+          >
             Add the first date
           </Button>
         </section>
       ) : null}
 
       <section aria-labelledby="applications-season" className="grid gap-2">
-        <SectionLabel id="applications-season" count={`${state.dates.length} of ${APPLICATION_STAGES.length} dates added`}>
+        <SectionLabel
+          id="applications-season"
+          count={`${state.dates.length} of ${APPLICATION_STAGES.length} dates added`}
+        >
           Season
         </SectionLabel>
         <div className={cn(flatCard, "p-3")}>
@@ -236,14 +254,16 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
         <ul role="list" className={flatCard}>
           <li className={cn(flatRow, "p-0")}>
             <Link
-              href={APPLICATIONS_CV_HREF}
+              href="/cme/applications/cv"
               data-testid="applications-cv-link"
               className={cn(focusRing, "flex min-h-13 w-full items-center gap-3 px-3 py-2 no-underline")}
             >
               <IconCircle icon={FileText} />
               <span className="grid min-w-0 flex-1">
                 <span className="text-base-minus font-medium text-[color:var(--text-heading)]">Your CV</span>
-                <span className="text-sm text-[color:var(--text-muted)]">Fills itself from CPD, Teaching and terms</span>
+                <span className="text-sm text-[color:var(--text-muted)]">
+                  Fills itself from CPD, Teaching and terms
+                </span>
               </span>
               <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
             </Link>
@@ -256,7 +276,9 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
             >
               <IconCircle icon={HeartHandshake} tone="neutral" />
               <span className="grid min-w-0 flex-1">
-                <span className="text-base-minus font-medium text-[color:var(--text-heading)]">Applying can be hard going</span>
+                <span className="text-base-minus font-medium text-[color:var(--text-heading)]">
+                  Applying can be hard going
+                </span>
                 <span className="text-sm text-[color:var(--text-muted)]">Support and contacts, in Admin</span>
               </span>
               <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
@@ -271,9 +293,7 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
         </p>
       ) : null}
 
-      <QuietNote icon={Lock}>
-        Kept on this phone only, never sent. No patient details anywhere here.
-      </QuietNote>
+      <QuietNote icon={Lock}>Kept on this phone only, never sent. No patient details anywhere here.</QuietNote>
 
       <ActionDock testId="applications-dock">
         <Button icon={Plus} onClick={() => setDateSheet({ open: true, stage: null })} testId="applications-add-date">

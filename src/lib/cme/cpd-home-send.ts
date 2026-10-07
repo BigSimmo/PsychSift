@@ -58,11 +58,7 @@ function round(value: number): number {
 }
 
 /** The year's active activities as file rows, oldest first, optionally limited to some ids. */
-export function cpdHomeRows(
-  entries: readonly CmeEntry[],
-  year: number,
-  onlyIds?: ReadonlySet<string>,
-): CpdHomeRow[] {
+export function cpdHomeRows(entries: readonly CmeEntry[], year: number, onlyIds?: ReadonlySet<string>): CpdHomeRow[] {
   return activeCmeYearEntries(entries, year)
     .filter((entry) => !onlyIds || onlyIds.has(entry.id))
     .map((entry) => {
@@ -108,9 +104,7 @@ export function cpdHomeRowProblems(rows: readonly CpdHomeRow[]): CpdHomeRowProbl
  */
 export function reflectionsToLeaveOut(rows: readonly CpdHomeRow[], thisYear: number): Set<string> {
   return new Set(
-    rows
-      .filter((row) => row.reflection && looksLikePatientDetails(row.reflection, thisYear))
-      .map((row) => row.entryId),
+    rows.filter((row) => row.reflection && looksLikePatientDetails(row.reflection, thisYear)).map((row) => row.entryId),
   );
 }
 
@@ -140,8 +134,7 @@ function rowCells(row: CpdHomeRow, options: CpdHomeFileOptions): (string | numbe
     row.measuring,
     row.category,
   ];
-  if (options.includeReflections)
-    cells.push(options.withheldReflections?.has(row.entryId) ? "" : row.reflection);
+  if (options.includeReflections) cells.push(options.withheldReflections?.has(row.entryId) ? "" : row.reflection);
   return cells;
 }
 
@@ -157,7 +150,9 @@ export function formatCpdHomeCsv(rows: readonly CpdHomeRow[], options: CpdHomeFi
 
 function tableCell(value: string | number): string {
   // A tab or a line break inside a cell would start a new column or row when pasted.
-  return String(value).replace(/[\t\r\n]+/g, " ").trim();
+  return String(value)
+    .replace(/[\t\r\n]+/g, " ")
+    .trim();
 }
 
 /** The same rows tab-separated, for pasting straight into a spreadsheet or a web table. */
@@ -269,11 +264,7 @@ export function lastAddedFile(state: CpdHomeSendState, year: number): CpdHomeFil
 }
 
 /** This year's active activities that are in no file marked added, oldest first. */
-export function entriesNotYetAdded(
-  entries: readonly CmeEntry[],
-  state: CpdHomeSendState,
-  year: number,
-): CmeEntry[] {
+export function entriesNotYetAdded(entries: readonly CmeEntry[], state: CpdHomeSendState, year: number): CmeEntry[] {
   const added = addedEntryIds(state, year);
   return activeCmeYearEntries(entries, year).filter((entry) => !added.has(entry.id));
 }

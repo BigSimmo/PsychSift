@@ -51,10 +51,19 @@ export function SeasonRail({
         {items.map((item) =>
           item.kind === "today" ? (
             item.countdown ? (
-              <li key="today" className="relative flex min-h-10 items-center gap-3 pl-3" data-testid="applications-rail-today">
-                <span aria-hidden="true" className="relative z-[var(--z-raised)] size-3 rounded-full bg-[color:var(--text-heading)] ring-4 ring-[color:var(--surface-raised)]" />
+              <li
+                key="today"
+                className="relative flex min-h-10 items-center gap-3 pl-3"
+                data-testid="applications-rail-today"
+              >
+                <span
+                  aria-hidden="true"
+                  className="relative z-[var(--z-raised)] size-3 rounded-full bg-[color:var(--text-heading)] ring-4 ring-[color:var(--surface-raised)]"
+                />
                 <span className="grid">
-                  <span className="text-2xs font-semibold uppercase tracking-label text-[color:var(--text-heading)]">Today</span>
+                  <span className="text-2xs font-semibold uppercase tracking-label text-[color:var(--text-heading)]">
+                    Today
+                  </span>
                   <span className="text-sm text-[color:var(--mode-identity)]">{item.countdown}</span>
                 </span>
               </li>
@@ -99,7 +108,9 @@ export function SeasonRail({
                       : "Date not added"}
                   </span>
                   {outOfOrder.has(item.stage) ? (
-                    <span className="text-sm leading-5 text-[color:var(--warning)]">Earlier than the stage before. Check the advert.</span>
+                    <span className="text-sm leading-5 text-[color:var(--warning)]">
+                      Earlier than the stage before. Check the advert.
+                    </span>
                   ) : null}
                 </span>
                 {item.date ? (
@@ -119,7 +130,11 @@ export function SeasonRail({
         data-testid="applications-dates-not-checked"
         className="flex items-start gap-2 rounded-md bg-[color:var(--surface-subtle)] px-3 py-2.5 text-sm leading-5 text-[color:var(--text)]"
       >
-        <Clock aria-hidden="true" strokeWidth={1.75} className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--warning)]" />
+        <Clock
+          aria-hidden="true"
+          strokeWidth={1.75}
+          className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--warning)]"
+        />
         <span>
           <span className="font-medium">Dates not checked.</span> PsychSift has no confirmed WA recruitment dates. Add
           them from the advert you apply to.
@@ -261,7 +276,9 @@ function SeasonDateSheetBody({
                 >
                   {item.label}
                   {has ? <span className="sr-only"> (date added)</span> : null}
-                  {has ? <span aria-hidden="true" className="size-1.5 rounded-full bg-[color:var(--mode-identity)]" /> : null}
+                  {has ? (
+                    <span aria-hidden="true" className="size-1.5 rounded-full bg-[color:var(--mode-identity)]" />
+                  ) : null}
                 </button>
               );
             })}

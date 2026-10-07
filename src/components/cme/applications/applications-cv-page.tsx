@@ -1,6 +1,18 @@
 "use client";
 
-import { Award, BookOpen, Copy, Eye, EyeOff, GraduationCap, PenLine, Plus, Printer, RefreshCw, Shield } from "lucide-react";
+import {
+  Award,
+  BookOpen,
+  Copy,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  PenLine,
+  Plus,
+  Printer,
+  RefreshCw,
+  Shield,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -19,11 +31,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, fieldControlPlain } from "@/components/ui-primitives";
-import {
-  applicationTextProblem,
-  sampleApplications,
-  STATEMENT_LIMIT,
-} from "@/lib/cme/applications";
+import { applicationTextProblem, sampleApplications, STATEMENT_LIMIT } from "@/lib/cme/applications";
 import {
   buildCv,
   cvLineCount,
@@ -137,7 +145,11 @@ export function ApplicationsCvPage({
 
   return (
     <CpdFeaturePage
-      eyebrow={hidden.size ? `${plain.hiddenCount} ${plain.hiddenCount === 1 ? "line" : "lines"} hidden` : `Filled from your records · ${clock(now)}`}
+      eyebrow={
+        hidden.size
+          ? `${plain.hiddenCount} ${plain.hiddenCount === 1 ? "line" : "lines"} hidden`
+          : `Filled from your records · ${clock(now)}`
+      }
       title="CV"
       testId="applications-cv-page"
     >
@@ -177,7 +189,10 @@ export function ApplicationsCvPage({
         ))}
       </div>
 
-      <ul aria-label="Where each line comes from" className="flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-[color:var(--text-muted)]">
+      <ul
+        aria-label="Where each line comes from"
+        className="flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-[color:var(--text-muted)]"
+      >
         {(Object.keys(cvSourceLabels) as CvSource[]).map((source) => {
           const Icon = SOURCE_ICON[source];
           return (
@@ -222,10 +237,22 @@ export function ApplicationsCvPage({
               Log CPD, set up your term in Teaching, or add a statement, and lines appear here.
             </p>
             <span className="flex flex-wrap justify-center gap-2">
-              <Link href="/cme/new" className={cn(focusRing, "inline-flex min-h-12 items-center px-2 text-sm text-[color:var(--mode-identity)] underline underline-offset-4")}>
+              <Link
+                href="/cme/new"
+                className={cn(
+                  focusRing,
+                  "inline-flex min-h-12 items-center px-2 text-sm text-[color:var(--mode-identity)] underline underline-offset-4",
+                )}
+              >
                 Log an activity
               </Link>
-              <Link href="/teaching/term" className={cn(focusRing, "inline-flex min-h-12 items-center px-2 text-sm text-[color:var(--mode-identity)] underline underline-offset-4")}>
+              <Link
+                href="/teaching/term"
+                className={cn(
+                  focusRing,
+                  "inline-flex min-h-12 items-center px-2 text-sm text-[color:var(--mode-identity)] underline underline-offset-4",
+                )}
+              >
                 Set up your term
               </Link>
             </span>
@@ -256,7 +283,9 @@ export function ApplicationsCvPage({
                       >
                         {line.title}
                       </span>
-                      {line.sub ? <span className="text-xs leading-4 text-[color:var(--text-muted)]">{line.sub}</span> : null}
+                      {line.sub ? (
+                        <span className="text-xs leading-4 text-[color:var(--text-muted)]">{line.sub}</span>
+                      ) : null}
                       {isHidden ? <span className="sr-only">Hidden from copies and print.</span> : null}
                     </span>
                     <span
@@ -342,7 +371,10 @@ export function ApplicationsCvPage({
           const before = store.state;
           if (store.update((current) => ({ ...current, statement: text }))) {
             setStatementOpen(false);
-            notify(text ? "Statement saved" : "Statement removed", before ? () => store.update(() => before) : undefined);
+            notify(
+              text ? "Statement saved" : "Statement removed",
+              before ? () => store.update(() => before) : undefined,
+            );
           }
         }}
       />
@@ -350,7 +382,15 @@ export function ApplicationsCvPage({
   );
 }
 
-function LoadProblem({ text, onRetry, testId }: { readonly text: string; readonly onRetry: () => void; readonly testId: string }) {
+function LoadProblem({
+  text,
+  onRetry,
+  testId,
+}: {
+  readonly text: string;
+  readonly onRetry: () => void;
+  readonly testId: string;
+}) {
   return (
     <div
       role="status"
@@ -398,7 +438,13 @@ function StatementSheetBody({
       description="In your own words. PsychSift never writes it for you."
       testId="applications-statement-sheet"
       footer={
-        <Button variant="primary" block disabled={Boolean(problem)} onClick={() => onSave(text.trim())} testId="applications-statement-save">
+        <Button
+          variant="primary"
+          block
+          disabled={Boolean(problem)}
+          onClick={() => onSave(text.trim())}
+          testId="applications-statement-save"
+        >
           {text.trim() ? "Save statement" : initial ? "Remove statement" : "Save statement"}
         </Button>
       }

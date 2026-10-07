@@ -221,7 +221,13 @@ export function seasonYear(state: ApplicationsState, today: string): number {
 }
 
 export type RailItem =
-  | { readonly kind: "stage"; readonly stage: ApplicationStageId; readonly label: string; readonly date: SeasonDate | null; readonly past: boolean }
+  | {
+      readonly kind: "stage";
+      readonly stage: ApplicationStageId;
+      readonly label: string;
+      readonly date: SeasonDate | null;
+      readonly past: boolean;
+    }
   | { readonly kind: "today"; readonly countdown: string | null };
 
 export function countdownWords(days: number, label: string): string {

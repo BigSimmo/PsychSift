@@ -4,14 +4,7 @@ import { Check, Copy, Users } from "lucide-react";
 import { useId, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import {
-  flatCard,
-  flatRow,
-  IconCircle,
-  PatientDetailCatch,
-  Tag,
-  type TagTone,
-} from "@/components/cme/cpd-feature-kit";
+import { flatCard, flatRow, IconCircle, PatientDetailCatch, Tag, type TagTone } from "@/components/cme/cpd-feature-kit";
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
@@ -49,7 +42,9 @@ function initials(name: string): string {
     .replace(/^(?:dr|doctor|prof|professor|a\/prof|assoc(?:iate)?\.?\s+prof(?:essor)?|mr|mrs|ms|mx|miss)\.?\s+/i, "")
     .split(/\s+/)
     .filter(Boolean);
-  return (words.length > 1 ? `${words[0]![0]}${words[words.length - 1]![0]}` : (words[0]?.slice(0, 2) ?? "?")).toUpperCase();
+  return (
+    words.length > 1 ? `${words[0]![0]}${words[words.length - 1]![0]}` : (words[0]?.slice(0, 2) ?? "?")
+  ).toUpperCase();
 }
 
 export function RefereeList({
@@ -187,8 +182,12 @@ function RefereeSheetBody({
   const nameProblem = name.trim() || tried ? refereeNameProblem(name) : null;
   const roleProblem = applicationTextProblem(role);
   const canSave = !refereeNameProblem(name) && !roleProblem;
-  const unchanged = referee && referee.name === name.trim() && referee.role === role.trim() && referee.status === status;
-  const nudge = referee && referee.status === "asked" ? nudgeMessage({ ...referee, name: name.trim() || referee.name }, today) : null;
+  const unchanged =
+    referee && referee.name === name.trim() && referee.role === role.trim() && referee.status === status;
+  const nudge =
+    referee && referee.status === "asked"
+      ? nudgeMessage({ ...referee, name: name.trim() || referee.name }, today)
+      : null;
 
   function save() {
     setTried(true);
@@ -226,7 +225,13 @@ function RefereeSheetBody({
               Remove
             </Button>
           ) : null}
-          <Button variant="primary" block onClick={save} disabled={tried && !canSave} testId="applications-referee-save">
+          <Button
+            variant="primary"
+            block
+            onClick={save}
+            disabled={tried && !canSave}
+            testId="applications-referee-save"
+          >
             {referee ? "Save" : "Add referee"}
           </Button>
         </div>
@@ -260,7 +265,11 @@ function RefereeSheetBody({
           <p id={statusGroup} className="text-sm font-medium text-[color:var(--text-heading)]">
             Status
           </p>
-          <div role="radiogroup" aria-labelledby={statusGroup} className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3">
+          <div
+            role="radiogroup"
+            aria-labelledby={statusGroup}
+            className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3"
+          >
             {REFEREE_STATUSES.map((item) => {
               const selected = item.id === status;
               return (
@@ -289,16 +298,19 @@ function RefereeSheetBody({
           <div className="grid gap-1">
             <p className="text-sm font-medium text-[color:var(--text-heading)]">History</p>
             <ol className={flatCard} data-testid="applications-referee-history">
-              {[...referee.history].reverse().slice(0, 8).map((event, index) => (
-                <li key={`${event.on}-${index}`} className={cn(flatRow, "justify-between text-sm")}>
-                  <span className="text-[color:var(--text)]">
-                    {event.kind === "nudge" ? "Nudge copied" : refereeStatusLabel(event.status)}
-                  </span>
-                  <span className="nums text-[color:var(--text-muted)]">
-                    {event.on === today ? "Today" : shortDate(event.on, today)}
-                  </span>
-                </li>
-              ))}
+              {[...referee.history]
+                .reverse()
+                .slice(0, 8)
+                .map((event, index) => (
+                  <li key={`${event.on}-${index}`} className={cn(flatRow, "justify-between text-sm")}>
+                    <span className="text-[color:var(--text)]">
+                      {event.kind === "nudge" ? "Nudge copied" : refereeStatusLabel(event.status)}
+                    </span>
+                    <span className="nums text-[color:var(--text-muted)]">
+                      {event.on === today ? "Today" : shortDate(event.on, today)}
+                    </span>
+                  </li>
+                ))}
             </ol>
           </div>
         ) : null}
@@ -306,12 +318,12 @@ function RefereeSheetBody({
           <div className="grid gap-2" data-testid="applications-nudge">
             <p className="text-sm font-medium text-[color:var(--text-heading)]">Nudge</p>
             <p className={cn(flatCard, "p-3 text-sm leading-5 text-[color:var(--text)]")}>{nudge}</p>
-            <Button
-              icon={copy === "copied" ? Check : Copy}
-              onClick={copyNudge}
-              testId="applications-nudge-copy"
-            >
-              {copy === "copied" ? "Copied, paste it in your email" : copy === "failed" ? "Copy failed, try again" : "Copy nudge"}
+            <Button icon={copy === "copied" ? Check : Copy} onClick={copyNudge} testId="applications-nudge-copy">
+              {copy === "copied"
+                ? "Copied, paste it in your email"
+                : copy === "failed"
+                  ? "Copy failed, try again"
+                  : "Copy nudge"}
             </Button>
           </div>
         ) : null}

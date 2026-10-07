@@ -128,14 +128,17 @@ export function buildCv(input: {
     cpdLines.push({
       id: `cpd:${year}:total`,
       title: `${year}: ${formatHours(totalAllocatedHours(yearEntries))} logged, ${yearEntries.length} ${yearEntries.length === 1 ? "activity" : "activities"}`,
-      sub: parts
-        .filter(([, hours]) => hours > 0)
-        .map(([label, hours]) => `${label} ${formatHours(hours)}`)
-        .join(" · ") || null,
+      sub:
+        parts
+          .filter(([, hours]) => hours > 0)
+          .map(([label, hours]) => `${label} ${formatHours(hours)}`)
+          .join(" · ") || null,
       source: "cpd",
     });
     const outcomeWork = yearEntries
-      .filter((entry) => entry.allocations.some((allocation) => allocation.category === "measuring" && allocation.hours > 0))
+      .filter((entry) =>
+        entry.allocations.some((allocation) => allocation.category === "measuring" && allocation.hours > 0),
+      )
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, OUTCOME_LINE_LIMIT);
     for (const entry of outcomeWork)

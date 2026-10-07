@@ -177,7 +177,10 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
   if (yearEntries.length === 0) {
     return (
       <CpdFeaturePage eyebrow={`Export your CPD log · ${set.year}`} title="AMA CPD Home" testId="cpd-home-page">
-        <section className={cn(flatCard, "grid justify-items-center gap-3 px-4 py-8 text-center")} data-testid="cpd-home-empty">
+        <section
+          className={cn(flatCard, "grid justify-items-center gap-3 px-4 py-8 text-center")}
+          data-testid="cpd-home-empty"
+        >
           <IconCircle icon={FileText} />
           <h2 className="text-base-minus font-semibold text-[color:var(--text-heading)]">Nothing to send yet</h2>
           <p className="max-w-80 text-sm text-[color:var(--text-muted)]">
@@ -284,7 +287,11 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
 
   return (
     <CpdFeaturePage
-      eyebrow={lastAdded ? `Last file ${formatCmeRowDate(perthCalendarDate(new Date(lastAdded.addedAt!)), today)}` : `Export your CPD log · ${set.year}`}
+      eyebrow={
+        lastAdded
+          ? `Last file ${formatCmeRowDate(perthCalendarDate(new Date(lastAdded.addedAt!)), today)}`
+          : `Export your CPD log · ${set.year}`
+      }
       title="AMA CPD Home"
       testId="cpd-home-page"
     >
@@ -302,8 +309,8 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             Format to be confirmed with AMA CPD Home
           </h2>
           <p className="text-sm leading-5 text-[color:var(--text-muted)]">
-            We have not checked what CPD Home can import. A plain CSV works now, and you can copy each activity
-            to type it in.
+            We have not checked what CPD Home can import. A plain CSV works now, and you can copy each activity to type
+            it in.
           </p>
           <button
             type="button"
@@ -323,7 +330,10 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             />
           </button>
           {checkOpen ? (
-            <ul id="cpd-home-still-to-check" className="grid list-disc gap-1 pl-5 text-sm leading-5 text-[color:var(--text)]">
+            <ul
+              id="cpd-home-still-to-check"
+              className="grid list-disc gap-1 pl-5 text-sm leading-5 text-[color:var(--text)]"
+            >
               <li>Whether CPD Home imports a file at all, or takes activities typed in one at a time</li>
               <li>Which columns it expects, and what it calls them</li>
               <li>How it wants dates written, and its names for the three categories</li>
@@ -334,7 +344,12 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
       </section>
 
       {lastAdded && notYetAdded.length > 0 && scope === "new" ? (
-        <section className={cn(flatCard, "flex items-center gap-3 border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] p-3")}>
+        <section
+          className={cn(
+            flatCard,
+            "flex items-center gap-3 border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] p-3",
+          )}
+        >
           <IconCircle icon={History} />
           <div className="grid min-w-0">
             <p className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
@@ -447,7 +462,9 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           </li>
           <li className={flatRow}>
             <span className="grid min-w-0 flex-1 py-1" id="cpd-home-reflections-label">
-              <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">Reflections</span>
+              <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
+                Reflections
+              </span>
               <span className="text-sm leading-5 text-[color:var(--text-muted)]">
                 {includeReflections
                   ? "In the file. Check them for patient details first."
@@ -463,7 +480,9 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           </li>
           <li className={flatRow}>
             <span className="grid min-w-0 flex-1 py-1">
-              <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">Evidence files</span>
+              <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
+                Evidence files
+              </span>
               <span className="text-sm leading-5 text-[color:var(--text-muted)]">
                 Not in a CSV. Upload them in CPD Home.
               </span>
@@ -477,14 +496,18 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             data-testid="cpd-home-withheld"
             className={cn(flatCard, "flex items-start gap-2.5 border-[color:var(--warning-border)] p-3")}
           >
-            <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--warning)]" />
+            <TriangleAlert
+              aria-hidden="true"
+              strokeWidth={1.5}
+              className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--warning)]"
+            />
             <span className="grid gap-1 text-sm leading-5">
               <span className="font-medium text-[color:var(--text-heading)]">
                 {withheld.size === 1 ? "1 reflection left out" : `${withheld.size} reflections left out`}
               </span>
               <span className="text-[color:var(--text)]">
-                They look like they hold a patient detail, so they stay out of the file and the copies. Edit them
-                in Log to include them.
+                They look like they hold a patient detail, so they stay out of the file and the copies. Edit them in Log
+                to include them.
               </span>
               <span className="flex flex-wrap gap-x-3">
                 {rows
@@ -522,7 +545,10 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
               <li key={problem.entryId}>
                 <Link
                   href={`/cme/log/${problem.entryId}?edit=1`}
-                  className={cn(focusRing, "flex min-h-12 items-center justify-between gap-3 text-sm underline-offset-4 hover:underline")}
+                  className={cn(
+                    focusRing,
+                    "flex min-h-12 items-center justify-between gap-3 text-sm underline-offset-4 hover:underline",
+                  )}
                 >
                   <span className="min-w-0 truncate text-[color:var(--text-heading)]">{problem.activity}</span>
                   <span className="shrink-0 text-[color:var(--warning)]">{problem.problem}</span>
@@ -570,16 +596,31 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                 {file.addedAt ? (
                   <>
                     <Tag tone="green">Added</Tag>
-                    <Button size="sm" variant="ghost" onClick={() => markNotAdded(file)} aria-label={`Mark ${file.name} not added`}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => markNotAdded(file)}
+                      aria-label={`Mark ${file.name} not added`}
+                    >
                       Not added
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button size="sm" onClick={() => markAdded(file)} testId="cpd-home-mark-added" aria-label={`Mark ${file.name} added to CPD Home`}>
+                    <Button
+                      size="sm"
+                      onClick={() => markAdded(file)}
+                      testId="cpd-home-mark-added"
+                      aria-label={`Mark ${file.name} added to CPD Home`}
+                    >
                       Mark added
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => removeFile(file)} aria-label={`Remove ${file.name} from this list`}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeFile(file)}
+                      aria-label={`Remove ${file.name} from this list`}
+                    >
                       Remove
                     </Button>
                   </>
@@ -595,8 +636,12 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           <li className={flatRow}>
             <IconCircle icon={FileText} tone="neutral" />
             <span className="grid min-w-0 flex-1 py-1">
-              <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">Full CPD export</span>
-              <span className="text-sm leading-5 text-[color:var(--text-muted)]">Every column, for your own records</span>
+              <span className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
+                Full CPD export
+              </span>
+              <span className="text-sm leading-5 text-[color:var(--text-muted)]">
+                Every column, for your own records
+              </span>
             </span>
             <a
               href={`/api/cme/export?year=${set.year}`}
@@ -658,8 +703,15 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
         }
       >
         <div className="grid gap-3">
-          <div role="table" aria-label={`First ${Math.min(PREVIEW_ROWS, rows.length)} of ${rows.length} rows`} className={cn(flatCard, "overflow-hidden text-xs")}>
-            <div role="row" className="grid grid-cols-[5.5rem_1fr_3rem] gap-2 bg-[color:var(--surface-subtle)] px-3 py-2 text-[color:var(--text-muted)]">
+          <div
+            role="table"
+            aria-label={`First ${Math.min(PREVIEW_ROWS, rows.length)} of ${rows.length} rows`}
+            className={cn(flatCard, "overflow-hidden text-xs")}
+          >
+            <div
+              role="row"
+              className="grid grid-cols-[5.5rem_1fr_3rem] gap-2 bg-[color:var(--surface-subtle)] px-3 py-2 text-[color:var(--text-muted)]"
+            >
               <span role="columnheader">Date</span>
               <span role="columnheader">Activity</span>
               <span role="columnheader" className="text-right">
@@ -667,7 +719,11 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
               </span>
             </div>
             {rows.slice(0, PREVIEW_ROWS).map((row) => (
-              <div role="row" key={row.entryId} className="grid grid-cols-[5.5rem_1fr_3rem] gap-2 border-t border-[color:var(--border)] px-3 py-2">
+              <div
+                role="row"
+                key={row.entryId}
+                className="grid grid-cols-[5.5rem_1fr_3rem] gap-2 border-t border-[color:var(--border)] px-3 py-2"
+              >
                 <span role="cell" className="nums text-[color:var(--text-muted)]">
                   {row.date}
                 </span>
@@ -683,8 +739,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
           </div>
           <p className="text-sm text-[color:var(--text-muted)]">
             {rows.length > PREVIEW_ROWS ? `${rows.length - PREVIEW_ROWS} more rows · ` : ""}
-            {hoursWords(totalHours)} in total ·{" "}
-            {includeReflections ? "reflections included" : "reflections left out"}
+            {hoursWords(totalHours)} in total · {includeReflections ? "reflections included" : "reflections left out"}
           </p>
           <QuietNote icon={Clock}>Column names may need changing once CPD Home&apos;s format is checked.</QuietNote>
         </div>
@@ -722,7 +777,9 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             <div className={cn(flatCard, "flex flex-wrap items-center gap-3 p-3")}>
               <CsvBadge />
               <span className="grid min-w-0 flex-1">
-                <span className="truncate text-base-minus font-medium text-[color:var(--text-heading)]">{saved.file.name}</span>
+                <span className="truncate text-base-minus font-medium text-[color:var(--text-heading)]">
+                  {saved.file.name}
+                </span>
                 <span className="text-sm text-[color:var(--text-muted)]">
                   <span className="nums">{saved.file.rows}</span> {saved.file.rows === 1 ? "row" : "rows"} ·{" "}
                   <span className="nums">{timeOf(saved.file.madeAt)}</span>
@@ -736,14 +793,20 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                 <li className={flatRow}>
                   <StepNumber n={1} />
                   <span className="grid py-1">
-                    <span className="text-base-minus font-medium text-[color:var(--text-heading)]">Open AMA CPD Home</span>
-                    <span className="text-sm text-[color:var(--text-muted)]">Try importing the file there, or type each activity in</span>
+                    <span className="text-base-minus font-medium text-[color:var(--text-heading)]">
+                      Open AMA CPD Home
+                    </span>
+                    <span className="text-sm text-[color:var(--text-muted)]">
+                      Try importing the file there, or type each activity in
+                    </span>
                   </span>
                 </li>
                 <li className={flatRow}>
                   <StepNumber n={2} />
                   <span className="grid py-1">
-                    <span className="text-base-minus font-medium text-[color:var(--text-heading)]">Come back and mark them added</span>
+                    <span className="text-base-minus font-medium text-[color:var(--text-heading)]">
+                      Come back and mark them added
+                    </span>
                     <span className="text-sm text-[color:var(--text-muted)]">Only you can tell if it worked</span>
                   </span>
                 </li>
@@ -751,7 +814,9 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             </div>
             {!writesKept ? (
               <QuietNote icon={Lock}>
-                {store.mode === "shared" ? "Shared device: marking added lasts for this page only." : "Sample record: marking added is not kept."}
+                {store.mode === "shared"
+                  ? "Shared device: marking added lasts for this page only."
+                  : "Sample record: marking added is not kept."}
               </QuietNote>
             ) : null}
           </div>
@@ -878,13 +943,19 @@ function YearSwitch({ years, year }: { readonly years: readonly number[]; readon
   const others = years.filter((candidate) => candidate !== year).sort((a, b) => b - a);
   if (!others.length) return null;
   return (
-    <nav aria-label="Other CPD years" className="flex flex-wrap items-center gap-2 px-1 text-sm text-[color:var(--text-muted)]">
+    <nav
+      aria-label="Other CPD years"
+      className="flex flex-wrap items-center gap-2 px-1 text-sm text-[color:var(--text-muted)]"
+    >
       <span>Other years</span>
       {others.map((other) => (
         <Link
           key={other}
           href={`/cme/cpd-home?year=${other}`}
-          className={cn(focusRing, "inline-flex min-h-12 items-center px-2 text-[color:var(--mode-identity)] underline underline-offset-4")}
+          className={cn(
+            focusRing,
+            "inline-flex min-h-12 items-center px-2 text-[color:var(--mode-identity)] underline underline-offset-4",
+          )}
         >
           {other}
         </Link>
