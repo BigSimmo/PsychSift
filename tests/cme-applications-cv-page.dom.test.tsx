@@ -387,6 +387,14 @@ describe("CV that fills itself", () => {
     expect(short.map((node) => node.outerHTML.slice(0, 80))).toEqual([]);
   });
 
+  it("keeps a focused row control clear of the sticky Copy and Save as PDF dock", () => {
+    renderCv();
+    // The phone focus rule in globals.css reads this as the focused control's bottom scroll margin.
+    expect(screen.getByTestId("applications-cv").className).toContain(
+      "[--phone-focus-bottom-clearance:calc(5.5rem+max(0.875rem,var(--safe-area-bottom)))]",
+    );
+  });
+
   it("prints only the CV through the device's print screen", () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
     renderCv();
