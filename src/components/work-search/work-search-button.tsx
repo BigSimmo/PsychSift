@@ -72,8 +72,8 @@ function prefetchWhenIdle(): () => void {
 }
 
 /**
- * The header's "Search my work" control on the staff modes: a round magnifier-with-sparkle
- * on phones and a labelled pill on wide screens, so it is never mistaken for the clinical
+ * The header's "AI Search" control on the staff modes (it searches the reader's own work
+ * records, never patients and never clinical content): a round lens-with-stars on phones and a labelled pill on wide screens, so it is never mistaken for the clinical
  * search box. The pill opens only when the header's trailing column (a wide-screen container
  * the header names `header-trailing`) has room for it beside the bell: 20.75rem is the bell,
  * the gap and the 18rem pill, less the grid gap it may lean into. Measured in rem, so at large
@@ -149,11 +149,11 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
         onClick={openSearch}
         onPointerEnter={prefetchWorkSearchSheet}
         onFocus={prefetchWorkSearchSheet}
-        aria-label="Search my work"
+        aria-label="AI Search"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-describedby={coach ? "work-search-coach" : undefined}
-        title="Search my work"
+        title="AI Search"
         data-testid="work-search-button"
         className={cn(
           "universal-header-icon-control relative inline-flex h-tap w-tap shrink-0 items-center justify-center gap-2.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)] shadow-[var(--e2)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none @min-[20.75rem]/header-trailing:w-72 @min-[20.75rem]/header-trailing:justify-start @min-[20.75rem]/header-trailing:px-3.5",
@@ -162,7 +162,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
       >
         <WorkSearchGlyph className="size-icon-md" />
         <span className="hidden text-sm-minus text-[color:var(--text-muted)] @min-[20.75rem]/header-trailing:inline">
-          Search my work
+          AI Search
         </span>
       </button>
       {/* Below 640px the note would sit over the page title and first row, so phones get only the
@@ -181,7 +181,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           <span className="text-3xs font-extrabold uppercase tracking-widest text-[color:var(--mode-identity,var(--focus))]">
             New
           </span>
-          <span className="text-base-minus font-bold text-[color:var(--text-heading)]">Search my work</span>
+          <span className="text-base-minus font-bold text-[color:var(--text-heading)]">AI Search</span>
           <span className="text-xs text-[color:var(--text-muted)]">
             Find shifts, leave, CPD, forms and renewals in one place.
           </span>

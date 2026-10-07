@@ -5,7 +5,7 @@ import type { RefObject } from "react";
 import { Sheet } from "@/components/ui/sheet";
 
 /**
- * The keyboard list for Search my work, opened with "?" on any work page
+ * The keyboard list for AI Search, opened with "?" on any work page
  * (work-mode redesign, ideas list #3). Loaded only when first asked for.
  */
 
@@ -28,7 +28,7 @@ export function WorkSearchKeys({
 }) {
   const command = isApple() ? "⌘" : "Ctrl";
   const rows: { keys: string[][]; label: string }[] = [
-    { keys: [["/"], [command, "K"]], label: "Search my work" },
+    { keys: [["/"], [command, "K"]], label: "AI Search" },
     { keys: [["Up", "Down"]], label: "Move between results" },
     { keys: [["Enter"]], label: "Open the top result" },
     { keys: [["Esc"]], label: "Close" },
