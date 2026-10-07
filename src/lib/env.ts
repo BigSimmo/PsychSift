@@ -93,6 +93,14 @@ const envSchema = z
     LOCAL_NO_AUTH_OWNER_EMAIL: z.string().optional(),
     LOCAL_NO_AUTH_OWNER_ID: z.string().uuid().optional(),
     NEXT_PUBLIC_MOCKUPS_ENABLED: z.enum(["true", "false"]).optional(),
+    // Work-mode launch switch (src/lib/work-mode-launch/launch.ts). Read raw from
+    // process.env by the proxy and the search-app layout; declared here so the
+    // names are documented and a bad value fails validation loudly. Unset in
+    // production means "preview": the new work mode for the administrator and the
+    // listed preview users only. Sample-data screens never reach anyone else.
+    WORK_MODE_LAUNCH: z.enum(["off", "preview", "everyone"]).optional(),
+    WORK_MODE_PREVIEW_USER_IDS: z.string().optional(),
+    WORK_MODE_SAMPLE_SCREENS: z.enum(["off", "preview"]).optional(),
     // Passwordless access to the developer-gated /mockups subtrees: the secret a
     // bookmarked `?devkey=…` link presents once, which src/proxy.ts exchanges for a
     // signed, long-lived cookie. Server-only and never NEXT_PUBLIC_ — a public
