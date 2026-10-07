@@ -235,8 +235,13 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
 
 /* Tabs: three pinned pages and More, underlined in the mode colour. */
 .work-band__tabs {
+  /* The space between tab labels. Each tab's tap area reaches half of it on
+     either side (padding pulled back by a matching negative margin), so the
+     labels sit exactly where they did while every tab is at least 48px wide
+     and neighbouring tap areas meet with no dead gap between them. */
+  --work-tab-gap: calc(var(--spacing) * 5);
   display: flex;
-  gap: calc(var(--spacing) * 5);
+  gap: var(--work-tab-gap);
   max-width: calc(45rem + var(--work-gutter) * 2);
   margin: calc(var(--spacing) * 1) auto -1px;
   /* The 1px under the row holds the current tab's underline, which sits on
@@ -258,7 +263,37 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
 /* Below 360px the tabs close up so all four (three tabs and More) still fit. */
 @container mode-band (max-width: 359px) {
   .work-band__tabs {
-    gap: calc(var(--spacing) * 3.5);
+    --work-tab-gap: calc(var(--spacing) * 3.5);
+  }
+}
+
+/* Large text (the band narrower than 18rem, which a 320px phone reaches only
+   once text is enlarged): the tabs wrap onto a second line rather than
+   scrolling More out of sight. */
+@container mode-band (max-width: 18rem) {
+  .work-band__tabs {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  /* The page's one glass action steps under the title, so a long title word
+     wraps whole instead of running under it, and the eyebrow wraps rather
+     than cutting off. */
+  .work-band__head {
+    flex-wrap: wrap;
+  }
+
+  .work-band__heading {
+    flex-basis: 100%;
+  }
+
+  .work-band .mode-band__customise,
+  .work-band__action {
+    margin-left: auto;
+  }
+
+  .work-band__eyebrow {
+    white-space: normal;
   }
 }
 
@@ -267,9 +302,12 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
   display: inline-flex;
   flex: none;
   align-items: center;
+  justify-content: center;
   gap: calc(var(--spacing) * 1.25);
   height: var(--spacing-tap, 3rem);
-  padding: calc(var(--spacing) * 1) 0 0;
+  min-width: var(--spacing-tap, 3rem);
+  margin-inline: calc(var(--work-tab-gap) / -2);
+  padding: calc(var(--spacing) * 1) calc(var(--work-tab-gap) / 2) 0;
   border: 0;
   background: transparent;
   font: inherit;
@@ -290,8 +328,9 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
 .work-band__tab::after {
   content: "";
   position: absolute;
-  left: 0;
-  right: 0;
+  /* Under the label, not the padding that widens the tap area. */
+  left: calc(var(--work-tab-gap) / 2);
+  right: calc(var(--work-tab-gap) / 2);
   bottom: -1px;
   height: 0;
   border-bottom: 2.5px solid transparent;
@@ -510,6 +549,63 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   .universal-header[data-work-frame] .universal-header-icon-control::before,
   .universal-header[data-work-frame] .universal-header-mode-button::before {
     border: 1px solid ButtonBorder;
+  }
+}
+
+/* Large text on a phone (the bar's content narrower than 17rem, which a 320px
+   phone, 18rem inside its gutters, reaches only once text is enlarged). The round controls hold their 48px tap
+   instead of doubling with the text, which squeezed the pill to a sliver, and
+   the pill takes whatever room is left between them, truncating its words. At
+   normal text none of this applies. */
+@media (max-width: 1023px) {
+  .universal-header[data-work-frame] {
+    container: work-bar / inline-size;
+  }
+
+  @container work-bar (max-width: 17rem) {
+    .universal-header[data-work-frame] .universal-header-row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .universal-header[data-work-frame] .universal-header-icon-control,
+    .universal-header[data-work-frame] .work-frame-back {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      min-height: 48px;
+    }
+
+    .universal-header[data-work-frame] .universal-header-icon-control svg,
+    .universal-header[data-work-frame] .universal-header-mode-button svg {
+      max-width: 24px;
+      max-height: 24px;
+    }
+
+    .universal-header[data-work-frame] .universal-header-mode-button {
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: calc(var(--spacing) * 0.5);
+      max-width: 100%;
+      height: auto;
+      min-height: 48px;
+      padding: calc(var(--spacing) * 0.5) calc(var(--spacing) * 1) calc(var(--spacing) * 0.5)
+        calc(var(--spacing) * 0.75);
+    }
+
+    /* The glass hugs the two enlarged lines instead of cutting through them. */
+    .universal-header[data-work-frame] .universal-header-mode-button::before {
+      inset: calc(var(--spacing) * 0.5) 0;
+    }
+
+    /* The chevron is decoration (the pill's name says it opens a menu); it
+       gives its room to the badge and words. */
+    .universal-header[data-work-frame] .universal-header-mode-button > svg {
+      display: none;
+    }
+
+    .universal-header[data-work-frame] .universal-header-mode-badge {
+      width: 32px;
+      height: 32px;
+    }
   }
 }
 
