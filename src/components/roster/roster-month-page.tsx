@@ -552,21 +552,20 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
             loadedFrom={loadedFrom}
             onSelect={openDay}
             onMonthChange={changeMonth}
-            previousDisabled={shiftMonth(month, 1) <= monthKeyOf(loadedFrom)}
+            previousDisabled={`${month}-01` <= loadedFrom}
           />
           <RosterMonthLegend swapAsked={waiting.length > 0 || asked.length > 0} />
           {month !== thisMonth ? (
             <div className="mt-1 grid justify-items-center">
-              <button
-                type="button"
-                className="work-label__link m-0"
+              <WorkButton
+                variant="quiet"
                 onClick={() => {
                   setMonth(thisMonth);
                   setSelected(null);
                 }}
               >
                 Back to this month
-              </button>
+              </WorkButton>
             </div>
           ) : null}
         </WorkCard>
