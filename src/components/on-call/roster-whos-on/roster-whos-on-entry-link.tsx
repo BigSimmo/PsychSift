@@ -1,5 +1,7 @@
 "use client";
 
+import type { ComponentProps } from "react";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { CalendarDays } from "lucide-react";
 
 import { WorkCard, WorkIconRow } from "@/components/mode-kit/work";
@@ -9,7 +11,7 @@ import { WorkCard, WorkIconRow } from "@/components/mode-kit/work";
  * the More sheet's "Who's on"). A literal link, so the route-reachability guard
  * can read it.
  */
-export function RosterWhosOnEntryLink({
+function RosterWhosOnEntryLinkShown({
   sub = "Who is on, straight from the published roster",
 }: {
   readonly sub?: string;
@@ -24,5 +26,14 @@ export function RosterWhosOnEntryLink({
         testId="on-call-roster-whos-on-entry"
       />
     </WorkCard>
+  );
+}
+
+/** Leads to a new work mode screen, so it shows only to readers the launch switch has let in. */
+export function RosterWhosOnEntryLink(props: ComponentProps<typeof RosterWhosOnEntryLinkShown>) {
+  return (
+    <NewWorkModeOnly>
+      <RosterWhosOnEntryLinkShown {...props} />
+    </NewWorkModeOnly>
   );
 }

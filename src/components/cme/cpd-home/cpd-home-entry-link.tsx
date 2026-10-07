@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ChevronRight, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 
@@ -10,7 +12,7 @@ import { cn } from "@/components/ui-primitives";
  * "Annual summary and export" group. Mounted on the CPD Summary page. A literal link,
  * so the route is reachable wherever this is placed.
  */
-export function CpdHomeEntryLink({ year }: { readonly year?: number }) {
+function CpdHomeEntryLinkShown({ year }: { readonly year?: number }) {
   return (
     <Link
       href={year ? `/cme/cpd-home?year=${year}` : "/cme/cpd-home"}
@@ -35,5 +37,14 @@ export function CpdHomeEntryLink({ year }: { readonly year?: number }) {
       </span>
       <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
     </Link>
+  );
+}
+
+/** Leads to a new work mode screen, so it shows only to readers the launch switch has let in. */
+export function CpdHomeEntryLink(props: ComponentProps<typeof CpdHomeEntryLinkShown>) {
+  return (
+    <NewWorkModeOnly>
+      <CpdHomeEntryLinkShown {...props} />
+    </NewWorkModeOnly>
   );
 }

@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ChevronRight, Thermometer } from "lucide-react";
 import Link from "next/link";
 
@@ -14,7 +16,7 @@ import { cn } from "@/components/ui-primitives";
  * Both are plain links, so the page stays reachable without new state.
  */
 
-export function RosterSickEntryLink({
+function RosterSickEntryLinkShown({
   sub = "One tap tells your roster managers and posts your shift",
 }: {
   readonly sub?: string;
@@ -46,8 +48,26 @@ export function RosterSickEntryLink({
 }
 
 /** For a Today page: `tomorrowShift` is e.g. "Wed 7 · Day", from data the page already holds. */
-export function SickTomorrowTodayCard({ tomorrowShift }: { readonly tomorrowShift?: string | null }) {
+function SickTomorrowTodayCardShown({ tomorrowShift }: { readonly tomorrowShift?: string | null }) {
   return (
     <RosterSickEntryLink sub={tomorrowShift ? `${tomorrowShift}. One tap tells your roster managers` : undefined} />
+  );
+}
+
+/** Leads to a new work mode screen, so it shows only to readers the launch switch has let in. */
+export function RosterSickEntryLink(props: ComponentProps<typeof RosterSickEntryLinkShown>) {
+  return (
+    <NewWorkModeOnly>
+      <RosterSickEntryLinkShown {...props} />
+    </NewWorkModeOnly>
+  );
+}
+
+/** Leads to a new work mode screen, so it shows only to readers the launch switch has let in. */
+export function SickTomorrowTodayCard(props: ComponentProps<typeof SickTomorrowTodayCardShown>) {
+  return (
+    <NewWorkModeOnly>
+      <SickTomorrowTodayCardShown {...props} />
+    </NewWorkModeOnly>
   );
 }
