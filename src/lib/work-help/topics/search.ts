@@ -3,7 +3,7 @@ import type { WorkHelpTopic } from "@/lib/work-help/types";
 export const searchTopic: WorkHelpTopic = {
   id: "search",
   kind: "area",
-  title: "Search my work",
+  title: "AI Search",
   identity: "my-day",
   summary: "Search your own shifts, CPD, renewals and contacts",
   questions: [
@@ -19,7 +19,7 @@ export const searchTopic: WorkHelpTopic = {
     },
     {
       id: "uses-ai",
-      q: "Does it use AI or send what I type anywhere?",
+      q: "Does it send what I type anywhere?",
       a: "No. Answers are worked out on your device from records you can already see, and nothing you type is sent anywhere. Recent searches are kept only while this browser tab is open.",
     },
     {
