@@ -347,7 +347,7 @@ function PastePreview({
             <span className="shrink-0 text-xs text-[color:var(--text-muted)]">A4 landscape</span>
           </figcaption>
           <p className="sr-only">
-            A table with seven columns and {patients.length === 1 ? "one row" : `${patients.length} rows`}; rows for
+            A table with seven columns and {patients.length === 1 ? "one row" : `${patients.length} rows`}. Rows for
             review are shaded.
           </p>
           <div aria-hidden="true" className="grid gap-1">
@@ -478,7 +478,7 @@ export function OnCallHandoverTable({
           dateStyle: "medium",
           timeStyle: "short",
         }).format(new Date())}`}
-        provenance="PsychSift On Call handover. Typed by the doctor on this phone; check it before relying on it."
+        provenance="PsychSift On Call handover. Typed by the doctor on this phone. Check it before relying on it."
         testId="on-call-handover-print"
         className="grid min-w-0 gap-4"
       >

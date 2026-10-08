@@ -273,7 +273,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
           <StudyHeatmap
             weeks={weeks}
             today={today}
-            label={`Study minutes per day for ${withUnit(12, "weeks")}; ${streakLine.toLowerCase()}`}
+            label={`Study minutes per day for ${withUnit(12, "weeks")}. ${streakLine}`}
           />
         </div>
       </T5Section>

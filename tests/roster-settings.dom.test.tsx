@@ -123,7 +123,7 @@ describe("Roster Settings", () => {
       vi.advanceTimersByTime(31_000);
     });
     vi.useRealTimers();
-    expect(await screen.findByText(/Some of it may already be gone; this page now shows what is left\./)).toBeVisible();
+    expect(await screen.findByText(/Some of it may already be gone. This page now shows what is left\./)).toBeVisible();
     // The shifts were read again after the failure, not shown from before it.
     await waitFor(() => expect(fetchCalls("/api/roster/shifts", "GET").length).toBeGreaterThanOrEqual(2));
   });

@@ -55,7 +55,7 @@ describe("Each week (the Year page's week chart)", () => {
     expect(bars.at(-1)!.dataset.state).toBe("future");
     // Only the picture is hidden; the words reach a screen reader.
     expect(bars[0]!.closest("[aria-hidden='true']")).not.toBeNull();
-    expect(screen.getByText(/^Hours by month: January 3.5 h; February 0 h; March 3 h;/)).toHaveTextContent(
+    expect(screen.getByText(/^Hours by month: January 3.5 h, February 0 h, March 3 h,/)).toHaveTextContent(
       /October 0 h\.$/,
     );
   });

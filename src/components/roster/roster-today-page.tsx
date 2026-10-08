@@ -59,7 +59,7 @@ import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
 import { restCuesByTeam, type RestCue } from "@/lib/roster/rest-cues";
 import { importChangeNotices } from "@/lib/roster/what-changed";
 import { RosterChangeRows } from "./roster-change-rows";
-import { zonedDateOf, zonedWallToIso } from "@/lib/work-time/format";
+import { formatZonedLongDay, zonedDateOf, zonedWallToIso } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
@@ -492,14 +492,14 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   );
   const greeting = greetingFor(now, zone);
   // Under the work-mode band the date and the greeting are the band's words (mockup `rost_today`).
-  useModeBandHeading({ eyebrow: formatPerthDay(today), title: greeting.text });
+  useModeBandHeading({ eyebrow: formatZonedLongDay(today), title: greeting.text });
   const fresh = hasFreshLink(links.links, now);
   const staleLink = staleRosterLink(links.links, now);
 
   const header = (
     <RosterPageHeader
       icon={greeting.icon}
-      eyebrow={formatPerthDay(today)}
+      eyebrow={formatZonedLongDay(today)}
       title="Today"
       subtitle={
         <div className="grid gap-0.5">

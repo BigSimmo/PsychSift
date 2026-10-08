@@ -215,7 +215,7 @@ describe("Copy for workforce", () => {
 
     const text = workforceCopyText([stamped, undated], NOW);
     const lines = text.split("\n");
-    expect(lines[0]).toBe("Dates as I recorded them, copied 26 Sep 2026; not checked with issuers");
+    expect(lines[0]).toBe("Dates as I recorded them, copied 26 Sep 2026. Not checked with issuers");
     expect(lines).toContainEqual(
       "Medical registration renewal (The national board): ready · recorded as expiring 20 Dec 2026 · Last checked with issuer · 1 Sep 2026 · by you",
     );

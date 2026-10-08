@@ -235,7 +235,7 @@ export function CmeAnnualSummary({
                   <p className={textMuted}>{formatCalendarDateLong(entry.date)}</p>
                   <p>{entry.allocations.map((a) => `${cmeCategoryLabels[a.category]}: ${a.hours} h`).join(" · ")}</p>
                   <p>Formal peer review: {entry.formalPeerReviewHours ?? 0} h (within reviewing)</p>
-                  {entry.buckets.length ? <p>Domains: {entry.buckets.join("; ")}</p> : null}
+                  {entry.buckets.length ? <p>Domains: {entry.buckets.join(", ")}</p> : null}
                   {entry.reflection ? <p className="whitespace-pre-wrap">{entry.reflection}</p> : null}
                   <p className={textMuted}>
                     Cost: {entry.costCents === null ? "Not recorded" : `AUD ${(entry.costCents / 100).toFixed(2)}`}

@@ -26,7 +26,7 @@ export function OnCallLoadFailed({ reason, onRetry, testId = "on-call-load-faile
       body={
         reason === "offline"
           ? "You appear to be offline, and On Call entries are not saved on this device. Try again once you have signal."
-          : "The server did not answer. Nothing has been lost; try again in a moment."
+          : "The server did not answer. Nothing has been lost. Try again in a moment."
       }
       actions={
         <Button type="button" variant="secondary" icon={RotateCw} onClick={onRetry}>

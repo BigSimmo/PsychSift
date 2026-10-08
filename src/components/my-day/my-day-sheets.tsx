@@ -56,7 +56,7 @@ const CARD_SUBLINE: Partial<Record<MyDayCardId, string>> = {
   flag: "One overdue item",
   "quick-actions": "Four shortcuts",
   "needs-you": "So nothing is missed",
-  "this-week": "Week and Month",
+  "this-week": "Week and month",
   cpd: "Hours against your target",
   renewals: "Next 6 months",
   calls: "Counts only, this phone",
