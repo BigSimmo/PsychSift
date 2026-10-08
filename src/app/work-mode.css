@@ -243,8 +243,10 @@ html[data-work-frame] #main-content {
 /* The top bar slides away on a scroll down and back on a scroll up; the
    pinned row goes and comes back with it, so the two stay one unit and a
    hidden bar leaves the whole screen to the page. Only while pinned: a band
-   still in its own place on the page scrolls as normal. */
-html:has([data-scroll-hidden="true"] .universal-header) .work-band[data-stuck] {
+   still in its own place on the page scrolls as normal. A keyboard user who
+   tabs into the hidden row brings it back (`:focus-within`), so focus never
+   lands on a tab that is off screen. */
+html:has([data-scroll-hidden="true"] .universal-header) .work-band[data-stuck]:not(:focus-within) {
   translate: 0 calc(-1 * (var(--work-chrome-h) + var(--work-tabs-h, 0px)));
   pointer-events: none;
 }
