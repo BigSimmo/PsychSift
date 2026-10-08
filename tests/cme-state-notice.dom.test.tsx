@@ -88,10 +88,10 @@ describe("CPD states", () => {
   });
 
   it("shows the heading on a CPD page that keeps its own header", () => {
-    nav.pathname = "/cme/export";
+    nav.pathname = "/cme/customise";
     try {
-      render(<CmeStateNotice state="unavailable" year={2026} heading="Export" />);
-      expect(screen.getByRole("heading", { level: 1, name: "Export" })).not.toHaveClass("sr-only");
+      render(<CmeStateNotice state="unavailable" year={2026} heading="Customise" />);
+      expect(screen.getByRole("heading", { level: 1, name: "Customise" })).not.toHaveClass("sr-only");
     } finally {
       nav.pathname = null;
     }
