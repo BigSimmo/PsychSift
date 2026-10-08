@@ -71,7 +71,8 @@ describe("LeaveWalletPage", () => {
   it("shows eight cards, the sign-off banner and the agreement link", () => {
     render(<LeaveWalletPage now={NOW} />);
     expect(within(screen.getByTestId("admin-leave-stack")).getAllByRole("button")).toHaveLength(8);
-    expect(screen.getByTestId("admin-leave-sign-off").textContent).toContain("Figures are not shown yet");
+    expect(screen.getByTestId("admin-leave-sign-off").textContent).toContain("Figures from your agreement");
+    expect(screen.queryByTestId("admin-leave-agreement-end")).toBeNull();
     expect(screen.getByTestId("admin-leave-agreement").getAttribute("href")).toMatch(/^https:\/\//);
     expect(screen.getByTestId("admin-leave-back").getAttribute("href")).toBe("/admin");
   });
@@ -80,9 +81,45 @@ describe("LeaveWalletPage", () => {
     render(<LeaveWalletPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-leave-card-annual"));
     expect(screen.getByTestId("admin-leave-open-annual")).toBeTruthy();
-    expect(screen.getByTestId("admin-leave-annual-entitlement").textContent).toContain("Check your agreement");
+    const entitlement = screen.getByTestId("admin-leave-annual-entitlement").textContent;
+    expect(entitlement).toContain("160 hours a year full time");
+    expect(entitlement).toContain("Clause 34(1)");
+    expect(entitlement).toContain("Check your agreement");
+    expect(entitlement).toContain("checked and signed off");
     expect(screen.getByTestId("admin-leave-pile").textContent).toContain("7 more cards");
     expect(router.replace).toHaveBeenCalledWith("/admin/leave?card=annual", { scroll: false });
+  });
+
+  it("splits professional development leave by doctors in training and senior practitioners", () => {
+    render(<LeaveWalletPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-leave-card-conference"));
+    const entitlement = screen.getByTestId("admin-leave-conference-entitlement").textContent;
+    expect(entitlement).toContain("Doctors in training");
+    expect(entitlement).toContain("Senior practitioners");
+    expect(entitlement).toContain("Clause 18(3)");
+    expect(entitlement).toContain("Clause 30(1)(a), 30(1)(c)");
+  });
+
+  it("says when the agreement has reached its end date", () => {
+    render(<LeaveWalletPage now={new Date("2027-09-10T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-leave-agreement-end").textContent).toContain(
+      "stays in force until a new one is made",
+    );
+  });
+
+  it("says when the agreement has reached its end date on a card opened by link", () => {
+    search.value = "card=annual";
+    render(<LeaveWalletPage now={new Date("2027-09-10T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-leave-open-annual")).toBeTruthy();
+    expect(screen.getByTestId("admin-leave-annual-agreement-end").textContent).toContain("stays in force");
+  });
+
+  it("tells casual doctors which paid leave applies to them", () => {
+    render(<LeaveWalletPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-leave-card-exam"));
+    const casual = screen.getByTestId("admin-leave-exam-casual").textContent;
+    expect(casual).toContain("Clause 11(4)(h)(i)");
+    expect(casual).toContain("Not signed off yet");
   });
 
   it("fills the annual message, copies it, and shows Roster bookings", async () => {
