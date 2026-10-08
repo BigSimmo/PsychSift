@@ -308,6 +308,18 @@ describe("mergeWorkSyncValues", () => {
     expect(merged.statement).toBe(applications.statement);
   });
 
+  it("joins application dates by stage and hidden CV lines by text, losing neither side", () => {
+    const local = {
+      ...EMPTY_APPLICATIONS,
+      dates: [{ stage: "adverts", on: "2026-11-02", time: "", source: "", remind: false, addedOn: "2026-10-01" }],
+      hiddenCvLines: ["Old locum", "Shared line"],
+    };
+    const account = { ...EMPTY_APPLICATIONS, hiddenCvLines: ["Shared line"] };
+    const merged = mergeWorkSyncValues("cpdApplications", local, account) as typeof local;
+    expect(merged.dates).toEqual(local.dates);
+    expect(merged.hiddenCvLines).toEqual(["Shared line", "Old locum"]);
+  });
+
   it("keeps the account's record when the joined one would not read back", () => {
     const referee = (index: number) => ({ id: `r${index}`, name: "Dr Lee", role: "", status: "asked", history: [] });
     const account = { ...applications, referees: Array.from({ length: 5 }, (_, index) => referee(index)) };

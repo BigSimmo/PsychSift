@@ -71,23 +71,30 @@ function mergeNote(local: unknown, account: unknown): string {
   return joined.length <= WORK_SYNC_QUICK_NOTE_LIMIT ? joined : a;
 }
 
-function hasId(value: unknown): value is { readonly id: string } {
-  return isRecord(value) && typeof value.id === "string";
+/** What makes a list entry the same entry on two devices: its id, a job application date's stage, or the text itself. */
+function entryKey(item: unknown): string | null {
+  if (isRecord(item) && typeof item.id === "string") return `id:${item.id}`;
+  if (isRecord(item) && typeof item.stage === "string") return `stage:${item.stage}`;
+  if (typeof item === "string") return `text:${item}`;
+  return null;
 }
 
 /**
  * Joins two copies of one whole record (Admin paperwork, the term tracker, exam
- * prep, job applications). Lists of records with ids keep every record from
- * both, the account's version where both have it; objects are joined key by
- * key; anything else is the account's.
+ * prep, job applications). A list keeps every entry from both, the account's
+ * version where both have it (matched by id, by stage for job application
+ * dates, or by the text itself); objects are joined key by key; anything else
+ * is the account's.
  */
 function mergeRecordValue(local: unknown, account: unknown): unknown {
   if (account === undefined || account === null) return local;
   if (local === undefined || local === null) return account;
   if (Array.isArray(account) && Array.isArray(local)) {
-    if (!account.every(hasId) || !local.every(hasId)) return account;
-    const ids = new Set(account.map((item) => item.id));
-    return [...account, ...local.filter((item) => !ids.has(item.id))];
+    if (account.length === 0) return local;
+    if (local.length === 0) return account;
+    if (![...account, ...local].every((item) => entryKey(item) !== null)) return account;
+    const keys = new Set(account.map(entryKey));
+    return [...account, ...local.filter((item) => !keys.has(entryKey(item)))];
   }
   if (isRecord(account) && isRecord(local)) {
     const out: Record<string, unknown> = { ...local };
