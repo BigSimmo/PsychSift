@@ -62,6 +62,12 @@ import {
   type LeaveType,
   type LeaveTypeId,
 } from "@/lib/admin/leave-types";
+import {
+  LEAVE_CASUAL_NOTE,
+  LEAVE_ENTITLEMENTS,
+  LEAVE_SIGN_OFF,
+  leaveAgreementPastEndDate,
+} from "@/lib/admin/leave-entitlements";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -236,6 +242,17 @@ function MessagePreview({ text, testId }: { text: string; testId: string }) {
   );
 }
 
+/** After the agreement's end date it stays in force until replaced (clause 6(3)), so say so wherever figures show. */
+function AgreementEndNote({ today, testId }: { today: string; testId: string }) {
+  if (!leaveAgreementPastEndDate(today)) return null;
+  return (
+    <p className="text-sm text-[color:var(--text)]" data-testid={testId}>
+      This agreement reached its end date on {formatDateEcho(LEAVE_SIGN_OFF.agreementExpiresOn)}. It stays in force
+      until a new one is made, so check whether a new agreement has replaced it.
+    </p>
+  );
+}
+
 function OpenCard({
   type,
   fields,
@@ -314,22 +331,41 @@ function OpenCard({
       ) : null}
 
       <div
-        className="flex flex-wrap items-center justify-between gap-2 border-t border-[color:var(--border)] pt-3"
+        className="grid gap-2 border-t border-[color:var(--border)] pt-3"
         data-testid={`admin-leave-${type.id}-entitlement`}
       >
-        <span className="text-sm">
-          What you can take{" "}
-          <span className="rounded border border-dashed border-[color:var(--border-strong)] px-1.5 text-xs text-[color:var(--text-muted)]">
-            Not signed off yet
-          </span>
-        </span>
+        <p className={eyebrowText}>What you can take</p>
+        {LEAVE_ENTITLEMENTS[type.id].map((group) => (
+          <div key={group.heading ?? "all"} className="grid gap-1">
+            {group.heading ? (
+              <p className="text-xs font-semibold text-[color:var(--text-heading)]">{group.heading}</p>
+            ) : null}
+            <ul className="grid gap-1.5">
+              {group.lines.map((line) => (
+                <li key={line.text} className="grid gap-0.5 text-sm text-[color:var(--text)]">
+                  <span>{line.text}</span>
+                  <span className={cn(textMuted, "text-xs")}>Clause {line.clause}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        <p className="grid gap-0.5 text-sm text-[color:var(--text)]" data-testid={`admin-leave-${type.id}-casual`}>
+          <span>{LEAVE_CASUAL_NOTE.text}</span>
+          <span className={cn(textMuted, "text-xs")}>Clause {LEAVE_CASUAL_NOTE.clause}</span>
+        </p>
+        <p className={cn(textMuted, "text-xs")}>
+          From the AMA Industrial Agreement 2024, checked and signed off {formatDateEcho(LEAVE_SIGN_OFF.signedOn)}. Your
+          health service confirms what applies to you.
+        </p>
+        <AgreementEndNote today={today} testId={`admin-leave-${type.id}-agreement-end`} />
         <a
           href={LEAVE_AGREEMENT.url}
           target="_blank"
           rel="noreferrer noopener"
           className={cn(
             focusRing,
-            "inline-flex min-h-12 items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]",
+            "inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)]",
           )}
         >
           Check your agreement
@@ -491,8 +527,8 @@ function OpenCard({
 /**
  * Leave wallet, `/admin/leave` (junior feature #34). Eight flat cards in a
  * wallet stack, one per leave type. Tap one to open it on top, with the rest
- * as a thin pile below. Every card: what you can take (Check your agreement,
- * not signed off yet), how to apply, Roster bookings where Roster holds them,
+ * as a thin pile below. Every card: what you can take (signed-off agreement
+ * figures, each with its clause, from `leave-entitlements`), how to apply, Roster bookings where Roster holds them,
  * and a ready message the doctor fills, checks and copies. Nothing is saved:
  * typed dates live only while the page is open.
  */
@@ -625,10 +661,12 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
       ) : (
         <>
           <div className={cn(cardSurface, "grid gap-1 p-3")} data-testid="admin-leave-sign-off">
-            <p className="text-sm font-semibold text-[color:var(--text-heading)]">Figures are not shown yet</p>
+            <p className="text-sm font-semibold text-[color:var(--text-heading)]">Figures from your agreement</p>
             <p className="text-sm text-[color:var(--text)]">
-              Each card links to your agreement until the leave figures are checked against it and signed off.
+              Each card lists what the WA Health AMA Industrial Agreement 2024 gives, with the clause. Checked and
+              signed off {formatDateEcho(LEAVE_SIGN_OFF.signedOn)}.
             </p>
+            <AgreementEndNote today={today} testId="admin-leave-agreement-end" />
             <a
               href={LEAVE_AGREEMENT.url}
               target="_blank"

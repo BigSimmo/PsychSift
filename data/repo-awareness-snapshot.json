@@ -4309,6 +4309,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/live-browser-testing.md",
+        "section": "root",
+        "catalogued": false
+      },
+      {
         "path": "docs/redesign/09-page-polish-plan.md",
         "section": "redesign",
         "catalogued": true
