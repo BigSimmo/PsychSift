@@ -7,7 +7,7 @@ parent: sentry-sdk-setup
 disable-model-invocation: true
 ---
 
-> [All Skills](../../SKILL_TREE.md) > [SDK Setup](../sentry-sdk-setup/SKILL.md) > Next.js SDK
+> Standalone bundled skill. The upstream skill tree and parent skill are not included in this profile.
 
 # Sentry Next.js SDK
 

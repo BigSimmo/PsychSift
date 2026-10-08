@@ -2,7 +2,7 @@
 
 How Documentation keeps project docs accurate, logged, and non-stale across Joshua’s repos. **Process doc — no product DDL.**
 
-_Owned by Documentation. Updated 2026-09-30 — registry tip-true for #2959 landed; removed phantom Documentation skills; Documentation owns._
+_Owned by Documentation. Updated 2026-10-08 — clarified checkpoint, memory and communication authority; Documentation owns._
 
 ## Principles
 
@@ -17,17 +17,17 @@ _Owned by Documentation. Updated 2026-09-30 — registry tip-true for #2959 land
 ## Pipeline (every docs change)
 
 ```
-Scope → Read tip → Edit (class-aware) → Stamp + ship (auth-gated PR) → Memory/FYI → One map improvement
+Scope → Read tip → Edit (class-aware) → Stamp + ship (auth-gated PR) → Checkpoint/receipt → One map improvement
 ```
 
-| Step    | Do                                                                                                                                                                                                               |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Scope   | Project + tip path/branch; list files; no drive-by WIP                                                                                                                                                           |
-| Read    | Entry doc + any closeout/board; hunt duplicates                                                                                                                                                                  |
-| Edit    | Prefer short appends; fix relative links; scrub `file://`                                                                                                                                                        |
-| Ship    | Local docs commit on a `docs/` branch when in scope. **Open/push a GitHub PR only with explicit user authorization** (or a standing ask for that docs PR); otherwise stop at a local handoff (branch + summary). |
-| Log     | Agent memory (path, PR, ownership, TBDs); FYI sibling agents only if they own adjacent work                                                                                                                      |
-| Improve | One Start-here / archive / link / port-env fix if cheap                                                                                                                                                          |
+| Step    | Do                                                                                                                                                                                                                              |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope   | Project + tip path/branch; list files; no drive-by WIP                                                                                                                                                                          |
+| Read    | Entry doc + any closeout/board; hunt duplicates                                                                                                                                                                                 |
+| Edit    | Prefer short appends; fix relative links; scrub `file://`                                                                                                                                                                       |
+| Ship    | Commit locally on the task branch only when commits are authorised. **Open/push a GitHub PR only with explicit user authorization** (or a standing ask for that docs PR); otherwise stop at a local handoff (branch + summary). |
+| Log     | Update the existing task checkpoint/receipt. Persistent memory writes require explicit approval; messages to other chats or people require applicable authorisation.                                                            |
+| Improve | One Start-here / archive / link / port-env fix if cheap                                                                                                                                                                         |
 
 ## Doc classes
 

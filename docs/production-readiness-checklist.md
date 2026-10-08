@@ -1,8 +1,10 @@
 # PsychSift Production Readiness Checklist (Executable Today)
 
+_Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
+
 **Status: reusable release-candidate checklist, not an outstanding-task ledger.** Live/provider-gated
 action detail is indexed in [`operator-backlog.md`](operator-backlog.md); canonical task status is
-tracked only in [`outstanding-issues.md`](outstanding-issues.md).
+governed by the [task-status authority map](task-receipts.md#status-authority).
 Unchecked boxes below are rerun per release candidate; they do not imply abandoned repository work.
 
 **Privacy status authority:** [`governance/privacy-readiness.v1.json`](governance/privacy-readiness.v1.json).
@@ -10,8 +12,10 @@ The 2026-09-01 closeout records privacy-minimal OpenAI account controls and an a
 request, not ZDR approval. The production HMAC and database-retention owner attestations were recorded
 on 2026-09-01. `npm run check:production-readiness` must continue to fail closed until the remaining
 six provider, legal, privacy-adviser, and clinical-safety requirements in that register are verified.
-Detailed operational requirements for OpenAI ZDR, Railway DPA execution, and production
-`DOCUMENT_SIGNED_URL_HMAC_SECRET` rotation are documented in [`production-readiness.md`](production-readiness.md).
+Detailed requirements for OpenAI ZDR, Railway DPA applicability and the production
+`RAG_QUERY_HASH_SECRET` control are documented in [`production-readiness.md`](production-readiness.md).
+Do not infer a `DOCUMENT_SIGNED_URL_HMAC_SECRET` rotation requirement from this checklist;
+the readiness guide corrects that earlier reference. The register remains the status authority.
 
 **Provider-backed boundary:** commands such as `check:supabase-project`, `eval:quality`,
 `eval:retrieval:quality`, and `verify:release` touch live Supabase and/or OpenAI. Agents must not
@@ -22,7 +26,7 @@ This is the runbook to make the app publishable in one focused pass.
 
 Last reviewed: 2026-07-10. Applies to any feature branch or release candidate.
 
-- Runtime target: Next.js 16.2.11, Node 24.x, npm 11.x.
+- Runtime target: the Next.js version pinned in `package.json`, Node >=24.15.0 <25, npm 11.x.
 - Supabase target: `sjrfecxgysukkwxsowpy` (`PsychSift Production`).
 
 ## Immediate completion targets
