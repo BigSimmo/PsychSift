@@ -43,7 +43,11 @@ import {
   LazyWorkSideMenu,
   prefetchTwoPaneSideMenu,
 } from "@/components/work-frame/lazy-work-side-nav";
-import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
+import {
+  TwoPaneSideRail,
+  useTwoPaneRailShown,
+  type TwoPaneMenuPane,
+} from "@/components/work-frame/two-pane-side-strip";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkRailShown, useWorkSideNav, WorkRail, workSideCurrentArea } from "@/components/work-frame/work-rail";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
@@ -523,6 +527,8 @@ function GlobalStandaloneSearchShellBody({
   const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
   const newWorkMode = useNewWorkMode();
   const twoPaneCounts = twoPaneSideMenu && newWorkMode;
+  // Clinical pages hand 1024 px up to the full sidebar, so the rail (and its counts) stop there.
+  const twoPaneRailShown = useTwoPaneRailShown(!workSideNav);
   if ((workSideNav || twoPaneCounts) && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
   // The phone menu only exists below 768 px. Turning a phone to landscape past
   // that width closes it, so its backdrop never blocks the rail layout. The
@@ -1261,7 +1267,11 @@ function GlobalStandaloneSearchShellBody({
           initialFocus={settingsInitialFocus}
         />
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
-        <LazyWorkSideCounts active={(workSideNav || twoPaneCounts) && (workRailShown || workMenuOpened)} />
+        <LazyWorkSideCounts
+          active={
+            (workSideNav || twoPaneCounts) && ((twoPaneSideMenu ? twoPaneRailShown : workRailShown) || workMenuOpened)
+          }
+        />
         {twoPaneSideMenu ? (
           <LazyTwoPaneSideMenu
             open={mobileMenuOpen}

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
 
 import type { SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { BrandMark } from "@/components/clinical-dashboard/brand";
@@ -70,6 +71,32 @@ export function useOpenReminders(): () => void {
 }
 
 export const DayIcon = appModeIcons["my-day"];
+
+/* The rail shows from Tailwind's md; where the full clinical sidebar takes over, only up to lg. */
+const railQuery = "(min-width: 768px)";
+const tabletOnlyRailQuery = "(min-width: 768px) and (max-width: 1023px)";
+
+function readMedia(query: string): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia(query).matches;
+}
+
+/**
+ * Whether the tablet rail is on screen, so its counts are read only while it
+ * shows. False on the server, so phones never hydrate a rail read.
+ */
+export function useTwoPaneRailShown(hideOnDesktop: boolean): boolean {
+  const query = hideOnDesktop ? tabletOnlyRailQuery : railQuery;
+  return useSyncExternalStore(
+    (callback) => {
+      if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+      const media = window.matchMedia(query);
+      media.addEventListener("change", callback);
+      return () => media.removeEventListener("change", callback);
+    },
+    () => readMedia(query),
+    () => false,
+  );
+}
 
 /** One strip button: an icon in a soft pill over a short label. */
 export function RailButton({
