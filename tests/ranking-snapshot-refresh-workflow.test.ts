@@ -50,6 +50,8 @@ describe("ranking snapshot refresh workflow", () => {
     expect(workflow).toContain("GH_TOKEN: ${{ secrets.GH_TOKEN }}");
     expect(workflow).toContain('branch="chore/ranking-snapshot-$RUN_ID"');
     expect(workflow).toContain("gh pr create");
+    // Any open refresh PR blocks a new one, not just one from the same run.
+    expect(workflow).toContain('startswith("chore/ranking-snapshot-")');
     expect(workflow).toContain("RAG impact: no retrieval behaviour change.");
     expect(workflow).not.toMatch(/gh pr merge|--auto|refs\/heads\/main|contents: write/);
   });

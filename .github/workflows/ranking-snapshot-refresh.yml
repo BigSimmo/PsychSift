@@ -188,8 +188,12 @@ jobs:
             exit 1
           fi
           branch="chore/ranking-snapshot-$RUN_ID"
-          if gh pr list --repo "$REPOSITORY" --head "$branch" --state open --json number --jq '.[0].number' | grep -q .; then
-            echo "A refresh PR for run $RUN_ID is already open."
+          # One refresh PR at a time: while an earlier one waits to be merged, each
+          # weekly canary would otherwise open another that changes the same files.
+          existing=$(gh pr list --repo "$REPOSITORY" --state open --limit 200 --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("chore/ranking-snapshot-"))][0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "Ranking snapshot refresh PR #$existing is already open. Merge or close it first."
             exit 0
           fi
           git config user.name "github-actions[bot]"
