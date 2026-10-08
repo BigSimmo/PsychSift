@@ -93,6 +93,12 @@ export const MY_DAY_EARLIER_ALERTS_STORAGE_KEY = "psychsift:my-day:earlier-alert
  */
 export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
 /**
+ * localStorage — Roster rotation preferences while example data is on: the example
+ * rounds (invented names, rotations and dates) as the reader changed them. Real
+ * rounds live with the team on the server and are never kept here.
+ */
+export const ROSTER_ROTATIONS_EXAMPLE_STORAGE_KEY = "psychsift:roster:rotations-example-v1";
+/**
  * localStorage — Remind me notes: short text and a due time, kept on this
  * device only. The sheet refuses initials, bed and record numbers and names,
  * and a shared device keeps none; cleared at every account transition.
@@ -258,6 +264,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_EARLIER_ALERTS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, ADMIN_PAPERWORK_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, ROSTER_ROTATIONS_EXAMPLE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
