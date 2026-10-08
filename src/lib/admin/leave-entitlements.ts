@@ -168,9 +168,9 @@ export const LEAVE_ENTITLEMENTS: Readonly<Record<LeaveTypeId, readonly LeaveEnti
 
 /**
  * Casual doctors get none of the paid leave above except these three, quoted from
- * clause 11(4)(h)(i) after review on PR 3367. It is NOT in the signed-off draft,
- * so the card shows it after the sign-off line, marked "Not signed off yet",
- * until the owner signs it off.
+ * clause 11(4)(h)(i) after review on PR 3367. Added to the draft as an addendum
+ * and signed off by the owner on 8 Oct 2026, so every card shows it with the
+ * other figures, above the sign-off line.
  */
 export const LEAVE_CASUAL_NOTE: LeaveEntitlementLine = {
   text: "Casual doctors: the only paid leave is bereavement leave when rostered, long service leave and family and domestic violence leave.",

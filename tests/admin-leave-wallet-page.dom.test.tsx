@@ -119,7 +119,7 @@ describe("LeaveWalletPage", () => {
     fireEvent.click(screen.getByTestId("admin-leave-card-exam"));
     const casual = screen.getByTestId("admin-leave-exam-casual").textContent;
     expect(casual).toContain("Clause 11(4)(h)(i)");
-    expect(casual).toContain("Not signed off yet");
+    expect(casual).not.toContain("Not signed off yet");
   });
 
   it("fills the annual message, copies it, and shows Roster bookings", async () => {
