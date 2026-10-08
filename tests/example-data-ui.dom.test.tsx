@@ -77,6 +77,35 @@ describe("ExampleDataBanner", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it("shows on Open shifts and Notifications, which draw Roster's and My Day's examples, but not on Manage team", () => {
+    act(() => setExampleDataOn(true));
+    for (const area of ["open", "notify"] as const) {
+      render(
+        <ToastProvider>
+          <ExampleDataBanner area={area} />
+        </ToastProvider>,
+      );
+      expect(screen.getByRole("region", { name: "Example data" })).toBeTruthy();
+      cleanup();
+    }
+    render(
+      <ToastProvider>
+        <ExampleDataBanner area="manage" />
+      </ToastProvider>,
+    );
+    expect(screen.queryByRole("region", { name: "Example data" })).toBeNull();
+    cleanup();
+
+    // A real record added in Roster while the switch is on takes Open shifts back to real data too.
+    act(() => markRealRecordAdded("rost"));
+    render(
+      <ToastProvider>
+        <ExampleDataBanner area="open" />
+      </ToastProvider>,
+    );
+    expect(screen.queryByRole("region", { name: "Example data" })).toBeNull();
+  });
+
   it("returns auto mode to auto on Undo, not to an explicit on", () => {
     // A brand new account sees examples in auto mode without ever choosing.
     auth.session.user.created_at = new Date().toISOString();

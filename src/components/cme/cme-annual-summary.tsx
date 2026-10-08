@@ -122,9 +122,7 @@ export function CmeAnnualSummary({
     }`}</style>
       <header className="grid gap-1">
         <h1 className={cmePageTitle}>CPD annual summary — {set.year}</h1>
-        {demoMode ? (
-          <p className={cn(textMuted, "text-sm")}>Synthetic demonstration — not a personal CPD record.</p>
-        ) : null}
+        {demoMode ? <p className={cn(textMuted, "text-sm")}>Example data, not a personal CPD record.</p> : null}
         <p className="text-sm font-normal tabular-nums">
           {active.length} active activities · {status.totalHours} / {set.totalHours} hours · Recorded costs AUD $
           {(costs / 100).toFixed(2)}

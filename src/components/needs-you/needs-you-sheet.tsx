@@ -509,7 +509,7 @@ function listNames(names: readonly string[]): string {
 function stampText(feed: NotificationFeed): string {
   const at = feed.checkedAt ? `Checked ${perthClockLabel(feed.checkedAt)}` : "Checked";
   if (feed.failed.length > 0) return `${at} · ${listNames(feed.failed.map((source) => source.label))} not loaded`;
-  const sample = feed.sample ? " · includes sample data" : "";
+  const sample = feed.sample ? " · includes example data" : "";
   return `${at} · every area loaded${sample}`;
 }
 
