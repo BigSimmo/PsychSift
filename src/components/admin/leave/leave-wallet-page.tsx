@@ -62,7 +62,12 @@ import {
   type LeaveType,
   type LeaveTypeId,
 } from "@/lib/admin/leave-types";
-import { LEAVE_ENTITLEMENTS, LEAVE_SIGN_OFF, leaveAgreementPastEndDate } from "@/lib/admin/leave-entitlements";
+import {
+  LEAVE_CASUAL_NOTE,
+  LEAVE_ENTITLEMENTS,
+  LEAVE_SIGN_OFF,
+  leaveAgreementPastEndDate,
+} from "@/lib/admin/leave-entitlements";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -237,6 +242,17 @@ function MessagePreview({ text, testId }: { text: string; testId: string }) {
   );
 }
 
+/** After the agreement's end date it stays in force until replaced (clause 6(3)), so say so wherever figures show. */
+function AgreementEndNote({ today, testId }: { today: string; testId: string }) {
+  if (!leaveAgreementPastEndDate(today)) return null;
+  return (
+    <p className="text-sm text-[color:var(--text)]" data-testid={testId}>
+      This agreement reached its end date on {formatDateEcho(LEAVE_SIGN_OFF.agreementExpiresOn)}. It stays in force
+      until a new one is made, so check whether a new agreement has replaced it.
+    </p>
+  );
+}
+
 function OpenCard({
   type,
   fields,
@@ -334,10 +350,14 @@ function OpenCard({
             </ul>
           </div>
         ))}
+        <p className={cn(textMuted, "text-xs")} data-testid={`admin-leave-${type.id}-casual`}>
+          {LEAVE_CASUAL_NOTE.text} Clause {LEAVE_CASUAL_NOTE.clause}.
+        </p>
         <p className={cn(textMuted, "text-xs")}>
           From the AMA Industrial Agreement 2024, checked and signed off {formatDateEcho(LEAVE_SIGN_OFF.signedOn)}. Your
           health service confirms what applies to you.
         </p>
+        <AgreementEndNote today={today} testId={`admin-leave-${type.id}-agreement-end`} />
         <a
           href={LEAVE_AGREEMENT.url}
           target="_blank"
@@ -645,12 +665,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
               Each card lists what the WA Health AMA Industrial Agreement 2024 gives, with the clause. Checked and
               signed off {formatDateEcho(LEAVE_SIGN_OFF.signedOn)}.
             </p>
-            {leaveAgreementPastEndDate(today) ? (
-              <p className="text-sm text-[color:var(--text)]" data-testid="admin-leave-agreement-end">
-                This agreement reached its end date on {formatDateEcho(LEAVE_SIGN_OFF.agreementExpiresOn)}. It stays in
-                force until a new one is made, so check whether a new agreement has replaced it.
-              </p>
-            ) : null}
+            <AgreementEndNote today={today} testId="admin-leave-agreement-end" />
             <a
               href={LEAVE_AGREEMENT.url}
               target="_blank"

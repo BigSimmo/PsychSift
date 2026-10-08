@@ -107,6 +107,19 @@ describe("LeaveWalletPage", () => {
     );
   });
 
+  it("says when the agreement has reached its end date on a card opened by link", () => {
+    search.value = "card=annual";
+    render(<LeaveWalletPage now={new Date("2027-09-10T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-leave-open-annual")).toBeTruthy();
+    expect(screen.getByTestId("admin-leave-annual-agreement-end").textContent).toContain("stays in force");
+  });
+
+  it("tells casual doctors which paid leave applies to them", () => {
+    render(<LeaveWalletPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-leave-card-exam"));
+    expect(screen.getByTestId("admin-leave-exam-casual").textContent).toContain("Clause 11(4)(h)");
+  });
+
   it("fills the annual message, copies it, and shows Roster bookings", async () => {
     leavePayload = {
       leave: [{ id: "a", kind: "annual", startsOn: "2026-12-21", endsOn: "2027-01-04", status: "applied" }],

@@ -166,6 +166,16 @@ export const LEAVE_ENTITLEMENTS: Readonly<Record<LeaveTypeId, readonly LeaveEnti
   ],
 };
 
+/**
+ * Casual doctors get none of the paid leave above except these three. Quoted from
+ * clause 11(4)(h)(i) after review on PR 3367; not in the 7 Oct draft, so it narrows
+ * the figures rather than adding one.
+ */
+export const LEAVE_CASUAL_NOTE: LeaveEntitlementLine = {
+  text: "Casual doctors: the only paid leave is bereavement leave when rostered, long service leave and family and domestic violence leave.",
+  clause: "11(4)(h)",
+};
+
 /** The agreement's end date has passed. It stays in force until a new one is made (clause 6(3)). */
 export function leaveAgreementPastEndDate(today: string): boolean {
   return today > LEAVE_SIGN_OFF.agreementExpiresOn;
