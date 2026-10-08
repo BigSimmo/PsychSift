@@ -68,7 +68,7 @@ const CARD_SUBLINE: Partial<Record<MyDayCardId, string>> = {
   hours: "Rostered hours, week and fortnight",
   "cpd-month": "Hours by month and pace",
   credentials: "Dates from Admin",
-  "quick-note": "This phone only",
+  "quick-note": "A note to yourself",
 };
 
 /** Cards that cannot be hidden: Needs you is how nothing gets missed. */

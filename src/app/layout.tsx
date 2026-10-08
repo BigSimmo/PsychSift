@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { cookies, headers } from "next/headers";
 import { AuthProvider } from "@/lib/supabase/client";
 import { AccountDataProvider } from "@/components/account-data-provider";
+import { WorkAccountSync } from "@/components/work-sync/work-account-sync";
 import { PhoneFocusClearance } from "@/components/phone-focus-clearance";
 import { PwaLifecycle } from "@/components/pwa-lifecycle";
 import { WebVitalsReporter } from "@/components/web-vitals-reporter";
@@ -173,6 +174,7 @@ export default async function RootLayout({
         <OverlayRoot />
         <AuthProvider>
           <AccountDataProvider>
+            <WorkAccountSync />
             <MobileKeyboardProvider>
               <ToastProvider>{children}</ToastProvider>
             </MobileKeyboardProvider>
