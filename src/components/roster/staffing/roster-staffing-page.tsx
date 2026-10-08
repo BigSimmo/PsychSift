@@ -208,7 +208,7 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                 <p>Join your team to see who is on each day.</p>
                 <Link
                   href="/roster/join"
-                  className="font-semibold text-[color:var(--mode-identity)] underline-offset-2 hover:underline"
+                  className="work-hit font-semibold text-[color:var(--mode-identity)] underline-offset-2 hover:underline"
                 >
                   Join a team
                 </Link>

@@ -174,7 +174,7 @@ export function TeachingResources({
             autoComplete="off"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-sm text-[color:var(--text-heading)] outline-none placeholder:text-[color:var(--text-muted)]"
+            className="min-w-0 flex-1 self-stretch bg-transparent text-sm text-[color:var(--text-heading)] outline-none placeholder:text-[color:var(--text-muted)]"
           />
         </label>
         <T5Section

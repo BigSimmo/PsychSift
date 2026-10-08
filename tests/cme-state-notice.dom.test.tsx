@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({ AccountSetupDialog: () => null }));
+const nav = vi.hoisted(() => ({ pathname: null as string | null }));
+vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }));
 
 import { CmeStateNotice } from "@/components/cme/cme-state-notice";
 
@@ -66,5 +68,26 @@ describe("CPD states", () => {
   it("keeps the page's own heading above the state", () => {
     render(<CmeStateNotice state="offline" year={2026} heading="Log" onRetry={vi.fn()} />);
     expect(screen.getByRole("heading", { level: 1, name: "Log" })).toBeInTheDocument();
+  });
+
+  it("keeps the heading for screen readers only where the band already names the page", () => {
+    nav.pathname = "/cme/log";
+    try {
+      render(<CmeStateNotice state="signed-out" year={2026} heading="Log" />);
+      const heading = screen.getByRole("heading", { level: 1, name: "Log" });
+      expect(heading).toHaveClass("sr-only");
+    } finally {
+      nav.pathname = null;
+    }
+  });
+
+  it("shows the heading on a CPD page that keeps its own header", () => {
+    nav.pathname = "/cme/export";
+    try {
+      render(<CmeStateNotice state="unavailable" year={2026} heading="Export" />);
+      expect(screen.getByRole("heading", { level: 1, name: "Export" })).not.toHaveClass("sr-only");
+    } finally {
+      nav.pathname = null;
+    }
   });
 });

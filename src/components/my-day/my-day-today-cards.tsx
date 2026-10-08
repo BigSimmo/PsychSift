@@ -930,7 +930,7 @@ export function MyDaySegmented<T extends string>({
           className={cn(
             focusRing,
             "relative rounded-full font-semibold tracking-normal normal-case before:absolute before:inset-x-0 before:content-[''] motion-safe:transition-colors",
-            size === "sm" ? "h-5.5 px-2.5 text-2xs before:-inset-y-3.5" : "h-7.5 flex-1 text-xs before:-inset-y-2",
+            size === "sm" ? "h-5.5 px-2.5 text-2xs before:-inset-y-3.5" : "h-7.5 flex-1 text-xs before:-inset-y-2.25",
             value === option
               ? "bg-[color:var(--work-surface)] font-bold text-[color:var(--work-ink)] shadow-[var(--work-shadow-card)] forced-colors:border"
               : "text-[color:var(--text-muted)]",
