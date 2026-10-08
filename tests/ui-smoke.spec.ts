@@ -6579,8 +6579,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     { name: "tablet", width: 768, height: 1024 },
     { name: "desktop", width: 1280, height: 900 },
   ]) {
-    test(`guide opens and dismisses at ${viewport.name}`, async ({ page }) => {
+    test(`guide opens and dismisses at ${viewport.name}`, async ({ page, baseURL }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      if (viewport.width < 768) await useEveryonesVersion(page, baseURL);
       await mockPrivateUnauthenticatedApi(page);
       await gotoApp(page, "/");
 
@@ -6607,8 +6608,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     });
   }
 
-  test("guide centre topic navigation and tour progress remain accessible", async ({ page }) => {
+  test("guide centre topic navigation and tour progress remain accessible", async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 390, height: 820 });
+    await useEveryonesVersion(page, baseURL);
     await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
@@ -6710,8 +6712,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("guide centre phone dock paints through the bottom safe area", async ({ page }) => {
+  test("guide centre phone dock paints through the bottom safe area", async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 390, height: 820 });
+    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
 
