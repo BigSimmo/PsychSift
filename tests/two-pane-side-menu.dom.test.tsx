@@ -90,6 +90,11 @@ describe("two-pane side menu", () => {
     renderMenu({ startSide: "work", workAvailable: false });
     expect(screen.getByRole("heading", { level: 2, name: "Clinical" })).toBeTruthy();
     expect(screen.queryByTestId("two-pane-menu-work")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("two-pane-menu-you"));
+    expect(screen.getByRole("heading", { level: 2, name: "You" })).toBeTruthy();
+    fireEvent.click(screen.getByTestId("two-pane-menu-clinical"));
+    expect(screen.getByRole("heading", { level: 2, name: "Clinical" })).toBeTruthy();
   });
 
   it("opens Settings from the strip", () => {

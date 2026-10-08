@@ -506,15 +506,17 @@ export function TwoPaneSideMenu({
           <BrandMark tone="emphasis" optical="chrome" className="two-pane-menu__mark" />
           <span>{BRAND_NAME}</span>
         </span>
-        {workAvailable ? (
-          <div className="two-pane-menu__modes" role="group" aria-label="Mode">
-            <RailButton
-              label="Clinical"
-              icon={Stethoscope}
-              pressed={pane === "clinical"}
-              onClick={() => choosePane("clinical")}
-              testId="two-pane-menu-clinical"
-            />
+        {/* Clinical stays in the strip without Work too: it is the only way
+            back from the You pane. */}
+        <div className="two-pane-menu__modes" role="group" aria-label="Mode">
+          <RailButton
+            label="Clinical"
+            icon={Stethoscope}
+            pressed={pane === "clinical"}
+            onClick={() => choosePane("clinical")}
+            testId="two-pane-menu-clinical"
+          />
+          {workAvailable ? (
             <RailButton
               label="Work"
               icon={BriefcaseMedical}
@@ -523,8 +525,8 @@ export function TwoPaneSideMenu({
               pip={overdue > 0 ? `${overdue} overdue` : undefined}
               testId="two-pane-menu-work"
             />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
         <span className="two-pane-menu__rule" aria-hidden="true" />
         {savedShown ? (
           <Link href={savedHref} onClick={close} className="two-pane-menu__rail-item" data-testid="two-pane-menu-saved">
