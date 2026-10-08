@@ -398,7 +398,7 @@ export function WorkMoreSheet({
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={`Find a ${area.name} page`}
+                placeholder={`Find ${/^[AEIOU]/.test(area.name) ? "an" : "a"} ${area.name} page`}
                 autoComplete="off"
                 enterKeyHint="search"
                 data-testid="work-more-search"

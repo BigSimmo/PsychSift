@@ -48,7 +48,7 @@ export function AlertsPage({
 } = {}) {
   return (
     <MyDayFrame
-      title="Alerts"
+      title={inFrame ? "Settings" : "Alerts"}
       testId="my-day-alerts"
       now={now}
       wide

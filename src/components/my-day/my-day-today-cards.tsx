@@ -197,12 +197,14 @@ function HeroTrackLine({
         { at: track.fillFrom, label: perthTimeOf(shift.startsAt), now: false },
         { at: 100, label: track.ticks[track.ticks.length - 1]?.label ?? "", now: false },
       ];
-  // A label that would sit on top of its neighbour is dropped, keeping now and the end.
+  // A label that would sit on top of its neighbour is dropped, keeping now and the end. Before the shift the
+  // now label reads "Now 05:08", nearly twice as wide, so it needs more room (the two ran together at 320 px).
+  const nowGap = running ? 18 : 26;
   const kept = ticks.filter(
     (tick, index) =>
       tick.now ||
       index === ticks.length - 1 ||
-      ticks.every((other) => other === tick || !other.now || Math.abs(other.at - tick.at) >= 18),
+      ticks.every((other) => other === tick || !other.now || Math.abs(other.at - tick.at) >= nowGap),
   );
   const middleKept = kept.filter((tick) => !tick.now && tick.at < 100);
   const shown = middleKept.every((tick) => 100 - tick.at >= 16) ? kept : kept.filter((t) => t.now || t.at >= 100);
@@ -266,7 +268,8 @@ function HeroTrackLine({
             key={`${tick.at}-${tick.label}`}
             x={tick.at <= 2 ? "0" : tick.at >= 98 ? "100%" : `${tick.at}%`}
             y="10"
-            textAnchor={tick.at <= 2 ? "start" : tick.at >= 98 ? "end" : "middle"}
+            // Near the left edge a centred label would start outside the card, so it starts at its mark instead.
+            textAnchor={tick.at <= 8 ? "start" : tick.at >= 98 ? "end" : "middle"}
             className={cn("fill-current text-3xs font-semibold nums", tick.now ? "font-bold" : undefined)}
           >
             {tick.label}

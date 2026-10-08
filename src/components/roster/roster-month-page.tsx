@@ -331,7 +331,10 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
               : "On shift now"
             : date === today
               ? kind === "on_call"
-                ? "On call tonight"
+                ? // Same rule as My Day's card: an on-call that starts at 17:00 or later is tonight.
+                  Number(perthTimeOf(leadDisplay.startsAt).slice(0, 2)) >= 17
+                  ? "On call tonight"
+                  : "On call today"
                 : `${SHIFT_KIND_LABEL[kind]} today`
               : date === addDaysToDate(today, 1)
                 ? `${SHIFT_KIND_LABEL[kind]} tomorrow`

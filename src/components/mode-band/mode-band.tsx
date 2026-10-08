@@ -178,8 +178,9 @@ export function useModeBandCurrentTab(tabId: string | null) {
 
 function greetingFor(now: Date, zone: string): string {
   const hour = Number(zonedTimeOf(now, zone).slice(0, 2));
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
+  // Same cut-offs as Roster and Admin: before 05:00 is still the evening, for the night shift.
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 18) return "Good afternoon";
   return "Good evening";
 }
 
