@@ -34,8 +34,17 @@ vi.mock("@/components/my-day/use-my-day-dashboard-sources", () => ({
 // The full list ("All N") has its own address, `/my-day?view=all`. The page
 // reads it through `useSearchParams`; here that reads jsdom's own address, and
 // a test re-renders after the page pushes it (Next's router does that live).
+const routerPush = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
+  useRouter: () => ({ push: routerPush }),
+}));
+
+// "All N" opens the old full list on the classic work mode, which these tests cover, and Notifications on the new one.
+const newWorkMode = vi.hoisted(() => ({ current: false }));
+vi.mock("@/components/work-mode-launch/work-mode-launch-provider", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/work-mode-launch/work-mode-launch-provider")>()),
+  useNewWorkMode: () => newWorkMode.current,
 }));
 
 const currentTab = vi.hoisted(() => vi.fn());
@@ -335,6 +344,27 @@ describe("MyDayPage", () => {
     back.mockRestore();
     rerender(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-dashboard")).toBeTruthy();
+  });
+
+  it("opens Your reminders from a Notifications reminder link, then drops the word from the address", async () => {
+    setState({ items: [item("a", "overdue")] });
+    window.history.replaceState(null, "", "/my-day?sheet=reminders");
+    render(<MyDayPage now={NOW} />);
+    expect(await screen.findByRole("dialog", { name: "Your reminders" })).toBeTruthy();
+    expect(window.location.search).toBe("");
+  });
+
+  it("opens Notifications from All N on the new work mode, where it is the full list", () => {
+    newWorkMode.current = true;
+    try {
+      setState({ items: [item("a", "overdue")] });
+      render(<MyDayPage now={NOW} />);
+      fireEvent.click(screen.getByRole("button", { name: "See all 1" }));
+      expect(routerPush).toHaveBeenCalledWith("/my-day/notifications");
+      expect(window.location.search).toBe("");
+    } finally {
+      newWorkMode.current = false;
+    }
   });
 
   it("opens the full list straight from its address, and Back to dashboard replaces it", () => {

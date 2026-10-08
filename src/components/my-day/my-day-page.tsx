@@ -2,7 +2,7 @@
 
 import { History, LogIn, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
@@ -39,7 +39,7 @@ import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { cn } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
-import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { NewWorkModeOnly, useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { WorkSetupPromptCard } from "@/components/work-setup/work-setup-prompt-card";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { reportAreaData, useExampleData } from "@/lib/example-data/store";
@@ -55,6 +55,7 @@ import {
   type MyDayState,
 } from "@/lib/my-day/model";
 import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
+import { WORK_SIDE_NOTIFICATIONS_HREF } from "@/lib/work-frame/side-nav";
 import { addDaysToDate, formatPerthDay, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { useAuthSession } from "@/lib/supabase/client";
 import { zonedDateOf } from "@/lib/work-time/format";
@@ -470,22 +471,32 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   };
   useWorkFrameAction("my-day-customise", ready ? () => setSheet("customise") : null);
   useWorkFrameAction("my-day-reminders", ready ? () => setSheet("reminders") : null);
-  // `?sheet=customise` (from My Day's other pages): open it once, then drop the word from the address.
+  // `?sheet=customise` (from My Day's other pages) and `?sheet=reminders` (a reminder tapped in Notifications):
+  // open it once, then drop the word from the address.
   const sheetParam = searchParams?.get("sheet") ?? null;
+  const addressSheet = sheetParam === "customise" || sheetParam === "reminders" ? sheetParam : null;
   const [consumedSheet, setConsumedSheet] = useState<string | null>(null);
-  if (ready && sheetParam === "customise" && consumedSheet !== sheetParam) {
-    setConsumedSheet(sheetParam);
-    setSheet("customise");
+  if (ready && addressSheet && consumedSheet !== addressSheet) {
+    setConsumedSheet(addressSheet);
+    setSheet(addressSheet);
   }
   useEffect(() => {
-    if (sheetParam !== "customise" || consumedSheet !== sheetParam) return;
+    if (!addressSheet || consumedSheet !== addressSheet) return;
     const url = new URL(window.location.href);
     url.searchParams.delete("sheet");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [sheetParam, consumedSheet]);
+  }, [addressSheet, consumedSheet]);
 
+  const router = useRouter();
+  const newWorkMode = useNewWorkMode();
   const showAll = () => {
     setSheet(null);
+    // On the new work mode the full list is Notifications. The old list's address only redirects there on a
+    // server load, and openFullList changes the address without one, so go straight to Notifications.
+    if (newWorkMode) {
+      router.push(WORK_SIDE_NOTIFICATIONS_HREF);
+      return;
+    }
     openFullList();
   };
   // Quick add's one suggestion: the top CPD row in Needs you.

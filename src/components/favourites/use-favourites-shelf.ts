@@ -13,6 +13,7 @@ import {
 } from "@/components/favourites/favourites-storage";
 import { shelfItems, type FavouriteItem } from "@/components/favourites/favourites-view-model";
 import type { SavedFavouritesBandStatus } from "@/components/clinical-dashboard/saved-registry-favourites-status";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import {
   recordNumberOpened,
   useFavouriteOverrides,
@@ -66,6 +67,7 @@ export function useFavouritesShelf(limit?: number): FavouritesShelfState {
   const accountData = useOptionalAccountData();
   const { items: registryItems, status, refetch } = useSavedRegistryFavourites();
   const workStars = useWorkPageStars();
+  const routeVisible = useWorkModeRouteVisible();
   const numbers = useSavedNumbers();
   const overrides = useFavouriteOverrides();
   const layout = useFavouritesLayout();
@@ -79,9 +81,21 @@ export function useFavouritesShelf(limit?: number): FavouritesShelfState {
     const metadata = new Map((favouriteItems ?? []).map((item) => [`${item.contentType}:${item.contentKey}`, item]));
     const setById = new Map((favouriteSets ?? []).map((set) => [set.id, set]));
     const clinical = registryItems.map((item) => toCommandItem(item, lastOpened, pinnedIds, metadata, setById, now));
-    const work = resolveWorkPageStars(workStars).map(workStarToItem);
+    // A new-only page 404s on the classic work mode, so it stays saved but hidden there.
+    const work = resolveWorkPageStars(workStars, routeVisible).map(workStarToItem);
     return [...clinical, ...work, ...numbers.map(numberToItem)].map((item) => applyOverride(item, overrides[item.id]));
-  }, [favouriteItems, favouriteSets, registryItems, lastOpened, pinnedIds, now, workStars, numbers, overrides]);
+  }, [
+    favouriteItems,
+    favouriteSets,
+    registryItems,
+    lastOpened,
+    pinnedIds,
+    now,
+    workStars,
+    routeVisible,
+    numbers,
+    overrides,
+  ]);
 
   const shelfLimit = limit ?? layout.shelfSize;
   const shelf = useMemo(() => shelfItems(items, shelfLimit, layout.pinOrder), [items, shelfLimit, layout.pinOrder]);

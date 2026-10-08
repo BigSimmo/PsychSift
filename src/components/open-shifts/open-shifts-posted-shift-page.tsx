@@ -11,7 +11,8 @@ import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAction } from "@/lib/roster/team/model";
 
 import { ConfirmSheet } from "./open-shifts-confirm";
-import { LoadFailed } from "./open-shifts-states";
+import { SignInAction } from "./open-shifts-sign-in";
+import { LoadFailed, NoTeam } from "./open-shifts-states";
 import {
   FootAction,
   ListSkeleton,
@@ -89,6 +90,14 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
       <div className="mx-auto w-full max-w-reading" data-mode-identity="open-shifts">
         <SubHeader backHref={back} backLabel="Post" title="Your posted shift" />
         <LoadFailed what="This shift" message={state.message} onRetry={state.reload} />
+      </div>
+    );
+  }
+  if (state.status === "signed-out" || state.status === "no-team") {
+    return (
+      <div className="mx-auto w-full max-w-reading" data-mode-identity="open-shifts">
+        <SubHeader backHref={back} backLabel="Post" title="Your posted shift" />
+        {state.status === "signed-out" ? <SignInAction label="Sign in to see posted shifts" /> : <NoTeam />}
       </div>
     );
   }

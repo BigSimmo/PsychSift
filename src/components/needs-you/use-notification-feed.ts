@@ -9,7 +9,7 @@ import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { useFeatureNotificationSources } from "@/components/needs-you/use-feature-notification-sources";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
-import { dueReminders, type Reminder } from "@/lib/alerts/remind-me";
+import { dueReminders, MY_DAY_REMINDERS_HREF, type Reminder } from "@/lib/alerts/remind-me";
 import { myDayEnabledForAuth, type MyDayItem, type MyDaySourceResult } from "@/lib/my-day/model";
 import {
   myDayNotificationItem,
@@ -172,7 +172,7 @@ function reminderItems(reminders: readonly Reminder[], now: Date, markDone: (id:
       detail: "Your reminder",
       due: reminder.dueAt,
       area: "my-day" as const,
-      href: "/my-day/alerts",
+      href: MY_DAY_REMINDERS_HREF,
       kind: "action" as const,
       snoozable: false,
       remindable: false,

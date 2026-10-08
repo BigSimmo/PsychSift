@@ -38,10 +38,10 @@ export function CmeCustomisePage() {
   return (
     <>
       {/* Every change saves as it is made, so Done only leaves, back to the
-          Year page, where the new order shows. */}
+          Summary page, where the new order shows. */}
       <CmeDetailNavHeader
         title="Customise"
-        back={{ href: "/cme", label: "Year" }}
+        back={{ href: "/cme", label: "Summary" }}
         primaryAction={{ label: "Done", icon: Check, onClick: () => router.push("/cme") }}
         testIdPrefix="cme-customise"
       />

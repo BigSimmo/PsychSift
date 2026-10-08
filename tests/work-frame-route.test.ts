@@ -71,8 +71,12 @@ describe("workFrameCurrentItem", () => {
     expect(workFrameForRoute("my-day", "/my-day/setup")).toBeNull();
     expect(workFrameForRoute("my-day", "/my-day/help")).toBeNull();
     expect(workFrameForRoute("my-day", "/my-day/alerts/earlier")).toBeNull();
-    expect(workFrameForRoute("cme", "/cme/export")).toBeNull();
     expect(workFrameForRoute("my-work", "/admin/workforce")).toBeNull();
     expect(workFrameForRoute("my-day", "/my-day/favourites")?.page.label).toBe("Favourites");
+  });
+
+  it("draws the band on the two Export pages, which have no header of their own", () => {
+    expect(workFrameForRoute("cme", "/cme/export")?.page.label).toBe("Export");
+    expect(workFrameForRoute("teaching", "/teaching/assessments/export")?.page.label).toBe("Export");
   });
 });

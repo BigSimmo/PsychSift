@@ -601,7 +601,8 @@ const teaching: WorkArea = {
         {
           id: "term-folder",
           label: "Evidence folder",
-          short: "Evidence",
+          // CPD has its own "Evidence" page, so the short name says which one this is.
+          short: "Term folder",
           sub: "Your term in one place",
           icon: "folder",
           href: "/teaching/term/folder",
@@ -763,7 +764,6 @@ const assessments: WorkArea = {
           sub: "Spreadsheets and forms",
           icon: "download",
           href: "/teaching/assessments/export",
-          band: false,
         },
       ],
     },
@@ -884,7 +884,6 @@ const cpd: WorkArea = {
           sub: "CSV and printable",
           icon: "download",
           href: "/cme/export",
-          band: false,
         },
         {
           id: "cpd-home",
@@ -1269,6 +1268,20 @@ export function workFrameCurrentItem(area: WorkArea, pathname: string, search: s
   );
   if (withQuery) return withQuery;
   return onPath.find((item) => !item.query) ?? null;
+}
+
+/**
+ * Whether the address is the item's own page: the path of its `href`, with
+ * every query value its `href` and `query` ask for. A page the item only
+ * covers through `paths` (Routines under Log) is not its own, so saving the
+ * item from there would save a different page.
+ */
+export function workFrameItemOwnsAddress(item: WorkFrameItem, pathname: string, search: string): boolean {
+  if (!item.href || hrefPath(item.href) !== pathname) return false;
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const hrefQuery = new URLSearchParams(item.href.split("#")[0]?.split("?")[1] ?? "");
+  const wanted = [...hrefQuery.entries(), ...Object.entries(item.query ?? {})];
+  return wanted.every(([key, value]) => params.get(key) === value);
 }
 
 /** The pinned tab index (0 to 2) of an item id, or -1 when it lives in More. */

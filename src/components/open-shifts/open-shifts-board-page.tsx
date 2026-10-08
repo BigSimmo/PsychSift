@@ -9,7 +9,8 @@ import { useRosterNow } from "@/components/roster/roster-format";
 import { boardWeek, type BoardCellStatus } from "@/lib/open-shifts/board";
 import { addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
-import { LoadFailed } from "./open-shifts-states";
+import { SignInAction } from "./open-shifts-sign-in";
+import { LoadFailed, NoTeam } from "./open-shifts-states";
 import {
   ListSkeleton,
   OPEN_SHIFTS_HREF,
@@ -92,7 +93,7 @@ export function OpenShiftsBoardPage() {
         action={
           <Link
             href="/open-shifts/post/new"
-            className="mr-2 inline-flex min-h-12 items-center gap-1.5 rounded-md bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)]"
+            className="mr-2 inline-flex min-h-12 items-center gap-1.5 rounded-md bg-[color:var(--work-primary,var(--mode-identity))] px-4 text-sm font-semibold text-[color:var(--work-primary-text,var(--mode-identity-contrast))] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)]"
           >
             <Plus aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
             Post a shift
@@ -103,6 +104,10 @@ export function OpenShiftsBoardPage() {
         <ListSkeleton rows={5} />
       ) : state.status === "error" ? (
         <LoadFailed what="Your posted shifts" message={state.message} onRetry={state.reload} />
+      ) : state.status === "signed-out" ? (
+        <SignInAction label="Sign in to see the week board" />
+      ) : state.status === "no-team" ? (
+        <NoTeam />
       ) : state.status !== "ready" ? (
         <p className="px-3 py-8 text-sm text-[color:var(--text-muted)]">
           Only a team&apos;s roster managers can see the week board.

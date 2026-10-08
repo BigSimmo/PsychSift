@@ -377,9 +377,9 @@ function Hero({
   );
 }
 
-/** A warm line under the date, from the Perth hour. */
-function greetingFor(now: Date): { readonly text: string; readonly icon: typeof Sun } {
-  const hour = Number(perthTimeOf(now).slice(0, 2));
+/** A warm line under the date, from the hour in the reader's time zone (as My Day and Admin greet). */
+function greetingFor(now: Date, zone: string): { readonly text: string; readonly icon: typeof Sun } {
+  const hour = Number(perthTimeOf(now, zone).slice(0, 2));
   if (hour >= 5 && hour < 12) return { text: "Good morning", icon: Sun };
   if (hour >= 12 && hour < 18) return { text: "Good afternoon", icon: Sun };
   return { text: "Good evening", icon: Moon };
@@ -490,7 +490,7 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
     () => (shifts.demoMode ? [] : importChangeNotices(shifts.latestImport, today)),
     [shifts.demoMode, shifts.latestImport, today],
   );
-  const greeting = greetingFor(now);
+  const greeting = greetingFor(now, zone);
   // Under the work-mode band the date and the greeting are the band's words (mockup `rost_today`).
   useModeBandHeading({ eyebrow: formatPerthDay(today), title: greeting.text });
   const fresh = hasFreshLink(links.links, now);

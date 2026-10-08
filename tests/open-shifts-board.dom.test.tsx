@@ -82,6 +82,15 @@ describe("Week board chips", () => {
     expect(links[0]!.textContent).toContain("08:00 to 16:30");
   });
 
+  it("fills Post a shift with the area's primary colour, not the near-black command colour", () => {
+    render(<OpenShiftsBoardPage />);
+    const link = screen.getByRole("link", { name: "Post a shift" });
+    expect(link.className).toContain("bg-[color:var(--work-primary,var(--mode-identity))]");
+    expect(link.className).toContain("text-[color:var(--work-primary-text,var(--mode-identity-contrast))]");
+    expect(link.className).not.toContain("bg-[color:var(--command)]");
+    expect(link.className).toContain("min-h-12");
+  });
+
   it("says when nothing matches a chip and offers Show all", () => {
     state.shifts = [posted("o", "open", "2026-10-11")];
     render(<OpenShiftsBoardPage />);

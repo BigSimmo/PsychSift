@@ -6,6 +6,7 @@ import { useId } from "react";
 import { WorkIconCircle } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
+import { useWorkFrameItemVisible } from "@/components/work-frame/use-work-frame-gate-open";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import {
   starrableWorkPages,
@@ -30,7 +31,9 @@ export function AddWorkPageSheet({
   const stars = useWorkPageStars();
   const saved = new Set(stars.map((star) => workPageStarKey(star.areaId, star.itemId)));
   const headingId = useId();
-  const groups = starrableWorkPages().filter((group) => group.items.length > 0);
+  // Only pages this reader can open: the frame's gates and the launch switch decide, as in More.
+  const itemVisible = useWorkFrameItemVisible();
+  const groups = starrableWorkPages(itemVisible).filter((group) => group.items.length > 0);
 
   return (
     <Sheet

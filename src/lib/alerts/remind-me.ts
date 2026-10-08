@@ -345,3 +345,6 @@ export function reminderWhenLabel(reminder: Reminder, now: Date): string {
 }
 
 export { perthClock as remindMeClock };
+
+/** My Day reads `?sheet=reminders` on arrival and opens Your reminders, so a reminder tapped elsewhere lands on its list. */
+export const MY_DAY_REMINDERS_HREF = "/my-day?sheet=reminders";

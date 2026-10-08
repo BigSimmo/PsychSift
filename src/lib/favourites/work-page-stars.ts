@@ -240,27 +240,39 @@ export function resetWorkPageStarsForTesting(): void {
 /**
  * Joins each entry to the page it names. Only pages with a real link are kept:
  * an action-only item (a sheet) has nowhere to go from Favourites.
+ * `routeVisible` (`useWorkModeRouteVisible`) hides a new-only page from a
+ * reader on the classic work mode, where it 404s. The entry stays stored, so
+ * it is back when the new work mode is.
  */
-export function resolveWorkPageStars(stars: readonly WorkPageStar[]): ResolvedWorkPageStar[] {
+export function resolveWorkPageStars(
+  stars: readonly WorkPageStar[],
+  routeVisible: (href: string) => boolean = () => true,
+): ResolvedWorkPageStar[] {
   const out: ResolvedWorkPageStar[] = [];
   for (const star of stars) {
     const area = WORK_AREAS[star.areaId];
     if (!area) continue;
     const item = workAreaItems(area).find((candidate) => candidate.id === star.itemId);
-    if (!item?.href) continue;
+    if (!item?.href || !routeVisible(item.href)) continue;
     out.push({ ...star, key: workPageStarKey(star.areaId, star.itemId), area, item: { ...item, href: item.href } });
   }
   return out;
 }
 
-/** Every work page that can be added, area by area, without duplicates. */
-export function starrableWorkPages(): { area: WorkArea; items: (WorkFrameItem & { href: string })[] }[] {
+/**
+ * Every work page that can be added, area by area, without duplicates.
+ * `visible` (`useWorkFrameItemVisible`) drops pages this reader cannot use: a
+ * closed gate, or a new-only page on the classic work mode.
+ */
+export function starrableWorkPages(
+  visible: (item: WorkFrameItem) => boolean = () => true,
+): { area: WorkArea; items: (WorkFrameItem & { href: string })[] }[] {
   return (Object.values(WORK_AREAS) as WorkArea[]).map((area) => {
     const seen = new Set<string>();
     const items: (WorkFrameItem & { href: string })[] = [];
     for (const item of workAreaItems(area)) {
       // Items that lead into another area are that area's pages; list them there.
-      if (!item.href || item.leadsTo || seen.has(item.id)) continue;
+      if (!item.href || item.leadsTo || seen.has(item.id) || !visible(item)) continue;
       // Favourites itself is where saved pages are listed; saving it would point at itself.
       if (item.href.split(/[?#]/)[0] === "/my-day/favourites") continue;
       seen.add(item.id);

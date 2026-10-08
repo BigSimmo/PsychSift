@@ -23,15 +23,36 @@ function reloadPage() {
 }
 
 /**
- * A signed-out Roster screen: the reason in one line, and the way in. The app
- * has no sign-in page; "Sign in" opens the same account dialog On Call and
- * Teaching use, so the reader never has to go looking for it.
+ * Roster's way in. The app has no sign-in page (`/sign-in` forwards to
+ * Favourites), so "Sign in" opens the same account dialog On Call and Teaching
+ * use. `open` starts it; render `dialog` beside the control that calls it.
  *
  * The Roster reads (shifts, teams, settings, swaps) fetch once on mount and
  * keep their signed-out answer, so a sign-in started here reloads the page
- * once the session turns authenticated; otherwise the screen would stay on
- * this notice until the reader reloaded it themselves.
+ * once the session turns authenticated; otherwise the screen would stay
+ * signed out until the reader reloaded it themselves.
  */
+export function useRosterSignIn(onSignedIn: () => void = reloadPage): {
+  readonly open: () => void;
+  readonly dialog: ReactNode;
+} {
+  const [isOpen, setOpen] = useState(false);
+  const [askedWhileSignedOut, setAskedWhileSignedOut] = useState(false);
+  const signedIn = useAuthSessionIfAvailable()?.status === "authenticated";
+  useEffect(() => {
+    if (askedWhileSignedOut && signedIn) onSignedIn();
+  }, [askedWhileSignedOut, signedIn, onSignedIn]);
+  return {
+    open: () => {
+      setOpen(true);
+      if (!signedIn) setAskedWhileSignedOut(true);
+    },
+    // Mounted only once asked for, so a signed-out screen needs nothing from the session until then.
+    dialog: isOpen ? <AccountSetupDialog open onClose={() => setOpen(false)} /> : null,
+  };
+}
+
+/** A signed-out Roster screen: the reason in one line, and the way in. */
 export function RosterSignInNotice({
   children,
   testId,
@@ -42,28 +63,14 @@ export function RosterSignInNotice({
   /** Runs once when a sign-in started from this notice succeeds. */
   readonly onSignedIn?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [askedWhileSignedOut, setAskedWhileSignedOut] = useState(false);
-  const signedIn = useAuthSessionIfAvailable()?.status === "authenticated";
-  useEffect(() => {
-    if (askedWhileSignedOut && signedIn) onSignedIn();
-  }, [askedWhileSignedOut, signedIn, onSignedIn]);
+  const signIn = useRosterSignIn(onSignedIn);
   return (
     <div className="grid gap-2" data-testid={testId}>
       <ModeNotice>{children}</ModeNotice>
-      <Button
-        variant="primary"
-        icon={LogIn}
-        onClick={() => {
-          setOpen(true);
-          if (!signedIn) setAskedWhileSignedOut(true);
-        }}
-        className="justify-self-start"
-      >
+      <Button variant="primary" icon={LogIn} onClick={signIn.open} className="justify-self-start">
         Sign in
       </Button>
-      {/* Mounted only once asked for, so a signed-out screen needs nothing from the session until then. */}
-      {open ? <AccountSetupDialog open onClose={() => setOpen(false)} /> : null}
+      {signIn.dialog}
     </div>
   );
 }
