@@ -653,6 +653,16 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   display: none;
 }
 
+/* The two-pane side menu keeps the menu button on phones, first, with Back
+   beside it, mirroring the bell and AI Search on the right. Tablets have the
+   menu strip, so the button stays hidden there. */
+@media (max-width: 767px) {
+  .universal-header-leading[data-two-pane-menu]:has(> #universal-header-leading > *) > .universal-header-menu {
+    display: grid;
+    order: -1;
+  }
+}
+
 .work-frame-back {
   display: grid;
   width: var(--spacing-tap, 3rem);

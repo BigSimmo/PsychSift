@@ -35,7 +35,9 @@ import {
 } from "@/components/clinical-dashboard/dashboard-mode-surface";
 import * as SidebarDialogs from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
 import { useLivePreview } from "@/components/live-version/live-version-provider";
-import { TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
+import { prefetchTwoPaneSideMenu, TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
+import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
+import { useWorkRailShown } from "@/components/work-frame/work-rail";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useSettingsGuideFlow } from "@/components/clinical-dashboard/use-settings-guide-flow";
 import {
@@ -642,6 +644,10 @@ function ClinicalDashboardContent({
   // The two-pane side menu (owner pick 8 Oct 2026) replaces the phone menu behind the Live version switch.
   const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
   const newWorkMode = useNewWorkMode();
+  // From 768 px the two-pane menu's strip stays on screen as a rail (1024 px up
+  // keeps the full sidebar). A rail button opens the menu on its own pane.
+  const twoPaneRailShown = useWorkRailShown();
+  const [menuPane, setMenuPane] = useState<TwoPaneMenuPane | null>(null);
   const {
     favouritesAccessible,
     accountSetupOpen,
@@ -2914,6 +2920,26 @@ function ClinicalDashboardContent({
     setupBlockedQuery,
   });
 
+  const desktopSidebar = (
+    <ClinicalDesktopSidebar
+      collapsed={settingsState.sidebarCollapsed}
+      recentQueries={recentQueries}
+      identity={sidebarIdentity}
+      activeMode={searchMode}
+      onCollapsedChange={settingsState.setSidebarCollapsed}
+      onNewChat={startNewChat}
+      onPickRecent={pickRecentQuery}
+      onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+      onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+      onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
+      onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
+      onPrefetchApplications={prefetchApplications}
+      onOpenSearch={openSidebarSearch}
+      onSelectMode={selectSearchMode}
+      showAccountLibrary={favouritesAccessible}
+    />
+  );
+
   return (
     <div
       className={cn(
@@ -2936,23 +2962,27 @@ function ClinicalDashboardContent({
         } as CSSProperties
       }
     >
-      <ClinicalDesktopSidebar
-        collapsed={settingsState.sidebarCollapsed}
-        recentQueries={recentQueries}
-        identity={sidebarIdentity}
-        activeMode={searchMode}
-        onCollapsedChange={settingsState.setSidebarCollapsed}
-        onNewChat={startNewChat}
-        onPickRecent={pickRecentQuery}
-        onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
-        onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
-        onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
-        onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
-        onPrefetchApplications={prefetchApplications}
-        onOpenSearch={openSidebarSearch}
-        onSelectMode={selectSearchMode}
-        showAccountLibrary={favouritesAccessible}
-      />
+      {twoPaneSideMenu ? (
+        <>
+          <TwoPaneSideRail
+            identity={sidebarIdentity}
+            side="clinical"
+            workAvailable={newWorkMode}
+            showAccountLibrary={favouritesAccessible}
+            hideOnDesktop
+            onOpenMenu={(pane) => {
+              closeDashboardTransientSurfaces("mobileSidebar");
+              setMenuPane(pane);
+              settingsState.setMobileSidebarOpen(true);
+            }}
+            onPrefetchMenu={prefetchTwoPaneSideMenu}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+          />
+          <div className="hidden lg:contents">{desktopSidebar}</div>
+        </>
+      ) : (
+        desktopSidebar
+      )}
       <PhoneFooterLayerFrame
         className="phone-viewport-frame relative flex min-h-0 min-w-0 flex-1 flex-col md:h-full"
         scrollHidden={chromeScrollHidden}
@@ -3012,6 +3042,7 @@ function ClinicalDashboardContent({
           showDesktopNewChat={false}
           onOpenMobileSidebar={() => {
             closeDashboardTransientSurfaces("mobileSidebar");
+            setMenuPane(null);
             settingsState.setMobileSidebarOpen(true);
           }}
           queryModeOptions={clinicalQueryModeOptions}
@@ -3639,6 +3670,8 @@ function ClinicalDashboardContent({
             onOpenChange={settingsState.setMobileSidebarOpen}
             identity={sidebarIdentity}
             startSide="clinical"
+            openPane={menuPane}
+            countsActive={twoPaneRailShown}
             workAvailable={newWorkMode}
             currentArea={null}
             activeMode={searchMode}

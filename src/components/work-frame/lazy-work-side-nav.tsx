@@ -50,14 +50,18 @@ export function LazyWorkSideCounts({ active }: { readonly active: boolean }) {
 /**
  * The two-pane side menu with its own counts reader, for a page that has no
  * work side nav of its own (the clinical dashboard). The reader starts at the
- * first opening and stays mounted, so reopening never fetches the feed again.
+ * first opening, or at once while the tablet rail shows (`countsActive`), and
+ * stays mounted after an opening, so reopening never fetches the feed again.
  */
-export function TwoPaneSideMenuHost(props: ComponentProps<typeof LazyTwoPane>) {
+export function TwoPaneSideMenuHost({
+  countsActive = false,
+  ...props
+}: ComponentProps<typeof LazyTwoPane> & { readonly countsActive?: boolean }) {
   const [opened, setOpened] = useState(props.open);
   if (props.open && !opened) setOpened(true);
   return (
     <>
-      <LazyWorkSideCounts active={opened && props.workAvailable} />
+      <LazyWorkSideCounts active={(opened || countsActive) && props.workAvailable} />
       <LazyTwoPaneSideMenu {...props} />
     </>
   );

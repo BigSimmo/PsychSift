@@ -37,7 +37,13 @@ import { MasterSearchHeader } from "@/components/clinical-dashboard/master-searc
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
 import { useLivePreview } from "@/components/live-version/live-version-provider";
-import { LazyTwoPaneSideMenu, LazyWorkSideCounts, LazyWorkSideMenu } from "@/components/work-frame/lazy-work-side-nav";
+import {
+  LazyTwoPaneSideMenu,
+  LazyWorkSideCounts,
+  LazyWorkSideMenu,
+  prefetchTwoPaneSideMenu,
+} from "@/components/work-frame/lazy-work-side-nav";
+import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkRailShown, useWorkSideNav, WorkRail, workSideCurrentArea } from "@/components/work-frame/work-rail";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
@@ -446,6 +452,8 @@ function GlobalStandaloneSearchShellBody({
     () => readSearchNavigationContext(searchParams).scopeFilters,
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // The pane a tablet rail button opens the two-pane menu on; the header's menu button clears it.
+  const [menuPane, setMenuPane] = useState<TwoPaneMenuPane | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const [guideOpen, setGuideOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -517,8 +525,13 @@ function GlobalStandaloneSearchShellBody({
   const twoPaneCounts = twoPaneSideMenu && newWorkMode;
   if ((workSideNav || twoPaneCounts) && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
   // The phone menu only exists below 768 px. Turning a phone to landscape past
-  // that width closes it, so its backdrop never blocks the rail layout.
-  if (workSideNav && workRailShown && mobileMenuOpen) setMobileMenuOpen(false);
+  // that width closes it, so its backdrop never blocks the rail layout. The
+  // two-pane menu is the tablet rail's own menu, so it stays open.
+  if (workSideNav && workRailShown && mobileMenuOpen && !twoPaneSideMenu) setMobileMenuOpen(false);
+  const openMenuOn = (pane: TwoPaneMenuPane) => {
+    setMenuPane(pane);
+    setMobileMenuOpen(true);
+  };
   const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow || workSideNav ? true : sidebarCollapsed;
   const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "5.25rem" : "20rem") : "0px";
   const isInfoPage = isInformationPage(pathname);
@@ -930,31 +943,48 @@ function GlobalStandaloneSearchShellBody({
         {shouldShowDesktopSidebar ? (
           <div className="hidden md:block">
             <div className="sticky top-0 flex h-dvh min-h-0">
-              {workSideNav ? (
-                <WorkRail
+              {twoPaneSideMenu ? (
+                <TwoPaneSideRail
                   identity={sidebarIdentity}
-                  currentArea={workSideArea}
-                  onOpenSettings={openSettingsWithDefaultFocus}
-                />
-              ) : (
-                <ClinicalDesktopSidebar
-                  collapsed={effectiveSidebarCollapsed}
-                  collapseLocked={isDifferentialPresentationWorkflow}
-                  recentQueries={recentQueries}
-                  identity={sidebarIdentity}
-                  activeMode={searchMode}
+                  side={workSideNav ? "work" : "clinical"}
+                  workAvailable={newWorkMode}
                   showAccountLibrary={favouritesAccessible}
-                  onCollapsedChange={setSidebarCollapsed}
-                  onNewChat={startNewChat}
-                  onPickRecent={pickRecentQuery}
+                  hideOnDesktop={!workSideNav}
+                  onOpenMenu={openMenuOn}
+                  onPrefetchMenu={prefetchTwoPaneSideMenu}
                   onOpenSettings={openSettingsWithDefaultFocus}
-                  onOpenAccount={openAccountProfileWithDefaultFocus}
-                  onPrefetchSettings={loadSettingsDialog}
-                  onPrefetchAccount={prefetchAccountDialog}
-                  onPrefetchApplications={prefetchApplications}
-                  onOpenSearch={openSidebarSearch}
-                  onSelectMode={changeMode}
                 />
+              ) : null}
+              {workSideNav ? (
+                twoPaneSideMenu ? null : (
+                  <WorkRail
+                    identity={sidebarIdentity}
+                    currentArea={workSideArea}
+                    onOpenSettings={openSettingsWithDefaultFocus}
+                  />
+                )
+              ) : (
+                // With the two-pane rail on tablets, the clinical sidebar keeps 1024 px up.
+                <div className={twoPaneSideMenu ? "hidden lg:contents" : "contents"}>
+                  <ClinicalDesktopSidebar
+                    collapsed={effectiveSidebarCollapsed}
+                    collapseLocked={isDifferentialPresentationWorkflow}
+                    recentQueries={recentQueries}
+                    identity={sidebarIdentity}
+                    activeMode={searchMode}
+                    showAccountLibrary={favouritesAccessible}
+                    onCollapsedChange={setSidebarCollapsed}
+                    onNewChat={startNewChat}
+                    onPickRecent={pickRecentQuery}
+                    onOpenSettings={openSettingsWithDefaultFocus}
+                    onOpenAccount={openAccountProfileWithDefaultFocus}
+                    onPrefetchSettings={loadSettingsDialog}
+                    onPrefetchAccount={prefetchAccountDialog}
+                    onPrefetchApplications={prefetchApplications}
+                    onOpenSearch={openSidebarSearch}
+                    onSelectMode={changeMode}
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -1005,7 +1035,10 @@ function GlobalStandaloneSearchShellBody({
               onOpenEvidence={() => navigateToMode("answer", { focus: true })}
               onNewChat={startNewChat}
               showDesktopNewChat={!shouldShowDesktopSidebar}
-              onOpenMobileSidebar={() => setMobileMenuOpen(true)}
+              onOpenMobileSidebar={() => {
+                setMenuPane(null);
+                setMobileMenuOpen(true);
+              }}
               queryModeOptions={mockupQueryModeOptions}
               queryInputRef={inputRef}
               recentQueries={recentQueries}
@@ -1228,15 +1261,14 @@ function GlobalStandaloneSearchShellBody({
           initialFocus={settingsInitialFocus}
         />
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
-        <LazyWorkSideCounts
-          active={(workSideNav && workRailShown) || ((workSideNav || twoPaneCounts) && workMenuOpened)}
-        />
+        <LazyWorkSideCounts active={(workSideNav || twoPaneCounts) && (workRailShown || workMenuOpened)} />
         {twoPaneSideMenu ? (
           <LazyTwoPaneSideMenu
             open={mobileMenuOpen}
             onOpenChange={setMobileMenuOpen}
             identity={sidebarIdentity}
             startSide={workSideNav ? "work" : "clinical"}
+            openPane={menuPane}
             workAvailable={newWorkMode}
             currentArea={workSideArea}
             activeMode={searchMode}
