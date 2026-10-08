@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-06T12:18:54.473Z",
+  "generated_at": "2026-10-08T00:40:52.772Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "c23378261073db0bc09975a62c5e34fc74bc555de462a4081c80a35d969f4511",
-  "replay_seconds": 21,
+  "schema_sha256": "d8a46a6023c8b50590ba338e9ddf5c06508f1fd6ff02282ce682458e5a4ad3c6",
+  "replay_seconds": 20,
   "snapshot": {
     "views": [
       {
@@ -12799,6 +12799,86 @@
         "reloptions": null,
         "rls_forced": false,
         "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "work_admin_paperwork",
+        "columns": [
+          {
+            "name": "owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "record",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "work_backups",
+        "columns": [
+          {
+            "name": "owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "record",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "section",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
       }
     ],
     "indexes": [
@@ -15555,6 +15635,18 @@
         "name": "web_push_subscriptions_pkey",
         "table": "web_push_subscriptions",
         "def_hash": "56173bdc4eed16af4c5e7c89ff090544"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_admin_paperwork_pkey ON public.work_admin_paperwork USING btree (owner_id)",
+        "name": "work_admin_paperwork_pkey",
+        "table": "work_admin_paperwork",
+        "def_hash": "88df2e7e69ac729051505e2ef4561db1"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_backups_pkey ON public.work_backups USING btree (owner_id, section)",
+        "name": "work_backups_pkey",
+        "table": "work_backups",
+        "def_hash": "71ff6f06617b918855729f2b7b8fdc2d"
       }
     ],
     "policies": [
@@ -23358,6 +23450,51 @@
         "def": "PRIMARY KEY (id)",
         "name": "web_push_subscriptions_pkey",
         "table": "web_push_subscriptions"
+      },
+      {
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "work_admin_paperwork_owner_id_fkey",
+        "table": "work_admin_paperwork"
+      },
+      {
+        "def": "PRIMARY KEY (owner_id)",
+        "name": "work_admin_paperwork_pkey",
+        "table": "work_admin_paperwork"
+      },
+      {
+        "def": "CHECK (((record IS NULL) OR (jsonb_typeof(record) = 'object'::text)))",
+        "name": "work_admin_paperwork_record_object",
+        "table": "work_admin_paperwork"
+      },
+      {
+        "def": "CHECK (((record IS NULL) OR (octet_length((record)::text) <= 262144)))",
+        "name": "work_admin_paperwork_record_size",
+        "table": "work_admin_paperwork"
+      },
+      {
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "work_backups_owner_id_fkey",
+        "table": "work_backups"
+      },
+      {
+        "def": "PRIMARY KEY (owner_id, section)",
+        "name": "work_backups_pkey",
+        "table": "work_backups"
+      },
+      {
+        "def": "CHECK (((record IS NULL) OR (jsonb_typeof(record) = 'object'::text)))",
+        "name": "work_backups_record_object",
+        "table": "work_backups"
+      },
+      {
+        "def": "CHECK (((record IS NULL) OR (octet_length((record)::text) <= 131072)))",
+        "name": "work_backups_record_size",
+        "table": "work_backups"
+      },
+      {
+        "def": "CHECK ((section = ANY (ARRAY['term_tracker'::text, 'exam_prep'::text, 'job_applications'::text])))",
+        "name": "work_backups_section_check",
+        "table": "work_backups"
       }
     ],
     "storage_buckets": [

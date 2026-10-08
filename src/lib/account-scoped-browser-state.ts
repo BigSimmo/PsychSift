@@ -88,7 +88,8 @@ export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
 export const MY_DAY_EARLIER_ALERTS_STORAGE_KEY = "psychsift:my-day:earlier-alerts-v1";
 /**
  * localStorage — Admin paperwork (wiring thread's paperwork-store.ts): the doctor's own
- * requests, documents list and pay and tax checklists. Kept on this device only.
+ * requests, documents list and pay and tax checklists. The device copy of the record kept with the
+ * account in `work_admin_paperwork` (`@/lib/work-sync`).
  */
 export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
 /**
@@ -120,13 +121,14 @@ export const PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY = "psychsift:psychiatry:mha-clock
 export const MEDICINES_RECENT_STORAGE_KEY = "psychsift:medicines:recent-v1";
 /**
  * localStorage — Teaching's term tracker: the doctor's own term dates, assessment due dates, EPA
- * counts, learning goals and "to raise" notes. Kept on this device only; the screen says no patient
- * details. Cleared at sign-out, session expiry and account switch.
+ * counts, learning goals and "to raise" notes. Backed up to the account in `work_backups`
+ * (`@/lib/work-sync`); the screen says no patient details. Cleared at sign-out, session expiry and
+ * account switch.
  */
 export const TEACHING_TERM_TRACKER_STORAGE_KEY = "psychsift:teaching:term-tracker-v1";
 /**
  * localStorage — Teaching's exam prep: exam name and date the doctor set, study minutes by day, topic
- * progress and the next study group. Kept on this device only.
+ * progress and the next study group. Backed up to the account in `work_backups` (`@/lib/work-sync`).
  */
 export const TEACHING_EXAM_PREP_STORAGE_KEY = "psychsift:teaching:exam-prep-v1";
 /**
@@ -138,7 +140,8 @@ export const CPD_HOME_SEND_STORAGE_KEY = "psychsift:cpd:cpd-home-v1";
 /**
  * localStorage — CPD's Job applications season: dates the doctor typed from an advert, referees
  * (a colleague's name, role and status) and their own personal statement. Patient-detail checks run
- * on every field. Kept on this device only; cleared at every account transition.
+ * on every field. Backed up to the account in `work_backups` (`@/lib/work-sync`), never from a device
+ * marked shared; cleared at every account transition.
  */
 export const CPD_APPLICATIONS_STORAGE_KEY = "psychsift:cpd:applications-v1";
 /**

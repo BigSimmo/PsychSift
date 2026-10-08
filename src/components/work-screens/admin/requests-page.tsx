@@ -21,6 +21,7 @@ import {
 } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, fieldLabel } from "@/components/ui-primitives";
+import { KeptWhere, useKeptWithAccount } from "@/components/work-sync/kept-where";
 import {
   anyPatientProblem,
   EXAMPLE_NOT_SENT,
@@ -414,8 +415,8 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
       </WorkCard>
 
       <PaperworkFootNote testId="admin-requests-footnote">
-        Kept on this phone. PsychSift sends nothing. Health reasons go to Staff Health only, as a word, never the
-        detail.
+        <KeptWhere section="adminPaperwork" account="Kept with your account." device="Kept on this phone." /> PsychSift
+        sends nothing. Health reasons go to Staff Health only, as a word, never the detail.
       </PaperworkFootNote>
 
       {record !== null ? (
@@ -617,6 +618,7 @@ function RequestSheet({
 }) {
   const [value, setValue] = useState<Draft>(initial);
   const [tried, setTried] = useState(false);
+  const withAccount = useKeptWithAccount("adminPaperwork");
   const errors = validateRequestDraft(value);
   const healthReason = value.kind === "more-time" && value.reason === "Health reason";
   const blocked = hasRequestErrors(errors) || anyPatientProblem(value.title, value.note) || recipientProblem(value.to);
@@ -688,7 +690,13 @@ function RequestSheet({
           value={value.email}
           onChange={(next) => set("email", next)}
           maxLength={120}
-          hint={healthReason ? "A Staff Health address only." : "For the email draft. Kept on this phone."}
+          hint={
+            healthReason
+              ? "A Staff Health address only."
+              : withAccount
+                ? "For the email draft. Kept with your account."
+                : "For the email draft. Kept on this phone."
+          }
           error={tried ? errors.email : null}
           testId="admin-requests-email-address"
         />

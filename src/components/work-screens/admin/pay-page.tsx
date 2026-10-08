@@ -37,6 +37,7 @@ import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { Sheet } from "@/components/ui/sheet";
 import { fieldLabel } from "@/components/ui-primitives";
+import { KeptWhere } from "@/components/work-sync/kept-where";
 import {
   anyPatientProblem,
   PaperworkDemoNotice,
@@ -409,7 +410,12 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
       </WorkCard>
 
       <PaperworkFootNote testId="admin-pay-footnote">
-        Hours you logged, not a check of pay. PsychSift has no pay rates or award figures. Checks stay on this phone.
+        Hours you logged, not a check of pay. PsychSift has no pay rates or award figures.{" "}
+        <KeptWhere
+          section="adminPaperwork"
+          account="Checks are kept with your account."
+          device="Checks stay on this phone."
+        />
       </PaperworkFootNote>
 
       {record !== null ? (

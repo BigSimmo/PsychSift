@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ADMIN_PAPERWORK_STORAGE_KEY,
   clearAccountScopedBrowserStorage,
+  CPD_APPLICATIONS_STORAGE_KEY,
   MY_DAY_HIDDEN_CARDS_STORAGE_KEY,
   MY_DAY_QUICK_NOTE_STORAGE_KEY,
+  TEACHING_EXAM_PREP_STORAGE_KEY,
   WORK_ACCOUNT_SYNC_MARKER_KEY,
 } from "@/lib/account-scoped-browser-state";
+import { setSharedDevice } from "@/lib/alerts/shared-device";
 import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 import { resetWorkSyncForTesting, startWorkSync } from "@/lib/work-sync/work-sync-client";
 
@@ -33,6 +37,9 @@ const MATCHED = JSON.stringify({ matched: true, ahead: [] });
 const start = () => startWorkSync({ headers: () => ({}), isCurrent: () => true });
 const settle = async () => {
   for (let i = 0; i < 5; i += 1) await Promise.resolve();
+  // The first-match merge loads on demand.
+  await vi.dynamicImportSettled();
+  for (let i = 0; i < 5; i += 1) await Promise.resolve();
   await vi.runAllTimersAsync();
 };
 
@@ -48,6 +55,38 @@ afterEach(() => {
 });
 
 describe("work sync client", () => {
+  it("copies a whole record down from the account and saves a change to it", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    const record = { version: 1, requests: [], documents: [], payslips: [], tax: {} };
+    const { puts } = mockServer({ adminPaperwork: { value: record, updatedAt: AT } });
+    start();
+    await settle();
+    expect(JSON.parse(window.localStorage.getItem(ADMIN_PAPERWORK_STORAGE_KEY) ?? "null")).toEqual(record);
+
+    const changed = { ...record, tax: { "2026": { checked: [], expenses: [] } } };
+    window.localStorage.setItem(ADMIN_PAPERWORK_STORAGE_KEY, JSON.stringify(changed));
+    announceWorkSyncChange(ADMIN_PAPERWORK_STORAGE_KEY);
+    await settle();
+    expect(puts).toEqual([{ section: "adminPaperwork", value: changed }]);
+  });
+
+  it("never copies job applications onto a device marked shared, nor saves them from it", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    setSharedDevice(true);
+    const { puts } = mockServer({
+      cpdApplications: {
+        value: { version: 1, dates: [], referees: [], statement: "Mine", hiddenCvLines: [] },
+        updatedAt: AT,
+      },
+    });
+    start();
+    await settle();
+    expect(window.localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)).toBeNull();
+    announceWorkSyncChange(CPD_APPLICATIONS_STORAGE_KEY);
+    await settle();
+    expect(puts).toEqual([]);
+  });
+
   it("takes the account's copy on a device that has matched before, and tells the store", async () => {
     window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
     window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["cpd"]));
@@ -70,8 +109,45 @@ describe("work sync client", () => {
     expect(JSON.parse(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY) ?? "[]")).toEqual(["hours", "cpd"]);
     expect(puts).toContainEqual({ section: "myDayHiddenCards", value: ["hours", "cpd"] });
     expect(JSON.parse(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY) ?? "{}")).toMatchObject({
-      matched: true,
+      matched: expect.arrayContaining(["myDayHiddenCards"]) as unknown,
     });
+  });
+
+  it("still merges a record new to sync on a device that matched the first release", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    const prep = (topics: { id: string; name: string; percent: number }[]) => ({
+      version: 1,
+      exam: null,
+      study: {},
+      topics,
+      group: null,
+    });
+    const mine = { id: "t-1", name: "Mood disorders", percent: 40 };
+    const theirs = { id: "t-2", name: "Psychopharmacology", percent: 10 };
+    window.localStorage.setItem(TEACHING_EXAM_PREP_STORAGE_KEY, JSON.stringify(prep([mine])));
+    const { puts } = mockServer({ teachingExamPrep: { value: prep([theirs]), updatedAt: AT } });
+    start();
+    await settle();
+    const kept = JSON.parse(window.localStorage.getItem(TEACHING_EXAM_PREP_STORAGE_KEY) ?? "null") as {
+      topics: unknown[];
+    };
+    expect(kept.topics).toEqual(expect.arrayContaining([mine, theirs]));
+    expect(puts).toContainEqual({ section: "teachingExamPrep", value: kept });
+  });
+
+  it("drops a queued save of job applications once the device is marked shared", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    const { puts } = mockServer({});
+    start();
+    await settle();
+    window.localStorage.setItem(
+      CPD_APPLICATIONS_STORAGE_KEY,
+      JSON.stringify({ version: 1, dates: [], referees: [], statement: "Mine", hiddenCvLines: [] }),
+    );
+    announceWorkSyncChange(CPD_APPLICATIONS_STORAGE_KEY);
+    setSharedDevice(true);
+    await settle();
+    expect(puts.filter((body) => body.section === "cpdApplications")).toEqual([]);
   });
 
   it("saves a change made on this device to the account", async () => {
