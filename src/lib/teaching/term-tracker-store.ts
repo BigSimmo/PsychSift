@@ -15,12 +15,14 @@ import {
   type ExamPrepState,
   type TermTrackerState,
 } from "@/lib/teaching/term-tracker";
+import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 
 /**
- * Where the term tracker and exam prep live: this device only. Both keys are account-scoped, so the
- * auth provider removes them at sign-out, session expiry or an account switch, and one doctor's term
- * never shows for the next person on a shared computer. Nothing here is sent to a server. A browser
- * that refuses storage keeps the changes for this page only.
+ * Where the term tracker and exam prep live: this device, backed up to the doctor's account so they
+ * follow them to every device they sign in on (`@/lib/work-sync`, owner decision 8 Oct 2026). The
+ * page reads the device copy only. Both keys are account-scoped, so the auth provider removes them at
+ * sign-out, session expiry or an account switch, and one doctor's term never shows for the next
+ * person on a shared computer. A browser that refuses storage keeps the changes for this page only.
  *
  * In the made-up sample (signed out, or the local demo build) the same hook keeps the sample in React
  * state, so a visitor can try every control and nothing is saved.
@@ -61,8 +63,11 @@ function write(key: string, value: string): void {
     window.localStorage.setItem(key, value);
   } catch {
     // Storage refused: the change lasts for this page only.
+    notify();
+    return;
   }
   notify();
+  announceWorkSyncChange(key);
 }
 
 const serverSnapshot = () => null;

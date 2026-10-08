@@ -195,7 +195,7 @@ function TermForm({
           {error}
         </p>
       ) : null}
-      <NoPatientDetailsMark />
+      <NoPatientDetailsMark section="teachingTermTracker" />
       <div className="flex flex-wrap gap-2">
         <T5Button type="submit" variant="primary">
           {term ? "Save term" : "Start tracking this term"}
@@ -669,7 +669,7 @@ function Meeting({ term, today, update }: { term: TermRecord; today: string; upd
           />
         </li>
       </T5List>
-      <NoPatientDetailsMark />
+      <NoPatientDetailsMark section="teachingTermTracker" />
     </T5Section>
   );
 }

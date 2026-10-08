@@ -33,6 +33,7 @@ import {
 } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, fieldControlWithIcon, fieldIcon, fieldLabel } from "@/components/ui-primitives";
+import { KeptWhere } from "@/components/work-sync/kept-where";
 import {
   anyPatientProblem,
   PaperworkDemoNotice,
@@ -346,7 +347,12 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
       </WorkCard>
 
       <PaperworkFootNote testId="admin-documents-footnote">
-        PsychSift keeps this list on this phone, never the files. Keep each file in your own storage.
+        <KeptWhere
+          section="adminPaperwork"
+          account="PsychSift keeps this list with your account, never the files."
+          device="PsychSift keeps this list on this phone, never the files."
+        />{" "}
+        Keep each file in your own storage.
       </PaperworkFootNote>
 
       {record !== null ? (
