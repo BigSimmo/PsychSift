@@ -626,13 +626,14 @@ const teaching: WorkArea = {
           opens: "assess",
           gate: "signed-out",
         },
+        // Supervision is a Teaching page (owner decision, 8 October 2026): a signed-in doctor keeps
+        // their assessments in CLA, so it must not drop them into Assessments' CLA-only tabs.
         {
           id: "supervision",
           label: "Supervision",
           sub: "Hours to confirm",
           icon: "users",
           href: "/teaching/supervision",
-          paths: [],
         },
         {
           id: "organise",
@@ -687,6 +688,8 @@ const assessments: WorkArea = {
       sub: "Hours to confirm",
       icon: "users",
       href: "/teaching/supervision",
+      // A link into Teaching, which draws the Supervision page.
+      paths: [],
     },
   ],
   groups: [
@@ -1218,7 +1221,7 @@ export const WORK_AREAS: Readonly<Record<WorkAreaId, WorkArea>> = {
 const NOTIFICATIONS_PATH = "/my-day/notifications";
 
 /** Assessments is a sub-area of Teaching: these paths draw its frame, not Teaching's. */
-const ASSESSMENT_PATHS: readonly string[] = ["/teaching/assessments", "/teaching/supervision"];
+const ASSESSMENT_PATHS: readonly string[] = ["/teaching/assessments"];
 
 /**
  * The work area a band draws for this mode and address, or null for every mode
