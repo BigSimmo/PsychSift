@@ -732,7 +732,7 @@ export function TwoPaneSideMenu({
     >
       <nav className="two-pane-menu__rail" aria-label="Menu" {...swipeHandlers}>
         <span className="two-pane-menu__logo">
-          <BrandMark tone="emphasis" optical="chrome" className="two-pane-menu__mark" />
+          <BrandMark tone="emphasis" optical="chrome" className="h-8 w-8 shrink-0" />
           <span>{BRAND_NAME}</span>
         </span>
         {/* Clinical stays in the strip without Work too: it is the only way

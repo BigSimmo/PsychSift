@@ -42,11 +42,6 @@
   font-weight: 650;
 }
 
-.two-pane-menu__mark {
-  width: 1.875rem;
-  height: 1.875rem;
-}
-
 .two-pane-menu__modes {
   display: grid;
   gap: calc(var(--spacing) * 0.5);
