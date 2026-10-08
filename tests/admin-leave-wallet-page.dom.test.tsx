@@ -85,7 +85,7 @@ describe("LeaveWalletPage", () => {
     expect(entitlement).toContain("160 hours a year full time");
     expect(entitlement).toContain("Clause 34(1)");
     expect(entitlement).toContain("Check your agreement");
-    expect(entitlement).not.toContain("Not signed off yet");
+    expect(entitlement).toContain("checked and signed off");
     expect(screen.getByTestId("admin-leave-pile").textContent).toContain("7 more cards");
     expect(router.replace).toHaveBeenCalledWith("/admin/leave?card=annual", { scroll: false });
   });
@@ -117,7 +117,9 @@ describe("LeaveWalletPage", () => {
   it("tells casual doctors which paid leave applies to them", () => {
     render(<LeaveWalletPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-leave-card-exam"));
-    expect(screen.getByTestId("admin-leave-exam-casual").textContent).toContain("Clause 11(4)(h)");
+    const casual = screen.getByTestId("admin-leave-exam-casual").textContent;
+    expect(casual).toContain("Clause 11(4)(h)(i)");
+    expect(casual).toContain("Not signed off yet");
   });
 
   it("fills the annual message, copies it, and shows Roster bookings", async () => {
