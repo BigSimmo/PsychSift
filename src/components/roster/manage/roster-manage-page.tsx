@@ -15,7 +15,8 @@ import { RosterCoverTab } from "./roster-cover-tab";
 import { RosterPeopleList } from "./roster-people-list";
 import { RosterTeamSettings } from "./roster-team-settings";
 import { RosterPublishTab } from "./publish/roster-publish-tab";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Lock, Users } from "lucide-react";
+import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 
 /**
@@ -48,6 +49,24 @@ function useManageSection(): [string, (id: string) => void] {
   return [section, select];
 }
 
+/** Not a roster manager here: say so, and offer the doctor's own way on instead of a blank page. */
+function NotManager() {
+  return (
+    <WorkCard testId="roster-manage-not-manager">
+      <WorkEmpty
+        icon={Lock}
+        title="For roster managers"
+        body="Only your team's roster manager can see this page."
+        action={
+          <WorkButton icon={Users} href="/roster/team">
+            Go to Team
+          </WorkButton>
+        }
+      />
+    </WorkCard>
+  );
+}
+
 function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | null }) {
   const { serviceId } = team;
   const now = useRosterNow();
@@ -73,12 +92,12 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
       </div>
     );
   if (!overview.data) return <p role="status">Loading your team…</p>;
-  if (overview.data.me.role !== "manager") return <p>Only your team&apos;s roster manager can see this page.</p>;
+  if (overview.data.me.role !== "manager") return <NotManager />;
   // Phones keep one column with the tabs first and the calendar below; from
   // `lg` the calendar sits on the left and the tabs on the right.
   return (
-    <div className="mx-auto grid w-full max-w-reading gap-6 lg:max-w-none lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
-      <div className="order-1 grid min-w-0 gap-6 lg:order-2">
+    <div className="mx-auto grid w-full max-w-reading grid-cols-[minmax(0,1fr)] gap-6 lg:max-w-none lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+      <div className="order-1 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:order-2">
         <WithoutModeBand>
           <RosterManageNavHeader activeId={section} onSelect={setSection} />
         </WithoutModeBand>
@@ -111,7 +130,7 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
       <div
         data-testid="roster-manage-calendar"
         data-roster-print
-        className="order-2 grid min-w-0 content-start gap-4 lg:order-1"
+        className="order-2 grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4 lg:order-1"
       >
         <Suspense fallback={<p role="status">Loading the team roster…</p>}>
           <TeamCalendar
@@ -137,7 +156,7 @@ export function RosterManagePage() {
   const team = available.find((item) => item.serviceId === selected) ?? available[0];
   return (
     <InformationPageShell>
-      <div className="grid gap-4" data-mode-identity="roster">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4" data-mode-identity="roster">
         <RosterPageHeader
           icon={ClipboardList}
           eyebrow="Roster"
@@ -155,7 +174,7 @@ export function RosterManagePage() {
             <Button onClick={teams.reload}>Try again</Button>
           </div>
         ) : !team ? (
-          <p>Only your team&apos;s roster manager can see this page.</p>
+          <NotManager />
         ) : (
           <>
             {available.length > 1 ? (

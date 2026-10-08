@@ -35,7 +35,13 @@ import { exampleWorkforce } from "@/lib/example-data/datasets/admin-workforce";
 import { isExampleRecord, withoutExampleRecords } from "@/lib/example-data/guards";
 import { EXAMPLE_PEOPLE } from "@/lib/example-data/people";
 import { ATO_LINKS, financialYearKey, parseDollars, taxPackCsv } from "@/lib/work-screens/admin/tax";
-import { decideExtension, filterDoctors, WORKFORCE_SAMPLE_LABEL } from "@/lib/work-screens/admin/workforce-sample";
+import {
+  decideExtension,
+  filterDoctors,
+  remindableItems,
+  WORKFORCE_SAMPLE_LABEL,
+  workforceReminderMessage,
+} from "@/lib/work-screens/admin/workforce-sample";
 import { dropRecord, putBack } from "@/lib/work-screens/admin/paperwork-model";
 import { withoutStoredExamples } from "@/lib/work-screens/admin/paperwork-store";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
@@ -260,6 +266,17 @@ describe("Workforce sample", () => {
     const decided = decideExtension(WORKFORCE_SAMPLE_EXTENSIONS, "example:ext-karri", "granted", "2026-10-30");
     expect(decided.find((entry) => entry.id === "example:ext-karri")?.decision).toBe("granted");
     expect(WORKFORCE_SAMPLE_EXTENSIONS.find((entry) => entry.id === "example:ext-karri")?.decision).toBe("waiting");
+  });
+
+  it("reminds about missing items only, leaving out anything with an extension asked", () => {
+    const karri = WORKFORCE_SAMPLE_DOCTORS.find((doctor) => doctor.id === "example:doctor-karri")!;
+    const titles = remindableItems(karri).map((item) => item.title);
+    expect(titles).not.toContain("Basic life support");
+    expect(titles).toContain("Respirator fit test");
+    expect(remindableItems(karri).every((item) => item.status !== "recorded")).toBe(true);
+    expect(workforceReminderMessage(["Respirator fit test", "Manual handling", "Hand hygiene"])).toBe(
+      "From Medical Workforce. We still need Respirator fit test, Manual handling and Hand hygiene. Add the dates in your Admin, or ask for more time if you need it.",
+    );
   });
 });
 

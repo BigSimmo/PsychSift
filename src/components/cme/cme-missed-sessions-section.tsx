@@ -11,6 +11,7 @@ import { TextField } from "@/components/ui/text-field";
 import { EmptyState, InlineNotice } from "@/components/ui-primitives";
 import { formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import { cpdTextPatientProblem, cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 import {
   CME_MISSED_SESSION_MINUTES_MAX,
   CME_MISSED_SESSION_MINUTES_MIN,
@@ -77,6 +78,16 @@ function draftToBody(draft: Draft) {
   };
 }
 
+/** What was missed and why are stored with the account, so the one shared patient-detail check reads both. */
+function draftProblems(draft: Draft) {
+  return {
+    title: draft.title.trim() ? cpdTitlePatientProblem(draft.title) : null,
+    reason: draft.reason.trim() ? cpdTextPatientProblem(draft.reason) : null,
+  };
+}
+
+const PATIENT_DETAIL_SAVE = "Take out the patient details to save it.";
+
 function sessionToDraft(session: CmeMissedSession): Draft {
   return {
     occurredOn: session.occurredOn,
@@ -106,6 +117,7 @@ function MissedSessionFields({
   onChange: (next: Draft) => void;
   idPrefix: string;
 }) {
+  const problems = draftProblems(draft);
   return (
     <div className="flex flex-col gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -131,6 +143,7 @@ function MissedSessionFields({
         placeholder="For example: Weekly registrar teaching"
         value={draft.title}
         onChange={(event) => onChange({ ...draft, title: event.target.value })}
+        error={problems.title ? `${problems.title.title} ${problems.title.body}` : undefined}
         minLength={CME_MISSED_SESSION_TITLE_MIN}
         maxLength={CME_MISSED_SESSION_TITLE_MAX}
         required
@@ -153,6 +166,7 @@ function MissedSessionFields({
         placeholder="Optional"
         value={draft.reason}
         maxLength={CME_MISSED_SESSION_REASON_MAX}
+        error={problems.reason ? `${problems.reason.title} ${problems.reason.body}` : undefined}
         onChange={(event) => onChange({ ...draft, reason: event.target.value })}
       />
     </div>
@@ -199,6 +213,11 @@ export function CmeMissedSessionsSection({
   }
 
   async function submitAdd() {
+    const problems = draftProblems(addDraft);
+    if (problems.title || problems.reason) {
+      setMessage(PATIENT_DETAIL_SAVE);
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -220,6 +239,11 @@ export function CmeMissedSessionsSection({
   }
 
   async function submitEdit(id: string) {
+    const problems = draftProblems(editDraft);
+    if (problems.title || problems.reason) {
+      setMessage(PATIENT_DETAIL_SAVE);
+      return;
+    }
     setBusyId(id);
     setMessage(null);
     try {

@@ -131,7 +131,10 @@ export function TeamCalendar({
   now,
   shared,
   onManagerLayer,
+  phoneLink = true,
 }: {
+  /** The "Phone numbers are in On call" row. The Team page has its own in its last list, so it leaves this out. */
+  phoneLink?: boolean;
   team: RosterTeam;
   actorId: string | null;
   now: Date;
@@ -321,12 +324,14 @@ export function TeamCalendar({
           cover={cover}
         />
       )}
-      <ModeGroupedList>
-        <ModeRow
-          title="Phone numbers are in On call"
-          href={`/on-call/service?service=${encodeURIComponent(team.serviceId)}`}
-        />
-      </ModeGroupedList>
+      {phoneLink ? (
+        <ModeGroupedList>
+          <ModeRow
+            title="Phone numbers are in On call"
+            href={`/on-call/service?service=${encodeURIComponent(team.serviceId)}`}
+          />
+        </ModeGroupedList>
+      ) : null}
       <RosterSentBar receipt={sent} clear={clearSent} />
       {pickedDay ? (
         <DaySheet

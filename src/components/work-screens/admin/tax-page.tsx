@@ -21,6 +21,7 @@ import {
 import { Sheet } from "@/components/ui/sheet";
 import { ExampleTag } from "@/components/example-data/example-tag";
 import { cn, fieldLabel } from "@/components/ui-primitives";
+import { KeptWhere } from "@/components/work-sync/kept-where";
 import {
   anyPatientProblem,
   PaperworkDemoNotice,
@@ -373,7 +374,12 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
       </WorkCard>
 
       <PaperworkFootNote testId="admin-tax-footnote">
-        A record for you, not tax advice. Keep your receipts as the ATO asks. This stays on this phone.
+        A record for you, not tax advice. Keep your receipts as the ATO asks.{" "}
+        <KeptWhere
+          section="adminPaperwork"
+          account="It is kept with your account."
+          device="This stays on this phone."
+        />
       </PaperworkFootNote>
 
       {record !== null ? (

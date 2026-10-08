@@ -33,6 +33,7 @@
  */
 
 import { sweepAccountDeviceData } from "@/lib/account-device-sweep";
+import { LIVE_VERSION_COOKIE } from "@/lib/live-version/live-version";
 
 export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
 
@@ -87,7 +88,8 @@ export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
 export const MY_DAY_EARLIER_ALERTS_STORAGE_KEY = "psychsift:my-day:earlier-alerts-v1";
 /**
  * localStorage — Admin paperwork (wiring thread's paperwork-store.ts): the doctor's own
- * requests, documents list and pay and tax checklists. Kept on this device only.
+ * requests, documents list and pay and tax checklists. The device copy of the record kept with the
+ * account in `work_admin_paperwork` (`@/lib/work-sync`).
  */
 export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
 /**
@@ -119,13 +121,14 @@ export const PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY = "psychsift:psychiatry:mha-clock
 export const MEDICINES_RECENT_STORAGE_KEY = "psychsift:medicines:recent-v1";
 /**
  * localStorage — Teaching's term tracker: the doctor's own term dates, assessment due dates, EPA
- * counts, learning goals and "to raise" notes. Kept on this device only; the screen says no patient
- * details. Cleared at sign-out, session expiry and account switch.
+ * counts, learning goals and "to raise" notes. Backed up to the account in `work_backups`
+ * (`@/lib/work-sync`); the screen says no patient details. Cleared at sign-out, session expiry and
+ * account switch.
  */
 export const TEACHING_TERM_TRACKER_STORAGE_KEY = "psychsift:teaching:term-tracker-v1";
 /**
  * localStorage — Teaching's exam prep: exam name and date the doctor set, study minutes by day, topic
- * progress and the next study group. Kept on this device only.
+ * progress and the next study group. Backed up to the account in `work_backups` (`@/lib/work-sync`).
  */
 export const TEACHING_EXAM_PREP_STORAGE_KEY = "psychsift:teaching:exam-prep-v1";
 /**
@@ -137,7 +140,8 @@ export const CPD_HOME_SEND_STORAGE_KEY = "psychsift:cpd:cpd-home-v1";
 /**
  * localStorage — CPD's Job applications season: dates the doctor typed from an advert, referees
  * (a colleague's name, role and status) and their own personal statement. Patient-detail checks run
- * on every field. Kept on this device only; cleared at every account transition.
+ * on every field. Backed up to the account in `work_backups` (`@/lib/work-sync`), never from a device
+ * marked shared; cleared at every account transition.
  */
 export const CPD_APPLICATIONS_STORAGE_KEY = "psychsift:cpd:applications-v1";
 /**
@@ -165,6 +169,18 @@ export const WORK_SETUP_PROGRESS_STORAGE_KEY = "psychsift:work-setup:progress-v1
  * Page ids only, never records. Kept on this device only.
  */
 export const WORK_TAB_PICKS_STORAGE_KEY = "psychsift:work:tab-picks-v1";
+/**
+ * localStorage — whether this device has matched its work choices with the account copy
+ * (`src/lib/work-sync/`), and which sections hold a change the account does not have yet. Until
+ * the first match a sign-in merges the two; after it the account copy wins, except for those sections.
+ */
+export const WORK_ACCOUNT_SYNC_MARKER_KEY = "psychsift:work:account-sync-v1";
+/**
+ * localStorage — Open shifts Browse: the filter choices the doctor kept (no clashes, lower levels,
+ * start times). Choices only, never a site, a shift or a name. Its key uses a dot, not the
+ * `psychsift:` prefix, so the sweep would miss it: it is named here.
+ */
+export const OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY = "psychsift.open-shifts.filters.v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -203,6 +219,12 @@ function removeQuietly(storage: () => Storage, key: string): void {
  */
 export function clearAccountScopedBrowserStorage(): void {
   if (typeof window === "undefined") return;
+  // Cookie — the live version switch (src/lib/live-version): a tester's choice of version only.
+  try {
+    document.cookie = `${LIVE_VERSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  } catch {
+    // No document (a worker) or cookies blocked: nothing was set.
+  }
   removeQuietly(() => window.localStorage, DATABASE_FAVOURITES_LAST_OPENED_STORAGE_KEY);
   removeQuietly(() => window.localStorage, DATABASE_FAVOURITES_PINNED_STORAGE_KEY);
   removeQuietly(() => window.localStorage, WORK_PAGE_FAVOURITES_STORAGE_KEY);
@@ -253,6 +275,8 @@ export function clearAccountScopedBrowserStorage(): void {
   }
   removeQuietly(() => window.localStorage, WORK_SETUP_PROGRESS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, WORK_TAB_PICKS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, WORK_ACCOUNT_SYNC_MARKER_KEY);
+  removeQuietly(() => window.localStorage, OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY);
   stripAccountScopedPreferences();
   // The catch-all: every other `psychsift:` key, the clinical drafts, IndexedDB,
   // page caches and PsychSift's notifications (see account-device-sweep.ts).

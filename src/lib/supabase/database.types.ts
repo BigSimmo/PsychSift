@@ -4722,6 +4722,11 @@ export type Database = {
         "owner_id" | "ref" | "due_at" | "endpoint"
       >;
       alert_brief_sent: GeneratedTable<{ owner_id: string; perth_date: string; sent_at: string }, "owner_id" | "perth_date">;
+      work_admin_paperwork: GeneratedTable<{ owner_id: string; record: Json | null; updated_at: string }, "owner_id">;
+      work_backups: GeneratedTable<
+        { owner_id: string; section: string; record: Json | null; updated_at: string },
+        "owner_id" | "section"
+      >;
     };
     Views: {
       document_strict_gate_status: {

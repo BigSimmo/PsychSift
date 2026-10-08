@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useSidebarCollapsed } from "./use-sidebar-collapsed";
 import { DocumentDrawerMode } from "./dashboard-contracts";
-import { IndexingAdministrationTab } from "./document-admin";
+import type { IndexingAdministrationTab } from "./document-admin";
 
 type SettingsStateContextType = {
   guideOpen: boolean;

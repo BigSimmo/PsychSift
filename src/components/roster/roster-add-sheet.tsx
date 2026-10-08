@@ -13,6 +13,7 @@ import { cn } from "@/components/ui-primitives";
 import { SHIFT_KIND_LABEL, SHIFT_KINDS, type ShiftKind } from "@/lib/roster/shift-kind";
 import { ON_CALL_MANUAL_SHIFT_REPEAT_MAX_WEEKS, type OnCallManualShiftRequest } from "@/lib/roster/shifts/model";
 import { addDaysToDate, perthWallToIso } from "@/lib/roster/shifts/perth-time";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * "+ Add": one sheet, three ways in. Add a shift (can repeat weekly), Import a
@@ -114,6 +115,12 @@ function ShiftForm({
     const shift = manualShiftFrom(date, start, end, kind, place);
     if (!shift) {
       setError("Check the date and times.");
+      return;
+    }
+    // The place is saved with the shift, so it gets the one patient-detail catch. Ward and hospital capitals are fine.
+    const placeProblem = checkPatientDetail(place, { allowCapitals: true });
+    if (placeProblem) {
+      setError(`Place: ${placeProblem.body}`);
       return;
     }
     setSaving(true);
@@ -229,6 +236,11 @@ function LinkForm({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    const workplaceProblem = checkPatientDetail(workplace, { allowCapitals: true });
+    if (workplaceProblem) {
+      setError(`Workplace: ${workplaceProblem.body}`);
+      return;
+    }
     setSaving(true);
     const failure = await onSubmit(url.trim(), workplace.trim() || null);
     setSaving(false);

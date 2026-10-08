@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 
 import { focusRing } from "@/components/card-recipes";
 import { WorkEmpty } from "@/components/mode-kit/work";
+import { AssessCallout } from "@/components/teaching/assessments/assess-kit";
 import { useAssessmentsExtras, useOfflineSince } from "@/components/teaching/assessments/assessments-extras";
 import {
   Inset,
@@ -59,6 +60,7 @@ import {
   type InboxSort,
 } from "@/lib/teaching/assessments/inbox";
 import type { PillTone } from "@/lib/teaching/assessments/model";
+import { SAMPLE_DOCTOR } from "@/lib/teaching/assessments/sample";
 import { overviewDoctors } from "@/lib/teaching/assessments/overview";
 
 /*
@@ -138,7 +140,7 @@ function InboxRow({ item, onOpen }: { item: InboxRequest; onOpen: () => void }) 
   );
 }
 
-export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
+export function AssessmentsInbox({ s, dispatch, openSheet, go }: ScreenProps) {
   const { extras, dispatchExtras, sendAnswers, undoSends, offerUndo, setEditing } = useAssessmentsExtras();
   const offlineSince = useOfflineSince();
   const [tab, setTab] = useState<"waiting" | "done">("waiting");
@@ -387,6 +389,32 @@ export function AssessmentsInbox({ s, openSheet, go }: ScreenProps) {
             );
           })}
         </List>
+      )}
+      {s.request.sent ? null : (
+        // Sam's end-of-term is the one form built into the sample: without this, a supervisor who opens the
+        // inbox first has no form to open, sign or send back.
+        <AssessCallout
+          icon={UserRound}
+          tone="neutral"
+          title={`${SAMPLE_DOCTOR.name} hasn't asked yet`}
+          testId="assessments-inbox-try-request"
+          action={
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                dispatch({ type: "form-example", who: "self" });
+                dispatch({ type: "form-finish", who: "self" });
+                dispatch({ type: "send-request" });
+                announce(`${SAMPLE_DOCTOR.name}'s end-of-term request is in your inbox.`);
+              }}
+            >
+              Try it
+            </Button>
+          }
+        >
+          Try an example end-of-term request to rate, sign or ask about.
+        </AssessCallout>
       )}
       <SmallPrint>
         Status here. Open a request to see what was asked. Dr Ash Zamia, Dr Frankie Mulga, Dr Rowan Sheoak and Dr

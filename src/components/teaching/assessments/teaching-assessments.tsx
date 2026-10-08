@@ -1,12 +1,11 @@
 "use client";
 
-import { FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 
 import { useModeBandCount } from "@/components/mode-band/mode-band";
-import { WorkBody, WorkButton, WorkEmpty, useWorkUndoToast } from "@/components/mode-kit/work";
+import { WorkBody, useWorkUndoToast } from "@/components/mode-kit/work";
 import { AssessSegmented, AssessSkeleton } from "@/components/teaching/assessments/assess-kit";
 import {
   rememberRole,
@@ -31,6 +30,7 @@ import {
   SupervisorWords,
 } from "@/components/teaching/assessments/assessments-supervisor";
 import { AssessmentsExtrasProvider } from "@/components/teaching/assessments/assessments-extras";
+import { AssessmentsKeptInCla, useAssessmentsAccess } from "@/components/teaching/assessments/assessments-kept-in-cla";
 import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
 import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-inbox";
 import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
@@ -293,7 +293,7 @@ function AssessmentsApp() {
           ]}
         />
       ) : null}
-      <AssessmentsExtrasProvider>
+      <AssessmentsExtrasProvider memoryKey={memoryKey}>
         <Screen {...props} view={view} />
       </AssessmentsExtrasProvider>
       {view === "home" ? <TryTheStory s={s} dispatch={dispatch} /> : null}
@@ -307,33 +307,23 @@ function AssessmentsApp() {
   );
 }
 
-/** Signed in, there is nowhere to keep real records yet: say so, and offer the made-up ones. */
-function NotKeptYet({ onTry }: { onTry: () => void }) {
-  return (
-    <section data-testid="teaching-assessments-not-yet" aria-label="Assessment records">
-      <WorkEmpty
-        icon={FileText}
-        title="Records can't be kept here yet"
-        body="Forms and EPAs stay in Clinical Learning Australia (CLA) and with your Medical Education Unit (MEU). Try this page on made-up records. Nothing is saved or sent."
-        action={<WorkButton onClick={onTry}>Try with made-up records</WorkButton>}
-      />
-    </section>
-  );
-}
-
 function AssessmentsPage({ demoMode }: { demoMode: boolean }) {
-  // "Try it with made-up records" turns on the one example data switch, so the shared banner shows and Turn off works.
-  const { active, turnOn } = useExampleData("assess");
-  const sample = demoMode || active;
+  // Signed out, the Assessments example shows by itself under the shared banner. Signed in, records stay
+  // in CLA (owner decision 7 Oct 2026), so the made-up ones never show, even with the example data on.
+  const { active } = useExampleData("assess");
+  const access = useAssessmentsAccess();
+  const sample = demoMode || (active && access === "signed-out");
   return (
     <WorkBody testId="teaching-assessments">
       <h1 className="sr-only">Assessments</h1>
-      {sample ? (
+      {!demoMode && access === "loading" ? (
+        <AssessSkeleton />
+      ) : sample ? (
         <Suspense fallback={<AssessSkeleton />}>
           <AssessmentsApp />
         </Suspense>
       ) : (
-        <NotKeptYet onTry={turnOn} />
+        <AssessmentsKeptInCla />
       )}
     </WorkBody>
   );

@@ -297,3 +297,24 @@ describe("PUT /api/account/preferences work stage", () => {
     expect(database.update).not.toHaveBeenCalled();
   });
 });
+
+describe("PUT /api/account/preferences keys other routes own", () => {
+  it("carries the Roster settings and the synced work choices through, and never returns them", async () => {
+    const roster = { calendarShifts: true };
+    const work = { myDayHiddenCards: { value: ["cpd"], updatedAt: "2026-10-07T21:00:00.000Z" } };
+    const database = mockPreferencesRoute({ ...DEFAULT_PREFERENCES, roster, work });
+    const { PUT } = await import("@/app/api/account/preferences/route");
+    const response = await PUT(
+      new Request("http://local.test/api/account/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ density: "compact" }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.preferences).not.toHaveProperty("roster");
+    expect(body.preferences).not.toHaveProperty("work");
+    expect(database.currentPreferences()).toMatchObject({ density: "compact", roster, work });
+  });
+});

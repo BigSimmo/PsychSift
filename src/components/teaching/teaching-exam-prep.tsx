@@ -35,6 +35,7 @@ import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import { ChoiceChip } from "@/components/ui/chip";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import { KeptWhere } from "@/components/work-sync/kept-where";
 import type { ResourcesForWeek } from "@/lib/teaching/model";
 import {
   addDays,
@@ -51,6 +52,7 @@ import {
   type ExamPrepState,
   type HeatCell,
 } from "@/lib/teaching/term-tracker";
+import { useExampleData } from "@/lib/example-data/store";
 
 type Update = (change: (current: ExamPrepState) => ExamPrepState) => void;
 
@@ -409,7 +411,7 @@ function GroupForm({ group, update, onDone }: { group: ExamPrepState["group"]; u
         <TextField label="Time" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
       </div>
       <TextField label="Where" maxLength={120} value={place} onChange={(event) => setPlace(event.target.value)} />
-      <NoPatientDetailsMark />
+      <NoPatientDetailsMark section="teachingExamPrep" />
       <div className="flex flex-wrap gap-2">
         <T5Button type="submit" variant="primary">
           Save
@@ -500,6 +502,8 @@ function useExamCollection(today: string | null) {
 /* ---------- the page ---------- */
 
 function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
+  // The shared example banner already says the records are made up, so the demo note shows only without it.
+  const { active: exampleShown } = useExampleData("teach");
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const sample = useMemo(() => (demoMode && today ? sampleExamPrep(today) : null), [demoMode, today]);
@@ -518,7 +522,12 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
             <T5Heading>{state.exam ? "Edit exam" : "Your exam"}</T5Heading>
             {!state.exam ? (
               <T5Meta>
-                Set the exam you are sitting and its date for a countdown. Everything here stays on this device.
+                Set the exam you are sitting and its date for a countdown.{" "}
+                <KeptWhere
+                  section="teachingExamPrep"
+                  account="Everything here is backed up to your account."
+                  device="Everything here stays on this device."
+                />
               </T5Meta>
             ) : null}
             <ExamForm
@@ -561,7 +570,12 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
           </T5List>
         </nav>
         <T5Note icon="shield" className="mt-3">
-          Do not add patient details. Stays on this device and is not backed up.
+          Do not add patient details.{" "}
+          <KeptWhere
+            section="teachingExamPrep"
+            account="Backed up to your account."
+            device="Stays on this device and is not backed up."
+          />
         </T5Note>
       </>
     );
@@ -570,7 +584,7 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
     <InformationPageShell width="narrow" gap={false} testId="teaching-exam-prep">
       <T5Page>
         <h1 className="sr-only">My exam prep</h1>
-        {demoMode ? (
+        {demoMode && !exampleShown ? (
           <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {body}

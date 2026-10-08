@@ -61,6 +61,7 @@ import {
   type SupervisionPairingView,
   type TeachRead,
 } from "@/lib/teaching/depth-model";
+import { useExampleData } from "@/lib/example-data/store";
 
 /** How many later talks show before "All talks" opens the rest. */
 const AFTER_SHOWN = 3;
@@ -89,6 +90,8 @@ export function TeachingPresenting({ demoMode, talkId = null }: { demoMode: bool
  * check can be done ahead for any booked talk; tapping a later talk does the same in place.
  */
 function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId?: string | null }) {
+  // The shared example banner already says the records are made up, so the demo note shows only without it.
+  const { active: exampleShown } = useExampleData("teach");
   const [selectedId, setSelectedId] = useState<string | null>(talkId);
   const [allTalks, setAllTalks] = useState(false);
   const now = useTeachingNow();
@@ -120,7 +123,7 @@ function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId
     const shown = allTalks ? after : after.slice(0, AFTER_SHOWN);
     body = (
       <>
-        {demoMode ? (
+        {demoMode && !exampleShown ? (
           <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {next ? (

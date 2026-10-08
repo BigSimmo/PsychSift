@@ -2193,6 +2193,10 @@
         "file": "src/app/api/on-call/entries/[id]/route.ts"
       },
       {
+        "path": "/api/work/sync",
+        "file": "src/app/api/work/sync/route.ts"
+      },
+      {
         "path": "/api/roster/team/[serviceId]/cutoff",
         "file": "src/app/api/roster/team/[serviceId]/cutoff/route.ts"
       },
@@ -4313,6 +4317,11 @@
         "path": "docs/care-plan/verification-log-2026-08-21.md",
         "section": "care-plan",
         "catalogued": true
+      },
+      {
+        "path": "docs/live-version-switch.md",
+        "section": "root",
+        "catalogued": false
       },
       {
         "path": "docs/archive/2026-10-agent-code-reviews/COMPLETE_ISSUE_INVENTORY.md",

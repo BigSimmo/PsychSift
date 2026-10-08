@@ -161,7 +161,7 @@ export function ToneIcon({ tone }: { tone: CheckTone }) {
 /** A list on one white hairline card, rows divided by inset hairlines. */
 export function FlatList({ children, label }: { children: ReactNode; label?: string }) {
   return (
-    <ul className="work-card m-0 flex list-none flex-col p-0" aria-label={label}>
+    <ul className="work-card mx-3 my-0 flex list-none flex-col p-0" aria-label={label}>
       {children}
     </ul>
   );
@@ -221,7 +221,7 @@ export function SectionHeading({ children, count, id }: { children: ReactNode; c
   return (
     <h2
       id={id}
-      className="mt-3 flex items-baseline justify-between px-1 pb-1.5 text-3xs font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
+      className="mt-3 flex items-baseline justify-between px-4 pb-1.5 text-3xs font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
     >
       <span>{children}</span>
       {count !== undefined ? (

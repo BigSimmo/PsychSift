@@ -25,6 +25,7 @@ vi.mock("next/dynamic", () => ({ default: () => () => null }));
 
 import { OpenShiftsBrowsePage } from "@/components/open-shifts/open-shifts-browse-page";
 import { readSavedFilters } from "@/components/open-shifts/open-shifts-saved-filters";
+import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 
 function state(sample: OpenShiftsState["sample"]): OpenShiftsState {
   return {
@@ -88,5 +89,11 @@ describe("Open shifts remembered filters", () => {
       includeLowerLevels: false,
       starts: ["night"],
     });
+  });
+
+  it("goes at sign-out, so the next person on this phone starts on the defaults", () => {
+    window.localStorage.setItem(KEY, JSON.stringify({ hideClashes: false }));
+    clearAccountScopedBrowserStorage();
+    expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 });

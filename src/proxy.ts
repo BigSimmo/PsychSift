@@ -18,6 +18,7 @@ import {
   developerAccessTokenValid,
   issueDeveloperAccessToken,
 } from "@/lib/developer-area/link-access";
+import { LIVE_VERSION_COOKIE } from "@/lib/live-version/live-version";
 import { readSearchNavigationContext } from "@/lib/search-navigation-context";
 import { buildContentSecurityPolicy, resolveRuntimeFlags } from "@/lib/security-headers";
 import { signProxyAuthPayload } from "@/lib/supabase/proxy-auth-crypto";
@@ -354,6 +355,7 @@ export async function proxy(request: NextRequest) {
       user,
       environment: process.env,
       preference: request.cookies.get(WORK_MODE_PREFERENCE_COOKIE)?.value ?? null,
+      liveVersion: request.cookies.get(LIVE_VERSION_COOKIE)?.value ?? null,
     });
     if (!workModeRouteHidden(`${pathname}${request.nextUrl.search}`, launch)) return null;
     return NextResponse.rewrite(new URL("/_work-mode-not-launched", request.url), { request: { headers } });

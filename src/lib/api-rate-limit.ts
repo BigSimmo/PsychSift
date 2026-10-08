@@ -64,7 +64,8 @@ export type ApiRateLimitBucket =
   | "cme"
   | "teaching"
   | "teaching_code"
-  | "roster";
+  | "roster"
+  | "work_sync";
 
 export type ApiRateLimitResult = {
   limited: boolean;
@@ -117,6 +118,9 @@ const apiRateLimitDefaults = {
   // links and settings. Same shape as on_call — generous for interactive single-owner
   // use, bounded against abuse.
   roster: { limit: 60, windowSeconds: 60 },
+  // Work choices that follow the doctor between devices (saved work pages, My Day
+  // choices). Each change is one small write; same shape as roster.
+  work_sync: { limit: 60, windowSeconds: 60 },
 } as const satisfies Record<ApiRateLimitBucket, { limit: number; windowSeconds: number }>;
 
 const anonymousApiRateLimitDefaults: Partial<Record<ApiRateLimitBucket, { limit: number; windowSeconds: number }>> = {

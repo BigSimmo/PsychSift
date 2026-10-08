@@ -7,9 +7,9 @@ import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
  * Every leave type in one wallet (junior feature #34, owner request 6 Oct 2026).
  *
  * Eight cards, each with how to apply and a ready message the doctor copies
- * and sends themselves. Entitlements are NOT shown: no WA leave figure has
- * been checked against the agreement and signed off, so every card says
- * "Check your agreement" and links the agreement PDF the repo already holds
+ * and sends themselves. The figures each card shows live apart, in
+ * `leave-entitlements.ts` (signed off 8 Oct 2026), so nothing here carries a
+ * figure. Every card also links the agreement PDF the repo already holds
  * (`FATIGUE_RULE_SET.source`, 2024 WAIRC 00992). Nothing on this page is
  * saved: the fields that fill a message live in memory only.
  *
@@ -167,7 +167,7 @@ export function leaveTypeById(id: string | null | undefined): LeaveType | null {
   return LEAVE_TYPES.find((type) => type.id === id) ?? null;
 }
 
-/** The agreement every card points to for figures, until they are signed off. */
+/** The agreement every card's figures come from, and links to. */
 export const LEAVE_AGREEMENT = {
   title: FATIGUE_RULE_SET.source.title,
   citation: FATIGUE_RULE_SET.source.citation,

@@ -47,7 +47,7 @@ function PersonEditor({ person, team, refresh }: { person: RosterPerson; team: R
       <label className="grid gap-1 text-sm">
         Grade
         <select
-          className="min-h-12 w-full min-w-0 rounded border bg-background p-2"
+          className="min-h-12 w-full min-w-0 rounded border border-[color:var(--border)] bg-background p-2"
           value={grade}
           onChange={(event) => setGrade(event.target.value)}
         >
@@ -127,7 +127,7 @@ export function RosterPeopleList({ team }: { team: RosterTeam }) {
         <h2>People</h2>
         {people.status === "loading" && !people.data ? <p role="status">Loading people…</p> : null}
         {people.data?.people.length ? (
-          <ul className="divide-y rounded-xl border">
+          <ul className="divide-y divide-[color:var(--border)] rounded-xl border border-[color:var(--border)]">
             {people.data.people.map((item) => (
               <li key={item.userId}>
                 <button

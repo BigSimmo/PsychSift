@@ -3,14 +3,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 import { REMIND_ME_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
-import {
-  checkReminderText,
-  normalizeReminders,
-  remindersFull,
-  REMIND_ME_TEXT_LIMIT,
-  type Reminder,
-} from "@/lib/alerts/remind-me";
+import { normalizeReminders, remindersFull, REMIND_ME_TEXT_LIMIT, type Reminder } from "@/lib/alerts/remind-me";
 import { isSharedDevice, SHARED_DEVICE_CHANGE_EVENT } from "@/lib/alerts/shared-device";
+import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * Remind me notes on this device. The words never leave it: only the due time
@@ -43,7 +38,9 @@ function snapshot(): readonly Reminder[] {
   } catch {
     stored = null;
   }
-  cachedList = normalizeReminders(stored, new Date());
+  // The shared patient-detail check that saving uses runs on stored notes too, so a note kept before it
+  // existed (or under a looser check) is never shown.
+  cachedList = normalizeReminders(stored, new Date()).filter((item) => !looksLikePatientDetail(item.text));
   // A stored note that now fails the check (or a broken value) is deleted, not just hidden.
   if (raw && (!Array.isArray(stored) || stored.length > cachedList.length)) {
     try {
@@ -124,7 +121,7 @@ export function useRemindMe() {
 
   const add = useCallback((text: string, dueAt: string): SaveReminderResult => {
     const words = text.trim().slice(0, REMIND_ME_TEXT_LIMIT);
-    if (!words || checkReminderText(words)) return "unsafe";
+    if (!words || looksLikePatientDetail(words)) return "unsafe";
     if (isSharedDevice()) return "shared-device";
     const current = snapshot();
     if (remindersFull(current)) return "full";

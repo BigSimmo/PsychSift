@@ -49,7 +49,9 @@ import type { ShiftKind } from "@/lib/roster/shift-kind";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { SessionSummary } from "@/lib/teaching/model";
 import { zonedDateOf } from "@/lib/work-time/format";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { useWorkSyncStatus } from "@/lib/work-sync/work-sync-client";
 
 /*
  * The On shift (`?page=work`) and My records (`?page=me`) cards in the flat
@@ -875,35 +877,69 @@ export function CpdMonthCard({
   );
 }
 
-/** A note on this device only, for this account. Never sent anywhere. */
+const QUICK_NOTE_KEPT: Readonly<Record<ReturnType<typeof useWorkSyncStatus>, string>> = {
+  account: "Saved to your account, so it shows on your other devices.",
+  device: "Not saved to your account because it may hold a patient detail. It stays on this device.",
+  off: "Deleted when you sign out.",
+};
+
+/**
+ * A note for this account. Signed in, it is copied to the account and follows
+ * the doctor to other devices, unless it reads as a patient detail.
+ */
 export function QuickNoteCard() {
   const [note, setNote] = useMyDayQuickNote();
+  const kept = useWorkSyncStatus("myDayQuickNote");
+  // Words that look like a patient detail are shown but never kept: only a safe note reaches the device.
+  const [unsaved, setUnsaved] = useState<string | null>(null);
+  const shown = unsaved ?? note;
+  const problem = unsaved === null ? null : checkPatientDetail(unsaved);
   const fieldId = useId();
   const hintId = useId();
   return (
     <QuietSection
       title="Quick note"
       testId="my-day-card-quick-note"
-      aside={<span className="text-2xs font-semibold text-[color:var(--text-muted)]">This device only</span>}
+      aside={
+        <span className="text-2xs font-semibold text-[color:var(--text-muted)]">
+          {kept === "account" ? "Your account" : "This device only"}
+        </span>
+      }
     >
       <label htmlFor={fieldId} className="sr-only">
         Quick note
       </label>
       <textarea
         id={fieldId}
-        value={note}
-        onChange={(event) => setNote(event.target.value)}
+        value={shown}
+        onChange={(event) => {
+          const value = event.target.value;
+          if (checkPatientDetail(value)) {
+            setUnsaved(value);
+            return;
+          }
+          setUnsaved(null);
+          setNote(value);
+        }}
         maxLength={MY_DAY_QUICK_NOTE_LIMIT}
         rows={2}
         aria-describedby={hintId}
+        aria-invalid={problem ? true : undefined}
         data-testid="my-day-quick-note"
         placeholder="A reminder for yourself"
         className="min-h-14 w-full resize-y rounded-lg border border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] px-3 py-2.5 text-sm text-[color:var(--work-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)] forced-colors:border"
       />
       <div id={hintId}>
-        <QuietFoot icon={TriangleAlert}>
-          Never write patient names or details here. Deleted when you sign out.
-        </QuietFoot>
+        {problem ? (
+          <p
+            role="alert"
+            data-testid="my-day-quick-note-problem"
+            className="m-0 text-xs font-semibold leading-snug text-[color:var(--warning)]"
+          >
+            {`${problem.title}. Not saved: remove it to keep this note.`}
+          </p>
+        ) : null}
+        <QuietFoot icon={TriangleAlert}>Never write patient names or details here. {QUICK_NOTE_KEPT[kept]}</QuietFoot>
       </div>
     </QuietSection>
   );

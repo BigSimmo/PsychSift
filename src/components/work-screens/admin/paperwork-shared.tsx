@@ -164,7 +164,7 @@ export function PaperworkSampleNotice({
       {examples
         ? "You can try every control on the examples below and nothing is saved."
         : "Nothing is kept while you are signed out."}{" "}
-      Signed in, your own records are kept on this phone for your account only.
+      Signed in, your own records are kept with your account, on every device you sign in on.
     </SignedOutSampleNotice>
   );
 }

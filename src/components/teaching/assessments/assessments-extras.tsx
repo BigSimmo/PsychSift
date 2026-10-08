@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { rememberExtras, rememberedExtras } from "@/components/teaching/assessments/assess-memory";
 import { List, Row, SectionLabel, viewHref } from "@/components/teaching/assessments/assessments-parts";
 import { PendingSends, inUndoMessage } from "@/components/teaching/assessments/pending-sends";
 import { UNDO_MS } from "@/components/teaching/use-delayed-post";
@@ -24,6 +25,7 @@ import {
   extrasReducer,
   initialExtras,
   readyToSend,
+  settleForAnotherScreen,
   type ExtrasAction,
   type ExtrasState,
 } from "@/lib/teaching/assessments/extras";
@@ -76,8 +78,24 @@ const SENT_BODY = "Made-up: nothing reaches anyone.";
  * - leaving Assessments closes every Undo message (sends, Later, Can't do and reminders), and nothing is
  *   dispatched or announced after that. Like the rest of the sample, nothing was stored, so nothing is lost.
  */
-export function AssessmentsExtrasProvider({ children }: { children: ReactNode }) {
-  const [extras, dispatchExtras] = useReducer(extrasReducer, initialExtras);
+export function AssessmentsExtrasProvider({
+  children,
+  memoryKey,
+}: {
+  children: ReactNode;
+  /**
+   * The account's page-memory key. With it, the answers outlive this screen in this tab, so a doctor's own
+   * page (`/teaching/assessments/trainee/[id]`) and the inbox show the same answers. Never stored.
+   */
+  memoryKey?: string;
+}) {
+  const [extras, dispatchExtras] = useReducer(extrasReducer, undefined, () => {
+    const kept = memoryKey === undefined ? null : rememberedExtras(memoryKey);
+    return kept ? settleForAnotherScreen(kept) : initialExtras;
+  });
+  useEffect(() => {
+    if (memoryKey !== undefined) rememberExtras(memoryKey, extras);
+  }, [memoryKey, extras]);
   const toast = useOptionalToast();
   const toastRef = useRef(toast);
   const mounted = useRef(true);

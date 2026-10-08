@@ -23,6 +23,8 @@ import { useRosterTeams } from "@/components/roster/use-roster-team";
 import { cn } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import {
   alternativeDates,
@@ -80,6 +82,8 @@ function MiniBars({ counts }: { readonly counts: readonly number[] }) {
 }
 
 export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } = {}) {
+  // The example team's counts never leave the app: Copy opens the "can't be exported" sheet instead.
+  const { active: example } = useExampleData("rost");
   const now = useRosterNow(pinnedNow);
   const today = perthDateOf(now);
   const search = useSyncExternalStore(subscribeSearch, searchSnapshot, serverSearchSnapshot);
@@ -145,6 +149,7 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
   const teamName = enabled.find((team) => team.serviceId === serviceId)?.name ?? null;
 
   async function copyAsk() {
+    if (!guardExampleAction(example, "copy")) return;
     try {
       await copyTextToClipboard(staffingAskText(leave, teamName));
       setAskCopied(true);

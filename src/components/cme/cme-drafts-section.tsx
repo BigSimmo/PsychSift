@@ -12,6 +12,7 @@ import { TextField } from "@/components/ui/text-field";
 import { InlineNotice } from "@/components/ui-primitives";
 import { formatCalendarDateLong, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import { cpdTextPatientProblem } from "@/lib/cme/patient-detail-check";
 import {
   CME_DRAFT_WAITING_NOTE_MAX_LENGTH,
   draftTitle,
@@ -71,6 +72,11 @@ export type WaitingOnControlsProps = {
   readonly idPrefix: string;
 };
 
+/** The note is stored with the draft, so the one shared patient-detail check reads it first. */
+export function waitingNoteProblem(note: string) {
+  return note.trim() ? cpdTextPatientProblem(note) : null;
+}
+
 /**
  * The three "waiting on someone" controls — who, an optional note, a
  * follow-up date — as a small controlled unit with no fetch logic of its own.
@@ -86,6 +92,7 @@ export function WaitingOnControls({
   disabled = false,
   idPrefix,
 }: WaitingOnControlsProps) {
+  const noteProblem = waitingNoteProblem(value.waitingNote);
   return (
     <div className="flex flex-col gap-3" data-testid={`${idPrefix}-waiting-controls`}>
       <Select
@@ -106,6 +113,7 @@ export function WaitingOnControls({
             value={value.waitingNote}
             maxLength={CME_DRAFT_WAITING_NOTE_MAX_LENGTH}
             hint="Don't include patient details."
+            error={noteProblem ? `${noteProblem.title} ${noteProblem.body}` : undefined}
             disabled={disabled}
             onChange={(event) => onWaitingNoteChange(event.target.value)}
             onBlur={onWaitingNoteBlur}
@@ -143,6 +151,10 @@ function DraftRow({
   const [error, setError] = useState<string | null>(null);
 
   async function save(next: WaitingOnValue) {
+    if (waitingNoteProblem(next.waitingNote)) {
+      setError("Take out the patient details to save the note.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

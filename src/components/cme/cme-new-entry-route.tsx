@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { WaitingOnControls, type WaitingOnValue } from "@/components/cme/cme-drafts-section";
+import { WaitingOnControls, waitingNoteProblem, type WaitingOnValue } from "@/components/cme/cme-drafts-section";
 import { useCmeSample } from "@/components/cme/cme-sample-context";
 import { stillShortCategories } from "@/components/cme/cme-still-short";
 import { CmeDetailNavHeader } from "@/components/cme/cme-nav-header";
@@ -163,6 +163,8 @@ export function CmeNewEntryRoute({
 
   async function saveDraft(payload: CmeDraftPayload) {
     if (demoMode) throw new Error("Demo mode is read-only. Sign in to save drafts to your private CPD record.");
+    if (waiting.waitingOn && waitingNoteProblem(waiting.waitingNote))
+      throw new Error("Take out the patient details from the note to save this draft.");
     const response = await fetch(resumeDraft ? `/api/cme/drafts/${resumeDraft.id}` : "/api/cme/drafts", {
       method: resumeDraft ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },

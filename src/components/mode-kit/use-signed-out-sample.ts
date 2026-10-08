@@ -20,6 +20,12 @@ export function useSignedOut(): boolean {
   return status === "signed_out" || status === "expired";
 }
 
+/** Whether someone is signed in. False in a bare render and while the status is still loading. */
+export function useSignedIn(): boolean {
+  const status = useAuthStatusIfAvailable();
+  return status === "authenticated" || status === "expired";
+}
+
 /**
  * Whether this screen shows invented records: the one example data switch is
  * showing them in its area. Auto mode already shows examples to a signed-out
