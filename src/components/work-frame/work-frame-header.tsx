@@ -19,6 +19,7 @@ import { WorkPageFavouriteButton } from "@/components/favourites/work-page-favou
 import { Sheet } from "@/components/ui/sheet";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useTabSwipe } from "@/components/work-swipe/use-tab-swipe";
+import { useLargeTextFlag } from "@/components/work-frame/use-large-text";
 import { useStickyWorkTabs } from "@/components/work-frame/use-sticky-work-tabs";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import {
@@ -132,6 +133,9 @@ export function WorkFrameHeader({
   }, [area.id, area.parent, currentHref]);
 
   useTabSwipe(navRef, currentHref);
+
+  // At large text, labels that normally shorten wrap instead (work-mode.css).
+  useLargeTextFlag();
 
   // The tab row stays pinned under the top bar on scroll (owner request 8 Oct 2026).
   const [band, setBand] = useState<HTMLElement | null>(null);
