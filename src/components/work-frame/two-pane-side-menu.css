@@ -148,6 +148,16 @@
   padding: max(0.5rem, env(safe-area-inset-top)) calc(var(--spacing) * 1.5) 0 calc(var(--spacing) * 4);
 }
 
+.two-pane-menu__head {
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--duration-quick, 120ms) ease;
+}
+
+/* A hairline appears under the title once the pane scrolls, so the header reads as fixed. */
+.two-pane-menu__head[data-scrolled="true"] {
+  border-bottom-color: var(--border);
+}
+
 .two-pane-menu__head h2 {
   flex: 1;
   min-width: 0;
@@ -199,6 +209,7 @@
 }
 
 .two-pane-menu__scroll {
+  animation: two-pane-menu-in var(--duration-quick, 140ms) ease-out;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -428,6 +439,11 @@
   font-size: 0.8125rem;
 }
 
+.two-pane-menu__needs-text small[data-overdue="true"] {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .two-pane-menu__count {
   min-width: 1.375rem;
   height: 1.375rem;
@@ -531,7 +547,6 @@
 .two-pane-menu__segments button[aria-pressed="true"] {
   background: var(--surface-raised);
   color: var(--text-heading);
-  box-shadow: 0 0 0 1px var(--border);
 }
 
 @container (max-width: 14.5rem) {
@@ -579,8 +594,21 @@
   outline-offset: 2px;
 }
 
+/* Switching side fades the pane in, so the change reads without a jump. */
+@keyframes two-pane-menu-in {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .two-pane-menu__indicator {
+  .two-pane-menu__indicator,
+  .two-pane-menu__head {
     transition: none;
+  }
+
+  .two-pane-menu__scroll {
+    animation: none;
   }
 }

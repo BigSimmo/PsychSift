@@ -96,6 +96,9 @@ type Pane = ModeMenuSideId | "you";
 /** Recent questions shown before Show all. */
 const RECENT_SHOWN = 5;
 
+/** Look-up tiles before More, so the grid always closes as two even rows of three (or three of two). */
+const LOOK_UP_SHOWN = 5;
+
 const themeChoices: readonly { readonly id: ThemePreference; readonly label: string; readonly icon: LucideIcon }[] = [
   { id: "light", label: "Light", icon: Sun },
   { id: "dark", label: "Dark", icon: Moon },
@@ -132,6 +135,7 @@ export function TwoPaneSideMenu({
   const [showAllRecent, setShowAllRecent] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const editRef = useRef<HTMLButtonElement>(null);
   const editorReturnRef = useRef<HTMLElement>(null);
@@ -153,6 +157,7 @@ export function TwoPaneSideMenu({
     setWasOpen(open);
     if (open) {
       setPane(firstSide);
+      setScrolled(false);
       setShowAllRecent(false);
       setConfirmSignOut(false);
     }
@@ -166,6 +171,7 @@ export function TwoPaneSideMenu({
   };
   const choosePane = (next: Pane) => {
     setPane(next);
+    setScrolled(false);
     setConfirmSignOut(false);
   };
 
@@ -178,7 +184,8 @@ export function TwoPaneSideMenu({
   const lookUpItems = pinnedModeIds
     .filter((id) => id !== "answer")
     .map(sidebarModeItem)
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .slice(0, LOOK_UP_SHOWN);
   const recent = recentQueries.slice(0, showAllRecent ? recentQueries.length : RECENT_SHOWN);
 
   const openReminders = () => {
@@ -321,7 +328,7 @@ export function TwoPaneSideMenu({
         >
           <span className="two-pane-menu__needs-text">
             <b>Needs you</b>
-            <small>{needsYouLine(counts)}</small>
+            <small data-overdue={counts && counts.overdue > 0 ? "true" : undefined}>{needsYouLine(counts)}</small>
           </span>
           <ChevronRight aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
         </Link>
@@ -552,7 +559,7 @@ export function TwoPaneSideMenu({
       </nav>
 
       <section className="two-pane-menu__pane" aria-labelledby={titleId}>
-        <header className="two-pane-menu__head">
+        <header className="two-pane-menu__head" data-scrolled={scrolled ? "true" : undefined}>
           <h2 id={titleId}>{title}</h2>
           {bellShown ? (
             <Link
@@ -578,7 +585,12 @@ export function TwoPaneSideMenu({
             <X aria-hidden="true" className="size-icon-md" strokeWidth={2} />
           </button>
         </header>
-        <div className="two-pane-menu__scroll" data-pane={pane}>
+        <div
+          key={pane}
+          className="two-pane-menu__scroll"
+          data-pane={pane}
+          onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 2)}
+        >
           {pane === "clinical" ? clinicalPane : pane === "work" ? workPane : youPane}
         </div>
       </section>
