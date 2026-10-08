@@ -3,13 +3,15 @@ import { expect, test, type Locator, type Page, type TestInfo } from "playwright
 
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { expectNoPageHorizontalOverflow, gotoApp } from "./helpers/spec-navigation";
+import { demoAnswer, demoDocuments } from "../src/lib/demo-data";
+import { toClientAnswerPayload } from "../src/lib/answer-client-payload";
 
 /**
  * Live Browser Testing — User Journeys Suite.
  *
  * Implements the core testing principles:
  * 1. Test user journeys, not isolated components (Login, core workflow, data submission, error state).
- * 2. Focused volume: exactly 8 journeys (5–15 tests, not 500).
+ * 2. Focused volume: 8 journeys plus six negative controls for answer/retry assertions.
  * 3. Accessibility in the same run: in-flow @axe-core/playwright scans on key journey states.
  * 4. Sparing visual regression: high-fidelity snapshot attachments and optional visual assertions on 2–3 key views.
  * 5. Deterministic execution: works against runner-owned local server or remote preview deployment (Vercel/Netlify).
@@ -17,6 +19,141 @@ import { expectNoPageHorizontalOverflow, gotoApp } from "./helpers/spec-navigati
 
 const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
+const syntheticFailure = "Synthetic answer service unavailable. Please retry.";
+const syntheticAnswerText = (query: string) =>
+  `Synthetic fixture completed for: ${query}\n\n${demoAnswer(query).answer.split("\n\n")[0]}`;
+
+async function installSyntheticAnswerApis(page: Page, query: string) {
+  const state = {
+    fail: false,
+    unfinished: false,
+    requests: [] as Array<{ method: string; query: string }>,
+    responses: [] as number[],
+  };
+  const answer = { ...toClientAnswerPayload(demoAnswer(query)), answer: syntheticAnswerText(query), demoMode: true };
+  page.on("response", (response) => {
+    if (new URL(response.url()).pathname === "/api/answer/stream") state.responses.push(response.status());
+  });
+  await page.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    // These fixtures never let a browser request reach an external provider.
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) {
+      await route.abort("blockedbyclient");
+      return;
+    }
+    if (!url.pathname.startsWith("/api/")) {
+      await route.fallback();
+      return;
+    }
+    if (url.pathname === "/api/answer/stream") {
+      state.requests.push({ method: route.request().method(), query: route.request().postDataJSON()?.query });
+      if (state.fail) {
+        await route.fulfill({ status: 503, json: { error: syntheticFailure } });
+        return;
+      }
+      const events = [{ event: "progress", data: { stage: "generating", message: "Synthetic answer fixture." } }];
+      const frames: Array<{ event: string; data: unknown }> = [...events];
+      if (!state.unfinished) {
+        frames.push({ event: "progress", data: { stage: "complete", message: "Synthetic answer ready." } });
+        frames.push({ event: "final", data: answer });
+      }
+      await route.fulfill({
+        contentType: "text/event-stream",
+        body: frames.map(({ event, data }) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join(""),
+      });
+      return;
+    }
+    if (url.pathname === "/api/local-project-id") {
+      await route.fulfill({
+        json: {
+          appName: "PsychSift",
+          projectId: "test-project",
+          identityPath: "/api/local-project-id",
+          localServer: { safeLocalOrigin: true },
+        },
+      });
+      return;
+    }
+    if (url.pathname === "/api/setup-status") {
+      await route.fulfill({
+        json: {
+          demoMode: true,
+          checks: [
+            { id: "env", status: "ready" },
+            { id: "project", status: "ready" },
+            { id: "schema", status: "ready" },
+            { id: "search", status: "ready" },
+            { id: "openai", status: "ready" },
+          ],
+        },
+      });
+      return;
+    }
+    if (url.pathname === "/api/documents") {
+      await route.fulfill({ json: { documents: demoDocuments, demoMode: true } });
+      return;
+    }
+    await route.fulfill({ json: { demoMode: true } });
+  });
+  return state;
+}
+
+async function hydratedAnswerSubmit(page: Page, query: string) {
+  await gotoApp(page, "/?mode=answer");
+  const input = page.locator('[aria-label^="Search indexed guidelines by question or keyword"]:visible');
+  const submit = page.locator('[aria-label="Generate source-backed answer"]:visible');
+  await expect(input).toHaveCount(1);
+  await expect(submit).toHaveCount(1);
+  for (const [locator, eventName] of [
+    [input, "onChange"],
+    [input.locator("xpath=ancestor::form[1]"), "onSubmit"],
+  ] as const) {
+    await expect
+      .poll(
+        () =>
+          locator.evaluate((element, event) => {
+            const propsKey = Object.keys(element).find((key) => key.startsWith("__reactProps$"));
+            const props = propsKey ? (element as unknown as Record<string, Record<string, unknown>>)[propsKey] : null;
+            return typeof props?.[event] === "function";
+          }, eventName),
+        { timeout: 15_000 },
+      )
+      .toBe(true);
+  }
+  await expect(input).toBeEnabled();
+  await input.fill(query);
+  await expect(input).toHaveValue(query);
+  await expect(submit).toBeEnabled();
+  return submit;
+}
+
+async function expectSyntheticAnswer(
+  page: Page,
+  state: Awaited<ReturnType<typeof installSyntheticAnswerApis>>,
+  query: string,
+  requestCount: number,
+  timeout = 10_000,
+) {
+  await expect
+    .poll(() => state.requests.length, { message: "Answer submission must issue a new request", timeout })
+    .toBe(requestCount);
+  expect(state.requests).toEqual(Array.from({ length: requestCount }, () => ({ method: "POST", query })));
+  await expect.poll(() => state.responses.at(-1), { timeout }).toBe(200);
+  await expect(page.getByTestId("answer-progress")).toHaveAttribute("data-progress-state", "complete", { timeout });
+  const prose = page.getByTestId("plain-answer-response");
+  await expect(prose).toBeVisible({ timeout });
+  await expect(prose).toContainText(syntheticAnswerText(query), { timeout });
+  await expect(page.getByTestId("answer-error")).toHaveCount(0);
+  return prose;
+}
+
+async function expectSyntheticFailure(page: Page, state: Awaited<ReturnType<typeof installSyntheticAnswerApis>>) {
+  await expect.poll(() => state.responses.filter((status) => status === 503).length).toBeGreaterThan(0);
+  await expect(page.getByTestId("answer-error")).toBeVisible();
+  await expect(page.getByTestId("answer-error")).toContainText(syntheticFailure);
+  await expect(page.getByTestId("answer-error-retry")).toBeVisible();
+  await expect(page.getByTestId("plain-answer-response")).toHaveCount(0);
+}
 
 async function expectNoBlockingAxeViolations(
   page: Page,
@@ -118,34 +255,11 @@ test.describe("Live Browser User Journeys", () => {
   // Journey 2: Core Clinical Workflow (Search -> Synthesized Answer -> Source Evidence)
   // -------------------------------------------------------------------------
   test("Journey 3 (Core Workflow): clinical query submission to synthesized answer", async ({ page }, testInfo) => {
-    await gotoApp(page, "/");
-
-    // Locate primary search input (combobox or input inside search form, excluding the form element itself)
-    const searchInput = page
-      .locator('form[role="search"] input, form[role="search"] textarea, [role="combobox"]')
-      .first();
-    await expect(searchInput).toBeVisible();
-
-    // Enter clinical query
-    await searchInput.fill("What are the clinical signs of lithium toxicity?");
-
-    // Submit query
-    const submitBtn = page
-      .locator('button[type="submit"], [aria-label*="Generate"], [aria-label*="Ask"], [aria-label*="Search"]')
-      .first();
-    if ((await submitBtn.isVisible()) && (await submitBtn.isEnabled())) {
-      await submitBtn.click();
-    } else {
-      await searchInput.press("Enter");
-    }
-
-    // Wait for the synthesized answer or search results to settle
-    const answerContainer = page
-      .locator(
-        '[data-testid="answer-card"], [data-testid="search-results"], [data-testid="answer-stream"], #main-content',
-      )
-      .first();
-    await expect(answerContainer).toBeVisible({ timeout: 20_000 });
+    const query = "What are the clinical signs of lithium toxicity?";
+    const state = await installSyntheticAnswerApis(page, query);
+    const submit = await hydratedAnswerSubmit(page, query);
+    await submit.click();
+    const answerContainer = await expectSyntheticAnswer(page, state, query, 1);
 
     // Sparing visual regression on the core answer view
     await recordVisualSparing(answerContainer, "journey-core-answer-view.png", testInfo);
@@ -237,32 +351,61 @@ test.describe("Live Browser User Journeys", () => {
   });
 
   test("Journey 8 (Error State): simulated API network failure and retry recovery", async ({ page }) => {
-    // Intercept search API with simulated server error
-    let failApi = true;
-    await page.route(/\/api\/search(?:\?.*)?$/, async (route) => {
-      if (failApi) {
-        await route.fulfill({
-          status: 503,
-          contentType: "application/json",
-          body: JSON.stringify({ error: "Service temporarily unavailable. Please retry." }),
-        });
-      } else {
-        await route.fallback();
-      }
-    });
-
-    await gotoApp(page, "/");
-
-    const searchInput = page.locator('textarea, input[type="search"], [aria-label*="Search"]').first();
-    if (await searchInput.isVisible()) {
-      await searchInput.fill("bipolar affective disorder guidelines");
-      await searchInput.press("Enter");
-
-      // Verify the UI does not crash or display an unhandled exception
-      await expect(page.locator("body")).toBeVisible();
-    }
-
-    // Restore API and verify page continues functioning
-    failApi = false;
+    const query = "What monitoring does the synthetic clozapine table describe?";
+    const state = await installSyntheticAnswerApis(page, query);
+    state.fail = true;
+    const submit = await hydratedAnswerSubmit(page, query);
+    await submit.click();
+    await expectSyntheticFailure(page, state);
+    const failedRequestCount = state.requests.length;
+    state.fail = false;
+    await page.getByTestId("answer-error-retry").click();
+    await expectSyntheticAnswer(page, state, query, failedRequestCount + 1);
   });
+
+  for (const control of ["no-op", "failed", "unfinished"] as const) {
+    test(`Answer completion negative control: ${control}`, async ({ page }) => {
+      const query = "Synthetic lithium toxicity completion control";
+      const state = await installSyntheticAnswerApis(page, query);
+      state.fail = control === "failed";
+      state.unfinished = control === "unfinished";
+      const submit = await hydratedAnswerSubmit(page, query);
+      if (control === "no-op") {
+        await submit.locator("xpath=ancestor::form[1]").evaluate((form) => {
+          form.addEventListener(
+            "submit",
+            (event) => {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+            },
+            { capture: true },
+          );
+        });
+      }
+      await submit.click();
+      if (control !== "no-op") await expect.poll(() => state.requests.length).toBeGreaterThan(0);
+      await expect(expectSyntheticAnswer(page, state, query, 1, 500)).rejects.toThrow();
+    });
+  }
+
+  for (const control of ["missing-request", "missing-retry", "persistent-failure"] as const) {
+    test(`Answer recovery negative control: ${control}`, async ({ page }) => {
+      const query = "Synthetic clozapine monitoring recovery control";
+      const state = await installSyntheticAnswerApis(page, query);
+      state.fail = true;
+      const submit = await hydratedAnswerSubmit(page, query);
+      if (control !== "missing-request") {
+        await submit.click();
+        await expectSyntheticFailure(page, state);
+      }
+      const expectedRequests = state.requests.length + 1;
+      if (control === "persistent-failure") {
+        await page.getByTestId("answer-error-retry").click();
+        await expect.poll(() => state.requests.length).toBeGreaterThanOrEqual(expectedRequests);
+      } else {
+        state.fail = false;
+      }
+      await expect(expectSyntheticAnswer(page, state, query, expectedRequests, 500)).rejects.toThrow();
+    });
+  }
 });

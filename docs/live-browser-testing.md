@@ -13,7 +13,7 @@ PsychSift uses **Playwright** as its default end-to-end browser testing framewor
    - **Local Headed**: Run with `--headed` to visually inspect interactions as they occur.
    - **Interactive UI Mode**: Run with `--ui` for interactive step-by-step debugging, time-travel scrubbing, and locator picking.
    - **CI Headless**: CI runners run headless with zero retries on blocking tests to fail fast and loudly on real regressions.
-   - **Trace on First Retry / Failure**: In CI, trace capture is configured to capture diagnostics upon retry or failure (`trace: "on-first-retry"` or `"retain-on-failure"`), minimising storage overhead on passing runs while preserving post-mortem evidence.
+   - **Trace on Failure**: Local and CI runs default to `trace: "retain-on-failure"`, preserving diagnostics on the first failure with zero retries. `PLAYWRIGHT_TRACE` remains an explicit override.
 
 3. **User Journeys, Not Components**
    - Avoid testing individual UI components in full browsers; React component logic and unit behaviors belong in Vitest (`*.dom.test.tsx` in jsdom).
@@ -22,6 +22,7 @@ PsychSift uses **Playwright** as its default end-to-end browser testing framewor
      2. **Core Workflow**: Search query submission, synthesized answer settlement, and citation/source inspection.
      3. **Data Submission**: Interactive clinical workspaces (statutory mental health forms, safety plans, calculators).
      4. **Error States & Recovery**: 404 navigation handling and network/API failure resilience with retry mechanisms.
+   - Answer submission and recovery use synthetic `/api/answer/stream` responses, require a hydrated Answer composer, and assert completed progress plus query-specific prose. Recovery requires a failed request and visible error followed by an explicit resubmission and successful new request. Negative controls reject missing submissions, failed/unfinished answers, missing resubmissions and persistent failures; no provider is needed.
    - **Keep Volume Tight**: 5 to 15 focused tests rather than hundreds of fragmented, brittle specs.
 
 4. **Preview Deploy + Smoke Testing**
