@@ -1,5 +1,7 @@
 # PsychSift
 
+_Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
+
 Local-first medical guideline RAG knowledge base for a psychiatrist in Perth,
 Australia. The app uploads private clinical reference documents to Supabase
 Storage, indexes text and extracted image captions into pgvector, and answers
@@ -36,10 +38,15 @@ toolchain, installs the profile-loading Node command shims, and distinguishes sa
 tasks from explicitly connected provider tasks. Fresh Cloud validation runs the direct
 `npm run check:codex-cloud` commands without manually sourcing a profile.
 
-3. Copy the full `.env.example` to `.env.local` and fill in Supabase and OpenAI
-   values. Copy the worker and upload defaults too — they are conservative
-   local-first settings, not optional extras.
-4. Confirm the Supabase target:
+3. For offline app development, use a credential-free `.env.local` containing
+   `NEXT_PUBLIC_DEMO_MODE=true`. Use the synthetic corpus; leave Supabase and
+   OpenAI credentials unset and do not start the ingestion worker. Preserve any
+   existing environment file rather than overwriting it. Demo mode is an app
+   setting, not a security boundary for workers or arbitrary scripts.
+4. For separately authorised connected development, copy the full `.env.example`
+   to a new `.env.local` and supply credentials only for the approved target and
+   workload. Retain its worker/upload defaults, but do not assume those defaults
+   isolate production. Confirm the Supabase target:
 
 This is a provider-backed check. Obtain the required explicit authorisation before
 running it; it is not a prerequisite to documentation or other offline-only work.
@@ -93,20 +100,7 @@ onboarding path. For drift, repair policy, and live-only caveats, see
 python -m pip install -r worker/python/requirements.txt
 ```
 
-8. Start the app using your preferred method:
-
-**Option A: Docker Compose (full-stack local deployment)**
-
-For a production-like local environment with both app and worker:
-
-```bash
-docker compose up --build
-```
-
-This builds and starts both services with health checks. Services restart on failure.
-Access the app at `http://localhost:3000`. Stop with `docker compose down`.
-
-**Option B: Local development servers (traditional npm-based)**
+8. Start the demo app:
 
 Run the Next.js app:
 
@@ -131,7 +125,8 @@ belongs to this project, and starts the dev server in the background if needed.
 When you say `run` in this chat, Codex should use this command and return the
 printed URL.
 
-9. In a second terminal, start the local ingestion worker:
+9. **Connected ingestion only:** after explicit approval for the database,
+   workload, provider calls and spending, start the worker in a second terminal:
 
 ```bash
 npm run worker
@@ -139,22 +134,25 @@ npm run worker
 
 The Next.js API stores uploads and queues ingestion jobs. The worker performs
 heavy parsing, OCR, image captioning, chunking, embedding, and database inserts.
-It uses the conservative worker defaults from `.env.example` when those vars are
-set in `.env.local`.
+It uses the worker defaults from `.env.example` when those vars are set in
+`.env.local`. These defaults do not prevent live database claims or provider calls.
 
-### Node.js LTS Migration Planning
+**Docker Compose also requires connected-workload approval.**
+`docker compose up --build` starts both the app and ingestion worker and loads
+`.env.local` into both. It does not create an isolated local Supabase database.
+Production credentials can therefore let the worker consume production jobs.
+Use only the explicitly approved target and workload. The Compose app mapping is
+`http://localhost:3000`; stop this stack with `docker compose down`. This mapping
+does not replace the project-identity checks for development servers above.
 
-This project currently uses **Node 24.x** (EOL April 2025). Plan migration to **Node 22 LTS**
-(supported until April 2027) before Node 24 EOL:
+### Node.js runtime and lifecycle
 
-1. Update `.node-version`, `.nvmrc`, and `Dockerfile` base image pin to Node 22
-2. Test locally: `nvm use 22` and `npm run verify:full`
-3. Verify CI and Railway deploy with the new base image
-4. For ARM64 production builds, test multi-architecture:
-   ```bash
-   docker buildx build --platform linux/amd64,linux/arm64 -t psychsift:multi .
-   ```
-   Verify sharp native bindings rebuild correctly for both architectures.
+`package.json` requires **Node >=24.15.0 <25 and npm 11.x**. The version-manager,
+container and CI pins must remain compatible with that contract; Node 22 is not
+a supported downgrade. The [official Node.js release schedule](https://github.com/nodejs/Release/blob/main/schedule.json)
+lists Node 24 end of life as **2028-04-30**. A future runtime migration needs an
+intentional dependency/toolchain change and the applicable local and release
+checks; this documentation correction changes no runtime pins.
 
 ### Codex Cloud
 
@@ -227,24 +225,12 @@ hosted Supabase MCP server uses OAuth, not repo secrets.
 
 ### Context7
 
-Workspace config in `.cursor/mcp.json` runs pinned local
-`npx -y @upstash/context7-mcp@3.2.5` with `CONTEXT7_API_KEY` from `${env:…}`;
-`.cursor/settings.json` enables the `context7-plugin`. Use Context7 for
-versioned library docs — **Tailwind 4, Zod 4, Playwright, Vitest, React 19,
-`@supabase/supabase-js`** (peers; not exhaustive) — not for Next.js 16: read
-`node_modules/next/dist/docs/` locally and do not invent App Router APIs from
-Context7 or training data.
-
-Optional `CONTEXT7_API_KEY` (`ctx7sk…`) from [context7.com/dashboard](https://context7.com/dashboard)
-raises rate limits. Set it as a user/OS env var, Cursor **Settings → MCP**, or a
-Cursor Cloud Agent Secret (shell `process.env`). Local stdio MCP and `npx ctx7`
-use that env; a separate host-injected Context7 connector may still ignore it —
-fall back to `npx ctx7 library "your-query"` or `npx ctx7 docs "your-query"` if host MCP returns quota exceeded.
-Without a key, Cursor expands `${env:CONTEXT7_API_KEY}` to empty and the server
-runs anonymously at lower rate limits. **Reload MCP servers** (or restart Cursor)
-after setting or rotating the key — the stdio child captures env at spawn.
-`.env.local` alone does not expand project MCP `${env:}`. Full setup notes:
-[`docs/agents/cursor-cloud.md#context7-setup-and-peer-library-documentation`](docs/agents/cursor-cloud.md#context7-setup-and-peer-library-documentation). Never commit the API key.
+Use the shared [Context7 guide](docs/agents/context7.md) for library resolution,
+version matching, MCP/CLI authentication and query privacy. The checked-in
+Cursor integration is local `@upstash/context7-mcp@3.2.5`; a selected hosted
+connector has separate authentication. For Next.js APIs, read the installed
+`node_modules/next/dist/docs/` as required by `AGENTS.md`. Never include patient
+information or private document content in documentation queries.
 
 ### Figma
 

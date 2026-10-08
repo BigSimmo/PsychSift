@@ -1,8 +1,11 @@
 # Operator action detail
 
+_Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
+
 Detailed runbook index for **human-only / provider-gated actions** that cannot be done from a coding
-session. Canonical task status, order, acuity, and completion live only in
-[`outstanding-issues.md`](outstanding-issues.md); this file supplies provider-specific steps and
+session. The [task-status authority map](task-receipts.md#status-authority) assigns
+canonical task lifecycle to the PsychSift-filtered Notion source and repository
+issue history to the protected [issues ledger](outstanding-issues.md). This file supplies provider-specific steps and
 presence claims that must be verified before acting.
 
 **How to use:** work top to bottom; each row links to the detailed runbook. `Status` values are

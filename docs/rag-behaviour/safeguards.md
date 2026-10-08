@@ -1,5 +1,7 @@
 # RAG ranking safeguards
 
+_Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
+
 The protection stack that keeps retrieval/ranking behaviour from being changed casually — by
 any task, session, or agent. Added 2026-07-20 after the Phase C live regression proved that
 offline-green + review-approved is not sufficient for this surface.
@@ -64,10 +66,12 @@ Code and ground truth whose edits change (or re-measure) retrieval/ranking behav
   `tests/rag-second-stage-ranking.test.ts`, `tests/eval-retrieval.test.ts`
 - Retrieval RPCs in `supabase/schema.sql` / migrations (covered by the clinical-risk gate)
 
-## Layer 1 — PR-body gate (enforced, blocking)
+## Layer 1 — PR-body declaration (advisory warning)
 
-`scripts/pr-policy.mjs` classifies changed files; a PR touching a protected surface **fails the
-PR-policy check** unless its body carries an explicit acknowledgment line:
+`scripts/pr-policy.mjs` classifies changed files. Since 2026-09-17, a protected-surface
+PR without the acknowledgment line receives a **warning, not a blocking failure**.
+The standing rule still requires the declaration; source-pin checks and the
+behaviour-change live-canary requirement below remain binding:
 
 ```
 RAG impact: <one of>

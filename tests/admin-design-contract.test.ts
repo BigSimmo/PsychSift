@@ -6,7 +6,7 @@ const ADMIN_ROOTS = ["src/components/admin", "src/lib/admin", "src/app/(search-a
 
 function filesUnder(root: string): string[] {
   return readdirSync(root).flatMap((name) => {
-    const path = join(root, name);
+    const path = join(root, name).replaceAll("\\", "/");
     if (statSync(path).isDirectory()) return filesUnder(path);
     return /\.tsx?$/.test(name) ? [path] : [];
   });
@@ -30,7 +30,7 @@ const ADMIN_STATUS_STYLESHEET = "src/components/admin/admin-status.module.css";
 
 function stylesheetsUnder(root: string): string[] {
   return readdirSync(root).flatMap((name) => {
-    const path = join(root, name);
+    const path = join(root, name).replaceAll("\\", "/");
     if (statSync(path).isDirectory()) return stylesheetsUnder(path);
     return /\.css$/.test(name) ? [path] : [];
   });

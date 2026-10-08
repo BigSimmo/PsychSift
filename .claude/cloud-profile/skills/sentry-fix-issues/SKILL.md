@@ -7,7 +7,7 @@ parent: sentry-workflow
 disable-model-invocation: true
 ---
 
-> [All Skills](../../SKILL_TREE.md) > [Workflow](../sentry-workflow/SKILL.md) > Fix Issues
+> Standalone bundled skill. The upstream skill tree and parent skill are not included in this profile.
 
 # Fix Sentry Issues
 

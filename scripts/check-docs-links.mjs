@@ -10,14 +10,15 @@
  *    — resolved relative to the file containing the link and required to stay
  *    inside the repository.
  *
- * Scanned by default: README.md, AGENTS.md, and all Markdown files under docs/,
+ * Scanned by default: README.md, AGENTS.md, bundled Cloud-profile skill links,
+ * and all Markdown files under docs/,
  * excluding docs/archive/, docs/audit/, dated point-in-time filenames
  * (docs/README.md classifies those as historical records that intentionally
  * reference the repo as it was), and docs/prompts/codex-cloud-review/ (verbatim
  * as-provided prompt inputs whose paths must not be edited). Pass --all to scan
  * those too (informational deeper sweep; still fails on missing paths).
  *
- * Blocking for maintained docs: runs in verify:cheap and CI. Historical
+ * Blocking for maintained docs and bundled skills: runs in docs:check-links and CI. Historical
  * directories and dated point-in-time records stay excluded unless --all is
  * requested, so preserved history cannot block unrelated PRs.
  *
@@ -210,9 +211,10 @@ function collectDocs(dirRelative, targets) {
   }
 }
 
-function defaultTargets() {
+export function defaultTargets() {
   const targets = ["README.md", "AGENTS.md"];
   collectDocs("docs", targets);
+  collectDocs(".claude/cloud-profile/skills", targets);
   return targets;
 }
 
@@ -315,7 +317,7 @@ function getAnchorsForFile(absPath, relPath, targetAnchorsCache) {
  * document plus how many references were checked, so callers can accumulate
  * totals across documents exactly as `main()` used to inline.
  */
-export function collectDocumentFailures({ target, markdown, targetAnchorsCache = new Map() }) {
+export function collectDocumentFailures({ target, markdown, targetAnchorsCache = new Map(), checkInlinePaths = true }) {
   let checked = 0;
   const failures = [];
   const targetDir = path.posix.dirname(target);
@@ -329,7 +331,7 @@ export function collectDocumentFailures({ target, markdown, targetAnchorsCache =
   };
 
   // Inline code spans: repo-root-relative repo paths.
-  for (const rawCandidate of codeSpanCandidates(markdown)) {
+  for (const rawCandidate of checkInlinePaths ? codeSpanCandidates(markdown) : []) {
     const value = stripSuffixes(rawCandidate);
     const base = ROOT_PREFIXES.some((prefix) => value.startsWith(prefix)) ? globBaseDir(value) : null;
     if (base !== null) {
@@ -394,6 +396,32 @@ export function collectDocumentFailures({ target, markdown, targetAnchorsCache =
   return { failures, checked };
 }
 
+/** Bundled skills contain illustrative code paths, not repo-root path assertions.
+ * Check their navigable Markdown links outside fenced examples. Existing docs
+ * retain their original inline-path and example checking behavior.
+ */
+export function collectBundledSkillFailures({ target, markdown, targetAnchorsCache = new Map() }) {
+  let fence = null;
+  const prose = markdown
+    .split("\n")
+    .map((line) => {
+      const marker = line.match(/^\s*(`{3,}|~{3,})(.*)$/);
+      if (fence) {
+        if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && marker[2].trim() === "") {
+          fence = null;
+        }
+        return "";
+      }
+      if (marker) {
+        fence = marker[1];
+        return "";
+      }
+      return line;
+    })
+    .join("\n");
+  return collectDocumentFailures({ target, markdown: prose, targetAnchorsCache, checkInlinePaths: false });
+}
+
 function main() {
   let missing = 0;
   let checked = 0;
@@ -403,7 +431,10 @@ function main() {
     const absoluteTarget = path.join(repoRoot, target);
     if (!existsSync(absoluteTarget)) continue;
     const markdown = markdownForTarget(target, absoluteTarget);
-    const { failures, checked: checkedForTarget } = collectDocumentFailures({
+    const collect = target.startsWith(".claude/cloud-profile/skills/")
+      ? collectBundledSkillFailures
+      : collectDocumentFailures;
+    const { failures, checked: checkedForTarget } = collect({
       target,
       markdown,
       targetAnchorsCache,
