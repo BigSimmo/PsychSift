@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { LEAVE_ENTITLEMENTS, leaveAgreementPastEndDate } from "@/lib/admin/leave-entitlements";
 import {
   checkLeaveMessage,
   EMPTY_LEAVE_FIELDS,
@@ -31,7 +32,7 @@ describe("leave wallet cards", () => {
     ]);
   });
 
-  it("shows no entitlement figure anywhere and points to the agreement", () => {
+  it("keeps figures out of the card names, steps and messages, and points to the agreement", () => {
     for (const type of LEAVE_TYPES) {
       const words = [
         type.front,
@@ -122,5 +123,29 @@ describe("checks before Copy", () => {
     expect(checkLeaveMessage("Hi,\n\nMrs\u200BSmith needs handover.")).toBeTruthy();
     expect(checkLeaveMessage("Hi,\n\nThe 45 year old woman in bed twelve needs review.")).toBeTruthy();
     expect(checkLeaveMessage("Hi,\n\nI have an RDO and the ALS course at RPH.")).toBeNull();
+  });
+});
+
+describe("signed-off leave figures", () => {
+  it("gives every card at least one figure, each with its clause", () => {
+    for (const type of LEAVE_TYPES) {
+      const lines = LEAVE_ENTITLEMENTS[type.id].flatMap((group) => group.lines);
+      expect(lines.length, type.id).toBeGreaterThan(0);
+      for (const line of lines) {
+        expect(line.text.trim(), type.id).not.toBe("");
+        expect(line.clause, line.text).toMatch(/\d|Part 3/);
+      }
+    }
+  });
+
+  it("keeps the figures out of search, including the confidential card", () => {
+    const words = JSON.stringify(leaveWalletSearchRecords());
+    expect(words).not.toContain("39(7)");
+    expect(words).not.toContain("160 hours");
+  });
+
+  it("flags the agreement once its end date has passed", () => {
+    expect(leaveAgreementPastEndDate("2027-09-02")).toBe(false);
+    expect(leaveAgreementPastEndDate("2027-09-03")).toBe(true);
   });
 });
