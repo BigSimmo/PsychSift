@@ -928,6 +928,9 @@ function RecentRow({
   const reveal = () => removeRef.current?.offsetWidth ?? 0;
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // Pointer capture can send the click that ends a drag to the wrapper rather
+    // than the row, so the flag is reset here and only ever covers this gesture.
+    dragged.current = false;
     drag.current = { x: event.clientX, y: event.clientY, base: openRow ? -reveal() : 0, active: false };
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
