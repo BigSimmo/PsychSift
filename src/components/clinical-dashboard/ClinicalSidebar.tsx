@@ -135,7 +135,7 @@ const sidebarModeItems = [
   })),
 ];
 
-function sidebarModeItem(modeId: AppModeId) {
+export function sidebarModeItem(modeId: AppModeId) {
   return sidebarModeItems.find((item) => item.id === modeId);
 }
 
@@ -151,7 +151,7 @@ function sidebarModeItem(modeId: AppModeId) {
  * entirely, leaving the address bar on one mode and the page on another.
  * Standalone destinations (`/tools`, `/favourites`) keep ordinary link behaviour.
  */
-function selectModeFromLinkClick(
+export function selectModeFromLinkClick(
   event: MouseEvent<HTMLAnchorElement>,
   item: { id: AppModeId; href: string },
   onSelectMode: ((mode: AppModeId) => void) | undefined,
@@ -381,7 +381,7 @@ function SidebarModesTrigger({
   );
 }
 
-function SidebarModesEditorSheet({
+export function SidebarModesEditorSheet({
   open,
   onClose,
   activeMode,

@@ -36,7 +36,9 @@ import { useFavouritesAccess } from "@/components/clinical-dashboard/use-favouri
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
-import { LazyWorkSideCounts, LazyWorkSideMenu } from "@/components/work-frame/lazy-work-side-nav";
+import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { LazyTwoPaneSideMenu, LazyWorkSideCounts, LazyWorkSideMenu } from "@/components/work-frame/lazy-work-side-nav";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkRailShown, useWorkSideNav, WorkRail, workSideCurrentArea } from "@/components/work-frame/work-rail";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
 import {
@@ -508,7 +510,12 @@ function GlobalStandaloneSearchShellBody({
   // The counts reader stays mounted once the phone menu has opened on a work
   // page, so reopening the menu never fetches the feed again.
   const [workMenuOpened, setWorkMenuOpened] = useState(false);
-  if (workSideNav && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
+  // The two-pane side menu (owner pick 8 Oct 2026, behind the Live version
+  // switch) replaces both phone menus, and carries the Work side on every page.
+  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  const newWorkMode = useNewWorkMode();
+  const twoPaneCounts = twoPaneSideMenu && newWorkMode;
+  if ((workSideNav || twoPaneCounts) && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
   // The phone menu only exists below 768 px. Turning a phone to landscape past
   // that width closes it, so its backdrop never blocks the rail layout.
   if (workSideNav && workRailShown && mobileMenuOpen) setMobileMenuOpen(false);
@@ -1221,8 +1228,33 @@ function GlobalStandaloneSearchShellBody({
           initialFocus={settingsInitialFocus}
         />
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
-        <LazyWorkSideCounts active={workSideNav && (workRailShown || workMenuOpened)} />
-        {workSideNav ? (
+        <LazyWorkSideCounts
+          active={(workSideNav && workRailShown) || ((workSideNav || twoPaneCounts) && workMenuOpened)}
+        />
+        {twoPaneSideMenu ? (
+          <LazyTwoPaneSideMenu
+            open={mobileMenuOpen}
+            onOpenChange={setMobileMenuOpen}
+            identity={sidebarIdentity}
+            startSide={workSideNav ? "work" : "clinical"}
+            workAvailable={newWorkMode}
+            currentArea={workSideArea}
+            activeMode={searchMode}
+            recentQueries={recentQueries}
+            showAccountLibrary={favouritesAccessible}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onOpenSearch={openSidebarSearch}
+            onSelectMode={changeMode}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSettings={openSettingsWithDefaultFocus}
+            onOpenAccount={openAccountProfileWithDefaultFocus}
+            onSignOut={async () => {
+              clinicalAskSession.clear();
+              await auth.signOut();
+            }}
+          />
+        ) : workSideNav ? (
           <LazyWorkSideMenu
             open={mobileMenuOpen}
             onOpenChange={setMobileMenuOpen}

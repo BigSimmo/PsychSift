@@ -6,6 +6,10 @@ import { useState, type ComponentProps } from "react";
 const loadWorkSideMenu = () => import("@/components/work-frame/work-side-menu").then((module) => module.WorkSideMenu);
 const LazyMenu = dynamic(loadWorkSideMenu, { ssr: false });
 
+const loadTwoPaneSideMenu = () =>
+  import("@/components/work-frame/two-pane-side-menu").then((module) => module.TwoPaneSideMenu);
+const LazyTwoPane = dynamic(loadTwoPaneSideMenu, { ssr: false });
+
 const LazyCounts = dynamic(
   () => import("@/components/work-frame/work-side-counts-reader").then((module) => module.WorkSideCountsReader),
   { ssr: false },
@@ -24,6 +28,18 @@ export function LazyWorkSideMenu(props: ComponentProps<typeof LazyMenu>) {
   const [opened, setOpened] = useState(props.open);
   if (props.open && !opened) setOpened(true);
   return opened ? <LazyMenu {...props} /> : null;
+}
+
+/** Warms the two-pane side menu's chunk (Live version switch). */
+export function prefetchTwoPaneSideMenu() {
+  void loadTwoPaneSideMenu();
+}
+
+/** The two-pane side menu as a lazy chunk, kept mounted after its first opening like the work menu. */
+export function LazyTwoPaneSideMenu(props: ComponentProps<typeof LazyTwoPane>) {
+  const [opened, setOpened] = useState(props.open);
+  if (props.open && !opened) setOpened(true);
+  return opened ? <LazyTwoPane {...props} /> : null;
 }
 
 /** The side menu and rail's counts, read only while one of them is on screen. */
