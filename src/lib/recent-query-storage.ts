@@ -32,6 +32,34 @@ export function saveRecentQueries(ownerId: string | null, queries: string[]) {
   }
 }
 
+// Removes one question from the recent list (the side menu's swipe to remove).
+// Only this tab's signed-in reader has a key here, because sign-out clears them
+// all, so the menu need not know the owner id. Matching ignores case, the same
+// way a new question replaces an older copy of itself.
+export function removeRecentQuery(query: string) {
+  if (typeof window === "undefined") return;
+  const target = query.trim().toLowerCase();
+  if (!target) return;
+  try {
+    for (let index = 0; index < window.sessionStorage.length; index += 1) {
+      const key = window.sessionStorage.key(index);
+      if (!key?.startsWith(`${recentQueryStorageKey}:`)) continue;
+      let stored: unknown;
+      try {
+        stored = JSON.parse(window.sessionStorage.getItem(key) ?? "[]");
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(stored)) continue;
+      const kept = stored.filter((item) => typeof item !== "string" || item.trim().toLowerCase() !== target);
+      if (kept.length !== stored.length) window.sessionStorage.setItem(key, JSON.stringify(kept));
+    }
+    window.dispatchEvent(new Event(recentQueriesChangeEvent));
+  } catch {
+    // Recent queries are a convenience only.
+  }
+}
+
 // Total recent queries retained across every owner-scoped session key. Used by
 // the settings privacy controls to show how much is stored and to disable the
 // "Clear" affordance when there is nothing to remove.
