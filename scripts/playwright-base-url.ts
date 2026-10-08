@@ -7,8 +7,10 @@ const ensureScript = path.join(projectRoot, "scripts", "ensure-local-server.mjs"
 const localUrlPattern = /^http:\/\/(?:localhost|127\.0\.0\.1):\d+$/;
 const identityScript = `
 const http = require("node:http");
-const url = process.argv[1] + "/api/local-project-id";
-const request = http.get(url, { timeout: 15000 }, (response) => {
+const https = require("node:https");
+const rawUrl = process.argv[1] + "/api/local-project-id";
+const client = rawUrl.startsWith("https:") ? https : http;
+const request = client.get(rawUrl, { timeout: 15000 }, (response) => {
   let body = "";
   response.setEncoding("utf8");
   response.on("data", (chunk) => { body += chunk; });
@@ -82,13 +84,31 @@ function findExistingLocalProjectUrl() {
 }
 
 export function getPlaywrightBaseUrl({ allowEnsure = true }: { allowEnsure?: boolean } = {}) {
+  // Shared config never derives a target from ambient deployment variables.
+  // The dedicated preview runner supplies both an explicit URL and opt-in.
   const configuredBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
   if (configuredBaseUrl) {
-    if (!localUrlPattern.test(configuredBaseUrl)) {
-      throw new Error(`PLAYWRIGHT_BASE_URL must be a localhost URL, received: ${configuredBaseUrl}`);
+    let parsed: URL;
+    try {
+      parsed = new URL(configuredBaseUrl);
+    } catch {
+      throw new Error("PLAYWRIGHT_BASE_URL must be a valid origin URL.");
     }
-    verifyLocalProjectIdentity(configuredBaseUrl);
-    return configuredBaseUrl;
+    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+      throw new Error("PLAYWRIGHT_BASE_URL must contain only an origin, without credentials, path, query or fragment.");
+    }
+    const isLocal = localUrlPattern.test(parsed.origin);
+    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
+    const isPreview = process.env.ALLOW_PREVIEW_URL === "true" && parsed.protocol === "https:" && !loopback;
+    if (!isLocal && !isPreview) {
+      throw new Error(
+        "PLAYWRIGHT_BASE_URL requires a verified localhost origin, or an HTTPS preview origin with ALLOW_PREVIEW_URL=true.",
+      );
+    }
+    if (isLocal) {
+      verifyLocalProjectIdentity(parsed.origin);
+    }
+    return parsed.origin;
   }
 
   if (!allowEnsure) {

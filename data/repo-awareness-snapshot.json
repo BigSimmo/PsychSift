@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-07"
+    "committed_at": "2026-10-08"
   },
   "routes": {
     "modes": [
@@ -4302,6 +4302,11 @@
         "path": "docs/redesign/07-token-adoption-audit.md",
         "section": "redesign",
         "catalogued": true
+      },
+      {
+        "path": "docs/live-browser-testing.md",
+        "section": "root",
+        "catalogued": false
       },
       {
         "path": "docs/redesign/09-page-polish-plan.md",
