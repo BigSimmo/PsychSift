@@ -11,6 +11,7 @@ import type { RenewalRow } from "@/lib/my-day/figures";
 import { mergeMyDayItems, myDaySeverityForDue } from "@/lib/my-day/merge";
 import { DEMO_CME_ROUTINES } from "@/lib/cme/demo-year";
 import type { MyDayItem } from "@/lib/my-day/model";
+import type { MyDayNeedsYouItem } from "@/lib/my-day/needs-you-feed";
 import { withMyDayReturn } from "@/lib/my-day/return-link";
 import { addDaysToDate, formatPerthDay } from "@/lib/roster/shifts/perth-time";
 import { demoMyShifts } from "@/lib/roster/team/demo-team-core";
@@ -247,6 +248,7 @@ export function MyDaySampleDashboard({
   today,
   page,
   view,
+  needsYou,
   onShowAll,
   renderFullList,
 }: {
@@ -254,16 +256,22 @@ export function MyDaySampleDashboard({
   readonly today: string;
   readonly page: MyDayPageId;
   readonly view: "dashboard" | "all";
+  /**
+   * Needs you's list, from the notification feed: this example day's items in
+   * areas with nothing real, beside any real ones, the same list the bell shows.
+   */
+  readonly needsYou: readonly MyDayNeedsYouItem[];
   readonly onShowAll: () => void;
-  readonly renderFullList: (items: readonly MyDayItem[], checked: readonly string[]) => ReactNode;
+  readonly renderFullList: (items: readonly MyDayNeedsYouItem[], checked: readonly string[]) => ReactNode;
 }) {
   const sample = useMemo(() => buildMyDaySample(today, now), [today, now]);
-  if (view === "all") return <>{renderFullList(sample.items, sample.checked)}</>;
+  if (view === "all") return <>{renderFullList(needsYou, sample.checked)}</>;
   return (
     <MyDayDashboard
       now={now}
       today={today}
       items={sample.items}
+      needsYou={needsYou}
       renewals={sample.renewals}
       helpItems={NO_HELP}
       sources={sample.sources}

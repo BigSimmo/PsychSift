@@ -35,6 +35,7 @@ import { MyDayCustomiseSheet, MyDayQuickAddSheet } from "@/components/my-day/my-
 import { NeedsYouRow } from "@/components/my-day/my-day-today-cards";
 import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
+import { useNotificationFeed } from "@/components/needs-you/use-notification-feed";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { cn } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ import { NewWorkModeOnly, useNewWorkMode } from "@/components/work-mode-launch/w
 import { WorkSetupPromptCard } from "@/components/work-setup/work-setup-prompt-card";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { reportAreaData, useExampleData } from "@/lib/example-data/store";
-import { isSnoozed, parseMyDayPage, snoozeUntil, type MyDaySnoozes } from "@/lib/my-day/dashboard";
+import { isSnoozed, parseMyDayPage, snoozeUntil } from "@/lib/my-day/dashboard";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
 import {
@@ -51,9 +52,9 @@ import {
   myDayNeedsSignIn,
   myDaySourceModes,
   type MyDayItem,
-  type MyDaySourceMode,
   type MyDayState,
 } from "@/lib/my-day/model";
+import { myDayNeedsYouFromFeed, type MyDayNeedsYouItem, type MyDayNeedsYouMode } from "@/lib/my-day/needs-you-feed";
 import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
 import { WORK_SIDE_NOTIFICATIONS_HREF } from "@/lib/work-frame/side-nav";
 import { addDaysToDate, formatPerthDay, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -73,17 +74,17 @@ const AccountSetupDialog = dynamic(
   () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
   { ssr: false },
 );
+function MyDaySampleLoading() {
+  return (
+    <div className="grid gap-3" data-testid="my-day-sample-loading" aria-hidden="true">
+      <ModeModuleSkeleton rows={2} twoLine eyebrow />
+      <ModeModuleSkeleton rows={3} twoLine eyebrow />
+    </div>
+  );
+}
 const MyDaySampleDashboard = dynamic(
   () => import("@/components/my-day/my-day-sample").then((module) => module.MyDaySampleDashboard),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="grid gap-3" data-testid="my-day-sample-loading" aria-hidden="true">
-        <ModeModuleSkeleton rows={2} twoLine eyebrow />
-        <ModeModuleSkeleton rows={3} twoLine eyebrow />
-      </div>
-    ),
-  },
+  { ssr: false, loading: MyDaySampleLoading },
 );
 
 /** The work page column: the frame's 12px gutters and 9px rhythm, wider on a computer for Today's two columns. */
@@ -134,8 +135,15 @@ const GROUP_TITLE: Readonly<Record<DueGroup, string>> = {
   later: "Later",
 };
 
+/** Needs you's areas in chip order: My Day's five, then the reader's own reminders. */
+const NEEDS_YOU_MODES: readonly MyDayNeedsYouMode[] = [...myDaySourceModes, "my-day"];
+
+function needsYouModeLabel(mode: MyDayNeedsYouMode): string {
+  return mode === "my-day" ? "Reminders" : myDayModeLabel(mode);
+}
+
 /** Overdue, else due today, else due within seven days, else later; no due date goes to Later. */
-function dueGroup(item: MyDayItem, today: string): DueGroup {
+function dueGroup(item: MyDayNeedsYouItem, today: string): DueGroup {
   if (item.severity === "overdue") return "overdue";
   const date = duePerthDate(item.due);
   if (!date) return "later";
@@ -158,9 +166,9 @@ function MyDayFullList({
   missing,
   onBack,
   onRetry,
-  sample = false,
 }: {
-  readonly items: readonly MyDayItem[];
+  /** The notification feed's list, so "All N" is the bell's list. */
+  readonly items: readonly MyDayNeedsYouItem[];
   readonly today: string;
   readonly now: Date;
   readonly checked: readonly string[];
@@ -169,36 +177,29 @@ function MyDayFullList({
   readonly missing: readonly string[];
   readonly onBack: () => void;
   readonly onRetry: () => void;
-  /** The signed-out sample: Later lasts for this page only. */
-  readonly sample?: boolean;
 }) {
   const backRef = useRef<HTMLButtonElement>(null);
-  const stored = useMyDayDeviceState(today);
-  const [sampleSnoozes, setSampleSnoozes] = useState<MyDaySnoozes>({});
-  const snoozes = sample ? sampleSnoozes : stored.snoozes;
-  const snooze = (id: string, until: string) =>
-    sample ? setSampleSnoozes((current) => ({ ...current, [id]: until })) : stored.snooze(id, until);
-  const unsnooze = (id: string) =>
-    sample
-      ? setSampleSnoozes((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== id)))
-      : stored.unsnooze(id);
+  // The feed hides what Later moved by the snoozes on this device, so the list uses the same ones.
+  // Examples and reminders cannot be moved, so nothing invented is ever stored.
+  const { snoozes, snooze, unsnooze } = useMyDayDeviceState(today);
   const toast = useWorkUndoToast();
-  const [area, setArea] = useState<MyDaySourceMode | "all">("all");
+  const [area, setArea] = useState<MyDayNeedsYouMode | "all">("all");
   // Opened from the dashboard (not a direct load): put focus, and so the view, at the top of the list.
   useEffect(() => {
     if (fullListPushed) backRef.current?.focus();
   }, []);
   useModeBandHeading({ eyebrow: "Overdue first, then by deadline", title: "Needs you" });
 
-  const areas = myDaySourceModes
-    .map((mode) => ({ mode, count: items.filter((item) => item.mode === mode).length }))
-    .filter((entry) => entry.count > 0);
+  const areas = NEEDS_YOU_MODES.map((mode) => ({
+    mode,
+    count: items.filter((item) => item.mode === mode).length,
+  })).filter((entry) => entry.count > 0);
   const shown = area === "all" ? items : items.filter((item) => item.mode === area);
   const groups = (["overdue", "today", "week", "later"] as const)
     .map((key) => ({ key, items: shown.filter((item) => dueGroup(item, today) === key) }))
     .filter((group) => group.items.length > 0);
   const tomorrow = snoozeUntil(now);
-  const later = (item: MyDayItem) => {
+  const later = (item: MyDayNeedsYouItem) => {
     snooze(item.id, tomorrow);
     toast?.(`${item.title} moved to tomorrow`, () => unsnooze(item.id));
   };
@@ -254,7 +255,7 @@ function MyDayFullList({
                     : "border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] text-[color:var(--work-ink)]",
                 )}
               >
-                {entry.mode === "all" ? "All" : myDayModeLabel(entry.mode)}
+                {entry.mode === "all" ? "All" : needsYouModeLabel(entry.mode)}
                 <span className="font-semibold nums">{entry.count}</span>
               </button>
             ))}
@@ -275,7 +276,7 @@ function MyDayFullList({
               />
               <QuietList className={quietCard}>
                 {group.items.map((item) =>
-                  isSnoozed(snoozes, item.id, today) ? (
+                  item.snoozable !== false && isSnoozed(snoozes, item.id, today) ? (
                     <li
                       key={item.id}
                       data-testid={`my-day-item-${item.id}`}
@@ -450,6 +451,16 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   // the sign-in state below). The frame's banner says it is made up.
   const sampleView = useExampleData("day").active;
   const ready = enabled && state.status === "ready" && !sampleView;
+  // Needs you is the notification feed's list (the bell's, the Notifications page's and the side menu's),
+  // read from this page's own sources and in the same work-zone day. Null until the feed settles.
+  const feed = useNotificationFeed({ clock: now, read: state });
+  const needsYou = useMemo(
+    () =>
+      feed.status === "ready" || feed.status === "error"
+        ? myDayNeedsYouFromFeed(feed.summary, feed.now, feed.zone)
+        : null,
+    [feed.status, feed.summary, feed.now, feed.zone],
+  );
   const [signInOpen, setSignInOpen] = useState(false);
   // Tells auto mode whether this day has real items, so examples never cover them.
   const realItems = enabled && state.status === "ready" ? myDayShownItems(state, false).length : null;
@@ -554,26 +565,30 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
 
         {sampleView ? (
           <div className="grid min-w-0 gap-2.5" data-testid="my-day-sample">
-            <MyDaySampleDashboard
-              now={now}
-              today={today}
-              page={page}
-              view={view}
-              onShowAll={showAll}
-              renderFullList={(shown, shownChecked) => (
-                <MyDayFullList
-                  items={shown}
-                  today={today}
-                  now={now}
-                  checked={shownChecked}
-                  checkedAt={null}
-                  missing={[]}
-                  onBack={closeFullList}
-                  onRetry={state.retry}
-                  sample
-                />
-              )}
-            />
+            {needsYou ? (
+              <MyDaySampleDashboard
+                now={now}
+                today={today}
+                page={page}
+                view={view}
+                needsYou={needsYou}
+                onShowAll={showAll}
+                renderFullList={(shown, shownChecked) => (
+                  <MyDayFullList
+                    items={shown}
+                    today={today}
+                    now={now}
+                    checked={shownChecked}
+                    checkedAt={null}
+                    missing={[]}
+                    onBack={closeFullList}
+                    onRetry={state.retry}
+                  />
+                )}
+              />
+            ) : (
+              <MyDaySampleLoading />
+            )}
           </div>
         ) : null}
 
@@ -624,7 +639,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             ) : null}
             {view === "all" ? (
               <MyDayFullList
-                items={items}
+                items={needsYou ?? []}
                 today={today}
                 now={now}
                 checked={checked}
@@ -640,6 +655,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 now={now}
                 today={today}
                 items={items}
+                needsYou={needsYou ?? []}
                 renewals={renewals}
                 helpItems={helpItems}
                 checked={checked}
