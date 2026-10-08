@@ -167,6 +167,12 @@ export const WORK_SETUP_PROGRESS_STORAGE_KEY = "psychsift:work-setup:progress-v1
  */
 export const WORK_TAB_PICKS_STORAGE_KEY = "psychsift:work:tab-picks-v1";
 /**
+ * localStorage — whether this device has matched its work choices with the account copy
+ * (`src/lib/work-sync/`), and which sections hold a change the account does not have yet. Until
+ * the first match a sign-in merges the two; after it the account copy wins, except for those sections.
+ */
+export const WORK_ACCOUNT_SYNC_MARKER_KEY = "psychsift:work:account-sync-v1";
+/**
  * localStorage — Open shifts Browse: the filter choices the doctor kept (no clashes, lower levels,
  * start times). Choices only, never a site, a shift or a name. Its key uses a dot, not the
  * `psychsift:` prefix, so the sweep would miss it: it is named here.
@@ -266,6 +272,7 @@ export function clearAccountScopedBrowserStorage(): void {
   }
   removeQuietly(() => window.localStorage, WORK_SETUP_PROGRESS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, WORK_TAB_PICKS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, WORK_ACCOUNT_SYNC_MARKER_KEY);
   removeQuietly(() => window.localStorage, OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY);
   stripAccountScopedPreferences();
   // The catch-all: every other `psychsift:` key, the clinical drafts, IndexedDB,

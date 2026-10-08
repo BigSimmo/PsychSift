@@ -89,7 +89,12 @@ export type WorkFrameGate =
    */
   | "new-work-mode"
   /** Readers on the classic work mode: pages the new work mode has replaced. */
-  | "classic-work-mode";
+  | "classic-work-mode"
+  /**
+   * Readers who are not signed in. For an example-only area whose real records a signed-in
+   * doctor keeps elsewhere (Assessments, kept in CLA: owner decision 7 Oct 2026).
+   */
+  | "signed-out";
 
 /** Actions a page can register for the More sheet to run. */
 export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
@@ -606,7 +611,8 @@ const teaching: WorkArea = {
     {
       label: "Supervise and organise",
       items: [
-        // These two open the Assessments sub-area, which has its own frame.
+        // Assessments opens its own sub-area, which has its own frame. Its records are made up, and a
+        // signed-in doctor keeps the real ones in CLA, so only signed-out readers are offered it.
         {
           id: "assessments",
           label: "Assessments",
@@ -615,6 +621,7 @@ const teaching: WorkArea = {
           href: "/teaching/assessments",
           paths: [],
           opens: "assess",
+          gate: "signed-out",
         },
         {
           id: "supervision",

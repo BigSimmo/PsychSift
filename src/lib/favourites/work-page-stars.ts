@@ -4,15 +4,18 @@ import { useSyncExternalStore } from "react";
 
 import { subscribeAccountTransition, WORK_PAGE_FAVOURITES_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import { WORK_AREAS, workAreaItems, type WorkArea, type WorkAreaId, type WorkFrameItem } from "@/lib/work-frame/areas";
+import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 
 /**
  * Work pages saved to Favourites (owner request 7 Oct 2026: one saved list,
  * shown on the Favourites page and on My Day).
  *
  * Clinical favourites (services, forms, differentials, therapies) stay on the
- * account. Work pages have no account table, and this round allows no
- * migration, so they are kept on this device under one account-scoped key that
- * the auth provider clears at sign-out (`account-scoped-browser-state.ts`).
+ * account. Work pages are read and written on this device under one
+ * account-scoped key that the auth provider clears at sign-out
+ * (`account-scoped-browser-state.ts`), and `@/lib/work-sync` copies that key to
+ * the account and back, so the list follows the doctor to every device (owner
+ * decision 7 Oct 2026, no migration).
  *
  * An entry stores only ids and times. The title, link and icon come from the
  * work frame's own navigation (`WORK_AREAS`) every time they are read, so a
@@ -89,6 +92,8 @@ function parse(raw: string | null): readonly WorkPageStar[] {
 
 function read(): readonly WorkPageStar[] {
   if (typeof window === "undefined") return EMPTY;
+  // The account copy can rewrite the key at any time; the listener is what drops this cache then.
+  attachStorageListener();
   if (cache) return cache;
   let raw: string | null = null;
   try {
@@ -121,6 +126,7 @@ function write(next: readonly WorkPageStar[]): boolean {
     saved = false;
   }
   notify();
+  if (saved) announceWorkSyncChange(WORK_PAGE_FAVOURITES_STORAGE_KEY);
   return saved;
 }
 
