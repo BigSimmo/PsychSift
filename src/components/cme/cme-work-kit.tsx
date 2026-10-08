@@ -32,7 +32,7 @@ export function cmeClock(at: Date): string {
 
 /**
  * The band's small line above the title, saying where the records stand:
- * "Records loaded 12:40", "Sample record", or the reason none show. Never
+ * "Records loaded 12:40", "Example record", or the reason none show. Never
  * "just now", and never a time when nothing loaded.
  */
 export function cmeFreshnessEyebrow({
@@ -44,7 +44,7 @@ export function cmeFreshnessEyebrow({
   readonly loadedAt?: Date | null;
   readonly failed?: string | null;
 }): string {
-  if (demoMode) return "Sample record";
+  if (demoMode) return "Example record";
   if (failed) return failed;
   if (loadedAt) return `Records loaded ${cmeClock(loadedAt)}`;
   return "Not loaded";

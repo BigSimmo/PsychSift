@@ -58,7 +58,7 @@ export function TeachingDepthPage<T>({
       <T5Page>
         <h1 className="sr-only">{title}</h1>
         {demoMode && !exampleShown ? (
-          <T5Note tone="notice">Made-up demo. Changes stay on this page and are not saved.</T5Note>
+          <T5Note tone="notice">Example data. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {body}
       </T5Page>

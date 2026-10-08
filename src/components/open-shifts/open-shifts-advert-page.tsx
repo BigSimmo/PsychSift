@@ -433,7 +433,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           note={
             state.sample === "example"
               ? "This is an example shift, so it can't be requested. Turn example data off to see your own teams."
-              : "This is a made-up example: team rosters aren't open to real staff yet."
+              : "This is an example shift: team rosters aren't open to real staff yet."
           }
         >
           <Button variant="primary" block disabled onClick={() => undefined}>

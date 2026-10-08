@@ -343,7 +343,7 @@ export function AssessmentsTraineePage({
         <WorkBody>
           <WorkEmpty
             icon={UserRound}
-            title="No doctor with this link in the sample"
+            title="No doctor with this link in the example data"
             body="Open a request from your inbox to see that doctor."
             action={<WorkButton href="/teaching/assessments?view=inbox&as=supervisor">Open the inbox</WorkButton>}
           />
@@ -857,7 +857,8 @@ export function AssessmentsTraineePage({
         {statusItem ? (
           <div className="grid gap-3">
             <p className="text-sm text-[color:var(--text)]">
-              This form is not built into the sample, so it can be moved to Later or passed on, not filled in here.
+              This form is not built into the example data, so it can be moved to Later or passed on, not filled in
+              here.
             </p>
             <div className={ACTIONS}>
               <WorkButton variant="secondary" icon={Clock} onClick={() => passOn(statusItem, "not_this_week", null)}>

@@ -442,7 +442,7 @@ export function HeroCard({
   readonly endOfShift?: HeroEndOfShift | null;
   /** Offline: "as of 02:41" joins the eyebrow, so the countdown is not taken as live. */
   readonly offlineAt?: string | null;
-  /** The signed-out sample: a "Sample" chip in the corner. */
+  /** The example day: an "Example" chip in the corner. */
   readonly sample?: boolean;
   readonly now: Date;
   readonly onHide?: () => void;
@@ -589,7 +589,7 @@ export function HeroCard({
           )}
           data-testid="my-day-hero-sample"
         >
-          Sample
+          Example
         </span>
       ) : null}
       {top}

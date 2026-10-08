@@ -441,7 +441,9 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const helpItems = adminReal ? (state.helpItems ?? NO_HELP) : NO_HELP;
   const demoNote = allowSample && state.demoMode;
   // Roster's "unavailable" is its team data (swaps); the others are whole modes not offered yet.
-  const notYet = [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
+  // In a demo build "unavailable" only means the example has nothing for My Day to read there:
+  // Roster's Swaps tab and Teaching both show examples, so nothing is called unavailable.
+  const notYet = demoNote ? [] : [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
   // The example data switch alone decides the sample day. Auto mode already
   // shows it to a signed-out visitor, and an explicit off is honoured (they get
   // the sign-in state below). The frame's banner says it is made up.
@@ -649,7 +651,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 className="m-0 max-w-reading px-1 text-xs text-[color:var(--text-muted)]"
                 data-testid="my-day-small-print"
               >
-                {demoNote ? <span data-testid="my-day-demo-notice">Demo data: invented examples.</span> : null}
+                {demoNote ? <span data-testid="my-day-demo-notice">Example data: made up to look around.</span> : null}
                 {demoNote && notYet.length > 0 ? " " : null}
                 {notYet.length > 0 ? (
                   <span data-testid="my-day-unavailable-notice">

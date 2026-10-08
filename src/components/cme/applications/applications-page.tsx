@@ -201,7 +201,7 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
       {store.mode !== "device" ? (
         <QuietNote icon={Lock} testId="applications-mode-note">
           {store.mode === "sample"
-            ? "Sample season with made-up names and dates. Try any control, nothing is kept."
+            ? "Example season with made-up names and dates. Try any control, nothing is kept."
             : store.mode === "memory"
               ? "This browser is not keeping changes. They last until you leave the page."
               : "This is marked as a shared device, so nothing here is kept after you leave the page. Use your own phone."}

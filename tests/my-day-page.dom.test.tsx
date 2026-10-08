@@ -273,15 +273,17 @@ describe("MyDayPage", () => {
   });
 
   // Demo data is shown only in a local demo build with no sign-in ("unconfigured").
-  it("says when the data is demo data, in a local demo build", () => {
+  it("says when the data is example data, in a local demo build", () => {
     auth.status = "unconfigured";
     setState({ demoMode: true, items: [item("a", "soon")] });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-demo-notice").textContent).toBe("Demo data: invented examples.");
+    expect(screen.getByTestId("my-day-demo-notice").textContent).toBe("Example data: made up to look around.");
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
   });
 
-  it("folds the demo note and every 'not available yet' into one line", () => {
+  // Review 2: Roster's Swaps tab and Teaching both show examples in a demo build,
+  // so "aren't available yet" there was untrue.
+  it("never calls Roster swaps or Teaching unavailable in a demo build", () => {
     auth.status = "unconfigured";
     setState({
       demoMode: true,
@@ -291,9 +293,8 @@ describe("MyDayPage", () => {
       ),
     });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-small-print").textContent).toBe(
-      "Demo data: invented examples. Roster swaps and Teaching aren't available yet.",
-    );
+    expect(screen.getByTestId("my-day-small-print").textContent).toBe("Example data: made up to look around.");
+    expect(screen.queryByTestId("my-day-unavailable-notice")).toBeNull();
     expect(screen.queryByTestId("my-day-unavailable-other-notice")).toBeNull();
   });
 

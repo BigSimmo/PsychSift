@@ -59,7 +59,7 @@ export function TeachingContextBar({
       )}
       {demoTag ? (
         <span className={cn("work-tag shrink-0")} data-tone="neutral">
-          Demo · made-up people
+          Example · made-up people
         </span>
       ) : null}
     </div>
