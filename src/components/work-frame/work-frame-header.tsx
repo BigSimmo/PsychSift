@@ -29,6 +29,7 @@ import {
   workFrameActionHandler,
 } from "@/components/work-frame/work-frame-store";
 import { useWorkTabPicks } from "@/components/work-frame/work-tab-picks";
+import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
 import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";
 import type { AppModeId } from "@/lib/app-modes";
@@ -67,6 +68,7 @@ function useGateOpen(): (gate: WorkFrameGate | undefined) => boolean {
   const poster = useOpenShiftsIsPoster();
   const editor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
   const newWorkMode = useNewWorkMode();
+  const signedIn = useSignedIn();
   return useCallback(
     (gate) => {
       if (!gate) return true;
@@ -74,9 +76,10 @@ function useGateOpen(): (gate: WorkFrameGate | undefined) => boolean {
       if (gate === "open-shifts-poster") return poster === true;
       if (gate === "new-work-mode") return newWorkMode;
       if (gate === "classic-work-mode") return !newWorkMode;
+      if (gate === "signed-out") return !signedIn;
       return editor;
     },
-    [roles, poster, editor, newWorkMode],
+    [roles, poster, editor, newWorkMode, signedIn],
   );
 }
 
