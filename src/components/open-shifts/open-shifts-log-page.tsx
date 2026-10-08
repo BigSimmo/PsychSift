@@ -79,11 +79,11 @@ export function OpenShiftsLogPage() {
     if (parsed.end) setEnd(parsed.end);
     setReadNote(
       parsed.date && parsed.start
-        ? "Date and times filled in below; check each field."
+        ? "Date and times filled in below. Check each field."
         : parsed.date
-          ? "Found the date; set the times yourself."
+          ? "Found the date. Set the times yourself."
           : parsed.start
-            ? "Found the times; set the date yourself."
+            ? "Found the times. Set the date yourself."
             : "Couldn't find a date or time in the message. Fill them in below.",
     );
   }

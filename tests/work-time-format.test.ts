@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatZonedDay,
+  formatZonedLongDay,
   formatZonedRange,
   zoneOffsetMinutes,
   zoneShort,
@@ -77,6 +78,16 @@ describe("display helpers", () => {
   it("formats a day and a shift range", () => {
     expect(formatZonedDay("2026-10-07")).toBe("Wed 7 Oct");
     expect(formatZonedRange("2026-10-07T00:00:00Z", "2026-10-07T08:30:00Z", "Australia/Perth")).toBe("08:00 to 16:30");
+  });
+
+  it("writes the house date style: long for headers, short for rows, the year only when it differs", () => {
+    expect(formatZonedLongDay("2026-10-09")).toBe("Friday 9 October");
+    expect(formatZonedLongDay("2026-10-09", "2026-10-08")).toBe("Friday 9 October");
+    expect(formatZonedLongDay("2027-01-01", "2026-12-31")).toBe("Friday 1 January 2027");
+    expect(formatZonedDay("2026-10-09", "2026-10-08")).toBe("Fri 9 Oct");
+    expect(formatZonedDay("2025-12-31", "2026-01-01")).toBe("Wed 31 Dec 2025");
+    expect(formatZonedDay("2026-09-09")).toBe("Wed 9 Sep");
+    expect(formatZonedDay("not a date")).toBe("not a date");
   });
 
   it("names the zone, with daylight time in summer", () => {

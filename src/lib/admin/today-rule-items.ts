@@ -25,7 +25,7 @@ export function mhaTimerTodayItems(result: MhaTimersResult): TodayItem[] {
             id: `on-call:mha-timer:${item.timerId}:${item.entry.id}${item.occurrence > 1 ? `:${item.occurrence}` : ""}`,
             mode: "on-call",
             title: `Form ${item.entry.formCodes.join(" / ")}: ${item.entry.trigger}`,
-            detail: `${item.expired ? "Time limit passed" : "Time limit"} ${formatPerthDateTime(item.deadline)}. ${item.repeatsEveryHours === null ? "" : `Repeats every ${item.repeatsEveryHours} hours while the order is in force. `}Section ${item.entry.section}; the Act, not this reminder, decides.`,
+            detail: `${item.expired ? "Time limit passed" : "Time limit"} ${formatPerthDateTime(item.deadline)}. ${item.repeatsEveryHours === null ? "" : `Repeats every ${item.repeatsEveryHours} hours while the order is in force. `}Section ${item.entry.section}. The Act, not this reminder, decides.`,
             due: item.deadline.toISOString(),
             severity: item.expired ? "overdue" : "soon",
             href: "/on-call",

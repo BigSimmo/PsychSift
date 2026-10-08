@@ -568,8 +568,8 @@ export function ServicePage({
       {error ? <InlineNotice tone="danger">{error}</InlineNotice> : null}
       {demoMode ? (
         <InlineNotice tone="neutral">
-          Synthetic demonstration only. The service, site, members, contacts and orientation items below are fictional;
-          actions do not write or call a provider.
+          Synthetic demonstration only. The service, site, members, contacts and orientation items below are fictional.
+          Actions do not write or call a provider.
         </InlineNotice>
       ) : null}
 

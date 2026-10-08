@@ -195,7 +195,7 @@ export const ADMIN_REQUIREMENTS_CATALOGUE: readonly AdminRequirementCatalogueIte
     sourceUrl:
       "https://www.wacountry.health.wa.gov.au/~/media/WACHS/Documents/About-us/Policies/Resuscitation-Education-and-Competency-Assessment-Policy.pdf",
     updated: CHECKED,
-    rule: "Under WACHS policy, junior medical staff must demonstrate BLS competence annually (assessed with ALS); senior medical staff resuscitation training is set locally by the site's Director of Medical Services.",
+    rule: "Under WACHS policy, junior medical staff must demonstrate BLS competence annually (assessed with ALS). Senior medical staff resuscitation training is set locally by the site's Director of Medical Services.",
   },
   {
     id: "als-course-certification",
@@ -249,7 +249,7 @@ export const ADMIN_REQUIREMENTS_CATALOGUE: readonly AdminRequirementCatalogueIte
       "https://www.health.wa.gov.au/Careers/International-applicants/International-medical-graduates/Australian-visa-requirements",
     updated: CHECKED,
     whatIsUnconfirmed:
-      "No specific visa subclass, how long a visa lasts, or renewal detail is stated; visa rules sit with the Department of Home Affairs, which this review did not look at directly.",
+      "No specific visa subclass, how long a visa lasts, or renewal detail is stated. Visa rules sit with the Department of Home Affairs, which this review did not look at directly.",
   },
   {
     id: "code-of-conduct",

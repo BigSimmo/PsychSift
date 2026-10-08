@@ -25,7 +25,6 @@ import { cn } from "@/components/ui-primitives";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { buildAdminHelpItems } from "@/lib/admin/help-items";
-import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { renewalsShowCounts } from "@/lib/admin/renewals-filters";
 import { needsSetup } from "@/lib/admin/setup";
 import { selectNewJobProgress } from "@/lib/admin/new-job-progress";
@@ -39,7 +38,7 @@ import { useExampleData } from "@/lib/example-data/store";
 import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
-import { zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
+import { formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
@@ -125,7 +124,7 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   const load = adminLoadState(state);
   const bandShown = useModeBandShown();
   const greeting = greetingFor(now, zone);
-  const dateEcho = formatDateEcho(today);
+  const dateEcho = formatZonedLongDay(today);
   useModeBandHeading({ eyebrow: dateEcho, title: greeting });
 
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);

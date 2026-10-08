@@ -160,7 +160,7 @@ export function OpenShiftsPostPage() {
           <Field
             label="Kind of shift"
             htmlFor={`${id}-kind`}
-            hint="Sets the usual times and code; change them below if needed."
+            hint="Sets the usual times and code. Change them below if needed."
           >
             <select
               id={`${id}-kind`}
