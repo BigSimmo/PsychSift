@@ -1,6 +1,6 @@
 "use client";
 
-import { History, LogIn, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
+import { History, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -35,7 +35,7 @@ import { MyDayCustomiseSheet, MyDayQuickAddSheet } from "@/components/my-day/my-
 import { NeedsYouRow } from "@/components/my-day/my-day-today-cards";
 import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { cn } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
@@ -566,15 +566,11 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
 
         {myDayNeedsSignIn(authStatus) && !sampleView ? (
           <div className="grid gap-3" data-testid="my-day-signed-out">
-            <EmptyState
-              icon={LogIn}
+            <WorkStateNotice
+              kind="signed-out"
               title="Sign in to see your day"
               body="My Day gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared."
-              actions={
-                <Button variant="primary" onClick={() => setSignInOpen(true)}>
-                  Sign in
-                </Button>
-              }
+              onSignIn={() => setSignInOpen(true)}
             />
             {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
           </div>

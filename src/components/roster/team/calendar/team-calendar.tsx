@@ -11,6 +11,7 @@ import type { SharedManageReload } from "@/components/roster/manage/roster-appro
 import { SwapFlowSheet } from "@/components/roster/swaps/swap-flow-sheet";
 import { postRosterAction, useRosterRead } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
+import { WorkStateLoading } from "@/components/mode-kit/work-state";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { monthKeyOf } from "@/lib/calendar/month-grid";
 import { SHIFT_KIND_LABEL, SHIFT_KINDS, SHIFT_LETTER } from "@/lib/roster/shift-kind";
@@ -298,7 +299,7 @@ export function TeamCalendar({
         <p className="text-sm text-[color:var(--text-muted)]">Manager tools aren&apos;t available right now.</p>
       ) : null}
       {read.status === "loading" ? (
-        <p role="status">Loading the team roster…</p>
+        <WorkStateLoading label="Loading the team roster…" />
       ) : read.status !== "ready" ? (
         <div role="alert">
           <p>{read.message}</p>

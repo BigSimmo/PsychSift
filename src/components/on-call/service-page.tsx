@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { TextField } from "@/components/ui/text-field";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import {
@@ -503,15 +504,12 @@ export function ServicePage({
     return (
       <InformationPageShell testId="service-page-signed-out" width="narrow">
         <h1 className="sr-only">Service handbook</h1>
-        <OnCallEmptyState
+        <WorkStateNotice
+          kind="signed-out"
           icon={Building2}
           title="Sign in to open a service handbook"
           body="Memberships, local service information and orientation completion are private to your account."
-          actions={
-            <Button variant="primary" onClick={() => setAccountOpen(true)}>
-              Sign in
-            </Button>
-          }
+          onSignIn={() => setAccountOpen(true)}
         />
         {accountMounted ? <AccountSetupDialog open={accountOpen} onClose={() => setAccountOpen(false)} /> : null}
         <OnCallCrisisLines />

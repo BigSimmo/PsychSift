@@ -307,7 +307,7 @@ function useCues(shifts: readonly OnCallShift[], rulesByTeam: Parameters<typeof 
   );
 }
 
-/** Shown while the roster loads: the page's shape in grey, and one plain line. */
+/** Shown while the roster loads: the page's shape in grey, with the line for screen readers only. */
 function ShiftsLoading() {
   return (
     <div className="grid gap-3" data-testid="roster-shifts-loading">
@@ -316,7 +316,7 @@ function ShiftsLoading() {
         <span className="h-3.5 w-4/5 rounded-full bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]" />
         <span className="h-3.5 w-2/5 rounded-full bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]" />
       </div>
-      <p role="status" className="mx-1 text-xs text-[color:var(--text-muted)]">
+      <p role="status" className="sr-only">
         Loading your roster…
       </p>
       <ModeModuleSkeleton rows={5} twoLine />

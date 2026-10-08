@@ -7,6 +7,7 @@ import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { RosterSentBar, type SentReceipt } from "@/components/roster/requests/roster-sent-bar";
 import { kindOf, shiftTimes, useRosterNow } from "@/components/roster/roster-format";
@@ -20,7 +21,6 @@ import {
   RosterNote,
   RosterRow,
   RosterSectionHead,
-  rosterOutlineButton,
 } from "@/components/roster/roster-list";
 import { SwapAnswerCard } from "@/components/roster/swaps/swap-answer-card";
 import { SwapProgressLine } from "@/components/roster/swaps/swap-progress-line";
@@ -65,16 +65,7 @@ const timeRange = (item: { startsAt: string; endsAt: string }) => {
 const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
 
 function TryAgainNote({ children, onRetry }: { children: ReactNode; onRetry: () => void }) {
-  return (
-    <div className="grid gap-2">
-      <RosterNote icon={Info} role="alert">
-        <p>{children}</p>
-      </RosterNote>
-      <button type="button" className={cn(rosterOutlineButton, "justify-self-start px-4")} onClick={onRetry}>
-        Try again
-      </button>
-    </div>
-  );
+  return <WorkStateNotice kind="error" title={children} onRetry={onRetry} />;
 }
 
 function EmptyRow({ children }: { children: string }) {
@@ -408,11 +399,7 @@ export function RosterSwapsPage() {
             <p>Choose a team to see its swaps.</p>
           </RosterNote>
         ) : null}
-        {teams.status === "loading" ? (
-          <p role="status" className="mx-1 text-sm text-[color:var(--text-muted)]">
-            Loading your teams…
-          </p>
-        ) : null}
+        {teams.status === "loading" ? <WorkStateLoading label="Loading your teams…" rows={2} /> : null}
         {teams.status === "signed-out" ? (
           <RosterSignInNotice testId="roster-swaps-signed-out">Sign in to see your swaps.</RosterSignInNotice>
         ) : null}

@@ -1883,6 +1883,12 @@ html:has(.work-dock) {
   color: var(--mode-identity);
 }
 
+/* A failed read or no connection: the same badge in amber. */
+.work-empty__badge[data-tone="amber"] {
+  background: var(--warning-bg, var(--dash-amber-tint));
+  color: var(--warning-text);
+}
+
 .work-empty__badge > svg {
   width: 1.3125rem;
   height: 1.3125rem;

@@ -1,6 +1,6 @@
 "use client";
 
-import { LogIn, Phone, Plus } from "lucide-react";
+import { Phone, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
@@ -20,7 +20,8 @@ import { TodayStarred } from "@/components/admin/today/today-starred";
 import { PageTitleUnderBand, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { todayStateCopy } from "@/components/mode-kit/today/today-copy";
-import { WorkButton, WorkCard, WorkDock, WorkEmpty, WorkIconCircle } from "@/components/mode-kit/work";
+import { WorkButton, WorkCard, WorkDock, WorkIconCircle } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { cn } from "@/components/ui-primitives";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
@@ -185,18 +186,14 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
         />
       ) : load === "signed-out" ? (
         <>
-          <WorkCard testId="today-state-signed-out">
-            <WorkEmpty
-              icon={LogIn}
-              title={signedOutCopy.title}
-              body={signedOutCopy.body}
-              action={
-                <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)}>
-                  {signedOutCopy.action}
-                </WorkButton>
-              }
-            />
-          </WorkCard>
+          <WorkStateNotice
+            kind="signed-out"
+            title={signedOutCopy.title}
+            body={signedOutCopy.body}
+            onSignIn={() => setSignInOpen(true)}
+            signInLabel={signedOutCopy.action}
+            testId="today-state-signed-out"
+          />
           <HelpRow />
           <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
         </>

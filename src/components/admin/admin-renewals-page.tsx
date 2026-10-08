@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, Copy, Ellipsis, LogIn, Plus, RotateCw } from "lucide-react";
+import { CalendarPlus, Copy, Ellipsis, Plus, RotateCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -29,7 +29,8 @@ import { RecordDatesSheet, type RecordDatesReadOnly } from "@/components/admin/r
 import { RenewalsShowFilterList } from "@/components/admin/renewals/show-filter-list";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { ModeBandAction, PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
-import { WorkButton, WorkCard, WorkDock, WorkEmpty, WorkGlassButton, WorkIconCircle } from "@/components/mode-kit/work";
+import { WorkButton, WorkCard, WorkDock, WorkGlassButton, WorkIconCircle } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -438,18 +439,13 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
         />
       ) : loadState === "signed-out" ? (
         <>
-          <WorkCard testId="admin-renewals-signed-out">
-            <WorkEmpty
-              icon={LogIn}
-              title="Sign in to see your renewals"
-              body="Renewals are kept for your signed-in account only."
-              action={
-                <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)}>
-                  Sign in
-                </WorkButton>
-              }
-            />
-          </WorkCard>
+          <WorkStateNotice
+            kind="signed-out"
+            title="Sign in to see your renewals"
+            body="Renewals are kept for your signed-in account only."
+            onSignIn={() => setSignInOpen(true)}
+            testId="admin-renewals-signed-out"
+          />
           <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
         </>
       ) : (
