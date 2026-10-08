@@ -479,7 +479,7 @@ describe("MyDayPage", () => {
       openAll("See all 7", rerender);
       expect(screen.getByTestId("my-day-item-r")).toBeTruthy();
       expect(screen.queryByTestId("my-day-item-sample:roster:cutoff")).toBeNull();
-      expect(screen.getByTestId("my-day-item-sample:cme:routine")).toBeTruthy();
+      expect(screen.getByTestId("my-day-item-sample:cme:drafts")).toBeTruthy();
     });
   });
 
