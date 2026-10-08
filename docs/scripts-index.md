@@ -1,6 +1,6 @@
 # Scripts index
 
-Curated map of `scripts/` (391 files) and the `package.json` script surface (318 entries),
+Curated map of `scripts/` (404 files) and the `package.json` script surface (320 entries),
 grouped by purpose. This is orientation, not an exhaustive per-file listing — the authoritative
 command list is `package.json`, and `npm run docs:check-scripts` verifies every `npm run <x>`
 referenced in docs resolves to a real script. `npm run docs:update` refreshes the exact counts above.
@@ -194,6 +194,8 @@ Also catalogued (2026-09-02): `generate-gates-figures.mjs` (`design-system:gates
 part of `check:design-system-contract` — the ratchet-figures block in `docs/design-system/GATES.md`) and
 `token-layer-divergences.mjs` (`design-system:token-divergence:update`; part of
 `check:design-system-contract` — the v1/v2 token-layer divergence contract).
+The `figma-sync/` subfolder is an offline developer tool that copies the live work-mode screens into a Figma
+file (`capture.mjs` against a local server, then `build-calls.mjs`); see `scripts/figma-sync/README.md`.
 
 ## Maintenance & ops [live]
 
