@@ -3,6 +3,7 @@
 import { ArrowDown, CheckCheck, Eye, Hourglass } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { RosterStat } from "@/components/roster/roster-ui";
 import { goToNeedsYou } from "@/components/roster/team/calendar/needs-you-strip";
 import { useRosterRead } from "@/components/roster/use-roster-team";
@@ -79,20 +80,22 @@ export function RosterApproveTab({
   const [decision, setDecision] = useState<ManagerDecision | null>(null);
   if (!manage.data || !people.data) {
     const failed = manage.status === "error" || people.status === "error";
+    const message = manage.message ?? people.message;
+    if (!message) return <WorkStateLoading label="Loading requests…" />;
     return (
-      <div role={failed ? "alert" : "status"}>
-        <p>{manage.message ?? people.message ?? "Loading requests…"}</p>
-        {failed ? (
-          <Button
-            onClick={() => {
-              manage.reload();
-              people.reload();
-            }}
-          >
-            Try again
-          </Button>
-        ) : null}
-      </div>
+      <WorkStateNotice
+        kind="error"
+        title={message}
+        role={failed ? "alert" : "status"}
+        onRetry={
+          failed
+            ? () => {
+                manage.reload();
+                people.reload();
+              }
+            : undefined
+        }
+      />
     );
   }
   const names = new Map(
@@ -216,7 +219,7 @@ export function RosterApproveTab({
           </Button>
         </div>
       ) : overview && !coverReady ? (
-        <p role="status">Loading cover…</p>
+        <WorkStateLoading label="Loading cover…" />
       ) : null}
       {leave.data?.leave.length ? (
         <section className="grid gap-2">

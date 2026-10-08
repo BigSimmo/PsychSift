@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
+import { WorkStateLoading } from "@/components/mode-kit/work-state";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { TextField } from "@/components/ui/text-field";
@@ -125,7 +126,7 @@ export function RosterPeopleList({ team }: { team: RosterTeam }) {
     <>
       <section className="grid gap-2">
         <h2>People</h2>
-        {people.status === "loading" && !people.data ? <p role="status">Loading people…</p> : null}
+        {people.status === "loading" && !people.data ? <WorkStateLoading label="Loading people…" /> : null}
         {people.data?.people.length ? (
           <ul className="divide-y divide-[color:var(--border)] rounded-xl border border-[color:var(--border)]">
             {people.data.people.map((item) => (

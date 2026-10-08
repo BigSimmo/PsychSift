@@ -1,13 +1,12 @@
 "use client";
-import { LogIn } from "lucide-react";
 import { Fragment, type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CmeOfflineBanner } from "@/components/cme/cme-offline-banner";
 import { CmeSampleContext } from "@/components/cme/cme-sample-context";
 import { ModeBandStatus } from "@/components/mode-band/mode-band";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
+import { WorkButton } from "@/components/mode-kit/work";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { useExampleData } from "@/lib/example-data/store";
 import { useAuthSession } from "@/lib/supabase/client";
 
@@ -106,22 +105,32 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
       {/* The mode band's line: offline, or loading while the session is checked.
           Nothing when the session could not be verified; the line below says so. */}
       <ModeBandStatus value={isOffline ? { kind: "offline" } : unavailable ? null : { kind: "loading" }} />
-      <p role="status">
-        {isOffline
-          ? "You are offline. Connect to view or update your private CPD record."
-          : unavailable
-            ? "Your session could not be verified. Your private CPD record is hidden."
-            : "Checking your CPD session…"}
-      </p>
-      {isOffline || unavailable ? (
-        <button type="button" className="mt-3 min-h-tap underline" onClick={() => window.location.reload()}>
-          {isOffline ? "Try again" : "Refresh page"}
-        </button>
-      ) : auth.status === "authenticated" ? (
-        <button type="button" className="mt-3 min-h-tap underline" onClick={() => router.refresh()}>
-          Refresh CPD
-        </button>
-      ) : null}
+      {isOffline ? (
+        <WorkStateNotice
+          kind="offline"
+          title="You are offline"
+          body="Connect to view or update your private CPD record."
+          onRetry={() => window.location.reload()}
+        />
+      ) : unavailable ? (
+        <WorkStateNotice
+          kind="error"
+          role="status"
+          title="Your session could not be verified"
+          body="Your private CPD record is hidden."
+          onRetry={() => window.location.reload()}
+          retryLabel="Refresh page"
+        />
+      ) : (
+        <>
+          <WorkStateLoading label="Checking your CPD session…" />
+          {auth.status === "authenticated" ? (
+            <WorkButton variant="secondary" onClick={() => router.refresh()}>
+              Refresh CPD
+            </WorkButton>
+          ) : null}
+        </>
+      )}
     </section>
   );
 }
@@ -131,15 +140,11 @@ function CmeSignInRequired() {
   const [open, setOpen] = useState(false);
   return (
     <section className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-signed-out">
-      <EmptyState
-        icon={LogIn}
+      <WorkStateNotice
+        kind="signed-out"
         title="Sign in to see your CPD record"
         body="Your activities and hours appear here once you sign in. Nothing is shared."
-        actions={
-          <Button variant="primary" onClick={() => setOpen(true)}>
-            Sign in
-          </Button>
-        }
+        onSignIn={() => setOpen(true)}
       />
       {open ? <AccountSetupDialog open onClose={() => setOpen(false)} /> : null}
     </section>

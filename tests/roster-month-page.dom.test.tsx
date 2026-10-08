@@ -308,6 +308,18 @@ describe("Roster Month tab", () => {
     state.shifts = { status: "loading", shifts: [] };
     render(<RosterMonthPage now={NOW} />);
     expect(screen.getByTestId("roster-month-loading")).toHaveTextContent("Loading your roster…");
+    // The words are for screen readers; the grey shape is what shows.
+    expect(screen.getByRole("status")).toHaveClass("sr-only");
+  });
+
+  it("signed out, Sign in opens the sign-in dialog in place rather than leaving the page", () => {
+    state.shifts = { status: "signed-out", shifts: [] };
+    render(<RosterMonthPage now={NOW} />);
+    const notice = screen.getByTestId("roster-month-signed-out");
+    expect(notice).toHaveAttribute("data-work-state", "signed-out");
+    expect(within(notice).queryByRole("link")).toBeNull();
+    fireEvent.click(within(notice).getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("dialog", { name: "Continue to your workspace" })).toBeInTheDocument();
   });
 
   it("offers an import, Add a shift and Join a team to a doctor with no roster yet", () => {
