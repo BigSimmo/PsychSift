@@ -35,6 +35,7 @@ import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import { ChoiceChip } from "@/components/ui/chip";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import { KeptWhere } from "@/components/work-sync/kept-where";
 import type { ResourcesForWeek } from "@/lib/teaching/model";
 import {
   addDays,
@@ -410,7 +411,7 @@ function GroupForm({ group, update, onDone }: { group: ExamPrepState["group"]; u
         <TextField label="Time" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
       </div>
       <TextField label="Where" maxLength={120} value={place} onChange={(event) => setPlace(event.target.value)} />
-      <NoPatientDetailsMark />
+      <NoPatientDetailsMark section="teachingExamPrep" />
       <div className="flex flex-wrap gap-2">
         <T5Button type="submit" variant="primary">
           Save
@@ -521,7 +522,12 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
             <T5Heading>{state.exam ? "Edit exam" : "Your exam"}</T5Heading>
             {!state.exam ? (
               <T5Meta>
-                Set the exam you are sitting and its date for a countdown. Everything here stays on this device.
+                Set the exam you are sitting and its date for a countdown.{" "}
+                <KeptWhere
+                  section="teachingExamPrep"
+                  account="Everything here is backed up to your account."
+                  device="Everything here stays on this device."
+                />
               </T5Meta>
             ) : null}
             <ExamForm
@@ -564,7 +570,12 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
           </T5List>
         </nav>
         <T5Note icon="shield" className="mt-3">
-          Do not add patient details. Stays on this device and is not backed up.
+          Do not add patient details.{" "}
+          <KeptWhere
+            section="teachingExamPrep"
+            account="Backed up to your account."
+            device="Stays on this device and is not backed up."
+          />
         </T5Note>
       </>
     );

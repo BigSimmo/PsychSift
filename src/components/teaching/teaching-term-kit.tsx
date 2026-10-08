@@ -10,6 +10,7 @@ import { cn, textMuted } from "@/components/ui-primitives";
 import { T5Note } from "@/components/teaching/t5-kit";
 import { dayOfMonth, monthShort } from "@/lib/teaching/term-tracker";
 import { checkPatientDetail, type PatientDetailProblem } from "@/lib/work-text/patient-detail-check";
+import { KeptWhere } from "@/components/work-sync/kept-where";
 
 /*
  * Small shared pieces for Teaching's Term and Exam prep pages: a calendar date tile, a segmented ring
@@ -95,10 +96,16 @@ export function TermRing({
 }
 
 /** The quiet reminder beside every free-text field on these pages. */
-export function NoPatientDetailsMark() {
+export function NoPatientDetailsMark({ section }: { readonly section: "teachingTermTracker" | "teachingExamPrep" }) {
   return (
     <T5Note icon="shield" className="mt-3">
-      Do not add patient details. Stays on this device and is not backed up. You choose what to share.
+      Do not add patient details.{" "}
+      <KeptWhere
+        section={section}
+        account="Backed up to your account."
+        device="Stays on this device and is not backed up."
+      />{" "}
+      You choose what to share.
     </T5Note>
   );
 }

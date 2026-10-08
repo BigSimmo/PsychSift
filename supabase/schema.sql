@@ -26218,3 +26218,36 @@ grant execute on function public.alert_claim_due_reminders(timestamptz, integer)
 revoke all on function public.alert_claim_morning_brief(uuid, date) from public, anon, authenticated;
 grant execute on function public.alert_claim_morning_brief(uuid, date) to service_role;
 revoke all on function public.alert_reminder_times_cap() from public, anon, authenticated;
+
+-- Admin paperwork kept with the account (20261008003000_work_admin_paperwork.sql): one row per
+-- doctor holding their requests, documents list, sharing choices, payslip checks and tax checklist.
+-- Written only by /api/work/sync with the service role; a null record means the doctor cleared it.
+create table public.work_admin_paperwork (
+  owner_id uuid primary key references auth.users (id) on delete cascade,
+  record jsonb,
+  updated_at timestamptz not null default now(),
+  constraint work_admin_paperwork_record_object check (record is null or jsonb_typeof(record) = 'object'),
+  constraint work_admin_paperwork_record_size check (record is null or octet_length(record::text) <= 262144)
+);
+
+alter table public.work_admin_paperwork enable row level security;
+revoke all on table public.work_admin_paperwork from public, anon, authenticated;
+grant select, insert, update, delete on table public.work_admin_paperwork to service_role;
+
+-- Work records backed up to the account (20261008003100_work_backups.sql): Teaching's term tracker
+-- and exam prep, and CPD's job applications season. One row per doctor and record, written only by
+-- /api/work/sync with the service role; a null record means the doctor cleared it.
+create table public.work_backups (
+  owner_id uuid not null references auth.users (id) on delete cascade,
+  section text not null,
+  record jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (owner_id, section),
+  constraint work_backups_section_check check (section in ('term_tracker', 'exam_prep', 'job_applications')),
+  constraint work_backups_record_object check (record is null or jsonb_typeof(record) = 'object'),
+  constraint work_backups_record_size check (record is null or octet_length(record::text) <= 131072)
+);
+
+alter table public.work_backups enable row level security;
+revoke all on table public.work_backups from public, anon, authenticated;
+grant select, insert, update, delete on table public.work_backups to service_role;

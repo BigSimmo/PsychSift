@@ -3,10 +3,12 @@
 import { useSyncExternalStore } from "react";
 
 import { subscribeAccountTransition, WORK_ACCOUNT_SYNC_MARKER_KEY } from "@/lib/account-scoped-browser-state";
-import { isEmptyWorkSyncValue, mergeWorkSyncValues } from "@/lib/work-sync/merge";
+import { isSharedDevice } from "@/lib/alerts/shared-device";
 import {
+  isEmptyWorkSyncValue,
   isTextSection,
   isWorkSyncSection,
+  skipsSharedDevice,
   WORK_SYNC_CHANGE_EVENT,
   WORK_SYNC_SECTIONS,
   WORK_SYNC_STORAGE_KEYS,
@@ -41,7 +43,8 @@ type Session = {
   readonly generations: Map<WorkSyncSection, number>;
   /** One save at a time per section, in the order the changes were made. */
   readonly queues: Map<WorkSyncSection, Promise<void>>;
-  matched: boolean;
+  /** Sections this device has matched with the account at least once. */
+  readonly matched: Set<WorkSyncSection>;
   lastPull: number;
   stopped: boolean;
 };
@@ -77,6 +80,11 @@ const SECTION_BY_KEY = new Map<string, WorkSyncSection>(
   WORK_SYNC_SECTIONS.map((section) => [WORK_SYNC_STORAGE_KEYS[section], section]),
 );
 
+/** On a device marked shared, CPD's job applications are neither copied down nor saved from here. */
+function heldOffDevice(section: WorkSyncSection): boolean {
+  return skipsSharedDevice(section) && isSharedDevice();
+}
+
 function readLocal(section: WorkSyncSection): unknown {
   let raw: string | null = null;
   try {
@@ -110,36 +118,56 @@ function writeLocal(section: WorkSyncSection, value: unknown): void {
 }
 
 /**
+ * The sections the first release synced. A marker written then holds
+ * `matched: true`, which covers only these: a section added later still has
+ * its first match on that device, so a record kept only there is merged with
+ * the account copy rather than replaced by it.
+ */
+const FIRST_RELEASE_SECTIONS: readonly WorkSyncSection[] = [
+  "favouriteWorkPages",
+  "myDayHiddenCards",
+  "myDaySnoozes",
+  "myDayQuickNote",
+];
+
+/**
  * What this device remembers about its match with the account, kept so a
- * reload cannot lose it: whether it has matched at all, and which sections
+ * reload cannot lose it: which sections have matched at least once, and which sections
  * hold a change the account does not have yet (not saved, or refused). Those
  * sections are saved again on the next start and never replaced by the
  * account's older copy.
  */
-type SyncMarker = { readonly matched: boolean; readonly ahead: ReadonlySet<WorkSyncSection> };
+type SyncMarker = { readonly matched: ReadonlySet<WorkSyncSection>; readonly ahead: ReadonlySet<WorkSyncSection> };
 
 function readMarker(): SyncMarker {
   let raw: string | null = null;
   try {
     raw = window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY);
   } catch {
-    return { matched: false, ahead: new Set() };
+    return { matched: new Set(), ahead: new Set() };
   }
-  if (raw === null) return { matched: false, ahead: new Set() };
+  if (raw === null) return { matched: new Set(), ahead: new Set() };
   try {
     const parsed = JSON.parse(raw) as { matched?: unknown; ahead?: unknown };
     const ahead = Array.isArray(parsed.ahead) ? parsed.ahead.filter(isWorkSyncSection) : [];
-    return { matched: parsed.matched === true, ahead: new Set(ahead) };
+    const matched =
+      parsed.matched === true
+        ? FIRST_RELEASE_SECTIONS
+        : Array.isArray(parsed.matched)
+          ? parsed.matched.filter(isWorkSyncSection)
+          : [];
+    return { matched: new Set(matched), ahead: new Set(ahead) };
   } catch {
-    return { matched: false, ahead: new Set() };
+    return { matched: new Set(), ahead: new Set() };
   }
 }
 
 function writeMarker(active: Session): void {
   if (active.stopped) return;
   const ahead = WORK_SYNC_SECTIONS.filter((section) => active.dirty.has(section) || active.refused.has(section));
+  const matched = WORK_SYNC_SECTIONS.filter((section) => active.matched.has(section));
   try {
-    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, JSON.stringify({ matched: active.matched, ahead }));
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, JSON.stringify({ matched, ahead }));
   } catch {
     // Storage refused: the next sign-in merges again, which loses nothing.
   }
@@ -147,6 +175,12 @@ function writeMarker(active: Session): void {
 
 async function send(active: Session, section: WorkSyncSection): Promise<void> {
   if (active.stopped) return;
+  // Marked shared since this save was queued: the device copy is gone, and an empty save would clear the account's.
+  if (heldOffDevice(section)) {
+    active.dirty.delete(section);
+    writeMarker(active);
+    return;
+  }
   const generation = active.generations.get(section) ?? 0;
   const local = readLocal(section);
   const value = isEmptyWorkSyncValue(local) ? null : local;
@@ -185,6 +219,7 @@ function push(active: Session, section: WorkSyncSection): void {
 }
 
 function schedulePush(active: Session, section: WorkSyncSection): void {
+  if (heldOffDevice(section)) return;
   active.refused.delete(section);
   active.dirty.add(section);
   active.generations.set(section, (active.generations.get(section) ?? 0) + 1);
@@ -212,6 +247,21 @@ function readSections(payload: unknown): Partial<Record<WorkSyncSection, Account
   return out;
 }
 
+type Merge = typeof import("@/lib/work-sync/merge").mergeWorkSyncValues;
+
+/**
+ * The first-match merge checks each record against its page's schema, which is
+ * too heavy for every page's start-up, so it loads only when a device has a
+ * record of its own to join with the account's.
+ */
+async function loadMerge(): Promise<Merge | null> {
+  try {
+    return (await import("@/lib/work-sync/merge")).mergeWorkSyncValues;
+  } catch {
+    return null;
+  }
+}
+
 async function pull(active: Session): Promise<void> {
   active.lastPull = Date.now();
   let payload: unknown;
@@ -225,30 +275,38 @@ async function pull(active: Session): Promise<void> {
   if (active.stopped || !active.isCurrent()) return;
   const sections = readSections(payload);
   if (!sections || (payload as { demoMode?: unknown }).demoMode === true) return;
+  const needsMerge = WORK_SYNC_SECTIONS.some(
+    (section) => !active.matched.has(section) && sections[section] && !isEmptyWorkSyncValue(readLocal(section)),
+  );
+  const merge = needsMerge ? await loadMerge() : null;
+  if (active.stopped || !active.isCurrent()) return;
 
-  const matched = active.matched;
   for (const section of WORK_SYNC_SECTIONS) {
     // A change made on this device while the read was in flight is newer than what came back.
     // So is one the account refused: its older account copy must not replace it.
-    if (active.dirty.has(section) || active.refused.has(section)) continue;
+    if (active.dirty.has(section) || active.refused.has(section) || heldOffDevice(section)) continue;
     const entry = sections[section];
     const local = readLocal(section);
+    const firstMatch = !active.matched.has(section);
     if (!entry) {
+      active.matched.add(section);
       if (!isEmptyWorkSyncValue(local)) schedulePush(active, section);
       else setStatus(section, "account");
       continue;
     }
-    if (matched || isEmptyWorkSyncValue(local)) {
+    if (!firstMatch || isEmptyWorkSyncValue(local)) {
+      active.matched.add(section);
       writeLocal(section, entry.value);
       setStatus(section, "account");
       continue;
     }
-    // This device's first match with the account: keep both sides, then save the result.
-    const merged = mergeWorkSyncValues(section, local, entry.value);
-    writeLocal(section, merged);
+    // A first match that cannot be joined here waits for the next read, so neither side is lost.
+    if (!merge) continue;
+    // This device's first match with the account for this section: keep both sides, then save the result.
+    active.matched.add(section);
+    writeLocal(section, merge(section, local, entry.value));
     schedulePush(active, section);
   }
-  active.matched = true;
   writeMarker(active);
 }
 
@@ -267,7 +325,7 @@ export function startWorkSync(options: {
     timers: new Map(),
     generations: new Map(),
     queues: new Map(),
-    matched: marker.matched,
+    matched: new Set(marker.matched),
     lastPull: 0,
     stopped: false,
   };
