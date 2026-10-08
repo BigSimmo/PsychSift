@@ -73,6 +73,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * transition, a stored session the auth server rejects, calls this too.
  */
 function clearAccountScopedBrowserState() {
+  // First, so a store that restarts on any clear below (On Call's epoch) never
+  // joins the previous account's read still in flight (src/lib/shared-get.ts).
+  resetSharedGets();
   clearPersistedAnswerThread();
   clearRecentQueries();
   clearSignedUrlCache();
