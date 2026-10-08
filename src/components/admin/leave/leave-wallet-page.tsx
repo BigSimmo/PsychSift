@@ -350,15 +350,13 @@ function OpenCard({
             </ul>
           </div>
         ))}
+        <p className="grid gap-0.5 text-sm text-[color:var(--text)]" data-testid={`admin-leave-${type.id}-casual`}>
+          <span>{LEAVE_CASUAL_NOTE.text}</span>
+          <span className={cn(textMuted, "text-xs")}>Clause {LEAVE_CASUAL_NOTE.clause}</span>
+        </p>
         <p className={cn(textMuted, "text-xs")}>
           From the AMA Industrial Agreement 2024, checked and signed off {formatDateEcho(LEAVE_SIGN_OFF.signedOn)}. Your
           health service confirms what applies to you.
-        </p>
-        <p className={cn(textMuted, "text-xs")} data-testid={`admin-leave-${type.id}-casual`}>
-          <span className="rounded border border-dashed border-[color:var(--border-strong)] px-1.5">
-            Not signed off yet
-          </span>{" "}
-          {LEAVE_CASUAL_NOTE.text} Clause {LEAVE_CASUAL_NOTE.clause}.
         </p>
         <AgreementEndNote today={today} testId={`admin-leave-${type.id}-agreement-end`} />
         <a
