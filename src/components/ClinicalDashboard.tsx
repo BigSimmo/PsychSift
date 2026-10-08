@@ -36,11 +36,7 @@ import {
 import * as SidebarDialogs from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
 import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { prefetchTwoPaneSideMenu, TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
-import {
-  TwoPaneSideRail,
-  useTwoPaneRailShown,
-  type TwoPaneMenuPane,
-} from "@/components/work-frame/two-pane-side-strip";
+import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useSettingsGuideFlow } from "@/components/clinical-dashboard/use-settings-guide-flow";
 import {
@@ -649,7 +645,6 @@ function ClinicalDashboardContent({
   const newWorkMode = useNewWorkMode();
   // From 768 px the two-pane menu's strip stays on screen as a rail (1024 px up
   // keeps the full sidebar). A rail button opens the menu on its own pane.
-  const twoPaneRailShown = useTwoPaneRailShown(true);
   const [menuPane, setMenuPane] = useState<TwoPaneMenuPane | null>(null);
   const {
     favouritesAccessible,
@@ -3674,7 +3669,6 @@ function ClinicalDashboardContent({
             identity={sidebarIdentity}
             startSide="clinical"
             openPane={menuPane}
-            countsActive={twoPaneRailShown}
             workAvailable={newWorkMode}
             currentArea={null}
             activeMode={searchMode}

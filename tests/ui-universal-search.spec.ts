@@ -321,7 +321,9 @@ test.describe("universal search typeahead", () => {
 
     await expect(page.getByText(/Current mode · \d+/)).toBeVisible();
     await expect(page.getByRole("option", { name: /Ward round/ })).toBeVisible();
-    await expect(page.getByText("Saved").first()).toBeVisible();
+    // The tablet rail's Saved link stays in the page while hidden on a desktop, so only a
+    // visible "Saved" label can be the result's.
+    await expect(page.getByText("Saved").filter({ visible: true }).first()).toBeVisible();
   });
 
   test("keeps cross-mode typeahead hidden on a landscape touch phone", async ({ browser, baseURL }) => {

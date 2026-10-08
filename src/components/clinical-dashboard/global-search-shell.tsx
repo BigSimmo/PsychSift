@@ -1269,7 +1269,8 @@ function GlobalStandaloneSearchShellBody({
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
         <LazyWorkSideCounts
           active={
-            (workSideNav || twoPaneCounts) && ((twoPaneSideMenu ? twoPaneRailShown : workRailShown) || workMenuOpened)
+            (workSideNav && (twoPaneSideMenu ? twoPaneRailShown : workRailShown)) ||
+            ((workSideNav || twoPaneCounts) && workMenuOpened)
           }
         />
         {twoPaneSideMenu ? (
