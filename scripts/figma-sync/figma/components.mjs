@@ -271,6 +271,14 @@ export default async function components(figma) {
   hd.name = "Header / Desktop";
   hd.resize(1196, 72);
   hd.fills = [P("area/band")];
+  // Back button for sub-pages (Assessments, Notifications, Open shifts, Manage team). Hidden by default.
+  const back = ibc.createInstance();
+  back.resize(44, 44);
+  hd.appendChild(back);
+  back.name = "Back";
+  back.x = 26;
+  back.y = 14;
+  back.setProperties({ [swp]: IC["chevron-left-20"].id });
   const pill2 = mpc.createInstance();
   hd.appendChild(pill2);
   pill2.y = 17;
@@ -289,8 +297,10 @@ export default async function components(figma) {
   const hdc = comp(
     hd,
     "Header / Desktop",
-    "Desktop and tablet header beside the rail: mode pill centred, bell and AI Search field on the right.",
+    "Desktop and tablet header beside the rail: optional back button on the left, mode pill centred, bell and AI Search field on the right.",
   );
+  const sb = hdc.addComponentProperty("Show back", "BOOLEAN", false);
+  hdc.children.find((n) => n.name === "Back").componentPropertyReferences = { visible: sb };
   place(hdc);
   row();
   Y += 0;

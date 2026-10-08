@@ -7,7 +7,9 @@ export default async function swap(figma, PAGE_ID) {
   // Swap captured headers and tab bars for component instances on one page. Idempotent.
   const page = await figma.getNodeByIdAsync(PAGE_ID);
   await figma.setCurrentPageAsync(page);
-  const comps = await figma.getNodeByIdAsync("23:2");
+  // Look the page up by name: components.mjs creates it with a fresh id in a new file.
+  const comps = figma.root.children.find((p) => p.name === "Components");
+  if (!comps) throw new Error("No Components page yet. Run components.js first.");
   await comps.loadAsync();
   const byName = {};
   for (const c of comps.findAllWithCriteria({ types: ["COMPONENT", "COMPONENT_SET"] })) byName[c.name] = c;
@@ -24,6 +26,7 @@ export default async function swap(figma, PAGE_ID) {
   const abIcon = Object.keys(AB.componentPropertyDefinitions).find((k) => k.startsWith("Icon"));
   const ibIcon = Object.keys(IB.componentPropertyDefinitions).find((k) => k.startsWith("Icon"));
   const tLabel = Object.keys(TABSET.componentPropertyDefinitions).find((k) => k.startsWith("Label"));
+  const showBack = Object.keys(HD.componentPropertyDefinitions).find((k) => k.startsWith("Show back"));
   for (const st of ["Regular", "SemiBold", "Bold"]) await figma.loadFontAsync({ family: "Geist", style: st });
   let headers = 0,
     tabbars = 0;
@@ -53,12 +56,19 @@ export default async function swap(figma, PAGE_ID) {
     if (txt) pill.setProperties({ [mpName]: txt.characters });
     const ab = pill.findOne((n) => n.type === "INSTANCE" && n.mainComponent && n.mainComponent.id === AB.id);
     if (badgeIcon && badgeIcon.mainComponent) ab.setProperties({ [abIcon]: badgeIcon.mainComponent.id });
-    if (!desktop && left && left.mainComponent) {
-      const menu = inst.children.find((n) => n.type === "INSTANCE" && n.x < 100);
-      if (menu) menu.setProperties({ [ibIcon]: left.mainComponent.id });
+    if (desktop && left) {
+      // Sub-pages carry a back button on desktop too: show the header's hidden Back slot.
+      if (!showBack) {
+        skipped.push(old.id + " desktop header kept: Header / Desktop has no Show back property");
+        inst.remove();
+        continue;
+      }
+      inst.setProperties({ [showBack]: true });
     }
-    if (desktop && old.findOne((n) => n.type === "INSTANCE" && n.x < 100 && n.x >= 0))
-      skipped.push(old.id + " desktop header has a left control");
+    const leftSlot = desktop
+      ? inst.findOne((n) => n.name === "Back")
+      : inst.children.find((n) => n.type === "INSTANCE" && n.x < 100);
+    if (left && left.mainComponent && leftSlot) leftSlot.setProperties({ [ibIcon]: left.mainComponent.id });
     old.remove();
     headers++;
   }
