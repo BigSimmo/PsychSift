@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { deriveSidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { TwoPaneSideMenu, type TwoPaneSideMenuProps } from "@/components/work-frame/two-pane-side-menu";
+import { TwoPaneSideRail } from "@/components/work-frame/two-pane-side-strip";
 import { recentQueryStorageKey } from "@/lib/recent-query-storage";
 
 vi.mock("next/navigation", () => ({
@@ -106,7 +107,7 @@ describe("two-pane side menu", () => {
 
     fireEvent.click(screen.getByTestId("two-pane-menu-clear-recent"));
     expect(window.sessionStorage.getItem(recentKey)).not.toBeNull();
-    expect(screen.getByText("Clear your recent questions from this phone?")).toBeTruthy();
+    expect(screen.getByText("Clear your recent questions from this device?")).toBeTruthy();
     fireEvent.click(screen.getByTestId("two-pane-menu-clear-recent-confirm"));
     expect(window.sessionStorage.getItem(recentKey)).toBeNull();
   });
@@ -164,8 +165,78 @@ describe("two-pane side menu", () => {
     expect(screen.getByRole("heading", { level: 2, name: "You" })).toBeTruthy();
     fireEvent.click(screen.getByTestId("two-pane-menu-sign-out"));
     expect(props.onSignOut).not.toHaveBeenCalled();
-    expect(screen.getByText(/This clears everything kept on this phone/)).toBeTruthy();
+    expect(screen.getByText(/This clears everything kept on this device/)).toBeTruthy();
     fireEvent.click(screen.getByTestId("two-pane-menu-sign-out-confirm"));
     expect(props.onSignOut).toHaveBeenCalledOnce();
+  });
+
+  it("opens on the pane a tablet rail button asked for", () => {
+    const { rerender, props } = renderMenu({ open: false, openPane: "work" });
+    rerender(<TwoPaneSideMenu {...props} open openPane="work" />);
+    expect(screen.getByRole("heading", { level: 2, name: "Work" })).toBeTruthy();
+
+    rerender(<TwoPaneSideMenu {...props} open={false} openPane="you" />);
+    rerender(<TwoPaneSideMenu {...props} open openPane="you" />);
+    expect(screen.getByRole("heading", { level: 2, name: "You" })).toBeTruthy();
+
+    rerender(<TwoPaneSideMenu {...props} open={false} openPane="work" workAvailable={false} />);
+    rerender(<TwoPaneSideMenu {...props} open openPane="work" workAvailable={false} />);
+    expect(screen.getByRole("heading", { level: 2, name: "Clinical" })).toBeTruthy();
+  });
+});
+
+describe("two-pane tablet rail", () => {
+  function renderRail(overrides: Partial<Parameters<typeof TwoPaneSideRail>[0]> = {}) {
+    const props = {
+      identity: deriveSidebarIdentity("alex.morgan@example.org"),
+      side: "work" as const,
+      workAvailable: true,
+      showAccountLibrary: true,
+      onOpenMenu: vi.fn(),
+      onOpenSettings: vi.fn(),
+      ...overrides,
+    };
+    return { ...render(<TwoPaneSideRail {...props} />), props };
+  }
+
+  it("lights the page's side and opens the menu on Clinical, Work or the reader's own pane", () => {
+    const { props } = renderRail();
+    const rail = screen.getByRole("navigation", { name: "Menu" });
+    const work = within(rail).getByRole("button", { name: "Work menu" });
+    expect(work.getAttribute("data-current")).toBe("true");
+    expect(work.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(work.hasAttribute("aria-pressed")).toBe(false);
+
+    fireEvent.click(within(rail).getByRole("button", { name: "Clinical menu" }));
+    expect(props.onOpenMenu).toHaveBeenLastCalledWith("clinical");
+    fireEvent.click(work);
+    expect(props.onOpenMenu).toHaveBeenLastCalledWith("work");
+    fireEvent.click(screen.getByTestId("two-pane-rail-you"));
+    expect(props.onOpenMenu).toHaveBeenLastCalledWith("you");
+  });
+
+  it("links My Day and the work side's Saved page, and runs Settings and Appearance in place", () => {
+    const { props } = renderRail();
+    expect(screen.getByTestId("two-pane-rail-my-day").getAttribute("href")).toBe("/my-day");
+    expect(screen.getByTestId("two-pane-rail-saved").getAttribute("href")).toBe("/my-day/favourites");
+
+    const appearance = screen.getByTestId("two-pane-rail-appearance");
+    const before = appearance.getAttribute("aria-label");
+    fireEvent.click(appearance);
+    expect(appearance.getAttribute("aria-label")).not.toBe(before);
+
+    fireEvent.click(screen.getByTestId("two-pane-rail-settings"));
+    expect(props.onOpenSettings).toHaveBeenCalledOnce();
+  });
+
+  it("shows only the clinical side for readers without the new work mode", () => {
+    renderRail({ side: "work", workAvailable: false, hideOnDesktop: true });
+    const rail = screen.getByTestId("two-pane-rail");
+    expect(rail.getAttribute("data-hide-desktop")).toBe("true");
+    expect(screen.getByTestId("two-pane-rail-clinical").getAttribute("data-current")).toBe("true");
+    expect(screen.queryByTestId("two-pane-rail-work")).toBeNull();
+    expect(screen.queryByTestId("two-pane-rail-reminders")).toBeNull();
+    expect(screen.queryByTestId("two-pane-rail-my-day")).toBeNull();
+    expect(screen.getByTestId("two-pane-rail-saved").getAttribute("href")).toBe("/favourites");
   });
 });

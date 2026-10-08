@@ -8,22 +8,17 @@ import {
   BookOpen,
   BriefcaseMedical,
   ChevronRight,
-  Contrast,
   Heart,
   Lock,
   LogOut,
-  Moon,
   PenLine,
   Search,
   SlidersHorizontal,
   Stethoscope,
-  Sun,
   UserRound,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 
 import {
@@ -34,14 +29,15 @@ import {
 } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { useSidebarPins } from "@/components/clinical-dashboard/use-sidebar-pins";
-import { useTheme } from "@/components/clinical-dashboard/use-theme";
 import { Sheet } from "@/components/ui/sheet";
+import { rememberedWorkAreaPage, useWorkSideCounts } from "@/components/work-frame/work-frame-store";
 import {
-  rememberedWorkAreaPage,
-  requestWorkFrameAction,
-  workFrameActionHandler,
-  useWorkSideCounts,
-} from "@/components/work-frame/work-frame-store";
+  DayIcon,
+  RailButton,
+  useOpenReminders,
+  useThemeCycle,
+  type TwoPaneMenuPane,
+} from "@/components/work-frame/two-pane-side-strip";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { appModeIds, type AppModeId } from "@/lib/app-modes";
@@ -49,7 +45,6 @@ import { appModeIcons } from "@/lib/app-mode-icons";
 import { BRAND_NAME } from "@/lib/brand";
 import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
 import { clearRecentQueries, removeRecentQuery } from "@/lib/recent-query-storage";
-import type { ThemePreference } from "@/lib/theme";
 import { WORK_AREAS, type WorkAreaId } from "@/lib/work-frame/areas";
 import {
   WORK_SIDE_AREAS,
@@ -79,6 +74,8 @@ export type TwoPaneSideMenuProps = {
   readonly identity: SidebarIdentity;
   /** The side each opening starts on: the page's own side. */
   readonly startSide: ModeMenuSideId;
+  /** The pane a tablet rail button asked for, overriding startSide for this opening. */
+  readonly openPane?: TwoPaneMenuPane | null;
   /** The new work mode is on for this reader, so the Work side exists. */
   readonly workAvailable: boolean;
   /** The work tile to light, already rolled up from an inner area. */
@@ -97,7 +94,7 @@ export type TwoPaneSideMenuProps = {
   readonly onSignOut: () => Promise<void> | void;
 };
 
-type Pane = ModeMenuSideId | "you";
+type Pane = TwoPaneMenuPane;
 
 /** Shortcut rows shown under Clinical. Edit holds the rest. */
 const SHORTCUTS_SHOWN = 5;
@@ -108,13 +105,6 @@ const FIND_PAGES_SHOWN = 5;
 
 /** A horizontal drag this far left closes the menu. */
 const CLOSE_SWIPE_PX = 56;
-
-/** Appearance cycles in this order, one tap at a time. */
-const themeCycle: readonly { readonly id: ThemePreference; readonly label: string; readonly icon: LucideIcon }[] = [
-  { id: "system", label: "Auto", icon: Contrast },
-  { id: "light", label: "Light", icon: Sun },
-  { id: "dark", label: "Dark", icon: Moon },
-];
 
 const workAreaModeIds = new Set<AppModeId>(WORK_SIDE_AREAS.map((entry) => entry.modeId));
 
@@ -128,6 +118,7 @@ export function TwoPaneSideMenu({
   onOpenChange,
   identity,
   startSide,
+  openPane = null,
   workAvailable,
   currentArea,
   activeMode,
@@ -141,13 +132,13 @@ export function TwoPaneSideMenu({
   onOpenAccount,
   onSignOut,
 }: TwoPaneSideMenuProps) {
-  const router = useRouter();
   const titleId = useId();
   const counts = useWorkSideCounts();
   const routeVisible = useWorkModeRouteVisible();
   const { zone } = useWorkTimeZone();
   const { pinnedModeIds, togglePinnedMode, movePinnedMode } = useSidebarPins();
-  const { preference, setPreference } = useTheme();
+  const { theme, next: nextTheme, cycle: cycleTheme } = useThemeCycle();
+  const runReminders = useOpenReminders();
   const firstSide: ModeMenuSideId = workAvailable ? startSide : "clinical";
   const [pane, setPane] = useState<Pane>(firstSide);
   const [find, setFind] = useState("");
@@ -182,7 +173,7 @@ export function TwoPaneSideMenu({
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setPane(firstSide);
+      setPane(openPane === "work" && !workAvailable ? "clinical" : (openPane ?? firstSide));
       setScrolled(false);
       setFind("");
       setConfirmClear(false);
@@ -238,12 +229,6 @@ export function TwoPaneSideMenu({
   const savedHref = pane === "work" ? "/my-day/favourites" : "/favourites";
   const savedShown = pane === "work" ? routeVisible(savedHref) : showAccountLibrary;
   const title = pane === "clinical" ? "Clinical" : pane === "work" ? "Work" : "You";
-  const themeIndex = Math.max(
-    0,
-    themeCycle.findIndex((choice) => choice.id === preference),
-  );
-  const theme = themeCycle[themeIndex] ?? themeCycle[0];
-  const nextTheme = themeCycle[(themeIndex + 1) % themeCycle.length] ?? themeCycle[0];
   const ThemeIcon = theme.icon;
 
   const shortcutItems = pinnedModeIds
@@ -255,9 +240,7 @@ export function TwoPaneSideMenu({
 
   const openReminders = () => {
     close();
-    // Only a page that offers Reminders can open it; anywhere else goes to My Day first.
-    if (!workFrameActionHandler("my-day-reminders")) router.push("/my-day");
-    requestWorkFrameAction("my-day-reminders");
+    runReminders();
   };
 
   const needle = find.trim().toLowerCase();
@@ -404,7 +387,7 @@ export function TwoPaneSideMenu({
       ) : null}
       <p className="two-pane-menu__privacy">
         <Lock aria-hidden="true" className="size-icon-xs" strokeWidth={2} />
-        Finds on this phone only. Nothing you type here is saved.
+        Finds on this device only. Nothing you type here is saved.
       </p>
     </>
   ) : null;
@@ -446,7 +429,7 @@ export function TwoPaneSideMenu({
             </div>
             {confirmClear ? (
               <div className="two-pane-menu__confirm" role="group" aria-labelledby={`${titleId}-clear-question`}>
-                <p id={`${titleId}-clear-question`}>Clear your recent questions from this phone?</p>
+                <p id={`${titleId}-clear-question`}>Clear your recent questions from this device?</p>
                 <div className="two-pane-menu__confirm-actions">
                   <button ref={clearCancelRef} type="button" onClick={() => setConfirmClear(false)}>
                     Cancel
@@ -528,7 +511,6 @@ export function TwoPaneSideMenu({
     </>
   );
 
-  const DayIcon = appModeIcons["my-day"];
   const todayCardBody = (
     <>
       <span className="two-pane-menu__today-top">
@@ -626,7 +608,7 @@ export function TwoPaneSideMenu({
                     {remindersDue > 0 ? `${remindersDue} due today` : "None today"}
                   </span>
                 ) : (
-                  <span className="two-pane-menu__tile-line">On this phone</span>
+                  <span className="two-pane-menu__tile-line">On this device</span>
                 )}
               </button>
             </li>
@@ -679,7 +661,7 @@ export function TwoPaneSideMenu({
         confirmSignOut ? (
           <div className="two-pane-menu__confirm" role="group" aria-labelledby={`${titleId}-sign-out-question`}>
             <p id={`${titleId}-sign-out-question`}>
-              Sign out? This clears everything kept on this phone for your account, including patient labels.
+              Sign out? This clears everything kept on this device for your account, including patient labels.
             </p>
             <div className="two-pane-menu__confirm-actions">
               <button ref={cancelRef} type="button" onClick={() => setConfirmSignOut(false)}>
@@ -726,7 +708,7 @@ export function TwoPaneSideMenu({
       closeLabel="Close menu"
       placement="left"
       testId="two-pane-side-menu"
-      contentClassName="two-pane-menu md:hidden"
+      contentClassName="two-pane-menu"
       bodyClassName="two-pane-menu__body"
       initialFocusRef={closeRef}
     >
@@ -787,7 +769,7 @@ export function TwoPaneSideMenu({
           type="button"
           className="two-pane-menu__rail-item"
           aria-label={`Appearance, ${theme.label}. Change to ${nextTheme.label}`}
-          onClick={() => setPreference(nextTheme.id)}
+          onClick={cycleTheme}
           data-testid="two-pane-menu-appearance"
         >
           <span className="two-pane-menu__indicator">
@@ -868,41 +850,6 @@ export function TwoPaneSideMenu({
         returnFocusRef={editorReturnRef}
       />
     </Sheet>
-  );
-}
-
-function RailButton({
-  label,
-  icon: Icon,
-  pressed,
-  onClick,
-  pip,
-  testId,
-}: {
-  readonly label: string;
-  readonly icon: LucideIcon;
-  /** Set for the Clinical and Work switch only; the other strip buttons are plain actions. */
-  readonly pressed?: boolean;
-  readonly onClick: () => void;
-  /** A small dot on the icon: red for overdue work, blue for a reminder due today. Spoken with the button. */
-  readonly pip?: { readonly tone: "overdue" | "due"; readonly spoken: string };
-  readonly testId: string;
-}) {
-  return (
-    <button
-      type="button"
-      className="two-pane-menu__rail-item"
-      aria-pressed={pressed}
-      onClick={onClick}
-      data-testid={testId}
-    >
-      <span className="two-pane-menu__indicator">
-        <Icon aria-hidden="true" className="size-icon-lg" strokeWidth={1.9} />
-        {pip ? <span className="two-pane-menu__pip" data-tone={pip.tone} aria-hidden="true" /> : null}
-      </span>
-      {label}
-      {pip ? <span className="sr-only">, {pip.spoken}</span> : null}
-    </button>
   );
 }
 

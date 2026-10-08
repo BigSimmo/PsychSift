@@ -665,6 +665,50 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   display: none;
 }
 
+/* The two-pane side menu keeps the menu button on phones, first, with Back
+   beside it, mirroring the bell and AI Search on the right. Tablets have the
+   menu strip, so the button stays hidden there. */
+@media (max-width: 767px) {
+  .universal-header-leading[data-two-pane-menu]:has(> #universal-header-leading > *) > .universal-header-menu {
+    display: grid;
+    order: -1;
+  }
+}
+
+/* Menu and Back on the left leave too little room for an area name on most
+   phones ("Assessments" needs about 97px, a 390px phone leaves 60px), so the
+   pill becomes its round badge, matching the four round controls around it.
+   The page's own title names the area just below, and the name stays in the
+   button for screen readers. From 440px every area name fits whole. */
+@media (max-width: 439px) {
+  .universal-header-row:has(> .universal-header-leading[data-two-pane-menu] > #universal-header-leading > *)
+    .universal-header-mode-button {
+    grid-template-columns: auto;
+    justify-content: center;
+    gap: 0;
+    width: var(--spacing-tap, 3rem);
+    min-width: var(--spacing-tap, 3rem);
+    padding: 0;
+  }
+
+  .universal-header-row:has(> .universal-header-leading[data-two-pane-menu] > #universal-header-leading > *)
+    .universal-header-mode-button
+    > svg {
+    display: none;
+  }
+
+  .universal-header-row:has(> .universal-header-leading[data-two-pane-menu] > #universal-header-leading > *)
+    .universal-header-mode-button
+    > span:not(.universal-header-mode-badge) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .work-frame-back {
   display: grid;
   width: var(--spacing-tap, 3rem);
