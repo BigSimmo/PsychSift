@@ -194,6 +194,82 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
   opacity: 0.14;
 }
 
+/* Pinned tabs (owner request 8 Oct 2026). Once the title has scrolled under
+   the top bar, the band stops with only its tab row showing, just below the
+   bar, so the area's pages stay one tap away. It stays in page flow (sticky,
+   with a negative offset), so pinning moves nothing and needs no reserve.
+   use-sticky-work-tabs.ts measures the offsets and sets `data-pinned` once it
+   has, so the server render is the band exactly as before.
+
+   `--work-chrome-h` is where the top bar ends: the phone's measured overlay
+   reserve (which already holds the safe area), or the safe area plus the bar
+   on wider screens, where the bar is sticky under its own safe-area strip. */
+html[data-work-frame] {
+  --work-chrome-h: calc(var(--safe-area-top, 0px) + var(--work-bar-h, var(--shell-header-h)));
+  /* A jump to a section (a link, a find, a focused field) lands below the
+     pinned row, not under it. */
+  scroll-padding-top: calc(var(--work-chrome-h) + var(--work-tabs-h, 0px));
+}
+
+/* Installed phones scroll the page box rather than the document. */
+html[data-work-frame] #main-content {
+  scroll-padding-top: calc(var(--work-chrome-h) + var(--work-tabs-h, 0px));
+}
+
+@media (max-width: 639px) {
+  html[data-work-frame] {
+    --work-chrome-h: var(--phone-overlay-chrome-h);
+  }
+}
+
+.work-band[data-pinned] {
+  position: sticky;
+  top: calc(var(--work-chrome-h) - var(--work-band-tabs-top, 0px));
+  /* Over the page it pins above (cards, the example banner, a sticky dock),
+     under the top bar and every sheet, menu and toast. */
+  z-index: calc(var(--z-raised, 10) + 1);
+}
+
+/* Pinned, the band's dots continue the top bar's grid, and the line drawing,
+   which would show only as a cut-off slice behind the tabs, fades out. */
+.work-band[data-stuck]::before {
+  background-position: 0 var(--work-band-stuck-offset, 0);
+}
+
+.work-band[data-stuck] .work-band__mark {
+  opacity: 0;
+}
+
+/* The top bar slides away on a scroll down and back on a scroll up; the
+   pinned row goes and comes back with it, so the two stay one unit and a
+   hidden bar leaves the whole screen to the page. Only while pinned: a band
+   still in its own place on the page scrolls as normal. A keyboard user who
+   tabs into the hidden row brings it back (`:focus-within`), so focus never
+   lands on a tab that is off screen. */
+html:has([data-scroll-hidden="true"] .universal-header) .work-band[data-stuck]:not(:focus-within) {
+  translate: 0 calc(-1 * (var(--work-chrome-h) + var(--work-tabs-h, 0px)));
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .work-band[data-pinned] {
+    transition: translate var(--duration-moderate) var(--ease-chrome-reveal);
+  }
+
+  html:has([data-scroll-hidden="true"] .universal-header) .work-band[data-pinned] {
+    transition: translate var(--duration-slow) var(--ease-chrome-hide);
+  }
+
+  .work-band__mark {
+    transition: opacity var(--duration-moderate) var(--ease-out, ease-out);
+  }
+}
+
+html[data-motion="reduced"] .work-band[data-pinned],
+html[data-motion="reduced"] .work-band__mark {
+  transition: none;
+}
+
 .work-band__head {
   display: flex;
   align-items: flex-end;

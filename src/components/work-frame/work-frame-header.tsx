@@ -19,6 +19,7 @@ import { WorkPageFavouriteButton } from "@/components/favourites/work-page-favou
 import { Sheet } from "@/components/ui/sheet";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useTabSwipe } from "@/components/work-swipe/use-tab-swipe";
+import { useStickyWorkTabs } from "@/components/work-frame/use-sticky-work-tabs";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import {
   rememberedWorkAreaPage,
@@ -148,6 +149,17 @@ export function WorkFrameHeader({
 
   useTabSwipe(navRef, currentHref);
 
+  // The tab row stays pinned under the top bar on scroll (owner request 8 Oct 2026).
+  const [band, setBand] = useState<HTMLElement | null>(null);
+  useStickyWorkTabs(band, navRef);
+  const setBandNode = useCallback(
+    (node: HTMLElement | null) => {
+      setBand(node);
+      bandRef(node);
+    },
+    [bandRef],
+  );
+
   const tab = (item: WorkFrameItem, kind: "pinned" | "extra", out: boolean) => {
     // Hidden tabs keep their badge, so a tab measures the same hidden or shown.
     const count = counts?.[item.id] ?? 0;
@@ -175,7 +187,7 @@ export function WorkFrameHeader({
 
   return (
     <section
-      ref={bandRef}
+      ref={setBandNode}
       aria-label={area.name}
       className="mode-band work-band"
       data-testid="mode-band"
