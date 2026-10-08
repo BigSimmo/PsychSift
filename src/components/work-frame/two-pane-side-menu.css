@@ -239,7 +239,8 @@
 
 .two-pane-menu__label-action {
   display: grid;
-  place-items: center;
+  /* End-aligned so Clear and Edit share one right edge. */
+  place-items: center end;
   min-width: 2.75rem;
   min-height: 2.75rem;
   margin: calc(var(--spacing) * -3) calc(var(--spacing) * -2) calc(var(--spacing) * -3) 0;
@@ -273,6 +274,8 @@
 
 .two-pane-menu__list {
   display: grid;
+  /* A track that can shrink, so a long question ellipses instead of widening the pane. */
+  grid-template-columns: minmax(0, 1fr);
   gap: calc(var(--spacing) * 0.25);
 }
 

@@ -623,7 +623,7 @@ export function TwoPaneSideMenu({
                 <span className="two-pane-menu__tile-name">Reminders</span>
                 {counts ? (
                   <span className="two-pane-menu__tile-line">
-                    {remindersDue > 0 ? `${remindersDue} due today` : "None due today"}
+                    {remindersDue > 0 ? `${remindersDue} due today` : "None today"}
                   </span>
                 ) : (
                   <span className="two-pane-menu__tile-line">On this phone</span>
@@ -1035,7 +1035,7 @@ function SideCount({ count }: { readonly count: WorkSideCount | undefined }) {
 /** The line under a tile's name: what is waiting there, spoken in full. Blank while counts are unknown. */
 function TileLine({ count }: { readonly count: WorkSideCount | undefined }) {
   if (!count) return <span className="two-pane-menu__tile-line" aria-hidden="true" />;
-  if (count.total === 0) return <span className="two-pane-menu__tile-line">Nothing waiting</span>;
+  if (count.total === 0) return <span className="two-pane-menu__tile-line">All clear</span>;
   if (count.overdue > 0) {
     return (
       <span className="two-pane-menu__tile-line" data-overdue="true">
