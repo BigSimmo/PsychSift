@@ -1,5 +1,7 @@
 # Cursor Cloud Specific Instructions
 
+_Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
+
 <!-- BEGIN:cursor-cloud-instructions -->
 
 ## Cursor Cloud specific instructions (not Codex Cloud)
@@ -11,7 +13,7 @@ runtime, dependency parity and authorised service state before relying on them.
 Configuration examples and command descriptions are not current execution evidence;
 the repository's provider boundary applies to live mode and documentation providers.
 
-- Context7 peer-library documentation and credential setup are described below; use the bundled Next.js documentation for Next-specific APIs. Project MCP is local `@upstash/context7-mcp@3.2.5` with `CONTEXT7_API_KEY` from env/Secrets. If the host-injected Context7 MCP returns quota exceeded, use `npx ctx7 library "your-query"` or `npx ctx7 docs "your-query"` with the same secret — do not invent peer APIs from training data.
+- Use the shared [Context7 guide](context7.md) for peer-library documentation, version matching, query privacy and the authorised CLI fallback. Use bundled Next.js documentation for Next-specific APIs.
 - Runtime: the app hard-requires Node >=24.15.0 <25 / npm 11.x (`engine-strict`; the preinstall and runtime gates enforce the minor floor, while `scripts/dev-free-port.mjs` rejects other majors). A compatible Node 24 is installed via nvm and symlinked into `/usr/local/cargo/bin` (first entry in `PATH`) so `node`/`npm` resolve to it in every shell. If a shell ever resolves `/exec-daemon/node` (v22) instead, prepend the installed nvm Node 24 bin to `PATH` (for example `"$HOME/.nvm/versions/node/v24.18.1/bin"`; run `ls "$HOME/.nvm/versions/node"` to confirm the exact patch version).
 - Live vs demo mode: `isDemoMode()` (`src/lib/env.ts`) does **not** switch solely on whether secrets are present. It returns true when `NEXT_PUBLIC_DEMO_MODE=true` (explicit override in every environment), and in non-production it also falls back to demo when required Supabase config is missing **or** `checkSupabaseProjectConfig` reports a project mismatch — even if some OpenAI/Supabase vars are set. Production never silently falls back (missing/mismatched config fails loudly). Live mode against `PsychSift Production` is available only when the explicit demo override is off, project validation passes, and the required secrets are present (set them as Cloud Agent **Secrets** so they inject into `.env.local`/`process.env`): `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PROJECT_REF`, `SUPABASE_PROJECT_NAME`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_…`), `SUPABASE_SERVICE_ROLE_KEY` (accepts the `sb_secret_…` secret key), `OPENAI_API_KEY`. Keep `RAG_PROVIDER_MODE=auto` so OpenAI is used with graceful source-only fallback. When live mode is unavailable in dev, the app uses the synthetic corpus in `src/lib/demo-data.ts` / `public/demo-documents/`. `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` power CI env-check and Playwright.
 - Live-mode caveat: `RAG_PROVIDER_MODE=auto` attempts OpenAI (fast → strong route); if generation fails the built-in quality gates it silently degrades to a deterministic "Source-only" answer that still cites real documents — this is expected, not a failure. Anonymous answer requests are supported for the public corpus; signed-in access is scoped to the caller. Check `src/lib/public-api-access.ts` and `src/lib/owner-scope.ts` for the access rules; a server-side endpoint does not grant access to private documents.
@@ -26,28 +28,8 @@ For Next.js APIs, read the version installed under `node_modules/next/dist/docs/
 
 ## Context7 setup and peer-library documentation
 
-1. When account setup is authorised, obtain a key through [the Context7 dashboard](https://context7.com/dashboard). Check the account's current terms and limits there.
-2. **Project MCP (checked-in):** `.cursor/mcp.json` runs pinned local
-   `@upstash/context7-mcp@3.2.5` with `env.CONTEXT7_API_KEY: ${env:CONTEXT7_API_KEY}` so the
-   stdio child receives the key when Cursor expands it (Cursor filters inherited env for MCP
-   children — the explicit `env` pass-through is required). Set the key as a **user/OS env var**
-   or in Cursor **Settings → MCP → context7**.
-3. **Cursor Cloud Agent Secrets:** inject `CONTEXT7_API_KEY` into the agent shell
-   `process.env`. That authenticates **local** Context7 (`npx @upstash/context7-mcp` /
-   `npx ctx7`) and project stdio MCP after reload. It does **not** authenticate a separate
-   **host-injected** Context7 connector — measured 2026-08-05: host `resolve-library-id`
-   still returned monthly quota exceeded while the same key worked for `npx ctx7 library …`.
-   If host MCP is quota-blocked, use `npx ctx7 library "your-query"` or `npx ctx7 docs "your-query"` (or the project local MCP
-   after reload) — do not invent APIs from training data.
-4. **Does not expand project MCP `${env:}`:** `.env.local` alone (Next app / env.ts path).
-5. **Reload MCP servers after key changes.** The stdio child captures env at spawn time — setting
-   or rotating `CONTEXT7_API_KEY` has no effect until you reload MCP (or restart Cursor).
-6. **Keyless / lower rate limits:** when `CONTEXT7_API_KEY` is unset, Cursor expands
-   `${env:CONTEXT7_API_KEY}` to an empty string and the server runs anonymously. If MCP logs
-   ever show the literal placeholder `${env:CONTEXT7_API_KEY}` as the key value, remove the
-   `env` object from the `context7` entry (anonymous) or set a real key, then reload MCP.
-7. Prefer `resolve-library-id` → `query-docs` when the authenticated MCP path is available;
-   otherwise use the authorised local CLI path. Never expose keys in command output or chat logs, including during debugging.
-
-Never paste credential values into chat, issues, or commits. Prefer presence/length checks
-(`check:local-presence`) over dumping env contents.
+Follow the shared [Context7 guide](context7.md). Cursor Cloud Agent Secrets supply
+the local stdio/CLI process environment; they do not authenticate a separate
+host-provided connector. `.env.local` alone does not expand project MCP
+`${env:CONTEXT7_API_KEY}`. Reload MCP after environment changes, verify the
+current callable tools, and use only sanitised technical queries.

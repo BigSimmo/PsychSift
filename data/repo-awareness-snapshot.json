@@ -2289,9 +2289,14 @@
         "catalogued": false
       },
       {
+        "path": "docs/agents/context7.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/cme-adoption-contract.md",
         "section": "root",
-        "catalogued": false
+        "catalogued": true
       },
       {
         "path": "docs/decisions/2026-09-26-loose-around-pages-and-modes.md",
@@ -4321,7 +4326,7 @@
       {
         "path": "docs/live-version-switch.md",
         "section": "root",
-        "catalogued": false
+        "catalogued": true
       },
       {
         "path": "docs/archive/2026-10-agent-code-reviews/COMPLETE_ISSUE_INVENTORY.md",

@@ -1,8 +1,24 @@
 # PsychSift: task lifecycle and receipt handoff
 
+_Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
+
 Owning repository: `BigSimmo/PsychSift`. These rules cover only this project. The [canonical task source](https://app.notion.com/p/ba8c768f8b2c49638772b39900cb7ab9) uses data source `collection://ef3ca511-c488-4aba-ba1f-a5e20767a333` and an exclusive Project value `PsychSift`. The verified [project ledger](https://app.notion.com/p/3ec7889e8a2281e4bab9ca667a2a76df) uses the exclusive Project and Conversation filters; it is a view of the shared canonical source, not a duplicate database. Existing records are evidence and task detail; the receipt is a reconciliation handoff, not another competing task ledger.
 
 Use [the existing issues inbox](outstanding-issues-inbox/README.md) and its issues:add/update/queue/done commands. Feature branches must not edit outstanding-issues.md directly; existing reconciliation locks and clinical controls remain binding.
+
+## Status authority
+
+| Surface                                        | Authority and update route                                                                                                       |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Canonical Notion source, filtered to PsychSift | Task ownership, lifecycle, blocker and next action; update only with applicable authorisation.                                   |
+| `docs/outstanding-issues.md`                   | Repository issue history and recommended issue queue; changes go through immutable inbox requests and serialized reconciliation. |
+| Local task checkpoint and exported receipt     | Evidence and handoff while canonical reconciliation is unavailable; report unsynced state.                                       |
+| Operator runbooks and readiness register       | Operational steps and domain-specific evidence; they do not create another task-status ledger.                                   |
+
+This map supersedes legacy wording in the protected issue ledger introduction
+that calls it the universal task ledger or directs table edits. Preserve its
+historical records; feature branches must not rewrite even its introductory
+text. Use [the issues inbox](outstanding-issues-inbox/README.md) for issue changes.
 
 ## Update at lifecycle events
 
