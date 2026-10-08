@@ -3,7 +3,8 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 import type { AppModeId } from "@/lib/app-modes";
-import type { WorkFrameActionId } from "@/lib/work-frame/areas";
+import type { WorkAreaId, WorkFrameActionId } from "@/lib/work-frame/areas";
+import { EMPTY_WORK_TRAIL, visitWorkPage, type WorkTrail, type WorkVisit } from "@/lib/work-frame/back-trail";
 
 /**
  * The little shared state of the work-mode frame, kept in memory for this tab.
@@ -182,6 +183,60 @@ export function rememberWorkAreaPage(areaId: string, href: string): void {
 
 export function rememberedWorkAreaPage(areaId: string): string | null {
   return lastPages.get(areaId) ?? null;
+}
+
+/* ------------------------------------------------- where an inner area was opened from */
+
+let trail: WorkTrail = EMPTY_WORK_TRAIL;
+/**
+ * When the phone's Back (or Forward) or a back arrow was last used, so the
+ * next work page shown counts as a return. It lapses after a few seconds, so a
+ * Back that changed only the address within a page never counts later.
+ */
+let returningAt: number | null = null;
+const RETURN_WINDOW_MS = 5_000;
+let listeningForBack = false;
+const trailListeners = new Set<() => void>();
+
+function subscribeTrail(listener: () => void) {
+  trailListeners.add(listener);
+  return () => trailListeners.delete(listener);
+}
+
+/** A back arrow was tapped: the page it opens keeps its own way back rather than pointing at the page left. */
+export function markWorkReturn(): void {
+  returningAt = Date.now();
+}
+
+/**
+ * The frame calls this for every work page it draws, so an inner area knows
+ * the work page it was opened from (`visitWorkPage`). Memory only for this tab.
+ */
+export function recordWorkPageVisit(visit: WorkVisit, inner: boolean): void {
+  if (!listeningForBack && typeof window !== "undefined") {
+    listeningForBack = true;
+    window.addEventListener("popstate", markWorkReturn);
+  }
+  const returning = returningAt !== null && Date.now() - returningAt < RETURN_WINDOW_MS;
+  returningAt = null;
+  const next = visitWorkPage(trail, visit, { inner, returning });
+  const originsChanged = next.origins !== trail.origins;
+  trail = next;
+  if (originsChanged) for (const listener of trailListeners) listener();
+}
+
+/** The work page an inner area was opened from, or null when opened fresh (it then goes back to its parent). */
+export function useWorkAreaOrigin(areaId: WorkAreaId): WorkVisit | null {
+  return useSyncExternalStore(
+    subscribeTrail,
+    () => trail.origins[areaId] ?? null,
+    () => null,
+  );
+}
+
+export function resetWorkTrailForTests(): void {
+  trail = EMPTY_WORK_TRAIL;
+  returningAt = null;
 }
 
 /* ------------------------------------------------------------- page's back */

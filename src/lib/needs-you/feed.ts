@@ -12,8 +12,10 @@
  * signed-in reader on their own screen, so `title` and `detail` must never
  * carry a patient detail (the same rule as `TodayItem`).
  *
- * Perth keeps UTC+8 all year, so a Perth calendar date is exact arithmetic on
- * `YYYY-MM-DD` strings.
+ * "Today" is read in the work time zone (`src/lib/work-time/`, Perth unless the
+ * reader chose another), the same day My Day uses, so the bell, the
+ * Notifications page, the side menu and My Day's Needs you never disagree near
+ * midnight. Calendar dates are exact arithmetic on `YYYY-MM-DD` strings.
  */
 
 import type { MyDayItem } from "@/lib/my-day/model";
@@ -23,6 +25,8 @@ import {
   WA_PUBLIC_HOLIDAYS_LAST_YEAR,
   waPublicHolidaysByRule,
 } from "@/lib/on-call/wa-public-holidays";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zoneOffsetMs } from "@/lib/work-time/format";
 
 /* ------------------------------------------------------------- the interface */
 
@@ -195,10 +199,24 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 const two = (value: number) => String(value).padStart(2, "0");
 
-/** The Perth calendar date of an instant. */
+/** The Perth calendar date of an instant. Prefer `workToday`, which follows the reader's work time zone. */
 export function perthToday(now: Date): string {
   const perth = new Date(now.getTime() + PERTH_OFFSET_MS);
   return `${perth.getUTCFullYear()}-${two(perth.getUTCMonth() + 1)}-${two(perth.getUTCDate())}`;
+}
+
+/** The wall clock of an instant in the zone, as a Date whose UTC fields read as that clock. */
+function wallClock(ms: number, zone: string): Date {
+  return new Date(ms + zoneOffsetMs(ms, zone));
+}
+
+/**
+ * The calendar date of an instant in the work time zone (Perth unless the
+ * reader chose another). The one "today" the feed and My Day both use.
+ */
+export function workToday(now: Date, zone: string = currentWorkTimeZone()): string {
+  const wall = wallClock(now.getTime(), zone);
+  return `${wall.getUTCFullYear()}-${two(wall.getUTCMonth() + 1)}-${two(wall.getUTCDate())}`;
 }
 
 function addDays(date: string, days: number): string {
@@ -210,12 +228,12 @@ function dayDifference(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
 }
 
-/** The Perth date a due value falls on, or null when absent or unreadable. */
-function duePerthDate(due: string | null): string | null {
+/** The work-zone date a due value falls on, or null when absent or unreadable. */
+function dueDate(due: string | null, zone: string): string | null {
   if (due === null) return null;
   if (DATE_ONLY.test(due)) return Number.isFinite(Date.parse(`${due}T00:00:00Z`)) ? due : null;
   const ms = Date.parse(due);
-  return Number.isFinite(ms) ? perthToday(new Date(ms)) : null;
+  return Number.isFinite(ms) ? workToday(new Date(ms), zone) : null;
 }
 
 function isWaHoliday(date: string): boolean {
@@ -256,16 +274,16 @@ function formatShortDate(date: string, today: string): string {
  * The due part of a row's second line: "Today 14:30", "Tomorrow", "Thu 8 Oct",
  * "Was due Wed 23 Sep". Empty for an undated item.
  */
-export function formatNotificationDue(due: string | null, now: Date): string {
-  const date = duePerthDate(due);
+export function formatNotificationDue(due: string | null, now: Date, zone: string = currentWorkTimeZone()): string {
+  const date = dueDate(due, zone);
   if (due === null || date === null) return "";
-  const today = perthToday(now);
+  const today = workToday(now, zone);
   const days = dayDifference(today, date);
   const timed = !DATE_ONLY.test(due);
   const clock = timed
     ? (() => {
-        const perth = new Date(Date.parse(due) + PERTH_OFFSET_MS);
-        return ` ${two(perth.getUTCHours())}:${two(perth.getUTCMinutes())}`;
+        const wall = wallClock(Date.parse(due), zone);
+        return ` ${two(wall.getUTCHours())}:${two(wall.getUTCMinutes())}`;
       })()
     : "";
   if (days === 0) return `Today${clock}`;
@@ -296,12 +314,16 @@ export const notificationUrgencyLabels: Readonly<Record<NotificationUrgency, str
  * falls today; This week within the next six days; otherwise, or undated,
  * Coming up (the key stays `later`).
  */
-export function notificationUrgency(item: NotificationItem, now: Date): NotificationUrgency {
+export function notificationUrgency(
+  item: NotificationItem,
+  now: Date,
+  zone: string = currentWorkTimeZone(),
+): NotificationUrgency {
   if (item.overdue) return "overdue";
-  const date = duePerthDate(item.due);
+  const date = dueDate(item.due, zone);
   if (item.due === null || date === null) return "later";
   if (!DATE_ONLY.test(item.due) && Date.parse(item.due) < now.getTime()) return "overdue";
-  const days = dayDifference(perthToday(now), date);
+  const days = dayDifference(workToday(now, zone), date);
   if (days < 0) return "overdue";
   if (days === 0) return "today";
   if (days <= 6) return "week";
@@ -352,8 +374,9 @@ export function summariseNotifications(
   sources: readonly NotificationSource[],
   snoozes: NotificationSnoozes,
   now: Date,
+  zone: string = currentWorkTimeZone(),
 ): NotificationFeedSummary {
-  const today = perthToday(now);
+  const today = workToday(now, zone);
   const seen = new Set<string>();
   const visible: NotificationItem[] = [];
   const snoozed: { item: NotificationItem; until: string }[] = [];
@@ -367,10 +390,10 @@ export function summariseNotifications(
       else visible.push(item);
     }
   }
-  const rank = (item: NotificationItem) => notificationUrgencies.indexOf(notificationUrgency(item, now));
+  const rank = (item: NotificationItem) => notificationUrgencies.indexOf(notificationUrgency(item, now, zone));
   visible.sort((a, b) => rank(a) - rank(b) || compareNotifications(a, b));
   snoozed.sort((a, b) => a.until.localeCompare(b.until) || compareNotifications(a.item, b.item));
-  const overdue = visible.filter((item) => notificationUrgency(item, now) === "overdue").length;
+  const overdue = visible.filter((item) => notificationUrgency(item, now, zone) === "overdue").length;
   return { visible, snoozed, count: visible.length, overdue };
 }
 
@@ -412,13 +435,14 @@ export function groupNotifications(
   now: Date,
   segment: NotificationSegment = "all",
   area: NotificationArea | null = null,
+  zone: string = currentWorkTimeZone(),
 ): NotificationGroup[] {
   const shown = items.filter((item) => inSegment(item, segment) && (area === null || item.area === area));
   return notificationUrgencies
     .map((urgency) => ({
       urgency,
       label: notificationUrgencyLabels[urgency],
-      items: shown.filter((item) => notificationUrgency(item, now) === urgency),
+      items: shown.filter((item) => notificationUrgency(item, now, zone) === urgency),
     }))
     .filter((group) => group.items.length > 0);
 }

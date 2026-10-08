@@ -49,6 +49,7 @@ import type { MyDayTimedEvent } from "@/lib/my-day/dashboard";
 import { addMonths, monthTitle, monthWeeks, myDayActionLabel, RUNWAY_DAYS } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
+import type { MyDayNeedsYouItem, MyDayNeedsYouMode } from "@/lib/my-day/needs-you-feed";
 import {
   codeKey,
   dayCode,
@@ -87,6 +88,9 @@ const MODE_ICON: Readonly<Record<MyDaySourceMode, LucideIcon>> = {
   teaching: GraduationCap,
   roster: CalendarDays,
 };
+
+/** Needs you also lists the reader's own reminders, under a bell. */
+const NEEDS_YOU_ICON: Readonly<Record<MyDayNeedsYouMode, LucideIcon>> = { ...MODE_ICON, "my-day": Bell };
 
 export function shiftName(kind: ShiftKind): string {
   return shiftTitle(kind);
@@ -1371,23 +1375,27 @@ export function ThisWeekCard({
 
 // ---------------------------------------------------------------- needs you
 
-/** One Needs you row: the area's icon, the title, the line (late in amber, lapsed in red), the verb and Later. */
+/**
+ * One Needs you row: the area's icon, the title, the line (late in amber, lapsed in red), the verb and Later.
+ * An item Later cannot move (a reminder, an example) has no Later.
+ */
 export function NeedsYouRow({
   item,
   today,
-  onLater,
+  onLater: onLaterProp,
 }: {
-  readonly item: MyDayItem;
+  readonly item: MyDayNeedsYouItem;
   readonly today: string;
-  readonly onLater?: (item: MyDayItem) => void;
+  readonly onLater?: (item: MyDayNeedsYouItem) => void;
 }) {
   const line = itemLine(item, today);
   const action = myDayActionLabel(item);
   const lapsed = item.severity === "overdue" && item.mode === "my-work";
+  const onLater = item.snoozable === false ? undefined : onLaterProp;
   return (
     <QuietRow
       testId={`my-day-item-${item.id}`}
-      lead={<AreaIcon mode={item.mode} icon={MODE_ICON[item.mode]} />}
+      lead={<AreaIcon mode={item.mode} icon={NEEDS_YOU_ICON[item.mode]} />}
       title={item.title}
       subtitle={
         <>
@@ -1507,7 +1515,7 @@ export function NeedsYouCard({
   onRetry,
   onHide,
 }: {
-  readonly shown: readonly MyDayItem[];
+  readonly shown: readonly MyDayNeedsYouItem[];
   readonly waiting: number;
   readonly total: number;
   readonly checked: readonly string[];
@@ -1527,7 +1535,7 @@ export function NeedsYouCard({
     readonly count: number;
   } | null;
   readonly inlineUndo?: boolean;
-  readonly onLater: (item: MyDayItem) => void;
+  readonly onLater: (item: MyDayNeedsYouItem) => void;
   readonly onUndo: () => void;
   readonly onRemindMe?: (title: string) => void;
   readonly onShowAll: () => void;
