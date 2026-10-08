@@ -20,6 +20,7 @@ import { RefereeList, RefereeSheet, type RefereeDraft } from "@/components/cme/a
 import { SeasonDateSheet, SeasonRail, type SeasonDateDraft } from "@/components/cme/applications/applications-season";
 import { WorkButton, WorkEmpty } from "@/components/mode-kit/work";
 import { cn } from "@/components/ui-primitives";
+import { useKeptWithAccount } from "@/components/work-sync/kept-where";
 import {
   addReferee,
   agreedCount,
@@ -66,6 +67,7 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
   const today = perthCalendarDate(now);
   const sample = useMemo(() => (demoMode ? sampleApplications(today) : null), [demoMode, today]);
   const store = useApplicationsStore(sample);
+  const withAccount = useKeptWithAccount("cpdApplications");
   const notify = useUndoNotice();
   const [dateSheet, setDateSheet] = useState<DateSheetState>({ open: false });
   const [refereeSheet, setRefereeSheet] = useState<RefereeSheetState>({ open: false });
@@ -346,9 +348,11 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
       ) : null}
 
       <QuietNote icon={Lock} testId="applications-kept-note">
-        {store.mode === "device"
-          ? "Kept on this phone only, never sent. No patient details anywhere here."
-          : "Never sent. No patient details anywhere here."}
+        {store.mode !== "device"
+          ? "Never sent. No patient details anywhere here."
+          : withAccount
+            ? "Backed up to your account, never sent to anyone. No patient details anywhere here."
+            : "Kept on this phone only, never sent. No patient details anywhere here."}
       </QuietNote>
 
       <ActionDock testId="applications-dock">

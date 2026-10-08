@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ADMIN_PAPERWORK_STORAGE_KEY,
   clearAccountScopedBrowserStorage,
+  CPD_APPLICATIONS_STORAGE_KEY,
   MY_DAY_HIDDEN_CARDS_STORAGE_KEY,
   MY_DAY_QUICK_NOTE_STORAGE_KEY,
   WORK_ACCOUNT_SYNC_MARKER_KEY,
 } from "@/lib/account-scoped-browser-state";
+import { setSharedDevice } from "@/lib/alerts/shared-device";
 import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 import { resetWorkSyncForTesting, startWorkSync } from "@/lib/work-sync/work-sync-client";
 
@@ -48,6 +51,38 @@ afterEach(() => {
 });
 
 describe("work sync client", () => {
+  it("copies a whole record down from the account and saves a change to it", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    const record = { version: 1, requests: [], documents: [], payslips: [], tax: {} };
+    const { puts } = mockServer({ adminPaperwork: { value: record, updatedAt: AT } });
+    start();
+    await settle();
+    expect(JSON.parse(window.localStorage.getItem(ADMIN_PAPERWORK_STORAGE_KEY) ?? "null")).toEqual(record);
+
+    const changed = { ...record, tax: { "2026": { checked: [], expenses: [] } } };
+    window.localStorage.setItem(ADMIN_PAPERWORK_STORAGE_KEY, JSON.stringify(changed));
+    announceWorkSyncChange(ADMIN_PAPERWORK_STORAGE_KEY);
+    await settle();
+    expect(puts).toEqual([{ section: "adminPaperwork", value: changed }]);
+  });
+
+  it("never copies job applications onto a device marked shared, nor saves them from it", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    setSharedDevice(true);
+    const { puts } = mockServer({
+      cpdApplications: {
+        value: { version: 1, dates: [], referees: [], statement: "Mine", hiddenCvLines: [] },
+        updatedAt: AT,
+      },
+    });
+    start();
+    await settle();
+    expect(window.localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)).toBeNull();
+    announceWorkSyncChange(CPD_APPLICATIONS_STORAGE_KEY);
+    await settle();
+    expect(puts).toEqual([]);
+  });
+
   it("takes the account's copy on a device that has matched before, and tells the store", async () => {
     window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
     window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["cpd"]));

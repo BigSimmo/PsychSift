@@ -10,9 +10,13 @@ import {
   type AdminPaperwork,
 } from "@/lib/work-screens/admin/paperwork-model";
 import { withoutExampleRecords } from "@/lib/example-data/guards";
+import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 
 /**
- * Where Admin's own-paperwork record lives: this device, for this account.
+ * Where Admin's own-paperwork record lives: this device, for this account, with
+ * a copy kept with the account so it follows the doctor to every device they
+ * sign in on (`@/lib/work-sync`, owner decision 8 Oct 2026). The page reads the
+ * device copy only, so it works the same with no connection.
  *
  * ACCOUNT SCOPE. The key must be added to `clearAccountScopedBrowserStorage`
  * in `src/lib/account-scoped-browser-state.ts` (that file is owned by another
@@ -81,7 +85,10 @@ function readRefused(): boolean {
   return refused;
 }
 
-/** Writes the record. Returns false when the browser refused, so the page can say it lasts this visit only. */
+/**
+ * Writes the record. Returns false when the browser refused, so the page can say it lasts this visit only.
+ * A saved change is also copied to the doctor's account (`@/lib/work-sync`).
+ */
 function write(value: string): boolean {
   memory = value;
   let saved = true;
@@ -92,6 +99,7 @@ function write(value: string): boolean {
   }
   refused = !saved;
   notify();
+  if (saved) announceWorkSyncChange(ADMIN_PAPERWORK_STORAGE_KEY);
   return saved;
 }
 

@@ -23,6 +23,7 @@ import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { WorkBody, WorkButton, WorkCard, WorkEmpty, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
+import { KeptWhere, useKeptWithAccount } from "@/components/work-sync/kept-where";
 import {
   EXAMPLE_NOT_SENT,
   RECIPIENT_CHECK,
@@ -414,7 +415,7 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
       <WorkSectionLabel>They will not see</WorkSectionLabel>
       <WorkCard>
         <WorkIconRow icon={X} title="Anything you leave off" sub="Every switch starts off" />
-        <WorkIconRow icon={Receipt} title="Pay, overtime and tax" sub="These stay on this phone" />
+        <WorkIconRow icon={Receipt} title="Pay, overtime and tax" sub="Never in what you share" />
         <WorkIconRow icon={ShieldAlert} title="Health reasons" sub="Go to Staff Health only" />
       </WorkCard>
 
@@ -441,8 +442,12 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
       </WorkCard>
 
       <PaperworkFootNote testId="admin-sharing-footnote">
-        Your choices stay on this phone. PsychSift sends nothing. Files you already sent stay with whoever you sent them
-        to.
+        <KeptWhere
+          section="adminPaperwork"
+          account="Your choices are kept with your account."
+          device="Your choices stay on this phone."
+        />{" "}
+        PsychSift sends nothing. Files you already sent stay with whoever you sent them to.
       </PaperworkFootNote>
 
       <Sheet
@@ -494,6 +499,7 @@ function RecipientSheet({
 }) {
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
+  const withAccount = useKeptWithAccount("adminPaperwork");
   const trimmedEmail = email.trim();
   const emailError =
     trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail) ? "Check the email address." : null;
@@ -537,7 +543,9 @@ function RecipientSheet({
           onChange={setEmail}
           maxLength={120}
           error={emailError}
-          hint="A work address. It stays on this phone."
+          hint={
+            withAccount ? "A work address. It is kept with your account." : "A work address. It stays on this phone."
+          }
           testId="admin-sharing-recipient-email"
         />
       </div>

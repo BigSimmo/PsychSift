@@ -20,10 +20,13 @@ import {
   parseCpdHomeSendState,
   type CpdHomeSendState,
 } from "@/lib/cme/cpd-home-send";
+import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 
 /**
- * Where CPD's two device-only records live: "Send to AMA CPD Home" file
- * history and the Job applications season. The same pattern as Teaching's term
+ * Where CPD's two device records live: "Send to AMA CPD Home" file history
+ * and the Job applications season. The applications are also backed up to the
+ * doctor's account (`@/lib/work-sync`, owner decision 8 Oct 2026), except on a
+ * device marked shared, where nothing is saved. The same pattern as Teaching's term
  * tracker (`term-tracker-store.ts`): `useSyncExternalStore` over localStorage,
  * an in-memory copy when the browser refuses storage, a state of `null` until
  * the browser has been read (so the first paint is never "nothing yet"), and
@@ -91,8 +94,12 @@ function write(key: string, value: string): void {
   } catch {
     // Storage refused: the change lasts for this page only, and the page says so.
     refused.add(key);
+    notify();
+    return;
   }
   notify();
+  // Job applications are backed up to the account (`@/lib/work-sync`); the CPD Home file list is not.
+  announceWorkSyncChange(key);
 }
 
 const CPD_DEVICE_KEYS = [CPD_APPLICATIONS_STORAGE_KEY, CPD_HOME_SEND_STORAGE_KEY] as const;

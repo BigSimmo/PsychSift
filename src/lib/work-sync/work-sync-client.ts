@@ -3,10 +3,12 @@
 import { useSyncExternalStore } from "react";
 
 import { subscribeAccountTransition, WORK_ACCOUNT_SYNC_MARKER_KEY } from "@/lib/account-scoped-browser-state";
+import { isSharedDevice } from "@/lib/alerts/shared-device";
 import { isEmptyWorkSyncValue, mergeWorkSyncValues } from "@/lib/work-sync/merge";
 import {
   isTextSection,
   isWorkSyncSection,
+  skipsSharedDevice,
   WORK_SYNC_CHANGE_EVENT,
   WORK_SYNC_SECTIONS,
   WORK_SYNC_STORAGE_KEYS,
@@ -76,6 +78,11 @@ function resetStatuses(): void {
 const SECTION_BY_KEY = new Map<string, WorkSyncSection>(
   WORK_SYNC_SECTIONS.map((section) => [WORK_SYNC_STORAGE_KEYS[section], section]),
 );
+
+/** On a device marked shared, CPD's job applications are neither copied down nor saved from here. */
+function heldOffDevice(section: WorkSyncSection): boolean {
+  return skipsSharedDevice(section) && isSharedDevice();
+}
 
 function readLocal(section: WorkSyncSection): unknown {
   let raw: string | null = null;
@@ -185,6 +192,7 @@ function push(active: Session, section: WorkSyncSection): void {
 }
 
 function schedulePush(active: Session, section: WorkSyncSection): void {
+  if (heldOffDevice(section)) return;
   active.refused.delete(section);
   active.dirty.add(section);
   active.generations.set(section, (active.generations.get(section) ?? 0) + 1);
@@ -230,7 +238,7 @@ async function pull(active: Session): Promise<void> {
   for (const section of WORK_SYNC_SECTIONS) {
     // A change made on this device while the read was in flight is newer than what came back.
     // So is one the account refused: its older account copy must not replace it.
-    if (active.dirty.has(section) || active.refused.has(section)) continue;
+    if (active.dirty.has(section) || active.refused.has(section) || heldOffDevice(section)) continue;
     const entry = sections[section];
     const local = readLocal(section);
     if (!entry) {
