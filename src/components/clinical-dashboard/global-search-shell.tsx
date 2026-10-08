@@ -1244,7 +1244,6 @@ function GlobalStandaloneSearchShellBody({
             showAccountLibrary={favouritesAccessible}
             onNewChat={startNewChat}
             onPickRecent={pickRecentQuery}
-            onOpenSearch={openSidebarSearch}
             onSelectMode={changeMode}
             onPrefetchApplications={prefetchApplications}
             onOpenSettings={openSettingsWithDefaultFocus}

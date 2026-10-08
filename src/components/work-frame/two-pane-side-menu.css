@@ -1,8 +1,8 @@
 /* ------------------------------------------------------------------
    Two-pane side menu (owner pick "1. Quiet strip", 8 Oct 2026), behind the
    Live version switch. A full-height strip with the logo, the mode switch,
-   Saved, Settings and the reader's initials, beside a pane for the chosen
-   side. Flat: the strip is a quiet ground, the pane is the sheet's own
+   My Day, Saved and Reminders, then Appearance, Settings and the reader's
+   initials at the foot, beside a pane for the chosen side. Flat: the strip is a quiet ground, the pane is the sheet's own
    surface, and the current item gets a soft pill rather than a box.
    Tokens only. Taps are at least 44 px; rows are 44 to 48 px.
    ------------------------------------------------------------------ */
@@ -58,7 +58,7 @@
   align-content: center;
   gap: calc(var(--spacing) * 0.75);
   width: 3.75rem;
-  min-height: 3.5rem;
+  min-height: 3.25rem;
   border-radius: var(--radius-lg);
   color: var(--text-muted);
   font-size: 0.6875rem;
@@ -97,6 +97,11 @@
   border-radius: var(--radius-pill);
   background: var(--danger);
   box-shadow: 0 0 0 2px var(--surface-wash);
+}
+
+/* Blue for a reminder due today, so it never reads as overdue. */
+.two-pane-menu__pip[data-tone="due"] {
+  background: var(--clinical-accent);
 }
 
 .two-pane-menu__rule {
@@ -226,14 +231,12 @@
   margin: calc(var(--spacing) * 5) calc(var(--spacing) * 1) calc(var(--spacing) * 0.5) calc(var(--spacing) * 2.5);
 }
 
-.two-pane-menu__label h3,
-.two-pane-menu__appearance h3 {
+.two-pane-menu__label h3 {
   color: var(--text-muted);
   font-size: 0.8125rem;
   font-weight: 600;
 }
 
-.two-pane-menu__label-icon,
 .two-pane-menu__label-action {
   display: grid;
   place-items: center;
@@ -356,98 +359,8 @@
   font-size: 0.875rem;
 }
 
-.two-pane-menu__tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: calc(var(--spacing) * 1.5);
-  padding: 0 calc(var(--spacing) * 1);
-}
-
-.two-pane-menu__tile {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: calc(var(--spacing) * 1);
-  width: 100%;
-  min-height: 3.625rem;
-  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 0.5);
-  border-radius: var(--radius-lg);
-  background: var(--surface-wash);
-  color: var(--text-heading);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-.two-pane-menu__tile > span {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.two-pane-menu__tile > svg {
-  color: var(--text-muted);
-}
-
-.two-pane-menu__tile:hover {
-  background: var(--surface-inset);
-}
-
-.two-pane-menu__tile[aria-current="page"] {
-  background: var(--clinical-accent-soft);
-  color: var(--clinical-accent);
-}
-
-.two-pane-menu__tile[aria-current="page"] > svg {
-  color: var(--clinical-accent);
-}
-
-@container (max-width: 15.5rem) {
-  .two-pane-menu__tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 .two-pane-menu__pane {
   container-type: inline-size;
-}
-
-.two-pane-menu__needs {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 3);
-  min-height: 3.5rem;
-  margin: 0 calc(var(--spacing) * 1);
-  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
-  border-radius: var(--radius-lg);
-  background: var(--surface-wash);
-  color: var(--text-muted);
-}
-
-.two-pane-menu__needs:hover {
-  background: var(--surface-inset);
-}
-
-.two-pane-menu__needs-text {
-  display: grid;
-  flex: 1;
-  min-width: 0;
-}
-
-.two-pane-menu__needs-text b {
-  color: var(--text-heading);
-  font-size: 0.90625rem;
-  font-weight: 650;
-}
-
-.two-pane-menu__needs-text small {
-  font-size: 0.8125rem;
-}
-
-.two-pane-menu__needs-text small[data-overdue="true"] {
-  color: var(--danger);
-  font-weight: 600;
 }
 
 .two-pane-menu__count {
@@ -523,44 +436,6 @@
   font-size: 0.8125rem;
 }
 
-.two-pane-menu__appearance {
-  display: grid;
-  gap: calc(var(--spacing) * 2);
-  margin: calc(var(--spacing) * 3) calc(var(--spacing) * 2.5) calc(var(--spacing) * 2);
-}
-
-.two-pane-menu__segments {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: calc(var(--spacing) * 0.5);
-  padding: calc(var(--spacing) * 0.75);
-  border-radius: var(--radius-lg);
-  background: var(--surface-wash);
-}
-
-.two-pane-menu__segments button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--spacing) * 1.25);
-  min-height: 2.75rem;
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-.two-pane-menu__segments button[aria-pressed="true"] {
-  background: var(--surface-raised);
-  color: var(--text-heading);
-}
-
-@container (max-width: 14.5rem) {
-  .two-pane-menu__segments button svg {
-    display: none;
-  }
-}
-
 .two-pane-menu__confirm {
   display: grid;
   gap: calc(var(--spacing) * 2.5);
@@ -587,10 +462,316 @@
   font-weight: 650;
 }
 
-.two-pane-menu__confirm-actions .two-pane-menu__sign-out {
+.two-pane-menu__confirm-actions .two-pane-menu__danger {
   border-color: var(--danger);
   background: var(--danger);
   color: var(--surface);
+}
+
+/* Find box: questions, pages and areas on this phone, nothing saved. */
+.two-pane-menu__find {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2.25);
+  min-height: 2.75rem;
+  margin: 0 calc(var(--spacing) * 1) calc(var(--spacing) * 3);
+  padding: 0 calc(var(--spacing) * 1) 0 calc(var(--spacing) * 3.25);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--surface-wash);
+  color: var(--text-muted);
+  transition:
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.two-pane-menu__find:focus-within {
+  border-color: var(--clinical-accent-border);
+  background: var(--surface-raised);
+}
+
+.two-pane-menu__find input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-heading);
+  font-size: 1rem;
+  outline: none;
+}
+
+.two-pane-menu__find input::placeholder {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.two-pane-menu__find-clear {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-right: calc(var(--spacing) * -1);
+  color: var(--text-muted);
+}
+
+.two-pane-menu__find-clear span {
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+}
+
+.two-pane-menu__row--ask,
+.two-pane-menu__row--ask > svg {
+  color: var(--clinical-accent);
+}
+
+.two-pane-menu__row--ask .two-pane-menu__name {
+  font-weight: 600;
+}
+
+.two-pane-menu__match {
+  border-radius: var(--radius-sm);
+  background: var(--clinical-accent-soft);
+  color: var(--clinical-accent);
+  font-weight: 650;
+}
+
+.two-pane-menu__privacy {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  margin: calc(var(--spacing) * 4) calc(var(--spacing) * 2.5) 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* A recent question. Swipe it left to show Remove, which sits under the row. */
+.two-pane-menu__swipe {
+  --swipe-remove: 5.5rem;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  touch-action: pan-y;
+}
+
+.two-pane-menu__swipe-remove {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: var(--swipe-remove);
+  background: var(--danger);
+  color: var(--surface);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.two-pane-menu__swipe[data-open="true"] .two-pane-menu__swipe-remove,
+.two-pane-menu__swipe[data-dragging="true"] .two-pane-menu__swipe-remove {
+  opacity: 1;
+}
+
+.two-pane-menu__swipe .two-pane-menu__recent {
+  position: relative;
+  background: var(--surface-raised);
+  transform: translateX(var(--swipe-x, 0));
+  transition:
+    transform var(--duration-quick) ease-out,
+    background-color var(--duration-fast) ease;
+}
+
+.two-pane-menu__swipe[data-open="true"] .two-pane-menu__recent {
+  transform: translateX(var(--swipe-x, calc(var(--swipe-remove) * -1)));
+}
+
+.two-pane-menu__swipe[data-dragging="true"] .two-pane-menu__recent {
+  transition: none;
+}
+
+.two-pane-menu__swipe .two-pane-menu__recent:hover {
+  background: var(--surface-subtle);
+}
+
+/* Today card: the day at a glance, and the way into My Day. */
+.two-pane-menu__today {
+  display: grid;
+  gap: calc(var(--spacing) * 2.5);
+  margin: 0 calc(var(--spacing) * 1);
+  padding: calc(var(--spacing) * 3.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface-raised);
+  color: var(--text-heading);
+  transition: border-color var(--duration-fast) ease;
+}
+
+a.two-pane-menu__today:hover {
+  border-color: var(--clinical-accent-border);
+}
+
+.two-pane-menu__today-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 2);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.two-pane-menu__today-link {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 0.5);
+  color: var(--clinical-accent);
+}
+
+.two-pane-menu__today-main {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+}
+
+.two-pane-menu__today-badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity);
+}
+
+.two-pane-menu__today-text {
+  display: grid;
+  min-width: 0;
+}
+
+.two-pane-menu__today-text b {
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.two-pane-menu__today-text small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.two-pane-menu__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 1.5);
+}
+
+.two-pane-menu__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  min-height: 1.625rem;
+  padding: 0 calc(var(--spacing) * 2.5);
+  border-radius: var(--radius-pill);
+  background: var(--surface-wash);
+  color: var(--text-heading);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.two-pane-menu__chip[data-overdue="true"] {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.two-pane-menu__chip-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+
+/* Work areas as two even columns of tiles, each in its area colour. */
+.two-pane-menu__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--spacing) * 2);
+  padding: 0 calc(var(--spacing) * 1);
+}
+
+.two-pane-menu__tile {
+  display: grid;
+  align-content: start;
+  gap: calc(var(--spacing) * 0.5);
+  width: 100%;
+  min-height: 5.75rem;
+  padding: calc(var(--spacing) * 3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--text-heading);
+  text-align: left;
+  transition:
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.two-pane-menu__tile:hover {
+  border-color: var(--mode-identity-border, var(--clinical-accent-border));
+}
+
+.two-pane-menu__tile[aria-current="true"] {
+  border-color: var(--mode-identity-border);
+  background: var(--mode-identity-soft);
+}
+
+.two-pane-menu__tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 1.5rem;
+  margin-bottom: calc(var(--spacing) * 1.5);
+  color: var(--text-muted);
+}
+
+.two-pane-menu__tile .two-pane-menu__area-icon {
+  color: var(--mode-identity);
+}
+
+.two-pane-menu__tile-name {
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.two-pane-menu__tile-line {
+  min-height: 1rem;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.two-pane-menu__tile-line[data-overdue="true"] {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+
+@container (max-width: 14rem) {
+  .two-pane-menu__tile {
+    padding: calc(var(--spacing) * 2.5);
+  }
 }
 
 .two-pane-menu a:focus-visible,
@@ -609,7 +790,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .two-pane-menu__indicator,
-  .two-pane-menu__head {
+  .two-pane-menu__head,
+  .two-pane-menu__swipe .two-pane-menu__recent,
+  .two-pane-menu__swipe-remove {
     transition: none;
   }
 

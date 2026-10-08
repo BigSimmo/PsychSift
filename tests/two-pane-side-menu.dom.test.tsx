@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { deriveSidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { TwoPaneSideMenu, type TwoPaneSideMenuProps } from "@/components/work-frame/two-pane-side-menu";
+import { recentQueryStorageKey } from "@/lib/recent-query-storage";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
@@ -18,8 +19,9 @@ const recent = [
   "Delirium screening tools for older adults",
   "QTc limits when combining antipsychotics",
   "Who can sign a Form 1A",
-  "Starting dose of quetiapine in older adults",
 ];
+
+const recentKey = `${recentQueryStorageKey}:reader`;
 
 function renderMenu(overrides: Partial<TwoPaneSideMenuProps> = {}) {
   const props: TwoPaneSideMenuProps = {
@@ -34,7 +36,6 @@ function renderMenu(overrides: Partial<TwoPaneSideMenuProps> = {}) {
     showAccountLibrary: true,
     onNewChat: vi.fn(),
     onPickRecent: vi.fn(),
-    onOpenSearch: vi.fn(),
     onOpenSettings: vi.fn(),
     onOpenAccount: vi.fn(),
     onSignOut: vi.fn(),
@@ -45,6 +46,7 @@ function renderMenu(overrides: Partial<TwoPaneSideMenuProps> = {}) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
   vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
     callback(0);
     return 0;
@@ -57,28 +59,66 @@ afterEach(() => {
 });
 
 describe("two-pane side menu", () => {
-  it("opens on Clinical with New question, five recent questions and the look-up shortcuts", () => {
+  it("opens on Clinical with the find box, New question, recent questions and shortcuts", () => {
     const { props } = renderMenu();
     const menu = screen.getByTestId("two-pane-side-menu");
     expect(within(menu).getByRole("heading", { level: 2, name: "Clinical" })).toBeTruthy();
     expect(screen.getByTestId("two-pane-menu-clinical").getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: recent[4] })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: recent[5] })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Find questions, pages and areas" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 3, name: "Shortcuts" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "All questions" }));
-    expect(screen.getByRole("button", { name: recent[5] })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: recent[4] }));
+    expect(props.onPickRecent).toHaveBeenCalledWith(recent[4]);
 
     fireEvent.click(screen.getByTestId("two-pane-menu-new-question"));
     expect(props.onNewChat).toHaveBeenCalledOnce();
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("switches to Work, listing the areas, and back", () => {
+  it("finds recent questions, pages and work areas, and asks what was typed", () => {
+    const { props } = renderMenu();
+    const find = screen.getByTestId("two-pane-menu-find");
+
+    fireEvent.change(find, { target: { value: "lithium" } });
+    expect(screen.getByRole("heading", { level: 3, name: "Questions" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: recent[1] })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: recent[0] })).toBeNull();
+    expect(screen.getByText(/Nothing you type here is saved/)).toBeTruthy();
+
+    fireEvent.change(find, { target: { value: "calc" } });
+    expect(screen.getByRole("link", { name: "Calculators" })).toBeTruthy();
+
+    fireEvent.change(find, { target: { value: "roster" } });
+    expect(screen.getByRole("heading", { level: 3, name: "Work areas" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Roster" })).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("two-pane-menu-find-ask"));
+    expect(props.onPickRecent).toHaveBeenCalledWith("roster");
+    expect(props.onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("removes one recent question, and clears them all after a check", () => {
+    window.sessionStorage.setItem(recentKey, JSON.stringify(recent));
+    renderMenu();
+
+    fireEvent.click(screen.getByRole("button", { name: `Remove “${recent[0]}” from recent questions` }));
+    expect(JSON.parse(window.sessionStorage.getItem(recentKey) ?? "[]")).toEqual(recent.slice(1));
+
+    fireEvent.click(screen.getByTestId("two-pane-menu-clear-recent"));
+    expect(window.sessionStorage.getItem(recentKey)).not.toBeNull();
+    expect(screen.getByText("Clear your recent questions from this phone?")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("two-pane-menu-clear-recent-confirm"));
+    expect(window.sessionStorage.getItem(recentKey)).toBeNull();
+  });
+
+  it("switches to Work, with the Today card and the areas as tiles, and back", () => {
     renderMenu({ currentArea: "rost" });
     fireEvent.click(screen.getByTestId("two-pane-menu-work"));
     expect(screen.getByRole("heading", { level: 2, name: "Work" })).toBeTruthy();
+    expect(screen.getByTestId("two-pane-menu-today").textContent).toMatch(/^Today, \w{3} \d{1,2} \w{3}/);
     expect(screen.getByTestId("two-pane-menu-area-rost").getAttribute("aria-current")).toBe("true");
     expect(screen.getByTestId("two-pane-menu-area-day")).toBeTruthy();
+    expect(screen.getByTestId("two-pane-menu-area-reminders")).toBeTruthy();
     fireEvent.click(screen.getByTestId("two-pane-menu-clinical"));
     expect(screen.getByRole("heading", { level: 2, name: "Clinical" })).toBeTruthy();
   });
@@ -90,6 +130,7 @@ describe("two-pane side menu", () => {
     renderMenu({ startSide: "work", workAvailable: false });
     expect(screen.getByRole("heading", { level: 2, name: "Clinical" })).toBeTruthy();
     expect(screen.queryByTestId("two-pane-menu-work")).toBeNull();
+    expect(screen.queryByTestId("two-pane-menu-reminders")).toBeNull();
 
     fireEvent.click(screen.getByTestId("two-pane-menu-you"));
     expect(screen.getByRole("heading", { level: 2, name: "You" })).toBeTruthy();
@@ -97,11 +138,24 @@ describe("two-pane side menu", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Clinical" })).toBeTruthy();
   });
 
-  it("opens Settings from the strip", () => {
+  it("opens Settings and cycles Appearance from the strip", () => {
     const { props } = renderMenu();
+    const appearance = screen.getByTestId("two-pane-menu-appearance");
+    const before = appearance.getAttribute("aria-label");
+    fireEvent.click(appearance);
+    expect(appearance.getAttribute("aria-label")).not.toBe(before);
+
     fireEvent.click(screen.getByTestId("two-pane-menu-settings"));
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
     expect(props.onOpenSettings).toHaveBeenCalledOnce();
+  });
+
+  it("closes when the menu is swiped left", () => {
+    const { props } = renderMenu();
+    const heading = screen.getByRole("heading", { level: 2, name: "Clinical" });
+    fireEvent.pointerDown(heading, { clientX: 300, clientY: 100 });
+    fireEvent.pointerUp(heading, { clientX: 200, clientY: 110 });
+    expect(props.onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("asks before signing out from the initials pane", () => {

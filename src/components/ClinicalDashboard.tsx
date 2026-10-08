@@ -3646,7 +3646,6 @@ function ClinicalDashboardContent({
             showAccountLibrary={favouritesAccessible}
             onNewChat={startNewChat}
             onPickRecent={pickRecentQuery}
-            onOpenSearch={openSidebarSearch}
             onSelectMode={selectSearchMode}
             onPrefetchApplications={prefetchApplications}
             onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
