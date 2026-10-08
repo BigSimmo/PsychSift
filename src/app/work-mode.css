@@ -230,8 +230,14 @@ html[data-work-frame] #main-content {
   z-index: calc(var(--z-raised, 10) + 1);
 }
 
-/* Pinned, the band's dots continue the top bar's grid, and the line drawing,
-   which would show only as a cut-off slice behind the tabs, fades out. */
+/* Pinned, only the tab row shows: the band is trimmed to it, so the date and
+   title never show through or below the top bar and the two read as one
+   strip, as a clinical page's tabs do. The row's dots continue the bar's
+   grid, and the line drawing, which reaches into the row, fades out. */
+.work-band[data-stuck] {
+  clip-path: inset(var(--work-band-tabs-top, 0px) 0 0 0);
+}
+
 .work-band[data-stuck]::before {
   background-position: 0 var(--work-band-stuck-offset, 0);
 }
