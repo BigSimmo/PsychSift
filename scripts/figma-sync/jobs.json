@@ -1,0 +1,2058 @@
+[
+  {
+    "id": "my-day--today--390",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Today",
+    "url": "/my-day",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "my-day--today--1280",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Today",
+    "url": "/my-day",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "my-day--week--390",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Week",
+    "url": "/my-day/week",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "my-day--week--1280",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Week",
+    "url": "/my-day/week",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "my-day--hours--390",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Hours",
+    "url": "/my-day/hours",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "my-day--hours--1280",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Hours",
+    "url": "/my-day/hours",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "my-day--favourites--390",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Favourites",
+    "url": "/my-day/favourites",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "my-day--favourites--1280",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Favourites",
+    "url": "/my-day/favourites",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "notifications--todo--390",
+    "area": "notifications",
+    "areaName": "Notifications",
+    "name": "To do",
+    "url": "/my-day/notifications",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "notifications--todo--1280",
+    "area": "notifications",
+    "areaName": "Notifications",
+    "name": "To do",
+    "url": "/my-day/notifications",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "notifications--earlier--390",
+    "area": "notifications",
+    "areaName": "Notifications",
+    "name": "Earlier",
+    "url": "/my-day/notifications/earlier",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "notifications--earlier--1280",
+    "area": "notifications",
+    "areaName": "Notifications",
+    "name": "Earlier",
+    "url": "/my-day/notifications/earlier",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "notifications--settings--390",
+    "area": "notifications",
+    "areaName": "Notifications",
+    "name": "Settings",
+    "url": "/my-day/notifications/settings",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "notifications--settings--1280",
+    "area": "notifications",
+    "areaName": "Notifications",
+    "name": "Settings",
+    "url": "/my-day/notifications/settings",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--month--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Month",
+    "url": "/roster",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--month--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Month",
+    "url": "/roster",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--team--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Team",
+    "url": "/roster/team",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--team--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Team",
+    "url": "/roster/team",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--swaps--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Swaps",
+    "url": "/roster/swaps",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--swaps--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Swaps",
+    "url": "/roster/swaps",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--browse--390",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Browse",
+    "url": "/open-shifts",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--browse--1280",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Browse",
+    "url": "/open-shifts",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--requests--390",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Requests",
+    "url": "/open-shifts/mine",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--requests--1280",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Requests",
+    "url": "/open-shifts/mine",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--alerts--390",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Alerts",
+    "url": "/open-shifts/alerts",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--alerts--1280",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Alerts",
+    "url": "/open-shifts/alerts",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "manage--inbox--390",
+    "area": "manage",
+    "areaName": "Manage team",
+    "name": "Inbox",
+    "url": "/roster/manage",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "manage--inbox--1280",
+    "area": "manage",
+    "areaName": "Manage team",
+    "name": "Inbox",
+    "url": "/roster/manage",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "manage--cover--390",
+    "area": "manage",
+    "areaName": "Manage team",
+    "name": "Cover",
+    "url": "/roster/manage?view=cover",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "manage--cover--1280",
+    "area": "manage",
+    "areaName": "Manage team",
+    "name": "Cover",
+    "url": "/roster/manage?view=cover",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "manage--team--390",
+    "area": "manage",
+    "areaName": "Manage team",
+    "name": "Team",
+    "url": "/roster/manage?view=team",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "manage--team--1280",
+    "area": "manage",
+    "areaName": "Manage team",
+    "name": "Team",
+    "url": "/roster/manage?view=team",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--now--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Escalate",
+    "url": "/on-call/now",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--now--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Escalate",
+    "url": "/on-call/now",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--people--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "People",
+    "url": "/on-call/call",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--people--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "People",
+    "url": "/on-call/call",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--refer--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Refer",
+    "url": "/on-call/refer",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--refer--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Refer",
+    "url": "/on-call/refer",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--today--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Today",
+    "url": "/teaching",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--today--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Today",
+    "url": "/teaching",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--week--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Week",
+    "url": "/teaching/week",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--week--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Week",
+    "url": "/teaching/week",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--logbook--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Logbook",
+    "url": "/teaching/logbook",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--logbook--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Logbook",
+    "url": "/teaching/logbook",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "assessments--todo--390",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "To do",
+    "url": "/teaching/assessments",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "assessments--todo--1280",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "To do",
+    "url": "/teaching/assessments",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "assessments--progress--390",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Progress",
+    "url": "/teaching/assessments?view=progress",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "assessments--progress--1280",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Progress",
+    "url": "/teaching/assessments?view=progress",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "assessments--supervision--390",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Supervision",
+    "url": "/teaching/supervision",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "assessments--supervision--1280",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Supervision",
+    "url": "/teaching/supervision",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--summary--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Annual summary",
+    "url": "/cme/summary",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--summary--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Annual summary",
+    "url": "/cme/summary",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  { "id": "cpd--log--390", "area": "cpd", "areaName": "CPD", "name": "Log", "url": "/cme/log", "w": 390, "png": 1 },
+  {
+    "id": "cpd--log--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Log",
+    "url": "/cme/log",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--learning--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Learning",
+    "url": "/cme/learning",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--learning--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Learning",
+    "url": "/cme/learning",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--today--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Today",
+    "url": "/admin",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--today--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Today",
+    "url": "/admin",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--renewals--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Renewals",
+    "url": "/admin/renewals",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--renewals--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Renewals",
+    "url": "/admin/renewals",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "New job",
+    "url": "/admin/new-job",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "New job",
+    "url": "/admin/new-job",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "chrome--side-menu--390",
+    "area": "chrome",
+    "areaName": "Header and navigation",
+    "name": "Side menu",
+    "url": "/my-day",
+    "w": 390,
+    "vh": 844,
+    "fixedHeight": 1,
+    "actions": [{ "click": "header button[aria-label*='menu' i]" }],
+    "png": 1
+  },
+  {
+    "id": "chrome--more-sheet--390",
+    "area": "chrome",
+    "areaName": "Header and navigation",
+    "name": "More sheet",
+    "url": "/roster",
+    "w": 390,
+    "vh": 844,
+    "fixedHeight": 1,
+    "actions": [{ "click": "nav[data-testid=mode-band-tabs] >> text=More" }],
+    "png": 1
+  },
+  {
+    "id": "chrome--ai-search--390",
+    "area": "chrome",
+    "areaName": "Header and navigation",
+    "name": "AI Search",
+    "url": "/my-day",
+    "w": 390,
+    "vh": 844,
+    "fixedHeight": 1,
+    "actions": [{ "click": "button[aria-label='AI Search']" }],
+    "png": 1
+  },
+  {
+    "id": "chrome--ai-search--1280",
+    "area": "chrome",
+    "areaName": "Header and navigation",
+    "name": "AI Search",
+    "url": "/my-day",
+    "w": 1280,
+    "vh": 800,
+    "fixedHeight": 1,
+    "actions": [{ "click": "button[aria-label='AI Search']" }],
+    "png": 1
+  },
+  {
+    "id": "chrome--mode-picker--390",
+    "area": "chrome",
+    "areaName": "Header and navigation",
+    "name": "Mode picker",
+    "url": "/my-day",
+    "w": 390,
+    "vh": 844,
+    "fixedHeight": 1,
+    "actions": [{ "click": "header button:has-text('My Day')" }],
+    "png": 1
+  },
+  {
+    "id": "chrome--mode-picker--1280",
+    "area": "chrome",
+    "areaName": "Header and navigation",
+    "name": "Mode picker",
+    "url": "/my-day",
+    "w": 1280,
+    "vh": 800,
+    "fixedHeight": 1,
+    "actions": [{ "click": "header button:has-text('My Day')" }],
+    "png": 1
+  },
+  {
+    "id": "chrome--rail--820",
+    "area": "chrome",
+    "areaName": "Header and navigation",
+    "name": "Tablet rail",
+    "url": "/roster",
+    "w": 820,
+    "vh": 1180,
+    "fixedHeight": 1,
+    "actions": [],
+    "png": 1
+  },
+  {
+    "id": "admin--compliance--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Compliance",
+    "url": "/admin/compliance",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--compliance--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Compliance",
+    "url": "/admin/compliance",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--compliance-export--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Export a copy",
+    "url": "/admin/compliance/export",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--compliance-export--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Export a copy",
+    "url": "/admin/compliance/export",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--contract--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Contract end",
+    "url": "/admin/contract",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--contract--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Contract end",
+    "url": "/admin/contract",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--documents--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Documents",
+    "url": "/admin/documents",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--documents--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Documents",
+    "url": "/admin/documents",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--help--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Help",
+    "url": "/admin/help",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--help--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Help",
+    "url": "/admin/help",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--leave--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Leave wallet",
+    "url": "/admin/leave",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--leave--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Leave wallet",
+    "url": "/admin/leave",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job-pack--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Credential pack",
+    "url": "/admin/new-job/pack",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job-pack--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Credential pack",
+    "url": "/admin/new-job/pack",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job-ready--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Ready for day one",
+    "url": "/admin/new-job/ready",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job-ready--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Ready for day one",
+    "url": "/admin/new-job/ready",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job-records--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Your Admin records",
+    "url": "/admin/new-job/records",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job-records--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Your Admin records",
+    "url": "/admin/new-job/records",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job-starter--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Starter pack",
+    "url": "/admin/new-job/starter",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--new-job-starter--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Starter pack",
+    "url": "/admin/new-job/starter",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--pay--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Pay",
+    "url": "/admin/pay",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--pay--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Pay",
+    "url": "/admin/pay",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--requests--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Requests",
+    "url": "/admin/requests",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--requests--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Requests",
+    "url": "/admin/requests",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--sharing--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Sharing",
+    "url": "/admin/sharing",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--sharing--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Sharing",
+    "url": "/admin/sharing",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--tax--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Tax",
+    "url": "/admin/tax",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--tax--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Tax",
+    "url": "/admin/tax",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "admin--workforce--390",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Workforce",
+    "url": "/admin/workforce",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "admin--workforce--1280",
+    "area": "admin",
+    "areaName": "Admin",
+    "name": "Workforce",
+    "url": "/admin/workforce",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "assessments--export--390",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Export",
+    "url": "/teaching/assessments/export",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "assessments--export--1280",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Export",
+    "url": "/teaching/assessments/export",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "assessments--help--390",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Words",
+    "url": "/teaching/assessments/help",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "assessments--help--1280",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Words",
+    "url": "/teaching/assessments/help",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "assessments--record--390",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Record",
+    "url": "/teaching/assessments/record",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "assessments--record--1280",
+    "area": "assessments",
+    "areaName": "Assessments",
+    "name": "Record",
+    "url": "/teaching/assessments/record",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--applications--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Job applications",
+    "url": "/cme/applications",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--applications--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Job applications",
+    "url": "/cme/applications",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--applications-cv--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "CV",
+    "url": "/cme/applications/cv",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--applications-cv--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "CV",
+    "url": "/cme/applications/cv",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--calendar--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Calendar",
+    "url": "/cme/calendar",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--calendar--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Calendar",
+    "url": "/cme/calendar",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--check--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Year check",
+    "url": "/cme/check",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--check--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Year check",
+    "url": "/cme/check",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--cpd-home--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "AMA CPD Home",
+    "url": "/cme/cpd-home",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--cpd-home--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "AMA CPD Home",
+    "url": "/cme/cpd-home",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--customise--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Customise",
+    "url": "/cme/customise",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--customise--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Customise",
+    "url": "/cme/customise",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--evidence--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Evidence",
+    "url": "/cme/evidence",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--evidence--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Evidence",
+    "url": "/cme/evidence",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--export--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Export",
+    "url": "/cme/export",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--export--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Export",
+    "url": "/cme/export",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--new--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Log an activity",
+    "url": "/cme/new",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--new--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Log an activity",
+    "url": "/cme/new",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--plan--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Development plan",
+    "url": "/cme/plan",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--plan--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Development plan",
+    "url": "/cme/plan",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--routines--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Routines",
+    "url": "/cme/routines",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--routines--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Routines",
+    "url": "/cme/routines",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--setup--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Set up",
+    "url": "/cme/setup",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--setup--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Set up",
+    "url": "/cme/setup",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "cpd--training--390",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Training",
+    "url": "/cme/training",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "cpd--training--1280",
+    "area": "cpd",
+    "areaName": "CPD",
+    "name": "Training",
+    "url": "/cme/training",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "my-day--help--390",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Help",
+    "url": "/my-day/help",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "my-day--help--1280",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Help",
+    "url": "/my-day/help",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "my-day--profile--390",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Work profile",
+    "url": "/my-day/profile",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "my-day--profile--1280",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Work profile",
+    "url": "/my-day/profile",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "my-day--profile-agreement--390",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Ask the agreement",
+    "url": "/my-day/profile/agreement",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "my-day--profile-agreement--1280",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Ask the agreement",
+    "url": "/my-day/profile/agreement",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "my-day--setup--390",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Set up Work",
+    "url": "/my-day/setup",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "my-day--setup--1280",
+    "area": "my-day",
+    "areaName": "My Day",
+    "name": "Set up Work",
+    "url": "/my-day/setup",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--card--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Pocket card",
+    "url": "/on-call/card",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--card--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Pocket card",
+    "url": "/on-call/card",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--check--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Check these",
+    "url": "/on-call/check",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--check--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Check these",
+    "url": "/on-call/check",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--contacts--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Contacts",
+    "url": "/on-call/contacts",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--contacts--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Contacts",
+    "url": "/on-call/contacts",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--find--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Handbook",
+    "url": "/on-call/find",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--find--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Handbook",
+    "url": "/on-call/find",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--first-night--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "First night",
+    "url": "/on-call/first-night",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--first-night--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "First night",
+    "url": "/on-call/first-night",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--first-week--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Your first week",
+    "url": "/on-call/first-week",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--first-week--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Your first week",
+    "url": "/on-call/first-week",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--handover--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Handover",
+    "url": "/on-call/handover",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--handover--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Handover",
+    "url": "/on-call/handover",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--orientation--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Orientation",
+    "url": "/on-call/orientation",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--orientation--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Orientation",
+    "url": "/on-call/orientation",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--playbook--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Playbook",
+    "url": "/on-call/playbook",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--playbook--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Playbook",
+    "url": "/on-call/playbook",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--pulse--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Shift pulse",
+    "url": "/on-call/pulse",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--pulse--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Shift pulse",
+    "url": "/on-call/pulse",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--referrals--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Referrals",
+    "url": "/on-call/referrals",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--referrals--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Referrals",
+    "url": "/on-call/referrals",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--service--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Service handbook",
+    "url": "/on-call/service",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--service--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Service handbook",
+    "url": "/on-call/service",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--who-is-who--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Who's who",
+    "url": "/on-call/who-is-who",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--who-is-who--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Who's who",
+    "url": "/on-call/who-is-who",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--whos-on--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Who's on",
+    "url": "/on-call/whos-on",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--whos-on--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Who's on",
+    "url": "/on-call/whos-on",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "on-call--whos-on-roster--390",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Who's on from roster",
+    "url": "/on-call/whos-on/roster",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "on-call--whos-on-roster--1280",
+    "area": "on-call",
+    "areaName": "On Call",
+    "name": "Who's on from roster",
+    "url": "/on-call/whos-on/roster",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--board--390",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Week board",
+    "url": "/open-shifts/board",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--board--1280",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Week board",
+    "url": "/open-shifts/board",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--log--390",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Log a shift",
+    "url": "/open-shifts/log",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--log--1280",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Log a shift",
+    "url": "/open-shifts/log",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--post--390",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Post",
+    "url": "/open-shifts/post",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--post--1280",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Post",
+    "url": "/open-shifts/post",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--post-new--390",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Post a shift",
+    "url": "/open-shifts/post/new",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "open-shifts--post-new--1280",
+    "area": "open-shifts",
+    "areaName": "Open shifts",
+    "name": "Post a shift",
+    "url": "/open-shifts/post/new",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--calendar--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Teaching and expiry dates",
+    "url": "/roster/calendar",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--calendar--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Teaching and expiry dates",
+    "url": "/roster/calendar",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--join--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Join a team roster",
+    "url": "/roster/join",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--join--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Join a team roster",
+    "url": "/roster/join",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--requests--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Requests",
+    "url": "/roster/requests",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--requests--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Requests",
+    "url": "/roster/requests",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--settings--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Settings",
+    "url": "/roster/settings",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--settings--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Settings",
+    "url": "/roster/settings",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--shifts--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Shifts",
+    "url": "/roster/shifts",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--shifts--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Shifts",
+    "url": "/roster/shifts",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--sick--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Sick for tomorrow",
+    "url": "/roster/sick",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--sick--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Sick for tomorrow",
+    "url": "/roster/sick",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--staffing--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Team staffing",
+    "url": "/roster/staffing",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "roster--staffing--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Team staffing",
+    "url": "/roster/staffing",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "roster--today--390",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Today",
+    "url": "/roster/today",
+    "w": 390,
+    "wait": 4000,
+    "waitUntil": "load",
+    "png": 1
+  },
+  {
+    "id": "roster--today--1280",
+    "area": "roster",
+    "areaName": "Roster",
+    "name": "Today",
+    "url": "/roster/today",
+    "w": 1280,
+    "vh": 800,
+    "wait": 4000,
+    "waitUntil": "load",
+    "png": 1
+  },
+  {
+    "id": "teaching--c-complete--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Check in complete",
+    "url": "/teaching/c/complete",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--c-complete--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Check in complete",
+    "url": "/teaching/c/complete",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--exam-prep--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "My exam prep",
+    "url": "/teaching/exam-prep",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--exam-prep--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "My exam prep",
+    "url": "/teaching/exam-prep",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--feedback--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Feedback",
+    "url": "/teaching/feedback",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--feedback--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Feedback",
+    "url": "/teaching/feedback",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--import--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Import a timetable",
+    "url": "/teaching/import",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--import--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Import a timetable",
+    "url": "/teaching/import",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--organise--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Organise",
+    "url": "/teaching/organise",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--organise--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Organise",
+    "url": "/teaching/organise",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--resources--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Resources",
+    "url": "/teaching/resources",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--resources--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Resources",
+    "url": "/teaching/resources",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--review--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Weekly CPD review",
+    "url": "/teaching/review",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--review--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Weekly CPD review",
+    "url": "/teaching/review",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--teach--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Presenting",
+    "url": "/teaching/teach",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--teach--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Presenting",
+    "url": "/teaching/teach",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--term--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "This term",
+    "url": "/teaching/term",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--term--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "This term",
+    "url": "/teaching/term",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--term-folder--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Term evidence folder",
+    "url": "/teaching/term/folder",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--term-folder--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "Term evidence folder",
+    "url": "/teaching/term/folder",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  },
+  {
+    "id": "teaching--whats-on--390",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "What's on",
+    "url": "/teaching/whats-on",
+    "w": 390,
+    "png": 1
+  },
+  {
+    "id": "teaching--whats-on--1280",
+    "area": "teaching",
+    "areaName": "Teaching",
+    "name": "What's on",
+    "url": "/teaching/whats-on",
+    "w": 1280,
+    "vh": 800,
+    "png": 1
+  }
+]
