@@ -330,6 +330,12 @@
   color: var(--mode-identity-deep, var(--mode-identity));
 }
 
+/* The deep shade is a light-mode partner only. On dark grounds the lightened
+   identity colour is the readable one. */
+.dark .two-pane-menu__row[aria-current="true"] .two-pane-menu__name {
+  color: var(--mode-identity);
+}
+
 .two-pane-menu__name {
   flex: 1;
   min-width: 0;
