@@ -37,6 +37,9 @@ const MATCHED = JSON.stringify({ matched: true, ahead: [] });
 const start = () => startWorkSync({ headers: () => ({}), isCurrent: () => true });
 const settle = async () => {
   for (let i = 0; i < 5; i += 1) await Promise.resolve();
+  // The first-match merge loads on demand.
+  await vi.dynamicImportSettled();
+  for (let i = 0; i < 5; i += 1) await Promise.resolve();
   await vi.runAllTimersAsync();
 };
 

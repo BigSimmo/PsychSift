@@ -4,8 +4,8 @@ import { useSyncExternalStore } from "react";
 
 import { subscribeAccountTransition, WORK_ACCOUNT_SYNC_MARKER_KEY } from "@/lib/account-scoped-browser-state";
 import { isSharedDevice } from "@/lib/alerts/shared-device";
-import { isEmptyWorkSyncValue, mergeWorkSyncValues } from "@/lib/work-sync/merge";
 import {
+  isEmptyWorkSyncValue,
   isTextSection,
   isWorkSyncSection,
   skipsSharedDevice,
@@ -247,6 +247,21 @@ function readSections(payload: unknown): Partial<Record<WorkSyncSection, Account
   return out;
 }
 
+type Merge = typeof import("@/lib/work-sync/merge").mergeWorkSyncValues;
+
+/**
+ * The first-match merge checks each record against its page's schema, which is
+ * too heavy for every page's start-up, so it loads only when a device has a
+ * record of its own to join with the account's.
+ */
+async function loadMerge(): Promise<Merge | null> {
+  try {
+    return (await import("@/lib/work-sync/merge")).mergeWorkSyncValues;
+  } catch {
+    return null;
+  }
+}
+
 async function pull(active: Session): Promise<void> {
   active.lastPull = Date.now();
   let payload: unknown;
@@ -260,6 +275,11 @@ async function pull(active: Session): Promise<void> {
   if (active.stopped || !active.isCurrent()) return;
   const sections = readSections(payload);
   if (!sections || (payload as { demoMode?: unknown }).demoMode === true) return;
+  const needsMerge = WORK_SYNC_SECTIONS.some(
+    (section) => !active.matched.has(section) && sections[section] && !isEmptyWorkSyncValue(readLocal(section)),
+  );
+  const merge = needsMerge ? await loadMerge() : null;
+  if (active.stopped || !active.isCurrent()) return;
 
   for (const section of WORK_SYNC_SECTIONS) {
     // A change made on this device while the read was in flight is newer than what came back.
@@ -268,20 +288,23 @@ async function pull(active: Session): Promise<void> {
     const entry = sections[section];
     const local = readLocal(section);
     const firstMatch = !active.matched.has(section);
-    active.matched.add(section);
     if (!entry) {
+      active.matched.add(section);
       if (!isEmptyWorkSyncValue(local)) schedulePush(active, section);
       else setStatus(section, "account");
       continue;
     }
     if (!firstMatch || isEmptyWorkSyncValue(local)) {
+      active.matched.add(section);
       writeLocal(section, entry.value);
       setStatus(section, "account");
       continue;
     }
+    // A first match that cannot be joined here waits for the next read, so neither side is lost.
+    if (!merge) continue;
     // This device's first match with the account for this section: keep both sides, then save the result.
-    const merged = mergeWorkSyncValues(section, local, entry.value);
-    writeLocal(section, merged);
+    active.matched.add(section);
+    writeLocal(section, merge(section, local, entry.value));
     schedulePush(active, section);
   }
   writeMarker(active);

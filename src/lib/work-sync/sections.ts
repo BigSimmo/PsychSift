@@ -97,3 +97,12 @@ export function announceWorkSyncChange(storageKey: string): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(WORK_SYNC_CHANGE_EVENT, { detail: storageKey }));
 }
+
+/** True when a value holds nothing, which the device stores keep as no key at all. */
+export function isEmptyWorkSyncValue(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === "string") return value.trim() === "";
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
+  return false;
+}

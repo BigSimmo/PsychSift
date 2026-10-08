@@ -6,7 +6,9 @@ import {
   type TermTrackerState,
 } from "@/lib/teaching/term-tracker";
 import { isValidPaperwork, type AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
-import { WORK_SYNC_QUICK_NOTE_LIMIT, type WorkSyncSection } from "@/lib/work-sync/sections";
+import { isEmptyWorkSyncValue, WORK_SYNC_QUICK_NOTE_LIMIT, type WorkSyncSection } from "@/lib/work-sync/sections";
+
+export { isEmptyWorkSyncValue };
 
 /**
  * Joins what this device kept from before its first sync with what the
@@ -125,13 +127,4 @@ export function mergeWorkSyncValues(section: WorkSyncSection, local: unknown, ac
     case "cpdApplications":
       return mergeRecord(local, account, (value: ApplicationsState) => isValidApplications(value));
   }
-}
-
-/** True when a value holds nothing, which the device stores keep as no key at all. */
-export function isEmptyWorkSyncValue(value: unknown): boolean {
-  if (value === null || value === undefined) return true;
-  if (typeof value === "string") return value.trim() === "";
-  if (Array.isArray(value)) return value.length === 0;
-  if (isRecord(value)) return Object.keys(value).length === 0;
-  return false;
 }
