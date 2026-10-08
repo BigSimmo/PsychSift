@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 
+import { useBellPhoneQueue } from "@/components/alerts/use-bell-phone-queue";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import {
   WorkButton,
@@ -121,6 +122,8 @@ export function NeedsYouCentre({
 }: NeedsYouSheetProps & { readonly onSummary: (summary: NotificationBadgeSummary) => void }) {
   const clock = useNotificationClock(props.open);
   const feed = useNotificationFeed({ clock });
+  // The bell is on every work page, so its one read also keeps this phone's bell alerts queued.
+  useBellPhoneQueue(feed);
   const ready = feed.status === "ready";
   const { count, overdue } = feed.summary;
   useEffect(() => {
