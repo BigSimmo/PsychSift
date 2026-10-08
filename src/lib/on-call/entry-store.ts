@@ -30,6 +30,7 @@ import {
   removeLegacyOnCallEntryCaches,
 } from "@/lib/on-call/entry-cache-keys";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
+import { sharedGet } from "@/lib/shared-get";
 
 export { clearOnCallEntryCache, onCallEntryCacheChangedEvent, onCallEntryCacheStorageKey, peekOnCallEntrySessionEpoch };
 
@@ -372,7 +373,9 @@ export function useStoredOnCallEntries(): OnCallEntriesState {
 
     (async () => {
       try {
-        const response = await fetch("/api/on-call/entries", { signal: controller.signal });
+        // Several parts of one screen (the page, the bell, AI Search) read the
+        // entries at once. sharedGet makes them one request on a slow signal.
+        const response = await sharedGet("/api/on-call/entries", { signal: controller.signal });
         if (!response.ok) throw new Error(`On Call entries request failed: ${response.status}`);
 
         const rawBody: unknown = await response.json();
