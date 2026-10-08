@@ -693,8 +693,10 @@ const assessments: WorkArea = {
     },
   ],
   groups: [
+    // The supervisor's own pages, under the name the tabs' role switch gives that side, so a doctor on
+    // "My training" can tell these open the supervisor's view and not their own.
     {
-      label: "Assessments",
+      label: "I supervise",
       items: [
         { id: "assess-epa", label: "Record an EPA", sub: "Two taps", icon: "plus", action: "assess-record-epa" },
         {
@@ -735,6 +737,20 @@ const assessments: WorkArea = {
           paths: ["/teaching/assessments"],
           query: { view: "overview" },
         },
+        // Export saves the supervisor's records, and its back arrow returns to the supervisor's To do.
+        {
+          id: "assess-export",
+          label: "Export",
+          sub: "Spreadsheets and forms",
+          icon: "download",
+          href: "/teaching/assessments/export",
+        },
+      ],
+    },
+    // Pages both sides share: each keeps whichever side was last shown.
+    {
+      label: "Assessments",
+      items: [
         {
           id: "assess-history",
           label: "History",
@@ -762,13 +778,6 @@ const assessments: WorkArea = {
           href: "/teaching/assessments?view=help",
           paths: ["/teaching/assessments"],
           query: { view: "help" },
-        },
-        {
-          id: "assess-export",
-          label: "Export",
-          sub: "Spreadsheets and forms",
-          icon: "download",
-          href: "/teaching/assessments/export",
         },
         // "Get help" above is for concerns about a doctor, so this one says what it is.
         {
