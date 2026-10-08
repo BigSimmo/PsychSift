@@ -38,32 +38,37 @@ describe("Assessments example-only gate", () => {
     expect(screen.queryByTestId("work-screens-assessments-not-kept")).toBeNull();
   });
 
-  it("shows example records to a signed-out visitor, and the shared not-connected state otherwise", () => {
+  it("shows example records to a signed-out visitor, and where the records are kept once signed in", () => {
     auth.status = "signed_out";
     const { unmount } = renderGate();
     expect(screen.getByTestId("sample-page")).toBeInTheDocument();
     unmount();
     auth.status = "authenticated";
     renderGate();
-    expect(screen.getByTestId("work-screens-assessments-not-kept")).toHaveTextContent(
-      "Assessments Export is not connected yet",
+    // Owner decision 7 Oct 2026: assessment records stay in CLA, so a signed-in doctor is told so and
+    // is offered no look at the made-up records.
+    expect(screen.getByTestId("teaching-assessments-kept-in-cla")).toHaveTextContent("Assessments are kept in CLA");
+    expect(screen.getByTestId("teaching-assessments-open-cla")).toHaveAttribute(
+      "href",
+      "https://pmcwa.org.au/education-training/cla",
     );
+    expect(screen.queryByTestId("example-only-gate-look")).toBeNull();
     expect(screen.queryByTestId("sample-page")).toBeNull();
-    // The shared gate offers a look with example data, which shows the page at once.
-    act(() => screen.getByTestId("example-only-gate-look").click());
-    expect(screen.getByTestId("sample-page")).toBeInTheDocument();
   });
 
-  it("follows the one example data switch: on shows the records signed in, off hides them signed out", () => {
+  it("never shows the made-up records signed in, even with the example data on, and follows the switch signed out", () => {
     auth.status = "authenticated";
     act(() => setExampleDataOn(true));
     const { unmount } = renderGate();
-    expect(screen.getByTestId("sample-page")).toBeInTheDocument();
+    expect(screen.getByTestId("teaching-assessments-kept-in-cla")).toBeInTheDocument();
+    expect(screen.queryByTestId("sample-page")).toBeNull();
     unmount();
     auth.status = "signed_out";
     act(() => setExampleDataOn(false));
     renderGate();
-    expect(screen.getByTestId("work-screens-assessments-not-kept")).toBeInTheDocument();
+    expect(screen.getByTestId("work-screens-assessments-not-kept")).toHaveTextContent(
+      "Assessments Export is not connected yet",
+    );
   });
 
   it("goes straight to the records in the demo, whatever the sign-in status", () => {
