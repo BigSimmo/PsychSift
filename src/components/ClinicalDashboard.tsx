@@ -34,6 +34,9 @@ import {
   resolveDashboardModeSurface,
 } from "@/components/clinical-dashboard/dashboard-mode-surface";
 import * as SidebarDialogs from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
+import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useSettingsGuideFlow } from "@/components/clinical-dashboard/use-settings-guide-flow";
 import {
   deriveSidebarIdentity,
@@ -636,6 +639,9 @@ function ClinicalDashboardContent({
     localNoAuthMode,
   });
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);
+  // The two-pane side menu (owner pick 8 Oct 2026) replaces the phone menu behind the Live version switch.
+  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  const newWorkMode = useNewWorkMode();
   const {
     favouritesAccessible,
     accountSetupOpen,
@@ -3627,23 +3633,48 @@ function ClinicalDashboardContent({
           onClose={closeAccountSetup}
           intent={accountSetupIntent}
         />
-        <ClinicalMobileSidebar
-          open={settingsState.mobileSidebarOpen}
-          recentQueries={recentQueries}
-          identity={sidebarIdentity}
-          activeMode={searchMode}
-          onOpenChange={settingsState.setMobileSidebarOpen}
-          onNewChat={startNewChat}
-          onPickRecent={pickRecentQuery}
-          onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
-          onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
-          onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
-          onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
-          onPrefetchApplications={prefetchApplications}
-          onOpenSearch={openSidebarSearch}
-          onSelectMode={selectSearchMode}
-          showAccountLibrary={favouritesAccessible}
-        />
+        {twoPaneSideMenu ? (
+          <TwoPaneSideMenuHost
+            open={settingsState.mobileSidebarOpen}
+            onOpenChange={settingsState.setMobileSidebarOpen}
+            identity={sidebarIdentity}
+            startSide="clinical"
+            workAvailable={newWorkMode}
+            currentArea={null}
+            activeMode={searchMode}
+            recentQueries={recentQueries}
+            showAccountLibrary={favouritesAccessible}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onOpenSearch={openSidebarSearch}
+            onSelectMode={selectSearchMode}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+            onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+            onSignOut={async () => {
+              clinicalAskSession.clear();
+              await auth.signOut();
+            }}
+          />
+        ) : (
+          <ClinicalMobileSidebar
+            open={settingsState.mobileSidebarOpen}
+            recentQueries={recentQueries}
+            identity={sidebarIdentity}
+            activeMode={searchMode}
+            onOpenChange={settingsState.setMobileSidebarOpen}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+            onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+            onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
+            onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSearch={openSidebarSearch}
+            onSelectMode={selectSearchMode}
+            showAccountLibrary={favouritesAccessible}
+          />
+        )}
       </PhoneFooterLayerFrame>
     </div>
   );

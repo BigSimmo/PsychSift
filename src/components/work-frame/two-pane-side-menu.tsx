@@ -286,7 +286,7 @@ export function TwoPaneSideMenu({
                   aria-current={activeMode === item.id ? "page" : undefined}
                   className="two-pane-menu__tile"
                 >
-                  <Icon aria-hidden="true" className="size-icon-md" strokeWidth={2} />
+                  <Icon aria-hidden="true" className="size-icon-lg" strokeWidth={1.9} />
                   <span>{item.label}</span>
                 </Link>
               </li>
@@ -301,7 +301,7 @@ export function TwoPaneSideMenu({
                 setEditorOpen(true);
               }}
             >
-              <LayoutGrid aria-hidden="true" className="size-icon-md" strokeWidth={2} />
+              <LayoutGrid aria-hidden="true" className="size-icon-lg" strokeWidth={1.9} />
               <span>More</span>
             </button>
           </li>
@@ -522,7 +522,7 @@ export function TwoPaneSideMenu({
         {savedShown ? (
           <Link href={savedHref} onClick={close} className="two-pane-menu__rail-item" data-testid="two-pane-menu-saved">
             <span className="two-pane-menu__indicator">
-              <Heart aria-hidden="true" className="size-icon-md" strokeWidth={2} />
+              <Heart aria-hidden="true" className="size-icon-lg" strokeWidth={1.9} />
             </span>
             Saved
           </Link>
@@ -534,7 +534,7 @@ export function TwoPaneSideMenu({
           data-testid="two-pane-menu-settings"
         >
           <span className="two-pane-menu__indicator">
-            <SlidersHorizontal aria-hidden="true" className="size-icon-md" strokeWidth={2} />
+            <SlidersHorizontal aria-hidden="true" className="size-icon-lg" strokeWidth={1.9} />
           </span>
           Settings
         </button>
@@ -624,7 +624,7 @@ function RailButton({
       data-testid={testId}
     >
       <span className="two-pane-menu__indicator">
-        <Icon aria-hidden="true" className="size-icon-md" strokeWidth={2} />
+        <Icon aria-hidden="true" className="size-icon-lg" strokeWidth={1.9} />
         {pip ? <span className="two-pane-menu__pip" aria-hidden="true" /> : null}
       </span>
       {label}
