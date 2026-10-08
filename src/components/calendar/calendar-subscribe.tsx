@@ -198,7 +198,7 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
         <div className="mt-4 flex flex-col gap-2">
           {!links ? (
             <p className={cn(textMuted, "text-sm")} data-testid={`${testId}-active`}>
-              You already have a calendar link. It can&rsquo;t be shown again; make a new one if you need to add it
+              You already have a calendar link. It can&rsquo;t be shown again. Make a new one if you need to add it
               somewhere else.
             </p>
           ) : null}

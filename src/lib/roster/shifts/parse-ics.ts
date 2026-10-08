@@ -243,7 +243,7 @@ export function parseRosterIcs(text: string, window?: { from: string; to: string
   if (unreadable)
     notes.push(`${plural(unreadable, "event")} could not be read and ${unreadable === 1 ? "was" : "were"} skipped.`);
   if (overLimit)
-    notes.push(`Only the first ${ON_CALL_SHIFT_IMPORT_MAX} shifts were read; ${overLimit} more were left out.`);
+    notes.push(`Only the first ${ON_CALL_SHIFT_IMPORT_MAX} shifts were read, and ${overLimit} more were left out.`);
   shifts.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   return { shifts, notes };
 }

@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { REMIND_ME_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import type { MyDayItem, MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
 
@@ -86,14 +87,24 @@ const readySources: MyDaySourceResult[] = [
   { mode: "my-work", status: "ready", items: [] },
 ];
 
+/**
+ * The read as the real hook gives it: each item also sits in its own mode's
+ * source. Needs you is drawn from the notification feed, which reads the
+ * sources (work mode improvements, 8 Oct 2026).
+ */
 function setState(overrides: Partial<MyDayState>) {
+  const items = overrides.items ?? [];
+  const sources = (overrides.sources ?? readySources).map((source) => ({
+    ...source,
+    items: [...source.items, ...items.filter((entry) => entry.mode === source.mode)],
+  }));
   hookState.current = {
     status: "ready",
-    items: [],
-    sources: readySources,
     demoMode: false,
     retry,
     ...overrides,
+    items,
+    sources,
   };
 }
 
@@ -179,10 +190,10 @@ describe("MyDayPage", () => {
     expect(screen.queryByTestId("my-day-signed-out")).toBeNull();
     const dashboard = await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
     expect(within(dashboard).getAllByText("Journal club").length).toBeGreaterThan(0);
-    // "Later" on a sample row lasts only while the page is open, and stores nothing.
-    const before = window.localStorage.length;
-    fireEvent.click(within(dashboard).getAllByRole("button", { name: /Later/ })[0]!);
-    expect(window.localStorage.length).toBe(before);
+    // Work mode improvements, 8 Oct 2026: Needs you is the bell's list, where an example row has no Later,
+    // so nothing invented is ever stored on this device.
+    expect(within(screen.getByTestId("my-day-card-needs-you")).getByText("Journal club")).toBeTruthy();
+    expect(within(dashboard).queryAllByRole("button", { name: /Later/ })).toEqual([]);
     // Signed in, nothing of the sample shows.
     cleanup();
     auth.status = "authenticated";
@@ -282,15 +293,17 @@ describe("MyDayPage", () => {
   });
 
   // Demo data is shown only in a local demo build with no sign-in ("unconfigured").
-  it("says when the data is demo data, in a local demo build", () => {
+  it("says when the data is example data, in a local demo build", () => {
     auth.status = "unconfigured";
     setState({ demoMode: true, items: [item("a", "soon")] });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-demo-notice").textContent).toBe("Demo data: invented examples.");
+    expect(screen.getByTestId("my-day-demo-notice").textContent).toBe("Example data: made up to look around.");
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
   });
 
-  it("folds the demo note and every 'not available yet' into one line", () => {
+  // Review 2: Roster's Swaps tab and Teaching both show examples in a demo build,
+  // so "aren't available yet" there was untrue.
+  it("never calls Roster swaps or Teaching unavailable in a demo build", () => {
     auth.status = "unconfigured";
     setState({
       demoMode: true,
@@ -300,9 +313,8 @@ describe("MyDayPage", () => {
       ),
     });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-small-print").textContent).toBe(
-      "Demo data: invented examples. Roster swaps and Teaching aren't available yet.",
-    );
+    expect(screen.getByTestId("my-day-small-print").textContent).toBe("Example data: made up to look around.");
+    expect(screen.queryByTestId("my-day-unavailable-notice")).toBeNull();
     expect(screen.queryByTestId("my-day-unavailable-other-notice")).toBeNull();
   });
 
@@ -418,6 +430,57 @@ describe("MyDayPage", () => {
     expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  // Work mode improvements, 8 Oct 2026: Needs you is the notification feed's list, so its count and rows are the
+  // bell's, the Notifications page's and the side menu's in every state.
+  describe("Needs you, read from the notification feed", () => {
+    it("lists a reminder due today, as the bell does, with no Later on it", () => {
+      window.localStorage.setItem(
+        REMIND_ME_STORAGE_KEY,
+        JSON.stringify([
+          {
+            id: "r1",
+            text: "Call the ward clerk",
+            dueAt: "2026-09-26T06:00:00.000Z",
+            createdAt: "2026-09-25T06:00:00.000Z",
+            doneAt: null,
+          },
+        ]),
+      );
+      setState({ items: [item("a", "soon")] });
+      render(<MyDayPage now={NOW} />);
+      const card = screen.getByTestId("my-day-card-needs-you");
+      expect(within(card).getByTestId("my-day-item-remind:r1").textContent).toContain("Reminders");
+      expect(within(card).getByTestId("my-day-item-a")).toBeTruthy();
+      expect(within(card).queryByRole("button", { name: "Later: Call the ward clerk" })).toBeNull();
+      expect(within(card).getByRole("button", { name: "See all 2" })).toBeTruthy();
+    });
+
+    it("leaves invented demo items out, as the bell does, when example data is off", () => {
+      auth.status = "unconfigured";
+      setExampleDataOn(false);
+      setState({
+        demoMode: true,
+        items: [item("a", "overdue", { mode: "cme" })],
+        sources: readySources.map((source) => ({ ...source, sample: true })),
+      });
+      render(<MyDayPage now={NOW} />);
+      expect(screen.queryByTestId("my-day-item-a")).toBeNull();
+      expect(screen.getByTestId("my-day-empty").textContent).toContain("Nothing needs you right now");
+    });
+
+    it("keeps a real item beside the examples, which fill only the areas with nothing real", async () => {
+      setExampleDataOn(true);
+      setState({ items: [item("r", "soon", { mode: "roster" })] });
+      const { rerender } = render(<MyDayPage now={NOW} />);
+      await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
+      // Seven examples, less Roster's one (Roster has a real item), plus the real one.
+      openAll("See all 7", rerender);
+      expect(screen.getByTestId("my-day-item-r")).toBeTruthy();
+      expect(screen.queryByTestId("my-day-item-sample:roster:cutoff")).toBeNull();
+      expect(screen.getByTestId("my-day-item-sample:cme:drafts")).toBeTruthy();
+    });
   });
 
   it("says nothing needs you, and when it checked, only when every source answered", () => {

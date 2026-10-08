@@ -44,6 +44,7 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
 }));
 
 import { RosterMonthPage } from "@/components/roster/roster-month-page";
+import { RosterSignedOutSampleProvider } from "@/components/roster/roster-sample-context";
 
 const NOW = new Date("2026-10-06T07:42:00+08:00");
 
@@ -338,7 +339,21 @@ describe("Roster Month tab", () => {
   it("says the sample is invented and offers no add button", () => {
     ready([teamDay], { sample: true });
     render(<RosterMonthPage now={NOW} />);
-    expect(screen.getByText("Sample shifts and team are invented.")).toBeInTheDocument();
+    expect(screen.getByText("Example shifts and team, all made up.")).toBeInTheDocument();
     expect(screen.queryByTestId("roster-month-add")).toBeNull();
+  });
+
+  it("says a demo build's roster is an example once: its own note, or the frame's banner when that shows", () => {
+    ready([teamDay], { demoMode: true });
+    render(<RosterMonthPage now={NOW} />);
+    expect(screen.getByText("Example only. Sign in to add your own shifts.")).toBeInTheDocument();
+    cleanup();
+
+    render(
+      <RosterSignedOutSampleProvider value>
+        <RosterMonthPage now={NOW} />
+      </RosterSignedOutSampleProvider>,
+    );
+    expect(screen.queryByText("Example only. Sign in to add your own shifts.")).toBeNull();
   });
 });

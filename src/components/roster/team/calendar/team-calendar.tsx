@@ -15,6 +15,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { monthKeyOf } from "@/lib/calendar/month-grid";
 import { SHIFT_KIND_LABEL, SHIFT_KINDS, SHIFT_LETTER } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { formatZonedDay } from "@/lib/work-time/format";
 import {
   calendarStateQuery,
   calendarWindow,
@@ -58,16 +59,9 @@ function heading(state: CalendarState): string {
 
 const PRINT_LEGEND = SHIFT_KINDS.map((kind) => `${SHIFT_LETTER[kind]} ${SHIFT_KIND_LABEL[kind]}`).join(" · ");
 
+/** "Fri 9 Oct 2026": paper outlives the year, so the printed date always carries it. */
 function printedOn(today: string): string {
-  return new Intl.DateTimeFormat("en-AU", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  })
-    .format(new Date(`${today}T00:00:00Z`))
-    .replace(/,/g, "");
+  return `${formatZonedDay(today)} ${today.slice(0, 4)}`;
 }
 
 function peopleIn(rows: readonly RosterAssignment[]): CalendarPerson[] {

@@ -85,7 +85,7 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
 
         {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
         {demoMode ? (
-          <p className={cn(textMuted, "mt-2 text-sm")}>Demo entries cannot be confirmed; sign in to check your own.</p>
+          <p className={cn(textMuted, "mt-2 text-sm")}>Demo entries cannot be confirmed. Sign in to check your own.</p>
         ) : null}
         <p role="status" className="mt-2 text-sm font-semibold text-[color:var(--text)]">
           {error}

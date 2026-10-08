@@ -202,7 +202,7 @@ export function ServiceAdminPanel({
           Service administration
         </h2>
         <p className={cn(textMuted, "mt-1 text-sm leading-6")}>
-          Editors invite members; admins also manage sites and roles. Limits: 5,000 members and 1,000 invitations.
+          Editors invite members, and admins also manage sites and roles. Limits: 5,000 members and 1,000 invitations.
           Invitation codes are shown once.
         </p>
       </div>

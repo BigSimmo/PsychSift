@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 
 import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import {
   WorkBody,
   WorkButton,
@@ -23,7 +24,14 @@ import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
 import { restCuesByTeam } from "@/lib/roster/rest-cues";
 import { SHIFT_KIND_LABEL, type ShiftKind } from "@/lib/roster/shift-kind";
 import { formatSpanUntil, leadShift, shiftSpan } from "@/lib/roster/shifts-overview";
-import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import {
+  MONTHS,
+  WEEKDAYS,
+  addDaysToDate,
+  formatPerthDay,
+  perthDateOf,
+  perthTimeOf,
+} from "@/lib/roster/shifts/perth-time";
 import type { RosterSwap } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
@@ -77,8 +85,7 @@ function toMonthShift(shift: OnCallShift): MonthShift {
 }
 
 const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
-const monthShort = (date: string) =>
-  new Intl.DateTimeFormat("en-AU", { month: "short", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+const monthShort = (date: string) => MONTHS[Number(date.slice(5, 7)) - 1]!;
 const dayWords = (date: string) => `${weekdayOf(date)} ${Number(date.slice(8, 10))}`;
 
 function MonthLoading() {
@@ -201,6 +208,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
     [grid.start, grid.end, today],
   );
   const shifts = useRosterShifts(teamRange);
+  // The frame's example data banner already says these are examples.
+  const exampleBanner = useRosterSignedOutSample();
   const teams = useRosterTeams();
   const enabledTeams = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).filter((team) => team.enabled);
   const oneTeamId = enabledTeams.length === 1 ? enabledTeams[0]!.serviceId : null;
@@ -312,7 +321,9 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
 
   const notices = (
     <>
-      {shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
+      {shifts.demoMode && !exampleBanner ? (
+        <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice>
+      ) : null}
       {notice ? <ModeNotice>{notice}</ModeNotice> : null}
       {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
     </>
@@ -586,7 +597,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
         <MonthTotalsCard totals={totals} partial={partial} month={month} />
         <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
           {shifts.sample
-            ? "Sample shifts and team are invented."
+            ? "Example shifts and team, all made up."
             : "Your copy of the roster. Check official changes with your service."}
         </p>
         <p className="m-0 -mt-1 px-1 text-center text-2xs text-[color:var(--text-muted)]">

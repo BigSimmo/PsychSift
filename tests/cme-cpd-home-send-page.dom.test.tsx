@@ -363,7 +363,7 @@ describe("Send to AMA CPD Home", () => {
 
   it("keeps nothing in the sample, and forgets the list at an account change", async () => {
     const { unmount } = renderPage({ demoMode: true });
-    expect(screen.getByTestId("cpd-home-privacy").textContent).toContain("Sample record");
+    expect(screen.getByTestId("cpd-home-privacy").textContent).toContain("Example record");
     fireEvent.click(await download());
     expect(localStorage.getItem(CPD_HOME_SEND_STORAGE_KEY)).toBeNull();
     unmount();

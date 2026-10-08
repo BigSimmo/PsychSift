@@ -359,7 +359,7 @@ export function RosterSwapsPage() {
         subtitle={
           <>
             Swaps and open shifts. To start a swap, tap one of your shifts on the{" "}
-            <Link href="/roster/team" className="underline underline-offset-2">
+            <Link href="/roster/team" className="work-hit underline underline-offset-2">
               Team calendar
             </Link>
             .

@@ -166,7 +166,7 @@ function readProvenance(details: unknown): OnCallComplianceProvenance | undefine
  */
 const BAND_BLURBS: Record<OnCallComplianceConsequence, string> = {
   "stops-work": "Let one of these lapse and you cannot practise at all.",
-  "stops-part": "You could still practise; particular things would become unavailable.",
+  "stops-part": "You could still practise, but particular things would become unavailable.",
   chased: "Administrative. Nothing stops, but somebody will email.",
 };
 

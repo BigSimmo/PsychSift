@@ -53,12 +53,29 @@ describe("Open shifts, signed-out preview", () => {
     expect(screen.getByText(/open shifts match/)).toBeTruthy();
   });
 
-  it("labels today's example shifts from the made-up roster", () => {
+  it("labels today's example shifts from the one example roster", () => {
     render(<OpenShiftsBrowsePage />);
+    // The example doctor is on call tonight from 17:00 (as My Day, Roster and On Call say),
+    // so today's evening shift is hidden as a clash and the earlier one is free to ask for.
     const list = screen.getByRole("list", { name: /Open shifts on/ });
-    expect(within(list).getAllByRole("listitem").length).toBeGreaterThanOrEqual(2);
-    expect(within(list).getByText("Roster flag: 9 h break")).toBeTruthy();
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
     expect(within(list).getByText(/No flags on your PsychSift roster/)).toBeTruthy();
+    expect(screen.getByText(/1 hidden/).textContent).toBe("1 hidden: 1 overlaps your roster");
+    fireEvent.click(screen.getByRole("button", { name: "No clashes" }));
+    expect(
+      within(screen.getByRole("list", { name: /Open shifts on/ })).getByText("Overlaps your rostered shift"),
+    ).toBeTruthy();
+  });
+
+  it("marks the days the example roster has the doctor working", () => {
+    render(<OpenShiftsBrowsePage />);
+    // Mon 5 Oct: on call tonight, off Tuesday, day shifts Wednesday to Friday.
+    const rostered = screen
+      .getAllByRole("button", { name: /you're rostered/ })
+      .map((day) => day.getAttribute("aria-label"));
+    expect(rostered.some((label) => label?.startsWith("Monday 5 October"))).toBe(true);
+    expect(rostered.some((label) => label?.startsWith("Tuesday 6 October"))).toBe(false);
+    expect(rostered.some((label) => label?.startsWith("Wednesday 7 October"))).toBe(true);
   });
 
   it("filters the example list when No clashes is switched off", () => {

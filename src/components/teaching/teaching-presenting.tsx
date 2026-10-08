@@ -124,7 +124,7 @@ function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId
     body = (
       <>
         {demoMode && !exampleShown ? (
-          <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
+          <T5Note className="mt-0 mb-3.5">Example data. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {next ? (
           <NextTalk

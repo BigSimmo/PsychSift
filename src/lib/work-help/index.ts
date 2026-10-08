@@ -60,6 +60,10 @@ export function workHelpTopic(id: string | null | undefined): WorkHelpTopic | nu
 export function workHelpTopicForArea(area: WorkAreaId): WorkHelpTopic {
   // Notifications (inside My Day) is answered by the alerts topic: the bell, quiet hours, the brief.
   if (area === "notify") return alertsTopic;
+  // Open shifts and Manage team are inner areas of Roster: Open shifts has its own topic,
+  // and Manage team is answered by Roster's, which covers teams and swaps.
+  if (area === "open") return openShiftsTopic;
+  if (area === "manage") return rostTopic;
   return WORK_HELP_AREA_TOPICS.find((topic) => topic.areaId === area) ?? dayTopic;
 }
 
