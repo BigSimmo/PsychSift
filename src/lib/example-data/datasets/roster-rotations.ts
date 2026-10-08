@@ -1,6 +1,12 @@
 import { EXAMPLE_HOSPITALS, EXAMPLE_PEOPLE, EXAMPLE_SELF } from "@/lib/example-data/people";
 import type { ManagedRound, RoundSetup } from "@/lib/roster/rotations/model";
-import { createManagedRound, openRound, publishRound, runAllocation, savePreference } from "@/lib/roster/rotations/operations";
+import {
+  createManagedRound,
+  openRound,
+  publishRound,
+  runAllocation,
+  savePreference,
+} from "@/lib/roster/rotations/operations";
 
 /**
  * Example rotation rounds: last year's round, already published (so the
@@ -88,7 +94,13 @@ export function exampleRotationRounds(now: Date): ExampleRotationRounds {
   );
   published = openRound(published, earlierOpen);
   PEOPLE.forEach((person, index) => {
-    published = savePreference(published, person.id, rankingFor(index + 1), true, new Date(earlierOpen.getTime() + index * 3_600_000));
+    published = savePreference(
+      published,
+      person.id,
+      rankingFor(index + 1),
+      true,
+      new Date(earlierOpen.getTime() + index * 3_600_000),
+    );
   });
   published = runAllocation(published, new Date(earlierClose.getTime() + 86_400_000));
   published = publishRound(published, new Date(Date.UTC(year - 1, 10, 6, 1)));
@@ -113,7 +125,13 @@ export function exampleRotationRounds(now: Date): ExampleRotationRounds {
   PEOPLE.slice(1).forEach((person, index) => {
     if (index >= 9) return; // two people have not started
     const sent = index < 8;
-    open = savePreference(open, person.id, rankingFor(index + 3), sent, new Date(openedAt.getTime() + (index + 1) * 7_200_000));
+    open = savePreference(
+      open,
+      person.id,
+      rankingFor(index + 3),
+      sent,
+      new Date(openedAt.getTime() + (index + 1) * 7_200_000),
+    );
   });
 
   return { selfId: EXAMPLE_ROTATION_SELF_ID, rounds: [open, published] };

@@ -104,7 +104,9 @@ describe("allocateRotations", () => {
   it("explains a lower choice by naming the full rotation", () => {
     const result = allocateRotations(input({ terms: [terms[0]] }));
     const second = result.placements.find((p) => p.rank === 2);
-    expect(second?.reason).toMatch(/^Your 2nd choice\. Consultation liaison was full with people who ranked it as high or higher\.$/);
+    expect(second?.reason).toMatch(
+      /^Your 2nd choice\. Consultation liaison was full with people who ranked it as high or higher\.$/,
+    );
     const multiTerm = allocateRotations(input());
     expect(multiTerm.placements.filter((p) => p.rank === 2).every((p) => p.reason === "Your 2nd choice")).toBe(true);
   });
@@ -119,7 +121,12 @@ describe("allocateRotations", () => {
   it("schedules a larger round without clashes", () => {
     const rotations = Array.from({ length: 8 }, (_, i) => ({ id: `r${i}`, name: `R${i}`, site: "A", places: 2 }));
     const people = Array.from({ length: 16 }, (_, i) => `p${i}`);
-    const fourTerms = [0, 1, 2, 3].map((i) => ({ id: `t${i}`, label: `Term ${i + 1}`, start: "2027-01-01", end: "2027-03-01" }));
+    const fourTerms = [0, 1, 2, 3].map((i) => ({
+      id: `t${i}`,
+      label: `Term ${i + 1}`,
+      start: "2027-01-01",
+      end: "2027-03-01",
+    }));
     const preferences = people.map((personId, i) => ({
       personId,
       ranking: rotations.map((_, k) => `r${(i + k * 3) % 8}`),
@@ -137,6 +144,16 @@ describe("helpers", () => {
     expect(cleanRanking(["a", "z", "a", "b"], new Set(["a", "b"]))).toEqual(["a", "b"]);
   });
   it("writes ordinals", () => {
-    expect([1, 2, 3, 4, 11, 12, 13, 21, 22].map(ordinal)).toEqual(["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd"]);
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22].map(ordinal)).toEqual([
+      "1st",
+      "2nd",
+      "3rd",
+      "4th",
+      "11th",
+      "12th",
+      "13th",
+      "21st",
+      "22nd",
+    ]);
   });
 });

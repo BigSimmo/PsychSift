@@ -233,7 +233,9 @@ export function allocateRotations(input: AllocationInput): AllocationResult {
     const t = termIndex.get(lock.termId);
     const r = rotationIndex.get(lock.rotationId);
     if (t === undefined || r === undefined || !people.includes(lock.personId)) {
-      problems.push("A fixed placement points at a term, rotation or person no longer in this round, so it was dropped.");
+      problems.push(
+        "A fixed placement points at a term, rotation or person no longer in this round, so it was dropped.",
+      );
       continue;
     }
     const taken = usedTerm.get(lock.personId) ?? new Set<number>();
@@ -323,7 +325,8 @@ export function allocateRotations(input: AllocationInput): AllocationResult {
     const places = rotations[rotationIndex.get(lock.rotationId) as number].places;
     let copy = 0;
     while (copy < places && copySlots(lock.rotationId, copy)[t] !== null) copy += 1;
-    const index = assignments.push({ personId: lock.personId, rotationId: lock.rotationId, copy, term: t, locked: true }) - 1;
+    const index =
+      assignments.push({ personId: lock.personId, rotationId: lock.rotationId, copy, term: t, locked: true }) - 1;
     personSlots(lock.personId)[t] = index;
     copySlots(lock.rotationId, copy)[t] = index;
   }
@@ -433,7 +436,9 @@ export function allocateRotations(input: AllocationInput): AllocationResult {
   const missedReason = (personId: string, rank: number | null): string => {
     const ranking = rankings.get(personId) ?? [];
     const better = rank === null ? ranking : ranking.slice(0, rank - 1);
-    const missed = better.find((id) => !(chosen.get(personId) ?? []).includes(id) && !lockedRotation.get(personId)?.has(id));
+    const missed = better.find(
+      (id) => !(chosen.get(personId) ?? []).includes(id) && !lockedRotation.get(personId)?.has(id),
+    );
     if (!missed) return "";
     const mine = rankOf(personId, missed) as number;
     const holders = takenBy.get(missed) ?? [];
@@ -453,8 +458,7 @@ export function allocateRotations(input: AllocationInput): AllocationResult {
       else if (rank !== null) {
         const missed = missedReason(assignment.personId, rank);
         reason = missed ? `Your ${ordinal(rank)} choice.${missed}` : `Your ${ordinal(rank)} choice`;
-      }
-      else reason = "Not one you ranked. Every rotation you ranked was full";
+      } else reason = "Not one you ranked. Every rotation you ranked was full";
       return {
         personId: assignment.personId,
         termId: terms[assignment.term].id,

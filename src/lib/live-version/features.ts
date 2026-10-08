@@ -34,6 +34,12 @@ export const LIVE_PREVIEW_FEATURES = [
     owner: "mode-picker",
     since: "2026-10-08",
   },
+  {
+    id: "rotation-preferences",
+    label: "Rotation preferences",
+    owner: "roster-rotations",
+    since: "2026-10-09",
+  },
 ] as const satisfies readonly LivePreviewFeature[];
 
 export type LivePreviewFeatureId = (typeof LIVE_PREVIEW_FEATURES)[number]["id"];

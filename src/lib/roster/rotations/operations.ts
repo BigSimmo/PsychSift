@@ -61,7 +61,8 @@ export function assertSetupConsistent(setup: RoundSetup): void {
   if (personIds.size !== setup.people.length) fail("Someone is in the round twice.", "duplicate_person");
   const sorted = [...setup.terms].sort((a, b) => a.start.localeCompare(b.start));
   for (let i = 1; i < sorted.length; i += 1) {
-    if (sorted[i].start <= sorted[i - 1].end) fail(`${sorted[i].label} overlaps ${sorted[i - 1].label}.`, "terms_overlap");
+    if (sorted[i].start <= sorted[i - 1].end)
+      fail(`${sorted[i].label} overlaps ${sorted[i - 1].label}.`, "terms_overlap");
   }
 }
 
@@ -112,7 +113,8 @@ export function editRoundSetup(managed: ManagedRound, setup: RoundSetup): Manage
       fail("Someone is placed in a term or rotation you removed. Move them first.", "placement_orphaned");
     }
   }
-  const keep = <T extends { personId: string }>(list: readonly T[]) => list.filter((item) => personIds.has(item.personId));
+  const keep = <T extends { personId: string }>(list: readonly T[]) =>
+    list.filter((item) => personIds.has(item.personId));
   return {
     ...managed,
     round: {
@@ -239,7 +241,8 @@ export function movePlacement(managed: ManagedRound, move: PlacementMove, now: D
   const { round } = managed;
   const allocation = managed.allocation;
   if (!allocation) fail("Run the allocation first.", "no_allocation");
-  if (!round.people.some((person) => person.id === move.personId)) fail("That person is not in this round.", "not_in_round");
+  if (!round.people.some((person) => person.id === move.personId))
+    fail("That person is not in this round.", "not_in_round");
   if (!round.terms.some((term) => term.id === move.termId)) fail("That term is not in this round.", "unknown_term");
   const others = allocation.placements.filter((p) => !(p.personId === move.personId && p.termId === move.termId));
   let placements = others;
@@ -263,7 +266,10 @@ export function movePlacement(managed: ManagedRound, move: PlacementMove, now: D
       rotationId: move.rotationId,
       rank,
       locked: move.lock,
-      reason: rank === null ? "Set by the rotation administrator" : `Your ${ordinal(rank)} choice, set by the rotation administrator`,
+      reason:
+        rank === null
+          ? "Set by the rotation administrator"
+          : `Your ${ordinal(rank)} choice, set by the rotation administrator`,
     };
     placements = [...others, placement];
     if (move.lock) locks = [...locks, { personId: move.personId, termId: move.termId, rotationId: move.rotationId }];
@@ -292,7 +298,8 @@ export function movePlacement(managed: ManagedRound, move: PlacementMove, now: D
     ...managed,
     locks,
     allocation: next,
-    round: round.status === "published" ? { ...round, version: round.version + 1, publishedAt: now.toISOString() } : round,
+    round:
+      round.status === "published" ? { ...round, version: round.version + 1, publishedAt: now.toISOString() } : round,
   };
 }
 
@@ -318,7 +325,12 @@ export function publishRound(managed: ManagedRound, now: Date): ManagedRound {
   if (managed.round.status === "published") fail("This round is already published.", "published");
   return {
     ...managed,
-    round: { ...managed.round, status: "published", publishedAt: now.toISOString(), version: managed.round.version + 1 },
+    round: {
+      ...managed.round,
+      status: "published",
+      publishedAt: now.toISOString(),
+      version: managed.round.version + 1,
+    },
   };
 }
 

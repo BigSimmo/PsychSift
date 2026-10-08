@@ -152,9 +152,7 @@ type LivePayload = {
 };
 
 type LiveRead =
-  | { status: "loading" }
-  | { status: "ready"; data: LivePayload }
-  | { status: "error" | "signed-out" | "unavailable" };
+  { status: "loading" } | { status: "ready"; data: LivePayload } | { status: "error" | "signed-out" | "unavailable" };
 
 async function postLive(path: string, body: unknown): Promise<RotationActionResult & { roundId?: string }> {
   try {
@@ -224,7 +222,8 @@ export function useRotations(): RotationsRead {
       }
     };
     return {
-      savePreference: (roundId, ranking, submit) => apply(roundId, (r, now, me) => savePreference(r, me, ranking, submit, now)),
+      savePreference: (roundId, ranking, submit) =>
+        apply(roundId, (r, now, me) => savePreference(r, me, ranking, submit, now)),
       withdrawPreference: (roundId) => apply(roundId, (r, now, me) => withdrawPreference(r, me, now)),
       async createRound(setup) {
         const state = readExample();
@@ -257,7 +256,8 @@ export function useRotations(): RotationsRead {
         const state = readExample();
         if (!state) return { ok: false, message: "The example is still loading." };
         const target = state.rounds.find((round) => round.round.id === roundId);
-        if (!target || target.round.status !== "draft") return { ok: false, message: "Only a draft round can be deleted." };
+        if (!target || target.round.status !== "draft")
+          return { ok: false, message: "Only a draft round can be deleted." };
         writeExample({ ...state, rounds: state.rounds.filter((round) => round.round.id !== roundId) });
         return { ok: true };
       },
