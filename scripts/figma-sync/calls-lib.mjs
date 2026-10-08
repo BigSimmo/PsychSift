@@ -470,8 +470,9 @@ export function planPageCalls({
   }
 
   const pageCalls = [];
+  // Pages this run does not draw keep their old bottom edge, so y-end.json stays a full --y-start.
   /** @type {Record<string, number>} */
-  const yEnd = {};
+  const yEnd = { ...(yStart ?? {}) };
   for (const [page, pageSections] of groups) {
     let y = yStart && page in yStart ? yStart[page] + SECTION_GAP : 0;
     const calls = [];

@@ -229,6 +229,11 @@ describe("planPageCalls", () => {
     expect(result.yEnd["7:4"]).toBe(844 + 200);
   });
 
+  it("carries forward the bottom edge of pages this run does not draw", () => {
+    const result = plan({ yStart: { "7:5": 6463, "7:14": 9000 } });
+    expect(result.yEnd["7:14"]).toBe(9000);
+  });
+
   it("splits a section that is too big into one frame per call that continues the same section", () => {
     const result = plan({ chunkChars: 400 });
     const pageCalls = result.pageCalls.filter((call: { name: string }) => call.name.startsWith("page-7_5"));

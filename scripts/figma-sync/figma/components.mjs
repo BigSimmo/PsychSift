@@ -1,6 +1,7 @@
 // Figma-runtime script. Serialised into a `use_figma` call by build-calls.mjs (--components); never runs in Node.
 // Rebuilds the "Components" page (Figma node 23:2): reusable auto-layout components bound to the
-// "Live · Base" and "Live · Area" variables. It clears the page first, so run it only to rebuild the whole page.
+// "Live · Base" and "Live · Area" variables. It only builds into an empty or new page: every screen's header and
+// tab bar is an instance of these components, so clearing a full page would cut them all loose.
 // Keep it free of imports and Node APIs: it must stay valid inside Figma's plugin runtime.
 export default async function components(figma) {
   // Builds the "Components" page: reusable, auto-layout components bound to Live variables.
@@ -11,8 +12,11 @@ export default async function components(figma) {
     const ic = figma.root.children.findIndex((p) => p.id === "7:3");
     figma.root.insertChild(ic + 1, page);
   }
+  if (page.children.length)
+    throw new Error(
+      'The Components page already has content, and every screen uses it. Rename it to "Components (old)" first, then run this again.',
+    );
   await figma.setCurrentPageAsync(page);
-  for (const c of [...page.children]) c.remove();
   const cols = await figma.variables.getLocalVariableCollectionsAsync();
   const areaC = cols.find((c) => c.name === "Live · Area");
   const V = {};

@@ -106,8 +106,9 @@ anything or use Node features. `build-calls.mjs` shrinks them and adds the data 
    `--swap 7:14` instead. It is safe to run again on a page.
 
 6. Only when the components themselves change (a new button style, say), rebuild the Components
-   page. This clears and redraws the whole page, so redraw the screen pages and run the swap
-   again afterwards:
+   page. The script refuses to touch a page that already has content, because every screen's
+   header and tab bar is an instance of it. Rename the old page to "Components (old)" first, build
+   the new one, run the swap again, then delete the old page once nothing uses it:
 
    ```bash
    node scripts/figma-sync/build-calls.mjs --components
