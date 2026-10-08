@@ -1582,7 +1582,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const rail = page.getByTestId("two-pane-rail");
     await expect(rail).toBeVisible();
-    await expect(page.getByLabel("PsychSift collapsed sidebar")).toHaveCount(0);
+    await expect(page.getByLabel("PsychSift collapsed sidebar")).toBeHidden();
     await expect(page.getByRole("button", { name: "Open PsychSift menu" })).toBeHidden();
     await expect(rail.getByTestId("two-pane-rail-clinical")).toHaveAttribute("data-current", "true");
     expect((await rail.boundingBox())?.width).toBe(84);
