@@ -41,7 +41,11 @@ export function OnCallCalendarPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <>
-      <OnCallToolNavHeader title={CALENDAR_TITLE} testIdPrefix="on-call-calendar" />
+      <OnCallToolNavHeader
+        title={CALENDAR_TITLE}
+        testIdPrefix="on-call-calendar"
+        back={{ href: "/roster", label: "Roster" }}
+      />
       <InformationPageShell testId="on-call-calendar-main" width="narrow">
         <h1 className="sr-only">{CALENDAR_TITLE}</h1>
         <p className={cn(textMuted, "mb-4 text-sm")}>

@@ -68,13 +68,22 @@ export function OnCallCardNavHeader() {
  * from the home, so each keeps the back arrow to `/on-call`. Kept in this file
  * for the same one-claimant reason as the two headers around it.
  */
-export function OnCallToolNavHeader({ title, testIdPrefix }: { title: string; testIdPrefix: string }) {
+export function OnCallToolNavHeader({
+  title,
+  testIdPrefix,
+  back = { href: "/on-call", label: "On Call" },
+}: {
+  title: string;
+  testIdPrefix: string;
+  /** Where the arrow goes. On Call by default; a tool that now lives in another area (the calendar under Roster) names that area. */
+  back?: { href: string; label: string };
+}) {
   // A tool page the work-mode band draws (Who to call now) already has the
   // band's title and its round back button, so the bar would repeat both.
   // Pages that keep their own header (`band: false`) still get it.
   const underBand = useModeBandShown();
   if (underBand) return null;
-  return <InPageNavHeader back={{ href: "/on-call", label: "On Call" }} title={title} testIdPrefix={testIdPrefix} />;
+  return <InPageNavHeader back={back} title={title} testIdPrefix={testIdPrefix} />;
 }
 
 /** The prefix `InPageNavHeader` composes this mode's header testids from. */

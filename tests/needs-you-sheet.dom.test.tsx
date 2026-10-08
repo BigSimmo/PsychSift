@@ -344,7 +344,7 @@ describe("Notification centre behaviours", () => {
     );
     render(<NeedsYouSheet open onClose={vi.fn()} returnFocusRef={returnFocusRef} />);
     const row = screen.getByTestId("needs-you-item-remind:r1");
-    expect(row.getAttribute("href")).toBe("/my-day/alerts");
+    expect(row.getAttribute("href")).toBe("/my-day?open=reminders");
     expect(row.textContent).toContain("Your reminder");
     fireEvent.click(screen.getByTestId("needs-you-options-remind:r1"));
     expect(screen.queryByTestId("needs-you-snooze-remind:r1")).toBeNull();

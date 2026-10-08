@@ -115,4 +115,19 @@ describe("MyDayFrame end-of-shift card and reminders", () => {
     expect(screen.getByText("Hand over bloods to evening reg")).toBeTruthy();
     expect(screen.getByText("Phone bed manager re outlier")).toBeTruthy();
   });
+
+  it("opens Your reminders on arrival from a Notifications reminder link, then drops the flag", async () => {
+    shiftsState.current.shifts = [];
+    window.history.replaceState(null, "", "/my-day?open=reminders");
+
+    render(
+      <MyDayFrame title="Test" subtitle={() => "Sub"} testId="test-frame" now={now}>
+        {() => <div>Frame content</div>}
+      </MyDayFrame>,
+    );
+
+    expect(await screen.findByRole("dialog", { name: "Your reminders" })).toBeTruthy();
+    expect(window.location.search).toBe("");
+    window.history.replaceState(null, "", "/");
+  });
 });

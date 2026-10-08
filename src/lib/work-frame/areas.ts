@@ -763,7 +763,6 @@ const assessments: WorkArea = {
           sub: "Spreadsheets and forms",
           icon: "download",
           href: "/teaching/assessments/export",
-          band: false,
         },
       ],
     },
@@ -884,7 +883,6 @@ const cpd: WorkArea = {
           sub: "CSV and printable",
           icon: "download",
           href: "/cme/export",
-          band: false,
         },
         {
           id: "cpd-home",

@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { endOfShiftCard, type ShiftWindow } from "@/lib/alerts/end-of-shift";
+import { MY_DAY_OPEN_PARAM } from "@/lib/alerts/remind-me";
 import { useExampleData } from "@/lib/example-data/store";
 import { myDayEnabledForAuth, myDayNeedsSignIn } from "@/lib/my-day/model";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -158,6 +159,18 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
   // Once a reminder sheet has opened both stay mounted, as before, so moving between them is unchanged.
   const [sheetsMounted, setSheetsMounted] = useState(false);
   if (sheet !== null && !sheetsMounted) setSheetsMounted(true);
+  useEffect(() => {
+    // A reminder tapped in Notifications lands here with `?open=reminders`: open the sheet that lists it,
+    // then drop the flag so a reload or Back does not open it again.
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(MY_DAY_OPEN_PARAM) !== "reminders") return;
+    const timer = window.setTimeout(() => {
+      url.searchParams.delete(MY_DAY_OPEN_PARAM);
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+      setSheet("reminders");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const shiftWindows: readonly ShiftWindow[] = useMemo(
     () =>
