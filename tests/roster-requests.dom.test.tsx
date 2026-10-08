@@ -229,6 +229,31 @@ it("Plan leave shows the team staffing check for the picked dates, never a safe 
   expect(check.textContent).toContain("safe number isn't set in PsychSift");
 });
 
+it("plans exam and personal leave, with the agreement's signed-off lines for the kind picked", async () => {
+  // Owner request 8 Oct 2026 ("top 20 next steps" item 13): more leave kinds in Roster.
+  const user = userEvent.setup();
+  reads.requests.swaps = [];
+  render(<RosterRequestsPage />);
+  await user.click(screen.getByRole("button", { name: "New" }));
+  await user.click(screen.getByTestId("roster-new-entry-leave"));
+  const kind = await screen.findByLabelText("Kind");
+  expect([...(kind as HTMLSelectElement).options].map((option) => option.textContent)).toEqual([
+    "Annual leave",
+    "Conference or PD leave",
+    "Exam leave",
+    "Personal leave",
+  ]);
+  await user.selectOptions(kind, "exam");
+  const allows = screen.getByTestId("roster-leave-entitlement");
+  expect(allows.textContent).toContain("4 days paid leave to sit an approved exam");
+  expect(allows.textContent).toContain("Clause 18(2)");
+  expect(screen.getByRole("link", { name: "Open in Leave wallet" })).toHaveAttribute("href", "/admin/leave?card=exam");
+  expect(screen.queryByTestId("roster-leave-personal-note")).toBeNull();
+  await user.selectOptions(kind, "personal");
+  expect(screen.getByTestId("roster-leave-personal-note").textContent).toContain("see this as personal leave");
+  expect(screen.getByTestId("roster-leave-entitlement").textContent).toContain("Clause 36(4)");
+});
+
 it("checks planned leave against my team shifts: the clash, its day, and who else is off", async () => {
   // Work-mode redesign, owner request 6 Oct 2026: the Plan leave sheet's Checks card.
   const user = userEvent.setup();

@@ -3,13 +3,14 @@ import "server-only";
 import { z } from "zod";
 
 import { PublicApiError } from "@/lib/http";
+import { ROSTER_LEAVE_KINDS } from "@/lib/roster/leave-kinds";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAdminClient } from "@/lib/roster/team/api";
 import { rosterRead } from "@/lib/roster/team/repository";
 
 const uuid = z.uuid();
 const isoDate = z.iso.date();
-const leaveKind = z.enum(["annual", "pd_leave"]);
+const leaveKind = z.enum(ROSTER_LEAVE_KINDS);
 const leaveStatus = z.enum(["planned", "applied", "approved"]);
 
 export const createLeaveSchema = z
