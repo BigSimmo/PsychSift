@@ -28,6 +28,12 @@ export const LIVE_PREVIEW_FEATURES = [
     owner: "work-mode-launch",
     since: "2026-10-07",
   },
+  {
+    id: "two-pane-side-menu",
+    label: "New side menu",
+    owner: "mode-picker",
+    since: "2026-10-08",
+  },
 ] as const satisfies readonly LivePreviewFeature[];
 
 export type LivePreviewFeatureId = (typeof LIVE_PREVIEW_FEATURES)[number]["id"];

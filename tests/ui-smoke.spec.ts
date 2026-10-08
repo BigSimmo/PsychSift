@@ -806,6 +806,18 @@ async function openMobileTableFullscreen(page: Page, clinicalTable: Locator) {
   return tableDialog;
 }
 
+/**
+ * Pins the page to Everyone's version of the live version switch. The offline
+ * build shows the newest work by default, and the phone menu below is the one
+ * everyone who is not a tester still gets; the two-pane menu that replaces it
+ * for testers is covered by tests/two-pane-side-menu.dom.test.tsx.
+ */
+async function useEveryonesVersion(page: Page, baseURL: string | undefined) {
+  await page
+    .context()
+    .addCookies([{ name: "psychsift-live-version", value: "everyone", url: new URL("/", baseURL).toString() }]);
+}
+
 async function openMobileClinicalGuideMenu(page: Page) {
   const trigger = page.getByRole("button", { name: "Open PsychSift menu" });
   await expect(trigger).toBeVisible();
@@ -1226,11 +1238,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.locator('[data-testid="global-search-input"]:visible').first()).toBeEnabled();
   });
 
-  test("Medication shortcut opens the shared Medication home", async ({ page }) => {
+  test("Medication shortcut opens the shared Medication home", async ({ page, baseURL }) => {
     // Medication was reversed out of its standalone `/medications` home (see
     // src/app/(search-app)/medications/page.tsx) so its idle view is now the shared
     // home, matching the other consolidated modes and Documents.
     await page.setViewportSize({ width: 390, height: 820 });
+    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
@@ -1244,8 +1257,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByRole("button", { name: "Mode Medication" })).toBeVisible();
   });
 
-  test("mobile search focus is singular, visible, and contained at clipped edges", async ({ page }) => {
+  test("mobile search focus is singular, visible, and contained at clipped edges", async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 390, height: 820 });
+    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/?mode=answer");
     await waitForDemoDashboardReady(page);
@@ -1743,8 +1757,10 @@ test.describe("PsychSift UI smoke coverage", () => {
 
   test("account settings stays readable at narrow phone widths and closes from its single control or Escape", async ({
     page,
+    baseURL,
   }) => {
     await page.setViewportSize({ width: 390, height: 820 });
+    await useEveryonesVersion(page, baseURL);
     await mockDemoApi(page);
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
@@ -6563,8 +6579,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     { name: "tablet", width: 768, height: 1024 },
     { name: "desktop", width: 1280, height: 900 },
   ]) {
-    test(`guide opens and dismisses at ${viewport.name}`, async ({ page }) => {
+    test(`guide opens and dismisses at ${viewport.name}`, async ({ page, baseURL }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      if (viewport.width < 768) await useEveryonesVersion(page, baseURL);
       await mockPrivateUnauthenticatedApi(page);
       await gotoApp(page, "/");
 
@@ -6591,8 +6608,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     });
   }
 
-  test("guide centre topic navigation and tour progress remain accessible", async ({ page }) => {
+  test("guide centre topic navigation and tour progress remain accessible", async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 390, height: 820 });
+    await useEveryonesVersion(page, baseURL);
     await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
@@ -6694,8 +6712,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("guide centre phone dock paints through the bottom safe area", async ({ page }) => {
+  test("guide centre phone dock paints through the bottom safe area", async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 390, height: 820 });
+    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
 

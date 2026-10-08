@@ -218,7 +218,12 @@ test.describe("Live Browser User Journeys", () => {
   // -------------------------------------------------------------------------
   test("Journey 1 (Login/Auth): unauthenticated guest journey and account setup gateway", async ({
     page,
+    baseURL,
   }, testInfo) => {
+    // The phone menu checked below is Everyone's version; the offline build defaults to the newest.
+    await page
+      .context()
+      .addCookies([{ name: "psychsift-live-version", value: "everyone", url: new URL("/", baseURL).toString() }]);
     // Navigate to personal favourites page which presents the sign-in guidance
     await page.goto("/favourites");
     await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
