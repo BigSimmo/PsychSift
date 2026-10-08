@@ -33,7 +33,8 @@ export type PostedTeam = {
 };
 
 export type PostedShiftsState = {
-  readonly status: "loading" | "ready" | "signed-out" | "not-poster" | "error";
+  /** `no-team`: in no Roster team at all; `not-poster`: in a team, but not one of its roster managers. */
+  readonly status: "loading" | "ready" | "signed-out" | "no-team" | "not-poster" | "error";
   readonly shifts: readonly PostedShift[];
   readonly teams: readonly PostedTeam[];
   readonly failedTeams: readonly string[];
@@ -98,13 +99,11 @@ export function usePostedShifts(): PostedShiftsState {
     setGeneration((value) => value + 1);
   }, []);
 
-  const managed = useMemo(
-    () =>
-      teams.data?.sample && !example
-        ? []
-        : (teams.data?.teams ?? []).filter((team) => team.enabled && team.role === "manager"),
+  const memberOf = useMemo(
+    () => (teams.data?.sample && !example ? [] : (teams.data?.teams ?? []).filter((team) => team.enabled)),
     [teams.data, example],
   );
+  const managed = useMemo(() => memberOf.filter((team) => team.role === "manager"), [memberOf]);
   const key = managed
     .map((team) => team.serviceId)
     .sort()
@@ -145,6 +144,7 @@ export function usePostedShifts(): PostedShiftsState {
   const base = { reload, offline: !online, actorId };
   const empty = { shifts: [], teams: [], failedTeams: [], readAt: null, refreshFailed: false, message: null };
   if (teams.status === "signed-out") return { ...base, ...empty, status: "signed-out" };
+  if (teams.status === "ready" && memberOf.length === 0) return { ...base, ...empty, status: "no-team" };
   if (teams.status === "ready" && managed.length === 0) return { ...base, ...empty, status: "not-poster" };
   const current = loaded && loaded.key === key && loaded.actorId === actorId ? loaded : null;
   if (current) {

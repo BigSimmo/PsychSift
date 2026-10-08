@@ -102,7 +102,7 @@ import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/univ
 import { maxFavouriteSetsPerAccount } from "@/lib/favourite-set-name";
 import { canAccessFavouritesMode } from "@/lib/app-modes";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
-import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { modeHomeComposerReservePendingValue, modeHomeDesktopComposerSlotId } from "@/lib/mode-home-composer";
 import { sharedHomePresentation } from "@/lib/ui-copy";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -756,6 +756,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     getEmptyPinnedSnapshot,
   );
   const workPageStars = useWorkPageStars();
+  const routeVisible = useWorkModeRouteVisible();
   const savedNumbers = useSavedNumbers();
   const overrides = useFavouriteOverrides();
   const layout = useFavouritesLayout();
@@ -803,7 +804,8 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       ),
       // Work pages and numbers saved on this phone. The signed-out sample shows
       // none: it reads nothing that belongs to anyone.
-      ...(sampleMode ? [] : resolveWorkPageStars(workPageStars).map(workStarToItem)),
+      // A new-only page 404s on the classic work mode, so it stays saved but hidden there.
+      ...(sampleMode ? [] : resolveWorkPageStars(workPageStars, routeVisible).map(workStarToItem)),
       ...(sampleMode ? [] : savedNumbers.map(numberToItem)),
     ];
     // The person's own names and notes, kept on this phone. Never on an example.
@@ -812,6 +814,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     demoMode,
     sampleMode,
     workPageStars,
+    routeVisible,
     savedNumbers,
     overrides,
     sampleFavourites,

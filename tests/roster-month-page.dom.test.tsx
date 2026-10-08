@@ -39,6 +39,9 @@ vi.mock("@/components/roster/use-roster-team", () => ({
 }));
 vi.mock("@/components/roster/use-roster-links", () => ({ useRosterLinks: () => ({ links: [], add: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-settings", () => ({ useRosterSettings: () => ({}) }));
+vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
+  AccountSetupDialog: () => <div role="dialog" aria-label="Continue to your workspace" />,
+}));
 
 import { RosterMonthPage } from "@/components/roster/roster-month-page";
 
@@ -321,6 +324,15 @@ describe("Roster Month tab", () => {
     render(<RosterMonthPage now={NOW} />);
     expect(screen.getByText("Part of your team roster didn't load.")).toBeInTheDocument();
     expect(screen.getByTestId("roster-month-totals")).toHaveTextContent("these are minimums");
+  });
+
+  it("opens the account dialog to sign in, not the /sign-in address that forwards to Favourites", () => {
+    state.shifts = { status: "signed-out", shifts: [], reload: vi.fn(), addManual: vi.fn() };
+    render(<RosterMonthPage now={NOW} />);
+    const empty = screen.getByTestId("roster-month-signed-out");
+    expect(within(empty).queryByRole("link")).toBeNull();
+    fireEvent.click(within(empty).getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("dialog", { name: "Continue to your workspace" })).toBeInTheDocument();
   });
 
   it("says the sample is invented and offers no add button", () => {

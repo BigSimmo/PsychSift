@@ -72,7 +72,8 @@ describe("term evidence folder page", () => {
     authState.status = "signed_out";
     render(<TermFolderPage demoMode={false} termId={null} />);
     expect(await screen.findByTestId("term-folder-card")).toBeInTheDocument();
-    expect(screen.getByText(/Made-up demo/)).toBeInTheDocument();
+    // The shared example banner says it under the band, so the page does not say it a second time.
+    expect(screen.queryByText(/Made-up demo/)).toBeNull();
   });
 
   it("is linked from the Term page", () => {

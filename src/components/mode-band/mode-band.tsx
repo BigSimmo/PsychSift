@@ -37,6 +37,7 @@ import {
   workAreaFor,
   workFrameCurrentItem,
   workFrameItemById,
+  workFrameItemOwnsAddress,
   type WorkArea,
   type WorkFrameItem,
 } from "@/lib/work-frame/areas";
@@ -377,9 +378,14 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const helpOn = useNewWorkMode() && area !== null;
   useWorkFrameAction("work-help", helpOn && area ? () => openWorkHelp(area.id) : null);
   const [search, setSearch] = useState("");
+  const pageNamedItem = area && pageTabId ? workFrameItemById(area, pageTabId) : null;
   const workCurrent: WorkFrameItem | null = area
-    ? ((pageTabId ? workFrameItemById(area, pageTabId) : null) ?? workFrameCurrentItem(area, pathname, search))
+    ? (pageNamedItem ?? workFrameCurrentItem(area, pathname, search))
     : null;
+  // A page that names its own tab is that page; otherwise the address must be
+  // the item's own link, not a page it covers through `paths`.
+  const workCurrentIsOwnPage =
+    pageNamedItem !== null || (workCurrent !== null && workFrameItemOwnsAddress(workCurrent, pathname, search));
   const activeId = pageTabId ?? bandActiveId(props.modeId, pathname);
   const homePath = props.homePath ?? modeHomePath(props.modeId);
   const shown =
@@ -409,6 +415,7 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
       {...props}
       area={area}
       current={workCurrent}
+      currentIsOwnPage={workCurrentIsOwnPage}
       heading={heading}
       counts={hideCounts ? undefined : allCounts}
     />
@@ -471,6 +478,7 @@ function WorkModeBandHeader({
   modeId,
   area,
   current,
+  currentIsOwnPage,
   heading,
   title,
   customiseHref,
@@ -480,6 +488,7 @@ function WorkModeBandHeader({
 }: Omit<ModeBandProps, "children" | "hiddenOn" | "homePath"> & {
   area: WorkArea;
   current: WorkFrameItem | null;
+  currentIsOwnPage: boolean;
   heading: ModeBandHeading | null;
 }) {
   const pathname = usePathname() ?? "";
@@ -498,6 +507,7 @@ function WorkModeBandHeader({
       area={area}
       modeId={modeId}
       current={current}
+      currentIsOwnPage={currentIsOwnPage}
       bandRef={setBand}
       eyebrow={heading?.eyebrow ?? <TodayDateText />}
       title={heading?.title ?? baseTitle}

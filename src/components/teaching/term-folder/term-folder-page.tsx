@@ -403,6 +403,8 @@ function NoTerm() {
 
 function TermFolderContent({ demoMode, termId }: { demoMode: boolean; termId: string | null }) {
   const view = useTermFolder(demoMode, termId);
+  // The shared example banner already says the records are made up, so this note shows only without it.
+  const { active: exampleShown } = useExampleData("teach");
   let body;
   if (view.kind === "signed-out") body = <TeachingSignInNotice />;
   else if (view.kind === "loading") body = <ModeModuleSkeleton rows={4} />;
@@ -424,7 +426,7 @@ function TermFolderContent({ demoMode, termId }: { demoMode: boolean; termId: st
           <ChevronLeft aria-hidden="true" className="size-icon-sm" />
           Term
         </Link>
-        {demoMode ? (
+        {demoMode && !exampleShown ? (
           <T5Note className="mt-0 mb-1">Made-up demo. Nothing here is your data, and nothing is saved.</T5Note>
         ) : null}
         {body}

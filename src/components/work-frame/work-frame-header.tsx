@@ -30,9 +30,7 @@ import {
   workFrameActionHandler,
 } from "@/components/work-frame/work-frame-store";
 import { useWorkTabPicks } from "@/components/work-frame/work-tab-picks";
-import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
-import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
-import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";
+import { useWorkFrameGateOpen } from "@/components/work-frame/use-work-frame-gate-open";
 import type { AppModeId } from "@/lib/app-modes";
 import {
   WORK_TAB_PICKS_MAX,
@@ -42,7 +40,6 @@ import {
   workFrameTabRow,
   workFrameTabLabel,
   type WorkArea,
-  type WorkFrameGate,
   type WorkFrameItem,
 } from "@/lib/work-frame/areas";
 
@@ -54,6 +51,12 @@ export type WorkFrameHeaderProps = {
   /** The pill's mode id (Open shifts keeps its own, inside Roster's frame). */
   readonly modeId: AppModeId;
   readonly current: WorkFrameItem | null;
+  /**
+   * True when the address is `current`'s own page, not one it only covers
+   * through `paths` (Log on Routines, a new activity or one CPD entry). The
+   * favourite heart shows only then, so it never saves the parent page.
+   */
+  readonly currentIsOwnPage: boolean;
   readonly eyebrow: ReactNode;
   readonly title: ReactNode;
   /** The page's status line slot, drawn under the title. */
@@ -63,26 +66,6 @@ export type WorkFrameHeaderProps = {
   readonly counts?: Readonly<Record<string, number>>;
   readonly bandRef: (node: HTMLElement | null) => void;
 };
-
-function useGateOpen(): (gate: WorkFrameGate | undefined) => boolean {
-  const roles = useTeachingRoles();
-  const poster = useOpenShiftsIsPoster();
-  const editor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
-  const newWorkMode = useNewWorkMode();
-  const signedIn = useSignedIn();
-  return useCallback(
-    (gate) => {
-      if (!gate) return true;
-      if (gate === "teaching-organiser") return roles.some((role) => role === "organiser" || role === "admin");
-      if (gate === "open-shifts-poster") return poster === true;
-      if (gate === "new-work-mode") return newWorkMode;
-      if (gate === "classic-work-mode") return !newWorkMode;
-      if (gate === "signed-out") return !signedIn;
-      return editor;
-    },
-    [roles, poster, editor, newWorkMode, signedIn],
-  );
-}
 
 /**
  * The work-mode header band (work-mode redesign, owner request 6 Oct 2026):
@@ -106,6 +89,7 @@ export function WorkFrameHeader({
   area,
   modeId,
   current,
+  currentIsOwnPage,
   eyebrow,
   title,
   status,
@@ -116,7 +100,7 @@ export function WorkFrameHeader({
   const [moreOpen, setMoreOpen] = useState(false);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const navRef = useRef<HTMLElement>(null);
-  const gateOpen = useGateOpen();
+  const gateOpen = useWorkFrameGateOpen();
   const routeVisible = useWorkModeRouteVisible();
   const [picked, setPicked] = useWorkTabPicks(area.id);
   const { first, extras } = useMemo(
@@ -206,6 +190,7 @@ export function WorkFrameHeader({
         </div>
         <div className="ml-auto flex shrink-0 items-end gap-2">
           {newWorkMode &&
+          currentIsOwnPage &&
           current?.href &&
           !current.leadsTo &&
           current.id !== area.tabs[0].id &&
@@ -324,7 +309,7 @@ export function WorkMoreSheet({
   onClose,
   returnFocusRef,
 }: WorkMoreSheetProps) {
-  const gateOpen = useGateOpen();
+  const gateOpen = useWorkFrameGateOpen();
   const routeVisible = useWorkModeRouteVisible();
   const actionsVersion = useWorkFrameActionsVersion();
   const parent = workAreaParent(area);

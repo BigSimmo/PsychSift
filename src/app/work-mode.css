@@ -99,6 +99,18 @@
   --work-primary-text: var(--text-heading);
 }
 
+/* The app's filled "command" button (Sign in, Save, Send) is the area's primary
+   colour inside a work page, as WorkButton's primary is, rather than the
+   clinical near-black. On Call did this alone (on-call-work.css), so six areas
+   showed black and coloured main buttons side by side. <html> is left out: it
+   carries the frame marker but not the area's identity, and the shared header
+   and search chrome there keep their own colours. */
+[data-work-frame]:not(:root) {
+  --command: var(--work-primary);
+  --command-hover: var(--mode-identity-deep, var(--work-primary));
+  --command-contrast: var(--work-primary-text);
+}
+
 /* Glass fallback. Blur is the costliest paint in the frame: on an older or
    low-memory Android phone it re-samples the page under every glass layer on
    each scroll frame, which is where the stutter comes from. Where blur is not

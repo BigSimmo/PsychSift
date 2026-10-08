@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, FileUp, Plus, RefreshCw, TriangleAlert, Users } from "lucide-react";
+import { Clock, FileUp, LogIn, Plus, RefreshCw, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -28,6 +28,7 @@ import type { RosterSwap } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 
+import { useRosterSignIn } from "./invite/roster-sign-in-notice";
 import { RosterAddSheet, type RosterAddView } from "./roster-add-sheet";
 import { RosterDaySheet, type RosterDayColleague } from "./roster-day-sheet";
 import { kindOf, useRosterNow } from "./roster-format";
@@ -186,6 +187,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const [addView, setAddView] = useState<RosterAddView | null>(null);
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // The app has no sign-in page, so "Sign in" opens the account dialog, as every other area does.
+  const signIn = useRosterSignIn();
 
   const grid = monthGridRange(month);
   const loadedFrom = addDaysToDate(today, -LOADED_PAST_DAYS);
@@ -450,15 +453,22 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
     if (shifts.status === "loading") return <MonthLoading />;
     if (shifts.status === "signed-out")
       return (
-        <WorkCard>
-          <WorkEmpty
-            icon={Users}
-            title="Sign in to see your roster"
-            body="Your shifts, swaps and leave show here once you sign in."
-            action={<WorkButton href="/sign-in?next=%2Froster">Sign in</WorkButton>}
-            testId="roster-month-signed-out"
-          />
-        </WorkCard>
+        <>
+          <WorkCard>
+            <WorkEmpty
+              icon={Users}
+              title="Sign in to see your roster"
+              body="Your shifts, swaps and leave show here once you sign in."
+              action={
+                <WorkButton icon={LogIn} onClick={signIn.open}>
+                  Sign in
+                </WorkButton>
+              }
+              testId="roster-month-signed-out"
+            />
+          </WorkCard>
+          {signIn.dialog}
+        </>
       );
     if (shifts.status === "error")
       return (
