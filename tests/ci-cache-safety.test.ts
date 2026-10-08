@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, mkdtempSync, unlinkSync, rmdirSync } from "node:fs";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 import fullConfig from "../vitest.config.mjs";
@@ -23,6 +25,47 @@ const liveWebVitalsWorkflow = readFileSync(
   "utf8",
 );
 const opsDigestWorkflow = readFileSync(new URL("../.github/workflows/ops-digest.yml", import.meta.url), "utf8");
+
+describe("preview dispatch input remains shell data", () => {
+  it.each([
+    'https://preview.invalid"; printf injected > "$INJECTION_MARKER"; #',
+    'https://preview.invalid/$(printf injected > "$INJECTION_MARKER")',
+    'https://preview.invalid/`printf injected > "$INJECTION_MARKER"`',
+    "https://preview.invalid/\nsecond line",
+  ])("passes the exact URL as one argument without executing it: %s", (input) => {
+    const parsed = createRequire(import.meta.url)("js-yaml").load(
+      readFileSync(new URL("../.github/workflows/preview-smoke.yml", import.meta.url), "utf8"),
+    );
+    const step = parsed.jobs["preview-smoke"].steps.find(
+      (entry: { env?: { PREVIEW_URL?: string } }) => entry.env?.PREVIEW_URL,
+    );
+    expect(step.env.PREVIEW_URL).toBe("${{ github.event.inputs.preview_url }}");
+    const directory = mkdtempSync(path.join(tmpdir(), "pr3362-preview-input-"));
+    const capture = path.join(directory, "argv");
+    const marker = path.join(directory, "injection");
+    try {
+      // Model GitHub expression expansion before Bash executes the actual workflow step.
+      // A shell function captures npm's argv; no npm command or external request runs.
+      const run = step.run.replaceAll("${{ github.event.inputs.preview_url }}", input);
+      const result = spawnSync(
+        process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "bash",
+        ["--noprofile", "--norc", "-c", 'npm() { printf "%s\\0" "$@" > "$CAPTURE_PATH"; }\n' + run],
+        {
+          encoding: "utf8",
+          env: { ...process.env, PREVIEW_URL: input, CAPTURE_PATH: capture, INJECTION_MARKER: marker },
+          windowsHide: true,
+        },
+      );
+      expect(result.error).toBeUndefined();
+      expect(result.status, result.stderr).toBe(0);
+      expect(existsSync(marker)).toBe(false);
+      expect(readFileSync(capture, "utf8").split("\0")).toEqual(["run", "test:e2e:preview", "--", "--url", input, ""]);
+    } finally {
+      for (const file of [capture, marker]) if (existsSync(file)) unlinkSync(file);
+      rmdirSync(directory);
+    }
+  });
+});
 
 describe("partitioned unit coverage verdict", () => {
   const workflow = createRequire(import.meta.url)("js-yaml").load(

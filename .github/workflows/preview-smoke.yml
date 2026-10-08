@@ -32,7 +32,7 @@ jobs:
       - name: Run user journeys against preview deployment
         env:
           PREVIEW_URL: ${{ github.event.inputs.preview_url }}
-        run: npm run test:e2e:preview -- --url "${{ github.event.inputs.preview_url }}"
+        run: npm run test:e2e:preview -- --url "$PREVIEW_URL"
 
       - name: Upload preview smoke diagnostics
         if: failure()

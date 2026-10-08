@@ -11,7 +11,7 @@ import { toClientAnswerPayload } from "../src/lib/answer-client-payload";
  *
  * Implements the core testing principles:
  * 1. Test user journeys, not isolated components (Login, core workflow, data submission, error state).
- * 2. Focused volume: 8 journeys plus six negative controls for answer/retry assertions.
+ * 2. Focused volume: 8 journeys, six answer/retry negative controls, and an offline preview-origin regression.
  * 3. Accessibility in the same run: in-flow @axe-core/playwright scans on key journey states.
  * 4. Sparing visual regression: high-fidelity snapshot attachments and optional visual assertions on 2–3 key views.
  * 5. Deterministic execution: works against runner-owned local server or remote preview deployment (Vercel/Netlify).
@@ -23,12 +23,15 @@ const syntheticFailure = "Synthetic answer service unavailable. Please retry.";
 const syntheticAnswerText = (query: string) =>
   `Synthetic fixture completed for: ${query}\n\n${demoAnswer(query).answer.split("\n\n")[0]}`;
 
-async function installSyntheticAnswerApis(page: Page, query: string) {
+async function installSyntheticAnswerApis(page: Page, query: string, baseURL: string | undefined) {
+  if (!baseURL) throw new Error("Synthetic journeys require an explicit app baseURL.");
+  const appOrigin = new URL(baseURL).origin;
   const state = {
     fail: false,
     unfinished: false,
     requests: [] as Array<{ method: string; query: string }>,
     responses: [] as number[],
+    blockedOrigins: [] as string[],
   };
   const answer = { ...toClientAnswerPayload(demoAnswer(query)), answer: syntheticAnswerText(query), demoMode: true };
   page.on("response", (response) => {
@@ -36,8 +39,10 @@ async function installSyntheticAnswerApis(page: Page, query: string) {
   });
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
-    // These fixtures never let a browser request reach an external provider.
-    if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) {
+    // Navigation/assets use only the configured app origin; API replies remain synthetic.
+    // An explicitly approved preview works without admitting unrelated providers or ports.
+    if (url.origin !== appOrigin) {
+      state.blockedOrigins.push(url.origin);
       await route.abort("blockedbyclient");
       return;
     }
@@ -98,6 +103,20 @@ async function installSyntheticAnswerApis(page: Page, query: string) {
   return state;
 }
 
+async function expectHydratedHandler(locator: Locator, eventName: "onChange" | "onClick" | "onSubmit") {
+  await expect
+    .poll(
+      () =>
+        locator.evaluate((element, event) => {
+          const propsKey = Object.keys(element).find((key) => key.startsWith("__reactProps$"));
+          const props = propsKey ? (element as unknown as Record<string, Record<string, unknown>>)[propsKey] : null;
+          return typeof props?.[event] === "function";
+        }, eventName),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+}
+
 async function hydratedAnswerSubmit(page: Page, query: string) {
   await gotoApp(page, "/?mode=answer");
   const input = page.locator('[aria-label^="Search indexed guidelines by question or keyword"]:visible');
@@ -108,17 +127,7 @@ async function hydratedAnswerSubmit(page: Page, query: string) {
     [input, "onChange"],
     [input.locator("xpath=ancestor::form[1]"), "onSubmit"],
   ] as const) {
-    await expect
-      .poll(
-        () =>
-          locator.evaluate((element, event) => {
-            const propsKey = Object.keys(element).find((key) => key.startsWith("__reactProps$"));
-            const props = propsKey ? (element as unknown as Record<string, Record<string, unknown>>)[propsKey] : null;
-            return typeof props?.[event] === "function";
-          }, eventName),
-        { timeout: 15_000 },
-      )
-      .toBe(true);
+    await expectHydratedHandler(locator, eventName);
   }
   await expect(input).toBeEnabled();
   await input.fill(query);
@@ -214,19 +223,29 @@ test.describe("Live Browser User Journeys", () => {
     await page.goto("/favourites");
     await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
 
-    // Verify unauthenticated guidance prompt or workspace setup is present
-    const signInTrigger = page
-      .locator(
-        'button[data-testid="collapsed-account-settings"], button[title="Set up workspace"], button:has-text("Sign up"), button:has-text("Sign in")',
-      )
-      .first();
+    // On phones the account action lives inside the menu, not the hidden desktop rail.
+    const phoneMenu = page.getByRole("button", { name: "Open PsychSift menu", exact: true });
+    if (await phoneMenu.isVisible()) {
+      await expectHydratedHandler(phoneMenu, "onClick");
+      await phoneMenu.click();
+      await expect(page.getByRole("dialog", { name: "PsychSift", exact: true })).toBeVisible();
+    }
+    const signInTrigger = page.locator(
+      'button[data-testid="collapsed-account-settings"]:visible, button[data-testid="sidebar-account-settings"]:visible',
+    );
+    await expect(signInTrigger).toHaveCount(1);
     await expect(signInTrigger).toBeVisible();
+    await expect(signInTrigger).toHaveAccessibleName(/Guest Not signed in\. Set up workspace/);
+    await expectHydratedHandler(signInTrigger, "onClick");
 
     // Trigger Account Setup dialog
     await signInTrigger.click();
 
     // Verify modal sheet appears with federated SSO options and email authentication
-    const dialog = page.locator('[role="dialog"], .account-setup-dialog').first();
+    const dialog = page.getByRole("dialog").filter({
+      has: page.getByRole("heading", { name: "Account setup", exact: true }),
+    });
+    await expect(dialog).toHaveCount(1);
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText(/continue to your workspace|sign up|sign in/i).first()).toBeVisible();
     await expect(dialog.locator('[data-testid="account-provider-grid"]')).toBeVisible();
@@ -235,7 +254,7 @@ test.describe("Live Browser User Journeys", () => {
     await expectNoBlockingAxeViolations(page, testInfo, { context: "auth-modal" });
 
     // Dismiss dialog cleanly
-    const closeButton = page.locator('button[aria-label*="Close"], button[data-testid="sheet-close-button"]').first();
+    const closeButton = dialog.getByRole("button", { name: "Close account setup", exact: true });
     if (await closeButton.isVisible()) {
       await closeButton.click();
       await expect(dialog).toBeHidden();
@@ -254,9 +273,12 @@ test.describe("Live Browser User Journeys", () => {
   // -------------------------------------------------------------------------
   // Journey 2: Core Clinical Workflow (Search -> Synthesized Answer -> Source Evidence)
   // -------------------------------------------------------------------------
-  test("Journey 3 (Core Workflow): clinical query submission to synthesized answer", async ({ page }, testInfo) => {
+  test("Journey 3 (Core Workflow): clinical query submission to synthesized answer", async ({
+    page,
+    baseURL,
+  }, testInfo) => {
     const query = "What are the clinical signs of lithium toxicity?";
-    const state = await installSyntheticAnswerApis(page, query);
+    const state = await installSyntheticAnswerApis(page, query, baseURL);
     const submit = await hydratedAnswerSubmit(page, query);
     await submit.click();
     const answerContainer = await expectSyntheticAnswer(page, state, query, 1);
@@ -350,9 +372,9 @@ test.describe("Live Browser User Journeys", () => {
     await expect(page).toHaveURL(/\/(|\?.*)$/);
   });
 
-  test("Journey 8 (Error State): simulated API network failure and retry recovery", async ({ page }) => {
+  test("Journey 8 (Error State): simulated API network failure and retry recovery", async ({ page, baseURL }) => {
     const query = "What monitoring does the synthetic clozapine table describe?";
-    const state = await installSyntheticAnswerApis(page, query);
+    const state = await installSyntheticAnswerApis(page, query, baseURL);
     state.fail = true;
     const submit = await hydratedAnswerSubmit(page, query);
     await submit.click();
@@ -364,9 +386,9 @@ test.describe("Live Browser User Journeys", () => {
   });
 
   for (const control of ["no-op", "failed", "unfinished"] as const) {
-    test(`Answer completion negative control: ${control}`, async ({ page }) => {
+    test(`Answer completion negative control: ${control}`, async ({ page, baseURL }) => {
       const query = "Synthetic lithium toxicity completion control";
-      const state = await installSyntheticAnswerApis(page, query);
+      const state = await installSyntheticAnswerApis(page, query, baseURL);
       state.fail = control === "failed";
       state.unfinished = control === "unfinished";
       const submit = await hydratedAnswerSubmit(page, query);
@@ -389,9 +411,9 @@ test.describe("Live Browser User Journeys", () => {
   }
 
   for (const control of ["missing-request", "missing-retry", "persistent-failure"] as const) {
-    test(`Answer recovery negative control: ${control}`, async ({ page }) => {
+    test(`Answer recovery negative control: ${control}`, async ({ page, baseURL }) => {
       const query = "Synthetic clozapine monitoring recovery control";
-      const state = await installSyntheticAnswerApis(page, query);
+      const state = await installSyntheticAnswerApis(page, query, baseURL);
       state.fail = true;
       const submit = await hydratedAnswerSubmit(page, query);
       if (control !== "missing-request") {
@@ -408,4 +430,56 @@ test.describe("Live Browser User Journeys", () => {
       await expect(expectSyntheticAnswer(page, state, query, expectedRequests, 500)).rejects.toThrow();
     });
   }
+});
+
+test.describe("Synthetic preview-origin navigation", () => {
+  test.use({
+    baseURL: "https://approved-preview.invalid",
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: "https://approved-preview.invalid",
+          localStorage: [{ name: "clinical-kb-pwa-ios-install-dismissed-at", value: String(Date.now()) }],
+        },
+      ],
+    },
+  });
+
+  test("allows the configured preview, settles synthetic output, and blocks a sibling origin", async ({
+    page,
+    baseURL,
+  }, testInfo) => {
+    // Global configuration has already validated the local project identity or
+    // explicit HTTPS preview opt-in before this test overrides its fixture URL.
+    const configuredAppOrigin = new URL(String(testInfo.project.use.baseURL)).origin;
+    let foreignFallbacks = 0;
+    await page.route("**/*", async (route) => {
+      const url = new URL(route.request().url());
+      if (url.origin !== baseURL) {
+        foreignFallbacks += 1;
+        await route.abort("blockedbyclient");
+        return;
+      }
+      // The reserved preview hostname never reaches DNS: documents/assets come from
+      // the validated app origin (loopback in local verification), and every API
+      // request is handled by the newer synthetic route before this fallback.
+      const response = await route.fetch({
+        url: `${configuredAppOrigin}${url.pathname}${url.search}`,
+        maxRedirects: 0,
+      });
+      await route.fulfill({ response });
+    });
+    const query = "Synthetic preview-origin lithium completion";
+    const state = await installSyntheticAnswerApis(page, query, baseURL);
+    const submit = await hydratedAnswerSubmit(page, query);
+    await submit.click();
+    await expectSyntheticAnswer(page, state, query, 1);
+    expect(new URL(page.url()).origin).toBe(baseURL);
+    // Navigation reaches routing independently of the app's connect-src policy.
+    await expect(page.goto("https://approved-preview.invalid:444/api/answer/stream")).rejects.toThrow();
+    expect(state.blockedOrigins).toContain("https://approved-preview.invalid:444");
+    expect(foreignFallbacks).toBe(0);
+    expect(state.requests).toEqual([{ method: "POST", query }]);
+  });
 });
