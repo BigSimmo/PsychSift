@@ -2,6 +2,7 @@
 
 import { CircleX, CloudOff, Info, LogIn } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -9,6 +10,7 @@ import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setu
 import { CmeNote } from "@/components/cme/cme-flat-list";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
+import { workFrameForRoute } from "@/lib/work-frame/areas";
 
 export type CmeLoadState = "ready" | "unconfigured" | "signed-out" | "unavailable" | "offline" | "error";
 
@@ -60,7 +62,8 @@ function NoFiguresPlaceholder() {
  * - `unconfigured` (no confirmed targets for the year yet): one line and where
  *   to start.
  * - `heading` is the page's own title, kept above the state so the page never
- *   loses its header.
+ *   loses its header. Where the work frame's band already names the page, the
+ *   heading is for screen readers only, so the title is not shown twice.
  */
 export function CmeStateNotice({
   state,
@@ -74,6 +77,8 @@ export function CmeStateNotice({
   readonly onRetry?: () => void;
 }) {
   const [accountOpen, setAccountOpen] = useState(false);
+  const pathname = usePathname();
+  const bandNamesPage = pathname ? workFrameForRoute("cme", pathname) !== null : false;
   const tryAgain = (
     <button
       type="button"
@@ -159,7 +164,9 @@ export function CmeStateNotice({
 
   return (
     <div data-mode-identity="cme" className="flex flex-col gap-3">
-      {heading ? <h1 className="text-xl font-semibold text-[color:var(--text)]">{heading}</h1> : null}
+      {heading ? (
+        <h1 className={bandNamesPage ? "sr-only" : "text-xl font-semibold text-[color:var(--text)]"}>{heading}</h1>
+      ) : null}
       {notice}
     </div>
   );

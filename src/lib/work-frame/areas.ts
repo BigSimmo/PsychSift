@@ -483,6 +483,7 @@ const openShifts: WorkArea = {
           href: "/open-shifts/log",
           band: false,
         },
+        { id: "open-shifts-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
       ],
     },
   ],
@@ -555,6 +556,7 @@ const manageTeam: WorkArea = {
           href: "/roster/team",
           paths: [],
         },
+        { id: "manage-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
       ],
     },
   ],
@@ -765,6 +767,14 @@ const assessments: WorkArea = {
           icon: "download",
           href: "/teaching/assessments/export",
         },
+        // "Get help" above is for concerns about a doctor, so this one says what it is.
+        {
+          id: "assess-how",
+          label: "How it works",
+          sub: "Assessments help",
+          icon: "help",
+          action: "work-help",
+        },
       ],
     },
     {
@@ -959,7 +969,9 @@ const admin: WorkArea = {
           icon: "folder",
           href: "/admin/documents",
         },
-        { id: "help", label: "Help", sub: "Crisis lines first", icon: "help", href: "/admin/help" },
+        // The crisis lines and contacts page, named for what it holds so it is not taken for How Admin works.
+        { id: "help", label: "Numbers", sub: "Crisis lines first", icon: "phone", href: "/admin/help" },
+        { id: "admin-help", label: "Help", sub: "How Admin works", icon: "help", action: "work-help" },
       ],
     },
     {
@@ -968,7 +980,7 @@ const admin: WorkArea = {
         {
           id: "admin-contract",
           label: "Contract",
-          sub: "End date and reminders",
+          sub: "When it ends",
           icon: "file",
           href: "/admin/contract",
         },
@@ -990,7 +1002,8 @@ const admin: WorkArea = {
         },
         {
           id: "admin-ready",
-          label: "Ready for day one",
+          label: "Day one check",
+          title: "Ready for day one",
           short: "Day one",
           sub: "Before you start",
           icon: "check-list",
@@ -1153,9 +1166,9 @@ const onCall: WorkArea = {
         },
         {
           id: "logistics",
-          label: "Admin",
-          sub: "Help and numbers",
-          icon: "help",
+          label: "Numbers",
+          sub: "Crisis lines first",
+          icon: "phone",
           href: ON_CALL_ADMIN_ROWS_HREF,
           paths: [],
           leadsTo: "my-work",

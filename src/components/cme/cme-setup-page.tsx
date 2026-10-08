@@ -203,7 +203,8 @@ export function CmeSetupPage({
   return (
     <main data-testid="cme-setup-page" data-mode-identity="cme" className="w-full">
       <WorkBody>
-        <h1 className="m-0 text-lg font-semibold text-[color:var(--text-heading)]">Your CPD home for {targetYear}</h1>
+        {/* The band already says Targets, so this title is for screen readers only. */}
+        <h1 className="sr-only">Your CPD home for {targetYear}</h1>
         <p className={cn(textMuted, "text-sm leading-relaxed")}>
           Choose the programme you use, then check and confirm its targets against your current guide. These are your
           own confirmed numbers, not targets looked up by the app.

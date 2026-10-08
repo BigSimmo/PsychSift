@@ -472,7 +472,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                 </p>
                 <Link
                   href="/roster/join"
-                  className="font-semibold text-[color:var(--mode-identity)] underline-offset-2 hover:underline"
+                  className="work-hit font-semibold text-[color:var(--mode-identity)] underline-offset-2 hover:underline"
                 >
                   Join a team
                 </Link>

@@ -558,8 +558,8 @@ export function ServicePage({
   return (
     <InformationPageShell testId="service-page">
       <header className="grid gap-2">
-        <p className="text-xs font-semibold uppercase tracking-kicker text-[color:var(--clinical-accent)]">On Call</p>
-        <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Service handbook</h1>
+        {/* The band above already names the area and the page, so the title is for screen readers only. */}
+        <h1 className="sr-only">Service handbook</h1>
         <p className={cn(textMuted, "max-w-3xl text-sm leading-6")}>
           Practical service information, orientation and corrections maintained by the people who use it.
         </p>

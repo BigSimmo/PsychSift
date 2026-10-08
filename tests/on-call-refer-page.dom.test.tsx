@@ -183,6 +183,8 @@ describe("Refer page", () => {
     expect(screen.queryByText("Saved to your account. Notes marked private are only yours.")).toBeNull();
     // The editor stays one tap away; it asks for sign-in itself.
     expect(screen.getByTestId("on-call-refer-mine-link")).toHaveAttribute("href", "/on-call/referrals");
+    // "Add" is narrower than a finger: the shared hit area makes its tap 48px wide.
+    expect(screen.getByTestId("on-call-refer-mine-link")).toHaveClass("work-hit");
   });
 });
 

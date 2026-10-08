@@ -930,6 +930,22 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   line-height: var(--work-leading-meta);
 }
 
+/* A small text link or action keeps a 48px tap area round it without growing the
+   line it sits in or changing how it looks (the review's under-44px taps). */
+.work-hit {
+  position: relative;
+}
+
+.work-hit::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, var(--spacing-tap));
+  height: max(100%, var(--spacing-tap));
+  transform: translate(-50%, -50%);
+}
+
 /* The close control: a 30px soft circle inside a 48px tap. */
 .work-more-sheet__close {
   position: relative;
