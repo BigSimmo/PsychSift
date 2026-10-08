@@ -45,7 +45,9 @@ describe("work-mode launch switch", () => {
   });
 
   it("lets the device preference roll back instantly, but never switch the mode on", () => {
-    const classic = resolveWorkModeLaunch({ user: admin, environment: PROD, preference: "classic" });
+    // A live version tester uses the live version switch instead (tests/live-version.test.ts).
+    const launched = { ...PROD, WORK_MODE_LAUNCH: "everyone" };
+    const classic = resolveWorkModeLaunch({ user: doctor, environment: launched, preference: "classic" });
     expect(classic).toMatchObject({
       newWorkMode: false,
       classicPreferred: true,
