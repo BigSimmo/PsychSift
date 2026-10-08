@@ -6,6 +6,7 @@ import {
   CPD_APPLICATIONS_STORAGE_KEY,
   MY_DAY_HIDDEN_CARDS_STORAGE_KEY,
   MY_DAY_QUICK_NOTE_STORAGE_KEY,
+  TEACHING_EXAM_PREP_STORAGE_KEY,
   WORK_ACCOUNT_SYNC_MARKER_KEY,
 } from "@/lib/account-scoped-browser-state";
 import { setSharedDevice } from "@/lib/alerts/shared-device";
@@ -105,8 +106,45 @@ describe("work sync client", () => {
     expect(JSON.parse(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY) ?? "[]")).toEqual(["hours", "cpd"]);
     expect(puts).toContainEqual({ section: "myDayHiddenCards", value: ["hours", "cpd"] });
     expect(JSON.parse(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY) ?? "{}")).toMatchObject({
-      matched: true,
+      matched: expect.arrayContaining(["myDayHiddenCards"]) as unknown,
     });
+  });
+
+  it("still merges a record new to sync on a device that matched the first release", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    const prep = (topics: { id: string; name: string; percent: number }[]) => ({
+      version: 1,
+      exam: null,
+      study: {},
+      topics,
+      group: null,
+    });
+    const mine = { id: "t-1", name: "Mood disorders", percent: 40 };
+    const theirs = { id: "t-2", name: "Psychopharmacology", percent: 10 };
+    window.localStorage.setItem(TEACHING_EXAM_PREP_STORAGE_KEY, JSON.stringify(prep([mine])));
+    const { puts } = mockServer({ teachingExamPrep: { value: prep([theirs]), updatedAt: AT } });
+    start();
+    await settle();
+    const kept = JSON.parse(window.localStorage.getItem(TEACHING_EXAM_PREP_STORAGE_KEY) ?? "null") as {
+      topics: unknown[];
+    };
+    expect(kept.topics).toEqual(expect.arrayContaining([mine, theirs]));
+    expect(puts).toContainEqual({ section: "teachingExamPrep", value: kept });
+  });
+
+  it("drops a queued save of job applications once the device is marked shared", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    const { puts } = mockServer({});
+    start();
+    await settle();
+    window.localStorage.setItem(
+      CPD_APPLICATIONS_STORAGE_KEY,
+      JSON.stringify({ version: 1, dates: [], referees: [], statement: "Mine", hiddenCvLines: [] }),
+    );
+    announceWorkSyncChange(CPD_APPLICATIONS_STORAGE_KEY);
+    setSharedDevice(true);
+    await settle();
+    expect(puts.filter((body) => body.section === "cpdApplications")).toEqual([]);
   });
 
   it("saves a change made on this device to the account", async () => {

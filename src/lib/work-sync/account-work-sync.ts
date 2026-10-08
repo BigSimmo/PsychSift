@@ -15,7 +15,7 @@ import {
 import { WORK_AREAS } from "@/lib/work-frame/areas";
 import { myDayCardIds } from "@/lib/my-day/dashboard";
 import { paperworkSchema } from "@/lib/work-screens/admin/paperwork-model";
-import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
+import { checkPatientDetail, type PatientDetailCheckOptions } from "@/lib/work-text/patient-detail-check";
 import {
   WORK_SYNC_ACCOUNT_STORES,
   WORK_SYNC_QUICK_NOTE_LIMIT,
@@ -43,8 +43,9 @@ type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminC
  * hold a section hostage. A record is checked against the same schema its page
  * saves with, so it always reads back. The quick note is refused when it reads
  * as a patient detail, and so are job applications holding text their own
- * checks would drop. The other records' free text is checked on the page, field
- * by field, before it is ever saved on the device.
+ * checks would drop and Teaching records holding free text the shared check
+ * flags. Admin paperwork's free text is checked on its page, field by field,
+ * before it is ever saved on the device.
  */
 
 const WORK_SYNC_MAX_FAVOURITES = 60;
@@ -96,6 +97,35 @@ function isBackupSection(section: WorkSyncSection): section is BackupSection {
   return section in BACKUP_SECTION_NAMES;
 }
 
+/** Fields that name a hospital, a unit, a supervisor or a place, where a person's name is expected. */
+const NAMED_PLACE: PatientDetailCheckOptions = { allowName: true, allowCapitals: true };
+const FREE_TEXT: PatientDetailCheckOptions = { allowCapitals: true };
+
+/** Every piece of free text a Teaching record keeps, with the allowance its field needs. */
+function teachingTexts(
+  section: "teachingTermTracker" | "teachingExamPrep",
+  value: unknown,
+): [string, PatientDetailCheckOptions][] {
+  if (section === "teachingTermTracker") {
+    const state = value as TermTrackerState;
+    return state.terms.flatMap((term): [string, PatientDetailCheckOptions][] => [
+      [term.unit, NAMED_PLACE],
+      [term.site, NAMED_PLACE],
+      [term.supervisor, NAMED_PLACE],
+      [term.meeting?.place ?? "", NAMED_PLACE],
+      ...term.goals.map((goal): [string, PatientDetailCheckOptions] => [goal.text, FREE_TEXT]),
+      ...term.toRaise.map((item): [string, PatientDetailCheckOptions] => [item.text, FREE_TEXT]),
+    ]);
+  }
+  const state = value as ExamPrepState;
+  return [
+    [state.exam?.name ?? "", FREE_TEXT],
+    [state.group?.title ?? "", FREE_TEXT],
+    [state.group?.place ?? "", NAMED_PLACE],
+    ...state.topics.map((topic): [string, PatientDetailCheckOptions] => [topic.name, FREE_TEXT]),
+  ];
+}
+
 const PREFERENCE_SECTIONS = WORK_SYNC_SECTIONS.filter((section) => WORK_SYNC_ACCOUNT_STORES[section] === "preferences");
 
 /** A stored section: its value (null once cleared on a device) and when the server took it. */
@@ -125,6 +155,17 @@ function parseWorkSyncValue(section: WorkSyncSection, value: unknown): unknown {
     if (!note.trim()) return null;
     if (checkPatientDetail(note, { thisYear: new Date().getUTCFullYear() })) {
       throw new PublicApiError("The note looks like it holds a patient detail, so it stays on this device.", 422, {
+        code: "patient_detail",
+      });
+    }
+  }
+  if (section === "teachingTermTracker" || section === "teachingExamPrep") {
+    const thisYear = new Date().getUTCFullYear();
+    const flagged = teachingTexts(section, parsed.data).some(
+      ([text, options]) => text.trim() !== "" && checkPatientDetail(text, { ...options, thisYear }),
+    );
+    if (flagged) {
+      throw new PublicApiError("Something here looks like a patient detail, so it stays on this device.", 422, {
         code: "patient_detail",
       });
     }

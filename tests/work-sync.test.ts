@@ -201,6 +201,36 @@ describe("/api/work/sync", () => {
     expect(database.upsert).not.toHaveBeenCalled();
   });
 
+  it("refuses Teaching records holding a patient detail, and keeps a hospital named after a person", async () => {
+    const database = mockDatabase({});
+    const { PUT } = await import("@/app/api/work/sync/route");
+    const group = { title: "Mr Smith bed 12", on: "2026-10-20", time: "", place: "" };
+    const refused = await PUT(put({ section: "teachingExamPrep", value: { ...EMPTY_EXAM_PREP, group } }));
+    expect(refused.status).toBe(422);
+    expect((await refused.json()).code).toBe("patient_detail");
+    expect(database.upsert).not.toHaveBeenCalled();
+
+    const term = {
+      id: "term-1",
+      number: 1,
+      unit: "Psychiatry",
+      site: "Sir Charles Gairdner Hospital",
+      startsOn: "2026-10-05",
+      endsOn: "2026-12-27",
+      supervisor: "Dr Lee",
+      milestones: {
+        start: { dueOn: "2026-10-09", doneOn: null },
+        mid: { dueOn: "2026-11-13", doneOn: null },
+        end: { dueOn: "2026-12-18", doneOn: null },
+      },
+      goals: [],
+      toRaise: [],
+      meeting: null,
+    };
+    const tracker = { ...EMPTY_TERM_TRACKER, currentTermId: "term-1", terms: [term] };
+    expect((await PUT(put({ section: "teachingTermTracker", value: tracker }))).status).toBe(200);
+  });
+
   it("says plainly when a record is too big for the account", async () => {
     mockDatabase({}, { failWrite: "23514" });
     const { PUT } = await import("@/app/api/work/sync/route");
