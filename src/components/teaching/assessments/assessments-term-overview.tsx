@@ -91,7 +91,7 @@ import { TERM_TRACKER_SOURCES } from "@/lib/teaching/term-tracker";
 
 /** The overview keeps whoever opened it: a supervisor, or the DCT from their own home. */
 const asRole = (role: ScreenProps["role"]) => ({ as: role === "dct" ? "dct" : "supervisor" });
-const CLA_URL = TERM_TRACKER_SOURCES.pmcwaCla;
+const CLA_URL = TERM_TRACKER_SOURCES.claSignIn;
 
 const TONE: Record<CellStatus, PillTone> = { done: "ok", due: "accent", overdue: "bad", not_yet: "neutral" };
 

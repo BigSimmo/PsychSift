@@ -215,7 +215,7 @@ function WhatHappensNext({ signed }: { signed: boolean }) {
         />
       </List>
       <a
-        href={TERM_TRACKER_SOURCES.pmcwaCla}
+        href={TERM_TRACKER_SOURCES.claSignIn}
         target="_blank"
         rel="noopener noreferrer"
         className="work-button"

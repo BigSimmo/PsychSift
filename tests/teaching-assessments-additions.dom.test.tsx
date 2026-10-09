@@ -68,7 +68,7 @@ describe("What happens next, after the doctor signs (A3, item 11)", () => {
     expect(within(next).getByText(/write to the DCT within 14 days/)).toBeInTheDocument();
     expect(within(next).getByRole("link", { name: /Open CLA, via PMCWA/ })).toHaveAttribute(
       "href",
-      "https://pmcwa.org.au/education-training/cla",
+      "https://cla.epads.mkmapps.com",
     );
     expect(screen.getByText(/find it on your hospital's intranet, or ask your term supervisor/)).toBeInTheDocument();
   });
