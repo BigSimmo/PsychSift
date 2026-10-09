@@ -78,6 +78,8 @@ export function planBellPhoneAlerts(
     seen.add(item.id);
     if (item.kind !== "action" || item.overdue) continue;
     if (item.id.startsWith("example:") || item.id.startsWith("remind:") || sampleIds.has(item.id)) continue;
+    // Example rows and On Call's own rows are flagged neither snoozable nor remindable; neither should buzz.
+    if (item.snoozable === false && item.remindable === false) continue;
     if (!isBellPhoneArea(item.area) || !settings.bellPhone.areas[item.area]) continue;
     const at = bellAlertAt(item.due, settings);
     if (at === null || at < from || at > to) continue;

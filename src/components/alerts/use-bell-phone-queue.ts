@@ -70,6 +70,16 @@ async function send(method: "POST" | "DELETE", body: Record<string, string>): Pr
 /** One sync at a time per tab, so two quick feed changes never queue the same reminder twice. */
 let running: Promise<void> = Promise.resolve();
 
+/**
+ * One sync at a time across every tab and the installed app too, so two windows
+ * never queue the same reminder under two ids (it would buzz twice). Browsers
+ * without Web Locks fall back to the per-tab chain alone.
+ */
+function acrossTabs(task: () => Promise<void>): Promise<void> {
+  const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+  return locks ? locks.request("psychsift-bell-phone-queue", task) : task();
+}
+
 async function sync(
   wanted: ReturnType<typeof planBellPhoneAlerts>,
   complete: boolean,
@@ -94,9 +104,11 @@ async function sync(
     }
   }
   const nowMs = now.getTime();
+  // Merge into what is stored now, not the snapshot from the start, so nothing another window saved is lost.
   // A removal that failed stays recorded, so the next sync tries again.
-  const kept = queued.filter((entry) => !removedRefs.has(entry.ref) && Date.parse(entry.dueAt) > nowMs);
-  writeQueue([...kept, ...added]);
+  const kept = readQueue().filter((entry) => !removedRefs.has(entry.ref) && Date.parse(entry.dueAt) > nowMs);
+  const keptRefs = new Set(kept.map((entry) => entry.ref));
+  writeQueue([...kept, ...added.filter((entry) => !keptRefs.has(entry.ref))]);
 }
 
 export function useBellPhoneQueue(feed: NotificationFeed): void {
@@ -124,6 +136,6 @@ export function useBellPhoneQueue(feed: NotificationFeed): void {
   useEffect(() => {
     if (!ready || typeof fetch !== "function") return;
     const plan = JSON.parse(signature) as typeof wanted;
-    running = running.then(() => sync(plan, complete, enabled)).catch(() => undefined);
+    running = running.then(() => acrossTabs(() => sync(plan, complete, enabled))).catch(() => undefined);
   }, [ready, complete, enabled, signature]);
 }

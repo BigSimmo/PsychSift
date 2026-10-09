@@ -70,6 +70,7 @@ describe("which bell items buzz", () => {
       item({ id: "example:contract" }),
       item({ id: "sample-row" }),
       item({ id: "far", due: "2026-10-30" }),
+      item({ id: "flagged", snoozable: false, remindable: false }),
     ];
     expect(planBellPhoneAlerts(items, on, NOW, new Set(["sample-row"]))).toEqual([]);
   });
