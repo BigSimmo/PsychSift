@@ -116,7 +116,12 @@ describe("the real queue", () => {
     const therapy = await import("../scripts/review-therapy.mjs");
     const source = (await import("@/data/therapies-source.json")).default;
     const walk = therapy.therapyWalkQueue(source) as string[];
-    expect(signable.map((item) => item.signOff?.slug).sort()).toEqual([...walk].sort());
+    // SignOffTool is a union: only therapy:review carries slug (clinical:review uses code).
+    expect(
+      signable
+        .flatMap((item) => (item.signOff?.script === "therapy:review" ? [item.signOff.slug] : []))
+        .sort(),
+    ).toEqual([...walk].sort());
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {
