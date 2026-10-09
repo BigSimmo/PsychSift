@@ -26,6 +26,8 @@ export type RosterMonthDay = {
   readonly swapAsked?: boolean;
   /** The shift a waiting swap would give you on this day (drawn as a faint dashed chip). */
   readonly ghost?: ShiftKind;
+  /** What begins this day besides shifts, e.g. "Consultation liaison starts" (a small corner dot). */
+  readonly starts?: readonly string[];
 };
 
 const MONTH_LONG = [
@@ -108,8 +110,31 @@ export function RosterShiftChip({
 
 const LEGEND_KINDS: readonly ShiftKind[] = ["day", "evening", "night", "on_call", "leave"];
 
-/** The key under the grid. "Swap asked" only when a dashed chip is on screen. */
-export function RosterMonthLegend({ swapAsked = false }: { readonly swapAsked?: boolean }) {
+/** The corner dot on a day something begins (a rotation). Not a shift colour, so it never reads as one. */
+function RosterStartDot({ className }: { readonly className?: string }) {
+  return (
+    <i
+      aria-hidden="true"
+      data-testid="roster-month-start-dot"
+      className={cn(
+        "block size-1.5 rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]",
+        className,
+      )}
+    />
+  );
+}
+
+/**
+ * The key under the grid. "Swap asked" only when a dashed chip is on screen,
+ * and "Rotation starts" only when a start dot is.
+ */
+export function RosterMonthLegend({
+  swapAsked = false,
+  starts = false,
+}: {
+  readonly swapAsked?: boolean;
+  readonly starts?: boolean;
+}) {
   return (
     <ul
       className="mt-2.5 flex flex-wrap justify-center gap-x-2.5 gap-y-1.5 text-3xs font-semibold text-[color:var(--text)]"
@@ -134,6 +159,12 @@ export function RosterMonthLegend({ swapAsked = false }: { readonly swapAsked?: 
         <li className="inline-flex items-center gap-1.5">
           <RosterShiftChip kind="day" dashed className="min-w-5" />
           Swap asked
+        </li>
+      ) : null}
+      {starts ? (
+        <li className="inline-flex items-center gap-1.5">
+          <RosterStartDot />
+          Rotation starts
         </li>
       ) : null}
     </ul>
@@ -262,6 +293,7 @@ export function RosterMonthGrid({
                   ? `a swap would give you ${SHIFT_KIND_LABEL[entry.ghost].toLowerCase()}`
                   : null,
                 holiday ? "WA public holiday" : null,
+                ...(entry?.starts ?? []),
                 isToday ? "today" : null,
               ]
                 .filter(Boolean)
@@ -277,7 +309,7 @@ export function RosterMonthGrid({
                     tabIndex={date === tabDate ? 0 : -1}
                     data-date={date}
                     className={cn(
-                      "grid min-h-12 content-start justify-items-center gap-0.75 rounded-md pb-1.25 pt-0.75 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--mode-identity)] motion-safe:transition-colors",
+                      "relative grid min-h-12 content-start justify-items-center gap-0.75 rounded-md pb-1.25 pt-0.75 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--mode-identity)] motion-safe:transition-colors",
                       isSelected &&
                         "bg-[color:var(--mode-identity-soft)] shadow-[var(--work-edge-inset)_var(--mode-identity)] forced-colors:border",
                     )}
@@ -310,6 +342,7 @@ export function RosterMonthGrid({
                         dashed={entry?.swapAsked || (!kinds.length && Boolean(entry?.ghost))}
                       />
                     )}
+                    {entry?.starts?.length ? <RosterStartDot className="absolute right-1 top-1" /> : null}
                     {holiday ? (
                       <span
                         aria-hidden="true"
