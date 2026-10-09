@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-09T09:05:51.432Z",
+  "generated_at": "2026-10-09T11:24:48.909Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "8dd3e836e5389d5ab92bdc7a9a4bbf0138376e8ca37e5048a95a137d5799efdf",
-  "replay_seconds": 15,
+  "schema_sha256": "e6ff56d5a408c7f61b61b5b9a3b342fecd1e211f73e7b8c880d96186fabc53c0",
+  "replay_seconds": 32,
   "snapshot": {
     "views": [
       {
@@ -19867,7 +19867,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "2f281301bca9fe35cac59c075fe8a5d2",
+        "def_hash": "be349eda478ca1a9684a05da4f39e29f",
         "signature": "public.work_bookings_can_post(uuid,uuid)"
       },
       {
@@ -19899,7 +19899,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "42552b9149fae26f70103d53ba00f203",
+        "def_hash": "9ce0e3e797bb096ad1d62619d124ff8b",
         "signature": "public.work_bookings_read(uuid)"
       },
       {
