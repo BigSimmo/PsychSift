@@ -4,6 +4,7 @@ import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { onCallSearchSummary } from "@/lib/on-call/entry-search";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/perth-time";
 import type { RosterLeave } from "@/lib/roster/leave";
+import { ROSTER_LEAVE_KIND_LABEL } from "@/lib/roster/leave-kinds";
 import { inferShiftKind, SHIFT_KIND_LABEL, type ShiftKind } from "@/lib/roster/shift-kind";
 import type { SessionSummary } from "@/lib/teaching/model";
 import type { WorkItem, WorkSearchArea } from "@/lib/work-search/model";
@@ -73,9 +74,12 @@ export function shiftWorkItems(shifts: readonly ShiftLike[]): WorkItem[] {
   });
 }
 
-const LEAVE_KIND_LABEL: Readonly<Record<RosterLeave["kind"], string>> = {
-  annual: "Annual leave",
-  pd_leave: "Professional development leave",
+/** Words a doctor might search for each kind of leave, beyond its name. */
+const LEAVE_KIND_TAGS: Readonly<Record<RosterLeave["kind"], readonly string[]>> = {
+  annual: ["annual", "vacation"],
+  pd_leave: ["study leave", "pdl", "pd leave", "conference", "professional development", "course"],
+  exam: ["exam", "exam leave", "study leave"],
+  personal: ["personal leave", "sick leave", "sick day", "carer's leave"],
 };
 
 const LEAVE_STATUS_LABEL: Readonly<Record<RosterLeave["status"], string>> = {
@@ -89,7 +93,7 @@ export function leaveWorkItems(leave: readonly RosterLeave[]): WorkItem[] {
     id: `roster:leave:${row.id}`,
     area: "roster",
     kind: "leave",
-    title: LEAVE_KIND_LABEL[row.kind],
+    title: ROSTER_LEAVE_KIND_LABEL[row.kind],
     detail: joinDetail([
       row.startsOn === row.endsOn
         ? formatPerthDay(row.startsOn)
@@ -99,13 +103,7 @@ export function leaveWorkItems(leave: readonly RosterLeave[]): WorkItem[] {
     date: row.startsOn,
     until: row.endsOn,
     href: ROSTER_LEAVE_HREF,
-    tags: [
-      "leave",
-      "holiday",
-      "holidays",
-      "time off",
-      ...(row.kind === "pd_leave" ? ["study leave", "pdl", "pd leave", "conference"] : ["annual", "vacation"]),
-    ],
+    tags: ["leave", "holiday", "holidays", "time off", ...LEAVE_KIND_TAGS[row.kind]],
     text: [LEAVE_STATUS_LABEL[row.status]],
   }));
 }
