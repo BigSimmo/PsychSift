@@ -35,7 +35,7 @@ export function readyToSend(
 ): { id: string; level: SupervisionLevel; text: string; observed?: EpaObserved }[] {
   const ready: { id: string; level: SupervisionLevel; text: string; observed?: EpaObserved }[] = [];
   for (const [id, answer] of Object.entries(answers))
-    if (answer.status === "queued" && answer.level)
+    if (answer.status === "queued" && answer.level && answer.observed)
       ready.push({
         id,
         level: answer.level,
