@@ -296,7 +296,7 @@ export function AreaIcon({
   tone,
   size = "md",
 }: {
-  readonly mode?: MyDaySourceMode;
+  readonly mode?: MyDaySourceMode | "my-day";
   readonly icon: LucideIcon;
   /** A status tint in place of the area colour. */
   readonly tone?: "amber" | "red" | "green" | "neutral";

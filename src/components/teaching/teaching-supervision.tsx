@@ -794,7 +794,7 @@ function SupervisionPage({ demoMode }: { demoMode: boolean }) {
     <WorkBody testId="teaching-supervision">
       <AssessHeader eyebrow="Confirmed hours" title="Supervision" />
       {demoMode && !exampleShown ? (
-        <AssessSample>Made-up demo. Changes stay on this page and are not saved.</AssessSample>
+        <AssessSample>Example data. Changes stay on this page and are not saved.</AssessSample>
       ) : null}
       {body}
       {sender.busy ? (

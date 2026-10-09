@@ -124,7 +124,7 @@ function AboutStep({ s, dispatch, who, locked }: StepProps & { locked: boolean }
           </h3>
           <p className="assess-dom__sub">
             {sup
-              ? "You're completing this as term supervisor. The form is due within 10 working days of the end of term."
+              ? "You're completing this as term supervisor. Your MEU sets when the form is due."
               : `Optional, but it makes your meeting with ${SUP} more useful. ${SUP} sees it only after she finishes her own draft. PsychSift doesn't send it to the MEU or the Assessment Review Panel.`}
           </p>
         </div>

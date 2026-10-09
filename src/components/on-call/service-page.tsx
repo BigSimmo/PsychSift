@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { TextField } from "@/components/ui/text-field";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import {
@@ -503,15 +504,12 @@ export function ServicePage({
     return (
       <InformationPageShell testId="service-page-signed-out" width="narrow">
         <h1 className="sr-only">Service handbook</h1>
-        <OnCallEmptyState
+        <WorkStateNotice
+          kind="signed-out"
           icon={Building2}
           title="Sign in to open a service handbook"
           body="Memberships, local service information and orientation completion are private to your account."
-          actions={
-            <Button variant="primary" onClick={() => setAccountOpen(true)}>
-              Sign in
-            </Button>
-          }
+          onSignIn={() => setAccountOpen(true)}
         />
         {accountMounted ? <AccountSetupDialog open={accountOpen} onClose={() => setAccountOpen(false)} /> : null}
         <OnCallCrisisLines />
@@ -558,8 +556,8 @@ export function ServicePage({
   return (
     <InformationPageShell testId="service-page">
       <header className="grid gap-2">
-        <p className="text-xs font-semibold uppercase tracking-kicker text-[color:var(--clinical-accent)]">On Call</p>
-        <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Service handbook</h1>
+        {/* The band above already names the area and the page, so the title is for screen readers only. */}
+        <h1 className="sr-only">Service handbook</h1>
         <p className={cn(textMuted, "max-w-3xl text-sm leading-6")}>
           Practical service information, orientation and corrections maintained by the people who use it.
         </p>
@@ -568,8 +566,8 @@ export function ServicePage({
       {error ? <InlineNotice tone="danger">{error}</InlineNotice> : null}
       {demoMode ? (
         <InlineNotice tone="neutral">
-          Synthetic demonstration only. The service, site, members, contacts and orientation items below are fictional;
-          actions do not write or call a provider.
+          Example only. The service, site, members, contacts and orientation items below are fictional. Actions do not
+          write or call a provider.
         </InlineNotice>
       ) : null}
 

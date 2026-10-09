@@ -98,7 +98,7 @@ export function RosterFatigueRestRing({
       <div className="flex items-center justify-between gap-2">
         <h3 className={cn(eyebrowText, modeSummaryMutedText, "flex items-center gap-1.5")}>
           <Clock className="size-3.5" aria-hidden="true" />
-          Recovery & Safe Hours
+          Recovery and safe hours
         </h3>
         <span
           className={cn(

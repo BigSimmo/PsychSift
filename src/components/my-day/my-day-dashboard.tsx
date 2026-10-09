@@ -93,6 +93,7 @@ import { weekRows } from "@/lib/my-day/quiet-figures";
 import { withMyDayReturn } from "@/lib/my-day/return-link";
 import { myDayWeekDates } from "@/lib/my-day/week";
 import type { MyDayItem } from "@/lib/my-day/model";
+import type { MyDayNeedsYouItem } from "@/lib/my-day/needs-you-feed";
 import { nextTeachingSession } from "@/lib/my-day/next-teaching";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { isWorkedKind, type ShiftKind } from "@/lib/roster/shift-kind";
@@ -156,6 +157,12 @@ export interface MyDayDashboardProps {
   readonly today: string;
   /** The merged items, with any invented ones already removed for a signed-in reader. */
   readonly items: readonly MyDayItem[];
+  /**
+   * Needs you's list, from the notification feed (`myDayNeedsYouFromFeed`), so
+   * its count and rows are the bell's. The page always passes it. Absent (a
+   * dashboard drawn on its own), Needs you lists `items`.
+   */
+  readonly needsYou?: readonly MyDayNeedsYouItem[];
   /** Admin's recorded dates, passed to a year ahead (runway and wallet). */
   readonly renewals?: readonly RenewalRow[];
   /** Admin's Help items, for pinned numbers. */
@@ -234,6 +241,7 @@ export function MyDayDashboard({
   now,
   today,
   items,
+  needsYou: needsYouList = items,
   renewals = NO_RENEWALS,
   helpItems = NO_HELP,
   sources,
@@ -270,7 +278,7 @@ export function MyDayDashboard({
     readonly title: string;
     readonly until: string;
   } | null>(null);
-  const [laterItem, setLaterItem] = useState<MyDayItem | null>(null);
+  const [laterItem, setLaterItem] = useState<MyDayNeedsYouItem | null>(null);
   const toast = useWorkUndoToast();
 
   // ---------------------------------------------------------------- roster and the hero
@@ -404,8 +412,17 @@ export function MyDayDashboard({
   };
 
   // ---------------------------------------------------------------- items
-  const needsYou = selectNeedsYou(items, device.snoozes, today);
-  const flagItems = selectFlagItems(items, (id) => isSnoozed(device.snoozes, id, today));
+  // The feed hides what Later moved by the snoozes kept on this device, so Needs you reads the same ones.
+  const needsYouDevice = needsYouList === items ? device : stored;
+  const needsYou = selectNeedsYou(needsYouList, needsYouDevice.snoozes, today);
+  // The flag repeats only what Needs you lists, so it never shows an item the bell leaves out.
+  const flagItems = useMemo(() => {
+    const listed = new Set(needsYouList.map((item) => item.id));
+    return selectFlagItems(
+      items.filter((item) => listed.has(item.id)),
+      (id) => isSnoozed(needsYouDevice.snoozes, id, today),
+    );
+  }, [items, needsYouList, needsYouDevice.snoozes, today]);
   const tomorrow = addDaysToDate(today, 1);
   // The next rostered day, offered by Later only when it is not tomorrow (and only from a roster that loaded).
   const workingDay = useMemo(
@@ -420,16 +437,16 @@ export function MyDayDashboard({
   );
   const offerWorkingDay = workingDay !== null && workingDay !== tomorrow;
   const untilWords = (until: string) => (until === tomorrow ? "tomorrow" : formatPerthDay(until));
-  const moveLater = (item: MyDayItem, until: string) => {
-    device.snooze(item.id, until);
+  const moveLater = (item: MyDayNeedsYouItem, until: string) => {
+    needsYouDevice.snooze(item.id, until);
     setLaterItem(null);
     setHiddenNote({ id: item.id, title: item.title, until });
     toast?.(`${item.title} moved to ${untilWords(until)}`, () => {
-      device.unsnooze(item.id);
+      needsYouDevice.unsnooze(item.id);
       setHiddenNote((current) => (current?.id === item.id ? null : current));
     });
   };
-  const later = (item: MyDayItem) => {
+  const later = (item: MyDayNeedsYouItem) => {
     if (offerWorkingDay) setLaterItem(item);
     else moveLater(item, snoozeUntil(now));
   };
@@ -570,6 +587,7 @@ export function MyDayDashboard({
     !itemsIncomplete &&
     checked.length > 0 &&
     items.length === 0 &&
+    needsYouList.length === 0 &&
     renewals.length === 0 &&
     rosterReady &&
     shifts.length === 0 &&
@@ -712,7 +730,7 @@ export function MyDayDashboard({
             inlineUndo={toast === null}
             onLater={later}
             onUndo={() => {
-              if (hiddenNote) device.unsnooze(hiddenNote.id);
+              if (hiddenNote) needsYouDevice.unsnooze(hiddenNote.id);
               setHiddenNote(null);
             }}
             onRemindMe={onRemindMe}

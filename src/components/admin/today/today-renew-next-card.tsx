@@ -55,10 +55,10 @@ export function TodayRenewNextCard({
   const relative = formatRelativeDate(item.date, today);
   const dateLine =
     item.state === "passed"
-      ? `Date passed ${formatDateEcho(item.date)} · ${relative}`
+      ? `Date passed ${formatDateEcho(item.date, today)} · ${relative}`
       : item.kind === "new-job"
-        ? `Starts ${formatDateEcho(item.date)} · ${relative}`
-        : `Renew by ${formatDateEcho(item.date)} · ${relative}`;
+        ? `Starts ${formatDateEcho(item.date, today)} · ${relative}`
+        : `Renew by ${formatDateEcho(item.date, today)} · ${relative}`;
 
   const renewedHref =
     item.kind === "compliance" && item.entry

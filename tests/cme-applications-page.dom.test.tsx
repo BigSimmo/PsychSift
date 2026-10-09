@@ -255,7 +255,7 @@ describe("Job applications season", () => {
 
   it("shows the made-up sample in the demo build and keeps nothing", () => {
     renderPage(true);
-    expect(screen.getByTestId("applications-mode-note").textContent).toContain("Sample season");
+    expect(screen.getByTestId("applications-mode-note").textContent).toContain("Example season");
     expect(screen.getAllByTestId("applications-referee")).toHaveLength(3);
     fireEvent.click(screen.getAllByTestId("applications-referee")[2]!);
     fireEvent.click(screen.getByTestId("applications-referee-remove"));

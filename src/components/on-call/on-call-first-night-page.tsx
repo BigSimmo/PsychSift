@@ -85,7 +85,7 @@ export function OnCallFirstNightPage() {
         <h1 className="sr-only">First night</h1>
         {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
         <p className={cn(textMuted, "text-sm")}>
-          A short path for your first on-call shifts. Tick things off as you go; ticks stay on this device only.
+          A short path for your first on-call shifts. Tick things off as you go. Ticks stay on this device only.
         </p>
 
         <ol className="mt-4 flex flex-col gap-4">

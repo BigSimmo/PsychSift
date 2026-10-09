@@ -41,7 +41,7 @@ function source(data: AskAnswerData, team = false): string {
   if (team && data.publication) {
     return `From the ${data.teamName ? `${data.teamName} ` : ""}roster published ${formatPerthDay(perthDateOf(data.publication.publishedAt))} ${perthTimeOf(data.publication.publishedAt)}`;
   }
-  if (team) return "From loaded team shifts; publication details are unavailable";
+  if (team) return "From loaded team shifts. Publication details are unavailable";
   return "From your own shifts";
 }
 

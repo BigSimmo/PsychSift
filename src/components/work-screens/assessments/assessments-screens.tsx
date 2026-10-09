@@ -18,7 +18,7 @@ import { useAuthSession } from "@/lib/supabase/client";
 
 export function AssessmentsExportScreen({ demoMode }: { readonly demoMode: boolean }) {
   return (
-    <AssessmentsSampleGate demoMode={demoMode} what="Assessments Export" render={() => <AssessmentsExportPage />} />
+    <AssessmentsSampleGate demoMode={demoMode} what="Assessments export" render={() => <AssessmentsExportPage />} />
   );
 }
 

@@ -1,14 +1,16 @@
 "use client";
 
-import { CircleX, CloudOff, Info, LogIn } from "lucide-react";
+import { CircleX, Info } from "lucide-react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { CmeNote } from "@/components/cme/cme-flat-list";
-import { Button } from "@/components/ui/button";
+import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { cn } from "@/components/ui-primitives";
+import { workFrameForRoute } from "@/lib/work-frame/areas";
 
 export type CmeLoadState = "ready" | "unconfigured" | "signed-out" | "unavailable" | "offline" | "error";
 
@@ -45,14 +47,14 @@ function NoFiguresPlaceholder() {
 
 /**
  * CPD's one state module (spec §7, standard §9, the 5 Oct mock-up screen 09).
- * It picks the words and draws them with the CPD kit's note, so every CPD page
- * shows a state the same way.
+ * It picks the words; signed out, offline and a failed read are drawn as the
+ * shared work-mode state, so CPD looks like every other area.
  *
  * - `unavailable` is the server loaders' name for "the record could not be
  *   read" (an outage or an unexpected throw). It renders exactly as `error`,
  *   so the loaders' contract does not change.
- * - `offline` and `error` are a real failure, so their note is the one amber
- *   outline in CPD, with a "Try again" link inside it, then grey outlines where
+ * - `offline` and `error` are a real failure, so their badge is amber, with
+ *   "Try again" under the words, then grey outlines where
  *   the figures would be and a plain line saying why there are no numbers. It
  *   calls `onRetry` when the caller has one (the segment error boundary passes
  *   Next's `retry`); a server-rendered notice cannot pass a function, so it
@@ -60,7 +62,8 @@ function NoFiguresPlaceholder() {
  * - `unconfigured` (no confirmed targets for the year yet): one line and where
  *   to start.
  * - `heading` is the page's own title, kept above the state so the page never
- *   loses its header.
+ *   loses its header. Where the work frame's band already names the page, the
+ *   heading is for screen readers only, so the title is not shown twice.
  */
 export function CmeStateNotice({
   state,
@@ -73,69 +76,46 @@ export function CmeStateNotice({
   readonly heading?: string;
   readonly onRetry?: () => void;
 }) {
-  const [accountOpen, setAccountOpen] = useState(false);
-  const tryAgain = (
-    <button
-      type="button"
-      data-testid="cme-state-retry"
-      className={TEXT_ACTION}
-      onClick={onRetry ?? (() => window.location.reload())}
-    >
-      Try again
-    </button>
-  );
+  const pathname = usePathname();
+  const bandNamesPage = pathname ? workFrameForRoute("cme", pathname) !== null : false;
+  const retry = onRetry ?? (() => window.location.reload());
 
   let notice: ReactNode;
   if (state === "signed-out") {
     notice = (
-      <>
-        <CmeNote
-          testId="cme-signed-out"
-          role="status"
-          icon={<LogIn aria-hidden="true" strokeWidth={1.6} />}
-          title="Sign in to open your private CPD record."
-        >
-          <span className="grid justify-items-start gap-2">
-            <span>{SIGNED_OUT_LINE}</span>
-            <Button variant="primary" onClick={() => setAccountOpen(true)}>
-              Sign in
-            </Button>
-          </span>
-        </CmeNote>
-        <AccountSetupDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
-      </>
+      <WorkSignInNotice
+        testId="cme-signed-out"
+        role="status"
+        title="Sign in to open your private CPD record."
+        body={SIGNED_OUT_LINE}
+      />
     );
   } else if (state === "offline") {
     notice = (
       <>
-        <CmeNote
+        <WorkStateNotice
+          kind="offline"
           testId="cme-offline"
-          role="status"
-          tone="warn"
-          icon={<CloudOff aria-hidden="true" strokeWidth={1.6} />}
           title="You’re offline."
-        >
-          <span>
-            {OFFLINE_LINE} {tryAgain}
-          </span>
-        </CmeNote>
+          body={OFFLINE_LINE}
+          onRetry={retry}
+          retryTestId="cme-state-retry"
+        />
         <NoFiguresPlaceholder />
       </>
     );
   } else if (state === "error" || state === "unavailable") {
     notice = (
       <>
-        <CmeNote
+        <WorkStateNotice
+          kind="error"
+          icon={CircleX}
           testId="cme-error"
-          role="alert"
-          tone="warn"
-          icon={<CircleX aria-hidden="true" strokeWidth={1.6} />}
           title="Your CPD records did not load"
-        >
-          <span>
-            {ERROR_LINE} {tryAgain}
-          </span>
-        </CmeNote>
+          body={ERROR_LINE}
+          onRetry={retry}
+          retryTestId="cme-state-retry"
+        />
         <NoFiguresPlaceholder />
       </>
     );
@@ -159,7 +139,9 @@ export function CmeStateNotice({
 
   return (
     <div data-mode-identity="cme" className="flex flex-col gap-3">
-      {heading ? <h1 className="text-xl font-semibold text-[color:var(--text)]">{heading}</h1> : null}
+      {heading ? (
+        <h1 className={bandNamesPage ? "sr-only" : "text-xl font-semibold text-[color:var(--text)]"}>{heading}</h1>
+      ) : null}
       {notice}
     </div>
   );

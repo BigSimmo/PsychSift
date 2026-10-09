@@ -67,6 +67,10 @@ describe("preview role", () => {
     for (const screen of PREVIEW_ROLE_SCREENS.supervisor.filter((s) => s.ready)) {
       expect(screen.href).toMatch(/as=supervisor|^\/teaching\/assessments\/trainee\//);
     }
+    // The junior doctor's Assessments link names the doctor's side, so a supervisor chosen earlier in the
+    // tab does not carry over into the junior lens.
+    const juniorAssessments = PREVIEW_ROLE_SCREENS.junior.find((s) => s.href.startsWith("/teaching/assessments"));
+    expect(juniorAssessments?.href).toBe("/teaching/assessments?as=doctor");
     const hrefs = Object.values(PREVIEW_ROLE_SCREENS).flatMap((list) => list.map((s) => s.href));
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });

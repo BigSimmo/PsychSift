@@ -68,7 +68,7 @@ function breakWords(check: Extract<RosterCheck, { state: "ok" | "flag" }>): stri
       ? `${check.breakBefore !== null ? "at most" : "At most"} ${formatHours(check.breakAfter)} before your next one`
       : null,
   ].filter(Boolean);
-  return parts.length ? `${parts.join("; ")}.` : null;
+  return parts.length ? `${parts.join(", and ")}.` : null;
 }
 
 /** The roster-check panel: neutral when nothing is flagged, amber a flag, red an overlap, grey when nothing could be checked. */
@@ -218,7 +218,7 @@ export function RequestSheet({
           <p className="text-[color:var(--text-muted)]">{listing.siteName ?? listing.teamName}</p>
         </div>
         <p className="text-sm text-[color:var(--text-muted)]">
-          {`Your roster manager in ${listing.teamName} decides, unless your team approves same-level requests automatically. Until then it shows in My shifts as "Requested". They see your name and level, as for any Roster request; nothing else is shared.`}
+          {`Your roster manager in ${listing.teamName} decides, unless your team approves same-level requests automatically. Until then it shows in My shifts as "Requested". They see your name and level, as for any Roster request. Nothing else is shared.`}
         </p>
         <div className="flex min-h-12 items-start gap-3 border-t border-[color:var(--border)] pt-3">
           <input
@@ -433,7 +433,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           note={
             state.sample === "example"
               ? "This is an example shift, so it can't be requested. Turn example data off to see your own teams."
-              : "This is a made-up example: team rosters aren't open to real staff yet."
+              : "This is an example shift: team rosters aren't open to real staff yet."
           }
         >
           <Button variant="primary" block disabled onClick={() => undefined}>

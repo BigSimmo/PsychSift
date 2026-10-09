@@ -199,7 +199,7 @@ export const demoServiceDetail: ServiceDetail = {
         section: "documentation",
         kind: "clinical",
         title: "Example reviewed clinical summary",
-        body: "Synthetic example showing independent review metadata; it contains no clinical advice.",
+        body: "Synthetic example showing independent review metadata. It contains no clinical advice.",
         phone: "",
         sources: [
           {

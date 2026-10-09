@@ -123,7 +123,7 @@ export function RosterPublishPreview({
                     <s>
                       {change.before.shiftCode} {formatShiftRange(change.before)}
                     </s>{" "}
-                    → {change.after.shiftCode} {formatShiftRange(change.after)}
+                    now {change.after.shiftCode} {formatShiftRange(change.after)}
                   </>
                 }
               />

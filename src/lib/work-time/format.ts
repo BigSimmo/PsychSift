@@ -125,12 +125,62 @@ export function zonedWallToIso(date: string, time: string, zone: string): string
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+const MONTHS_LONG = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
 
-/** "Mon 3 Oct" for a `YYYY-MM-DD` date. The date is already a zone date, so no zone is needed. */
-export function formatZonedDay(date: string): string {
+/*
+ * The work-mode house style for dates (fixed tables, not Intl, which prints
+ * "Sept" and "Fri, 9 Oct" on Node 24):
+ *   headers and greetings  "Friday 9 October"   formatZonedLongDay
+ *   compact rows and chips "Fri 9 Oct"          formatZonedDay
+ * Either adds the year only when the date is not in `today`'s year
+ * ("Fri 9 Oct 2027"). Numeric dd/mm belongs inside form inputs only.
+ */
+
+function calendarParts(date: string): { readonly parsed: Date; readonly year: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const parsed = new Date(`${date}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) return date;
-  return `${WEEKDAYS[parsed.getUTCDay()]} ${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()]}`;
+  return Number.isNaN(parsed.getTime()) ? null : { parsed, year: date.slice(0, 4) };
+}
+
+function yearSuffix(year: string, today: string | undefined): string {
+  return today && today.slice(0, 4) !== year ? ` ${year}` : "";
+}
+
+/**
+ * "Mon 3 Oct" for a `YYYY-MM-DD` date, for compact rows and chips. The date is
+ * already a zone date, so no zone is needed. Pass `today` (the zone's
+ * `YYYY-MM-DD`) and a date in another year gains it: "Mon 3 Oct 2027".
+ */
+export function formatZonedDay(date: string, today?: string): string {
+  const parts = calendarParts(date);
+  if (!parts) return date;
+  const { parsed, year } = parts;
+  return `${WEEKDAYS[parsed.getUTCDay()]} ${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()]}${yearSuffix(year, today)}`;
+}
+
+/**
+ * "Friday 9 October" for a `YYYY-MM-DD` date, for headers and greetings. Pass
+ * `today` and a date in another year gains it: "Friday 9 October 2027".
+ */
+export function formatZonedLongDay(date: string, today?: string): string {
+  const parts = calendarParts(date);
+  if (!parts) return date;
+  const { parsed, year } = parts;
+  return `${WEEKDAYS_LONG[parsed.getUTCDay()]} ${parsed.getUTCDate()} ${MONTHS_LONG[parsed.getUTCMonth()]}${yearSuffix(year, today)}`;
 }
 
 /** "08:00" for an instant in the zone. Same as zonedTimeOf; named for display call sites. */
