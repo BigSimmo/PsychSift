@@ -238,8 +238,8 @@ function RequestEpaSheet({
         </>
       ) : (
         <AssessNote>
-          At least one EPA a term must be from your term supervisor or another specialist. Registrars, nurses and
-          pharmacists can assess the rest once they have done EPA assessor training.
+          At least one EPA a term should be from your primary clinical supervisor or another specialist. Registrars,
+          nurses and pharmacists can assess the rest once they have done EPA assessor training.
         </AssessNote>
       )}
       <WorkButton

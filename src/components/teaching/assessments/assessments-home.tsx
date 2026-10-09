@@ -145,7 +145,7 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
       <List label="This term">
         <StepRow
           state="ok"
-          title="Beginning-of-term talk"
+          title="Beginning-of-term discussion"
           detail={`Wed 2 Sep with ${SAMPLE_SUPERVISOR.short}. Goals agreed.`}
         />
         <StepRow

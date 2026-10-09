@@ -331,7 +331,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
         />
       </List>
       <AssessNote icon={ShieldCheck}>
-        {`${BEN.name} and ${MIA.name} are made-up names to show a list. Their forms aren't built into this sample.`}
+        {`${BEN.name} and ${MIA.name} are made-up names to show a list. Their forms aren't built into this example.`}
       </AssessNote>
       <AssessmentsSampleViewsNav s={s} />
       <SectionLabel>Coming up</SectionLabel>

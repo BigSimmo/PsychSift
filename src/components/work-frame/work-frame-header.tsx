@@ -22,9 +22,12 @@ import { useTabSwipe } from "@/components/work-swipe/use-tab-swipe";
 import { useStickyWorkTabs } from "@/components/work-frame/use-sticky-work-tabs";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import {
+  markWorkReturn,
+  recordWorkPageVisit,
   rememberedWorkAreaPage,
   rememberWorkAreaPage,
   usePageBackClaimed,
+  useWorkAreaOrigin,
   setWorkFramePill,
   useWorkFrameActionsVersion,
   workFrameActionHandler,
@@ -33,6 +36,7 @@ import { useWorkTabPicks } from "@/components/work-frame/work-tab-picks";
 import { useWorkFrameGateOpen } from "@/components/work-frame/use-work-frame-gate-open";
 import type { AppModeId } from "@/lib/app-modes";
 import {
+  WORK_AREAS,
   WORK_TAB_PICKS_MAX,
   workAreaParent,
   workAreaPillName,
@@ -129,6 +133,8 @@ export function WorkFrameHeader({
   const currentHref = current?.href ?? null;
   useEffect(() => {
     if (!area.parent && currentHref) rememberWorkAreaPage(area.id, currentHref);
+    // And the work page each inner area was opened from, for its back arrow.
+    recordWorkPageVisit({ areaId: area.id, href: currentHref }, Boolean(area.parent));
   }, [area.id, area.parent, currentHref]);
 
   useTabSwipe(navRef, currentHref);
@@ -179,7 +185,7 @@ export function WorkFrameHeader({
       data-mode-identity={area.identity}
     >
       <span aria-hidden="true" className="work-band__mark" />
-      {parent ? <WorkFrameBack parent={parent} /> : null}
+      {parent ? <WorkFrameBack area={area} parent={parent} /> : null}
       <div className="work-band__head">
         <div className="work-band__heading">
           {eyebrow ? <p className="work-band__eyebrow">{eyebrow}</p> : null}
@@ -240,28 +246,46 @@ export function WorkFrameHeader({
   );
 }
 
-/** Where an inner area's way back goes: the parent's page you left, or its first tab. */
-function parentHref(parent: WorkArea): string {
-  return rememberedWorkAreaPage(parent.id) ?? parent.tabs[0].href!;
+/** An area's page you left, or its first tab. */
+function areaPageHref(area: WorkArea): string {
+  return rememberedWorkAreaPage(area.id) ?? area.tabs[0].href!;
+}
+
+/**
+ * Where an inner area's way back goes, and the area it names: the work page it
+ * was opened from (the bell tapped on Roster goes back to Roster), else, opened
+ * fresh, its parent where you left it (work mode improvements, 8 Oct 2026).
+ */
+function useWorkFrameBackTarget(
+  area: WorkArea,
+  parent: WorkArea | null,
+): { readonly href: string; readonly name: string } | null {
+  const origin = useWorkAreaOrigin(area.id);
+  if (!parent) return null;
+  if (!origin) return { href: areaPageHref(parent), name: parent.name };
+  const from = WORK_AREAS[origin.areaId];
+  return { href: origin.href ?? areaPageHref(from), name: from.name };
 }
 
 /**
  * The back button inside an inner area: drawn in the top bar's round left
- * button, in place of the menu, and back to the parent area where you left it.
+ * button, in place of the menu, and back to the page it was opened from.
  */
-function WorkFrameBack({ parent }: { parent: WorkArea }) {
+function WorkFrameBack({ area, parent }: { area: WorkArea; parent: WorkArea }) {
   const claimed = usePageBackClaimed();
+  const back = useWorkFrameBackTarget(area, parent);
   const host = useSyncExternalStore(
     subscribeNever,
     () => document.getElementById(universalHeaderLeadingSlotId),
     () => null,
   );
-  if (!host || claimed) return null;
+  if (!host || claimed || !back) return null;
   return createPortal(
     <Link
-      href={parentHref(parent)}
+      href={back.href}
+      onClick={markWorkReturn}
       className="universal-header-icon-control work-frame-back"
-      aria-label={`Back to ${parent.name}`}
+      aria-label={`Back to ${back.name}`}
       data-testid="work-frame-back"
     >
       <ChevronLeft aria-hidden="true" className="size-icon-lg" strokeWidth={2.25} />
@@ -313,6 +337,7 @@ export function WorkMoreSheet({
   const routeVisible = useWorkModeRouteVisible();
   const actionsVersion = useWorkFrameActionsVersion();
   const parent = workAreaParent(area);
+  const back = useWorkFrameBackTarget(area, parent);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<readonly string[] | null>(null);
   // Leaving the picker puts focus back on Change, which re-mounts with the list.
@@ -450,14 +475,22 @@ export function WorkMoreSheet({
                 No {area.name} page called &ldquo;{query.trim()}&rdquo;. AI Search in the header finds your records.
               </p>
             ) : null}
-            {parent && !needle ? (
+            {back && !needle ? (
               <section aria-label={`Leave ${area.name}`} className="work-more-sheet__group">
-                <Link href={parentHref(parent)} className="work-more-area" onClick={close} data-testid="work-more-back">
+                <Link
+                  href={back.href}
+                  className="work-more-area"
+                  onClick={() => {
+                    markWorkReturn();
+                    close();
+                  }}
+                  data-testid="work-more-back"
+                >
                   <span aria-hidden="true" className="work-ic work-ic--sm work-more-area__back">
                     <ChevronLeft aria-hidden="true" strokeWidth={2.25} />
                   </span>
                   <span className="work-more-tile__text">
-                    <span className="work-more-tile__name">Back to {parent.name}</span>
+                    <span className="work-more-tile__name">Back to {back.name}</span>
                     <span className="work-more-tile__sub">Where you left it</span>
                   </span>
                 </Link>

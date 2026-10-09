@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { RosterStaffingEntryLink } from "@/components/roster/staffing/roster-staffing-entry";
 import { useRosterNow } from "@/components/roster/roster-format";
 import {
@@ -19,11 +20,9 @@ import {
   RosterNote,
   RosterRow,
   RosterSectionHead,
-  rosterOutlineButton,
 } from "@/components/roster/roster-list";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
-import { cn } from "@/components/ui-primitives";
 import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterLeave } from "@/lib/roster/leave";
 
@@ -128,16 +127,7 @@ function dateRuns(rows: readonly { date: string; kind: "cant" | "prefer_off" }[]
 }
 
 function TryAgainNote({ children, onRetry }: { children: ReactNode; onRetry: () => void }) {
-  return (
-    <div className="grid gap-2">
-      <RosterNote icon={Info} role="alert">
-        <p>{children}</p>
-      </RosterNote>
-      <button type="button" className={cn(rosterOutlineButton, "justify-self-start px-4")} onClick={onRetry}>
-        Try again
-      </button>
-    </div>
-  );
+  return <WorkStateNotice kind="error" title={children} onRetry={onRetry} />;
 }
 
 /** Dates I can't work, leave and shifts I can't make. Swaps and open shifts live on the Swaps page. */
@@ -359,11 +349,7 @@ export function RosterRequestsPage() {
             <p>Choose the team for a request before continuing.</p>
           </RosterNote>
         ) : null}
-        {teams.status === "loading" ? (
-          <p role="status" className="mx-1 text-sm text-[color:var(--text-muted)]">
-            Loading your teams…
-          </p>
-        ) : null}
+        {teams.status === "loading" ? <WorkStateLoading label="Loading your teams…" rows={2} /> : null}
         {teams.status === "signed-out" ? (
           <RosterSignInNotice testId="roster-requests-signed-out">
             Sign in to see your leave and requests.

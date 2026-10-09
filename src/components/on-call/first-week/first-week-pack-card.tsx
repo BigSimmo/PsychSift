@@ -196,8 +196,8 @@ export function FirstWeekPackCard({
           >
             {firstWeekEyebrow(phase)}
           </p>
-          {/* The page's one h1: the visible title, so screen readers hear "Your first week" once. */}
-          <h1 className="text-lg font-semibold leading-6 text-[color:var(--text-heading)]">Your first week</h1>
+          {/* The page's one h1. The band above already shows First week, so it is for screen readers only. */}
+          <h1 className="sr-only">Your first week</h1>
           {hospitalName ? <p className="break-words text-sm text-[color:var(--text)]">{hospitalName}</p> : null}
           {startLine}
           {pendingText !== null ? null : <FirstWeekProgressStrip progress={progress} />}

@@ -404,7 +404,7 @@ export function RosterPublishTab({ serviceId, overview }: { serviceId: string; o
       <ModeGroupedList eyebrow="Upload the roster">
         <ModeRow
           title="PDF, Excel or CSV"
-          subtitle="The file is read in memory and thrown away; only its file name is kept if published."
+          subtitle="The file is read in memory and thrown away. Only its file name is kept if published."
         />
       </ModeGroupedList>
       <input

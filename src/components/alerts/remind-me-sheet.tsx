@@ -178,6 +178,8 @@ export function YourRemindersSheet({
       title="Your reminders"
       description="Kept on this device only"
       testId="your-reminders-sheet"
+      // The round close every work sheet uses (More, Help, Notifications).
+      closeButtonClassName="work-more-sheet__close"
       footer={
         <Button variant="primary" block onClick={onAdd} disabled={shared} testId="your-reminders-add">
           Remind me

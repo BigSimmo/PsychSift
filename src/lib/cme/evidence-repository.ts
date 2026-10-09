@@ -33,7 +33,7 @@ async function deleteOrQueueCmeEvidenceObject(client: Client, ownerId: string, s
 /** Only for a newly uploaded object proven to have no committed metadata. */
 export async function cleanUnlinkedCmeEvidence(client: Client, ownerId: string, storagePath: string) {
   if (!(await deleteOrQueueCmeEvidenceObject(client, ownerId, storagePath)))
-    throw new PublicApiError("Evidence was not attached; an unlinked upload needs administrator cleanup.", 503);
+    throw new PublicApiError("Evidence was not attached. An unlinked upload needs administrator cleanup.", 503);
 }
 
 export async function fetchCmeEvidenceCounts(

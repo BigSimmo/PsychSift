@@ -337,7 +337,7 @@ export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
         <WorkProfileRow
           title="Check my next 14 days"
           subtitle={
-            gate.on ? "Roster’s Hours & rest check uses these limits" : "Roster doesn’t check these now; see below"
+            gate.on ? "Roster’s Hours & rest check uses these limits" : "Roster doesn’t check these now. See below"
           }
           href="/roster/shifts?view=hours"
         />

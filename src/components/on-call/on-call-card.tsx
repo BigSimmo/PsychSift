@@ -194,7 +194,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
             monochrome
             confidential
             printedAt={formatPrintedAt(now, zone)}
-            provenance="PsychSift On Call — pocket card. Confirm against the live app before relying on a printed copy; paper cannot show its own age."
+            provenance="PsychSift On Call pocket card. Confirm against the live app before relying on a printed copy, because paper cannot show its own age."
           >
             <div className="mb-4 flex items-start justify-between gap-3 print:mb-3">
               <div className="grid min-w-0 gap-0.5">

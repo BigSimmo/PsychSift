@@ -124,7 +124,7 @@ describe("CPD signed-out sample", () => {
     nav.pathname = "/cme/customise";
     renderBoundary();
     await sampleShown();
-    expect(screen.getByTestId("cme-sample-unavailable").textContent).toContain("not part of the sample");
+    expect(screen.getByTestId("cme-sample-unavailable").textContent).toContain("not part of the example data");
   });
 
   it("makes no network call and no browser-storage write on any sample page", async () => {

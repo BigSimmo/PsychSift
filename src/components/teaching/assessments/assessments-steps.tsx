@@ -123,7 +123,7 @@ export function EndOfTermSteps({ s }: ScreenProps) {
       <Panel>
         <Eyebrow accent>{`Step ${currentStepNumber(steps)} of ${steps.length}`}</Eyebrow>
         <h2 className="text-xl leading-tight font-semibold text-[color:var(--text-heading)]">{endOfTermLine(s)}</h2>
-        <p className={secondaryText}>Due to your MEU by Fri 20 Nov, within 10 working days of the end of term.</p>
+        <p className={secondaryText}>Due to your MEU by Fri 20 Nov. Your MEU sets this date, so check it with them.</p>
       </Panel>
       {late ? (
         <Inset tone="warm" title={`${SUP} hasn't finished her draft`} role="status">

@@ -99,7 +99,7 @@ export function RosterSettingsPage() {
       void reloadLinks();
       setNotice({
         tone: "warning",
-        text: `${result.message ?? "Your roster data couldn't be deleted."} Some of it may already be gone; this page now shows what is left.`,
+        text: `${result.message ?? "Your roster data couldn't be deleted."} Some of it may already be gone. This page now shows what is left.`,
       });
     });
   }, [deleteAll, reloadShifts, reloadLinks]);

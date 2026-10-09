@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, CalendarPlus, ClipboardList, FileSpreadsheet, LogIn } from "lucide-react";
+import { CalendarClock, CalendarPlus, ClipboardList, FileSpreadsheet } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AdminNote, AdminPage, AdminRow, AdminSection, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
@@ -15,6 +15,7 @@ import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setu
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkButton, WorkCard, WorkChip, WorkDock, WorkEmpty, WorkIconCircle } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import {
   buildComplianceOverview,
   COMPLIANCE_BUCKET_LABELS,
@@ -359,18 +360,13 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
         <AdminLoadFailed reason={state.loadError ?? "failed"} onRetry={state.retry} testId="admin-compliance-failed" />
       ) : loadState === "signed-out" ? (
         <>
-          <WorkCard testId="admin-compliance-signed-out">
-            <WorkEmpty
-              icon={LogIn}
-              title="Sign in to see your compliance"
-              body="Your records are kept for your signed-in account only."
-              action={
-                <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)}>
-                  Sign in
-                </WorkButton>
-              }
-            />
-          </WorkCard>
+          <WorkStateNotice
+            kind="signed-out"
+            title="Sign in to see your compliance"
+            body="Your records are kept for your signed-in account only."
+            onSignIn={() => setSignInOpen(true)}
+            testId="admin-compliance-signed-out"
+          />
           <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
         </>
       ) : (

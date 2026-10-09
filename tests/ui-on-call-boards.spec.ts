@@ -57,7 +57,7 @@ test("People search narrows to the exact contact on a narrow phone", async ({ pa
   const status = main.getByRole("status").filter({ hasText: /result/ });
   // Text typed before hydration is dropped (mobile WebKit, release matrix 2026-09-25).
   await expect(async () => {
-    await main.getByRole("searchbox", { name: "Search People" }).fill("coordination");
+    await main.getByRole("searchbox", { name: "Search people" }).fill("coordination");
     await expect(status).toHaveText("1 result", { timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
   await expect(main).toContainText("Example after-hours coordination extension");
