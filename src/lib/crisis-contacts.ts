@@ -52,7 +52,7 @@ export const WA_CRISIS_CONTACTS = [
     coverage: "Metropolitan Perth",
     availability: "24 hours, every day",
     isEmergencyService: false,
-    caveat: "MHERL is a telephone triage and support line. It is not an emergency service; call 000 in an emergency.",
+    caveat: "MHERL is a telephone triage and support line. It is not an emergency service. Call 000 in an emergency.",
     sourceUrl:
       "https://emhs.health.wa.gov.au/Hospitals-and-Services/Mental-Health-Alcohol-and-Other-Drugs/Inpatient-and-Other-Services/MHERL",
     verifiedOn: "2026-09-27",
@@ -65,7 +65,7 @@ export const WA_CRISIS_CONTACTS = [
     coverage: "Peel region",
     availability: "24 hours, every day",
     isEmergencyService: false,
-    caveat: "MHERL is a telephone triage and support line. It is not an emergency service; call 000 in an emergency.",
+    caveat: "MHERL is a telephone triage and support line. It is not an emergency service. Call 000 in an emergency.",
     sourceUrl:
       "https://emhs.health.wa.gov.au/Hospitals-and-Services/Mental-Health-Alcohol-and-Other-Drugs/Inpatient-and-Other-Services/MHERL",
     verifiedOn: "2026-09-27",
@@ -79,7 +79,7 @@ export const WA_CRISIS_CONTACTS = [
     availability: "4:30 pm to 8:30 am on weeknights, and 24 hours on weekends and public holidays",
     isEmergencyService: false,
     caveat:
-      "Rurallink is a telephone triage and support line. It is not an emergency service; call 000 in an emergency.",
+      "Rurallink is a telephone triage and support line. It is not an emergency service. Call 000 in an emergency.",
     sourceUrl:
       "https://emhs.health.wa.gov.au/Hospitals-and-Services/Mental-Health-Alcohol-and-Other-Drugs/Inpatient-and-Other-Services/Rurallink",
     verifiedOn: "2026-09-27",
