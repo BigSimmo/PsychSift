@@ -65,6 +65,46 @@ describe("due reminders", () => {
     expect(mocks.toDevice).not.toHaveBeenCalled();
   });
 
+  it("sends a bell reminder with its own fixed code when the owner still wants them", async () => {
+    const now = perth("2026-10-07", "10:00");
+    mocks.tables.user_preferences = [{ user_id: ME, preferences: { reminders: { bellPhone: { enabled: true } } } }];
+    mocks.rpc.mockResolvedValue({
+      error: null,
+      data: [{ owner_id: ME, ref: "w-abc", due_at: perth("2026-10-07", "09:59").toISOString(), endpoint: PHONE }],
+    });
+    expect(await sendDueReminders(client, now)).toBe(1);
+    expect(mocks.toDevice).toHaveBeenCalledWith(client, ME, PHONE, "due", 900);
+  });
+
+  it("drops a bell reminder once the owner turned them off, or inside quiet hours", async () => {
+    const row = { owner_id: ME, ref: "w-abc", due_at: perth("2026-10-07", "22:59").toISOString(), endpoint: PHONE };
+    mocks.rpc.mockResolvedValue({ error: null, data: [row] });
+    mocks.tables.user_preferences = [{ user_id: ME, preferences: { reminders: { bellPhone: { enabled: false } } } }];
+    expect(await sendDueReminders(client, perth("2026-10-07", "23:00"))).toBe(0);
+    mocks.tables.user_preferences = [
+      {
+        user_id: ME,
+        preferences: {
+          reminders: { bellPhone: { enabled: true }, quietHours: { enabled: true, start: "21:00", end: "07:00" } },
+        },
+      },
+    ];
+    expect(await sendDueReminders(client, perth("2026-10-07", "23:00"))).toBe(0);
+    expect(mocks.toDevice).not.toHaveBeenCalled();
+  });
+
+  it("still sends a Remind me note at its time in quiet hours", async () => {
+    mocks.tables.user_preferences = [
+      { user_id: ME, preferences: { reminders: { quietHours: { enabled: true, start: "21:00", end: "07:00" } } } },
+    ];
+    mocks.rpc.mockResolvedValue({
+      error: null,
+      data: [{ owner_id: ME, ref: "r1", due_at: perth("2026-10-07", "22:59").toISOString(), endpoint: PHONE }],
+    });
+    expect(await sendDueReminders(client, perth("2026-10-07", "23:00"))).toBe(1);
+    expect(mocks.toDevice).toHaveBeenCalledWith(client, ME, PHONE, "reminder", 900);
+  });
+
   it("fails loudly when the claim is unavailable", async () => {
     mocks.rpc.mockResolvedValue({ error: { message: "down" }, data: null });
     await expect(sendDueReminders(client, new Date())).rejects.toThrow();
