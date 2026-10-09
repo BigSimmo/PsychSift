@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowLeft, ArrowUp, Check, CircleSlash, Info, Layers, Lock, Plus, Send } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CircleSlash, Info, Layers, Lock, Plus, Send } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
@@ -104,7 +104,7 @@ export function RotationRankPage({ roundId, now: pinnedNow }: { readonly roundId
 
 function BackToRotations() {
   return (
-    <WorkButton variant="secondary" href={ROTATIONS_HREF} icon={ArrowLeft} testId="rotation-rank-back">
+    <WorkButton variant="secondary" href={ROTATIONS_HREF} icon={Layers} testId="rotation-rank-back">
       All rotations
     </WorkButton>
   );
