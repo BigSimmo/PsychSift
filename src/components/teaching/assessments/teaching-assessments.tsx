@@ -16,6 +16,7 @@ import {
   rememberedStory,
   type AssessRole,
 } from "@/components/teaching/assessments/assess-memory";
+import { AssessorForm } from "@/components/teaching/assessments/assessments-assessor";
 import { DctHome, DctPlan, DctSignoff, type DctProps } from "@/components/teaching/assessments/assessments-dct";
 import { AssessmentsHome } from "@/components/teaching/assessments/assessments-home";
 import { AllAssessments, TermDetails, YearRequirements } from "@/components/teaching/assessments/assessments-year";
@@ -96,6 +97,7 @@ const VIEWS: readonly AssessmentsView[] = [
   "overview",
   "dctsign",
   "plan",
+  "epaform",
 ];
 
 /** Views that are the doctor's own: they never take the supervisor's side. */
@@ -109,7 +111,15 @@ const TAB_VIEWS: ReadonlySet<AssessmentsView> = new Set(["home", "progress"]);
  * in the address they keep whoever's assessments were last shown, so a supervisor who
  * opens one from the tabs or More stays the supervisor.
  */
-const ROLE_KEPT: ReadonlySet<AssessmentsView> = new Set(["home", "progress", "all", "words", "help", "overview"]);
+const ROLE_KEPT: ReadonlySet<AssessmentsView> = new Set([
+  "home",
+  "progress",
+  "all",
+  "words",
+  "help",
+  "overview",
+  "epaform",
+]);
 
 const isRole = (as: string | null): as is Role => as === "doctor" || as === "supervisor" || as === "dct";
 
@@ -130,6 +140,8 @@ function Screen(props: ScreenProps & Omit<DctProps, keyof ScreenProps> & { view:
   const { view, role } = props;
   if (view === "help") return <ConcernsHelp {...props} />;
   if (view === "words") return <SupervisorWords {...props} />;
+  // What an assessor gets from a request: the same page from the doctor's or the supervisor's side.
+  if (view === "epaform") return <AssessorForm {...props} />;
   // The two added sample views (features 16 and 4) read the same made-up records from either role.
   // They have no real data source yet, so a real user only reaches them with Assessments example data on.
   if (view === "inbox")

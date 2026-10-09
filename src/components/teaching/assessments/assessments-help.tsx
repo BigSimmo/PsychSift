@@ -20,7 +20,6 @@ import { WorkButton, WorkChip, WorkChips, WorkTag, useWorkUndoToast } from "@/co
 import {
   AssessHeader,
   AssessNote,
-  AssessSegmented,
   AssessTextField,
   CallStrip,
   OptionCard,
@@ -53,9 +52,11 @@ import {
   epaOpenForDoctor,
   epaRequestWords,
   epaWithAssessor,
+  GUEST_KINDS,
   looksLikePatientDetails,
   pendingEpaRequest,
   validReply,
+  type GuestKind,
 } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, SAMPLE_REGISTRAR, SAMPLE_SUPERVISOR } from "@/lib/teaching/assessments/sample";
 
@@ -168,14 +169,14 @@ export function ConcernsHelp({ openSheet, role }: ScreenProps) {
   );
 }
 
-const LEVEL_OPTIONS = SUPERVISION_LEVELS.map((l) => ({
+export const LEVEL_OPTIONS = SUPERVISION_LEVELS.map((l) => ({
   id: l.id,
   title: l.formLabel,
   detail: l.detail,
 }));
 
 /** CLA has no decline or send back button, so both sides are told how it really works there. */
-const IN_CLA_NOTE = "CLA has no send back button. In CLA, tell the doctor, and they cancel the request.";
+export const IN_CLA_NOTE = "CLA has no send back button. In CLA, tell the doctor, and they cancel the request.";
 
 function RequestEpaSheet({
   s,
@@ -184,8 +185,10 @@ function RequestEpaSheet({
   close,
 }: Pick<ScreenProps, "s" | "dispatch"> & { pick: EpaNumber; close: () => void }) {
   const [epa, setEpa] = useState<EpaNumber>(pick);
-  const [who, setWho] = useState<"sup" | "reg">("sup");
+  const [who, setWho] = useState<"sup" | "reg" | "guest">("sup");
+  const [guest, setGuest] = useState<GuestKind | null>(null);
   const dup = pendingEpaRequest(s, epa);
+  const why = who === "guest" && !guest ? "Choose their role first." : null;
   return (
     <div className="grid gap-3">
       <OptionCard
@@ -200,25 +203,54 @@ function RequestEpaSheet({
           tag: e.id === 1 && !epa1ThisTerm(s) ? <WorkTag tone="amber">Needed this term</WorkTag> : undefined,
         }))}
       />
-      <AssessSegmented
-        label="Assessor"
+      <OptionCard
+        legend="Who assesses it"
+        name="assess-request-who"
         value={who}
         onChange={setWho}
         options={[
-          { value: "sup", label: SUP },
-          { value: "reg", label: `${SAMPLE_REGISTRAR.name}, registrar` },
+          {
+            id: "sup",
+            title: `${SAMPLE_SUPERVISOR.name}, term supervisor`,
+            detail: "Counts as this term's specialist EPA",
+          },
+          { id: "reg", title: `${SAMPLE_REGISTRAR.name}, registrar` },
+          {
+            id: "guest",
+            title: "Someone else",
+            detail: "Another specialist, a nurse or a pharmacist who has done EPA assessor training",
+          },
         ]}
       />
-      <AssessNote>
-        At least one EPA a term must be from your term supervisor or another specialist. Registrars, nurses and
-        pharmacists can assess the rest once they have done EPA assessor training.
-      </AssessNote>
+      {who === "guest" ? (
+        <>
+          <WorkChips label="Their role">
+            {GUEST_KINDS.map((k) => (
+              <WorkChip key={k.id} selected={guest === k.id} onClick={() => setGuest(k.id)}>
+                {k.title}
+              </WorkChip>
+            ))}
+          </WorkChips>
+          <AssessNote>
+            They get an emailed link and need no CLA account. Their EPA shows as Unapproved until your MEU approves
+            them.
+          </AssessNote>
+        </>
+      ) : (
+        <AssessNote>
+          At least one EPA a term must be from your term supervisor or another specialist. Registrars, nurses and
+          pharmacists can assess the rest once they have done EPA assessor training.
+        </AssessNote>
+      )}
       <WorkButton
         icon={Send}
         size="wide"
-        disabled={!!dup}
+        disabled={!!dup || !!why}
         onClick={() => {
-          dispatch({ type: "request-epa", epa, who });
+          if (who === "guest") {
+            if (!guest) return;
+            dispatch({ type: "request-epa", epa, who, guest });
+          } else dispatch({ type: "request-epa", epa, who });
           close();
         }}
       >
@@ -226,9 +258,10 @@ function RequestEpaSheet({
       </WorkButton>
       {dup ? (
         <WhyNot id="assess-epa-dup">
-          You&apos;ve already asked for EPA {epa}. It&apos;s waiting for{" "}
-          {dup.who === "sup" ? SUP : SAMPLE_REGISTRAR.name}.
+          You&apos;ve already asked for EPA {epa}. It&apos;s waiting for {dup.who === "sup" ? SUP : assessorName(dup)}.
         </WhyNot>
+      ) : why ? (
+        <WhyNot id="assess-epa-guest-why">{why}</WhyNot>
       ) : null}
     </div>
   );
@@ -271,7 +304,13 @@ function RecordEpaSheet({
     );
   const epa = request ? request.epa : chosen;
   const info = epa ? epaInfo(epa) : null;
-  const why = !epa ? "Choose which EPA first." : !level ? "Choose a supervision level first." : null;
+  const why = !epa
+    ? "Choose which EPA first."
+    : !level
+      ? "Choose a supervision level first."
+      : looksLikePatientDetails(note)
+        ? "Take out the patient details first."
+        : null;
   return (
     <div className="grid gap-3">
       {request ? (
@@ -333,6 +372,11 @@ function RecordEpaSheet({
         {epa ? `Save EPA ${epa}` : "Save EPA"}
       </WorkButton>
       {why ? <WhyNot id="assess-save-epa-why">{why}</WhyNot> : null}
+      {index !== undefined ? (
+        <WorkButton variant="tinted" size="wide" href={viewHref("epaform", { i: String(index) })}>
+          Open the full EPA form
+        </WorkButton>
+      ) : null}
       {request ? (
         <div className="grid gap-2 pt-1" data-testid="assess-epa-cant">
           <p className="work-label m-0">{`Can't do it?`}</p>
@@ -357,7 +401,7 @@ function RecordEpaSheet({
  * The assessor's other two answers. "Can't assess yet" keeps the request with them (a note is optional).
  * "Send back" returns it to the doctor and needs a short note, so the doctor knows whom to ask instead.
  */
-function AnswerEpaRequest({
+export function AnswerEpaRequest({
   index,
   kind,
   dispatch,
@@ -449,7 +493,7 @@ function MyEpaSheet({
       </AssessNote>
     );
   const info = epaInfo(r.epa);
-  const name = assessorName(r.who);
+  const name = assessorName(r);
   const cancel = () => {
     dispatch({ type: "cancel-epa-request", index });
     // Undo puts it back exactly as it was, including any note from the assessor.
@@ -470,7 +514,7 @@ function MyEpaSheet({
             r.status === "sent-back"
               ? `Sent back by ${name}`
               : r.status === "not-yet"
-                ? `${name} can't assess it yet`
+                ? `${name.charAt(0).toUpperCase()}${name.slice(1)} can't assess it yet`
                 : `Waiting for ${name}`
           }
           detail={r.reply ? `"${r.reply}"` : r.status === "requested" ? "Needed by Sun 8 Nov" : undefined}
@@ -485,7 +529,11 @@ function MyEpaSheet({
         <WorkButton icon={Send} size="wide" onClick={() => openSheet({ kind: "epa", pick: r.epa })}>
           Ask someone else
         </WorkButton>
-      ) : null}
+      ) : (
+        <WorkButton variant="tinted" size="wide" href={viewHref("epaform", { i: String(index) })}>
+          See what they get
+        </WorkButton>
+      )}
       <WorkButton variant="secondary" size="wide" onClick={cancel}>
         {r.status === "sent-back" ? "Remove from my list" : "Cancel request"}
       </WorkButton>

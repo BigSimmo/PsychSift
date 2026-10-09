@@ -39,6 +39,7 @@ import {
   epaRecords,
   epaRequestWords,
   epasInTerm,
+  fromSpecialist,
   openEpaRequests,
   weeksDone,
   type AssessmentsState,
@@ -109,7 +110,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
   const more = epaNeedMore(s);
   const by = epaCounts(s);
   const thisTerm = epasInTerm(s, "t4");
-  const fromSpecialist = thisTerm.find((r) => r.role !== "registrar");
+  const specialistEpa = thisTerm.find(fromSpecialist);
   return (
     <>
       <AssessHeader
@@ -201,12 +202,12 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
         <Requirement
           title="From a term supervisor or specialist this term"
           value={
-            fromSpecialist
-              ? `Done: EPA ${fromSpecialist.epa} with ${fromSpecialist.by.replace("Dr Robin Wattle", SAMPLE_SUPERVISOR.short)}`
+            specialistEpa
+              ? `Done: EPA ${specialistEpa.epa} with ${specialistEpa.by.replace("Dr Robin Wattle", SAMPLE_SUPERVISOR.short)}`
               : "None recorded here yet"
           }
-          percent={fromSpecialist ? 100 : 0}
-          ok={!!fromSpecialist}
+          percent={specialistEpa ? 100 : 0}
+          ok={!!specialistEpa}
         />
         <li className="grid gap-1.5 px-3.5 py-3">
           <b className="text-sm font-semibold text-[color:var(--text-heading)]">Each EPA</b>

@@ -67,15 +67,45 @@ export type Signature = { typed: string; image: SignatureInk | null; date: strin
  */
 export type EpaRequestStatus = "requested" | "not-yet" | "sent-back" | "cancelled" | "done";
 
+/**
+ * Someone else the doctor asks, by the assessor roles on the AMC EPA form ("Specialist or equivalent
+ * (other)", "Nurse/ nurse practitioner", "Pharmacist", "Other"). They answer from an emailed link with no
+ * CLA account, so CLA marks them Unapproved until the MEU approves them.
+ */
+export type GuestKind = "specialist" | "nurse" | "pharmacist" | "other";
+
+export const GUEST_KINDS: readonly { id: GuestKind; title: string; name: string }[] = [
+  { id: "specialist", title: "Specialist", name: "another specialist" },
+  { id: "nurse", title: "Nurse", name: "a nurse" },
+  { id: "pharmacist", title: "Pharmacist", name: "a pharmacist" },
+  { id: "other", title: "Other", name: "another trained assessor" },
+];
+
+/** The rest of the AMC EPA form: how the assessor knows, whether the level fits the year, and feedback. */
+export type EpaFeedback = {
+  /** "I directly observed some part of it", or a team member who was there told them. */
+  observed?: "direct" | "team";
+  /** Was the rating right for the level of training? */
+  rightLevel?: boolean;
+  better?: string;
+  goal?: string;
+};
+
+/** The longest free-text EPA feedback: a few sentences, never a case summary. */
+export const EPA_FEEDBACK_MAX = 300;
+
 export type EpaRequest = {
   epa: EpaNumber;
-  who: "sup" | "reg";
+  who: "sup" | "reg" | "guest";
+  /** With who "guest": which kind of assessor. */
+  guest?: GuestKind;
   status: EpaRequestStatus;
   level?: SupervisionLevel;
   /** Case complexity, optional, as the EPA form records it. */
   complexity?: CaseComplexity;
-  /** "One thing to keep doing", optional, written by the supervisor. */
+  /** "One thing to keep doing" (on the full form, "What went well"), optional, written by the assessor. */
   note?: string;
+  feedback?: EpaFeedback;
   /** The assessor's words to the doctor with "Can't assess yet" (optional) or "Send back" (required). */
   reply?: string;
   /** Recorded by the supervisor without a request from the doctor (the dock's Record EPA). */
@@ -201,8 +231,9 @@ export function epaRecords(s: AssessmentsState): EpaRecord[] {
     .map<EpaRecord>((r) => ({
       term: "t4",
       epa: r.epa,
-      by: r.who === "sup" ? SAMPLE_SUPERVISOR.name : SAMPLE_REGISTRAR.name,
-      role: r.who === "sup" ? "term supervisor" : "registrar",
+      by: r.who === "sup" ? SAMPLE_SUPERVISOR.name : r.who === "reg" ? SAMPLE_REGISTRAR.name : "Guest assessor",
+      role:
+        r.who === "sup" ? "term supervisor" : r.who === "reg" ? "registrar" : guestKind(r.guest).title.toLowerCase(),
       level: r.level!,
       ...(r.complexity ? { complexity: r.complexity } : {}),
     }));
@@ -219,14 +250,22 @@ export const pendingEpaRequest = (s: AssessmentsState, epa: EpaNumber) =>
   s.epaRequests.find((r) => r.epa === epa && epaWithAssessor(r));
 export const sentBackEpaRequest = (s: AssessmentsState, epa: EpaNumber) =>
   s.epaRequests.find((r) => r.epa === epa && r.status === "sent-back");
-export const assessorName = (who: EpaRequest["who"]) =>
-  who === "sup" ? SAMPLE_SUPERVISOR.name : SAMPLE_REGISTRAR.name;
+export const guestKind = (id: GuestKind | undefined) => GUEST_KINDS.find((k) => k.id === id) ?? GUEST_KINDS[3]!;
+
+export const assessorName = (r: Pick<EpaRequest, "who" | "guest">) =>
+  r.who === "sup" ? SAMPLE_SUPERVISOR.name : r.who === "reg" ? SAMPLE_REGISTRAR.name : guestKind(r.guest).name;
+
+/** An EPA that counts as this term's one from the term supervisor or another specialist. */
+export const fromSpecialist = (r: Pick<EpaRecord, "role">) =>
+  r.role === "consultant" || r.role === "term supervisor" || r.role === "specialist";
+
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /** How the doctor's side words an open request, and its tag ("Not yet", "Sent back"). */
 export function epaRequestWords(r: EpaRequest): { line: string; tag: string | null } {
-  const name = assessorName(r.who);
+  const name = assessorName(r);
   const said = r.reply ? ` "${r.reply}"` : "";
-  if (r.status === "not-yet") return { line: `${name} can't assess it yet.${said}`, tag: "Not yet" };
+  if (r.status === "not-yet") return { line: `${capital(name)} can't assess it yet.${said}`, tag: "Not yet" };
   if (r.status === "sent-back") return { line: `Sent back by ${name}.${said}`, tag: "Sent back" };
   return { line: `Requested from ${name}`, tag: null };
 }
@@ -568,8 +607,15 @@ export type AssessmentsAction =
   | { type: "meeting-held" }
   | { type: "sign"; who: Who; typed: string; image: SignatureInk | null }
   | { type: "sent-to-meu" }
-  | { type: "request-epa"; epa: EpaNumber; who: "sup" | "reg" }
-  | { type: "record-epa"; index: number; level: SupervisionLevel; complexity?: CaseComplexity; note?: string }
+  | { type: "request-epa"; epa: EpaNumber; who: "sup" | "reg" | "guest"; guest?: GuestKind }
+  | {
+      type: "record-epa";
+      index: number;
+      level: SupervisionLevel;
+      complexity?: CaseComplexity;
+      note?: string;
+      feedback?: EpaFeedback;
+    }
   | {
       type: "record-epa-direct";
       epa: EpaNumber;
@@ -594,8 +640,28 @@ export function validReply(reply: string, required: boolean): boolean {
   return reply.length <= EPA_REPLY_MAX && !looksLikePatientDetails(reply);
 }
 
+/** Who was asked for what: everything a request keeps when its answer changes. */
+const asked = (x: EpaRequest) => ({ epa: x.epa, who: x.who, ...(x.guest ? { guest: x.guest } : {}) });
+
 function answerAt(list: readonly EpaRequest[], index: number, status: EpaRequestStatus, reply: string): EpaRequest[] {
-  return list.map((x, i) => (i === index ? { epa: x.epa, who: x.who, status, ...(reply ? { reply } : {}) } : x));
+  return list.map((x, i) => (i === index ? { ...asked(x), status, ...(reply ? { reply } : {}) } : x));
+}
+
+const validText = (text: string | undefined) =>
+  text === undefined || (text.length <= EPA_FEEDBACK_MAX && !looksLikePatientDetails(text));
+
+/** The feedback with blanks dropped, or null when any part is too long or looks like patient details. */
+function cleanFeedback(f: EpaFeedback): EpaFeedback | null {
+  if (f.observed !== undefined && f.observed !== "direct" && f.observed !== "team") return null;
+  const better = f.better?.trim() || undefined;
+  const goal = f.goal?.trim() || undefined;
+  if (!validText(better) || !validText(goal)) return null;
+  return {
+    ...(f.observed ? { observed: f.observed } : {}),
+    ...(typeof f.rightLevel === "boolean" ? { rightLevel: f.rightLevel } : {}),
+    ...(better ? { better } : {}),
+    ...(goal ? { goal } : {}),
+  };
 }
 
 /** A form that is locked rejects every edit. */
@@ -708,28 +774,38 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
     case "sent-to-meu":
       return s.sigs.doc ? { ...s, sentToMeu: true } : s;
     case "request-epa": {
-      if (![1, 2, 3, 4].includes(a.epa) || (a.who !== "sup" && a.who !== "reg") || pendingEpaRequest(s, a.epa))
-        return s;
+      if (![1, 2, 3, 4].includes(a.epa) || (a.who !== "sup" && a.who !== "reg" && a.who !== "guest")) return s;
+      if (pendingEpaRequest(s, a.epa)) return s;
+      if (a.who === "guest" && !GUEST_KINDS.some((k) => k.id === a.guest)) return s;
       // Asking again replaces a request that was sent back for the same EPA.
       const epaRequests = s.epaRequests.map((x) =>
         x.epa === a.epa && x.status === "sent-back" ? { ...x, status: "cancelled" as const } : x,
       );
-      return { ...s, epaRequests: [...epaRequests, { epa: a.epa, who: a.who, status: "requested" }] };
+      const request: EpaRequest = {
+        epa: a.epa,
+        who: a.who,
+        ...(a.who === "guest" && a.guest ? { guest: a.guest } : {}),
+        status: "requested",
+      };
+      return { ...s, epaRequests: [...epaRequests, request] };
     }
     case "record-epa": {
       const r = s.epaRequests[a.index];
       if (!r || !epaWithAssessor(r) || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
       if (a.complexity !== undefined && !validComplexity(a.complexity)) return s;
       const note = a.note?.trim();
+      if (!validText(note)) return s;
+      const feedback = a.feedback ? cleanFeedback(a.feedback) : {};
+      if (!feedback) return s;
       const epaRequests = s.epaRequests.map((x, i) =>
         i === a.index
           ? {
-              epa: x.epa,
-              who: x.who,
+              ...asked(x),
               status: "done" as const,
               level: a.level,
               ...(a.complexity ? { complexity: a.complexity } : {}),
               ...(note ? { note } : {}),
+              ...(Object.keys(feedback).length ? { feedback } : {}),
             }
           : x,
       );
@@ -792,7 +868,7 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       if (!r || r.status !== "done") return s;
       if (r.direct) return { ...s, epaRequests: s.epaRequests.filter((_, i) => i !== a.index) };
       const epaRequests = s.epaRequests.map((x, i) =>
-        i === a.index ? { epa: x.epa, who: x.who, status: "requested" as const } : x,
+        i === a.index ? { ...asked(x), status: "requested" as const } : x,
       );
       return { ...s, epaRequests };
     }

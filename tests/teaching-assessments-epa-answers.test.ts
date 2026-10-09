@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { EPAS, SUPERVISION_LEVELS } from "@/lib/teaching/assessments/content";
 import {
+  EPA_FEEDBACK_MAX,
   EPA_REPLY_MAX,
   assessmentsReducer,
   doctorActions,
   epaRecords,
   epaRequestWords,
+  fromSpecialist,
   initialAssessmentsState,
   openEpaRequests,
   pendingEpaRequest,
@@ -129,5 +131,58 @@ describe("Teaching assessments: the doctor cancelling a request", () => {
   it("a recorded EPA can't be cancelled", () => {
     const recorded = run(asked(), { type: "record-epa", index: 0, level: "minimal" });
     expect(assessmentsReducer(recorded, { type: "cancel-epa-request", index: 0 })).toBe(recorded);
+  });
+});
+
+describe("Assessments: someone else as assessor, and the full EPA form", () => {
+  const guest = (kind: "nurse" | "specialist") =>
+    assessmentsReducer(initialAssessmentsState(), { type: "request-epa", epa: 2, who: "guest", guest: kind });
+
+  it("asks a nurse by role, and needs the role", () => {
+    const s = guest("nurse");
+    const r = s.epaRequests.at(-1)!;
+    expect(r).toMatchObject({ epa: 2, who: "guest", guest: "nurse", status: "requested" });
+    expect(epaRequestWords(r).line).toBe("Requested from a nurse");
+    const none = assessmentsReducer(initialAssessmentsState(), { type: "request-epa", epa: 2, who: "guest" });
+    expect(none.epaRequests.some((x) => x.who === "guest")).toBe(false);
+  });
+
+  it("keeps the role through can't assess yet and undo", () => {
+    let s = guest("nurse");
+    const index = s.epaRequests.length - 1;
+    s = assessmentsReducer(s, { type: "epa-not-yet", index });
+    expect(s.epaRequests[index]).toMatchObject({ guest: "nurse", status: "not-yet" });
+    expect(epaRequestWords(s.epaRequests[index]!).line).toBe("A nurse can't assess it yet.");
+    s = assessmentsReducer(s, { type: "undo-epa-answer", index });
+    expect(s.epaRequests[index]).toMatchObject({ guest: "nurse", status: "requested" });
+  });
+
+  it("records the whole AMC form, and only a specialist counts as this term's specialist EPA", () => {
+    for (const kind of ["nurse", "specialist"] as const) {
+      let s = guest(kind);
+      const index = s.epaRequests.length - 1;
+      s = assessmentsReducer(s, {
+        type: "record-epa",
+        index,
+        level: "proximal",
+        note: "Clear escalation.",
+        feedback: { observed: "team", rightLevel: true, better: "  ", goal: "Lead the next MET call." },
+      });
+      const r = s.epaRequests[index]!;
+      expect(r.feedback).toEqual({ observed: "team", rightLevel: true, goal: "Lead the next MET call." });
+      const record = epaRecords(s).at(-1)!;
+      expect(record.by).toBe("Guest assessor");
+      expect(fromSpecialist(record)).toBe(kind === "specialist");
+    }
+  });
+
+  it("refuses feedback that looks like patient details or runs too long", () => {
+    const s = guest("nurse");
+    const index = s.epaRequests.length - 1;
+    const tried = (feedback: { better?: string; goal?: string }) =>
+      assessmentsReducer(s, { type: "record-epa", index, level: "direct", feedback }).epaRequests[index]!.status;
+    expect(tried({ better: "URN 1234567 was unwell" })).toBe("requested");
+    expect(tried({ goal: "x".repeat(EPA_FEEDBACK_MAX + 1) })).toBe("requested");
+    expect(tried({ goal: "Lead a handover." })).toBe("done");
   });
 });
