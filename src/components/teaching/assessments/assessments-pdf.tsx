@@ -322,9 +322,13 @@ export function FormPdf({ s, params, role, dct }: ScreenProps) {
               <div className="min-h-8 border border-[color:var(--border-strong)] px-1.5 py-1">{f.areas}</div>
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-              <Field label="Term supervisor">{fill(term?.supervisor)}</Field>
+              <Field label={past && kind === "eot" && term?.eotDelegated ? "Completing clinical supervisor" : "Term supervisor"}>
+                {fill(past && kind === "eot" && term?.eotDelegated ? term?.eotDelegated.to : term?.supervisor)}
+              </Field>
               <Field label="Position">{fill("Consultant")}</Field>
-              <Field label="Signature">{supSig}</Field>
+              <Field label={past && kind === "eot" && term?.eotDelegated ? "Countersignature (term supervisor)" : "Signature"}>
+                {supSig}
+              </Field>
               <Field label="Date">{supDate}</Field>
             </div>
             <p>
