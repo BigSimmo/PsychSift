@@ -1,0 +1,216 @@
+name: Sentry production alerts
+
+# #TN512M: Sentry was the last of the three production-failure detectors that reported to
+# nobody. The other monitors (live-domain-monitor, CI on main, eval-canary, live-drift,
+# ingestion-autopilot) reach the owner's phone by opening a GitHub issue assigned to him,
+# a channel he confirmed end to end on 2026-09-26. This workflow puts Sentry on that same
+# channel: every 15 minutes it asks Sentry for production issues first seen recently and
+# posts any it has not reported before to one rolling GitHub issue assigned to the owner.
+#
+# PRIVACY: this repository is PUBLIC, so the GitHub issue is public. Sentry events are
+# scrubbed before they leave the app, but error messages are still free text, so nothing
+# from the event body is copied here: only the Sentry short id, the exception type (reduced
+# to identifier characters), level, event count, first-seen time and a link that needs a
+# Sentry login. The detail stays inside Sentry.
+#
+# Setup (owner, once): a Sentry personal token with event:read, org:read and project:read,
+# stored as the repository secret SENTRY_ALERTS_TOKEN. The organisation and project are
+# discovered from the token; set the repository variables SENTRY_ORG / SENTRY_PROJECT only
+# if the account holds more than one of either. Without the secret every run is a warning
+# and nothing else.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every 15 minutes, off the top of the hour when GitHub cron is most congested.
+    - cron: "7,22,37,52 * * * *"
+
+concurrency:
+  group: sentry-production-alerts
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Runs no repository code, so issues: write is never exposed to anything from the tree.
+  route:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Forward new production Sentry issues to the owner
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SENTRY_ALERTS_TOKEN: ${{ secrets.SENTRY_ALERTS_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_ALERT_ENVIRONMENT: ${{ vars.SENTRY_ALERT_ENVIRONMENT || 'production' }}
+        with:
+          script: |
+            const token = (process.env.SENTRY_ALERTS_TOKEN || "").trim();
+            if (!token) {
+              core.warning("SENTRY_ALERTS_TOKEN is not set, so Sentry errors are not reaching the owner. See the header of sentry-alerts.yml.");
+              return;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "Production errors (Sentry)";
+            const label = "sentry-production-alert";
+            const MARKER = "<!-- sentry-alerts-routing:v1 -->";
+            const FAILURE_MARKER = "<!-- sentry-alerts-unreadable -->";
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const environment = process.env.SENTRY_ALERT_ENVIRONMENT;
+            // Wider than the 15-minute cadence on purpose: GitHub cron fires are best-effort and
+            // can be skipped for an hour or more. Reported ids are remembered, so overlap is free.
+            const LOOKBACK = "6h";
+
+            async function sentry(url) {
+              const response = await fetch(url, {
+                headers: { authorization: `Bearer ${token}` },
+                signal: AbortSignal.timeout(20_000),
+              });
+              if (!response.ok) throw new Error(`Sentry answered ${response.status} for ${new URL(url).pathname}`);
+              return response.json();
+            }
+
+            function pick(items, wanted, describe) {
+              if (wanted) {
+                const match = items.find((item) => item.slug === wanted);
+                if (!match) throw new Error(`${describe} "${wanted}" is not visible to this token.`);
+                return match;
+              }
+              if (items.length === 1) return items[0];
+              throw new Error(`The token can see ${items.length} ${describe}s; set the repository variable to choose one.`);
+            }
+
+            // --- Find or create the rolling issue, and what it has already reported. ---
+            const { data: labelled } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "all",
+              labels: label,
+              sort: "updated",
+              direction: "desc",
+              per_page: 5,
+            });
+            const ours = labelled.filter((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER));
+            const open = ours.find((issue) => issue.state === "open") ?? null;
+            // The most recently closed one is read too, so closing the issue does not make the
+            // next run re-report everything still inside the lookback window.
+            const lastClosed = ours.find((issue) => issue.state === "closed") ?? null;
+
+            const reported = new Set();
+            let lastCommentIsFailure = false;
+            for (const issue of [open, lastClosed].filter(Boolean)) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issue.number,
+                per_page: 100,
+              });
+              for (const comment of comments) {
+                for (const match of String(comment.body ?? "").matchAll(/<!-- sentry-issue:(\d+) -->/g)) reported.add(match[1]);
+              }
+              if (issue === open) lastCommentIsFailure = String(comments.at(-1)?.body ?? "").includes(FAILURE_MARKER);
+            }
+
+            async function assignOwner(issueNumber) {
+              // Assignment is what makes GitHub notify the owner's phone. Best-effort, so a
+              // refused assignment can never cost the alert itself.
+              try {
+                await github.rest.issues.addAssignees({ owner, repo, issue_number: issueNumber, assignees: [owner] });
+              } catch (error) {
+                core.warning(`Could not assign @${owner} to #${issueNumber}: ${error.message}`);
+              }
+            }
+
+            async function post(commentBody) {
+              let number = open?.number;
+              if (!number) {
+                const created = await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title,
+                  labels: [label],
+                  body: [
+                    `New **${environment}** errors recorded by Sentry are posted here as comments, checked every 15 minutes`,
+                    "by `.github/workflows/sentry-alerts.yml`. Each comment lists the Sentry issue and a link; the error",
+                    "detail stays in Sentry because this repository is public.",
+                    "",
+                    "Close this issue once you have looked. The next new error opens a fresh one.",
+                    MARKER,
+                  ].join("\n"),
+                });
+                number = created.data.number;
+              }
+              await github.rest.issues.createComment({ owner, repo, issue_number: number, body: commentBody });
+              await assignOwner(number);
+              return number;
+            }
+
+            // --- Ask Sentry. ---
+            let fresh;
+            try {
+              const orgs = await sentry("https://sentry.io/api/0/organizations/");
+              const org = pick(orgs, (process.env.SENTRY_ORG || "").trim(), "Sentry organisation");
+              const base = String(org.links?.regionUrl || "https://sentry.io").replace(/\/$/, "");
+              const projects = await sentry(`${base}/api/0/organizations/${encodeURIComponent(org.slug)}/projects/`);
+              const project = pick(projects, (process.env.SENTRY_PROJECT || "").trim(), "Sentry project");
+              const params = new URLSearchParams({
+                project: String(project.id),
+                environment,
+                query: `is:unresolved level:[error,fatal] firstSeen:-${LOOKBACK}`,
+                statsPeriod: "14d",
+                sort: "new",
+                limit: "25",
+              });
+              const issues = await sentry(`${base}/api/0/organizations/${encodeURIComponent(org.slug)}/issues/?${params}`);
+              fresh = issues.filter((issue) => /^\d+$/.test(String(issue.id)) && !reported.has(String(issue.id)));
+            } catch (error) {
+              // An expired or revoked token must not go quiet: tell the owner once, not every 15 minutes.
+              core.warning(`Could not read Sentry: ${error.message}`);
+              if (!lastCommentIsFailure) {
+                const number = await post(
+                  [
+                    "**Sentry alerts are paused.** This check could not read Sentry, so new production errors are not",
+                    "reaching you until it is fixed. The usual cause is an expired or revoked `SENTRY_ALERTS_TOKEN`.",
+                    "",
+                    `- Reason: ${String(error.message).slice(0, 300)}`,
+                    `- Run: ${runUrl}`,
+                    FAILURE_MARKER,
+                  ].join("\n"),
+                );
+                core.warning(`Reported the Sentry read failure on #${number}.`);
+              }
+              core.setFailed("Sentry could not be read.");
+              return;
+            }
+
+            if (fresh.length === 0) {
+              core.info(`No new ${environment} Sentry issues in the last ${LOOKBACK}.`);
+              return;
+            }
+
+            // Identifier characters only: the exception type, never its message.
+            const safeType = (issue) => String(issue.metadata?.type || "").replace(/[^A-Za-z0-9_.$]/g, "").slice(0, 60) || "Error";
+            const lines = fresh.map((issue) => {
+              const shortId = String(issue.shortId || issue.id).replace(/[^A-Za-z0-9-]/g, "");
+              const level = String(issue.level || "error").replace(/[^a-z]/g, "");
+              const seen = String(issue.firstSeen || "").replace(/[^0-9TZ:.-]/g, "");
+              const link = String(issue.permalink || "").startsWith("https://") ? issue.permalink : "";
+              return `- **${shortId}** ${safeType(issue)} (${level}, ${Number(issue.count) || 1} event(s), first seen ${seen}) ${link}<!-- sentry-issue:${issue.id} -->`;
+            });
+            const number = await post(
+              [
+                `**${fresh.length} new ${environment} error${fresh.length === 1 ? "" : "s"} in Sentry.** Open a link to see the detail.`,
+                "",
+                ...lines,
+                "",
+                `Run: ${runUrl}`,
+              ].join("\n"),
+            );
+            core.warning(`Posted ${fresh.length} new Sentry issue(s) to #${number}.`);
