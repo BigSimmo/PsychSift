@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-09T03:47:42.534Z",
+  "sealed_at": "2026-10-09T03:01:16.175Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -275,8 +275,8 @@
     "20260926040000_anonymous_rate_limits_atomic.sql": "af977ae6728cab227278bd32bcc36efe8cdea6639ba4fe5b1666f5cfcb3b77ba",
     "20260926041000_retire_invoke_ingestion_worker.sql": "d6d900e67a702d9b369ca1723d0f8d453f1c9712c185a9d37ed234b7c2ff406b",
     "20260926041100_indexing_v3_agent_cron_sends_jwt.sql": "3ca22bc98e8683cb5296d5ef29132b09a0fa2b08abc51942b45f8fc162eb6740",
-    "20260926060000_cme_cpd_records.sql": "4f3e111d652a3cc24de1eb9158b4aacdf36ba2ee183577111ee31ce8a5acd931",
     "20260926051500_on_call_shifts.sql": "7d503bd4bba6cfb2aed9250030a58e5fa86cd07a60345428103e9133d96f08c9",
+    "20260926060000_cme_cpd_records.sql": "4f3e111d652a3cc24de1eb9158b4aacdf36ba2ee183577111ee31ce8a5acd931",
     "20260926170000_repair_import_stamped_locally_reviewed.sql": "417bfc4a5d46f92d2e695a1670eeab493192a1552ff8545f60e7ff94c2f0330d",
     "20260926225209_roster_shared_services_hardening.sql": "0c65fa74f18f012917e4204570739b9372dd34ded0f316498411776ceb2eecbd",
     "20260926225309_on_call_service_items.sql": "95a53ff9f2e049847c8b7bfb2e669cf653143b3b05863efea653aae8652cde10",
@@ -295,6 +295,6 @@
     "20261008003000_work_admin_paperwork.sql": "1bf1871f2e5a7d171b0c45347a29586b9b9e0f91170ae3a579a0e40c8a227f1c",
     "20261008003100_work_backups.sql": "d9a2d479983fa8f3ec8edbd69b6cd1e3fff125980d98fc6866bbd2ed41f1283e",
     "20261009002200_roster_leave_more_kinds.sql": "5e901d93c79114c9d0beb70a8da66d74dbe49dcd4276e0e4f348e4934491d20b",
-    "20261009010000_roster_rotation_rounds.sql": "0f73ecf1bd691ce81c183bd806e69a835df9516ad6aad1e24416ba716f27d660"
+    "20261009012000_work_bookings.sql": "6ccb57e13c354072f62b3b7323c7821d70f6f03185da9d3dc62941f4c7e3a478"
   }
 }

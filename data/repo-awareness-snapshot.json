@@ -914,6 +914,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/bookings",
+        "file": "src/app/(search-app)/admin/bookings/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/roster/today",
         "file": "src/app/(search-app)/roster/today/page.tsx",
         "area": "product"
@@ -1027,6 +1032,11 @@
         "path": "/mockups/document-image-status",
         "file": "src/app/mockups/document-image-status/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/admin/courses",
+        "file": "src/app/(search-app)/admin/courses/page.tsx",
+        "area": "product"
       },
       {
         "path": "/forms/act",
@@ -1986,6 +1996,10 @@
         "file": "src/app/api/search/universal/route.ts"
       },
       {
+        "path": "/api/work/courses",
+        "file": "src/app/api/work/courses/route.ts"
+      },
+      {
         "path": "/api/roster/alerts",
         "file": "src/app/api/roster/alerts/route.ts"
       },
@@ -2292,6 +2306,10 @@
       {
         "path": "/api/cme/drafts/[id]",
         "file": "src/app/api/cme/drafts/[id]/route.ts"
+      },
+      {
+        "path": "/api/work/bookings",
+        "file": "src/app/api/work/bookings/route.ts"
       },
       {
         "path": "/api/roster/shifts/manual/[seriesId]",
