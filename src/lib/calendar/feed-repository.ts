@@ -9,6 +9,7 @@ import { onCallTeachingEvents } from "@/lib/on-call/calendar-events";
 import { fetchVisibleOnCallEntries } from "@/lib/on-call/repository";
 import { teachingCalendarEvents } from "@/lib/teaching/calendar-events";
 import { fetchTeachingFeedSessions } from "@/lib/teaching/feed-repository";
+import { fetchRotationFeedEvents } from "@/lib/calendar/rotation-feed-source";
 import { logger } from "@/lib/logger";
 import {
   applyReminderAlarms,
@@ -150,15 +151,17 @@ function rosterShiftEvents(shifts: readonly OnCallShift[]): CalendarEvent[] {
 
 export async function calendarFeedEvents(supabase: AdminClient, ownerId: string, now: Date): Promise<CalendarEvent[]> {
   const year = cpdYearOf(now);
-  const [thisYear, nextYear, routines, teaching, teachingSessions, reminders, rosterSettings] = await Promise.all([
-    fetchOwnerCmeYear(supabase, ownerId, year),
-    fetchOwnerCmeYear(supabase, ownerId, year + 1),
-    fetchOwnerCmeRoutines(supabase, ownerId),
-    fetchVisibleOnCallEntries(supabase, ownerId, { section: "education" }),
-    fetchTeachingFeedSessions(supabase, ownerId, now),
-    fetchOwnerReminderSettings(supabase, ownerId),
-    fetchOwnerRosterSettingsForFeed(supabase, ownerId),
-  ]);
+  const [thisYear, nextYear, routines, teaching, teachingSessions, reminders, rosterSettings, rotations] =
+    await Promise.all([
+      fetchOwnerCmeYear(supabase, ownerId, year),
+      fetchOwnerCmeYear(supabase, ownerId, year + 1),
+      fetchOwnerCmeRoutines(supabase, ownerId),
+      fetchVisibleOnCallEntries(supabase, ownerId, { section: "education" }),
+      fetchTeachingFeedSessions(supabase, ownerId, now),
+      fetchOwnerReminderSettings(supabase, ownerId),
+      fetchOwnerRosterSettingsForFeed(supabase, ownerId),
+      fetchRotationFeedEvents(supabase, ownerId, now),
+    ]);
   let rosterShifts: CalendarEvent[] = [];
   if (rosterSettings.calendarShifts) {
     const own = await fetchOwnerShifts(supabase, ownerId, now);
@@ -176,6 +179,7 @@ export async function calendarFeedEvents(supabase: AdminClient, ownerId: string,
     ),
     ...teachingCalendarEvents(teachingSessions),
     ...rosterShifts,
+    ...rotations,
   ];
   return applyReminderAlarms(events, reminders, now);
 }

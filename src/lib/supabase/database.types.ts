@@ -4753,6 +4753,28 @@ export type Database = {
         },
         "user_id" | "role" | "hospital_id"
       >;
+      roster_rotation_rounds: GeneratedTable<
+        {
+          id: string;
+          service_id: string;
+          status: string;
+          setup: Json;
+          locks: Json;
+          allocation: Json | null;
+          admin_name: string;
+          version: number;
+          created_by: string | null;
+          created_at: string;
+          opened_at: string | null;
+          published_at: string | null;
+          updated_at: string;
+        },
+        "service_id" | "setup" | "admin_name"
+      >;
+      roster_rotation_preferences: GeneratedTable<
+        { round_id: string; user_id: string; ranking: Json; submitted_at: string | null; updated_at: string },
+        "round_id" | "user_id"
+      >;
     };
     Views: {
       document_strict_gate_status: {
@@ -4860,6 +4882,7 @@ export type Database = {
         Returns: boolean;
       };
       work_user_id_by_email: { Args: { p_email: string }; Returns: string | null };
+      roster_rotation_can_manage: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
       cme_confirm_year: { Args: { p_owner_id: string; p_set: Json }; Returns: string };
       cme_save_plan_goals: { Args: { p_owner_id: string; p_year_id: string; p_goals: Json }; Returns: Json };
       cme_save_plan_goals_checked: {

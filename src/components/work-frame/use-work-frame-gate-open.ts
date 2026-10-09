@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
+import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useExampleData } from "@/lib/example-data/store";
@@ -22,6 +23,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const workRoles = useWorkRoles(signedIn);
   const examplesOn = useExampleData().mode === "on";
   const hospitalRole = examplesOn || !signedIn || workRoles.roles.some((role) => HOSPITAL_ROLES.has(role));
+  const rotations = useLivePreview("rotation-preferences");
   return useCallback(
     (gate) => {
       if (!gate) return true;
@@ -31,9 +33,11 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "classic-work-mode") return !newWorkMode;
       if (gate === "signed-out") return !signedIn;
       if (gate === "hospital-role") return hospitalRole;
+      if (gate === "rotation-preferences") return rotations;
+      if (gate === "rotation-preferences-manager") return rotations && poster === true;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn, hospitalRole],
+    [roles, poster, editor, newWorkMode, signedIn, hospitalRole, rotations],
   );
 }
 

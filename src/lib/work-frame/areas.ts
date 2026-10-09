@@ -100,7 +100,11 @@ export type WorkFrameGate =
    * `useWorkRoles`. Also open while example data is switched on or the reader is signed
    * out, so the example hospital can be looked around. The page checks again on the server.
    */
-  | "hospital-role";
+  | "hospital-role"
+  /** Testers on the newest live version, for a page that exists only there (Rotations). */
+  | "rotation-preferences"
+  /** Roster managers (as "open-shifts-poster") who are also on the newest live version (Rotation rounds). */
+  | "rotation-preferences-manager";
 
 /** Actions a page can register for the More sheet to run. */
 export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
@@ -381,6 +385,16 @@ const roster: WorkArea = {
           paths: ["/roster"],
           query: { view: "hours" },
         },
+        {
+          id: "rotations",
+          label: "Rotations",
+          sub: "Preferences and your year",
+          icon: "repeat",
+          href: "/roster/rotations",
+          // The list and each round (`/roster/rotations/<round>`).
+          paths: ["/roster/rotations", "/roster/rotations/"],
+          gate: "rotation-preferences",
+        },
       ],
     },
     {
@@ -563,6 +577,21 @@ const manageTeam: WorkArea = {
           paths: [],
         },
         { id: "manage-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
+      ],
+    },
+    {
+      label: "Rotations",
+      items: [
+        {
+          id: "manage-rotations",
+          label: "Rotations",
+          sub: "Preference rounds",
+          icon: "repeat",
+          href: "/roster/manage/rotations",
+          // The rounds, a new round and each round (`/roster/manage/rotations/<round>`).
+          paths: ["/roster/manage/rotations", "/roster/manage/rotations/"],
+          gate: "rotation-preferences-manager",
+        },
       ],
     },
   ],
