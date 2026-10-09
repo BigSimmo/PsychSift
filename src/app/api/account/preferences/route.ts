@@ -3,7 +3,12 @@ import { z } from "zod";
 import { mergeAccountPreferences, normalizePreferences } from "@/lib/account-preferences";
 import { isWorkTimeZone } from "@/lib/work-time/zones";
 import { dateKeyToUtcMillis, isValidTime } from "@/lib/calendar/calendar-event";
-import { MAX_ALERTS_PER_DAY, MIN_ALERTS_PER_DAY, REMINDER_LEAD_TIMES } from "@/lib/reminders/settings";
+import {
+  MAX_ALERTS_PER_DAY,
+  MIN_ALERTS_PER_DAY,
+  REMINDER_LEAD_TIMES,
+  type BellPhoneArea,
+} from "@/lib/reminders/settings";
 import { jsonError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -49,6 +54,22 @@ const remindersPatchSchema = z
     quietHours: z.object({ enabled: z.boolean(), start: wallClockSchema, end: wallClockSchema }).partial().strict(),
     maxAlertsPerDay: z.number().int().min(MIN_ALERTS_PER_DAY).max(MAX_ALERTS_PER_DAY),
     brief: z.object({ enabled: z.boolean(), workday: wallClockSchema, dayOff: wallClockSchema }).partial().strict(),
+    bellPhone: z
+      .object({
+        enabled: z.boolean(),
+        areas: z
+          .object({
+            "on-call": z.boolean(),
+            roster: z.boolean(),
+            cme: z.boolean(),
+            teaching: z.boolean(),
+            "my-work": z.boolean(),
+          } satisfies Record<BellPhoneArea, z.ZodBoolean>)
+          .partial()
+          .strict(),
+      })
+      .partial()
+      .strict(),
   })
   .partial()
   .strict()

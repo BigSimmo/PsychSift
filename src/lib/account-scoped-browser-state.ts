@@ -100,6 +100,13 @@ export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
  */
 export const REMIND_ME_STORAGE_KEY = "psychsift:alerts:remind-me-v1";
 /**
+ * localStorage — bell reminders this phone has queued to buzz it: an opaque
+ * random id per reminder, the bell item's id and its due time. No words, and
+ * the server holds only the random id and the time; cleared at every account
+ * transition.
+ */
+export const BELL_PHONE_QUEUE_STORAGE_KEY = "psychsift:alerts:bell-queue-v1";
+/**
  * localStorage — the Psychiatry hub's recently opened records: path, the page's
  * own title (a diagnosis, therapy or form name), section and time.
  * Reference records only, never patient detail; kept 90 days, recorded only
@@ -269,6 +276,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, BELL_PHONE_QUEUE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
   removeQuietly(() => window.localStorage, CPD_HOME_SEND_STORAGE_KEY);
