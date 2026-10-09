@@ -185,6 +185,8 @@ export function useRotations(): RotationsRead {
     }
   }, [example.active, dataset, stored]);
 
+  // The latest answer from the server. After an action the hook asks again but
+  // keeps showing the last answer until the new one arrives, so nothing flickers.
   const [live, setLive] = useState<LiveRead>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
@@ -192,16 +194,17 @@ export function useRotations(): RotationsRead {
   useEffect(() => {
     if (example.active) return;
     let current = true;
-    setLive({ status: "loading" });
+    const settle = (next: LiveRead) => {
+      if (current) setLive(next);
+    };
     fetch("/api/roster/rotations", { credentials: "same-origin", cache: "no-store" })
       .then(async (response) => {
-        if (!current) return;
-        if (response.status === 401) return setLive({ status: "signed-out" });
-        if (response.status === 503 || response.status === 404) return setLive({ status: "unavailable" });
-        if (!response.ok) return setLive({ status: "error" });
-        setLive({ status: "ready", data: (await response.json()) as LivePayload });
+        if (response.status === 401) return settle({ status: "signed-out" });
+        if (response.status === 503 || response.status === 404) return settle({ status: "unavailable" });
+        if (!response.ok) return settle({ status: "error" });
+        settle({ status: "ready", data: (await response.json()) as LivePayload });
       })
-      .catch(() => current && setLive({ status: "error" }));
+      .catch(() => settle({ status: "error" }));
     return () => {
       current = false;
     };
