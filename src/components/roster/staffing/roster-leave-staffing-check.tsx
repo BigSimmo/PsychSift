@@ -1,15 +1,17 @@
 "use client";
 
-import { CircleAlert, Clock, Info, Users } from "lucide-react";
+import { CircleAlert, Clock, Info, TriangleAlert, Users } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { cn } from "@/components/ui-primitives";
 import {
+  belowSafeDays,
   isIsoDate,
   leaveStaffing,
   leaveStaffingWords,
   mondayOf,
+  safeNumberNote,
   sundayOf,
   staffingWindow,
   type LeaveStaffing,
@@ -17,36 +19,50 @@ import {
   type StaffingWindow,
 } from "@/lib/roster/staffing/team-staffing";
 
-import { RosterStaffingLegend, RosterStaffingStrip } from "./roster-staffing-strip";
+import { BELOW_SAFE_TAG, RosterStaffingLegend, RosterStaffingStrip } from "./roster-staffing-strip";
 import { useTeamStaffing } from "./use-team-staffing";
 
 /**
  * Feature #7's staffing check, ready to mount in the Plan leave sheet:
  * `<RosterLeaveStaffingCheck serviceId actorId startsOn endsOn today />`.
- * It makes one assignments read for the weeks around the leave and shows the
- * strip and a one-line result. It never says "safe": PsychSift does not hold
- * the team's safe number, and says so.
+ * It makes one assignments read for the weeks around the leave, reads the
+ * team's safe number (the cover its roster manager set), and shows the strip
+ * and a one-line result. A day below the safe number with you away is named.
+ * It never calls a day "safe": with no safe number set it says so instead.
  */
-
-export const SAFE_NUMBER_NOTE =
-  "Your team's safe number isn't set in PsychSift, so this shows how many are on, not whether that is enough. Your roster manager decides.";
 
 export function StaffingResult({ result }: { readonly result: LeaveStaffing }) {
   const words = leaveStaffingWords(result);
-  const Icon = result.kind === "unchecked" ? Clock : result.kind === "partial" ? CircleAlert : Users;
+  const below = result.kind !== "unchecked" && !!result.safe?.below.length;
+  const Icon = below
+    ? TriangleAlert
+    : result.kind === "unchecked"
+      ? Clock
+      : result.kind === "partial"
+        ? CircleAlert
+        : Users;
   return (
     <p
       role="status"
       className={cn(
         "flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-sm leading-5",
-        result.kind === "checked"
-          ? "bg-[color:var(--mode-identity-soft)] text-[color:var(--text-heading)]"
-          : "bg-[color:var(--surface-subtle)] text-[color:var(--text)]",
+        below
+          ? BELOW_SAFE_TAG
+          : result.kind === "checked"
+            ? "bg-[color:var(--mode-identity-soft)] text-[color:var(--text-heading)]"
+            : "bg-[color:var(--surface-subtle)] text-[color:var(--text)]",
       )}
       data-mode-identity="roster"
       data-testid="staffing-result"
+      data-below-safe={below ? "true" : undefined}
     >
-      <Icon aria-hidden="true" className="mt-0.5 size-icon-md shrink-0 text-[color:var(--mode-identity)]" />
+      <Icon
+        aria-hidden="true"
+        className={cn(
+          "mt-0.5 size-icon-md shrink-0",
+          below ? "text-[color:var(--warning-text)]" : "text-[color:var(--mode-identity)]",
+        )}
+      />
       <span>
         <b className="font-semibold">{words.lead}</b> {words.rest}
       </span>
@@ -102,13 +118,24 @@ export function RosterLeaveStaffingCheck({
   const visible: StaffingDay[] = staffing.days.filter(
     (day) => day.date >= mondayOf(leave.from) && day.date <= sundayOf(leave.to),
   );
-  const result = leaveStaffing(staffing.days, leave);
+  const result = leaveStaffing(staffing.days, leave, staffing.needs);
   return (
     <StaffingFrame>
-      <RosterStaffingStrip days={visible} leave={leave} today={today} lowestDays={lowestOf(result)} />
-      <RosterStaffingLegend showYou={visible.some((day) => day.youWork)} />
+      <RosterStaffingStrip
+        days={visible}
+        leave={leave}
+        today={today}
+        lowestDays={lowestOf(result)}
+        needs={staffing.needs}
+      />
+      <RosterStaffingLegend
+        showYou={visible.some((day) => day.youWork)}
+        showBelow={belowSafeDays(visible, leave, staffing.needs).length > 0}
+      />
       <StaffingResult result={result} />
-      <p className="text-xs text-[color:var(--text-muted)]">{SAFE_NUMBER_NOTE}</p>
+      <p className="text-xs text-[color:var(--text-muted)]" data-testid="staffing-safe-number">
+        {safeNumberNote(staffing.needs)}
+      </p>
     </StaffingFrame>
   );
 }

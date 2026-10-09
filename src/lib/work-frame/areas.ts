@@ -99,6 +99,14 @@ export type WorkFrameGate =
    * doctor keeps elsewhere (Assessments, kept in CLA: owner decision 7 Oct 2026).
    */
   | "signed-out"
+  /**
+   * Hospital-side roles: the site administrator, Medical Workforce or the DCT, from
+   * `useWorkRoles`. Also open while example data is switched on or the reader is signed
+   * out, so the example hospital can be looked around. The page checks again on the server.
+   */
+  | "hospital-role"
+  /** The Hospital screen: everyone "hospital-role" lets in, plus supervisors and roster managers. */
+  | "hospital-hub"
   /** Testers on the newest live version, for a page that exists only there (Rotations). */
   | "rotation-preferences"
   /** Roster managers (as "open-shifts-poster") who are also on the newest live version (Rotation rounds). */
@@ -1110,6 +1118,25 @@ const admin: WorkArea = {
           icon: "layers",
           href: "/admin/workforce",
           band: false,
+        },
+        {
+          id: "admin-people",
+          label: "People and roles",
+          short: "People",
+          sub: "Who holds which role",
+          icon: "users",
+          href: "/admin/people",
+          gate: "hospital-role",
+        },
+        {
+          id: "admin-hospital",
+          label: "Hospital",
+          sub: "Your hospital role screens",
+          icon: "shield",
+          href: "/admin/hospital",
+          // The trailing slash makes the item current on Sick calls too.
+          paths: ["/admin/hospital", "/admin/hospital/"],
+          gate: "hospital-hub",
         },
         // Extra time is kept in Roster's hours panel, so the tap leaves Admin.
         {
