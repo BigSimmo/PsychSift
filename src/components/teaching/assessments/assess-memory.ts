@@ -1,3 +1,4 @@
+import type { DctState } from "@/lib/teaching/assessments/dct";
 import type { ExtrasState } from "@/lib/teaching/assessments/extras";
 import type { AssessmentsState } from "@/lib/teaching/assessments/model";
 import type { TraineeState } from "@/lib/work-screens/assessments/trainee";
@@ -10,7 +11,7 @@ import type { TraineeState } from "@/lib/work-screens/assessments/trainee";
  * reload, a new tab or signing in again starts the story afresh, as before.
  */
 
-export type AssessRole = "doctor" | "supervisor";
+export type AssessRole = "doctor" | "supervisor" | "dct";
 
 let story: { key: string; state: AssessmentsState } | null = null;
 /**
@@ -19,6 +20,8 @@ let story: { key: string; state: AssessmentsState } | null = null;
  */
 let extras: { key: string; state: ExtrasState } | null = null;
 let role: AssessRole = "doctor";
+/** The DCT's sign-offs in the story. */
+let dct: { key: string; state: DctState } | null = null;
 
 /** The story as it was left on this account in this tab, or null. */
 export function rememberedStory(key: string): AssessmentsState | null {
@@ -50,6 +53,15 @@ export function rememberTrainee(key: string, state: TraineeOwn): void {
   trainee = { key, state };
 }
 
+/** The DCT's sign-offs as they were left on this account in this tab, or null. */
+export function rememberedDct(key: string): DctState | null {
+  return dct && dct.key === key ? dct.state : null;
+}
+
+export function rememberDct(key: string, state: DctState): void {
+  dct = { key, state };
+}
+
 /** Whose assessments the tabs show when the address does not say. Starts as "My training". */
 export function rememberedRole(): AssessRole {
   return role;
@@ -64,5 +76,6 @@ export function forgetAssessMemory(): void {
   story = null;
   extras = null;
   trainee = null;
+  dct = null;
   role = "doctor";
 }
