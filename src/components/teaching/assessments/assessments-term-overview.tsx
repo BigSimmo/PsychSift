@@ -890,8 +890,7 @@ function DoctorDetail({ s, doctorId, role, dct }: ScreenProps & { doctorId: stri
             "inline-flex min-h-12 items-center justify-between gap-2 rounded-lg text-sm font-medium text-[color:var(--mode-identity)] no-underline",
           )}
         >
-          {/* The link is PMCWA's page about CLA, not CLA itself (site audit M7). */}
-          <span>About CLA (PMCWA)</span>
+          <span>Open CLA</span>
           <span className="inline-flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
             Opens outside PsychSift
             <ExternalLink aria-hidden="true" className="size-icon-xs" />
