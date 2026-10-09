@@ -298,9 +298,7 @@ describe("the verifier as the image build runs it", () => {
     const block = result.stdout.slice(result.stdout.indexOf("{"));
     const recorded = JSON.parse(block);
     expect(manifestProblems(recorded)).toEqual([]);
-    expect(recorded.treeDigest).toStrictEqual(
-      encodeManifestDigest(treeDigestFromFiles({ "a.bin": sha256("one") })),
-    );
+    expect(recorded.treeDigest).toStrictEqual(encodeManifestDigest(treeDigestFromFiles({ "a.bin": sha256("one") })));
     expect(recorded.files["a.bin"]).toStrictEqual(encodeManifestDigest(sha256("one")));
   });
 });

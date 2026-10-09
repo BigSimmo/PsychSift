@@ -118,9 +118,7 @@ describe("the real queue", () => {
     const walk = therapy.therapyWalkQueue(source) as string[];
     // SignOffTool is a union: only therapy:review carries slug (clinical:review uses code).
     expect(
-      signable
-        .flatMap((item) => (item.signOff?.script === "therapy:review" ? [item.signOff.slug] : []))
-        .sort(),
+      signable.flatMap((item) => (item.signOff?.script === "therapy:review" ? [item.signOff.slug] : [])).sort(),
     ).toEqual([...walk].sort());
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
