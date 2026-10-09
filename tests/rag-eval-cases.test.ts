@@ -564,6 +564,29 @@ describe("captured RAG eval cases", () => {
       const forbidden = intentOf("Ibuprofen is safe. Avoid others: reduced clearance and toxicity.");
       expect(forbidden.score).toBe(0);
       expect(forbidden.reason).toBe("forbidden claim: ibuprofen is safe");
+      expect(intentOf("**Ibuprofen is safe**. Avoid others: reduced clearance and toxicity.").score).toBe(0);
+    });
+
+    it("matches a concept only at a word start, not inside another word", () => {
+      const amber = answerQualityEvalCases.find((item) => item.id === "high-risk-monitoring-clozapine-amber-range")!;
+      const groups = amber.requiredConceptGroups ?? [];
+      const continueGroup = groups.findIndex((group) => group.includes("continue"));
+      expect(continueGroup).toBeGreaterThanOrEqual(0);
+      const answerWith = (text: string) =>
+        ({
+          answer: text,
+          grounded: true,
+          confidence: "high",
+          citations: [],
+          sources: [],
+          routingMode: "fast",
+          queryClass: "medication_dose_risk",
+          answerSections: [],
+        }) satisfies RagAnswer;
+      const intent = (text: string) =>
+        scoreAnswerQualityEvalCase(amber, answerWith(text)).find((score) => score.metric === "intent_coverage")!;
+      expect(intent("Discontinue clozapine now.").reason).toContain(groups[continueGroup].join(" / "));
+      expect(intent("Discontinue clozapine now.").score).toBe(0);
     });
 
     it("matches a quoted range written with an en dash", () => {

@@ -175,11 +175,19 @@ function containsAny(text: string, values: string[] | undefined) {
 }
 
 // Dash variants are folded so a range quoted as "7-10 days" also matches "7–10 days".
-const foldDashes = (text: string) => text.toLowerCase().replace(/[\u2010-\u2015]/g, "-");
+const foldDashes = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/\*\*/g, "")
+    .replace(/[\u2010-\u2015]/g, "-");
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Word start only, so "continue" never matches inside "discontinue"; the end stays open for plurals ("NSAIDs").
+const containsConcept = (folded: string, concept: string) =>
+  new RegExp(`(?<![a-z0-9])${escapeRegExp(foldDashes(concept))}`).test(folded);
 
 function missingConceptGroups(text: string, groups: AnswerQualityEvalCase["requiredConceptGroups"]) {
   const folded = foldDashes(text);
-  return (groups ?? []).filter((group) => !group.some((concept) => folded.includes(foldDashes(concept))));
+  return (groups ?? []).filter((group) => !group.some((concept) => containsConcept(folded, concept)));
 }
 
 function containsNone(text: string, values: string[] | undefined) {
@@ -261,7 +269,7 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
   const artifactOk = !artifactPattern.test(text) && containsNone(text, testCase.mustNotContain);
   const missingGroups = missingConceptGroups(text, testCase.requiredConceptGroups);
   const forbiddenPresent = (testCase.forbiddenConcepts ?? []).filter((concept) =>
-    foldDashes(text).includes(foldDashes(concept)),
+    containsConcept(foldDashes(text), concept),
   );
   const intentOk =
     !sourceBackedReviewStub &&
