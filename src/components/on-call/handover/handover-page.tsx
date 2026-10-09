@@ -197,7 +197,8 @@ function TypePicker({
     <div
       role="group"
       aria-label="Handover type"
-      className="grid grid-cols-4 gap-1 rounded-lg bg-[color:var(--surface-wash)] p-1"
+      // Two to a row at large text, so "Psychiatry" fits whole.
+      className="grid grid-cols-4 gap-1 rounded-lg bg-[color:var(--surface-wash)] p-1 [html[data-large-text]_&]:grid-cols-2"
       data-testid="on-call-handover-types"
     >
       {ON_CALL_HANDOVER_TYPES.map((type) => {

@@ -494,6 +494,10 @@ guard) and `people.ts` (the obviously made-up names and places). The banner, swi
 states are in `src/components/example-data/` and `src/components/work-first-use/`.
 `src/lib/work-time/` holds the work time zone (Perth by default, saved as `preferences.timeZone`) and
 the zone-aware date and time helpers every shift and "today" uses instead of the device clock.
+`src/lib/work-calendar/` is the shared shape for planned work entries (published rotations now,
+booked courses next) that the Roster month, My Day and the calendar link read through
+`useWorkCalendarEntries()` and the source list in `src/components/work-calendar/sources.ts`.
+Rotation preference rounds (rank, allocate, publish) live in `src/lib/roster/rotations/`.
 
 **Work-mode launch switch.** `src/lib/work-mode-launch/` decides who sees the new-only work
 screens. `launch.ts` resolves the setting (`WORK_MODE_LAUNCH` off, preview or everyone, with
