@@ -1,0 +1,11 @@
+priority_rules:
+  - name: dependabot
+    priority: low
+    conditions:
+      - author = dependabot[bot]
+    allow_checks_interruption: false
+  - name: hotfix
+    priority: high
+    conditions:
+      - label = hotfix
+    allow_checks_interruption: true

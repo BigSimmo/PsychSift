@@ -87,6 +87,20 @@ describe("mode band on each mode's pages", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Presenting" })).toHaveClass("sr-only");
   });
 
+  it("gives a tab with a short name its full name for screen readers", () => {
+    nav.pathname = "/teaching/assessments";
+    render(
+      <ModeBand modeId="teaching">
+        <>page</>
+      </ModeBand>,
+    );
+    const tab = screen.getByRole("link", { name: "Registrar supervision" });
+    expect(tab).toHaveAttribute("href", "/teaching/supervision");
+    // The row still draws the short name, and only once.
+    expect(tab.querySelector("[aria-hidden='true']")).toHaveTextContent(/^Registrar$/);
+    expect(screen.queryByRole("link", { name: "Registrar" })).toBeNull();
+  });
+
   it("ticks no Roster tab when My shifts' page draws at /roster", () => {
     // Work-mode redesign, owner request 6 Oct 2026: /roster?view=month draws My shifts' month
     // list, so that page names itself and the Month tab (the month grid) is not marked current.

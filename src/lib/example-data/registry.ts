@@ -1,5 +1,6 @@
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { ExampleWorkforce } from "@/lib/example-data/datasets/admin-workforce";
+import type { BookingsState } from "@/lib/work-screens/admin/bookings";
 import type { ExampleRotationRounds } from "@/lib/example-data/datasets/roster-rotations";
 import type { ExampleSupervisionByDoctor } from "@/lib/example-data/datasets/assessments-supervision";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
@@ -56,6 +57,7 @@ export type ExampleDatasets = {
   "admin.workforce": ExampleWorkforce;
   "admin.people": ExampleWorkPeople;
   "admin.hospital": ExampleHospitalHub;
+  "admin.bookings": BookingsState;
 };
 
 export type ExampleDatasetKey = keyof ExampleDatasets;
@@ -98,6 +100,8 @@ const LOADERS: { [K in ExampleDatasetKey]: Loader<K> } = {
   "admin.people": async () => (await import("@/lib/example-data/datasets/admin-people")).exampleWorkPeople(),
   "admin.hospital": async (now, zone) =>
     (await import("@/lib/example-data/datasets/admin-hospital")).exampleHospitalHub(now, zone),
+  "admin.bookings": async (now, zone) =>
+    (await import("@/lib/example-data/datasets/admin-bookings")).exampleBookings(now, zone),
 };
 
 /** Which area each dataset belongs to, so a screen only shows it while that area's example data is on. */
@@ -123,6 +127,7 @@ export const EXAMPLE_DATASET_AREA: { readonly [K in ExampleDatasetKey]: WorkArea
   "admin.workforce": "admin",
   "admin.people": "admin",
   "admin.hospital": "admin",
+  "admin.bookings": "admin",
 };
 
 export const EXAMPLE_DATASET_KEYS = Object.keys(LOADERS) as ExampleDatasetKey[];

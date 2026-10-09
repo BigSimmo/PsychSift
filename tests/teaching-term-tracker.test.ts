@@ -17,6 +17,7 @@ import {
   studyStreak,
   termWeekCount,
   termWeekOf,
+  TERM_TRACKER_SOURCES,
   type TermRecord,
 } from "@/lib/teaching/term-tracker";
 
@@ -139,5 +140,12 @@ describe("study", () => {
       week: 7,
       total: 22,
     });
+  });
+});
+
+describe("CLA links", () => {
+  it("keeps PMCWA's information page apart from the CLA sign-in page", () => {
+    expect(TERM_TRACKER_SOURCES.pmcwaCla).toBe("https://pmcwa.org.au/education-training/cla");
+    expect(TERM_TRACKER_SOURCES.claSignIn).toBe("https://cla.epads.mkmapps.com");
   });
 });

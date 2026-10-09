@@ -16,7 +16,14 @@ import { z } from "zod";
 
 export const TERM_TRACKER_SOURCES = {
   pmcwaAssessment: "https://pmcwa.org.au/education-training/training-and-assessment",
+  /** PMCWA's page about CLA in WA. Information only, not where doctors sign in. */
   pmcwaCla: "https://pmcwa.org.au/education-training/cla",
+  /**
+   * The CLA sign-in page itself. Checked 9 Oct 2026 against the Australian Digital Health Agency's
+   * "CLA user guide for prevocational doctors" v1.1 (11 Feb 2025) and "CLA detailed FAQs" v2.0
+   * (2 Jun 2025), which both give this address for signing in.
+   */
+  claSignIn: "https://cla.epads.mkmapps.com",
   epaSummary:
     "https://www.heti.nsw.gov.au/__data/assets/pdf_file/0010/931798/2023-11-National-Framework-Summary-for-PGY1-Trainees-V4.pdf",
 } as const;

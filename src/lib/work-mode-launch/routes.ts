@@ -12,6 +12,11 @@
  *
  * Adding a new-only screen means adding it here. The proxy enforces the
  * list on every request, so a route cannot forget to call a gate.
+ *
+ * Teaching > Assessments is not listed. Its screens are an example of how
+ * Clinical Learning Australia works, and signed-out readers (the only people
+ * who see that example) are never in the preview audience, so listing them
+ * here would 404 the example's own links.
  */
 
 export type WorkModeRouteEntry = {
@@ -35,22 +40,19 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/cme/applications", owner: "junior-features" },
   { path: "/my-day/profile/agreement", owner: "junior-features" },
   { path: "/teaching/term/folder", owner: "junior-features" },
-  { path: "/teaching/assessments", query: { view: "inbox" }, owner: "junior-features" },
-  { path: "/teaching/assessments", query: { view: "overview" }, owner: "junior-features" },
   // Missing screens (wiring).
   { path: "/my-day/alerts/earlier", owner: "wiring" },
   { path: "/cme/evidence", owner: "wiring" },
   { path: "/cme/export", owner: "wiring" },
-  { path: "/teaching/assessments/record", owner: "wiring" },
-  { path: "/teaching/assessments/help", owner: "wiring" },
-  { path: "/teaching/assessments/export", owner: "wiring" },
   { path: "/admin/requests", owner: "wiring" },
   { path: "/admin/sharing", owner: "wiring" },
   { path: "/admin/documents", owner: "wiring" },
   { path: "/admin/pay", owner: "wiring" },
   { path: "/admin/tax", owner: "wiring" },
   { path: "/admin/workforce", owner: "wiring" },
-  { path: "/teaching/assessments/trainee", owner: "wiring" },
+  // Course bookings (also behind the Live version switch).
+  { path: "/admin/bookings", owner: "course-bookings" },
+  { path: "/admin/courses", owner: "course-bookings" },
   // Favourites.
   { path: "/my-day/favourites", owner: "favourites" },
   // Setup walkthrough and help centre.

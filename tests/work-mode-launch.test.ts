@@ -79,11 +79,28 @@ describe("work-mode launch routes", () => {
     expect(workModeRouteHidden("/cme/applications?tab=cv#top", classic)).toBe(true);
   });
 
-  it("hides a new view of an existing page by its query, and leaves the page itself alone", () => {
-    expect(workModeRouteHidden("/teaching/assessments?view=inbox&as=supervisor", classic)).toBe(true);
-    expect(workModeRouteHidden("/teaching/assessments?view=overview", classic)).toBe(true);
-    expect(workModeRouteHidden("/teaching/assessments", classic)).toBe(false);
-    expect(workModeRouteHidden("/teaching/assessments?view=inbox", launched)).toBe(false);
+  it("matches a new view of an existing page by its query, and leaves the page itself alone", () => {
+    const entries = [{ path: "/teaching/example", query: { view: "inbox" }, owner: "test" }];
+    expect(matchesWorkModeRoute(entries, "/teaching/example", new URLSearchParams("view=inbox&as=supervisor"))).toBe(
+      true,
+    );
+    expect(matchesWorkModeRoute(entries, "/teaching/example", new URLSearchParams("view=overview"))).toBe(false);
+    expect(matchesWorkModeRoute(entries, "/teaching/example")).toBe(false);
+  });
+
+  it("leaves every Assessments example screen open to classic readers, who include every signed-out reader", () => {
+    for (const href of [
+      "/teaching/assessments",
+      "/teaching/assessments?view=inbox&as=supervisor",
+      "/teaching/assessments?view=overview",
+      "/teaching/assessments/record",
+      "/teaching/assessments/help",
+      "/teaching/assessments/export",
+      "/teaching/assessments/trainee",
+      "/teaching/assessments/trainee/ash",
+    ]) {
+      expect(workModeRouteHidden(href, classic)).toBe(false);
+    }
   });
 
   it("keeps My Day's Notifications pages from classic readers", () => {

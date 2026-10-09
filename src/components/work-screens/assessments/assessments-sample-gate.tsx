@@ -1,6 +1,6 @@
 "use client";
 
-import { AssessmentsSupervisorBack } from "@/components/work-screens/assessments/assessments-back";
+import { AssessmentsBack } from "@/components/work-screens/assessments/assessments-back";
 import type { ReactNode } from "react";
 
 import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
@@ -12,8 +12,9 @@ import { useExampleData } from "@/lib/example-data/store";
 /**
  * Assessment records stay in CLA, so its Export and trainee screens are example only: signed in they
  * say where the records are kept, and signed out the shared `ExampleOnlyGate` shows them while the
- * Assessments example data is on, and otherwise says plainly they are not connected. The local demo build always shows them. The frame's
- * example data banner labels the records, so this adds no banner of its own.
+ * Assessments example data is on, and otherwise says plainly they are an example only, with real
+ * records in CLA. The local demo build always shows them. The frame's example data banner labels the
+ * records, so this adds no banner of its own.
  */
 export function AssessmentsSampleGate({
   demoMode,
@@ -21,7 +22,7 @@ export function AssessmentsSampleGate({
   render,
 }: {
   readonly demoMode: boolean;
-  /** For the gate's sentence, "<what> is not connected yet". */
+  /** For the gate's sentence, "<what> is an example only". */
   readonly what: string;
   readonly render: () => ReactNode;
 }) {
@@ -30,7 +31,7 @@ export function AssessmentsSampleGate({
   if (demoMode)
     return (
       <>
-        <AssessmentsSupervisorBack />
+        <AssessmentsBack />
         {render()}
       </>
     );
@@ -39,7 +40,7 @@ export function AssessmentsSampleGate({
   if (access === "loading")
     return (
       <>
-        <AssessmentsSupervisorBack />
+        <AssessmentsBack />
         <WorkScreenLoading label="Loading Assessments" testId="work-screens-assessments-gate-loading" rows={3} />
       </>
     );
@@ -47,7 +48,7 @@ export function AssessmentsSampleGate({
   if (access === "signed-in")
     return (
       <>
-        <AssessmentsSupervisorBack />
+        <AssessmentsBack />
         <main className="min-w-0" data-testid="work-screens-assessments-not-kept">
           <WorkBody>
             <AssessmentsKeptInCla />
@@ -58,14 +59,14 @@ export function AssessmentsSampleGate({
   if (active)
     return (
       <>
-        <AssessmentsSupervisorBack />
+        <AssessmentsBack />
         {render()}
       </>
     );
   // Off: the shared gate draws its "not connected" notice, inside the page's own frame.
   return (
     <>
-      <AssessmentsSupervisorBack />
+      <AssessmentsBack />
       <main className="min-w-0" data-testid="work-screens-assessments-not-kept">
         <WorkBody>
           <ExampleOnlyGate area="assess" what={what}>

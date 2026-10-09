@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { WORK_CAPABILITIES, WORK_CAPABILITY_RULES } from "@/lib/work-roles/model";
 
 // work_can() in SQL and decideWorkCapability() in TypeScript must give the same answers.
-const sql = readFileSync(join(process.cwd(), "supabase/migrations/20261009010000_work_roles.sql"), "utf8");
+const sql = readFileSync(join(process.cwd(), "supabase/migrations/20261009070000_work_roles.sql"), "utf8");
 
 function sqlRule(capability: string) {
   const line = sql.split("\n").find((text) => text.trim().startsWith(`when '${capability}' then`));

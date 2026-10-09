@@ -401,7 +401,7 @@ export function PaperworkField({
   readonly label: string;
   readonly value: string;
   readonly onChange: (value: string) => void;
-  readonly type?: "text" | "date" | "number" | "email" | "url";
+  readonly type?: "text" | "date" | "time" | "number" | "email" | "url";
   readonly inputMode?: "decimal" | "numeric" | "email" | "url" | "text";
   readonly maxLength?: number;
   readonly hint?: string;

@@ -33,6 +33,13 @@ describe("feature pages in Search my work", () => {
     expect(own.some((page) => page.label.includes("Dr Example"))).toBe(false);
   });
 
+  it("offers the Assessments example screens to signed-out readers only", () => {
+    const isAssessments = (page: WorkSearchPage) => page.href.startsWith("/teaching/assessments");
+    expect(featureSearchPages(null).filter(isAssessments).length).toBeGreaterThan(0);
+    expect(featureSearchPages({ entries: [], applications: applications() }).some(isAssessments)).toBe(false);
+    expect(featureSearchPages({ entries: null, applications: null }).some(isAssessments)).toBe(false);
+  });
+
   it("never offers the discreet leave card", () => {
     const leave = featureSearchPages(null).filter((page) => page.href.startsWith("/admin/leave"));
     expect(leave.length).toBeGreaterThan(1);
