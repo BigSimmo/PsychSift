@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-08"
+    "committed_at": "2026-10-09"
   },
   "routes": {
     "modes": [
@@ -1843,6 +1843,10 @@
       {
         "path": "/api/roster/owner/teams",
         "file": "src/app/api/roster/owner/teams/route.ts"
+      },
+      {
+        "path": "/api/work/roles",
+        "file": "src/app/api/work/roles/route.ts"
       },
       {
         "path": "/api/roster/extra-time",
@@ -18623,6 +18627,14 @@
         "scope": "branch-cleanup",
         "outcome": "exact merged PR #1481 head; inactive clean worktree archived in verified batch1 bundle",
         "checks": "GitHub merged exact head, clean status, no Git operation, no open PR claim, bundle verify ok SHA256 18D9CFFD334278987D8FCCBED5F34125148BFF98C83D39287268103A5326BD2A"
+      },
+      {
+        "date": "2026-10-09",
+        "ref": "codex/chat-context7-docs-repair-2e43",
+        "head": "9ed0de528f2ba9720008865866788c91e5477b61",
+        "scope": "context7-documentation-publication",
+        "outcome": "Addressed ten documentation audit recommendations and three baseline-confirmed Windows test path failures; preserved clinical, retrieval and immutable-ledger controls",
+        "checks": "Whole format and selected static guards/lint passed; typecheck passed with 8GB heap after initial 4GB OOM; full unit run 27410 passed, 5 failed, 93 skipped; all failed cases and link checker rerun passed 90/90; build passed in isolated D checkout; fixture checks passed with existing medication sign-off hash warning; no live provider eval or browser validation"
       },
       {
         "date": "2026-08-12",

@@ -450,6 +450,12 @@ map each mode's existing selectors (Admin's `today-selectors`, On Call notificat
 progress, CPD routines and drafts, Teaching's needs-you counts) onto items, and
 `use-my-day-items.ts` merges them for the `/my-day` page and the home card. Read-only; nothing stored.
 
+**Work roles.** `src/lib/work-roles/` is the one hospital-side role and permission model for work mode
+(site administrator, Medical Workforce, DCT, supervisor or assessor, roster manager). `model.ts` holds the
+pure rules (`decideWorkCapability`, `decideGrantWorkRole`), `server.ts` reads a person's roles and exposes
+`can()` plus `canManageCourses`, `canManageRotations` and `canReviewAssessments` for routes, and
+`use-work-roles.ts` is the client hook behind `/api/work/roles`, for choosing what to show only.
+
 **Work choices sync.** `src/lib/work-sync/` copies a few device-kept work choices (saved work pages,
 My Day's hidden cards, moved-to-tomorrow items and quick note; `sections.ts`) to the account and back.
 The device stores stay what the pages read; `work-sync-client.ts`, started by
