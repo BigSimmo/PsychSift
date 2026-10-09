@@ -111,10 +111,11 @@ describe("the real queue", () => {
       .filter((family) => SIGN_OFF_TODAY_FAMILY_ORDER.includes(family.id))
       .flatMap((family) => family.rows)
       .filter((item) => item.signOff !== null);
-    // Measured 2026-10-06. Statutory forms are signed, and every record still
-    // waiting is an Indigenous governance hold or has no sign-off tool. A new
-    // signable record should update this pin rather than silently stay at zero.
-    expect(signable).toEqual([]);
+    // Measured 2026-10-09. Statutory forms are signed. The 22 Therapy records
+    // that gained guideline references on 2026-10-09 are the only signable
+    // rows; everything else still waiting is an Indigenous governance hold or
+    // has no sign-off tool. A change in this set should update this pin.
+    expect(signable.map((item) => item.family)).toEqual(Array(22).fill("therapy"));
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {

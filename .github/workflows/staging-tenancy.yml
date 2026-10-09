@@ -16,14 +16,7 @@ jobs:
   cross-tenant:
     name: Cross-tenant staging harness
     runs-on: ubuntu-24.04
-    # Job ceiling stays above the scheduled step's 15-minute `timeout` so a hung harness
-    # exits as a failed step (absorbable by continue-on-error) instead of GitHub killing the
-    # whole job — which continue-on-error cannot soften and which would still fail the run.
-    timeout-minutes: 45
-    # The routing job reads the harness step's own outcome, because a continue-on-error step
-    # leaves the job reporting `success` through `needs`.
-    outputs:
-      harness: ${{ steps.harness.outcome }}
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -44,15 +37,7 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev
 
-      # REPORTS, NEVER BLOCKS, ON THE NIGHTLY SCHEDULE (ledger #HYSWAF, owner decision 2026-10-09).
-      # Railway "Wait for CI" skips a production deploy when any Actions run on the waiting commit
-      # concludes failure, and this scheduled run checks out main HEAD. It is red every night until
-      # staging tracks main (#057), so without this a merge landing near 18:30Z would not deploy.
-      # A failure still shows as a failed step and still opens the pinned, assigned issue below.
-      # A dispatched run, a deliberate proof, stays blocking.
       - name: Run cross-tenant staging checks
-        id: harness
-        continue-on-error: ${{ github.event_name == 'schedule' }}
         env:
           CROSS_TENANT_STAGING_APP_URL: ${{ secrets.CROSS_TENANT_STAGING_APP_URL }}
           CROSS_TENANT_SUPABASE_URL: ${{ secrets.CROSS_TENANT_SUPABASE_URL }}
@@ -67,14 +52,7 @@ jobs:
           CROSS_TENANT_EVIDENCE_PATH: artifacts/staging-tenancy-evidence.json
           CROSS_TENANT_CHECKOUT_COMMIT_SHA: ${{ github.sha }}
           CROSS_TENANT_WORKFLOW_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        # On schedule, cap the step below the job timeout so a hang becomes a failed step
-        # (continue-on-error) rather than a job-level cancel that still fails the workflow.
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            timeout 15m npm run test:cross-tenant:staging
-          else
-            npm run test:cross-tenant:staging
-          fi
+        run: npm run test:cross-tenant:staging
 
       - name: Upload tenancy evidence
         if: always()
@@ -109,8 +87,7 @@ jobs:
       - name: Open, update or close the pinned tenancy issue
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          # A failed harness step reads `failure` here even when continue-on-error kept the job green.
-          HARNESS_RESULT: ${{ needs.cross-tenant.result == 'success' && needs.cross-tenant.outputs.harness || needs.cross-tenant.result }}
+          HARNESS_RESULT: ${{ needs.cross-tenant.result }}
         with:
           script: |
             // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
