@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "dd027608-b7dd-488e-b18d-567eae4eadf1",
+  "createdOn": "2026-10-09",
+  "action": "update",
+  "payload": {
+    "id": "#46VNY9",
+    "detail": "UPDATE 2026-10-09: the repair migration supabase/migrations/20260926170000_repair_import_stamped_locally_reviewed.sql merged to main in PR #3111 (2026-09-27). Merging to main applies migrations to the live database, so it should already have run, but live application is NOT verified. Next action, provider-backed so it needs owner approval: confirm the post-merge live-drift run for that commit passed both check:drift and check:migration-history, then read the 1,935 documents' validation basis to confirm the relabel landed. Close this and #JYH1FH only after both checks. PRIOR DETAIL: UPDATE 2026-10-06: SQL migration supabase/migrations/20260926170000_repair_import_stamped_locally_reviewed.sql is written, dry-run verified, and tested offline. Awaits live Supabase execution to update the 1,935 rows. Close this and #JYH1FH once applied.",
+    "baseRowFingerprint": "bf28da6aea4337e3edbfe32bbb1a148a6cf6ba366d29438c3d6e388a8fdafc1a"
+  }
+}
