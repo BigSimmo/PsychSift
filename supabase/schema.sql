@@ -26560,11 +26560,14 @@ returns jsonb
 language plpgsql security invoker set search_path = '' as $$
 declare
   v_booking public.work_course_bookings;
+  v_course_date date;
   v_promoted integer := 0;
 begin
   if p_actor_id is null then raise exception 'work_bookings_auth_required'; end if;
-  perform 1 from public.work_booking_courses where id = p_course_id for update;
+  select course_date into v_course_date from public.work_booking_courses where id = p_course_id for update;
   if not found then raise exception 'work_bookings_not_found'; end if;
+  -- Once the day comes the place is kept, so no one is moved off the waitlist onto a past course.
+  if v_course_date <= public.work_bookings_today() then raise exception 'work_bookings_started'; end if;
   select * into v_booking from public.work_course_bookings
    where course_id = p_course_id and owner_id = p_actor_id and status in ('booked', 'waitlisted');
   if not found then raise exception 'work_bookings_not_found'; end if;
@@ -26646,7 +26649,7 @@ begin
     raise exception 'work_bookings_role_denied';
   end if;
   if v_before.status = 'cancelled' then raise exception 'work_bookings_course_cancelled'; end if;
-  if p_service_id is distinct from v_before.service_id then raise exception 'work_bookings_invalid_request'; end if;
+  -- The team is fixed once a course exists, so an edit's p_service_id is not used.
   -- A closing day already past may stay as it was saved (validateCourseDraft savedClosesOn),
   -- but cannot be moved to another past day.
   if p_closes_on is not null and p_closes_on < v_today and p_closes_on is distinct from v_before.closes_on then

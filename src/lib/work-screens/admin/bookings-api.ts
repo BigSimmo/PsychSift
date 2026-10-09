@@ -138,3 +138,9 @@ export function invalidCourseResponse(errors: CourseDraftErrors): Response {
     { status: 400 },
   );
 }
+
+/** The 400 for a "Posted by" name that looks like patient details. Doctors see it on every course. */
+export function invalidOrganiserResponse(): Response {
+  const message = "Posted by should be a team or department name, with no patient details.";
+  return NextResponse.json({ error: message, message, code: "work_bookings_invalid_course" }, { status: 400 });
+}

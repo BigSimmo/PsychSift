@@ -615,7 +615,8 @@ function CourseDetail({
             {availability === "book" ? "Book a place" : "Join the waitlist"}
           </WorkButton>
         </WorkDock>
-      ) : availability === "booked" || availability === "waitlisted" ? (
+      ) : (availability === "booked" || availability === "waitlisted") && course.date > today ? (
+        // From the course day the place is kept: the server refuses a cancel then too.
         <WorkDock>
           <WorkButton
             variant="secondary"

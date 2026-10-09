@@ -355,7 +355,7 @@ export function draftFromCourse(course: BookingCourse): CourseDraft {
 }
 
 export type CourseDraftField =
-  "title" | "about" | "date" | "startTime" | "endTime" | "location" | "capacity" | "closesOn";
+  "title" | "about" | "date" | "startTime" | "endTime" | "location" | "capacity" | "closesOn" | "renewal";
 export type CourseDraftErrors = Partial<Record<CourseDraftField, string>>;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -391,7 +391,7 @@ export function validateCourseDraft(
     else if (DATE.test(draft.date) && draft.closesOn > draft.date)
       errors.closesOn = "Close booking on or before the day.";
   }
-  for (const field of ["title", "about", "location"] as const) {
+  for (const field of ["title", "about", "location", "renewal"] as const) {
     if (errors[field]) continue;
     const warning = checkPatientDetail(draft[field], { allowCapitals: true });
     if (!warning) continue;

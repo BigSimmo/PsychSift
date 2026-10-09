@@ -1,8 +1,10 @@
 import { hasDraftErrors } from "@/lib/work-screens/admin/bookings";
 import { parseJsonBody } from "@/lib/validation/body";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import {
   coursesActionSchema,
   invalidCourseResponse,
+  invalidOrganiserResponse,
   serverCourseDraftErrors,
   withBookingsApi,
 } from "@/lib/work-screens/admin/bookings-api";
@@ -25,6 +27,7 @@ export async function POST(request: Request) {
     }
     const errors = serverCourseDraftErrors(body.draft, { editing: body.courseId !== null });
     if (hasDraftErrors(errors)) return invalidCourseResponse(errors);
+    if (checkPatientDetail(body.organiser, { allowCapitals: true })) return invalidOrganiserResponse();
     const result = await saveSavedCourse(client, actorId, {
       courseId: body.courseId,
       serviceId: body.serviceId,

@@ -698,6 +698,8 @@ function CourseForm({
             onChange={(value) => set("renewal", value)}
             maxLength={60}
             hint="Such as Basic life support. Doctors with that renewal due see it first."
+            error={errors.renewal}
+            checkPatient
             testId="admin-courses-renewal"
           />
         </div>

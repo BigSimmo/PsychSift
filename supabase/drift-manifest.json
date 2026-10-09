@@ -2,7 +2,7 @@
   "generated_at": "2026-10-09T01:30:38.948Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "4bfeb40135298a6826c12e2f5430fcf863237a6f7b56703d37af0c6c0dc6f5a8",
+  "schema_sha256": "5dca3e20be55ca5ac0d6f264930043979411f14dcd5ed8a30bf7fed1f45ff524",
   "replay_seconds": 20,
   "snapshot": {
     "views": [
@@ -19434,7 +19434,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "b4b12bd8ba893a51b0a5eeb9c1b0b3de",
+        "def_hash": "0c76ee8c1181dbac0c7d078352256785",
         "signature": "public.work_cancel_course_booking(uuid,uuid)"
       },
       {
@@ -19450,7 +19450,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "fdb8dc2acc984177211730991608848e",
+        "def_hash": "8739c6fb59725a3a5d85886590a0ebb3",
         "signature": "public.work_save_course(uuid,uuid,uuid,text,text,text,text,date,time without time zone,time without time zone,text,integer,date,text,boolean,boolean)"
       }
     ],
