@@ -4,6 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({ status: "authenticated", authEpoch: 1 }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
+// Teaching's sign-in notice offers the example, which refreshes the server pages.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+}));
 
 import { TeachingCpdReview } from "@/components/teaching/teaching-cpd-review";
 import { TeachingFeedback } from "@/components/teaching/teaching-feedback";
@@ -11,6 +16,7 @@ import { TeachingImport } from "@/components/teaching/teaching-import";
 import { TeachingSupervision } from "@/components/teaching/teaching-supervision";
 import { TeachingTeach } from "@/components/teaching/teaching-teach";
 import { useDelayedPost } from "@/components/teaching/use-delayed-post";
+import { resetExampleDataForTests, setExampleDataOn, useExampleData } from "@/lib/example-data/store";
 import { demoFeedbackOpen, demoSupervision } from "@/lib/teaching/depth-demo";
 import { IMPORT_TEMPLATE_HEADERS, readinessLabels } from "@/lib/teaching/depth-model";
 import { entry, pairingView, NOTE } from "./helpers/teaching-depth-fixtures";
@@ -388,5 +394,42 @@ describe("Teaching depth journeys", () => {
     expect(screen.getByRole("button", { name: "career" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "risk" }));
     expect(screen.getByRole("button", { name: "career" })).toBeEnabled();
+  });
+});
+
+describe("Registrar supervision for a signed-out reader in the Assessments example", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    resetExampleDataForTests();
+    auth.status = "signed_out";
+  });
+  afterEach(() => {
+    window.localStorage.clear();
+    resetExampleDataForTests();
+  });
+
+  it("shows the Teaching example, not a sign-in notice, before the server knows the switch is on", async () => {
+    // The server read no example cookie yet (demoMode false), but the one switch is on for Assessments
+    // and Teaching alike, so the page follows it at once and reads nothing from the account.
+    expect(renderHook(() => useExampleData("assess")).result.current.active).toBe(true);
+    render(<TeachingSupervision demoMode={false} />);
+    expect((await screen.findAllByText("Dr Demo Supervisor")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Registrar supervision" })).toBeInTheDocument();
+    expect(screen.queryByText("Sign in to see your teaching")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("shows the same with the example explicitly on", async () => {
+    act(() => setExampleDataOn(true));
+    render(<TeachingSupervision demoMode={false} />);
+    expect((await screen.findAllByText("Dr Demo Supervisor")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Sign in to see your teaching")).toBeNull();
+  });
+
+  it("asks a signed-out reader to sign in only once they turn the example off", async () => {
+    act(() => setExampleDataOn(false));
+    vi.mocked(fetch).mockImplementation(async () => reply({ error: "Sign in" }, 401));
+    render(<TeachingSupervision demoMode={false} />);
+    expect(await screen.findByText("Sign in to see your teaching")).toBeInTheDocument();
   });
 });

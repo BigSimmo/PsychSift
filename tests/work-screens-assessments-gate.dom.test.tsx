@@ -66,9 +66,12 @@ describe("Assessments example-only gate", () => {
     auth.status = "signed_out";
     act(() => setExampleDataOn(false));
     renderGate();
-    expect(screen.getByTestId("work-screens-assessments-not-kept")).toHaveTextContent(
-      "Assessments Export is not connected yet",
-    );
+    // Records stay in CLA, so the gate says so rather than "not connected yet" or "still being built".
+    const notice = screen.getByTestId("work-screens-assessments-not-kept");
+    expect(notice).toHaveTextContent("Assessments Export is an example only");
+    expect(notice).toHaveTextContent("Real records stay in CLA. You can see how it works with example data.");
+    expect(notice).not.toHaveTextContent(/not connected|still being built/);
+    expect(screen.getByTestId("example-only-gate-look")).toBeInTheDocument();
   });
 
   it("goes straight to the records in the demo, whatever the sign-in status", () => {

@@ -285,7 +285,7 @@ function Milestones({ term, today, update }: { term: TermRecord; today: string; 
       <T5Section
         label="Term assessments"
         right={
-          <T5Link href={TERM_TRACKER_SOURCES.pmcwaCla} external label="Open CLA ePortfolio, via PMCWA">
+          <T5Link href={TERM_TRACKER_SOURCES.claSignIn} external label="Open Clinical Learning Australia">
             Open CLA
           </T5Link>
         }
@@ -322,8 +322,8 @@ function Milestones({ term, today, update }: { term: TermRecord; today: string; 
         </T5List>
         <T5Note className="mt-2">
           {overdue
-            ? "If the meeting happened, mark it done. If it moved, change the date. Either way, the form itself is completed in your CLA ePortfolio."
-            : "You mark these off here. The assessments themselves are completed and signed in your CLA ePortfolio."}
+            ? "If the meeting happened, mark it done. If it moved, change the date. Either way, the form itself is completed in CLA."
+            : "You mark these off here. The assessments themselves are completed and signed in CLA."}
         </T5Note>
       </T5Section>
     </>
