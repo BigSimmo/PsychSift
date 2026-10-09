@@ -115,8 +115,8 @@ export function AdminCoursesPage() {
                 This is the organiser&apos;s side
               </p>
               <p className="mt-1 text-sm">
-                Medical Education or a team manager posts courses here. You are seeing it with example courses, so you
-                can try posting, editing and cancelling.
+                Medical Education, Medical Workforce, the DCT or a team manager posts courses here. You are seeing it
+                with example courses, so you can try posting, editing and cancelling.
               </p>
             </WorkCard>
           ) : null}
@@ -151,7 +151,7 @@ function NotAnOrganiser() {
       <WorkEmpty
         icon={CalendarDays}
         title="You don't post courses"
-        body="Medical Education and team managers post courses here. Courses posted for you are in Bookings."
+        body="Medical Education, Medical Workforce, the DCT and team managers post courses here. Courses posted for you are in Bookings."
         action={
           <WorkButton href={ADMIN_WORK_SCREEN_HREFS.bookings} testId="admin-courses-to-bookings">
             Bookings
