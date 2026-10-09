@@ -32,7 +32,12 @@ export interface WorkAnswerInput {
   /** The current instant (ms). A shift that has already ended is never "next"; one under way is "on now". */
   readonly now?: number;
   /** The reader's confirmed CPD targets for the year their activities belong to, when read. */
-  readonly cpd: { readonly set: CmeRequirementSet | null; readonly entries: readonly CmeEntry[] } | null;
+  readonly cpd: {
+    readonly set: CmeRequirementSet | null;
+    readonly entries: readonly CmeEntry[];
+    /** The day the pace is worked out from, when not today (CPD's example year has its own). */
+    readonly today?: string;
+  } | null;
 }
 
 export type WorkAnswerIcon =
@@ -780,7 +785,7 @@ function cpdHours(input: WorkAnswerInput): WorkAnswer {
   const pace = cmeWeeklyPace({
     targetHours: set.totalHours,
     loggedHours: status.totalHours,
-    today: input.today,
+    today: input.cpd.today ?? input.today,
     year: set.year,
   });
   return {

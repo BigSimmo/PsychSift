@@ -546,8 +546,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const suggestions = answer || patient || !typed ? [] : suggestQuestions(query.trim());
 
   const close = (navigated: boolean) => {
-    // Search history never keeps a query run over example records.
-    noteClosing(query, epoch, navigated, Date.now(), !records.sample && mayRecordRecentSearches());
+    // Search history never keeps a query run over example records (signed out, or an area showing examples).
+    noteClosing(query, epoch, navigated, Date.now(), !records.anySample && mayRecordRecentSearches());
     // Closed in place (Cancel, Esc, the backdrop): take back the history step the opening added.
     if (!navigated && takeHistoryStep()) window.history.back();
     onClose(navigated);
@@ -582,7 +582,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   };
   const found = hits.length > 0 || pageHits.length > 0 || Boolean(answer && !answer.unavailable);
   const openResult = () => {
-    if (!records.sample && mayRecordRecentSearches()) rememberQuery(query, epoch);
+    if (!records.anySample && mayRecordRecentSearches()) rememberQuery(query, epoch);
     close(true);
   };
   const resetScroll = () => bodyRef.current?.scrollTo({ top: 0 });
@@ -938,7 +938,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               onSubmit={(event) => {
                 event.preventDefault();
                 if (patient) return;
-                if (found && !records.sample && mayRecordRecentSearches()) rememberQuery(query, epoch);
+                if (found && !records.anySample && mayRecordRecentSearches()) rememberQuery(query, epoch);
                 setRecents(keepRecents ? recentsFor(epoch) : []);
                 // With a keyboard and mouse, Enter opens the top result; on a phone it puts the keyboard away.
                 if (usesFinePointer()) {

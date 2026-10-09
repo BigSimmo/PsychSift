@@ -1,6 +1,15 @@
 "use client";
 
-import { ClipboardList, LayoutGrid, PenLine, Scale, ShieldCheck, TriangleAlert, UserCheck } from "lucide-react";
+import {
+  ClipboardList,
+  LayoutGrid,
+  MessageSquare,
+  PenLine,
+  Scale,
+  ShieldCheck,
+  TriangleAlert,
+  UserCheck,
+} from "lucide-react";
 import { useState, type Dispatch } from "react";
 
 import { WorkButton, WorkHero, WorkRing, WorkTag, useWorkUndoToast } from "@/components/mode-kit/work";
@@ -26,7 +35,6 @@ import { withUnit } from "@/components/teaching/teaching-number";
 import { DOMAINS, globalRatingName } from "@/lib/teaching/assessments/content";
 import {
   DCT_FEEDBACK_MAX,
-  GUEST_ASSESSORS,
   IMPROVEMENT_PHASES,
   IMPROVEMENT_PLANS,
   PANEL_DATE,
@@ -36,11 +44,13 @@ import {
   dctForm,
   dctForms,
   dctWaiting,
+  guestAssessors,
   improvementPlan,
   ratingWords,
   type DctAction,
   type DctForm,
   type DctState,
+  type GuestAssessor,
 } from "@/lib/teaching/assessments/dct";
 import { looksLikePatientDetails, todayLabel } from "@/lib/teaching/assessments/model";
 import { overviewDoctors } from "@/lib/teaching/assessments/overview";
@@ -74,6 +84,7 @@ export function DctHome({ s, dct }: DctProps) {
   const behind = dctBehind(s);
   const doctors = overviewDoctors(s).length;
   const signed = forms.length - waiting.length;
+  const guests = guestAssessors(s);
   return (
     <>
       <AssessHeader eyebrow="Director of Clinical Training" title="Assessments" />
@@ -105,11 +116,7 @@ export function DctHome({ s, dct }: DctProps) {
               title={`${f.doctor} · ${f.term.split(" · ")[0]}`}
               subtitle={formLine(f)}
               tag={
-                f.responseOpen ? (
-                  <WorkTag tone="amber">{`Reply until ${f.responseUntil}`}</WorkTag>
-                ) : (
-                  <WorkTag tone="mode">Sign</WorkTag>
-                )
+                f.responseOpen ? <WorkTag tone="amber">Can still reply</WorkTag> : <WorkTag tone="mode">Sign</WorkTag>
               }
               href={viewHref("dctsign", { ...asDct, id: f.id })}
             />
@@ -161,7 +168,7 @@ export function DctHome({ s, dct }: DctProps) {
           icon={UserCheck}
           title="Guest assessors"
           subtitle="Waiting for the MEU to approve them"
-          tag={<WorkTag tone="neutral">{String(GUEST_ASSESSORS.length)}</WorkTag>}
+          tag={<WorkTag tone="neutral">{String(guests.length)}</WorkTag>}
           onClick={() => setSheet("guests")}
         />
         <Row
@@ -180,7 +187,7 @@ export function DctHome({ s, dct }: DctProps) {
         title={sheet === "guests" ? "Guest assessors" : "Assessment Review Panel"}
       >
         <div data-mode-identity="teaching" data-work-frame="" className="contents">
-          {sheet === "guests" ? <GuestAssessors /> : null}
+          {sheet === "guests" ? <GuestAssessors guests={guests} /> : null}
           {sheet === "panel" ? <PanelFacts /> : null}
         </div>
       </Sheet>
@@ -188,16 +195,16 @@ export function DctHome({ s, dct }: DctProps) {
   );
 }
 
-function GuestAssessors() {
+function GuestAssessors({ guests }: { guests: readonly GuestAssessor[] }) {
   return (
     <div className="grid gap-3" data-testid="assess-dct-guests">
       <List label="Guest assessors">
-        {GUEST_ASSESSORS.map((g) => (
+        {guests.map((g, i) => (
           <Row
-            key={g.name}
+            key={`${g.name ?? g.role}-${i}`}
             icon={UserCheck}
             iconTone="amber"
-            title={`${g.name}, ${g.role.toLowerCase()}`}
+            title={g.name ? `${g.name}, ${g.role.toLowerCase()}` : g.role}
             subtitle={g.what}
             tag={<WorkTag tone="amber">Unapproved</WorkTag>}
           />
@@ -285,9 +292,16 @@ export function DctSignoff({ s, params, dct, dctDispatch, go }: DctProps) {
           <Row
             key={d.n}
             title={`${d.n}. ${d.title}`}
+            subtitle={form.feedback[d.n] ? `"${form.feedback[d.n]}"` : undefined}
             tag={<WorkTag tone="neutral">{ratingWords(form.ratings[d.n])}</WorkTag>}
           />
         ))}
+      </List>
+      {/* The whole AMC term form, so nothing on it is unread before the DCT signs (site audit A5). */}
+      <SectionLabel>{`${form.supervisor}'s comments`}</SectionLabel>
+      <List label="Supervisor's comments">
+        <Row icon={MessageSquare} title="Strengths" subtitle={form.strengths || "None written"} />
+        <Row icon={MessageSquare} title="Areas for improvement" subtitle={form.areas || "None written"} />
       </List>
       {form.global === "cond" || form.global === "unsat" || form.ipap ? (
         <AssessCallout icon={TriangleAlert} tone="amber" title="Check the plan first">
@@ -308,10 +322,11 @@ export function DctSignoff({ s, params, dct, dctDispatch, go }: DctProps) {
         <StepRow
           state={form.responseOpen ? "lock" : "ok"}
           title={form.responseOpen ? `${first} can still reply in writing` : `No written reply from ${first}`}
+          // The AMC form says "within 14 days" and not when they start, so no last day is shown (rules audit U8).
           detail={
             form.responseOpen
-              ? `Until ${form.responseUntil}. A doctor who disagrees has ${RESPONSE_DAYS} days to write to you.`
-              : `The ${RESPONSE_DAYS} days ended ${form.responseUntil}.`
+              ? `A doctor who disagrees can write to you within ${RESPONSE_DAYS} days (your MEU says when the ${RESPONSE_DAYS} days start).`
+              : `The ${RESPONSE_DAYS} days have ended.`
           }
         />
         <StepRow
@@ -321,28 +336,26 @@ export function DctSignoff({ s, params, dct, dctDispatch, go }: DctProps) {
         />
       </List>
       {done ? (
+        // Undo lasts a few seconds. After that, as in CLA, only the MEU can return a submitted form to draft
+        // (CLA detailed FAQs v2.0, p.8, and the doctors' training guide, p.19).
         <AssessCallout
           icon={ShieldCheck}
           tone="neutral"
           title={`Signed off ${done.date}`}
           role="status"
           testId="assess-dct-signed"
-          action={
-            <WorkButton
-              variant="secondary"
-              onClick={() => {
-                dctDispatch({ type: "dct-unsign", id: form.id });
-                setNote(null);
-              }}
-            >
-              Take back
-            </WorkButton>
-          }
         >
-          {done.feedback ? `Your feedback: "${done.feedback}"` : "No feedback added."}
+          {`${done.feedback ? `Your feedback: "${done.feedback}"` : "No feedback added."} To change it now, ask your MEU to return it to draft.`}
         </AssessCallout>
       ) : (
         <>
+          {form.responseOpen ? (
+            // AMC term assessment form: the doctor "may respond in writing to the Director of Clinical Training
+            // within 14 days". The source does not say whether the DCT signs before or after that.
+            <AssessNote>
+              {`Signing off now doesn't close ${first}'s reply. ${first} can still write to you within the ${RESPONSE_DAYS} days.`}
+            </AssessNote>
+          ) : null}
           <AssessTextField
             id="assess-dct-feedback"
             label={`Feedback for ${first} (optional)`}

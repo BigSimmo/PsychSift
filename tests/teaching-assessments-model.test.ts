@@ -72,7 +72,7 @@ describe("Teaching assessments: home on Mon 5 Oct (week 6)", () => {
   it("shows 2 doctor actions: EPA 1 and starting the end-of-term", () => {
     expect(doctorActions(s)).toBe(2);
     expect(stage(s)).toBe("start");
-    expect(endOfTermLine(s)).toBe("Rate yourself first (optional), then ask Dr Wattle");
+    expect(endOfTermLine(s)).toBe("Rate yourself (optional), then tell Dr Wattle you're ready");
     expect(endOfTermPill(s)).toEqual({ label: "Not started", tone: "accent" });
   });
 
@@ -136,7 +136,7 @@ describe("Teaching assessments: the end-of-term story", () => {
   it("marks the supervisor's form as a draft once she saves part of it", () => {
     const s = run({ type: "send-request" }, { type: "set-rating", who: "sup", domain: 1, rating: 4 });
     expect(stage(s)).toBe("sup-draft");
-    expect(endOfTermLine(s)).toBe("Sent to Dr Wattle. She's preparing her view.");
+    expect(endOfTermLine(s)).toBe("Told Dr Wattle. She's preparing her view.");
   });
 
   it("counts nothing for the doctor once the meeting is booked and EPA 1 is requested", () => {
@@ -158,33 +158,41 @@ describe("Teaching assessments: the end-of-term story", () => {
 
   it("gives the doctor a turn to sign after the supervisor signs", () => {
     const s = storyTo("sup-signed");
-    expect(endOfTermPill(s)).toEqual({ label: "Your turn to sign", tone: "warm" });
-    expect(endOfTermLine(s)).toBe("Dr Wattle has signed. Read your report and sign.");
+    expect(endOfTermPill(s)).toEqual({ label: "Your turn to acknowledge", tone: "warm" });
+    expect(endOfTermLine(s)).toBe("Dr Wattle has submitted it. Read your report and acknowledge it.");
   });
 
-  it("never says sent until the doctor emails the PDF", () => {
+  it("waits for DCT sign-off once both have signed, with no email step", () => {
     const signed = storyTo("doc-signed");
-    expect(endOfTermPill(signed)).toEqual({ label: "Not sent yet", tone: "warm" });
-    expect(doctorActions(signed)).toBe(2); // EPA 1 still needed, and the email
-    const sent = assessmentsReducer(signed, { type: "sent-to-meu" });
-    expect(endOfTermLine(sent)).toBe("Emailed to your MEU. The DCT countersigns next.");
-    expect(endOfTermPill(sent)).toEqual({ label: "Awaiting DCT countersign", tone: "neutral" });
+    expect(endOfTermPill(signed)).toEqual({ label: "Awaiting DCT sign-off", tone: "neutral" });
+    expect(endOfTermLine(signed)).toBe("You've acknowledged it. The DCT signs off next.");
+    expect(doctorActions(signed)).toBe(1); // EPA 1 still needed, nothing to email
+    const off = { date: "Mon 9 Nov" };
+    expect(endOfTermPill(signed, off)).toEqual({ label: "DCT signed off", tone: "ok" });
+    expect(endOfTermLine(signed, off)).toBe("DCT sign-off done Mon 9 Nov.");
   });
 
-  it("lists eight steps with the DCT countersign never done here", () => {
+  it("lists seven steps ending with DCT sign-off in CLA", () => {
     const steps = endOfTermSteps(initialAssessmentsState());
-    expect(steps).toHaveLength(8);
+    expect(steps).toHaveLength(7);
     expect(currentStepNumber(steps)).toBe(1);
-    const sent = endOfTermSteps(assessmentsReducer(storyTo("doc-signed"), { type: "sent-to-meu" }));
-    expect(sent.at(-1)).toMatchObject({ state: "lock", title: "DCT countersigns" });
-    expect(currentStepNumber(sent)).toBe(8);
+    const signed = endOfTermSteps(storyTo("doc-signed"));
+    expect(signed.slice(-3).map((x) => x.title)).toEqual([
+      "Dr Wattle submits it in CLA",
+      "You acknowledge it in CLA",
+      "DCT sign-off in CLA",
+    ]);
+    expect(signed.at(-1)).toMatchObject({ state: "now" });
+    expect(currentStepNumber(signed)).toBe(7);
+    const off = endOfTermSteps(storyTo("doc-signed"), { date: "Mon 9 Nov" });
+    expect(off.at(-1)).toMatchObject({ state: "ok", detail: "Mon 9 Nov" });
+    expect(currentStepNumber(off)).toBe(7);
   });
 
   it("dates the request on the made-up day it was sent and never claims a real email", () => {
     const s = run({ type: "set-now", now: 1 }, { type: "send-request" }, { type: "set-now", now: 4 });
-    expect(endOfTermSteps(s)[1]).toMatchObject({ state: "ok", detail: "Sent Tue 27 Oct" });
-    const sent = endOfTermSteps(assessmentsReducer(storyTo("doc-signed"), { type: "sent-to-meu" }));
-    expect(sent[6].detail).toBe("Marked as sent (made-up)");
+    expect(endOfTermSteps(s)[1]).toMatchObject({ state: "ok", detail: "Told her Tue 27 Oct" });
+    expect(endOfTermSteps(storyTo("doc-signed")).some((x) => /email/i.test(x.title + x.detail))).toBe(false);
   });
 
   it("flags a late supervisor from Thu 5 Nov", () => {
@@ -260,7 +268,8 @@ describe("Teaching assessments: the form", () => {
       { type: "set-rating", who: "sup", domain: 4, rating: 2 },
       { type: "set-feedback", who: "sup", domain: 4, value: "" },
     );
-    expect(formBlockers(s.sup, "sup")).toEqual(["Add feedback for domain 4.", "Tick to notify the MEU."]);
+    // Telling the MEU about an improvement plan is advice, never a blocker (AMC term assessment form).
+    expect(formBlockers(s.sup, "sup")).toEqual(["Add feedback for domain 4."]);
     const finished = assessmentsReducer(s, { type: "form-finish", who: "sup" });
     expect(finished.sup.status).toBe("draft");
   });
@@ -370,9 +379,10 @@ describe("Teaching assessments: post-build review guards", () => {
     expect(assessmentsReducer(notReady, { type: "book", day: 2, time: "14:30" }).booking).toBeNull();
   });
 
-  it("does not let the supervisor finish before the doctor has asked", () => {
+  it("lets the supervisor start and finish without a request, as in CLA", () => {
     const s = run({ type: "form-example", who: "sup" }, { type: "form-finish", who: "sup" });
-    expect(s.sup.status).toBe("draft");
+    expect(s.sup.status).toBe("done");
+    expect(stage(s)).toBe("ready");
   });
 
   it("turns a finished supervisor form back into a draft if a change leaves a gap", () => {
