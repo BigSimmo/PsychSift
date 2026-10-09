@@ -27,6 +27,8 @@ const mocks = vi.hoisted(() => ({
   state: {
     tables: {} as Record<string, Record<string, unknown>[]>,
     missing: false,
+    /** Auth's user lookup fails, as in an outage. */
+    authDown: false,
     clock: 0,
     beforeUpdate: null as null | (() => void),
     /** Runs as a preference save reaches the database, to stand in for an administrator acting mid-request. */
@@ -71,10 +73,13 @@ function fakeClient() {
   return {
     auth: {
       admin: {
-        getUserById: async (id: string) => ({
-          data: { user: { id, app_metadata: id === SITE_ADMIN ? { site_role: "administrator" } : {} } },
-          error: null,
-        }),
+        getUserById: async (id: string) =>
+          mocks.state.authDown
+            ? { data: { user: null }, error: { message: "unavailable" } }
+            : {
+                data: { user: { id, app_metadata: id === SITE_ADMIN ? { site_role: "administrator" } : {} } },
+                error: null,
+              },
       },
     },
     async rpc(name: string, args: Record<string, unknown>) {
@@ -337,6 +342,7 @@ beforeEach(() => {
   mocks.release.mockReturnValue(true);
   mocks.rate.mockResolvedValue({ limited: false });
   mocks.state.missing = false;
+  mocks.state.authDown = false;
   mocks.state.clock = 0;
   mocks.state.beforeUpdate = null;
   mocks.state.beforeSave = null;
@@ -539,6 +545,14 @@ describe("rotation rounds API: a doctor's own preference", () => {
     expect(created.status).toBe(200);
     const { roundId } = await created.json();
     expect(rounds().find((round) => round.id === roundId)).toMatchObject({ service_id: SERVICE_TWO });
+  });
+
+  it("refuses with 503 rather than guessing when roles cannot be checked", async () => {
+    mocks.state.authDown = true;
+    as(MANAGER);
+    expect((await GET(get())).status).toBe(503);
+    expect((await POST(post({ action: "close" }), context())).status).toBe(503);
+    expect(rounds()[0].status).toBe("open");
   });
 
   it("saves the session user's ranking, and only theirs", async () => {

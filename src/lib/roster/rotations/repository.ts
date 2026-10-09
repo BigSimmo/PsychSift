@@ -151,8 +151,12 @@ export type RoundCommand = z.infer<typeof roundCommandSchema>;
  */
 async function readRoleContext(client: AdminClient, userId: string): Promise<WorkRoleContext> {
   const { data, error } = await client.auth.admin.getUserById(userId);
-  const appMetadata = !error && data?.user?.app_metadata ? data.user.app_metadata : {};
-  return loadWorkRoleContext(client, { id: userId, appMetadata });
+  if (error || !data?.user) {
+    throw new PublicApiError("Your roles could not be checked. Try again shortly.", 503, {
+      code: "work_roles_unavailable",
+    });
+  }
+  return loadWorkRoleContext(client, { id: userId, appMetadata: data.user.app_metadata ?? {} });
 }
 
 function isSiteAdministrator(context: WorkRoleContext): boolean {
@@ -500,7 +504,9 @@ export async function readRotations(client: AdminClient, userId: string): Promis
   ]);
   const preferencesByRound = new Map<string, PreferenceRow[]>();
   for (const pref of [...allPreferences, ...myPreferences]) {
-    preferencesByRound.set(pref.round_id, [...(preferencesByRound.get(pref.round_id) ?? []), pref]);
+    const list = preferencesByRound.get(pref.round_id);
+    if (list) list.push(pref);
+    else preferencesByRound.set(pref.round_id, [pref]);
   }
 
   const mine: MyRound[] = [];
