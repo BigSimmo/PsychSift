@@ -301,6 +301,11 @@ export function CmePlanPage({
             >
               {saving ? "Saving…" : "Save plan"}
             </button>
+            {tooShort ? (
+              <p className={cn(textMuted, "text-center text-xs")}>
+                Each goal must be at least {CME_PLAN_GOAL_MIN_LENGTH} characters.
+              </p>
+            ) : null}
             {savedGoals.length > 0 ? (
               <span className="flex justify-center">
                 <CmeTextLink
@@ -339,25 +344,36 @@ export function CmePlanPage({
                 <p className={cn(textMuted, "text-sm-minus")}>No goals left to carry.</p>
               ) : (
                 <CmeFlatList label={`Goals to carry into ${set.year + 1}`}>
-                  {availableToCarry.map((goal) => (
-                    <CmeFlatRow
-                      key={goal.id}
-                      title={goal.goal}
-                      end={
-                        <button
-                          type="button"
-                          disabled={!targetReady || targetFull || carryingId !== null || demoMode}
-                          onClick={() => void carryGoal(goal)}
-                          className={cn(
-                            focusRing,
-                            "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] hover:underline disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:no-underline",
-                          )}
-                        >
-                          {carryingId === goal.id ? "Carrying…" : `Carry into ${set.year + 1}`}
-                        </button>
-                      }
-                    />
-                  ))}
+                  {availableToCarry.map((goal) => {
+                    const isCarrying = carryingId === goal.id;
+                    const carryBlockedReason = demoMode
+                      ? "Demo mode — carrying goals is disabled"
+                      : targetFull
+                        ? `${set.year + 1} already has the maximum of ${CME_PLAN_GOAL_MAX} goals`
+                        : !targetReady
+                          ? "Target year goals are not loaded yet"
+                          : null;
+                    return (
+                      <CmeFlatRow
+                        key={goal.id}
+                        title={goal.goal}
+                        end={
+                          <button
+                            type="button"
+                            disabled={!targetReady || targetFull || isCarrying || demoMode}
+                            title={carryBlockedReason ?? undefined}
+                            onClick={() => void carryGoal(goal)}
+                            className={cn(
+                              focusRing,
+                              "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] hover:underline disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:no-underline aria-disabled:cursor-not-allowed aria-disabled:text-[color:var(--disabled)] aria-disabled:no-underline",
+                            )}
+                          >
+                            {isCarrying ? "Carrying…" : `Carry into ${set.year + 1}`}
+                          </button>
+                        }
+                      />
+                    );
+                  })}
                 </CmeFlatList>
               )}
               {targetFull ? (

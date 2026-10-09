@@ -45,6 +45,7 @@ import {
   type MedicationGovernance,
 } from "@/lib/medication-badges";
 import {
+  isMaxDoseLabel,
   medicationHeroMetrics,
   medicationIndication,
   type MedicationHeroMetric,
@@ -334,7 +335,28 @@ function MedicationRecordDetail({
   const metrics = useMemo(() => medicationHeroMetrics(record), [record]);
   const badges = useMemo(() => medicationIdentityBadges(record, governance), [record, governance]);
   const indication = useMemo(() => medicationIndication(record), [record]);
-  const sectionsByTab = useMemo(() => medicationSectionsByTab(record), [record]);
+  const sectionsByTab = useMemo(() => {
+    const raw = medicationSectionsByTab(record);
+    const hasMaxDoseElsewhere =
+      metrics.some((m) => isMaxDoseLabel(m.label)) ||
+      record.quick.some((q) => /max.*dose/i.test(q.label) || /max/i.test(q.label));
+
+    if (!hasMaxDoseElsewhere) return raw;
+
+    // #J7RV8Q: Deduplicate maximum dose display on medication tabs.
+    // The maximum dose is already prominently featured in Key figures and Quick reference;
+    // omit the duplicate Maximum Dose row from the Rapid Summary section.
+    return {
+      ...raw,
+      summary: raw.summary.map((section) => {
+        if (section.type !== "summary") return section;
+        return {
+          ...section,
+          rows: section.rows.filter((row) => !/^(?:max(?:imum)?\s+(?:daily\s+)?dose|dose)$/i.test(row.key.trim())),
+        };
+      }),
+    };
+  }, [metrics, record]);
   const activeSections = sectionsByTab[activeTab];
   const activeTabLabel = medicationNavSections.find((section) => section.id === activeTab)?.label ?? "Medication";
 

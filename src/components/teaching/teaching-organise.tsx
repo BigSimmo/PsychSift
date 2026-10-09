@@ -23,6 +23,7 @@ import {
   type SeriesRow,
 } from "@/components/teaching/organise-model";
 import {
+  AttendanceGapsSheet,
   ChangeSheet,
   GroupSheet,
   InviteSheet,
@@ -81,6 +82,7 @@ type Open =
   | { kind: "members" }
   | { kind: "invite" }
   | { kind: "pick" }
+  | { kind: "attendance-gaps" }
   | null;
 
 const HOUR = 3_600_000;
@@ -437,6 +439,13 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                   testId="teaching-organise-download"
                 />
                 <T5Row
+                  title="Attendance gaps"
+                  meta="Enrolled doctors with no check-ins recorded this term"
+                  lead={<T5Icon icon={Users} />}
+                  onClick={() => setOpen({ kind: "attendance-gaps" })}
+                  testId="teaching-organise-attendance-gaps"
+                />
+                <T5Row
                   title="Import a timetable"
                   meta="CSV or XLSX, up to 1 MB. You see a preview before anything saves."
                   lead={<T5Icon icon={Upload} />}
@@ -509,6 +518,9 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
           />
         ) : null}
         {open?.kind === "members" ? <MembersSheet organise={data} onClose={() => setOpen(null)} /> : null}
+        {open?.kind === "attendance-gaps" ? (
+          <AttendanceGapsSheet organise={data} onClose={() => setOpen(null)} />
+        ) : null}
         {open?.kind === "invite" ? (
           <InviteSheet serviceId={service} demo={isDemo} onClose={() => setOpen(null)} />
         ) : null}

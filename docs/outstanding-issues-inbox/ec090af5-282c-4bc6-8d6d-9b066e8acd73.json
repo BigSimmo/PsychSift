@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "ec090af5-282c-4bc6-8d6d-9b066e8acd73",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#V1NYQ0",
+    "outcome": "Resolved: Configured enableAllProjectMcpServers: false in settings and claude_args in .github/workflows/claude-review.yml; verified by tests/claude-review-workflow.test.ts.",
+    "baseRowFingerprint": "a2690926462aeb376ce9793a527d34f6183d894fc4c15608643cb2240b759f18"
+  }
+}

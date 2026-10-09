@@ -4,6 +4,7 @@ import { BookOpen, ChevronDown, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 
 import { Sheet, type SheetMobileSize } from "@/components/ui/sheet";
+import { ToastRegion } from "@/components/ui/toast";
 import { clinicalDivider, cn, iconTilePremium, navPill, panelSubtle, textMuted } from "@/components/ui-primitives";
 
 const sheetMediaQueries = {
@@ -15,6 +16,25 @@ const sheetMediaQueries = {
 type UtilityDrawerSheetBreakpoint = keyof typeof sheetMediaQueries;
 
 export { SectionHeading, type SectionHeadingProps } from "@/components/ui/section-heading";
+export {
+  ToastRegion,
+  ToastRegion as ToastHost,
+  ToastRegion as DashboardToastHost,
+  useToast,
+  useOptionalToast,
+} from "@/components/ui/toast";
+
+/**
+ * #HWYCPF: Shared dashboard shell wrapper mounting ToastRegion for copied feedback.
+ */
+export function DashboardShell({ children }: { children?: ReactNode }) {
+  return (
+    <>
+      {children}
+      <ToastRegion />
+    </>
+  );
+}
 
 export function UtilityDrawer({
   id,
@@ -174,6 +194,7 @@ export function UtilityDrawer({
       <Sheet
         open={usesSheet && open && !mobileInline}
         onClose={() => setOpen(false)}
+        dismissOnBack
         title={title}
         description={sheetDescription === undefined ? (mobileSummary ?? summary) : (sheetDescription ?? undefined)}
         closeLabel={`Close ${title}`}

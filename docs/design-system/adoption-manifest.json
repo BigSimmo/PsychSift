@@ -318,6 +318,7 @@
         "src/components/clinical-dashboard/settings-reminders.tsx",
         "src/components/clinical-dashboard/signed-image.tsx",
         "src/components/cme/cme-annual-summary.tsx",
+        "src/components/cme/cme-claim-pack.tsx",
         "src/components/cme/cme-dashboard.tsx",
         "src/components/cme/cme-drafts-section.tsx",
         "src/components/cme/cme-entry-form.tsx",
@@ -430,6 +431,7 @@
         "src/components/teaching/teaching-teach.tsx",
         "src/components/teaching/teaching-term.tsx",
         "src/components/teaching/teaching-this-week.tsx",
+        "src/components/teaching/teaching-today.tsx",
         "src/components/teaching/teaching-week.tsx",
         "src/components/therapy-compass/pathway-picker-sheet.tsx",
         "src/components/therapy-compass/pathway-step-stack.tsx",
@@ -1750,7 +1752,8 @@
         "tests/sheet.dom.test.tsx",
         "tests/therapy-key-facts.dom.test.tsx",
         "tests/ui-style-contract.spec.ts",
-        "tests/ui-v2-components.dom.test.tsx"
+        "tests/ui-v2-components.dom.test.tsx",
+        "tests/ux-audit-dead-ends-fix.dom.test.tsx"
       ],
       "baseline": {
         "targetLayer": "v2",
@@ -2381,6 +2384,7 @@
         "src/components/teaching/teaching-resources.tsx",
         "src/components/teaching/teaching-session.tsx",
         "src/components/teaching/teaching-states.tsx",
+        "src/components/teaching/teaching-today.tsx",
         "src/components/therapy-compass/pathway-picker-sheet.tsx",
         "src/components/therapy-compass/recommend-scenario-control.tsx",
         "src/components/therapy-compass/record/key-facts.tsx",
@@ -2535,6 +2539,7 @@
         "tests/ui-phone-scroll-page-owned.spec.ts",
         "tests/ui-smoke.spec.ts",
         "tests/ui-style-contract.spec.ts",
+        "tests/ux-audit-dead-ends-fix.dom.test.tsx",
         "tests/viewport-fill-contract.test.ts",
         "tests/xlsx-extraction-budget.test.ts"
       ],
@@ -2976,8 +2981,8 @@
       "source": "src/components/ui/toast.tsx",
       "sourceExported": true,
       "entryExported": true,
-      "directImportFiles": [],
-      "productImportFiles": [],
+      "directImportFiles": ["src/components/clinical-dashboard/dashboard-shell.tsx"],
+      "productImportFiles": ["src/components/clinical-dashboard/dashboard-shell.tsx"],
       "designSync": {
         "listedInSourceMap": true,
         "listedInDtsProps": true,
@@ -2993,8 +2998,8 @@
       },
       "built": true,
       "locallyRegistered": true,
-      "v2ShellMounted": false,
-      "v2MountMode": "none",
+      "v2ShellMounted": true,
+      "v2MountMode": "inherited-global-root",
       "proofDeclared": true,
       "baselineCommitted": false
     },
@@ -6141,7 +6146,7 @@
   "summary": {
     "registeredComponentCount": 55,
     "previewCount": 55,
-    "productImportedComponentCount": 47,
+    "productImportedComponentCount": 48,
     "rootCount": 183,
     "productionRouteCount": 175,
     "nextUiEntryCount": 276

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import JSZip from "jszip";
@@ -9,6 +9,73 @@ const DEFAULT_ZIP = "C:/Users/joshs/AppData/Local/Temp/differentials-data.zip";
 
 function defaultOutputPath() {
   return path.resolve(process.cwd(), "data/differentials-snapshot.json");
+}
+
+function createFallbackFixtureZip(): JSZip {
+  const zip = new JSZip();
+  zip.file(
+    "03_individual_entries/01_delirium.txt",
+    `=== ENTRY 1 ===
+Delirium / Acute Confusion / Encephalopathy
+
+Urgency: emergent
+Axis: organic
+Population: general
+
+TRIAGE RATIONALE:
+Delirium and its encephalopathic mimics are acute medical emergencies.
+
+MUST NOT MISS:
+- Delirium
+
+MIMICS:
+Primary psychosis
+
+CLINICAL HINGE:
+Inattention plus altered awareness.
+
+IMMEDIATE ACTIONS:
+- Do vitals early
+
+INVESTIGATIONS:
+- Blood glucose
+
+OPTIONS:
+1. Delirium — Acute change, fluctuating course. Red flags: Sepsis, hypoxia.
+2. Substance intoxication — Time-link to use. Red flags: Opioid respiratory depression.
+
+SOURCE: v10`,
+  );
+  zip.file(
+    "05_scenario_presets/presets.md",
+    `## 1. Older adult acute confusion
+- **Query:** \`older adult acute confusion\`
+- **Signals:** Older adult onset
+- **Entries:**
+  - Entry 1 — Delirium`,
+  );
+  zip.file(
+    "04_red_flag_flows/flows.md",
+    `## 1. Acute Confusion Red Flag Flow
+Entry 1
+**Bedside questions:** Inattention, acute change
+**Key red flags across options:** Hypoxia, sepsis`,
+  );
+  zip.file(
+    "06_tags_and_search/search_aliases.md",
+    `| Token | Expansion |
+|---|---|
+| delirium | confusion, fluctuation |`,
+  );
+  zip.file(
+    "07_governance/source_info.md",
+    `| Field | Value |
+|---|---|
+| Version | v10 |
+| Review status | Fixture |
+| Source title | Differentials |`,
+  );
+  return zip;
 }
 
 async function readZipText(zip: JSZip, filePath: string) {
@@ -26,8 +93,24 @@ async function main() {
   const write = process.argv.includes("--write");
   const out = defaultOutputPath();
 
-  const buffer = readFileSync(zipPath);
-  const zip = await JSZip.loadAsync(buffer);
+  let zip: JSZip;
+  if (!existsSync(zipPath)) {
+    if (zipArg) {
+      throw new Error(`Specified differentials zip not found: ${zipPath}`);
+    }
+    if (write) {
+      throw new Error(
+        `Cannot write snapshot from fallback fixture: default zip not found at ${DEFAULT_ZIP}. Provide a real export zip via --zip=<path> to write.`,
+      );
+    }
+    console.warn(
+      `[differentials:import] Default source zip not found at ${DEFAULT_ZIP}; using fallback fixture zip for dry run.`,
+    );
+    zip = createFallbackFixtureZip();
+  } else {
+    const buffer = readFileSync(zipPath);
+    zip = await JSZip.loadAsync(buffer);
+  }
 
   const entryFiles: Array<{ name: string; content: string }> = [];
   for (const [name, file] of Object.entries(zip.files)) {

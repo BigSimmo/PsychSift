@@ -164,7 +164,7 @@ export function OpenShiftsPostedPage() {
 
           <div className="mt-6 flex flex-col gap-2 px-3">
             {state.offline ? (
-              <Button variant="secondary" block disabled onClick={() => undefined}>
+              <Button variant="secondary" block disabled>
                 Offline: can&apos;t post
               </Button>
             ) : (

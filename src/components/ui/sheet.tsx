@@ -35,6 +35,8 @@ type SheetAccessibleName =
 type SheetBaseProps = {
   open: boolean;
   onClose: () => void;
+  /** When true, registers a history entry so browser/phone Back dismisses the sheet instead of leaving the page. */
+  dismissOnBack?: boolean;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
@@ -112,6 +114,7 @@ export type SheetProps = SheetBaseProps & SheetAccessibleName;
 export function Sheet({
   open,
   onClose,
+  dismissOnBack = false,
   title,
   description,
   children,
@@ -201,6 +204,34 @@ export function Sheet({
       openFocusRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!open || !dismissOnBack || typeof window === "undefined" || !window.history?.pushState) {
+      return undefined;
+    }
+    const stateKey = `ps_sheet_${sheetId}`;
+    try {
+      window.history.pushState({ [stateKey]: true }, "");
+    } catch {
+      // Ignore storage/history exceptions in restricted embeds
+    }
+
+    const handlePopState = () => {
+      onCloseRef.current();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      try {
+        if (window.history.state?.[stateKey]) {
+          window.history.back();
+        }
+      } catch {
+        // Ignore
+      }
+    };
+  }, [open, dismissOnBack, sheetId]);
 
   // Swipe-to-dismiss for the mobile bottom sheet: dragging the grip down past a
   // threshold closes the sheet; a shorter drag snaps back. Grip-initiated only,

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "1d4997c0-49bb-41d7-b87a-c4931619df74",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#J7RV8Q",
+    "outcome": "Resolved: Removed duplicate Maximum Dose row from Rapid Summary when already rendered in hero figures in src/components/clinical-dashboard/medication-record-page.tsx.",
+    "baseRowFingerprint": "7bd6c1f3c290b209da417f7776089965a00284802ed39aaf441daeffb309dce4"
+  }
+}

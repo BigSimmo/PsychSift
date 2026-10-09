@@ -18,6 +18,7 @@ export const playwrightProjectNames = Object.freeze({
   webkit: "webkit",
   mobileWebkit: "mobile-webkit",
   mobilePwaStandalone: "mobile-pwa-standalone",
+  tablet: "tablet",
 });
 
 const DEFAULT_CONFIG_PROJECTS = Object.freeze({
@@ -28,6 +29,7 @@ const DEFAULT_CONFIG_PROJECTS = Object.freeze({
     playwrightProjectNames.webkit,
     playwrightProjectNames.mobileWebkit,
     playwrightProjectNames.mobilePwaStandalone,
+    playwrightProjectNames.tablet,
   ],
   "playwright.visual.config.ts": [playwrightProjectNames.chromiumArtifacts],
 });
@@ -40,6 +42,7 @@ const PROJECT_BROWSER_FAMILIES = Object.freeze({
   [playwrightProjectNames.webkit]: "webkit",
   [playwrightProjectNames.mobileWebkit]: "webkit",
   [playwrightProjectNames.mobilePwaStandalone]: "webkit",
+  [playwrightProjectNames.tablet]: "webkit",
 });
 
 // Mirrors Playwright's chromium-headless-shell executable table for the

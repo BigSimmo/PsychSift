@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { WaitingOnControls, type WaitingOnValue } from "@/components/cme/cme-drafts-section";
 import { useCmeSample } from "@/components/cme/cme-sample-context";
 import { CmeEntryForm, type CmeEntryDraft } from "@/components/cme/cme-entry-form";
-import { cn, eyebrowText, InlineNotice, textMuted } from "@/components/ui-primitives";
+import { cn, eyebrowText, fieldControlPlain, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/lib/account-scoped-browser-state";
 import type { CmeDraft, CmeDraftPayload } from "@/lib/cme/drafts";
 import { recentRepeatableActivities } from "@/lib/cme/recent-activities";
@@ -82,6 +83,8 @@ export function CmeNewEntryRoute({
   const router = useRouter();
   const sample = useCmeSample();
   const [requestId] = useState(() => crypto.randomUUID());
+  const [isReplacement, setIsReplacement] = useState(Boolean(missedSessionId));
+  const [linkedMissedSessionId, setLinkedMissedSessionId] = useState(missedSessionId ?? "");
   const [waiting, setWaiting] = useState<WaitingOnValue>({
     waitingOn: resumeDraft?.waitingOn ?? null,
     waitingNote: resumeDraft?.waitingNote ?? "",
@@ -140,6 +143,8 @@ export function CmeNewEntryRoute({
 
   async function saveEntry(entry: CmeEntryDraft) {
     if (demoMode) throw new Error("Demo mode is read-only. Sign in to save this activity to a private CPD record.");
+    const effectiveMissedSessionId =
+      isReplacement && linkedMissedSessionId.trim() ? linkedMissedSessionId.trim() : null;
     const response = await fetch("/api/cme/entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -147,14 +152,14 @@ export function CmeNewEntryRoute({
         ...entry,
         requestId,
         ...(resumeDraft ? { draftId: resumeDraft.id } : {}),
-        ...(missedSessionId ? { missedSessionId } : {}),
+        ...(effectiveMissedSessionId ? { missedSessionId: effectiveMissedSessionId } : {}),
       }),
     });
     if (!response.ok) throw new Error(await entrySaveError(response));
     // The activity is saved either way; if the missed session could not be linked to it, say so on
     // the log, so the missed record is not mistaken for replaced and replaced a second time.
     const saved = (await response.json().catch(() => null)) as { linkedMissedSession?: boolean } | null;
-    const missedUnlinked = missedSessionId && saved?.linkedMissedSession === false ? "&missed=unlinked" : "";
+    const missedUnlinked = effectiveMissedSessionId && saved?.linkedMissedSession === false ? "&missed=unlinked" : "";
     router.push(`/cme/log?year=${entry.date.slice(0, 4)}&saved=1${missedUnlinked}`);
     router.refresh();
   }
@@ -178,6 +183,16 @@ export function CmeNewEntryRoute({
 
   return (
     <main className={cn(cmePageWidth, "px-4 py-6 sm:px-6")}>
+      <div className="mb-4">
+        <Link
+          href="/cme/log"
+          className="inline-flex min-h-tap items-center gap-1.5 text-sm font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+          data-testid="cme-new-back"
+        >
+          <ArrowLeft className="size-icon-sm" aria-hidden="true" />
+          Back to CPD log
+        </Link>
+      </div>
       <h1 className={cmePageTitle}>Log an activity</h1>
       <p className={cn(textMuted, "mt-1 text-sm")}>
         What it was, when, how long it ran for, and which category the hours count toward. Nothing is recorded until you
@@ -236,6 +251,37 @@ export function CmeNewEntryRoute({
           </InlineNotice>
         </div>
       ) : null}
+
+      <div className="mt-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4">
+        <label className="flex items-start gap-2.5 cursor-pointer text-sm font-medium text-[color:var(--text)]">
+          <input
+            type="checkbox"
+            checked={isReplacement}
+            onChange={(e) => setIsReplacement(e.target.checked)}
+            className="mt-0.5 rounded border-[color:var(--border)] text-[color:var(--clinical-accent)] focus:ring-[color:var(--focus)]"
+            data-testid="cme-replacement-checkbox"
+          />
+          <span>This activity replaces a missed teaching or supervision session</span>
+        </label>
+        {isReplacement ? (
+          <div className="mt-3 pl-6">
+            <label
+              htmlFor="cme-missed-session-input"
+              className="block text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]"
+            >
+              Missed session ID or reason
+            </label>
+            <input
+              id="cme-missed-session-input"
+              type="text"
+              value={linkedMissedSessionId}
+              onChange={(e) => setLinkedMissedSessionId(e.target.value)}
+              className={cn("mt-1", fieldControlPlain)}
+              data-testid="cme-missed-session-input"
+            />
+          </div>
+        ) : null}
+      </div>
 
       <div className="mt-6">
         <CmeEntryForm

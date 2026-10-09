@@ -142,62 +142,30 @@ const desktopPageComposerMediaQuery = "(min-width: 640px)";
 const modeHomeComposerMediaQuery = "(min-width: 0px)";
 const modeHomeComposerSmUpMediaQuery = "(min-width: 640px)";
 
-export function MasterSearchHeader({
-  demoMode,
-  documents,
-  documentTotal,
-  query,
-  searchMode,
-  loading,
-  selectedDocumentIds,
-  queryMode,
-  scopeFilters,
-  realDataReady,
-  onQueryChange,
-  onSearchModeChange,
-  onAsk,
-  onClearQuery,
-  onClearScope,
-  onQueryModeChange,
-  onScopeFiltersChange,
-  onToggleScope,
-  onScopeOpenChange,
-  onOpenEvidence,
-  onOpenRecentDocuments,
-  onOpenLibrary,
-  onOpenDocumentAdmin,
-  canManageDocuments = false,
-  onOpenSourcePdf,
-  onNewChat,
-  onOpenMobileSidebar,
-  queryModeOptions,
-  queryInputRef,
-  queryInputAutoFocus = false,
-  composerPlaceholder,
-  recentQueries = [],
-  onPickRecent,
-  onCrossModeSearch,
-  composerFollowUpSuggestions,
-  onPickComposerFollowUpSuggestion,
-  composerFollowUpSuggestionsDisabled = false,
-  sharedHomeIdentity = false,
-  mobileSearchPlacement = "default",
-  mobileBottomSearchVariant = "default",
-  mobileHomeComposerPlacement = "hero",
-  desktopSearchPlacement = "default",
-  searchComposerVisible = true,
-  showPhoneSuggestionTickerOnHome = false,
-  desktopHomeComposerSlotId,
-  desktopPageComposerSlotId,
-  heroComposerBreakpoint = "all",
-  mobileBottomSearchAddonSlotId,
-  mobileBottomSearchAddonKind,
-  hideOnScroll,
-  onBottomComposerHiddenChange,
-  showDesktopNewChat = true,
-  canAccessFavourites = false,
-  onRequestAccountSetup,
-}: {
+export type MasterSearchHeaderScrollConfig = {
+  strategy: "overlay" | "collapse";
+  /**
+   * Phone-only motion for collapse-strategy hosts. "collapse" releases the
+   * row's layout height; "overlay" keeps the complete phone stack stable and
+   * translates it over page content. Defaults to "collapse".
+   */
+  phoneMotion?: "collapse" | "overlay";
+  /**
+   * Overlay-only: apply the hide/reveal (and the out-of-flow absolute header)
+   * at every breakpoint instead of phones only. The host must reserve
+   * matching top padding on its scroll container.
+   */
+  allBreakpoints?: boolean;
+  /**
+   * Collapse-only: how the chrome hides above the phone breakpoint. Omitting
+   * it keeps the hide/reveal phone-only.
+   */
+  wide?: "collapse" | "sticky";
+  /** Parent-owned hidden state for hosts that report scroll via React `onScroll`. */
+  scrollHidden?: boolean;
+};
+
+export type MasterSearchHeaderState = {
   demoMode: boolean;
   documents: ClinicalDocument[];
   documentTotal?: number;
@@ -208,6 +176,19 @@ export function MasterSearchHeader({
   queryMode: ClinicalQueryMode;
   scopeFilters: SearchScopeFilters;
   realDataReady: boolean;
+  queryModeOptions: Array<{ value: ClinicalQueryMode; label: string }>;
+  queryInputRef?: RefObject<HTMLInputElement | null>;
+  queryInputAutoFocus?: boolean;
+  /** Overrides the mode's default input placeholder (e.g. "Ask a follow-up..." mid-thread). */
+  composerPlaceholder?: string;
+  recentQueries?: string[];
+  composerFollowUpSuggestions?: string[];
+  composerFollowUpSuggestionsDisabled?: boolean;
+  canAccessFavourites?: boolean;
+  canManageDocuments?: boolean;
+};
+
+export type MasterSearchHeaderActions = {
   onQueryChange: (query: string) => void;
   onSearchModeChange: (mode: AppModeId) => void;
   onAsk: (query?: string) => void;
@@ -227,17 +208,16 @@ export function MasterSearchHeader({
   onOpenSourcePdf?: () => void;
   onNewChat?: () => void;
   onOpenMobileSidebar?: () => void;
-  queryModeOptions: Array<{ value: ClinicalQueryMode; label: string }>;
-  queryInputRef?: RefObject<HTMLInputElement | null>;
-  queryInputAutoFocus?: boolean;
-  /** Overrides the mode's default input placeholder (e.g. "Ask a follow-up..." mid-thread). */
-  composerPlaceholder?: string;
-  recentQueries?: string[];
   onPickRecent?: (query: string) => void;
   onCrossModeSearch?: (modeId: AppModeId, query: string) => void;
-  composerFollowUpSuggestions?: string[];
   onPickComposerFollowUpSuggestion?: (suggestion: string) => void;
-  composerFollowUpSuggestionsDisabled?: boolean;
+  /** Invoked when the user tries to open Favourites without access. */
+  onRequestAccountSetup?: () => void;
+  /** Notify hosts when the phone bottom composer is actually hidden (not merely scrolled). */
+  onBottomComposerHiddenChange?: (hidden: boolean) => void;
+};
+
+export type MasterSearchHeaderMobileControls = {
   /** Keep the product identity stable while `/` retargets between modes. */
   sharedHomeIdentity?: boolean;
   mobileSearchPlacement?: "default" | "bottom";
@@ -268,59 +248,105 @@ export function MasterSearchHeader({
   mobileBottomSearchAddonSlotId?: string;
   /** Which page-owned action occupies the dock addon slot. One at a time. */
   mobileBottomSearchAddonKind?: PhoneDockAddonKind;
-  /** Phone-only hide-on-scroll for the universal header and bottom search dock.
-   *  "overlay" translates the sticky header away (host scrolls the document,
-   *  content already flows beneath); "collapse" also releases the header's
-   *  layout space (host keeps the header above an internally scrolling element).
-   *  The phone bottom search composer hides in sync on search-mode pages.
-   *  Parent hosts with an internally scrolling element pass `scrollHidden` from
-   *  `useScrollHideReporter` wired to that element's scroll events. */
-  hideOnScroll?: {
-    strategy: "overlay" | "collapse";
-    /**
-     * Phone-only motion for collapse-strategy hosts. "collapse" releases the
-     * row's layout height; "overlay" keeps the complete phone stack stable and
-     * translates it over page content. Defaults to "collapse".
-     */
-    phoneMotion?: "collapse" | "overlay";
-    /**
-     * Overlay-only: apply the hide/reveal (and the out-of-flow absolute header)
-     * at every breakpoint instead of phones only. The host must reserve
-     * matching top padding on its scroll container.
-     */
-    allBreakpoints?: boolean;
-    /**
-     * Collapse-only: how the chrome hides above the phone breakpoint. Omitting
-     * it keeps the hide/reveal phone-only.
-     *
-     * "collapse" releases the top bar's layout row at every width — for hosts
-     * whose scrollport is an internal element at every width (ClinicalDashboard's
-     * `<main>`), where the released strip goes straight to the content.
-     *
-     * "sticky" pins an outer stack to the viewport top above phones and still
-     * collapses only the top-bar row inside that stack — for hosts that hand
-     * scrolling back to the document (GlobalSearchShell). Tablet and desktop
-     * result search portal into page flow, leaving the stack to own only the
-     * top bar.
-     */
-    wide?: "collapse" | "sticky";
-    /** Parent-owned hidden state for hosts that report scroll via React `onScroll`. */
-    scrollHidden?: boolean;
-  };
-  /** Notify hosts when the phone bottom composer is actually hidden (not merely scrolled). */
-  onBottomComposerHiddenChange?: (hidden: boolean) => void;
+  /** Phone-only hide-on-scroll for the universal header and bottom search dock. */
+  hideOnScroll?: MasterSearchHeaderScrollConfig;
   /** Keep the phone new-chat action, but hide its desktop copy when a visible sidebar already owns the action. */
   showDesktopNewChat?: boolean;
-  /**
-   * Favourites are account-scoped. When false, omit Favourites from the mode menu
-   * and route favourites actions to account setup instead of switching mode.
-   * Defaults to false (fail closed) so guests never see Favourites unless the host
-   * explicitly grants access from the current session / demo mode.
-   */
-  canAccessFavourites?: boolean;
-  /** Invoked when the user tries to open Favourites without access. */
-  onRequestAccountSetup?: () => void;
-}) {
+  /** Notify hosts when the phone bottom composer is actually hidden (not merely scrolled). */
+  onBottomComposerHiddenChange?: (hidden: boolean) => void;
+};
+
+export type MasterSearchHeaderProps = (
+  | {
+      searchState: MasterSearchHeaderState;
+      headerActions: MasterSearchHeaderActions;
+      mobileControls?: MasterSearchHeaderMobileControls;
+    }
+  | (MasterSearchHeaderState & MasterSearchHeaderActions & MasterSearchHeaderMobileControls)
+) &
+  Partial<MasterSearchHeaderState & MasterSearchHeaderActions & MasterSearchHeaderMobileControls> & {
+    searchState?: Partial<MasterSearchHeaderState>;
+    headerActions?: Partial<MasterSearchHeaderActions>;
+    mobileControls?: Partial<MasterSearchHeaderMobileControls>;
+  };
+
+const DEFAULT_DOCUMENTS: ClinicalDocument[] = [],
+  DEFAULT_SELECTED_DOCUMENT_IDS: string[] = [];
+const DEFAULT_QUERY_MODE_OPTIONS: Array<{ value: ClinicalQueryMode; label: string }> = [],
+  DEFAULT_RECENT_QUERIES: string[] = [];
+const DEFAULT_SCOPE_FILTERS: SearchScopeFilters = {},
+  NOOP_HANDLER = () => {};
+
+export function MasterSearchHeader(props: MasterSearchHeaderProps) {
+  const { searchState, headerActions, mobileControls } = props;
+
+  const demoMode = searchState?.demoMode ?? props.demoMode ?? false;
+  const documents = searchState?.documents ?? props.documents ?? DEFAULT_DOCUMENTS;
+  const documentTotal = searchState?.documentTotal ?? props.documentTotal;
+  const query = searchState?.query ?? props.query ?? "";
+  const searchMode = searchState?.searchMode ?? props.searchMode ?? "answer";
+  const loading = searchState?.loading ?? props.loading ?? false;
+  const selectedDocumentIds =
+    searchState?.selectedDocumentIds ?? props.selectedDocumentIds ?? DEFAULT_SELECTED_DOCUMENT_IDS;
+  const queryMode = searchState?.queryMode ?? props.queryMode ?? "guidance";
+  const scopeFilters = searchState?.scopeFilters ?? props.scopeFilters ?? DEFAULT_SCOPE_FILTERS;
+  const realDataReady = searchState?.realDataReady ?? props.realDataReady ?? false;
+  const queryModeOptions = searchState?.queryModeOptions ?? props.queryModeOptions ?? DEFAULT_QUERY_MODE_OPTIONS;
+  const queryInputRef = searchState?.queryInputRef ?? props.queryInputRef;
+  const queryInputAutoFocus = searchState?.queryInputAutoFocus ?? props.queryInputAutoFocus ?? false;
+  const composerPlaceholder = searchState?.composerPlaceholder ?? props.composerPlaceholder;
+  const recentQueries = searchState?.recentQueries ?? props.recentQueries ?? DEFAULT_RECENT_QUERIES;
+  const composerFollowUpSuggestions = searchState?.composerFollowUpSuggestions ?? props.composerFollowUpSuggestions;
+  const composerFollowUpSuggestionsDisabled =
+    searchState?.composerFollowUpSuggestionsDisabled ?? props.composerFollowUpSuggestionsDisabled ?? false;
+  const canAccessFavourites = searchState?.canAccessFavourites ?? props.canAccessFavourites ?? false;
+
+  const onQueryChange = headerActions?.onQueryChange ?? props.onQueryChange ?? NOOP_HANDLER;
+  const onSearchModeChange = headerActions?.onSearchModeChange ?? props.onSearchModeChange ?? NOOP_HANDLER;
+  const onAsk = headerActions?.onAsk ?? props.onAsk ?? NOOP_HANDLER;
+  const onClearQuery = headerActions?.onClearQuery ?? props.onClearQuery ?? NOOP_HANDLER;
+  const onClearScope = headerActions?.onClearScope ?? props.onClearScope ?? NOOP_HANDLER;
+  const onQueryModeChange = headerActions?.onQueryModeChange ?? props.onQueryModeChange ?? NOOP_HANDLER;
+  const onScopeFiltersChange = headerActions?.onScopeFiltersChange ?? props.onScopeFiltersChange ?? NOOP_HANDLER;
+  const onToggleScope = headerActions?.onToggleScope ?? props.onToggleScope ?? NOOP_HANDLER;
+  const onScopeOpenChange = headerActions?.onScopeOpenChange ?? props.onScopeOpenChange;
+  const onOpenEvidence = headerActions?.onOpenEvidence ?? props.onOpenEvidence;
+  const onOpenRecentDocuments = headerActions?.onOpenRecentDocuments ?? props.onOpenRecentDocuments;
+  const onOpenLibrary = headerActions?.onOpenLibrary ?? props.onOpenLibrary;
+  const onOpenDocumentAdmin = headerActions?.onOpenDocumentAdmin ?? props.onOpenDocumentAdmin;
+  const canManageDocuments =
+    headerActions?.canManageDocuments ?? searchState?.canManageDocuments ?? props.canManageDocuments ?? false;
+  const onOpenSourcePdf = headerActions?.onOpenSourcePdf ?? props.onOpenSourcePdf;
+  const onNewChat = headerActions?.onNewChat ?? props.onNewChat;
+  const onOpenMobileSidebar = headerActions?.onOpenMobileSidebar ?? props.onOpenMobileSidebar;
+  const onPickRecent = headerActions?.onPickRecent ?? props.onPickRecent;
+  const onCrossModeSearch = headerActions?.onCrossModeSearch ?? props.onCrossModeSearch;
+  const onPickComposerFollowUpSuggestion =
+    headerActions?.onPickComposerFollowUpSuggestion ?? props.onPickComposerFollowUpSuggestion;
+  const onRequestAccountSetup = headerActions?.onRequestAccountSetup ?? props.onRequestAccountSetup;
+  const onBottomComposerHiddenChange =
+    headerActions?.onBottomComposerHiddenChange ??
+    mobileControls?.onBottomComposerHiddenChange ??
+    props.onBottomComposerHiddenChange;
+
+  const sharedHomeIdentity = mobileControls?.sharedHomeIdentity ?? props.sharedHomeIdentity ?? false;
+  const mobileSearchPlacement = mobileControls?.mobileSearchPlacement ?? props.mobileSearchPlacement ?? "default";
+  const mobileBottomSearchVariant =
+    mobileControls?.mobileBottomSearchVariant ?? props.mobileBottomSearchVariant ?? "default";
+  const mobileHomeComposerPlacement =
+    mobileControls?.mobileHomeComposerPlacement ?? props.mobileHomeComposerPlacement ?? "hero";
+  const showPhoneSuggestionTickerOnHome =
+    mobileControls?.showPhoneSuggestionTickerOnHome ?? props.showPhoneSuggestionTickerOnHome ?? false;
+  const desktopSearchPlacement = mobileControls?.desktopSearchPlacement ?? props.desktopSearchPlacement ?? "default";
+  const searchComposerVisible = mobileControls?.searchComposerVisible ?? props.searchComposerVisible ?? true;
+  const desktopHomeComposerSlotId = mobileControls?.desktopHomeComposerSlotId ?? props.desktopHomeComposerSlotId;
+  const desktopPageComposerSlotId = mobileControls?.desktopPageComposerSlotId ?? props.desktopPageComposerSlotId;
+  const heroComposerBreakpoint = mobileControls?.heroComposerBreakpoint ?? props.heroComposerBreakpoint ?? "all";
+  const mobileBottomSearchAddonSlotId =
+    mobileControls?.mobileBottomSearchAddonSlotId ?? props.mobileBottomSearchAddonSlotId;
+  const mobileBottomSearchAddonKind = mobileControls?.mobileBottomSearchAddonKind ?? props.mobileBottomSearchAddonKind;
+  const hideOnScroll = mobileControls?.hideOnScroll ?? props.hideOnScroll;
+  const showDesktopNewChat = mobileControls?.showDesktopNewChat ?? props.showDesktopNewChat ?? true;
   // Hosts pass the precomputed session decision in canAccessFavourites (auth || demo).
   // Do not OR demoMode again here — that would reopen Favourites when props diverge.
   const router = useRouter();
@@ -1063,6 +1089,7 @@ export function MasterSearchHeader({
   const bindQueryInputRef = useCallback(
     (element: HTMLInputElement | null) => {
       if (!element || !queryInputRef) return undefined;
+      // eslint-disable-next-line react-hooks/immutability
       queryInputRef.current = element;
       return () => {
         if (queryInputRef.current === element) queryInputRef.current = null;

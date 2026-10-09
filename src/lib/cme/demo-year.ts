@@ -1,6 +1,6 @@
 import type { CmePlanGoal } from "@/lib/cme/plan-goals";
 import type { CmeRoutine } from "@/lib/cme/routines";
-import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
+import type { CmeAllocation, CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 
 /**
  * The demo CPD year.
@@ -42,6 +42,8 @@ import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 
 export const DEMO_CME_INSTANT: Date = new Date("2026-09-19T02:00:00Z");
 
+const JOURNAL_CLUB_ROUTINE_ID = "00000000-0000-4000-8000-000000000101";
+
 /** Recognisably fake: a run of zeroes with a single distinguishing digit. */
 function evidenceDocumentId(n: number): string {
   return `00000000-0000-4000-8000-${`${n}`.padStart(12, "0")}`;
@@ -52,26 +54,31 @@ type DemoEntryInput = {
   readonly date: string;
   readonly title: string;
   readonly formalPeerReviewHours?: number;
-  readonly category: CmeCategory;
-  readonly hours: number;
+  readonly category?: CmeCategory;
+  readonly hours?: number;
+  readonly allocations?: readonly CmeAllocation[];
   readonly reflection: string;
   readonly buckets?: readonly string[];
   readonly costCents?: number | null;
   readonly documentId?: string | null;
+  readonly routineId?: string | null;
   readonly transcribed: boolean;
 };
 
 function entry(input: DemoEntryInput): CmeEntry {
+  const allocations =
+    input.allocations ??
+    (input.category && input.hours != null ? [{ category: input.category, hours: input.hours }] : []);
   return {
     id: input.id,
     date: input.date,
     formalPeerReviewHours: input.formalPeerReviewHours ?? 0,
     title: input.title,
-    allocations: [{ category: input.category, hours: input.hours }],
+    allocations,
     reflection: input.reflection,
     costCents: input.costCents ?? null,
     transcribed: input.transcribed,
-    routineId: null,
+    routineId: input.routineId ?? null,
     documentId: input.documentId ?? null,
     buckets: input.buckets ?? [],
   };
@@ -87,6 +94,7 @@ export const DEMO_CME_ENTRIES: readonly CmeEntry[] = [
     hours: 0.5,
     reflection: "Compared notes on recent reading with two colleagues afterwards.",
     transcribed: true,
+    routineId: JOURNAL_CLUB_ROUTINE_ID,
   }),
   entry({
     id: "cme-2026-002",
@@ -110,8 +118,10 @@ export const DEMO_CME_ENTRIES: readonly CmeEntry[] = [
     id: "cme-2026-004",
     date: "2026-01-29",
     title: "Clinical audit: discharge planning review",
-    category: "reviewing",
-    hours: 1.0,
+    allocations: [
+      { category: "reviewing", hours: 0.5 },
+      { category: "measuring", hours: 0.5 },
+    ],
     reflection: "Reviewed a sample of discharge summaries with the team.",
     transcribed: true,
   }),
@@ -151,7 +161,7 @@ export const DEMO_CME_ENTRIES: readonly CmeEntry[] = [
     id: "cme-2026-008",
     date: "2026-02-26",
     title: "Patient experience survey review",
-    category: "measuring",
+    category: "reviewing",
     hours: 0.5,
     reflection: "Went through this quarter's survey results with the practice manager.",
     transcribed: true,
@@ -631,7 +641,7 @@ export const DEMO_CME_YEAR: CmeRequirementSet = {
 /** Synthetic demonstration only; a routine is never attendance evidence. */
 export const DEMO_CME_ROUTINES: readonly CmeRoutine[] = [
   {
-    id: "00000000-0000-4000-8000-000000000101",
+    id: JOURNAL_CLUB_ROUTINE_ID,
     title: "Journal club",
     cadence: "monthly",
     usualHours: 1,

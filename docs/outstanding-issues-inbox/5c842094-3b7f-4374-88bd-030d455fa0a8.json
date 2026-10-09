@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "5c842094-3b7f-4374-88bd-030d455fa0a8",
+  "createdOn": "2026-10-09",
+  "action": "done",
+  "payload": {
+    "id": "#XSZ4XV",
+    "outcome": "Resolved: Docling model treeDigest recorded in eval/docling/model-artifacts.json and verified by tests/docling-model-artifacts.test.ts.",
+    "baseRowFingerprint": "ecca601e7f0d310c702e2d6f171ed5c26d199754ead8527c1e5dbf4d95cacca0"
+  }
+}

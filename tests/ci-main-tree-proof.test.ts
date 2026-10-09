@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, w
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -503,7 +504,7 @@ describe("tested-tree reconstruction against a real repository", () => {
  * relative-import closure of every script those jobs and the build lifecycle run.
  */
 describe("unrelated-input allowlist", () => {
-  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+  const root = fileURLToPath(new URL("..", import.meta.url));
   const rel = (file: string) => path.relative(root, file).split(path.sep).join("/");
   const at = (file: string) => path.join(root, file);
   const walk = (directory: string, out: string[] = []) => {

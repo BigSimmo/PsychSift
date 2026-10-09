@@ -690,6 +690,7 @@ export function SettingsDialog({
     <Sheet
       open={open}
       onClose={onClose}
+      dismissOnBack
       closeLabel="Close settings"
       labelledBy="account-settings-title"
       initialFocusRef={initialFocus === "guide" ? guideButtonRef : closeButtonRef}

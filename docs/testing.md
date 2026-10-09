@@ -214,6 +214,7 @@ and recorded in no line here).
 | `firefox`, `webkit`     | Release matrix only (`main`, release branches, dispatch, Sunday schedule) |
 | `mobile-webkit`         | Release matrix **full-suite path only** — see the decision below          |
 | `mobile-pwa-standalone` | Release matrix **full-suite path only** — see the decision below          |
+| `tablet`                | Dedicated tablet viewport regression testing (`test:e2e:tablet`)          |
 
 Manual dispatch defaults to `scope: browser-matrix` (static checks, Playwright build, production Chromium and this matrix); `scope: full` adds the rest of the suite.
 

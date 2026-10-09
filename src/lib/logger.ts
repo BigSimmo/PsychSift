@@ -105,10 +105,11 @@ function emit(level: LogLevel, message: string, context?: Record<string, unknown
   // Keep tests quiet; they assert on responses, not log output.
   if (env().NODE_ENV === "test") return;
   if (LEVEL_RANK[level] < LEVEL_RANK[activeLevel()]) return;
+  const safeMessage = typeof message === "string" ? (redactValue(message, 0) as string) : String(message);
   const redacted = context ? redactLogContext(context) : undefined;
   const line = JSON.stringify({
     level,
-    message,
+    message: safeMessage,
     timestamp: new Date().toISOString(),
     ...(redacted ?? {}),
   });
@@ -120,7 +121,7 @@ function emit(level: LogLevel, message: string, context?: Record<string, unknown
   const forwarder = currentSentryLogForwarder();
   if ((level === "warn" || level === "error") && forwarder) {
     try {
-      forwarder(level, message, redacted);
+      forwarder(level, safeMessage, redacted);
     } catch {
       // Optional observability must never interfere with request handling.
     }

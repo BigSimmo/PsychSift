@@ -86,6 +86,7 @@ describe("rag-query-guard — in-corpus clinical and psychiatric queries", () =>
    * soft tail, where `classifyCorpusGrounding` lets the corpus decide in production.
    */
   it.each([
+    "flight of ideas",
     "flight of ideas in mania",
     "gaming disorder",
     "internet gaming disorder treatment",
@@ -109,6 +110,10 @@ describe("rag-query-guard — in-corpus clinical and psychiatric queries", () =>
     "Give me a recipe for high protein overnight oats.",
     "best gaming laptop",
     "car insurance quote",
+    "car finance deals",
+    "phone sale discount",
+    "popular tv show",
+    "flight booking online",
     "hotel near perth airport",
     "best tv to buy",
   ])("still refuses the purely consumer question %j", (query) => {

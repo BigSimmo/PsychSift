@@ -615,3 +615,53 @@ export function PickSessionSheet({
     </Sheet>
   );
 }
+
+/** Attendance gaps sheet: enrolled doctors with 0 recorded check-ins this term. */
+export function AttendanceGapsSheet({
+  organise,
+  onClose,
+  checkInCountsByUserId = {},
+}: {
+  organise: OrganiseRead;
+  onClose: () => void;
+  checkInCountsByUserId?: Record<string, number>;
+}) {
+  const [filter, setFilter] = useState("");
+  const needle = filter.trim().toLowerCase();
+  const zeroCheckInMembers = organise.members.filter((m) => {
+    if (m.role && m.role !== "doctor") return false;
+    const count = (m as { checkInsCount?: number }).checkInsCount ?? checkInCountsByUserId[m.userId] ?? 0;
+    return count === 0;
+  });
+  const shown = zeroCheckInMembers.filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle));
+  return (
+    <Sheet open onClose={onClose} title="Attendance gaps">
+      <div className="grid gap-2" data-testid="teaching-attendance-gaps-sheet">
+        <p className={cn("text-xs leading-5", textMuted)}>Enrolled doctors with no check-ins recorded this term.</p>
+        <TextField
+          label="Filter doctors"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        {shown.length > 0 ? (
+          <ModeGroupedList>
+            {shown.map((m) => (
+              <ModeRow
+                key={m.userId}
+                title={memberLabel(m)}
+                subtitle="No check-ins recorded this term"
+                testId={`attendance-gap-${m.userId}`}
+              />
+            ))}
+          </ModeGroupedList>
+        ) : (
+          <p className={cn("text-sm", textMuted)} data-testid="teaching-attendance-gaps-empty">
+            {needle ? "No doctor matches that filter." : "No attendance gaps recorded."}
+          </p>
+        )}
+      </div>
+    </Sheet>
+  );
+}

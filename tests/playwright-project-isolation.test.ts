@@ -276,8 +276,9 @@ describe("every ui-*.spec.ts lands in the RIGHT project, not merely in some proj
       "webkit",
       "mobile-webkit",
       "mobile-pwa-standalone",
+      "tablet",
     ]);
-    expect(requiredProjects).toHaveLength(5);
+    expect(requiredProjects).toHaveLength(6);
     expect(advisoryProjects).toHaveLength(1);
     expect(specs.length, "no ui-*.spec.ts found, so the assertions below would all be vacuous").toBeGreaterThan(40);
   });

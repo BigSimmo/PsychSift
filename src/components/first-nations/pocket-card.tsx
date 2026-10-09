@@ -1,4 +1,5 @@
-// Server component: the badge-size pocket card. Public numbers only, from enabled layers only.
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { PrintedLine } from "@/components/first-nations/printed-line";
 import { BrowserPrintButton, PrintOutput } from "@/components/ui/print-output";
 import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
@@ -45,7 +46,14 @@ export function PocketCardView({ hospitals, printedOn }: { hospitals: readonly H
       <p className="px-1 text-sm-minus text-[color:var(--text-muted)] print:hidden">
         The numbers to keep on you. Confirm against this page before relying on a printed copy.
       </p>
-      <div className="px-1 print:hidden">
+      <div className="flex items-center justify-between gap-3 px-1 print:hidden">
+        <Link
+          href="/first-nations"
+          className="inline-flex min-h-tap items-center gap-1.5 text-sm-minus font-medium text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+        >
+          <ArrowLeft className="size-icon-sm" aria-hidden="true" />
+          <span>Back to First Nations</span>
+        </Link>
         <BrowserPrintButton label="Print card" />
       </div>
       <PrintOutput

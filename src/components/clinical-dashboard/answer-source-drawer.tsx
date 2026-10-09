@@ -148,6 +148,7 @@ export function AnswerSourceDrawer({
     <Sheet
       open={open}
       onClose={onClose}
+      dismissOnBack
       testId="answer-source-drawer"
       title={source ? cleanDisplayTitle(source.title) : "Source"}
       description="Check the answer against the cited passage."

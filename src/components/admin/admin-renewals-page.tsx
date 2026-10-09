@@ -2,7 +2,7 @@
 
 import { Ellipsis } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { AdminFloatingAdd } from "@/components/admin/admin-floating-add";
 import { AdminQuickAddSheet } from "@/components/admin/admin-quick-add-sheet";
@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { cn, controlDisabled, IconButton, textMuted } from "@/components/ui-primitives";
+import { cn, controlDisabled, IconButton, textMuted, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { complianceBucket, complianceBucketCounts, type ComplianceBucket } from "@/lib/admin/compliance-overview";
 import { renewNext } from "@/lib/admin/renew-next";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -133,6 +133,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   const ready = loadState === "ready";
   const canEdit = ready && !state.demoMode;
   const [signInOpen, setSignInOpen] = useState(false);
+  const calendarUnavailableId = useId();
   const router = useRouter();
   const searchParams = useSearchParams();
   // `/admin/renewals?show=…` (Today's at-a-glance counts), `?item=<id>` and
@@ -635,14 +636,20 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
           ) : null}
           <button
             type="button"
-            onClick={downloadAll}
-            disabled={!calendarFile}
+            onClick={calendarFile ? downloadAll : ignoreUnavailableActivation}
+            aria-disabled={!calendarFile ? true : undefined}
+            aria-describedby={!calendarFile ? calendarUnavailableId : undefined}
+            title={!calendarFile ? "No recorded dates to add yet" : undefined}
             data-testid="admin-renewals-calendar-all"
-            className={cn(focusRing, menuItem)}
+            className={cn(focusRing, menuItem, !calendarFile && "cursor-not-allowed opacity-50")}
           >
             Add all to my calendar
           </button>
-          {!calendarFile ? <p className={cn(textMuted, "px-2 text-xs")}>No recorded dates to add yet.</p> : null}
+          {!calendarFile ? (
+            <p id={calendarUnavailableId} className={cn(textMuted, "px-2 text-xs")}>
+              No recorded dates to add yet.
+            </p>
+          ) : null}
         </div>
       </Sheet>
 

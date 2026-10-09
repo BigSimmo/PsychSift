@@ -27,7 +27,7 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { modeModuleSurface, modePressable } from "@/components/mode-kit/recipes";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Sheet } from "@/components/ui/sheet";
-import { cn } from "@/components/ui-primitives";
+import { cn, textMuted } from "@/components/ui-primitives";
 import type { CalendarEvent } from "@/lib/calendar/calendar-event";
 import { monthGridRange, monthKeyOf } from "@/lib/calendar/month-grid";
 import { fortnightFor, summariseHours } from "@/lib/roster/hours";
@@ -514,11 +514,17 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
             className={rosterFilledButton}
             data-mode-identity="roster"
             disabled={!canEdit}
+            title={!canEdit ? "Roster editing is unavailable while shifts are loading or in read-only mode" : undefined}
             onClick={() => setImporting(true)}
           >
             <FileUp aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
             Import a roster file
           </button>
+          {!canEdit ? (
+            <p className={cn(textMuted, "text-center text-xs")}>
+              Roster editing is unavailable while shifts are loading or in read-only mode.
+            </p>
+          ) : null}
           <RosterList>
             <RosterRow
               onClick={() => setAddView("menu")}

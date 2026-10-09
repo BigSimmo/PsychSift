@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "d2aeb17b-1d02-4bad-85ae-d76f0baa4e7a",
+  "createdOn": "2026-10-09",
+  "action": "done",
+  "payload": {
+    "id": "#KVYHWZ",
+    "outcome": "Resolved: Populated missing URLs and hours for legacy WA service records; verified by check:source-acquisitions and check:source-catalogue.",
+    "baseRowFingerprint": "c9e73d6fde50ce07612fa9ff5bbb1fad87f94dc67c143339ad846efb34164297"
+  }
+}

@@ -1995,6 +1995,10 @@
         "file": "src/app/api/images/signed-urls/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/dual-sign-off",
+        "file": "src/app/api/teaching/assessments/dual-sign-off/route.ts"
+      },
+      {
         "path": "/api/cme/year",
         "file": "src/app/api/cme/year/route.ts"
       },
@@ -4128,6 +4132,11 @@
         "path": "docs/redesign/07-token-adoption-audit.md",
         "section": "redesign",
         "catalogued": true
+      },
+      {
+        "path": "docs/live-browser-testing.md",
+        "section": "root",
+        "catalogued": false
       },
       {
         "path": "docs/redesign/09-page-polish-plan.md",

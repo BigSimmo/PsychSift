@@ -43,6 +43,14 @@ name: Claude review
 # merged, undrafting fires `ready_for_review` which re-runs this, and a review
 # of a work-in-progress diff spends subscription quota on findings its author
 # already intends to change.
+#
+# Project MCP auto-load protection (#V1NYQ0).
+# The action runner overrides `settings: {"enableAllProjectMcpServers": false}`
+# to true in its internal merge step. To ensure project MCP auto-load remains
+# off, `claude_args` passes `--settings '{"enableAllProjectMcpServers": false}'`
+# with CLI flag precedence. Auto-load is also harmless here because the runner
+# holds no credentials for repo MCP servers (e.g. railway), the review prompt
+# invokes no MCP tools, and workflow permissions are least-privilege.
 
 on:
   pull_request:
@@ -111,7 +119,13 @@ jobs:
           # `railway` entry has no auth in Actions), so auto-load stays off —
           # aligned with .claude/settings.json ("enableAllProjectMcpServers": false)
           # and the @claude workflow beside this one.
+          #
+          # Auto-load protection (#V1NYQ0):
+          # anthropics/claude-code-action forces enableAllProjectMcpServers: true in its settings
+          # merge, but extraArgs via claude_args takes CLI precedence. Both are supplied
+          # to ensure clear intent and runtime override.
           settings: '{"enableAllProjectMcpServers": false}'
+          claude_args: '--settings ''{"enableAllProjectMcpServers": false}'''
           prompt: |
             Review this pull request's diff. You are the only automated reviewer
             on it, so be useful rather than exhaustive: a reviewer who lists

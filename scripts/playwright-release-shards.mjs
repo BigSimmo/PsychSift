@@ -79,6 +79,7 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-tools-show-all.spec.ts": 1.7,
     "tests/ui-tools.spec.ts": 164.1,
     "tests/ui-universal-search.spec.ts": 37.0,
+    "tests/ui-user-journeys.spec.ts": 3.5,
     "tests/ui-visual-artifacts.spec.ts": 9.7,
   }),
   webkit: Object.freeze({
@@ -125,6 +126,7 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-tools-show-all.spec.ts": 1.2,
     "tests/ui-tools.spec.ts": 240.6,
     "tests/ui-universal-search.spec.ts": 50.8,
+    "tests/ui-user-journeys.spec.ts": 3.5,
     "tests/ui-visual-artifacts.spec.ts": 13.1,
   }),
   "mobile-webkit": Object.freeze({
@@ -171,6 +173,7 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-tools-show-all.spec.ts": 1.7,
     "tests/ui-tools.spec.ts": 372.7,
     "tests/ui-universal-search.spec.ts": 31.5,
+    "tests/ui-user-journeys.spec.ts": 3.5,
     "tests/ui-visual-artifacts.spec.ts": 19.7,
   }),
   "mobile-pwa-standalone": Object.freeze({
@@ -217,6 +220,7 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-tools-show-all.spec.ts": 1.1,
     "tests/ui-tools.spec.ts": 264.2,
     "tests/ui-universal-search.spec.ts": 25.3,
+    "tests/ui-user-journeys.spec.ts": 3.5,
     "tests/ui-visual-artifacts.spec.ts": 14.4,
   }),
 });

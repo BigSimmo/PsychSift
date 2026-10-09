@@ -179,9 +179,12 @@ function truncateAtSafeBoundary(text: string, cut: number) {
 }
 
 function conciseSourceText(text: string) {
-  const useful = clinicalProseUsefulness(text);
+  if (!text) return "";
+  // Bound the input text to prevent regex backtracking stalls on huge (e.g. 200k-char) blocks (#747FC0)
+  const bounded = text.length > 4000 ? text.slice(0, 4000) : text;
+  const useful = clinicalProseUsefulness(bounded);
   const normalized = normalizeText(
-    (sourceTextForCompactDisplay(useful.text || text) || sourceTextForDisplay(text))
+    (sourceTextForCompactDisplay(useful.text || bounded) || sourceTextForDisplay(bounded))
       .replace(/\bsource mentions\s*:?\s*/gi, "")
       // Audit M9: this scrub removes a document code such as
       // "Procedure PAE-PRO-0338/16". With the `i` flag it also matched any
@@ -368,7 +371,8 @@ export function extractSafetyFindings(answer: SafetyAnswerInput | null | undefin
   const findings: SafetyFinding[] = [];
 
   for (const candidate of candidates) {
-    const text = sanitizeAnswerText(conciseSourceText(candidate.text)) || conciseSourceText(candidate.text);
+    const rawConcise = conciseSourceText(candidate.text);
+    const text = sanitizeAnswerText(rawConcise) || rawConcise;
     if (!text) continue;
     if (answer.relevance) {
       const sourceBacked =

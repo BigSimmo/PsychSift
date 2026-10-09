@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "4d2480b9-8b62-488b-9e65-ede8dc16fd22",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#VMG7D8",
+    "outcome": "Resolved: Maintained section summaries in scripts/lib/parse-differentials-export.ts; verified by tests/differentials.test.ts (45/45 passed).",
+    "baseRowFingerprint": "5b830e75be41777352054d9d220313ec1ef932a03d5f5d082e185a52e7b7662f"
+  }
+}

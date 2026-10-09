@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "f58cc557-ab6f-4671-b136-84d6c51c8742",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#28ECMG",
+    "outcome": "Resolved: Added canonical link and Schema.org MedicalWebPage JSON-LD structured metadata in src/app/(search-app)/layout.tsx.",
+    "baseRowFingerprint": "5b407322cfd219fada32fa5c37459d7b9f22c9bceec73e8a9b05de4b5d558d24"
+  }
+}
