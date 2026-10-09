@@ -51,19 +51,16 @@ import { zonedToday } from "@/lib/work-time/format";
 const TITLE = "Hospital";
 const NO_HOSPITALS: readonly HospitalRef[] = [];
 
-/*
- * Rotation rounds is registered in `features.ts`. Courses is registered on its
- * own branch, so its id is widened through `string` until that merges. Drop the
- * cast once it is on this branch.
- */
 const ROTATION_PREVIEW: LivePreviewFeatureId = "rotation-preferences";
-const COURSE_PREVIEW = "course-bookings" as string as LivePreviewFeatureId;
 
-/** The preview screens this reader gets. Each row still shows only to a role that may use it. */
+/**
+ * The preview screens this reader gets. Each row still shows only to a role
+ * that may use it. Courses stays off until its screen is on main (PR 3380),
+ * then reads `useLivePreview("course-bookings")` like Rotation rounds.
+ */
 function useHospitalPreviews(): HospitalPreviews {
   const rotationRounds = useLivePreview(ROTATION_PREVIEW);
-  const courses = useLivePreview(COURSE_PREVIEW);
-  return useMemo(() => ({ rotationRounds, courses }), [rotationRounds, courses]);
+  return useMemo(() => ({ rotationRounds, courses: false }), [rotationRounds]);
 }
 
 /**

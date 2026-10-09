@@ -139,16 +139,20 @@ begin
     end if;
     if 'supervisor' = any (v_team_roles) and exists (
       select 1 from public.work_role_grants g
+      join public.work_hospitals h on h.id = g.hospital_id and h.archived_at is null
       where g.user_id = p_actor_id and g.revoked_at is null and g.role = 'supervisor' and g.service_id = p_service_id
     ) then
       return true;
     end if;
   end if;
 
-  -- A supervisor of one trainee.
+  -- A supervisor of one trainee, only in the hospital that gave the role: when the trainee's team (or a
+  -- hospital) is named, it must be that hospital, and a team linked to no hospital is refused.
   if v_trainee_ok and p_subject_user is not null and exists (
     select 1 from public.work_role_grants g
+    join public.work_hospitals h on h.id = g.hospital_id and h.archived_at is null
     where g.user_id = p_actor_id and g.revoked_at is null and g.role = 'supervisor' and g.subject_user_id = p_subject_user
+      and ((p_service_id is null and p_hospital_id is null) or g.hospital_id = coalesce(v_scope_hospital, p_hospital_id))
   ) then
     return true;
   end if;

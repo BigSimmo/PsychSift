@@ -81,9 +81,7 @@ async function addGrantedRoles(client: Client, userId: string, grants: WorkRoleG
   if (isMissingTableError(error)) return false;
   if (error || !rows) throw unavailable();
 
-  const hospitalIds = [
-    ...new Set(rows.filter((row) => row.role === "workforce" || row.role === "dct").map((row) => row.hospital_id)),
-  ];
+  const hospitalIds = [...new Set(rows.map((row) => row.hospital_id))];
   const teamsByHospital = new Map<string, string[]>();
   const namesByHospital = new Map<string, string>();
   if (hospitalIds.length) {
@@ -99,15 +97,17 @@ async function addGrantedRoles(client: Client, userId: string, grants: WorkRoleG
   }
 
   for (const row of rows) {
+    // An archived hospital's grants lapse with it, supervisors' included.
+    if (!namesByHospital.has(row.hospital_id)) continue;
     if (row.role === "supervisor") {
       grants.push({
         role: "supervisor",
         hospitalId: row.hospital_id,
         serviceId: row.service_id,
         subjectUserId: row.subject_user_id,
+        hospitalServiceIds: teamsByHospital.get(row.hospital_id) ?? [],
       });
-    } else if (namesByHospital.has(row.hospital_id)) {
-      // An archived hospital's grants lapse with it.
+    } else {
       grants.push({
         role: row.role,
         hospitalId: row.hospital_id,

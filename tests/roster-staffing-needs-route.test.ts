@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => {
 
 function chain(table: string, result: Result) {
   const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "is", "order", "limit"])
+  for (const method of ["select", "eq", "is", "order", "limit", "range"])
     builder[method] = (...args: unknown[]) => {
       mocks.calls.push({ table, method, args });
       return builder;

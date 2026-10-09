@@ -25,6 +25,7 @@ export type WorkRolesStatus = "loading" | "ready" | "signed-out" | "unavailable"
 type Snapshot = { readonly status: WorkRolesStatus; readonly grants: readonly WorkRoleGrant[] };
 
 const LOADING: Snapshot = { status: "loading", grants: [] };
+const SIGNED_OUT: Snapshot = { status: "signed-out", grants: [] };
 let snapshot: Snapshot = LOADING;
 let request: Promise<void> | null = null;
 /** Bumped on every reset, so an answer for the account before a sign-in or sign-out is dropped. */
@@ -87,20 +88,23 @@ export function useWorkRoles(enabled = true): WorkRolesView {
   const userId = auth?.session?.user?.id ?? null;
   const current = useSyncExternalStore(subscribe, readSnapshot, serverSnapshot);
   useEffect(() => {
-    if (!enabled) return;
-    // Another account signed in on this page: forget the last one's roles first.
+    // Another account signed in or out on this page: forget the last one's roles first, even
+    // while this caller is switched off, so no screen keeps showing them.
     if (readFor !== undefined && readFor !== userId) {
       readFor = userId;
       resetWorkRoles();
       return;
     }
+    if (!enabled) return;
     readFor = userId;
     if (current.status === "loading") void load();
   }, [enabled, userId, current.status]);
+  // Switched off (signed out): no roles, whatever an earlier account left behind.
+  const view = enabled ? current : SIGNED_OUT;
   const check = useCallback(
     (capability: WorkCapability, scope: WorkScope) =>
-      current.status === "ready" && decideWorkCapability(current.grants, capability, scope),
-    [current],
+      view.status === "ready" && decideWorkCapability(view.grants, capability, scope),
+    [view],
   );
-  return { status: current.status, grants: current.grants, roles: heldWorkRoles(current.grants), can: check };
+  return { status: view.status, grants: view.grants, roles: heldWorkRoles(view.grants), can: check };
 }

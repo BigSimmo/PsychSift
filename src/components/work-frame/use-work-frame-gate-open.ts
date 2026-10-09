@@ -12,6 +12,8 @@ import type { WorkFrameGate, WorkFrameItem } from "@/lib/work-frame/areas";
 import { useWorkRoles } from "@/lib/work-roles/use-work-roles";
 
 const HOSPITAL_ROLES = new Set(["administrator", "workforce", "dct"]);
+/** The Hospital screen also has a section for supervisors and roster managers. */
+const HOSPITAL_HUB_ROLES = new Set([...HOSPITAL_ROLES, "supervisor", "manager"]);
 
 /** Whether this reader may see an item with this gate, as the work frame's tabs and More sheet decide it. */
 export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boolean {
@@ -23,6 +25,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const workRoles = useWorkRoles(signedIn);
   const examplesOn = useExampleData().mode === "on";
   const hospitalRole = examplesOn || !signedIn || workRoles.roles.some((role) => HOSPITAL_ROLES.has(role));
+  const hospitalHub = hospitalRole || workRoles.roles.some((role) => HOSPITAL_HUB_ROLES.has(role));
   const rotations = useLivePreview("rotation-preferences");
   return useCallback(
     (gate) => {
@@ -33,11 +36,12 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "classic-work-mode") return !newWorkMode;
       if (gate === "signed-out") return !signedIn;
       if (gate === "hospital-role") return hospitalRole;
+      if (gate === "hospital-hub") return hospitalHub;
       if (gate === "rotation-preferences") return rotations;
       if (gate === "rotation-preferences-manager") return rotations && poster === true;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn, hospitalRole, rotations],
+    [roles, poster, editor, newWorkMode, signedIn, hospitalRole, hospitalHub, rotations],
   );
 }
 

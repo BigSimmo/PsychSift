@@ -437,6 +437,8 @@ export function safeNumberNote(needs: readonly StaffingNeed[] | null | undefined
   if (needs === undefined) return "Checking your team's safe number.";
   if (needs === null)
     return "Your team's safe number couldn't be checked, so this shows how many are on, not whether that is enough. Your roster manager decides.";
+  if (!hasSafeNumber(needs) && hasGradeOrSiteNeeds(needs))
+    return "Your roster manager set cover for one grade or one site only, which this check doesn't judge. This shows how many are on, not whether that is enough. Your roster manager decides.";
   if (!hasSafeNumber(needs))
     return "Your roster manager hasn't set a safe number for this team yet. This shows how many are on, not whether that is enough.";
   const specific = hasGradeOrSiteNeeds(needs) ? " Needs for one grade or one site aren't judged here." : "";

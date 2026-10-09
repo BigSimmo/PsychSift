@@ -266,6 +266,13 @@ function writeProblem(outcome: Exclude<WorkPeopleOutcome, { status: "ok" }>): st
 
 /* --------------------------------------------------------------- live */
 
+/** The hospital a Hospital screen link opened (`?hospitalId=`). The server still checks the reader may see it. */
+function hospitalFromAddress(): string | null {
+  if (typeof window === "undefined") return null;
+  const id = new URLSearchParams(window.location.search).get("hospitalId");
+  return id && /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+}
+
 function PeopleLive({
   grants,
   online,
@@ -275,7 +282,7 @@ function PeopleLive({
   readonly online: boolean;
   readonly onExample: () => void;
 }) {
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [hospitalId, setHospitalId] = useState<string | null>(hospitalFromAddress);
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<{ readonly key: string; readonly outcome: WorkPeopleOutcome } | null>(null);
   const [data, setData] = useState<WorkPeopleResponse | null>(null);

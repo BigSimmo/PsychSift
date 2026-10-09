@@ -2,6 +2,7 @@ import {
   decideWorkCapability,
   WORK_ROLE_LABEL,
   type WorkCapability,
+  type WorkRole,
   type WorkRoleGrant,
   type WorkScope,
 } from "@/lib/work-roles/model";
@@ -257,6 +258,11 @@ export function peopleAndRolesHref(hospitalId: string | null): string {
   return withQuery("/admin/people", { hospitalId });
 }
 
+/**
+ * Real PGY1 and PGY2 assessments stay in CLA (owner decision 7 Oct 2026), so a
+ * signed-in reader's Assessments page says so. Each link says it before the tap.
+ */
+const ASSESSMENTS_IN_CLA = "Real records are kept in CLA";
 export const SUPERVISOR_INBOX_HREF = "/teaching/assessments?view=inbox&as=supervisor";
 export const SUPERVISOR_TIMES_HREF = "/teaching/assessments?view=times&as=supervisor";
 export const TERM_OVERVIEW_HREF = "/teaching/assessments?view=overview&as=supervisor";
@@ -355,11 +361,16 @@ export const COURSE_HREFS = { list: "/admin/courses", post: "/admin/courses?new=
 const PREVIEW_ROWS: readonly {
   readonly preview: keyof HospitalPreviews;
   readonly capability: WorkCapability;
+  /** Only these roles count, while the screen itself checks fewer roles than the capability names. */
+  readonly onlyRoles?: readonly WorkRole[];
   readonly links: readonly HospitalLink[];
 }[] = [
   {
     preview: "rotationRounds",
     capability: "rotations.manage",
+    // Rotation rounds still lets in only the administrator and roster managers. Medical Workforce
+    // joins when that screen checks `canManageRotations`, so drop this then.
+    onlyRoles: ["administrator", "manager"],
     links: [
       {
         id: "rotation-rounds",
@@ -408,9 +419,11 @@ function withPreviewRows(
   const result = sections.map((section) => ({ ...section, links: [...section.links] }));
   for (const row of PREVIEW_ROWS) {
     if (!previews[row.preview]) continue;
+    const { onlyRoles } = row;
+    const counted = onlyRoles ? grants.filter((grant) => onlyRoles.includes(grant.role)) : grants;
     const target = result.find((section) => {
       const scope = sectionScope(section, hospitalId);
-      return scope !== null && decideWorkCapability(grants, row.capability, scope);
+      return scope !== null && decideWorkCapability(counted, row.capability, scope);
     });
     target?.links.push(...row.links);
   }
@@ -513,7 +526,7 @@ export function hospitalSections(
         {
           id: "overview",
           label: "Term overview",
-          sub: "Every trainee's assessments this term",
+          sub: ASSESSMENTS_IN_CLA,
           href: TERM_OVERVIEW_HREF,
           icon: "overview",
         },
@@ -539,14 +552,14 @@ export function hospitalSections(
         {
           id: "inbox",
           label: "Assessments inbox",
-          sub: "Assessments waiting for you",
+          sub: ASSESSMENTS_IN_CLA,
           href: SUPERVISOR_INBOX_HREF,
           icon: "inbox",
         },
         {
           id: "times",
           label: "Your free times",
-          sub: "When trainees can book you",
+          sub: ASSESSMENTS_IN_CLA,
           href: SUPERVISOR_TIMES_HREF,
           icon: "times",
         },

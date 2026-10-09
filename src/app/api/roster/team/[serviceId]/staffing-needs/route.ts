@@ -26,7 +26,9 @@ export const runtime = "nodejs";
 type Context = { params: Promise<{ serviceId: string }> };
 
 const NEED_KINDS = ["day", "evening", "night", "on_call", "other"] as const;
-const NEEDS_LIMIT = 500;
+/** Read a page at a time: the API returns at most 1,000 rows per read, and the database stops a team at 2,000 needs. */
+const NEEDS_PAGE = 1000;
+const NEEDS_PAGES = 3;
 
 async function serviceIdFrom(request: Request, context: Context): Promise<string> {
   if (new URL(request.url).search) throw rosterInvalidRequest();
@@ -52,27 +54,34 @@ async function readStaffingNeeds(
   serviceId: string,
 ): Promise<{ needs: StaffingNeed[] }> {
   await requireActiveMember(client, actorId, serviceId);
-  const { data, error } = await client
-    .from("roster_staffing_needs")
-    .select("weekday,on_date,kind,grade,site_id,needed")
-    .eq("service_id", serviceId)
-    .order("on_date", { ascending: true, nullsFirst: true })
-    .order("weekday", { ascending: true, nullsFirst: false })
-    .order("kind", { ascending: true })
-    .limit(NEEDS_LIMIT);
-  if (error || !data) throw rosterUnavailable();
-  return {
-    needs: data
-      .filter((row) => (NEED_KINDS as readonly string[]).includes(row.kind))
-      .map((row) => ({
+  // Every need, never a cut-off list: a missing dated need would judge a day against the wrong number.
+  const needs: StaffingNeed[] = [];
+  for (let page = 0; ; page += 1) {
+    if (page === NEEDS_PAGES) throw rosterUnavailable();
+    const { data, error } = await client
+      .from("roster_staffing_needs")
+      .select("weekday,on_date,kind,grade,site_id,needed")
+      .eq("service_id", serviceId)
+      .order("on_date", { ascending: true, nullsFirst: true })
+      .order("weekday", { ascending: true, nullsFirst: false })
+      .order("kind", { ascending: true })
+      .order("id", { ascending: true })
+      .range(page * NEEDS_PAGE, page * NEEDS_PAGE + NEEDS_PAGE - 1);
+    if (error || !data) throw rosterUnavailable();
+    for (const row of data) {
+      if (!(NEED_KINDS as readonly string[]).includes(row.kind)) continue;
+      needs.push({
         weekday: row.weekday,
         date: row.on_date,
         kind: row.kind,
         grade: row.grade,
         siteId: row.site_id,
         needed: row.needed,
-      })),
-  };
+      });
+    }
+    if (data.length < NEEDS_PAGE) break;
+  }
+  return { needs };
 }
 
 /** The invented sample team's needs, the same ones its manager sees on the Cover tab, without ids. */

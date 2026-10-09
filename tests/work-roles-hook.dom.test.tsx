@@ -44,4 +44,23 @@ describe("useWorkRoles", () => {
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(result.current.roles).toEqual([]);
   });
+
+  it("shows no roles once switched off, whatever the last account left behind", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ grants: [{ role: "administrator" }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    resetWorkRoles();
+
+    const { result, rerender } = renderHook(({ enabled }) => useWorkRoles(enabled), {
+      initialProps: { enabled: true },
+    });
+    await waitFor(() => expect(result.current.roles).toEqual(["administrator"]));
+
+    // Signed out in the same tab: the shared answer is still cached, but this caller shows none of it.
+    rerender({ enabled: false });
+    expect(result.current.status).toBe("signed-out");
+    expect(result.current.roles).toEqual([]);
+    expect(result.current.can("roles.grant", { kind: "everyone" })).toBe(false);
+  });
 });

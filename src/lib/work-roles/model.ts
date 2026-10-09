@@ -67,6 +67,8 @@ export type WorkRoleGrant =
       readonly serviceId?: string | null;
       /** A supervisor of one trainee. */
       readonly subjectUserId?: string | null;
+      /** Teams linked to the hospital that gave the role, so a one-trainee role stays in that hospital. */
+      readonly hospitalServiceIds?: readonly string[];
     };
 
 type CapabilityRule = {
@@ -139,7 +141,13 @@ export function decideWorkCapability(
         return rule.team.includes("manager") && teamCovers(grant.serviceId, scope);
       case "supervisor":
         if (rule.team.includes("supervisor") && teamCovers(grant.serviceId, scope)) return true;
-        return rule.trainee && scope.kind === "trainee" && grant.subjectUserId === scope.userId;
+        // A one-trainee role only in its own hospital: a named team must be linked to that hospital.
+        return (
+          rule.trainee &&
+          scope.kind === "trainee" &&
+          grant.subjectUserId === scope.userId &&
+          (!scope.serviceId || (grant.hospitalServiceIds ?? []).includes(scope.serviceId))
+        );
       default:
         return false;
     }

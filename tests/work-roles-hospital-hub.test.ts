@@ -423,11 +423,13 @@ describe("preview rows: Rotation rounds and Courses", () => {
       previews: both,
     });
     const work = sections.find((section) => section.id === "workforce")!;
-    expect(work.links.slice(-3).map((link) => [link.label, link.href])).toEqual([
-      ["Rotation rounds", "/roster/manage/rotations"],
+    expect(work.links.slice(-2).map((link) => [link.label, link.href])).toEqual([
       ["Courses", "/admin/courses"],
       ["Post a course", "/admin/courses?new=1"],
     ]);
+    // Rotation rounds still lets in only the administrator and roster managers.
+    const manager = sections.find((section) => section.id === "manager")!;
+    expect(manager.links.at(-1)!.href).toBe("/roster/manage/rotations");
     const all = sections.flatMap((section) => section.links.map((link) => link.id));
     expect(all.filter((id) => id === "rotation-rounds")).toHaveLength(1);
     expect(all.filter((id) => id === "courses")).toHaveLength(1);
@@ -461,6 +463,14 @@ describe("preview rows: Rotation rounds and Courses", () => {
       "courses",
       "post-course",
     ]);
+  });
+
+  it("keeps Rotation rounds from Medical Workforce until that screen accepts them", () => {
+    const ids = hospitalSections([workforce(H1)], H1, { previews: both }).flatMap((section) =>
+      section.links.map((link) => link.id),
+    );
+    expect(ids).not.toContain("rotation-rounds");
+    expect(ids).toContain("courses");
   });
 
   it("gives a supervisor neither", () => {
