@@ -9,6 +9,23 @@ import { useExampleData } from "@/lib/example-data/store";
 import type { WorkAreaId } from "@/lib/work-frame/areas";
 
 /**
+ * What the gate says while the example is off. Most areas wait on their hospital's side. Assessments
+ * never will: real records are kept in Clinical Learning Australia (CLA), and its screens are only an
+ * example of how CLA works (owner decision 7 Oct 2026).
+ */
+function gateCopy(area: WorkAreaId, what: string): { readonly title: string; readonly body: string } {
+  if (area === "assess")
+    return {
+      title: `${what} is an example only`,
+      body: "Real records stay in CLA. You can see how it works with example data.",
+    };
+  return {
+    title: `${what} is not connected yet`,
+    body: "It needs your hospital's side, which is still being built. You can see how it works with example data.",
+  };
+}
+
+/**
  * For a screen that has no real data source yet (it needs the hospital's side,
  * which waits on database work): it only ever shows example data, so a real
  * user must never land on it and read made-up figures as theirs. With the
@@ -34,16 +51,17 @@ export function ExampleOnlyGate({
   }, [router, turnOn]);
 
   if (active) return <>{children}</>;
+  const copy = gateCopy(area, what);
   return (
     <WorkCard testId="example-only-gate">
       <WorkEmpty
         icon={Building2}
         title={
           <span role="heading" aria-level={2}>
-            {what} is not connected yet
+            {copy.title}
           </span>
         }
-        body="It needs your hospital's side, which is still being built. You can see how it works with example data."
+        body={copy.body}
         action={
           <WorkButton size="wide" onClick={lookAround} testId="example-only-gate-look">
             Look around with example data

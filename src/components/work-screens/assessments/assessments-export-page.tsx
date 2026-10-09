@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, History, Users } from "lucide-react";
+import { Download, FileText, History } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -21,6 +21,7 @@ import { downloadTextFile } from "@/lib/admin/download-file";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
 import { initialAssessmentsState, todayLabel } from "@/lib/teaching/assessments/model";
+import { SAMPLE_DOCTOR } from "@/lib/teaching/assessments/sample";
 import {
   DEFAULT_ASSESSMENTS_EXPORT,
   EXPORT_PERIODS,
@@ -240,27 +241,19 @@ export function AssessmentsExportPage() {
               <WorkEmpty
                 icon={FileText}
                 title="No signed forms for this doctor here"
-                body="This sample holds signed forms for Dr Sam Lee only."
+                body={`This sample holds signed forms for ${SAMPLE_DOCTOR.name} only.`}
                 testId="assessments-export-no-forms"
               />
             )}
             <p className={cn(textMuted, "px-1 text-xs")}>
-              Open a form to see its printable copy. The doctor emails the signed form to the MEU. PsychSift
-              doesn&apos;t send it.
+              Open a form to see its printable copy. The real form is completed and signed off in CLA. This copy is only
+              for printing.
             </p>
           </>
         ) : null}
 
         <WorkSectionLabel>Also</WorkSectionLabel>
         <WorkCard as="ul">
-          <li className="min-w-0">
-            <WorkIconRow
-              icon={Users}
-              title="Supervision hours"
-              sub="Kept in Supervision, with your confirmed hours"
-              href="/teaching/supervision"
-            />
-          </li>
           <li className="min-w-0">
             <WorkIconRow
               icon={History}

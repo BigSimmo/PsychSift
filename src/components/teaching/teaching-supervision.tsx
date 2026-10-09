@@ -792,7 +792,7 @@ function SupervisionPage({ demoMode }: { demoMode: boolean }) {
   else body = <SupervisionBody pairings={pairings} today={today} sender={sender} />;
   return (
     <WorkBody testId="teaching-supervision">
-      <AssessHeader eyebrow="Confirmed hours" title="Supervision" />
+      <AssessHeader eyebrow="Confirmed hours" title="Registrar supervision" />
       {demoMode && !exampleShown ? (
         <AssessSample>Example data. Changes stay on this page and are not saved.</AssessSample>
       ) : null}
