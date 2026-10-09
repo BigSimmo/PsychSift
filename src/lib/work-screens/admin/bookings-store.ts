@@ -1,6 +1,7 @@
 import type { CalendarEvent } from "@/lib/calendar/calendar-event";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
-import { bookingCalendarEvents, EMPTY_BOOKINGS, type BookingsState } from "@/lib/work-screens/admin/bookings";
+import type { BookingsState } from "@/lib/work-screens/admin/bookings";
+import { bookingCalendarEvents } from "@/lib/work-screens/admin/bookings-calendar";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 
 /*
@@ -17,7 +18,8 @@ type Snapshot = {
   readonly source: string | null;
 };
 
-const EMPTY: Snapshot = { state: EMPTY_BOOKINGS, source: null };
+// Only types come from `bookings.ts`, so the calendars that read this store do not load the booking rules.
+const EMPTY: Snapshot = { state: { courses: [], bookings: [] }, source: null };
 let snapshot: Snapshot = EMPTY;
 const listeners = new Set<() => void>();
 
