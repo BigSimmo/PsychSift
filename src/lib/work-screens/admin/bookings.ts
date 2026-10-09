@@ -733,3 +733,40 @@ function normaliseWords(text: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/* ------------------------------------------------------------------ organiser export */
+
+/**
+ * Who is booked and waiting on one course, as a spreadsheet file. Excel reads it as
+ * UTF-8 only with the byte order mark, and a cell that starts like a formula is
+ * quoted so it never runs.
+ */
+export function courseBookingsCsv(state: BookingsState, courseId: string): string {
+  const cell = (value: string) => {
+    const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+    return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  };
+  const day = (at: string) => at.slice(0, 10);
+  const rows = [
+    ...bookedFor(state, courseId).map((booking) => [
+      booking.person,
+      booking.status === "attended" ? "Attended" : "Booked",
+      day(booking.at),
+    ]),
+    ...waitlistFor(state, courseId).map((booking, index) => [
+      booking.person,
+      `Waiting, ${index + 1} in line`,
+      day(booking.at),
+    ]),
+  ];
+  return `﻿${[["Name", "Status", "Since"], ...rows].map((row) => row.map(cell).join(",")).join("\r\n")}\r\n`;
+}
+
+export function courseBookingsFileName(course: Pick<BookingCourse, "title" | "date">): string {
+  const slug = course.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  return `${slug || "course"}-${course.date}-bookings.csv`;
+}

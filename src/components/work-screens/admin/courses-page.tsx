@@ -27,13 +27,16 @@ import {
   PaperworkFootNote,
   usePaperworkHeading,
 } from "@/components/work-screens/admin/paperwork-shared";
-import { BookingsNotSetUp, PlacesMeter } from "@/components/work-screens/admin/bookings-shared";
-import { useBookings, useCourseOrganiser } from "@/components/work-screens/admin/use-bookings";
+import { BookingsNotSetUp, BookingsSignedOut, PlacesMeter } from "@/components/work-screens/admin/bookings-shared";
+import { useBookings, EXAMPLE_ORGANISER, type BookingsPosting } from "@/components/work-screens/admin/use-bookings";
+import { useCourseOrganiser } from "@/components/work-screens/admin/use-course-organiser";
+import { downloadTextFile } from "@/lib/admin/download-file";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import {
   BLANK_COURSE_DRAFT,
   bookedFor,
-  cancelCourse,
+  courseBookingsCsv,
+  courseBookingsFileName,
   COURSE_ABOUT_MAX,
   COURSE_KIND_LABELS,
   COURSE_LOCATION_MAX,
@@ -42,12 +45,10 @@ import {
   courseDateTile,
   draftChanges,
   draftFromCourse,
-  editCourse,
   formatCourseDay,
   formatCourseLength,
   hasDraftErrors,
   organiserCourses,
-  postCourse,
   timeRange,
   validateCourseDraft,
   waitlistFor,
@@ -57,10 +58,7 @@ import {
   type CourseDraftErrors,
   type CourseKind,
 } from "@/lib/work-screens/admin/bookings";
-import { freshBookingsId } from "@/lib/work-screens/admin/bookings-store";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-
-const EXAMPLE_ORGANISER = "Medical Education";
 
 /**
  * Admin · Courses (`/admin/courses`), the organiser's side of Bookings. An
@@ -73,23 +71,31 @@ export function AdminCoursesPage() {
   usePaperworkHeading("Courses", "Post and manage bookings");
   const params = useSearchParams();
   const courseId = params.get("course");
-  const posting = params.get("new") === "1";
+  const postingNew = params.get("new") === "1";
   const bookings = useBookings();
   const { organiser, sample } = useCourseOrganiser();
-  const { page } = bookings;
+  const { page, posting, manages } = bookings;
+  // Saved courses: only the ones this reader runs (the read also carries courses they can book).
+  const state = useMemo(
+    () => (page.status === "ready" ? managedOnly(page.state, bookings.examples, manages) : null),
+    [page, bookings.examples, manages],
+  );
+  const canPost = bookings.examples || Boolean(posting && (posting.administrator || posting.teams.length));
 
   return (
     <WorkBody testId="admin-courses">
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Courses
       </PageTitleUnderBand>
-      {page.status === "not-set-up" ? (
+      {page.status === "signed-out" ? (
+        <BookingsSignedOut organiser testId="admin-courses-signed-out" />
+      ) : page.status === "not-set-up" ? (
         <BookingsNotSetUp organiser testId="admin-courses-not-set-up" />
       ) : page.status === "error" ? (
         <WorkCard>
           <WorkEmpty
             icon={RotateCcw}
-            title="The example didn't load"
+            title={bookings.examples ? "The example didn't load" : "Courses didn't load"}
             body="Check your connection, then try again."
             action={
               <WorkButton variant="secondary" onClick={page.retry} testId="admin-courses-retry">
@@ -103,7 +109,7 @@ export function AdminCoursesPage() {
         <ModeModuleSkeleton rows={5} twoLine eyebrow testId="admin-courses-loading" />
       ) : (
         <>
-          {sample && !organiser && !posting && !courseId ? (
+          {sample && !organiser && !postingNew && !courseId ? (
             <WorkCard padded testId="admin-courses-sample">
               <p className="text-sm font-semibold text-[color:var(--text-heading)]">
                 This is the organiser&apos;s side
@@ -114,12 +120,14 @@ export function AdminCoursesPage() {
               </p>
             </WorkCard>
           ) : null}
-          {posting ? (
-            <CourseForm key="new" state={page.state} bookings={bookings} course={null} />
+          {!canPost && !state?.courses.length ? (
+            <NotAnOrganiser />
+          ) : !state ? null : postingNew && canPost ? (
+            <CourseForm key="new" state={state} bookings={bookings} course={null} />
           ) : courseId ? (
-            <OrganiserCourse key={courseId} state={page.state} courseId={courseId} bookings={bookings} />
+            <OrganiserCourse key={courseId} state={state} courseId={courseId} bookings={bookings} />
           ) : (
-            <CourseList state={page.state} today={bookings.today} />
+            <CourseList state={state} today={bookings.today} canPost={canPost} />
           )}
         </>
       )}
@@ -127,9 +135,45 @@ export function AdminCoursesPage() {
   );
 }
 
+function managedOnly(state: BookingsState, examples: boolean, manages: (courseId: string) => boolean): BookingsState {
+  if (examples) return state;
+  return {
+    ...state,
+    courses: state.courses.filter((course) => manages(course.id)),
+    bookings: state.bookings.filter((booking) => manages(booking.courseId)),
+  };
+}
+
+/** Signed in, but this account does not run any courses. */
+function NotAnOrganiser() {
+  return (
+    <WorkCard>
+      <WorkEmpty
+        icon={CalendarDays}
+        title="You don't post courses"
+        body="Medical Education and team managers post courses here. Courses posted for you are in Bookings."
+        action={
+          <WorkButton href={ADMIN_WORK_SCREEN_HREFS.bookings} testId="admin-courses-to-bookings">
+            Bookings
+          </WorkButton>
+        }
+        testId="admin-courses-not-organiser"
+      />
+    </WorkCard>
+  );
+}
+
 /* ------------------------------------------------------------------ list */
 
-function CourseList({ state, today }: { readonly state: BookingsState; readonly today: string }) {
+function CourseList({
+  state,
+  today,
+  canPost,
+}: {
+  readonly state: BookingsState;
+  readonly today: string;
+  readonly canPost: boolean;
+}) {
   const { drafts, upcoming, past, full } = useMemo(() => organiserCourses(state, today), [state, today]);
   const needs = full.length + drafts.length;
   return (
@@ -189,11 +233,13 @@ function CourseList({ state, today }: { readonly state: BookingsState; readonly 
         </>
       ) : null}
       <PaperworkFootNote>Doctors see the course, places and times. Never add patient details.</PaperworkFootNote>
-      <WorkDock>
-        <WorkButton icon={Plus} href={ADMIN_WORK_SCREEN_HREFS.postCourse} testId="admin-courses-post">
-          Post a course
-        </WorkButton>
-      </WorkDock>
+      {canPost ? (
+        <WorkDock>
+          <WorkButton icon={Plus} href={ADMIN_WORK_SCREEN_HREFS.postCourse} testId="admin-courses-post">
+            Post a course
+          </WorkButton>
+        </WorkDock>
+      ) : null}
     </>
   );
 }
@@ -246,6 +292,7 @@ function OrganiserCourse({
 }) {
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const toast = useWorkUndoToast();
   const course = courseById(state, courseId);
@@ -281,12 +328,15 @@ function OrganiserCourse({
   const waiting = waitlistFor(state, course.id);
   const live = course.status !== "cancelled";
 
-  const confirmCancel = () => {
-    const previous = state;
-    const result = cancelCourse(state, course.id, { at: new Date().toISOString() });
+  const confirmCancel = async () => {
     setCancelling(false);
-    if (!result) return;
-    bookings.update(result.state);
+    setBusy(true);
+    const result = await bookings.cancelCourse(course.id);
+    setBusy(false);
+    if (!result.ok) {
+      setNotice(result.message);
+      return;
+    }
     const message =
       result.calendarsUpdated > 0
         ? `Cancelled and taken off ${calendars(result.calendarsUpdated)}`
@@ -294,10 +344,20 @@ function OrganiserCourse({
           ? "Draft removed"
           : "Course cancelled";
     if (!toast) setNotice(message);
-    toast?.(message, () => {
-      bookings.update(previous);
-      setNotice(null);
-    });
+    toast?.(
+      message,
+      result.undo
+        ? () => {
+            result.undo?.();
+            setNotice(null);
+          }
+        : undefined,
+    );
+  };
+
+  const exportBooked = () => {
+    if (!guardExampleAction(bookings.examples, "export")) return;
+    downloadTextFile(courseBookingsCsv(state, course.id), courseBookingsFileName(course), "text/csv;charset=utf-8");
   };
 
   return (
@@ -373,7 +433,7 @@ function OrganiserCourse({
             icon={Users}
             title="Export who is booked"
             sub="Spreadsheet of names and status"
-            onClick={() => guardExampleAction(bookings.examples, "export")}
+            onClick={exportBooked}
             testId="admin-courses-export"
           />
           <WorkIconRow
@@ -385,7 +445,9 @@ function OrganiserCourse({
                 ? `Takes it off ${calendars(booked.length)} and tells them`
                 : "No one is booked"
             }
-            onClick={() => setCancelling(true)}
+            onClick={() => {
+              if (!busy) setCancelling(true);
+            }}
             testId="admin-courses-cancel"
           />
         </WorkCard>
@@ -406,7 +468,7 @@ function OrganiserCourse({
                 size="wide"
                 variant="amber"
                 icon={Ban}
-                onClick={confirmCancel}
+                onClick={() => void confirmCancel()}
                 testId="admin-courses-cancel-confirm"
               >
                 {course.status === "draft"
@@ -495,7 +557,18 @@ function CourseForm({
   const [draft, setDraft] = useState<CourseDraft>(() => (course ? draftFromCourse(course) : BLANK_COURSE_DRAFT));
   const [errors, setErrors] = useState<CourseDraftErrors>({});
   const [confirm, setConfirm] = useState<{ changes: readonly string[]; post: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
   const booked = course ? bookedFor(state, course.id).length : 0;
+  // Who can book a new saved course: one of the reader's teams, or everyone (site administrators).
+  const audiences = audienceChoices(bookings.examples ? null : bookings.posting);
+  const [audience, setAudience] = useState<string | null>(() => audiences[0]?.serviceId ?? null);
+  const defaultPostedBy = bookings.examples
+    ? EXAMPLE_ORGANISER
+    : (audiences.find((choice) => choice.serviceId === audience)?.postedBy ?? EXAMPLE_ORGANISER);
+  // Untouched, it follows the team chosen above.
+  const [typedPostedBy, setPostedBy] = useState<string | null>(null);
+  const postedBy = typedPostedBy ?? defaultPostedBy;
   const set = <K extends keyof CourseDraft>(key: K, value: CourseDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
@@ -517,46 +590,65 @@ function CourseForm({
     return ok;
   };
 
-  const save = (post: boolean) => {
-    if (!check()) return;
-    const at = new Date().toISOString();
-    const previous = state;
-    if (!course) {
-      const id = freshBookingsId("course", bookings.examples);
-      bookings.update(
-        postCourse(state, draft, { id, at, organiser: EXAMPLE_ORGANISER, status: post ? "posted" : "draft" }),
-      );
-      toast?.(post ? "Posted. Doctors can book it now." : "Saved as a draft", () => bookings.update(previous));
-      router.push(ADMIN_WORK_SCREEN_HREFS.organiserCourse(id));
+  const save = async (post: boolean) => {
+    if (busy || !check()) return;
+    if (course) {
+      const moving = course.status === "posted" && booked > 0;
+      const changes = draftChanges(course, draft);
+      if (moving && changes.length && !confirm) {
+        setConfirm({ changes, post });
+        return;
+      }
+      await finishEdit(post);
       return;
     }
-    const moving = course.status === "posted" && booked > 0;
-    const changes = draftChanges(course, draft);
-    if (moving && changes.length && !confirm) {
-      setConfirm({ changes, post });
+    setBusy(true);
+    const result = await bookings.saveCourse({
+      courseId: null,
+      draft,
+      post,
+      serviceId: audience,
+      organiser: postedBy.trim() || defaultPostedBy,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      refused(result);
       return;
     }
-    finishEdit(post);
+    toast?.(post ? "Posted. Doctors can book it now." : "Saved as a draft", result.undo);
+    router.push(ADMIN_WORK_SCREEN_HREFS.organiserCourse(result.id));
   };
 
-  const finishEdit = (post: boolean) => {
+  const finishEdit = async (post: boolean) => {
     if (!course) return;
-    const previous = state;
-    const result = editCourse(state, course.id, draft, {
-      at: new Date().toISOString(),
+    setBusy(true);
+    const result = await bookings.saveCourse({
+      courseId: course.id,
+      draft,
       post: post && course.status === "draft",
+      serviceId: null,
+      organiser: course.organiser,
     });
+    setBusy(false);
     setConfirm(null);
-    if (!result) return;
-    bookings.update(result.state);
+    if (!result.ok) {
+      refused(result);
+      return;
+    }
     const parts = [
       result.calendarsUpdated ? `Saved and updated ${calendars(result.calendarsUpdated)}` : "Saved",
       result.promoted ? `${people(result.promoted)} moved off the waitlist` : null,
     ].filter(Boolean);
     const message = parts.join(". ");
     if (!toast) onSaved?.(message);
-    toast?.(message, () => bookings.update(previous));
+    toast?.(message, result.undo);
     onDone?.();
+  };
+
+  /** The server said no: show its field messages, or its reason above the buttons. */
+  const refused = (result: { readonly message: string; readonly fields?: CourseDraftErrors }) => {
+    if (result.fields && hasDraftErrors(result.fields)) setErrors(result.fields);
+    setProblem(result.message);
   };
 
   const length = formatCourseLength(draft);
@@ -698,11 +790,44 @@ function CourseForm({
         </div>
       </WorkCard>
 
+      {!course && audiences.length ? (
+        <WorkCard padded testId="admin-courses-audience">
+          <Step n={4} label="Who can book" />
+          {audiences.length > 1 ? (
+            <WorkChips label="Who can book">
+              {audiences.map((choice) => (
+                <WorkChip
+                  key={choice.serviceId ?? "everyone"}
+                  selected={audience === choice.serviceId}
+                  onClick={() => setAudience(choice.serviceId)}
+                  testId={`admin-courses-audience-${choice.serviceId ?? "everyone"}`}
+                >
+                  {choice.label}
+                </WorkChip>
+              ))}
+            </WorkChips>
+          ) : (
+            <p className="mt-2 text-sm">{audiences[0]?.label}</p>
+          )}
+          <div className="mt-3 grid gap-3">
+            <PaperworkField
+              label="Posted by"
+              value={postedBy}
+              onChange={setPostedBy}
+              maxLength={60}
+              hint="The name doctors see on the course"
+              checkPatient
+              testId="admin-courses-posted-by"
+            />
+          </div>
+        </WorkCard>
+      ) : null}
+
       <WorkCard padded>
-        <Step n={4} label="What doctors see" />
+        <Step n={!course && audiences.length ? 5 : 4} label="What doctors see" />
         <div className="mt-3 rounded-[var(--work-radius-field)] border border-[color:var(--work-line)] px-3 py-2.5">
           <p className="text-3xs font-bold tracking-widest text-[color:var(--text-muted)] uppercase">
-            {course?.organiser ?? EXAMPLE_ORGANISER}
+            {course?.organiser ?? (postedBy.trim() || defaultPostedBy)}
           </p>
           <p className="text-sm font-semibold text-[color:var(--text-heading)]">{preview}</p>
           <p className="text-xs text-[color:var(--text-muted)]">
@@ -714,10 +839,20 @@ function CourseForm({
         </div>
       </WorkCard>
 
+      {problem ? (
+        <p
+          role="alert"
+          className="text-sm font-semibold text-[color:var(--text-heading)]"
+          data-testid="admin-courses-problem"
+        >
+          {problem}
+        </p>
+      ) : null}
+
       <WorkDock>
         {course && !draftCourse ? (
           <>
-            <WorkButton icon={Save} onClick={() => save(false)} testId="admin-courses-save">
+            <WorkButton icon={Save} disabled={busy} onClick={() => void save(false)} testId="admin-courses-save">
               Save changes
             </WorkButton>
             <WorkButton variant="quiet" onClick={() => onDone?.()} testId="admin-courses-form-cancel">
@@ -726,10 +861,10 @@ function CourseForm({
           </>
         ) : (
           <>
-            <WorkButton icon={Send} onClick={() => save(true)} testId="admin-courses-submit">
+            <WorkButton icon={Send} disabled={busy} onClick={() => void save(true)} testId="admin-courses-submit">
               Post course
             </WorkButton>
-            <WorkButton variant="quiet" onClick={() => save(false)} testId="admin-courses-draft">
+            <WorkButton variant="quiet" disabled={busy} onClick={() => void save(false)} testId="admin-courses-draft">
               Save draft
             </WorkButton>
           </>
@@ -747,7 +882,8 @@ function CourseForm({
             <WorkButton
               size="wide"
               icon={Check}
-              onClick={() => finishEdit(confirm.post)}
+              disabled={busy}
+              onClick={() => void finishEdit(confirm.post)}
               testId="admin-courses-confirm"
             >
               Save and update {calendars(booked)}
@@ -810,4 +946,20 @@ function initials(name: string): string {
 
 function shortDate(iso: string): string {
   return formatCourseDay(iso.slice(0, 10)).split(" ").slice(1).join(" ");
+}
+
+interface AudienceChoice {
+  readonly serviceId: string | null;
+  readonly label: string;
+  /** The name doctors see unless the organiser types another. */
+  readonly postedBy: string;
+}
+
+/** Teams first (most posts are a team's own teaching), then everyone for a site administrator. */
+function audienceChoices(posting: BookingsPosting | null): AudienceChoice[] {
+  if (!posting) return [];
+  return [
+    ...posting.teams.map((team) => ({ serviceId: team.serviceId, label: team.name, postedBy: team.name })),
+    ...(posting.administrator ? [{ serviceId: null, label: "Everyone", postedBy: EXAMPLE_ORGANISER }] : []),
+  ];
 }

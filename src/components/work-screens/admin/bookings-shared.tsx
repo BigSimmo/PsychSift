@@ -4,6 +4,7 @@ import { CalendarClock, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { WorkButton, WorkCard, WorkChip, WorkChips } from "@/components/mode-kit/work";
 import { useExampleData } from "@/lib/example-data/store";
 import { placesLeft, placesWords, type BookingCourse, type BookingsState } from "@/lib/work-screens/admin/bookings";
@@ -132,5 +133,29 @@ export function BookingsNotSetUp({
         </WorkButton>
       </div>
     </WorkCard>
+  );
+}
+
+/** Signed out with examples off: courses are shared records, so booking or posting needs an account. */
+export function BookingsSignedOut({
+  testId,
+  organiser = false,
+}: {
+  readonly testId: string;
+  readonly organiser?: boolean;
+}) {
+  const { turnOn } = useExampleData("admin");
+  return (
+    <div className="grid gap-3">
+      <SignedOutSampleNotice title={organiser ? "Sign in to post courses" : "Sign in to book courses"} testId={testId}>
+        {organiser
+          ? "Courses you post show to doctors to book, and go in their calendars."
+          : "Courses and work requirements posted for you show here to book, and go in your calendar."}{" "}
+        Nothing is kept while you are signed out.
+      </SignedOutSampleNotice>
+      <WorkButton variant="secondary" icon={Sparkles} onClick={turnOn} testId={`${testId}-try-example`}>
+        Try it with examples
+      </WorkButton>
+    </div>
   );
 }

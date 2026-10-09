@@ -24,7 +24,8 @@ import { zonedToday } from "@/lib/work-time/format";
  * permissions under a lock), then reads again, so what the page shows is always what
  * was saved. Nothing is kept on the device.
  *
- * Not wired into the pages yet.
+ * `useBookings` switches to it when Admin's example data is off and someone is
+ * signed in. While `enabled` is false it reads nothing.
  */
 
 const BOOKINGS_URL = "/api/work/bookings";
@@ -35,6 +36,8 @@ export type SavedBookingsPageState =
   | { readonly status: "error"; readonly retry: () => void }
   /** The bookings tables are not there yet (or demo mode): the pages show "not set up". */
   | { readonly status: "not-set-up" }
+  /** The server did not accept the session (signed out in another tab, or it expired). */
+  | { readonly status: "signed-out" }
   | { readonly status: "ready"; readonly state: BookingsState };
 
 export type SavedActionResult<T> =
@@ -75,9 +78,13 @@ export interface UseSavedBookings {
 }
 
 type Loaded =
-  { readonly status: "loading" } | { readonly status: "error" } | { readonly status: "not-set-up" } | SavedBookingsRead;
+  | { readonly status: "loading" }
+  | { readonly status: "error" }
+  | { readonly status: "not-set-up" }
+  | { readonly status: "signed-out" }
+  | SavedBookingsRead;
 
-export function useSavedBookings(): UseSavedBookings {
+export function useSavedBookings(enabled = true): UseSavedBookings {
   const { zone } = useWorkTimeZone();
   const online = useOnlineStatus();
   const headers = useAuthHeadersIfAvailable();
@@ -91,17 +98,22 @@ export function useSavedBookings(): UseSavedBookings {
       const response = await fetch(BOOKINGS_URL, { cache: "no-store", headers });
       const body: unknown = response.ok ? await response.json() : null;
       if (mine !== generation.current) return;
-      setLoaded(readAnswer(body));
+      setLoaded(response.status === 401 ? { status: "signed-out" } : readAnswer(body));
     } catch {
       if (mine === generation.current) setLoaded({ status: "error" });
     }
   }, [headers]);
 
   useEffect(() => {
+    if (!enabled) {
+      // A later answer from before the switch must not land.
+      generation.current += 1;
+      return;
+    }
     // Read on mount and again when the account changes; the read itself sets state after the fetch.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount; setState happens after await
     void refresh();
-  }, [refresh]);
+  }, [enabled, refresh]);
 
   const send = useCallback(
     async <T>(url: string, payload: unknown): Promise<SavedActionResult<T>> => {

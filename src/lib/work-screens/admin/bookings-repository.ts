@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { PublicApiError } from "@/lib/http";
 import type { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/database.types";
 import type {
   BookingCourse,
   BookingsState,
@@ -23,20 +24,11 @@ import type {
  * rules in `bookings.ts` read both. Other doctors' places on a course the reader does
  * not organise arrive without a name or real id: enough to count places and waitlist
  * position, nothing more.
- *
- * The functions are not in the generated database types until the migration lands,
- * so they are called through a narrow RPC shape rather than the typed client.
  */
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 type RpcError = { readonly message?: string | null; readonly code?: string | null };
-type BookingsRpcClient = {
-  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: RpcError | null }>;
-};
-
-function rpcClient(client: AdminClient): BookingsRpcClient {
-  return client as unknown as BookingsRpcClient;
-}
+type SaveCourseArgs = Database["public"]["Functions"]["work_save_course"]["Args"];
 
 /** The name shown for another doctor's place on a course the reader does not organise. */
 export const OTHER_DOCTOR_LABEL = "Another doctor";
@@ -212,7 +204,7 @@ export function mapBookingsRead(data: unknown): SavedBookingsRead {
 /** Everything the Bookings and Courses pages show for this reader, or "not-set-up" before the tables land. */
 export async function readSavedBookings(client: AdminClient, actorId: string): Promise<SavedBookingsAnswer> {
   requireActor(actorId);
-  const { data, error } = await rpcClient(client).rpc("work_bookings_read", { p_actor_id: actorId });
+  const { data, error } = await client.rpc("work_bookings_read", { p_actor_id: actorId });
   if (error) {
     if (isBookingsNotSetUp(error)) return { status: "not-set-up" };
     throw bookingsApiError(error);
@@ -237,7 +229,7 @@ export async function bookSavedCourse(
   courseId: string,
 ): Promise<SavedBookResult> {
   requireActor(actorId);
-  const { data, error } = await rpcClient(client).rpc("work_book_course", {
+  const { data, error } = await client.rpc("work_book_course", {
     p_actor_id: actorId,
     p_course_id: courseId,
   });
@@ -262,7 +254,7 @@ export async function cancelSavedBooking(
   courseId: string,
 ): Promise<SavedCancelBookingResult> {
   requireActor(actorId);
-  const { data, error } = await rpcClient(client).rpc("work_cancel_course_booking", {
+  const { data, error } = await client.rpc("work_cancel_course_booking", {
     p_actor_id: actorId,
     p_course_id: courseId,
   });
@@ -298,7 +290,7 @@ const saveCourseResultSchema = z.object({
 export type SavedCourseResult = z.infer<typeof saveCourseResultSchema>;
 
 /** The SQL arguments for a draft, trimmed the same way `bookings.ts` trims a posted course. */
-export function courseRpcArgs(actorId: string, input: SaveCourseInput): Record<string, unknown> {
+export function courseRpcArgs(actorId: string, input: SaveCourseInput): SaveCourseArgs {
   const { draft } = input;
   const kind: CourseKind = draft.kind;
   return {
@@ -328,7 +320,7 @@ export async function saveSavedCourse(
   input: SaveCourseInput,
 ): Promise<SavedCourseResult> {
   requireActor(actorId);
-  const { data, error } = await rpcClient(client).rpc("work_save_course", courseRpcArgs(actorId, input));
+  const { data, error } = await client.rpc("work_save_course", courseRpcArgs(actorId, input));
   if (error) throw bookingsApiError(error);
   const parsed = saveCourseResultSchema.safeParse(data);
   if (!parsed.success) throw bookingsUnavailable();
@@ -349,7 +341,7 @@ export async function cancelSavedCourse(
   courseId: string,
 ): Promise<SavedCancelCourseResult> {
   requireActor(actorId);
-  const { data, error } = await rpcClient(client).rpc("work_cancel_course", {
+  const { data, error } = await client.rpc("work_cancel_course", {
     p_actor_id: actorId,
     p_course_id: courseId,
   });

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -76,14 +76,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("Example data off", () => {
+describe("Example data off, bookings not set up", () => {
   beforeEach(() => {
     act(() => setExampleDataOn(false));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ status: "not-set-up" }));
   });
 
   it("Bookings says no courses are posted yet and offers the example", async () => {
     withToasts(<AdminBookingsPage />);
-    const card = screen.getByTestId("admin-bookings-not-set-up");
+    const card = await screen.findByTestId("admin-bookings-not-set-up", undefined, LOAD);
     expect(card.textContent).toContain("No courses are posted yet");
     expect(within(card).getByRole("button", { name: "Try it with examples" })).toBeTruthy();
     expect(screen.queryByTestId("admin-bookings-open")).toBeNull();
@@ -92,9 +93,9 @@ describe("Example data off", () => {
     expect(await screen.findByTestId("admin-bookings-open", undefined, LOAD)).toBeTruthy();
   });
 
-  it("Courses shows the organiser's wording", () => {
+  it("Courses shows the organiser's wording", async () => {
     withToasts(<AdminCoursesPage />);
-    const card = screen.getByTestId("admin-courses-not-set-up");
+    const card = await screen.findByTestId("admin-courses-not-set-up", undefined, LOAD);
     expect(card.textContent).toContain("Posting courses is not switched on yet");
     expect(within(card).getByRole("button", { name: "Try it with examples" })).toBeTruthy();
   });
@@ -207,6 +208,7 @@ describe("Courses with example data on", () => {
     fireEvent.change(screen.getByTestId("admin-courses-capacity"), { target: { value: "10" } });
     fireEvent.click(screen.getByTestId("admin-courses-submit"));
 
+    await waitFor(() => expect(router.push).toHaveBeenCalled());
     const courses = readBookingsSnapshot().state.courses;
     expect(courses).toHaveLength(before + 1);
     const posted = courses.at(-1)!;
@@ -234,5 +236,142 @@ describe("Courses with example data on", () => {
     const saved = readBookingsSnapshot().state.courses.find((course) => course.id === BLS);
     expect(saved?.startTime).toBe("14:00");
     expect(saved?.change?.summary).toContain("Time: 13:00 to 16:30 now 14:00 to 16:30");
+  });
+});
+
+describe("Saved courses (example data off, signed in)", () => {
+  const TEAM = "11111111-1111-4111-8111-111111111111";
+  const MINE = "22222222-2222-4222-8222-222222222222";
+  const OTHER = "33333333-3333-4333-8333-333333333333";
+
+  function course(id: string, title: string, organiser: string) {
+    return {
+      id,
+      kind: "course",
+      title,
+      about: "",
+      date: "2099-03-02",
+      startTime: "09:00",
+      endTime: "12:00",
+      location: "Seminar room 2",
+      capacity: 10,
+      closesOn: null,
+      organiser,
+      renewal: null,
+      waitlist: true,
+      status: "posted",
+      updatedAt: "2026-10-01T00:00:00.000Z",
+      change: null,
+    };
+  }
+
+  function read(options: { booked?: boolean; organiser?: boolean } = {}) {
+    return {
+      status: "ready",
+      state: {
+        courses: [
+          course(MINE, "Ward safety teaching", "Inpatient team"),
+          course(OTHER, "Grand round", "Medical Education"),
+        ],
+        bookings: options.booked
+          ? [
+              {
+                id: "b-1",
+                courseId: OTHER,
+                person: "Dr Me",
+                self: true,
+                status: "booked",
+                at: "2026-10-02T00:00:00.000Z",
+              },
+            ]
+          : [],
+      },
+      managed: options.organiser ? [{ courseId: MINE, serviceId: TEAM }] : [],
+      organiser: options.organiser
+        ? { administrator: false, teams: [{ serviceId: TEAM, name: "Inpatient team" }] }
+        : { administrator: false, teams: [] },
+    };
+  }
+
+  function serve(answers: { get: () => unknown; post?: (url: string, body: unknown) => Response }) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (init?.method === "POST") return answers.post!(url, JSON.parse(String(init.body)));
+      return Response.json(answers.get());
+    });
+  }
+
+  beforeEach(() => {
+    act(() => setExampleDataOn(false));
+  });
+
+  it("books through the server and shows what it saved, with no Undo", async () => {
+    let booked = false;
+    const fetch = serve({
+      get: () => read({ booked }),
+      post: () => {
+        booked = true;
+        return Response.json({ id: "b-1", outcome: "booked", position: null });
+      },
+    });
+    at(`course=${OTHER}`);
+    withToasts(<AdminBookingsPage />);
+    await screen.findByTestId("admin-bookings-detail", undefined, LOAD);
+    fireEvent.click(screen.getByTestId("admin-bookings-book"));
+    fireEvent.click(screen.getByTestId("admin-bookings-book-confirm"));
+
+    await waitFor(() => expect(screen.getByTestId("admin-bookings-cancel")).toBeTruthy());
+    const posted = fetch.mock.calls.find(([, init]) => init?.method === "POST");
+    expect(String(posted?.[0])).toBe("/api/work/bookings");
+    expect(JSON.parse(String(posted?.[1]?.body))).toEqual({ action: "book", courseId: OTHER });
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+    // Nothing went into page memory: the saved version is read from the server.
+    expect(readBookingsSnapshot().state.courses).toHaveLength(0);
+  });
+
+  it("says why the server refused a booking", async () => {
+    serve({
+      get: () => read(),
+      post: () => Response.json({ code: "full", message: "It filled up before you booked." }, { status: 409 }),
+    });
+    at(`course=${OTHER}`);
+    withToasts(<AdminBookingsPage />);
+    await screen.findByTestId("admin-bookings-detail", undefined, LOAD);
+    fireEvent.click(screen.getByTestId("admin-bookings-book"));
+    fireEvent.click(screen.getByTestId("admin-bookings-book-confirm"));
+    expect((await screen.findByTestId("admin-bookings-notice")).textContent).toBe("It filled up before you booked.");
+  });
+
+  it("Courses lists only the courses this organiser runs, and posts for their team", async () => {
+    serve({
+      get: () => read({ organiser: true }),
+      post: () => Response.json({ id: MINE, status: "posted", changes: [], calendarsUpdated: 0, promoted: 0 }),
+    });
+    withToasts(<AdminCoursesPage />);
+    const list = await screen.findByTestId("admin-courses-upcoming", undefined, LOAD);
+    expect(list.textContent).toContain("Ward safety teaching");
+    expect(list.textContent).not.toContain("Grand round");
+
+    cleanup();
+    at("new=1");
+    withToasts(<AdminCoursesPage />);
+    const audience = await screen.findByTestId("admin-courses-audience", undefined, LOAD);
+    expect(audience.textContent).toContain("Inpatient team");
+    expect((screen.getByTestId("admin-courses-posted-by") as HTMLInputElement).value).toBe("Inpatient team");
+  });
+
+  it("Courses tells a doctor who runs no courses where to book instead", async () => {
+    serve({ get: () => read() });
+    withToasts(<AdminCoursesPage />);
+    const card = await screen.findByTestId("admin-courses-not-organiser", undefined, LOAD);
+    expect(card.textContent).toContain("You don't post courses");
+    expect(screen.queryByTestId("admin-courses-post")).toBeNull();
+  });
+
+  it("a session the server no longer accepts shows the sign-in card", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ code: "auth" }, { status: 401 }));
+    withToasts(<AdminBookingsPage />);
+    const card = await screen.findByTestId("admin-bookings-signed-out", undefined, LOAD);
+    expect(card.textContent).toContain("Sign in to book courses");
   });
 });

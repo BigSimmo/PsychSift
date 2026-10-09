@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
-import { useCourseOrganiser } from "@/components/work-screens/admin/use-bookings";
+import { useCourseOrganiser } from "@/components/work-screens/admin/use-course-organiser";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
 import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";

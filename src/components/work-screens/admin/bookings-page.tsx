@@ -38,19 +38,18 @@ import { PaperworkFootNote, usePaperworkHeading } from "@/components/work-screen
 import {
   BookingKeyValues,
   BookingsNotSetUp,
+  BookingsSignedOut,
   BookingsSegment,
   CourseChangeNote,
   PlacesMeter,
 } from "@/components/work-screens/admin/bookings-shared";
-import { useBookings, useCourseOrganiser } from "@/components/work-screens/admin/use-bookings";
+import { useBookings } from "@/components/work-screens/admin/use-bookings";
+import { useCourseOrganiser } from "@/components/work-screens/admin/use-course-organiser";
 import { downloadTextFile } from "@/lib/admin/download-file";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
-import { EXAMPLE_SELF } from "@/lib/example-data/people";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import {
   bookingCalendarEvents,
-  bookPlace,
-  cancelMyBooking,
   COURSE_KIND_LABELS,
   courseAvailability,
   courseById,
@@ -72,7 +71,6 @@ import {
   type CourseAvailability,
   type OpenFilter,
 } from "@/lib/work-screens/admin/bookings";
-import { freshBookingsId } from "@/lib/work-screens/admin/bookings-store";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 
 /**
@@ -95,13 +93,15 @@ export function AdminBookingsPage() {
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Bookings
       </PageTitleUnderBand>
-      {page.status === "not-set-up" ? (
+      {page.status === "signed-out" ? (
+        <BookingsSignedOut testId="admin-bookings-signed-out" />
+      ) : page.status === "not-set-up" ? (
         <BookingsNotSetUp testId="admin-bookings-not-set-up" />
       ) : page.status === "error" ? (
         <WorkCard>
           <WorkEmpty
             icon={RotateCcw}
-            title="The example didn't load"
+            title={bookings.examples ? "The example didn't load" : "Courses didn't load"}
             body="Check your connection, then try again."
             action={
               <WorkButton variant="secondary" onClick={page.retry} testId="admin-bookings-retry">
@@ -422,9 +422,10 @@ function CourseDetail({
   readonly courseId: string;
   readonly bookings: ReturnType<typeof useBookings>;
 }) {
-  const { today, update, examples, online } = bookings;
+  const { today, examples, online } = bookings;
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const toast = useWorkUndoToast();
   const course = courseById(state, courseId);
 
@@ -449,58 +450,55 @@ function CourseDetail({
   const left = placesLeft(state, course);
   const waiting = waitlistFor(state, course.id).length;
   const position = myWaitlistPosition(state, course.id);
-  const blocked = !online && !examples;
+  const blocked = (!online && !examples) || busy;
 
-  const say = (message: string, previous: BookingsState) => {
-    // The toast carries the message and its Undo. Without one (a bare render), say it on the page.
+  const say = (message: string, undo?: () => void) => {
+    // The toast carries the message, and Undo for an example. Without one (a bare render), say it on the page.
     if (!toast) {
       setNotice(message);
       return;
     }
     setNotice(null);
-    toast(message, () => {
-      update(previous);
-      setNotice(null);
-    });
+    toast(
+      message,
+      undo
+        ? () => {
+            undo();
+            setNotice(null);
+          }
+        : undefined,
+    );
   };
 
-  const confirmBook = () => {
-    const previous = state;
-    const result = bookPlace(state, course.id, {
-      today,
-      at: new Date().toISOString(),
-      id: freshBookingsId("booking", examples),
-      person: EXAMPLE_SELF,
-    });
+  const confirmBook = async () => {
     setSheet(null);
+    setBusy(true);
+    const result = await bookings.book(course.id);
+    setBusy(false);
     if (!result.ok) {
-      setNotice(
-        result.error === "full"
-          ? "It filled up before you booked."
-          : result.error === "closed"
-            ? "Booking has closed."
-            : "That didn't book. Try again.",
-      );
+      setNotice(result.message);
       return;
     }
-    update(result.state);
     say(
       result.outcome === "booked"
         ? "Booked and added to your calendar"
         : `On the waitlist, ${ordinal(result.position ?? 1)} in line`,
-      previous,
+      result.undo,
     );
   };
 
-  const confirmCancel = () => {
-    const previous = state;
-    const result = cancelMyBooking(state, course.id);
+  const confirmCancel = async () => {
     setSheet(null);
-    if (!result) return;
-    update(result.state);
+    setBusy(true);
+    const result = await bookings.cancelBooking(course.id);
+    setBusy(false);
+    if (!result.ok) {
+      setNotice(result.message);
+      return;
+    }
     say(
-      availability === "waitlisted" ? "You left the waitlist" : "Booking cancelled and taken off your calendar",
-      previous,
+      result.left === "waitlisted" ? "You left the waitlist" : "Booking cancelled and taken off your calendar",
+      result.undo,
     );
   };
 
@@ -640,7 +638,12 @@ function CourseDetail({
           description={course.title}
           testId="admin-bookings-book-sheet"
           footer={
-            <WorkButton size="wide" icon={Check} onClick={confirmBook} testId="admin-bookings-book-confirm">
+            <WorkButton
+              size="wide"
+              icon={Check}
+              onClick={() => void confirmBook()}
+              testId="admin-bookings-book-confirm"
+            >
               Book my place
             </WorkButton>
           }
@@ -664,7 +667,12 @@ function CourseDetail({
           description={`${course.title}, ${formatCourseDay(course.date)}`}
           testId="admin-bookings-waitlist-sheet"
           footer={
-            <WorkButton size="wide" icon={UserPlus} onClick={confirmBook} testId="admin-bookings-waitlist-confirm">
+            <WorkButton
+              size="wide"
+              icon={UserPlus}
+              onClick={() => void confirmBook()}
+              testId="admin-bookings-waitlist-confirm"
+            >
               Join the waitlist
             </WorkButton>
           }
@@ -690,7 +698,12 @@ function CourseDetail({
           testId="admin-bookings-cancel-sheet"
           footer={
             <div className="grid gap-2">
-              <WorkButton size="wide" variant="amber" onClick={confirmCancel} testId="admin-bookings-cancel-confirm">
+              <WorkButton
+                size="wide"
+                variant="amber"
+                onClick={() => void confirmCancel()}
+                testId="admin-bookings-cancel-confirm"
+              >
                 {sheet === "cancel" ? "Cancel booking" : "Leave the waitlist"}
               </WorkButton>
               <WorkButton

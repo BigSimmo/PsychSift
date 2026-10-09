@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-08T00:40:52.772Z",
+  "generated_at": "2026-10-09T01:30:38.948Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "d8a46a6023c8b50590ba338e9ddf5c06508f1fd6ff02282ce682458e5a4ad3c6",
+  "schema_sha256": "4bfeb40135298a6826c12e2f5430fcf863237a6f7b56703d37af0c6c0dc6f5a8",
   "replay_seconds": 20,
   "snapshot": {
     "views": [
@@ -12879,6 +12879,246 @@
         "reloptions": null,
         "rls_forced": false,
         "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "work_booking_courses",
+        "columns": [
+          {
+            "name": "about",
+            "type": "text",
+            "default": "''::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "capacity",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "change_summary",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "changed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "closes_on",
+            "type": "date",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "course_date",
+            "type": "date",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "end_time",
+            "type": "time without time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "kind",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "location",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "organiser_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "organiser_label",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "renewal",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "start_time",
+            "type": "time without time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": "'draft'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "title",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "waitlist",
+            "type": "boolean",
+            "default": "true",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "work_course_bookings",
+        "columns": [
+          {
+            "name": "course_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "clock_timestamp()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "display_name",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
       }
     ],
     "indexes": [
@@ -15647,6 +15887,54 @@
         "name": "work_backups_pkey",
         "table": "work_backups",
         "def_hash": "71ff6f06617b918855729f2b7b8fdc2d"
+      },
+      {
+        "def": "CREATE INDEX work_booking_courses_date_idx ON public.work_booking_courses USING btree (course_date)",
+        "name": "work_booking_courses_date_idx",
+        "table": "work_booking_courses",
+        "def_hash": "2739263632fc7ee108d90dc7965e869d"
+      },
+      {
+        "def": "CREATE INDEX work_booking_courses_organiser_idx ON public.work_booking_courses USING btree (organiser_id) WHERE (organiser_id IS NOT NULL)",
+        "name": "work_booking_courses_organiser_idx",
+        "table": "work_booking_courses",
+        "def_hash": "81fa45ae5f467f54940e9f170588a65b"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_booking_courses_pkey ON public.work_booking_courses USING btree (id)",
+        "name": "work_booking_courses_pkey",
+        "table": "work_booking_courses",
+        "def_hash": "b39373a46bc1dffcaa9c0142395247ce"
+      },
+      {
+        "def": "CREATE INDEX work_booking_courses_service_date_idx ON public.work_booking_courses USING btree (service_id, course_date)",
+        "name": "work_booking_courses_service_date_idx",
+        "table": "work_booking_courses",
+        "def_hash": "e09b4d27177b0228273856e39a2391d6"
+      },
+      {
+        "def": "CREATE INDEX work_course_bookings_course_status_idx ON public.work_course_bookings USING btree (course_id, status, created_at, id)",
+        "name": "work_course_bookings_course_status_idx",
+        "table": "work_course_bookings",
+        "def_hash": "dfeefc23bab9d55fb6db8525e1f6418e"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_course_bookings_one_live_idx ON public.work_course_bookings USING btree (course_id, owner_id) WHERE (status = ANY (ARRAY['booked'::text, 'waitlisted'::text, 'attended'::text]))",
+        "name": "work_course_bookings_one_live_idx",
+        "table": "work_course_bookings",
+        "def_hash": "2761411a11986437527c46a0f0eccffb"
+      },
+      {
+        "def": "CREATE INDEX work_course_bookings_owner_idx ON public.work_course_bookings USING btree (owner_id)",
+        "name": "work_course_bookings_owner_idx",
+        "table": "work_course_bookings",
+        "def_hash": "e79b88195705a270bf3113d28ce1f6be"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_course_bookings_pkey ON public.work_course_bookings USING btree (id)",
+        "name": "work_course_bookings_pkey",
+        "table": "work_course_bookings",
+        "def_hash": "2186622d3bd2e5b34f0c9f6e263cfe96"
       }
     ],
     "policies": [
@@ -16997,6 +17285,16 @@
         "def": "CREATE TRIGGER web_push_subscriptions_cap BEFORE INSERT ON public.web_push_subscriptions FOR EACH ROW EXECUTE FUNCTION public.web_push_subscriptions_cap()",
         "name": "web_push_subscriptions_cap",
         "table": "web_push_subscriptions"
+      },
+      {
+        "def": "CREATE TRIGGER work_booking_courses_updated_at BEFORE UPDATE ON public.work_booking_courses FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
+        "name": "work_booking_courses_updated_at",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CREATE TRIGGER work_course_bookings_updated_at BEFORE UPDATE ON public.work_course_bookings FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
+        "name": "work_course_bookings_updated_at",
+        "table": "work_course_bookings"
       }
     ],
     "functions": [
@@ -19058,6 +19356,102 @@
         ],
         "def_hash": "d354c856a77f9249398d4768d2e27d8d",
         "signature": "public.withdraw_public_source_version(uuid,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "390cd04c8913873177471ccebb7c9e49",
+        "signature": "public.work_book_course(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "2f281301bca9fe35cac59c075fe8a5d2",
+        "signature": "public.work_bookings_can_post(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "58500fd403ef11e2607e68bb1f2c47df",
+        "signature": "public.work_bookings_day_words(date)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "b5e2199c039426fb033d39fc6bb5893b",
+        "signature": "public.work_bookings_is_site_admin(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8b019129d8cddb3bbf84ce107c8b3a8d",
+        "signature": "public.work_bookings_promote(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "42552b9149fae26f70103d53ba00f203",
+        "signature": "public.work_bookings_read(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "a7b026e1977bbd755c0f84b17771c8c8",
+        "signature": "public.work_bookings_time_words(time without time zone,time without time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "beac01fa5d346e559b71f8d3b344ad7b",
+        "signature": "public.work_bookings_today()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "76da1cdc7f2a11b1ea9b29e3472330f2",
+        "signature": "public.work_bookings_visible(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "b4b12bd8ba893a51b0a5eeb9c1b0b3de",
+        "signature": "public.work_cancel_course_booking(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "36dcd8308d1bc5cbb0b9871dd804b9db",
+        "signature": "public.work_cancel_course(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fdb8dc2acc984177211730991608848e",
+        "signature": "public.work_save_course(uuid,uuid,uuid,text,text,text,text,date,time without time zone,time without time zone,text,integer,date,text,boolean,boolean)"
       }
     ],
     "extensions": [
@@ -23495,6 +23889,106 @@
         "def": "CHECK ((section = ANY (ARRAY['term_tracker'::text, 'exam_prep'::text, 'job_applications'::text])))",
         "name": "work_backups_section_check",
         "table": "work_backups"
+      },
+      {
+        "def": "CHECK ((char_length(about) <= 400))",
+        "name": "work_booking_courses_about_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK (((capacity >= 1) AND (capacity <= 500)))",
+        "name": "work_booking_courses_capacity_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK (((change_summary IS NULL) = (changed_at IS NULL)))",
+        "name": "work_booking_courses_change_pair",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK (((change_summary IS NULL) OR (char_length(change_summary) <= 1000)))",
+        "name": "work_booking_courses_change_summary_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK (((closes_on IS NULL) OR (closes_on <= course_date)))",
+        "name": "work_booking_courses_closes_by_day",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK ((end_time > start_time))",
+        "name": "work_booking_courses_ends_after_start",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK ((kind = ANY (ARRAY['course'::text, 'requirement'::text])))",
+        "name": "work_booking_courses_kind_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK (((char_length(btrim(location)) >= 1) AND (char_length(btrim(location)) <= 80)))",
+        "name": "work_booking_courses_location_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "FOREIGN KEY (organiser_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "work_booking_courses_organiser_id_fkey",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK (((char_length(btrim(organiser_label)) >= 1) AND (char_length(btrim(organiser_label)) <= 80)))",
+        "name": "work_booking_courses_organiser_label_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "work_booking_courses_pkey",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK (((renewal IS NULL) OR ((char_length(btrim(renewal)) >= 1) AND (char_length(btrim(renewal)) <= 80))))",
+        "name": "work_booking_courses_renewal_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
+        "name": "work_booking_courses_service_id_fkey",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK ((status = ANY (ARRAY['draft'::text, 'posted'::text, 'cancelled'::text])))",
+        "name": "work_booking_courses_status_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "CHECK (((char_length(btrim(title)) >= 1) AND (char_length(btrim(title)) <= 80)))",
+        "name": "work_booking_courses_title_check",
+        "table": "work_booking_courses"
+      },
+      {
+        "def": "FOREIGN KEY (course_id) REFERENCES public.work_booking_courses(id) ON DELETE CASCADE",
+        "name": "work_course_bookings_course_id_fkey",
+        "table": "work_course_bookings"
+      },
+      {
+        "def": "CHECK (((char_length(btrim(display_name)) >= 1) AND (char_length(btrim(display_name)) <= 80)))",
+        "name": "work_course_bookings_display_name_check",
+        "table": "work_course_bookings"
+      },
+      {
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "work_course_bookings_owner_id_fkey",
+        "table": "work_course_bookings"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "work_course_bookings_pkey",
+        "table": "work_course_bookings"
+      },
+      {
+        "def": "CHECK ((status = ANY (ARRAY['booked'::text, 'waitlisted'::text, 'cancelled'::text, 'attended'::text])))",
+        "name": "work_course_bookings_status_check",
+        "table": "work_course_bookings"
       }
     ],
     "storage_buckets": [

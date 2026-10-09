@@ -4727,6 +4727,43 @@ export type Database = {
         { owner_id: string; section: string; record: Json | null; updated_at: string },
         "owner_id" | "section"
       >;
+      work_booking_courses: GeneratedTable<
+        {
+          id: string;
+          organiser_id: string | null;
+          organiser_label: string;
+          service_id: string | null;
+          kind: string;
+          title: string;
+          about: string;
+          course_date: string;
+          start_time: string;
+          end_time: string;
+          location: string;
+          capacity: number;
+          closes_on: string | null;
+          renewal: string | null;
+          waitlist: boolean;
+          status: string;
+          change_summary: string | null;
+          changed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        },
+        "organiser_label" | "kind" | "title" | "course_date" | "start_time" | "end_time" | "location" | "capacity"
+      >;
+      work_course_bookings: GeneratedTable<
+        {
+          id: string;
+          course_id: string;
+          owner_id: string;
+          display_name: string;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        },
+        "course_id" | "owner_id" | "display_name" | "status"
+      >;
     };
     Views: {
       document_strict_gate_status: {
@@ -4796,6 +4833,38 @@ export type Database = {
         Returns: Json;
       };
       roster_team_members: { Args: { p_actor_id: string; p_service_id: string }; Returns: Json };
+      work_bookings_is_site_admin: { Args: { p_user_id: string }; Returns: boolean };
+      work_bookings_can_post: { Args: { p_actor_id: string; p_service_id: string | null }; Returns: boolean };
+      work_bookings_today: { Args: never; Returns: string };
+      work_bookings_promote: { Args: { p_course_id: string }; Returns: number };
+      work_bookings_day_words: { Args: { p_day: string }; Returns: string };
+      work_bookings_time_words: { Args: { p_start: string; p_end: string }; Returns: string };
+      work_bookings_visible: { Args: { p_actor_id: string }; Returns: { id: string; manage: boolean }[] };
+      work_bookings_read: { Args: { p_actor_id: string }; Returns: Json };
+      work_book_course: { Args: { p_actor_id: string; p_course_id: string }; Returns: Json };
+      work_cancel_course_booking: { Args: { p_actor_id: string; p_course_id: string }; Returns: Json };
+      work_save_course: {
+        Args: {
+          p_actor_id: string;
+          p_course_id: string | null;
+          p_service_id: string | null;
+          p_organiser_label: string;
+          p_kind: string;
+          p_title: string;
+          p_about: string;
+          p_course_date: string;
+          p_start_time: string;
+          p_end_time: string;
+          p_location: string;
+          p_capacity: number;
+          p_closes_on: string | null;
+          p_renewal: string | null;
+          p_waitlist: boolean;
+          p_post: boolean;
+        };
+        Returns: Json;
+      };
+      work_cancel_course: { Args: { p_actor_id: string; p_course_id: string }; Returns: Json };
       alert_claim_due_reminders: {
         Args: { p_now: string; p_limit: number };
         Returns: { owner_id: string; ref: string; due_at: string; endpoint: string }[];
