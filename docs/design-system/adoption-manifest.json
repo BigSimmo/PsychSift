@@ -1842,6 +1842,7 @@
         "tests/design-sync-visual-exports.test.ts",
         "tests/progress-mark.dom.test.tsx",
         "tests/rag-claim-support.test.ts",
+        "tests/teaching-assessments-additions.dom.test.tsx",
         "tests/ui-v2-components.dom.test.tsx"
       ],
       "baseline": {

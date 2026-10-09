@@ -1,5 +1,5 @@
-import type { SupervisionLevel } from "@/lib/teaching/assessments/content";
-import { EMPTY_ANSWER, type CantReason, type InboxAnswer } from "@/lib/teaching/assessments/inbox";
+import type { EpaObserved, SupervisionLevel } from "@/lib/teaching/assessments/content";
+import { EMPTY_ANSWER, sendBlocker, type CantReason, type InboxAnswer } from "@/lib/teaching/assessments/inbox";
 import type { ReminderRecord } from "@/lib/teaching/assessments/overview";
 
 /*
@@ -15,8 +15,8 @@ export interface ExtrasState {
 }
 
 export type ExtrasAction =
-  | { type: "inbox-send"; id: string; level: SupervisionLevel; text: string; at: string }
-  | { type: "inbox-queue"; id: string; level: SupervisionLevel; text: string }
+  | { type: "inbox-send"; id: string; level: SupervisionLevel; text: string; observed?: EpaObserved; at: string }
+  | { type: "inbox-queue"; id: string; level: SupervisionLevel; text: string; observed?: EpaObserved }
   | { type: "inbox-commit"; id: string }
   | { type: "inbox-undo"; id: string }
   | { type: "inbox-cant"; id: string; reason: CantReason; suggestion?: string | null }
@@ -27,15 +27,17 @@ export type ExtrasAction =
 export const initialExtras: ExtrasState = { answers: {}, reminders: [] };
 
 /**
- * Answers kept as To send that can go now. One with no supervision level is left out, never given a made-up
- * level: it stays as To send, and the inbox row says to choose a level.
+ * Answers kept as To send that can go now: the same check as the Send button (sendBlocker). One missing its
+ * supervision level or the "How you know" declaration is left out, never given a made-up value: it stays as To
+ * send for the assessor to finish.
  */
 export function readyToSend(
   answers: Readonly<Record<string, InboxAnswer>>,
-): { id: string; level: SupervisionLevel; text: string }[] {
-  const ready: { id: string; level: SupervisionLevel; text: string }[] = [];
+): { id: string; level: SupervisionLevel; text: string; observed: EpaObserved }[] {
+  const ready: { id: string; level: SupervisionLevel; text: string; observed: EpaObserved }[] = [];
   for (const [id, answer] of Object.entries(answers))
-    if (answer.status === "queued" && answer.level) ready.push({ id, level: answer.level, text: answer.text });
+    if (answer.status === "queued" && answer.level && answer.observed && !sendBlocker(answer))
+      ready.push({ id, level: answer.level, text: answer.text, observed: answer.observed });
   return ready;
 }
 
@@ -77,6 +79,7 @@ export function extrasReducer(s: ExtrasState, a: ExtrasAction): ExtrasState {
         status: "sending",
         level: a.level,
         text: a.text,
+        ...(a.observed ? { observed: a.observed } : {}),
         reason: null,
         suggestion: null,
         sentAt: a.at,
@@ -91,6 +94,7 @@ export function extrasReducer(s: ExtrasState, a: ExtrasAction): ExtrasState {
         status: "queued",
         level: a.level,
         text: a.text,
+        ...(a.observed ? { observed: a.observed } : {}),
         reason: null,
         suggestion: null,
       });

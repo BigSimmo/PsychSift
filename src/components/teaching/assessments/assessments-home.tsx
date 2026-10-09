@@ -14,6 +14,7 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import { CLA_SOURCES } from "@/components/teaching/assessments/assessments-kept-in-cla";
+import { MEU_HOW_TO_REACH } from "@/lib/teaching/assessments/content";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
 import { samSignOff } from "@/lib/teaching/assessments/dct";
 import {
@@ -150,6 +151,7 @@ export function AssessmentsHome({ s, openSheet, dct }: ScreenProps) {
           state="ok"
           title="Beginning-of-term discussion"
           detail={`Wed 2 Sep with ${SAMPLE_SUPERVISOR.short}. Goals agreed.`}
+          href={viewHref("botd", { term: t.id })}
         />
         <StepRow
           state="ok"
@@ -203,7 +205,8 @@ export function AssessmentsHome({ s, openSheet, dct }: ScreenProps) {
           subtitle="Every abbreviation in plain words"
           href={viewHref("words")}
         />
-        {/* CLA_SOURCES.claGuides: the CLA resources page. The phone app: CLA detailed FAQs v2.0, p.7. */}
+        {/* CLA_SOURCES.claGuides: the CLA resources page. The phone app (App Store or Google Play): CLA detailed FAQs
+            v2.0, p.7 [CLA-FAQ]. No store link: none was checked. */}
         <li className="min-w-0">
           <a href={CLA_SOURCES.claGuides} target="_blank" rel="noopener noreferrer" className="work-row">
             <span aria-hidden="true" className="work-ic">
@@ -214,13 +217,15 @@ export function AssessmentsHome({ s, openSheet, dct }: ScreenProps) {
                 CLA training guides
                 <span className="sr-only"> (opens outside PsychSift)</span>
               </span>
-              <span className="work-row__sub">How to use CLA. CLA also has a phone app.</span>
+              <span className="work-row__sub">
+                How to use CLA. CLA also has a phone app, from the App Store or Google Play.
+              </span>
             </span>
           </a>
         </li>
       </List>
       <AssessNote icon={BookOpen} center>
-        Rules from the AMC National Framework, accredited in WA by PMCWA. Due dates are set by your MEU.
+        {`Rules from the AMC National Framework, accredited in WA by PMCWA. Due dates are set by your MEU. ${MEU_HOW_TO_REACH}`}
       </AssessNote>
       <WorkDock>
         <WorkButton icon={ArrowRight} href={viewHref("hub")}>
