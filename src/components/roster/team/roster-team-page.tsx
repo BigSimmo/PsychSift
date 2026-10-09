@@ -6,6 +6,7 @@ import { Suspense, useMemo, useState } from "react";
 
 import { useModeBandHeading, WithoutModeBand } from "@/components/mode-band/mode-band";
 import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
+import { WorkStateLoading } from "@/components/mode-kit/work-state";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { TeamCalendar } from "@/components/roster/team/calendar/team-calendar";
 import { formatShiftRange, useRosterNow } from "@/components/roster/roster-format";
@@ -217,7 +218,7 @@ function OnTomorrow({ read, actorId, now }: { read: AssignmentsRead; actorId: st
         right={right}
       />
       {read.status === "loading" ? (
-        <RosterNote icon={Users}>Loading who&apos;s on tomorrow…</RosterNote>
+        <WorkStateLoading label="Loading who's on tomorrow…" rows={2} testId="roster-team-tomorrow-loading" />
       ) : read.status !== "ready" ? (
         <RosterNote icon={TriangleAlert} tone="warning" role="alert">
           <p>Couldn&apos;t load who&apos;s on tomorrow. {read.message}</p>
@@ -313,7 +314,7 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
       {/* One column that never grows past the page: at 200% text a wide row otherwise pushed the whole page sideways. */}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3" data-mode-identity="roster">
         {teams.status === "loading" ? (
-          <RosterNote icon={Users}>Loading your teams…</RosterNote>
+          <WorkStateLoading label="Loading your teams…" rows={2} testId="roster-team-teams-loading" />
         ) : teams.status !== "ready" ? (
           <RosterNote icon={TriangleAlert} tone="warning" role="alert">
             <p>{teams.message}</p>
@@ -370,7 +371,7 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
               </WithoutModeBand>
             )}
             <TeamDayLists key={`day-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
-            <Suspense fallback={<RosterNote icon={Users}>Loading the team roster…</RosterNote>}>
+            <Suspense fallback={<WorkStateLoading label="Loading the team roster…" rows={4} />}>
               <TeamCalendarSection team={selected} actorId={actorId} now={now} />
             </Suspense>
             <TeamLinks manager={manager} />

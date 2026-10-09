@@ -273,7 +273,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
           <StudyHeatmap
             weeks={weeks}
             today={today}
-            label={`Study minutes per day for ${withUnit(12, "weeks")}; ${streakLine.toLowerCase()}`}
+            label={`Study minutes per day for ${withUnit(12, "weeks")}. ${streakLine}`}
           />
         </div>
       </T5Section>
@@ -585,7 +585,7 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
       <T5Page>
         <h1 className="sr-only">My exam prep</h1>
         {demoMode && !exampleShown ? (
-          <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
+          <T5Note className="mt-0 mb-3.5">Example data. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {body}
       </T5Page>

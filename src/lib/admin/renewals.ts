@@ -219,7 +219,7 @@ export function workforceCopyText(entries: readonly OnCallEntry[], now: Date): s
     ...personal.map((entry) => workforceRequirementLine(entry.title, entry)),
   ];
   return [
-    `Dates as I recorded them, copied ${formatRecordedDate(perthCalendarDate(now))}; not checked with issuers`,
+    `Dates as I recorded them, copied ${formatRecordedDate(perthCalendarDate(now))}. Not checked with issuers`,
     ...lines,
   ].join("\n");
 }

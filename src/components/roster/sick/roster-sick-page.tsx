@@ -39,6 +39,7 @@ import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { inferShiftKind } from "@/lib/roster/shift-kind";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { formatZonedLongDay, zonedDateOf } from "@/lib/work-time/format";
 import {
   SICK_PHASE_TAG,
   isLiveReport,
@@ -345,12 +346,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
       </ContextualBackLink>
       <RosterPageHeader
         icon={Thermometer}
-        eyebrow={new Intl.DateTimeFormat("en-AU", {
-          timeZone: zone,
-          weekday: "short",
-          day: "numeric",
-          month: "long",
-        }).format(today)}
+        eyebrow={formatZonedLongDay(zonedDateOf(today, zone))}
         title={title}
         subtitle="Tell your roster managers and put the shift up for cover."
       />
@@ -472,7 +468,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                 </p>
                 <Link
                   href="/roster/join"
-                  className="font-semibold text-[color:var(--mode-identity)] underline-offset-2 hover:underline"
+                  className="work-hit font-semibold text-[color:var(--mode-identity)] underline-offset-2 hover:underline"
                 >
                   Join a team
                 </Link>

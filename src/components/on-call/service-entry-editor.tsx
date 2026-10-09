@@ -367,7 +367,7 @@ export function ServiceEntryEditor({
         <fieldset className="grid gap-3">
           <legend className="text-sm font-semibold text-[color:var(--text)]">Official sources</legend>
           <p className={cn(textMuted, "text-xs leading-5")}>
-            Links show where the information came from; they do not prove that a local workflow is current.
+            Links show where the information came from. They do not prove that a local workflow is current.
           </p>
           {sources.map((source, index) => (
             <div key={index} className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_3rem]">
@@ -433,7 +433,7 @@ export function ServiceEntryEditor({
         )}
 
         <p className={cn(textMuted, "text-sm")} data-testid="service-entry-save-note">
-          Draft saves do not change the published date. Publishing sets Updated; Still correct records a separate
+          Draft saves do not change the published date. Publishing sets Updated, and Still correct records a separate
           confirmation.
         </p>
         <div className="grid gap-2 sm:grid-cols-3">

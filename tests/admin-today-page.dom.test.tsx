@@ -121,7 +121,7 @@ describe("AdminTodayPage", () => {
     render(<AdminTodayPage now={NOW} />);
     const greeting = screen.getByTestId("admin-today-greeting");
     expect(greeting.textContent).toContain("Good morning");
-    expect(greeting.textContent).toContain("Sat 26 Sep 2026");
+    expect(greeting.textContent).toContain("Saturday 26 September");
     expect(greeting.textContent).not.toMatch(/\d+ (items|renewals|due)/);
     expect(screen.queryByRole("navigation", { name: "Sections of this page" })).toBeNull();
   });
@@ -189,7 +189,7 @@ describe("AdminTodayPage", () => {
     const card = screen.getByTestId("admin-today-renew-next");
     expect(within(card).getByText("Medical registration")).toBeTruthy();
     // Amended for the work-mode redesign, owner request 6 Oct 2026: the hero says "Renew by" with the weekday.
-    expect(within(card).getByText("Renew by Thu 15 Oct 2026 · in 2 weeks")).toBeTruthy();
+    expect(within(card).getByText("Renew by Thu 15 Oct · in 2 weeks")).toBeTruthy();
     expect(screen.getByTestId("admin-today-renew-next-window")).toBeTruthy();
     const renewed = within(card).getByTestId("admin-today-renew-next-renewed");
     expect(renewed.getAttribute("href")).toBe(`/admin/renewals#on-call-entry-${registration.id}`);
@@ -242,7 +242,7 @@ describe("AdminTodayPage", () => {
     render(<AdminTodayPage now={NOW} />);
     const newJob = screen.getByTestId("admin-today-new-job");
     // Amended for the work-mode redesign, owner request 6 Oct 2026: the start date carries its weekday.
-    expect(newJob.textContent).toContain("Starts Mon 2 Nov 2026");
+    expect(newJob.textContent).toContain("Starts Mon 2 Nov");
     expect(newJob.textContent).toContain("Sign and return your contract");
   });
 

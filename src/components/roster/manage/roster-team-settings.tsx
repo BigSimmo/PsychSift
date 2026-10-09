@@ -59,12 +59,12 @@ export function RosterTeamSettings({ serviceId, overview }: { serviceId: string;
           body: JSON.stringify({ cutoffOn: cutoff || null }),
         });
         if (!response.ok) {
-          setMessage("Team settings saved. The cut-off could not be saved; try again.");
+          setMessage("Team settings saved. The cut-off could not be saved. Try again.");
           setBusy(false);
           return;
         }
       } catch {
-        setMessage("Team settings saved. The cut-off could not be saved; check your connection.");
+        setMessage("Team settings saved. The cut-off could not be saved. Check your connection.");
         setBusy(false);
         return;
       }

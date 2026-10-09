@@ -44,20 +44,20 @@ describe("signed-out Teaching sample, the default", () => {
     setExampleDataOn(false);
     render(<TeachingToday demoMode={false} />);
     expect(await screen.findByTestId("teaching-state-signed-out")).toBeInTheDocument();
-    expect(screen.queryByText("Demo · made-up people")).not.toBeInTheDocument();
+    expect(screen.queryByText("Example · made-up people")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalled();
   });
 
   it("treats an expired sign-in the same way as signed out", async () => {
     signedOutWith("expired");
     render(<TeachingToday demoMode={false} />);
-    expect(await screen.findByText("Demo · made-up people")).toBeInTheDocument();
+    expect(await screen.findByText("Example · made-up people")).toBeInTheDocument();
   });
 
   it("fills Today with the made-up programme and makes no request and no storage write", async () => {
     const { fetchMock, storageWrites } = signedOutWith();
     render(<TeachingToday demoMode={false} />);
-    expect(await screen.findByText("Demo · made-up people")).toBeInTheDocument();
+    expect(await screen.findByText("Example · made-up people")).toBeInTheDocument();
     expect(screen.queryByTestId("teaching-state-signed-out")).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
     for (const write of storageWrites) expect(write).not.toHaveBeenCalled();

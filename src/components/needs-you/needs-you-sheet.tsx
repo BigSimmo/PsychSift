@@ -254,6 +254,9 @@ export function NotificationCentreBody({ feed, active, onNavigate }: Notificatio
   const groups = groupNotifications(
     shown.filter((item) => !onCallShown.includes(item)),
     feed.now,
+    "all",
+    null,
+    feed.zone,
   );
   const segmentCounts = useMemo(
     () =>
@@ -288,6 +291,7 @@ export function NotificationCentreBody({ feed, active, onNavigate }: Notificatio
             key={item.id}
             item={item}
             now={feed.now}
+            zone={feed.zone}
             snoozeLabel={`Snooze to ${snoozeDayLabel}`}
             reminders={feed.reminders}
             expanded={expanded === item.id}
@@ -509,7 +513,7 @@ function listNames(names: readonly string[]): string {
 function stampText(feed: NotificationFeed): string {
   const at = feed.checkedAt ? `Checked ${perthClockLabel(feed.checkedAt)}` : "Checked";
   if (feed.failed.length > 0) return `${at} · ${listNames(feed.failed.map((source) => source.label))} not loaded`;
-  const sample = feed.sample ? " · includes sample data" : "";
+  const sample = feed.sample ? " · includes example data" : "";
   return `${at} · every area loaded${sample}`;
 }
 
@@ -567,6 +571,7 @@ function SegmentedControl({
 function NotificationRow({
   item,
   now,
+  zone,
   snoozeLabel,
   reminders,
   expanded,
@@ -580,6 +585,7 @@ function NotificationRow({
   readonly getReminders: () => readonly Reminder[];
   readonly item: NotificationItem;
   readonly now: Date;
+  readonly zone: string;
   readonly snoozeLabel: string;
   readonly reminders: readonly Reminder[];
   readonly expanded: boolean;
@@ -591,8 +597,8 @@ function NotificationRow({
 }) {
   const actionsId = useId();
   const optionsRef = useRef<HTMLButtonElement>(null);
-  const overdue = notificationUrgency(item, now) === "overdue";
-  const due = formatNotificationDue(item.due, now);
+  const overdue = notificationUrgency(item, now, zone) === "overdue";
+  const due = formatNotificationDue(item.due, now, zone);
   const snoozable = item.snoozable !== false;
   const remindable = item.remindable !== false;
   const pending = remindable

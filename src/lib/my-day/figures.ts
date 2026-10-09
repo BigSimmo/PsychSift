@@ -46,7 +46,11 @@ export function selectFlagItems(
 }
 
 /** The one verb on an item's action button. It opens the item's own page; it never acts by itself. */
-export function myDayActionLabel(item: Pick<MyDayItem, "mode" | "title"> & { readonly id?: string }): string {
+export function myDayActionLabel(item: {
+  readonly mode: string;
+  readonly title: string;
+  readonly id?: string;
+}): string {
   if (item.mode === "cme") return "Log";
   if (item.mode === "my-work" && /\b(course|module|training|life support|bls|als)\b/i.test(item.title)) return "Book";
   // Work-mode redesign (6 Oct 2026): the verb says what the row asks for.

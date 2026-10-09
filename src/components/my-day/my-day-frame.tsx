@@ -1,6 +1,5 @@
 "use client";
 
-import { LogIn } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -10,7 +9,7 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { useMyDayNow } from "@/components/my-day/my-day-page-parts";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { Button } from "@/components/ui/button";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { endOfShiftCard, type ShiftWindow } from "@/lib/alerts/end-of-shift";
@@ -125,18 +124,14 @@ export function MyDayFrame({
 
         {myDayNeedsSignIn(authStatus) && !showSample ? (
           <div className="grid gap-3" data-testid={`${testId}-signed-out`}>
-            <EmptyState
-              icon={LogIn}
+            <WorkStateNotice
+              kind="signed-out"
               title={signedOut?.title ?? "Sign in to see your day"}
               body={
                 signedOut?.body ??
                 "My Day gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared."
               }
-              actions={
-                <Button variant="primary" onClick={() => setSignInOpen(true)}>
-                  Sign in
-                </Button>
-              }
+              onSignIn={() => setSignInOpen(true)}
             />
             {signInMounted ? <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} /> : null}
           </div>

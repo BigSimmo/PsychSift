@@ -21,7 +21,7 @@ export function cmeStateFromError(error: unknown): CmeFailureState {
 /** The line a CPD form shows when a save throws. Offline gets its own words; anything else keeps the server's message. */
 export function cmeSaveErrorText(error: unknown, fallback: string): string {
   if (cmeStateFromError(error) === "offline") {
-    return "You’re offline, so nothing was saved. Your form is kept; save again when you’re back online.";
+    return "You’re offline, so nothing was saved. Your form is kept. Save again when you’re back online.";
   }
   return error instanceof Error && error.message ? error.message : fallback;
 }
