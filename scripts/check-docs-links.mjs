@@ -109,7 +109,10 @@ const SCOPED_ALLOWLIST = new Map([
     // SC-A2 named the (now-deleted) GitHub CI-failure notifier as a 2026-08-01 rollout success
     // criterion. The workflow was built, ran, and was deleted 2026-09-17; the plan is a
     // point-in-time record of what was proposed, not a live task list.
-    new Set([".github/workflows/notify-ci-failure.yml"]),
+    //
+    // C1 also named the screenshot pack folder `public/mockups/mode-page-redesign-2026-07/current/`,
+    // which was cleared when unreferenced historical PNGs were removed; the parent README remains.
+    new Set([".github/workflows/notify-ci-failure.yml", "public/mockups/mode-page-redesign-2026-07/current/"]),
   ],
   ["docs/care-plan/reports/task-3-brief.md", new Set(["src/components/care-plan/mockups/index.ts"])],
   ["docs/care-plan/reports/task-3-report.md", new Set(["src/components/care-plan/mockups/index.ts"])],

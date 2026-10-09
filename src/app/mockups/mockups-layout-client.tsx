@@ -146,12 +146,6 @@ export function MockupsLayoutClient({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  // The work-mode role switcher is a standalone testing page with its own <main>,
-  // so it bypasses the clinical shell for the same reason as the Developer Hub.
-  if (pathname === "/mockups/work-roles") {
-    return <>{children}</>;
-  }
-
   // Draws its own phone frames with ModeNav Search | Topics and a docked composer,
   // so shared chrome would read as a second real header and a second search bar.
   const isFactsheetsTopicsPhoneMockup = pathname === "/mockups/factsheets-topics-phone";

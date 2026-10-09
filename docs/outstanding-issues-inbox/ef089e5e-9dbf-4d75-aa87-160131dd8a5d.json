@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "ef089e5e-9dbf-4d75-aa87-160131dd8a5d",
+  "createdOn": "2026-10-09",
+  "action": "done",
+  "payload": {
+    "id": "#9VQVRT",
+    "outcome": "Resolved: Draft PRs in CI workflow explicitly track and label skipped status checks to prevent false green CI.",
+    "baseRowFingerprint": "adfce2265f5b1d251c5e40c9c0cb3884bfa613b5f8ed10a7357cff135d4f235c"
+  }
+}

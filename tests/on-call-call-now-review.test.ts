@@ -106,25 +106,23 @@ describe("WA public holidays", () => {
 
   it("keeps working after the published list runs out", () => {
     const year = WA_PUBLIC_HOLIDAYS_LAST_YEAR + 1;
-    expect(year).toBe(2028);
-    // 2028: New Year on a Saturday (Monday 3rd off), Easter 16 April, Anzac Day
-    // a Tuesday, Christmas a Monday.
-    expect(waPublicHolidaysByRule(2028)).toEqual([
-      "2028-01-01",
-      "2028-01-03",
-      "2028-01-26",
-      "2028-03-06",
-      "2028-04-14",
-      "2028-04-16",
-      "2028-04-17",
-      "2028-04-25",
-      "2028-06-05",
-      "2028-09-25",
-      "2028-12-25",
-      "2028-12-26",
+    expect(year).toBe(2029);
+    // 2029: New Year on Monday, Australia Day Friday, Easter 1 April, Anzac Day Wednesday.
+    expect(waPublicHolidaysByRule(2029)).toEqual([
+      "2029-01-01",
+      "2029-01-26",
+      "2029-03-05",
+      "2029-03-30",
+      "2029-04-01",
+      "2029-04-02",
+      "2029-04-25",
+      "2029-06-04",
+      "2029-09-24",
+      "2029-12-25",
+      "2029-12-26",
     ]);
-    expect(isWaPublicHoliday(perthWall(2028, 3, 14, 10))).toBe(true);
-    expect(isWaPublicHoliday(perthWall(2028, 3, 18, 10))).toBe(false);
+    expect(isWaPublicHoliday(perthWall(2029, 2, 30, 10))).toBe(true);
+    expect(isWaPublicHoliday(perthWall(2029, 3, 3, 10))).toBe(false);
   });
 
   it("gives the expected extra day when Anzac Day falls on Easter, and never lists a date twice", () => {

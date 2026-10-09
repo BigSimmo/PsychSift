@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "ad565705-36b6-414c-a87f-ee991d9e6675",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#Y5X0HH",
+    "outcome": "Resolved: Added official WA 2028 public holidays to WA_PUBLIC_HOLIDAYS in src/lib/on-call/wa-public-holidays.ts, bumped LAST_YEAR to 2028, and verified 14/14 tests pass in tests/on-call-call-now-review.test.ts.",
+    "baseRowFingerprint": "cb3ee295a52717365b9522ca4d9e3335f74ad0c473453ecee5a8c4f28619fa2a"
+  }
+}

@@ -1399,6 +1399,7 @@ export function ResultFilterSheet({
     <Sheet
       open={open}
       onClose={onClose}
+      dismissOnBack
       title={title}
       // Header density is driven from here rather than from `Sheet`, so every
       // filter surface tightens together while the app's other dialogs keep

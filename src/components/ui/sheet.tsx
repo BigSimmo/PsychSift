@@ -35,6 +35,8 @@ type SheetAccessibleName =
 type SheetBaseProps = {
   open: boolean;
   onClose: () => void;
+  /** When true, registers a history entry so browser/phone Back dismisses the sheet instead of leaving the page. */
+  dismissOnBack?: boolean;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
@@ -112,6 +114,7 @@ export type SheetProps = SheetBaseProps & SheetAccessibleName;
 export function Sheet({
   open,
   onClose,
+  dismissOnBack = false,
   title,
   description,
   children,
@@ -153,6 +156,7 @@ export function Sheet({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
+  const requestCloseRef = useRef(onClose);
   const dragRef = useRef<{ startY: number; dragging: boolean }>({ startY: 0, dragging: false });
   // Backdrop dismiss must require the gesture to *start* on the dimmed area.
   // Otherwise a press that begins on the panel and ends on the backdrop would
@@ -180,9 +184,23 @@ export function Sheet({
   );
   const resolveReturnFocusRefTarget = useCallback(() => returnFocusRef?.current ?? null, [returnFocusRef]);
 
+  const requestClose = useCallback(() => {
+    const stateKey = `ps_sheet_${sheetId}`;
+    if (dismissOnBack && typeof window !== "undefined" && window.history.state?.[stateKey]) {
+      try {
+        window.history.back();
+        return;
+      } catch {
+        // Restricted embeds can reject history traversal; close in place.
+      }
+    }
+    onClose();
+  }, [dismissOnBack, onClose, sheetId]);
+
   useEffect(() => {
     onCloseRef.current = onClose;
-  }, [onClose]);
+    requestCloseRef.current = requestClose;
+  }, [onClose, requestClose]);
 
   useEffect(() => {
     unmountingRef.current = false;
@@ -201,6 +219,32 @@ export function Sheet({
       openFocusRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!open || !dismissOnBack || typeof window === "undefined" || !window.history?.pushState) {
+      return undefined;
+    }
+    const stateKey = `ps_sheet_${sheetId}`;
+    try {
+      window.history.pushState({ [stateKey]: true }, "");
+    } catch {
+      // Ignore storage/history exceptions in restricted embeds
+    }
+
+    const handlePopState = () => {
+      onCloseRef.current();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      // Do not history.back() here. Traversal is asynchronous, so a cleanup
+      // that pops can land after a later replaceState and wipe that URL
+      // (filter sheets were undoing the DSM search query). The pushed entry
+      // is removed when the user dismisses the sheet, which calls history.back()
+      // while this listener is still attached.
+    };
+  }, [open, dismissOnBack, sheetId]);
 
   // Swipe-to-dismiss for the mobile bottom sheet: dragging the grip down past a
   // threshold closes the sheet; a shorter drag snaps back. Grip-initiated only,
@@ -233,7 +277,7 @@ export function Sheet({
       panel.style.transition = "";
       panel.style.transform = "";
     }
-    if (delta > 96) onClose();
+    if (delta > 96) requestCloseRef.current();
   }
 
   useEffect(() => {
@@ -275,7 +319,7 @@ export function Sheet({
       if (!isTopmostSheet(sheetId)) return;
       if (event.key === "Escape") {
         event.preventDefault();
-        onCloseRef.current();
+        requestCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -420,7 +464,7 @@ export function Sheet({
       onClick={(event) => {
         if (event.target !== event.currentTarget || !backdropPointerDownRef.current) return;
         backdropPointerDownRef.current = false;
-        onClose();
+        requestCloseRef.current();
       }}
     >
       <div
@@ -536,7 +580,7 @@ export function Sheet({
               <button
                 ref={closeRef}
                 type="button"
-                onClick={onClose}
+                onClick={() => requestCloseRef.current()}
                 aria-label={closeLabel}
                 className={closeButtonClassName ?? toolbarButton}
               >

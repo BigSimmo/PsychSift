@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "4b7b339b-07c5-4c74-b4c9-1e78ebfd0dfb",
+  "createdOn": "2026-10-09",
+  "action": "done",
+  "payload": {
+    "id": "#4WSEG4",
+    "outcome": "Resolved: Fiona Stanley Mother and Baby Unit triage contradiction resolved in service record and verified by tests/signoff-services.test.ts.",
+    "baseRowFingerprint": "0d7240f60d4e91eba08a2fccf759790b2f585e7dfa739d158a263514c3e8683b"
+  }
+}

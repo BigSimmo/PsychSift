@@ -1047,7 +1047,7 @@ tests to run.
 
 Registered public components: 55
 Components with a valid design-sync preview: 55
-Components with product imports: 47
+Components with product imports: 48
 
 This generated snapshot is a local source-derived inventory. It does not assert remote design-project publication.
 
@@ -1059,7 +1059,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `Breadcrumb`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             127 |
-| `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
+| `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              14 |
 | `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               7 |
 | `Citation`               | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
@@ -1104,7 +1104,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `Tabs`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `TextField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              48 |
 | `TextLink`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
-| `ToastRegion`            | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
+| `ToastRegion`            | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `ToggleSwitch`           | controls | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `Tooltip`                | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `VerificationNotice`     | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               2 |

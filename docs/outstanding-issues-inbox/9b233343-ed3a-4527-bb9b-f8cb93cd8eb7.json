@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "9b233343-ed3a-4527-bb9b-f8cb93cd8eb7",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#NQH33S",
+    "outcome": "Resolved: src/lib/metadata-base.ts:69-70 falls back to http for local hosts (localhost, 127.0.0.1, ::1) when x-forwarded-proto is absent (shipped in PR #3150).",
+    "baseRowFingerprint": "5881ab1ddf36337b7977ec7a9c125e0711533822c706340460a4669f02b068df"
+  }
+}

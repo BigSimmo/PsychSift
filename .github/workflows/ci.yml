@@ -626,6 +626,10 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
         run: npm run check:instructions
 
+      - name: Offline pack
+        if: ${{ !cancelled() }}
+        run: npm run check:offline-pack
+
   safety:
     name: Safety and config checks
     needs: changes
@@ -1978,6 +1982,7 @@ jobs:
           - { engine: webkit, project: mobile-pwa-standalone, shard: 3, total: 5 }
           - { engine: webkit, project: mobile-pwa-standalone, shard: 4, total: 5 }
           - { engine: webkit, project: mobile-pwa-standalone, shard: 5, total: 5 }
+          - { engine: webkit, project: tablet, shard: 1, total: 1 }
 
     steps:
       - name: Checkout

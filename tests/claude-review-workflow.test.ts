@@ -57,4 +57,13 @@ describe("Claude review workflow", () => {
     // The whole-transcript remedy stays off in a public repository.
     expect(raw).not.toMatch(/^\s*show_full_output:\s*true/m);
   });
+
+  it("disables project MCP servers via settings and claude_args override (#V1NYQ0)", () => {
+    const raw = readFileSync(WORKFLOW, "utf8");
+    const review = yamlBlock(raw, "- name: Review the pull request", 6);
+    expect(review).toContain("settings: '{\"enableAllProjectMcpServers\": false}'");
+    expect(review).toMatch(
+      /claude_args:\s*['"]?--settings\s*'{1,2}\{"enableAllProjectMcpServers":\s*false\}'{1,2}['"]?/,
+    );
+  });
 });

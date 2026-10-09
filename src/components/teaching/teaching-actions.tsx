@@ -116,6 +116,7 @@ function LinkAction({
     <a
       href={action.href}
       data-testid={action.testId}
+      onClick={action.onClick}
       className={cn(buttonFaceClass({ variant, block: true }), "no-underline", surfaceFace(surface, variant))}
       {...(action.external ? { target: "_blank", rel: "noreferrer" } : {})}
     >

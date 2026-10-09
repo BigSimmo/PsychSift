@@ -49,7 +49,12 @@ for (const route of [...modeHomeRoutes, ...dashboardRoutes, ...longRoutes]) {
 
     // Drag to the bottom in deliberate 24px steps, then let transitions settle.
     await dragScrollBy(page, initial.maxOffset + 400, 24);
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => {
+        const geo = await readGeometry(page);
+        return Math.abs(geo.scrollTop - geo.maxOffset) <= 2;
+      })
+      .toBe(true);
     const flipsAfterDescent = await readFlipCount(page);
     const atBottom = await readGeometry(page);
 
@@ -94,7 +99,12 @@ for (const route of [...modeHomeRoutes, ...dashboardRoutes, ...longRoutes]) {
 
     // Top must be reachable with the header visible again.
     await dragScrollBy(page, -(atBottom.maxOffset + 800), 48);
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => {
+        const geo = await readGeometry(page);
+        return geo.scrollTop === 0 && !geo.headerHidden;
+      })
+      .toBe(true);
     const backAtTop = await readGeometry(page);
     expect(backAtTop.scrollTop, "top reachable after the round trip").toBe(0);
     expect(backAtTop.headerHidden, "header visible back at the top").toBe(false);
@@ -119,7 +129,12 @@ test("phone scroll stays smooth on /formulation/search at 430x932", async ({ pag
   expect(initial.docScrollableExcess).toBeGreaterThan(0);
 
   await dragScrollBy(page, initial.maxOffset + 400, 24);
-  await page.waitForTimeout(500);
+  await expect
+    .poll(async () => {
+      const geo = await readGeometry(page);
+      return Math.abs(geo.scrollTop - geo.maxOffset) <= 2;
+    })
+    .toBe(true);
   const atBottom = await readGeometry(page);
   expect(Math.abs(atBottom.scrollTop - atBottom.maxOffset)).toBeLessThanOrEqual(2);
   expect(await readFlipCount(page)).toBeLessThanOrEqual(1);
@@ -144,7 +159,12 @@ test("phone forms search hides header and footer after submit without stale focu
   expect(initial.headerHidden, "header visible at the top").toBe(false);
 
   await dragScrollBy(page, Math.min(Math.max(initial.maxOffset, 240), 800), 24);
-  await page.waitForTimeout(500);
+  await expect
+    .poll(async () => {
+      const geo = await readGeometry(page);
+      return geo.headerHidden;
+    })
+    .toBe(true);
 
   const afterHide = await page.evaluate(() => {
     const collapse = document.querySelector<HTMLElement>('[data-testid="universal-header-collapse"]');

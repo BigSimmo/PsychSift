@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "6ad78d7c-9c91-4859-ab34-b3459a6636f4",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#VA5SP4",
+    "outcome": "Resolved: Replaced fixed waitForTimeout(300) sleep delays with deterministic assertions in tests/ui-phone-scroll.spec.ts and tests/ui-chrome-scroll.spec.ts, verified by Playwright and Vitest contracts.",
+    "baseRowFingerprint": "7f8f0d17dc4b8f1dc433f762001551c52de9a4d6bc107cffef978918986558a3"
+  }
+}

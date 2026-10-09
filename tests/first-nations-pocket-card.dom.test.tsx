@@ -1,7 +1,20 @@
 /** @vitest-environment jsdom */
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { FirstNationsPocketCard, PocketCardView } from "@/components/first-nations/pocket-card";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => "/first-nations",
+  useSearchParams: () => new URLSearchParams(),
+}));
 import { printedLineText } from "@/components/first-nations/printed-line";
 import { hospitalViews } from "@/lib/first-nations/view-model";
 import { enabledProfile, testInputs } from "./fixtures/first-nations-content";

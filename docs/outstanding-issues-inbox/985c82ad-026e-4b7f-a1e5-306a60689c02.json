@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "985c82ad-026e-4b7f-a1e5-306a60689c02",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#Z84GK3",
+    "outcome": "Resolved: Added sample multi-allocation and routine-linked CME entries in src/lib/cme/demo-year.ts; verified in tests/cme-clipboard.test.ts and tests/cme-demo-year.test.ts.",
+    "baseRowFingerprint": "aac319f990f9cd42fa18d463f77f03ad8b431a396f5e867fe045d407c2bf2e61"
+  }
+}

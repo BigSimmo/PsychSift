@@ -31,20 +31,26 @@ function computePopoverLayout(anchor: HTMLElement) {
   const rect = anchor.getBoundingClientRect();
   const availableAbove = Math.max(0, rect.top - viewportTop - edgePadding);
   const availableBelow = Math.max(0, viewportBottom - rect.bottom - edgePadding);
+  const isNarrowViewport = viewportWidth < 380;
+  const effectiveMinHeight = Math.min(minPopoverHeight, Math.floor(viewportHeight * 0.45));
   const placement: PopoverPlacement =
-    availableBelow >= availableAbove + 40 || availableBelow >= minPopoverHeight ? "below" : "above";
+    availableBelow >= availableAbove + 40 || availableBelow >= effectiveMinHeight ? "below" : "above";
   const available =
     placement === "below" ? Math.max(0, availableBelow - anchorGap) : Math.max(0, availableAbove - anchorGap);
   const maxHeight = Math.max(
-    minPopoverHeight,
+    effectiveMinHeight,
     Math.floor(Math.min(available, viewportHeight - edgePadding * 2, 22 * 16)),
   );
-  const maxWidth = Math.min(36 * 16, viewportWidth - edgePadding * 2);
+  const maxWidth = isNarrowViewport
+    ? viewportWidth - edgePadding * 2
+    : Math.min(36 * 16, viewportWidth - edgePadding * 2);
   const preferredLeft = rect.left;
-  const left = Math.max(
-    edgePadding + viewportLeft,
-    Math.min(preferredLeft, viewportLeft + viewportWidth - maxWidth - edgePadding),
-  );
+  const left = isNarrowViewport
+    ? edgePadding + viewportLeft
+    : Math.max(
+        edgePadding + viewportLeft,
+        Math.min(preferredLeft, viewportLeft + viewportWidth - maxWidth - edgePadding),
+      );
   const top =
     placement === "below"
       ? rect.bottom + anchorGap
@@ -172,7 +178,7 @@ export function SourcePreviewPopover({
       data-popover-placement={layout?.placement ?? "below"}
       style={style}
       className={cn(
-        "fixed z-[95] min-w-[min(100vw-1.5rem,20rem)] overflow-y-auto overscroll-contain rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] p-3 shadow-[var(--shadow-elevated)] motion-safe:animate-pop-in motion-reduce:animate-none",
+        "fixed z-[95] min-w-[min(100vw-1.5rem,20rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] p-3 shadow-[var(--shadow-elevated)] motion-safe:animate-pop-in motion-reduce:animate-none",
       )}
     >
       {children}

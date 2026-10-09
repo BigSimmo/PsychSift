@@ -1,9 +1,10 @@
 "use client";
 
 import { AlertTriangle, Check, CheckCheck, ClipboardCopy, RotateCcw, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
-import { cn } from "@/components/ui-primitives";
+import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { useCopyToast } from "@/components/ui/toast";
 
 import type { CalculatorFixture, CalculatorItem, CalculatorTone, ScoreBand } from "./calculator-fixtures";
 
@@ -554,11 +555,22 @@ export function CopyResultButton({
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const showToast = useCopyToast();
+  const copyUnavailableId = useId();
+  const isComplete = state.complete;
+  const answeredCount = state.answeredCount + state.checkboxAnsweredCount;
+  const totalItems = calc.items.length;
+  const unavailableReason = `Answer all items to copy result summary (${answeredCount}/${totalItems} complete)`;
 
-  const copy = async () => {
+  const copy = async (event: React.MouseEvent<HTMLElement>) => {
+    if (!isComplete) {
+      ignoreUnavailableActivation(event);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(formatResultSummary(calc, state));
       setCopied(true);
+      showToast("Result summary copied to clipboard");
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
       /* clipboard unavailable in some embeds — mockup-safe no-op */
@@ -566,23 +578,32 @@ export function CopyResultButton({
   };
 
   return (
-    <button
-      type="button"
-      onClick={copy}
-      disabled={!state.complete}
-      className={cn(
-        "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
-        focusRing,
-        className,
-      )}
-    >
-      {copied ? (
-        <CheckCheck className="size-icon-sm text-[color:var(--success)]" aria-hidden="true" />
-      ) : (
-        <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
-      )}
-      {copied ? "Copied" : label}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={copy}
+        aria-disabled={!isComplete ? true : undefined}
+        aria-describedby={!isComplete ? copyUnavailableId : undefined}
+        title={!isComplete ? unavailableReason : undefined}
+        className={cn(
+          "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
+          focusRing,
+          className,
+        )}
+      >
+        {copied ? (
+          <CheckCheck className="size-icon-sm text-[color:var(--success)]" aria-hidden="true" />
+        ) : (
+          <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
+        )}
+        {copied ? "Copied" : label}
+      </button>
+      {!isComplete ? (
+        <span id={copyUnavailableId} className="sr-only">
+          {unavailableReason}
+        </span>
+      ) : null}
+    </>
   );
 }
 
