@@ -79,6 +79,10 @@ export type WorkFrameIconName =
 export type WorkFrameGate =
   /** Teaching organisers and admins (`modePageVisible`'s organiser rule). */
   | "teaching-organiser"
+  /** Admin Bookings, while it is behind the Live version switch (`course-bookings`). */
+  | "course-bookings"
+  /** Admin Courses: course organisers, or anyone while Admin's example data is on, behind the same switch. */
+  | "course-organiser"
   /** Open shifts posters (roster managers), once a read has said so. */
   | "open-shifts-poster"
   /** On Call handbook editors, as the pill's pages sheet decides. */
@@ -1027,6 +1031,22 @@ const admin: WorkArea = {
           href: "/admin/compliance",
         },
         { id: "admin-export", label: "Export", sub: "Spreadsheet", icon: "download", href: "/admin/compliance/export" },
+        {
+          id: "admin-bookings",
+          label: "Bookings",
+          sub: "Courses to book",
+          icon: "calendar-plus",
+          href: "/admin/bookings",
+          gate: "course-bookings",
+        },
+        {
+          id: "admin-courses",
+          label: "Courses",
+          sub: "Post and manage",
+          icon: "users",
+          href: "/admin/courses",
+          gate: "course-organiser",
+        },
         { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
         { id: "admin-sharing", label: "Sharing", sub: "Not live yet", icon: "send", href: "/admin/sharing" },
         {
