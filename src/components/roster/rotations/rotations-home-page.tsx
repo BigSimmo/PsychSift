@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarRange, CloudOff, History, Layers, LogIn, RotateCcw, Scale, WifiOff } from "lucide-react";
+import { CalendarRange, CloudOff, History, Layers, RotateCcw, Scale, WifiOff } from "lucide-react";
 
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -13,7 +13,7 @@ import {
   WorkIconRow,
   WorkSectionLabel,
 } from "@/components/mode-kit/work";
-import { useRosterSignIn } from "@/components/roster/invite/roster-sign-in-notice";
+import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
 import { useRosterNow } from "@/components/roster/roster-format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { useExampleData } from "@/lib/example-data/store";
@@ -217,26 +217,14 @@ function roundLine(entry: MyRound, zone: string, now: Date): string {
 export function RotationsReadState({ read, testId }: { readonly read: RotationsRead; readonly testId: string }) {
   const online = useOnlineStatus();
   const example = useExampleData("rost");
-  const signIn = useRosterSignIn();
 
   if (read.status === "loading") return <ModeModuleSkeleton rows={4} twoLine eyebrow testId={`${testId}-loading`} />;
 
   if (read.status === "signed-out") {
     return (
-      <WorkCard>
-        <WorkEmpty
-          icon={LogIn}
-          title="Sign in to see your rotations"
-          body="Your rounds and your year come from your team, so they need you signed in."
-          action={
-            <WorkButton variant="secondary" onClick={signIn.open} icon={LogIn} testId={`${testId}-sign-in`}>
-              Sign in
-            </WorkButton>
-          }
-          testId={`${testId}-signed-out`}
-        />
-        {signIn.dialog}
-      </WorkCard>
+      <RosterSignInNotice testId={`${testId}-signed-out`} onSignedIn={read.retry}>
+        Sign in to see your rotations.
+      </RosterSignInNotice>
     );
   }
 

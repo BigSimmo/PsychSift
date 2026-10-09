@@ -7,7 +7,6 @@ import {
   FilePen,
   Layers,
   Lock,
-  LogIn,
   Plus,
   RotateCcw,
   Sparkles,
@@ -27,7 +26,7 @@ import {
   WorkTag,
 } from "@/components/mode-kit/work";
 import { useOnline } from "@/components/needs-you/use-notification-feed";
-import { useRosterSignIn } from "@/components/roster/invite/roster-sign-in-notice";
+import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
 import { useRosterNow } from "@/components/roster/roster-format";
 import { ROTATIONS_HREF } from "@/components/roster/rotations/rotation-format";
 import { useRotations, type RotationsRead } from "@/components/roster/rotations/use-rotations";
@@ -158,7 +157,6 @@ export function RotationsAdminGate({
 }) {
   const online = useOnline();
   const example = useExampleData("rost");
-  const signIn = useRosterSignIn();
 
   if (read.status === "ready" && !read.canManage) {
     return (
@@ -203,19 +201,9 @@ export function RotationsAdminGate({
   }
   if (read.status === "signed-out") {
     return (
-      <WorkCard testId="rotations-admin-signed-out">
-        <WorkEmpty
-          icon={LogIn}
-          title="Sign in to run rotation rounds"
-          body="Rounds belong to your team, so they need your account."
-          action={
-            <WorkButton icon={LogIn} onClick={signIn.open} testId="rotations-admin-sign-in">
-              Sign in
-            </WorkButton>
-          }
-        />
-        {signIn.dialog}
-      </WorkCard>
+      <RosterSignInNotice testId="rotations-admin-signed-out" onSignedIn={read.retry}>
+        Sign in to run rotation rounds.
+      </RosterSignInNotice>
     );
   }
   if (read.status === "unavailable") {
