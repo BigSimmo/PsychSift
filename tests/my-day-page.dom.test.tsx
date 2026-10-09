@@ -56,6 +56,17 @@ vi.mock("@/components/mode-band/mode-band", async (importOriginal) => ({
 // The Favourites shelf (after Needs you on Today) has its own tests and reads the account store.
 vi.mock("@/components/favourites/my-day-favourites-shelf", () => ({ MyDayFavouritesShelf: () => null }));
 
+// Needs you's feed reader is a lazy chunk in the app; here it is the reader itself, so the feed answers at once.
+// `readerLoaded` false stands for the moment before the chunk arrives.
+const readerLoaded = vi.hoisted(() => ({ current: true }));
+vi.mock("@/components/my-day/lazy-my-day-needs-you-reader", async () => {
+  const { MyDayNeedsYouReader } = await import("@/components/my-day/my-day-needs-you-reader");
+  return {
+    LazyMyDayNeedsYouReader: (props: Parameters<typeof MyDayNeedsYouReader>[0]) =>
+      readerLoaded.current ? <MyDayNeedsYouReader {...props} /> : null,
+  };
+});
+
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="account-dialog" /> : null),
 }));
@@ -125,6 +136,7 @@ beforeEach(() => {
   resetMyDayHomeCardCache();
   retry.mockClear();
   setState({});
+  readerLoaded.current = true;
 });
 afterEach(cleanup);
 
@@ -481,6 +493,21 @@ describe("MyDayPage", () => {
       expect(screen.queryByTestId("my-day-item-sample:roster:cutoff")).toBeNull();
       expect(screen.getByTestId("my-day-item-sample:cme:drafts")).toBeTruthy();
     });
+  });
+
+  // Bundle budget, 8 Oct 2026: the feed's reader loads as its own chunk, and until it answers the day stays a skeleton,
+  // so My Day never says nothing needs you before the feed has looked.
+  it("keeps the skeleton until Needs you's feed has answered", () => {
+    readerLoaded.current = false;
+    setState({ items: [item("a", "soon")] });
+    const { rerender } = render(<MyDayPage now={NOW} />);
+    expect(screen.getByTestId("my-day-loading")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-ready")).toBeNull();
+    expect(screen.queryByTestId("my-day-empty")).toBeNull();
+    readerLoaded.current = true;
+    rerender(<MyDayPage now={NOW} />);
+    expect(screen.queryByTestId("my-day-loading")).toBeNull();
+    expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
   });
 
   it("says nothing needs you, and when it checked, only when every source answered", () => {

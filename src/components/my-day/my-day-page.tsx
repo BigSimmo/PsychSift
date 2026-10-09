@@ -31,12 +31,12 @@ import {
   quietLink,
   quietPillQuiet,
 } from "@/components/my-day/my-day-quiet";
+import { LazyMyDayNeedsYouReader } from "@/components/my-day/lazy-my-day-needs-you-reader";
 import { MyDayCustomiseSheet, MyDayQuickAddSheet } from "@/components/my-day/my-day-sheets";
 import { NeedsYouRow } from "@/components/my-day/my-day-today-cards";
 import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
-import { useNotificationFeed } from "@/components/needs-you/use-notification-feed";
 import { cn } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
@@ -54,7 +54,7 @@ import {
   type MyDayItem,
   type MyDayState,
 } from "@/lib/my-day/model";
-import { myDayNeedsYouFromFeed, type MyDayNeedsYouItem, type MyDayNeedsYouMode } from "@/lib/my-day/needs-you-feed";
+import type { MyDayNeedsYouItem, MyDayNeedsYouMode } from "@/lib/my-day/needs-you-feed";
 import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
 import { WORK_SIDE_NOTIFICATIONS_HREF } from "@/lib/work-frame/side-nav";
 import { addDaysToDate, formatPerthDay, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -450,17 +450,17 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   // shows it to a signed-out visitor, and an explicit off is honoured (they get
   // the sign-in state below). The frame's banner says it is made up.
   const sampleView = useExampleData("day").active;
-  const ready = enabled && state.status === "ready" && !sampleView;
   // Needs you is the notification feed's list (the bell's, the Notifications page's and the side menu's),
-  // read from this page's own sources and in the same work-zone day. Null until the feed settles.
-  const feed = useNotificationFeed({ clock: now, read: state });
-  const needsYou = useMemo(
-    () =>
-      feed.status === "ready" || feed.status === "error"
-        ? myDayNeedsYouFromFeed(feed.summary, feed.now, feed.zone)
-        : null,
-    [feed.status, feed.summary, feed.now, feed.zone],
+  // read from this page's own sources and in the same work-zone day. Null until the feed settles. The feed
+  // is read by a lazy reader (`LazyMyDayNeedsYouReader` below), so its selectors stay out of the first load.
+  const [needsYou, setNeedsYou] = useState<readonly MyDayNeedsYouItem[] | null>(null);
+  const feedRead = useMemo(
+    () => ({ status: state.status, items: state.items, sources: state.sources, retry: state.retry }),
+    [state.status, state.items, state.sources, state.retry],
   );
+  // The day shows once Needs you is known too, so it never says "nothing needs you" before the feed has looked.
+  const needsYouPending = needsYou === null;
+  const ready = enabled && state.status === "ready" && !sampleView && !needsYouPending;
   const [signInOpen, setSignInOpen] = useState(false);
   // Tells auto mode whether this day has real items, so examples never cover them.
   const realItems = enabled && state.status === "ready" ? myDayShownItems(state, false).length : null;
@@ -517,6 +517,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <InformationPageShell testId="my-day-main" width="bleed" className="bg-[color:var(--work-wash)]">
+      <LazyMyDayNeedsYouReader clock={now} read={feedRead} onChange={setNeedsYou} />
       <div className={PAGE_BODY} data-testid="my-day-body">
         {/* The band names the page; this title is for screen readers and the document outline. */}
         <div data-testid="my-day-header" className="contents">
@@ -534,7 +535,8 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
           />
         ) : null}
 
-        {authStatus === "loading" || (enabled && state.status === "loading" && !sampleView) ? (
+        {authStatus === "loading" ||
+        (enabled && !sampleView && (state.status === "loading" || (state.status === "ready" && needsYouPending))) ? (
           <>
             <span role="status" className="sr-only">
               Loading My Day
