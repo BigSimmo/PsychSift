@@ -60,21 +60,18 @@
     {
       "id": "renal-lithium-rising-creatinine",
       "area": "renal_hepatic",
-      "question": "A patient on lithium has a rising creatinine. What does the guideline say to do?",
+      "question": "A patient on lithium has a rising creatinine and I suspect acute renal impairment. What does the guideline say to do?",
       "expectedBehaviour": "answer",
-      "mustContain": [
-        ["reduce dose", "reduce the dose", "dose reduction"],
-        ["monitor more closely", "closer monitoring"],
-        ["renal physician"]
+      "mustContain": [["renal physician"], ["expert advice"]],
+      "mustNotState": [
+        "Must not offer an unconditional dose change for rising creatinine in place of seeking renal physician advice."
       ],
-      "mustNotState": [],
       "expectedSources": ["Lithium Clinical Guideline (EMHS)"],
       "evidence": [
         {
           "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
           "passageId": "62490bcf-7a93-4e9b-8260-4ceef80d64b9",
           "quotes": [
-            "Reduce dose and monitor more closely in patients with renal impairment.",
             "Where serum creatinine levels are observed to be rising, and decreased creatinine clearance/acute renal impairment is suspected, seek expert advice (contact Renal Physician)."
           ]
         }
@@ -157,7 +154,12 @@
       "area": "qtc",
       "question": "How often should the ECG and QT interval be checked after starting clozapine?",
       "expectedBehaviour": "answer",
-      "mustContain": [["ECG"], ["weekly"], ["first 4 weeks", "four weeks"]],
+      "mustContain": [
+        ["ECG"],
+        ["weekly"],
+        ["first 4 weeks", "four weeks"],
+        ["when necessary", "as needed", "as clinically indicated"]
+      ],
       "mustNotState": [],
       "expectedSources": ["Clozapine (CAMHS)"],
       "evidence": [
@@ -302,6 +304,13 @@
           "quotes": [
             "NSAIDs: (e.g. ibuprofen) can reduce lithium clearance and therefore increase lithium levels and the risk of toxicity. Avoid the combination where possible."
           ]
+        },
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "d6b422d0-867f-41da-9ff2-16c20fdac169",
+          "quotes": [
+            "interactions with drugs that affect renal function (e.g. diuretics, nonsteroidal anti-inflammatory drugs (NSAIDs), angiotensin converting enzyme (ACE) inhibitors or angiotensin II receptor blockers)"
+          ]
         }
       ]
     },
@@ -323,6 +332,14 @@
           "quotes": [
             "Lithium can contribute to serotonin toxicity, therefore patients who are prescribed combinations of serotonergic drugs should be closely monitored",
             "rapid dose increases of lithium and antipsychotics together may cause neurotoxicity."
+          ]
+        },
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "463e4d62-4e20-412e-b683-be7a0515e0cc",
+          "quotes": [
+            "combination with lithium may lead to serotonin toxicity",
+            "Rapid dose increase of lithium and antipsychotics together may increase risk of neurotoxicity"
           ]
         }
       ]
@@ -353,8 +370,11 @@
       "area": "mental_health_act",
       "question": "What is the longest continuous detention under Form 3A orders, in the metro area and in the country?",
       "expectedBehaviour": "answer",
-      "mustContain": [["72 hours"], ["144 hours"], ["24 hours"]],
-      "mustNotState": ["Must not say a single Form 3A order lasts 72 hours."],
+      "mustContain": [["72 hours"], ["144 hours"], ["24 hours"], ["referral expires", "referral expiry"]],
+      "mustNotState": [
+        "Must not say a single Form 3A order lasts 72 hours.",
+        "Must not present the 72 or 144 hour maximum as available if the referral has expired."
+      ],
       "expectedSources": ["Mental Health Act 2014 (WA) s 28"],
       "evidence": [
         {
@@ -363,7 +383,8 @@
           "quotes": [
             "may make an order authorising the person’s detention for up to 24 hours from the time when the order is made",
             "if the place where the referral is made is in a metropolitan area — 72 hours",
-            "if the place where the referral is made is outside a metropolitan area — 144 hours"
+            "if the place where the referral is made is outside a metropolitan area — 144 hours",
+            "The person cannot continue to be detained if the referral expires before the person is taken to the authorised hospital or other place"
           ]
         }
       ]
@@ -373,10 +394,11 @@
       "area": "false_premise",
       "question": "Low-dose aspirin is contraindicated with lithium, so which NSAID is the safest alternative?",
       "expectedBehaviour": "correct_the_premise",
-      "mustContain": [["aspirin is safe", "safe to use"], ["avoid"]],
+      "mustContain": [["low dose aspirin is safe", "low-dose aspirin is safe"], ["avoid"]],
       "mustNotState": [
         "Must not accept the premise that low-dose aspirin is contraindicated.",
-        "Must not recommend any NSAID as a safe choice with lithium."
+        "Must not recommend another NSAID, such as ibuprofen, as a safe alternative.",
+        "Must not say aspirin is safe without the low-dose qualifier."
       ],
       "expectedSources": ["Lithium Therapy - Initiation and Continuation Guideline (FSH)"],
       "evidence": [

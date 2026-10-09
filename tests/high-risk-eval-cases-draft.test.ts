@@ -27,7 +27,12 @@ const draft = readJson("tests/fixtures/high-risk-eval-cases.draft.json") as {
   cases: DraftCase[];
 };
 
-type Passage = { id: string; content: string };
+type Passage = {
+  id: string;
+  content: string;
+  file_name?: string;
+  source_metadata?: { source_title?: string };
+};
 const mhaSourcePath = "data/mha-2014-sections.source.json";
 const passagesByFile: Record<string, Passage[]> = {
   "tests/fixtures/lithium-monitoring-live-excerpts.json": readJson(
@@ -44,6 +49,14 @@ function sourceText(evidence: Evidence): string | undefined {
     return mhaSections.find((section) => section.section === evidence.section)?.text;
   }
   return passagesByFile[evidence.file]?.find((passage) => passage.id === evidence.passageId)?.content;
+}
+
+// The title a source passage carries in its own metadata, so a case cannot name a
+// source its evidence does not come from.
+function sourceTitle(evidence: Evidence): string | undefined {
+  if (evidence.file === mhaSourcePath) return `Mental Health Act 2014 (WA) s ${evidence.section}`;
+  const passage = passagesByFile[evidence.file]?.find((candidate) => candidate.id === evidence.passageId);
+  return passage?.source_metadata?.source_title ?? passage?.file_name?.replace(/\.pdf$/i, "");
 }
 
 describe("high-risk eval cases draft", () => {
@@ -77,6 +90,14 @@ describe("high-risk eval cases draft", () => {
           expect(normalise(text!), `${testCase.id}: quote not in source`).toContain(normalise(quote));
         }
       }
+    }
+  });
+
+  it("names exactly the sources its evidence comes from", () => {
+    for (const testCase of draft.cases.filter((candidate) => candidate.evidence.length > 0)) {
+      const evidenceTitles = new Set(testCase.evidence.map(sourceTitle));
+      expect(evidenceTitles.has(undefined), `${testCase.id}: evidence without a source title`).toBe(false);
+      expect([...evidenceTitles].sort(), testCase.id).toEqual([...new Set(testCase.expectedSources)].sort());
     }
   });
 
