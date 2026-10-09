@@ -28,7 +28,7 @@ import { zonedToday } from "@/lib/work-time/format";
  * signed in. While `enabled` is false it reads nothing.
  */
 
-const BOOKINGS_URL = "/api/work/bookings";
+export const BOOKINGS_URL = "/api/work/bookings";
 const COURSES_URL = "/api/work/courses";
 
 export type SavedBookingsPageState =
@@ -182,8 +182,8 @@ export function useSavedBookings(enabled = true): UseSavedBookings {
   };
 }
 
-/** The GET answer, checked just enough to fail to the error card rather than crash. */
-function readAnswer(body: unknown): Loaded {
+/** The GET answer, checked just enough to fail to the error card rather than crash. Also read by the work calendar. */
+export function readAnswer(body: unknown): Loaded {
   if (!body || typeof body !== "object") return { status: "error" };
   const answer = body as Partial<Omit<SavedBookingsRead, "status">> & { readonly status?: unknown };
   if (answer.status === "not-set-up") return { status: "not-set-up" };

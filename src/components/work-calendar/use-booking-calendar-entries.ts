@@ -1,41 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
-import type { WorkCalendarSourceRead, WorkCalendarSourceStatus } from "@/components/work-calendar/sources";
+import type { WorkCalendarSourceRead } from "@/components/work-calendar/sources";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
-import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
-import { useSavedBookings } from "@/components/work-screens/admin/use-saved-bookings";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
-import { useExampleData } from "@/lib/example-data/store";
-import type { BookingsState } from "@/lib/work-screens/admin/bookings";
-import { bookingWorkCalendarEntries } from "@/lib/work-screens/admin/bookings-calendar";
-import {
-  readBookingsSnapshot,
-  resetBookings,
-  seedBookings,
-  serverBookingsSnapshot,
-  subscribeBookings,
-} from "@/lib/work-screens/admin/bookings-store";
+import { useAuthIfAvailable, useExampleData } from "@/lib/example-data/store";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-import type { WorkCalendarEntry } from "@/lib/work-calendar/entries";
-import { zonedToday } from "@/lib/work-time/format";
 
 const OFF: WorkCalendarSourceRead = { status: "off", entries: [] };
+const LOADING: WorkCalendarSourceRead = { status: "loading", entries: [] };
+const FAILED: WorkCalendarSourceRead = { status: "error", entries: [] };
+const NO_HEADERS: Readonly<Record<string, string>> = {};
 
 /**
  * The work calendar source for course bookings: every course the reader has a
  * place on, one timed entry each. With Admin's example data on these are the
- * example courses (ids `example:`), read from the same page-memory copy the
- * Bookings pages change. With it off they are the saved courses. A cancelled
- * course comes through as cancelled, so the calendar drops it. Only readers in
- * the "course-bookings" preview get entries, and none where the launch switch
- * hides Bookings, since each entry links there.
+ * example courses (ids `example:`), the same copy the Bookings pages change.
+ * With it off they are the saved courses. A cancelled course comes through as
+ * cancelled, so the calendar drops it. Only readers in the "course-bookings"
+ * preview get entries, and none where the launch switch hides Bookings, since
+ * each entry links there.
  *
- * It reads the way `useBookings` does but carries none of its actions, so the
- * Roster and My Day calendars stay light.
+ * The reading itself is in `booking-calendar-feed.ts`, loaded only once this
+ * source is on, so Roster and My Day stay as light as they were for everyone else.
  */
 export function useBookingCalendarEntries(calendar: boolean): WorkCalendarSourceRead {
   const preview = useLivePreview("course-bookings");
@@ -44,36 +34,32 @@ export function useBookingCalendarEntries(calendar: boolean): WorkCalendarSource
   const { active } = useExampleData("admin");
   const signedIn = useSignedIn();
   const { zone } = useWorkTimeZone();
-  const read = useRegistryDataset("admin.bookings", enabled && active);
-  const snapshot = useSyncExternalStore(subscribeBookings, readBookingsSnapshot, serverBookingsSnapshot);
-  const saved = useSavedBookings(enabled && !active && signedIn);
-  const source = `example:${zone}:${zonedToday(zone)}`;
+  const auth = useAuthIfAvailable();
+  const headers = auth?.authorizationHeader ?? NO_HEADERS;
+  const account = auth?.session?.user?.id ?? "";
+  // Each read is kept with what it was for, so a switch of account or example shows loading, never the last one.
+  const key = `${active}:${signedIn}:${account}:${zone}`;
+  const [read, setRead] = useState<{ readonly key: string; readonly value: WorkCalendarSourceRead } | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
-    if (!active) resetBookings();
-    else if (read.status === "ready") seedBookings(source, read.data);
-  }, [enabled, active, read, source]);
+    let live = true;
+    let stop: (() => void) | null = null;
+    import("@/components/work-calendar/booking-calendar-feed").then(
+      ({ watchBookingCalendar }) => {
+        if (!live) return;
+        stop = watchBookingCalendar({ active, signedIn, headers, zone }, (value) => setRead({ key, value }));
+      },
+      () => {
+        if (live) setRead({ key, value: FAILED });
+      },
+    );
+    return () => {
+      live = false;
+      stop?.();
+    };
+  }, [enabled, active, signedIn, headers, zone, key]);
 
-  let state: BookingsState | null = null;
-  let status: WorkCalendarSourceStatus = "loading";
-  if (active) {
-    if (read.status === "error") status = "error";
-    else if (snapshot.source === source) {
-      state = snapshot.state;
-      status = "ready";
-    }
-  } else if (!signedIn) status = "signed-out";
-  else if (saved.page.status === "ready") {
-    state = saved.page.state;
-    status = "ready";
-  } else status = saved.page.status === "not-set-up" ? "unavailable" : saved.page.status;
-
-  // Keyed on content, so the list stays the same object while nothing changes.
-  const signature = JSON.stringify(
-    enabled && state ? bookingWorkCalendarEntries(state, (id) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(id)) : [],
-  );
-  const entries = useMemo(() => JSON.parse(signature) as WorkCalendarEntry[], [signature]);
   if (!enabled) return OFF;
-  return { status, entries };
+  return read?.key === key ? read.value : LOADING;
 }
