@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "4b7e9e0a-3ddb-45b2-992b-fa93f65f12b9",
+  "createdOn": "2026-10-09",
+  "action": "update",
+  "payload": {
+    "id": "#NZ4X41",
+    "detail": "158 of 205 therapies were signed off by owner in #SBKXZ7. 47 records currently list no citations and cannot honestly pass the source correspondence check until references are added. Adding references does not close this row: each of the 47 records still needs clinician sign-off afterwards, recorded the same way as the 158 in #SBKXZ7.",
+    "baseRowFingerprint": "2d05b636bef80e2a5000eaa2ea2fcfe54fa249dc94d23a125b4fc5f58a20387d"
+  }
+}

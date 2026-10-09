@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "331905e1-5d78-4ad4-a447-76aaf169fd2b",
+  "createdOn": "2026-10-09",
+  "action": "update",
+  "payload": {
+    "id": "#Z3GZ5P",
+    "summary": "DSM-5-TR specifier catalogue has no clinician sign-off: 585 items, 71 signed off in PR #3143, 514 still pending review",
+    "detail": "71 specifiers signed off in PR #3143; pending review dropped from 585 to 514. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-25 (offline traversal of data/specifiers-content.json; no provider access). Two corrections to this row's own headline, both reproducible from the committed file. FIRST: '71 source-verified' overstates the work. 57 of the 71 restate their own label, matching 'For <disorder>, \"<label>\" uses the stated threshold: <the label's own parenthesis>' — the Adjustment Disorders entry for 'Acute (less than 6 months)' resolves to 'uses the stated threshold: less than 6 months'. Only 14 carry content beyond the label, all in the ICD-11 trauma, dissociative, ARFID and personality material. Real coverage is 14 of 585, not 71. SECOND: neurodevelopmental, schizophrenia spectrum, bipolar, depressive and anxiety disorders hold 192 items and no definitions between them, so the commonest presentations are the least covered. SETTLED 2026-09-18 (owner instruction): the sign-off value is clinician-reviewed-approved, set only by a named clinician; the unit of work is one definition per specifier plus per-disorder exception notes; severity and remission for sexual dysfunctions and paraphilic disorders (41 of 164 undefined severity items) are out of scope. PR #3028 made the audit recognise clinician-reviewed-approved — under the previous exact-match test the first signed specifier would have gone unexamined. WORKLIST AND FIRST ENTRY, both on main from PR #2879: docs/specifier-definition-worklist-2026-09-18.md (A/B/C triage; Group A is 63 management-changing rows carrying only 17 distinct labels) and docs/specifier-entry-worksheet-with-catatonia.md (all nine disorders enumerated, every clinical statement blank). NEXT ACTION is clinician-only: write the four blanks in section 1 of the worksheet. No agent writes the clinical text.",
+    "baseRowFingerprint": "6f31ef93d36c25d15cd78c5695617e914c17f9bcf388e37c968964ee0af06348"
+  }
+}

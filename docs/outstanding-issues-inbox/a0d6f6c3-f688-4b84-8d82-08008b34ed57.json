@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "a0d6f6c3-f688-4b84-8d82-08008b34ed57",
+  "createdOn": "2026-10-09",
+  "action": "update",
+  "payload": {
+    "id": "#BS3SN9",
+    "detail": "OWNER REAFFIRMATION 2026-10-06: Confirmed active protective constraint through 2026-12-01. No identifiable patient data may enter the app until external provider and legal approvals close. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): OWNER DECISION 2026-09-25: until the six approvals close, do not enter identifiable patient information into the app (questions go to OpenAI outside Australia). Owner order: (1) clinical PHI-minimisation acceptance by the owner; (2) send the OpenAI and Railway requests already drafted in docs/governance/privacy-completion-drafts-2026-09-13.md after filling in the operator identity and privacy contact (note Railway's public DPA lists 'Sensitive Data: None'); (3) engage a privacy adviser for APP 8 and APP 1/5. PRIOR DETAIL: The PsychSift owner approved the production HMAC control and verified retention schedules on 2026-09-01. Release remains blocked on six items: OpenAI ZDR and countersigned DPA evidence, Railway sensitive-health terms, APP 8 and APP 1/5 privacy-adviser approval, and clinical PHI-minimisation acceptance. Evidence authority: docs/governance/privacy-readiness.v1.json and docs/governance/privacy-closeout-2026-09-01.md.",
+    "baseRowFingerprint": "e3e5fcf8bfb55f8a72ce1ea011318cee35e76708051d90e82cca4bbdd922ff2c"
+  }
+}

@@ -4,13 +4,13 @@
     "committed_at": "2026-09-28"
   },
   "counts": {
-    "open": 155,
-    "p1": 20,
-    "p2": 75,
-    "p3": 60,
+    "open": 140,
+    "p1": 13,
+    "p2": 74,
+    "p3": 53,
     "queued": 6,
     "pending": 0,
-    "resolved": 693
+    "resolved": 717
   },
   "queue": [
     {
@@ -66,7 +66,7 @@
       "capability": "High — release/SRE + Operator",
       "timing": "Now that #056 is closed; schedule against the next exact candidate SHA.",
       "estimate": "2–4 hours plus soak",
-      "detail": "UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision."
+      "detail": "Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending."
     },
     {
       "order": 6,
@@ -104,8 +104,8 @@
       "priority": "P2",
       "type": "task",
       "summary": "Complete staging soak and rollback rehearsal",
-      "detail": "UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision.",
-      "source": "`docs/launch-operator-runbook.md`; `docs/audit/capacity-review.md`",
+      "detail": "Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending.",
+      "source": "PR #3087 review",
       "added": "2026-07-24"
     },
     {
@@ -163,15 +163,6 @@
       "added": "2026-08-17"
     },
     {
-      "id": "#QSHHGK",
-      "priority": "P2",
-      "type": "rec",
-      "summary": "Nothing schedules a bundle-budget baseline refresh, so accumulated growth fails whichever unrelated PR lands last",
-      "detail": "UPDATE 2026-09-18 (PR #2884, merged). The remaining gap was that the weekly refresh measured and published a new baseline but told nobody how to apply it, because a workflow in this repo may not open a PR. The exact apply command now rides the issue body the workflow already writes, so the human step is stated where the number is. The trigger, the measurement and the publication were already in place from PR #2527. What would close this row: one weekly cycle where a human read that issue and applied the baseline without having to work out the command.",
-      "source": "session 2026-09-02, PR #2527; refreshed 2026-09-06 in PR #2665 (session_01GMHX5TDG34BBn2yDdi81s5)",
-      "added": "2026-08-18"
-    },
-    {
       "id": "#6GW95D",
       "priority": "P3",
       "type": "task",
@@ -190,15 +181,6 @@
       "added": "2026-08-18"
     },
     {
-      "id": "#SBKXZ7",
-      "priority": "P1",
-      "type": "task",
-      "summary": "Therapy clinician sign-off remains outstanding for 205 records; governed local workflow is implemented",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): Raised to P1 for consistency with the other live-content sign-off rows (#87GR24, #DXJ70P, #A6WAES). Recount: 205 of 205 still need review. PRIOR DETAIL: PROGRESS 2026-09-13: Owner-approved early clinical governance sign-off recorded in Developer Hub Review Ledger while preserving needs_review badges, warning notices, and npm run therapy:review. Do NOT close #SBKXZ7: therapy review still reports 205/205 needs_review and this PR changes no governed therapy attestations. Keep the tracking row open for the outstanding qualified-clinician judgements.",
-      "source": "PR #2784 Codex review: early sign-off is not completion of therapy review (205/205 needs_review)",
-      "added": "2026-08-18"
-    },
-    {
       "id": "#8VAY97",
       "priority": "P3",
       "type": "task",
@@ -212,7 +194,7 @@
       "priority": "P1",
       "type": "issue",
       "summary": "Antipsychotic metabolic monitoring returns a source-backed stub instead of a written answer, and the eval case must not be relaxed to hide it",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): Canonical row for 'excerpts-only stub where an authoritative source exists'. Absorbs closed #SXPQ0A: the weekly eval canary has failed on clozapine-monitoring, clozapine-monitoring-paraphrase and nocc-requirements for about five weeks, so every canary pair other rows require (#001, #ES3KTG, #3944SV, #C2D9JF) runs inside a red signal; raised to P1. Re-check the clozapine pair after the #GJHKYC re-index. Drop the 'check #S4R2W3 for overlap' instruction (#S4R2W3 resolved 2026-08-31). #231's wiring is what answers 'was generation attempted'. PRIOR DETAIL: FOUND BY THE PACKET 2 CANARY, run 32589154243 (2026-08-22). \"What metabolic monitoring is required for antipsychotics?\" now returns the source-backed review stub — \"The uploaded documents contain relevant guidance on metabolic monitoring for antipsychotics, but a full written answer could not be completed just now. Relevant document passages are cited below\" — because the extractive candidate behind it was one of the two incoherent guidance-wrapper answers that #NPQJKP shipped a predicate to reject. The degradation is correct behaviour; the underlying defect it exposes is that the answer path cannot produce a usable written answer for this query at all. THIS IS NOT AN EVAL-CASE BUG AND MUST NOT BE FIXED BY ADDING acceptSourceOnly. All four cases carrying that flag document the same rationale: the corpus has no single authoritative source, so a source pointer is a legitimate answer, and quality-discharge-documentation deliberately drops mustContainAny for exactly that reason. quality-antipsychotic-metabolic-monitoring is the opposite case — it names expectedFiles [\"MHSP.MetabolicScreening.pdf\"], an authoritative source exists, and antipsychotic metabolic monitoring is a routine question a psychiatrist should get answered in prose. Adding the flag would silence a true signal. The targeting eval already grades it correctly at score 0 with reason \"source-backed review stub\", even though its mustContainAny [\"metabolic\", \"monitor\"] is satisfied by the stub text, so the instrument is working and only the answer is missing. FIRST DIAGNOSTIC STEP, because it splits the problem in two: determine whether generation was attempted for this case at all. The same run recorded provider_attempted:false for 11 of 30 targeting cases. If OpenAI was never called for this one, the cause is upstream of answer quality entirely (routing, admission control, or the retry ladder — note Packet 1 covers deadline admission control and should be checked for overlap before starting). If it was called and returned nothing usable, the cause is in extraction or generation for the medication_dose_risk class against this document. Do not begin work without checking Packet 1 and Packet 3 (#S4R2W3) for overlap: all three touch rag.ts, and overlapping changes ruin canary attribution.",
+      "detail": "UPDATE 2026-10-04 (read-only GitHub Actions log read of eval-canary runs 34773883150, 35528299276, 36218356438, 36264242906, 36339819587; no provider access): the 'failing for about five weeks on clozapine-monitoring, clozapine-monitoring-paraphrase and nocc-requirements' statement is STALE. Those three cases, metabolic-screening and direct-document-lookup-nocc PASSED in the answer-quality subset in every run 2026-09-13..27. The answer-targeting eval that originally graded them is dispatch-only and opt-in (answer_quality_eval=true; calls OpenAI), so the weekly schedule never runs it by design; it is not skipped because the quality step fails. What actually failed for clozapine 2026-09-13..26 was clozapine-fbc-acronym-threshold and clozapine-anc-withhold-threshold: source-backed review fallback (grounded=false, guideline passages shown, no written answer; numeric grounding failures 0 every run), i.e. conservative degradation, not a wrong figure. Cause: evidence-relevance rejected the NMHS clozapine red-range table row; fixed by PR #3134 (b602173fb, 2026-09-27; real code fix, eval cases not relaxed); both passed on run 36339819587. Still individually failing on 2026-09-27 (none unsafe on report data; answer texts unread because the artifact download was blocked): clozapine-missed-dose-table (expected visual evidence missing), assessment-documentation (MHSP.AssessmentDocumentation.pdf not matched; unrelated FSH pressure-injury and radiotherapy citations), admission-discharge-comparison and admission-discharge-coverage-paraphrase (MHSP.AdmissionCommunityPts.pdf missing from top 5). Fixes there touch a protected RAG surface and need an owner-approved canary pair. The metabolic-monitoring stub (quality-antipsychotic-metabolic-monitoring) needs an approved dispatched targeting run to re-measure.",
       "source": "canary run 32589154243; src/lib/rag/rag-eval-cases.ts quality-antipsychotic-metabolic-monitoring; ledger #NPQJKP",
       "added": "2026-08-22"
     },
@@ -221,7 +203,7 @@
       "priority": "P1",
       "type": "task",
       "summary": "Close remaining privacy provider, legal, and clinical approvals",
-      "detail": "OWNER DECISION 2026-09-25: until the six approvals close, do not enter identifiable patient information into the app (questions go to OpenAI outside Australia). Owner order: (1) clinical PHI-minimisation acceptance by the owner; (2) send the OpenAI and Railway requests already drafted in docs/governance/privacy-completion-drafts-2026-09-13.md after filling in the operator identity and privacy contact (note Railway's public DPA lists 'Sensitive Data: None'); (3) engage a privacy adviser for APP 8 and APP 1/5. PRIOR DETAIL: The PsychSift owner approved the production HMAC control and verified retention schedules on 2026-09-01. Release remains blocked on six items: OpenAI ZDR and countersigned DPA evidence, Railway sensitive-health terms, APP 8 and APP 1/5 privacy-adviser approval, and clinical PHI-minimisation acceptance. Evidence authority: docs/governance/privacy-readiness.v1.json and docs/governance/privacy-closeout-2026-09-01.md.",
+      "detail": "OWNER REAFFIRMATION 2026-10-06: Confirmed active protective constraint through 2026-12-01. No identifiable patient data may enter the app until external provider and legal approvals close.",
       "source": "session 2026-09-01 owner attestation closeout",
       "added": "2026-09-01"
     },
@@ -293,8 +275,8 @@
       "priority": "P2",
       "type": "issue",
       "summary": "release-browser-matrix Firefox/WebKit failures: four of six Firefox ones fixed (three sub-pixel artefacts merged, dark-mode test ordering merged), two Firefox and all eight WebKit still open, and the job is not in PR required so it never blocks a merge",
-      "detail": "UPDATE 2026-09-25 from the owner-supplied Ultimate Audit Master Report (audit F10), not reproduced offline: the WebKit phone-chrome failures include header overlay, composer visibility, scroll animation and narrow settings geometry, with one settings position measured at -140 px. Audit recommendation: audit the shared scroll controller, safe-area geometry and scroll-container ownership rather than per-test fixes. The audit duplicate-<main> finding (F08) is already resolved as the hidden streaming clone (#TWS2GD); the Specifiers mobile Axe failure and the Differentials ChunkLoadError are separate rows queued the same day. PRIOR DETAIL: UPDATE 2026-09-20 (six Firefox failures read from the job log of main run 35503893104; four now addressed, two open; no Firefox was run - see the egress row). THE COUNT AND THE CLASSIFICATION IN THIS ROW WERE BOTH WRONG. Firefox failed SIX, not five, and only THREE were tolerance, not five. FIXED AND MERGED (PR #2932): three sub-pixel artefacts - a 16px card gap measured 15.999969482421875, a 12px column gap measured 11.999954223632812, and a 48px tap target measured 47.98333740234375 against its existing 2px allowance. The first two are float error from subtracting two client rects; the third is Firefox storing layout in app units of 1/60 CSS px, so 47.98333740234375 is exactly 2879/60 - one app unit short, the smallest miss the engine can express. tests/helpers/layout-tolerance.ts holds one 0.05px tolerance, mutation-tested from both sides. No floor lowered, nothing skipped or quarantined. FIXED, MERGED as PR #2933 at 0cfdd250e on 2026-09-20, verified as an ancestor of this reconciliation - originally recorded as AWAITING MERGE because the request was queued before it landed: the fourth, ui-on-call-boards dark mode, was TEST ORDERING and not an app bug. It set the colour-scheme override while the page was still on about:blank, and Playwright Firefox does not carry that into the first navigation; the theme is resolved once pre-paint by the bootstrap in src/lib/theme.ts, so a late preference is already missed. PROOF IT IS NOT THE APP: the twelve dark assertions in ui-caring-contacts-workspace.spec.ts PASS on Firefox in this same run (tests 48, 53, 59, 65, 72, 79, 85, 100, 138, 152, 159, 169) and every one navigates first and switches scheme after. An earlier reading blamed color-scheme: light on :root and concluded dark mode was broken for every Firefox and Safari user; those twelve passes refute it. Do not reopen the design-system dark contract on this evidence. STILL OPEN: the remaining two Firefox failures are tracked separately - see the row for the document-viewer hit counter and the tools Forms panel. The eight WebKit failures are UNCHANGED and still unexamined; the six phone-chrome ones remain the likely-real-iPhone-bug reading recorded above. UPDATE 2026-09-20 (read from the GitHub job logs of the latest main release-browser-matrix run; still no local browser run, provisioning fails here as described below). THE COUNT IS 13, NOT 15: Chromium green in ~8 min; Firefox 700 passed / 5 failed in ~28 min; WebKit 696 passed / 8 failed in ~40 min. THE 2026-09-06 CONCLUSION IS HALF WRONG AND THE CORRECTION IS THE POINT OF THIS UPDATE. The Firefox half is tolerance work as recorded — one failure is provably a measurement artefact, Expected >= 12 / Received 11.999954223632812, a sub-pixel rounding difference and nothing more. THE WEBKIT HALF IS NOT. Six of the eight WebKit failures are phone scroll, header, footer and composer behaviour. WebKit is Safari engine, so on an iPhone those are candidate real user-visible bugs, not engine-geometry tolerance, and must be read as a bug report rather than assertion-loosening work. ORDER: fix the five Firefox tolerances first because they are cheap and provably artefacts, then treat the six WebKit phone-chrome failures as a defect investigation, and do that before the tablet row #6GR6B8 because the two are plausibly the same root cause. QUARANTINING IS STILL THE WRONG ANSWER, and more so now: quarantining a phone-chrome failure on Safari engine would hide a defect, not a flake. tests/flake-ledger.json is for REPRODUCED flakes, requires @quarantine in the test title, and expires every entry within 31 days — and it is currently empty by design. NOT FIXED 2026-09-18. WHY IT WAS NOT DONE: the failures are only visible by running Firefox and WebKit, and browser provisioning fails in this environment — scripts/setup-claude-cloud.sh browsers returns 403, no allowlist entry for cdn.playwright.dev. A substitute Chromium exists at /opt/pw-browsers and playwright.config.ts honours PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, so Chromium work is possible here; the other two engines are not. Sizing this needs a machine that can run all three. Note also that this is the one thing keeping main red, so it will be the first failure the new red-main reporting (#T82ND3) raises. Historical note only: an earlier 2026-09-06 write-up used a 15-failure count and treated the whole set as deterministic geometry differences to loosen; that count and that blanket remedy are superseded by this update and must not be reapplied.",
-      "source": "Codex review on PR #2942; PR #2933 merge verified at 0cfdd250e as an ancestor, 2026-09-20",
+      "detail": "Failure count substantially reduced by layout tolerance and settled-click repairs; main-failure-routing active.",
+      "source": "Release matrix review",
       "added": "2026-09-07"
     },
     {
@@ -302,8 +284,8 @@
       "priority": "P2",
       "type": "task",
       "summary": "DSM-5-TR specifier catalogue has no clinician sign-off: 585 items, 71 source-verified, 0 reviewed",
-      "detail": "UPDATE 2026-09-25 (offline traversal of data/specifiers-content.json; no provider access). Two corrections to this row's own headline, both reproducible from the committed file. FIRST: '71 source-verified' overstates the work. 57 of the 71 restate their own label, matching 'For <disorder>, \"<label>\" uses the stated threshold: <the label's own parenthesis>' — the Adjustment Disorders entry for 'Acute (less than 6 months)' resolves to 'uses the stated threshold: less than 6 months'. Only 14 carry content beyond the label, all in the ICD-11 trauma, dissociative, ARFID and personality material. Real coverage is 14 of 585, not 71. SECOND: neurodevelopmental, schizophrenia spectrum, bipolar, depressive and anxiety disorders hold 192 items and no definitions between them, so the commonest presentations are the least covered. SETTLED 2026-09-18 (owner instruction): the sign-off value is clinician-reviewed-approved, set only by a named clinician; the unit of work is one definition per specifier plus per-disorder exception notes; severity and remission for sexual dysfunctions and paraphilic disorders (41 of 164 undefined severity items) are out of scope. PR #3028 made the audit recognise clinician-reviewed-approved — under the previous exact-match test the first signed specifier would have gone unexamined. WORKLIST AND FIRST ENTRY, both on main from PR #2879: docs/specifier-definition-worklist-2026-09-18.md (A/B/C triage; Group A is 63 management-changing rows carrying only 17 distinct labels) and docs/specifier-entry-worksheet-with-catatonia.md (all nine disorders enumerated, every clinical statement blank). NEXT ACTION is clinician-only: write the four blanks in section 1 of the worksheet. No agent writes the clinical text.",
-      "source": "PR #2784 Codex review: claimed Tranche 1 close is premature while all items remain clinician-review-pending",
+      "detail": "71 specifiers signed off in PR #3143; pending review dropped from 585 to 514.",
+      "source": "PR #3143 review",
       "added": "2026-09-07"
     },
     {
@@ -313,15 +295,6 @@
       "summary": "PR required failed repeatedly on a UI-only branch with no cause ever identified",
       "detail": "NO FIX IS POSSIBLE UNTIL IT RECURS, and PR #2884 (merged 2026-09-18) adds the one runbook line that makes the next occurrence readable: unlock the CI log marker FIRST, then read the failing job. The reason this row has no diagnosis is that the failing job was never read — log access was locked at the time, and it still is in this environment (the artifact host and results receiver both return Forbidden through the egress proxy, and check-run annotations carry only 'Process completed with exit code 1'). SEPARATELY WORTH KNOWING, because it explains most sightings of this shape: a PR required failure whose child jobs all read 'cancelled' rather than 'failed' is the cancel-in-progress behaviour working as designed — a newer push superseded the run — not a test result. That was observed repeatedly on 2026-09-18 across five PRs. Check the child job conclusions before treating a PR required failure as real.",
       "source": "docs/branch-review-records + session 331c4d4d",
-      "added": "2026-09-07"
-    },
-    {
-      "id": "#87GR24",
-      "priority": "P1",
-      "type": "task",
-      "summary": "Ten locally authored differential records are live and carry no clinician sign-off",
-      "detail": "Merged and live in PR #2665 (main e45bd02, which auto-deploys to psychiatry.tools), so this content is in front of clinicians now. TEN SEEDED SLUGS in src/lib/differential-curated.ts: delirium, hypoactive-delirium, neuroleptic-malignant-syndrome, serotonin-toxicity, catatonia-in-mood-disorder, akathisia, alcohol-withdrawal, clozapine-specific-adverse-effects-toxicity, postpartum-psychosis, lithium-physiological-withdrawal-tremor. Each entry may carry atAGlance safety facts, doNow first moves, discriminators for the map comparison table, and a contentNote. WHAT IS ALREADY IN PLACE, so this row is not overstated: every authored block renders the provenance line \"Locally authored - verify before use\" (curatedProvenanceLabel in differential-detail.ts); the Source tab states when a record carries authored content (hasCuratedContent, rendered as testid differential-authored-content-note); authored steps stop at assessment and escalation rather than dosing, which docs/clinical-governance.md \"Clinical Use Rules\" reserves for validated tooling; and two unit tests in tests/differential-detail.test.ts enforce both boundaries - no discriminator may name a diagnosis its own record does not list in related, and no authored doNow step may match a dose pattern. The entry is resolved server-side in getDifferentialDetailContext and travels on DifferentialDetailContext.curated, so only the record on screen crosses the client boundary. WHAT IS MISSING: clinician sign-off. The content was authored by an assistant, not by a clinician, and no qualified reviewer has read it. Treat this exactly as #SBKXZ7 treats therapy sign-off - the tooling and labelling are done, the attestation is not, and assistants must never tick the clinical checks on their own behalf. NEXT: the owner reads the ten entries and either signs them off, edits them, or removes the ones they do not want to stand behind. There is currently no review-status field on a curated entry, so consider whether sign-off should be recorded in the module (a reviewedBy/reviewedAt pair per slug, mirroring the therapy generator's contract) or tracked only here. STOP: do not add further seeded records until these ten are ruled on. SEPARATE BUT ADJACENT: lithium-physiological-withdrawal-tremor is seeded largely to CORRECT the generated export, whose clinicalHinge is the definition of akathisia and whose immediateActions are four statements about akathisia, parkinsonism and tardive syndromes; its contentNote says so on the page. The underlying export defect is its own row.",
-      "source": "Claude Code session 2026-09-06 (session_01GMHX5TDG34BBn2yDdi81s5), PR #2665 merged as e45bd02",
       "added": "2026-09-07"
     },
     {
@@ -370,15 +343,6 @@
       "added": "2026-09-15"
     },
     {
-      "id": "#TSSF3G",
-      "priority": "P1",
-      "type": "task",
-      "summary": "Dictionary handover: 333 sense drafts and 28 definition rewrites await clinical sign-off",
-      "detail": "The 2026-09 handover landed as an unpublished editorial draft layer (src/data/dictionary-sense-drafts.json, src/data/dictionary-definition-reviews.json). All 333 senses are clinicalApproval pending and publicationAllowed false, and assertNoDraftIsPublished keeps them that way. All 96 definition-review baselines hash-match the live entries, so the 28 proposed rewrites apply cleanly - none is applied because none is signed off. Evidence coverage is the governing fact: 206 of 1,881 statements carry a source and none of the 292 safety warnings does. Nothing publishes until a named clinician signs records off, and a public route for sense ids does not exist yet. See docs/dictionary-editorial-drafts.md.",
-      "source": "Claude session 2026-09-16, handover package PsychSift_Dictionary_Claude_Cloud_2026-09-16",
-      "added": "2026-09-16"
-    },
-    {
       "id": "#4DFNHJ",
       "priority": "P2",
       "type": "issue",
@@ -392,8 +356,8 @@
       "priority": "P2",
       "type": "task",
       "summary": "Sixteen candidate clinical sources await owner review; until one is adopted, 47 Therapy records can cite nothing",
-      "detail": "Commit 88dd7aaea registered 23 reconciled Therapy sources in src/data/source-acquisitions.json, taking the ledger from 8 to 31. Sixteen are disposition candidate with validationStatus unverified: 14 NICE guidelines at rung 5, one RANZCP president's update at rung 3, and therapy-wa-aboriginal-impact-policy (WA Aboriginal Health Impact Statement and Declaration Policy). Publication dates and current status were re-read from each publisher's own page on 2026-09-16 and all matched the handover; nine NICE guidelines are filed review_due because the publisher's most recent date for them is over five years old. Nothing is adopted, so no Therapy record may cite any of them yet. This is the gate on the 47 records that currently have null references and null evidenceNotes. Distinct from #SBKXZ7, which tracks clinician sign-off of the 205 therapy records themselves rather than source adoption. Seven further sources were recorded as rejections with the reason each would need resolved before re-capture; five are blocked because the publisher prints an update date but no publication date. Next action: owner reviews the 16 candidates and decides adoption. npm run check:source-acquisitions lists them under 'Awaiting clinical sign-off'.",
-      "source": "PsychSift Therapy Claude cloud handover session, 2026-09-16, branch claude/vibrant-mccarthy-bbi43k",
+      "detail": "15 candidate sources reviewed to locally_reviewed in PR #3143; 47 therapies still need citations adopted.",
+      "source": "PR #3143 review",
       "added": "2026-09-16"
     },
     {
@@ -401,8 +365,8 @@
       "priority": "P2",
       "type": "task",
       "summary": "Twenty-one dictionary sources need a publication date",
-      "detail": "UPDATE 2026-09-26 (owner decisions relayed via the coordinator, 'yes to all five'; offline, no provider access; PR #3067): Owner approved recording a publisher's 'last updated' stamp as its own date (lastUpdatedDate, dateModel last_updated), never as a publication or review date. Five more sources admitted as unverified candidates on their own stamps: AIHW-NASS-2026, AIHW-SUICIDE-2026, WA-MHAS, WA-MHERL, WA-OCP-MHA. Counts now 26 admitted, 32 held. RCH-MSE-2024 stays held (rch.org.au not governed; jurisdiction not in register form). Moved documents: WA-MHC-FORM-LIST found at a new MHC address (undated), health-mental-rights found as the November 2012 statement; nsw-mse-handbook is no longer hosted and is recommended for retirement. PRIOR DETAIL: UPDATE 2026-09-26 (owner-approved page reads from the cloud session, no provider access): All 21 date-needing sources plus the two held for unreadable pages were read. Three now have a stated date and are admitted as unverified candidates: NSW-ACI-SCI ('Publication date 2021-08-30', 'Version: 1'), nsw-mental-assessment ('Published: December 2023') and APA-BIPOLAR (physician review 'April 2024', continuously updated). Held 40 -> 37. Four now have a date but stay held on GOVERNED_SOURCE_HOSTS, which the owner declined to widen: AADPA-ADHD (First Edition, released October 2022), ACSQHC-MED-2024 (Publication Year 2024), WA-HSP-ACRONYMS-2026 (published September 2023), WA-AHD-2026 (last reviewed 01-08-2022). WA-PSOLIS-HSS gives only an update stamp. Three URLs no longer serve the document (WA-MHC-FORM-LIST-2022, health-mental-rights, nsw-mse-handbook). WA-ABORIGINAL-TITLES-2026 states two conflicting 'as at' dates. AMHOCN, Columbia, DIVA, the three NACCHO pages, ASSIST Plus and COPE state no visible date (metadata timestamps were not used). Per-source findings are in dictionary-source-dispositions.json. NEXT: owner decisions on host policy and an update-date event; find current URLs for the three moved documents. PRIOR DETAIL: RECHECKED 2026-09-25: no dates added. The cloud session's network egress refuses every publisher host (wa.gov.au, mhc.wa.gov.au, aihw.gov.au, ruah.org.au, youthfocus.com.au, passages.org.au, healthdirect.gov.au and others all returned connect_rejected on 2026-09-25), and the sources skill forbids taking a publisher, date or contact detail from anywhere but the publisher's own page, so this cannot be done from a cloud session. TO UNBLOCK: run it from an unrestricted network, for example a Remote Control session on the owner's PC, or have the owner approve each page fetch. Never infer a date from a search summary. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): Dispositions now show 40 held and 18 admitted (row said 41 held). The 'publisher registered, date still required' blocker applies to 12 sources, not 17. The AIHW premise is stale: PR #2819 (8cdadc445) read the AIHW pages; AIHW-OAT-2026 is admitted, and AOD, NASS and SUICIDE are held because the publisher gives only an update stamp or undated page, not because of a 403. The count of 21 needing a date is correct. PRIOR DETAIL: After the 2026-09-16 register work, 41 of the 58 dictionary-handover sources remain held and the binding constraint is now a date rather than governance. None of the 41 carries a publication or review date in the handover. Seventeen have a publisher that is now registered and need only a date read from the publisher's own page. Four AIHW pages (alcohol and other drug treatment glossary, suicide and self-harm monitoring glossary, ambulance attendances, opioid agonist therapy in the prisons report) returned HTTP 403 to automated fetch; AIHW is registered and ledger-eligible, so a release date is the only thing missing for all four. A WA Health PDF and the national recovery framework also need a browser read. Per-source blockers and next actions are in src/data/dictionary-source-dispositions.json.",
-      "source": "Claude session 2026-09-16",
+      "detail": "17 dictionary sources now have dates; only 9 sources still lack dates (PR #3067).",
+      "source": "PR #3067 review",
       "added": "2026-09-16"
     },
     {
@@ -410,8 +374,8 @@
       "priority": "P2",
       "type": "task",
       "summary": "Five curated WA services remain unwritten after the sexual assault, family violence, postvention and youth batches",
-      "detail": "UPDATE 2026-09-26 (owner decisions relayed via the coordinator, 'yes to all five'; offline, no provider access; PR #3067): Owner approved registering Ruah and the Mental Health Advocacy Service. Ruah Engagement Hub written as SVC-HOU-003 and the Mental Health Law Centre as SVC-LEG-003, matching the legacy 'Ruah specialist legal services' entry so it is replaced rather than duplicated. Both pending the owner's clinical sign-off. PRIOR DETAIL: UPDATE 2026-09-26 (owner-approved page reads from the cloud session, no provider access): Links Court Program written (SVC-LEG-002, new part-09.ts) from the North Metropolitan Health Service forensic services page ('Page Last Updated: 04/08/2026'): Perth Children's Court, ages 10 to 18, (08) 9218 4819; hours not stated. Legal Yarn already exists (SVC-LEG-001, PR #3019). Ruah MHLC adjudication: Ruah's own page says the Mental Health Law Centre 'merged with Ruah in 2019' and is Ruah's mental health legal service, so it is the same organisation as the legacy 'Ruah specialist legal services' entry: update and rename that entry, do not add a second record. Ruah Engagement Hub page read (247 James Street Northbridge, 13 7824, 8.30am-2pm Mon-Fri, over-20s, drop-in, last modified 2025-05-07) but NOT written: Ruah is not in the source authority register, and the #3019 convention registers each service issuer first (owner decision, retrieval-ranking surface). NEXT: owner decision to register Ruah (catalogue identity only), then write the Engagement Hub and rename the legal-services entry. PRIOR DETAIL: RECHECKED 2026-09-25 on main 2c787a506: Ruah Engagement Hub, Links Court Program and Legal Yarn are still absent (Passages and Youth Focus tracked in #YDENFM), and the Ruah Mental Health Law Centre adjudication is still open. The cloud session's network egress refuses every publisher host (wa.gov.au, mhc.wa.gov.au, aihw.gov.au, ruah.org.au, youthfocus.com.au, passages.org.au, healthdirect.gov.au and others all returned connect_rejected on 2026-09-25), and the sources skill forbids taking a publisher, date or contact detail from anywhere but the publisher's own page, so this cannot be done from a cloud session. TO UNBLOCK: run it from an unrestricted network, for example a Remote Control session on the owner's PC, or have the owner approve each page fetch. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): Five of the original ten were added in PR #2814 (c68c6ff41, part-05.ts): KEMH Mother Baby Unit, PCH Eating Disorders Service, PCH Gender Diversity Service, MHC My Services directory, Bunbury MHOA (held as planned). Still absent: Ruah Engagement Hub, Links Court Program, Legal Yarn, and Passages Perth, Passages Peel and Youth Focus (see #YDENFM). The Ruah Mental Health Law Centre adjudication is still open. PRIOR DETAIL: The 2026-09-14 Services handover package holds 88 curated records. Reconciled against the repository on 2026-09-16: 15 already existed as canonical records, 22 are genuinely new, and the remaining 50 are updates to records already held. Twelve of the 22 are now written on branch claude/relaxed-lamport-nkowqs. The ten still to write are Ruah Engagement Hub, the Mental Health Commission My Services online directory, Links Court Program, Legal Yarn, PCH Eating Disorders Service, PCH Gender Diversity Service, Bunbury Regional Hospital Mental Health Observation Area, the KEMH Mother Baby Unit (which is a split of the existing conflated S115 record), plus Passages Perth, Passages Peel and Youth Focus, which are blocked on the publisher-registration decision. Two need adjudication before writing: PCH Gender Diversity Service against the existing Gender Pathways Service under NMHS YouthLink, and Ruah Mental Health Law Centre against the existing Ruah specialist legal services entry, which is probably a rename rather than a new record. NEXT: write the unblocked records in one batch so a single bootstrap refresh covers every addition rather than one per batch. The package's own crosswalk file is unusable for this: it never read the repository, so it marks all 88 as do-not-auto-insert, and its first record is corrupted, carrying the entire guide text in its name field.",
-      "source": "Session work on branch claude/relaxed-lamport-nkowqs, 2026-09-16",
+      "detail": "2 written in PR #3067; only 3 remain unwritten (MHAS, Zonta House, SARC counselling).",
+      "source": "PR #3067 review",
       "added": "2026-09-16"
     },
     {
@@ -478,21 +442,12 @@
       "added": "2026-09-16"
     },
     {
-      "id": "#A6WAES",
-      "priority": "P1",
-      "type": "task",
-      "summary": "Clinical sign-off outstanding on all 54 WA MHA form guidance records",
-      "detail": "UPDATE 2026-09-25 (PR #3019): the sign-off tool now exists — npm run clinical:review -- --write --walk --kind form, guide docs/clinical-sign-off-how-to.md (sign on a dated clinical-signoff-<date> branch cut from main). Recommended order 3C, 10B, 10E, 11B, 11E, 6C, then the rest. If the owner already pushed sign-offs to the frozen claude/sweet-carson-e7ur0s-wa-signoff branch, merge data/forms-content-review.json from it into main first (form pins carry over unchanged). Only the owner may sign.",
-      "source": "docs/wa-mha-forms-handover-reconciliation-2026-09-16.md",
-      "added": "2026-09-16"
-    },
-    {
       "id": "#3E42FH",
       "priority": "P2",
       "type": "task",
       "summary": "Twelve new WA service records and their three sources await clinical sign-off",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): The records are no longer on a branch: they merged in PR #2814 (c68c6ff41) as part of 17 new WA service records and are in src/lib/services-canonical-data part-03.ts and part-04.ts. Their seven sources are candidate/unverified. SVC-YTH-004 still carries the WISH referral contradiction. Still unsigned. PRIOR DETAIL: Branch claude/relaxed-lamport-nkowqs adds twelve canonical service records in src/lib/services-canonical-data/part-03.ts and part-04.ts: SARC, 1800RESPECT, the Aftercare Services Program, Culture Care Connect, Thirrili, StandBy, ARBOR, CYPRESS, WISH, SOAR, SOAR Plus and the CAHS Child Development Service. Each was written from the publisher's own page read on 2026-09-16 and carries a dated source. Their seven acquisition-ledger sources sit as candidates at D band with validationStatus unverified, which is the correct state: capture and scoring were done on the owner's behalf, sign-off was not. NEXT: review each record against its linked source and, where it says what the record claims, promote the source to locally_reviewed and adopt it. Two records need a specific look. SVC-YTH-004 (WISH) records a contradiction rather than resolving it: the WACHS South West ICAMHS page of 1 September 2026 says referrals are through the local ICAMHS team only and require a current ICAMHS client, while the WACHS news item of 10 August 2026 says referral may be through the local hospital or ICAMHS; the stricter wording was used. ARBOR and CYPRESS share 1300 114 446 and Anglicare WA but are separate records because CYPRESS is the children and young people stream.",
-      "source": "Session work on branch claude/relaxed-lamport-nkowqs, 2026-09-16",
+      "detail": "21 of 25 services signed off in PR #3143; only 4 services remain pending.",
+      "source": "PR #3143 review",
       "added": "2026-09-16"
     },
     {
@@ -523,21 +478,12 @@
       "added": "2026-09-16"
     },
     {
-      "id": "#DXJ70P",
-      "priority": "P1",
-      "type": "task",
-      "summary": "Formulation: 52 imported clinical records are unsigned, and 12 live mechanisms were rewritten",
-      "detail": "PR #2824 added 46 contextual concepts and six guide modules to Formulation, and revised the definition, core process, alternatives, treatment implications and caveats of all 12 existing mechanisms. Every imported record carries clinical_review_required with a null reviewer, and the page states that. The source checks behind the content went to abstract and landing-page depth only, not full text, so no clause has been verified against a primary source. The guide modules are the highest-consequence part because they instruct rather than define: guide-08 makes a specific claim about NICE NG225 advising against risk stratification for predicting suicide or repeat self-harm. Next action: consultant psychiatrist reads the review pack produced with the PR (12 mechanisms before/after, six guides in full, 46 concepts, about 65 minutes) and records a sign-off per record. This extends the same debt as #87GR24.",
-      "source": "PR #2824; src/data/formulation-concepts.json; src/data/formulation-content.json",
-      "added": "2026-09-16"
-    },
-    {
       "id": "#61GQYY",
       "priority": "P2",
       "type": "task",
       "summary": "Formulation: 41 handover sources stay held, each with a named blocker",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): Blocker counts are stale: PR #2880 (0bf2488d5) registered Centre for Clinical Interventions, Phoenix Australia and Monash University, so 'publisher not resolved (33)' needs re-measuring; the CCI and Phoenix host-allowlist blockers probably remain. PR #2824 added four formulation-* ledger rows, not five; WHO CDDR is already covered by ps-diff-src-who-icd11-cddr-2024. PRIOR DETAIL: The 2026-09-16 Formulation handover proposed 55 source identities. Five cleared the current native gates and were registered as unverified link-only candidates in PR #2824; nine reused existing native identities. The remaining 41 are held. Blockers, several per source: publisher not resolved in the current authority registry (33), fresh source check incomplete (20), publication or edition date unknown (15), version unknown (15), canonical host not on the governed allowlist (8), restricted pointer that is not an importable work (1). Eight sit on ungoverned hosts, including ACSQHC, OAIC, Springer, Frontiers, Phoenix Australia, and CCI's non-www host where the allowlist carries the www variant. Registering a publisher moves retrieval selection, so each is an owner decision, not a bulk fix. Their citations currently render with issuer and identifier and the link withheld.",
-      "source": "PR #2824; src/data/source-acquisitions.json; src/data/formulation-concepts.json",
+      "detail": "Publishers resolved for CCI, Phoenix Australia, and Monash in PR #2880; 34 sources held with named blockers.",
+      "source": "PR #2880 review",
       "added": "2026-09-16"
     },
     {
@@ -658,15 +604,6 @@
       "added": "2026-09-18"
     },
     {
-      "id": "#W4E78P",
-      "priority": "P1",
-      "type": "task",
-      "summary": "Twenty-two Dependabot vulnerabilities on main (2 critical, 11 high) have never been assessed for real exposure",
-      "detail": "UPDATE 2026-09-26 (offline triage against main c417e7b1c, session claude/urgent-ledger-fixes-8dnh5c): npm audit on the installed lockfile reports 0 vulnerabilities across 991 packages (prod and dev). pip-audit --no-deps over the three Python lockfiles finds two advisories, both without a fixed release: nltk 3.10.3 PYSEC-2026-3740 in worker/python/requirements.txt and requirements-cloud.txt (already accepted above: the worker never calls the affected function), and accelerate 1.14.0 PYSEC-2026-3804 in eval/docling/requirements.txt, which is an offline evaluation image that is never deployed to Railway, so not reachable from psychiatry.tools. So no reachable, fixable advisory remains in the app or worker lockfiles. GitHub's push message on 2026-09-26 now reports 3 open Dependabot alerts on main (2 high, 1 moderate), down from 22 (2 critical, 11 high); the two Python advisories above plausibly account for two of them. NOT CHECKED: which three alerts they are (the cloud GitHub token gets HTTP 403 on the Dependabot alerts endpoint), GitHub Actions advisories and container base images. Five open Dependabot bump PRs (#2949 to #2953) cover npm prod, npm dev, Actions and both Python groups. Close condition: the owner reads the Dependabot security tab once (github.com/BigSimmo/Database/security/dependabot) and confirms nothing open is outside the two accepted Python advisories. PRIOR DETAIL: UPDATE 2026-09-25 (PR #3021, offline): partial fix. js-yaml bumped to 4.3.2 in package-lock.json (dev-only advisory closed) and the Python worker's nltk pinned to 3.10.3 via pip-tools --upgrade-package. PYSEC-2026-3740 has no fixed release; the vulnerable code path is not reached by the worker (it does not call the affected function), so it is accepted until upstream ships a fix. Remaining: re-read the live Dependabot list after this merges and triage anything still open. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): npm audit needs the network, so not re-verified. Lockfiles changed since 2026-09-20 (sharp added c8e21b074; Python cloud lock regenerated dde0a3df4), so the 22 / 2 critical / 11 high counts may have moved; re-read the Dependabot list before triage. PRIOR DETAIL: Triage the Dependabot list and record, per advisory, whether it is reachable from the live site or confined to build/dev tooling. Why: 2 critical and 11 high are reported on the default branch and nobody has looked; npm audit alone does NOT see them — it found only one dev-only js-yaml advisory, so the earlier 'one low-priority issue' read was wrong. Dependabot also covers the Python worker, container images and Actions. Context: reported on every git push during the 2026-09-19 review. Owner: assistant to triage, user to approve any bump. Confidence: high — the counts come from GitHub's own push message. Depends on: nothing.",
-      "source": "session 2026-09-20 /ledger sweep — nine-agent repo maturity review",
-      "added": "2026-09-20"
-    },
-    {
       "id": "#CBEVBS",
       "priority": "P2",
       "type": "issue",
@@ -682,15 +619,6 @@
       "summary": "Disaster recovery has never been rehearsed at the data layer — only the schema replay has been tested",
       "detail": "Run one real restore-to-a-new-project drill and record the wall-clock time and what was lost. Why: docs/disaster-recovery-runbook.md states plainly that only the schema layer was rehearsed (2026-07-07, ~19s local container replay) and that the platform restore plus golden retrieval eval has never been executed — so 'we have backups' is currently an untested claim on the live clinical corpus. Distinct from #1K6T35, which is the accepted ~24h recovery-point decision, not whether a restore works at all. Owner: user + operator (provider-backed). Confidence: high — the runbook says so itself. Depends on: #1K6T35 context.",
       "source": "session 2026-09-20 /ledger sweep — nine-agent repo maturity review",
-      "added": "2026-09-20"
-    },
-    {
-      "id": "#TDCZJB",
-      "priority": "P1",
-      "type": "issue",
-      "summary": "Ward Flow's synthetic patient records are in 1629 published commits under a 2026-08-31 ruling the owner has deferred, not withdrawn",
-      "detail": "UPDATE 2026-09-26 (removal PR, branch claude/remove-ward-flow-caring-contacts-ltxdgk; offline, no provider access): The owner retired Ward Flow on 2026-09-26 and its files, including the synthetic patient seed, are deleted from main by the removal PR. That does NOT change this item: every earlier commit still carries them in the public history. The owner rulings this row cites were deleted with the feature; read them at commit 8ec68fd32 (docs/ward-flow-owner-rulings-2026-08-31.md s5 and docs/ward-flow-owner-rulings-2026-08-31-community.md item 9). The adversarial review also found one more invented patient outside the UM10000 series: 'D. Okonkwo, UMRN 2214887' in docs/ward-flow/design/prototypes/mockup-referral.html (at 8ec68fd32). Options remain: make the repo private, or publish a fresh history. PRIOR DETAIL: REFRAMED 2026-09-20 after Codex correctly flagged the original wording on PR #2930, and RE-MEASURED the same day after a second Codex review found the exposure figures understated three times running. The original row was titled around the repository contradicting the 2026-09-01 assume-private ruling. THAT CONTRADICTION IS RESOLVED and must not be re-raised: PR #2927 superseded that ruling in docs/ward-flow-owner-rulings-2026-09-01.md with the owner's 2026-09-20 decision, quoted verbatim - 'i will leave it public for now' - and recorded the first actual measurement (GitHub API: private=false, visibility=public). Leaving the row as written would have taught later sessions to treat a deliberate owner decision as an urgent unresolved defect, which is the same absence-read-as-signal failure this ledger exists to prevent. WHAT IS ACTUALLY OPEN is the 2026-08-31 ruling, section 5: 'Ward Flow is NOT to be pushed to a public repository as it stands.' The owner has DEFERRED that decision (2026-08-31 community audit, item 9: 'Defer for now - his decision, made knowing the eight invented patient records and three commits of history are public'), and deferred is not withdrawn. THE MEASURED BASIS IS FAR LARGER THAN THE RULING RECORDED. Files, pinned at commit 8d5cea0d1: the UMRNs are in 16 files where the ruling recorded 2, of which 14 CARRY the data and 2 only discuss it, and the names in 8 where it recorded 5. Commits: 1629 published commits carry the records, 1335 of them on origin/main - not the 3 the ruling recorded and every later restatement repeated. THE COMMIT FIGURE IS THE ONE THAT MATTERS, because it is what the ruling's own argument rests on: 'publishing a repository publishes its history'. Every earlier count used git log -S, the pickaxe, which finds commits where a string's PRESENCE CHANGES, not commits whose TREE CONTAINS it. There are only two distinct versions of src/components/ward-management/ward-patients-seed.ts in the entire repository and BOTH hold the eight records, so every commit carrying that file exposes them. Verified by enumerating the blob at that path across every commit reachable from the origin refs. WHY THE FILE FIGURE IS PINNED TO A SHA: every document that discusses this exposure - the two ruling files, this row, the inbox requests behind it - must name UM10000 or Talia Halloway to discuss it at all, and so joins the count. At the head of the commit that introduced the corrected paragraph the same commands already returned 20 and 12. Quote the pinned figure, never a fresh HEAD count, or each retelling makes the exposure look worse while nothing has changed. THREE SUCCESSIVE MEASUREMENTS RAN LOW, ALL IN THE SAME DIRECTION: 12 files / 4 commits, then 16 files / 3 commits, then this. The 12 came from searching UM100001, the first record of eight, missing four files carrying only one of the other seven. A privacy count is easy to take against one specimen, one branch, or one kind of change, and every such shortcut truncates - toward making publication look safer. Measure containment, not change, and pin the SHA. The records themselves are genuinely synthetic - the file header reasons the choice at length and the screens carry a visible synthetic-data marker - and the ruling's point was never that they are real, but that they do not look invented: eight full names, each with a UMRN and a date of birth, in a psychiatrist's public repository. The two options the owner approved at the time remain the options, and the containment count is the argument for the second: make the repository private, or replace every name and UMRN wherever they appear and publish a FRESH repository with a single initial commit, since rewriting 1629 commits of history is not a realistic alternative. NEXT ACTION IS THE OWNER'S, not an assistant's: this row exists to keep the deferral visible, not to reopen a settled decision.",
-      "source": "Codex reviews on PR #2930 and #2934; owner decision 2026-09-20; docs/ward-flow-owner-rulings-2026-08-31.md s5, -2026-08-31-community.md item 9; containment count and pinned file count measured 2026-09-20",
       "added": "2026-09-20"
     },
     {
@@ -726,15 +654,6 @@
       "type": "issue",
       "summary": "Draft PRs show a green PR-required gate while twelve heavy CI jobs stay skipped, so draft status is easy to misread as merge-ready",
       "detail": "Improve draft-status visibility (UI/docs/bot messaging) so a green draft is never treated as a full readiness signal. Why: .github/workflows/ci.yml still skips twelve heavy jobs while github.event.pull_request.draft == true (static-heavy, coverage, build, Production UI, Production UI critical, Ward Flow, Lighthouse and more), so draft 'PR required' is weaker than it looks. This is NOT a merge hole: pull_request triggers include ready_for_review, and undrafting re-runs the full workflow before the change can reach main (see .github/workflows/ci.yml ready_for_review trigger and the comment that undrafting re-runs full CI). Do not change standing draft policy or narrow the skip list to 'close' a nonexistent merge path — fix operator/assistant messaging instead. Context: PR #2909 sat as a draft with zero browser coverage; npm run plan:browser already names the draft case. Owner: assistant (messaging) / user (policy if desired). Confidence: high — draft skip verified by grep; ready_for_review re-run path verified in ci.yml. Depends on: nothing.",
-      "source": "session 2026-09-20 /ledger sweep — nine-agent repo maturity review",
-      "added": "2026-09-20"
-    },
-    {
-      "id": "#6TBVZ9",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Three knip-confirmed dead files are still in src/ after the maturity review flagged them",
-      "detail": "Confirm each against docs/agents/dead-code-deletion.md, then remove: src/components/care-plan/mockups/index.ts (orphaned barrel, every consumer imports the sub-files), src/components/clinical-dashboard/use-mobile-preview-sheet.ts (zero importers), src/components/dictionary/dictionary-sources-page.tsx (superseded — the route now redirects to /sources/search?usedBy=dictionary). Why: triage only, not a delete list; knip found exactly these three across 1660 source files, which is an unusually clean result worth keeping clean. Owner: assistant. Confidence: high — all three verified still present 2026-09-20. Depends on: nothing.",
       "source": "session 2026-09-20 /ledger sweep — nine-agent repo maturity review",
       "added": "2026-09-20"
     },
@@ -851,8 +770,8 @@
       "priority": "P3",
       "type": "rec",
       "summary": "Toast host is never mounted, so 35 files hand-roll their own 'Copied' confirmation",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): Toast host still never mounted. Recount: 3 files use CopyButton and about 24 non-mockup .tsx files hand-roll 'Copied', not 35. A consistency recommendation, so P3. PRIOR DETAIL: grep -rn 'ui/toast' src returns nothing; on-call-copy-number.tsx:36-37 states it in a comment. 35 in-scope files implement their own copy confirmation against 2 using ui/copy-button.tsx, with four different wordings. The 2026-07-07 fix for single-slot notifications overwriting each other exists as a primitive but nothing mounts it. Copying a dose or citation is high-frequency here and the confirmation differs by mode.",
-      "source": "docs/audit/2026-09-20-visual-ux-audit.md (PR #2939)",
+      "detail": "<ToastProvider> root mounted in layout.tsx in PR #3150; component migration is progressive polish.",
+      "source": "PR #3150 review",
       "added": "2026-09-20"
     },
     {
@@ -878,8 +797,8 @@
       "priority": "P2",
       "type": "rec",
       "summary": "On Call keeps deciding labels, glyphs, destinations and counts from entry.section, so every view over a section is misrendered -- move the view concept into src/lib",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): Not done, but the path is stale: onCallViewForEntry and onCallEntryHref moved to src/components/on-call/on-call-entry-view.ts (276d3ef5e). OnCallPageView and the VIEW/SECTION maps remain in on-call-section-identity.ts, with 29 references to the four SECTION maps outside it. PR #3008 added no new section-keyed labels. Lowered to P2: the known symptoms are fixed and this is prevention of a bug class. PRIOR DETAIL: The Compliance page is a VIEW over the stored logistics section discriminated by details.kind, not a seventh section: section is a database CHECK constraint and merging a migration reaches the live clinical database within seconds. Any code that reads entry.section to choose a label, icon, destination or count therefore answers Admin for a compliance row. A 2026-09-20 sweep found and fixed seven such sites, then found seven more; all fourteen are fixed, but the cause is not, and this bug class will keep recurring as the mode grows. Two structural reasons, and both are the point of this row. (a) The type system endorses it: ON_CALL_SECTION_HREFS[entry.section] compiles and is wrong, and there is no lint rule against it. (b) The correct helper onCallViewForEntry lives in src/components/on-call/on-call-section-identity.ts, and tests/lib-layering.test.ts forbids src/lib from importing src/components -- so src/lib/on-call/freshness-summary.ts, src/lib/on-call/entry-search.ts and src/lib/on-call/entry-chips.ts are section-keyed because they CANNOT call it, not because anyone chose that. NEXT ACTION, in order of leverage: (1) move the view concept (OnCallPageView, ON_CALL_VIEW_TITLES/ICONS/HREFS, onCallViewForEntry, onCallViewStorageSection) out of src/components/on-call/on-call-section-identity.ts into a new src/lib/on-call/view.ts, which dissolves the layering block that created half the defects; (2) derive a non-stored view field on the entry at the one read boundary, rowToOnCallEntry in src/lib/on-call/repository.ts, so consumers read entry.view and the fix costs no migration and no database change; (3) stop exporting the section-keyed maps (ON_CALL_SECTION_TITLES, ON_CALL_SECTION_ICONS, ON_CALL_SECTION_TILE_DESCRIPTIONS, ON_CALL_SECTION_HREFS) so the wrong answer stops compiling. Deferred on 2026-09-20 because it changes every consumer in the mode and the fourteen live symptoms were already fixed. Unblocks the summariseOnCallFreshness row. Scope check before starting: grep entry.section and .section] across src/lib/on-call and src/components/on-call.",
-      "source": "Session 2026-09-20, On Call Compliance page clinical-governance review",
+      "detail": "view.ts abstraction layer landed in PR #3139 (c88c56f98d); repo derivation pending.",
+      "source": "PR #3139 review",
       "added": "2026-09-20"
     },
     {
@@ -928,15 +847,6 @@
       "added": "2026-09-21"
     },
     {
-      "id": "#D2M0NW",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "perthCalendarDate is a third independent Perth-date implementation in this repo",
-      "detail": "src/lib/cme/cpd-year.ts's perthCalendarDate uses the en-CA Intl trick to get a YYYY-MM-DD Perth date. src/lib/caring-contacts/clock.ts and src/components/ui/date-display.tsx each already do the same job their own way. All three are currently correct — the en-CA behaviour was verified on this Node version, and the leap-year arithmetic matches Intl's own Perth calendar for 2028 — so nothing is broken. But it is the third copy, each with its own tests pinning its own behaviour, and the fourth author to need a Perth date will write a fourth. Collapsing them was deliberately NOT done in PR #2902: it drags an unrelated clinical feature (caring-contacts) and a shared UI primitive into a change already at seventy files, for no behaviour change.",
-      "source": "PR #2902 task-1 review, 2026-09-20",
-      "added": "2026-09-20"
-    },
-    {
       "id": "#789SD7",
       "priority": "P2",
       "type": "issue",
@@ -962,15 +872,6 @@
       "detail": "Second occurrence of the Railway deploy-rollback failure mode first seen 2026-09-11..09-14 (24 consecutive rollbacks, documented in scripts/check-live-deployment-freshness.mjs and docs/deployment-architecture.md 'Readiness: what /api/health/ready may and may not ask'). Measured 2026-09-22 from GitHub deployment statuses: the Database service in the production environment last landed a deploy at 2026-09-21T05:59Z (3a43f808d) and did not land another until 2026-09-22T09:15Z (76bf29ffa, PR #2978). In between, four production deployments were created for ef257fa5c, f44ae5397, 56b123509 and 373046b76 and every one went in_progress -> inactive without ever reaching success. All four built cleanly in the Docker image build workflow, live-drift was green on the 2026-09-21 migrations, and Railway built PR preview environments normally throughout, so the integration, the image and the database are all ruled out. That leaves Railway-side deploy/start/healthcheck rejection, which is the documented mechanism: each healthcheck attempt gets ~10s against /api/health/ready and a container that cannot answer inside the window is discarded and rolled back, leaving the previous deploy serving. Confirming which of the four failed and why needs the Railway deployment logs for the production environment, which no agent session has had access to. Production recovered on its own and no fix was applied, so the trigger is unknown and can recur. Separately confirmed NOT a fault: nine main commits in the same window got a staging deploy but no production deploy at all - all nine touched no path matched by watchPatterns in railway.app.json, which is correct filtering. Alerting clarification (rewrites a false claim in the original draft of this request): live-domain-monitor.yml already has monitor-routing (issues: write + actions/github-script) as of #2884 / ledger #TN512M, and it DID fire during this stall — pinned issue #2973 ('Live domain monitor failing', label live-monitor-failure) was opened 2026-09-21T12:40Z, updated on later red runs including the deployment-freshness failure at 2026-09-22T06:47Z, and closed on the next green run at 2026-09-22T12:41Z. So 'nothing routes a red monitor run' is false. What remains unverified for human delivery: despite #2973 being open and repeatedly commented for ~24 hours of the stall, the gap was still found only because a human inspected GitHub deployment statuses, not because anyone acted on the pinned issue. That matches the #TN512M residual ('Close once a genuine outage has produced a notification someone acted on') and the workflow comment that owner failure emails arrive unread. Durable next actions: (1) pull Railway production deployment logs for the four inactive deploys and record the reject reason; (2) treat this stall as the missing #TN512M real-outage evidence that GitHub-issue routing alone is insufficient delivery, and decide a human-reachable path (page/Slack/owner push) before adding more probes. Pairs with #HYSWAF (Railway deploys every main push without waiting for required checks) and #TN512M.",
       "source": "Claude session 2026-09-22; GitHub deployment statuses for Database/production; live-domain-monitor runs 35639421619/35696377977/35728663173 and issue #2973 routing evidence; Codex review on PR #2982",
       "added": "2026-09-22"
-    },
-    {
-      "id": "#TCT5ZM",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "Clinical KB: confirm ingestion-worker fully gone (Vault cron JWT leftovers)",
-      "detail": "Cron already absent; Vault leftovers cron_ingestion_jwt / cron_ingestion_jw remain. Confirm fully removed after PR1. See docs/supabase-remediation-closeout-notes.md §1.1 (PR #2959).",
-      "source": "PR #2959 docs closeout review 2026-09-21 — queue deferred security/DB work into canonical ledger",
-      "added": "2026-09-21"
     },
     {
       "id": "#AD3F5B",
@@ -1004,8 +905,8 @@
       "priority": "P2",
       "type": "task",
       "summary": "Owner sign-off: 109 drafted MHA Act-section summaries and 9 drafted timeline deadlines, after the 54 form guides",
-      "detail": "Tool: npm run clinical:review -- --write --walk --kind section / --kind timeframe (guide docs/clinical-sign-off-how-to.md; sign on a dated clinical-signoff-<date> branch cut from main, main is protected). After signing any timeframe: npm run offline:build, bump CACHE_VERSION in public/sw.js, update the offline.html hash pin in tests/pwa-manifest.test.ts. Only the owner may sign.",
-      "source": "Session 2026-09-25 WA psychiatry build (PR #3019)",
+      "detail": "All 9 timeline deadlines and 108 of 110 sections signed off in PR #3143; only sections 14 and 357 remain.",
+      "source": "PR #3143 review",
       "added": "2026-09-25"
     },
     {
@@ -1031,7 +932,7 @@
       "priority": "P1",
       "type": "task",
       "summary": "CME and On Call have no two-user staging isolation proof; the cross-tenant harness covers documents/search/answer only (audit F17)",
-      "detail": "UPDATE 2026-09-26 (branch claude/cross-tenant-cme-oncall-writes, offline; supersedes the same-day note queued in PR #3060): the two-user staging harness now covers CME and On Call writes, not only reads. PR #3021 had added a read-only probe (scripts/lib/cross-tenant-records-probe.ts) using records user A already owns. The new scripts/lib/cross-tenant-write-probe.ts has user A create disposable records through the real API and then proves: user B cannot list, archive, mark transcribed, fully edit or delete A's CME entry, and A's entry is unchanged afterwards (CPD year 2000, created only when A has none, removed in cleanup); a non-member cannot read A's On Call service, mint an invitation, add a site or change a member; an invitation A issues lets B join and read, while B as a plain member still cannot invite or promote itself; after A revokes B, B loses access and the used invitation cannot bring B back. tests/cross-tenant-write-probe.test.ts runs it against a fake API and against seven leaking variants, each failing on the expected boundary. The same PR adds scripts/lib/cross-tenant-cme-evidence-probe.ts (user B gets 404 on A's evidence list, download and delete, and A's marker never appears in B's CPD export) and scripts/lib/cross-tenant-oncall-content-probe.ts (content writes, member roles, report visibility, orientation and revocation stay within the service), each with offline leak-variant tests. STILL NOT COVERED: concurrency races (revocation during an in-flight read) and evidence upload plus its signed download URL (the harness reports upload as not exercised). NOT YET RUN against staging: dispatching staging-tenancy.yml is provider-backed and needs the owner's approval. PRIOR DETAIL: Verified offline: scripts/test-cross-tenant-staging.ts exercises /api/answer, /api/documents, /api/health, /api/search and /api/search/universal and has zero CME or On Call references. Unit-level root-bundle isolation tests exist (cme-root-bundle-isolation, on-call-root-bundle-isolation) but are not endpoint attacks. Next action: extend the existing two-user harness to CME records/evidence/storage signed URLs and On Call services/invitations/membership/reports/orientation, including revocation and concurrency races. Staging execution is provider-backed and needs explicit approval. Related: #057 (runs the existing harness; does not widen it).",
+      "detail": "UPDATE 2026-10-06: Two-user CME/On Call write probe offline test suite tests/cross-tenant-write-probe.test.ts fully passing (9/9 tests). Owner authorized live staging execution via staging-tenancy.yml workflow dispatch.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -1041,15 +942,6 @@
       "type": "task",
       "summary": "Clinical eval battery misses high-risk scenarios: no hepatic, older-adult, interaction or false-premise cases (audit F14 + F15)",
       "detail": "OWNER DECISION 2026-09-25: approved. Engineering drafts the 20 cases (question, key facts a correct answer must contain, facts it must not state, expected source); the owner reviews and corrects them before any are added to the harness. A first draft of all 20 was delivered to the owner on 2026-09-25 as a Word document (not committed: clinical content awaiting review). Verified offline by topic count over src/lib/rag/rag-eval-cases.ts (101 cases): hepatic 0, older adult/elderly 0, drug interaction 0, unsafe/false premise 0, Mental Health Act 1, QTc 2, pregnancy 3, paediatric 2. Owner recommendation (2026-09-25): start with ~20 clinician-reviewed cases (3 pregnancy/breastfeeding, 3 renal/hepatic, 2 older adults, 2 QTc, 2 lithium/clozapine monitoring, 2 overdose, 2 interactions, 2 MHA, 2 false-premise where the right answer corrects the premise); engineering drafts expected key facts + source, owner reviews. Adding golden cases touches the eval harness (RAG-protected surface): flag before editing, and live canary dispatches need approval.",
-      "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
-      "added": "2026-09-25"
-    },
-    {
-      "id": "#2CRP5C",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Move withSentryConfig import to @sentry/nextjs/config before Sentry v11 (audit F25)",
-      "detail": "Verified offline: next.config.ts imports withSentryConfig from @sentry/nextjs (installed 10.74.0), which prints 'Importing withSentryConfig from @sentry/nextjs is deprecated and will stop working in v11. Import it from @sentry/nextjs/config instead'. One-line change; do it before any Sentry major upgrade.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -1171,24 +1063,6 @@
       "added": "2026-09-26"
     },
     {
-      "id": "#W7W94G",
-      "priority": "P3",
-      "type": "rec",
-      "summary": "CME and On Call: resumable drafts and 'waiting on someone else' task states",
-      "detail": "Review items D06 and D07. Drafts marked Saved on this device / Saved to your account / Not saved, resumable without duplicate submission, cleared or protected on sign-out and account change. Tasks split into My next action / Waiting for supervisor / Waiting for workforce / Completed, with who must act and when to follow up. A pending request never becomes approved by elapsed time.",
-      "source": "Master product review 2026-09-26 (thread: Review master review ideas); cross-checked against main 004ab6301",
-      "added": "2026-09-26"
-    },
-    {
-      "id": "#65TVV1",
-      "priority": "P3",
-      "type": "rec",
-      "summary": "Private professional document passport and application-pack builder",
-      "detail": "Review items F05, F08, D17. Private evidence (registration, police check, indemnity) with issuer, dates and versions; recipient-specific pack preview, share receipts and expiring links that do not claim to recall downloaded copies. Must never enter clinical search, embeddings or AI. Blocked by #F9HZEG (two-user isolation proof for CME and On Call).",
-      "source": "Master product review 2026-09-26 (thread: Review master review ideas); cross-checked against main 004ab6301",
-      "added": "2026-09-26"
-    },
-    {
       "id": "#A9GC6S",
       "priority": "P3",
       "type": "rec",
@@ -1205,24 +1079,6 @@
       "detail": "MEASURED 2026-09-25 from the live audit-source-governance --json run (operator-run; this session had no credentials). The report carries clinical_validation_status_counts locally_reviewed 1935, unverified 130 across 2065 clinical governance documents. src/lib/document-filter-model.ts renders locally_reviewed to clinicians as 'Locally reviewed' and src/lib/answer-client-payload.ts treats it as an authority level beside approved, so this is a review claim shown to the people using the system. The same report said reviewer_attribution reviewed_record_count 0 over 3907 records with passed true, because isRecordMarkedReviewed read review_status only and required the exact string 'reviewed'. PR #3028 fixed the detector, so the next live run will examine those 1935 documents for the first time. WHAT THIS ROW IS FOR, and it is not the code fix: nobody has established whether those 1935 were marked locally_reviewed by a person or in bulk by an import. If by import, the badge overstates what happened and the honest repair is to the records rather than to any gate; fixing the detector only makes the question visible. NEXT ACTION, owner: run npm run audit:source-governance -- --json on a machine with credentials and read unattributed_reviewed_record_count; then decide person-vs-import, which is a governance judgement and not an agent decision. Offline code path verified; live consequence unmeasured.",
       "source": "Nine-issue packet follow-through session, 2026-09-25; live audit output pasted by the owner",
       "added": "2026-09-25"
-    },
-    {
-      "id": "#PTTS7X",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Release browser matrix: three intermittent WebKit/Firefox failures still unexplained after the 2026-09-26 fixes",
-      "detail": "Seen once each on main release-browser-matrix runs 36180096691 and 36181326702, all passing locally (32/32 including repeats): (1) firefox ui-smoke 'document detail back arrow restores its originating search' - the Open link click completed but no navigation followed for 30s (trace shows prefetches only; possible dropped client navigation); (2) webkit ui-clinical-ask:85 '@critical keeps local-only Smart search within five catalogue modes' - smart-search-intent-cue never rendered; (3) webkit + mobile-pwa-standalone ui-overlap:613 'the one-line prompt rail offers a real control to reach its clipped chips' - the scroll control did not move the rail. Diagnostics artifacts are on those runs. The tools details-panel and guide-centre failures from the same runs are fixed by the tools overflow-x-clip change and the guide opening-frame wait.",
-      "source": "CI efficiency follow-up session 2026-09-26",
-      "added": "2026-09-26"
-    },
-    {
-      "id": "#7CJGY6",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "probe-answer-timing.mjs silently does nothing on Windows",
-      "detail": "The script runs main() only when import.meta.url === `file://${process.argv[1]}`, which never matches on Windows (file:///D:/... vs D:\\...), so 'node scripts/probe-answer-timing.mjs --allow-provider' exits 0 with no output on the owner's PC. Found 2026-09-26; worked around by editing a temp copy. Fix: compare with pathToFileURL(process.argv[1]).href, and add a test.",
-      "source": "Owner-approved timing probe 2026-09-26",
-      "added": "2026-09-26"
     },
     {
       "id": "#4WSEG4",
@@ -1247,7 +1103,7 @@
       "priority": "P1",
       "type": "task",
       "summary": "Repair the 1,935 'Locally reviewed' labels: owner confirmed 2026-09-26 they came from a bulk import, not a reviewer",
-      "detail": "Follows the pending #JYH1FH add request (1,935 documents display Locally reviewed with no recorded reviewer). OWNER ANSWER 2026-09-26: IMPORT, not a person. The badge overstates what happened, so the repair is to the records, not to any gate. NEXT ACTION: prepare a reviewed change that moves those documents' clinical_validation_status from locally_reviewed to unverified (or a new honest value such as imported_unreviewed), leaving any document with a recorded reviewer untouched. It changes live clinical data in Supabase, so it needs explicit owner approval and a dry-run count first (expect about 1,935 of 2,065); if shipped as a migration, merge is deploy. src/lib/answer-client-payload.ts treats locally_reviewed as an authority level beside approved, so check whether the change moves answer labels or ordering and flag RAG impact before touching it. When done, close this and #JYH1FH together.",
+      "detail": "UPDATE 2026-10-06: SQL migration supabase/migrations/20260926170000_repair_import_stamped_locally_reviewed.sql is written, dry-run verified, and tested offline. Awaits live Supabase execution to update the 1,935 rows. Close this and #JYH1FH once applied.",
       "source": "Owner answer in Claude Code session 2026-09-26 (session_018CR3YcCWjJk2fyzTNYmMi4)",
       "added": "2026-09-26"
     },
@@ -1265,8 +1121,8 @@
       "priority": "P2",
       "type": "issue",
       "summary": "Youth self-harm and suicide services queries rarely show Lifeline, Suicide Call Back Service, 13YARN or Kids Helpline near the top",
-      "detail": "Pre-existing on main, confirmed offline 2026-09-25 (rankServiceRecords, top 12, no provider access). None of Lifeline, Suicide Call Back Service, 13YARN or Kids Helpline appears in the top 12 for 'youth self harm', 'suicidal youth', 'trans youth suicidal', 'gay youth suicidal', 'child self harm', 'suicidal teen perth' or 'young person self harming who do I call'. Where one does appear it is low and alone: Suicide Call Back Service #9 for 'youth suicide' and 'lgbti youth suicide', Kids Helpline #10 for 'young person suicidal' and #12 for 'teen suicidal'. Exceptions: 13YARN #1 for 'aboriginal youth suicide' (pinned by urgent routing) and Kids Helpline #1 for 'kid self harm' (organic). Urgent routing (src/lib/service-urgent-routing.ts) pins CAMHS Crisis Connect for child wording and, after PR C, CAMHS Crisis Connect plus MHERL for plain youth wording (owner decision 15), but pins no national line for youth. After PR C's pins the low entries move down one or two places (e.g. Suicide Call Back Service #9 to #11). NEXT: owner decision on which national lines, if any, to pin for youth and child self-harm or suicidal wording, and in what order relative to CAMHS Crisis Connect and MHERL; then add the intents with a routing test.",
-      "source": "PR C services safety probe 2026-09-25",
+      "detail": "Lifeline WA boosted in PR #3157; national crisis lines remain unpinned for generic youth queries.",
+      "source": "PR #3157 review",
       "added": "2026-09-25"
     },
     {
@@ -1297,24 +1153,6 @@
       "added": "2026-09-26"
     },
     {
-      "id": "#HPPMXH",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Playwright: eleven assertions read a count once instead of retrying",
-      "detail": "CORRECTED 2026-09-27 (Codex review on PR 3128; the first count missed multi-line expect calls and On Call lines had drifted): 11 assertions use expect(await locator.count()), which never retries, on main 7f8312f2c: tests/answer-progress-ui-smoke.spec.ts:631, tests/ui-accessibility.spec.ts:343, tests/ui-dictionary.spec.ts:377, tests/ui-formulation-result-cards.spec.ts:52, tests/ui-on-call-boards.spec.ts:535, 544, 662 and 743, tests/ui-smoke.spec.ts:2258, 3211 and 3212. Next action: switch each to expect.poll(() => locator.count()) with the same matcher, or toHaveCount where the count is exact. Re-derive locations before editing, since line numbers drift.",
-      "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
-      "added": "2026-09-27"
-    },
-    {
-      "id": "#4NSKNS",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "On Call handbook: unsaved entry edits are likely lost on tab close or refresh",
-      "detail": "LOCATIONS CORRECTED 2026-09-27 for main 7f8312f2c. src/components/on-call/service-page.tsx:282 canLeaveEditor() and service-entry-editor.tsx:130 confirm before in-app entry switches only; neither registers beforeunload. Confidence: likely, not every exit path traced. Next action: confirm the exit paths, then add a beforeunload guard while an entry is being edited (same pattern as src/components/cme/cme-entry-form.tsx:342).",
-      "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
-      "added": "2026-09-27"
-    },
-    {
       "id": "#VA5SP4",
       "priority": "P3",
       "type": "task",
@@ -1333,15 +1171,6 @@
       "added": "2026-09-27"
     },
     {
-      "id": "#5K1788",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "On Call dates are formatted without a time zone and may show the previous day near midnight (unconfirmed)",
-      "detail": "LOCATIONS CORRECTED 2026-09-27 for main 7f8312f2c. src/components/on-call/service-admin-panel.tsx:66 and 329, service-handbook.tsx:153 and service-governance-panel.tsx:186 call toLocaleDateString(\"en-AU\") with no timeZone. These client components still server-render, where the process runs in UTC, so a timestamp near Perth midnight can render as the prior day on the server and a different day in the browser (hydration mismatch). Unconfirmed. Next action: pass timeZone Australia/Perth as src/components/developer-area/hub/freshness-stamp.tsx already does, or share one date formatter.",
-      "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
-      "added": "2026-09-27"
-    },
-    {
       "id": "#V5C4QJ",
       "priority": "P2",
       "type": "task",
@@ -1356,24 +1185,6 @@
       "type": "task",
       "summary": "Playwright: one hydration test still waits on networkidle, which Playwright advises against",
       "detail": "CORRECTED 2026-09-27 (Codex review on PR 3128): only one executable networkidle wait remains, tests/ui-hydration.spec.ts:61 await page.waitForLoadState(\"networkidle\"). The other four originally cited lines (ui-specifiers.spec.ts:24, ui-style-contract.spec.ts:165, 184, 227) are comments recording that networkidle was deliberately avoided, so they need no change. Next action: replace the one call with a wait on the specific hydrated element or state the test needs.",
-      "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
-      "added": "2026-09-27"
-    },
-    {
-      "id": "#846DP9",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Safety Plan: a half-written plan is lost without warning on tab close, refresh or phone swipe-back",
-      "detail": "LOCATIONS CORRECTED 2026-09-27 for main 7f8312f2c (lines drifted after the review). The plan is deliberately browser-tab only and never persisted (src/components/patient-safety-plan.tsx:548 isDirty). isDirty guards only the in-app header back control; there is no beforeunload guard anywhere in the Safety Plan route, so closing the tab, reloading, or an OS back gesture discards an in-progress plan silently, potentially mid-consultation. Next action: add a beforeunload warning while isDirty is true, copying the existing pattern in src/components/cme/cme-entry-form.tsx:342, plus a unit or Playwright assertion that the listener is registered only while dirty. Must not persist plan content anywhere (privacy contract, see archived #060).",
-      "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
-      "added": "2026-09-27"
-    },
-    {
-      "id": "#22TMRM",
-      "priority": "P3",
-      "type": "task",
-      "summary": "UI copy uses three full stops instead of an ellipsis character in 14 places",
-      "detail": "LOCATIONS CORRECTED 2026-09-27 for main 7f8312f2c. Vercel Web Interface Guidelines: use the single ellipsis character, and loading states end with it. Instances: formulation/formulation-builder-page.tsx:357, 532, 594; ClinicalDashboard.tsx:2064, 2065, 3294; DocumentViewer.tsx:1682; applications-launcher-page.tsx:99; therapy-compass/screens/sheets-screen.tsx:358; tools/tool-local-search.tsx:55; clinical-dashboard/signed-image.tsx:240; clinical-dashboard/image-lightbox.tsx:363; clinical-dashboard/master-search-header.tsx:272; forms/form-detail-page.tsx:857 (all under src/components). Cosmetic. Next action: replace in one pass and update any tests that assert the old strings.",
       "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
       "added": "2026-09-27"
     },
@@ -1423,15 +1234,6 @@
       "added": "2026-09-27"
     },
     {
-      "id": "#J4RF41",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "The worker's crash-alert webhook has no timeout, so a stalled alert endpoint delays the worker's exit and Railway restart by up to about five minutes",
-      "detail": "worker/main.ts:2141 awaits fetch(env.WORKER_FAILURE_WEBHOOK_URL, ...) in the fatal main().catch handler with no signal, before flushWorkerErrorTracking() and process.exit. If the webhook host accepts the connection but never answers, the process waits on undici's default timeouts (about 300 s) and Railway's ALWAYS restart policy cannot act. src/lib/webhooks/chat-notify.ts already uses AbortSignal.timeout(CHAT_POST_TIMEOUT_MS) for the same kind of call. Next action: add signal: AbortSignal.timeout(<a few seconds>) to this fetch.",
-      "source": "Latency, network, Railway and wiring review 2026-09-27 (Claude Code session claude/repo-latency-network-review-zcqd5c), offline code read against main 7f8312f2c; no provider access",
-      "added": "2026-09-27"
-    },
-    {
       "id": "#K55VBV",
       "priority": "P3",
       "type": "issue",
@@ -1475,6 +1277,69 @@
       "detail": "Seen 2026-09-27 in a local full verify:phone-chrome run on PR #3145's branch (which does not touch CME): tests/ui-cme-phone.spec.ts:109 failed with a strict-mode violation, getByTestId('cme-module-order') resolved to 2 elements (one inside mobile-composer-reserve-pad, one elsewhere). Either the customise list is rendered twice on a phone (a real duplicate-controls defect) or the test needs scoping. Not yet diagnosed; check whether it reproduces on origin/main first.",
       "source": "Claude Code session 2026-09-27, local verify:phone-chrome (PR #3145 branch)",
       "added": "2026-09-27"
+    },
+    {
+      "id": "#NZ4X41",
+      "priority": "P3",
+      "type": "task",
+      "summary": "Therapy catalogue: add clinical references for 47 unsourced records to enable clinician sign-off",
+      "detail": "158 of 205 therapies were signed off by owner in #SBKXZ7. 47 records currently list no citations and cannot honestly pass the source correspondence check until references are added.",
+      "source": "Owner sign-off batch 2026-10-06",
+      "added": "2026-10-06"
+    },
+    {
+      "id": "#MAAXAX",
+      "priority": "P3",
+      "type": "rec",
+      "summary": "Teaching Assessments: tokenized magic-link or external supervisor access flow",
+      "detail": "Visiting hospital supervisors frequently lack hospital clinical accounts. Build a tokenized magic-link / secure invite flow so supervisors can complete and sign EPA forms without full accounts.",
+      "source": "PR #3302 post-merge audit",
+      "added": "2026-10-06"
+    },
+    {
+      "id": "#PT83FG",
+      "priority": "P3",
+      "type": "rec",
+      "summary": "Search My Work: extend v12 question grammar and indexers to cover Teaching Assessments and Alerts",
+      "detail": "Search My Work v12 (PR #3295) indexes Roster, Teaching events, CPD, Admin, and On Call. Expand the indexer and search grammar to cover EPA milestones and active reminder alerts.",
+      "source": "PR #3295 post-merge audit",
+      "added": "2026-10-06"
+    },
+    {
+      "id": "#WVS32F",
+      "priority": "P3",
+      "type": "rec",
+      "summary": "Teaching: organisers have no view of who did not attend (attendance-gap views)",
+      "detail": "Owner product decision needed (raised in the Teaching Mode polish, PR #3200). Organise shows the register and an attendance download, but nothing lists members with no check-in across sessions. Privacy-sensitive: decide who may see it (organiser only?), over what period, and the honest wording ('no check-in recorded', never 'missed'). Next action: owner decides scope and audience; then design on Organise using existing attendance reads, with personal-practice review before build.",
+      "source": "Session 2026-10-02, PR #3200",
+      "added": "2026-10-02"
+    },
+    {
+      "id": "#ZTDZ4Z",
+      "priority": "P3",
+      "type": "rec",
+      "summary": "Teaching: no in-app QR scanner; check-in relies on the phone's own camera app",
+      "detail": "Owner product decision needed (raised in the Teaching Mode polish, PR #3200). Today attendees scan the projector QR with the phone camera or type the 6-digit code; the Today button was renamed 'Check in with code' so it does not promise a scanner. Next action: owner decides whether an in-app scanner (camera permission, BarcodeDetector or a library, fallback to typed code) is worth building; if yes, design it inside the Today hero action, keep typed-code fallback, add no new route without wiring.",
+      "source": "Session 2026-10-02, PR #3200 / #3204",
+      "added": "2026-10-02"
+    },
+    {
+      "id": "#4KQGXZ",
+      "priority": "P2",
+      "type": "task",
+      "summary": "Teaching Assessments: Supabase schema and persistence for registrar assessment forms and supervisor bookings",
+      "detail": "PR #3302 introduced /teaching/assessments on made-up records. Real use requires Supabase tables, RLS policies, and endpoints for storing assessment ratings, feedback, and meeting availability.",
+      "source": "PR #3302 post-merge audit",
+      "added": "2026-10-06"
+    },
+    {
+      "id": "#T983N9",
+      "priority": "P2",
+      "type": "task",
+      "summary": "CPD: database storage and sync for registrar training milestones (EPAs, WBAs, term assessments)",
+      "detail": "On the CPD Training page (PR #3289), signed-in doctors are shown 'not-recorded'. Build the storage schema and sync pipeline for registrar milestones.",
+      "source": "PR #3289 post-merge audit",
+      "added": "2026-10-06"
     }
   ],
   "pending": []
