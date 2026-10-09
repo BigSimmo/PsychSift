@@ -123,7 +123,11 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
           ) : null}
           <AssessKeyValue
             k="Outcome statements confirmed"
-            v={r.feedback?.outcomes?.length ? r.feedback.outcomes.join(", ") : "None"}
+            v={
+              r.feedback?.outcomes?.length
+                ? r.feedback.outcomes.map((id) => `${id} ${OUTCOME_NAMES.get(id) ?? ""}`.trim()).join(", ")
+                : "None"
+            }
           />
         </Card>
       </>

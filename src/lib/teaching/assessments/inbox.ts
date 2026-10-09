@@ -235,8 +235,11 @@ function doneLineFor(answer: InboxAnswer): string | null {
     const what = [answer.level ? levelWord(answer.level) : null, answer.text.trim() ? "with a few lines" : null]
       .filter(Boolean)
       .join(", ");
-    if (answer.status === "queued")
-      return answer.level ? `To send · ${what}` : "To send · choose a supervision level so it can go";
+    if (answer.status === "queued") {
+      if (!answer.level) return "To send · choose a supervision level so it can go";
+      if (!answer.observed) return "To send · say how you know so it can go";
+      return `To send · ${what}`;
+    }
     return answer.sentAt ? `Sent ${answer.sentAt} · ${what}` : what;
   }
   if (answer.status === "passed") {
@@ -356,6 +359,7 @@ export function sendBlocker(answer: Pick<InboxAnswer, "level" | "text" | "observ
   if (answer.text.length > FEEDBACK_MAX_CHARS) return `Keep it to ${FEEDBACK_MAX_CHARS} characters.`;
   if (feedbackProblem(answer.text)) return "Remove the patient details to send.";
   if (!answer.observed) return "Say how you know: you saw some of it, or a team member who was there told you.";
+  if (answer.observed === "team" && !answer.text.trim()) return "Name the team member's role in your few lines.";
   return null;
 }
 

@@ -529,7 +529,9 @@ function FeedbackSheet({
           className="flex justify-between px-1 text-sm font-semibold text-[color:var(--text-heading)]"
         >
           <span>A few lines</span>
-          <span className="font-normal text-[color:var(--text-muted)]">Optional</span>
+          <span className="font-normal text-[color:var(--text-muted)]">
+            {draft.observed === "team" ? "Needed: their role" : "Optional"}
+          </span>
         </label>
         <textarea
           id={textId}

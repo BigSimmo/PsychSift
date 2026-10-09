@@ -182,6 +182,9 @@ export function FormPdf({ s, params, role, dct }: ScreenProps) {
     supDate = s.sigs.sup ? (meetingDate(s) ?? s.sigs.sup.date) : "";
     docDate = s.sigs.doc?.date ?? "";
   }
+  // AMC Section 3A: a delegated end-of-term shows who completed it and the term supervisor who countersigned it.
+  const delegated = past && kind === "eot" ? term?.eotDelegated : undefined;
+  if (delegated) supDate = delegated.countersigned;
   // This term's end-of-term carries the DCT's sign-off once the DCT side has given it.
   const signOff = of === "eot" && s.sigs.doc ? samSignOff(dct) : null;
   const dctSigned = past && kind === "eot";
@@ -322,7 +325,15 @@ export function FormPdf({ s, params, role, dct }: ScreenProps) {
               <div className="min-h-8 border border-[color:var(--border-strong)] px-1.5 py-1">{f.areas}</div>
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-              <Field label="Term supervisor">{fill(term?.supervisor)}</Field>
+              {delegated ? (
+                <>
+                  <Field label="Completed by (clinical supervisor)">{delegated.to}</Field>
+                  <Field label="Signature">{sig(delegated.to.replace("Dr ", ""))}</Field>
+                </>
+              ) : null}
+              <Field label={delegated ? "Countersigned by (term supervisor)" : "Term supervisor"}>
+                {fill(term?.supervisor)}
+              </Field>
               <Field label="Position">{fill("Consultant")}</Field>
               <Field label="Signature">{supSig}</Field>
               <Field label="Date">{supDate}</Field>

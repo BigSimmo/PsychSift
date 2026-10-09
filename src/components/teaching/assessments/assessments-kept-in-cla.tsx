@@ -102,8 +102,8 @@ export function AssessmentsKeptInCla() {
               data-variant="primary"
               data-testid="teaching-assessments-open-cla"
             >
-              {/* The link is PMCWA's page about CLA, not CLA itself, so it says so (site audit M7). */}
-              About CLA (PMCWA)
+              {/* The link is CLA's own sign-in page, so it is named for where it goes (site audit M7). */}
+              Open CLA
               <ExternalLink aria-hidden="true" strokeWidth={2} />
               <span className="sr-only">(opens outside PsychSift)</span>
             </a>

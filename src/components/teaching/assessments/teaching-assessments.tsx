@@ -171,7 +171,8 @@ function Screen(props: ScreenProps & Omit<DctProps, keyof ScreenProps> & { view:
   if (view === "help") return <ConcernsHelp {...props} />;
   if (view === "words") return <SupervisorWords {...props} />;
   // What an assessor gets from a request: the same page from the doctor's or the supervisor's side.
-  if (view === "epaform") return <AssessorForm {...props} />;
+  // Keyed by the request, so one request's ticks and answers never carry into the next.
+  if (view === "epaform") return <AssessorForm key={props.params.get("i") ?? ""} {...props} />;
   // The two added sample views (features 16 and 4) read the same made-up records from either role.
   // They have no real data source yet, so a real user only reaches them with Assessments example data on.
   if (view === "inbox")
@@ -422,7 +423,10 @@ function useOpenView(): "help" | "words" | null {
 /** Signed in, or signed out with the example off: the CLA notice, except on the pages that hold no records. */
 function AssessmentsNoExample({ signedOut }: { signedOut: boolean }) {
   const open = useOpenView();
-  const progress = useSearchParams().get("view") === "progress";
+  const params = useSearchParams();
+  // Only the doctor's own Progress: a supervisor or DCT address gets the CLA notice, never this account's counts.
+  const as = params.get("as");
+  const progress = params.get("view") === "progress" && (as === null || as === "doctor");
   const { turnOn } = useExampleData("assess");
   const router = useRouter();
   if (open) return <AssessmentsOpenPage view={open} />;

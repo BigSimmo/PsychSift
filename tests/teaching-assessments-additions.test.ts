@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { resolveRole } from "@/components/teaching/assessments/teaching-assessments";
 import { GLOSSARY, MEU_HOW_TO_REACH } from "@/lib/teaching/assessments/content";
 import { extrasReducer, initialExtras, readyToSend } from "@/lib/teaching/assessments/extras";
-import { EMPTY_ANSWER, claCopyText, inboxRequests } from "@/lib/teaching/assessments/inbox";
+import { EMPTY_ANSWER, claCopyText, inboxRequests, sendBlocker } from "@/lib/teaching/assessments/inbox";
 import {
   assessmentsReducer,
   initialAssessmentsState,
@@ -156,5 +156,22 @@ describe("How to reach the MEU (site audit A9)", () => {
       "Your Medical Education Unit (MEU): find it on your hospital's intranet, or ask your term supervisor.",
     );
     expect(MEU_HOW_TO_REACH).not.toMatch(/\d|@|http/);
+  });
+});
+
+describe("review bot round on PR 3387", () => {
+  it("keeps a To send answer with no declaration queued, with the reason on its row", () => {
+    const queued = extrasReducer(initialExtras, { type: "inbox-queue", id: "mia-epa-2", level: "direct", text: "" });
+    expect(readyToSend(queued.answers)).toEqual([]);
+    const item = inboxRequests(initialAssessmentsState(), queued.answers).find((i) => i.id === "mia-epa-2")!;
+    expect(item.doneLine).toBe("To send · say how you know so it can go");
+  });
+
+  it("needs the team member's role before a team declaration can go", () => {
+    const answer = { level: "direct" as const, text: "", observed: "team" as const };
+    expect(sendBlocker(answer)).toBe("Name the team member's role in your few lines.");
+    expect(sendBlocker({ ...answer, text: "Ward nurse saw the handover." })).toBeNull();
+    const queued = extrasReducer(initialExtras, { type: "inbox-queue", id: "mia-epa-2", ...answer });
+    expect(readyToSend(queued.answers)).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 import type { EpaObserved, SupervisionLevel } from "@/lib/teaching/assessments/content";
-import { EMPTY_ANSWER, type CantReason, type InboxAnswer } from "@/lib/teaching/assessments/inbox";
+import { EMPTY_ANSWER, sendBlocker, type CantReason, type InboxAnswer } from "@/lib/teaching/assessments/inbox";
 import type { ReminderRecord } from "@/lib/teaching/assessments/overview";
 
 /*
@@ -27,21 +27,17 @@ export type ExtrasAction =
 export const initialExtras: ExtrasState = { answers: {}, reminders: [] };
 
 /**
- * Answers kept as To send that can go now. One with no supervision level is left out, never given a made-up
- * level: it stays as To send, and the inbox row says to choose a level.
+ * Answers kept as To send that can go now: the same check as the Send button (sendBlocker). One missing its
+ * supervision level or the "How you know" declaration is left out, never given a made-up value: it stays as To
+ * send for the assessor to finish.
  */
 export function readyToSend(
   answers: Readonly<Record<string, InboxAnswer>>,
-): { id: string; level: SupervisionLevel; text: string; observed?: EpaObserved }[] {
-  const ready: { id: string; level: SupervisionLevel; text: string; observed?: EpaObserved }[] = [];
+): { id: string; level: SupervisionLevel; text: string; observed: EpaObserved }[] {
+  const ready: { id: string; level: SupervisionLevel; text: string; observed: EpaObserved }[] = [];
   for (const [id, answer] of Object.entries(answers))
-    if (answer.status === "queued" && answer.level)
-      ready.push({
-        id,
-        level: answer.level,
-        text: answer.text,
-        ...(answer.observed ? { observed: answer.observed } : {}),
-      });
+    if (answer.status === "queued" && answer.level && answer.observed && !sendBlocker(answer))
+      ready.push({ id, level: answer.level, text: answer.text, observed: answer.observed });
   return ready;
 }
 

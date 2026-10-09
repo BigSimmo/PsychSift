@@ -188,7 +188,7 @@ export function EndOfTermSteps({ s, dct }: ScreenProps) {
  * sign-off, and the 14-day written reply. The AMC term assessment form's sign-off says the doctor "may respond in
  * writing to the Director of Clinical Training within 14 days", but not when the 14 days start, so this says to ask
  * the MEU and shows no date (rules audit U8). DCT sign-off is the CLA form the DCT or EDMS completes (CLA
- * supervisors' guide, Release 2.0, p.39). "Open CLA" goes to PMCWA's CLA page, and says so (site audit M7).
+ * supervisors' guide, Release 2.0, p.39). "Open CLA" goes to CLA's own sign-in page (site audit M7).
  */
 function WhatHappensNext({ signed }: { signed: boolean }) {
   return (
@@ -223,7 +223,7 @@ function WhatHappensNext({ signed }: { signed: boolean }) {
         data-size="wide"
         data-testid="assess-what-next-cla"
       >
-        Open CLA, via PMCWA
+        Open CLA
         <ExternalLink aria-hidden="true" strokeWidth={2} />
         <span className="sr-only">(opens outside PsychSift)</span>
       </a>

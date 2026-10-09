@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { perthDateKey } from "@/components/teaching/teaching-dates";
 import { AssessorForm } from "@/components/teaching/assessments/assessments-assessor";
+import { FormPdf } from "@/components/teaching/assessments/assessments-pdf";
 import { AssessmentsHome } from "@/components/teaching/assessments/assessments-home";
 import { AssessmentReport } from "@/components/teaching/assessments/assessments-report";
 import { EndOfTermSteps } from "@/components/teaching/assessments/assessments-steps";
@@ -66,7 +67,7 @@ describe("What happens next, after the doctor signs (A3, item 11)", () => {
     expect(within(next).getByText(/Acknowledge the form in CLA too/)).toBeInTheDocument();
     expect(within(next).getByText("DCT sign-off")).toBeInTheDocument();
     expect(within(next).getByText(/write to the DCT within 14 days/)).toBeInTheDocument();
-    expect(within(next).getByRole("link", { name: /Open CLA, via PMCWA/ })).toHaveAttribute(
+    expect(within(next).getByRole("link", { name: /Open CLA/ })).toHaveAttribute(
       "href",
       "https://cla.epads.mkmapps.com",
     );
@@ -178,6 +179,19 @@ describe("The assessor's outcome statements (item 15)", () => {
     );
   });
 
+  it("shows each confirmed outcome by its number and wording once submitted", () => {
+    const saveEpa = vi.fn();
+    render(<AssessorForm {...props(asked, "view=epaform&i=0", { role: "supervisor", saveEpa })} />);
+    fireEvent.click(screen.getByRole("radio", { name: /I directly observed some part of it/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Requires proximal supervision|Proximal/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit EPA 1" }));
+    const done = assessmentsReducer(asked, saveEpa.mock.calls[0]![0] as AssessmentsAction);
+    document.body.innerHTML = "";
+    render(<AssessorForm {...props(done, "view=epaform&i=0", { role: "supervisor" })} />);
+    const row = screen.getByText("Outcome statements confirmed").parentElement!;
+    expect(row.textContent).toMatch(/1\.2 [A-Z]/);
+  });
+
   it("shows the outcome statements read-only in the doctor's preview", () => {
     render(<AssessorForm {...props(asked, "view=epaform&i=0", { role: "doctor" })} />);
     const group = screen.getByRole("group", { name: "Outcome statements Sam ticked" });
@@ -198,9 +212,30 @@ describe("A signed-in doctor's Progress tab (A2, item 20)", () => {
     expect(progress).toHaveTextContent("Your forms and EPAs themselves stay in CLA.");
   });
 
+  it("shows a supervisor or DCT address the CLA notice, never this account's counts", () => {
+    nav.search = "view=progress&as=supervisor";
+    render(<TeachingAssessments demoMode={false} />);
+    expect(screen.getByTestId("teaching-assessments-kept-in-cla")).toBeInTheDocument();
+    expect(screen.queryByTestId("teaching-assessments-progress")).toBeNull();
+  });
+
   it("keeps the CLA notice on To do", () => {
     render(<TeachingAssessments demoMode={false} />);
     expect(screen.getByTestId("teaching-assessments-kept-in-cla")).toBeInTheDocument();
     expect(screen.queryByTestId("teaching-assessments-progress")).toBeNull();
+  });
+});
+
+describe("A delegated end-of-term's signed copy (AMC Section 3A)", () => {
+  it("names the clinical supervisor who completed it and the term supervisor who countersigned", () => {
+    render(<FormPdf {...props(initialAssessmentsState(), "view=form&of=past&term=t2&kind=eot")} />);
+    expect(screen.getByText("Completed by (clinical supervisor)")).toBeInTheDocument();
+    expect(screen.getAllByText("Dr Morgan Wandoo").length).toBeGreaterThan(0);
+    expect(screen.getByText("Countersigned by (term supervisor)")).toBeInTheDocument();
+  });
+
+  it("keeps an ordinary term's form as it was", () => {
+    render(<FormPdf {...props(initialAssessmentsState(), "view=form&of=past&term=t1&kind=eot")} />);
+    expect(screen.queryByText("Completed by (clinical supervisor)")).toBeNull();
   });
 });

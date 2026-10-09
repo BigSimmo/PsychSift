@@ -688,7 +688,7 @@ describe("term overview", () => {
     expect(within(page).getByRole("heading", { name: "Dr Taylor Kwongan" })).toBeInTheDocument();
     expect(within(page).getByText("Overdue since Fri 2 Oct")).toBeInTheDocument();
     expect(within(page).getByText("Content stays private")).toBeInTheDocument();
-    expect(within(page).getByRole("link", { name: /About CLA \(PMCWA\)/ })).toHaveAttribute("target", "_blank");
+    expect(within(page).getByRole("link", { name: /Open CLA/ })).toHaveAttribute("target", "_blank");
     expect(within(page).getByText("No reminders yet.")).toBeInTheDocument();
     fireEvent.click(within(page).getByTestId("assessments-overview-doctor-remind"));
     expect(
