@@ -286,6 +286,10 @@ function AvailabilityTag({
       return <WorkTag tone="neutral">Closed</WorkTag>;
     case "book":
       return <WorkTag>Book</WorkTag>;
+    case "cancelled":
+      return <WorkTag tone="neutral">Cancelled</WorkTag>;
+    case "started":
+      return <WorkTag tone="neutral">Started</WorkTag>;
     default:
       return <WorkTag tone="neutral">Done</WorkTag>;
   }

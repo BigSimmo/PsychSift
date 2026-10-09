@@ -502,7 +502,11 @@ function CourseForm({
   };
 
   const check = (): boolean => {
-    const found = validateCourseDraft(draft, { today: bookings.today, booked });
+    const found = validateCourseDraft(draft, {
+      today: bookings.today,
+      booked,
+      savedClosesOn: course?.closesOn ?? null,
+    });
     const clean = Object.fromEntries(Object.entries(found).filter(([, value]) => value)) as CourseDraftErrors;
     setErrors(clean);
     const ok = !hasDraftErrors(clean);
@@ -669,6 +673,7 @@ function CourseForm({
               type="date"
               value={draft.closesOn}
               onChange={(value) => set("closesOn", value)}
+              min={course?.closesOn && course.closesOn < bookings.today ? course.closesOn : bookings.today}
               max={draft.date || undefined}
               error={errors.closesOn}
               testId="admin-courses-closes"
@@ -696,7 +701,7 @@ function CourseForm({
       <WorkCard padded>
         <Step n={4} label="What doctors see" />
         <div className="mt-3 rounded-[var(--work-radius-field)] border border-[color:var(--work-line)] px-3 py-2.5">
-          <p className="text-[0.625rem] font-bold tracking-widest text-[color:var(--text-muted)] uppercase">
+          <p className="text-3xs font-bold tracking-widest text-[color:var(--text-muted)] uppercase">
             {course?.organiser ?? EXAMPLE_ORGANISER}
           </p>
           <p className="text-sm font-semibold text-[color:var(--text-heading)]">{preview}</p>
@@ -773,7 +778,7 @@ function Step({ n, label, extra }: { readonly n: number; readonly label: string;
     <p className="mb-2 flex items-center gap-2 text-sm font-bold text-[color:var(--text-heading)]">
       <span
         aria-hidden="true"
-        className="grid size-5 place-items-center rounded-full bg-[color:var(--work-wash)] text-[0.6875rem]"
+        className="grid size-5 place-items-center rounded-full bg-[color:var(--work-wash)] text-2xs"
       >
         {n}
       </span>

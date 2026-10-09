@@ -273,9 +273,15 @@ export function cancelMyBooking(
 ): { readonly state: BookingsState; readonly promoted: CourseBooking | null } | null {
   const mine = myBooking(state, courseId);
   if (!mine || mine.status === "attended") return null;
-  const cancelled = setBookingStatus(state, mine.id, "cancelled");
-  if (mine.status !== "booked") return { state: cancelled, promoted: null };
-  return promoteWaitlist(cancelled, courseId);
+  // Leaving the waitlist drops the row: the reader never held a place, so their calendar never had
+  // the course, and a "cancelled" row would put a struck-out entry there it never needed.
+  if (mine.status === "waitlisted") {
+    return {
+      state: { ...state, bookings: state.bookings.filter((booking) => booking.id !== mine.id) },
+      promoted: null,
+    };
+  }
+  return promoteWaitlist(setBookingStatus(state, mine.id, "cancelled"), courseId);
 }
 
 /** Move people off the waitlist into any free places, first in line first. */
@@ -358,7 +364,7 @@ const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 /** Every problem with a draft, by field. `booked` is how many hold a place now, when editing. */
 export function validateCourseDraft(
   draft: CourseDraft,
-  options: { readonly today: string; readonly booked?: number },
+  options: { readonly today: string; readonly booked?: number; readonly savedClosesOn?: string | null },
 ): CourseDraftErrors {
   const errors: CourseDraftErrors = {};
   const title = draft.title.trim();
@@ -380,6 +386,8 @@ export function validateCourseDraft(
     errors.capacity = `${options.booked} already booked. Cancel the course or keep at least ${options.booked}.`;
   if (draft.closesOn) {
     if (!DATE.test(draft.closesOn) || !isRealDate(draft.closesOn)) errors.closesOn = "Choose a date.";
+    else if (draft.closesOn < options.today && draft.closesOn !== options.savedClosesOn)
+      errors.closesOn = "Choose today or a later day.";
     else if (DATE.test(draft.date) && draft.closesOn > draft.date)
       errors.closesOn = "Close booking on or before the day.";
   }

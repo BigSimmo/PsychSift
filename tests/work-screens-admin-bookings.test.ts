@@ -315,8 +315,9 @@ describe("cancelMyBooking", () => {
     const result = cancelMyBooking(s, "c");
     expect(result?.promoted).toBeNull();
     const byId = new Map(result?.state.bookings.map((b) => [b.id, b.status]));
-    expect(byId.get("me")).toBe("cancelled");
+    expect(byId.has("me")).toBe(false);
     expect(byId.get("w2")).toBe("waitlisted");
+    expect(bookingCalendarEvents(result!.state, (id) => id)).toEqual([]);
   });
 
   it("promotes nobody when no one is waiting", () => {
@@ -495,6 +496,14 @@ describe("validateCourseDraft", () => {
     );
     expect(validateCourseDraft(draft({ closesOn: "2026-10-22" }), today).closesOn).toBeUndefined();
     expect(validateCourseDraft(draft({ closesOn: "2026-13-01" }), today).closesOn).toBe("Choose a date.");
+  });
+
+  it("refuses a closing day already past, unless the course already had it", () => {
+    expect(validateCourseDraft(draft({ closesOn: "2026-10-07" }), today).closesOn).toBe("Choose today or a later day.");
+    expect(validateCourseDraft(draft({ closesOn: TODAY }), today).closesOn).toBeUndefined();
+    expect(
+      validateCourseDraft(draft({ closesOn: "2026-10-07" }), { today: TODAY, savedClosesOn: "2026-10-07" }).closesOn,
+    ).toBeUndefined();
   });
 
   it("keeps capacity between 1 and the maximum, as a whole number", () => {
