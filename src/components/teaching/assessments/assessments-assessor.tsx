@@ -123,6 +123,7 @@ export function AssessorForm({ s, params, saveEpa, dispatch }: ScreenProps) {
         {header}
         <AnswerEpaRequest
           index={index}
+          request={r}
           kind={answer}
           dispatch={dispatch}
           onDone={() => setAnswer(null)}

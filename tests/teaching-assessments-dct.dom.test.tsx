@@ -80,3 +80,12 @@ describe("Assessments: an improvement plan", () => {
     expect(screen.getByText(/1.1 Patient safety/)).toBeInTheDocument();
   });
 });
+
+describe("Assessments: taking back a DCT sign-off", () => {
+  it("clears the signed-off line", () => {
+    render(<Harness screen="sign" id="noah-t3" />);
+    fireEvent.click(screen.getByRole("button", { name: "Sign off as DCT" }));
+    fireEvent.click(screen.getByRole("button", { name: "Take back" }));
+    expect(screen.queryByText("Signed off for Dr Lou Quandong.")).not.toBeInTheDocument();
+  });
+});

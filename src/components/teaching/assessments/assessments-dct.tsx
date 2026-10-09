@@ -327,7 +327,13 @@ export function DctSignoff({ s, params, dct, dctDispatch, go }: DctProps) {
           role="status"
           testId="assess-dct-signed"
           action={
-            <WorkButton variant="secondary" onClick={() => dctDispatch({ type: "dct-unsign", id: form.id })}>
+            <WorkButton
+              variant="secondary"
+              onClick={() => {
+                dctDispatch({ type: "dct-unsign", id: form.id });
+                setNote(null);
+              }}
+            >
               Take back
             </WorkButton>
           }

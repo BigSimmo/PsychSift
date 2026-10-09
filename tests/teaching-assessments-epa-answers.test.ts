@@ -186,3 +186,14 @@ describe("Assessments: someone else as assessor, and the full EPA form", () => {
     expect(tried({ goal: "Lead a handover." })).toBe("done");
   });
 });
+
+describe("Assessments: Undo puts an answer back exactly", () => {
+  it("restores a 'not yet' and its note after a send back", () => {
+    let s = assessmentsReducer(initialAssessmentsState(), { type: "request-epa", epa: 1, who: "sup" });
+    s = assessmentsReducer(s, { type: "epa-not-yet", index: 0, reply: "I'd like to see a full admission." });
+    const before = s.epaRequests[0]!;
+    s = assessmentsReducer(s, { type: "epa-send-back", index: 0, reply: "Ask the night registrar." });
+    s = assessmentsReducer(s, { type: "undo-epa-answer", index: 0, previous: before });
+    expect(s.epaRequests[0]).toEqual(before);
+  });
+});

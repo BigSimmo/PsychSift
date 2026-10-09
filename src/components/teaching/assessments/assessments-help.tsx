@@ -56,6 +56,7 @@ import {
   looksLikePatientDetails,
   pendingEpaRequest,
   validReply,
+  type EpaRequest,
   type GuestKind,
 } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, SAMPLE_REGISTRAR, SAMPLE_SUPERVISOR } from "@/lib/teaching/assessments/sample";
@@ -296,6 +297,7 @@ function RecordEpaSheet({
     return (
       <AnswerEpaRequest
         index={index}
+        request={request}
         kind={answer}
         dispatch={dispatch}
         onDone={close}
@@ -403,12 +405,15 @@ function RecordEpaSheet({
  */
 export function AnswerEpaRequest({
   index,
+  request,
   kind,
   dispatch,
   onDone,
   onCancel,
 }: Pick<ScreenProps, "dispatch"> & {
   index: number;
+  /** The request as it is now, so Undo can put it back exactly. */
+  request: EpaRequest;
   kind: "not-yet" | "sent-back";
   onDone: () => void;
   onCancel: () => void;
@@ -457,7 +462,7 @@ export function AnswerEpaRequest({
               ? { type: "epa-send-back", index, reply: trimmed }
               : { type: "epa-not-yet", index, ...(trimmed ? { reply: trimmed } : {}) },
           );
-          const undo = () => dispatch({ type: "undo-epa-answer", index });
+          const undo = () => dispatch({ type: "undo-epa-answer", index, previous: request });
           if (toast) {
             toast(message, undo, 10000);
             onDone();

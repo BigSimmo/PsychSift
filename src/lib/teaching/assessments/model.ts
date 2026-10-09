@@ -626,7 +626,8 @@ export type AssessmentsAction =
   | { type: "undo-record-epa"; index: number }
   | { type: "epa-not-yet"; index: number; reply?: string }
   | { type: "epa-send-back"; index: number; reply: string }
-  | { type: "undo-epa-answer"; index: number }
+  /** `previous` is the request as it was before the answer, so Undo puts back a "not yet" and its note too. */
+  | { type: "undo-epa-answer"; index: number; previous?: EpaRequest }
   | { type: "cancel-epa-request"; index: number }
   | { type: "restore-epa-request"; index: number; request: EpaRequest }
   | { type: "toggle-availability"; day: number; time: string }
@@ -843,6 +844,10 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       // Undo straight after "Can't assess yet" or "Send back": the request is waiting again.
       const r = s.epaRequests[a.index];
       if (!r || (r.status !== "not-yet" && r.status !== "sent-back")) return s;
+      const p = a.previous;
+      if (p && p.epa === r.epa && epaWithAssessor(p)) {
+        return { ...s, epaRequests: answerAt(s.epaRequests, a.index, p.status, p.reply ?? "") };
+      }
       return { ...s, epaRequests: answerAt(s.epaRequests, a.index, "requested", "") };
     }
     case "restore-epa-request": {
