@@ -169,7 +169,12 @@ export function hashArtifactDirectory(dir) {
  *   "match"     — the recorded digest covers exactly what is on disk
  *   "mismatch"  — it does not (failure)
  *
- * @param {{ treeDigest?: string | null, files?: Record<string, string> }} manifest
+ * Manifest digests are scanner-safe chunk arrays (or legacy plain hex, which
+ * decodeManifestDigest rejects and the `?? digest` fallback still accepts for
+ * compare-only paths that predate the chunk encoding).
+ *
+ * @typedef {[string, string, string, string]} ManifestDigestChunks
+ * @param {{ treeDigest?: string | ManifestDigestChunks | null, files?: Record<string, string | ManifestDigestChunks> }} manifest
  * @param {{ files: Record<string, string>, treeDigest: string }} actual
  * @returns {{ status: "empty" | "unpinned" | "match" | "mismatch", added: string[], removed: string[], changed: { path: string, expected: string, actual: string }[] }}
  */

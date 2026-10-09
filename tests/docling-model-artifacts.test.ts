@@ -29,11 +29,13 @@ import {
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const manifestPath = join(repoRoot, "eval/docling/model-artifacts.json");
+type ManifestDigestChunks = [string, string, string, string];
+
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
   doclingVersion: string;
   recordedAt: string | null;
-  treeDigest: string | null;
-  files: Record<string, string>;
+  treeDigest: ManifestDigestChunks | string | null;
+  files: Record<string, ManifestDigestChunks | string>;
 };
 
 const temporaryDirectories: string[] = [];
