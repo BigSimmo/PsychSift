@@ -350,7 +350,7 @@ export function GiveRoleSheet({
         <div className="grid gap-2">
           {failure ? <Problem testId="admin-people-give-problem">{failure}</Problem> : null}
           {!failure && problem ? (
-            <p aria-live="polite" className="text-sm text-[color:var(--text-muted)]">
+            <p role="status" className="text-sm text-[color:var(--text-muted)]">
               {problem}
             </p>
           ) : null}
