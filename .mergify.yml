@@ -1,0 +1,6 @@
+priority_rules:
+  - name: dependabot
+    priority: low
+    conditions:
+      - author = dependabot[bot]
+    allow_checks_interruption: false
