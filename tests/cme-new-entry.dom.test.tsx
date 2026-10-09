@@ -8,6 +8,7 @@ import { CmeNewEntryRoute } from "@/components/cme/cme-new-entry-route";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/cme/new",
 }));
 
 afterEach(() => {
