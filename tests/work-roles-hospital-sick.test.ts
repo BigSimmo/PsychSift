@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readHospitalSickCalls } from "@/lib/work-roles/hospital-sick";
+import { hospitalSickWindow, readHospitalSickCalls } from "@/lib/work-roles/hospital-sick";
 import type { WorkRoleContext } from "@/lib/work-roles/server";
 
 type Rows = Record<string, unknown[]>;
@@ -90,5 +90,12 @@ describe("hospital sick calls", () => {
       ["sick", "Dr Example", "offered", "2026-10-09T01:00:00Z"],
       ["covered", "Dr Example", "covered", "2026-10-09T02:00:00Z"],
     ]);
+  });
+
+  it("starts the window at the start of yesterday in Perth, not 24 hours ago", () => {
+    // 10:00 on Fri 9 Oct in Perth.
+    const window = hospitalSickWindow(new Date("2026-10-09T02:00:00Z"));
+    expect(window.from).toBe("2026-10-07T16:00:00.000Z");
+    expect(window.to).toBe("2026-10-17T02:00:00.000Z");
   });
 });

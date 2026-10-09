@@ -22,7 +22,12 @@ import {
 
 export type WorkRolesStatus = "loading" | "ready" | "signed-out" | "unavailable";
 
-type Snapshot = { readonly status: WorkRolesStatus; readonly grants: readonly WorkRoleGrant[] };
+/** `account` is the signed-in account the answer was read for. */
+type Snapshot = {
+  readonly status: WorkRolesStatus;
+  readonly grants: readonly WorkRoleGrant[];
+  readonly account?: string | null;
+};
 
 const LOADING: Snapshot = { status: "loading", grants: [] };
 const SIGNED_OUT: Snapshot = { status: "signed-out", grants: [] };
@@ -42,8 +47,9 @@ function publish(next: Snapshot) {
 function load(): Promise<void> {
   if (request) return request;
   const started = generation;
+  const account = readFor;
   const settle = (next: Snapshot) => {
-    if (started === generation) publish(next);
+    if (started === generation) publish({ ...next, account });
   };
   request = Promise.resolve()
     .then(() => fetch("/api/work/roles", { cache: "no-store", credentials: "same-origin" }))
@@ -118,8 +124,9 @@ export function useWorkRoles(enabled = true): WorkRolesView {
     readFor = userId;
     if (current.status === "loading") void load();
   }, [enabled, userId, current.status]);
-  // Switched off (signed out): no roles, whatever an earlier account left behind.
-  const view = enabled ? current : SIGNED_OUT;
+  // Switched off (signed out): no roles, whatever an earlier account left behind. An answer read
+  // for another account reads as loading until the effect above forgets it.
+  const view = !enabled ? SIGNED_OUT : current.status !== "loading" && current.account !== userId ? LOADING : current;
   const check = useCallback(
     (capability: WorkCapability, scope: WorkScope) =>
       view.status === "ready" && decideWorkCapability(view.grants, capability, scope),

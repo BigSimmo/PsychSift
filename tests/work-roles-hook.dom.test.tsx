@@ -83,4 +83,28 @@ describe("useWorkRoles", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     stopNext();
   });
+
+  it("never shows, even for one render, roles read for another account", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ grants: [{ role: "administrator" }] }), { status: 200 }))
+      .mockReturnValueOnce(new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", fetchMock);
+    resetWorkRoles();
+
+    const seen: string[][] = [];
+    const stop = watchHeldWorkRoles("user-a", (roles) => seen.push([...roles]));
+    await waitFor(() => expect(seen.at(-1)).toEqual(["administrator"]));
+    stop();
+
+    // This page has no signed-in account, so the answer cached for user-a is not its answer.
+    const statuses: string[] = [];
+    renderHook(() => {
+      const view = useWorkRoles();
+      statuses.push(view.status);
+      return view;
+    });
+    expect(statuses[0]).toBe("loading");
+    expect(statuses).not.toContain("ready");
+  });
 });

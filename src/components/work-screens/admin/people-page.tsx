@@ -100,16 +100,20 @@ function BackToAdmin({ variant = "secondary" }: { readonly variant?: "secondary"
  */
 export function AdminPeoplePage() {
   const roles = useWorkRoles();
+  const userId = useAuthIfAvailable()?.session?.user?.id ?? null;
   const authSignedOut = useSignedOut();
   const example = useExampleData("admin");
   const online = useOnlineStatus();
-  // The last answer, kept while the roles are read again after a grant, so the page never drops to a skeleton.
-  const [kept, setKept] = useState<readonly WorkRoleGrant[] | null>(null);
-  if (roles.status === "ready" && kept !== roles.grants) setKept(roles.grants);
+  // The last answer for this account, kept while the roles are read again after a grant, so the
+  // page never drops to a skeleton. Another account's answer is never reused.
+  const [kept, setKept] = useState<{ userId: string | null; grants: readonly WorkRoleGrant[] } | null>(null);
+  if (roles.status === "ready" && (kept?.grants !== roles.grants || kept.userId !== userId))
+    setKept({ userId, grants: roles.grants });
 
   const signedOut = authSignedOut || roles.status === "signed-out";
   const showExample = example.active && (example.mode === "on" || signedOut);
-  const grants = roles.status === "ready" ? roles.grants : roles.status === "loading" ? kept : null;
+  const keptGrants = kept && kept.userId === userId ? kept.grants : null;
+  const grants = roles.status === "ready" ? roles.grants : roles.status === "loading" ? keptGrants : null;
 
   let body;
   if (showExample) body = <PeopleExample realGrants={signedOut ? null : grants} />;

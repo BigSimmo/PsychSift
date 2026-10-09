@@ -4,6 +4,8 @@ import { PublicApiError } from "@/lib/http";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { notReady } from "@/lib/work-roles/people";
 import { can, isMissingTableError, type WorkRoleContext } from "@/lib/work-roles/server";
+import { zonedDateOf, zonedWallToIso } from "@/lib/work-time/format";
+import { DEFAULT_WORK_TIME_ZONE } from "@/lib/work-time/zones";
 
 /**
  * Sick calls across a hospital, for Medical Workforce (and the site
@@ -43,10 +45,11 @@ const STATUS: Record<string, HospitalSickStatus | undefined> = {
   approved: "covered",
 };
 
-/** From yesterday to a week ahead: what Workforce acts on today. */
-export function hospitalSickWindow(now: Date): { from: string; to: string } {
+/** From the start of yesterday in the work time zone to a week ahead: what Workforce acts on today. */
+export function hospitalSickWindow(now: Date, zone: string = DEFAULT_WORK_TIME_ZONE): { from: string; to: string } {
+  const dayAgo = now.getTime() - 24 * 3_600_000;
   return {
-    from: new Date(now.getTime() - 24 * 3_600_000).toISOString(),
+    from: zonedWallToIso(zonedDateOf(dayAgo, zone), "00:00", zone) ?? new Date(dayAgo).toISOString(),
     to: new Date(now.getTime() + 8 * 24 * 3_600_000).toISOString(),
   };
 }

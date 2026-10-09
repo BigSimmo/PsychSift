@@ -130,10 +130,14 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
   const shown = staffing.days;
   const needs = staffing.needs;
   const result = leave && staffing.status === "ready" ? leaveStaffing(staffing.days, leave, needs) : null;
-  const options = leave && staffing.status === "ready" ? alternativeDates(staffing.days, leave, today, 2, needs) : [];
+  // No other dates until the safe number has been read, so none is offered below it.
+  const options =
+    leave && staffing.status === "ready" && needs !== undefined
+      ? alternativeDates(staffing.days, leave, today, 2, needs)
+      : [];
   const belowShown = staffing.status === "ready" ? belowSafeDays(shown, leave, needs) : [];
-  // The note asks the roster manager for a safe number, so it only shows while none is set.
-  const askForSafeNumber = needs !== undefined && !hasSafeNumber(needs);
+  // The note asks the roster manager for a safe number, so it only shows once the read says none is set.
+  const askForSafeNumber = needs != null && !hasSafeNumber(needs);
 
   function setDates(next: { from: string; to: string }) {
     setEdit(next);
