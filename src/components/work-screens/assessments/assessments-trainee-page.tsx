@@ -157,24 +157,27 @@ function PatientNote({
 
 function NoteField({
   label,
+  hint,
   value,
   onChange,
   placeholder,
   testId,
 }: {
   label: string;
+  /** Right-hand label hint; defaults to Optional. Inbox uses "Needed: their role" for team observation. */
+  hint?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   testId: string;
 }) {
   const id = useId();
-  const hint = useId();
+  const describedById = useId();
   return (
     <div className="grid gap-1.5">
       <label htmlFor={id} className="flex justify-between px-1 text-sm font-semibold text-[color:var(--text-heading)]">
         <span>{label}</span>
-        <span className="font-normal text-[color:var(--text-muted)]">Optional</span>
+        <span className="font-normal text-[color:var(--text-muted)]">{hint ?? "Optional"}</span>
       </label>
       <textarea
         id={id}
@@ -182,13 +185,13 @@ function NoteField({
         maxLength={FEEDBACK_MAX_CHARS}
         value={value}
         placeholder={placeholder}
-        aria-describedby={hint}
+        aria-describedby={describedById}
         onChange={(event) => onChange(event.target.value)}
         onFocus={(event) => event.currentTarget.scrollIntoView({ block: "center", behavior: resolveScrollBehavior() })}
         className={cn(fieldControlPlain, "h-auto min-h-24 resize-y scroll-mb-24 py-2 leading-6")}
         data-testid={testId}
       />
-      <p id={hint} className="flex justify-between gap-2 px-1 text-xs text-[color:var(--text-muted)]">
+      <p id={describedById} className="flex justify-between gap-2 px-1 text-xs text-[color:var(--text-muted)]">
         <span>No names, initials, record or bed numbers.</span>
         <span className="nums">{`${value.length} of ${FEEDBACK_MAX_CHARS}`}</span>
       </p>
@@ -778,6 +781,7 @@ export function AssessmentsTraineePage({
             ) : null}
             <NoteField
               label="A few lines"
+              hint={draft.observed === "team" ? "Needed: their role" : "Optional"}
               value={draft.text}
               onChange={(text) => setDrafts({ ...drafts, [answerItem.id]: { ...draft, text } })}
               placeholder="What went well, and one thing to try next time."

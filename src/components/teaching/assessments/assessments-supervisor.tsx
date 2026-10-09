@@ -824,15 +824,23 @@ export function DoctorRecord({ s, openSheet, dct }: ScreenProps) {
     pending && pending.who === "sup"
       ? openSheet({ kind: "supepa", index: s.epaRequests.indexOf(pending) })
       : openSheet({ kind: "recordepa", pick: 1 });
+  // Match Year Requirements: once DCT signs off, this term's kind is done — not still "This term".
+  const signOff = s.sigs.doc ? samSignOff(dct) : null;
   const kinds = (["A", "B", "C", "D"] as const).map((letter) => {
     const done = termsWithKind(letter, "done");
     const now = termsWithKind(letter, "current")[0];
-    const state: KindState = done.length ? "done" : now ? "now" : "todo";
+    const state: KindState = done.length || (now && signOff) ? "done" : now ? "now" : "todo";
     return {
       letter,
       name: kindName(letter),
       state,
-      note: done.length ? `Done in ${termNumbers(done).toLowerCase()}` : now ? "This term" : "Not yet",
+      note: done.length
+        ? `Done in ${termNumbers(done).toLowerCase()}`
+        : now && signOff
+          ? `DCT signed off ${signOff.date}`
+          : now
+            ? "This term"
+            : "Not yet",
     };
   });
   return (

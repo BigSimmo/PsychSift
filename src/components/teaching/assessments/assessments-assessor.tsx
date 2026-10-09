@@ -161,17 +161,19 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
     );
   }
   const texts = [well, better, goal].map((x) => x.trim());
-  const ticked = DOCTOR_OUTCOMES[r.epa];
+  const ticked = DOCTOR_OUTCOMES[r.epa] ?? [];
   const confirmed = ticked.filter((id) => !unticked.includes(id));
   const why = !observed
     ? "Say how you know first."
     : !level
       ? "Choose a supervision level first."
-      : texts.some((x) => x.length > EPA_FEEDBACK_MAX)
-        ? `Keep each answer under ${EPA_FEEDBACK_MAX} characters.`
-        : texts.some(looksLikePatientDetails)
-          ? "Take out the patient details first."
-          : null;
+      : observed === "team" && !texts.some((x) => x.length > 0)
+        ? "Name their role in your feedback."
+        : texts.some((x) => x.length > EPA_FEEDBACK_MAX)
+          ? `Keep each answer under ${EPA_FEEDBACK_MAX} characters.`
+          : texts.some(looksLikePatientDetails)
+            ? "Take out the patient details first."
+            : null;
   const submit = () => {
     if (why || !observed || !level) return;
     const feedback: EpaFeedback = {
