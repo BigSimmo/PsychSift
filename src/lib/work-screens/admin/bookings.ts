@@ -65,6 +65,8 @@ export interface CourseBooking {
 export interface BookingsState {
   readonly courses: readonly BookingCourse[];
   readonly bookings: readonly CourseBooking[];
+  /** The example's renewals that need action, so "For your renewals" has something to match. */
+  readonly renewalsDue?: readonly string[];
 }
 
 export const EMPTY_BOOKINGS: BookingsState = { courses: [], bookings: [] };
@@ -119,15 +121,7 @@ export function myWaitlistPosition(state: BookingsState, courseId: string): numb
 }
 
 export type CourseAvailability =
-  | "book"
-  | "waitlist"
-  | "full"
-  | "closed"
-  | "started"
-  | "cancelled"
-  | "booked"
-  | "waitlisted"
-  | "attended";
+  "book" | "waitlist" | "full" | "closed" | "started" | "cancelled" | "booked" | "waitlisted" | "attended";
 
 /** What the reader can do with a course today. `today` is YYYY-MM-DD in the work time zone. */
 export function courseAvailability(state: BookingsState, course: BookingCourse, today: string): CourseAvailability {
@@ -227,7 +221,12 @@ function latestOwn(state: BookingsState, courseId: string): CourseBooking | null
 export type BookingError = "not-found" | "cancelled" | "started" | "closed" | "full" | "already";
 
 export type BookResult =
-  | { readonly ok: true; readonly state: BookingsState; readonly outcome: "booked" | "waitlisted"; readonly position: number | null }
+  | {
+      readonly ok: true;
+      readonly state: BookingsState;
+      readonly outcome: "booked" | "waitlisted";
+      readonly position: number | null;
+    }
   | { readonly ok: false; readonly error: BookingError };
 
 /** Book a place, or join the waitlist when the course is full and has one. */
@@ -241,7 +240,12 @@ export function bookPlace(
   const availability = courseAvailability(state, course, options.today);
   if (availability === "booked" || availability === "waitlisted" || availability === "attended")
     return { ok: false, error: "already" };
-  if (availability === "cancelled" || availability === "started" || availability === "closed" || availability === "full")
+  if (
+    availability === "cancelled" ||
+    availability === "started" ||
+    availability === "closed" ||
+    availability === "full"
+  )
     return { ok: false, error: availability };
   const outcome = availability === "book" ? "booked" : "waitlisted";
   const next: BookingsState = {
@@ -251,7 +255,12 @@ export function bookPlace(
       { id: options.id, courseId, person: options.person, self: true, status: outcome, at: options.at },
     ],
   };
-  return { ok: true, state: next, outcome, position: outcome === "waitlisted" ? myWaitlistPosition(next, courseId) : null };
+  return {
+    ok: true,
+    state: next,
+    outcome,
+    position: outcome === "waitlisted" ? myWaitlistPosition(next, courseId) : null,
+  };
 }
 
 /**
@@ -339,7 +348,8 @@ export function draftFromCourse(course: BookingCourse): CourseDraft {
   };
 }
 
-export type CourseDraftField = "title" | "about" | "date" | "startTime" | "endTime" | "location" | "capacity" | "closesOn";
+export type CourseDraftField =
+  "title" | "about" | "date" | "startTime" | "endTime" | "location" | "capacity" | "closesOn";
 export type CourseDraftErrors = Partial<Record<CourseDraftField, string>>;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -370,11 +380,12 @@ export function validateCourseDraft(
     errors.capacity = `${options.booked} already booked. Cancel the course or keep at least ${options.booked}.`;
   if (draft.closesOn) {
     if (!DATE.test(draft.closesOn) || !isRealDate(draft.closesOn)) errors.closesOn = "Choose a date.";
-    else if (DATE.test(draft.date) && draft.closesOn > draft.date) errors.closesOn = "Close booking on or before the day.";
+    else if (DATE.test(draft.date) && draft.closesOn > draft.date)
+      errors.closesOn = "Close booking on or before the day.";
   }
   for (const field of ["title", "about", "location"] as const) {
     if (errors[field]) continue;
-    const warning = checkPatientDetail(draft[field]);
+    const warning = checkPatientDetail(draft[field], { allowCapitals: true });
     if (warning) errors[field] = "This looks like patient details. Remove them before posting.";
   }
   return errors;
@@ -388,7 +399,12 @@ export function hasDraftErrors(errors: CourseDraftErrors): boolean {
 export function postCourse(
   state: BookingsState,
   draft: CourseDraft,
-  options: { readonly id: string; readonly at: string; readonly organiser: string; readonly status: "draft" | "posted" },
+  options: {
+    readonly id: string;
+    readonly at: string;
+    readonly organiser: string;
+    readonly status: "draft" | "posted";
+  },
 ): BookingsState {
   const course: BookingCourse = {
     id: options.id,
@@ -434,7 +450,10 @@ export function editCourse(
     updatedAt: options.at,
     change: moved ? { summary: changes.join(". "), at: options.at } : before.change,
   };
-  const next: BookingsState = { ...state, courses: state.courses.map((course) => (course.id === courseId ? updated : course)) };
+  const next: BookingsState = {
+    ...state,
+    courses: state.courses.map((course) => (course.id === courseId ? updated : course)),
+  };
   const booked = bookedFor(next, courseId).length;
   const waitingBefore = waitlistFor(next, courseId).length;
   const promoted = promoteWaitlist(next, courseId).state;
@@ -449,12 +468,18 @@ export function editCourse(
 /** The changes a doctor's calendar entry cares about: day, time and place. */
 export function describeCourseChanges(before: BookingCourse, after: ReturnType<typeof courseFields>): string[] {
   const changes: string[] = [];
-  if (before.date !== after.date) changes.push(`Day: ${formatCourseDay(before.date)} now ${formatCourseDay(after.date)}`);
+  if (before.date !== after.date)
+    changes.push(`Day: ${formatCourseDay(before.date)} now ${formatCourseDay(after.date)}`);
   if (before.startTime !== after.startTime || before.endTime !== after.endTime)
     changes.push(`Time: ${timeRange(before)} now ${timeRange(after)}`);
   if (before.location !== after.location) changes.push(`Place: ${before.location} now ${after.location}`);
   if (before.title !== after.title) changes.push(`Name: ${before.title} now ${after.title}`);
   return changes;
+}
+
+/** What saving this draft over the course would change for booked doctors. */
+export function draftChanges(course: BookingCourse, draft: CourseDraft): string[] {
+  return describeCourseChanges(course, courseFields(draft));
 }
 
 /** Cancel a course. Every booked doctor's entry is marked cancelled and they are told. */
@@ -559,7 +584,7 @@ export function formatCourseDay(date: string): string {
   return `${WEEKDAYS[parsed.getUTCDay()]} ${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()]}`;
 }
 
-/** The month tile text ("OCT") and day ("22") for a date row. */
+/** The month ("Oct") and day ("22") for a date row; the tile draws the month in small caps. */
 export function courseDateTile(date: string): { readonly month: string; readonly day: string } {
   const parsed = parseDate(date);
   if (!parsed) return { month: "", day: "" };

@@ -2,7 +2,9 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
+import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
+import { useCourseOrganiser } from "@/components/work-screens/admin/use-bookings";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
 import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";
@@ -15,9 +17,14 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const editor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
   const newWorkMode = useNewWorkMode();
   const signedIn = useSignedIn();
+  const bookings = useLivePreview("course-bookings");
+  const courses = useCourseOrganiser();
+  const courseOrganiser = bookings && (courses.organiser || courses.sample);
   return useCallback(
     (gate) => {
       if (!gate) return true;
+      if (gate === "course-bookings") return bookings;
+      if (gate === "course-organiser") return courseOrganiser;
       if (gate === "teaching-organiser") return roles.some((role) => role === "organiser" || role === "admin");
       if (gate === "open-shifts-poster") return poster === true;
       if (gate === "new-work-mode") return newWorkMode;
@@ -25,7 +32,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "signed-out") return !signedIn;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn],
+    [roles, poster, editor, newWorkMode, signedIn, bookings, courseOrganiser],
   );
 }
 

@@ -66,3 +66,11 @@ export function readBookingCalendarEvents(): CalendarEvent[] {
 }
 
 subscribeAccountTransition(() => resetBookings());
+
+let idCount = 0;
+
+/** A new id for a booking or course made in this tab. Example ones carry the "example:" prefix. */
+export function freshBookingsId(kind: "booking" | "course", example: boolean): string {
+  idCount += 1;
+  return `${example ? "example:" : ""}${kind}-${Date.now().toString(36)}-${idCount}`;
+}

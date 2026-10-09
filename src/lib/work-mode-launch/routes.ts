@@ -51,6 +51,9 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/admin/tax", owner: "wiring" },
   { path: "/admin/workforce", owner: "wiring" },
   { path: "/teaching/assessments/trainee", owner: "wiring" },
+  // Course bookings (also behind the Live version switch).
+  { path: "/admin/bookings", owner: "course-bookings" },
+  { path: "/admin/courses", owner: "course-bookings" },
   // Favourites.
   { path: "/my-day/favourites", owner: "favourites" },
   // Setup walkthrough and help centre.

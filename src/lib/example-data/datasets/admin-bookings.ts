@@ -1,7 +1,12 @@
 import { addDays } from "@/lib/calendar/calendar-event";
 import { EXAMPLE_PEOPLE, EXAMPLE_SELF } from "@/lib/example-data/people";
 import { zonedToday } from "@/lib/work-time/format";
-import { formatCourseDay, type BookingCourse, type BookingsState, type CourseBooking } from "@/lib/work-screens/admin/bookings";
+import {
+  formatCourseDay,
+  type BookingCourse,
+  type BookingsState,
+  type CourseBooking,
+} from "@/lib/work-screens/admin/bookings";
 
 /*
  * Example courses and bookings for Admin Bookings (`/admin/bookings`) and the organiser's Courses
@@ -136,7 +141,12 @@ export function exampleBookings(now: Date, zone: string): BookingsState {
   ];
 
   let n = 0;
-  const booking = (courseId: string, person: string, status: CourseBooking["status"], offset: number): CourseBooking => ({
+  const booking = (
+    courseId: string,
+    person: string,
+    status: CourseBooking["status"],
+    offset: number,
+  ): CourseBooking => ({
     id: `example:booking-${(n += 1)}`,
     courseId: `example:course-${courseId}`,
     person,
@@ -159,5 +169,6 @@ export function exampleBookings(now: Date, zone: string): BookingsState {
     ...people(9, 5).map((person, i) => booking("manual-handling", person, "attended", -40 + i)),
   ];
 
-  return { courses, bookings };
+  // Admin's example renewals show Basic life support with its date passed.
+  return { courses, bookings, renewalsDue: ["Basic life support"] };
 }

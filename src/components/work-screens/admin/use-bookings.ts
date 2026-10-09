@@ -88,7 +88,8 @@ export function useCourseOrganiser(): { readonly organiser: boolean; readonly sa
   const session = useSessionIfAvailable();
   const poster = useOpenShiftsIsPoster();
   const { active } = useExampleData("admin");
-  const organiser = signedIn && canManageCourses({ administrator: isAdministratorUser(session), teamManager: poster === true });
+  const organiser =
+    signedIn && canManageCourses({ administrator: isAdministratorUser(session), teamManager: poster === true });
   return { organiser, sample: !organiser && active };
 }
 
