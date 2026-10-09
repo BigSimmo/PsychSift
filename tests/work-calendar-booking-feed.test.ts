@@ -48,6 +48,15 @@ describe("watchBookingCalendar", () => {
     await vi.waitFor(() => expect(reads.at(-1)?.status).toBe("unavailable"));
   });
 
+  it("shows the error state when the answer is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html>proxy error</html>", { status: 200 })),
+    );
+    const { reads } = watch({ active: false, signedIn: true, headers: {}, zone: "Australia/Perth" });
+    await vi.waitFor(() => expect(reads.at(-1)?.status).toBe("error"));
+  });
+
   it("passes nothing on after it is stopped", async () => {
     vi.stubGlobal(
       "fetch",

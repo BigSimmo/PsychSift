@@ -75,16 +75,16 @@ export function watchBookingCalendar(
     };
   }
   send("loading", null);
-  fetch(BOOKINGS_URL, { cache: "no-store", headers: input.headers }).then(
-    async (response) => {
+  // One catch for the network and for a body that is not the expected JSON, so a bad answer shows the error state.
+  fetch(BOOKINGS_URL, { cache: "no-store", headers: input.headers })
+    .then(async (response) => {
       if (response.status === 401) return send("signed-out", null);
       const answer = readAnswer(response.ok ? await response.json() : null);
       if (answer.status === "ready") send("ready", answer.state);
       else if (answer.status === "not-set-up") send("unavailable", null);
       else send(answer.status, null);
-    },
-    () => send("error", null),
-  );
+    })
+    .catch(() => send("error", null));
   return () => {
     live = false;
   };
