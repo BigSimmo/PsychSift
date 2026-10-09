@@ -38,6 +38,12 @@ export const rostTopic: WorkHelpTopic = {
       link: { label: "Hours and rest", href: "/roster?view=hours" },
     },
     {
+      id: "rotations",
+      q: "How do rotation preferences work?",
+      a: "When your administrator opens a round, rank the rotations you want, best first, and send them before it closes. Places go to as many people as possible on their highest choice. Once published, your rotations show on your Roster month and My Day.",
+      link: { label: "Rotations", href: "/roster/rotations" },
+    },
+    {
       id: "phone-calendar",
       q: "How do I put my shifts in my phone calendar?",
       a: "In Settings, turn on Calendar link. Your shifts for the next 60 days go on a private link as shift type and time only. Anyone with the link can see them, so keep it to yourself.",
@@ -54,7 +60,8 @@ export const rostTopic: WorkHelpTopic = {
     { label: "Join a team", href: "/roster/join" },
     { label: "Settings", href: "/roster/settings" },
     { label: "Manage team, for managers", href: "/roster/manage" },
+    { label: "Rotation rounds, for administrators", href: "/roster/manage/rotations" },
   ],
   keywords:
-    "rota roster schedule swap give away cover leave annual holiday shifts nights on call calendar sync ical import fatigue rest overtime extra time payslip team invite code",
+    "rota roster schedule swap give away cover leave annual holiday shifts nights on call calendar sync ical import fatigue rest overtime extra time payslip team invite code rotation rotations term terms preferences rank ranking allocation placement year",
 };

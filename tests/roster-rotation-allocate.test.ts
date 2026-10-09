@@ -111,6 +111,21 @@ describe("allocateRotations", () => {
     expect(multiTerm.placements.filter((p) => p.rank === 2).every((p) => p.reason === "Your 2nd choice")).toBe(true);
   });
 
+  it("keeps rank numbers when a ranked rotation has no places", () => {
+    const data = input({
+      terms: [terms[0]],
+      rotations: [
+        { id: "closed", name: "Closed", site: "A", places: 0 },
+        { id: "x", name: "X", site: "A", places: 1 },
+      ],
+      people: ["a"],
+      preferences: [{ personId: "a", ranking: ["closed", "x"] }],
+    });
+    const result = allocateRotations(data);
+    expect(result.placements[0]).toMatchObject({ rotationId: "x", rank: 2 });
+    expect(result.summary.peopleWithFirstChoice).toBe(0);
+  });
+
   it("places people with no preferences into free places", () => {
     const data = input({ preferences: input().preferences.slice(0, 2) });
     const result = allocateRotations(data);

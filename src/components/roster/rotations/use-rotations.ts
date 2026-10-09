@@ -52,6 +52,13 @@ export type RotationActions = {
   resetExample(): void;
 };
 
+/** The team the reader manages, with its active members for a new round. */
+export type RotationTeam = {
+  readonly serviceId: string;
+  readonly name: string;
+  readonly people: RoundSetup["people"];
+};
+
 export type RotationsRead = {
   readonly status: RotationsStatus;
   readonly source: "example" | "live";
@@ -61,7 +68,7 @@ export type RotationsRead = {
   readonly managed: readonly ManagedRound[];
   readonly canManage: boolean;
   /** For the new-round form: the team the reader manages. */
-  readonly team: { readonly serviceId: string; readonly name: string } | null;
+  readonly team: RotationTeam | null;
   readonly actions: RotationActions;
   readonly retry: () => void;
 };
@@ -74,6 +81,8 @@ const listeners = new Set<() => void>();
 let memory: ExampleState | null = null;
 let cachedRaw: string | null | undefined;
 let cachedState: ExampleState | null = null;
+/** True after a write the browser refused: from then the copy in memory is the current one. */
+let storageFailed = false;
 
 function notify() {
   for (const listener of listeners) listener();
@@ -81,6 +90,7 @@ function notify() {
 
 subscribeAccountTransition(() => {
   memory = null;
+  storageFailed = false;
   cachedRaw = undefined;
   cachedState = null;
   try {
@@ -92,6 +102,7 @@ subscribeAccountTransition(() => {
 });
 
 function readExample(): ExampleState | null {
+  if (storageFailed) return memory;
   let raw: string | null = null;
   try {
     raw = window.localStorage.getItem(ROSTER_ROTATIONS_EXAMPLE_STORAGE_KEY);
@@ -115,8 +126,10 @@ function writeExample(state: ExampleState | null) {
   try {
     if (state === null) window.localStorage.removeItem(ROSTER_ROTATIONS_EXAMPLE_STORAGE_KEY);
     else window.localStorage.setItem(ROSTER_ROTATIONS_EXAMPLE_STORAGE_KEY, JSON.stringify(state));
+    storageFailed = false;
   } catch {
     // Storage blocked or full: the example lasts for this visit, in memory.
+    storageFailed = true;
   }
   notify();
 }
@@ -148,7 +161,7 @@ type LivePayload = {
   readonly mine: MyRound[];
   readonly managed: ManagedRound[];
   readonly canManage: boolean;
-  readonly team: { serviceId: string; name: string } | null;
+  readonly team: RotationTeam | null;
 };
 
 type LiveRead =
@@ -173,17 +186,17 @@ async function postLive(path: string, body: unknown): Promise<RotationActionResu
 
 // ---------------------------------------------------------------- hook
 
-export function useRotations(): RotationsRead {
+export function useRotations({ enabled = true }: { readonly enabled?: boolean } = {}): RotationsRead {
   const example = useExampleData("rost");
-  const dataset = useRegistryDataset("roster.rotations", example.active);
+  const dataset = useRegistryDataset("roster.rotations", enabled && example.active);
   const stored = useSyncExternalStore(subscribeExample, readExample, () => null);
 
   // Seed the device copy the first time example data is shown.
   useEffect(() => {
-    if (example.active && dataset.status === "ready" && stored === null) {
+    if (enabled && example.active && dataset.status === "ready" && stored === null) {
       writeExample({ selfId: dataset.data.selfId, rounds: [...dataset.data.rounds] });
     }
-  }, [example.active, dataset, stored]);
+  }, [enabled, example.active, dataset, stored]);
 
   // The latest answer from the server. After an action the hook asks again but
   // keeps showing the last answer until the new one arrives, so nothing flickers.
@@ -192,7 +205,7 @@ export function useRotations(): RotationsRead {
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
-    if (example.active) return;
+    if (!enabled || example.active) return;
     let current = true;
     const settle = (next: LiveRead) => {
       if (current) setLive(next);
@@ -208,7 +221,7 @@ export function useRotations(): RotationsRead {
     return () => {
       current = false;
     };
-  }, [example.active, attempt]);
+  }, [enabled, example.active, attempt]);
 
   const exampleActions = useMemo<RotationActions>(() => {
     const apply = async (roundId: string, change: (round: ManagedRound, now: Date, selfId: string) => ManagedRound) => {
@@ -294,6 +307,16 @@ export function useRotations(): RotationsRead {
     };
   }, [retry]);
 
+  if (!enabled) {
+    return {
+      ...EMPTY,
+      status: "unavailable",
+      source: example.active ? "example" : "live",
+      actions: example.active ? exampleActions : liveActions,
+      retry,
+    };
+  }
+
   if (example.active) {
     if (dataset.status === "error") {
       return { ...EMPTY, status: "error", source: "example", actions: exampleActions, retry: dataset.retry };
@@ -309,7 +332,7 @@ export function useRotations(): RotationsRead {
         .map((round) => myRoundView(round, stored.selfId)),
       managed: rounds,
       canManage: true,
-      team: first ? { serviceId: first.serviceId, name: first.teamName } : null,
+      team: first ? { serviceId: first.serviceId, name: first.teamName, people: first.people } : null,
       actions: exampleActions,
       retry,
     };

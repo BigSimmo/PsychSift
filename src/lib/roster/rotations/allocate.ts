@@ -212,12 +212,15 @@ export function allocateRotations(input: AllocationInput): AllocationResult {
   const termIndex = new Map(terms.map((term, index) => [term.id, index]));
   const rotations = input.rotations.filter((rotation) => rotation.places > 0);
   const rotationIndex = new Map(rotations.map((rotation, index) => [rotation.id, index]));
-  const rotationIds = new Set(rotationIndex.keys());
   const people = seededOrder([...new Set(input.people)], input.seed, (id) => id);
 
+  // Ranks count against every rotation in the round, so closing one (0 places)
+  // never renumbers a doctor's other choices. Zero-place rotations are only
+  // left out of the flow graph below.
+  const allRotationIds = new Set(input.rotations.map((rotation) => rotation.id));
   const rankings = new Map<string, string[]>();
   for (const preference of input.preferences) {
-    rankings.set(preference.personId, cleanRanking(preference.ranking, rotationIds));
+    rankings.set(preference.personId, cleanRanking(preference.ranking, allRotationIds));
   }
   const rankOf = (personId: string, rotationId: string): number | null => {
     const position = rankings.get(personId)?.indexOf(rotationId) ?? -1;

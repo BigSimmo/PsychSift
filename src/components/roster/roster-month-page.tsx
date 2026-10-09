@@ -18,6 +18,7 @@ import {
   WorkSectionLabel,
   WorkTag,
 } from "@/components/mode-kit/work";
+import { useWorkCalendarEntries } from "@/components/work-calendar/use-work-calendar-entries";
 import { monthGridRange, monthKeyOf, shiftMonth } from "@/lib/calendar/month-grid";
 import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
 import { restCuesByTeam } from "@/lib/roster/rest-cues";
@@ -45,6 +46,13 @@ import {
   type MonthShift,
   type MonthTotals,
 } from "./roster-month-model";
+import {
+  comingEntryEdges,
+  entryStartsByDate,
+  monthRotations,
+  RosterEntryEdgeRow,
+  RosterRotationBand,
+} from "./roster-month-rotations";
 import { useRosterLinks } from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
@@ -212,6 +220,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const assignments = useRosterRead(sheetDate ? oneTeamId : null, "assignments", sheetRange);
   const links = useRosterLinks();
   const settings = useRosterSettings();
+  // Rotations (and later booked courses): empty for readers outside the rotation preferences preview.
+  const calendar = useWorkCalendarEntries();
 
   const holidays = WA_PUBLIC_HOLIDAYS;
   const monthShifts = useMemo(() => shifts.shifts.map(toMonthShift), [shifts.shifts]);
@@ -240,10 +250,11 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
       if (swap.give) mark(perthDateOf(swap.give.startsAt), { ghost: swap.give.kind as ShiftKind });
     }
     for (const { swap } of asked) if (swap.give) mark(perthDateOf(swap.give.startsAt), { swapAsked: true });
+    for (const [date, starts] of entryStartsByDate(calendar.entries, grid.start, grid.end)) mark(date, { starts });
     return map;
     // `waiting` and `asked` are rebuilt from `requests` each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthShifts, requests.data, actorId]);
+  }, [monthShifts, requests.data, actorId, calendar.entries, grid.start, grid.end]);
   const totals = useMemo(
     () => monthTotals(monthShifts, month, holidays, loadedFrom),
     [monthShifts, month, holidays, loadedFrom],
@@ -412,7 +423,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   }
 
   function comingUp() {
-    if (!nights && !leave) return null;
+    const edges = comingEntryEdges(calendar.entries, today);
+    if (!nights && !leave && !edges.length) return null;
     return (
       <>
         <WorkSectionLabel>Coming up</WorkSectionLabel>
@@ -447,6 +459,11 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
               />
             </li>
           ) : null}
+          {edges.map((edge) => (
+            <li key={`${edge.entry.id}:${edge.edge}`}>
+              <RosterEntryEdgeRow edge={edge} />
+            </li>
+          ))}
         </WorkCard>
       </>
     );
@@ -555,6 +572,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
       <div className="grid gap-2.25">
         {notices}
         {shifts.teamLoading ? null : statusCards()}
+        <RosterRotationBand entries={monthRotations(calendar.entries, month, today)} month={month} />
         <WorkCard padded testId="roster-month-calendar">
           <RosterMonthGrid
             month={month}
@@ -567,7 +585,10 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
             onMonthChange={changeMonth}
             previousDisabled={`${month}-01` <= loadedFrom}
           />
-          <RosterMonthLegend swapAsked={waiting.length > 0 || asked.length > 0} />
+          <RosterMonthLegend
+            swapAsked={waiting.length > 0 || asked.length > 0}
+            starts={[...days].some(([date, day]) => date.startsWith(month) && Boolean(day.starts?.length))}
+          />
           {month !== thisMonth ? (
             <div className="mt-1 grid justify-items-center">
               <WorkButton

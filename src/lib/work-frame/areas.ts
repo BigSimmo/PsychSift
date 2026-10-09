@@ -94,7 +94,9 @@ export type WorkFrameGate =
    * Readers who are not signed in. For an example-only area whose real records a signed-in
    * doctor keeps elsewhere (Assessments, kept in CLA: owner decision 7 Oct 2026).
    */
-  | "signed-out";
+  | "signed-out"
+  /** Testers on the newest live version, for a page that exists only there (Rotations). */
+  | "rotation-preferences";
 
 /** Actions a page can register for the More sheet to run. */
 export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
@@ -375,6 +377,16 @@ const roster: WorkArea = {
           paths: ["/roster"],
           query: { view: "hours" },
         },
+        {
+          id: "rotations",
+          label: "Rotations",
+          sub: "Preferences and your year",
+          icon: "repeat",
+          href: "/roster/rotations",
+          // The list and each round (`/roster/rotations/<round>`).
+          paths: ["/roster/rotations", "/roster/rotations/"],
+          gate: "rotation-preferences",
+        },
       ],
     },
     {
@@ -554,6 +566,21 @@ const manageTeam: WorkArea = {
           icon: "calendar",
           href: "/roster/team",
           paths: [],
+        },
+      ],
+    },
+    {
+      label: "Rotations",
+      items: [
+        {
+          id: "manage-rotations",
+          label: "Rotations",
+          sub: "Preference rounds",
+          icon: "repeat",
+          href: "/roster/manage/rotations",
+          // The rounds, a new round and each round (`/roster/manage/rotations/<round>`).
+          paths: ["/roster/manage/rotations", "/roster/manage/rotations/"],
+          gate: "open-shifts-poster",
         },
       ],
     },
