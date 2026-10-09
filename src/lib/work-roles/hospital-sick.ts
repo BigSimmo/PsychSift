@@ -83,7 +83,7 @@ export async function readHospitalSickCalls(
     client.from("on_call_services").select("id,name").in("id", serviceIds),
     client
       .from("roster_open_shifts")
-      .select("id,service_id,assignment_id,starts_at,ends_at,shift_code,kind,status,reported_at")
+      .select("id,service_id,assignment_id,starts_at,ends_at,shift_code,kind,status,reported_at,reported_user_id")
       .in("service_id", serviceIds)
       // Only shifts reported as "I can't make it". A give-away or a manager's post is never a sick call.
       .not("reported_at", "is", null)
@@ -96,16 +96,11 @@ export async function readHospitalSickCalls(
   ]);
   if (services.error || !services.data || shifts.error || !shifts.data) throw unavailable();
 
-  // The doctor is whoever the shift was rostered to, not whoever reported it (a manager can report for them).
-  const assignmentIds = [
-    ...new Set(shifts.data.map((row) => row.assignment_id).filter((id): id is string => Boolean(id))),
+  // The doctor is whoever the shift was rostered to when it was reported, kept at that moment, not
+  // whoever reported it (a manager can report for them) or whoever has covered it since.
+  const doctors = [
+    ...new Set(shifts.data.map((row) => row.reported_user_id).filter((id): id is string => Boolean(id))),
   ];
-  const assignments = assignmentIds.length
-    ? await client.from("roster_assignments").select("id,user_id").in("id", assignmentIds)
-    : { data: [] as { id: string; user_id: string | null }[], error: null };
-  if (assignments.error || !assignments.data) throw unavailable();
-  const doctorOf = new Map(assignments.data.map((row) => [row.id, row.user_id]));
-  const doctors = [...new Set(assignments.data.map((row) => row.user_id).filter((id): id is string => Boolean(id)))];
   const members = doctors.length
     ? await client
         .from("on_call_service_members")
@@ -125,7 +120,7 @@ export async function readHospitalSickCalls(
     calls: shifts.data.flatMap((row) => {
       const status = STATUS[row.status];
       if (!status || !row.reported_at) return [];
-      const doctor = row.assignment_id ? doctorOf.get(row.assignment_id) : null;
+      const doctor = row.reported_user_id;
       return [
         {
           id: row.id,

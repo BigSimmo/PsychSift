@@ -26417,14 +26417,23 @@ grant execute on function public.work_user_id_by_email(text) to service_role;
 
 -- Sick calls: a shift "I can't make" (roster_act open.report) is inserted as 'reported'. After the
 -- manager releases it, it is 'open' like a give-away, so record when it was reported, once, at insert.
--- Medical Workforce's hospital sick calls list reads only rows with reported_at set.
-alter table public.roster_open_shifts add column reported_at timestamptz;
+-- Medical Workforce's hospital sick calls list reads only rows with reported_at set. The doctor
+-- rostered at that moment is kept too, because covering the shift moves the assignment to someone else.
+alter table public.roster_open_shifts add column reported_at timestamptz, add column reported_user_id uuid;
 update public.roster_open_shifts set reported_at = created_at where status = 'reported';
+update public.roster_open_shifts s set reported_user_id = a.user_id
+  from public.roster_assignments a where s.reported_at is not null and a.id = s.assignment_id;
 create function public.roster_open_shifts_mark_reported() returns trigger
 language plpgsql
 set search_path = public, pg_catalog, pg_temp as $$
 begin
-  new.reported_at := case when new.status = 'reported' then coalesce(new.reported_at, now()) else null end;
+  if new.status = 'reported' then
+    new.reported_at := coalesce(new.reported_at, now());
+    new.reported_user_id := (select a.user_id from public.roster_assignments a where a.id = new.assignment_id);
+  else
+    new.reported_at := null;
+    new.reported_user_id := null;
+  end if;
   return new;
 end $$;
 revoke all on function public.roster_open_shifts_mark_reported() from public, anon, authenticated;

@@ -44,7 +44,7 @@ const shift = {
 };
 
 describe("hospital sick calls", () => {
-  it("lists only reported shifts and names the rostered doctor, not the person who posted it", async () => {
+  it("lists only reported shifts and names the doctor rostered when it was reported, not the poster or the cover", async () => {
     const calls: string[] = [];
     const client = fakeClient(
       {
@@ -52,15 +52,33 @@ describe("hospital sick calls", () => {
         work_hospital_teams: [{ service_id: "t1" }],
         on_call_services: [{ id: "t1", name: "Ward A" }],
         roster_open_shifts: [
-          { ...shift, id: "sick", assignment_id: "a1", status: "open", reported_at: "2026-10-09T01:00:00Z" },
-          { ...shift, id: "giveaway", assignment_id: "a2", status: "open", reported_at: null },
+          {
+            ...shift,
+            id: "sick",
+            assignment_id: "a1",
+            status: "open",
+            reported_at: "2026-10-09T01:00:00Z",
+            reported_user_id: "doctor",
+          },
+          // Covered: the assignment now belongs to the doctor who took it, the sick doctor is still named.
+          {
+            ...shift,
+            id: "covered",
+            assignment_id: "a3",
+            status: "approved",
+            reported_at: "2026-10-09T02:00:00Z",
+            reported_user_id: "doctor",
+          },
+          { ...shift, id: "giveaway", assignment_id: "a2", status: "open", reported_at: null, reported_user_id: null },
         ],
         roster_assignments: [
           { id: "a1", user_id: "doctor" },
           { id: "a2", user_id: "other" },
+          { id: "a3", user_id: "cover" },
         ],
         on_call_service_members: [
           { service_id: "t1", user_id: "doctor", display_name: "Dr Example" },
+          { service_id: "t1", user_id: "cover", display_name: "Dr Cover Example" },
           { service_id: "t1", user_id: "manager", display_name: "Manager Example" },
         ],
       },
@@ -70,6 +88,7 @@ describe("hospital sick calls", () => {
     expect(calls).toContain("roster_open_shifts.not(reported_at,is,null)");
     expect(view.calls.map((call) => [call.id, call.name, call.status, call.reportedAt])).toEqual([
       ["sick", "Dr Example", "offered", "2026-10-09T01:00:00Z"],
+      ["covered", "Dr Example", "covered", "2026-10-09T02:00:00Z"],
     ]);
   });
 });
