@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuthIfAvailable } from "@/lib/example-data/store";
 
@@ -13,10 +13,25 @@ import { useAuthIfAvailable } from "@/lib/example-data/store";
 export function useHeldWorkRoles(signedIn: boolean): readonly string[] {
   const userId = useAuthIfAvailable()?.session?.user?.id ?? null;
   const [held, setHeld] = useState<{ readonly userId: string; readonly roles: readonly string[] } | null>(null);
+  const wasSignedIn = useRef(false);
   useEffect(() => {
-    if (!signedIn || !userId) return;
-    let stop: (() => void) | null = null;
     let live = true;
+    if (!signedIn || !userId) {
+      setHeld(null);
+      if (wasSignedIn.current) {
+        // Do not let a later sign-in reuse the previous account's answer. This
+        // is deliberately allowed to settle after a quick sign-out/sign-in:
+        // the reset must still invalidate the snapshot for that new session.
+        void import("@/lib/work-roles/use-work-roles").then(({ resetWorkRoles }) => resetWorkRoles());
+      }
+      wasSignedIn.current = false;
+      return () => {
+        live = false;
+      };
+    }
+
+    wasSignedIn.current = true;
+    let stop: (() => void) | null = null;
     void import("@/lib/work-roles/use-work-roles").then(({ watchHeldWorkRoles }) => {
       if (live) stop = watchHeldWorkRoles(userId, (roles) => setHeld({ userId, roles }));
     });
