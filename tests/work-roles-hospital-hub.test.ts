@@ -422,13 +422,15 @@ describe("preview rows: Rotation rounds and Courses", () => {
     const sections = hospitalSections([workforce(H1), dct(H1), { role: "manager", serviceId: "team-a" }], H1, {
       previews: both,
     });
-    // Rotation rounds and Courses still let in only the administrator and roster managers.
-    const manager = sections.find((section) => section.id === "manager")!;
-    expect(manager.links.slice(-3).map((link) => [link.label, link.href])).toEqual([
-      ["Rotation rounds", "/roster/manage/rotations"],
+    // Courses goes to Medical Workforce, the first section that may run it. Rotation rounds still
+    // lets in only the administrator and roster managers.
+    const workforceSection = sections.find((section) => section.id === "workforce")!;
+    expect(workforceSection.links.slice(-2).map((link) => [link.label, link.href])).toEqual([
       ["Courses", "/admin/courses"],
       ["Post a course", "/admin/courses?new=1"],
     ]);
+    const manager = sections.find((section) => section.id === "manager")!;
+    expect(manager.links.at(-1)!.href).toBe("/roster/manage/rotations");
     const all = sections.flatMap((section) => section.links.map((link) => link.id));
     expect(all.filter((id) => id === "rotation-rounds")).toHaveLength(1);
     expect(all.filter((id) => id === "courses")).toHaveLength(1);
@@ -439,9 +441,17 @@ describe("preview rows: Rotation rounds and Courses", () => {
     expect(sections[0]!.links.map((link) => link.id)).toEqual(["sick", "starters", "people"]);
   });
 
-  it("gives the DCT neither until those screens accept the DCT", () => {
+  it("gives the DCT Courses but not Rotation rounds", () => {
     expect(hrefs(hospitalSections([dct(H1)], H1, { previews: both }))).toEqual([
-      ["dct", ["/teaching/assessments?view=overview&as=supervisor", `/admin/people?hospitalId=${H1}`]],
+      [
+        "dct",
+        [
+          "/teaching/assessments?view=overview&as=supervisor",
+          `/admin/people?hospitalId=${H1}`,
+          "/admin/courses",
+          "/admin/courses?new=1",
+        ],
+      ],
     ]);
   });
 
@@ -456,12 +466,13 @@ describe("preview rows: Rotation rounds and Courses", () => {
     ]);
   });
 
-  it("keeps Rotation rounds and Courses from Medical Workforce until those screens accept them", () => {
+  it("gives Medical Workforce Courses, and keeps Rotation rounds until that screen accepts them", () => {
     const ids = hospitalSections([workforce(H1)], H1, { previews: both }).flatMap((section) =>
       section.links.map((link) => link.id),
     );
     expect(ids).not.toContain("rotation-rounds");
-    expect(ids).not.toContain("courses");
+    expect(ids).toContain("courses");
+    expect(ids).toContain("post-course");
   });
 
   it("gives a supervisor neither", () => {
