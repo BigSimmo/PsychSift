@@ -333,6 +333,7 @@ const ROUND_COLUMNS =
   "id,service_id,status,setup,locks,allocation,admin_name,version,created_at,opened_at,published_at,updated_at";
 const PREFERENCE_COLUMNS = "round_id,user_id,ranking,submitted_at,updated_at";
 const MAX_ROUNDS = 200;
+const PREFERENCE_PAGE = 1000;
 
 const rankingSchema = z.array(rotationIdSchema(64)).max(60);
 
@@ -420,14 +421,24 @@ async function loadPreferences(
   onlyUserId?: string,
 ): Promise<PreferenceRow[]> {
   if (!roundIds.length) return [];
-  let query = client
-    .from("roster_rotation_preferences")
-    .select(PREFERENCE_COLUMNS)
-    .in("round_id", [...roundIds]);
-  if (onlyUserId) query = query.eq("user_id", onlyUserId);
-  const { data, error } = await query;
-  if (error) throw databaseError(error);
-  return (data ?? []) as PreferenceRow[];
+  // The API returns at most 1,000 rows per request, and the overview can span many rounds, so read in
+  // pages until a short page comes back. Missing rows would show doctors as having sent nothing.
+  const rows: PreferenceRow[] = [];
+  for (let from = 0; ; from += PREFERENCE_PAGE) {
+    let query = client
+      .from("roster_rotation_preferences")
+      .select(PREFERENCE_COLUMNS)
+      .in("round_id", [...roundIds]);
+    if (onlyUserId) query = query.eq("user_id", onlyUserId);
+    const { data, error } = await query
+      .order("round_id")
+      .order("user_id")
+      .range(from, from + PREFERENCE_PAGE - 1);
+    if (error) throw databaseError(error);
+    const page = (data ?? []) as PreferenceRow[];
+    rows.push(...page);
+    if (page.length < PREFERENCE_PAGE) return rows;
+  }
 }
 
 // ---------------------------------------------------------------- read

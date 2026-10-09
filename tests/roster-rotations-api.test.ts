@@ -155,6 +155,7 @@ function fakeClient() {
       let payload: Row = {};
       let single = false;
       let returning = false;
+      let rangeWindow: [number, number] | null = null;
       const builder = {
         select() {
           if (op !== "select") returning = true;
@@ -193,6 +194,10 @@ function fakeClient() {
         },
         order: () => builder,
         limit: () => builder,
+        range(from: number, to: number) {
+          rangeWindow = [from, to];
+          return builder;
+        },
         maybeSingle() {
           single = true;
           return builder;
@@ -227,7 +232,9 @@ function fakeClient() {
           tables[table] = rows.filter((row) => !match(row));
           return { data: returning ? hit.map((row) => ({ id: row.id })) : null, error: null };
         }
-        const hit = rows.filter(match).map((row) => ({ ...row }));
+        const all = rows.filter(match).map((row) => ({ ...row }));
+        // Like the real API, a read without a range still stops at 1,000 rows.
+        const hit = rangeWindow ? all.slice(rangeWindow[0], rangeWindow[1] + 1) : all.slice(0, 1000);
         return { data: single ? (hit[0] ?? null) : hit, error: null };
       };
       return builder;
@@ -404,6 +411,28 @@ describe("rotation rounds API: access", () => {
       { id: MANAGER, name: "Dr Alex Jarrah", grade: "Registrar" },
       { id: DOCTOR, name: "Dr Sam Karri", grade: "Registrar" },
     ]);
+  });
+
+  it("reads past the 1,000-row page limit so a later doctor's ranking still shows", async () => {
+    for (let i = 0; i < 1000; i += 1) {
+      preferences().push({
+        round_id: ROUND,
+        user_id: `left-${i}`,
+        ranking: ["ad"],
+        submitted_at: "2026-10-04T00:00:00Z",
+        updated_at: "2026-10-04T00:00:00Z",
+      });
+    }
+    preferences().push({
+      round_id: ROUND,
+      user_id: DOCTOR,
+      ranking: ["cl", "ad"],
+      submitted_at: "2026-10-05T00:00:00Z",
+      updated_at: "2026-10-05T00:00:00Z",
+    });
+    as(MANAGER);
+    const body = await (await GET(get())).json();
+    expect(body.managed[0].preferences).toEqual([expect.objectContaining({ personId: DOCTOR, ranking: ["cl", "ad"] })]);
   });
 
   it("refuses every administrator action to a doctor who does not run the round", async () => {
