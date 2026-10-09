@@ -154,6 +154,7 @@ jobs:
 
             // --- Ask Sentry. ---
             let fresh;
+            let truncated = false;
             try {
               const orgs = await sentry("https://sentry.io/api/0/organizations/");
               const org = pick(orgs, (process.env.SENTRY_ORG || "").trim(), "Sentry organisation");
@@ -166,9 +167,11 @@ jobs:
                 query: `is:unresolved level:[error,fatal] firstSeen:-${LOOKBACK}`,
                 statsPeriod: "14d",
                 sort: "new",
-                limit: "25",
+                // Sentry's page maximum. A burst bigger than this is flagged in the comment below.
+                limit: "100",
               });
               const issues = await sentry(`${base}/api/0/organizations/${encodeURIComponent(org.slug)}/issues/?${params}`);
+              truncated = issues.length >= 100;
               fresh = issues.filter((issue) => /^\d+$/.test(String(issue.id)) && !reported.has(String(issue.id)));
             } catch (error) {
               // An expired or revoked token must not go quiet: tell the owner once, not every 15 minutes.
@@ -190,6 +193,11 @@ jobs:
               return;
             }
 
+            // Clear the paused state, or the next outage would see the old marker and stay silent.
+            if (lastCommentIsFailure) {
+              await post(["**Sentry alerts resumed.** This check can read Sentry again.", `- Run: ${runUrl}`].join("\n"));
+            }
+
             if (fresh.length === 0) {
               core.info(`No new ${environment} Sentry issues in the last ${LOOKBACK}.`);
               return;
@@ -209,6 +217,7 @@ jobs:
                 `**${fresh.length} new ${environment} error${fresh.length === 1 ? "" : "s"} in Sentry.** Open a link to see the detail.`,
                 "",
                 ...lines,
+                ...(truncated ? ["", "Sentry has more new errors than one check can list. Open Sentry to see them all."] : []),
                 "",
                 `Run: ${runUrl}`,
               ].join("\n"),
