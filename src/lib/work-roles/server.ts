@@ -12,7 +12,14 @@ type Client = ReturnType<typeof createAdminClient>;
 export type WorkRoleContext = {
   readonly userId: string;
   readonly grants: readonly WorkRoleGrant[];
+  /** False when the role grants table is not in this database yet. */
+  readonly ready: boolean;
 };
+
+/** PostgREST and Postgres codes for a table that does not exist yet. */
+export function isMissingTableError(error: { code?: string | null } | null | undefined): boolean {
+  return error?.code === "PGRST205" || error?.code === "42P01";
+}
 
 function unavailable(): PublicApiError {
   return new PublicApiError("Your roles could not be checked. Try again shortly.", 503, {
@@ -26,8 +33,10 @@ function unavailable(): PublicApiError {
  * is still an active member of that team. Any read failure throws, so a check
  * never passes on missing data.
  *
- * Medical Workforce, DCT and supervisor grants join here once their table is
- * approved; callers do not change.
+ * Medical Workforce, DCT and supervisor grants come from `work_role_grants`. A
+ * hospital grant carries the teams linked to its hospital, so a team check is
+ * answered without another read. Before that table exists (a database that has
+ * not had the migration yet) those roles are simply absent and `ready` is false.
  */
 export async function loadWorkRoleContext(client: Client, user: AuthenticatedUser): Promise<WorkRoleContext> {
   const grants: WorkRoleGrant[] = [];
@@ -59,7 +68,55 @@ export async function loadWorkRoleContext(client: Client, user: AuthenticatedUse
     for (const serviceId of serviceIds) if (active.has(serviceId)) grants.push({ role: "manager", serviceId });
   }
 
-  return { userId: user.id, grants };
+  const ready = await addGrantedRoles(client, user.id, grants);
+  return { userId: user.id, grants, ready };
+}
+
+async function addGrantedRoles(client: Client, userId: string, grants: WorkRoleGrant[]): Promise<boolean> {
+  const { data: rows, error } = await client
+    .from("work_role_grants")
+    .select("role,hospital_id,service_id,subject_user_id")
+    .eq("user_id", userId)
+    .is("revoked_at", null);
+  if (isMissingTableError(error)) return false;
+  if (error || !rows) throw unavailable();
+
+  const hospitalIds = [...new Set(rows.map((row) => row.hospital_id))];
+  const teamsByHospital = new Map<string, string[]>();
+  const namesByHospital = new Map<string, string>();
+  if (hospitalIds.length) {
+    const [teams, hospitals] = await Promise.all([
+      client.from("work_hospital_teams").select("service_id,hospital_id").in("hospital_id", hospitalIds),
+      client.from("work_hospitals").select("id,name").in("id", hospitalIds).is("archived_at", null),
+    ]);
+    if (teams.error || !teams.data || hospitals.error || !hospitals.data) throw unavailable();
+    for (const team of teams.data) {
+      teamsByHospital.set(team.hospital_id, [...(teamsByHospital.get(team.hospital_id) ?? []), team.service_id]);
+    }
+    for (const hospital of hospitals.data) namesByHospital.set(hospital.id, hospital.name);
+  }
+
+  for (const row of rows) {
+    // An archived hospital's grants lapse with it, supervisors' included.
+    if (!namesByHospital.has(row.hospital_id)) continue;
+    if (row.role === "supervisor") {
+      grants.push({
+        role: "supervisor",
+        hospitalId: row.hospital_id,
+        serviceId: row.service_id,
+        subjectUserId: row.subject_user_id,
+        hospitalServiceIds: teamsByHospital.get(row.hospital_id) ?? [],
+      });
+    } else {
+      grants.push({
+        role: row.role,
+        hospitalId: row.hospital_id,
+        hospitalName: namesByHospital.get(row.hospital_id) ?? null,
+        serviceIds: teamsByHospital.get(row.hospital_id) ?? [],
+      });
+    }
+  }
+  return true;
 }
 
 /** The one check. True only when a role the person holds covers this scope. Nobody reviews their own assessments. */

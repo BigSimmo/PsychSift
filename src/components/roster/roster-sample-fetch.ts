@@ -85,7 +85,22 @@ function answer(method: string, pathname: string, search: URLSearchParams): Resp
       return json({ configured: false, publicKey: null });
     case "team":
       if (path.length === 1) return json({ teams: demoRosterTeams(), actorId: DEMO_ME_ID, sample: true });
-      return path.length === 2 ? teamReadFor(search, now) : notInSample();
+      if (path.length === 2) return teamReadFor(search, now);
+      // The team's safe number, as the staffing-needs route answers it: no ids.
+      if (path.length === 3 && path[2] === "staffing-needs") {
+        const needs = demoRosterRead("maker", {}, now).needs;
+        return json({
+          needs: needs.map(({ weekday, date, kind, grade, siteId, needed }) => ({
+            weekday,
+            date,
+            kind,
+            grade,
+            siteId,
+            needed,
+          })),
+        });
+      }
+      return notInSample();
     default:
       return notInSample();
   }

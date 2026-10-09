@@ -62,6 +62,12 @@ import { useAuthSession } from "@/lib/supabase/client";
 import { zonedDateOf } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
+// Hospital roles (Medical Workforce, DCT, supervisor, roster manager): loaded only when My Day shows Today.
+const HospitalRolesCard = dynamic(
+  () => import("@/components/work-screens/hospital/hospital-roles-card").then((module) => module.HospitalRolesCard),
+  { ssr: false },
+);
+
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
 
@@ -669,6 +675,11 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 newJob={state.newJob}
               />
             )}
+            {view === "dashboard" && page === "today" ? (
+              <NewWorkModeOnly>
+                <HospitalRolesCard />
+              </NewWorkModeOnly>
+            ) : null}
 
             {/* One notice at the top at most; the quieter context is one line of small print here. */}
             {demoNote || notYet.length > 0 ? (
