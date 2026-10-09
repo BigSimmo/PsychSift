@@ -23,6 +23,7 @@ function readWith(rounds = example.rounds): RotationsRead {
     mine: rounds.map((round) => myRoundView(round, example.selfId)),
     managed: rounds,
     canManage: true,
+    teams: [],
     team: null,
     actions: {} as RotationsRead["actions"],
     retry: vi.fn(),
