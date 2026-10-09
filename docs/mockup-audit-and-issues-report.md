@@ -69,11 +69,11 @@ The audit and subsequent adversarial review identified **9 concrete issues** spa
 - **Severity:** `P3` (Resolved 2026-10-09)
 - **Status:** **RESOLVED** — Formally retired with owner approval on 2026-10-09. Recorded in `mockups/README.md` under `## Retired mockups` (superseded by `tools-search-mode`), route folders removed, and `docs/site-map.md` updated.
 - **Locations (Former):**
-  - `src/app/mockups/tools-action-workbench/page.tsx`
-  - `src/app/mockups/tools-clinical-lanes/page.tsx`
-  - `src/app/mockups/tools-split-clinical-brief/page.tsx`
-  - `src/app/mockups/tools-split-compact-sheet/page.tsx`
-  - `src/app/mockups/tools-split-safety-deck/page.tsx`
+  - `/mockups/tools-action-workbench` (retired route)
+  - `/mockups/tools-clinical-lanes` (retired route)
+  - `/mockups/tools-split-clinical-brief` (retired route)
+  - `/mockups/tools-split-compact-sheet` (retired route)
+  - `/mockups/tools-split-safety-deck` (retired route)
 - **Context & Background:** In August 2026, nine parallel layout directions were explored for the Tools page. Direction A was formally selected and shipped to production in PR #1958 (`tools-search-directions`), and `tools-search-mode` was documented as the perfected winner in `mockups/README.md`.
 - **Adversarial Verification:** An AST and string grep across `tests/` confirmed that these **5 exact routes** had zero test imports, zero DOM assertions, and were never requested in Playwright specs.
 - **Verification Evidence:** `npm run check:mockups` passes clean (81 routes indexed, 21 recorded as retired). `tests/mockup-retirement.test.ts` (70/70) and `npm run sitemap:check` both pass 100% green.

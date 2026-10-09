@@ -114,19 +114,6 @@ const SCOPED_ALLOWLIST = new Map([
     // which was cleared when unreferenced historical PNGs were removed; the parent README remains.
     new Set([".github/workflows/notify-ci-failure.yml", "public/mockups/mode-page-redesign-2026-07/current/"]),
   ],
-  [
-    "docs/mockup-audit-and-issues-report.md",
-    // Issue 1 lists five Tools layout drafts that were retired with owner approval on 2026-10-09.
-    // The paths are the subject of the resolved finding ("Locations (Former)"); removing them
-    // from the report would erase what was retired.
-    new Set([
-      "src/app/mockups/tools-action-workbench/page.tsx",
-      "src/app/mockups/tools-clinical-lanes/page.tsx",
-      "src/app/mockups/tools-split-clinical-brief/page.tsx",
-      "src/app/mockups/tools-split-compact-sheet/page.tsx",
-      "src/app/mockups/tools-split-safety-deck/page.tsx",
-    ]),
-  ],
   ["docs/care-plan/reports/task-3-brief.md", new Set(["src/components/care-plan/mockups/index.ts"])],
   ["docs/care-plan/reports/task-3-report.md", new Set(["src/components/care-plan/mockups/index.ts"])],
   ["docs/care-plan/sdd-ledger.md", new Set(["src/components/care-plan/mockups/index.ts"])],
