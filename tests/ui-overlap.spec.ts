@@ -483,7 +483,16 @@ test.describe("Header element overlap coverage", () => {
     await input.press("Enter");
     await expect(page.getByRole("link", { name: /Result 5:/ })).toBeVisible({ timeout: 30_000 });
     await page.evaluate(() => {
-      (document.activeElement as HTMLElement | null)?.blur();
+      // Blurring alone leaves Chromium's sequential focus starting point on the dock input,
+      // so the first Tab would land on the dock's Clear button and end the walk. Move the
+      // starting point to the top of the page (the skip link) before walking.
+      const start = document.querySelector<HTMLElement>('a[href="#main-content"]');
+      if (start) {
+        start.focus({ preventScroll: true });
+        start.blur();
+      } else {
+        (document.activeElement as HTMLElement | null)?.blur();
+      }
       window.scrollTo(0, 0);
     });
 
