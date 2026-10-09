@@ -523,14 +523,16 @@ export type WorkEmptyProps = {
   readonly body?: ReactNode;
   /** One action, usually a `WorkButton`. */
   readonly action?: ReactNode;
+  /** The badge's tint: the area colour, or amber for a failed read or no connection. */
+  readonly tone?: "mode" | "amber";
   readonly testId?: string;
 };
 
 /** A calm empty state: a flat badge, one line, an optional sentence and action. */
-export function WorkEmpty({ icon: Icon, title, body, action, testId }: WorkEmptyProps) {
+export function WorkEmpty({ icon: Icon, title, body, action, tone, testId }: WorkEmptyProps) {
   return (
     <div className="work-empty" data-testid={testId}>
-      <span aria-hidden="true" className="work-empty__badge">
+      <span aria-hidden="true" className="work-empty__badge" data-tone={tone === "amber" ? "amber" : undefined}>
         <Icon aria-hidden="true" strokeWidth={2} />
       </span>
       <p className="work-empty__title">{title}</p>

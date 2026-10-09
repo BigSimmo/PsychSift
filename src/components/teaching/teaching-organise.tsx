@@ -230,7 +230,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
     async function download() {
       if (downloading) return;
       if (isDemo) {
-        setNotice("Demo only. The made-up service has no attendance to download.");
+        setNotice("Example only. The example service has no attendance to download.");
         return;
       }
       const to = perthDateKey(now!);
@@ -535,7 +535,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
           {demoMode && demo && view.status !== "signed-out" ? (
             <>
               <T5Note className="mt-0" testId="teaching-organise-demo">
-                Made-up demo service. Try any action here. No real invitations, membership changes or records are sent.
+                Example service. Try any action here. No real invitations, membership changes or records are sent.
               </T5Note>
               <ServicePicker teams={demoTeams} value={demo.service.id} onChange={() => {}} />
             </>

@@ -279,7 +279,7 @@ function TodayBody({
         </T5List>
       ) : null}
       <AttendanceCard live={live} now={now} today={today} />
-      {signedOut ? <T5Note icon="shield">Nothing in the sample is saved</T5Note> : null}
+      {signedOut ? <T5Note icon="shield">Nothing in the example data is saved</T5Note> : null}
       {live ? (
         <TeachingCalendarSheet
           open={calendarOpen}

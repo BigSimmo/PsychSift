@@ -27,27 +27,27 @@ export type HandbookEditorWarning = { readonly id: HandbookEditorWarningId; read
 
 export type HandbookEditorContent = Pick<ServiceContent, "title" | "section" | "kind" | "siteId" | "phone">;
 
-/** "Will appear in: Call › Hospital › Medicine", the one line the editor sees as they type. */
+/** "Will appear in: Call, then Hospital, then Medicine", the one line the editor sees as they type. */
 export function handbookPlacementLine(content: HandbookEditorContent): string {
   if (content.section === "playbook") return "Will appear in: Playbook after independent review";
   if (content.section === "cover")
     return "Will appear in: Who's on, Call and Your team during the recorded times after independent review";
   const parsed = parseHandbookTitle(content.title);
   if (parsed.prefix === "Emergency" && content.section === "contacts") {
-    return "Will appear in: Now (emergency) and Call › Hospital";
+    return "Will appear in: Now (emergency) and Call, then Hospital";
   }
   if (content.section === "contacts") {
-    if (parsed.prefix === "Downtime") return "Will appear in: Find › Systems down";
-    if (parsed.prefix === "Access") return "Will appear in: Call › Hospital";
-    if (parsed.team) return `Will appear in: Call › Hospital › ${parsed.team}`;
-    return "Will appear in: Call › Hospital";
+    if (parsed.prefix === "Downtime") return "Will appear in: Find, then Systems down";
+    if (parsed.prefix === "Access") return "Will appear in: Call, then Hospital";
+    if (parsed.team) return `Will appear in: Call, then Hospital, then ${parsed.team}`;
+    return "Will appear in: Call, then Hospital";
   }
   if (content.section === "referrals") return "Will appear in: Refer";
   if (content.section === "resources") {
-    if (parsed.prefix === "Ward") return "Will appear in: Find › Wards";
-    if (parsed.prefix === "Equipment") return "Will appear in: Find › Equipment";
-    if (parsed.prefix === "Downtime") return "Will appear in: Find › Systems down";
-    return "Will appear in: Find › Other";
+    if (parsed.prefix === "Ward") return "Will appear in: Find, then Wards";
+    if (parsed.prefix === "Equipment") return "Will appear in: Find, then Equipment";
+    if (parsed.prefix === "Downtime") return "Will appear in: Find, then Systems down";
+    return "Will appear in: Find, then Other";
   }
   return "Will appear in: Handbook";
 }

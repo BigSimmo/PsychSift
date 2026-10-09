@@ -463,11 +463,11 @@ export function CalendarView({
         <p className="text-sm font-semibold text-[color:var(--text)]">Put these in your own calendar</p>
         <p className={cn(textMuted, "text-sm")}>
           Downloads one calendar file with the dates you choose, repeats included. Open it on your phone or computer to
-          add them to Apple, Google or Outlook. The file is made on this device; nothing is sent anywhere.
+          add them to Apple, Google or Outlook. The file is made on this device and nothing is sent anywhere.
         </p>
         <p className={cn(textMuted, "text-sm")} data-testid={`${testId}-export-snapshot`}>
           It is a one-off copy of today&apos;s dates. If a date changes here later, the copy in your calendar does not
-          change with it; download a new file to catch up.
+          change with it. Download a new file to catch up.
         </p>
         {downloadKinds.length > 1 ? (
           <fieldset className="flex flex-col" data-testid={`${testId}-export-kinds`}>
@@ -627,7 +627,7 @@ function AddToCalendarOptions({
       <p className={cn(textMuted, "text-xs")}>
         Google and Outlook open their own page with this event filled in, which sends its title and time to them. The
         calendar file stays on this device.
-        {event.recurrence ? " Outlook adds the first date only; set the repeat there, or use the calendar file." : ""}
+        {event.recurrence ? " Outlook adds the first date only. Set the repeat there, or use the calendar file." : ""}
       </p>
     </div>
   );

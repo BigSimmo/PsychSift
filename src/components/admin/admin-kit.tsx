@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronRight, CloudOff, Phone, RotateCw, ShieldHalf, type LucideIcon } from "lucide-react";
+import { ChevronRight, Phone, ShieldHalf, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useId, type ReactNode } from "react";
 
-import { WorkButton, WorkCard, WorkSectionLabel, type WorkSectionLabelProps } from "@/components/mode-kit/work";
+import { WorkSectionLabel, type WorkSectionLabelProps } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 
@@ -282,9 +283,11 @@ export function AdminMeter({ fraction, label }: { readonly fraction: number; rea
 }
 
 /**
- * The grey alert card for a load that failed: an icon, what happened, and Try
- * again. Fail-closed by design: it never shows a saved list under it, because
- * printing "nothing due" over a lapsing registration would be unsafe.
+ * The card for a load that failed, drawn as the shared work-mode offline or
+ * failed state: an icon, what happened, and Try again. Fail-closed by design:
+ * it never shows a saved list under it, because printing "nothing due" over a
+ * lapsing registration would be unsafe. Both read as an alert, offline too,
+ * because nothing is shown in its place.
  */
 export function AdminLoadAlert({
   title,
@@ -302,20 +305,15 @@ export function AdminLoadAlert({
   readonly testId?: string;
 }) {
   return (
-    <WorkCard testId={testId} className={styles.alert}>
-      <div className={styles.alertHead} role="alert">
-        <span aria-hidden="true" className="work-ic" data-tone="neutral">
-          {offline ? <CloudOff aria-hidden="true" strokeWidth={2} /> : <RotateCw aria-hidden="true" strokeWidth={2} />}
-        </span>
-        <div className="min-w-0">
-          <p className={styles.alertTitle}>{title}</p>
-          <p className={styles.alertBody}>{body}</p>
-        </div>
-      </div>
-      <WorkButton variant="secondary" onClick={onRetry} testId={retryTestId} icon={RotateCw}>
-        Try again
-      </WorkButton>
-    </WorkCard>
+    <WorkStateNotice
+      kind={offline ? "offline" : "error"}
+      title={title}
+      body={body}
+      onRetry={onRetry}
+      retryTestId={retryTestId}
+      role="alert"
+      testId={testId}
+    />
   );
 }
 

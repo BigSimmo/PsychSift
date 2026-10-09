@@ -5,7 +5,7 @@ import { MyDayFavouritesPage } from "@/components/favourites/my-day-favourites-p
 export const metadata: Metadata = {
   title: "Favourites | My Day | PsychSift",
   description:
-    "Everything you have saved to Favourites, to open from My Day. Clinical items follow your account; work pages stay on this phone.",
+    "Everything you have saved to Favourites, to open from My Day. Clinical items follow your account, and work pages stay on this phone.",
 };
 
 export default function MyDayFavouritesRoute() {

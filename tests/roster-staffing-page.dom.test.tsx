@@ -214,9 +214,10 @@ it("a failed read fails closed with Try again", () => {
 it("with no team it links Join a team", () => {
   mocks.teams = { ...mocks.teams, data: { teams: [], actorId: ME } };
   render(<RosterStaffingPage now={NOW} />);
-  expect(
-    within(screen.getByTestId("staffing-no-team")).getByRole("link", { name: "Join a team" }).getAttribute("href"),
-  ).toBe("/roster/join");
+  const join = within(screen.getByTestId("staffing-no-team")).getByRole("link", { name: "Join a team" });
+  expect(join.getAttribute("href")).toBe("/roster/join");
+  // A 48px tap area round the short link, without changing how the note looks.
+  expect(join).toHaveClass("work-hit");
 });
 
 it("carries no per-page label for the example team (the example data banner says it once)", () => {
