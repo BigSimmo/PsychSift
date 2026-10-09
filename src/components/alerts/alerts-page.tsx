@@ -3,6 +3,7 @@
 import { Award, Bell, CalendarDays, Phone, Presentation, ShieldCheck, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
+import { AlertsBellPhoneSection } from "@/components/alerts/alerts-bell-phone-section";
 import { AlertsDeviceSection } from "@/components/alerts/alerts-device-section";
 import { AlertsButtonRow, AlertsQuietRow } from "@/components/alerts/alerts-rows";
 import {
@@ -15,6 +16,7 @@ import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me
 import { usePhoneAlerts } from "@/components/alerts/use-phone-alerts";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
+import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { WorkTag } from "@/components/mode-kit/work";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
@@ -95,6 +97,7 @@ function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
   const alerts = usePhoneAlerts();
   const shared = useSharedDevice();
   const routeVisible = useWorkModeRouteVisible();
+  const bellPhoneLive = useLivePreview("phone-bell-alerts");
   const { reminders: notes } = useRemindMe();
   const openNotes = notes.filter((item) => !item.doneAt).length;
   const [sheet, setSheet] = useState<OpenSheet>(null);
@@ -180,6 +183,9 @@ function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
             testId="alerts-your-reminders"
           />
         </ModeGroupedList>
+        {bellPhoneLive ? (
+          <AlertsBellPhoneSection reminders={reminders} onChange={setReminders} phone={alerts.state} shared={shared} />
+        ) : null}
         {/* What is locked sits in its own card, apart from what can be changed. */}
         <ModeGroupedList testId="alerts-locked">
           <AlertsQuietRow title="Mental Health Act timers" reason="Locked until clinical sign-off" />
@@ -211,6 +217,13 @@ function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
           subtitle="Swap and open-shift requests don't buzz during a night shift"
           trailing={ALWAYS_ON}
         />
+        {bellPhoneLive && reminders.bellPhone.enabled ? (
+          <ModeRow
+            title="Bell reminders wait"
+            subtitle="One due in quiet hours buzzes when they end"
+            trailing={ALWAYS_ON}
+          />
+        ) : null}
         <ModeRow
           title="Your own reminders come through"
           subtitle="At the exact time you set, even in quiet hours"
