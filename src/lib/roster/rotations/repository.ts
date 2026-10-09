@@ -592,53 +592,6 @@ async function saveRound(client: AdminClient, row: RoundRow, next: ManagedRound)
 }
 
 /**
- * A doctor's save checked the round's rules against the round as it was read. If the administrator closed,
- * allocated, edited or deleted the round before the write landed, the write may break those rules (a ranking
- * arriving after the allocation ran). So the round is read again after the write: if it changed, the doctor's
- * row goes back to what it was (or away, if there was none) and the answer is the usual 409, so the doctor
- * reloads and sees the round as it now is. The undo only touches the row this request wrote, so a later save
- * by the same doctor is never undone.
- */
-async function confirmRoundUnchanged(
-  client: AdminClient,
-  row: RoundRow,
-  userId: string,
-  previous: PreferenceRow | null,
-  writtenAt: string,
-): Promise<void> {
-  const { data, error } = await client
-    .from("roster_rotation_rounds")
-    .select("updated_at,status")
-    .eq("id", row.id)
-    .maybeSingle();
-  if (error) throw databaseError(error);
-  const current = data as { updated_at: string; status: string } | null;
-  if (current && current.updated_at === row.updated_at && current.status === row.status) return;
-  if (current) {
-    const { error: undoError } = previous
-      ? await client
-          .from("roster_rotation_preferences")
-          .update({
-            ranking: [...toPreference(previous).ranking],
-            submitted_at: previous.submitted_at,
-            updated_at: previous.updated_at,
-          })
-          .eq("round_id", row.id)
-          .eq("user_id", userId)
-          .eq("updated_at", writtenAt)
-      : await client
-          .from("roster_rotation_preferences")
-          .delete()
-          .eq("round_id", row.id)
-          .eq("user_id", userId)
-          .eq("updated_at", writtenAt);
-    if (undoError) throw databaseError(undoError);
-  }
-  // A deleted round took the row with it (the preferences cascade), so there is nothing to undo.
-  throw CONFLICT();
-}
-
-/**
  * After an edit, the preference rows the rules changed: people removed, choices no longer on offer. It runs
  * after the round itself is saved, so it can fail on its own. Reads never depend on it (`toManagedRound`
  * reads every row as the rules say it should be), and running it again is safe: `before` is the stored rows
@@ -718,20 +671,21 @@ export async function runRoundCommand(
         : withdrawPreference(managed, userId, now);
     const record = next.preferences.find((pref) => pref.personId === userId);
     if (!record) return { ok: true };
-    // TODO(rotations migration): move this write and its check into one SQL
-    // function that locks the round row, so a close cannot land in between.
-    const { error } = await client.from("roster_rotation_preferences").upsert(
-      {
-        round_id: row.id,
-        user_id: userId,
-        ranking: [...record.ranking],
-        submitted_at: record.submittedAt,
-        updated_at: record.updatedAt,
-      },
-      { onConflict: "round_id,user_id" },
-    );
+    // The rules above were checked against the round as it was read. The write lands only while the round
+    // is still that version, under a lock on the round row, so a close, allocation or edit by the
+    // administrator cannot slip in between. If the round moved on, nothing is written and the doctor
+    // reloads (409).
+    const { data, error } = await client.rpc("roster_rotation_save_preference", {
+      p_round_id: row.id,
+      p_user_id: userId,
+      p_round_updated_at: row.updated_at,
+      p_round_status: row.status,
+      p_ranking: [...record.ranking],
+      p_submitted_at: record.submittedAt,
+      p_updated_at: record.updatedAt,
+    });
     if (error) throw databaseError(error);
-    await confirmRoundUnchanged(client, row, userId, own[0] ?? null, record.updatedAt);
+    if (data !== true) throw CONFLICT();
     return { ok: true };
   }
 

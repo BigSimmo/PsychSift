@@ -4846,6 +4846,18 @@ export type Database = {
       service_member_active: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
       roster_can_invite: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
       roster_rotation_can_manage: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
+      roster_rotation_save_preference: {
+        Args: {
+          p_round_id: string;
+          p_user_id: string;
+          p_round_updated_at: string;
+          p_round_status: string;
+          p_ranking: Json;
+          p_submitted_at: string | null;
+          p_updated_at: string;
+        };
+        Returns: boolean;
+      };
       cme_confirm_year: { Args: { p_owner_id: string; p_set: Json }; Returns: string };
       cme_save_plan_goals: { Args: { p_owner_id: string; p_year_id: string; p_goals: Json }; Returns: Json };
       cme_save_plan_goals_checked: {

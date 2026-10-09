@@ -26,8 +26,8 @@ const mocks = vi.hoisted(() => ({
     missing: false,
     clock: 0,
     beforeUpdate: null as null | (() => void),
-    /** Runs right after a preference upsert lands, to stand in for an administrator acting mid-request. */
-    afterUpsert: null as null | (() => void),
+    /** Runs as a preference save reaches the database, to stand in for an administrator acting mid-request. */
+    beforeSave: null as null | (() => void),
     /** How many preference updates or deletes fail before they start working again. */
     failPreferenceWrites: 0,
   },
@@ -76,7 +76,27 @@ function fakeClient() {
         }),
       },
     },
-    async rpc(name: string, args: { p_service_id: string; p_user_id: string }) {
+    async rpc(name: string, args: Record<string, unknown>) {
+      if (name === "roster_rotation_save_preference") {
+        if (mocks.state.missing) return { data: null, error: { code: "PGRST202", message: "no function" } };
+        mocks.state.beforeSave?.();
+        const round = (tables.roster_rotation_rounds ?? []).find((r) => r.id === args.p_round_id);
+        if (!round || round.updated_at !== args.p_round_updated_at || round.status !== args.p_round_status) {
+          return { data: false, error: null };
+        }
+        const rows = (tables.roster_rotation_preferences ??= []);
+        const next = {
+          round_id: args.p_round_id,
+          user_id: args.p_user_id,
+          ranking: args.p_ranking,
+          submitted_at: args.p_submitted_at,
+          updated_at: args.p_updated_at,
+        };
+        const existing = rows.find((row) => row.round_id === args.p_round_id && row.user_id === args.p_user_id);
+        if (existing) Object.assign(existing, next);
+        else rows.push(next);
+        return { data: true, error: null };
+      }
       const active = (tables.on_call_service_members ?? []).some(
         (m) => m.service_id === args.p_service_id && m.user_id === args.p_user_id && m.revoked_at === null,
       );
@@ -155,7 +175,6 @@ function fakeClient() {
           const existing = rows.find((row) => row.round_id === payload.round_id && row.user_id === payload.user_id);
           if (existing) Object.assign(existing, payload);
           else rows.push({ ...payload });
-          mocks.state.afterUpsert?.();
           return { data: null, error: null };
         }
         if (
@@ -288,7 +307,7 @@ beforeEach(() => {
   mocks.state.missing = false;
   mocks.state.clock = 0;
   mocks.state.beforeUpdate = null;
-  mocks.state.afterUpsert = null;
+  mocks.state.beforeSave = null;
   mocks.state.failPreferenceWrites = 0;
   as(DOCTOR);
   seed();
@@ -598,7 +617,7 @@ describe("rotation rounds API: changes that cross mid-request", () => {
     rounds()[0].updated_at = "2026-10-09T01:59:59.000Z";
   };
 
-  it("puts a doctor's ranking back when the administrator closed the round while it was saving", async () => {
+  it("keeps a doctor's earlier ranking when the administrator closed the round while it was saving", async () => {
     preferences().push({
       round_id: ROUND,
       user_id: DOCTOR,
@@ -606,7 +625,7 @@ describe("rotation rounds API: changes that cross mid-request", () => {
       submitted_at: null,
       updated_at: "2026-10-05T00:00:00.000Z",
     });
-    mocks.state.afterUpsert = closeTheRound;
+    mocks.state.beforeSave = closeTheRound;
     const response = await POST(post({ action: "save-preference", ranking: ["cl", "ad"], submit: true }), context());
     expect(response.status).toBe(409);
     expect((await response.json()).code).toBe("rotations_conflict");
@@ -615,8 +634,8 @@ describe("rotation rounds API: changes that cross mid-request", () => {
     ]);
   });
 
-  it("removes a first ranking that landed after the round was allocated", async () => {
-    mocks.state.afterUpsert = closeTheRound;
+  it("writes no first ranking once the round was allocated mid-request", async () => {
+    mocks.state.beforeSave = closeTheRound;
     const response = await POST(post({ action: "save-preference", ranking: ["cl", "ad"], submit: true }), context());
     expect(response.status).toBe(409);
     expect(preferences()).toEqual([]);
