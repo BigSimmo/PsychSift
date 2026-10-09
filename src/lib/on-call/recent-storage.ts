@@ -3,14 +3,17 @@
 import { useEffect, useMemo } from "react";
 import { z } from "zod";
 
+import { isExampleRecord } from "@/lib/example-data/guards";
 import { createBrowserStore } from "@/lib/client-store-factory";
 import {
   onCallDeviceStateChangedEvent,
   onCallDeviceStoreChangedEvent,
   onCallUsualOrderStorageKey,
 } from "@/lib/on-call/device-state-keys";
+import { onCallZonedHourStart } from "@/lib/on-call/local-date";
 import { onCallPeriod } from "@/lib/on-call/number-resolver";
 import { clearOnCallRecent, onCallRecentChangedEvent, onCallRecentStorageKey } from "@/lib/on-call/recent-storage-keys";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 
 export { clearOnCallRecent, onCallRecentChangedEvent, onCallRecentStorageKey };
 
@@ -164,6 +167,8 @@ function capRecent(items: readonly OnCallRecentItem[]): OnCallRecentItem[] {
  */
 export function recordOnCallRecent(input: OnCallRecentInput, now: Date = new Date()): void {
   if (typeof window === "undefined") return;
+  // Example rows are display only and never join the doctor's own history.
+  if (isExampleRecord(input.id)) return;
   const existing = readOnCallRecent();
   const previous = existing.find((item) => item.id === input.id);
   const source = input.source ?? previous?.source ?? "entry";
@@ -242,14 +247,14 @@ export function onCallUsualOrder(items: readonly OnCallRecentItem[]): OnCallRece
  * or after-hours period began (`onCallPeriod`, WA holidays included). Lane A may
  * pass its own roster-derived key instead.
  */
-export function onCallUsualShiftKey(now: Date = new Date()): string {
-  const current = onCallPeriod(now);
-  const probe = new Date(now.getTime());
-  probe.setMinutes(0, 0, 0);
+export function onCallUsualShiftKey(now: Date = new Date(), zone: string = currentWorkTimeZone()): string {
+  const current = onCallPeriod(now, zone);
+  // The top of the hour on the work zone's clock, not the phone's: Adelaide and
+  // Darwin hours start on the half hour in UTC.
+  const probe = new Date(onCallZonedHourStart(now, zone));
   for (let step = 0; step < 24 * 8; step += 1) {
-    const earlier = new Date(probe.getTime());
-    earlier.setHours(earlier.getHours() - 1);
-    if (onCallPeriod(earlier) !== current) break;
+    const earlier = new Date(probe.getTime() - 60 * 60 * 1000);
+    if (onCallPeriod(earlier, zone) !== current) break;
     probe.setTime(earlier.getTime());
   }
   return probe.toISOString();

@@ -15,7 +15,8 @@ import {
   Target,
   Waypoints,
 } from "lucide-react";
-import { useMemo, useState, useDeferredValue } from "react";
+import { useMemo, useState, useDeferredValue, useEffect } from "react";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 
 import {
   FormulationPageShell,
@@ -204,15 +205,35 @@ export function FormulationBuilderPage({
   const validInitialTemplate = formulationTemplates.some((template) => template.id === initialTemplate)
     ? initialTemplate!
     : formulationTemplates[0].id;
+  const initialDraft = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem("psychsift_formulation_draft");
+      return raw
+        ? (JSON.parse(raw) as {
+            selectedIds?: string[];
+            templateId?: string;
+            sectionNotes?: Record<string, string>;
+            qualityNotes?: Record<string, string>;
+            editedDraft?: string | null;
+          })
+        : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [activeStep, setActiveStep] = useState<BuilderStepId>("select");
-  const [selectedIds, setSelectedIds] = useState(() => normalizeMechanismSelection(initialMechanisms));
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    () => initialDraft?.selectedIds ?? normalizeMechanismSelection(initialMechanisms),
+  );
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [domain, setDomain] = useState("all");
-  const [templateId, setTemplateId] = useState(validInitialTemplate);
-  const [sectionNotes, setSectionNotes] = useState<Record<string, string>>({});
-  const [qualityNotes, setQualityNotes] = useState<Record<string, string>>({});
-  const [editedDraft, setEditedDraft] = useState<string | null>(null);
+  const [templateId, setTemplateId] = useState<string>(() => initialDraft?.templateId ?? validInitialTemplate);
+  const [sectionNotes, setSectionNotes] = useState<Record<string, string>>(() => initialDraft?.sectionNotes ?? {});
+  const [qualityNotes, setQualityNotes] = useState<Record<string, string>>(() => initialDraft?.qualityNotes ?? {});
+  const [editedDraft, setEditedDraft] = useState<string | null>(() => initialDraft?.editedDraft ?? null);
   const [copied, setCopied] = useState(false);
 
   const selectedMechanisms = useMemo(
@@ -243,6 +264,21 @@ export function FormulationBuilderPage({
   const draft = editedDraft ?? generatedDraft;
   const completedQuality = formulationQualityPrompts.filter((prompt) => qualityNotes[prompt.id]?.trim()).length;
   const activeIndex = builderSteps.findIndex((step) => step.id === activeStep);
+
+  const isDirty =
+    Object.values(sectionNotes).some((n) => n.trim().length > 0) ||
+    Object.values(qualityNotes).some((n) => n.trim().length > 0) ||
+    editedDraft !== null;
+  useDirtyStateGuard(isDirty);
+
+  useEffect(() => {
+    if (isDirty || selectedIds.length > 0) {
+      sessionStorage.setItem(
+        "psychsift_formulation_draft",
+        JSON.stringify({ sectionNotes, qualityNotes, selectedIds, templateId, editedDraft }),
+      );
+    }
+  }, [isDirty, sectionNotes, qualityNotes, selectedIds, templateId, editedDraft]);
 
   function toggleMechanism(id: string) {
     setSelectedIds((current) =>

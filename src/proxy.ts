@@ -18,9 +18,16 @@ import {
   developerAccessTokenValid,
   issueDeveloperAccessToken,
 } from "@/lib/developer-area/link-access";
+import { LIVE_VERSION_COOKIE } from "@/lib/live-version/live-version";
 import { readSearchNavigationContext } from "@/lib/search-navigation-context";
 import { buildContentSecurityPolicy, resolveRuntimeFlags } from "@/lib/security-headers";
 import { signProxyAuthPayload } from "@/lib/supabase/proxy-auth-crypto";
+import {
+  resolveWorkModeLaunch,
+  WORK_MODE_PREFERENCE_COOKIE,
+  type WorkModeLaunchUser,
+} from "@/lib/work-mode-launch/launch";
+import { workModeRouteHidden } from "@/lib/work-mode-launch/routes";
 
 export const PROXY_AUTH_USER_HEADER = "x-proxy-auth-user";
 
@@ -71,7 +78,8 @@ const staticRouteRedirects: Record<string, string> = {
   // travels, and the browser keeps a `#on-call-entry-<id>` fragment across the 307,
   // so a bookmarked row still lands on its anchor. Admin adds redirects only for
   // the pages it received (spec); Roster's PR adds its own beside these.
-  "/my-work": "/admin/renewals",
+  // Work-mode redesign (owner request 6 Oct 2026): Admin opens on Today again.
+  "/my-work": "/admin",
   "/on-call/compliance": "/admin/renewals",
   "/on-call/logistics": "/admin/help",
   // On Call's parallel teaching calendar retires to Teaching Week. The section id
@@ -337,8 +345,25 @@ export async function proxy(request: NextRequest) {
   const url = env.NEXT_PUBLIC_SUPABASE_URL;
   const key = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const hasAuthCookie = request.cookies.getAll().some((cookie) => cookie.name.startsWith("sb-"));
+  // The work-mode launch switch (src/lib/work-mode-launch): a screen that exists
+  // only in the new work mode, or runs on sample data, is a 404 for a reader it is
+  // not launched to. Enforced here so no page can forget to gate itself. The
+  // rewrite target is a private (underscore) segment, so it can never be a route
+  // and always renders the app's own not-found page.
+  const workModeHiddenResponse = (user: WorkModeLaunchUser | null, headers: Headers) => {
+    const launch = resolveWorkModeLaunch({
+      user,
+      environment: process.env,
+      preference: request.cookies.get(WORK_MODE_PREFERENCE_COOKIE)?.value ?? null,
+      liveVersion: request.cookies.get(LIVE_VERSION_COOKIE)?.value ?? null,
+    });
+    if (!workModeRouteHidden(`${pathname}${request.nextUrl.search}`, launch)) return null;
+    return NextResponse.rewrite(new URL("/_work-mode-not-launched", request.url), { request: { headers } });
+  };
+
   if (!url || !key || !hasAuthCookie) {
-    return withCsp(NextResponse.next({ request: { headers: requestHeadersWithNonce() } }));
+    const headers = requestHeadersWithNonce();
+    return withCsp(workModeHiddenResponse(null, headers) ?? NextResponse.next({ request: { headers } }));
   }
 
   let userHeaderValue: string | null = null;
@@ -386,8 +411,31 @@ export async function proxy(request: NextRequest) {
       refreshedResponse.cookies.set(cookie);
     }
     response = refreshedResponse;
+    const hidden = workModeHiddenResponse(
+      { id: userPayload.id, appMetadata: userPayload.appMetadata },
+      requestHeadersWithNonce(userHeaderValue),
+    );
+    if (hidden) return withCsp(carrySessionRefresh(response, hidden));
+  } else {
+    const hidden = workModeHiddenResponse(null, requestHeadersWithNonce());
+    if (hidden) return withCsp(carrySessionRefresh(response as NextResponse, hidden));
   }
   return withCsp(response ?? NextResponse.next({ request: { headers: requestHeadersWithNonce() } }));
+}
+
+/**
+ * Copies the session refresh (rotated cookies and the no-store headers Supabase
+ * asks for) from the response the proxy built onto the work-mode 404 that
+ * replaces it, so hiding a screen never signs anyone out.
+ */
+function carrySessionRefresh(from: NextResponse, to: NextResponse): NextResponse {
+  for (const [name, value] of from.headers.entries()) {
+    const lower = name.toLowerCase();
+    if (lower === "set-cookie" || lower.startsWith("x-middleware-")) continue;
+    to.headers.set(name, value);
+  }
+  for (const cookie of from.cookies.getAll()) to.cookies.set(cookie);
+  return to;
 }
 
 /**

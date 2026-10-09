@@ -178,6 +178,22 @@ describe("Roster Shifts", () => {
     expect(within(sheet).getAllByTestId("roster-who-can-cover").at(-1)).toHaveTextContent("Who can cover?");
   });
 
+  it("offers Sick for tomorrow from the roster home to a doctor on a team", async () => {
+    mockShifts([]);
+    mockTeamWindow("2026-09-21", "2026-10-27", ["2026-10-15"]);
+    render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
+    const entry = await screen.findByTestId("roster-sick-entry");
+    expect(entry).toHaveAttribute("href", "/roster/sick");
+    expect(entry).toHaveTextContent("Sick for tomorrow?");
+  });
+
+  it("does not offer Sick for tomorrow without a team, since nobody could be told", async () => {
+    mockShifts([]);
+    render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
+    await screen.findByTestId("roster-shifts-empty");
+    expect(screen.queryByTestId("roster-sick-entry")).toBeNull();
+  });
+
   it("loads the newly selected week before saying it has no team shifts", async () => {
     mockShifts([]);
     // Each week is read 21 days back (team rule lookback) and through the
@@ -196,7 +212,8 @@ describe("Roster Shifts", () => {
     mockShifts([]);
     const url = mockTeamWindow("2026-09-21", "2026-10-27", ["2026-10-13"], true);
     render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
-    await screen.findByText(/12 to 18 Oct · No shifts/);
+    // With example data off the made-up team is hidden too, so the doctor sees their own, empty roster.
+    await screen.findByText("No shifts yet");
     expect(fetchCalls(url, "GET")).toHaveLength(0);
     expect(screen.queryByTestId("roster-shifts-row")).toBeNull();
   });
@@ -238,7 +255,8 @@ describe("Roster Shifts", () => {
     await waitFor(() => expect(fetchCalls(octoberUrl, "GET")).toHaveLength(1));
     await waitFor(() => expect(screen.queryByTestId("roster-team-shifts-loading")).toBeNull());
     expect(screen.getByRole("link", { name: "Shifts" })).toHaveAttribute("href", "/roster/shifts");
-    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    // The month calendar loads in its own chunk, so wait for it to arrive.
+    fireEvent.click(await screen.findByRole("button", { name: "Next month" }));
     await waitFor(() => expect(fetchCalls(nextUrl, "GET")).toHaveLength(1));
     await waitFor(() => expect(screen.queryByTestId("roster-team-shifts-loading")).toBeNull());
     expect(screen.getByTestId("roster-shifts-month")).toHaveTextContent("D · Day");
@@ -351,6 +369,27 @@ describe("Roster Shifts", () => {
     // Recorded once: the offer goes, and the fortnight counts it.
     expect(screen.queryByRole("button", { name: "Add the time since your last shift ended" })).toBeNull();
     expect(fortnight).toHaveTextContent(/plus 1\.25\sh extra/);
+  });
+
+  it("says on call is not counted when the fortnight's only shifts are on call", async () => {
+    // Work-mode redesign, owner request 6 Oct 2026 (phone check): 0 h beside a week of on
+    // call read as a fault, so the fortnight says why, and invents no hours.
+    mockShifts([shift("2026-10-13", "17:00", "08:00", "on_call", { workplace: null })]);
+    routes.set("GET /api/roster/extra-time", () => Response.json({ records: [] }));
+    render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
+    const fortnight = await screen.findByTestId("roster-fortnight");
+    expect(fortnight).toHaveTextContent(/0\sh/);
+    expect(within(fortnight).getByTestId("roster-fortnight-on-call-note")).toHaveTextContent(
+      "On call isn't counted here.",
+    );
+  });
+
+  it("adds no on-call note when the fortnight has no on-call shifts", async () => {
+    mockShifts([day("2026-10-12")]);
+    routes.set("GET /api/roster/extra-time", () => Response.json({ records: [] }));
+    render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
+    const fortnight = await screen.findByTestId("roster-fortnight");
+    expect(within(fortnight).queryByTestId("roster-fortnight-on-call-note")).toBeNull();
   });
 
   it("never offers a late finish against sample shifts, or while the next shift is already running", async () => {

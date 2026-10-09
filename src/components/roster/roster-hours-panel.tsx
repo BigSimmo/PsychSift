@@ -13,6 +13,7 @@ import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-v
 import { formatSpanWords } from "@/lib/roster/shifts-overview";
 
 import { formatHours } from "./roster-format";
+import { RosterPayslipCheck } from "./roster-payslip-check";
 import {
   RosterDateLead,
   RosterLinkWord,
@@ -118,6 +119,7 @@ export function RosterHoursPanel({
   extra,
   partial,
   payAnchored,
+  onCallExcluded = false,
   onRetry,
 }: {
   readonly shifts: readonly OnCallShift[];
@@ -126,6 +128,8 @@ export function RosterHoursPanel({
   readonly extra: RosterExtraTimeState;
   readonly partial: boolean;
   readonly payAnchored: boolean;
+  /** On-call shifts fall in the fortnight but are not rostered hours, so the total says so. */
+  readonly onCallExcluded?: boolean;
   readonly onRetry: () => void;
 }) {
   return (
@@ -159,12 +163,27 @@ export function RosterHoursPanel({
               ) : extra.status === "error" ? (
                 <span className="ml-auto text-xs text-[color:var(--text-muted)]">extra time not loaded</span>
               ) : null}
+              {onCallExcluded ? (
+                <span
+                  className="basis-full text-xs text-[color:var(--text-muted)]"
+                  data-testid="roster-hours-on-call-note"
+                >
+                  On call isn&apos;t counted here.
+                </span>
+              ) : null}
             </p>
           </section>
         }
       >
         <ExtraTime extra={extra} summary={summary} />
       </RosterHoursRestCheck>
+      <RosterPayslipCheck
+        shifts={shifts}
+        summary={summary}
+        extraLoaded={extra.status === "ready"}
+        partial={partial}
+        payAnchored={payAnchored}
+      />
     </div>
   );
 }

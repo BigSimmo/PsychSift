@@ -13,6 +13,7 @@ import { cpdCoachingMyDayItems, ruleEnginesOn } from "@/lib/my-day/rule-items";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { perthDateKey, showsReminderInApp, type ReminderSettings } from "@/lib/reminders/settings";
 import { useAuthSession } from "@/lib/supabase/client";
+import { sharedGet } from "@/lib/shared-get";
 
 /**
  * CPD for My Day: routines due today or earlier (when the reader's own
@@ -88,7 +89,7 @@ type Read<T> = { ok: true; data: T; demo: boolean } | { ok: false; unauthorized:
 
 async function readList<T>(url: string, key: "routines" | "drafts", signal: AbortSignal): Promise<Read<T[]>> {
   try {
-    const response = await fetch(url, { cache: "no-store", signal });
+    const response = await sharedGet(url, { signal });
     if (response.status === 401) return { ok: false, unauthorized: true };
     if (!response.ok) return { ok: false, unauthorized: false };
     const body = (await response.json().catch(() => null)) as ({ demoMode?: boolean } & Record<string, unknown>) | null;
@@ -107,8 +108,8 @@ async function readList<T>(url: string, key: "routines" | "drafts", signal: Abor
 async function loadCoaching(signal: AbortSignal): Promise<Coaching | "failed" | "sample"> {
   try {
     const [year, entries] = await Promise.all([
-      fetch("/api/cme/year", { cache: "no-store", signal }),
-      fetch("/api/cme/entries", { cache: "no-store", signal }),
+      sharedGet("/api/cme/year", { signal }),
+      sharedGet("/api/cme/entries", { signal }),
     ]);
     if (!year.ok || !entries.ok) return "failed";
     const yearBody = (await year.json().catch(() => null)) as {

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { appModeDefinitions, appModeHomeHref } from "@/lib/app-modes";
 import { HUB_PANELS } from "@/lib/developer-area/hub-panels";
 import { modeSecondaryNavigationRegistry } from "@/lib/mode-secondary-navigation";
+import { WORK_AREAS, workAreaItems } from "@/lib/work-frame/areas";
 import { colourCodingReferenceHref } from "@/lib/reference-routes";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
 import { collectSiteMapData } from "../scripts/generate-site-map";
@@ -33,6 +34,11 @@ const srcRoot = path.join(repoRoot, "src");
 
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
+  // Alerts work, owner approval 7 Oct 2026.
+  [
+    "/my-day/alerts/earlier",
+    "Kept for old links only: it redirects new work mode readers to /my-day/notifications/earlier (the Notifications area's Earlier tab), and the launch switch 404s it for classic readers.",
+  ],
   [
     "/my-day/week",
     "Reached from the 'Open week' QuietTextLink (a next/link wrapper) on My Day's This week card, which this Link-only scan does not model. The header tabs are My Day's own Today, Work and Me pages.",
@@ -43,15 +49,41 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
   ],
   [
     "/admin/compliance/export",
-    "Reached from the 'Export a copy for yourself' ModeRow on Admin Compliance (ADMIN_PAGE_HREFS.complianceExport), which this Link-only scan does not model.",
+    "Reached from the Export row (an AdminRow, a next/link wrapper) on Admin Compliance (ADMIN_PAGE_HREFS.complianceExport), which this Link-only scan does not model.",
+  ],
+  // Work-mode redesign, owner request 6 Oct 2026: New job's Leaving links became AdminRows.
+  [
+    "/admin/new-job/records",
+    "Reached from the 'Your Admin records' row (an AdminRow, a next/link wrapper) in New job's Leaving section, which this Link-only scan does not model.",
+  ],
+  [
+    "/admin/new-job/pack",
+    "Reached from the 'Credential pack' row (an AdminRow, a next/link wrapper) in New job's Leaving section, which this Link-only scan does not model.",
   ],
   [
     "/roster/join",
     "Invite-link landing page reached from shared invite URLs; in-app entry is a ModeRow on Roster Today/Team, which this Link-only scan does not model.",
   ],
   [
+    "/roster/manage/rotations/new",
+    "Reached from the New round WorkButton (a next/link wrapper) on Manage team, Rotations (NEW_ROUND_HREF), which this Link-only scan does not model.",
+  ],
+  [
     "/roster/manage",
     "Manager surface reached via ModeRow rows on Roster Today and Alerts (manager-only), which this Link-only scan does not model.",
+  ],
+  // Work-mode wiring, 7 Oct 2026: both screens live inside the Assessments page as views.
+  [
+    "/teaching/assessments/help",
+    "Compatibility redirect to /teaching/assessments?view=words for older links. In-app navigation (More's Help and words) links the view directly.",
+  ],
+  [
+    "/teaching/assessments/trainee",
+    "Redirect to the supervisor's term overview when no doctor is named. In-app links (term overview doctor detail, inbox request sheets) go to /teaching/assessments/trainee/[id].",
+  ],
+  [
+    "/teaching/assessments/record",
+    "Compatibility redirect to /teaching/assessments?view=record (or ?view=all) for older links. In-app navigation (More's Doctor record) links the view directly.",
   ],
   [
     "/cme/programme",
@@ -551,6 +583,16 @@ builderTargets.add(pathOnly(colourCodingReferenceHref()));
 for (const entries of Object.values(modeSecondaryNavigationRegistry)) {
   for (const entry of entries) {
     if ("href" in entry && entry.href) builderTargets.add(pathOnly(entry.href));
+  }
+}
+
+// The work-mode frame's tabs and More sheet are data too (work-mode redesign,
+// owner request 6 Oct 2026): `WORK_AREAS` hrefs render as <Link>s in the band
+// and the More sheet, so pages that left the mode pill's registry for More
+// (Admin Compliance, Teaching Organise and Assessments) are reached there.
+for (const area of Object.values(WORK_AREAS)) {
+  for (const item of workAreaItems(area)) {
+    if (item.href) builderTargets.add(pathOnly(item.href));
   }
 }
 

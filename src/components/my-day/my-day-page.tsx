@@ -1,23 +1,52 @@
 "use client";
 
-import { ChevronLeft, Sunrise, TriangleAlert } from "lucide-react";
+import { History, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
+import { useRemindMe } from "@/components/alerts/use-remind-me";
+import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
+import {
+  ModeBandAction,
+  PageTitleUnderBand,
+  useModeBandCurrentTab,
+  useModeBandHeading,
+} from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { useWorkUndoToast } from "@/components/mode-kit/work";
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
-import { listNames, MyDayItemRow, myDayModeLabel, useMyDayNow } from "@/components/my-day/my-day-page-parts";
-import { QuietNote, quietLink } from "@/components/my-day/my-day-quiet";
+import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
+import { listNames, myDayModeLabel, useMyDayNow } from "@/components/my-day/my-day-page-parts";
+import {
+  QuietFoot,
+  QuietLabel,
+  QuietList,
+  QuietNote,
+  QuietStamp,
+  quietCard,
+  quietLink,
+  quietPillQuiet,
+} from "@/components/my-day/my-day-quiet";
+import { LazyMyDayNeedsYouReader } from "@/components/my-day/lazy-my-day-needs-you-reader";
+import { MyDayCustomiseSheet, MyDayQuickAddSheet } from "@/components/my-day/my-day-sheets";
+import { NeedsYouRow } from "@/components/my-day/my-day-today-cards";
 import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
+import { cn } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
-import { perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
+import { NewWorkModeOnly, useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { WorkSetupPromptCard } from "@/components/work-setup/work-setup-prompt-card";
+import type { AdminHelpItem } from "@/lib/admin/help-items";
+import { reportAreaData, useExampleData } from "@/lib/example-data/store";
+import { isSnoozed, parseMyDayPage, snoozeUntil } from "@/lib/my-day/dashboard";
+import type { RenewalRow } from "@/lib/my-day/figures";
+import { duePerthDate } from "@/lib/my-day/merge";
 import {
   myDayEnabledForAuth,
   myDayNeedsSignIn,
@@ -25,43 +54,41 @@ import {
   type MyDayItem,
   type MyDayState,
 } from "@/lib/my-day/model";
+import type { MyDayNeedsYouItem, MyDayNeedsYouMode } from "@/lib/my-day/needs-you-feed";
 import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
-import { myDayPageIds, parseMyDayPage, type MyDayPageId } from "@/lib/my-day/dashboard";
-import type { RenewalRow } from "@/lib/my-day/figures";
-import type { AdminHelpItem } from "@/lib/admin/help-items";
-import { focusRing } from "@/components/card-recipes";
-import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
-import { dashSurface } from "@/components/dashboard-kit/recipes";
-import { cn } from "@/components/ui-primitives";
+import { WORK_SIDE_NOTIFICATIONS_HREF } from "@/lib/work-frame/side-nav";
+import { addDaysToDate, formatPerthDay, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { useAuthSession } from "@/lib/supabase/client";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
-import { useAuthSession } from "@/lib/supabase/client";
-import {
-  ModeBandAction,
-  PageTitleUnderBand,
-  useModeBandCurrentTab,
-  WithoutModeBand,
-} from "@/components/mode-band/mode-band";
 
 /**
  * The signed-out sample: invented data, downloaded only when a signed-out
  * visitor opens My Day, so it never counts towards anyone's first load.
  */
+/* The sign-in dialog is closed at first paint, so it loads only when first opened. */
+const AccountSetupDialog = dynamic(
+  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
+  { ssr: false },
+);
+function MyDaySampleLoading() {
+  return (
+    <div className="grid gap-3" data-testid="my-day-sample-loading" aria-hidden="true">
+      <ModeModuleSkeleton rows={2} twoLine eyebrow />
+      <ModeModuleSkeleton rows={3} twoLine eyebrow />
+    </div>
+  );
+}
 const MyDaySampleDashboard = dynamic(
   () => import("@/components/my-day/my-day-sample").then((module) => module.MyDaySampleDashboard),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="grid gap-3" data-testid="my-day-sample-loading" aria-hidden="true">
-        <ModeModuleSkeleton rows={2} twoLine eyebrow />
-        <ModeModuleSkeleton rows={3} twoLine eyebrow />
-      </div>
-    ),
-  },
+  { ssr: false, loading: MyDaySampleLoading },
 );
 
-const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6 lg:max-w-5xl";
+/** The work page column: the frame's 12px gutters and 9px rhythm, wider on a computer for Today's two columns. */
+const PAGE_BODY = "mx-auto grid w-full max-w-2xl min-w-0 grid-cols-[minmax(0,1fr)] gap-2.5 px-3 pt-3 pb-8 lg:max-w-5xl";
 
 /**
  * Invented sample data is shown only in a local demo build with no sign-in
@@ -75,10 +102,10 @@ function myDayShownItems(state: MyDayState, allowSample: boolean): readonly MyDa
 }
 
 /**
- * True once "All N" pushed the full list's address in this tab, so "Back to
- * dashboard" can step back through history (the same as the phone's Back)
- * rather than stacking a second dashboard entry. A direct load of the full
- * list's address has nothing of ours behind it, so it replaces instead.
+ * True once "All N" pushed the full list's address in this tab, so going back
+ * can step back through history (the same as the phone's Back) rather than
+ * stacking a second dashboard entry. A direct load of the full list's address
+ * has nothing of ours behind it, so it replaces instead.
  */
 let fullListPushed = false;
 
@@ -97,66 +124,206 @@ function closeFullList() {
   window.history.replaceState(null, "", MY_DAY_PATH);
 }
 
-/** The full list ("All N"): every item, grouped by urgency, as My Day first shipped it. */
+// ---------------------------------------------------------------- the full list
+
+type DueGroup = "overdue" | "today" | "week" | "later";
+
+const GROUP_TITLE: Readonly<Record<DueGroup, string>> = {
+  overdue: "Overdue",
+  today: "Today",
+  week: "This week",
+  later: "Later",
+};
+
+/** Needs you's areas in chip order: My Day's five, then the reader's own reminders. */
+const NEEDS_YOU_MODES: readonly MyDayNeedsYouMode[] = [...myDaySourceModes, "my-day"];
+
+function needsYouModeLabel(mode: MyDayNeedsYouMode): string {
+  return mode === "my-day" ? "Reminders" : myDayModeLabel(mode);
+}
+
+/** Overdue, else due today, else due within seven days, else later; no due date goes to Later. */
+function dueGroup(item: MyDayNeedsYouItem, today: string): DueGroup {
+  if (item.severity === "overdue") return "overdue";
+  const date = duePerthDate(item.due);
+  if (!date) return "later";
+  if (date <= today) return "today";
+  if (date <= addDaysToDate(today, 7)) return "week";
+  return "later";
+}
+
+/**
+ * Needs you, every item ("All N"): area chips to narrow it, then groups by
+ * due date, each row with its verb and Later. Hidden rows stay listed with
+ * Show, so nothing moved out of the way is lost from view.
+ */
 function MyDayFullList({
   items,
+  today,
   now,
   checked,
+  checkedAt,
+  missing,
   onBack,
   onRetry,
 }: {
-  readonly items: readonly MyDayItem[];
+  /** The notification feed's list, so "All N" is the bell's list. */
+  readonly items: readonly MyDayNeedsYouItem[];
+  readonly today: string;
   readonly now: Date;
   readonly checked: readonly string[];
+  readonly checkedAt: string | null;
+  /** Areas that did not load, for the stamp. */
+  readonly missing: readonly string[];
   readonly onBack: () => void;
   readonly onRetry: () => void;
 }) {
   const backRef = useRef<HTMLButtonElement>(null);
+  // The feed hides what Later moved by the snoozes on this device, so the list uses the same ones.
+  // Examples and reminders cannot be moved, so nothing invented is ever stored.
+  const { snoozes, snooze, unsnooze } = useMyDayDeviceState(today);
+  const toast = useWorkUndoToast();
+  const [area, setArea] = useState<MyDayNeedsYouMode | "all">("all");
   // Opened from the dashboard (not a direct load): put focus, and so the view, at the top of the list.
   useEffect(() => {
     if (fullListPushed) backRef.current?.focus();
   }, []);
-  const sections = [
-    { key: "overdue", eyebrow: "Needs you now", items: items.filter((item) => item.severity === "overdue") },
-    { key: "soon", eyebrow: "Due soon", items: items.filter((item) => item.severity === "soon") },
-    { key: "later", eyebrow: "Later", items: items.filter((item) => item.severity === "info") },
-  ].filter((section) => section.items.length > 0);
+  useModeBandHeading({ eyebrow: "Overdue first, then by deadline", title: "Needs you" });
+
+  const areas = NEEDS_YOU_MODES.map((mode) => ({
+    mode,
+    count: items.filter((item) => item.mode === mode).length,
+  })).filter((entry) => entry.count > 0);
+  const shown = area === "all" ? items : items.filter((item) => item.mode === area);
+  const groups = (["overdue", "today", "week", "later"] as const)
+    .map((key) => ({ key, items: shown.filter((item) => dueGroup(item, today) === key) }))
+    .filter((group) => group.items.length > 0);
+  const tomorrow = snoozeUntil(now);
+  const later = (item: MyDayNeedsYouItem) => {
+    snooze(item.id, tomorrow);
+    toast?.(`${item.title} moved to tomorrow`, () => unsnooze(item.id));
+  };
+
   return (
-    <div className="grid gap-5" data-testid="my-day-full-list">
-      <div>
-        <Button ref={backRef} variant="ghost" icon={ChevronLeft} onClick={onBack} data-testid="my-day-back">
+    <div className="grid min-w-0 gap-2.5" data-testid="my-day-full-list">
+      {/* The band's back button is the visible way back; this one takes focus on opening and shows when focused. */}
+      <div className="sr-only focus-within:not-sr-only">
+        <button ref={backRef} type="button" onClick={onBack} data-testid="my-day-back" className={quietLink}>
           Back to dashboard
-        </Button>
+        </button>
       </div>
-      {sections.length === 0 ? (
-        <div data-testid="my-day-empty">
+      {items.length === 0 ? (
+        <div data-testid="my-day-empty" className={cn(quietCard, "grid gap-1 px-3.5 py-3")}>
           {checked.length > 0 ? (
-            <EmptyState icon={Sunrise} title="Nothing needs you right now" body={`Checked ${listNames(checked)}.`} />
+            <>
+              <p className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">Nothing needs you right now</p>
+              <p className="m-0 text-2xs text-[color:var(--text-muted)]">{`Checked ${listNames(checked)}.`}</p>
+            </>
           ) : (
-            <EmptyState
-              icon={Sunrise}
-              title="Couldn't check your day"
-              body="No source could be checked just now."
-              actions={
-                <Button variant="secondary" onClick={onRetry}>
+            <>
+              <p className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">Couldn&apos;t check your day</p>
+              <p className="m-0 text-2xs text-[color:var(--text-muted)]">No source could be checked just now.</p>
+              <div className="mt-1">
+                <button type="button" onClick={onRetry} className={quietPillQuiet}>
                   Retry
-                </Button>
-              }
-            />
+                </button>
+              </div>
+            </>
           )}
         </div>
       ) : (
-        sections.map((section) => (
-          <ModeGroupedList key={section.key} eyebrow={section.eyebrow} testId={`my-day-section-${section.key}`}>
-            {section.items.map((item) => (
-              <MyDayItemRow key={item.id} item={item} now={now} />
+        <>
+          <div
+            role="group"
+            aria-label="Show items from"
+            data-no-tab-swipe=""
+            data-testid="my-day-area-chips"
+            className="-mx-3 flex min-w-0 gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {[{ mode: "all" as const, count: items.length }, ...areas].map((entry) => (
+              <button
+                key={entry.mode}
+                type="button"
+                aria-pressed={area === entry.mode}
+                onClick={() => setArea(entry.mode)}
+                data-testid={`my-day-area-${entry.mode}`}
+                className={cn(
+                  focusRing,
+                  "relative inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-xs font-bold whitespace-nowrap before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] forced-colors:border",
+                  area === entry.mode
+                    ? "border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
+                    : "border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] text-[color:var(--work-ink)]",
+                )}
+              >
+                {entry.mode === "all" ? "All" : needsYouModeLabel(entry.mode)}
+                <span className="font-semibold nums">{entry.count}</span>
+              </button>
             ))}
-          </ModeGroupedList>
-        ))
+          </div>
+          {groups.map((group) => (
+            <section
+              key={group.key}
+              aria-labelledby={`my-day-section-${group.key}-label`}
+              data-testid={`my-day-section-${group.key}`}
+              className="grid min-w-0 gap-1.5"
+            >
+              <QuietLabel
+                id={`my-day-section-${group.key}-label`}
+                title={GROUP_TITLE[group.key]}
+                aside={
+                  <span className="text-2xs font-bold text-[color:var(--text-muted)] nums">{group.items.length}</span>
+                }
+              />
+              <QuietList className={quietCard}>
+                {group.items.map((item) =>
+                  item.snoozable !== false && isSnoozed(snoozes, item.id, today) ? (
+                    <li
+                      key={item.id}
+                      data-testid={`my-day-item-${item.id}`}
+                      className="flex min-h-12 min-w-0 items-center gap-2.5 py-2"
+                    >
+                      <span className="grid min-w-0 flex-1">
+                        <span className="text-sm-minus font-semibold break-words text-[color:var(--text-muted)]">
+                          {item.title}
+                        </span>
+                        <span className="text-2xs text-[color:var(--text-muted)]">
+                          {`Hidden until ${snoozes[item.id] === tomorrow ? "tomorrow" : formatPerthDay(snoozes[item.id] ?? tomorrow)}`}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => unsnooze(item.id)}
+                        aria-label={`Show now: ${item.title}`}
+                        data-testid={`my-day-unsnooze-${item.id}`}
+                        className={quietLink}
+                      >
+                        Show
+                      </button>
+                    </li>
+                  ) : (
+                    <NeedsYouRow key={item.id} item={item} today={today} onLater={later} />
+                  ),
+                )}
+              </QuietList>
+            </section>
+          ))}
+        </>
       )}
+      <QuietStamp tone={checked.length === 0 ? "off" : missing.length > 0 ? "warn" : "ok"} testId="my-day-all-stamp">
+        {checked.length === 0
+          ? "Nothing checked yet"
+          : `Checked ${checkedAt ?? "just now"} · ${
+              missing.length > 0
+                ? `${listNames(missing)} not loaded`
+                : `all ${checked.length} ${checked.length === 1 ? "area" : "areas"} loaded`
+            }`}
+      </QuietStamp>
+      <QuietFoot icon={History}>Later hides an item until tomorrow. Each item opens the page that owns it.</QuietFoot>
     </div>
   );
 }
+
+// ---------------------------------------------------------------- the page
 
 /** The dashboard's own reads, mounted only for an enabled reader and remounted per sign-in. */
 function MyDayDashboardView({
@@ -189,70 +356,50 @@ function longDate(date: string): string {
   return `${LONG_WEEKDAYS[weekday]} ${Number(date.slice(8, 10))} ${LONG_MONTHS[Number(date.slice(5, 7)) - 1]}`;
 }
 
-/** Switch page by replacing the address, so Back still leaves My Day rather than stepping through tabs. */
-function showPage(page: MyDayPageId) {
-  const url = page === "today" ? MY_DAY_PATH : `${MY_DAY_PATH}?page=${page}`;
-  window.history.replaceState(null, "", url);
-}
+type MyDaySheet = "customise" | "quick-add" | "remind-me" | "reminders";
 
-/** True when the touch began inside something that scrolls sideways (quick actions, the wallet). */
-function insideHorizontalScroller(target: EventTarget | null, stop: Element): boolean {
-  let node = target instanceof Element ? target : null;
-  while (node && node !== stop) {
-    if (node.scrollWidth > node.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(node).overflowX)) return true;
-    node = node.parentElement;
-  }
-  return false;
-}
-
-/** The page body; a sideways swipe on it moves to the next or previous page (the header tabs name it). */
-function MyDaySwipePanel({
-  page,
-  onChange,
-  children,
+/** A round glass button in the band (plus, sliders); a plain round icon button where there is no band. */
+function BandButton({
+  label,
+  icon: Icon,
+  onClick,
+  testId,
 }: {
-  readonly page: MyDayPageId;
-  readonly onChange: (page: MyDayPageId) => void;
-  readonly children: ReactNode;
+  readonly label: string;
+  readonly icon: LucideIcon;
+  readonly onClick: () => void;
+  readonly testId: string;
 }) {
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const swipeRef = useRef<HTMLDivElement>(null);
   return (
-    <div
-      ref={swipeRef}
-      id="my-day-panel"
-      onTouchStart={(event) => {
-        const touch = event.touches[0];
-        touchStart.current =
-          touch && swipeRef.current && !insideHorizontalScroller(event.target, swipeRef.current)
-            ? { x: touch.clientX, y: touch.clientY }
-            : null;
-      }}
-      onTouchEnd={(event) => {
-        const start = touchStart.current;
-        const touch = event.changedTouches[0];
-        touchStart.current = null;
-        if (!start || !touch) return;
-        const dx = touch.clientX - start.x;
-        const dy = touch.clientY - start.y;
-        if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
-        const index = myDayPageIds.indexOf(page);
-        const next = myDayPageIds[index + (dx < 0 ? 1 : -1)];
-        if (next) onChange(next);
-      }}
-    >
-      {children}
-    </div>
+    <ModeBandAction>
+      {(underBand) => (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={label}
+          aria-haspopup="dialog"
+          data-testid={testId}
+          className={
+            underBand
+              ? "work-glass-button work-band__action"
+              : cn(focusRing, "grid size-12 place-items-center rounded-full text-[color:var(--mode-identity)]")
+          }
+        >
+          <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
+        </button>
+      )}
+    </ModeBandAction>
   );
 }
 
 export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const { status: authStatus, authEpoch } = useAuthSession();
   const enabled = myDayEnabledForAuth(authStatus);
   // Only a local demo build with no sign-in may show invented examples.
   const allowSample = authStatus === "unconfigured";
   const now = useMyDayNow(nowProp);
-  const today = perthCalendarDate(now);
+  const today = zonedDateOf(now, zone);
   const state = useMyDayItems({ enabled, now });
   // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
   // answer changes, never on the minute tick.
@@ -267,12 +414,8 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
   const page = parseMyDayPage(searchParams?.get("page"));
-  // The header's Today / Work / Me tabs: ?page= is not part of the path, so the page names its own tab.
-  useModeBandCurrentTab(view === "dashboard" ? `my-day-${page}` : null);
-  const changePage = (next: MyDayPageId) => {
-    if (next !== page) showPage(next);
-  };
-  const [editing, setEditing] = useState(false);
+  // ?page= and ?view= are not part of the path, so the page names its own place in the frame.
+  useModeBandCurrentTab(view === "all" ? "my-day-all" : `my-day-${page}`);
   useEffect(() => {
     // Back on the dashboard (by either Back): nothing of ours is left to step back over.
     if (view === "dashboard") fullListPushed = false;
@@ -300,60 +443,105 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const helpItems = adminReal ? (state.helpItems ?? NO_HELP) : NO_HELP;
   const demoNote = allowSample && state.demoMode;
   // Roster's "unavailable" is its team data (swaps); the others are whole modes not offered yet.
-  const notYet = [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
-  const ready = enabled && state.status === "ready";
-  // Signed out: My Day shows a sample day of invented examples, with a sign-in prompt above it.
-  const sampleView = myDayNeedsSignIn(authStatus);
+  // In a demo build "unavailable" only means the example has nothing for My Day to read there:
+  // Roster's Swaps tab and Teaching both show examples, so nothing is called unavailable.
+  const notYet = demoNote ? [] : [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
+  // The example data switch alone decides the sample day. Auto mode already
+  // shows it to a signed-out visitor, and an explicit off is honoured (they get
+  // the sign-in state below). The frame's banner says it is made up.
+  const sampleView = useExampleData("day").active;
+  // Needs you is the notification feed's list (the bell's, the Notifications page's and the side menu's),
+  // read from this page's own sources and in the same work-zone day. Null until the feed settles. The feed
+  // is read by a lazy reader (`LazyMyDayNeedsYouReader` below), so its selectors stay out of the first load.
+  const [needsYou, setNeedsYou] = useState<readonly MyDayNeedsYouItem[] | null>(null);
+  const feedRead = useMemo(
+    () => ({ status: state.status, items: state.items, sources: state.sources, retry: state.retry }),
+    [state.status, state.items, state.sources, state.retry],
+  );
+  // The day shows once Needs you is known too, so it never says "nothing needs you" before the feed has looked.
+  const needsYouPending = needsYou === null;
+  const ready = enabled && state.status === "ready" && !sampleView && !needsYouPending;
+  const [signInOpen, setSignInOpen] = useState(false);
+  // Tells auto mode whether this day has real items, so examples never cover them.
+  const realItems = enabled && state.status === "ready" ? myDayShownItems(state, false).length : null;
+  useEffect(() => {
+    if (realItems !== null) reportAreaData("day", realItems > 0 ? "has-data" : "empty");
+  }, [realItems]);
+
+  // ---------------------------------------------------------------- sheets
+  const [sheet, setSheet] = useState<MyDaySheet | null>(null);
+  const [remind, setRemind] = useState<{
+    readonly text: string;
+    readonly shiftEndsAt: string | null;
+    /** Back to Your reminders on close, when it was opened from there. */
+    readonly from: "reminders" | null;
+  }>({ text: "", shiftEndsAt: null, from: null });
+  const { reminders } = useRemindMe();
+  const pendingReminders = reminders.filter((item) => !item.doneAt).length;
+  const openRemindMe = (text?: string, shiftEndsAt?: string | null) => {
+    setRemind({ text: text ?? "", shiftEndsAt: shiftEndsAt ?? null, from: null });
+    setSheet("remind-me");
+  };
+  useWorkFrameAction("my-day-customise", ready ? () => setSheet("customise") : null);
+  useWorkFrameAction("my-day-reminders", ready ? () => setSheet("reminders") : null);
+  // `?sheet=customise` (from My Day's other pages) and `?sheet=reminders` (a reminder tapped in Notifications):
+  // open it once, then drop the word from the address.
+  const sheetParam = searchParams?.get("sheet") ?? null;
+  const addressSheet = sheetParam === "customise" || sheetParam === "reminders" ? sheetParam : null;
+  const [consumedSheet, setConsumedSheet] = useState<string | null>(null);
+  if (ready && addressSheet && consumedSheet !== addressSheet) {
+    setConsumedSheet(addressSheet);
+    setSheet(addressSheet);
+  }
+  useEffect(() => {
+    if (!addressSheet || consumedSheet !== addressSheet) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("sheet");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [addressSheet, consumedSheet]);
+
+  const router = useRouter();
+  const newWorkMode = useNewWorkMode();
   const showAll = () => {
-    setEditing(false);
+    setSheet(null);
+    // On the new work mode the full list is Notifications. The old list's address only redirects there on a
+    // server load, and openFullList changes the address without one, so go straight to Notifications.
+    if (newWorkMode) {
+      router.push(WORK_SIDE_NOTIFICATIONS_HREF);
+      return;
+    }
     openFullList();
   };
-  const fullList = (shown: readonly MyDayItem[], shownChecked: readonly string[]) => (
-    <MyDayFullList items={shown} now={now} checked={shownChecked} onBack={closeFullList} onRetry={state.retry} />
-  );
+  // Quick add's one suggestion: the top CPD row in Needs you.
+  const suggested = items.find((item) => item.mode === "cme") ?? null;
 
   return (
-    <InformationPageShell testId="my-day-main">
-      <div className={cn(PAGE_WIDTH, dashSurface, "my-day-quiet")}>
-        <header className="flex min-w-0 items-end justify-between gap-3" data-testid="my-day-header">
-          <div className="grid min-w-0 gap-0.5">
-            <WithoutModeBand>
-              <p className="text-sm text-[color:var(--dash-muted)]">{longDate(today)}</p>
-            </WithoutModeBand>
-            <PageTitleUnderBand className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
-              My Day
-            </PageTitleUnderBand>
-          </div>
-          {ready && view === "dashboard" ? (
-            <ModeBandAction>
-              {(underBand) => (
-                <button
-                  type="button"
-                  onClick={() => setEditing((value) => !value)}
-                  data-testid="my-day-edit"
-                  aria-pressed={editing}
-                  className={
-                    underBand
-                      ? "mode-band__customise"
-                      : cn(
-                          focusRing,
-                          "-mr-2 inline-flex min-h-12 items-center rounded-md px-2 font-dash-title text-base-minus text-[color:var(--dash-blue)]",
-                        )
-                  }
-                >
-                  {editing ? "Done" : "Edit"}
-                </button>
-              )}
-            </ModeBandAction>
-          ) : null}
-        </header>
+    <InformationPageShell testId="my-day-main" width="bleed" className="bg-[color:var(--work-wash)]">
+      <LazyMyDayNeedsYouReader clock={now} read={feedRead} onChange={setNeedsYou} />
+      <div className={PAGE_BODY} data-testid="my-day-body">
+        {/* The band names the page; this title is for screen readers and the document outline. */}
+        <div data-testid="my-day-header" className="contents">
+          <PageTitleUnderBand className="sr-only">My Day</PageTitleUnderBand>
+        </div>
+        {ready && view === "dashboard" && page === "today" ? (
+          <BandButton label="Quick add" icon={Plus} onClick={() => setSheet("quick-add")} testId="my-day-quick-add" />
+        ) : null}
+        {ready && view === "all" ? (
+          <BandButton
+            label="Customise My Day"
+            icon={SlidersHorizontal}
+            onClick={() => setSheet("customise")}
+            testId="my-day-all-customise"
+          />
+        ) : null}
 
-        {authStatus === "loading" || (enabled && state.status === "loading") ? (
+        {authStatus === "loading" ||
+        (enabled && !sampleView && (state.status === "loading" || (state.status === "ready" && needsYouPending))) ? (
           <>
             <span role="status" className="sr-only">
               Loading My Day
             </span>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="my-day-loading" aria-hidden="true">
+            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4" data-testid="my-day-loading" aria-hidden="true">
               <div className="col-span-2">
                 <ModeModuleSkeleton rows={2} twoLine eyebrow />
               </div>
@@ -378,45 +566,54 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
         ) : null}
 
         {sampleView ? (
-          <div className="grid gap-5" data-testid="my-day-sample">
-            <div className="grid gap-2">
-              <SignedOutSampleNotice
-                title="Sign in to see your own day"
-                testId="my-day-signed-out"
-                noticeTestId="my-day-sample-notice"
-              >
-                Your shifts, on call, CPD and renewals appear here once you sign in. Nothing is shared.
-              </SignedOutSampleNotice>
-              <p className="px-1 text-sm text-[color:var(--dash-muted)]" data-testid="my-day-sample-line">
-                Everything below is a made-up sample.
-              </p>
-            </div>
-            {view === "all" ? (
+          <div className="grid min-w-0 gap-2.5" data-testid="my-day-sample">
+            {needsYou ? (
               <MyDaySampleDashboard
                 now={now}
                 today={today}
                 page={page}
-                view="all"
+                view={view}
+                needsYou={needsYou}
                 onShowAll={showAll}
-                renderFullList={fullList}
+                renderFullList={(shown, shownChecked) => (
+                  <MyDayFullList
+                    items={shown}
+                    today={today}
+                    now={now}
+                    checked={shownChecked}
+                    checkedAt={null}
+                    missing={[]}
+                    onBack={closeFullList}
+                    onRetry={state.retry}
+                  />
+                )}
               />
             ) : (
-              <MyDaySwipePanel page={page} onChange={changePage}>
-                <MyDaySampleDashboard
-                  now={now}
-                  today={today}
-                  page={page}
-                  view="dashboard"
-                  onShowAll={showAll}
-                  renderFullList={fullList}
-                />
-              </MyDaySwipePanel>
+              <MyDaySampleLoading />
             )}
           </div>
         ) : null}
 
+        {myDayNeedsSignIn(authStatus) && !sampleView ? (
+          <div className="grid gap-3" data-testid="my-day-signed-out">
+            <WorkStateNotice
+              kind="signed-out"
+              title="Sign in to see your day"
+              body="My Day gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared."
+              onSignIn={() => setSignInOpen(true)}
+            />
+            {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
+          </div>
+        ) : null}
+
         {ready ? (
-          <div className="grid gap-5" data-testid="my-day-ready">
+          <div className="grid min-w-0 gap-2.5" data-testid="my-day-ready">
+            {/* "Set up Work": the first thing on Today, for the new work mode only. */}
+            {view === "dashboard" && page === "today" ? (
+              <NewWorkModeOnly>
+                <WorkSetupPromptCard />
+              </NewWorkModeOnly>
+            ) : null}
             {failed.length > 0 ? (
               <QuietNote
                 icon={TriangleAlert}
@@ -439,33 +636,47 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
               />
             ) : null}
             {view === "all" ? (
-              fullList(items, checked)
+              <MyDayFullList
+                items={needsYou ?? []}
+                today={today}
+                now={now}
+                checked={checked}
+                checkedAt={loaded.at}
+                missing={failed}
+                onBack={closeFullList}
+                onRetry={state.retry}
+              />
             ) : (
-              <MyDaySwipePanel page={page} onChange={changePage}>
-                <MyDayDashboardView
-                  key={authEpoch}
-                  allowSample={allowSample}
-                  now={now}
-                  today={today}
-                  items={items}
-                  renewals={renewals}
-                  helpItems={helpItems}
-                  checked={checked}
-                  checkedAt={loaded.at}
-                  incomplete={failed.length > 0}
-                  editing={editing}
-                  onToggleEditing={() => setEditing((value) => !value)}
-                  page={page}
-                  onShowAll={showAll}
-                  onRetry={state.retry}
-                />
-              </MyDaySwipePanel>
+              <MyDayDashboardView
+                key={authEpoch}
+                allowSample={allowSample}
+                now={now}
+                today={today}
+                items={items}
+                needsYou={needsYou ?? []}
+                renewals={renewals}
+                helpItems={helpItems}
+                checked={checked}
+                checkedAt={loaded.at}
+                incomplete={failed.length > 0}
+                page={page}
+                onShowAll={showAll}
+                onRetry={state.retry}
+                onCustomise={page === "today" ? () => setSheet("customise") : undefined}
+                onRemindMe={openRemindMe}
+                onOpenReminders={() => setSheet("reminders")}
+                pendingReminders={pendingReminders}
+                newJob={state.newJob}
+              />
             )}
 
             {/* One notice at the top at most; the quieter context is one line of small print here. */}
             {demoNote || notYet.length > 0 ? (
-              <p className="max-w-reading px-3 text-sm text-[color:var(--text-muted)]" data-testid="my-day-small-print">
-                {demoNote ? <span data-testid="my-day-demo-notice">Demo data: invented examples.</span> : null}
+              <p
+                className="m-0 max-w-reading px-1 text-xs text-[color:var(--text-muted)]"
+                data-testid="my-day-small-print"
+              >
+                {demoNote ? <span data-testid="my-day-demo-notice">Example data: made up to look around.</span> : null}
                 {demoNote && notYet.length > 0 ? " " : null}
                 {notYet.length > 0 ? (
                   <span data-testid="my-day-unavailable-notice">
@@ -477,6 +688,36 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
           </div>
         ) : null}
       </div>
+
+      {ready ? (
+        <>
+          <MyDayCustomiseSheet open={sheet === "customise"} onClose={() => setSheet(null)} today={today} />
+          <MyDayQuickAddSheet
+            open={sheet === "quick-add"}
+            onClose={() => setSheet(null)}
+            dateLine={longDate(today)}
+            suggested={suggested}
+            today={today}
+            onRemindMe={() => openRemindMe()}
+          />
+          <RemindMeSheet
+            open={sheet === "remind-me"}
+            onClose={() => setSheet(remind.from)}
+            now={now}
+            shiftEndsAt={remind.shiftEndsAt}
+            initialText={remind.text}
+          />
+          <YourRemindersSheet
+            open={sheet === "reminders"}
+            onClose={() => setSheet(null)}
+            now={now}
+            onAdd={() => {
+              setRemind({ text: "", shiftEndsAt: null, from: "reminders" });
+              setSheet("remind-me");
+            }}
+          />
+        </>
+      ) : null}
     </InformationPageShell>
   );
 }

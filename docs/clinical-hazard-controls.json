@@ -3,14 +3,14 @@
   "authority": "Static evidence register only. It does not establish clinical adequacy, regulatory classification, or risk acceptance.",
   "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
   "reviewedAt": "2026-08-23",
-  "reviewExpiresAt": "2035-12-31",
+  "reviewExpiresAt": "2026-11-23",
   "hazards": [
     {
       "id": "H1",
       "state": "partial",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-11-23",
       "owner": "Clinical safety owner",
       "controlSymbols": ["extractClinicalValueAtoms", "verifyAnswerNumbers", "applyNumericVerification"],
       "controlPaths": ["src/lib/answer-verification.ts", "src/lib/rag/rag-claim-support.ts"],
@@ -26,7 +26,7 @@
       "state": "partial",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-11-23",
       "owner": "Source governance owner",
       "controlSymbols": ["sourceGovernanceWarnings", "deriveTrust"],
       "controlPaths": ["src/lib/source-governance.ts", "src/lib/answer-render-policy.ts"],
@@ -38,7 +38,7 @@
       "state": "partial",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-11-23",
       "owner": "Clinical UX owner",
       "controlSymbols": ["formatAnswerRenderCopyText"],
       "controlPaths": ["src/lib/answer-render-policy.ts"],
@@ -50,7 +50,7 @@
       "state": "partial",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-11-23",
       "owner": "Answer quality owner",
       "controlSymbols": ["assessAndEnforceClaimSupport", "collectSourceCandidates"],
       "controlPaths": ["src/lib/rag/rag-claim-support.ts", "src/lib/answer-render-policy.ts"],
@@ -62,7 +62,7 @@
       "state": "partial",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-11-23",
       "owner": "Answer quality owner",
       "controlSymbols": ["deriveTrust", "deriveConfidence"],
       "controlPaths": ["src/lib/answer-render-policy.ts", "src/lib/rag/rag-answer-support.ts"],
@@ -78,7 +78,7 @@
       "state": "partial",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-11-23",
       "owner": "Application security owner",
       "controlSymbols": ["neutralizeIdentityField", "fenceSourceEvidence", "neutralizePromptInstructions"],
       "controlPaths": ["src/lib/rag/rag-source-block.ts", "src/lib/source-text-sanitizer.ts"],
@@ -90,7 +90,7 @@
       "state": "partial",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-09-28",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-12-28",
       "owner": "Clinical safety owner (owner approval 2026-09-28)",
       "controlSymbols": ["detectServiceUrgentIntents", "rankServiceUrgentRoutes", "rankServiceRecords"],
       "controlPaths": ["src/lib/service-urgent-routing.ts", "src/lib/service-ranker.ts"],
@@ -108,7 +108,7 @@
       "state": "open",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-11-23",
       "owner": "Clinical governance authority",
       "evidenceReferences": ["docs/clinical-hazard-analysis.md"],
       "residualRisk": "Static tests establish code behavior, not clinical truth, source authority, or clinical adequacy."
@@ -118,7 +118,7 @@
       "state": "open",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-11-23",
       "owner": "Authorised risk owner",
       "evidenceReferences": ["docs/clinical-hazard-analysis.md", "docs/clinical-governance.md"],
       "residualRisk": "No authorised external clinical or regulatory risk acceptance is recorded."
@@ -128,7 +128,7 @@
       "state": "open",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-09-18",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-12-18",
       "owner": "Clinical governance authority",
       "evidenceReferences": [
         "docs/audit/2026-09-17-external-audit-refutations.md",
@@ -142,7 +142,7 @@
       "state": "open",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-09-18",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-12-18",
       "owner": "Clinical governance authority",
       "evidenceReferences": ["src/data/dictionary-source-dispositions.json", "src/lib/source-authority-registry.ts"],
       "residualRisk": "Four dictionary sources are held because the publisher field names a description rather than an agency: WA-MHAS 'Government of Western Australia', WA-AHLO 'WA Health service providers', WA-MHERL 'Mental Health Commission / WA Health' (two bodies in one field) and 4AT-OFFICIAL '4AT developers'. Establishing the real agency needs the four canonical pages read, which this environment's network policy blocks, so they stay held. Two findings do not need those pages and need a decision. (1) The register contradicts itself: source-authority-registry.ts registers 'Government of Western Australia' at line 509 (catalogue-identity only, added 2026-09-16 by commit 255b9c1fe) while the comment at lines 558-564 still states that string was deliberately not registered. One of the two is wrong and the comment misleads anyone reading it. (2) Correcting any publisher only clears the acquisition gate if the new name resolves in that register, and the register is a protected retrieval-ranking surface, so a metadata correction is also a retrieval change. Neither was edited here."
@@ -152,7 +152,7 @@
       "state": "open",
       "reviewedCommit": "ff57ec6d0903ead5647db968436be911a744567d",
       "reviewedAt": "2026-09-18",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewExpiresAt": "2026-12-18",
       "owner": "Clinical governance authority",
       "evidenceReferences": ["src/components/clinical-dashboard/patient-profile-panel.tsx"],
       "residualRisk": "The patient-profile number fields (age, eGFR, serum creatinine, creatinine clearance, QTc) feed dose calculators, so a value displayed must never differ from the value stored. The #WFARS3 defect that broke that invariant was fixed on 2026-09-18. CORRECTION 2026-09-19, verified against main: the standing question as written - 'is it ever acceptable for the number on screen to differ from the number a dose calculation uses' - is already answered NO by the shipped field, and the answer is enforced by committed tests. A partial or out-of-range entry is refused rather than stored, the field shows the range error and sets aria-invalid, and the previously stored number is cleared rather than left behind a contradicting draft (tests/patient-profile-panel.dom.test.tsx, 'treats a partial QTc as unassessed rather than as a number under the floor'). The alternative of preserving the last good value while an entry is in progress was considered and rejected on 2026-09-19: it would reintroduce exactly the display-versus-stored disagreement this decision exists to prevent. The residual risk is narrower than first recorded and is tracked as #DTAMMK: a refused entry still survives a profile clear performed from another mounted panel."
@@ -160,24 +160,24 @@
   ],
   "reviewedPathDigests": {
     "docs/audit/2026-09-17-external-audit-refutations.md": "c32a15b9c364c35fe7134784d28d4598dbf26f62dc8fdf01aa4a6646b5bd1d82",
-    "docs/clinical-governance.md": "770e25a4cd66054c8f2dc99941bd3f35495634856aefd81422967fa573d15e5b",
-    "docs/clinical-hazard-analysis.md": "bfe6f132263ffcbd7dc78433463224f07c6d51cfd913ea9a980b323ee9d4d7f4",
-    "src/components/clinical-dashboard/patient-profile-panel.tsx": "7c438a015dbde4870e7ce6bcb8ef53b502e6e4489f18b498d0d80dcdf32f8342",
-    "src/data/dictionary-source-dispositions.json": "afc5760d7567803c512c7e0a2cf5826cdc27b3c152db9c0aadf7f66d3e1c6141",
-    "src/lib/answer-render-policy.ts": "5936ee270770ea088641040e20986284b7bd2594a64d7543021148b67c0ecda1",
+    "docs/clinical-governance.md": "1a87a39f18965ab0ad8b89b69865e323d5101f5f08c592fa6d23620fb501b429",
+    "docs/clinical-hazard-analysis.md": "a45cfc864d86bff7089e2b495df1f2debaddd3931424439bf823ac09a52cc30c",
+    "src/components/clinical-dashboard/patient-profile-panel.tsx": "c81ce6a9d80bdc749f9ebfac6bda7578b97f66acf7daaeb8827b4c7b3e6b0628",
+    "src/data/dictionary-source-dispositions.json": "3d03bd0be2d699f5dc7eb50338b535112a7dea57daf0f210de9ae241c606c2b8",
+    "src/lib/answer-render-policy.ts": "a5e2b36c4bdf6c2081d443d10e87c0ced403abfb129454d6989ad93af737f4a9",
     "src/lib/answer-verification.ts": "0a340eeec7850282d8cbe50c90dd9a4369bc04bd92057d97005db323321f91ed",
-    "src/lib/clinical-safety.ts": "edc08f4c3acabd84f41e02362d3854fb73ccc5ee94712dc95116788c34073c58",
+    "src/lib/clinical-safety.ts": "8fa7b5fca92f2b12b6f241d32feadd9310ee075a38e55e10b5bbce4c26c1173b",
     "src/lib/rag/rag-answer-support.ts": "4250f30017789f6c5d75e84e7a291f163f08abb95d615fb2368e904956841dd5",
     "src/lib/rag/rag-claim-support.ts": "7cdcfc84e8b5516588f6ac08163330eb8fbd52d6c6750dc63955110516ab345c",
-    "src/lib/rag/rag-source-block.ts": "84f8c6d83a66e8c5e197fc59cca2a7e4550ac6af23266ad75de4f165ce384416",
+    "src/lib/rag/rag-source-block.ts": "984b3f655b468aabbf2d1f489eb6df66273fe7c9e85ea88df63affa986654ad2",
     "src/lib/service-ranker.ts": "bbdbe3629520a22104194fc727530c05614dfba5528d9b9d8d5743acbfa9ea44",
     "src/lib/service-urgent-routing.ts": "663b0d131fa4457a4df9875fb200efe1520c9ebda75b552a8bbd68eb66264a7f",
-    "src/lib/source-authority-registry.ts": "938bbbb1d26bdb88acbb9cc15f43fc6d809a13de49e6a47d745c992aaba3f813",
-    "src/lib/source-governance.ts": "31411edda0a4c350274ab13a4a5406e210ddfd68186073b54305494936f48e20",
+    "src/lib/source-authority-registry.ts": "e82b2f1aeaf053a321f76576da71a2c54f7fb4db485fbf6c4caf686ac6f2267c",
+    "src/lib/source-governance.ts": "e3e1c09b0a7e446b7055f894088c771f1a5cc160a0f20f026f3cc291af5804fa",
     "src/lib/source-text-sanitizer.ts": "8d7a2bba424096b6334494a7c5760d4fc74381d8806b117d3d801e6b19e8138f",
-    "tests/answer-render-policy.test.ts": "e7ddb86442ecdafd01bc6d1b94791e41b98c91c0d313ab03a532a1cc9fc60465",
+    "tests/answer-render-policy.test.ts": "5e48ea66ca1902ac17a271444db7f6350a37c0100fe2152afd042e4fdb89427d",
     "tests/answer-verification.test.ts": "6c61453a04d7342b5c80ddb337df76b61f5dfe14e6de363c86348d97e71ccee3",
-    "tests/clinical-safety.test.ts": "9980626dfa8098093de26c1af9039d006f4a2606a73caa276eb33c74e4ecab6a",
+    "tests/clinical-safety.test.ts": "053b82e3523a5aa55b40059a558e8992fe5342ebedd8812da10193977cad43f6",
     "tests/rag-claim-support.test.ts": "105f93e7e91e514d512f2ef47fc07b92370c71b6c893e3c4bd0a09d39f87a360",
     "tests/rag-content-accuracy.test.ts": "6aaacb7fb9b43711696ba244a56cd31736fb3a884690774cde4f4db6ee206eb4",
     "tests/rag-injection.test.ts": "9a6fa43c799232d9e38d334b732c99dfaad5a5192ed64a7fcb8d6cb373300931",
@@ -189,5 +189,84 @@
     "tests/services-safety-routing.test.ts": "e54f0a0f0f11810848de0b178c5398e9ac158b90a814d2005986d9e0b3853f33",
     "tests/source-governance.test.ts": "0e9e126370a5500dbb72c722610fe1268c7e2f32e6b20b0a4f3ea401c54a645d",
     "tests/ward-output.test.ts": "bb9f417d63c769b8e059f41fe2c9a5c52f772cedd13e6352408b4a7716e00222"
-  }
+  },
+  "driftExceptions": [
+    {
+      "path": "src/lib/clinical-safety.ts",
+      "reason": "Drift predates the blocking gate. Safety-behaviour changes since the 2026-08-23 review (e.g. 41b5a025a escalate/monitoring matching, 64db243a9 stop-instruction labelling, 1aa717e88 no all-clear over a failed medication check) need clinical re-review, then a re-seal.",
+      "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-25",
+      "expiresOn": "2026-10-25"
+    },
+    {
+      "path": "src/components/clinical-dashboard/patient-profile-panel.tsx",
+      "reason": "Drift predates the blocking gate. Patient-profile changes since the 2026-08-23 review (3da15e805 clear generation, 8d49b16c4 number field) need re-review, then a re-seal.",
+      "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-25",
+      "expiresOn": "2026-10-25"
+    },
+    {
+      "path": "tests/clinical-safety.test.ts",
+      "reason": "Drift predates the blocking gate. Test changes accompanying the clinical-safety.ts changes above; re-seal together with it.",
+      "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-25",
+      "expiresOn": "2026-10-25"
+    },
+    {
+      "path": "docs/clinical-hazard-analysis.md",
+      "reason": "Changed by PR #3019 (1a3d89350) after the 2026-08-23 review: adds proposed hazard H7, the Mental Health Act timeline misstating a statutory deadline (H7a-c, all Critical). Needs owner review and a register entry, then a re-seal. PR #3146 (owner approval 2026-09-28): H8 services crisis routing rewritten to the routing and tests that exist and registered as H8 in this register. Not resealed because the H7 change above still awaits review.",
+      "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-25",
+      "expiresOn": "2026-10-25"
+    },
+    {
+      "path": "src/lib/source-authority-registry.ts",
+      "reason": "Changed on main by 309656a8 (#T9MZ7V, merge the duplicate American Psychiatric Association register entry) after the 2026-08-23 review; arrived in this branch via a main merge. Main only warns on drift; this branch makes drift blocking. Needs owner re-review, then a re-seal. PR #3146 (owner approval 2026-09-28): comment on descriptive publishers updated; 4AT stays unregistered. Not resealed because the earlier change above still awaits review.",
+      "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-25",
+      "expiresOn": "2026-10-25"
+    },
+    {
+      "path": "src/lib/answer-render-policy.ts",
+      "reason": "Changed on main by #3031 (#WGMB4Z answer render-trust cap, #GHC4XZ) after the last seal; arrived in this branch via a main merge. Main only warns on drift; this branch makes drift blocking. Needs owner re-review, then a re-seal.",
+      "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-25",
+      "expiresOn": "2026-10-25"
+    },
+    {
+      "path": "tests/answer-render-policy.test.ts",
+      "reason": "Changed on main by #3031 (#WGMB4Z answer render-trust cap, #GHC4XZ) after the last seal; arrived in this branch via a main merge. Main only warns on drift; this branch makes drift blocking. Needs owner re-review, then a re-seal.",
+      "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-25",
+      "expiresOn": "2026-10-25"
+    },
+    {
+      "path": "src/data/dictionary-source-dispositions.json",
+      "reason": "Source-disposition changes in PR #3067 (owner-approved publisher page reads for ledger items #JHT39N, #WY625D, #6X06YS, #YDENFM, #KVYHWZ; held/admitted counts and per-source blockers updated), and the NSW MSE handbook recorded as retired later on 2026-09-26 on the owner's approval, are pending owner review, then a re-seal. PR #3146 (owner approval 2026-09-28): AIHW-NOCC-2026 stays held and gains a registration-date blocker. Not resealed because earlier drift on this path still awaits review.",
+      "recordedBy": "BigSimmo (owner), decision 2026-09-26. Engineering, not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-26",
+      "expiresOn": "2026-10-26"
+    },
+    {
+      "path": "src/lib/rag/rag-source-block.ts",
+      "reason": "PR #3103 (#JYH1FH, step 1 of the locally_reviewed label repair): the model-facing source line reads \"clinical validation: unverified (endorsed by issuing WA service)\" for the new wa_document_control_endorsement basis. No live document carries that basis until the separately approved data migration, so current output is unchanged. Pending owner review, then a re-seal.",
+      "recordedBy": "BigSimmo (owner), decision 2026-09-26 (\"record the two step 1 files as changed and awaiting my review\"). Engineering, not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-26",
+      "expiresOn": "2026-11-09"
+    },
+    {
+      "path": "src/lib/source-governance.ts",
+      "reason": "PR #3103 (#JYH1FH, step 1 of the locally_reviewed label repair): claim-evidence eligibility accepts the wa_document_control_endorsement basis exactly as it accepts locally_reviewed, and the unverified-source warning gets honest wording for it (same code and severity). No live document carries that basis until the separately approved data migration. Pending owner review, then a re-seal.",
+      "recordedBy": "BigSimmo (owner), decision 2026-09-26 (\"record the two step 1 files as changed and awaiting my review\"). Engineering, not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-09-26",
+      "expiresOn": "2026-11-09"
+    },
+    {
+      "path": "docs/clinical-governance.md",
+      "reason": "This combined change replaces the 2026-09-17 name-them-never-score-them rule with the 2026-10-03 transparent reference aid wording. The cited file drifted after the 2026-08-23 review and has not had a new clinical review.",
+      "recordedBy": "Engineering, combined-PR session 2026-10-06. Not a clinical review; the owner must re-review.",
+      "recordedOn": "2026-10-06",
+      "expiresOn": "2026-11-20"
+    }
+  ]
 }

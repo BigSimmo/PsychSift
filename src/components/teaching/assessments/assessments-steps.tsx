@@ -1,8 +1,10 @@
 "use client";
 
 import { Bell, CalendarDays, Check, Clock, Eye, EyeOff, FileText, Lock, Send, Users } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
+
+import { WorkButton, WorkDock } from "@/components/mode-kit/work";
+import { AssessButton } from "@/components/teaching/assessments/assess-kit";
 
 import { focusRing } from "@/components/card-recipes";
 import { modePressable } from "@/components/mode-kit/recipes";
@@ -24,7 +26,6 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import {
   bookableDay,
@@ -50,33 +51,29 @@ const SUP = SAMPLE_SUPERVISOR.short;
 function LinkButton({
   href,
   primary,
-  icon: Icon,
+  icon,
   children,
 }: {
   href: string;
   primary?: boolean;
   icon?: typeof Send;
-  children: React.ReactNode;
+  children: string;
 }) {
   return (
-    <Link
-      href={href}
-      className={cn(buttonFaceClass({ variant: primary ? "primary" : "secondary", block: true }), "no-underline")}
-    >
-      {Icon ? <Icon aria-hidden="true" className="size-icon-sm" /> : null}
+    <WorkButton href={href} variant={primary ? "primary" : "secondary"} size="wide" icon={icon}>
       {children}
-    </Link>
+    </WorkButton>
   );
 }
 
-/** "Remind Dr Nair": the made-up records send nothing, so the button says what happened instead. */
+/** "Remind Dr Wattle": the made-up records send nothing, so the button says what happened instead. */
 function SampleOnlyButton({ children }: { children: string }) {
   const [said, setSaid] = useState(false);
   return (
     <>
-      <Button variant="secondary" block onClick={() => setSaid(true)}>
+      <AssessButton variant="secondary" block onClick={() => setSaid(true)}>
         {children}
-      </Button>
+      </AssessButton>
       {said ? (
         <p role="status" className="px-1 text-center text-xs text-[color:var(--text-muted)]">
           Made-up records: nothing was sent.
@@ -93,27 +90,27 @@ export function EndOfTermSteps({ s }: ScreenProps) {
   let primary: React.ReactNode = null;
   if (!s.request.sent)
     primary = (
-      <LinkButton primary href={viewHref("request")} icon={Send}>
-        Ask {SUP} to complete your form
-      </LinkButton>
+      <WorkButton href={viewHref("request")} icon={Send}>
+        {`Ask ${SUP}`}
+      </WorkButton>
     );
   else if (st === "sup-signed")
     primary = (
-      <LinkButton primary href={viewHref("report", { of: "eot" })} icon={FileText}>
+      <WorkButton href={viewHref("report", { of: "eot" })} icon={FileText}>
         Read and sign your report
-      </LinkButton>
+      </WorkButton>
     );
   else if (st === "doc-signed" && !s.sentToMeu)
     primary = (
-      <LinkButton primary href={viewHref("pdf", { of: "eot" })} icon={Send}>
+      <WorkButton href={viewHref("pdf", { of: "eot" })} icon={Send}>
         Email the PDF to your MEU
-      </LinkButton>
+      </WorkButton>
     );
   else if (windowOpen(s) && !s.booking && !meetingHeld(s))
     primary = (
-      <LinkButton primary href={viewHref("book")} icon={CalendarDays}>
+      <WorkButton href={viewHref("book")} icon={CalendarDays}>
         Book the meeting
-      </LinkButton>
+      </WorkButton>
     );
   return (
     <>
@@ -126,7 +123,7 @@ export function EndOfTermSteps({ s }: ScreenProps) {
       <Panel>
         <Eyebrow accent>{`Step ${currentStepNumber(steps)} of ${steps.length}`}</Eyebrow>
         <h2 className="text-xl leading-tight font-semibold text-[color:var(--text-heading)]">{endOfTermLine(s)}</h2>
-        <p className={secondaryText}>Due to your MEU by Fri 20 Nov, within 10 working days of the end of term.</p>
+        <p className={secondaryText}>Due to your MEU by Fri 20 Nov. Your MEU sets this date, so check it with them.</p>
       </Panel>
       {late ? (
         <Inset tone="warm" title={`${SUP} hasn't finished her draft`} role="status">
@@ -138,8 +135,16 @@ export function EndOfTermSteps({ s }: ScreenProps) {
           <StepRow key={step.title} state={step.state} title={step.title} detail={step.detail} />
         ))}
       </List>
-      {primary}
-      {!s.request.sent && !selfDone(s) ? <LinkButton href={viewHref("form")}>Rate yourself first</LinkButton> : null}
+      {primary || (!s.request.sent && !selfDone(s)) ? (
+        <WorkDock>
+          {primary}
+          {!s.request.sent && !selfDone(s) ? (
+            <WorkButton variant="secondary" href={viewHref("form")}>
+              Rate first
+            </WorkButton>
+          ) : null}
+        </WorkDock>
+      ) : null}
       {s.request.sent && !supReady(s) ? <SampleOnlyButton>{`Remind ${SUP}`}</SampleOnlyButton> : null}
       {st === "met" ? <SampleOnlyButton>{`Remind ${SUP} to sign`}</SampleOnlyButton> : null}
       {late ? <LinkButton href={viewHref("help")}>Ask your MEU for help</LinkButton> : null}
@@ -210,7 +215,7 @@ export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
         nothing is sent.
       </SmallPrint>
       {r.sent ? null : (
-        <Button
+        <AssessButton
           icon={Send}
           variant="primary"
           block
@@ -220,7 +225,7 @@ export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
           }}
         >
           Send request
-        </Button>
+        </AssessButton>
       )}
     </>
   );
@@ -300,13 +305,13 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
             The booking window is the last two weeks of term. That keeps the meeting near the end of term, so the form
             can reach the MEU by Fri 20 Nov.
           </p>
-          <Button
+          <AssessButton
             variant={s.remindWhenOpen ? "secondary" : "primary"}
             icon={s.remindWhenOpen ? Check : Bell}
             onClick={() => dispatch({ type: "toggle-remind-open" })}
           >
             {s.remindWhenOpen ? "Reminder set" : "Remind me when it opens"}
-          </Button>
+          </AssessButton>
         </Panel>
         <List>
           <Row icon={CalendarDays} title="Mon 26 Oct to Fri 6 Nov" subtitle="Term ends Sun 8 Nov" />
@@ -323,7 +328,7 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
         <Panel>
           <Eyebrow>Booked</Eyebrow>
           <p className="text-lg font-semibold text-[color:var(--text-heading)]">{bookingLabel(s.booking)}</p>
-          <p className={secondaryText}>With {SAMPLE_SUPERVISOR.name} · Ward 4 office · 30 minutes</p>
+          <p className={secondaryText}>With {SAMPLE_SUPERVISOR.name} · Ward A office · 30 minutes</p>
         </Panel>
         <List>
           <TickRow checked={s.addToMyDay} onChange={() => dispatch({ type: "toggle-my-day" })}>
@@ -341,10 +346,10 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
               {SUP} will be told. You can pick another time while the window is open.
             </Inset>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="secondary" onClick={() => setConfirmCancel(false)}>
+              <AssessButton variant="secondary" onClick={() => setConfirmCancel(false)}>
                 Keep it
-              </Button>
-              <Button
+              </AssessButton>
+              <AssessButton
                 variant="primary"
                 onClick={() => {
                   dispatch({ type: "cancel-booking" });
@@ -352,13 +357,13 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
                 }}
               >
                 Cancel booking
-              </Button>
+              </AssessButton>
             </div>
           </>
         ) : (
-          <Button variant="secondary" block onClick={() => setConfirmCancel(true)}>
+          <AssessButton variant="secondary" block onClick={() => setConfirmCancel(true)}>
             Change time
-          </Button>
+          </AssessButton>
         )}
       </>
     );
@@ -432,16 +437,16 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
       ) : (
         <p className={secondaryText}>No times left in the window. Message {SUP} from Supervision.</p>
       )}
-      <Button
+      <AssessButton
         icon={Check}
         variant="primary"
         block
         disabled={!time}
-        aria-describedby={time ? undefined : "assess-book-why"}
+        describedBy={time ? undefined : "assess-book-why"}
         onClick={() => time && dispatch({ type: "book", day, time })}
       >
         {time ? `Book ${dayLabel(day)}, ${time}` : "Pick a time"}
-      </Button>
+      </AssessButton>
       {time ? null : <WhyNot id="assess-book-why">Pick one of the times above.</WhyNot>}
       <SampleOnlyButton>{`Ask ${SUP} for another time`}</SampleOnlyButton>
     </>

@@ -95,7 +95,7 @@ function monthWords(months: readonly CmeMonthOfWeeks[], year: number, today: str
   return months
     .filter(({ month }) => month <= lastMonth)
     .map(({ month, hours }) => `${MONTH_NAMES[month]} ${formatHours(hours)} h`)
-    .join("; ");
+    .join(", ");
 }
 
 export function CmeYearInWeeks({

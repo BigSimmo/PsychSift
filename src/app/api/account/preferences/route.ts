@@ -1,8 +1,14 @@
 import { z } from "zod";
 
 import { mergeAccountPreferences, normalizePreferences } from "@/lib/account-preferences";
+import { isWorkTimeZone } from "@/lib/work-time/zones";
 import { dateKeyToUtcMillis, isValidTime } from "@/lib/calendar/calendar-event";
-import { MAX_ALERTS_PER_DAY, MIN_ALERTS_PER_DAY, REMINDER_LEAD_TIMES } from "@/lib/reminders/settings";
+import {
+  MAX_ALERTS_PER_DAY,
+  MIN_ALERTS_PER_DAY,
+  REMINDER_LEAD_TIMES,
+  type BellPhoneArea,
+} from "@/lib/reminders/settings";
 import { jsonError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -48,6 +54,22 @@ const remindersPatchSchema = z
     quietHours: z.object({ enabled: z.boolean(), start: wallClockSchema, end: wallClockSchema }).partial().strict(),
     maxAlertsPerDay: z.number().int().min(MIN_ALERTS_PER_DAY).max(MAX_ALERTS_PER_DAY),
     brief: z.object({ enabled: z.boolean(), workday: wallClockSchema, dayOff: wallClockSchema }).partial().strict(),
+    bellPhone: z
+      .object({
+        enabled: z.boolean(),
+        areas: z
+          .object({
+            "on-call": z.boolean(),
+            roster: z.boolean(),
+            cme: z.boolean(),
+            teaching: z.boolean(),
+            "my-work": z.boolean(),
+          } satisfies Record<BellPhoneArea, z.ZodBoolean>)
+          .partial()
+          .strict(),
+      })
+      .partial()
+      .strict(),
   })
   .partial()
   .strict()
@@ -82,6 +104,7 @@ const preferencesPatchSchema = z
     workStage: z.enum(["intern", "resident", "registrar", "consultant", "other"]).nullable(),
     ranzcpStage: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable(),
     reminders: remindersPatchSchema,
+    timeZone: z.string().refine(isWorkTimeZone, { message: "Unknown time zone." }),
   })
   .partial()
   .strict()
@@ -96,6 +119,14 @@ function nextUpdatedAt(previous: string | null): string {
 }
 
 /**
+ * Keys on this row that other routes own and this route must carry through:
+ * `roster` (`/api/roster/settings`) and `work` (`/api/work/sync`, the work
+ * choices that follow the doctor between devices). Neither is ever returned
+ * here.
+ */
+const ROUTE_OWNED_KEYS = ["roster", "work"] as const;
+
+/**
  * Roster's own settings live at `preferences.roster` on this same row, written
  * only by `/api/roster/settings` (see `@/lib/roster/settings`). This route
  * must never return that key — the phone caches this whole response in
@@ -104,10 +135,12 @@ function nextUpdatedAt(previous: string | null): string {
  * otherwise silently drop any unknown key including this one. So the raw
  * value is read once and spliced back into what gets persisted.
  */
-function extractRoster(preferences: unknown): unknown {
-  return preferences !== null && typeof preferences === "object" && !Array.isArray(preferences)
-    ? (preferences as Record<string, unknown>).roster
-    : undefined;
+function extractRouteOwnedKeys(preferences: unknown): Record<string, unknown> {
+  if (preferences === null || typeof preferences !== "object" || Array.isArray(preferences)) return {};
+  const stored = preferences as Record<string, unknown>;
+  const kept: Record<string, unknown> = {};
+  for (const key of ROUTE_OWNED_KEYS) if (stored[key] !== undefined) kept[key] = stored[key];
+  return kept;
 }
 
 export async function GET(request: Request) {
@@ -146,8 +179,7 @@ export async function PUT(request: Request) {
 
       const preferences = mergeAccountPreferences(existing?.preferences ?? null, patch);
       const updatedAt = nextUpdatedAt(existing?.updated_at ?? null);
-      const roster = extractRoster(existing?.preferences);
-      const storedPreferences = roster === undefined ? preferences : { ...preferences, roster };
+      const storedPreferences = { ...preferences, ...extractRouteOwnedKeys(existing?.preferences) };
 
       if (!existing) {
         const { error: insertError } = await supabase.from("user_preferences").insert({

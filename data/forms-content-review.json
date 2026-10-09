@@ -2,7 +2,7 @@
   "exportMetadata": {
     "format": "forms-operational-content-review",
     "formatVersion": 1,
-    "note": "Review state for the operational guidance in data/forms-catalog.json: purpose, maker, threshold, clock, authority boundaries, traps, pre-use checks and safety pearl. Josh, PsychSift's clinical owner, confirmed the submitted clinical sign-offs on 2 October 2026; the public reviewer attribution PsychSift refers to his review. Reviewed entries carry reviewer identity, the original review timestamp and an exact content pin. Form 2 remains drafted because its guidance changed after the original review. Section summaries are reviewed separately in data/forms-act-section-cues.json and data/mha-2014-sections.json."
+    "note": "Review state for the operational guidance in data/forms-catalog.json: purpose, maker, threshold, clock, authority boundaries, traps, pre-use checks and safety pearl. Josh, PsychSift's clinical owner, confirmed the submitted clinical sign-offs on 2 October 2026; the public reviewer attribution PsychSift refers to his review. Reviewed entries carry reviewer identity, the original review timestamp and an exact content pin. Form 2 was revised after the original review and signed on 2026-10-06. Section summaries are reviewed separately in data/forms-act-section-cues.json and data/mha-2014-sections.json."
   },
   "forms": [
     {

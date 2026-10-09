@@ -1,9 +1,10 @@
 "use client";
 
-import { Info, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowLeftRight, Info, RefreshCw, TriangleAlert } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
+import { WorkButton } from "@/components/mode-kit/work";
 import { cn } from "@/components/ui-primitives";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { hoursRestCheck, type HoursRestBreak, type HoursRestGauge } from "@/lib/roster/hours-rest-check";
@@ -13,6 +14,7 @@ import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-v
 
 import { formatHours, kindOf } from "./roster-format";
 import { RosterFootnote, RosterNote, RosterSectionHead, rosterOutlineButton } from "./roster-list";
+import { rosterRequestHref } from "./roster-who-can-cover";
 
 /**
  * Hours and rest: the next 14 days against the signed agreement limits, drawn rather than
@@ -197,6 +199,22 @@ export function RosterHoursRestCheck({
     [shifts, now],
   );
   const startsAt = useMemo(() => new Map(shifts.map((shift) => [shift.id, shift.startsAt])), [shifts]);
+  // A warned team shift that hasn't started can be swapped from here (mockup "Swap Wed 14").
+  const swappable = useMemo(
+    () =>
+      new Map(
+        shifts
+          .filter(
+            (shift) =>
+              shift.source === "team" &&
+              shift.assignmentId &&
+              shift.serviceId &&
+              Date.parse(shift.startsAt) > now.getTime(),
+          )
+          .map((shift) => [shift.id, shift]),
+      ),
+    [shifts, now],
+  );
   // Includes a long run that ended before the window, whose rest the signed check cannot measure.
   const recentNights = useMemo(
     () =>
@@ -262,7 +280,7 @@ export function RosterHoursRestCheck({
 
       {check.warnings.length ? (
         <div className="grid gap-2" data-testid="roster-hours-rest-warnings">
-          {check.warnings.map((warning) => (
+          {check.warnings.map((warning, index) => (
             <RosterNote key={`${warning.shiftId}-${warning.rule}`} icon={TriangleAlert} tone="warning">
               <p className="font-semibold text-[color:var(--text-heading)]">
                 {startsAt.has(warning.shiftId)
@@ -277,6 +295,23 @@ export function RosterHoursRestCheck({
                 <p className="text-xs text-[color:var(--text-muted)]">
                   Exception, clause {warning.exception.clause}: “{warning.exception.quote}”
                 </p>
+              ) : null}
+              {swappable.has(warning.shiftId) &&
+              check.warnings.findIndex((other) => other.shiftId === warning.shiftId) === index ? (
+                <div className="pt-1">
+                  <WorkButton
+                    variant="amber"
+                    icon={ArrowLeftRight}
+                    href={rosterRequestHref(
+                      "swap",
+                      swappable.get(warning.shiftId)!.assignmentId!,
+                      swappable.get(warning.shiftId)!.serviceId!,
+                    )}
+                    testId="roster-hours-rest-swap"
+                  >
+                    {`Swap ${formatPerthDay(perthDateOf(swappable.get(warning.shiftId)!.startsAt))}`}
+                  </WorkButton>
+                </div>
               ) : null}
             </RosterNote>
           ))}

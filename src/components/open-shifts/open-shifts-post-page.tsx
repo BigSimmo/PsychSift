@@ -11,7 +11,8 @@ import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ROSTER_OPEN_SHIFT_KINDS, type RosterAction } from "@/lib/roster/team/model";
 
 import { ConfirmSheet } from "./open-shifts-confirm";
-import { LoadFailed } from "./open-shifts-states";
+import { SignInAction } from "./open-shifts-sign-in";
+import { LoadFailed, NoTeam } from "./open-shifts-states";
 import {
   FootAction,
   ListSkeleton,
@@ -124,6 +125,10 @@ export function OpenShiftsPostPage() {
         <ListSkeleton rows={5} />
       ) : state.status === "error" ? (
         <LoadFailed what="Your teams" message={state.message} onRetry={state.reload} />
+      ) : state.status === "signed-out" ? (
+        <SignInAction label="Sign in to post shifts" />
+      ) : state.status === "no-team" ? (
+        <NoTeam />
       ) : state.status !== "ready" ? (
         <p className="px-3 py-8 text-sm text-[color:var(--text-muted)]">
           Only a team&apos;s roster managers can post shifts.
@@ -160,7 +165,7 @@ export function OpenShiftsPostPage() {
           <Field
             label="Kind of shift"
             htmlFor={`${id}-kind`}
-            hint="Sets the usual times and code; change them below if needed."
+            hint="Sets the usual times and code. Change them below if needed."
           >
             <select
               id={`${id}-kind`}

@@ -113,10 +113,15 @@ describe("document viewer phone reading order", () => {
     fileURLToPath(new URL("../src/components/document-viewer/document-overview-landing.tsx", import.meta.url)),
     "utf8",
   );
+  const contentPanelsSource = readFileSync(
+    fileURLToPath(new URL("../src/components/document-viewer/document-viewer-content-panels.tsx", import.meta.url)),
+    "utf8",
+  );
 
   it("keeps the clinical summary out of the overview landing", () => {
     expect(landingSource).not.toContain("DocumentClinicalSummary");
-    expect(viewerSource).toContain("<DocumentClinicalSummary");
+    expect(contentPanelsSource).toContain("<DocumentClinicalSummary");
+    expect(viewerSource).toContain("<DocumentViewerContentPanels");
   });
 
   it("orders every phone grid child explicitly and keeps summary/text after the PDF", () => {
@@ -135,10 +140,13 @@ describe("document viewer phone reading order", () => {
     expect(rail).toBeGreaterThan(-1);
 
     const preview = viewerSource.indexOf('id="pdf-preview-section"');
-    const summaryCard = viewerSource.indexOf('id="source-summary-card"');
-    const indexedText = viewerSource.indexOf("<IndexedTextPanel");
+    const panels = viewerSource.indexOf("<DocumentViewerContentPanels");
     expect(preview).toBeGreaterThan(sourceColumn);
-    expect(summaryCard).toBeGreaterThan(preview);
+    expect(panels).toBeGreaterThan(preview);
+
+    const summaryCard = contentPanelsSource.indexOf('id="source-summary-card"');
+    const indexedText = contentPanelsSource.indexOf("<IndexedTextPanel");
+    expect(summaryCard).toBeGreaterThan(-1);
     expect(indexedText).toBeGreaterThan(summaryCard);
   });
 });

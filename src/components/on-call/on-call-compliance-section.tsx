@@ -5,14 +5,14 @@ import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { Info, Pencil } from "lucide-react";
 
 import { cardPadding, cardSurface } from "@/components/card-recipes";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
 import { OnCallGroupSection } from "@/components/on-call/on-call-group-section";
 import { allocateOnCallGroupSlug } from "@/components/on-call/on-call-page-anchors";
 import { ON_CALL_COMPLIANCE_BANDS } from "@/components/on-call/on-call-page-sections";
 import { OnCallPrivateFlag } from "@/components/on-call/on-call-private-flag";
 import { ON_CALL_VIEW_ICONS } from "@/components/on-call/on-call-section-identity";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { ExternalTextLink } from "@/components/ui/link";
 import { cn, metadataPillDensity, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
@@ -168,7 +168,7 @@ function readProvenance(details: unknown): OnCallComplianceProvenance | undefine
  */
 const BAND_BLURBS: Record<OnCallComplianceConsequence, string> = {
   "stops-work": "Let one of these lapse and you cannot practise at all.",
-  "stops-part": "You could still practise; particular things would become unavailable.",
+  "stops-part": "You could still practise, but particular things would become unavailable.",
   chased: "Administrative. Nothing stops, but somebody will email.",
 };
 
@@ -338,6 +338,7 @@ function ComplianceRow({
       id={onCallEntryAnchorId(entry.id)}
       tabIndex={-1}
       className={cn(cardSurface, cardPadding.standard, "grid grid-cols-[minmax(0,1fr)] gap-2")}
+      data-on-call-entry-card=""
       data-testid={`on-call-compliance-row-${entry.slug}`}
     >
       <div className="flex items-start gap-2">
@@ -547,7 +548,7 @@ export function OnCallComplianceSection({
             note explains why the mark carries no tick: a shield with a tick,
             twelve lines below a sentence reading "nothing here is checked",
             is a glyph arguing with its own caption. */}
-        <EmptyState
+        <OnCallEmptyState
           icon={ON_CALL_VIEW_ICONS.compliance}
           title={isOffline ? "Personal compliance records need a connection" : "No requirements recorded yet"}
           // `onEditEntry` is passed only to a signed-in reader, and compliance

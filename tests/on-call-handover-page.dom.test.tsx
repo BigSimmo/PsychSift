@@ -108,14 +108,15 @@ describe("handover page (mock-up v10, screens 6 to 10)", () => {
     expect(screen.getByTestId("on-call-handover-bed")).toHaveValue("4B-12");
   });
 
-  it("makes the table and checks where it is going before any export, counting beds only", () => {
+  it("makes the table and checks where it is going before any export, counting beds only", async () => {
     render(<OnCallHandoverPage />);
     addPatient("12", "Example Ward", "yes");
     fireEvent.click(screen.getByTestId("on-call-handover-next"));
     addPatient("JS", "", "no");
     fireEvent.click(screen.getByTestId("on-call-handover-make-table"));
     expect(screen.getByRole("heading", { name: "Handover table" })).toBeInTheDocument();
-    expect(screen.getAllByTestId("on-call-handover-table-row")).toHaveLength(2);
+    // The table is loaded on demand; it appears as soon as its code has arrived.
+    expect(await screen.findAllByTestId("on-call-handover-table-row")).toHaveLength(2);
     expect(screen.getByTestId("on-call-handover-review-bar")).toHaveTextContent("1 of 2 need review");
     fireEvent.click(screen.getByTestId("on-call-handover-table-copy"));
     const check = screen.getByTestId("on-call-handover-before-it-leaves");

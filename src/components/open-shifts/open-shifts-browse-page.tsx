@@ -29,10 +29,15 @@ import { rosterCoveredUntil } from "@/lib/open-shifts/roster-check";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 import { OpenShiftsCalendar } from "./open-shifts-calendar";
+import { clearSavedFilters, readSavedFilters, saveFilters } from "./open-shifts-saved-filters";
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { SignInAction } from "./open-shifts-sign-in";
+import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
 import { FlatList, ListSkeleton, Note, ShiftRow, advertHref, formatDayLong, formatDayShort } from "./open-shifts-ui";
 import { LoadFailed, NoTeam, openShiftsStatus } from "./open-shifts-states";
 import { useOpenShifts } from "./use-open-shifts";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 // The sheet loads only when someone opens it.
 const OpenShiftsFiltersSheet = dynamic(
@@ -46,11 +51,29 @@ const chipOff = `${chip} border-[color:var(--border-strong)] text-[color:var(--t
 const chipOn = `${chip} border-[color:var(--mode-identity)] bg-[color:var(--mode-identity-soft)] text-[color:var(--text-heading)] forced-colors:border-2 forced-colors:border-[Highlight]`;
 
 export function OpenShiftsBrowsePage() {
+  const { zone } = useWorkTimeZone();
   const state = useOpenShifts();
+  const signedOut = useSignedOut();
   const now = useRosterNow();
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   const { end: windowEnd } = windowOf(today);
   const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_FILTERS);
+  // Remembered choices (spec B2) apply to your own list only, never the signed-out example.
+  const remember = state.status === "ready" && state.sample === null;
+  const [restored, setRestored] = useState(false);
+  if (remember && !restored) {
+    setRestored(true);
+    const saved = readSavedFilters();
+    if (saved) setFilters(saved);
+  }
+  function chooseFilters(next: BrowseFilters) {
+    setFilters(next);
+    if (remember) saveFilters(next);
+  }
+  function resetFilters() {
+    setFilters(DEFAULT_FILTERS);
+    clearSavedFilters();
+  }
   const [sheetOpen, setSheetOpen] = useState(false);
   // Loaded on first open, then kept mounted so closing can hand focus back to the chip that opened it.
   const [sheetLoaded, setSheetLoaded] = useState(false);
@@ -110,7 +133,9 @@ export function OpenShiftsBrowsePage() {
         </div>
       ) : null}
 
-      {state.status === "no-team" ? (
+      {state.status === "signed-out" ? (
+        <WorkSignInNotice title="Sign in to see open shifts" testId="open-shifts-signed-out" />
+      ) : state.status === "no-team" ? (
         <NoTeam />
       ) : state.status === "error" ? (
         <LoadFailed message={state.message} onRetry={state.reload} />
@@ -138,7 +163,7 @@ export function OpenShiftsBrowsePage() {
                 type="button"
                 aria-pressed={filters.hideClashes}
                 className={filters.hideClashes ? chipOn : chipOff}
-                onClick={() => setFilters({ ...filters, hideClashes: !filters.hideClashes })}
+                onClick={() => chooseFilters({ ...filters, hideClashes: !filters.hideClashes })}
               >
                 <Shield aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
                 No clashes
@@ -189,7 +214,7 @@ export function OpenShiftsBrowsePage() {
               {filterCount ? (
                 <button
                   type="button"
-                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  onClick={resetFilters}
                   className="inline-flex min-h-12 items-center font-medium text-[color:var(--mode-identity)]"
                 >
                   Reset
@@ -210,26 +235,38 @@ export function OpenShiftsBrowsePage() {
             urgentDays={summary.urgentDays}
             rosteredDays={rosteredDays}
           />
-          <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 pt-2 text-xs text-[color:var(--text-muted)]">
-            <span>Number under a date: shifts that match your filters</span>
-            <span className="inline-flex items-center gap-1">
-              <TriangleAlert
+          <ul
+            className="m-0 mt-1 flex list-none flex-wrap justify-center gap-x-3 gap-y-1.5 p-0 px-3 text-3xs font-semibold text-[color:var(--text)]"
+            aria-label="Calendar key"
+          >
+            <li className="inline-flex items-center gap-1.5">
+              <span
                 aria-hidden="true"
-                strokeWidth={1.6}
-                className="size-icon-xs text-[color:var(--mode-identity)]"
-              />
+                className="nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center rounded-full bg-[color:var(--mode-identity-soft)] px-1 text-3xs font-extrabold text-[color:var(--mode-identity)]"
+              >
+                3
+              </span>
+              Shifts that match
+            </li>
+            <li className="inline-flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center rounded-full border border-[color:var(--warning-border)] text-[color:var(--warning-text)]"
+              >
+                <TriangleAlert aria-hidden="true" strokeWidth={2.2} className="size-2.5" />
+              </span>
               Includes an urgent shift
-            </span>
+            </li>
             {state.roster && state.roster.length > 0 ? (
-              <span className="inline-flex items-center gap-1">
+              <li className="inline-flex items-center gap-1.5">
                 <span
                   aria-hidden="true"
-                  className="inline-block h-0.5 w-3 rounded-full bg-[color:var(--info,var(--command))]"
+                  className="inline-block size-3.5 rounded-full shadow-[var(--work-edge-inset-strong)_var(--mode-identity)] forced-colors:border"
                 />
                 You&apos;re rostered
-              </span>
+              </li>
             ) : null}
-          </div>
+          </ul>
 
           {state.rosterStatus === "error" && !sample ? (
             <Note icon={<TriangleAlert aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />} tone="warn">
@@ -358,14 +395,14 @@ export function OpenShiftsBrowsePage() {
             </>
           ) : null}
 
-          {state.sample === "signed-out" ? <SignInAction label="Sign in to request shifts" /> : null}
+          {signedOut ? <SignInAction label="Sign in to request shifts" /> : null}
 
           {sheetLoaded ? (
             <OpenShiftsFiltersSheet
               open={sheetOpen}
               onClose={() => setSheetOpen(false)}
               filters={filters}
-              onChange={setFilters}
+              onChange={chooseFilters}
               summary={summary}
               myGrade={myGrade}
             />

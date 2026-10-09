@@ -25,6 +25,7 @@ import {
   type TermId,
   type Ticks,
 } from "@/lib/teaching/assessments/sample";
+import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /*
  * Teaching › Assessments: the end-of-term story as pure functions over one state.
@@ -54,11 +55,15 @@ export type AssessmentForm = {
 export type SignatureInk = { width: number; height: number; path: string };
 export type Signature = { typed: string; image: SignatureInk | null; date: string; day: number };
 
-type EpaRequest = {
+export type EpaRequest = {
   epa: EpaNumber;
   who: "sup" | "reg";
   status: "requested" | "done";
   level?: SupervisionLevel;
+  /** "One thing to keep doing", optional, written by the supervisor. */
+  note?: string;
+  /** Recorded by the supervisor without a request from the doctor (the dock's Record EPA). */
+  direct?: boolean;
 };
 
 export type AssessmentsState = {
@@ -316,7 +321,7 @@ export function endOfTermSteps(s: AssessmentsState): Step[] {
     meetingHeld(s)
       ? step("ok", "Meet and discuss", meetingDate(s)!)
       : s.booking
-        ? step("now", "Meet and discuss", `${bookingLabel(s.booking)} · Ward 4 office`)
+        ? step("now", "Meet and discuss", `${bookingLabel(s.booking)} · Ward A office`)
         : windowOpen(s)
           ? step("now", "Book and meet", "Open until Fri 6 Nov")
           : step("lock", "Book and meet", "Booking opens Mon 26 Oct"),
@@ -369,19 +374,12 @@ export const needsImprovementPlan = (f: AssessmentForm) =>
   lowDomains(f).length > 0 || f.global === "cond" || f.global === "unsat";
 
 /**
- * A partial check for patient details: URNs, dates of birth, long numbers, a title
- * and a name, a date, or a bed number. It deliberately says it catches only some.
+ * A partial check for patient details (record numbers, dates of birth, long numbers, a title and a name,
+ * dates, beds and the rest): the one shared work-text check, so every Assessments field reads text the same
+ * way the rest of work mode does. It deliberately says it catches only some.
  */
 export function looksLikePatientDetails(text: string): boolean {
-  return (
-    /\b(URN|UMRN|MRN)\b/.test(text) ||
-    /\bD\.?O\.?B\.?\b/.test(text) ||
-    /date of birth/i.test(text) ||
-    /\b\d{7,}\b/.test(text) ||
-    /\b(Mr|Mrs|Ms|Miss|Mstr)\.? [A-Z][a-z]+/.test(text) ||
-    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(text) ||
-    /\bbed \d+/i.test(text)
-  );
+  return looksLikePatientDetail(text);
 }
 
 export const formMentionsPatient = (f: AssessmentForm) =>
@@ -413,7 +411,7 @@ export type ComparisonRow = {
 
 /**
  * Self against supervisor, domain by domain. `view` is whose screen it is: the
- * doctor reads "Dr Nair: 1 higher", the supervisor reads "You: 1 higher".
+ * doctor reads "Dr Wattle: 1 higher", the supervisor reads "You: 1 higher".
  */
 export function compareRatings(
   selfRatings: Ratings | Record<DomainNumber, Rating> | null,
@@ -528,7 +526,9 @@ export type AssessmentsAction =
   | { type: "sign"; who: Who; typed: string; image: SignatureInk | null }
   | { type: "sent-to-meu" }
   | { type: "request-epa"; epa: EpaNumber; who: "sup" | "reg" }
-  | { type: "record-epa"; index: number; level: SupervisionLevel }
+  | { type: "record-epa"; index: number; level: SupervisionLevel; note?: string }
+  | { type: "record-epa-direct"; epa: EpaNumber; level: SupervisionLevel; note?: string }
+  | { type: "undo-record-epa"; index: number }
   | { type: "toggle-availability"; day: number; time: string }
   | { type: "set-disagree-draft"; value: string };
 
@@ -648,8 +648,32 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
     case "record-epa": {
       const r = s.epaRequests[a.index];
       if (!r || r.status !== "requested" || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
+      const note = a.note?.trim();
       const epaRequests = s.epaRequests.map((x, i) =>
-        i === a.index ? { ...x, status: "done" as const, level: a.level } : x,
+        i === a.index ? { ...x, status: "done" as const, level: a.level, ...(note ? { note } : {}) } : x,
+      );
+      return { ...s, epaRequests };
+    }
+    case "record-epa-direct": {
+      if (![1, 2, 3, 4].includes(a.epa) || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
+      const note = a.note?.trim();
+      const done: EpaRequest = {
+        epa: a.epa,
+        who: "sup",
+        status: "done",
+        level: a.level,
+        direct: true,
+        ...(note ? { note } : {}),
+      };
+      return { ...s, epaRequests: [...s.epaRequests, done] };
+    }
+    case "undo-record-epa": {
+      // Undo straight after saving: a request goes back to waiting, one recorded without a request goes.
+      const r = s.epaRequests[a.index];
+      if (!r || r.status !== "done") return s;
+      if (r.direct) return { ...s, epaRequests: s.epaRequests.filter((_, i) => i !== a.index) };
+      const epaRequests = s.epaRequests.map((x, i) =>
+        i === a.index ? { epa: x.epa, who: x.who, status: "requested" as const } : x,
       );
       return { ...s, epaRequests };
     }

@@ -1,13 +1,15 @@
 "use client";
 
 import { useRosterRead } from "@/components/roster/use-roster-team";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { modeSummaryMutedText, modeSummarySurface } from "@/components/mode-kit/recipes";
 import { modeDisplayNumberText, modeNumberText } from "@/components/mode-kit/type";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import type { OnCallShift } from "@/lib/roster/shifts/model";
-import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { handover } from "@/lib/roster/team/team-view";
+import { zonedDateOf, zoneOffsetMinutes } from "@/lib/work-time/format";
 
 import { formatDuration, formatShiftRange, shiftTimes } from "./roster-format";
 
@@ -22,8 +24,8 @@ const RADIUS = 34;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 /** Clockwise from midnight at the top, as a fraction of a day. */
-function dayFraction(instant: number): number {
-  const perth = instant + 8 * 60 * 60 * 1000;
+function dayFraction(instant: number, zone: string): number {
+  const perth = instant + zoneOffsetMinutes(instant, zone) * 60_000;
   return (((perth % DAY_MS) + DAY_MS) % DAY_MS) / DAY_MS;
 }
 
@@ -48,7 +50,8 @@ export function RosterNightDial({
   readonly teamShift?: { readonly serviceId: string; readonly assignmentId: string } | null;
   readonly testId?: string;
 }) {
-  const day = perthDateOf(now);
+  const { zone } = useWorkTimeZone();
+  const day = zonedDateOf(now, zone);
   const teamRead = useRosterRead(teamShift?.serviceId ?? null, "assignments", {
     from: addDaysToDate(day, -1),
     to: addDaysToDate(day, 1),
@@ -58,8 +61,8 @@ export function RosterNightDial({
   const start = Date.parse(shift.startsAt);
   const end = Date.parse(shift.endsAt);
   const at = now.getTime();
-  const covered = arc(dayFraction(start), dayFraction(end));
-  const done = arc(dayFraction(start), dayFraction(at));
+  const covered = arc(dayFraction(start, zone), dayFraction(end, zone));
+  const done = arc(dayFraction(start, zone), dayFraction(at, zone));
   const { end: endTime } = shiftTimes(shift);
   return (
     <section

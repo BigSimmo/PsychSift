@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +18,8 @@ const shiftsState = vi.hoisted(() => ({
   },
 }));
 
+// work-mode redesign, owner request 6 Oct 2026: My Day's pages offer More's Customise, which navigates to Today.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-shifts", () => ({
   useRosterShifts: () => shiftsState.current,
 }));
@@ -109,7 +111,9 @@ describe("MyDayFrame end-of-shift card and reminders", () => {
     expect(screen.getByText("2 reminders on this device")).toBeTruthy();
 
     await user.click(remindersRow);
-    expect(await screen.findByRole("dialog", { name: "Your reminders" })).toBeTruthy();
+    const sheet = await screen.findByRole("dialog", { name: "Your reminders" });
+    // The same round close as every other work sheet, not the square toolbar button.
+    expect(within(sheet).getByRole("button", { name: "Close" })).toHaveClass("work-more-sheet__close");
     expect(screen.getByText("Hand over bloods to evening reg")).toBeTruthy();
     expect(screen.getByText("Phone bed manager re outlier")).toBeTruthy();
   });

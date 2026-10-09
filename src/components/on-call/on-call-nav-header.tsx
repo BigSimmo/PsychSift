@@ -1,6 +1,7 @@
 "use client";
 
 import { InPageNavHeader } from "@/components/in-page-nav/in-page-nav-header";
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import type { PageSection } from "@/components/in-page-nav/page-section-index";
 import { useInPageSectionNav } from "@/components/in-page-nav/use-in-page-section-nav";
 import { BrowserPrintButton } from "@/components/ui/print-output";
@@ -38,6 +39,12 @@ import { BrowserPrintButton } from "@/components/ui/print-output";
  * its print row.
  */
 export function OnCallCardNavHeader() {
+  // Under the work-mode band (work-mode redesign, owner request 6 Oct 2026)
+  // the band already names the page and its round back button returns to
+  // On Call, so a second bar would say both again. The card keeps its own
+  // "Print card" button on the page.
+  const underBand = useModeBandShown();
+  if (underBand) return null;
   return (
     <InPageNavHeader
       back={{ href: "/on-call", label: "On Call" }}
@@ -61,8 +68,22 @@ export function OnCallCardNavHeader() {
  * from the home, so each keeps the back arrow to `/on-call`. Kept in this file
  * for the same one-claimant reason as the two headers around it.
  */
-export function OnCallToolNavHeader({ title, testIdPrefix }: { title: string; testIdPrefix: string }) {
-  return <InPageNavHeader back={{ href: "/on-call", label: "On Call" }} title={title} testIdPrefix={testIdPrefix} />;
+export function OnCallToolNavHeader({
+  title,
+  testIdPrefix,
+  back = { href: "/on-call", label: "On Call" },
+}: {
+  title: string;
+  testIdPrefix: string;
+  /** Where the arrow goes. On Call by default; a tool that now lives in another area (the calendar under Roster) names that area. */
+  back?: { href: string; label: string };
+}) {
+  // A tool page the work-mode band draws (Who to call now) already has the
+  // band's title and its round back button, so the bar would repeat both.
+  // Pages that keep their own header (`band: false`) still get it.
+  const underBand = useModeBandShown();
+  if (underBand) return null;
+  return <InPageNavHeader back={back} title={title} testIdPrefix={testIdPrefix} />;
 }
 
 /** The prefix `InPageNavHeader` composes this mode's header testids from. */
@@ -100,10 +121,11 @@ export const ON_CALL_SECTION_HEADER_TEST_IDS = {
  * put the word twice in one 96px block — the duplication the owner flagged
  * three times across this redesign.
  *
- * NO ACTIONS EITHER. They moved back to `OnCallPageMenu`, which portals an
- * ellipsis into the universal header's trailing slot beside the pill. With the
- * title gone there was nothing left for a header row to hold, and a row drawn
- * for one ellipsis costs the 48px this redesign spent three passes recovering.
+ * NO ACTIONS EITHER. Page tools (add, bulk verify, pocket card, order) live
+ * in the in-page More control beside the list. The universal header trailing
+ * slot is Search my work, and on the home a Needs you bell — not a second
+ * ellipsis. A row drawn for one ellipsis costs the 48px this redesign spent
+ * three passes recovering.
  *
  * NO BACK CONTROL, also deliberately. Every page in this mode is a destination
  * in the mode pill's own list — the hub included, as "Tonight" — so an arrow

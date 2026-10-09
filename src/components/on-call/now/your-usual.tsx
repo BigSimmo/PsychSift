@@ -354,7 +354,7 @@ export function NowYourUsual({
   const editable = outlineCount === null && tiles.some((tile) => tile.kind !== "removed" && tile.pinnable);
   return (
     <section aria-labelledby={headingId} className="grid min-w-0 gap-1" data-testid="on-call-home-recent">
-      <div className="flex min-h-12 min-w-0 items-center justify-between gap-2 px-3">
+      <div className="flex min-h-12 min-w-0 items-center justify-between gap-2 px-1">
         <h2 id={headingId} ref={headingRef} tabIndex={-1} className={cn(eyebrowText, "focus:outline-none")}>
           Your usual
         </h2>
@@ -373,12 +373,12 @@ export function NowYourUsual({
       {outlineCount !== null ? (
         <TileOutlines count={Math.max(1, Math.min(outlineCount, ON_CALL_USUAL_TILE_LIMIT))} />
       ) : tiles.length === 0 ? (
-        <p className={cn(modeSecondaryText, "px-3")} data-testid="on-call-now-usual-empty">
+        <p className={cn(modeSecondaryText, "px-1")} data-testid="on-call-now-usual-empty">
           To add a number, tick &quot;Call first on the home&quot; on your own entry.
         </p>
       ) : (
         <>
-          <ul role="list" className={cn(tilesGrid, "px-1")} data-testid="on-call-now-usual">
+          <ul role="list" className={cn(tilesGrid, "work-card p-1")} data-testid="on-call-now-usual">
             {shown.map((tile) =>
               tile.kind === "removed" ? (
                 <li key={tile.id} className={tileClass} data-testid={`on-call-now-usual-${tile.id}`}>
@@ -395,7 +395,7 @@ export function NowYourUsual({
               aria-expanded={expanded}
               onClick={() => setExpanded((open) => !open)}
               data-testid="on-call-now-usual-more"
-              className={cn(onCallActionLink, focusRing, "justify-self-start px-3")}
+              className={cn(onCallActionLink, focusRing, "justify-self-start px-1")}
             >
               {expanded ? "Show fewer" : `Show all ${tiles.length}`}
             </button>

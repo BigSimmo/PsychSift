@@ -1,19 +1,51 @@
 # Supabase Migration Reconciliation
 
-Last reviewed: 2026-07-07
+_Updated 2026-10-08 — repair safeguards and explicit historical evidence boundary._
 
 Target project: PsychSift Production (`sjrfecxgysukkwxsowpy`)
 
 ## Policy
 
-- Hosted **Supabase Preview** fails with `Remote migration versions not found in local migrations directory` when `schema_migrations` still records a version after a local rename/renumber. Keep a local `*_historical_version_placeholder.sql` (no-op) for orphan versions, or repair remote history with `supabase migration repair --status reverted <version>` after verifying effects already exist under the replacement migration. Offline guard: `tests/migration-history-placeholders.test.ts`. Live diagnostic: `npm run check:migration-history` (also run from `.github/workflows/live-drift.yml`).
-- Do not use `supabase db push` while local and remote migration history are divergent.
-- **Never change a retrieval RPC, index, or function on the live project with raw SQL in the dashboard.** Use a committed migration under `supabase/migrations/` and reconcile `supabase/schema.sql` in the same change.
-- Use `supabase migration repair --linked --status applied <version>` only when live database evidence proves the migration effect already exists.
-- Leave other local-only migrations unrepaired until their effects are verified or deliberately applied.
-- Run `npx supabase migration list --linked` at apply/reconcile time; do not rely on a frozen “aligned through” snapshot in this doc alone.
-- **History presence is not effect presence.** `20260703030000` is recorded as applied on live while its index changes are absent. After every apply, verify object state with `npm run check:drift` (and `search_schema_health()`), not the history table.
-- Any PR that changes `supabase/schema.sql` regenerates `supabase/drift-manifest.json` in the same PR (`npm run drift:manifest`, Docker required); `tests/drift-detection.test.ts` fails otherwise. This doubles as a from-scratch replay proof of schema.sql.
+- **Merging migrations to main applies them to production automatically.** Merge
+  approval is production-deploy approval: merge only inside the approved window,
+  never arm auto-merge for migration PRs, and do not promise a deferred deploy.
+- **Never edit a migration already on main.** Correct it with a new migration
+  carrying the newest timestamp, including duplicate stems or absent effects.
+  Do not convert an applied migration into a no-op.
+- Do not use `supabase db push` while local and remote history diverge. Diagnose
+  both history and actual schema against the explicitly approved project first.
+  Provider-backed diagnostics, SQL, history repair and migration application
+  require explicit applicable approval; this runbook grants none.
+- **History presence is not effect presence.** A migration list is supplementary
+  evidence, not schema proof. After merge, the `live-drift` workflow must pass
+  both `npm run check:drift` and `npm run check:migration-history`.
+- **Every history repair needs a fail-fast validation guard in the same change.**
+  This includes mark-applied versions, `supabase migration repair --status applied`,
+  and hand-applied SQL subsequently recorded as a migration. Follow
+  `supabase/migrations/20260804110240_restore_rag_search_health_indexes.sql`:
+  validate presence, index validity/readiness and normalized definitions; use
+  local timeouts and one exception; never build objects in the validation guard.
+  Include the reviewed migration-history allowlist entry pointing to that guard
+  under the [drift contract](database-drift-detection.md), with `guard.class`
+  `validation` for repairs from 2026-08-18 onward; legacy `superseded`/`no_ddl`
+  classes must not be used to bypass that requirement. Do not bare-allowlist a
+  history row or relax its class to pass. A recorded version alone is insufficient.
+- Orphan versions and reverted-history repairs need reviewed evidence, explicit
+  approval and the same applicable guard contract. Preserve committed/applied
+  migration bytes. Historical placeholders are not a licence to rename or
+  renumber migrations on main; `tests/migration-history-placeholders.test.ts`
+  checks the established placeholder contract.
+- Never change retrieval RPCs, indexes or functions with ad hoc dashboard SQL.
+  Use reviewed forward migrations and reconcile `supabase/schema.sql` in the
+  same change. The approved concurrent-index prebuild pattern below is an
+  explicit exception, paired with a validate-only guard.
+- The integration applies each migration in one transaction. A bare
+  `CREATE INDEX CONCURRENTLY` migration cannot ship through it. Use an explicitly
+  approved operator prebuild outside a transaction, followed by the validate-only
+  guard pattern; neither step bypasses retrieval or merge approval.
+- A PR changing `supabase/schema.sql` also regenerates
+  `supabase/drift-manifest.json` with `npm run drift:manifest` (Docker required).
+  `tests/drift-detection.test.ts` checks this reference replay contract.
 
 ## Expand/contract policy for retrieval tables
 
@@ -40,7 +72,8 @@ CONSTRAINT` in a later migration (the live `*_content_not_blank` checks are
   the precedent).
 - Index replacements create the new index first (on live, prefer
   `CONCURRENTLY` run manually outside the transaction — CLI migrations are
-  transactional); the old index is NOT dropped in the same migration.
+  transactional), only with explicit target/operation approval and a paired
+  validate-only guard; the old index is NOT dropped in the same migration.
 - Embedding columns: `vector(N)` is coupled to `EMBEDDING_DIMENSIONS` and the
   worker's startup check — a dimension change is a re-index project with the
   reindex-eval gate, never a plain migration.
@@ -50,9 +83,9 @@ eval:retrieval:quality` per the standing merge gate.
 
 **Verify phase (between expand and contract):**
 
-- Apply to live only through the linked workflow with explicit approval, then
-  immediately run `npm run check:drift` — the applied objects must match the
-  manifest (this is what catches recorded-but-ineffective applies).
+- Merge only inside the explicitly approved production window. The integration
+  applies migrations automatically; require the post-merge `live-drift` workflow
+  to pass both `npm run check:drift` and `npm run check:migration-history`.
 - Run `search_schema_health()` / `npm run check:indexing` and the golden
   retrieval eval against live before relying on the new path.
 - Dual-read/dual-write windows (old + new column/RPC) stay until the eval and
@@ -69,7 +102,14 @@ eval:retrieval:quality` per the standing merge gate.
   where) — after contract, rollback means restore-from-backup for data-bearing
   drops, so say so explicitly.
 
-## Verified Applied (through June 2026)
+## Historical evidence — June and July 2026
+
+The following inventory and operator follow-ups are dated evidence retained from
+the July reconciliation. They are not current live-state assertions or commands
+to execute today. Obtain fresh approved history and schema proof before acting;
+the policy above and current `AGENTS.md` supersede their old apply guidance.
+
+### Verified applied at the June 2026 checkpoint
 
 These previously local-only versions were verified in the live project history before the July 2026 reconciliation wave:
 
@@ -82,7 +122,7 @@ These previously local-only versions were verified in the live project history b
 - `20260628000000` - atomic document index generation commit RPC and committed-generation retrieval filters are present and verified in live.
 - `20260628135727` - explicit `invoke_indexing_v3_agent(integer)` execute grant hardening is present and verified in live.
 
-## Current Status (July 2026)
+### Recorded status at the July 2026 checkpoint
 
 Migration `20260705230000_reconcile_live_database_drift.sql` codifies live-only drift discovered 2026-07-05:
 
@@ -121,15 +161,22 @@ Before applying pending migrations to live:
 
 ## Supabase Preview / fresh replay rules
 
+These current rules complement the policy above; they do not authorise provider access.
+
 GitHub Supabase Preview replays the full migration chain on branch databases. Keep these invariants so preview stays green:
 
 - When a set-returning function gains or loses an OUT column, `drop function ...` before `create or replace` (PostgreSQL SQLSTATE `42P13` otherwise).
 - Do not assume `pg_cron` exists on preview branches; guard `cron.schedule` / `cron.job` access with `to_regnamespace('cron') is not null` inside a `DO` block (SQLSTATE `42P01` otherwise).
-- Duplicate migration stems that already ran on live should be neutralized as documented no-ops rather than re-appplied.
+- Duplicate stems already on main remain immutable. Correct them with a new
+  reviewed forward migration; never neutralize applied files as no-ops.
 
 Regression tests for these guards live in `tests/supabase-schema.test.ts` under "Supabase Preview replay guards".
 
-## Verification Commands
+## Historical verification examples
+
+These provider-backed July diagnostics require approval and current CLI validation
+before use. The current schema-application gate is the post-merge `live-drift`
+workflow with both drift and migration-history checks, not these examples.
 
 ```powershell
 npx supabase migration list --linked
@@ -139,7 +186,7 @@ npx supabase db query --linked "select to_regprocedure('public.commit_document_i
 npm run check:indexing
 ```
 
-## Operator follow-ups
+## Historical operator follow-ups
 
 Manual key rotation and live migration apply decisions are recorded in
 [`docs/archive/operator-decisions-2026-07-04.md`](archive/operator-decisions-2026-07-04.md)

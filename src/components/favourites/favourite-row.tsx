@@ -17,7 +17,9 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 
 import { FavouriteExampleTag } from "@/components/clinical-dashboard/favourite-example-tag";
 import { FavouriteTypeTile } from "@/components/favourites/favourite-type-tile";
+import { favouriteKindLabel } from "@/components/favourites/favourites-launchpad";
 import {
+  favouriteScopeOf,
   isSourceBacked,
   recentTimeLabel,
   type FavouriteItem,
@@ -25,12 +27,13 @@ import {
 } from "@/components/favourites/favourites-view-model";
 import { stretchedRowLinkClass } from "@/components/card-recipes";
 import { useSwipeRow } from "@/components/favourites/use-swipe-row";
+import { WorkTag } from "@/components/mode-kit/work";
 import { cn } from "@/components/ui-primitives";
 
 export type FavouriteRowMode = "browse" | "select" | "reorder";
 
-/** Three 68px actions revealed by a left swipe. */
-export const SWIPE_TRAY_WIDTH = 204;
+/** Each action revealed by a left swipe is 68px wide: Pin, Move and Remove, or Pin and Remove for a work page. */
+const SWIPE_ACTION_WIDTH = 68;
 
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
@@ -50,41 +53,46 @@ function RowBody({
   /** Lets the row's control describe itself with this line, which its label would otherwise hide. */
   metaId?: string;
 }) {
-  const lead = view === "type" ? item.description : item.type;
+  const isWork = favouriteScopeOf(item) === "work";
+  const kind = favouriteKindLabel(item);
+  const lead = view === "type" && !isWork ? item.description : kind;
+  // A work page or number has no set: it shows its work area or digits instead, and where it lives.
+  const setLabel = showSet && !isWork ? ` · ${item.set}` : "";
   return (
     <>
       <FavouriteTypeTile item={item} />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-start gap-1.5">
-          <span className="line-clamp-2 min-w-0 text-base-minus font-semibold leading-snug text-[color:var(--text-heading)]">
+          <span className="line-clamp-2 min-w-0 text-sm font-bold leading-snug text-[color:var(--work-ink)]">
             {item.title}
           </span>
           {item.example ? <FavouriteExampleTag /> : null}
         </span>
-        <span
-          id={metaId}
-          className="flex min-w-0 items-center gap-1 truncate text-xs font-medium text-[color:var(--text-muted)]"
-        >
-          {item.pinned ? (
-            <>
-              <Pin
-                className="size-icon-xs shrink-0 -rotate-45 fill-current text-[color:var(--clinical-accent)]"
-                aria-hidden="true"
-              />
-              <span className="sr-only">In quick launch.</span>
-            </>
-          ) : null}
-          {isSourceBacked(item) ? (
-            <>
-              <ShieldCheck className="size-icon-xs shrink-0 text-[color:var(--success)]" aria-hidden="true" />
-              <span className="sr-only">Source-backed.</span>
-            </>
-          ) : null}
-          <span className="truncate">
-            {time ? <span className="nums font-semibold text-[color:var(--text)]">{time} · </span> : null}
-            {lead}
-            {showSet ? ` · ${item.set}` : ""}
+        {item.note ? (
+          <span className="block min-w-0 truncate text-xs text-[color:var(--text-muted)]">{item.note}</span>
+        ) : null}
+        <span id={metaId} className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className="flex min-w-0 items-center gap-1 text-xs font-medium text-[color:var(--text-muted)]">
+            {item.pinned ? (
+              <>
+                <Pin className="size-icon-xs shrink-0 text-[color:var(--clinical-accent)]" aria-hidden="true" />
+                <span className="sr-only">Pinned to My Day.</span>
+              </>
+            ) : null}
+            {isSourceBacked(item) ? (
+              <>
+                <ShieldCheck className="size-icon-xs shrink-0 text-[color:var(--success)]" aria-hidden="true" />
+                <span className="sr-only">Source-backed.</span>
+              </>
+            ) : null}
+            <span className="min-w-0 truncate">
+              {time ? <span className="nums">{time} · </span> : null}
+              {item.numberId && item.phone ? <span className="font-mono">{item.phone} · </span> : null}
+              {lead}
+              {setLabel}
+            </span>
           </span>
+          {isWork ? <WorkTag tone="neutral">This phone</WorkTag> : null}
         </span>
       </span>
     </>
@@ -102,6 +110,7 @@ export function FavouriteRow({
   swipeOpen,
   onSwipeOpenChange,
   canMutate,
+  canMove = canMutate,
   onOpen,
   onSelectForWorkspace,
   onShowActions,
@@ -122,8 +131,10 @@ export function FavouriteRow({
   workspaceSelected?: boolean;
   swipeOpen: boolean;
   onSwipeOpenChange: (open: boolean) => void;
-  /** Saved account items can be pinned, moved and removed; demo examples cannot. */
+  /** Saved items can be pinned and removed; demo examples cannot. */
   canMutate: boolean;
+  /** Saved account items can also be moved to a set; work pages cannot. */
+  canMove?: boolean;
   onOpen: (item: FavouriteItem) => void;
   onSelectForWorkspace: (item: FavouriteItem) => void;
   onShowActions: (item: FavouriteItem) => void;
@@ -148,7 +159,7 @@ export function FavouriteRow({
     enabled: swipeEnabled,
     open: swipeOpen && swipeEnabled,
     onOpenChange: onSwipeOpenChange,
-    revealWidth: SWIPE_TRAY_WIDTH,
+    revealWidth: SWIPE_ACTION_WIDTH * (canMove ? 3 : 2),
   });
   const time = mode === "browse" && view === "recent" ? recentTimeLabel(item.openedAt, now) : "";
   const metaId = `favourite-meta-${item.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
@@ -177,18 +188,20 @@ export function FavouriteRow({
             )}
             {item.pinned ? "Unpin" : "Pin"}
           </button>
-          <button
-            type="button"
-            tabIndex={-1}
-            onClick={() => {
-              onSwipeOpenChange(false);
-              onMove(item);
-            }}
-            className="flex w-17 flex-col items-center justify-center gap-1 bg-[color:var(--text-muted)] text-2xs font-bold text-[color:var(--surface)]"
-          >
-            <Folder className="size-icon-md" aria-hidden="true" />
-            Move
-          </button>
+          {canMove ? (
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => {
+                onSwipeOpenChange(false);
+                onMove(item);
+              }}
+              className="flex w-17 flex-col items-center justify-center gap-1 bg-[color:var(--text-muted)] text-2xs font-bold text-[color:var(--surface)]"
+            >
+              <Folder className="size-icon-md" aria-hidden="true" />
+              Move
+            </button>
+          ) : null}
           <button
             type="button"
             tabIndex={-1}
@@ -215,16 +228,16 @@ export function FavouriteRow({
         }}
         data-row-id={item.id}
         className={cn(
-          "relative flex min-h-16 items-center gap-1 bg-[color:var(--surface)] pl-3 pr-1 touch-pan-y",
+          "relative flex min-h-tap items-center gap-1 bg-[color:var(--work-surface)] pl-3 pr-1 touch-pan-y",
           !swipe.dragging &&
             !reorder?.dragging &&
             "transition-transform duration-[var(--duration-base)] ease-out motion-reduce:transition-none",
-          reorder?.dragging && "z-[5] shadow-[var(--e3)]",
+          reorder?.dragging && "z-[5] shadow-[var(--work-shadow-float)]",
           workspaceSelected && "xl:bg-[color:var(--clinical-accent-soft)]",
         )}
       >
         {mode === "select" && !canMutate ? (
-          <div className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-9">
+          <div className="flex min-w-0 flex-1 items-center gap-3 py-2 pr-12">
             <RowBody item={item} view={view} showSet={showSet} time={time} metaId={metaId} />
           </div>
         ) : mode === "select" ? (
@@ -235,23 +248,24 @@ export function FavouriteRow({
             aria-describedby={metaId}
             onClick={() => onToggleSelected(item)}
             className={cn(
-              "flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-md py-2 text-left",
+              "flex min-h-tap min-w-0 flex-1 items-center gap-3 rounded-md py-2 pr-2 text-left",
               focusRing,
               insetFocus,
             )}
           >
+            <RowBody item={item} view={view} showSet={showSet} time={time} metaId={metaId} />
+            {/* The tick sits at the row's end, where the actions button sits while browsing. */}
             <span
               aria-hidden="true"
               className={cn(
-                "grid size-6 shrink-0 place-items-center rounded-full border-2",
+                "grid size-6 shrink-0 place-items-center rounded-md border-2",
                 selected
                   ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
-                  : "border-[color:var(--border-strong)] text-transparent",
+                  : "border-[color:var(--work-line-strong)] text-transparent",
               )}
             >
               <Check className="size-icon-xs" strokeWidth={3} aria-hidden="true" />
             </span>
-            <RowBody item={item} view={view} showSet={showSet} time={time} metaId={metaId} />
           </button>
         ) : mode === "reorder" ? (
           <div className="flex min-w-0 flex-1 items-center gap-3 py-2">
@@ -361,7 +375,7 @@ export function FavouriteRow({
               onShowActions(item);
             }}
             className={cn(
-              "relative z-10 grid size-tap shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]",
+              "relative z-10 grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] active:bg-[color:var(--work-wash)]",
               focusRing,
               insetFocus,
             )}

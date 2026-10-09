@@ -49,6 +49,36 @@ function rosterInput(overrides: Partial<RosterMyDayInput["teams"][number]> = {},
 }
 
 describe("rosterMyDayItems", () => {
+  it("lists the reader's own sick report still waiting for cover as an update, once", () => {
+    const report = {
+      id: "88888888-8888-4888-8888-888888888888",
+      status: "reported" as const,
+      urgent: true,
+      startsAt: "2026-10-06T00:00:00Z",
+      endsAt: "2026-10-06T08:30:00Z",
+      shiftCode: "D",
+      kind: "day" as const,
+      minGrade: null,
+      siteId: null,
+      mine: true,
+      claimedByMe: false,
+    };
+    const items = rosterMyDayItems(rosterInput({ requests: { swaps: [], openShifts: [report] } }), NOW);
+    expect(items).toEqual([
+      {
+        id: "roster:sick:88888888-8888-4888-8888-888888888888",
+        mode: "roster",
+        title: "Tue 6 · Day not covered yet",
+        due: "2026-10-06",
+        severity: "info",
+        href: "/roster/sick",
+      },
+    ]);
+    // Someone else's open shift is not the reader's report.
+    expect(
+      rosterMyDayItems(rosterInput({ requests: { swaps: [], openShifts: [{ ...report, mine: false }] } }), NOW),
+    ).toEqual([]);
+  });
   it("lists a swap waiting on the reader, with Today's wording, href and expiry", () => {
     const items = rosterMyDayItems(
       rosterInput({ requests: { swaps: [swap({ expiresAt: "2026-10-10T00:00:00Z" })] } }),

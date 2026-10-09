@@ -6,8 +6,8 @@ import { GraduationCap, Pencil } from "lucide-react";
 
 import { cardSurface } from "@/components/card-recipes";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
-import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallVerifyButton } from "@/components/on-call/on-call-verify-button";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { ExternalTextLink } from "@/components/ui/link";
 import { cn, eyebrowText, metadataPillDensity, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/lib/on-call/entry-model";
 import { onCallLocalDateKey } from "@/lib/on-call/local-date";
 import { onCallTeachingDate, onCallTeachingDateLabel } from "@/lib/on-call/teaching-schedule";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 export interface OnCallEducationSectionProps {
   entries: readonly OnCallEntry[];
@@ -138,6 +139,7 @@ function EducationCard({
       // class right except `forced-colors:border`, so in Windows High Contrast
       // the card edge disappeared.
       className={cn(cardSurface, "grid grid-cols-[minmax(0,1fr)] gap-3 p-4")}
+      data-on-call-entry-card=""
       data-testid={`on-call-education-card-${entry.slug}`}
     >
       <header className="flex items-start justify-between gap-3">
@@ -215,11 +217,12 @@ export function OnCallEducationSection({
   onEditEntry,
   onVerified,
 }: OnCallEducationSectionProps) {
+  const { zone } = useWorkTimeZone();
   const educationEntries = entries.filter((entry) => entry.section === "education");
 
   if (educationEntries.length === 0) {
     return (
-      <EmptyState
+      <OnCallEmptyState
         icon={GraduationCap}
         title="No teaching sessions yet"
         body="Sessions you add will appear here, ordered by their next occurrence."
@@ -228,7 +231,7 @@ export function OnCallEducationSection({
     );
   }
 
-  const today = onCallLocalDateKey(now);
+  const today = onCallLocalDateKey(now, zone);
   const sorted = [...educationEntries].sort((a, b) => {
     const aKey = resolvedOccurrence(parseEducationDetails(a.details), a, today).sortKey;
     const bKey = resolvedOccurrence(parseEducationDetails(b.details), b, today).sortKey;

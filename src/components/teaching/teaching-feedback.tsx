@@ -1,12 +1,14 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useId, useMemo, useState } from "react";
-import { ModeNotice } from "@/components/mode-kit/notice";
+import { WorkButton } from "@/components/mode-kit/work";
+import { T5Empty, T5Note, T5Section } from "@/components/teaching/t5-kit";
 import { TeachingAccountPage, TeachingDepthPage } from "@/components/teaching/teaching-depth-page";
 import { perthDateKey, perthTime, shortDayLabel } from "@/components/teaching/teaching-dates";
+import { withUnit } from "@/components/teaching/teaching-number";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
-import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
@@ -31,7 +33,7 @@ function FeedbackForm({ session, demoMode }: { session: SessionRef; demoMode: bo
   const ids = useId();
   return (
     <form
-      className="grid gap-3 border-b border-[color:var(--border)] py-3"
+      className="work-card work-card--pad grid gap-3"
       onSubmit={async (event) => {
         event.preventDefault();
         if (useful === null || pace === null || busy) return;
@@ -54,17 +56,22 @@ function FeedbackForm({ session, demoMode }: { session: SessionRef; demoMode: bo
       }}
     >
       <div className="grid gap-0.5">
-        <h2 className="text-base-minus font-medium text-[color:var(--text-heading)]">{session.title}</h2>
-        <p className={cn("text-sm", textMuted)}>
+        <h3 className="text-sm-minus font-bold text-[color:var(--text-heading)]">{session.title}</h3>
+        <p className={cn("text-xs", textMuted)}>
           {shortDayLabel(perthDateKey(session.startsAt))} · {perthTime(session.startsAt)}
         </p>
       </div>
       {sent ? (
-        <p role="status">{demoMode ? "Demo answer recorded on this page." : "Thanks. Your answer was sent."}</p>
+        <p role="status" className="flex items-center gap-2 text-xs font-semibold text-[color:var(--text-heading)]">
+          <span aria-hidden="true" className="work-ic size-5" data-tone="green">
+            <Check aria-hidden="true" className="size-3" strokeWidth={3} />
+          </span>
+          {demoMode ? "Demo answer recorded on this page." : "Thanks. Your answer was sent."}
+        </p>
       ) : (
         <>
           <div className="grid gap-1.5">
-            <p id={`${ids}-useful`} className="text-sm font-medium text-[color:var(--text-heading)]">
+            <p id={`${ids}-useful`} className="text-xs font-semibold text-[color:var(--text-heading)]">
               How useful was it? 1 (least) to 5 (most)
             </p>
             <SegmentedControl
@@ -76,7 +83,7 @@ function FeedbackForm({ session, demoMode }: { session: SessionRef; demoMode: bo
             />
           </div>
           <div className="grid gap-1.5">
-            <p id={`${ids}-pace`} className="text-sm font-medium text-[color:var(--text-heading)]">
+            <p id={`${ids}-pace`} className="text-xs font-semibold text-[color:var(--text-heading)]">
               Pace
             </p>
             <SegmentedControl<FeedbackPace | "">
@@ -89,10 +96,14 @@ function FeedbackForm({ session, demoMode }: { session: SessionRef; demoMode: bo
               options={feedbackPaces.map((value) => ({ value, label: feedbackPaceLabels[value], disabled: busy }))}
             />
           </div>
-          <Button type="submit" variant="primary" disabled={busy || useful === null || pace === null}>
+          <WorkButton type="submit" size="wide" disabled={busy || useful === null || pace === null}>
             {busy ? "Sending…" : "Send feedback"}
-          </Button>
-          {error ? <p role="alert">{error}</p> : null}
+          </WorkButton>
+          {error ? (
+            <p role="alert" className="text-xs font-semibold text-[color:var(--danger-text)]">
+              {error}
+            </p>
+          ) : null}
         </>
       )}
     </form>
@@ -109,15 +120,20 @@ function FeedbackPage({ demoMode }: { demoMode: boolean }) {
   );
   return (
     <TeachingDepthPage title="Feedback" demoMode={demoMode} resource={resource} ready={!!sessions}>
-      <p>{FEEDBACK_PRIVACY_LINE}. Feedback uses taps only, with no written comments.</p>
       {sessions?.length === 0 ? (
-        <ModeNotice>
+        <T5Empty>
           No sessions awaiting feedback. Feedback is available for seven days after a session you checked in to.
-        </ModeNotice>
-      ) : null}
-      {sessions?.map((session) => (
-        <FeedbackForm key={session.occurrenceId} session={session} demoMode={demoMode} />
-      ))}
+        </T5Empty>
+      ) : (
+        <T5Section label={sessions?.length ? `To give · ${sessions.length}` : "To give"} right="Taps only, no names">
+          {sessions?.map((session) => (
+            <FeedbackForm key={session.occurrenceId} session={session} demoMode={demoMode} />
+          ))}
+        </T5Section>
+      )}
+      <T5Note icon="shield">{`${FEEDBACK_PRIVACY_LINE}. Feedback uses taps only, with no written comments.`}</T5Note>
+      {/* The server's release rule (teaching_depth_command): totals open a week after the talk, from five answers. */}
+      <T5Note icon="info">{`Presenters see totals ${withUnit(7, "days")} after a talk, once ${withUnit(5, "people")} answer.`}</T5Note>
     </TeachingDepthPage>
   );
 }

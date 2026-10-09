@@ -62,6 +62,9 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       });
     }
     const normalizedSlug = normalizeDifferentialSlug(parsedSlug.data);
+    if (!normalizedSlug || !/^[a-z0-9_-]+$/.test(normalizedSlug) || normalizedSlug.length > 120) {
+      return notFoundResponse(normalizedSlug || "unknown");
+    }
     const { kind } = parseRequestQuery(request, differentialDetailQuerySchema, "Invalid differential detail query.");
 
     if (isDemoMode() || isLocalNoAuthMode()) {

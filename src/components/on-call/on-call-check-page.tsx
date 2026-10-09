@@ -11,13 +11,14 @@ import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
 import { ON_CALL_VIEW_TITLES } from "@/components/on-call/on-call-section-identity";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText, floatingControl, textMuted } from "@/components/ui-primitives";
 import { formatClinicalDate } from "@/lib/source-metadata";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
 import { buildOnCallReviewQueue, type OnCallReviewItem } from "@/lib/on-call/review-queue";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * CHECK THESE — every entry of yours that is due for a check, soonest first.
@@ -29,14 +30,15 @@ import { buildOnCallReviewQueue, type OnCallReviewItem } from "@/lib/on-call/rev
  * edit it where it lives.
  */
 export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
+  const { zone } = useWorkTimeZone();
   const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut, demoMode } = useOnCallEntries();
   const [tick, setTick] = useState(() => new Date());
   const now = nowProp ?? tick;
   useEffect(() => {
     if (nowProp) return;
-    const timer = setTimeout(() => setTick(new Date()), msUntilNextOnCallLocalDay(now));
+    const timer = setTimeout(() => setTick(new Date()), msUntilNextOnCallLocalDay(now, zone));
     return () => clearTimeout(timer);
-  }, [nowProp, now]);
+  }, [nowProp, now, zone]);
   const queue = useMemo(() => buildOnCallReviewQueue(entries, now), [entries, now]);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,14 +85,14 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
 
         {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
         {demoMode ? (
-          <p className={cn(textMuted, "mt-2 text-sm")}>Demo entries cannot be confirmed; sign in to check your own.</p>
+          <p className={cn(textMuted, "mt-2 text-sm")}>Demo entries cannot be confirmed. Sign in to check your own.</p>
         ) : null}
         <p role="status" className="mt-2 text-sm font-semibold text-[color:var(--text)]">
           {error}
         </p>
 
         {loading && entries.length === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarCheck}
             title="Loading your entries"
             body="Fetching what needs checking."
@@ -101,7 +103,7 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
         ) : entries.length === 0 ? (
           // No entries is not the same as nothing due: there was nothing to
           // assess, so this must never read as though a check happened.
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarCheck}
             title={signedOut ? "Sign in to see your checks" : "No entries yet"}
             body={
@@ -112,14 +114,14 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
             testId="on-call-check-no-entries"
           />
         ) : queue.assessed === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarCheck}
             title="Nothing here for you to check"
             body="None of these entries is one you can confirm. Compliance records are kept on Compliance instead."
             testId="on-call-check-none-assessed"
           />
         ) : queue.total === 0 ? (
-          <EmptyState
+          <OnCallEmptyState
             icon={CalendarCheck}
             title="Nothing due for a check"
             body={`${queue.assessed === 1 ? "Your one entry was" : `All ${queue.assessed} of your entries were`} checked in the last twelve months, and none comes due in the next 30 days.`}

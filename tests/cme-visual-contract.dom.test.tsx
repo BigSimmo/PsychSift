@@ -241,7 +241,7 @@ describe("CME visual contract", () => {
   describe("the pace projection", () => {
     it("is stated as a sentence tied to the year's end date, once the rate means something", () => {
       render(<CmeDashboard set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={DEMO_CME_INSTANT} />);
-      expect(screen.getByTestId("cme-pace-sentence")).toHaveTextContent(/^17\.5 h to go, about 1\.2 h a week\./);
+      expect(screen.getByTestId("cme-pace-sentence")).toHaveTextContent(/^17\.5 h to go · about 1\.2 h a week\./); // work-mode redesign, owner request 6 Oct 2026
       // The year's end sits in the same card's label, so the rate is always read against it.
       expect(screen.getByTestId("cme-year-label")).toHaveTextContent("2026 · about 15 weeks left");
     });

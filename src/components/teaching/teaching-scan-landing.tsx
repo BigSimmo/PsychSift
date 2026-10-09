@@ -1,5 +1,7 @@
 "use client";
 
+import { T5Button, t5ButtonFace } from "@/components/teaching/t5-kit";
+
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -8,17 +10,16 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { perthDateKey, perthTime, shortDayLabel } from "@/components/teaching/teaching-dates";
+import { CheckinRecorded, wasAlreadyCheckedIn } from "@/components/teaching/checkin/checkin-recorded";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
-import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
-import { Button, buttonFaceClass } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { ApiClientError } from "@/lib/api-client-error";
 import { useAuthSession } from "@/lib/supabase/client";
-import { TeachingSignedOutError, teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
-import { attendanceLabels, type CheckinCompleted, type CheckinOpened } from "@/lib/teaching/model";
+import { TeachingSignedOutError, teachingErrorMessage, teachingPost, teachingPostTimed } from "@/lib/teaching/client";
+import { type CheckinCompleted, type CheckinOpened } from "@/lib/teaching/model";
 
 /*
  * Where a scanned QR lands (spec §9, part 2 S4 Step 14). It opens the scan once
@@ -46,7 +47,7 @@ type Step = "open" | "complete";
 type ScanState =
   | { kind: "working"; opened: CheckinOpened | null }
   | { kind: "sign-in"; opened: CheckinOpened | null; sent: boolean }
-  | { kind: "done"; opened: CheckinOpened | null; mark: CheckinCompleted }
+  | { kind: "done"; opened: CheckinOpened | null; mark: CheckinCompleted; already: boolean }
   | { kind: "failed"; opened: CheckinOpened | null; message: string; retry: Step | null }
   | { kind: "offline"; opened: CheckinOpened | null; retry: Step };
 
@@ -73,6 +74,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [cpdBridgeOpen, setCpdBridgeOpen] = useState(false);
+  const [cpdLogged, setCpdLogged] = useState(false);
   const started = useRef(false);
 
   const occurrenceId = state.kind === "done" ? state.mark.occurrenceId : null;
@@ -96,8 +98,12 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
         setState({ kind: "working", opened });
       }
       try {
-        const mark = await teachingPost<CheckinCompleted>("/api/teaching/checkin/complete", {});
-        setState({ kind: "done", opened, mark });
+        const { data: mark, serverTime } = await teachingPostTimed<CheckinCompleted>(
+          "/api/teaching/checkin/complete",
+          {},
+        );
+        // Decided once, from the server's own two times: a ticking page clock never changes it.
+        setState({ kind: "done", opened, mark, already: wasAlreadyCheckedIn(mark.recordedAt, serverTime) });
       } catch (error) {
         setState(
           error instanceof TeachingSignedOutError
@@ -141,7 +147,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
 
   const opened = state.opened;
   const todayLink = (
-    <Link href="/teaching" className={cn(buttonFaceClass({ variant: "ghost", block: true }), "no-underline")}>
+    <Link href="/teaching" {...t5ButtonFace({ variant: "ghost", block: true })}>
       Go to Today
     </Link>
   );
@@ -171,24 +177,22 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
 
         {state.kind === "done" ? (
           <>
-            <p className="text-sm text-[color:var(--text-heading)]">{attendanceLabels[state.mark.method]}</p>
-            {!hasEnded && sessionEndsAt ? (
-              <p className="text-xs text-[color:var(--text-muted)]">
-                You can log this session to CPD once it has ended at {perthTime(sessionEndsAt)}.
-              </p>
-            ) : null}
-            <Button
-              variant="primary"
-              block
-              disabled={!hasEnded}
-              onClick={() => setCpdBridgeOpen(true)}
-              data-testid="teaching-scan-cpd-bridge-open"
-            >
-              {hasEnded ? "Log to CPD" : "Available once session ends"}
-            </Button>
+            {/* Feature 9: the "Attendance recorded" confirmation and where the check-in went. */}
+            <CheckinRecorded
+              title={opened ? null : (sessionDetail.data?.title ?? null)}
+              startsAt={sessionStartsAt ?? null}
+              endsAt={sessionEndsAt ?? null}
+              venue={sessionDetail.data?.venue ?? null}
+              method={state.mark.method}
+              recordedAt={state.mark.recordedAt}
+              alreadyCheckedIn={state.already}
+              now={now}
+              logged={cpdLogged}
+              onLogToCpd={hasEnded ? () => setCpdBridgeOpen(true) : undefined}
+            />
             <Link
               href={`/teaching/session/${state.mark.occurrenceId}`}
-              className={cn(buttonFaceClass({ variant: "secondary", block: true }), "no-underline")}
+              {...t5ButtonFace({ variant: "secondary", block: true })}
             >
               Open the session
             </Link>
@@ -200,6 +204,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
                 occurrenceId={state.mark.occurrenceId}
                 startsAt={sessionStartsAt}
                 endsAt={sessionEndsAt}
+                onLogged={() => setCpdLogged(true)}
               />
             ) : null}
           </>
@@ -211,7 +216,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               <ModeNotice>
                 Check your email. Open the link on this phone, in this browser, within 10 minutes.
               </ModeNotice>
-              <Button
+              <T5Button
                 variant="secondary"
                 block
                 busy={sending}
@@ -219,15 +224,16 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
                 onClick={() => void sendLink(opened)}
               >
                 Send again
-              </Button>
-              <Button variant="ghost" block onClick={() => setState({ kind: "sign-in", opened, sent: false })}>
+              </T5Button>
+              <T5Button variant="ghost" block onClick={() => setState({ kind: "sign-in", opened, sent: false })}>
                 Use a different email
-              </Button>
+              </T5Button>
               {emailError ? (
                 <div role="alert">
                   <ModeNotice tone="warning">{emailError}</ModeNotice>
                 </div>
               ) : null}
+              {todayLink}
             </div>
           ) : (
             <form
@@ -248,9 +254,11 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
                 enterKeyHint="send"
                 error={emailError ?? undefined}
               />
-              <Button type="submit" variant="primary" block busy={sending} busyLabel="Sending">
+              <T5Button type="submit" variant="primary" block busy={sending} busyLabel="Sending">
                 Email me a sign-in link
-              </Button>
+              </T5Button>
+              {/* A scan opens a fresh tab with no history, so waiting for sign-in has its own way out too. */}
+              {todayLink}
             </form>
           )
         ) : null}
@@ -261,16 +269,29 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               <ModeNotice tone="warning">{state.message}</ModeNotice>
             </div>
             {state.retry ? (
-              <Button variant="secondary" block onClick={() => retry(state.retry ?? "complete", opened)}>
+              <T5Button variant="secondary" block onClick={() => retry(state.retry ?? "complete", opened)}>
                 Try again
-              </Button>
+              </T5Button>
             ) : null}
             {todayLink}
           </div>
         ) : null}
 
         {state.kind === "offline" ? (
-          <TeachingStateNotice state="offline" onRetry={() => retry(state.retry, opened)} />
+          // A scan opens a fresh tab with no history, so this state has its own way out as well as Try again.
+          <div className="grid gap-2" data-testid="teaching-scan-offline">
+            <div role="alert">
+              <ModeNotice tone="warning">
+                {state.retry === "complete"
+                  ? "No connection. Your scan is kept on this phone for 10 minutes. Try again when you are back online."
+                  : "No connection. Try again when you are back online, while the check-in code is still showing."}
+              </ModeNotice>
+            </div>
+            <T5Button variant="secondary" block onClick={() => retry(state.retry, opened)}>
+              Try again
+            </T5Button>
+            {todayLink}
+          </div>
         ) : null}
       </div>
     </InformationPageShell>

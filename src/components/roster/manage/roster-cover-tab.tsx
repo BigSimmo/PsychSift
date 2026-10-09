@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { TextField } from "@/components/ui/text-field";
@@ -57,7 +58,7 @@ function Fairness({ serviceId, overview }: { serviceId: string; overview: Roster
         </Button>
       </div>
     );
-  if (result?.key !== key) return <p role="status">Loading fairness counts…</p>;
+  if (result?.key !== key) return <WorkStateLoading label="Loading fairness counts…" />;
   const rows = fairnessCounts(result.assignments, { from: period.periodStart, to: period.periodEnd });
   return (
     <section className="grid gap-2">
@@ -77,7 +78,7 @@ function Fairness({ serviceId, overview }: { serviceId: string; overview: Roster
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr className="border-t" key={row.userId}>
+              <tr className="border-t border-[color:var(--border)]" key={row.userId}>
                 <th className="p-2 font-normal">{row.name}</th>
                 <td className="p-2">{row.nights}</td>
                 <td className="p-2">{row.weekendShifts}</td>
@@ -136,7 +137,10 @@ export function RosterCoverGap({
   overview,
   serviceId,
   onPosted,
+  inList = false,
 }: {
+  /** Inside the Inbox's framed list the row is flat, so the list's border is the only frame. */
+  inList?: boolean;
   date: string;
   need: Need;
   assignments: RosterAssignment[];
@@ -153,7 +157,7 @@ export function RosterCoverGap({
   if (need.kind === "leave") return null;
   if (need.grade === "other")
     return (
-      <p>
+      <p className={inList ? "p-4" : undefined}>
         Gap: {formatPerthDay(date)} {need.kind}. Clarify the required grade before posting this shift.
       </p>
     );
@@ -188,9 +192,13 @@ export function RosterCoverGap({
         onClick={() => setOpened(true)}
         className={cn(
           focusRing,
-          "flex min-h-12 w-full items-center gap-3 rounded-xl border border-[color:var(--warning-border)] px-3 py-2 text-left",
+          "flex min-h-12 w-full items-center gap-3 text-left",
+          inList ? "p-4" : "rounded-xl border border-[color:var(--warning-border)] px-3 py-2",
         )}
       >
+        {inList ? (
+          <TriangleAlert aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--warning-text)]" />
+        ) : null}
         <span className="min-w-0 flex-1 break-words">{summary}</span>
         {message ? <span className="text-sm text-[color:var(--text-muted)]">{message}</span> : null}
         <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
@@ -231,20 +239,22 @@ export function RosterCoverTab({ serviceId, overview }: { serviceId: string; ove
   const [to, setTo] = useState(addDaysToDate(today, 13));
   if (!assignments.data || !maker.data) {
     const failed = assignments.status === "error" || maker.status === "error";
+    const message = assignments.message ?? maker.message;
+    if (!message) return <WorkStateLoading label="Loading cover…" />;
     return (
-      <div role={failed ? "alert" : "status"}>
-        <p>{assignments.message ?? maker.message ?? "Loading cover…"}</p>
-        {failed ? (
-          <Button
-            onClick={() => {
-              assignments.reload();
-              maker.reload();
-            }}
-          >
-            Try again
-          </Button>
-        ) : null}
-      </div>
+      <WorkStateNotice
+        kind="error"
+        title={message}
+        role={failed ? "alert" : "status"}
+        onRetry={
+          failed
+            ? () => {
+                assignments.reload();
+                maker.reload();
+              }
+            : undefined
+        }
+      />
     );
   }
   const shifts = assignments.data.assignments;
@@ -287,7 +297,7 @@ export function RosterCoverTab({ serviceId, overview }: { serviceId: string; ove
           </thead>
           <tbody>
             {days.map((date) => (
-              <tr key={date} className="border-t">
+              <tr key={date} className="border-t border-[color:var(--border)]">
                 <th className="p-2 font-normal">{formatPerthDay(date)}</th>
                 {["day", "evening", "night"].map((kind) => {
                   const cover = coverForDay(date, shifts, maker.data!.needs).find((row) => row.kind === kind);

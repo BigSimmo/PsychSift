@@ -152,6 +152,32 @@ describe("AdminHelpPage", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  // Work-mode redesign, owner request 6 Oct 2026: the search says how many rows it found, which
+  // everyday words it also looked for, and says plainly when nothing but the crisis lines is left.
+  it("says how many rows the search found, what else it looked for, and when nothing matched", () => {
+    render(<AdminHelpPage now={NOW} />);
+    const filter = screen.getByLabelText("Find in Help");
+    fireEvent.change(filter, { target: { value: "hungry" } });
+    expect(screen.getByTestId("admin-help-search-result")).toHaveTextContent("1 result");
+    expect(screen.getByTestId("admin-help-also-matched")).toHaveTextContent(
+      "Also looking for food, cafeteria, vending, meal, dinner and eat",
+    );
+    fireEvent.change(filter, { target: { value: "zebra" } });
+    expect(screen.getByTestId("admin-help-search-result")).toHaveTextContent("0 results");
+    expect(screen.getByTestId("admin-help-no-match")).toHaveTextContent("Crisis lines always show.");
+    expect(screen.getByTestId("admin-help-crisis")).toBeTruthy();
+  });
+
+  it("refuses Add your own and Edit in demo mode, and says only the crisis numbers are real", () => {
+    Object.assign(entryState, { demoMode: true });
+    render(<AdminHelpPage now={NOW} />);
+    expect(screen.queryByTestId("admin-help-add")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
+    expect(screen.getByTestId("admin-help-demo-note")).toHaveTextContent(
+      "Crisis numbers are real. Other numbers are examples.",
+    );
+  });
+
   it("forwards an old login-row anchor to New job", () => {
     window.history.replaceState(null, "", `/admin/help#on-call-entry-${loginOwn.id}`);
     render(<AdminHelpPage now={NOW} />);

@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 
-import { OnCallSampleNotice } from "@/components/on-call/on-call-sample-notice";
+import "@/components/on-call/on-call-work.css";
+
 import { ModeBand } from "@/components/mode-band/mode-band";
+import { OnCallExampleDataScope } from "@/lib/on-call/entry-store";
 
 export default function OnCallLayout({ children }: { children: ReactNode }) {
   // A top-level mode: today's date where the back link would be.
@@ -11,8 +13,7 @@ export default function OnCallLayout({ children }: { children: ReactNode }) {
           (mock-up v10). Custom properties inherit through `contents`, so the
           wrapper scopes the colour without adding a box. */}
       <div data-mode-identity="on-call" className="contents">
-        <OnCallSampleNotice mode="on-call" />
-        {children}
+        <OnCallExampleDataScope>{children}</OnCallExampleDataScope>
       </div>
     </ModeBand>
   );

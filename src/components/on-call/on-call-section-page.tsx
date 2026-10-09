@@ -3,6 +3,7 @@
 import { focusOnCallEntryFromHash } from "@/components/on-call/on-call-page-anchors";
 
 import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -18,7 +19,6 @@ import { HospitalLadders } from "@/components/on-call/hospital-ladders";
 import { OnCallPlaybookSection } from "@/components/on-call/on-call-playbook-section";
 import { OnCallReferralsSection } from "@/components/on-call/on-call-referrals-section";
 import { OnCallWhoIsWhoSection } from "@/components/on-call/on-call-who-is-who-section";
-import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import {
   ON_CALL_VIEW_ICONS,
   ON_CALL_VIEW_TITLES,
@@ -32,18 +32,28 @@ import { OnCallSectionNavHeader } from "@/components/on-call/on-call-nav-header"
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
 import { OnCallTeachingStrip } from "@/components/on-call/on-call-teaching-strip";
 import { onCallPageSections } from "@/components/on-call/on-call-page-sections";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { useOnCallLinkedDocumentsState } from "@/lib/on-call/linked-documents";
 import { onCallEntryFreshness, type OnCallEntry, onCallEntryIsEditable } from "@/lib/on-call/entry-model";
-import { onCallLocalDateKey } from "@/lib/on-call/local-date";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { selectUpcomingTeachingSessions } from "@/lib/on-call/teaching-schedule";
 import { partitionLogisticsEntries } from "@/lib/on-call/compliance";
 import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
 import { isAdminWorkforceExplainer } from "@/lib/admin/placement";
+import { zonedToday } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+
+/**
+ * The entry editor loads on the first Add or Edit tap and then stays mounted,
+ * so a section's first paint does not carry it and its close animation still runs.
+ */
+const OnCallEntryEditor = dynamic(
+  () => import("@/components/on-call/on-call-entry-editor").then((module) => module.OnCallEntryEditor),
+  { ssr: false },
+);
 
 /**
  * Generic, non-owner-specific framing for each view. Shown to every reader,
@@ -180,11 +190,14 @@ const ON_CALL_ADD_HINT: Partial<Record<OnCallPageView, string>> = {
  * `isAuthenticated`, because their routes require one.
  */
 export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
+  const { zone } = useWorkTimeZone();
   const { isAuthenticated } = useAccountData();
   const [editorState, setEditorState] = useState<{ open: boolean; entry: OnCallEntry | null }>({
     open: false,
     entry: null,
   });
+  const [editorMounted, setEditorMounted] = useState(false);
+  if (editorState.open && !editorMounted) setEditorMounted(true);
   // The page menu's order control lives in the header portal and the list it
   // orders lives in the body, so the state belongs to their common parent
   // rather than to either of them.
@@ -195,7 +208,10 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   });
   const title = ON_CALL_VIEW_TITLES[view];
   const Icon = ON_CALL_VIEW_ICONS[view];
-  const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut } = useOnCallEntries();
+  const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut, demoMode } = useOnCallEntries();
+  // Example rows are never writable: the store already refuses to cache them,
+  // and this keeps the server calls unreachable too.
+  const canWrite = isAuthenticated && !demoMode;
   // Each list component filters `entries` itself — by section, and for the two
   // contacts-backed views by `details.kind` as well — so the page hands over the
   // whole set rather than seven near-identical slices. The one exception:
@@ -231,8 +247,8 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   // `selectUpcomingTeachingSessions` rolls a recurring session forward from its
   // anchor rather than letting it vanish the afternoon its date passes.
   const upcomingTeaching = useMemo(
-    () => (view === "education" ? selectUpcomingTeachingSessions(entries, onCallLocalDateKey(new Date())) : []),
-    [view, entries],
+    () => (view === "education" ? selectUpcomingTeachingSessions(entries, zonedToday(zone)) : []),
+    [view, entries, zone],
   );
 
   // Overdue entries in THIS view, which is what "mark all as still correct"
@@ -354,13 +370,13 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   // signed-out reader is offered nothing the API would answer with a 401.
   const listProps = {
     entries: sectionEntries,
-    onEditEntry: isAuthenticated
+    onEditEntry: canWrite
       ? (entry: OnCallEntry) => {
           recordOnCallRecent({ id: entry.id, title: entry.title });
           setEditorState({ open: true, entry });
         }
       : undefined,
-    onVerified: isAuthenticated ? upsertCachedEntry : undefined,
+    onVerified: canWrite ? upsertCachedEntry : undefined,
   };
 
   /**
@@ -376,7 +392,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
           <OnCallContactsSection
             {...listProps}
             order={contactsOrder}
-            onAddEntry={isAuthenticated ? () => setEditorState({ open: true, entry: null }) : undefined}
+            onAddEntry={canWrite ? () => setEditorState({ open: true, entry: null }) : undefined}
           />
         );
       case "playbook":
@@ -412,29 +428,10 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
 
   return (
     <>
-      {/* Two controls, each in the one place the whole mode keeps it.
-          -----------------------------------------------------------------
-          The universal header above names this page in its pill and carries
-          the page's actions in its trailing slot — the same slot, the same
-          menu and the same trigger the mode home uses, so the two surfaces
-          cannot drift into different menus. This header is then only the bar
-          of the page's own groups, and renders nothing at all on a page that
-          has none. */}
-      <OnCallPageMenu
-        view={view}
-        entryCount={visibleCount}
-        summary={`${visibleCount} ${visibleCount === 1 ? "entry" : "entries"}. ${ON_CALL_VIEW_DESCRIPTIONS[view]}`}
-        order={view === "contacts" ? contactsOrder : undefined}
-        onOrderChange={view === "contacts" ? setContactsOrder : undefined}
-        onAdd={isAuthenticated ? () => setEditorState({ open: true, entry: null }) : undefined}
-        addLabel={`Add ${ON_CALL_ADD_NOUN[view]}`}
-        addHint={ON_CALL_ADD_HINT[view]}
-        onVerifyAll={offersBulkVerify && isAuthenticated && !verifyAllState.running ? verifyAllStale : undefined}
-        // Zero rather than the real count on a view that offers no bulk
-        // control, so the number and the button it describes can never be
-        // wired to different conditions.
-        staleCount={offersBulkVerify ? staleEntries.length : 0}
-      />
+      {/* The section bar is only the page's own groups. Page tools (add, bulk
+          verify, pocket card, order) live in-page beside the list, not in the
+          universal header — that trailing slot is Search my work, and on the
+          home a Needs you bell. */}
       <OnCallSectionNavHeader title={title} sections={pageSections} />
       <InformationPageShell testId={`on-call-${view}-main`}>
         {/* No hero above the list.
@@ -477,7 +474,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
                 (it also appears in that section's empty state). The others get
                 it here, because without one an owner can reach an empty
                 Playbook or Logistics page with no way to put anything on it. */}
-            {isAuthenticated && view !== "contacts" ? (
+            {canWrite && view !== "contacts" ? (
               <Button
                 variant="secondary"
                 size="sm"
@@ -488,6 +485,18 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
                 {`Add ${ON_CALL_ADD_NOUN[view]}`}
               </Button>
             ) : null}
+            <OnCallPageMenu
+              view={view}
+              entryCount={visibleCount}
+              summary={`${visibleCount} ${visibleCount === 1 ? "entry" : "entries"}. ${ON_CALL_VIEW_DESCRIPTIONS[view]}`}
+              order={view === "contacts" ? contactsOrder : undefined}
+              onOrderChange={view === "contacts" ? setContactsOrder : undefined}
+              onAdd={canWrite ? () => setEditorState({ open: true, entry: null }) : undefined}
+              addLabel={`Add ${ON_CALL_ADD_NOUN[view]}`}
+              addHint={ON_CALL_ADD_HINT[view]}
+              onVerifyAll={offersBulkVerify && canWrite && !verifyAllState.running ? verifyAllStale : undefined}
+              staleCount={offersBulkVerify ? staleEntries.length : 0}
+            />
           </div>
           {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
           {verifyAllState.error ? (
@@ -499,7 +508,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
             // Nothing cached and the first fetch still running. An empty state
             // here would assert the section holds nothing before anything has
             // been read.
-            <EmptyState
+            <OnCallEmptyState
               icon={Icon}
               title={`Loading ${title.toLowerCase()}`}
               body="Fetching the entries saved to this section."
@@ -519,21 +528,23 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
       {/* One editor for every view: its field map is already keyed by section.
           Who's who writes `contacts` rows, so it hands over the storage section
           rather than the view. */}
-      <OnCallEntryEditor
-        open={editorState.open}
-        onClose={() => setEditorState({ open: false, entry: null })}
-        section={onCallViewStorageSection(view)}
-        entry={editorState.entry}
-        onSaved={upsertCachedEntry}
-        onDeleted={removeCachedEntry}
-        createAsRoleExplainer={view === "who-is-who"}
-        // The `logistics` mirror of the line above, and not optional polish:
-        // both views that share a section save through that section, so
-        // without this seed "Add requirement" on the Compliance page would
-        // write an ordinary Admin row — one that disappears from the page it
-        // was added on and reappears among the parking notes.
-        createAsCompliance={view === "compliance"}
-      />
+      {editorMounted ? (
+        <OnCallEntryEditor
+          open={editorState.open}
+          onClose={() => setEditorState({ open: false, entry: null })}
+          section={onCallViewStorageSection(view)}
+          entry={editorState.entry}
+          onSaved={upsertCachedEntry}
+          onDeleted={removeCachedEntry}
+          createAsRoleExplainer={view === "who-is-who"}
+          // The `logistics` mirror of the line above, and not optional polish:
+          // both views that share a section save through that section, so
+          // without this seed "Add requirement" on the Compliance page would
+          // write an ordinary Admin row — one that disappears from the page it
+          // was added on and reappears among the parking notes.
+          createAsCompliance={view === "compliance"}
+        />
+      ) : null}
     </>
   );
 }

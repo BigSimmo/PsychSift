@@ -1,5 +1,3 @@
-"use client";
-
 import { ChevronDown } from "lucide-react";
 
 import { CalendarSubscribe } from "@/components/calendar/calendar-subscribe";
@@ -15,6 +13,9 @@ import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
  * CALENDAR — CME's dates on one month view: what was logged, when each
  * routine is next due (and every repeat after), and the year's own dates.
  * The routines and year dates can be sent to the owner's own calendar.
+ *
+ * No hooks or handlers live here, so on the Calendar route it renders on the server and only the
+ * worked-out events (not every entry and routine) cross to the browser for the month view.
  */
 export function CmeCalendarPage({
   set,
@@ -40,6 +41,7 @@ export function CmeCalendarPage({
         today={perthCalendarDate(new Date(nowIso))}
         exportName={`CPD ${set.year}`}
         testId="cme-calendar-view"
+        exampleArea="cpd"
         markStyle="shape"
         laterHeadingPrefix="Coming up in"
       />

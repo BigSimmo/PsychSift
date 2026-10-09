@@ -5,8 +5,10 @@ import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { WaitingOnControls, type WaitingOnValue } from "@/components/cme/cme-drafts-section";
+import { WaitingOnControls, waitingNoteProblem, type WaitingOnValue } from "@/components/cme/cme-drafts-section";
 import { useCmeSample } from "@/components/cme/cme-sample-context";
+import { stillShortCategories } from "@/components/cme/cme-still-short";
+import { CmeDetailNavHeader } from "@/components/cme/cme-nav-header";
 import { CmeEntryForm, type CmeEntryDraft } from "@/components/cme/cme-entry-form";
 import { cn, eyebrowText, fieldControlPlain, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/lib/account-scoped-browser-state";
@@ -15,7 +17,7 @@ import { recentRepeatableActivities } from "@/lib/cme/recent-activities";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { perthCalendarDate } from "@/lib/perth-time";
-import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
+import { cmePageWidth } from "@/components/cme/cme-page-frame";
 
 export { CME_NEW_ENTRY_DRAFT_KEY };
 
@@ -166,6 +168,8 @@ export function CmeNewEntryRoute({
 
   async function saveDraft(payload: CmeDraftPayload) {
     if (demoMode) throw new Error("Demo mode is read-only. Sign in to save drafts to your private CPD record.");
+    if (waiting.waitingOn && waitingNoteProblem(waiting.waitingNote))
+      throw new Error("Take out the patient details from the note to save this draft.");
     const response = await fetch(resumeDraft ? `/api/cme/drafts/${resumeDraft.id}` : "/api/cme/drafts", {
       method: resumeDraft ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -182,75 +186,68 @@ export function CmeNewEntryRoute({
   }
 
   return (
-    <main className={cn(cmePageWidth, "px-4 py-6 sm:px-6")}>
-      <div className="mb-4">
-        <Link
-          href="/cme/log"
-          className="inline-flex min-h-tap items-center gap-1.5 text-sm font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
-          data-testid="cme-new-back"
-        >
-          <ArrowLeft className="size-icon-sm" aria-hidden="true" />
-          Back to CPD log
-        </Link>
-      </div>
-      <h1 className={cmePageTitle}>Log an activity</h1>
-      <p className={cn(textMuted, "mt-1 text-sm")}>
-        What it was, when, how long it ran for, and which category the hours count toward. Nothing is recorded until you
-        save it.
-      </p>
+    <>
+      {/* The band is hidden on a form, so the form keeps its own way back (work-mode redesign, owner request 6 Oct 2026). */}
+      <CmeDetailNavHeader title="Log an activity" back={{ href: "/cme/log", label: "Log" }} testIdPrefix="cme-new" />
+      <main data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-6 pt-3 sm:px-6")}>
+        <h1 className="sr-only">Log an activity</h1>
+        <p className="cpd-hint m-0">
+          {set ? `Counts toward ${set.year}. ` : ""}What it was, when, how long it ran for, and which category the hours
+          count toward. Nothing is recorded until you save it.
+        </p>
 
-      {repeatOf ? (
-        <p data-testid="cme-entry-repeat-notice" className={cn(textMuted, "mt-3 text-sm")}>
-          Copied from an earlier entry and dated today. Check the date and hours, and write this occasion&apos;s own
-          reflection, before saving.
-        </p>
-      ) : null}
-      {routine ? (
-        <p className={cn(textMuted, "mt-3 text-sm")}>
-          This routine usually takes {routine.usualHours} h. Choose the hours you actually spent before saving.
-        </p>
-      ) : null}
-      {resumeDraft ? (
-        <p data-testid="cme-entry-resume-notice" className={cn(textMuted, "mt-3 text-sm")}>
-          Continuing a saved draft. Saving the activity removes the draft; saving as draft again keeps your changes.
-        </p>
-      ) : null}
-      {learningPrefill?.title || learningPrefill?.sourceUrl ? (
-        <p className={cn(textMuted, "mt-3 text-sm")}>
-          Source details are prefilled. Confirm the time you actually spent and its allocation before saving. Opening
-          this form does not record an activity.
-        </p>
-      ) : null}
-      {logAgain.length ? (
-        // "Log again": one tap opens this form filled from that earlier entry,
-        // through the same repeat path as an activity's own Log it again.
-        // Nothing is recorded until Save.
-        <nav aria-labelledby="cme-log-again-label" className="mt-4" data-testid="cme-log-again">
-          <p id="cme-log-again-label" className={eyebrowText}>
-            Log again
+        {repeatOf ? (
+          <p data-testid="cme-entry-repeat-notice" className={cn(textMuted, "mt-3 text-sm")}>
+            Copied from an earlier entry and dated today. Check the date and hours, and write this occasion&apos;s own
+            reflection, before saving.
           </p>
-          <ul className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1">
-            {logAgain.map((activity) => (
-              <li key={activity.id} className="shrink-0">
-                <Link
-                  href={`/cme/new?year=${activity.date.slice(0, 4)}&repeat=${encodeURIComponent(activity.id)}`}
-                  className="inline-flex min-h-tap max-w-64 items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-4 text-sm text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-                >
-                  <span className="truncate font-medium">{activity.title}</span>
-                  <span className={cn(textMuted, "nums shrink-0")}>· {activity.hours} h</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      ) : null}
-      {demoMode ? (
-        <div className="mt-4" data-testid="cme-entry-demo-notice">
-          <InlineNotice tone="neutral">
-            Demo mode lets you inspect the form. Saving is available only in your signed-in private record.
-          </InlineNotice>
-        </div>
-      ) : null}
+        ) : null}
+        {routine ? (
+          <p className={cn(textMuted, "mt-3 text-sm")}>
+            This routine usually takes {routine.usualHours} h. Choose the hours you actually spent before saving.
+          </p>
+        ) : null}
+        {resumeDraft ? (
+          <p data-testid="cme-entry-resume-notice" className={cn(textMuted, "mt-3 text-sm")}>
+            Continuing a saved draft. Saving the activity removes the draft. Saving as draft again keeps your changes.
+          </p>
+        ) : null}
+        {learningPrefill?.title || learningPrefill?.sourceUrl ? (
+          <p className={cn(textMuted, "mt-3 text-sm")}>
+            Source details are prefilled. Confirm the time you actually spent and its allocation before saving. Opening
+            this form does not record an activity.
+          </p>
+        ) : null}
+        {logAgain.length ? (
+          // "Log again": one tap opens this form filled from that earlier entry,
+          // through the same repeat path as an activity's own Log it again.
+          // Nothing is recorded until Save.
+          <nav aria-labelledby="cme-log-again-label" className="mt-4" data-testid="cme-log-again">
+            <p id="cme-log-again-label" className={eyebrowText}>
+              Log again
+            </p>
+            <ul className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1">
+              {logAgain.map((activity) => (
+                <li key={activity.id} className="shrink-0">
+                  <Link
+                    href={`/cme/new?year=${activity.date.slice(0, 4)}&repeat=${encodeURIComponent(activity.id)}`}
+                    className="work-chip min-h-tap max-w-64"
+                  >
+                    <span className="truncate font-medium">{activity.title}</span>
+                    <span className={cn(textMuted, "nums shrink-0")}>· {activity.hours} h</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
+        {demoMode ? (
+          <div className="mt-4" data-testid="cme-entry-demo-notice">
+            <InlineNotice tone="neutral">
+              Demo mode lets you inspect the form. Saving is available only in your signed-in private record.
+            </InlineNotice>
+          </div>
+        ) : null}
 
       <div className="mt-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4">
         <label className="flex items-start gap-2.5 cursor-pointer text-sm font-medium text-[color:var(--text)]">
@@ -290,6 +287,7 @@ export function CmeNewEntryRoute({
           existingEntries={existingEntries}
           initialStatedHours={routine ? null : undefined}
           availableDomains={domains}
+          stillShort={stillShortCategories(set, existingEntries)}
           // A continued account draft is not also mirrored to this tab's storage.
           draftStorageKey={resumeDraft || sample ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
           initialDraft={resumeDraft?.payload}
@@ -306,5 +304,6 @@ export function CmeNewEntryRoute({
         />
       </div>
     </main>
+  </>
   );
 }

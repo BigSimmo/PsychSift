@@ -112,12 +112,40 @@ describe("New entry", () => {
     expect(screen.getByRole("button", { name: /save entry/i })).not.toHaveAttribute("aria-disabled");
   });
 
+  it("will not save a title or reflection that reads as holding patient details, and says which field", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<CmeEntryForm onSubmit={onSubmit} />);
+    await user.type(screen.getByLabelText(/what was it/i), "RANZCP case discussion");
+    await user.click(within(screen.getByRole("group", { name: "Hours" })).getByRole("button", { name: "1" }));
+    await user.click(screen.getByRole("button", { name: "Educational" }));
+    expect(screen.queryByTestId("cme-entry-patient-detail")).toBeNull();
+    await user.type(screen.getByLabelText("Reflection"), "Discussed UMRN A1234567 on the ward");
+    expect(screen.getByTestId("cme-entry-patient-detail")).toHaveTextContent(/^Reflection:/);
+    expect(screen.getByTestId("cme-entry-save-blocked")).toHaveTextContent(/patient details/i);
+    await user.click(screen.getByRole("button", { name: "Save entry" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    await user.clear(screen.getByLabelText("Reflection"));
+    await user.type(screen.getByLabelText("Reflection"), "Reviewed my approach to formulation");
+    expect(screen.queryByTestId("cme-entry-patient-detail")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Save entry" }));
+    expect(onSubmit).toHaveBeenCalled();
+  });
+
   it("labels the reflection without asking a question", () => {
     render(<CmeEntryForm onSubmit={vi.fn()} />);
     const reflection = screen.getByLabelText(/reflection/i);
     expect(reflection).toBeInTheDocument();
     // The owner declined a guided prompt on 2026-09-20. The box is his.
     expect(screen.queryByText(/what will you do differently/i)).toBeNull();
+  });
+
+  it("scrolls a focused field clear of the pinned Save bar, but not the pinned Save itself (WCAG 2.4.11)", () => {
+    const { container } = render(<CmeEntryForm onSubmit={vi.fn()} />);
+    expect(screen.getByTestId("cme-entry-save-bar")).toBeInTheDocument();
+    const form = container.querySelector("form")!;
+    expect(form.className).toContain("[&_:is(input,textarea,select,button):not([type=submit])]:scroll-mb-32");
+    expect(screen.getByRole("button", { name: /save entry/i })).toHaveAttribute("type", "submit");
   });
 
   it("takes an optional cost and marks it optional", () => {

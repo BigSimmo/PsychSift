@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   ROSTER_FOLLOW_UP_READS,
@@ -11,7 +11,9 @@ import {
   type RosterRules,
   type RosterTeam,
 } from "@/lib/roster/team/model";
+import { useExampleData } from "@/lib/example-data/store";
 import { setRosterHasEnabledTeam } from "@/lib/teaching/page-visibility";
+import { sharedGet } from "@/lib/shared-get";
 
 /**
  * The team client every Roster screen reads through. Answers live in React
@@ -59,7 +61,7 @@ type Loaded<T> =
 
 async function load<T>(url: string, what: RosterReadWhat | "teams", signal: AbortSignal): Promise<Loaded<T>> {
   try {
-    const response = await fetch(url, { cache: "no-store", signal });
+    const response = await sharedGet(url, { signal });
     if (response.ok) return { status: "ready", data: (await response.json()) as T, readAt: new Date() };
     const payload = (await response.json().catch(() => null)) as ErrorPayload | null;
     const code = codeOf(payload);
@@ -106,7 +108,18 @@ export type RosterTeamsPayload = { teams: RosterTeam[]; actorId?: string; sample
 
 /** The teams I belong to. */
 export function useRosterTeams(): RosterReadState<RosterTeamsPayload> {
-  const state = useLoaded<RosterTeamsPayload>("/api/roster/team", "teams");
+  const loaded = useLoaded<RosterTeamsPayload>("/api/roster/team", "teams");
+  // The invented team served while the real-staff release is held shows only
+  // while Roster shows example data. With the switch off, nothing made up shows,
+  // labelled or not: the reader has no teams yet.
+  const example = useExampleData("rost").active;
+  const hideSample = loaded.status === "ready" && Boolean(loaded.data?.sample) && !example;
+  // Memoised on the payload, so readers downstream keep a stable `data` between renders.
+  const hiddenData = useMemo(
+    () => (hideSample && loaded.data ? { ...loaded.data, teams: [] } : null),
+    [hideSample, loaded.data],
+  );
+  const state = hiddenData ? { ...loaded, data: hiddenData } : loaded;
   useEffect(() => {
     if (state.status !== "ready") return;
     const enabled = Array.isArray(state.data?.teams) ? state.data.teams.some((team) => team.enabled) : false;
@@ -114,6 +127,9 @@ export function useRosterTeams(): RosterReadState<RosterTeamsPayload> {
   }, [state.status, state.data]);
   return state;
 }
+
+/** One shared empty answer while loading, so memoised readers downstream see a stable value. */
+const NO_RULES: ReadonlyMap<string, RosterRules> = new Map();
 
 /** Rules remain scoped to their team; changing membership discards the previous answers. */
 export function useRosterTeamRules(serviceIds: readonly string[]): ReadonlyMap<string, RosterRules> {
@@ -138,7 +154,7 @@ export function useRosterTeamRules(serviceIds: readonly string[]): ReadonlyMap<s
     });
     return () => controller.abort();
   }, [key]);
-  return answer?.key === key ? answer.rules : new Map();
+  return answer?.key === key ? answer.rules : NO_RULES;
 }
 
 /** One read of one team. Pass a null `serviceId` to wait (no request is made). */

@@ -81,7 +81,7 @@ export default defineConfig({
     headless: process.env.CI ? true : process.env.HEADED === "true" ? false : undefined,
     trace:
       (process.env.PLAYWRIGHT_TRACE as "off" | "on" | "retain-on-failure" | "on-first-retry" | undefined) ??
-      (process.env.CI ? "on-first-retry" : "retain-on-failure"),
+      "retain-on-failure",
     screenshot: "only-on-failure",
     // Dual-mode motion validation strategy (#75JA0P):
     // 1. Suite-wide baseline: set contextOptions: { reducedMotion: "reduce" } to

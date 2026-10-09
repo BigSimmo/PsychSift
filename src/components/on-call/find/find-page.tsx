@@ -10,6 +10,7 @@ import { OnCallHospitalPhoneSwitch } from "@/components/on-call/call/hospital-ph
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { handbookFirstLine, OnCallHandbookItemRow } from "@/components/on-call/find/handbook-item-row";
 import { OnCallFirstNightPanel } from "@/components/on-call/find/first-night-panel";
+import { FirstWeekEntryLink } from "@/components/on-call/first-week/first-week-entry-link";
 import { onCallChipShape, onCallChipTap, onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
@@ -23,6 +24,7 @@ import { ON_CALL_ON_SITE_HREF } from "@/components/on-call/on-call-section-ident
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import type { HandbookItem } from "@/lib/on-call/handbook-items";
 import { searchHandbookItems } from "@/lib/on-call/handbook-search";
 
@@ -146,7 +148,7 @@ export function OnCallFindPage() {
           <OnCallHandbookItemRow
             key={item.id}
             item={item}
-            leading={<Glyph aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+            leading={<Glyph aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
             secondary={secondaryLine(item)}
             hospitalName={hospitalName}
             hospitalPhone={hospitalPhone}
@@ -168,7 +170,7 @@ export function OnCallFindPage() {
               )}
             >
               <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
-                <BookOpen aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+                <BookOpen aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
               </span>
               <span className={cn(modeNameText, "min-w-0 flex-1 break-words text-base-minus")}>Your manuals</span>
               <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
@@ -203,7 +205,12 @@ export function OnCallFindPage() {
             {searching ? `${resultCount} ${resultCount === 1 ? "result" : "results"}` : ""}
           </p>
           {searching ? null : (
-            <nav aria-label="Jump to" className="-mx-1 min-w-0 overflow-x-auto" data-testid="on-call-find-jumps">
+            <nav
+              aria-label="Jump to"
+              data-no-tab-swipe
+              className="-mx-1 min-w-0 overflow-x-auto"
+              data-testid="on-call-find-jumps"
+            >
               <ul role="list" className="flex w-max gap-2 px-1">
                 {jumps.map((jump) => (
                   <li key={jump.label}>
@@ -220,6 +227,12 @@ export function OnCallFindPage() {
 
       {ready ? renderGroup(downtime) : null}
       {ready && !searching ? <OnCallFirstNightPanel id={FIRST_NIGHT_ANCHOR} testId="on-call-find-first-night" /> : null}
+      {/* Your first week (round 2 feature 20): the department's pack for a new job, next to First night. */}
+      {!searching ? (
+        <NewWorkModeOnly>
+          <FirstWeekEntryLink />
+        </NewWorkModeOnly>
+      ) : null}
       {ready ? rest.map(renderGroup) : null}
       {ready && !searching && (hasDeskOnly || hospitalPhone) ? <OnCallHospitalPhoneSwitch on={hospitalPhone} /> : null}
 
@@ -235,7 +248,7 @@ export function OnCallFindPage() {
           )}
         >
           <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
-            <Landmark aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+            <Landmark aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
           </span>
           <span className={cn(modeSecondaryText, "min-w-0 flex-1 break-words py-1.5")}>
             Parking, food and access are in Admin

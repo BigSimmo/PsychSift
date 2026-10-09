@@ -133,7 +133,7 @@ export function SearchField({
             autoComplete={field.autoComplete}
             aria-invalid={field.invalid || undefined}
             aria-describedby={field.describedBy}
-            className={cn(fieldControlWithIcon, showClear && "pr-11", className)}
+            className={cn(fieldControlWithIcon, showClear && "text-field-own-clear pr-11", className)}
           />
           {showClear ? (
             <button

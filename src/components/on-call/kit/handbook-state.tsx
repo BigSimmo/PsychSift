@@ -1,10 +1,8 @@
 "use client";
 
-import { Check, CloudOff, RotateCw } from "lucide-react";
-import Link from "next/link";
+import { Check, CloudOff } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { focusRing } from "@/components/card-recipes";
 import { OnCallModuleSkeleton } from "@/components/on-call/kit/module-skeleton";
 import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
@@ -15,38 +13,12 @@ import type {
   HospitalHandbookState,
   HospitalHandbookStatus,
 } from "@/components/on-call/use-hospital-handbook";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
-import { Button, buttonFaceClass } from "@/components/ui/button";
+import { WorkButton } from "@/components/mode-kit/work";
+import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { cn } from "@/components/ui-primitives";
 
 const ON_CALL_SERVICE_HREF = "/on-call/service";
-
-function SignInState({
-  page,
-  title,
-  testId,
-}: {
-  readonly page: OnCallHubPage;
-  readonly title: string;
-  readonly testId: string;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <EmptyState
-        icon={ON_CALL_HUB_PAGE_ICONS[page]}
-        title={title}
-        actions={
-          <Button variant="primary" onClick={() => setOpen(true)}>
-            Sign in
-          </Button>
-        }
-        testId={testId}
-      />
-      <AccountSetupDialog open={open} onClose={() => setOpen(false)} />
-    </>
-  );
-}
 
 /**
  * The two states that need the reader to sign in: a title and the Sign in
@@ -78,7 +50,7 @@ export function OnCallHandbookState({
 }) {
   const testId = `on-call-handbook-state-${handbook.status}`;
   const signIn = SIGN_IN_TITLES[handbook.status];
-  if (signIn) return <SignInState page={page} title={signIn} testId={testId} />;
+  if (signIn) return <WorkSignInNotice icon={ON_CALL_HUB_PAGE_ICONS[page]} title={signIn} testId={testId} />;
   switch (handbook.status) {
     case "ready":
       return null;
@@ -91,29 +63,27 @@ export function OnCallHandbookState({
       );
     case "no-service":
       return (
-        <EmptyState
+        <WorkStateNotice
+          kind="no-team"
           icon={ON_CALL_HUB_PAGE_ICONS[page]}
           title="You are not in a hospital handbook yet."
           body="Ask your hospital's handbook admin for an invite."
-          actions={
-            <Link href={ON_CALL_SERVICE_HREF} className={cn(buttonFaceClass({ variant: "secondary" }), "no-underline")}>
+          action={
+            <WorkButton variant="secondary" href={ON_CALL_SERVICE_HREF}>
               Manage service
-            </Link>
+            </WorkButton>
           }
           testId={testId}
         />
       );
     case "unavailable":
       return (
-        <EmptyState
+        <WorkStateNotice
+          kind="error"
           icon={CloudOff}
           title="Hospital numbers could not be loaded."
           body="Hospital numbers need a connection. If you cannot connect, use a hospital phone or ask the ward team for switchboard."
-          actions={
-            <Button type="button" variant="secondary" icon={RotateCw} onClick={handbook.retry}>
-              Try again
-            </Button>
-          }
+          onRetry={handbook.retry}
           testId={testId}
         />
       );

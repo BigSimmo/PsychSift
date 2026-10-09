@@ -123,7 +123,7 @@ export const DOMAINS: readonly Domain[] = [
       outcome(
         "2.6",
         "Safe workplace culture",
-        "Help keep work safe and supportive; know the policies on bullying, harassment and discrimination.",
+        "Help keep work safe and supportive. Know the policies on bullying, harassment and discrimination.",
       ),
       outcome(
         "2.7",
@@ -248,6 +248,16 @@ export const GLOSSARY: readonly [string, string][] = [
   ["MEU", "Medical Education Unit. Your hospital's team for forms, due dates and support."],
   ["DCT", "Director of Clinical Training. Senior doctor responsible for junior doctors' training at your hospital."],
   ["DPME", "Director of Postgraduate Medical Education. Leads the MEU."],
+  ["MEO", "Medical Education Officer. Works in the MEU, sets up terms and tracks forms."],
+  ["Term supervisor", "Runs your term orientation and assessment, and signs your end-of-term assessment."],
+  [
+    "Primary clinical supervisor",
+    "The consultant or senior doctor you work with in the term. Usually completes your mid-term assessment.",
+  ],
+  [
+    "Assessor",
+    "Anyone trained to rate an EPA, such as a registrar or specialist. Nurses and pharmacists can contribute.",
+  ],
   [
     "EPA",
     "Entrustable professional activity. A short observed task (like a clinical assessment) rated by how much supervision you needed.",

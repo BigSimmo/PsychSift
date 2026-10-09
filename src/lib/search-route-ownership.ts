@@ -63,8 +63,7 @@ export const standaloneModeHomePaths = [
   "/psychiatry",
   // The Medicines & tools dashboard, Psychiatry's twin, for the same reason.
   "/medicines",
-  // Admin's Today page (kept for bookmarks) and Renewals, where Admin now
-  // opens, for the same reason again.
+  // Admin's Today page, where Admin opens, and Renewals, for the same reason again.
   "/admin",
   "/admin/renewals",
   // Roster's dashboard (Today), for the same reason: it declares no search
@@ -138,10 +137,10 @@ export function standaloneModeHomeHref(mode: AppModeId): string | null {
     // The Medicines & tools dashboard, Psychiatry's twin.
     case "medicines":
       return "/medicines";
-    // Admin opens on Renewals, its working page (modes review, phase 2b); it
-    // has no search results surface.
+    // Admin opens on Today, its first tab (work-mode redesign, owner request
+    // 6 Oct 2026). It has no search results surface.
     case "my-work":
-      return "/admin/renewals";
+      return "/admin";
     // The Roster dashboard (Today) at `/roster`, on the same reasoning as On
     // Call above: no results surface, so a retargeted composer would accept a
     // query and land the reader on a page that ignores it.

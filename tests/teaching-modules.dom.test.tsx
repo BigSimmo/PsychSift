@@ -45,7 +45,7 @@ describe("TeachingContextBar", () => {
     const { rerender } = render(<TeachingContextBar teams={[teamA]} value="all" onChange={onChange} demoTag />);
     expect(screen.getByText("Hospital A psychiatry")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).toBeNull();
-    expect(screen.getByText("Demo · made-up people")).toBeInTheDocument();
+    expect(screen.getByText("Example · made-up people")).toBeInTheDocument();
     rerender(<TeachingContextBar teams={[teamA, teamB]} value="all" onChange={onChange} demoTag={false} />);
     const select = screen.getByRole("combobox", { name: "Service" });
     expect(
@@ -208,7 +208,8 @@ describe("DayRail", () => {
     );
     const wednesday = screen.getByRole("button", { name: "Wed 30, 2 sessions" });
     expect(wednesday).toHaveAttribute("aria-pressed", "true");
-    expect(wednesday.className).toContain("text-[color:var(--primary)]");
+    // Work-mode redesign, owner request 6 Oct 2026: the picked day is the Teaching colour, not product blue.
+    expect(wednesday.className).toContain("text-[color:var(--mode-identity)]");
     const tuesday = screen.getByRole("button", { name: "Tue 29, no sessions" });
     expect(tuesday.className).toContain("text-[color:var(--text-muted)]");
     fireEvent.click(tuesday);
@@ -353,7 +354,8 @@ describe("AttendanceChart", () => {
     render(<AttendanceChart weeks={weeks} currentKey="2026-09-28" />);
     const chart = screen.getByTestId("teaching-attendance-chart");
     expect(chart.querySelectorAll("rect[data-week]")).toHaveLength(12);
-    expect(chart.querySelector("rect[data-current='true']")!.getAttribute("class")).toContain("--primary");
+    // Work-mode redesign, owner request 6 Oct 2026: this week is the Teaching colour, not product blue.
+    expect(chart.querySelector("rect[data-current='true']")!.getAttribute("class")).toContain("var(--mode-identity)");
     expect(attendanceSentence(weeks)).toBe(`Attended in 2${NB}of the last 12${NB}weeks.`);
   });
 
@@ -392,7 +394,7 @@ describe("TeachingStateNotice", () => {
     const moduleEl = screen.getByTestId(`teaching-state-${state}`);
     expect(within(moduleEl).getByText(title)).toBeInTheDocument();
     expect(within(moduleEl).getByText(body)).toBeInTheDocument();
-    expect(moduleEl.textContent).not.toMatch(/Demo · made-up people|teaching_|\d{3}/);
+    expect(moduleEl.textContent).not.toMatch(/Example · made-up people|teaching_|\d{3}/);
   });
 
   it("offers Try again on error and offline, and announces offline as a status", () => {
@@ -450,16 +452,19 @@ describe("LogToCpdSheet", () => {
       />,
     );
     const dialog = screen.getByRole("dialog", { name: "Log to CPD" });
+    // Work-mode redesign, owner request 6 Oct 2026: the save button says what it logs ("Log 1 h to
+    // CPD"), falling back to "Log to CPD" while the typed hours are not valid quarter hours.
     fireEvent.change(within(dialog).getByLabelText("Hours"), { target: { value: "1.1" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save to CPD" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Log to CPD" }));
     expect(
       await within(dialog).findByText("Use quarter hours between 0.25 and 8, for example 1.25."),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText("Hours"), { target: { value: "1" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save to CPD" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Log 1\u00a0h to CPD" }));
     const link = await within(dialog).findByRole("link", { name: "Add a reflection in CPD" });
     expect(link).toHaveAttribute("href", "/cme/log/e1");
-    expect(link.className).toContain("text-[color:var(--primary)]");
+    // Work-mode redesign, owner request 6 Oct 2026: links inside Teaching take the area colour.
+    expect(link.className).toContain("text-[color:var(--mode-identity)]");
   });
 });

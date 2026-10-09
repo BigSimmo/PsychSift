@@ -151,6 +151,7 @@ Scheduled automation runs on off-peak schedules to maintain repository baseline 
 - **Weekly Baseline Refresh:** `.github/workflows/bundle-budget-refresh.yml` runs weekly on Wednesdays at 04:40 UTC to prevent baseline staleness.
 - **Early Visibility:** By executing cold builds (`check-bundle-budget.mjs --refresh-baseline`) and reporting metrics into a rolling GitHub issue, accumulated bundle growth from merged PRs is surfaced before crossing the 10% failure threshold.
 - **Report-Only Invariant:** The workflow never auto-commits or pushes changes; baseline refreshes remain explicit, reviewed human pull requests.
+- **Ranking snapshot refresh:** `.github/workflows/ranking-snapshot-refresh.yml` runs after each Eval Canary on `main`. Once the committed ranking snapshot is 14 days old, it rebuilds it from that run's `golden-retrieval.json` (only when the golden retrieval step passed and no ranking-config override was used) and opens a PR with `secrets.GH_TOKEN` so CI runs on it. No provider calls, and a person still reviews and merges it. Before this, the snapshot expired on 2026-10-07 and turned every open PR red.
 
 ## When `main` goes red (#T82ND3, #TN512M)
 

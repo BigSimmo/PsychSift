@@ -9,10 +9,12 @@ import type { AdminHelpItem } from "@/lib/admin/help-items";
 import type { MyDayPageId } from "@/lib/my-day/dashboard";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import { mergeMyDayItems, myDaySeverityForDue } from "@/lib/my-day/merge";
+import { DEMO_CME_ROUTINES } from "@/lib/cme/demo-year";
 import type { MyDayItem } from "@/lib/my-day/model";
+import type { MyDayNeedsYouItem } from "@/lib/my-day/needs-you-feed";
 import { withMyDayReturn } from "@/lib/my-day/return-link";
-import type { ShiftKind } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay } from "@/lib/roster/shifts/perth-time";
+import { demoMyShifts } from "@/lib/roster/team/demo-team-core";
 import type { SessionSummary } from "@/lib/teaching/model";
 
 /**
@@ -24,8 +26,12 @@ import type { SessionSummary } from "@/lib/teaching/model";
  *
  * Nothing here is read from or sent to a server, and nothing is stored: the
  * quick note is hidden and "Later" lasts only while the page is open. Every
- * name, place and number is plainly invented ("Demo ..."); there are no
+ * name, place and number is plainly invented ("Example ..."); there are no
  * patients, no patient labels, and calls are counts only.
+ *
+ * Shifts are the one example roster (`demoMyShifts`), the same ones Roster,
+ * On Call and Open shifts show, and the Journal club routine is CPD's own
+ * example routine, so every area tells the same story about the same day.
  */
 
 export interface MyDaySampleData {
@@ -36,7 +42,8 @@ export interface MyDaySampleData {
   readonly checked: readonly string[];
 }
 
-const WORKPLACE = "Metro psychiatry";
+/** Who's on: the example team's own colleagues, at the example roster's hospital. */
+const WORKPLACE = "Example Hospital";
 const NO_HELP: readonly AdminHelpItem[] = [];
 
 /** An ISO instant for a Perth wall-clock time on a Perth date. */
@@ -44,32 +51,9 @@ function perthAt(date: string, time: string): string {
   return `${date}T${time}:00+08:00`;
 }
 
-function shift(id: string, date: string, kind: ShiftKind, start: string, endDate: string, end: string): MyShift {
-  return {
-    id: `sample-shift-${id}`,
-    startsAt: perthAt(date, start),
-    endsAt: perthAt(endDate, end),
-    title: kind === "on_call" ? "On call" : kind === "night" ? "Night" : "Day",
-    location: null,
-    sourceUid: null,
-    kind,
-    source: "manual",
-    seriesId: null,
-    workplace: WORKPLACE,
-  };
-}
-
-function sampleShifts(today: string): MyShift[] {
-  const day = (offset: number) => addDaysToDate(today, offset);
-  const dayShift = (offset: number) => shift(`d${offset}`, day(offset), "day", "08:00", day(offset), "17:00");
-  return [
-    ...[-13, -12, -11, -9, -8, -6, -5, -3].map(dayShift),
-    shift("n-2", day(-2), "night", "21:00", day(-1), "08:00"),
-    // Tonight: on call from 17:00 to 08:30 tomorrow, the hero's shift.
-    shift("oc0", today, "on_call", "17:00", day(1), "08:30"),
-    ...[2, 3, 4, 6, 7, 9, 10, 11].map(dayShift),
-    shift("oc8", day(8), "on_call", "17:00", day(9), "08:30"),
-  ];
+/** The one example roster: tonight's on call (the hero's shift), day shifts, a night and days off. */
+function sampleShifts(now: Date): MyShift[] {
+  return demoMyShifts(now);
 }
 
 function session(
@@ -109,7 +93,7 @@ function sampleItems(today: string, now: Date): MyDayItem[] {
       {
         id: "sample:on-call:contacts",
         mode: "on-call",
-        title: "Check the demo ward contacts",
+        title: "Check the example ward contacts",
         detail: "Not checked for 90 days",
         due: null,
         severity: "info",
@@ -126,14 +110,17 @@ function sampleItems(today: string, now: Date): MyDayItem[] {
       }),
     ],
     [
-      dated({
-        id: "sample:cme:routine",
-        mode: "cme",
-        title: "Journal club",
-        detail: "Routine due",
-        due: due(-18),
-        href: "/cme",
-      }),
+      // CPD's own example routine, so My Day and CPD give the same due date.
+      ...DEMO_CME_ROUTINES.filter((routine) => routine.nextDue !== null && routine.archivedAt === null).map((routine) =>
+        dated({
+          id: `sample:cme:routine:${routine.id}`,
+          mode: "cme",
+          title: routine.title,
+          detail: "Routine due",
+          due: routine.nextDue,
+          href: "/cme",
+        }),
+      ),
       {
         id: "sample:cme:drafts",
         mode: "cme",
@@ -216,7 +203,7 @@ export function buildMyDaySample(today: string, now: Date): MyDaySampleData {
       { entryId: "sample-indemnity", title: "Indemnity cover", date: day(126), href: "/admin/renewals" },
     ],
     sources: {
-      roster: { status: "ready", shifts: sampleShifts(today), sample: true },
+      roster: { status: "ready", shifts: sampleShifts(now), sample: true },
       teaching: {
         status: "ready",
         sessions: ahead.filter((item) => item.startsAt.startsWith(today)),
@@ -229,9 +216,9 @@ export function buildMyDaySample(today: string, now: Date): MyDaySampleData {
         status: "ready",
         teamName: WORKPLACE,
         colleagues: [
-          { id: "sample-a", name: "Dr Demo A", grade: "Consultant", endsAt: hoursFromNow(9) },
-          { id: "sample-b", name: "Dr Demo B", grade: "Registrar", endsAt: hoursFromNow(3) },
-          { id: "sample-c", name: "Dr Demo C", grade: "Resident", endsAt: hoursFromNow(5) },
+          { id: "sample-a", name: "Dr Jordan Example", grade: "Consultant", endsAt: hoursFromNow(9) },
+          { id: "sample-b", name: "Dr Sam Example", grade: "Registrar", endsAt: hoursFromNow(3) },
+          { id: "sample-c", name: "Dr Mei Example", grade: "Resident", endsAt: hoursFromNow(5) },
         ],
       },
     },
@@ -239,10 +226,10 @@ export function buildMyDaySample(today: string, now: Date): MyDaySampleData {
       calls: { total: 2, open: 1 },
       // No phone links: tapping a sample number opens Admin's Help, never the dialler.
       pinnedNumbers: [
-        { key: "sample-switch", title: "Switch", display: "Demo 9000", tel: null, href: "/admin/help" },
-        { key: "sample-ed", title: "ED", display: "Demo 9123", tel: null, href: "/admin/help" },
-        { key: "sample-pharmacy", title: "Pharmacy", display: "Demo 9456", tel: null, href: "/admin/help" },
-        { key: "sample-security", title: "Security", display: "Demo 9777", tel: null, href: "/admin/help" },
+        { key: "sample-switch", title: "Switch", display: "Example 9000", tel: null, href: "/admin/help" },
+        { key: "sample-ed", title: "ED", display: "Example 9123", tel: null, href: "/admin/help" },
+        { key: "sample-pharmacy", title: "Pharmacy", display: "Example 9456", tel: null, href: "/admin/help" },
+        { key: "sample-security", title: "Security", display: "Example 9777", tel: null, href: "/admin/help" },
       ],
     },
     checked: ["On Call", "Roster", "CPD", "Teaching", "Admin"],
@@ -261,6 +248,7 @@ export function MyDaySampleDashboard({
   today,
   page,
   view,
+  needsYou,
   onShowAll,
   renderFullList,
 }: {
@@ -268,21 +256,26 @@ export function MyDaySampleDashboard({
   readonly today: string;
   readonly page: MyDayPageId;
   readonly view: "dashboard" | "all";
+  /**
+   * Needs you's list, from the notification feed: this example day's items in
+   * areas with nothing real, beside any real ones, the same list the bell shows.
+   */
+  readonly needsYou: readonly MyDayNeedsYouItem[];
   readonly onShowAll: () => void;
-  readonly renderFullList: (items: readonly MyDayItem[], checked: readonly string[]) => ReactNode;
+  readonly renderFullList: (items: readonly MyDayNeedsYouItem[], checked: readonly string[]) => ReactNode;
 }) {
   const sample = useMemo(() => buildMyDaySample(today, now), [today, now]);
-  if (view === "all") return <>{renderFullList(sample.items, sample.checked)}</>;
+  if (view === "all") return <>{renderFullList(needsYou, sample.checked)}</>;
   return (
     <MyDayDashboard
       now={now}
       today={today}
       items={sample.items}
+      needsYou={needsYou}
       renewals={sample.renewals}
       helpItems={NO_HELP}
       sources={sample.sources}
       checked={sample.checked}
-      editing={false}
       page={page}
       onShowAll={onShowAll}
       onRetry={noop}

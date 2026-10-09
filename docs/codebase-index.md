@@ -230,6 +230,11 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 | `/auth/reset-password`                                                                                                                                                                                  | `src/app/auth/reset-password/page.tsx`                                                                                          |
 | PWA and SEO (`/manifest.webmanifest`, `/robots.txt`, `/sitemap.xml`, OG image, icons)                                                                                                                   | `src/app/manifest.ts`, `robots.ts`, `sitemap.ts`, `opengraph-image.tsx`, `apple-icon.tsx`, `icons/[variant]/route.tsx`          |
 
+Added 7 October 2026 and described in their mode sections below: `/on-call/first-week`, `/on-call/whos-on/roster`,
+`/cme/cpd-home`, `/cme/applications`, `/cme/applications/cv`, `/admin/contract`, `/admin/leave`,
+`/admin/new-job/starter`, `/admin/new-job/ready`, `/roster/sick`, `/roster/staffing`, `/my-day/profile/agreement`
+and `/teaching/term/folder`.
+
 Legacy On Call bookmarks `/on-call/shifts` and `/on-call/calendar` now redirect to `/roster/shifts` and `/roster/calendar`. Their compatibility pages remain under `src/app/(search-app)/on-call/`.
 
 ### API routes (`src/app/api/`)
@@ -252,6 +257,7 @@ Legacy On Call bookmarks `/on-call/shifts` and `/on-call/calendar` now redirect 
 | Teaching         | `/api/teaching` (week, logbook, unlogged count, one session); `/api/teaching/services/[serviceId]`; `/api/teaching/checkin/open` (signed in or out; sets the claim cookie), `/api/teaching/checkin/complete`; `/api/teaching/display/[token]` (no session); `/api/teaching/cpd` (Log to CPD via `cme_save_teaching_entry`); `/api/teaching/whats-on`, `/api/teaching/resources`, `/api/teaching/resources/services/[serviceId]` (What's on and Resources via `teaching_whats_on_command`); `/api/teaching/depth` (the reader's supervision, confirm list, Teach page, open feedback and weekly CPD review), `/api/teaching/services/[serviceId]/depth` (supervision, readiness, feedback and the term import via `teaching_depth_command`), `/api/teaching/cpd/review` (the weekly review's one save, a row at a time) | `teaching/`                                                     |
 | Roster           | `/api/roster/shifts`, imports/manual shifts; `/api/roster/team` and per-team requests, invitations, manager export and publication; `/api/roster/leave`, `/api/roster/alerts`, owner team confirmation. Team publishing requires the atomic follow-up database contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `roster/`                                                       |
 | Alerts           | `/api/alerts/test`: one test phone alert to the device that asked, after an ownership check.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `alerts/`, `roster/alerts/`                                     |
+| Work sync        | `/api/work/sync`: the signed-in doctor's work choices and records kept on the account (preferences row, `work_admin_paperwork`, `work_backups`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `work-sync/`                                                    |
 | CME              | `/api/cme/entries`, `/api/cme/entries/[id]`, `/api/cme/entries/[id]/evidence`, `/api/cme/entries/[id]/evidence/[evidenceId]`, `/api/cme/routines`, `/api/cme/routines/[id]`, `/api/cme/export`, `/api/cme/year` (owner-scoped continuing-education record; demo mode branches here, never in the repository)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `cme/`                                                          |
 | Calendar         | `/api/calendar/feed` (signed in: report, make or turn off the private link); `/api/calendar/feed/[token]` (no session; the private `.ics` subscription feed)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `calendar/`                                                     |
 | Images           | `/api/images/[id]/signed-url`, `/api/images/signed-urls` (batch); `/api/documents/images/batch` re-exports the batch handler                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `images/`, `documents/images/batch/route.ts`                    |
@@ -400,6 +406,32 @@ device store) and, while the signed fatigue rules are on, the rest before the ne
 "Who do I call now?" (`/on-call/now`) can start the ladder: it times each call on screen and saves
 nothing.
 
+**Your first week** (7 Oct 2026). `/on-call/first-week` (`?section=who|expect|escalate|logins|first-day`;
+`src/components/on-call/first-week/first-week-page.tsx`, the section view, pack card and
+`use-first-week-pack.ts`) is a rotation-start pack built from what the hospital handbook already
+publishes (orientation items, roles, escalation ladders, read through `useHospitalHandbook`) plus the
+doctor's own Admin New job logins and start date. The pure rules are `src/lib/on-call/first-week-pack.ts`:
+the pack is highlighted from 7 days before the start date and for 7 days after, and a section read
+earlier shows as changed when a handbook item has been updated since. Which sections were read, per
+hospital, and the "Tell me when it lands" switch are kept on the device under the account-scoped key
+`psychsift:on-call:first-week-read-v1` (`ON_CALL_FIRST_WEEK_READ_STORAGE_KEY`, through
+`first-week-store.ts`): section ids and times only, cleared at every account transition; the
+signed-out sample keeps them in React state only. The hospital side (writing and scheduling a pack)
+needs server roles and is deferred. Ways in for other pages: `FirstWeekEntryLink`,
+`FirstWeekTodayCard` / `FirstWeekTodayCardLive` and the Needs you selector `selectFirstWeekNeedsYou`.
+
+**From your team roster** (7 Oct 2026). `/on-call/whos-on/roster`
+(`src/components/on-call/roster-whos-on/`: page, section and person sheet, over
+`src/lib/on-call/roster-whos-on.ts`) shows who is on yesterday, today and tomorrow, read from the
+doctor's **published** team roster through Roster's own `useRosterTeams` / `useRosterRead`
+(`overview` and `assignments`) reads. It shows names, the role the roster gives (grade and shift
+kind), site and shift times; leave rows are dropped entirely, and a day with no rows says so.
+"Something not right?" builds a note for the roster manager (`rosterReportText`) that the doctor
+copies and sends; nothing is sent from the page, and the list changes only when the roster is
+republished. Nothing is written to the device. Linked from Who's on
+(`src/components/on-call/whos-on/whos-on-page.tsx`) and from the first-week pack; other ways in are
+`RosterWhosOnEntryLink` and the search records `rosterWhosOnSearchRecords`.
+
 **Storage.** `on_call_entries` is owner-scoped with RLS enabled and revoked from `anon` and
 `authenticated`; reads and writes go through the service-role client at the API layer, the same
 application-layer ownership model as `clinical_registry_records`.
@@ -419,6 +451,71 @@ map each mode's existing selectors (Admin's `today-selectors`, On Call notificat
 progress, CPD routines and drafts, Teaching's needs-you counts) onto items, and
 `use-my-day-items.ts` merges them for the `/my-day` page and the home card. Read-only; nothing stored.
 
+**Work roles.** `src/lib/work-roles/` is the one hospital-side role and permission model for work mode
+(site administrator, Medical Workforce, DCT, supervisor or assessor, roster manager). `model.ts` holds the
+pure rules (`decideWorkCapability`, `decideGrantWorkRole`), `server.ts` reads a person's roles and exposes
+`can()` plus `canManageCourses`, `canManageRotations` and `canReviewAssessments` for routes, and
+`use-work-roles.ts` is the client hook behind `/api/work/roles`, for choosing what to show only.
+
+**Work choices sync.** `src/lib/work-sync/` copies a few device-kept work choices (saved work pages,
+My Day's hidden cards, moved-to-tomorrow items and quick note; `sections.ts`) to the account and back.
+The device stores stay what the pages read; `work-sync-client.ts`, started by
+`src/components/work-sync/work-account-sync.tsx` in the root layout while signed in, pushes a store's
+key after the doctor changes it and pulls the account copy on open and on return to the app (newest
+save wins; a device's first match merges via `merge.ts`). `/api/work/sync` (`src/app/api/work/`)
+stores each section through `account-work-sync.ts`: the small choices at
+`user_preferences.preferences.work` (the only writer of that key), Admin paperwork in
+`work_admin_paperwork`, and Teaching's term tracker and exam prep and CPD's job applications in
+`work_backups` (both tables written only there). The quick note is refused when it reads as a patient
+detail, and job applications when their own checks would drop text. Job applications are never copied
+onto a device marked shared. Pages say where a record is kept through `kept-where.tsx`.
+
+**Needs you bell.** `src/lib/needs-you/` (`homes.ts`, `groups.ts`) is the signed-in staff-home
+header bell: which work homes show it, how waiting items group by mode, and the "Needs you" /
+"Something needs attention" wording. The sheet is `src/components/needs-you/`. It reuses My Day
+items plus On Call notifications; it is not OS push and it does not say "alerts".
+
+**Work-mode frame.** `src/lib/work-frame/areas.ts` is the frame's own pin table for every work area
+(My Day, Roster with Open shifts, Teaching with its Assessments sub-area, CPD, Admin, On Call): each
+area's three pinned tabs, its More sheet groups and their routes, gates and page actions.
+`ModeBand` (`src/components/mode-band/mode-band.tsx`) reads it through `workAreaFor()` and draws
+`WorkFrameHeader` (`src/components/work-frame/`): the tinted band, underline tabs, More sheet and
+side swipe. Styles and the area palettes' partner tokens live in `src/app/work-mode.css`; the
+shared content pieces (cards, rows, hero, rings, chips, buttons, dock, week strip, Undo toast) are
+in `src/components/mode-kit/work.tsx`. Every work area's signed-out, no-team, empty, offline and
+failed-read states, and its loading skeleton, come from `src/components/mode-kit/work-state.tsx`
+(`WorkStateNotice`, `WorkStateLoading`); `work-sign-in-notice.tsx` adds the sign-in dialog. Clinical
+modes keep the old band.
+
+**Example data and the work time zone.** `src/lib/example-data/` is the one example data switch for
+every work area: `store.ts` (the switch, an auto default for new accounts and signed-out visitors,
+per-area state, the cookie server pages read through `server.ts`), `registry.ts` (every example
+dataset, dynamic imports only), `guards.ts` (example ids, `withoutExampleRecords`, the blocked-action
+guard) and `people.ts` (the obviously made-up names and places). The banner, switch and first-use
+states are in `src/components/example-data/` and `src/components/work-first-use/`.
+`src/lib/work-time/` holds the work time zone (Perth by default, saved as `preferences.timeZone`) and
+the zone-aware date and time helpers every shift and "today" uses instead of the device clock.
+`src/lib/work-calendar/` is the shared shape for planned work entries (published rotations now,
+booked courses next) that the Roster month, My Day and the calendar link read through
+`useWorkCalendarEntries()` and the source list in `src/components/work-calendar/sources.ts`.
+Rotation preference rounds (rank, allocate, publish) live in `src/lib/roster/rotations/`.
+
+**Work-mode launch switch.** `src/lib/work-mode-launch/` decides who sees the new-only work
+screens. `launch.ts` resolves the setting (`WORK_MODE_LAUNCH` off, preview or everyone, with
+`WORK_MODE_PREVIEW_USER_IDS` and the administrator claim as the preview audience) and the
+per-device rollback cookie. `routes.ts` lists the new-only routes, and `src/proxy.ts` serves the
+ordinary 404 for them to anyone on the classic work mode. Pages and the frame hide links with
+`useWorkModeRouteVisible()` and `NewWorkModeOnly` from `src/components/work-mode-launch/`.
+Restyled existing pages are not gated: they ship to everyone.
+
+**Live version switch.** `src/lib/live-version/` lets testers (the administrator, the
+`work_mode_preview` app-metadata flag or `WORK_MODE_PREVIEW_USER_IDS`) use unreleased work on the
+live site. `live-version.ts` resolves Newest or Everyone's from the verified user and the
+`psychsift-live-version` cookie, `features.ts` registers each preview feature, and `server.ts`
+gives `isLivePreviewOn` and `requireLivePreview`. Components gate with `useLivePreview` and
+`LivePreview` from `src/components/live-version/`. The switch sits in Settings for testers only.
+See `docs/live-version-switch.md`.
+
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
 records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto
@@ -427,6 +524,37 @@ and builds "Coming up"; `answers.ts` holds the built-in answers (next nights, wh
 targets, next leave, presenting), worked out in the browser with no AI. The screen
 (`src/components/work-search/`) is a lazy chunk; its loaders call each area's existing routes when
 it opens and keep the records in tab memory only. It never reads the patient-label store.
+
+**Favourites.** `src/lib/favourites/` backs the one Favourites store: `favourites-local.ts` keeps the
+parts a person shapes on the device (saved phone numbers, own names and notes, page layout) under one
+account-scoped key, `work-page-stars.ts` the page hearts, and `favourites-search.ts` turns saved numbers
+into Search my work records. Pages use `FavouritesShelf` and `WorkPageFavouriteButton`.
+
+**Work setup and help.** `src/lib/work-setup/progress.ts` keeps the `/my-day/setup` walkthrough's
+progress on the device (an account-scoped key). `src/lib/work-help/` holds the plain-language help
+topics per work area (`topics/*.ts`), read by `/my-day/help` and the Help item in each More sheet.
+
+**Preview role (testing aid).** `src/lib/preview-role/preview-role.ts` lets a reviewer look at work
+mode as a junior doctor, a supervisor or an admin from `/mockups/work-roles`. A lens, never a
+permission: nothing reaches a server, and it is inert in production.
+
+**Work screens added by the wiring pass.** `src/lib/work-screens/` holds the pure models and sample
+records for the screens the work-mode wiring pass added: `admin/` (Requests, Sharing, Documents, Pay,
+Tax, Workforce), `assessments/` (Export, a supervisor's view of a trainee), `cpd/` (Evidence, Export)
+and `my-day/` (Earlier alerts). Sample records come from the shared example data registry.
+
+**Work free-text patient-detail check.** `src/lib/work-text/patient-detail-check.ts` is the one
+check every work-mode free-text field runs before Save or Copy (CPD through
+`src/lib/cme/patient-detail-check.ts`, Admin, On Call's roster person sheet, Teaching assessments, Work
+profile answers). `checkPatientDetail` returns what looks like a patient detail in words, with a
+safer wording when one exists, and `looksLikePatientDetail` is its yes/no form; options allow a
+colleague's name (`allowName`) or hospital capitals (`allowCapitals`). It reads the text twice
+through `normaliseWorkText` (NFKC-folded, look-alike letters as Latin, invisible characters removed
+or read as spaces) and runs the Remind me check, the work search's check, `looksLikeAgeAndSex` and
+its own shapes (patient words with a name or initials, bare UMRNs, beds and rooms in words or marked).
+`WORKPLACE_ABBREVIATIONS` lists the WA workplace and work capitals read past as not initials, and a
+numbered teaching or meeting venue ("Seminar room 1") is not read as a bed. Nothing it reads is
+saved or sent; it leans towards a false alarm and the pages say it catches some details, not all.
 
 **Psychiatry hub history.** `src/lib/psychiatry-hub/` (`visits.ts`) is the `/psychiatry` hub's
 on-device record of psychiatry records the reader opened (not the query-driven tools) (path, page title, section,
@@ -488,6 +616,26 @@ in `src/lib/roster/` (the import folder, `calendar-link-fetch`, `calendar-links`
 - Nothing about shifts is stored offline, and Roster uses no AI. The On Call home still shows the
   shift on now or the next one, linking to `/roster`.
 
+**Sick for tomorrow and Team staffing** (7 Oct 2026). Both pages sit behind `RosterSampleGate`, so a
+signed-out visitor sees invented sample data and every write is refused.
+
+- `/roster/sick` (`src/components/roster/sick/`, over `src/lib/roster/sick/sick-report.ts`) lists the
+  doctor's own working shifts on a confirmed team roster that start between now and the end of
+  tomorrow (Perth), and reports the chosen ones with the existing `open.report` team action after a
+  10-second Undo hold (`use-sick-send.ts`). That puts the shift on the team's open-shift list and
+  alerts the team's roster managers; nothing asks for or keeps a reason or health detail. Shifts that
+  exist only on the doctor's own roster copy (`/api/roster/shifts`) are listed as ones PsychSift
+  cannot tell anyone about, and a shift starting within 4 hours also asks the doctor to phone.
+- `/roster/staffing` (`src/components/roster/staffing/`, over `src/lib/roster/staffing/team-staffing.ts`)
+  counts, from one team `assignments` read (62 days at most), how many of the team are on each day,
+  the lowest days, and dates with more of the team on. PsychSift holds no safe staffing number, so no
+  day is called safe or unsafe, and a day the published roster does not reach is "not checked".
+  `RosterLeaveStaffingCheck` (`roster-leave-staffing-check.tsx`, the leave staffing strip) is built
+  to drop into the Plan leave sheet; the staffing page uses its parts.
+- Nothing from either page is kept on the device. Ways in for other pages: `RosterSickEntryLink`,
+  `SickTomorrowTodayCard`, `RosterStaffingEntryLink`, the Needs you selector `sickNeedsYouItems` and
+  the search records `ROSTER_FEATURE_SEARCH_RECORDS`.
+
 **Open shifts mode.** Extra shifts advertised inside the doctor's Roster teams (mode id
 `open-shifts`, no search surface, like Roster). Tabs: `/open-shifts` (Browse), `/open-shifts/mine`,
 `/open-shifts/alerts` and `/open-shifts/post`; Post shows only once `setOpenShiftsIsPoster(true)`
@@ -517,10 +665,28 @@ from Admin goes to search or a model provider.
 | `credential-pack` | Registration numbers (device wallet) and renewal dates as one page to trim, then print to PDF or share as text; never the radiation licence, proof notes or expiry history |
 
 Routes are `/admin` (Today), `/admin/renewals`, `/admin/new-job` (with `/records` and the credential
-pack at `/pack`) and `/admin/help`; components are
+pack at `/pack`) and `/admin/help`, plus the junior-doctor pages `/admin/contract`, `/admin/leave`,
+`/admin/new-job/starter` and `/admin/new-job/ready` (below); components are
 in `src/components/admin/`. `/my-work`, `/on-call/compliance` and `/on-call/logistics` redirect to
 Admin pages (`staticRouteRedirects` in `src/proxy.ts`, with page backstops). Admin's clock times,
 and every mode's as each is rebuilt, come from the shared 24-hour helper `src/lib/clock-time.ts`.
+
+**Junior-doctor pages** (7 Oct 2026). Four more pages, components under `src/components/admin/`
+(`contract/`, `leave/`, `ready/`, `starter/`, with shared parts in `junior/junior-shared.tsx` and the
+Roster leave read in `junior/use-roster-leave.ts`, which reads `/api/roster/leave` into memory once):
+
+| Route                    | Page and logic                                                               | What it keeps                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/admin/contract`        | `contract/contract-end-page.tsx` over `src/lib/admin/contract-end.ts`        | The contract end date is an ordinary private compliance row written through `/api/on-call/entries` (no new table, nothing on the device), so Today and Renewals show it already. Reminders 3 months and 6 weeks before are worked out from the date. Shows leave planned in Roster before the end date, and a Medical Workforce message the doctor sends themselves (`?question=` opens one question). An optional rotation-end date from the doctor's roster team is offered, never filled in. |
+| `/admin/leave`           | `leave/leave-wallet-page.tsx` over `src/lib/admin/leave-types.ts`            | Eight leave cards with how to apply and a ready message to copy (`?card=` opens one). No entitlement figure is shown: every card says "Check your agreement" and links the agreement PDF. Shows the doctor's own leave booked in Roster for the two kinds Roster holds (annual and `pd_leave`). Nothing is saved; message fields live in memory. The family and domestic violence card reads "Confidential leave" and is never offered to search.                                               |
+| `/admin/new-job/starter` | `starter/starter-pack-page.tsx` over `src/lib/admin/starter-pack.ts`         | Starter pack for doctors new to WA hospitals: local words searchable by the word from home (`?word=`), the escalation ladder, who to ask, and the doctor's own visa and registration dates, saved as private compliance rows through the entries API. Not visa or registration advice.                                                                                                                                                                                                          |
+| `/admin/new-job/ready`   | `ready/ready-for-day-one-page.tsx` over `src/lib/admin/ready-for-day-one.ts` | A third view of the rows Renewals and Compliance read (`buildComplianceOverview`), never a second store: what is recorded and still to do before the start date, with a status-only copy for Medical Workforce. The Medical Workforce side (shared starter list, sharing switch, reminders, "received" marks) needs server tables and a role and is not built.                                                                                                                                  |
+
+The four pages link to each other through their entry links (`ContractEndEntryLink`,
+`LeaveWalletEntryLink`, `StarterPackEntryLink`, `ReadyForDayOneEntryLink`). Each lib module also
+exports Needs you and search helpers for My Day and Search my work (`selectContractEndNeedsYou`,
+`contractEndSearchRecords`, `leaveWalletSearchRecords`, `selectReadyNeedsYou`, `readySearchRecords`,
+`selectStarterNeedsYou`, `starterPackSearchRecords`).
 
 ---
 
@@ -596,6 +762,41 @@ Routes live at `/cme` and its sub-paths; components are in `src/components/cme/`
 `/api/cme/entries`, `[id]`, `[id]/goal`, `/api/cme/plan` and `/api/cme/year`. Demo-mode branching lives in those routes and
 never in the repository, so production cannot silently fall back to synthetic data.
 
+**Send to AMA CPD Home and Job applications** (7 Oct 2026). Both keep their records on the device
+only, through `src/lib/cme/device-record.ts` (`useSyncExternalStore` over localStorage, every write
+validated, account-scoped keys cleared at sign-out, session expiry and account switch). In the local
+demo build they keep a made-up sample in React state; on a device marked shared they keep nothing,
+and marking a device shared removes both keys (`clearCpdDeviceRecordsIfShared` here, and
+`setSharedDevice` in `src/lib/alerts/shared-device.ts`). Every free-text field that would leave or
+stay on the device goes through `src/lib/cme/patient-detail-check.ts` (the work-search, Remind me and
+age-and-sex readings; it leans towards a false alarm).
+
+- `/cme/cpd-home?year=` (`src/components/cme/cpd-home/cpd-home-send-page.tsx` and its handoff strip,
+  over `src/lib/cme/cpd-home-send.ts`) makes a plain CSV of the year's activities on the device, with
+  the year export's cell rules, or copies each activity to type in. **Nobody has checked what AMA CPD
+  Home can import**, so the page says the column names may need to change, never claims the file
+  works, and sends nothing. A file is refused, never made partial, when any chosen activity has no
+  date, hours, category or title, or its title reads like a patient detail; reflections that read
+  like one are left out of every file and copy. The device keeps the files made (when, row count,
+  activity ids) and which were marked added, under `psychsift:cpd:cpd-home-v1`
+  (`CPD_HOME_SEND_STORAGE_KEY`). Linked from Summary (`CpdHomeEntryLink` in `cme-annual-summary.tsx`).
+- `/cme/applications` (`src/components/cme/applications/applications-page.tsx`, season rail and
+  referees, over `src/lib/cme/applications.ts`) is the doctor's plan for one recruitment season. **No
+  recruitment date is built in**: every date is one the doctor typed from the advert, and a stage
+  without one says "Date not added". Referees keep a colleague's name, role, status and a short dated
+  history. The server page reads only the sign-in state. Kept under `psychsift:cpd:applications-v1`
+  (`CPD_APPLICATIONS_STORAGE_KEY`). Linked from Summary (`ApplicationsEntryLink`) and the CPD home's
+  Today card (`ApplicationsTodayCard` in `cme-dashboard.tsx`).
+- `/cme/applications/cv` (`applications-cv-page.tsx` over `src/lib/cme/applications-cv.ts`) builds a
+  CV only from records PsychSift already holds: the registration renewal date from Admin, terms from
+  Teaching's term tracker, teaching given and attended and registrars supervised (the Teaching
+  `teach`, logbook and `supervision` reads), CPD hours and outcome work (all years, loaded on the
+  server), and a statement in the doctor's own words. Hidden lines and the statement are kept in the
+  applications record above.
+
+`cpd-home-send.ts` also exports `cpdHomeNeedsYouItems` (including a year-end reminder from December)
+and `cpdHomeSearchRecords` for My Day and Search my work.
+
 ---
 
 ### Teaching (in build)
@@ -643,6 +844,25 @@ made-up records held in page memory: nothing is fetched, saved or sent, and sign
 an honest "can't be kept yet" notice with an opt-in to the made-up records. The printable form
 (`assessments-pdf.tsx`) is lazy-loaded.
 
+The term evidence folder (`/teaching/term/folder`, `?term=` for an earlier term;
+`src/components/teaching/term-folder/` over `src/lib/teaching/term-folder.ts`, data in
+`use-term-folder.ts`) gathers one term from records PsychSift already holds and stores nothing new:
+teaching check-ins (`/api/teaching?view=logbook`), the reader's own supervision as registrar
+(`/api/teaching/depth?view=supervision`) and the term tracker on the device. It shows status and
+counts only, never assessment content, ratings or comments (those stay in Clinical Learning Australia,
+which it links), and exports a CSV or copies a summary, with names off by default. Demo mode uses the
+made-up term and logbook. Linked from Term (`TermFolderEntryLink` in `teaching-term.tsx`);
+`TermFolderTodayCard` is a Today-page way in.
+
+Two supervisor views were added to the assessments sample on 7 Oct 2026, both linked from the
+supervisor home's "More views" (`assessments-extras.tsx`) and both **made-up sample only**:
+`?view=inbox&as=supervisor` (`assessments-inbox.tsx` over `src/lib/teaching/assessments/inbox.ts`), every
+request waiting for the supervisor, answered with a supervision level and a few lines; and
+`?view=overview&as=supervisor` (`assessments-term-overview.tsx` over `overview.ts`), every doctor's
+mid-term, EPAs and end-of-term as status tags with a pretend Remind and a status-only CSV. Their
+answers and reminders live in page memory (`extras.ts`, beside the sample's own reducer), so a reload
+starts again and nothing is sent. A voice note is not built.
+
 `api.ts` and `repository.ts` wrap every database call and map its errors to plain words;
 `request.ts` parses request bodies while keeping Teaching's own plain messages, and
 `checkin-claim.ts` is the single-use claim cookie a scan leaves, scoped to `/api/teaching/checkin`
@@ -688,6 +908,16 @@ rules are quoted from the one signed fatigue source with the same gate Roster's 
 doctor's self-chosen stage (`workStage`, `ranzcpStage`) lives in account preferences and is never
 copied from a shared device into a new account.
 
+**Ask the agreement.** `/my-day/profile/agreement` (`src/components/agreement-ask/` over
+`src/lib/work-profile/agreement-answers.ts`; `?topic=` or `?clause=` opens one answer) answers hours
+and rest questions by fixed word patterns, with no AI. An answer is only the verbatim clause 15
+quotes held in `FATIGUE_RULE_SET` (WA Health AMA Industrial Agreement 2024), each with its clause and
+the PDF link; any other topic says it is not in the clauses PsychSift has checked. Every answer ends
+with AMA (WA) by name and no phone number. While the rule set's sign-off gate is off, each quoted
+answer carries "Not signed off yet". A question that reads like patient details is not matched, and
+the question never leaves the device; nothing is stored. Linked from the first-week pack;
+`AgreementEntryLink` is the way in for other pages.
+
 **Reminder controls.** `src/lib/reminders/settings.ts` is a settings layer over the reminders that
 already exist; it never decides when anything is due. Five types (compliance dates, On Call checks,
 CPD year-end, CPD routines, teaching — in that priority order) each have "Show in the app", a snooze
@@ -706,7 +936,7 @@ settings, quiet hours, the calendar daily limit, and this device's phone alerts
 reuse Roster's web-push subscription (`web_push_subscriptions`); `src/app/api/alerts/test` sends one
 `{t:"test"}` push to the asking device, and `public/sw.js` owns its words. Sign-out removes this
 device's subscription (`src/lib/alerts/device-push.ts`), and a device marked shared
-(`src/lib/alerts/shared-device.ts`, browser-only) keeps none. Renewal dates always show in My Day.
+(`src/lib/alerts/shared-device.ts`, browser-only) keeps none. Marking a device shared also removes its Remind me notes and CPD's two device records (CPD Home file history and Job applications). Renewal dates always show in My Day.
 The timed sender (`src/lib/alerts/timed-sender.ts`) sends the morning brief (`{t:"brief"}`, time from
 `src/lib/alerts/morning-brief.ts`, once per Perth day via `alert_brief_sent`) and each due Remind me
 note (`{t:"reminder"}`) to the one phone that set it. `src/app/api/alerts/reminders` stores only the
@@ -732,7 +962,7 @@ due time, the note's id and that phone's endpoint in `alert_reminder_times`, nev
 
 ### Schema tables
 
-`documents`, `document_pages`, `document_images`, `document_chunks`, `document_embedding_fields`, `document_index_units`, `document_table_facts`, `document_labels`, `document_summaries`, `document_sections`, `document_memory_cards`, `document_index_quality`, `document_title_words`, `document_publication_approvals`, `document_corpus_access_state`, `document_corpus_access_snapshots`, `ingestion_jobs`, `ingestion_job_stages`, `indexing_v3_agent_jobs`, `import_batches`, `image_caption_cache`, `rag_queries`, `rag_query_misses`, `rag_aliases`, `rag_response_cache`, `rag_retrieval_logs`, `rag_visual_eval_cases`, `rag_visual_eval_runs`, `rag_answer_feedback`, `clinical_registry_records`, `clinical_registry_record_sources`, `clinical_quality_feedback_triage`, `clinical_quality_feedback_triage_events`, `medication_records`, `differential_records`, `source_review_events`, `user_favourites`, `user_favourite_sets`, `user_preferences`, `alert_reminder_times`, `alert_brief_sent`, `api_rate_limits`, `api_rate_limit_subjects`, `audit_logs`, `storage_cleanup_jobs`, `on_call_entries`, `cme_years`, `cme_requirements`, `cme_routines`, `cme_entries`, `cme_allocations`, `cme_evidence`, `cme_year_snapshots`, `cme_year_amendments`, `cme_plan_goals`, `cme_plan_goal_carries`, `cme_entry_goals`, `cme_training_periods`, `cme_training_milestones`, `cme_missed_sessions`, `cme_entry_drafts`, `calendar_feed_tokens`, `on_call_shift_imports`, `on_call_shifts`, `on_call_services`, `on_call_service_sites`, `on_call_service_members`, `on_call_service_invitations`, `on_call_service_entries`, `on_call_service_reports`, `on_call_service_orientation`, `site_content_publications`, `site_content_reconciliation_plans`, `site_content_public_records`, `site_content_sync_state`, `site_content_sync_events`, `site_content_sync_event_plans`, `site_content_sync_worker_invocations`, `site_content_releases`, `site_content_release_records`, `site_content_release_receipts`
+`documents`, `document_pages`, `document_images`, `document_chunks`, `document_embedding_fields`, `document_index_units`, `document_table_facts`, `document_labels`, `document_summaries`, `document_sections`, `document_memory_cards`, `document_index_quality`, `document_title_words`, `document_publication_approvals`, `document_corpus_access_state`, `document_corpus_access_snapshots`, `ingestion_jobs`, `ingestion_job_stages`, `indexing_v3_agent_jobs`, `import_batches`, `image_caption_cache`, `rag_queries`, `rag_query_misses`, `rag_aliases`, `rag_response_cache`, `rag_retrieval_logs`, `rag_visual_eval_cases`, `rag_visual_eval_runs`, `rag_answer_feedback`, `clinical_registry_records`, `clinical_registry_record_sources`, `clinical_quality_feedback_triage`, `clinical_quality_feedback_triage_events`, `medication_records`, `differential_records`, `source_review_events`, `user_favourites`, `user_favourite_sets`, `user_preferences`, `work_admin_paperwork`, `work_backups`, `alert_reminder_times`, `alert_brief_sent`, `api_rate_limits`, `api_rate_limit_subjects`, `audit_logs`, `storage_cleanup_jobs`, `on_call_entries`, `cme_years`, `cme_requirements`, `cme_routines`, `cme_entries`, `cme_allocations`, `cme_evidence`, `cme_year_snapshots`, `cme_year_amendments`, `cme_plan_goals`, `cme_plan_goal_carries`, `cme_entry_goals`, `cme_training_periods`, `cme_training_milestones`, `cme_missed_sessions`, `cme_entry_drafts`, `calendar_feed_tokens`, `on_call_shift_imports`, `on_call_shifts`, `on_call_services`, `on_call_service_sites`, `on_call_service_members`, `on_call_service_invitations`, `on_call_service_entries`, `on_call_service_reports`, `on_call_service_orientation`, `site_content_publications`, `site_content_reconciliation_plans`, `site_content_public_records`, `site_content_sync_state`, `site_content_sync_events`, `site_content_sync_event_plans`, `site_content_sync_worker_invocations`, `site_content_releases`, `site_content_release_records`, `site_content_release_receipts`
 
 Team modes (Roster, Admin, Teaching): `admin_leave_balances`, `admin_settings`, `extra_time_records`, `on_call_service_member_events`, `roster_assignments`, `roster_calendar_links`, `roster_change_agreements`, `roster_changes`, `roster_draft_assignments`, `roster_drafts`, `roster_leave`, `roster_member_roles`, `roster_open_shifts`, `roster_publication_protections`, `roster_publication_seen`, `roster_publications`, `roster_shift_codes`, `roster_staffing_needs`, `roster_swaps`, `roster_team_settings`, `roster_unavailability`, `teaching_attendance`, `teaching_audit_events`, `teaching_calendar_optins`, `teaching_checkin_claims`, `teaching_collection_sections`, `teaching_collections`, `teaching_display_links`, `teaching_feedback_answers`, `teaching_feedback_replied`, `teaching_group_members`, `teaching_groups`, `teaching_member_roles`, `teaching_notice_reads`, `teaching_notices`, `teaching_occurrences`, `teaching_readiness`, `teaching_resource_saves`, `teaching_resources`, `teaching_series`, `teaching_supervision_entries`, `teaching_supervision_notes`, `teaching_supervision_pairings`, `teaching_team_settings`, `teaching_week_adds`, `web_push_subscriptions`.
 

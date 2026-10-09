@@ -4,10 +4,6 @@
     {
       "match": "tests/fixtures/mutate-self-test.txt",
       "reason": "Scratch fixture left behind by the retired Ward Flow work; nothing reads it, safe to delete"
-    },
-    {
-      "match": "tests/zz-clock-probe.test.ts",
-      "reason": "Emptied scratch probe left behind by the retired Ward Flow work; safe to delete"
     }
   ]
 }

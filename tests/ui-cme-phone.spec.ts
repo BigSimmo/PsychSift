@@ -48,7 +48,7 @@ test.describe("CME on a phone", () => {
     await page.goto("/cme");
     await expect(page.locator("#main-content")).toBeVisible();
     await expect(page.getByTestId("cme-total-hours")).toContainText("32.5");
-    await expect(page.getByTestId("cme-pace-sentence")).toContainText("17.5 h to go, about 1.2 h a week.");
+    await expect(page.getByTestId("cme-pace-sentence")).toContainText("17.5 h to go · about 1.2 h a week.");
     await expect(page.getByTestId("cme-year-label").filter({ visible: true })).toHaveText("2026 · about 15 weeks left");
     await expect(page.getByTestId("cme-next-action")).toBeVisible();
   });
@@ -363,10 +363,8 @@ test.describe("CME phone design", () => {
     await sheet.getByLabel("What was it", { exact: false }).fill("Synthetic grand round");
     await sheet.getByRole("group", { name: "Hours" }).getByRole("button", { name: "1", exact: true }).click();
     await sheet.getByRole("button", { name: "Educational", exact: true }).click();
-    await expect(sheet.getByRole("button", { name: "Save entry", exact: true })).not.toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    // work-mode redesign, owner request 6 Oct 2026: the sheet's Save names the hours chosen.
+    await expect(sheet.getByRole("button", { name: /^Save 1\s+h$/ })).not.toHaveAttribute("aria-disabled", "true");
     expect(writes).toEqual([]);
   });
 

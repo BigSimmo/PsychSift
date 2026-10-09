@@ -4,14 +4,14 @@ import { Link2, Plus, Trash2, Unlink } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
 import { CmeDateField } from "@/components/cme/cme-date-field";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
-import { cn, EmptyState, eyebrowText, floatingControl, InlineNotice, textMuted } from "@/components/ui-primitives";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
+import { EmptyState, InlineNotice } from "@/components/ui-primitives";
+import { formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import { cpdTextPatientProblem, cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 import {
   CME_MISSED_SESSION_MINUTES_MAX,
   CME_MISSED_SESSION_MINUTES_MIN,
@@ -78,6 +78,16 @@ function draftToBody(draft: Draft) {
   };
 }
 
+/** What was missed and why are stored with the account, so the one shared patient-detail check reads both. */
+function draftProblems(draft: Draft) {
+  return {
+    title: draft.title.trim() ? cpdTitlePatientProblem(draft.title) : null,
+    reason: draft.reason.trim() ? cpdTextPatientProblem(draft.reason) : null,
+  };
+}
+
+const PATIENT_DETAIL_SAVE = "Take out the patient details to save it.";
+
 function sessionToDraft(session: CmeMissedSession): Draft {
   return {
     occurredOn: session.occurredOn,
@@ -107,6 +117,7 @@ function MissedSessionFields({
   onChange: (next: Draft) => void;
   idPrefix: string;
 }) {
+  const problems = draftProblems(draft);
   return (
     <div className="flex flex-col gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -132,6 +143,7 @@ function MissedSessionFields({
         placeholder="For example: Weekly registrar teaching"
         value={draft.title}
         onChange={(event) => onChange({ ...draft, title: event.target.value })}
+        error={problems.title ? `${problems.title.title} ${problems.title.body}` : undefined}
         minLength={CME_MISSED_SESSION_TITLE_MIN}
         maxLength={CME_MISSED_SESSION_TITLE_MAX}
         required
@@ -154,6 +166,7 @@ function MissedSessionFields({
         placeholder="Optional"
         value={draft.reason}
         maxLength={CME_MISSED_SESSION_REASON_MAX}
+        error={problems.reason ? `${problems.reason.title} ${problems.reason.body}` : undefined}
         onChange={(event) => onChange({ ...draft, reason: event.target.value })}
       />
     </div>
@@ -178,6 +191,7 @@ export function CmeMissedSessionsSection({
   const [saving, setSaving] = useState(false);
 
   const readOnly = demoMode;
+  const today = perthCalendarDate(new Date());
 
   if (state === "signed-out") {
     return (
@@ -199,6 +213,11 @@ export function CmeMissedSessionsSection({
   }
 
   async function submitAdd() {
+    const problems = draftProblems(addDraft);
+    if (problems.title || problems.reason) {
+      setMessage(PATIENT_DETAIL_SAVE);
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -220,6 +239,11 @@ export function CmeMissedSessionsSection({
   }
 
   async function submitEdit(id: string) {
+    const problems = draftProblems(editDraft);
+    if (problems.title || problems.reason) {
+      setMessage(PATIENT_DETAIL_SAVE);
+      return;
+    }
     setBusyId(id);
     setMessage(null);
     try {
@@ -275,34 +299,34 @@ export function CmeMissedSessionsSection({
   }
 
   return (
-    <section data-testid="cme-missed-sessions" aria-labelledby="cme-missed-sessions-heading" className="mt-6">
-      <div className="flex items-baseline justify-between">
-        <h2 id="cme-missed-sessions-heading" className={eyebrowText}>
+    <section data-testid="cme-missed-sessions" aria-labelledby="cme-missed-sessions-heading" className="grid gap-1.5">
+      <h2 id="cme-missed-sessions-heading" className="work-label m-0">
+        <span>
           Missed teaching and supervision
-        </h2>
-      </div>
-      <p className={cn(textMuted, "mt-1 text-sm")}>
-        A session lost to clinical work. It earns no CPD credit itself — link the session that replaced it once you have
-        logged it.
-      </p>
+          {sessions.length > 0 ? (
+            <>
+              {" · "}
+              <span className="nums font-normal">{sessions.length}</span>
+            </>
+          ) : null}
+        </span>
+      </h2>
 
       {demoMode ? (
-        <div className="mt-3">
-          <InlineNotice tone="neutral">Demo mode is read-only; missed sessions are shown for inspection.</InlineNotice>
+        <div>
+          <InlineNotice tone="neutral">Demo mode is read-only. Missed sessions are shown for inspection.</InlineNotice>
         </div>
       ) : null}
 
-      <p role="status" className="mt-2 text-sm font-semibold text-[color:var(--text)]" data-testid="cme-missed-message">
+      <p role="status" className="cpd-hint m-0 font-semibold empty:hidden" data-testid="cme-missed-message">
         {message}
       </p>
 
-      <ul className="mt-3 flex flex-col gap-3" data-testid="cme-missed-list">
+      <ul role="list" className="m-0 grid gap-2 p-0" data-testid="cme-missed-list">
         {sessions.length === 0 ? (
-          <EmptyState
-            testId="cme-missed-empty"
-            title="No missed sessions recorded."
-            body="Add one below the next time clinical work takes a teaching or supervision slot."
-          />
+          <li className="cpd-hint list-none" data-testid="cme-missed-empty">
+            No missed sessions recorded. Add one the next time clinical work takes a teaching or supervision slot.
+          </li>
         ) : (
           sessions.map((session) => {
             const busy = busyId === session.id;
@@ -312,7 +336,11 @@ export function CmeMissedSessionsSection({
 
             if (editingId === session.id) {
               return (
-                <li key={session.id} className={cn(cardSurface, "p-4")} data-testid={`cme-missed-row-${session.id}`}>
+                <li
+                  key={session.id}
+                  className="work-card work-card--pad list-none"
+                  data-testid={`cme-missed-row-${session.id}`}
+                >
                   <MissedSessionFields
                     draft={editDraft}
                     onChange={setEditDraft}
@@ -331,15 +359,20 @@ export function CmeMissedSessionsSection({
             }
 
             return (
-              <li key={session.id} className={cn(cardSurface, "p-4")} data-testid={`cme-missed-row-${session.id}`}>
+              <li
+                key={session.id}
+                className="work-card work-card--pad list-none"
+                data-testid={`cme-missed-row-${session.id}`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[color:var(--text)]">{session.title}</p>
-                    <p className={cn(textMuted, "mt-0.5 text-xs")}>
-                      {session.occurredOn} · {session.kind === "teaching" ? "Teaching" : "Supervision"} ·{" "}
-                      {session.minutesLost} min lost
+                    <p className="work-row__title m-0">{session.title}</p>
+                    <p className="work-row__sub m-0">
+                      {formatCmeRowDate(session.occurredOn, today)} ·{" "}
+                      {session.kind === "teaching" ? "Teaching" : "Supervision"} ·{" "}
+                      <span className="nums font-normal">{session.minutesLost}</span> min lost
                     </p>
-                    {session.reason ? <p className={cn(textMuted, "mt-1 text-xs")}>{session.reason}</p> : null}
+                    {session.reason ? <p className="work-row__sub m-0">{session.reason}</p> : null}
                   </div>
                   {!readOnly ? (
                     <div className="flex shrink-0 gap-1">
@@ -409,7 +442,8 @@ export function CmeMissedSessionsSection({
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={missedReplacementHref(session)}
-                        className="inline-flex min-h-tap items-center text-sm font-semibold text-[color:var(--clinical-accent)]"
+                        className="work-button min-h-tap"
+                        data-variant="tinted"
                       >
                         Log the replacement
                       </Link>
@@ -458,10 +492,12 @@ export function CmeMissedSessionsSection({
         )}
       </ul>
 
+      <p className="cpd-hint m-0">A missed session earns nothing itself. Link the activity that replaced it.</p>
+
       {!readOnly ? (
-        <div className="mt-3">
+        <div>
           {adding ? (
-            <div className={cn(cardSurface, "p-4")} data-testid="cme-missed-add-form">
+            <div className="work-card work-card--pad" data-testid="cme-missed-add-form">
               <MissedSessionFields draft={addDraft} onChange={setAddDraft} idPrefix="cme-missed-add" />
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
@@ -489,7 +525,8 @@ export function CmeMissedSessionsSection({
           ) : (
             <button
               type="button"
-              className={floatingControl}
+              className="work-button min-h-tap"
+              data-variant="secondary"
               data-testid="cme-missed-add-open"
               onClick={() => setAdding(true)}
             >

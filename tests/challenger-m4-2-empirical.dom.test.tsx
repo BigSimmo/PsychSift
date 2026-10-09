@@ -301,8 +301,16 @@ describe("Empirical Challenger M4-2 Verification Suite", () => {
       expect(diffContent).toContain("pb-[calc(6.25rem+var(--safe-area-bottom))]");
     });
 
-    it("verifies var(--safe-area-bottom) is used in cme-dashboard.tsx:509", () => {
-      expect(cmeContent).toContain("pb-[calc(max(1rem,var(--safe-area-bottom))+2.5rem)]");
+    // The CPD Year page now sits in the shared WorkBody, which owns the home-bar
+    // clearance (work-mode redesign, owner request 6 Oct 2026).
+    it("verifies var(--safe-area-bottom) clears the CPD Year page through WorkBody", () => {
+      expect(cmeContent).toContain("<WorkBody>");
+      const workCss = readFileSync(resolve(process.cwd(), "src/app/work-mode.css"), "utf8");
+      const workBodyRule = workCss.slice(
+        workCss.indexOf(".work-body {"),
+        workCss.indexOf("}", workCss.indexOf(".work-body {")),
+      );
+      expect(workBodyRule).toContain("var(--safe-area-bottom, 0px)");
     });
 
     it("confirms zero raw env(safe-area-inset-bottom) occurrences in differential presentation and cme dashboard", () => {

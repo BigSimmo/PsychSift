@@ -39,7 +39,7 @@ export function OnCallGroupActionControl({ action }: { readonly action: OnCallGr
 /**
  * On Call's grouped list (mock-up v10): an uppercase eyebrow, a count after it
  * ("EMERGENCY · 2"), an optional note or action at its right, and the rows
- * flat on the page with inset hairlines. `surface="card"` keeps the raised
+ * in one white hairline card with inset hairlines. `surface="card"` keeps the raised
  * card, for the one module per screen that should stand apart (the emergency
  * route).
  *
@@ -81,7 +81,7 @@ export function OnCallGroupedList({
       data-testid={testId}
     >
       {eyebrow ? (
-        <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-3">
+        <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-1">
           <h2 id={headingId} className={eyebrowText}>
             {eyebrow}
             {count !== undefined ? <span className="nums">{` · ${count}`}</span> : null}
@@ -91,7 +91,11 @@ export function OnCallGroupedList({
           {actionNode}
         </div>
       ) : null}
-      <ul role="list" className={surface === "card" ? modeModuleSurface : "min-w-0"}>
+      {/* Both surfaces are one white hairline card in work mode (work-mode
+          redesign, owner request 6 Oct 2026): "flat" is the kit's flat card
+          (`work-card`, no lift), "card" keeps the module surface for the one
+          module that should stand apart (the emergency route). */}
+      <ul role="list" className={surface === "card" ? modeModuleSurface : "work-card min-w-0"}>
         {children}
       </ul>
     </section>

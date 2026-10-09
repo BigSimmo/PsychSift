@@ -1,9 +1,11 @@
 "use client";
 
+import { Award, Bell, CalendarDays, Phone, Presentation, ShieldCheck, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
+import { AlertsBellPhoneSection } from "@/components/alerts/alerts-bell-phone-section";
 import { AlertsDeviceSection } from "@/components/alerts/alerts-device-section";
-import { AlertsButtonRow, AlertsQuietRow, AreaDot } from "@/components/alerts/alerts-rows";
+import { AlertsButtonRow, AlertsQuietRow } from "@/components/alerts/alerts-rows";
 import {
   AlertsAreaSheet,
   AlertsBriefSheet,
@@ -14,14 +16,19 @@ import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me
 import { usePhoneAlerts } from "@/components/alerts/use-phone-alerts";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
+import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
-import { ModeStateLabel } from "@/components/mode-kit/state-label";
+import { WorkTag } from "@/components/mode-kit/work";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { useRosterSettings } from "@/components/roster/use-roster-settings";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ALERT_AREA_IDS, ALERT_AREAS, areaSummary, type AlertAreaId } from "@/lib/alerts/areas";
 import { AFTER_NIGHT_TIME } from "@/lib/alerts/morning-brief";
 import { useSharedDevice } from "@/lib/alerts/shared-device";
 import { perthDateKey, type ReminderSettings } from "@/lib/reminders/settings";
+
+/** The last 7 days of alerts on this phone: a new work mode screen. */
+const EARLIER_ALERTS_HREF = "/my-day/alerts/earlier";
 
 /**
  * My Day › Alerts: one place for every alert the app can send, built from the
@@ -30,23 +37,49 @@ import { perthDateKey, type ReminderSettings } from "@/lib/reminders/settings";
  * this buzz me?" and "why didn't it?". So every line says what the app will
  * actually do today; what is not built yet is shown greyed with the reason.
  */
-export function AlertsPage({ now }: { now?: Date } = {}) {
+export function AlertsPage({
+  now,
+  inFrame = false,
+}: {
+  now?: Date;
+  /**
+   * Drawn as the Settings tab of My Day › Notifications, whose Earlier tab sits
+   * in the band, so the page leaves out its own Earlier alerts row.
+   */
+  inFrame?: boolean;
+} = {}) {
   return (
     <MyDayFrame
-      title="Alerts"
+      title={inFrame ? "Settings" : "Alerts"}
       testId="my-day-alerts"
       now={now}
       wide
-      subtitle={() => "What can reach your phone, and when"}
+      subtitle={() => "What reaches your phone, and when"}
       signedOut={{
         title: "Sign in to get alerts",
         body: "Alerts come from your own roster and records, so they need your account. Nothing is sent to this device while you're signed out.",
       }}
     >
-      {(at) => <AlertsBody now={at} />}
+      {(at) => <AlertsBody now={at} inFrame={inFrame} />}
     </MyDayFrame>
   );
 }
+
+/** Each area's icon, as the notification centre draws it. */
+const AREA_ICONS: Readonly<Record<AlertAreaId, LucideIcon>> = {
+  roster: CalendarDays,
+  renewals: ShieldCheck,
+  cpd: Award,
+  teaching: Presentation,
+  "on-call": Phone,
+};
+
+/** A setting that cannot be turned off, as a small grey pill. */
+const ALWAYS_ON = (
+  <span className="pr-3">
+    <WorkTag tone="neutral">Always on</WorkTag>
+  </span>
+);
 
 type OpenSheet =
   | { kind: "area"; area: AlertAreaId }
@@ -57,12 +90,14 @@ type OpenSheet =
   | { kind: "remind-me" }
   | null;
 
-function AlertsBody({ now }: { now: Date }) {
+function AlertsBody({ now, inFrame }: { now: Date; inFrame: boolean }) {
   const { preferences, setPreference } = useAppPreferences();
   const reminders = preferences.reminders;
   const roster = useRosterSettings();
   const alerts = usePhoneAlerts();
   const shared = useSharedDevice();
+  const routeVisible = useWorkModeRouteVisible();
+  const bellPhoneLive = useLivePreview("phone-bell-alerts");
   const { reminders: notes } = useRemindMe();
   const openNotes = notes.filter((item) => !item.doneAt).length;
   const [sheet, setSheet] = useState<OpenSheet>(null);
@@ -96,6 +131,12 @@ function AlertsBody({ now }: { now: Date }) {
                 : "On · turn on phone alerts below to get it"
           }
           onSelect={() => setSheet({ kind: "brief" })}
+          toggle={{
+            enabled: reminders.brief.enabled,
+            label: "Morning brief",
+            onToggle: () =>
+              setReminders({ ...reminders, brief: { ...reminders.brief, enabled: !reminders.brief.enabled } }),
+          }}
           testId="alerts-brief-row"
         />
         <AlertsButtonRow
@@ -107,11 +148,7 @@ function AlertsBody({ now }: { now: Date }) {
         <ModeRow
           title="After a night shift"
           subtitle={`Held until ${AFTER_NIGHT_TIME}`}
-          trailing={
-            <span className="pr-3">
-              <ModeStateLabel>Always on</ModeStateLabel>
-            </span>
-          }
+          trailing={ALWAYS_ON}
           testId="alerts-brief-night-row"
         />
         <AlertsButtonRow
@@ -128,12 +165,9 @@ function AlertsBody({ now }: { now: Date }) {
             <AlertsButtonRow
               key={id}
               title={ALERT_AREAS[id].title}
-              subtitle={
-                <>
-                  <AreaDot mode={ALERT_AREAS[id].mode} />
-                  {areaSummary(id, reminders, today, rosterChoices)}
-                </>
-              }
+              subtitle={areaSummary(id, reminders, today, rosterChoices)}
+              icon={AREA_ICONS[id]}
+              mode={ALERT_AREAS[id].mode}
               onSelect={() => setSheet({ kind: "area", area: id })}
               testId={`alerts-area-${id}`}
             />
@@ -143,10 +177,17 @@ function AlertsBody({ now }: { now: Date }) {
             subtitle={
               openNotes ? `${openNotes} listed here · kept on this device` : "Listed here · kept on this device"
             }
+            icon={Bell}
+            mode="my-day"
             onSelect={() => setSheet({ kind: "reminders" })}
             testId="alerts-your-reminders"
           />
-          <AlertsQuietRow title="Open shifts" reason="Arrives with Open shifts" testId="alerts-area-open-shifts" />
+        </ModeGroupedList>
+        {bellPhoneLive ? (
+          <AlertsBellPhoneSection reminders={reminders} onChange={setReminders} phone={alerts.state} shared={shared} />
+        ) : null}
+        {/* What is locked sits in its own card, apart from what can be changed. */}
+        <ModeGroupedList testId="alerts-locked">
           <AlertsQuietRow title="Mental Health Act timers" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="Rest-break warnings" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="CPD coaching" reason="Locked until clinical sign-off" />
@@ -164,39 +205,49 @@ function AlertsBody({ now }: { now: Date }) {
           title="Quiet hours"
           subtitle={quiet.enabled ? `${quiet.start} to ${quiet.end}, Perth time` : "Off"}
           onSelect={() => setSheet({ kind: "quiet" })}
+          toggle={{
+            enabled: quiet.enabled,
+            label: "Quiet hours",
+            onToggle: () => setReminders({ ...reminders, quietHours: { ...quiet, enabled: !quiet.enabled } }),
+          }}
           testId="alerts-quiet-row"
         />
         <ModeRow
           title="Quiet while on a night"
           subtitle="Swap and open-shift requests don't buzz during a night shift"
-          trailing={
-            <span className="pr-3">
-              <ModeStateLabel>Always on</ModeStateLabel>
-            </span>
-          }
+          trailing={ALWAYS_ON}
         />
+        {bellPhoneLive && reminders.bellPhone.enabled ? (
+          <ModeRow
+            title="Bell reminders wait"
+            subtitle="One due in quiet hours buzzes when they end"
+            trailing={ALWAYS_ON}
+          />
+        ) : null}
         <ModeRow
           title="Your own reminders come through"
           subtitle="At the exact time you set, even in quiet hours"
-          trailing={
-            <span className="pr-3">
-              <ModeStateLabel>Always on</ModeStateLabel>
-            </span>
-          }
+          trailing={ALWAYS_ON}
         />
         <ModeRow
           title="Roster changes come through"
           subtitle="Even during a night shift, so a changed shift is never missed"
-          trailing={
-            <span className="pr-3">
-              <ModeStateLabel>Always on</ModeStateLabel>
-            </span>
-          }
+          trailing={ALWAYS_ON}
         />
       </ModeGroupedList>
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-3">
         <AlertsDeviceSection alerts={alerts} shared={shared} />
+        {!inFrame && routeVisible(EARLIER_ALERTS_HREF) ? (
+          <ModeGroupedList testId="alerts-earlier" className="mt-2">
+            <ModeRow
+              title="Earlier alerts"
+              subtitle="What buzzed this phone, last 7 days"
+              href={EARLIER_ALERTS_HREF}
+              testId="alerts-earlier-row"
+            />
+          </ModeGroupedList>
+        ) : null}
       </div>
 
       <AlertsAreaSheet

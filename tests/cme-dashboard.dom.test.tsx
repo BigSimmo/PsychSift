@@ -185,8 +185,12 @@ describe("the dashboard", () => {
       expect.stringMatching(/^Reviewing performance[\d.]+ h$/),
       expect.stringMatching(/^Measuring outcomes[\d.]+ h$/),
     ]);
-    expect(within(summary).getByTestId("cme-pace-sentence")).toHaveTextContent(/^17\.5 h to go, about 1\.2 h a week\./);
-    expect(within(summary).getAllByTestId("cme-week-bar")).toHaveLength(53);
+    // work-mode redesign, owner request 6 Oct 2026: the mock-up's "to go · a week" line; the week
+    // chart moved from the card into the Close the gap sheet.
+    expect(within(summary).getByTestId("cme-pace-sentence")).toHaveTextContent(
+      /^17\.5 h to go · about 1\.2 h a week\./,
+    );
+    expect(within(summary).queryAllByTestId("cme-week-bar")).toHaveLength(0);
     expect(screen.queryByTestId("progress-mark")).toBeNull();
     expect(screen.getByTestId("cme-next-action")).toBeInTheDocument();
   });
@@ -198,13 +202,12 @@ describe("the dashboard", () => {
     // Without the quick-log panel on the page, it opens the full form.
     expect(log).toHaveAttribute("href", "/cme/new?year=2026");
     expect(log).toHaveAttribute("data-cme-log-trigger");
-    expect(
-      container.querySelectorAll(
-        'a[class*="bg-[color:var(--clinical-accent)]"], button[class*="bg-[color:var(--clinical-accent)]"], a[class*="bg-[color:var(--cme-filled)]"], button[class*="bg-[color:var(--cme-filled)]"]',
-      ),
-    ).toHaveLength(1);
-    // No floating button to keep clear of: the page ends with ordinary room under the last block.
-    expect(container.querySelector("main")?.className).toContain("pb-[calc(max(1rem,var(--safe-area-bottom))+2.5rem)]");
+    // work-mode redesign, owner request 6 Oct 2026: filled buttons are the kit's primary
+    // variant. The dock carries Log an activity; the only other is the next
+    // step's own Log, as the mock-up draws it. No floating + Log.
+    const filled = [...container.querySelectorAll('a[data-variant="primary"], button[data-variant="primary"]')];
+    expect(filled.map((node) => node.textContent)).toEqual(["Log", "Log an activity"]);
+    expect(log.closest(".work-dock")).not.toBeNull();
   });
 
   it("says nothing about pace in January and points at the plan instead", () => {
@@ -246,7 +249,8 @@ describe("the dashboard", () => {
     render(<CmeDashboard set={DEMO_CME_YEAR} entries={[]} now={new Date("2026-09-19T02:00:00Z")} />);
     expect(screen.getByTestId("cme-total-hours")).toHaveTextContent("Nothing logged yet");
     expect(screen.getByTestId("cme-empty-target-line")).toHaveTextContent(
-      "Your target is 50 h for 2026. Log your first activity and it will show here.",
+      // work-mode redesign, owner request 6 Oct 2026: the mock-up's wording.
+      "Your target is 50 h for 2026. Log your first activity and it shows here.",
     );
     expect(screen.getByTestId("cme-log-activity")).toHaveTextContent("Log your first activity");
     // Nothing to count yet, so no chips, no checklist and no week chart.
@@ -312,7 +316,8 @@ describe("the dashboard", () => {
     // The step is What's left's own "Hours in total" row, not a second row saying the same thing.
     const next = screen.getAllByTestId("cme-next-action");
     expect(next).toHaveLength(1);
-    expect(next[0]).toHaveTextContent(/^Hours in total45 h to go$/);
+    // work-mode redesign, owner request 6 Oct 2026: the next step row ends in its own Log button.
+    expect(next[0]).toHaveTextContent(/^Hours in total45 h to goLog$/);
     expect(next[0]).toHaveAttribute("data-met", "false");
     expect(next[0]).not.toHaveTextContent(/every target is reached/i);
   });
@@ -338,9 +343,11 @@ describe("the dashboard", () => {
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(JSON.stringify({ count: 3 }), { status: 200 }));
     const view = renderAt("2026-09-19T02:00:00Z");
+    // work-mode redesign, owner request 6 Oct 2026: once the count arrives the row moves up
+    // into "To log", so it is found again after the count shows.
+    await screen.findByText("3 sessions are not logged yet");
     const row = screen.getByTestId("cme-teaching-link");
     expect(row).toHaveTextContent("Teaching you gave");
-    await within(row).findByText("3 sessions are not logged yet");
     expect(row).toHaveAttribute("href", "/teaching/review");
     view.unmount();
     fetchMock.mockClear();
@@ -373,7 +380,8 @@ describe("the dashboard", () => {
       />,
     );
     const due = screen.getByTestId("cme-routines-due");
-    expect(within(due).getByRole("heading", { name: "Routines due · 1" })).toBeInTheDocument();
+    // work-mode redesign, owner request 6 Oct 2026: the group is "To log", as the mock-up names it.
+    expect(within(due).getByRole("heading", { name: "To log" })).toBeInTheDocument();
     expect(due).toHaveTextContent("Peer review groupMonthly · usually 1 h");
     expect(within(due).getByRole("button", { name: "Log 1 h" })).toBeInTheDocument();
     expect(within(due).getByRole("button", { name: "Snooze for a week: CPD routines due" })).toBeInTheDocument();

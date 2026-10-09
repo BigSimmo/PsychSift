@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react";
 
 import { AlertsButtonRow } from "@/components/alerts/alerts-rows";
 import { ModeRow } from "@/components/mode-kit/grouped-list";
-import { modeInsetHairline, modeRaisedCard } from "@/components/mode-kit/recipes";
+import { modeInsetHairline } from "@/components/mode-kit/recipes";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { remindMeClock } from "@/lib/alerts/remind-me";
 import type { EndOfShift } from "@/lib/alerts/end-of-shift";
@@ -38,13 +38,13 @@ export function EndOfShiftCard({
   const ends = remindMeClock(Date.parse(shift.endsAt));
   return (
     <section className="grid min-w-0 gap-2" aria-label="End of shift" data-testid="end-of-shift-card">
-      <div className={cn(modeRaisedCard, "overflow-hidden")}>
+      <div className="overflow-hidden rounded-[var(--work-radius-card)] border border-[color:var(--work-line)] bg-[color:var(--work-surface)] forced-colors:border">
         <div className="grid gap-1 px-3 pb-3 pt-3">
           <p className={cn(eyebrowText, "flex items-center gap-1.5")}>
             <Clock aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
             {`${shift.label} ends ${ends}`}
           </p>
-          <p className="text-xl font-semibold text-[color:var(--text-heading)]">
+          <p className="text-xl font-bold tracking-tight text-[color:var(--work-ink)]">
             {`${shift.minutesLeft} ${shift.minutesLeft === 1 ? "minute" : "minutes"} left`}
           </p>
           {labelsClearAt !== null ? (
@@ -75,7 +75,7 @@ export function EndOfShiftCard({
           />
         </ul>
       </div>
-      <p className="px-3 text-sm text-[color:var(--text-muted)]">
+      <p className="px-1 text-xs text-[color:var(--text-muted)]">
         Shows only on rostered shifts. Nothing here names a patient.
       </p>
     </section>

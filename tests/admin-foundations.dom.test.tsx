@@ -62,7 +62,8 @@ describe("adminLoadState", () => {
 
 describe("the old page files stay as redirect backstops (spec review 8)", () => {
   it.each([
-    ["@/app/(search-app)/my-work/page", "/admin/renewals"],
+    // Work-mode redesign, owner request 6 Oct 2026: Admin opens on Today again.
+    ["@/app/(search-app)/my-work/page", "/admin"],
     ["@/app/(search-app)/on-call/compliance/page", "/admin/renewals"],
     ["@/app/(search-app)/on-call/logistics/page", "/admin/help"],
     ["@/app/(search-app)/on-call/education/page", "/teaching/week"],
@@ -130,6 +131,9 @@ describe("renewal dates", () => {
     expect(formatUpdatedMonth("not a date")).toBe("");
     expect(formatDateEcho("2027-09-30")).toBe("Thu 30 Sep 2027");
     expect(formatDateEcho("30/09/2027")).toBe("");
+    // With today given, the year shows only when it differs (the work-mode house rule).
+    expect(formatDateEcho("2027-09-30", "2027-01-04")).toBe("Thu 30 Sep");
+    expect(formatDateEcho("2027-09-30", "2026-10-09")).toBe("Thu 30 Sep 2027");
   });
 
   it("words the distance on one ladder, never a countdown (Josh, 16:31Z; spec review)", () => {

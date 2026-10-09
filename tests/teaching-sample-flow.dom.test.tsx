@@ -15,7 +15,6 @@ vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
 import ResourcesRoute from "@/app/(search-app)/teaching/resources/page";
 import CollectionRoute from "@/app/(search-app)/teaching/resources/[collectionId]/page";
 import WhatsOnRoute from "@/app/(search-app)/teaching/whats-on/page";
-import { TeachingSampleBanner } from "@/components/teaching/teaching-sample-banner";
 import { teachingSampleEntryHref } from "@/lib/teaching/sample-paths";
 import { authState } from "./helpers/teaching-auth";
 import { NOW, apiError, serveFetch, useTeachingTestClock } from "./helpers/teaching-fixtures";
@@ -53,18 +52,6 @@ describe("signed-out Teaching sample in production", () => {
     fireEvent.click(add[0]);
     await waitFor(() => expect(screen.getByText("The sample doesn’t save changes.")).toBeInTheDocument());
     expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("excludes both live check-in routes while retaining the banner on sample pages", () => {
-    state.pathname = "/teaching/c/token";
-    const { rerender } = render(<TeachingSampleBanner />);
-    expect(screen.queryByTestId("teaching-sample-banner")).not.toBeInTheDocument();
-    state.pathname = "/teaching/c/complete";
-    rerender(<TeachingSampleBanner />);
-    expect(screen.queryByTestId("teaching-sample-banner")).not.toBeInTheDocument();
-    state.pathname = "/teaching/resources";
-    rerender(<TeachingSampleBanner />);
-    expect(screen.getByTestId("teaching-sample-banner")).toBeInTheDocument();
   });
 
   it("enters from live record deep links at a usable sample page", () => {

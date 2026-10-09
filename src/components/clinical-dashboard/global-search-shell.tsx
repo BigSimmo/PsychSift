@@ -28,6 +28,7 @@ import { SearchCommandProvider } from "@/components/clinical-dashboard/search-co
 import {
   ClinicalDesktopSidebar,
   ClinicalMobileSidebar,
+  ClinicalSidebarContent,
   deriveSidebarIdentity,
 } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { landingModeForPreference, readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -35,6 +36,20 @@ import { useFavouritesAccess } from "@/components/clinical-dashboard/use-favouri
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
+import { useLivePreview } from "@/components/live-version/live-version-provider";
+import {
+  LazyTwoPaneSideMenu,
+  LazyWorkSideCounts,
+  LazyWorkSideMenu,
+  prefetchTwoPaneSideMenu,
+} from "@/components/work-frame/lazy-work-side-nav";
+import {
+  TwoPaneSideRail,
+  useTwoPaneRailShown,
+  type TwoPaneMenuPane,
+} from "@/components/work-frame/two-pane-side-strip";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { useWorkRailShown, useWorkSideNav, WorkRail, workSideCurrentArea } from "@/components/work-frame/work-rail";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
 import {
   isPageOwnedComposerRoute,
@@ -443,6 +458,8 @@ function GlobalStandaloneSearchShellBody({
     () => readSearchNavigationContext(searchParams).scopeFilters,
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // The pane a tablet rail button opens the two-pane menu on; the header's menu button clears it.
+  const [menuPane, setMenuPane] = useState<TwoPaneMenuPane | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const [guideOpen, setGuideOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -497,7 +514,33 @@ function GlobalStandaloneSearchShellBody({
   const isDictionaryCatalogue = isDictionaryCataloguePath(pathname);
   const isDifferentialPresentationWorkflow = pathname.startsWith("/differentials/presentations/");
   const shouldShowDesktopSidebar = !hideDesktopSidebar;
-  const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow ? true : sidebarCollapsed;
+  // Work pages for readers on the new work mode get the work side menu (phone)
+  // and the narrow work rail (768 px up) in place of the clinical sidebar
+  // (owner pick "Burger and rail", 7 Oct 2026). The rail never widens, so it
+  // reads as collapsed for the layout's width.
+  const workSideNav = useWorkSideNav(searchMode);
+  const workRailShown = useWorkRailShown();
+  const workSideArea = workSideNav ? workSideCurrentArea(searchMode, pathname) : null;
+  // The counts reader stays mounted once the phone menu has opened on a work
+  // page, so reopening the menu never fetches the feed again.
+  const [workMenuOpened, setWorkMenuOpened] = useState(false);
+  // The two-pane side menu (owner pick 8 Oct 2026, behind the Live version
+  // switch) replaces both phone menus, and carries the Work side on every page.
+  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  const newWorkMode = useNewWorkMode();
+  const twoPaneCounts = twoPaneSideMenu && newWorkMode;
+  // Clinical pages hand 1024 px up to the full sidebar, so the rail (and its counts) stop there.
+  const twoPaneRailShown = useTwoPaneRailShown(!workSideNav);
+  if ((workSideNav || twoPaneCounts) && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
+  // The phone menu only exists below 768 px. Turning a phone to landscape past
+  // that width closes it, so its backdrop never blocks the rail layout. The
+  // two-pane menu is the tablet rail's own menu, so it stays open.
+  if (workSideNav && workRailShown && mobileMenuOpen && !twoPaneSideMenu) setMobileMenuOpen(false);
+  const openMenuOn = (pane: TwoPaneMenuPane) => {
+    setMenuPane(pane);
+    setMobileMenuOpen(true);
+  };
+  const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow || workSideNav ? true : sidebarCollapsed;
   const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "5.25rem" : "20rem") : "0px";
   const isInfoPage = isInformationPage(pathname);
   // Information pages are read surfaces: the record has already been found, so a
@@ -908,24 +951,49 @@ function GlobalStandaloneSearchShellBody({
         {shouldShowDesktopSidebar ? (
           <div className="hidden md:block">
             <div className="sticky top-0 flex h-dvh min-h-0">
-              <ClinicalDesktopSidebar
-                collapsed={effectiveSidebarCollapsed}
-                collapseLocked={isDifferentialPresentationWorkflow}
-                recentQueries={recentQueries}
-                identity={sidebarIdentity}
-                activeMode={searchMode}
-                showAccountLibrary={favouritesAccessible}
-                onCollapsedChange={setSidebarCollapsed}
-                onNewChat={startNewChat}
-                onPickRecent={pickRecentQuery}
-                onOpenSettings={openSettingsWithDefaultFocus}
-                onOpenAccount={openAccountProfileWithDefaultFocus}
-                onPrefetchSettings={loadSettingsDialog}
-                onPrefetchAccount={prefetchAccountDialog}
-                onPrefetchApplications={prefetchApplications}
-                onOpenSearch={openSidebarSearch}
-                onSelectMode={changeMode}
-              />
+              {twoPaneSideMenu ? (
+                <TwoPaneSideRail
+                  identity={sidebarIdentity}
+                  side={workSideNav ? "work" : "clinical"}
+                  workAvailable={newWorkMode}
+                  showAccountLibrary={favouritesAccessible}
+                  hideOnDesktop={!workSideNav}
+                  onOpenMenu={openMenuOn}
+                  onPrefetchMenu={prefetchTwoPaneSideMenu}
+                  onOpenSettings={openSettingsWithDefaultFocus}
+                />
+              ) : null}
+              {workSideNav ? (
+                twoPaneSideMenu ? null : (
+                  <WorkRail
+                    identity={sidebarIdentity}
+                    currentArea={workSideArea}
+                    onOpenSettings={openSettingsWithDefaultFocus}
+                  />
+                )
+              ) : (
+                // With the two-pane rail on tablets, the clinical sidebar keeps 1024 px up.
+                <div className={twoPaneSideMenu ? "hidden lg:contents" : "contents"}>
+                  <ClinicalDesktopSidebar
+                    collapsed={effectiveSidebarCollapsed}
+                    collapseLocked={isDifferentialPresentationWorkflow}
+                    recentQueries={recentQueries}
+                    identity={sidebarIdentity}
+                    activeMode={searchMode}
+                    showAccountLibrary={favouritesAccessible}
+                    onCollapsedChange={setSidebarCollapsed}
+                    onNewChat={startNewChat}
+                    onPickRecent={pickRecentQuery}
+                    onOpenSettings={openSettingsWithDefaultFocus}
+                    onOpenAccount={openAccountProfileWithDefaultFocus}
+                    onPrefetchSettings={loadSettingsDialog}
+                    onPrefetchAccount={prefetchAccountDialog}
+                    onPrefetchApplications={prefetchApplications}
+                    onOpenSearch={openSidebarSearch}
+                    onSelectMode={changeMode}
+                  />
+                </div>
+              )}
             </div>
           </div>
         ) : null}
@@ -975,7 +1043,10 @@ function GlobalStandaloneSearchShellBody({
               onOpenEvidence={() => navigateToMode("answer", { focus: true })}
               onNewChat={startNewChat}
               showDesktopNewChat={!shouldShowDesktopSidebar}
-              onOpenMobileSidebar={() => setMobileMenuOpen(true)}
+              onOpenMobileSidebar={() => {
+                setMenuPane(null);
+                setMobileMenuOpen(true);
+              }}
               queryModeOptions={mockupQueryModeOptions}
               queryInputRef={inputRef}
               recentQueries={recentQueries}
@@ -1198,24 +1269,86 @@ function GlobalStandaloneSearchShellBody({
           initialFocus={settingsInitialFocus}
         />
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
-        <ClinicalMobileSidebar
-          open={mobileMenuOpen}
-          hiddenFrom="md"
-          recentQueries={recentQueries}
-          identity={sidebarIdentity}
-          activeMode={searchMode}
-          showAccountLibrary={favouritesAccessible}
-          onOpenChange={setMobileMenuOpen}
-          onNewChat={startNewChat}
-          onPickRecent={pickRecentQuery}
-          onOpenSettings={openSettingsWithDefaultFocus}
-          onOpenAccount={openAccountProfileWithDefaultFocus}
-          onPrefetchSettings={loadSettingsDialog}
-          onPrefetchAccount={prefetchAccountDialog}
-          onPrefetchApplications={prefetchApplications}
-          onOpenSearch={openSidebarSearch}
-          onSelectMode={changeMode}
+        <LazyWorkSideCounts
+          active={
+            (workSideNav && (twoPaneSideMenu ? twoPaneRailShown : workRailShown)) ||
+            ((workSideNav || twoPaneCounts) && workMenuOpened)
+          }
         />
+        {twoPaneSideMenu ? (
+          <LazyTwoPaneSideMenu
+            open={mobileMenuOpen}
+            onOpenChange={setMobileMenuOpen}
+            identity={sidebarIdentity}
+            startSide={workSideNav ? "work" : "clinical"}
+            openPane={menuPane}
+            workAvailable={newWorkMode}
+            currentArea={workSideArea}
+            activeMode={searchMode}
+            recentQueries={recentQueries}
+            showAccountLibrary={favouritesAccessible}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onSelectMode={changeMode}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSettings={openSettingsWithDefaultFocus}
+            onOpenAccount={openAccountProfileWithDefaultFocus}
+            onSignOut={async () => {
+              clinicalAskSession.clear();
+              await auth.signOut();
+            }}
+          />
+        ) : workSideNav ? (
+          <LazyWorkSideMenu
+            open={mobileMenuOpen}
+            onOpenChange={setMobileMenuOpen}
+            identity={sidebarIdentity}
+            currentArea={workSideArea}
+            onOpenSettings={openSettingsWithDefaultFocus}
+            onSignOut={async () => {
+              clinicalAskSession.clear();
+              await auth.signOut();
+            }}
+            clinical={
+              <ClinicalSidebarContent
+                showHeader={false}
+                recentQueries={recentQueries}
+                identity={sidebarIdentity}
+                activeMode={searchMode}
+                showAccountLibrary={favouritesAccessible}
+                onNewChat={startNewChat}
+                onPickRecent={pickRecentQuery}
+                onOpenSettings={openSettingsWithDefaultFocus}
+                onOpenAccount={openAccountProfileWithDefaultFocus}
+                onPrefetchSettings={loadSettingsDialog}
+                onPrefetchAccount={prefetchAccountDialog}
+                onPrefetchApplications={prefetchApplications}
+                onOpenSearch={openSidebarSearch}
+                onSelectMode={changeMode}
+                onNavigate={() => setMobileMenuOpen(false)}
+              />
+            }
+          />
+        ) : (
+          <ClinicalMobileSidebar
+            open={mobileMenuOpen}
+            hiddenFrom="md"
+            recentQueries={recentQueries}
+            identity={sidebarIdentity}
+            activeMode={searchMode}
+            showAccountLibrary={favouritesAccessible}
+            onOpenChange={setMobileMenuOpen}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onOpenSettings={openSettingsWithDefaultFocus}
+            onOpenAccount={openAccountProfileWithDefaultFocus}
+            onPrefetchSettings={loadSettingsDialog}
+            onPrefetchAccount={prefetchAccountDialog}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSearch={openSidebarSearch}
+            onSelectMode={changeMode}
+          />
+        )}
       </div>
     );
   };

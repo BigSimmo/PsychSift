@@ -7,10 +7,13 @@ import { useRosterNow } from "@/components/roster/roster-format";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
-import { perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
+import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { openShiftCandidates } from "@/lib/roster/team/eligibility";
 import type { RosterAction, RosterAssignment, RosterOverview } from "@/lib/roster/team/model";
+import { zonedTimeOf } from "@/lib/work-time/format";
 
 import { RosterSwapTicket } from "./roster-swap-ticket";
 import { GIVE_AWAY_WORDS, isUrgentGiveAway, type RequestSent } from "./request-ui";
@@ -44,6 +47,7 @@ function GiveAwaySession({
   onSent: RequestSent;
 }) {
   const now = useRosterNow();
+  const { zone } = useWorkTimeZone();
   const [fresh, setFresh] = useState<Fresh | null>(null);
   const [assignmentId, setAssignmentId] = useState(initialAssignmentId ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +134,7 @@ function GiveAwaySession({
               <option value="">Choose a shift</option>
               {mine.map((item) => (
                 <option value={item.id} key={item.id}>
-                  {perthDateOf(item.startsAt)} · {item.shiftCode}
+                  {`${formatPerthDay(perthDateOf(item.startsAt))} · ${SHIFT_KIND_LABEL[item.kind]} ${perthTimeOf(item.startsAt)}–${perthTimeOf(item.endsAt)}`}
                 </option>
               ))}
             </select>
@@ -151,15 +155,7 @@ function GiveAwaySession({
               ))}
             </ul>
             {isUrgent ? <p>{GIVE_AWAY_WORDS.ringIn}</p> : null}
-            <p className="text-xs text-[color:var(--text-muted)]">
-              Rechecked{" "}
-              {new Intl.DateTimeFormat("en-AU", {
-                timeZone: "Australia/Perth",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false,
-              }).format(fresh!.readAt)}
-            </p>
+            <p className="text-xs text-[color:var(--text-muted)]">Rechecked {zonedTimeOf(fresh!.readAt, zone)}</p>
             <Button
               variant="primary"
               disabled={busy || (!isUrgent && candidates.length === 0)}

@@ -1,15 +1,13 @@
 "use client";
 
+import { CalendarPlus, Check, CircleSlash, History, Plus, Undo2 } from "lucide-react";
 import { useState } from "react";
 
-import { AdminRuleToConfirm, AdminStatusWord } from "@/components/admin/admin-status-word";
-import { AdminWindowBar } from "@/components/admin/renewals/window-bar";
-import { focusRing } from "@/components/card-recipes";
-import { InlineNotice } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
+import { AdminNote, AdminRow, AdminSection, AdminSheet, adminStyles } from "@/components/admin/admin-kit";
+import { AdminRuleToConfirm, AdminStatusTag } from "@/components/admin/admin-status-tag";
+import { AdminWindow } from "@/components/admin/renewals/window-bar";
+import { WorkButton, WorkCard, WorkIconCircle } from "@/components/mode-kit/work";
 import { ExternalTextLink, TextLink } from "@/components/ui/link";
-import { Sheet } from "@/components/ui/sheet";
-import { cn, controlDisabled, eyebrowText, textMuted } from "@/components/ui-primitives";
 import { complianceBucket } from "@/lib/admin/compliance-overview";
 import { formatDateEcho, formatRecordedDate, formatRelativeDate, renewalStartOn } from "@/lib/admin/renewal-dates";
 import { windowProgress as renewWindowShare } from "@/lib/admin/renew-next";
@@ -20,6 +18,8 @@ import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { complianceExpiresOn, complianceIssuerCheckedOn, entryNotForThisJob } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 export type ChecklistItemSubject =
   | { readonly kind: "catalogue"; readonly item: AdminRequirementCatalogueItem; readonly entry: OnCallEntry | null }
@@ -62,6 +62,8 @@ export function ChecklistItemDetailSheet({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Example records never leave the app, a calendar file included.
+  const { active: adminExample } = useExampleData("admin");
   const open = subject !== null;
   const item = subject?.kind === "catalogue" ? subject.item : undefined;
   const entry = subject?.entry ?? null;
@@ -130,219 +132,211 @@ export function ChecklistItemDetailSheet({
   }
 
   function addToCalendar() {
+    if (!guardExampleAction(adminExample, "export")) return;
     if (!entry) return;
     const event = renewalCalendarEvent(entry, now);
     if (!event) return;
     downloadTextFile(toIcs([event]), icsFileName(entry.title), "text/calendar;charset=utf-8");
   }
 
+  const showWindow = Boolean(expiresOn && startOn && windowProgress !== null);
+  const relative = expiresOn ? formatRelativeDate(expiresOn, today) : "";
+  const relativeLine = expiresOn
+    ? `${relative.charAt(0).toUpperCase()}${relative.slice(1)}${
+        startOn && startOn <= today && expiresOn >= today
+          ? ` · renewal window opened ${formatRecordedDate(startOn)}`
+          : ""
+      }`
+    : null;
+
   return (
-    <Sheet
+    <AdminSheet
       open={open}
       onClose={onClose}
       title={item?.title ?? entry?.title ?? ""}
-      description="Recorded by you — not confirmed with the issuing body."
+      description="Recorded by you, not confirmed with the issuing body."
       testId={testId}
       footer={
         canEdit ? (
           <div className="grid gap-2">
-            {error ? <InlineNotice tone="neutral">{error}</InlineNotice> : null}
-            <Button variant="primary" block onClick={onRenew} testId={`${testId}-renew`}>
+            {error ? (
+              <p className="work-row__sub m-0" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <WorkButton size="wide" icon={entry ? Check : Plus} onClick={onRenew} testId={`${testId}-renew`}>
               {entry ? "Renewed" : "Add date"}
-            </Button>
+            </WorkButton>
           </div>
         ) : undefined
       }
     >
       {subject ? (
-        // One surface (the sheet), its groups split by hairlines — never a
-        // bordered card inside the sheet's own card.
-        <div
-          className="grid divide-y divide-[color:var(--border)] [&>*]:py-4 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0"
-          data-testid={`${testId}-groups`}
-        >
+        // One surface (the sheet); its groups are flat white cards with hairlines.
+        <div className={adminStyles.column} data-testid={`${testId}-groups`}>
           {row ? (
-            <div className="grid gap-3" data-testid={`${testId}-status-block`}>
-              <div className="grid gap-0.5">
-                <AdminStatusWord
-                  bucket={bucket ?? "not-recorded"}
-                  testId={`${testId}-status`}
-                  className="text-base-minus"
-                />
+            <WorkCard padded testId={`${testId}-status-block`}>
+              <div className="grid gap-1.5">
+                <AdminStatusTag status={bucket ?? "not-recorded"} testId={`${testId}-status`} />
                 {expiresOn ? (
-                  <p className="text-lg-minus font-medium text-[color:var(--text-heading)]">
-                    {`${dateLabel} ${formatDateEcho(expiresOn)}`}
-                  </p>
-                ) : null}
-                {expiresOn ? (
-                  <p className={cn(textMuted, "text-sm")}>
-                    {formatRelativeDate(expiresOn, today)}
-                    {startOn && startOn <= today && expiresOn >= today
-                      ? ` · the renewal window opened ${formatRecordedDate(startOn)}`
-                      : ""}
-                  </p>
-                ) : null}
-              </div>
-              {expiresOn && startOn && windowProgress !== null ? (
-                <div className="grid gap-1" data-testid={`${testId}-window`}>
-                  <AdminWindowBar progress={windowProgress} />
-                  <span className={cn(textMuted, "flex justify-between gap-2 text-xs")}>
-                    <span>{`${startOn <= today ? "Opened" : "Opens"} ${formatRecordedDate(startOn)}`}</span>
-                    <span>{`${dateLabel} ${formatRecordedDate(expiresOn)}`}</span>
+                  <span className={adminStyles.sheetBig}>{`${dateLabel} ${formatDateEcho(expiresOn)}`}</span>
+                ) : (
+                  <span className={adminStyles.sheetBig}>
+                    {row.state === "no-end-date" ? "Recorded, no end date" : "No date recorded yet"}
                   </span>
+                )}
+                {relativeLine ? <span className="work-row__sub">{relativeLine}</span> : null}
+              </div>
+              {showWindow && startOn && expiresOn && windowProgress !== null ? (
+                <div className="mt-3">
+                  <AdminWindow
+                    progress={windowProgress}
+                    start={`${startOn <= today ? "Opened" : "Opens"} ${formatRecordedDate(startOn)}`}
+                    end={`${dateLabel} ${formatRecordedDate(expiresOn)}`}
+                    showToday={startOn <= today && expiresOn >= today}
+                    testId={`${testId}-window`}
+                  />
                 </div>
               ) : null}
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                <dt className={textMuted}>{expiresOn ? dateLabel : "Renew by"}</dt>
-                <dd className="nums text-[color:var(--text-heading)]" data-testid={`${testId}-expiry`}>
+            </WorkCard>
+          ) : null}
+
+          <WorkCard>
+            <dl className={adminStyles.kv}>
+              <div className={adminStyles.kvRow}>
+                <dt>{expiresOn ? (row ? dateLabel : "Expiry date") : "Renew by"}</dt>
+                <dd data-testid={`${testId}-expiry`}>
                   {expiresOn
                     ? formatRecordedDate(expiresOn)
-                    : row.state === "no-end-date"
+                    : row?.state === "no-end-date"
                       ? "No end date"
                       : "Not recorded yet"}
                 </dd>
-                {startOn ? (
-                  <>
-                    <dt className={textMuted}>Start renewing from</dt>
-                    <dd className="nums text-[color:var(--text-heading)]">{formatRecordedDate(startOn)}</dd>
-                  </>
-                ) : null}
-              </dl>
-            </div>
-          ) : null}
-
-          {(!row && expiresOn) || proofNote ? (
-            <div className="grid gap-3">
-              {!row && expiresOn ? (
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-sm font-medium text-[color:var(--text-heading)]">Expiry date</span>
-                  <span className="nums text-lg-minus text-[color:var(--text-heading)]">
-                    {formatRecordedDate(expiresOn)}
-                  </span>
+              </div>
+              {startOn ? (
+                <div className={adminStyles.kvRow}>
+                  <dt>Start renewing from</dt>
+                  <dd>{formatRecordedDate(startOn)}</dd>
                 </div>
               ) : null}
               {proofNote ? (
-                <p className={cn(textMuted, "text-sm")}>
-                  Where your proof is
-                  <br />
-                  {String(proofNote)}
-                </p>
+                <div className={adminStyles.kvRow}>
+                  <dt>Where your proof is</dt>
+                  <dd className="font-normal">{String(proofNote)}</dd>
+                </div>
               ) : null}
-            </div>
-          ) : null}
+            </dl>
+          </WorkCard>
 
           {entry ? (
-            <div className="grid gap-2" data-testid={`${testId}-issuer-check`}>
-              <p className="text-sm text-[color:var(--text)]" data-testid={`${testId}-issuer-check-label`}>
+            <WorkCard padded testId={`${testId}-issuer-check`}>
+              <p className="work-row__title m-0" data-testid={`${testId}-issuer-check-label`}>
                 {issuerCheckStampLabel(issuerCheckedOn)}
               </p>
+              <p className="work-row__sub m-0">Press this only after you have looked it up with the issuer yourself.</p>
               {canEdit && onIssuerCheck ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button
+                <div className="mt-1 flex flex-wrap items-center gap-x-2">
+                  <WorkButton
                     variant="secondary"
-                    busy={busy}
+                    disabled={busy}
                     onClick={() => void recordIssuerCheck()}
                     testId={`${testId}-issuer-check-record`}
                   >
                     Record issuer check today
-                  </Button>
+                  </WorkButton>
                   {issuerCheckedOn ? (
-                    <button
-                      type="button"
-                      onClick={() => void clearIssuerCheck()}
+                    <WorkButton
+                      variant="quiet"
                       disabled={busy}
-                      data-testid={`${testId}-issuer-check-clear`}
-                      className={cn(
-                        focusRing,
-                        controlDisabled,
-                        "min-h-tap px-2 text-sm text-[color:var(--text-muted)] underline-offset-2 hover:underline",
-                      )}
+                      onClick={() => void clearIssuerCheck()}
+                      testId={`${testId}-issuer-check-clear`}
                     >
                       Clear issuer check
-                    </button>
+                    </WorkButton>
                   ) : null}
                 </div>
               ) : null}
-            </div>
+            </WorkCard>
           ) : (
-            <p className={cn(textMuted, "text-sm")} data-testid={`${testId}-issuer-check-label`}>
+            <p className="work-row__sub m-0 px-1" data-testid={`${testId}-issuer-check-label`}>
               No issuer check recorded
             </p>
           )}
 
           {history.length > 0 ? (
-            <div className="grid gap-1" data-testid={`${testId}-history`}>
-              <p className={eyebrowText}>History</p>
-              {history.map((date) => (
-                <p key={date} className={cn(textMuted, "text-sm")}>
-                  {`Recorded before: ${formatRecordedDate(date)}`}
-                </p>
-              ))}
-            </div>
+            <AdminSection label="History" count={`${history.length + 1} versions`} testId={`${testId}-history`}>
+              <WorkCard as="ul">
+                {history.map((date) => (
+                  <AdminRow
+                    key={date}
+                    lead={<WorkIconCircle icon={History} tone="neutral" />}
+                    title={`Recorded before: ${formatRecordedDate(date)}`}
+                    sub="Replaced when you recorded a new date"
+                  />
+                ))}
+              </WorkCard>
+            </AdminSection>
           ) : null}
 
           {item ? (
-            <div className="grid gap-2" data-testid={`${testId}-rule`}>
-              <p className={eyebrowText}>Rule</p>
-              {item.status === "confirmed" ? (
-                <p className="text-sm leading-6 text-[color:var(--text)]">{item.rule}</p>
-              ) : (
-                <div className="grid gap-1">
-                  <AdminRuleToConfirm />
-                  <p className="text-sm text-[color:var(--text)]">
-                    Confirm this with your service or the source before relying on it.
-                  </p>
-                  <p className={cn(textMuted, "text-sm leading-6")}>{item.whatIsUnconfirmed}</p>
-                </div>
-              )}
-              <ExternalTextLink href={item.sourceUrl} className="min-h-tap w-fit items-center text-xs">
-                {`Source: ${item.sourceName} · Updated ${formatRecordedDate(item.updated)}`}
-              </ExternalTextLink>
-              {/* Spec review 20: a plain link from the medical registration item to
-                  CPD's own year check. Navigation only — Admin reads no CPD data
-                  and this link never appears in "Copy for workforce" or the
-                  calendar file, which are both built from `own`/`entries`
-                  directly rather than from anything this sheet renders. */}
-              {item.id === "medical-registration-renewal" ? (
-                <TextLink
-                  href="/cme/check"
-                  data-testid="admin-renewals-cpd-link"
-                  className="min-h-tap w-fit items-center text-sm"
-                >
-                  Open CPD year check
-                </TextLink>
-              ) : null}
-            </div>
+            <AdminSection label="Rule" testId={`${testId}-rule`}>
+              <WorkCard padded>
+                {item.status === "confirmed" ? (
+                  <p className="work-row__title m-0 leading-snug">{item.rule}</p>
+                ) : (
+                  <div className="grid gap-1">
+                    <AdminRuleToConfirm />
+                    <p className="work-row__title m-0">
+                      Confirm this with your service or the source before relying on it.
+                    </p>
+                    <p className="work-row__sub m-0">{item.whatIsUnconfirmed}</p>
+                  </div>
+                )}
+                <ExternalTextLink href={item.sourceUrl} className="min-h-tap w-fit items-center text-xs">
+                  {`Source: ${item.sourceName} · Updated ${formatRecordedDate(item.updated)}`}
+                </ExternalTextLink>
+                {/* Spec review 20: a plain link from the medical registration item to
+                    CPD's own year check. Navigation only: Admin reads no CPD data. */}
+                {item.id === "medical-registration-renewal" ? (
+                  <TextLink
+                    href="/cme/check"
+                    data-testid="admin-renewals-cpd-link"
+                    className="min-h-tap w-fit items-center text-sm"
+                  >
+                    Open CPD year check
+                  </TextLink>
+                ) : null}
+              </WorkCard>
+            </AdminSection>
           ) : null}
 
           {entry || (item && onNotForThisJob) ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <WorkCard as="ul">
               {entry ? (
-                <Button variant="secondary" onClick={addToCalendar} testId={`${testId}-calendar`}>
-                  Add to calendar
-                </Button>
+                <AdminRow
+                  lead={<WorkIconCircle icon={CalendarPlus} />}
+                  title="Add to calendar"
+                  sub={startOn ? `Reminder ${formatRecordedDate(startOn)}` : "One calendar file for this date"}
+                  onClick={addToCalendar}
+                  testId={`${testId}-calendar`}
+                />
               ) : null}
               {item && onNotForThisJob ? (
-                <button
-                  type="button"
+                <AdminRow
+                  lead={<WorkIconCircle icon={flagged ? Undo2 : CircleSlash} tone="neutral" />}
+                  title={flagged ? "Move back" : "Not for this job"}
+                  sub={flagged ? "Put it back on your checklist" : "Move it out of your checklist"}
                   onClick={() => void toggleNotForThisJob()}
                   disabled={busy}
-                  data-testid={`${testId}-not-for-this-job`}
-                  className={cn(
-                    focusRing,
-                    controlDisabled,
-                    "min-h-tap px-2 text-left text-sm text-[color:var(--text-muted)] underline-offset-2 hover:underline",
-                  )}
-                >
-                  {flagged ? "Move back" : "Not for this job"}
-                </button>
+                  testId={`${testId}-not-for-this-job`}
+                />
               ) : null}
-            </div>
+            </WorkCard>
           ) : null}
 
-          <p className={cn(textMuted, "text-xs")}>Dates you entered or confirmed, not a check.</p>
+          <AdminNote>Dates you entered or confirmed, not a check.</AdminNote>
         </div>
       ) : null}
-    </Sheet>
+    </AdminSheet>
   );
 }

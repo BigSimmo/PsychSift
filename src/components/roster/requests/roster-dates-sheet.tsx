@@ -127,7 +127,8 @@ function DatesSession({
     <Sheet open={open} onClose={onClose} title="Dates I can't work">
       <div className="grid gap-4">
         <p className="text-sm">
-          Tap a future date: blank → Can&apos;t work → Prefer off → blank. These are for the next roster.
+          Tap a future date once for Can&apos;t work, again for Prefer off, and a third time to clear it. These are for
+          the next roster.
         </p>
         {!loaded && !error ? <p role="status">Checking your dates…</p> : null}
         {error ? <p role="alert">{error}</p> : null}

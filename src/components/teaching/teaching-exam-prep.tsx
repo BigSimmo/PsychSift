@@ -22,6 +22,7 @@ import {
   T5Panel,
   T5Row,
   T5Section,
+  T5Button,
 } from "@/components/teaching/t5-kit";
 import { mondayOf, perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
@@ -31,10 +32,10 @@ import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingSignedOut } from "@/components/teaching/use-teaching-sample";
 import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
-import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import { KeptWhere } from "@/components/work-sync/kept-where";
 import type { ResourcesForWeek } from "@/lib/teaching/model";
 import {
   addDays,
@@ -51,6 +52,7 @@ import {
   type ExamPrepState,
   type HeatCell,
 } from "@/lib/teaching/term-tracker";
+import { useExampleData } from "@/lib/example-data/store";
 
 type Update = (change: (current: ExamPrepState) => ExamPrepState) => void;
 
@@ -119,13 +121,13 @@ function ExamForm({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary">
+        <T5Button type="submit" variant="primary">
           {exam ? "Save" : "Start the countdown"}
-        </Button>
+        </T5Button>
         {onDone ? (
-          <Button type="button" variant="secondary" onClick={onDone}>
+          <T5Button type="button" variant="secondary" onClick={onDone}>
             Cancel
-          </Button>
+          </T5Button>
         ) : null}
       </div>
     </form>
@@ -144,7 +146,8 @@ function Countdown({
   const days = daysBetween(today, exam.on);
   const plan = studyPlanWeek(exam, today);
   return (
-    <T5Panel testId="teaching-exam-countdown">
+    // Work-mode redesign, owner request 6 Oct 2026: the countdown is the page's hero while the exam is ahead.
+    <T5Panel hero={days >= 0} label="Your exam" testId="teaching-exam-countdown">
       <T5Kicker>{`${exam.name} · ${weekdayDayMonth(exam.on)}`}</T5Kicker>
       {days >= 0 ? (
         <>
@@ -270,7 +273,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
           <StudyHeatmap
             weeks={weeks}
             today={today}
-            label={`Study minutes per day for ${withUnit(12, "weeks")}; ${streakLine.toLowerCase()}`}
+            label={`Study minutes per day for ${withUnit(12, "weeks")}. ${streakLine}`}
           />
         </div>
       </T5Section>
@@ -408,13 +411,13 @@ function GroupForm({ group, update, onDone }: { group: ExamPrepState["group"]; u
         <TextField label="Time" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
       </div>
       <TextField label="Where" maxLength={120} value={place} onChange={(event) => setPlace(event.target.value)} />
-      <NoPatientDetailsMark />
+      <NoPatientDetailsMark section="teachingExamPrep" />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary">
+        <T5Button type="submit" variant="primary">
           Save
-        </Button>
+        </T5Button>
         {group ? (
-          <Button
+          <T5Button
             type="button"
             variant="ghost"
             onClick={() => {
@@ -423,11 +426,11 @@ function GroupForm({ group, update, onDone }: { group: ExamPrepState["group"]; u
             }}
           >
             Clear
-          </Button>
+          </T5Button>
         ) : null}
-        <Button type="button" variant="ghost" onClick={onDone}>
+        <T5Button type="button" variant="ghost" onClick={onDone}>
           Cancel
-        </Button>
+        </T5Button>
       </div>
     </form>
   );
@@ -499,6 +502,8 @@ function useExamCollection(today: string | null) {
 /* ---------- the page ---------- */
 
 function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
+  // The shared example banner already says the records are made up, so the demo note shows only without it.
+  const { active: exampleShown } = useExampleData("teach");
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const sample = useMemo(() => (demoMode && today ? sampleExamPrep(today) : null), [demoMode, today]);
@@ -517,7 +522,12 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
             <T5Heading>{state.exam ? "Edit exam" : "Your exam"}</T5Heading>
             {!state.exam ? (
               <T5Meta>
-                Set the exam you are sitting and its date for a countdown. Everything here stays on this device.
+                Set the exam you are sitting and its date for a countdown.{" "}
+                <KeptWhere
+                  section="teachingExamPrep"
+                  account="Everything here is backed up to your account."
+                  device="Everything here stays on this device."
+                />
               </T5Meta>
             ) : null}
             <ExamForm
@@ -560,7 +570,12 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
           </T5List>
         </nav>
         <T5Note icon="shield" className="mt-3">
-          Do not add patient details. Stays on this device and is not backed up.
+          Do not add patient details.{" "}
+          <KeptWhere
+            section="teachingExamPrep"
+            account="Backed up to your account."
+            device="Stays on this device and is not backed up."
+          />
         </T5Note>
       </>
     );
@@ -569,8 +584,8 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
     <InformationPageShell width="narrow" gap={false} testId="teaching-exam-prep">
       <T5Page>
         <h1 className="sr-only">My exam prep</h1>
-        {demoMode ? (
-          <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
+        {demoMode && !exampleShown ? (
+          <T5Note className="mt-0 mb-3.5">Example data. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {body}
       </T5Page>

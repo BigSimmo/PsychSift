@@ -10,13 +10,9 @@ import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
-import {
-  checkReminderText,
-  REMIND_ME_TEXT_LIMIT,
-  reminderWhenLabel,
-  remindMeWhenOptions,
-} from "@/lib/alerts/remind-me";
+import { REMIND_ME_TEXT_LIMIT, reminderWhenLabel, remindMeClock, remindMeWhenOptions } from "@/lib/alerts/remind-me";
 import { useSharedDevice } from "@/lib/alerts/shared-device";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * Screens 14 and 15: Remind me. A short note and a time, kept on this phone.
@@ -28,12 +24,18 @@ export function RemindMeSheet({
   onClose,
   now,
   shiftEndsAt,
+  initialText = "",
 }: {
   readonly open: boolean;
   readonly onClose: () => void;
   readonly now: Date;
   /** Today's rostered shift end, for the "End of shift" choice. */
   readonly shiftEndsAt: string | null;
+  /**
+   * The words to start from, e.g. a Needs you row's title. They are checked
+   * like typed words, so a title that looks like a patient detail cannot be saved.
+   */
+  readonly initialText?: string;
 }) {
   const { add } = useRemindMe();
   const shared = useSharedDevice();
@@ -43,14 +45,19 @@ export function RemindMeSheet({
   // The choices are worked out once, when the sheet opens: the clock ticking
   // must not swap a picked time for another one while the sheet is up.
   const [openedAt, setOpenedAt] = useState<Date | null>(null);
-  if (open && !openedAt) setOpenedAt(now);
+  if (open && !openedAt) {
+    setOpenedAt(now);
+    setText(initialText.slice(0, REMIND_ME_TEXT_LIMIT));
+  }
   if (!open && openedAt) setOpenedAt(null);
   const optionsAt = openedAt ?? now;
   const options = useMemo(() => remindMeWhenOptions(optionsAt, shiftEndsAt), [optionsAt, shiftEndsAt]);
   // Null means "the default": the second choice, worked out from the time the sheet is open, not page load.
   const [when, setWhen] = useState<string | null>(null);
   const [failure, setFailure] = useState<"full" | "failed" | null>(null);
-  const problem = text.trim() ? checkReminderText(text) : null;
+  // The one shared check (look-alike letters, hidden characters, "Pt Smith", ages and the rest), not the
+  // reminder's own patterns alone.
+  const problem = text.trim() ? checkPatientDetail(text) : null;
   const chosen = options.find((option) => option.id === when) ?? options[1] ?? options[0]!;
   const canSave = Boolean(text.trim()) && !problem && !shared;
 
@@ -71,10 +78,11 @@ export function RemindMeSheet({
       open={open}
       onClose={close}
       title="Remind me"
+      description="Kept on this phone"
       testId="remind-me-sheet"
       footer={
         <Button variant="primary" block disabled={!canSave} onClick={save} testId="remind-me-save">
-          Save reminder
+          {`Save for ${remindMeClock(Date.parse(chosen.dueAt))}`}
         </Button>
       }
     >
@@ -132,7 +140,7 @@ export function RemindMeSheet({
           <span>
             {shared
               ? "This is marked as a shared device, so it keeps no reminders. Use your own phone."
-              : "No names, record numbers or bed numbers. The words stay on this device and never reach our server or your calendar. For now it shows under Your reminders on the Alerts page, and it won't buzz. Not for legal deadlines such as Mental Health Act times."}
+              : "No names, record or bed numbers. The words stay on this phone and never reach the server or your calendar. It shows under Your reminders and won't buzz. Not for Mental Health Act deadlines."}
           </span>
         </p>
         {failure ? (
@@ -170,6 +178,8 @@ export function YourRemindersSheet({
       title="Your reminders"
       description="Kept on this device only"
       testId="your-reminders-sheet"
+      // The round close every work sheet uses (More, Help, Notifications).
+      closeButtonClassName="work-more-sheet__close"
       footer={
         <Button variant="primary" block onClick={onAdd} disabled={shared} testId="your-reminders-add">
           Remind me

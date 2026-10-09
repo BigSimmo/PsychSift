@@ -20,6 +20,7 @@ export const cmeDashboardModuleIds = [
   "audited-today",
   "year-dates",
   "provenance",
+  "also-for-you",
 ] as const;
 
 export type CmeDashboardModuleId = (typeof cmeDashboardModuleIds)[number];
@@ -30,13 +31,32 @@ export const cmeDashboardModuleLabels: Record<CmeDashboardModuleId, string> = {
   "audited-today": "Logged today",
   "year-dates": "Year dates",
   provenance: "Where these targets came from",
+  "also-for-you": "Also for you",
 };
+
+/** One line under each module's name on Customise: what it holds. */
+export const cmeDashboardModuleSubtitles: Record<CmeDashboardModuleId, string> = {
+  requirements: "Targets still open, next step first",
+  "routines-due": "Routines due today",
+  "audited-today": "What you logged today",
+  "year-dates": "The year's dates and days left",
+  provenance: "Where your targets came from",
+  "also-for-you": "Teaching, learning, dates",
+};
+
+/**
+ * Modules added after the first stored format (an array of shown ids). An
+ * array saved before a module existed says nothing about it, so reading one
+ * shows the newer module rather than hiding it. Orders saved since are an
+ * object, `{ v: 2, shown: [...] }`, where absence does mean hidden.
+ */
+const modulesAddedAfterV1: readonly CmeDashboardModuleId[] = ["also-for-you"];
 
 const allModuleIds = new Set<CmeDashboardModuleId>(cmeDashboardModuleIds);
 
 /** Every module, visible, in the product default order — used whenever there is no stored preference to read. */
 export const defaultCmeModuleOrder: readonly CmeDashboardModuleId[] = [...cmeDashboardModuleIds];
-const defaultSnapshot = JSON.stringify(defaultCmeModuleOrder);
+const defaultSnapshot = JSON.stringify({ v: 2, shown: defaultCmeModuleOrder });
 
 function normalizeModuleOrder(value: unknown): CmeDashboardModuleId[] | null {
   if (!Array.isArray(value)) return null;
@@ -62,14 +82,20 @@ function normalizeModuleOrder(value: unknown): CmeDashboardModuleId[] | null {
 export function readCmeModuleOrder(storedValue: string | null | undefined): CmeDashboardModuleId[] {
   if (storedValue === null || storedValue === undefined) return [...defaultCmeModuleOrder];
   try {
-    return normalizeModuleOrder(JSON.parse(storedValue)) ?? [...defaultCmeModuleOrder];
+    const parsed: unknown = JSON.parse(storedValue);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && (parsed as { v?: unknown }).v === 2) {
+      return normalizeModuleOrder((parsed as { shown?: unknown }).shown) ?? [...defaultCmeModuleOrder];
+    }
+    const legacy = normalizeModuleOrder(parsed);
+    if (!legacy) return [...defaultCmeModuleOrder];
+    return [...legacy, ...modulesAddedAfterV1.filter((moduleId) => !legacy.includes(moduleId))];
   } catch {
     return [...defaultCmeModuleOrder];
   }
 }
 
 function serializeModuleOrder(moduleIds: readonly CmeDashboardModuleId[]) {
-  return JSON.stringify(normalizeModuleOrder(moduleIds) ?? [...defaultCmeModuleOrder]);
+  return JSON.stringify({ v: 2, shown: normalizeModuleOrder(moduleIds) ?? [...defaultCmeModuleOrder] });
 }
 
 /**
@@ -100,12 +126,17 @@ export function moveModuleId(
  * therefore only be moved past another module in its own section; a move that
  * would cross a section boundary would save but show no change.
  */
-export const cmeDashboardModuleSlots: Record<CmeDashboardModuleId, "needs-you" | "coming-up" | "at-a-glance"> = {
+export const cmeDashboardModuleSlots: Record<
+  CmeDashboardModuleId,
+  "needs-you" | "coming-up" | "at-a-glance" | "also-for-you"
+> = {
   requirements: "needs-you",
   "routines-due": "coming-up",
   "audited-today": "at-a-glance",
   "year-dates": "at-a-glance",
   provenance: "at-a-glance",
+  // Its own group on the Year page, so it shows or hides but never moves.
+  "also-for-you": "also-for-you",
 };
 
 /** Index of the nearest module in `direction` that shares `moduleId`'s section, or -1 when there is none. */

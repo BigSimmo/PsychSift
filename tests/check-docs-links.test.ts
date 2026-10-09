@@ -2,9 +2,65 @@ import { describe, expect, it } from "vitest";
 
 import {
   appliedInboxFallbackPath,
+  collectBundledSkillFailures,
   collectDocumentFailures,
+  defaultTargets,
   markdownAnchorSlugs,
 } from "../scripts/check-docs-links.mjs";
+
+describe("bundled Cloud skill link coverage", () => {
+  const target = ".claude/cloud-profile/skills/playwright-best-practices/advanced/network-advanced.md";
+
+  it("includes nested shipped references in the normal blocking scan", () => {
+    expect(defaultTargets()).toContain(target);
+    expect(defaultTargets()).toContain(".claude/cloud-profile/skills/sentry-nextjs-sdk/SKILL.md");
+  });
+
+  it("catches the escaped sibling link and checks its corrected destination", () => {
+    const broken = collectBundledSkillFailures({ target, markdown: "[Offline](error-testing.md#offline-testing)" });
+    expect(broken.checked).toBe(1);
+    expect(broken.failures).toHaveLength(1);
+    const fixed = collectBundledSkillFailures({
+      target,
+      markdown: "[Offline](../debugging/error-testing.md#offline-testing)",
+    });
+    expect(fixed.checked).toBe(1);
+    expect(fixed.failures).toEqual([]);
+  });
+
+  it("checks real links while ignoring fenced examples and illustrative inline code", () => {
+    const markdown =
+      "`src/example-only.ts`\n```md\n[Example](unbuilt-example.md)\n```\n[Real](../debugging/error-testing.md#offline-testing)";
+    const result = collectBundledSkillFailures({ target, markdown });
+    expect(result.checked).toBe(1);
+    expect(result.failures).toEqual([]);
+    expect(collectDocumentFailures({ target: "README.md", markdown: "`src/example-only.ts`" }).failures).toHaveLength(
+      1,
+    );
+  });
+
+  it("still rejects missing anchors and repository escapes in skill prose", () => {
+    const result = collectBundledSkillFailures({
+      target,
+      markdown: "[Anchor](#missing-anchor) [Escape](../../../../../../outside.md)",
+    });
+    expect(result.checked).toBe(2);
+    expect(result.failures).toHaveLength(2);
+  });
+
+  it("does not close a fenced example on a marker carrying a language label", () => {
+    const markdown = [
+      "```md",
+      "```typescript",
+      "[Example](absent-example.md)",
+      "```",
+      "[Real](../debugging/error-testing.md#offline-testing)",
+    ].join("\n");
+    const result = collectBundledSkillFailures({ target, markdown });
+    expect(result.checked).toBe(1);
+    expect(result.failures).toEqual([]);
+  });
+});
 
 describe("appliedInboxFallbackPath", () => {
   it("maps a pending inbox UUID citation to the applied sibling", () => {

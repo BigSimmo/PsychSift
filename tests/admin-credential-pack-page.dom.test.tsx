@@ -95,8 +95,10 @@ describe("AdminCredentialPackPage", () => {
     render(<AdminCredentialPackPage now={NOW} />);
     await screen.findByTestId("admin-credential-pack-row-number-ahpra");
     fireEvent.click(screen.getByTestId("admin-credential-pack-include-number-ahpra"));
-    expect(screen.queryByTestId("admin-credential-pack-row-number-ahpra")).toBeNull();
-    expect(screen.getByTestId(`admin-credential-pack-row-renewal-${renewal.id}`)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByTestId("admin-credential-pack-row-number-ahpra")).toBeNull();
+      expect(screen.getByTestId(`admin-credential-pack-row-renewal-${renewal.id}`)).toBeTruthy();
+    });
   });
 
   it("disables Save as PDF and says nothing is ticked when everything is unticked", async () => {
@@ -106,8 +108,11 @@ describe("AdminCredentialPackPage", () => {
     await screen.findByTestId("admin-credential-pack-row-number-ahpra");
     fireEvent.click(screen.getByTestId("admin-credential-pack-include-number-ahpra"));
     fireEvent.click(screen.getByTestId(`admin-credential-pack-include-renewal-${renewal.id}`));
-    expect(screen.getByText(/Nothing ticked/)).toBeTruthy();
-    expect((screen.getByTestId("admin-credential-pack-pdf") as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => {
+      // Work-mode redesign, owner request 6 Oct 2026: the include rows are switches now, so the words follow.
+      expect(screen.getByText(/Nothing switched on/)).toBeTruthy();
+      expect((screen.getByTestId("admin-credential-pack-pdf") as HTMLButtonElement).disabled).toBe(true);
+    });
   });
 
   it("opens the print dialogue when Save as PDF is clicked", async () => {

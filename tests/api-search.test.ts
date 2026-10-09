@@ -379,6 +379,69 @@ describe("/api/search route defensive hardening (Task #342)", () => {
       code: "method_not_allowed",
     });
   });
+
+  it("sanitizes DB 500 errors to prevent schema leaks", async () => {
+    mockRuntime({ demoMode: false });
+    const { POST } = await import("../src/app/api/search/route");
+    const { searchChunksWithTelemetry } = await import("@/lib/rag/rag");
+    const error = Object.assign(new Error("Database connection failed"), {
+      name: "PostgresError",
+      sqlState: "08006",
+    });
+    vi.mocked(searchChunksWithTelemetry).mockRejectedValueOnce(error);
+
+    const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));
+    const body = await payload(response);
+
+    expect(response.status).toBe(500);
+    expect(body).toMatchObject({
+      error: "Search failed. Retry with a narrower question.",
+      code: "internal_error",
+    });
+    expect(body).not.toHaveProperty("sqlState");
+    expect(body).not.toHaveProperty("causeMessage");
+    expect(body).not.toHaveProperty("causeName");
+  });
+
+  it("handles empty results with 200 OK", async () => {
+    mockRuntime({ demoMode: false });
+    const { POST } = await import("../src/app/api/search/route");
+    const { searchChunksWithTelemetry } = await import("@/lib/rag/rag");
+    vi.mocked(searchChunksWithTelemetry).mockResolvedValueOnce({
+      results: [],
+      telemetry: {} as unknown as Awaited<ReturnType<typeof searchChunksWithTelemetry>>["telemetry"],
+    });
+
+    const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));
+    const body = await payload(response);
+
+    expect(response.status).toBe(200);
+    expect(body.results).toEqual([]);
+  });
+
+  it("rejects rate limited requests with 429", async () => {
+    mockRuntime({ demoMode: false });
+    const { POST } = await import("../src/app/api/search/route");
+    const { consumeSubjectApiRateLimit, rateLimitJsonResponse } = await import("@/lib/api-rate-limit");
+
+    vi.mocked(consumeSubjectApiRateLimit).mockResolvedValueOnce({
+      limited: true,
+      limit: 100,
+      remaining: 0,
+      retryAfterSeconds: 60,
+      resetAt: new Date(Date.now() + 60_000).toISOString(),
+    } as unknown as Awaited<ReturnType<typeof consumeSubjectApiRateLimit>>);
+    vi.mocked(rateLimitJsonResponse).mockImplementationOnce(
+      () =>
+        Response.json({ error: "Rate limit exceeded" }, { status: 429 }) as unknown as ReturnType<
+          typeof rateLimitJsonResponse
+        >,
+    );
+
+    const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));
+
+    expect(response.status).toBe(429);
+  });
 });
 
 describe("/api/search/universal route defensive hardening (Task #342)", () => {

@@ -1,25 +1,19 @@
 "use client";
 
-import { BookOpen, CalendarDays, FileText, List as ListIcon, Shield, Target } from "lucide-react";
-import Link from "next/link";
+import { Activity, ArrowRight, BookOpen, FileText, List as ListIcon, Plus, Shield } from "lucide-react";
 
-import { focusRing } from "@/components/card-recipes";
-import { ProgressRing } from "@/components/dashboard-kit/rings";
+import { WorkButton, WorkDock, WorkHero, WorkRing, WorkTag } from "@/components/mode-kit/work";
+import { AssessHeader, AssessNote } from "@/components/teaching/assessments/assess-kit";
 import {
-  Eyebrow,
   List,
-  Panel,
   Pill,
   Row,
   SectionLabel,
-  SmallPrint,
   StepRow,
   TextLink,
-  secondaryText,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { cn } from "@/components/ui-primitives";
 import {
   YEAR_WEEKS,
   endOfTermLine,
@@ -30,6 +24,7 @@ import {
   epaRecords,
   epasInTerm,
   pendingEpaRequest,
+  stage,
   termWeek,
   weeksDone,
   windowOpen,
@@ -42,36 +37,10 @@ import {
   SAMPLE_SUPERVISOR,
   SAMPLE_TERMS,
 } from "@/lib/teaching/assessments/sample";
-
-/** The weeks-of-the-year ring; a link to the year's requirements. */
-export function WeeksRing({ weeks, href }: { weeks: number; href?: string }) {
-  const ring = (
-    <ProgressRing
-      fraction={weeks / YEAR_WEEKS}
-      size={80}
-      strokeWidth={7}
-      stroke="stroke-[color:var(--mode-identity)]"
-      track="stroke-[color:var(--border)]"
-    >
-      <b className="text-xl leading-none font-normal text-[color:var(--text-heading)] tabular-nums">{weeks}</b>
-      <small className="mt-0.5 text-2xs font-semibold text-[color:var(--text-muted)]">of {YEAR_WEEKS} wk</small>
-    </ProgressRing>
-  );
-  if (!href) return <span data-mode-identity="teaching">{ring}</span>;
-  return (
-    <Link
-      href={href}
-      data-mode-identity="teaching"
-      aria-label={`${weeks} of ${YEAR_WEEKS} weeks done. Open year requirements.`}
-      className={cn(focusRing, "shrink-0 rounded-full")}
-    >
-      {ring}
-    </Link>
-  );
-}
+import { withUnit } from "@/components/teaching/teaching-number";
 
 /** Week of term on a line: the mid-term mark, and the last two weeks shaded as the booking window. */
-function TermTrack({ week }: { week: number }) {
+export function TermTrack({ week }: { week: number }) {
   const done = ((week - 0.5) / 10) * 100;
   return (
     <div aria-label={`Week ${week} of 10`} role="img" className="grid gap-1.5" data-mode-identity="teaching">
@@ -130,33 +99,36 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
   const t = CURRENT_TERM;
   const week = termWeek(s);
   const weeks = weeksDone(s);
+  const started = stage(s) !== "start";
   return (
     <>
-      <Panel>
-        <div className="flex items-center justify-between gap-3">
-          <div className="grid min-w-0 gap-1">
-            <Eyebrow accent>{`${SAMPLE_DOCTOR.grade} 2026 · term 4 of 5`}</Eyebrow>
-            <h2 className="text-xl leading-tight font-semibold text-[color:var(--text-heading)]">{t.name}</h2>
-            <p className={secondaryText}>
-              Chronic illness (B) · {t.from} to {t.to}
-              <br />
-              Term supervisor {SAMPLE_SUPERVISOR.name}
-            </p>
-          </div>
-          <WeeksRing weeks={weeks} href={viewHref("reqs")} />
-        </div>
-        <TermTrack week={week} />
-        <p className={secondaryText}>
-          Week {week} of 10. {windowOpen(s) ? "Booking is open until Fri 6 Nov." : "Booking opens Mon 26 Oct."} The form
-          is due to your Medical Education Unit (MEU) by Fri 20 Nov.
-        </p>
-      </Panel>
+      <AssessHeader eyebrow={`${SAMPLE_DOCTOR.grade} 2026 · term ${withUnit(4, "of")} 5`} title={t.name} />
+      <WorkHero
+        testId="assess-doctor-hero"
+        eyebrow={`${t.categoryName} (${t.category})`}
+        title={`Week ${withUnit(week, "of")} 10`}
+        sub={`${windowOpen(s) ? "Booking is open until Fri 6 Nov." : "Booking opens Mon 26 Oct."} Form due to your MEU Fri 20 Nov.`}
+        ring={
+          <WorkRing
+            value={weeks}
+            label={`of ${YEAR_WEEKS} wk`}
+            fraction={weeks / YEAR_WEEKS}
+            accessibleLabel={`${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} done this year`}
+          />
+        }
+        href={viewHref("reqs")}
+        aria-label={`Week ${withUnit(week, "of")} 10. ${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} done this year. Open year requirements.`}
+      />
 
       <SectionLabel end={<TextLink href={viewHref("term", { term: "t4" })}>Term details</TextLink>}>
         This term
       </SectionLabel>
-      <List>
-        <StepRow state="ok" title="Beginning-of-term talk" detail="Wed 2 Sep with Dr Nair. Goals agreed." />
+      <List label="This term">
+        <StepRow
+          state="ok"
+          title="Beginning-of-term discussion"
+          detail={`Wed 2 Sep with ${SAMPLE_SUPERVISOR.short}. Goals agreed.`}
+        />
         <StepRow
           state="ok"
           title="Mid-term assessment"
@@ -173,29 +145,21 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
         />
       </List>
 
-      <SectionLabel>Your year</SectionLabel>
-      <List>
+      <List label="Your year">
         <Row
-          icon={CalendarDays}
-          title={`${weeks} of ${YEAR_WEEKS} weeks · ${kindsDone(SAMPLE_TERMS)} of 4 kinds`}
-          subtitle={`${epaRecords(s).length} EPAs recorded here, at least ${epaNeedMore(s)} more needed. Leave: ${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} days.`}
-          tag={
-            <Pill
-              pill={
-                epa1ThisTerm(s) ? { label: "On track", tone: "ok" } : { label: "1 thing needs attention", tone: "warm" }
-              }
-            />
-          }
+          icon={Activity}
+          title={`${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} · ${withUnit(kindsDone(SAMPLE_TERMS), "of")} 4 kinds`}
+          subtitle={`${epaRecords(s).length} EPAs here, at least ${epaNeedMore(s)} more. Leave ${withUnit(SAMPLE_LEAVE.used, "of")} ${withUnit(SAMPLE_LEAVE.limit, "days")}.`}
+          tag={epa1ThisTerm(s) ? <WorkTag tone="neutral">On track</WorkTag> : <WorkTag tone="amber">1 to do</WorkTag>}
           href={viewHref("reqs")}
         />
       </List>
 
-      <SectionLabel>More</SectionLabel>
-      <List>
+      <List label="More">
         <Row
-          icon={Target}
+          icon={Plus}
           title="Request an EPA"
-          subtitle="From Dr Nair or a registrar"
+          subtitle={`From ${SAMPLE_SUPERVISOR.short} or a registrar`}
           onClick={() => openSheet({ kind: "epa", pick: 1 })}
         />
         <Row icon={ListIcon} title="All assessments" subtitle="Every form and EPA, by term" href={viewHref("all")} />
@@ -213,14 +177,19 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
         />
         <Row
           icon={BookOpen}
-          title="Words used here"
+          title="Help and words"
           subtitle="Every abbreviation in plain words"
-          onClick={() => openSheet({ kind: "words" })}
+          href={viewHref("words")}
         />
       </List>
-      <SmallPrint center>
+      <AssessNote icon={BookOpen} center>
         Rules from the AMC National Framework, run in WA by PMCWA. Due dates are set by your MEU.
-      </SmallPrint>
+      </AssessNote>
+      <WorkDock>
+        <WorkButton icon={ArrowRight} href={viewHref("hub")}>
+          {started ? "End-of-term steps" : "Start end-of-term"}
+        </WorkButton>
+      </WorkDock>
     </>
   );
 }

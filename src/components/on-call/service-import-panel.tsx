@@ -75,7 +75,7 @@ function saveSummary(result: SaveTickedRowsResult): string {
   const parts = [`Saved ${result.saved} ${result.saved === 1 ? "draft" : "drafts"}.`];
   if (result.failed.length > 0) {
     parts.push(
-      `${result.failed.length} not saved: ${result.failed.map((item) => `line ${item.line}, ${item.message}`).join("; ")}.`,
+      `${result.failed.length} not saved. ${result.failed.map((item) => `Line ${item.line}: ${item.message.replace(/\.$/, "")}`).join(". ")}.`,
     );
   }
   if (result.stopped === "session") parts.push("Your session ended. Sign in again to save the rest.");
@@ -88,9 +88,9 @@ function publishSummary(result: PublishBatchResult, entries: readonly ServiceEnt
   const parts = [`Published ${result.published}.`];
   if (result.failed.length > 0) {
     parts.push(
-      `${result.failed.length} not published: ${result.failed
-        .map((item) => `${titles.get(item.entryId) ?? "an entry"}, ${item.message}`)
-        .join("; ")}.`,
+      `${result.failed.length} not published. ${result.failed
+        .map((item) => `${titles.get(item.entryId) ?? "An entry"}: ${item.message.replace(/\.$/, "")}`)
+        .join(". ")}.`,
     );
   }
   if (result.stopped === "session") parts.push("Your session ended. Sign in again to publish the rest.");
@@ -383,7 +383,7 @@ export function ServiceImportPanel({
         <p className={cn(textMuted, "text-sm")}>Rows are saved as drafts. Nobody sees them until you publish below.</p>
         <FormField
           label="Choose a CSV file"
-          hint="In Excel or Sheets: File › Download › CSV."
+          hint="In Excel or Sheets, choose File, then Download, then CSV."
           error={fileError ?? undefined}
         >
           {(field) => (
@@ -411,7 +411,10 @@ export function ServiceImportPanel({
           ) : null}
           {parsed.rows.length > 0 ? (
             <>
-              <div className="min-w-0 overflow-x-auto rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]">
+              <div
+                data-no-tab-swipe
+                className="min-w-0 overflow-x-auto rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]"
+              >
                 <table className="w-full min-w-[40rem] border-collapse text-left text-sm text-[color:var(--text)]">
                   <thead>
                     <tr className={cn(textMuted, "h-12 text-xs")}>

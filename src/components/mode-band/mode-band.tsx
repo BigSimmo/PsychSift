@@ -1,9 +1,8 @@
 "use client";
 
-import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2 } from "lucide-react";
-import dynamic from "next/dynamic";
+import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -13,6 +12,7 @@ import {
   useLayoutEffect,
   useMemo,
   useSyncExternalStore,
+  Suspense,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -33,7 +33,24 @@ import {
   useTeachingRoles,
 } from "@/lib/teaching/page-visibility";
 import { useClientTime } from "@/lib/use-client-time";
+import {
+  workAreaFor,
+  workFrameCurrentItem,
+  workFrameItemById,
+  workFrameItemOwnsAddress,
+  type WorkArea,
+  type WorkFrameItem,
+} from "@/lib/work-frame/areas";
+import { ExampleDataBanner } from "@/components/example-data/example-data-banner";
+import { WorkFrameHeader } from "@/components/work-frame/work-frame-header";
+import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
+import { WorkHelpHost } from "@/components/work-help/work-help-host";
+import { openWorkHelp } from "@/components/work-help/work-help-store";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { formatZonedDay, formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 
 /**
  * Modes that carry their own identity colour (`data-mode-identity` in
@@ -99,6 +116,27 @@ const ModeBandCountContext = createContext<(tabId: string, count: number | null)
 const ModeBandCurrentTabContext = createContext<(tabId: string | null) => void>(() => {});
 const ModeBandStatusKindContext = createContext<(kind: ModeBandStatusValue["kind"] | null) => void>(() => {});
 
+/** A work page's own eyebrow and title for its band (work-mode frame only). */
+export type ModeBandHeading = { readonly eyebrow?: ReactNode; readonly title?: ReactNode };
+const ModeBandHeadingContext = createContext<(heading: ModeBandHeading | null) => void>(() => {});
+
+/**
+ * Names this page in its work-mode band: the small eyebrow line ("5 to 11
+ * October") and the large title ("This week"). Either may be left out to keep
+ * the frame's default (today's date, and the page's name). The override ends
+ * when the page closes. Clinical bands ignore it.
+ */
+export function useModeBandHeading(heading: ModeBandHeading | null) {
+  const setHeading = useContext(ModeBandHeadingContext);
+  const eyebrow = heading?.eyebrow;
+  const title = heading?.title;
+  const active = heading !== null;
+  useEffect(() => {
+    setHeading(active ? { eyebrow, title } : null);
+    return () => setHeading(null);
+  }, [setHeading, active, eyebrow, title]);
+}
+
 /** Counts could be wrong or invented while records are out of reach or examples. */
 const COUNTS_HIDDEN: ReadonlySet<ModeBandStatusValue["kind"]> = new Set([
   "offline",
@@ -138,27 +176,25 @@ export function useModeBandCurrentTab(tabId: string | null) {
   }, [setCurrentTab, tabId]);
 }
 
-function greetingFor(now: Date): string {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-AU", { hour: "numeric", hourCycle: "h23", timeZone: "Australia/Perth" }).format(now),
-  );
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
+function greetingFor(now: Date, zone: string): string {
+  const hour = Number(zonedTimeOf(now, zone).slice(0, 2));
+  // Same cut-offs as Roster and Admin: before 05:00 is still the evening, for the night shift.
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 18) return "Good afternoon";
   return "Good evening";
 }
 
 /** The greeting, settled after hydration so a cached page never greets the wrong part of the day. */
 function GreetingTitle({ fallback }: { fallback: string }) {
   const now = useClientTime({ updateInterval: 60_000 });
-  return <>{now ? greetingFor(new Date(now)) : fallback}</>;
+  const { zone } = useWorkTimeZone();
+  return <>{now ? greetingFor(new Date(now), zone) : fallback}</>;
 }
 
-const dateLong = new Intl.DateTimeFormat("en-AU", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  timeZone: "Australia/Perth",
-});
+/** "Wednesday 7 October" in the work time zone: the house long form for headers. */
+function dateLong(now: Date, zone: string): string {
+  return formatZonedLongDay(zonedDateOf(now, zone));
+}
 
 function modeHomePath(modeId: AppModeId): string | undefined {
   const mode = appModeDefinition(modeId);
@@ -177,9 +213,10 @@ function isHidden(pathname: string, hiddenOn: readonly string[] | undefined): bo
  */
 function TodayDate() {
   const time = useClientTime({ updateInterval: 60_000 });
+  const { zone } = useWorkTimeZone();
   if (!time) return <span className="mode-band__date" />;
   const now = new Date(time);
-  return <span className="mode-band__date">{dateLong.format(now)}</span>;
+  return <span className="mode-band__date">{dateLong(now, zone)}</span>;
 }
 
 /**
@@ -217,13 +254,25 @@ function ModeMark({ Icon }: { Icon: (typeof appModeIcons)[AppModeId] }) {
  * colour is read from the band itself, so it is always the mode's own tint in
  * the current theme, and re-read when the theme changes.
  */
-function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId) {
+function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId, workArea?: string, identity?: string) {
   useLayoutEffect(() => {
     if (!band) return;
     const root = document.documentElement;
     const publish = () => {
       root.style.setProperty("--mode-band-surface", getComputedStyle(band).backgroundColor);
       root.dataset.modeBand = modeId;
+      if (workArea) {
+        // The work frame repaints the top bar above it (round glass buttons, the
+        // glass pill, the band's dot texture), and lines the band's dots up
+        // with the top bar's so the two read as one surface.
+        root.dataset.workFrame = workArea;
+        // Sheets, toasts and the work search portal out of the page, so the
+        // area's palette also rides on <body> while the frame is up (not on
+        // <html>, where `.dark [data-mode-identity]` could not match it).
+        if (identity) document.body.dataset.modeIdentity = identity;
+        const top = band.getBoundingClientRect().top + window.scrollY;
+        band.style.setProperty("--work-band-offset", `${-Math.round(top)}px`);
+      }
     };
     publish();
     const observer = new MutationObserver(publish);
@@ -234,8 +283,10 @@ function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId) {
         delete root.dataset.modeBand;
         root.style.removeProperty("--mode-band-surface");
       }
+      if (workArea && root.dataset.workFrame === workArea) delete root.dataset.workFrame;
+      if (identity && document.body.dataset.modeIdentity === identity) delete document.body.dataset.modeIdentity;
     };
-  }, [band, modeId]);
+  }, [band, modeId, workArea, identity]);
 }
 
 /**
@@ -317,24 +368,183 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const statusKind = pageStatusKind ?? props.status?.kind ?? null;
   const hideCounts = statusKind !== null && COUNTS_HIDDEN.has(statusKind);
   const [pageTabId, setPageTabId] = useState<string | null>(null);
+  const [heading, setHeading] = useState<ModeBandHeading | null>(null);
+  // The work-mode frame (work-mode redesign, owner request 6 Oct 2026). Null
+  // for every clinical mode, whose band is drawn exactly as before.
+  const area = workAreaFor(props.modeId, pathname);
+  // More's per-area Help opens the help sheet. The help centre is a new-only screen,
+  // so a reader on the classic work mode gets neither the item nor the sheet.
+  const helpOn = useNewWorkMode() && area !== null;
+  useWorkFrameAction("work-help", helpOn && area ? () => openWorkHelp(area.id) : null);
+  const [search, setSearch] = useState("");
+  const pageNamedItem = area && pageTabId ? workFrameItemById(area, pageTabId) : null;
+  const workCurrent: WorkFrameItem | null = area
+    ? (pageNamedItem ?? workFrameCurrentItem(area, pathname, search))
+    : null;
+  // A page that names its own tab is that page; otherwise the address must be
+  // the item's own link, not a page it covers through `paths`.
+  const workCurrentIsOwnPage =
+    pageNamedItem !== null || (workCurrent !== null && workFrameItemOwnsAddress(workCurrent, pathname, search));
   const activeId = pageTabId ?? bandActiveId(props.modeId, pathname);
+  const homePath = props.homePath ?? modeHomePath(props.modeId);
   const shown =
     !isHidden(pathname, props.hiddenOn) &&
-    (activeId !== null || pathname === (props.homePath ?? modeHomePath(props.modeId)));
+    (area
+      ? workCurrent
+        ? workCurrent.band !== false
+        : pathname === homePath
+      : activeId !== null || pathname === homePath);
+  // A `band: false` page has no band to publish the frame, so sheets, toasts and
+  // the work search, which portal to <body>, lost the area's palette: primary
+  // buttons drew unfilled (found on Admin Workforce, 7 Oct 2026). Stamp <body>
+  // while such a page is open, as the band does when it is drawn.
+  const bandlessIdentity = area !== null && !shown ? area.identity : null;
+  useLayoutEffect(() => {
+    if (!bandlessIdentity) return;
+    const body = document.body;
+    body.dataset.modeIdentity = bandlessIdentity;
+    body.dataset.workFrame = "sheet";
+    return () => {
+      if (body.dataset.modeIdentity === bandlessIdentity) delete body.dataset.modeIdentity;
+      if (body.dataset.workFrame === "sheet") delete body.dataset.workFrame;
+    };
+  }, [bandlessIdentity]);
+  const header = !shown ? null : area ? (
+    <WorkModeBandHeader
+      {...props}
+      area={area}
+      current={workCurrent}
+      currentIsOwnPage={workCurrentIsOwnPage}
+      heading={heading}
+      counts={hideCounts ? undefined : allCounts}
+    />
+  ) : (
+    <ModeBandHeader {...props} counts={hideCounts ? undefined : allCounts} activeId={activeId} />
+  );
   return (
     <ModeBandShownContext.Provider value={shown}>
       <ModeBandCountContext.Provider value={setCount}>
         <ModeBandStatusKindContext.Provider value={setPageStatusKind}>
           <ModeBandCurrentTabContext.Provider value={setPageTabId}>
-            {shown ? (
-              <ModeBandHeader {...props} counts={hideCounts ? undefined : allCounts} activeId={activeId} />
-            ) : null}
-            {children}
+            <ModeBandHeadingContext.Provider value={setHeading}>
+              {area ? (
+                // The query string decides a few More pages (My Day's On shift,
+                // Roster's Hours and rest). Read after hydration, inside its own
+                // boundary, so the band never waits on it.
+                <Suspense fallback={null}>
+                  <ModeBandSearch onSearch={setSearch} />
+                </Suspense>
+              ) : null}
+              {header}
+              {helpOn ? (
+                // Draws nothing until a Help item is tapped. It reads the query, so it
+                // sits in its own boundary.
+                <Suspense fallback={null}>
+                  <WorkHelpHost />
+                </Suspense>
+              ) : null}
+              {area ? (
+                // The area's palette for everything on its pages: custom
+                // properties inherit through `contents`, so this adds no box.
+                <div data-mode-identity={area.identity} data-work-frame={area.id} className="contents">
+                  <ExampleDataBanner area={area.id} />
+                  {children}
+                </div>
+              ) : (
+                children
+              )}
+            </ModeBandHeadingContext.Provider>
           </ModeBandCurrentTabContext.Provider>
         </ModeBandStatusKindContext.Provider>
       </ModeBandCountContext.Provider>
     </ModeBandShownContext.Provider>
   );
+}
+
+function ModeBandSearch({ onSearch }: { onSearch: (search: string) => void }) {
+  const search = useSearchParams()?.toString() ?? "";
+  useEffect(() => {
+    onSearch(search);
+  }, [onSearch, search]);
+  return null;
+}
+
+/**
+ * The band for a work area: the work-mode frame's header, fed with the same
+ * status line, action slot and counts as the clinical band.
+ */
+function WorkModeBandHeader({
+  modeId,
+  area,
+  current,
+  currentIsOwnPage,
+  heading,
+  title,
+  customiseHref,
+  counts,
+  statusSlot = false,
+  status,
+}: Omit<ModeBandProps, "children" | "hiddenOn" | "homePath"> & {
+  area: WorkArea;
+  current: WorkFrameItem | null;
+  currentIsOwnPage: boolean;
+  heading: ModeBandHeading | null;
+}) {
+  const pathname = usePathname() ?? "";
+  const [band, setBand] = useState<HTMLElement | null>(null);
+  usePublishBandSurface(band, modeId, area.id, area.identity);
+  const onHome = !current || current.id === area.tabs[0].id;
+  const fallbackTitle = current ? (current.title ?? current.label) : area.name;
+  // The layout's own title (My Day's greeting) is the home page's; every other
+  // page is named for itself.
+  const baseTitle =
+    onHome && title === "greeting" ? <GreetingTitle fallback={area.name} /> : onHome && title ? title : fallbackTitle;
+  const hasStatus =
+    status !== undefined || (Array.isArray(statusSlot) ? statusSlot.includes(pathname) : Boolean(statusSlot));
+  return (
+    <WorkFrameHeader
+      area={area}
+      modeId={modeId}
+      current={current}
+      currentIsOwnPage={currentIsOwnPage}
+      bandRef={setBand}
+      eyebrow={heading?.eyebrow ?? <TodayDateText />}
+      title={heading?.title ?? baseTitle}
+      counts={counts}
+      status={
+        hasStatus ? (
+          <div id={modeBandStatusSlotId} className="mode-band__status work-band__status" data-testid="mode-band-status">
+            {status ? (
+              <span
+                role={status.kind === "error" ? "alert" : "status"}
+                data-mode-band-status={status.kind}
+                className="contents"
+              >
+                <StatusLine value={status} />
+              </span>
+            ) : null}
+          </div>
+        ) : null
+      }
+      action={
+        customiseHref ? (
+          <Link href={customiseHref} className="work-glass-button work-band__action" aria-label="Customise">
+            <SlidersHorizontal aria-hidden="true" className="size-icon-md" strokeWidth={2} />
+          </Link>
+        ) : (
+          // A page's own action (My Day's Edit) takes the glass action's place.
+          <span id={modeBandActionSlotId} className="work-band__action-slot" />
+        )
+      }
+    />
+  );
+}
+
+/** Today's date as plain text, settled after hydration (see TodayDate). */
+function TodayDateText() {
+  const time = useClientTime({ updateInterval: 60_000 });
+  const { zone } = useWorkTimeZone();
+  return time ? <>{dateLong(new Date(time), zone)}</> : <>&nbsp;</>;
 }
 
 function ModeBandHeader({
@@ -464,23 +674,16 @@ function ModeBandHeader({
   );
 }
 
-const perthTime = new Intl.DateTimeFormat("en-AU", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZone: "Australia/Perth",
-});
-const perthDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Perth", dateStyle: "short" });
-const perthDate = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Perth" });
-
 /**
- * When records were last saved to the account, in 24-hour Perth time: "14:12"
+ * When records were last saved to the account, in 24-hour work-zone time: "14:12"
  * today, otherwise "4 Oct 14:12". Never "just now": the line says where the
  * records are, not how fresh they feel.
  */
-export function savedAtLabel(savedAt: Date, now: Date): string {
-  const time = perthTime.format(savedAt);
-  return perthDay.format(savedAt) === perthDay.format(now) ? time : `${perthDate.format(savedAt)} ${time}`;
+export function savedAtLabel(savedAt: Date, now: Date, zone: string = currentWorkTimeZone()): string {
+  const time = zonedTimeOf(savedAt, zone);
+  return zonedDateOf(savedAt, zone) === zonedDateOf(now, zone)
+    ? time
+    : `${formatZonedDay(zonedDateOf(savedAt, zone)).slice(4)} ${time}`;
 }
 
 export type ModeBandStatusValue =
@@ -499,40 +702,21 @@ export type ModeBandStatusValue =
   /** Never say "Saved" when a save failed. The whole line retries. */
   | { kind: "error"; onRetry: () => void }
   | { kind: "loading" }
-  /** Signed out: the page shows invented records. */
+  /** The page shows example records: counts are hidden, and the banner under the band says so. */
   | { kind: "sample" }
   /** A plain factual line, e.g. "Practice only · nothing here is saved yet". */
   | { kind: "text"; text: string; info?: boolean };
 
-// The sign-in dialog loads only when someone asks for it.
-const AccountSetupDialog = dynamic(
-  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
-  { ssr: false },
-);
-
-function SampleLine() {
-  const [signInOpen, setSignInOpen] = useState(false);
-  return (
-    <span className="mode-band__sentence">
-      Made-up example records ·{" "}
-      <button type="button" className="mode-band__inline-action" onClick={() => setSignInOpen(true)}>
-        Sign in
-      </button>{" "}
-      to keep your own
-      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
-    </span>
-  );
-}
-
 function StatusLine({ value }: { value: ModeBandStatusValue }) {
   const time = useClientTime({ updateInterval: 60_000 });
+  const { zone } = useWorkTimeZone();
   switch (value.kind) {
     case "saved": {
       const at = typeof value.at === "string" ? new Date(value.at) : value.at;
       return (
         <span className="mode-band__saved">
           <Check aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.5} />
-          Saved to your account {savedAtLabel(at, time ? new Date(time) : at)}
+          Saved to your account {savedAtLabel(at, time ? new Date(time) : at, zone)}
         </span>
       );
     }
@@ -541,7 +725,7 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
       return (
         <span className="mode-band__saved">
           <Check aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.5} />
-          In your account · loaded {savedAtLabel(at, time ? new Date(time) : at)}
+          In your account · loaded {savedAtLabel(at, time ? new Date(time) : at, zone)}
         </span>
       );
     }
@@ -571,7 +755,8 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
     case "loading":
       return <span role="img" aria-label="Loading your records" className="mode-band__loading" />;
     case "sample":
-      return <SampleLine />;
+      // The example data banner under the band says it once; this only hides counts.
+      return null;
     case "text":
       return (
         <span className="mode-band__saved">

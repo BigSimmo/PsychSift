@@ -1,9 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { modeNumberText } from "@/components/mode-kit/type";
-import { cn, eyebrowText } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 
 import { RosterAskButton } from "./ask/roster-ask-box";
 import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
@@ -28,8 +27,8 @@ export function RosterIdentityTile({
       aria-hidden="true"
       data-mode-identity="roster"
       className={cn(
-        "grid shrink-0 place-items-center border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)] forced-colors:border",
-        size === "md" ? "size-10 rounded-lg" : "size-7 rounded-md",
+        "grid shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)] forced-colors:border",
+        size === "md" ? "size-10" : "size-7",
       )}
     >
       <Icon aria-hidden="true" strokeWidth={1.75} className={size === "md" ? "size-icon-lg" : "size-icon-sm"} />
@@ -71,12 +70,28 @@ export function RosterPageHeader({
         <PageTitleUnderBand className="text-lg-minus font-semibold leading-tight text-[color:var(--text-heading)]">
           {title}
         </PageTitleUnderBand>
-        {subtitle ? <div className="text-sm text-[color:var(--text-muted)]">{subtitle}</div> : null}
+        {/* Under the work-mode band a plain description repeats the band; live
+            words (counts, a chosen week) still show (work-mode redesign, 6 Oct 2026). */}
+        {subtitle ? (
+          typeof subtitle === "string" ? (
+            <WithoutModeBand>
+              <div className="text-sm text-[color:var(--text-muted)]">{subtitle}</div>
+            </WithoutModeBand>
+          ) : (
+            <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
+          )
+        ) : null}
       </div>
       {actions || ask ? (
         <div className="-my-1 -mr-1 flex shrink-0 items-center gap-1">
           {actions}
-          {ask ? <RosterAskButton /> : null}
+          {/* Under the band the Ask icon would sit alone on its own row (the mockups have none; the header's
+              AI Search and the Shifts page's Ask box stay). Page actions are the New button, which floats. */}
+          {ask ? (
+            <WithoutModeBand>
+              <RosterAskButton />
+            </WithoutModeBand>
+          ) : null}
         </div>
       ) : null}
     </header>
@@ -102,8 +117,13 @@ export function RosterSection({
   return (
     <section className="grid gap-2" aria-labelledby={id} data-testid={testId}>
       <div className="flex min-h-7 items-center gap-2 px-1">
-        <RosterIdentityTile icon={icon} size="sm" />
-        <h2 id={id} className={cn(eyebrowText, "flex-1")}>
+        <WithoutModeBand>
+          <RosterIdentityTile icon={icon} size="sm" />
+        </WithoutModeBand>
+        <h2
+          id={id}
+          className="flex-1 text-3xs font-bold uppercase leading-4 tracking-kicker text-[color:var(--text-muted)]"
+        >
           {title}
         </h2>
         {action}
@@ -119,24 +139,30 @@ export function RosterStat({
   label,
   value,
   testId,
+  stacked = false,
 }: {
   readonly icon: LucideIcon;
   readonly label: string;
   readonly value: ReactNode;
   readonly testId?: string;
+  /** Icon above the words, so three tiles fit one row on a 320 px phone. */
+  readonly stacked?: boolean;
 }) {
   return (
-    <div className={cn(modeModuleSurface, "flex min-w-0 items-start gap-3 p-3")} data-testid={testId}>
+    <div
+      className={cn("work-card flex min-w-0 gap-2.5 p-3", stacked ? "h-full flex-col items-start" : "items-start")}
+      data-testid={testId}
+    >
       <span
         aria-hidden="true"
         data-mode-identity="roster"
-        className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
+        className="grid size-[1.875rem] shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
       >
         <Icon aria-hidden="true" strokeWidth={1.75} className="size-icon-md" />
       </span>
       <span className="grid min-w-0 gap-0.5">
-        <span className="text-xs text-[color:var(--text-muted)]">{label}</span>
-        <span className={cn(modeNumberText, "break-words text-base-minus text-[color:var(--text-heading)]")}>
+        <span className="text-2xs font-semibold text-[color:var(--text-muted)]">{label}</span>
+        <span className={cn(modeNumberText, "break-words text-base-minus font-bold text-[color:var(--text-heading)]")}>
           {value}
         </span>
       </span>
@@ -154,7 +180,7 @@ export function RosterStats({ children, testId }: { readonly children: ReactNode
 
 /** One field look for every roster select and input: 48px, hairline, violet focus. */
 export const rosterField =
-  "min-h-12 w-full min-w-0 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-base-minus text-[color:var(--text)] shadow-[var(--e1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)]";
+  "min-h-12 w-full min-w-0 rounded-[var(--work-radius-field)] border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-base-minus text-[color:var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity)]";
 
 /** A calm empty state: a soft icon disc over one line, centred in a dashed card. */
 export function RosterEmpty({
@@ -167,10 +193,7 @@ export function RosterEmpty({
   readonly testId?: string;
 }) {
   return (
-    <div
-      className="grid justify-items-center gap-2 rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-4 py-6 text-center"
-      data-testid={testId}
-    >
+    <div className="work-card grid justify-items-center gap-2 px-4 py-6 text-center" data-testid={testId}>
       <span
         aria-hidden="true"
         data-mode-identity="roster"
@@ -178,7 +201,7 @@ export function RosterEmpty({
       >
         <Icon aria-hidden="true" strokeWidth={1.75} className="size-icon-lg" />
       </span>
-      <p className="text-sm text-[color:var(--text-muted)]">{children}</p>
+      <p className="text-xs text-[color:var(--text-muted)]">{children}</p>
     </div>
   );
 }

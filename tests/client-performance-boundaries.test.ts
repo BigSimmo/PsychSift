@@ -49,7 +49,15 @@ describe("fixture-free client performance boundaries", () => {
     const dashboard = source("src/components/ClinicalDashboard.tsx");
     expect(dashboard).not.toContain('from "@/components/clinical-dashboard/DocumentManagerPanel"');
     expect(dashboard).toContain('from "@/components/clinical-dashboard/document-manager-contracts"');
-    expect(dashboard).toContain('from "@/components/clinical-dashboard/library-health-strip"');
+    // The health strip renders inside the drawers that open after the surface does,
+    // not in the dashboard module that decides when those surfaces load.
+    expect(dashboard).not.toContain('from "@/components/clinical-dashboard/library-health-strip"');
+    expect(source("src/components/clinical-dashboard/indexing-admin-drawer.tsx")).toContain(
+      'from "@/components/clinical-dashboard/library-health-strip"',
+    );
+    expect(source("src/components/clinical-dashboard/dashboard-documents-drawer.tsx")).toContain(
+      'from "@/components/clinical-dashboard/library-health-strip"',
+    );
     expect(dashboard).toContain("includeSetup: true, includeDashboardData: false");
     expect(dashboard).toContain("dashboardDataSurfaceVisible && !dashboardDataLoadedRef.current");
     expect(dashboard).toContain("administrationSurfaceVisible && !administrationDataLoadedRef.current");

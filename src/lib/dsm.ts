@@ -2,27 +2,17 @@ import dsmClinicalContent from "@/data/dsm-clinical-content.json";
 import { normalizeSearchText, rankCatalogRecords } from "@/lib/catalog-search";
 import { smartSearchExpansions } from "@/lib/smart-search-intent";
 
+import type { DsmDiagnosis, DsmLabeledText, DsmSpecifier } from "@/lib/dsm-types";
 import {
   dsmCriteriaView,
   dsmSpecifierSplit,
-  isDsmAbsentSpecifierNote,
   type DsmCriteriaProvenance,
   type DsmCriteriaView,
-  type DsmLabeledText,
-  type DsmSpecifier,
   type DsmSpecifierSplit,
-} from "@/lib/dsm-criteria-view";
+} from "@/lib/dsm-view";
 
-export {
-  dsmCriteriaView,
-  dsmSpecifierSplit,
-  isDsmAbsentSpecifierNote,
-  type DsmCriteriaProvenance,
-  type DsmCriteriaView,
-  type DsmLabeledText,
-  type DsmSpecifier,
-  type DsmSpecifierSplit,
-};
+export type { DsmDiagnosis, DsmLabeledText, DsmSpecifier };
+export { dsmCriteriaView, dsmSpecifierSplit, type DsmCriteriaProvenance, type DsmCriteriaView, type DsmSpecifierSplit };
 
 /**
  * A DSM-5 category as this app consumes it.
@@ -53,23 +43,6 @@ export type DsmCategory = {
   key: string;
   label: string;
   diagnosis_count: number;
-};
-
-export type DsmDiagnosis = {
-  record_id: string;
-  slug: string;
-  category: Pick<DsmCategory, "key" | "label">;
-  icd_code: string;
-  title: string;
-  key_features: DsmLabeledText[];
-  criteria_display: DsmLabeledText[];
-  clinical_checkpoints: DsmLabeledText[];
-  specifiers: DsmSpecifier[];
-  differentials: string[];
-  differential_notes: Array<Record<string, unknown>>;
-  classification_notes: Array<Record<string, unknown>>;
-  documentation_template: string;
-  severity_specifier_supported: boolean;
 };
 
 type DsmClinicalContentExport = {

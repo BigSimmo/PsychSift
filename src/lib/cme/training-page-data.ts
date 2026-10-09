@@ -8,6 +8,7 @@ import {
 import { fetchOwnerTrainingMilestones, fetchOwnerTrainingPeriods } from "@/lib/cme/training-repository";
 import type { TrainingMilestone, TrainingPeriod } from "@/lib/cme/training-timeline";
 import { isDemoMode } from "@/lib/env";
+import { exampleDataOn } from "@/lib/example-data/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -33,7 +34,7 @@ export type CmeTrainingPageData = {
  * block this page.
  */
 export async function loadCmeTrainingPageData(): Promise<CmeTrainingPageData> {
-  if (isDemoMode()) {
+  if (isDemoMode() || (await exampleDataOn("cpd"))) {
     return {
       state: "ready",
       demoMode: true,

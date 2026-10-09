@@ -11,10 +11,12 @@ import type { SharedManageReload } from "@/components/roster/manage/roster-appro
 import { SwapFlowSheet } from "@/components/roster/swaps/swap-flow-sheet";
 import { postRosterAction, useRosterRead } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
+import { WorkStateLoading } from "@/components/mode-kit/work-state";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { monthKeyOf } from "@/lib/calendar/month-grid";
 import { SHIFT_KIND_LABEL, SHIFT_KINDS, SHIFT_LETTER } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { formatZonedDay } from "@/lib/work-time/format";
 import {
   calendarStateQuery,
   calendarWindow,
@@ -58,16 +60,9 @@ function heading(state: CalendarState): string {
 
 const PRINT_LEGEND = SHIFT_KINDS.map((kind) => `${SHIFT_LETTER[kind]} ${SHIFT_KIND_LABEL[kind]}`).join(" · ");
 
+/** "Fri 9 Oct 2026": paper outlives the year, so the printed date always carries it. */
 function printedOn(today: string): string {
-  return new Intl.DateTimeFormat("en-AU", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  })
-    .format(new Date(`${today}T00:00:00Z`))
-    .replace(/,/g, "");
+  return `${formatZonedDay(today)} ${today.slice(0, 4)}`;
 }
 
 function peopleIn(rows: readonly RosterAssignment[]): CalendarPerson[] {
@@ -131,7 +126,10 @@ export function TeamCalendar({
   now,
   shared,
   onManagerLayer,
+  phoneLink = true,
 }: {
+  /** The "Phone numbers are in On call" row. The Team page has its own in its last list, so it leaves this out. */
+  phoneLink?: boolean;
   team: RosterTeam;
   actorId: string | null;
   now: Date;
@@ -295,7 +293,7 @@ export function TeamCalendar({
         <p className="text-sm text-[color:var(--text-muted)]">Manager tools aren&apos;t available right now.</p>
       ) : null}
       {read.status === "loading" ? (
-        <p role="status">Loading the team roster…</p>
+        <WorkStateLoading label="Loading the team roster…" />
       ) : read.status !== "ready" ? (
         <div role="alert">
           <p>{read.message}</p>
@@ -321,12 +319,14 @@ export function TeamCalendar({
           cover={cover}
         />
       )}
-      <ModeGroupedList>
-        <ModeRow
-          title="Phone numbers are in On call"
-          href={`/on-call/service?service=${encodeURIComponent(team.serviceId)}`}
-        />
-      </ModeGroupedList>
+      {phoneLink ? (
+        <ModeGroupedList>
+          <ModeRow
+            title="Phone numbers are in On call"
+            href={`/on-call/service?service=${encodeURIComponent(team.serviceId)}`}
+          />
+        </ModeGroupedList>
+      ) : null}
       <RosterSentBar receipt={sent} clear={clearSent} />
       {pickedDay ? (
         <DaySheet

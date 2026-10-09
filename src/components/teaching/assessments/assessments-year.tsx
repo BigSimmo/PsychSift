@@ -1,11 +1,18 @@
 "use client";
 
-import { BookOpen, Check, Clock, FileText, Target } from "lucide-react";
+import { BookOpen, Check, Clock, FileText, Plus, Target, TriangleAlert } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { WeeksRing } from "@/components/teaching/assessments/assessments-home";
+import { WorkButton, WorkChip, WorkChips, WorkDock, WorkEmpty, WorkTag } from "@/components/mode-kit/work";
 import {
-  Card,
+  AssessCallout,
+  AssessHeader,
+  AssessMeter,
+  AssessNote,
+  KindsStrip,
+  type KindState,
+} from "@/components/teaching/assessments/assess-kit";
+import {
   Eyebrow,
   KeyValue,
   List,
@@ -18,12 +25,9 @@ import {
   SmallPrint,
   StepRow,
   TextLink,
-  secondaryText,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { ChoiceChip } from "@/components/ui/chip";
-import { cn } from "@/components/ui-primitives";
 import { EPAS, epa as epaInfo, supervisionLevelName } from "@/lib/teaching/assessments/content";
 import {
   YEAR_WEEKS,
@@ -47,21 +51,13 @@ import {
   type EpaRecord,
   type SampleTerm,
 } from "@/lib/teaching/assessments/sample";
+import { withUnit } from "@/components/teaching/teaching-number";
 
-/** Green only once the DCT has countersigned the term. */
-const SIGNED_PILL = <Pill pill={{ label: "Satisfactory · countersigned", tone: "ok" }} />;
-
-function Meter({ percent }: { percent: number }) {
-  return (
-    <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-[color:var(--border)]">
-      <i
-        data-mode-identity="teaching"
-        className="block h-full rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]"
-        style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
-      />
-    </div>
-  );
-}
+/**
+ * Green only once the DCT has countersigned the term. The row's own line says "countersigned by the DCT", so
+ * the tag stays one short word and never squeezes the row's words into a sliver at 320 px.
+ */
+const SIGNED_PILL = <Pill pill={{ label: "Satisfactory", tone: "ok" }} />;
 
 function Requirement({
   title,
@@ -77,58 +73,35 @@ function Requirement({
   note?: string;
 }) {
   return (
-    <li className="grid gap-1.5 border-t border-[color:var(--border)] px-3.5 py-3 first:border-t-0">
+    <li className="grid gap-1.5 px-3.5 py-3">
       <div className="flex items-center justify-between gap-2">
         <b className="text-sm font-semibold text-[color:var(--text-heading)]">{title}</b>
-        {ok ? <Pill pill={{ label: "On track", tone: "ok" }} /> : null}
+        {ok ? <WorkTag tone="neutral">On track</WorkTag> : null}
       </div>
-      <span className={secondaryText}>{value}</span>
-      <Meter percent={percent} />
-      {note ? <p className="text-xs text-[color:var(--text-muted)]">{note}</p> : null}
+      <span className="text-sm text-[color:var(--text-muted)]">{value}</span>
+      <AssessMeter fraction={Math.max(0, Math.min(100, percent)) / 100} />
+      {note ? <p className="m-0 text-xs text-[color:var(--text-muted)]">{note}</p> : null}
     </li>
   );
 }
 
-const KINDS: readonly [string, string, string | null][] = [
-  ["A", "Undifferentiated illness", "Term 1"],
-  ["B", "Chronic illness", null],
-  ["C", "Acute and critical illness", "Term 3"],
-  ["D", "Peri-operative / procedural", "Term 2"],
-];
-
-function KindBoxes({ s }: { s: AssessmentsState }) {
-  return (
-    <ul role="list" className="grid grid-cols-2 gap-2">
-      {KINDS.map(([k, name, done]) => (
-        <li
-          key={k}
-          data-mode-identity="teaching"
-          className={cn(
-            "grid gap-0.5 rounded-xl border p-2.5",
-            done
-              ? "border-transparent bg-[color:var(--success-bg)]"
-              : "border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)]",
-          )}
-        >
-          <b
-            className={cn(
-              "text-base font-semibold",
-              done ? "text-[color:var(--success-text)]" : "text-[color:var(--mode-identity)]",
-            )}
-          >
-            {k}
-          </b>
-          <span className="text-xs text-[color:var(--text-heading)]">{name}</span>
-          <small className="text-2xs text-[color:var(--text-muted)]">
-            {done ?? (s.sigs.doc ? "Term 4 · awaiting DCT" : "Now, term 4")}
-          </small>
-        </li>
-      ))}
-    </ul>
-  );
+/** Kinds of experience A to D from the sample terms: done once countersigned, now for this term. */
+function kindsFor(s: AssessmentsState) {
+  return (["A", "B", "C", "D"] as const).map((letter) => {
+    const done = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "done");
+    const now = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "current");
+    const any = done ?? now ?? SAMPLE_TERMS.find((t) => t.category === letter);
+    const state: KindState = done ? "done" : now ? "now" : "todo";
+    return {
+      letter,
+      name: any?.categoryName ?? letter,
+      state,
+      note: done ? `Term ${done.n}` : now ? (s.sigs.doc ? "Term 4 · awaiting DCT" : "Now, term 4") : "Not yet",
+    };
+  });
 }
 
-export function YearRequirements({ s, openSheet }: ScreenProps) {
+export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: boolean }) {
   const w = weeksDone(s);
   const total = epaRecords(s).length;
   const more = epaNeedMore(s);
@@ -137,38 +110,47 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
   const fromSpecialist = thisTerm.find((r) => r.role !== "registrar");
   return (
     <>
-      <ScreenHeader
-        back={viewHref("home")}
-        backLabel="Assessments"
-        title="Year requirements"
-        subtitle={`${SAMPLE_DOCTOR.grade} · 2026`}
+      <AssessHeader
+        eyebrow={`${SAMPLE_DOCTOR.grade} · 2026`}
+        title={tab ? "Progress" : "Year requirements"}
+        back={tab ? undefined : { href: viewHref("home"), label: "Assessments" }}
       />
-      <Panel>
-        <div className="flex items-center justify-between gap-3">
-          <div className="grid min-w-0 gap-1">
-            <Eyebrow accent>Weeks</Eyebrow>
-            <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">{YEAR_WEEKS - w} weeks to go</h2>
-            <p className={secondaryText}>
-              At least 47 weeks of supervised practice, including professional development leave. Your year runs 2 Feb
-              2026 to 31 Jan 2027.
-            </p>
-          </div>
-          <WeeksRing weeks={w} />
+      <div className="work-card work-card--pad grid gap-2">
+        <div className="work-label">
+          <span>Supervised weeks</span>
+          <em className="work-label__count">{`${YEAR_WEEKS - w} to go`}</em>
         </div>
-        {epa1ThisTerm(s) ? null : (
-          <p className={cn(secondaryText, "flex flex-wrap items-center gap-2")}>
-            <Pill pill={{ label: "1 thing needs attention", tone: "warm" }} /> EPA 1 is needed this term, by Sun 8 Nov.
-          </p>
-        )}
-      </Panel>
+        <div className="assess-stat">
+          <b>
+            {w} <small>{`of ${withUnit(YEAR_WEEKS, "weeks")}`}</small>
+          </b>
+        </div>
+        <AssessMeter fraction={w / YEAR_WEEKS} />
+        <p className="m-0 text-sm text-[color:var(--text-muted)]">
+          At least 47 weeks of supervised practice, including professional development leave. Your year runs 2 Feb 2026
+          to 31 Jan 2027.
+        </p>
+      </div>
+      {epa1ThisTerm(s) ? null : (
+        <AssessCallout
+          icon={TriangleAlert}
+          tone="amber"
+          title="EPA 1 needed this term"
+          action={
+            <WorkButton variant="secondary" onClick={() => openSheet({ kind: "epa", pick: 1 })}>
+              Request
+            </WorkButton>
+          }
+        >
+          By Sun 8 Nov. Needed every term.
+        </AssessCallout>
+      )}
 
       <SectionLabel end={<SectionNote>PGY1 needs all four</SectionNote>}>Kinds of experience</SectionLabel>
-      <Card>
-        <KindBoxes s={s} />
-        <p className="text-xs text-[color:var(--text-muted)]">
-          Each term&apos;s kind is set by its accreditation. A term counts once the DCT countersigns it.
-        </p>
-      </Card>
+      <KindsStrip kinds={kindsFor(s)} />
+      <AssessNote>
+        Each term&apos;s kind is set by its accreditation. A term counts once the DCT countersigns it.
+      </AssessNote>
 
       <SectionLabel>Terms and spread</SectionLabel>
       <List>
@@ -194,7 +176,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
           title="Sick, personal and carer's leave"
           value={`${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} working days`}
           percent={(SAMPLE_LEAVE.used / SAMPLE_LEAVE.limit) * 100}
-          note="Over 10 working days, the Assessment Review Panel will monitor your progress."
+          note="Over 10 working days away, the Assessment Review Panel reviews your progress. Which leave counts is not confirmed here, so check with your MEU."
         />
       </List>
 
@@ -206,7 +188,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
           title="This year"
           value={`${total} recorded here · at least ${more} more needed`}
           percent={(total / (total + more)) * 100}
-          note="At least 10 a year, with EPA 1 in every term and at least 2 of each other EPA. For your terms that means at least 11."
+          note="At least 10 a year and at least 2 in every term, with EPA 1 in every term and at least 2 of each other EPA. For your terms that means at least 11."
         />
         <Requirement
           title="This term"
@@ -218,13 +200,13 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
           title="From a term supervisor or specialist this term"
           value={
             fromSpecialist
-              ? `Done: EPA ${fromSpecialist.epa} with ${fromSpecialist.by.replace("Dr Priya Nair", SAMPLE_SUPERVISOR.short)}`
+              ? `Done: EPA ${fromSpecialist.epa} with ${fromSpecialist.by.replace("Dr Robin Wattle", SAMPLE_SUPERVISOR.short)}`
               : "None recorded here yet"
           }
           percent={fromSpecialist ? 100 : 0}
           ok={!!fromSpecialist}
         />
-        <li className="grid gap-1.5 border-t border-[color:var(--border)] px-3.5 py-3">
+        <li className="grid gap-1.5 px-3.5 py-3">
           <b className="text-sm font-semibold text-[color:var(--text-heading)]">Each EPA</b>
           {EPAS.map((x) => {
             const n = by[x.id];
@@ -237,10 +219,11 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
                   EPA {x.id} · {x.short}
                 </span>
                 <b
-                  className={cn(
-                    "text-right font-normal tabular-nums",
-                    need && x.id === 1 ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-heading)]",
-                  )}
+                  className={
+                    need && x.id === 1
+                      ? "text-right font-normal text-[color:var(--warning-text)] tabular-nums"
+                      : "text-right font-normal text-[color:var(--text-heading)] tabular-nums"
+                  }
                 >
                   {n} · {note}
                 </b>
@@ -251,7 +234,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
       </List>
       <SmallPrint>
         Counts are EPAs recorded in PsychSift. Any recorded only in Clinical Learning Australia (CLA) won&apos;t show
-        here. A &quot;direct supervision&quot; result is recorded as feedback for that moment; it is not a fail on its
+        here. A &quot;direct supervision&quot; result is recorded as feedback for that moment. It is not a fail on its
         own.
       </SmallPrint>
 
@@ -264,6 +247,14 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
       <SmallPrint center>
         AMC National Framework 2024 · rules to be checked against the source before release
       </SmallPrint>
+      <WorkDock>
+        <WorkButton icon={Plus} onClick={() => openSheet({ kind: "epa", pick: epa1ThisTerm(s) ? 2 : 1 })}>
+          Request an EPA
+        </WorkButton>
+        <WorkButton variant="secondary" href={viewHref("all")}>
+          All assessments
+        </WorkButton>
+      </WorkDock>
     </>
   );
 }
@@ -294,7 +285,7 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
       <>
         <StepRow
           state="ok"
-          title="Beginning-of-term talk"
+          title="Beginning-of-term discussion"
           detail="Wed 2 Sep · goals: formulation on ward round, EPA 1, lithium monitoring"
         />
         <StepRow
@@ -315,7 +306,7 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
   else if (done)
     steps = (
       <>
-        <StepRow state="ok" title="Beginning-of-term talk" detail={`With ${t.supervisor}`} />
+        <StepRow state="ok" title="Beginning-of-term discussion" detail={`With ${t.supervisor}`} />
         <StepRow
           state="ok"
           title="Mid-term assessment"
@@ -334,7 +325,11 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
   else
     steps = (
       <>
-        <StepRow state="lock" title="Beginning-of-term talk" detail={`In your first week, with ${t.supervisor}`} />
+        <StepRow
+          state="lock"
+          title="Beginning-of-term discussion"
+          detail={`At the start of the term, with ${t.supervisor}`}
+        />
         <StepRow state="lock" title="Mid-term assessment" detail="Around the middle of the term" />
         <StepRow state="lock" title="End-of-term assessment" detail="Booking opens two weeks before the end" />
       </>
@@ -445,7 +440,7 @@ function allItems(s: AssessmentsState): Item[] {
     term: t4,
     type: "mid",
     title: "Mid-term",
-    detail: "Signed Fri 2 Oct · Dr Priya Nair",
+    detail: "Signed Fri 2 Oct · Dr Robin Wattle",
     href: viewHref("report", { of: "mid" }),
   });
   for (const record of epasInTerm(s, "t4")) items.push({ term: t4, type: "epa", record });
@@ -474,13 +469,13 @@ export function AllAssessments({ s }: ScreenProps) {
         title="All assessments"
         subtitle={`${SAMPLE_DOCTOR.grade} · 2026`}
       />
-      <div role="group" aria-label="Show" className="flex flex-wrap gap-1.5">
+      <WorkChips label="Show" scroll>
         {FILTERS.map(([id, label]) => (
-          <ChoiceChip key={id} pressed={filter === id} onPressedChange={() => setFilter(id)}>
+          <WorkChip key={id} selected={filter === id} onClick={() => setFilter(id)}>
             {label}
-          </ChoiceChip>
+          </WorkChip>
         ))}
-      </div>
+      </WorkChips>
       {terms.length ? (
         terms.map((t) => (
           <section key={t.id} className="grid gap-1" aria-label={`Term ${t.n} · ${t.name}`}>
@@ -518,11 +513,16 @@ export function AllAssessments({ s }: ScreenProps) {
           </section>
         ))
       ) : (
-        <Card className="justify-items-center text-center">
-          <Check aria-hidden="true" className="size-icon-lg text-[color:var(--success-text)]" />
-          <h2 className="text-base font-semibold text-[color:var(--text-heading)]">Nothing to do</h2>
-          <p className={secondaryText}>Every assessment so far is signed.</p>
-        </Card>
+        <WorkEmpty
+          icon={Check}
+          title="Nothing to do"
+          body="Every assessment so far is signed."
+          action={
+            <WorkButton variant="secondary" onClick={() => setFilter("all")}>
+              Show all
+            </WorkButton>
+          }
+        />
       )}
     </>
   );

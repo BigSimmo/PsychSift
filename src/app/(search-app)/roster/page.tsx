@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { RosterShiftsPage } from "@/components/roster/roster-shifts-page";
+import { RosterHome } from "@/components/roster/roster-home";
 import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
-  title: "Shifts | Roster | PsychSift",
-  description: "Your shifts by week and month, and your rostered hours, private to your account.",
+  title: "Roster | PsychSift",
+  description: "Your month of shifts, what needs you, and your hours and rest, private to your account.",
 };
 
 export default function RosterHomeRoute() {
   return (
     <RosterSampleGate>
-      <RosterShiftsPage />
+      <Suspense fallback={null}>
+        <RosterHome />
+      </Suspense>
     </RosterSampleGate>
   );
 }

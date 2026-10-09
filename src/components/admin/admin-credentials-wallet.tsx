@@ -83,13 +83,13 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
   const cards = [
     {
       key: "ahpra",
-      label: "Ahpra Registration",
+      label: "Ahpra registration",
       value: creds.ahpraNumber || "MED000...",
       realValue: creds.ahpraNumber,
     },
     {
       key: "prescriber",
-      label: "Prescriber Number",
+      label: "Prescriber number",
       value: creds.prescriberNumber || "7 digits",
       realValue: creds.prescriberNumber,
     },
@@ -108,15 +108,11 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
   ];
 
   return (
-    <section
-      data-testid={testId}
-      aria-label="Doctor credentials wallet"
-      className="grid gap-2.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 shadow-xs"
-    >
+    <section data-testid={testId} aria-label="Doctor credentials wallet" className="work-card grid gap-2.5 p-3.5">
       <div className="flex items-center justify-between">
         <h3 className={cn(eyebrowText, "flex items-center gap-1.5")}>
           <CreditCard className="size-3.5" aria-hidden="true" />
-          Credentials Wallet
+          Credentials wallet
         </h3>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 text-2xs text-[color:var(--text-muted)]">
@@ -180,9 +176,9 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
                   <div
                     data-testid={`${testId}-copied-${c.key}`}
                     role="status"
-                    className="absolute inset-0 grid place-items-center rounded-xl bg-[color:var(--surface-raised)]/95 shadow-sm backdrop-blur-xs animate-in fade-in duration-[var(--duration-quick)]"
+                    className="absolute inset-0 grid place-items-center rounded-xl bg-[color:var(--surface-raised)]/95 backdrop-blur-xs animate-in fade-in duration-[var(--duration-quick)]"
                   >
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--success)] px-2 py-0.5 text-2xs font-medium text-[color:var(--command-contrast)] shadow-xs">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--success)] px-2 py-0.5 text-2xs font-medium text-[color:var(--command-contrast)]">
                       <Check className="size-2.5" aria-hidden="true" />
                       Copied!
                     </span>
@@ -194,9 +190,9 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
                   <div
                     data-testid={`${testId}-failed-${c.key}`}
                     role="status"
-                    className="absolute inset-0 grid place-items-center rounded-xl bg-[color:var(--surface-raised)]/95 shadow-sm backdrop-blur-xs animate-in fade-in duration-[var(--duration-quick)]"
+                    className="absolute inset-0 grid place-items-center rounded-xl bg-[color:var(--surface-raised)]/95 backdrop-blur-xs animate-in fade-in duration-[var(--duration-quick)]"
                   >
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-inset)] px-2 py-0.5 text-2xs font-medium text-[color:var(--text-heading)] shadow-xs">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-inset)] px-2 py-0.5 text-2xs font-medium text-[color:var(--text-heading)]">
                       Copy failed
                     </span>
                   </div>
@@ -214,7 +210,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           setSaveError(null);
           setEditing(false);
         }}
-        title="Edit Doctor Credentials"
+        title="Edit doctor credentials"
         testId={`${testId}-sheet`}
         footer={
           <Button variant="primary" block onClick={handleSave} testId={`${testId}-save-button`}>
@@ -235,7 +231,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           )}
 
           <TextField
-            label="Ahpra Registration Number"
+            label="Ahpra registration number"
             placeholder="e.g. MED0001234567"
             value={draft.ahpraNumber}
             onChange={(e) => setDraft({ ...draft, ahpraNumber: e.target.value })}
@@ -243,7 +239,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           />
 
           <TextField
-            label="Prescriber Number"
+            label="Prescriber number"
             placeholder="7-digit prescriber number"
             value={draft.prescriberNumber}
             onChange={(e) => setDraft({ ...draft, prescriberNumber: e.target.value })}
@@ -251,7 +247,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           />
 
           <div className="grid gap-2 border-t border-[color:var(--border)] pt-2">
-            <span className="text-xs font-medium text-[color:var(--text-heading)]">Hospital Site Provider Numbers</span>
+            <span className="text-xs font-medium text-[color:var(--text-heading)]">Hospital site provider numbers</span>
             {draft.providerNumbers.map((p, idx) => (
               <div key={p.id} className="grid grid-cols-[1fr_1fr] gap-2">
                 <TextField

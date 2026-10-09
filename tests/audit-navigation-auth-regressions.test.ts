@@ -89,7 +89,12 @@ describe("audit navigation and auth regressions", () => {
     expect(medicationsPage).toContain("readSearchNavigationContext");
     expect(medicationsPage).toContain("redirect(");
     expect(medicationsPage).not.toContain('redirect("/?mode=prescribing")');
-    expect(headApplications).toBe(redirectApplications);
+    const applicationsRequest = new NextRequest("https://clinical-kb.test/applications?q=lithium");
+    const applicationsGet = redirectApplications(applicationsRequest);
+    const applicationsHead = headApplications(applicationsRequest);
+    expect(applicationsHead.status).toBe(applicationsGet.status);
+    expect(applicationsHead.headers.get("location")).toBe("/tools?q=lithium");
+    expect(applicationsHead.headers.get("location")).toBe(applicationsGet.headers.get("location"));
   });
 
   it.each([
@@ -220,23 +225,28 @@ describe("audit navigation and auth regressions", () => {
     expect(masterSearchHeaderSource).toContain(
       '{!usesPhoneSearchLayout && modeMenuOpen && modeSheetView === "modes" ? (',
     );
-    // The desktop trigger now opens a searchable grouped dialog (not a plain
-    // menu), so it always announces `dialog` regardless of phone layout.
+    // The desktop trigger opens a grouped dialog (not a plain menu), so it
+    // always announces `dialog` regardless of phone layout.
     expect(masterSearchHeaderSource).toContain('aria-haspopup="dialog"');
     expect(masterSearchHeaderSource).toContain('mobilePlacement="bottom"');
+    // Near-full height on the phone, a centred dialog from `sm` up. The colour
+    // follows the level (direction B, 7 Oct 2026), so only the frame is pinned.
     expect(masterSearchHeaderSource).toContain(
-      'contentClassName="max-h-[calc(100dvh-0.75rem)] rounded-t-3xl bg-[color:var(--surface-lux)] sm:max-w-md sm:rounded-2xl"',
+      '"max-h-[calc(100dvh-0.75rem)] rounded-t-[var(--work-radius-sheet,2rem)] sm:max-w-md sm:rounded-2xl"',
     );
-    expect(masterSearchHeaderSource).toMatch(/usesPhoneSearchLayout\s*\?\s*"min-h-14\b[\s\S]*:\s*"min-h-12\b/);
+    // Row sizes live in the shared mode-picker row; the header passes its phone layout through.
+    expect(masterSearchHeaderSource).toContain("modePickerRowClass(active, usesPhoneSearchLayout)");
+    expect(source("src/components/mode-picker/mode-picker-row.tsx")).toMatch(
+      /phone\s*\?\s*"min-h-14\b[\s\S]*:\s*"min-h-12\b/,
+    );
     expect(masterSearchHeaderSource).toContain("phoneLayoutGateRef");
     // Hydration-safe: do not read matchMedia in useState (SSR/client mismatch → React #418).
     expect(masterSearchHeaderSource).toContain(
       "const [usesPhoneSearchLayout, setUsesPhoneSearchLayout] = useState(false);",
     );
-    // The searchable desktop dialog reuses this same live matchMedia read to
-    // decide whether to reset `modeMenuQuery` before the rAF-scheduled focus
-    // (see `openModeMenuWithFocus`/`toggleModeMenu`), so it is now bound to a
-    // local first and passed to the setter rather than called inline twice.
+    // Opening the desktop menu reads matchMedia once and passes that value
+    // into state (see `openModeMenuWithFocus`/`toggleModeMenu`), rather than
+    // calling it inline twice.
     expect(masterSearchHeaderSource).toContain("const phoneLayout = currentUsesPhoneSearchLayout();");
     expect(masterSearchHeaderSource).toContain("setUsesPhoneSearchLayout(phoneLayout);");
   });
@@ -245,7 +255,7 @@ describe("audit navigation and auth regressions", () => {
     const modeOption = sourceSegment(
       masterSearchHeaderSource,
       "function renderModeMenuOption(",
-      "function renderModeMenuOptions()",
+      "function renderGroupedDesktopModeMenuOptions()",
       { label: "mode-menu option prefetch" },
     );
     const openModeMenuWithFocus = sourceSegment(
@@ -419,17 +429,18 @@ describe("audit navigation and auth regressions", () => {
   });
 
   it("keeps private indexing administration associated without exposing uploads", () => {
-    expect(clinicalDashboardSource).toContain('aria-label="Indexing administration sections"');
-    expect(clinicalDashboardSource).toContain('role="tab"');
-    expect(clinicalDashboardSource).toContain("aria-selected={active}");
-    expect(clinicalDashboardSource).toContain("aria-controls={tab.panelId}");
-    expect(clinicalDashboardSource).toContain("tabIndex={active ? 0 : -1}");
-    expect(clinicalDashboardSource).toContain('role={indexingAdminUsesDesktopRegions ? "region" : "tabpanel"}');
+    const indexingAdminDrawerSource = source("src/components/clinical-dashboard/indexing-admin-drawer.tsx");
+    expect(indexingAdminDrawerSource).toContain('aria-label="Indexing administration sections"');
+    expect(indexingAdminDrawerSource).toContain('role="tab"');
+    expect(indexingAdminDrawerSource).toContain("aria-selected={active}");
+    expect(indexingAdminDrawerSource).toContain("aria-controls={tab.panelId}");
+    expect(indexingAdminDrawerSource).toContain("tabIndex={active ? 0 : -1}");
+    expect(indexingAdminDrawerSource).toContain('role={indexingAdminUsesDesktopRegions ? "region" : "tabpanel"}');
     for (const tab of ["setup", "jobs", "quality"]) {
-      expect(clinicalDashboardSource).toContain(`"dashboard-indexing-admin-tab-${tab}"`);
+      expect(indexingAdminDrawerSource).toContain(`"dashboard-indexing-admin-tab-${tab}"`);
     }
     for (const section of ["setup", "indexing", "quality"]) {
-      expect(clinicalDashboardSource).toContain(`id="dashboard-${section}-section-heading"`);
+      expect(indexingAdminDrawerSource).toContain(`id="dashboard-${section}-section-heading"`);
     }
     // The viewport-driven region/tabpanel role is wired through the extracted hook, whose
     // media-query subscription carries the guard with it.

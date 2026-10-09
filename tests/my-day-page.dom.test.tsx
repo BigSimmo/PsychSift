@@ -7,6 +7,8 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { REMIND_ME_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import type { MyDayItem, MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
 
 const hookState: { current: MyDayState } = vi.hoisted(() => ({ current: undefined as unknown as MyDayState }));
@@ -33,8 +35,17 @@ vi.mock("@/components/my-day/use-my-day-dashboard-sources", () => ({
 // The full list ("All N") has its own address, `/my-day?view=all`. The page
 // reads it through `useSearchParams`; here that reads jsdom's own address, and
 // a test re-renders after the page pushes it (Next's router does that live).
+const routerPush = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
+  useRouter: () => ({ push: routerPush }),
+}));
+
+// "All N" opens the old full list on the classic work mode, which these tests cover, and Notifications on the new one.
+const newWorkMode = vi.hoisted(() => ({ current: false }));
+vi.mock("@/components/work-mode-launch/work-mode-launch-provider", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/work-mode-launch/work-mode-launch-provider")>()),
+  useNewWorkMode: () => newWorkMode.current,
 }));
 
 const currentTab = vi.hoisted(() => vi.fn());
@@ -42,6 +53,20 @@ vi.mock("@/components/mode-band/mode-band", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/mode-band/mode-band")>()),
   useModeBandCurrentTab: currentTab,
 }));
+// The Favourites shelf (after Needs you on Today) has its own tests and reads the account store.
+vi.mock("@/components/favourites/my-day-favourites-shelf", () => ({ MyDayFavouritesShelf: () => null }));
+
+// Needs you's feed reader is a lazy chunk in the app; here it is the reader itself, so the feed answers at once.
+// `readerLoaded` false stands for the moment before the chunk arrives.
+const readerLoaded = vi.hoisted(() => ({ current: true }));
+vi.mock("@/components/my-day/lazy-my-day-needs-you-reader", async () => {
+  const { MyDayNeedsYouReader } = await import("@/components/my-day/my-day-needs-you-reader");
+  return {
+    LazyMyDayNeedsYouReader: (props: Parameters<typeof MyDayNeedsYouReader>[0]) =>
+      readerLoaded.current ? <MyDayNeedsYouReader {...props} /> : null,
+  };
+});
+
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="account-dialog" /> : null),
 }));
@@ -73,14 +98,24 @@ const readySources: MyDaySourceResult[] = [
   { mode: "my-work", status: "ready", items: [] },
 ];
 
+/**
+ * The read as the real hook gives it: each item also sits in its own mode's
+ * source. Needs you is drawn from the notification feed, which reads the
+ * sources (work mode improvements, 8 Oct 2026).
+ */
 function setState(overrides: Partial<MyDayState>) {
+  const items = overrides.items ?? [];
+  const sources = (overrides.sources ?? readySources).map((source) => ({
+    ...source,
+    items: [...source.items, ...items.filter((entry) => entry.mode === source.mode)],
+  }));
   hookState.current = {
     status: "ready",
-    items: [],
-    sources: readySources,
     demoMode: false,
     retry,
     ...overrides,
+    items,
+    sources,
   };
 }
 
@@ -92,12 +127,16 @@ function openAll(name: string, rerender: (ui: ReactElement) => void) {
 }
 
 beforeEach(() => {
+  // The example data switch is per device: start each test in auto mode with nothing known.
+  window.localStorage.clear();
+  resetExampleDataForTests();
   window.history.replaceState(null, "", "/my-day");
   auth.status = "authenticated";
   auth.authEpoch = 1;
   resetMyDayHomeCardCache();
   retry.mockClear();
   setState({});
+  readerLoaded.current = true;
 });
 afterEach(cleanup);
 
@@ -140,30 +179,33 @@ describe("MyDayPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("asks a signed-out reader to sign in", () => {
+  it("asks a signed-out reader who turned example data off to sign in", async () => {
     auth.status = "signed_out";
     setState({ status: "signed-out" });
+    setExampleDataOn(false);
     render(<MyDayPage now={NOW} />);
+    expect(screen.queryByTestId("my-day-sample")).toBeNull();
     const panel = screen.getByTestId("my-day-signed-out");
-    expect(within(panel).getByText("Sign in to see your own day")).toBeTruthy();
+    expect(within(panel).getByText("Sign in to see your day")).toBeTruthy();
     expect(screen.queryByTestId("account-dialog")).toBeNull();
     fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
-    expect(screen.getByTestId("account-dialog")).toBeTruthy();
+    expect(await screen.findByTestId("account-dialog")).toBeTruthy();
   });
 
-  it("shows a signed-out visitor a sample day, labelled as invented, under the sign-in prompt", async () => {
+  it("shows a signed-out visitor a sample day by default, with no per-page notice (the frame's banner says it)", async () => {
     auth.status = "signed_out";
     setState({ status: "signed-out" });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-sample-notice").textContent).toContain("appear here once you sign in");
-    expect(screen.getByTestId("my-day-sample-line").textContent).toBe("Everything below is a made-up sample.");
-    expect(within(screen.getByTestId("my-day-signed-out")).getByText("Sample")).toBeTruthy();
+    expect(screen.getByTestId("my-day-sample")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-sample-notice")).toBeNull();
+    expect(screen.queryByTestId("my-day-sample-line")).toBeNull();
+    expect(screen.queryByTestId("my-day-signed-out")).toBeNull();
     const dashboard = await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
     expect(within(dashboard).getAllByText("Journal club").length).toBeGreaterThan(0);
-    // "Later" on a sample row lasts only while the page is open, and stores nothing.
-    const before = window.localStorage.length;
-    fireEvent.click(within(dashboard).getAllByRole("button", { name: /Later/ })[0]!);
-    expect(window.localStorage.length).toBe(before);
+    // Work mode improvements, 8 Oct 2026: Needs you is the bell's list, where an example row has no Later,
+    // so nothing invented is ever stored on this device.
+    expect(within(screen.getByTestId("my-day-card-needs-you")).getByText("Journal club")).toBeTruthy();
+    expect(within(dashboard).queryAllByRole("button", { name: /Later/ })).toEqual([]);
     // Signed in, nothing of the sample shows.
     cleanup();
     auth.status = "authenticated";
@@ -186,32 +228,35 @@ describe("MyDayPage", () => {
   it("treats an expired session as signed out", () => {
     auth.status = "expired";
     setState({ status: "signed-out" });
+    setExampleDataOn(false);
     render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-signed-out")).toBeTruthy();
   });
 
   // The grouped list is now the dashboard's "All N" view (the default view is
   // the card dashboard), so these two open it first.
-  it("groups items as Needs you now, Due soon, Later in that order and omits empty groups", () => {
+  // work-mode redesign, owner request 6 Oct 2026: the groups are by due date, Overdue, Today, This week and Later, each
+  // with its count at the right; the row's link is its verb pill.
+  it("groups items as Overdue, Today, This week, Later in that order and omits empty groups", () => {
     setState({
       items: [item("a", "overdue"), item("b", "soon"), item("c", "info", { mode: "cme", detail: "Extra line" })],
     });
     const first = render(<MyDayPage now={NOW} />);
     openAll("See all 3", first.rerender);
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
-    expect(headings).toEqual(["Needs you now", "Due soon", "Later"]);
+    expect(headings).toEqual(["Overdue", "This week", "Later"]);
     const later = screen.getByTestId("my-day-item-c");
     expect(later.textContent).toContain("CPD");
     expect(later.textContent).toContain("Extra line");
     // Every link out of My Day carries the "from My Day" marker for the "‹ My Day" link.
-    expect(screen.getByTestId("my-day-item-a").getAttribute("href")).toBe("/admin/a?from=my-day");
+    expect(screen.getByTestId("my-day-open-a").getAttribute("href")).toBe("/admin/a?from=my-day");
 
     setState({ items: [item("b", "soon")] });
     cleanup();
     window.history.replaceState(null, "", "/my-day");
     const second = render(<MyDayPage now={NOW} />);
     openAll("See all 1", second.rerender);
-    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Due soon"]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["This week"]);
   });
 
   it("puts the state word in the link text, Date passed for Admin and Overdue elsewhere", () => {
@@ -220,12 +265,14 @@ describe("MyDayPage", () => {
     });
     const { rerender } = render(<MyDayPage now={NOW} />);
     openAll("See all 4", rerender);
-    expect(screen.getByTestId("my-day-item-a").textContent).toContain("Admin · Date passed · ");
-    expect(screen.getByTestId("my-day-item-o").textContent).toContain("CPD · Overdue · ");
-    expect(screen.getByTestId("my-day-item-b").textContent).toContain("Admin · Due soon · ");
+    // work-mode redesign, owner request 6 Oct 2026: the row's small line leads with the late part in words ("Date passed",
+    // "Overdue"), then the date and the area; colour is never the only cue.
+    expect(screen.getByTestId("my-day-item-a").textContent).toContain("Date passed");
+    expect(screen.getByTestId("my-day-item-a").textContent).toContain("Admin");
+    expect(screen.getByTestId("my-day-item-o").textContent).toContain("Overdue");
+    expect(screen.getByTestId("my-day-item-o").textContent).toContain("CPD");
+    expect(screen.getByTestId("my-day-item-b").textContent).toContain("Due 27 Sep");
     expect(screen.getByTestId("my-day-item-c").textContent).not.toMatch(/Overdue|Due soon|Date passed/);
-    // The trailing visual label is hidden from assistive tech: the link text carries the meaning.
-    expect(document.querySelectorAll('[aria-hidden="true"] [data-state-dot]').length).toBe(3);
   });
 
   it("names failed sources, keeps the rest, and retries on click", () => {
@@ -258,15 +305,17 @@ describe("MyDayPage", () => {
   });
 
   // Demo data is shown only in a local demo build with no sign-in ("unconfigured").
-  it("says when the data is demo data, in a local demo build", () => {
+  it("says when the data is example data, in a local demo build", () => {
     auth.status = "unconfigured";
     setState({ demoMode: true, items: [item("a", "soon")] });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-demo-notice").textContent).toBe("Demo data: invented examples.");
+    expect(screen.getByTestId("my-day-demo-notice").textContent).toBe("Example data: made up to look around.");
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
   });
 
-  it("folds the demo note and every 'not available yet' into one line", () => {
+  // Review 2: Roster's Swaps tab and Teaching both show examples in a demo build,
+  // so "aren't available yet" there was untrue.
+  it("never calls Roster swaps or Teaching unavailable in a demo build", () => {
     auth.status = "unconfigured";
     setState({
       demoMode: true,
@@ -276,9 +325,8 @@ describe("MyDayPage", () => {
       ),
     });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-small-print").textContent).toBe(
-      "Demo data: invented examples. Roster swaps and Teaching aren't available yet.",
-    );
+    expect(screen.getByTestId("my-day-small-print").textContent).toBe("Example data: made up to look around.");
+    expect(screen.queryByTestId("my-day-unavailable-notice")).toBeNull();
     expect(screen.queryByTestId("my-day-unavailable-other-notice")).toBeNull();
   });
 
@@ -322,6 +370,27 @@ describe("MyDayPage", () => {
     expect(screen.getByTestId("my-day-dashboard")).toBeTruthy();
   });
 
+  it("opens Your reminders from a Notifications reminder link, then drops the word from the address", async () => {
+    setState({ items: [item("a", "overdue")] });
+    window.history.replaceState(null, "", "/my-day?sheet=reminders");
+    render(<MyDayPage now={NOW} />);
+    expect(await screen.findByRole("dialog", { name: "Your reminders" })).toBeTruthy();
+    expect(window.location.search).toBe("");
+  });
+
+  it("opens Notifications from All N on the new work mode, where it is the full list", () => {
+    newWorkMode.current = true;
+    try {
+      setState({ items: [item("a", "overdue")] });
+      render(<MyDayPage now={NOW} />);
+      fireEvent.click(screen.getByRole("button", { name: "See all 1" }));
+      expect(routerPush).toHaveBeenCalledWith("/my-day/notifications");
+      expect(window.location.search).toBe("");
+    } finally {
+      newWorkMode.current = false;
+    }
+  });
+
   it("opens the full list straight from its address, and Back to dashboard replaces it", () => {
     setState({ items: [item("a", "overdue")] });
     window.history.replaceState(null, "", "/my-day?view=all");
@@ -347,14 +416,15 @@ describe("MyDayPage", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
   });
 
-  it("moves to the next page with a sideways swipe, without adding history", () => {
+  // work-mode redesign, owner request 6 Oct 2026: a sideways swipe moves between the frame's tabs (Today, Week, Hours),
+  // which the shared work frame owns, so the page has no swipe panel of its own.
+  it("leaves the sideways swipe to the work frame, with no in-page swipe panel", () => {
     render(<MyDayPage now={NOW} />);
-    const before = window.history.length;
-    const panel = document.getElementById("my-day-panel")!;
-    fireEvent.touchStart(panel, { touches: [{ clientX: 300, clientY: 100 }] });
-    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 100, clientY: 110 }] });
-    expect(window.location.search).toBe("?page=work");
-    expect(window.history.length).toBe(before);
+    expect(document.getElementById("my-day-panel")).toBeNull();
+    const body = screen.getByTestId("my-day-dashboard");
+    fireEvent.touchStart(body, { touches: [{ clientX: 300, clientY: 100 }] });
+    fireEvent.touchEnd(body, { changedTouches: [{ clientX: 100, clientY: 110 }] });
+    expect(window.location.search).toBe("");
   });
 
   it("falls back to Today for an unknown page", () => {
@@ -372,6 +442,72 @@ describe("MyDayPage", () => {
     expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  // Work mode improvements, 8 Oct 2026: Needs you is the notification feed's list, so its count and rows are the
+  // bell's, the Notifications page's and the side menu's in every state.
+  describe("Needs you, read from the notification feed", () => {
+    it("lists a reminder due today, as the bell does, with no Later on it", () => {
+      window.localStorage.setItem(
+        REMIND_ME_STORAGE_KEY,
+        JSON.stringify([
+          {
+            id: "r1",
+            text: "Call the ward clerk",
+            dueAt: "2026-09-26T06:00:00.000Z",
+            createdAt: "2026-09-25T06:00:00.000Z",
+            doneAt: null,
+          },
+        ]),
+      );
+      setState({ items: [item("a", "soon")] });
+      render(<MyDayPage now={NOW} />);
+      const card = screen.getByTestId("my-day-card-needs-you");
+      expect(within(card).getByTestId("my-day-item-remind:r1").textContent).toContain("Reminders");
+      expect(within(card).getByTestId("my-day-item-a")).toBeTruthy();
+      expect(within(card).queryByRole("button", { name: "Later: Call the ward clerk" })).toBeNull();
+      expect(within(card).getByRole("button", { name: "See all 2" })).toBeTruthy();
+    });
+
+    it("leaves invented demo items out, as the bell does, when example data is off", () => {
+      auth.status = "unconfigured";
+      setExampleDataOn(false);
+      setState({
+        demoMode: true,
+        items: [item("a", "overdue", { mode: "cme" })],
+        sources: readySources.map((source) => ({ ...source, sample: true })),
+      });
+      render(<MyDayPage now={NOW} />);
+      expect(screen.queryByTestId("my-day-item-a")).toBeNull();
+      expect(screen.getByTestId("my-day-empty").textContent).toContain("Nothing needs you right now");
+    });
+
+    it("keeps a real item beside the examples, which fill only the areas with nothing real", async () => {
+      setExampleDataOn(true);
+      setState({ items: [item("r", "soon", { mode: "roster" })] });
+      const { rerender } = render(<MyDayPage now={NOW} />);
+      await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
+      // Seven examples, less Roster's one (Roster has a real item), plus the real one.
+      openAll("See all 7", rerender);
+      expect(screen.getByTestId("my-day-item-r")).toBeTruthy();
+      expect(screen.queryByTestId("my-day-item-sample:roster:cutoff")).toBeNull();
+      expect(screen.getByTestId("my-day-item-sample:cme:drafts")).toBeTruthy();
+    });
+  });
+
+  // Bundle budget, 8 Oct 2026: the feed's reader loads as its own chunk, and until it answers the day stays a skeleton,
+  // so My Day never says nothing needs you before the feed has looked.
+  it("keeps the skeleton until Needs you's feed has answered", () => {
+    readerLoaded.current = false;
+    setState({ items: [item("a", "soon")] });
+    const { rerender } = render(<MyDayPage now={NOW} />);
+    expect(screen.getByTestId("my-day-loading")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-ready")).toBeNull();
+    expect(screen.queryByTestId("my-day-empty")).toBeNull();
+    readerLoaded.current = true;
+    rerender(<MyDayPage now={NOW} />);
+    expect(screen.queryByTestId("my-day-loading")).toBeNull();
+    expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
   });
 
   it("says nothing needs you, and when it checked, only when every source answered", () => {

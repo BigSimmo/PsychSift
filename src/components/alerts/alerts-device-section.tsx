@@ -8,22 +8,14 @@ import { modeModuleSurface, modeInsetHairline } from "@/components/mode-kit/reci
 import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
-import { cn, eyebrowText, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { cn, eyebrowText } from "@/components/ui-primitives";
 import { DEVICE_NAMES } from "@/lib/alerts/phone-state";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { formatZonedDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 
-const PERTH_TIME = new Intl.DateTimeFormat("en-AU", {
-  timeZone: "Australia/Perth",
-  weekday: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-/** "Sun 16:02", Perth time. */
-function whenArrived(iso: string): string {
-  const parts = PERTH_TIME.formatToParts(new Date(iso));
-  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get("weekday")} ${get("hour")}:${get("minute")}`;
+/** "Sun 16:02", work-zone time. */
+function whenArrived(iso: string, zone: string): string {
+  return `${formatZonedDay(zonedDateOf(iso, zone)).slice(0, 3)} ${zonedTimeOf(iso, zone)}`;
 }
 
 type Step = { readonly title: string; readonly detail: string };
@@ -118,33 +110,13 @@ function Footnote({ children, testId }: { readonly children: React.ReactNode; re
   );
 }
 
-/** The test button while it cannot work yet: reachable by keyboard, with its reason read out. */
-function LockedTestButton({ reason }: { readonly reason: string }) {
-  return (
-    <>
-      <Button
-        variant="secondary"
-        block
-        aria-disabled="true"
-        onClick={ignoreUnavailableActivation}
-        aria-describedby="alerts-test-locked-reason"
-        testId="alerts-test-locked"
-      >
-        Send test alert
-      </Button>
-      <span id="alerts-test-locked-reason" className="sr-only">
-        {reason}
-      </span>
-    </>
-  );
-}
-
 /**
  * "This phone" (or "This computer"): screens 8, 11 and 12, and the computer
  * view's shared-computer switch. Every state says what is true on THIS device
  * now; a check that failed says so and never reads as "off".
  */
 export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: PhoneAlerts; readonly shared: boolean }) {
+  const { zone } = useWorkTimeZone();
   const device = DEVICE_NAMES[alerts.device];
   const eyebrow = alerts.device === "computer" ? "This computer" : "This phone";
   const sharedLabel = alerts.device === "computer" ? "This is a shared computer" : "This is a shared device";
@@ -182,7 +154,6 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
           }
           testId={`alerts-device-${state}-steps`}
         />
-        <LockedTestButton reason={blocked ? "Turn alerts back on first" : "The test unlocks after step 3"} />
         {/* Remind me does not need phone alerts, so a shared device can always be marked as one. */}
         <ModeGroupedList testId="alerts-shared-list">{sharedRow}</ModeGroupedList>
         <Footnote>
@@ -208,7 +179,9 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
               : state === "on"
                 ? [
                     `On for this ${device}`,
-                    alerts.lastTestArrivedAt ? `last test arrived ${whenArrived(alerts.lastTestArrivedAt)}` : null,
+                    alerts.lastTestArrivedAt
+                      ? `last test arrived ${whenArrived(alerts.lastTestArrivedAt, zone)}`
+                      : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")

@@ -266,6 +266,36 @@ describe("PwaLifecycle", () => {
     expect(waitingWorker.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
   });
 
+  // The stale-PWA fix (7 October 2026): an app left open, or resumed by focus or a
+  // back-forward restore, asks for a newer worker every ten minutes rather than hourly.
+  it("checks for a newer build on focus, on a back-forward restore and on a ten-minute timer", async () => {
+    window.history.replaceState({}, "", "/?pwa-dev=1");
+    const { container, registration } = installServiceWorkerStub();
+    const nowSpy = vi.spyOn(Date, "now");
+    let now = 1_000_000;
+    nowSpy.mockImplementation(() => now);
+    const intervalSpy = vi.spyOn(window, "setInterval");
+    try {
+      render(<PwaLifecycle />);
+      await waitFor(() => expect(container.register).toHaveBeenCalled());
+      await waitFor(() => expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 10 * 60 * 1000));
+
+      fireEvent(window, new Event("focus"));
+      expect(registration.update).not.toHaveBeenCalled();
+
+      now += 10 * 60 * 1000;
+      fireEvent(window, new Event("focus"));
+      expect(registration.update).toHaveBeenCalledTimes(1);
+
+      now += 10 * 60 * 1000;
+      fireEvent(window, new Event("pageshow"));
+      expect(registration.update).toHaveBeenCalledTimes(2);
+    } finally {
+      nowSpy.mockRestore();
+      intervalSpy.mockRestore();
+    }
+  });
+
   it("offers a refresh when another tab activates an update instead of silently leaving stale UI", async () => {
     window.history.replaceState({}, "", "/?pwa-dev=1");
     const { container } = installServiceWorkerStub(null, true);

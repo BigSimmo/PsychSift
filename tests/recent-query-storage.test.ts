@@ -7,6 +7,7 @@ import {
   loadRecentQueries,
   recentQueriesChangeEvent,
   recentQueryStorageKey,
+  removeRecentQuery,
 } from "@/lib/recent-query-storage";
 
 describe("recent query storage", () => {
@@ -120,6 +121,19 @@ describe("recent query storage", () => {
 
     clearRecentQueries();
 
+    expect(listener).toHaveBeenCalledTimes(1);
+    window.removeEventListener(recentQueriesChangeEvent, listener);
+  });
+  it("removeRecentQuery drops one question, ignoring case, and notifies listeners", () => {
+    sessionStore.set(`${recentQueryStorageKey}:user-a`, JSON.stringify(["Lithium toxicity", "clozapine monitoring"]));
+    sessionStore.set("unrelated-key", "untouched");
+    const listener = vi.fn();
+    window.addEventListener(recentQueriesChangeEvent, listener);
+
+    removeRecentQuery("  lithium TOXICITY ");
+
+    expect(loadRecentQueries("user-a")).toEqual(["clozapine monitoring"]);
+    expect(sessionStore.get("unrelated-key")).toBe("untouched");
     expect(listener).toHaveBeenCalledTimes(1);
     window.removeEventListener(recentQueriesChangeEvent, listener);
   });

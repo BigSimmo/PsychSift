@@ -6,7 +6,7 @@ const ADMIN_ROOTS = ["src/components/admin", "src/lib/admin", "src/app/(search-a
 
 function filesUnder(root: string): string[] {
   return readdirSync(root).flatMap((name) => {
-    const path = join(root, name);
+    const path = join(root, name).replaceAll("\\", "/");
     if (statSync(path).isDirectory()) return filesUnder(path);
     return /\.tsx?$/.test(name) ? [path] : [];
   });
@@ -19,10 +19,31 @@ function filesUnder(root: string): string[] {
  */
 const ADMIN_DESIGN_FILES: readonly string[] = [...ADMIN_ROOTS.flatMap(filesUnder)];
 
+/**
+ * Work-mode redesign, owner request 6 Oct 2026: status colour is allowed
+ * again, through ONE shared status tag only. Red means the recorded date has
+ * passed, amber means it is time to start renewing, and both live in this one
+ * stylesheet, drawn by `admin-status-tag.tsx` (`data-admin-status`). Every
+ * other Admin file, stylesheets included, stays grey.
+ */
+const ADMIN_STATUS_STYLESHEET = "src/components/admin/admin-status.module.css";
+
+function stylesheetsUnder(root: string): string[] {
+  return readdirSync(root).flatMap((name) => {
+    const path = join(root, name).replaceAll("\\", "/");
+    if (statSync(path).isDirectory()) return stylesheetsUnder(path);
+    return /\.css$/.test(name) ? [path] : [];
+  });
+}
+const ADMIN_STYLESHEETS: readonly string[] = ADMIN_ROOTS.flatMap(stylesheetsUnder);
+
 /** Red and amber in any spelling Admin could reach for. */
+// Work-mode redesign (6 Oct 2026): the kit's `tone="red"` and `tone="amber"` count too, so
+// status colour cannot reach an Admin page except through the one status tag.
 const RED =
-  /--danger|--stop\b|\b(?:text|bg|border|fill|stroke)-red-|tone(?:=|:\s*)["']danger["']|variant(?:=|:\s*)["']danger["']/;
-const AMBER = /--warning|\b(?:text|bg|border)-amber-|tone(?:=|:\s*)["']warning["']/;
+  /--danger|--stop\b|\b(?:text|bg|border|fill|stroke)-red-|tone(?:=|:\s*)["'](?:danger|red)["']|variant(?:=|:\s*)["']danger["']/;
+const AMBER =
+  /--warning|\b(?:text|bg|border)-amber-|tone(?:=|:\s*)["'](?:warning|amber)["']|variant(?:=|:\s*)["']amber["']/;
 const RED_ALLOWED = /data-admin-red(?:=|:\s*)(?:\{[^}]*)?["']emergency-number["']/;
 /** Spec review 5: nothing on the device. */
 const DEVICE_STORAGE = /\b(?:localStorage|sessionStorage|indexedDB|createBrowserStore)\b/;
@@ -64,6 +85,21 @@ describe("Admin's design contract (shared standard, spec Admin design rules and 
 
   it("uses no amber: urgency and status are grey (spec rule 2)", () => {
     expect(offendingLines(AMBER)).toEqual([]);
+  });
+
+  it("colours a status only in the one status-tag stylesheet: red for a passed date, amber for start renewing", () => {
+    // Work-mode redesign, owner request 6 Oct 2026 (amends spec rule 2 narrowly).
+    const css = readFileSync(ADMIN_STATUS_STYLESHEET, "utf8");
+    expect(css).toMatch(/\[data-admin-status="date-passed"\][^{]*\{[^}]*--danger-text/);
+    expect(css).toMatch(/\[data-admin-status="start-renewing"\][^{]*\{[^}]*--warning-text/);
+    const elsewhere = ADMIN_STYLESHEETS.filter((file) => file !== ADMIN_STATUS_STYLESHEET).flatMap((file) =>
+      readFileSync(file, "utf8")
+        .split("\n")
+        .flatMap((line, index) => (RED.test(line) || AMBER.test(line) ? [`${file}:${index + 1}: ${line.trim()}`] : [])),
+    );
+    expect(elsewhere).toEqual([]);
+    const users = ADMIN_DESIGN_FILES.filter((file) => readFileSync(file, "utf8").includes("admin-status.module.css"));
+    expect(users).toEqual(["src/components/admin/admin-status-tag.tsx"]);
   });
 
   it("never paints brown outside the pill and the rail", () => {

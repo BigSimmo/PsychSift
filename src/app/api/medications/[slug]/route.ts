@@ -57,6 +57,9 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       });
     }
     const normalizedSlug = normalizeMedicationSlug(parsedSlug.data);
+    if (!normalizedSlug || !/^[a-z0-9_-]+$/.test(normalizedSlug) || normalizedSlug.length > 120) {
+      return notFoundResponse(normalizedSlug || "unknown");
+    }
 
     if (isDemoMode() || isLocalNoAuthMode()) {
       const payload = publicMedicationDetailPayload(normalizedSlug);

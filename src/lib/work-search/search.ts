@@ -49,15 +49,18 @@ function rankItem(item: WorkItem, terms: readonly (readonly TermAlternative[])[]
 }
 
 /**
- * Upcoming first (soonest first), then undated, then past (most recent first):
- * "nights" should show the next night before last month's.
+ * Urgency, then recency: an overdue renewal first (a passed date is the thing
+ * most worth seeing), then upcoming soonest first, then undated, then past
+ * most recent first. "nights" shows the next night before last month's, and
+ * "bls" shows a lapsed certificate above the form to renew it.
  */
 function dateOrder(a: WorkItem, b: WorkItem, today: string): number {
-  const bucket = (item: WorkItem) => (item.date === null ? 1 : item.date >= today ? 0 : 2);
+  const bucket = (item: WorkItem) =>
+    item.date === null ? 2 : (item.until ?? item.date) >= today ? 1 : item.kind === "renewal" ? 0 : 3;
   const difference = bucket(a) - bucket(b);
   if (difference !== 0) return difference;
   if (a.date === null || b.date === null) return 0;
-  return bucket(a) === 0 ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
+  return bucket(a) === 3 ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
 }
 
 /**
@@ -130,12 +133,42 @@ function finish(
 }
 
 /**
+ * The records, ready to search: built once when the records arrive (not on every
+ * keystroke), with each record's lower-cased text worked out and every word of
+ * four letters or more collected for the typo check. In this tab's memory only.
+ */
+export interface WorkSearchIndex {
+  readonly items: readonly WorkItem[];
+  readonly entries: readonly WorkSearchEntry[];
+  readonly words: readonly string[];
+}
+
+export function buildWorkSearchIndex(input: {
+  readonly items: readonly WorkItem[];
+  readonly entries: readonly WorkSearchEntry[];
+}): WorkSearchIndex {
+  const words = new Set<string>();
+  for (const item of [...input.items, ...input.entries.map(({ item: entryItem }) => entryItem)]) {
+    for (const fields of tiersOf(item)) {
+      for (const field of fields) {
+        for (const word of field.split(/[^\p{L}\p{N}]+/u)) if (word.length >= 4) words.add(word);
+      }
+    }
+  }
+  return { items: input.items, entries: input.entries, words: [...words] };
+}
+
+/**
  * The word a typo was read as, for "Showing matches for journal": set when a
  * typed word matched nothing as typed, in any record or in On Call's own search,
  * but matched a word one letter out.
  */
 export function workSearchCorrection(
-  input: { readonly items: readonly WorkItem[]; readonly entries: readonly WorkSearchEntry[] },
+  input: {
+    readonly items: readonly WorkItem[];
+    readonly entries: readonly WorkSearchEntry[];
+    readonly words?: readonly string[];
+  },
   query: string,
 ): { readonly typed: string; readonly read: string } | null {
   const items = [...input.items, ...input.entries.map(({ item }) => item)];
@@ -151,6 +184,11 @@ export function workSearchCorrection(
       searchOnCallEntries(entries, fuzzy.text).length > 0
     )
       continue;
+    if (input.words) {
+      const word = input.words.find((candidate) => withinOneEdit(candidate, fuzzy.text));
+      if (word) return { typed: fuzzy.text, read: word };
+      continue;
+    }
     for (const item of items) {
       for (const fields of tiersOf(item)) {
         for (const field of fields) {

@@ -17,22 +17,19 @@ export const dynamic = "force-dynamic";
 // Slack/Discord — the piece GitHub cannot report, since it does not know Railway's
 // deploy outcome. See docs/webhooks.md for setup.
 
-const namedEntitySchema = z.object({ name: z.string().optional() }).passthrough();
+const namedEntitySchema = z.object({ name: z.string().max(200).optional() });
 
-const railwayWebhookSchema = z
-  .object({
-    type: z.string().optional(),
-    status: z.string().optional(),
-    timestamp: z.string().optional(),
-    project: namedEntitySchema.optional(),
-    environment: namedEntitySchema.optional(),
-    service: namedEntitySchema.optional(),
-    deployment: z
-      .object({ id: z.string().optional(), meta: z.record(z.string(), z.unknown()).optional() })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
+const railwayWebhookSchema = z.object({
+  type: z.string().max(200).optional(),
+  status: z.string().max(200).optional(),
+  timestamp: z.string().max(200).optional(),
+  project: namedEntitySchema.optional(),
+  environment: namedEntitySchema.optional(),
+  service: namedEntitySchema.optional(),
+  deployment: z
+    .object({ id: z.string().max(200).optional(), meta: z.record(z.string().max(200), z.unknown()).optional() })
+    .optional(),
+});
 
 // Only forward status changes worth a ping; transient build/deploy phases are
 // dropped to keep the channel quiet.

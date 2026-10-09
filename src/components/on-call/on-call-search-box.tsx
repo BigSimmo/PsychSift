@@ -12,7 +12,7 @@ import {
 } from "@/components/on-call/on-call-section-identity";
 import { focusOnCallEntryFromHash } from "@/components/on-call/on-call-page-anchors";
 import { onCallEntryHref, onCallViewForEntry } from "@/components/on-call/on-call-entry-view";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { SearchField } from "@/components/ui/text-field";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import {
@@ -175,7 +175,7 @@ export function OnCallSearchBox({ entries }: { entries: readonly OnCallEntry[] }
       </p>
 
       {trimmed.length > 0 && results.length === 0 ? (
-        <EmptyState
+        <OnCallEmptyState
           icon={SearchX}
           title={`Nothing matched “${trimmed}”`}
           body="Try a shorter word, a ward name, or part of the number."

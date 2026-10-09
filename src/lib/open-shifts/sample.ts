@@ -1,5 +1,6 @@
 import type { FatigueShift } from "@/lib/roster/fatigue-rules";
 import { addDaysToDate, perthDateOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
+import { demoMyShifts } from "@/lib/roster/team/demo-team-core";
 
 import type { OpenShiftListing } from "./model";
 
@@ -31,21 +32,21 @@ type SampleRow = {
 const SITES = {
   northgate: {
     siteId: SITE_NORTHGATE,
-    siteName: "Northgate Hospital · Ward 4B",
+    siteName: "Example Hospital · Ward A",
     serviceId: TEAM_NORTH,
-    teamName: "Northgate Psychiatry",
+    teamName: "Example Psychiatry Team",
   },
   riverside: {
     siteId: SITE_RIVERSIDE,
-    siteName: "Riverside Hospital · ED liaison",
+    siteName: "Example Health Campus · ED liaison",
     serviceId: TEAM_RIVER,
-    teamName: "Riverside Mental Health",
+    teamName: "Example Mental Health Team",
   },
   lakeside: {
     siteId: SITE_LAKESIDE,
-    siteName: "Lakeside Hospital · Older adult",
+    siteName: "Example Mental Health Unit · Older adult",
     serviceId: TEAM_NORTH,
-    teamName: "Northgate Psychiatry",
+    teamName: "Example Psychiatry Team",
   },
 } as const;
 
@@ -81,8 +82,9 @@ const ROWS: readonly SampleRow[] = [
   { day: 12, start: "08:00", end: "18:00", kind: "day", code: "L", site: "northgate" },
   { day: 5, start: "17:00", end: "23:00", kind: "evening", code: "E", site: "riverside", claim: "claimed" },
   { day: 9, start: "08:00", end: "16:30", kind: "day", code: "D", site: "northgate", claim: "approved" },
-  // A second shift for today, so the first view shows two with different roster-check labels.
-  { day: 0, start: "16:00", end: "22:00", kind: "evening", code: "E", site: "lakeside" },
+  // A second shift for today that ends before the example doctor's on call
+  // tonight, so the first view shows one shift to ask for and one hidden as a clash.
+  { day: 0, start: "12:00", end: "16:30", kind: "day", code: "D", site: "lakeside" },
 ];
 
 function instant(date: string, time: string): string {
@@ -118,15 +120,16 @@ export function sampleListings(now: Date): OpenShiftListing[] {
   });
 }
 
-/** The example doctor's own roster: the shifts the roster check compares with. */
+/**
+ * The example doctor's own roster: the shifts the roster check compares with.
+ * It is the one example roster (`demoMyShifts`), so the days Open shifts marks
+ * "You're rostered" are the days Roster, My Day and On Call show.
+ */
 export function sampleRoster(now: Date): FatigueShift[] {
-  const today = perthDateOf(now);
-  return [
-    { id: "sample-roster-1", ...span(today, 1, "08:00", "18:00"), kind: "day" },
-    { id: "sample-roster-2", ...span(today, 3, "07:30", "16:00"), kind: "day" },
-    { id: "sample-roster-3", ...span(today, 7, "08:00", "16:30"), kind: "day" },
-    { id: "sample-roster-4", ...span(today, 8, "08:00", "16:30"), kind: "day" },
-    { id: "sample-roster-5", ...span(today, 10, "08:00", "16:30"), kind: "day" },
-    { id: "sample-roster-6", ...span(today, 11, "08:00", "16:30"), kind: "day" },
-  ];
+  return demoMyShifts(now).map((shift) => ({
+    id: shift.id,
+    startsAt: shift.startsAt,
+    endsAt: shift.endsAt,
+    kind: shift.kind ?? "other",
+  }));
 }

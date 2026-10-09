@@ -39,6 +39,15 @@ import { clearOnCallDeviceState } from "@/lib/on-call/device-state-keys";
 import { ISOBAR_SOURCE } from "@/lib/on-call/isobar-source";
 import { resolveHandbookPhone } from "@/lib/on-call/number-resolver";
 
+/**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
+
 beforeEach(() => {
   window.localStorage.clear();
   handbook.state = ready(items([]));
@@ -157,8 +166,8 @@ describe("Call page", () => {
   it("moves an own number to its after-hours line when the page is left open across 17:00", () => {
     vi.useFakeTimers({ shouldAdvanceTime: false, toFake: ["Date", "setTimeout", "clearTimeout"] });
     try {
-      // A Tuesday, 30 seconds before the day period ends in the viewer's own zone.
-      vi.setSystemTime(new Date(2026, 8, 29, 16, 59, 30));
+      // A Tuesday, 30 seconds before the day period ends in the work zone (Perth).
+      vi.setSystemTime(perthWall(2026, 8, 29, 16, 59, 30));
       entries.list = [personalContact("p1", "My consultant", "0400 000 111", "0400 000 222")];
       render(<OnCallCallPage />);
       act(() => {

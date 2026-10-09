@@ -61,7 +61,8 @@ describe("Archive, annual record and learning journeys", () => {
     expect(actions.getByRole("button", { name: "Restore entry" })).toBeInTheDocument();
     expect(actions.queryByRole("link", { name: "Edit entry" })).toBeNull();
     await user.keyboard("{Escape}");
-    expect(screen.getByRole("button", { name: "Copy for your CPD home" })).toBeDisabled();
+    // work-mode redesign, owner request 6 Oct 2026: the dock names MyCPD for a RANZCP year.
+    expect(screen.getByRole("button", { name: "Copy for MyCPD" })).toBeDisabled();
     expect(screen.getByText("Evidence view only")).toBeInTheDocument();
     expect(screen.getByText(/2 hours recorded · excluded from totals/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Undo archive" }).closest('[role="status"]')).toHaveTextContent(

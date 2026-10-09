@@ -80,14 +80,15 @@ describe("Open shifts mode registration", () => {
   it("declares its violet identity tokens", () => {
     const globalsCss = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
     expect(globalsCss).toContain('[data-mode-identity="open-shifts"]');
-    expect(globalsCss).toContain("--mode-identity: #5b3f8f;");
-    expect(globalsCss).toContain("--mode-identity: #bba5e8;");
+    // Work-mode redesign, owner request 6 Oct 2026: Open shifts shares Roster's violet.
+    expect(globalsCss).toContain("--mode-identity: #5a45a6;");
+    expect(globalsCss).toContain("--mode-identity: #b0a0d8;");
   });
 
-  it("sits in the My Day phone group right after Roster", () => {
-    const group = phoneModeGroups.find((entry) => entry.id === "my-day");
+  it("sits in the Work list immediately before Roster", () => {
+    const group = phoneModeGroups.find((entry) => entry.id === "work");
     const ids: readonly string[] = group?.modeIds ?? [];
-    expect(ids.indexOf("open-shifts")).toBe(ids.indexOf("roster") + 1);
+    expect(ids.indexOf("roster")).toBe(ids.indexOf("open-shifts") + 1);
   });
 
   it("routes a dedicated Open shifts home, not the shared home", () => {

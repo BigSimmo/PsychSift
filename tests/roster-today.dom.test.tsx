@@ -261,3 +261,32 @@ describe("Roster Today", () => {
     expect(screen.queryByRole("button", { name: "Import a file" })).toBeNull();
   });
 });
+
+describe("Roster Today hero (work-mode redesign, owner request 6 Oct 2026)", () => {
+  it("rings the time to go before today's shift, and links to who is on and the phone numbers", async () => {
+    mockShifts([day("2026-10-13")]);
+    renderToday("2026-10-12T23:05:00Z"); // 07:05 Tuesday in Perth
+    await screen.findByTestId("roster-today-hero");
+    expect(screen.getByLabelText("Starts in 55 min")).toBeInTheDocument();
+    expect(screen.getByTestId("roster-today-track")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Who is on" })).toHaveAttribute("href", "/roster/team");
+    expect(screen.getByRole("link", { name: "Phone numbers" })).toHaveAttribute("href", "/on-call/contacts");
+  });
+
+  it("rings the time left while a shift is on, and says the range in words", async () => {
+    mockShifts([day("2026-10-13")]);
+    renderToday("2026-10-13T02:00:00Z"); // 10:00 Tuesday in Perth
+    const hero = await screen.findByTestId("roster-today-hero");
+    expect(screen.getByLabelText("6 h 30 min left of this shift")).toBeInTheDocument();
+    expect(hero).toHaveTextContent("08:00to16:30");
+    expect(hero).toHaveTextContent("On now");
+  });
+
+  it("draws no ring or track on a day off", async () => {
+    mockShifts([night("2026-10-15")]);
+    renderToday("2026-10-13T02:00:00Z");
+    await screen.findByTestId("roster-today-next");
+    expect(screen.queryByLabelText(/left of this shift|Starts in/)).toBeNull();
+    expect(screen.queryByTestId("roster-today-track")).toBeNull();
+  });
+});

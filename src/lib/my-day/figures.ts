@@ -46,9 +46,20 @@ export function selectFlagItems(
 }
 
 /** The one verb on an item's action button. It opens the item's own page; it never acts by itself. */
-export function myDayActionLabel(item: Pick<MyDayItem, "mode" | "title">): string {
+export function myDayActionLabel(item: {
+  readonly mode: string;
+  readonly title: string;
+  readonly id?: string;
+}): string {
   if (item.mode === "cme") return "Log";
   if (item.mode === "my-work" && /\b(course|module|training|life support|bls|als)\b/i.test(item.title)) return "Book";
+  // Work-mode redesign (6 Oct 2026): the verb says what the row asks for.
+  const id = item.id ?? "";
+  if (item.mode === "roster" && id.startsWith("roster:swap:")) return "Answer";
+  if (item.mode === "teaching" && id.startsWith("teaching:prep:")) return "Prep";
+  if (item.mode === "my-work" && id.startsWith("my-work:date:")) return "Renew";
+  // A form to sign ("Sign leave form"); a page that only mentions leave is not one.
+  if (/\bform\b/i.test(item.title)) return "Sign";
   return "Open";
 }
 

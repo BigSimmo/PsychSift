@@ -151,6 +151,13 @@ describe("Swaps page sections", () => {
     expect(sectionNames()).toEqual(["Waiting on you", "You sent", "Open shifts · 0"]);
   });
 
+  it("gives the Team calendar link in the intro a 48px tap area", () => {
+    render(<RosterSwapsPage />);
+    const link = screen.getByRole("link", { name: "Team calendar" });
+    expect(link).toHaveAttribute("href", "/roster/team");
+    expect(link).toHaveClass("work-hit");
+  });
+
   it("shows History only when asked", async () => {
     const user = userEvent.setup();
     render(<RosterSwapsPage />);
@@ -349,5 +356,24 @@ describe("SwapProgressLine", () => {
     expect(screen.getByRole("list")).toBeTruthy();
     expect(screen.getByText("Expired")).toBeTruthy();
     expect(screen.queryByText(/Waiting on/)).toBeNull();
+  });
+});
+
+describe("Swaps page with no confirmed team", () => {
+  it("says there is no team yet and offers Join a team instead of empty sections", () => {
+    const saved = teamsState.data.teams.splice(0);
+    try {
+      render(<RosterSwapsPage />);
+      const empty = screen.getByTestId("roster-swaps-no-team");
+      expect(empty.textContent).toContain("No team yet");
+      expect(
+        within(empty)
+          .getByRole("link", { name: /Join a team/ })
+          .getAttribute("href"),
+      ).toBe("/roster/join");
+      expect(screen.queryByRole("heading", { name: "Waiting on you" })).toBeNull();
+    } finally {
+      teamsState.data.teams.push(...saved);
+    }
   });
 });

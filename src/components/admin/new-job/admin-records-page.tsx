@@ -1,19 +1,21 @@
 "use client";
 
-import { Copy, Printer } from "lucide-react";
+import { Copy, FileText, Printer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 
+import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
+import { AdminNote, AdminPage, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { AdminNavHeader } from "@/components/admin/admin-nav-header";
 import { ADMIN_RECORDS_SECTIONS } from "@/components/admin/admin-page-sections";
 import { AdminShowAll } from "@/components/admin/admin-show-all";
-import { cardSurface, cardPadding } from "@/components/card-recipes";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { InformationPageBreadcrumbs, InformationPageShell } from "@/components/information-page-shell";
-import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { Button } from "@/components/ui/button";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
+import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { WorkButton, WorkCard, WorkDock, WorkEmpty, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
+import { cn } from "@/components/ui-primitives";
 import {
   adminRecordsSections,
   adminRecordsText,
@@ -23,8 +25,9 @@ import {
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
-import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { useOnCallEntries } from "@/lib/on-call/entry-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 /** A group longer than this folds behind "Show all N". */
 const RECORDS_PREVIEW_ROWS = 6;
@@ -41,16 +44,17 @@ const SECTION_ID: Record<AdminRecordsSection["label"], string> = {
 
 function RecordRow({ row }: { row: AdminRecordsRow }) {
   return (
-    <li
-      className="border-b border-[color:var(--border)] px-3 py-2 last:border-b-0"
-      data-testid={`admin-records-row-${row.key}`}
-    >
-      <span className="block break-words text-sm font-medium text-[color:var(--text-heading)]">{row.title}</span>
-      {row.lines.map((line) => (
-        <span key={line} className={cn(textMuted, "block break-words text-sm")}>
-          {line}
+    <li data-testid={`admin-records-row-${row.key}`}>
+      <div className="work-row">
+        <span className="work-row__text">
+          <span className="work-row__title">{row.title}</span>
+          {row.lines.map((line) => (
+            <span key={line} className="work-row__sub">
+              {line}
+            </span>
+          ))}
         </span>
-      ))}
+      </div>
     </li>
   );
 }
@@ -58,11 +62,11 @@ function RecordRow({ row }: { row: AdminRecordsRow }) {
 function RecordGroup({ section, expandAll }: { section: AdminRecordsSection; expandAll: boolean }) {
   const id = SECTION_ID[section.label];
   return (
-    <section id={id} className={cn(inPageAnchor, "grid gap-2")} aria-label={section.label}>
-      <h2 className={cn(eyebrowText, "px-1")}>
+    <section id={id} className={cn(inPageAnchor, adminStyles.section)} aria-label={section.label}>
+      <WorkSectionLabel>
         {section.label}
-        <span className="nums" data-testid={`${id}-count`}>{` · ${section.rows.length}`}</span>
-      </h2>
+        <span className="tabular-nums" data-testid={`${id}-count`}>{` · ${section.rows.length}`}</span>
+      </WorkSectionLabel>
       <AdminShowAll
         items={section.rows}
         label={section.label}
@@ -70,7 +74,7 @@ function RecordGroup({ section, expandAll }: { section: AdminRecordsSection; exp
         previewRows={RECORDS_PREVIEW_ROWS}
         showCount
         expandAll={expandAll}
-        listClassName={cn(cardSurface, "overflow-hidden")}
+        listClassName="work-card work-rows"
         renderItem={(row) => <RecordRow key={row.key} row={row} />}
       />
     </section>
@@ -111,6 +115,7 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
   }, []);
 
   function copy() {
+    if (!guardExampleAction(state.sample, "copy")) return;
     void copyTextToClipboard(adminRecordsText(sections, now)).then(
       () => setCopyState("copied"),
       () => setCopyState("failed"),
@@ -118,72 +123,91 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function print() {
+    if (!guardExampleAction(state.sample, "export")) return;
     flushSync(() => setPrintAll(true));
     window.print();
   }
 
+  const [signInOpen, setSignInOpen] = useState(false);
+  useModeBandHeading({ eyebrow: "New job", title: "Your Admin records" });
+
   return (
-    <>
-      {loadState === "ready" ? <AdminNavHeader title="Your Admin records" sections={ADMIN_RECORDS_SECTIONS} /> : null}
-      <InformationPageShell testId="admin-records-main">
-        <div className="grid gap-1">
+    <AdminPage testId="admin-records-main">
+      <div className="grid gap-1">
+        <div className="print:hidden">
           <InformationPageBreadcrumbs
             home={{ label: "New job", href: "/admin/new-job" }}
             current="Your Admin records"
           />
-          <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Your Admin records</h1>
-          <p className={cn(textMuted, "text-sm")} data-testid="admin-records-subtitle">
-            As you recorded them · {formatDateEcho(perthCalendarDate(now))}
-          </p>
-          <p className={cn(textMuted, "text-sm")} data-testid="admin-records-take-with-you">
-            For a site or job change, take registration numbers and renewal dates, the contacts and logins you saved,
-            and your New job ticks. Hospital files, patient information, and anything you did not type here are not
-            included.
-          </p>
         </div>
+        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+          Your Admin records
+        </PageTitleUnderBand>
+        <p className="text-sm text-[color:var(--text-muted)]" data-testid="admin-records-subtitle">
+          As you recorded them · {formatDateEcho(perthCalendarDate(now))}
+        </p>
+      </div>
 
-        {loadState === "ready" ? (
-          <div className="flex flex-wrap items-center gap-2 print:hidden" data-testid="admin-records-actions">
-            <Button variant="secondary" size="sm" icon={Copy} onClick={copy} testId="admin-records-copy">
+      {loadState === "ready" ? (
+        <div className="print:hidden">
+          <AdminNavHeader title="Your Admin records" sections={ADMIN_RECORDS_SECTIONS} />
+        </div>
+      ) : null}
+
+      {loadState === "failed" ? (
+        <AdminLoadFailed reason={state.loadError} onRetry={state.retry} testId="admin-records-load-failed" />
+      ) : loadState === "loading" ? (
+        // Design point 11: skeletons while loading, never an empty-looking page.
+        <div className="grid gap-5" data-testid="admin-records-loading" aria-busy="true">
+          <span className="sr-only">Loading your records</span>
+          <AdminSkeleton className="h-36" />
+          <AdminSkeleton className="h-24" />
+        </div>
+      ) : loadState === "signed-out" ? (
+        <WorkStateNotice
+          kind="signed-out"
+          title="Sign in to see your Admin records"
+          body="They are kept for your signed-in account only."
+          onSignIn={() => setSignInOpen(true)}
+          signInTestId="admin-records-signed-out-sign-in"
+          testId="admin-records-signed-out"
+        />
+      ) : (
+        <>
+          {sections.map((section) => (
+            <RecordGroup key={section.label} section={section} expandAll={printAll} />
+          ))}
+          {sections.length === 0 ? (
+            <WorkCard>
+              <WorkEmpty icon={FileText} title="Nothing recorded yet." testId="admin-records-empty" />
+            </WorkCard>
+          ) : null}
+        </>
+      )}
+
+      <AdminNote testId="admin-records-take-with-you">
+        For a site or job change, take registration numbers and renewal dates, the contacts and logins you saved, and
+        your New job ticks. Hospital files, patient information, and anything you did not type here are not included.
+      </AdminNote>
+
+      {loadState === "ready" ? (
+        <div className="contents print:hidden" data-testid="admin-records-actions">
+          {/* The dock sits last and sticks to the foot of the screen, as on every work page. Its wrapper draws
+              no box (`contents`), so the page itself is what it sticks within. */}
+          <WorkDock aria-label="Record actions">
+            <WorkButton icon={Copy} onClick={copy} testId="admin-records-copy">
               {copyState === "copied" ? "Copied" : copyState === "failed" ? "Could not copy" : "Copy"}
-            </Button>
-            <Button variant="secondary" size="sm" icon={Printer} onClick={print} testId="admin-records-print">
+            </WorkButton>
+            <WorkButton variant="secondary" icon={Printer} onClick={print} testId="admin-records-print">
               Print
-            </Button>
-            <span className="sr-only" role="status">
-              {copyState === "copied" ? "Copied" : copyState === "failed" ? "Could not copy" : ""}
-            </span>
-          </div>
-        ) : null}
-
-        {loadState === "failed" ? (
-          <AdminLoadFailed reason={state.loadError} onRetry={state.retry} testId="admin-records-load-failed" />
-        ) : loadState === "loading" ? (
-          // Design point 11: skeletons while loading, never an empty-looking page.
-          <ModeModuleSkeleton rows={4} twoLine eyebrow testId="admin-records-loading" />
-        ) : loadState === "signed-out" ? (
-          <p
-            className={cn(cardSurface, cardPadding.compact, textMuted, "text-sm")}
-            data-testid="admin-records-signed-out"
-          >
-            Sign in to see your Admin records. They are kept for your signed-in account only.
-          </p>
-        ) : (
-          <>
-            {sections.map((section) => (
-              <RecordGroup key={section.label} section={section} expandAll={printAll} />
-            ))}
-            {sections.length === 0 ? (
-              <p
-                className={cn(cardSurface, cardPadding.compact, textMuted, "text-sm")}
-                data-testid="admin-records-empty"
-              >
-                Nothing recorded yet.
-              </p>
-            ) : null}
-          </>
-        )}
-      </InformationPageShell>
-    </>
+            </WorkButton>
+          </WorkDock>
+          <span className="sr-only" role="status" aria-live="polite">
+            {copyState === "copied" ? "Copied" : copyState === "failed" ? "Could not copy" : ""}
+          </span>
+        </div>
+      ) : null}
+      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
+    </AdminPage>
   );
 }

@@ -4722,6 +4722,33 @@ export type Database = {
         "owner_id" | "ref" | "due_at" | "endpoint"
       >;
       alert_brief_sent: GeneratedTable<{ owner_id: string; perth_date: string; sent_at: string }, "owner_id" | "perth_date">;
+      work_admin_paperwork: GeneratedTable<{ owner_id: string; record: Json | null; updated_at: string }, "owner_id">;
+      work_backups: GeneratedTable<
+        { owner_id: string; section: string; record: Json | null; updated_at: string },
+        "owner_id" | "section"
+      >;
+      roster_rotation_rounds: GeneratedTable<
+        {
+          id: string;
+          service_id: string;
+          status: string;
+          setup: Json;
+          locks: Json;
+          allocation: Json | null;
+          admin_name: string;
+          version: number;
+          created_by: string | null;
+          created_at: string;
+          opened_at: string | null;
+          published_at: string | null;
+          updated_at: string;
+        },
+        "service_id" | "setup" | "admin_name"
+      >;
+      roster_rotation_preferences: GeneratedTable<
+        { round_id: string; user_id: string; ranking: Json; submitted_at: string | null; updated_at: string },
+        "round_id" | "user_id"
+      >;
     };
     Views: {
       document_strict_gate_status: {
@@ -4818,6 +4845,7 @@ export type Database = {
       };
       service_member_active: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
       roster_can_invite: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
+      roster_rotation_can_manage: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
       cme_confirm_year: { Args: { p_owner_id: string; p_set: Json }; Returns: string };
       cme_save_plan_goals: { Args: { p_owner_id: string; p_year_id: string; p_goals: Json }; Returns: Json };
       cme_save_plan_goals_checked: {

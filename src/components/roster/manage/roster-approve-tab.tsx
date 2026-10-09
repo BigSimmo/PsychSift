@@ -3,6 +3,7 @@
 import { ArrowDown, CheckCheck, Eye, Hourglass } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { RosterStat } from "@/components/roster/roster-ui";
 import { goToNeedsYou } from "@/components/roster/team/calendar/needs-you-strip";
 import { useRosterRead } from "@/components/roster/use-roster-team";
@@ -22,8 +23,8 @@ export type SharedManageReload = {
 /** A read that answered with anything but data (an error, signed out, unavailable). */
 const readFailed = (status: string) => status !== "ready" && status !== "loading";
 
-/** Same layout as `RosterStats`, as a list so the figures are read as a set. */
-const STATS_GRID = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,9.5rem),1fr))] gap-3";
+/** The three figures on one row at every width, as a list so they are read as a set (no tile left alone). */
+const STATS_GRID = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,5.5rem),1fr))] gap-2";
 
 /**
  * The manager's Inbox: one list of everything waiting on them, in order —
@@ -79,20 +80,22 @@ export function RosterApproveTab({
   const [decision, setDecision] = useState<ManagerDecision | null>(null);
   if (!manage.data || !people.data) {
     const failed = manage.status === "error" || people.status === "error";
+    const message = manage.message ?? people.message;
+    if (!message) return <WorkStateLoading label="Loading requests…" />;
     return (
-      <div role={failed ? "alert" : "status"}>
-        <p>{manage.message ?? people.message ?? "Loading requests…"}</p>
-        {failed ? (
-          <Button
-            onClick={() => {
-              manage.reload();
-              people.reload();
-            }}
-          >
-            Try again
-          </Button>
-        ) : null}
-      </div>
+      <WorkStateNotice
+        kind="error"
+        title={message}
+        role={failed ? "alert" : "status"}
+        onRetry={
+          failed
+            ? () => {
+                manage.reload();
+                people.reload();
+              }
+            : undefined
+        }
+      />
     );
   }
   const names = new Map(
@@ -118,14 +121,15 @@ export function RosterApproveTab({
     <section className="grid gap-4" aria-label="Inbox">
       <ul className={STATS_GRID} aria-label="Summary">
         <li>
-          <RosterStat icon={Hourglass} label="Waiting" value={waiting} testId="roster-stat-waiting" />
+          <RosterStat stacked icon={Hourglass} label="Waiting" value={waiting} testId="roster-stat-waiting" />
         </li>
         <li>
-          <RosterStat icon={CheckCheck} label="Auto-approved" value={auto} testId="roster-stat-auto" />
+          <RosterStat stacked icon={CheckCheck} label="Auto-approved" value={auto} testId="roster-stat-auto" />
         </li>
         {seen ? (
           <li>
             <RosterStat
+              stacked
               icon={Eye}
               label={`Seen roster v${seen.version}`}
               value={`${seen.seen} of ${seen.members}`}
@@ -146,7 +150,10 @@ export function RosterApproveTab({
         </div>
       ) : null}
       {listed ? (
-        <ul className="divide-y rounded-xl border" data-testid="roster-inbox-list">
+        <ul
+          className="divide-y divide-[color:var(--border)] rounded-xl border border-[color:var(--border)]"
+          data-testid="roster-inbox-list"
+        >
           {listedSwaps.map((swap) => (
             <li key={swap.id} data-inbox-kind="swap">
               <button
@@ -181,8 +188,9 @@ export function RosterApproveTab({
           ))}
           {overview && assignments.data
             ? gaps.map(({ date, need }) => (
-                <li key={`${date}-${need.id}`} data-inbox-kind="short" className="p-2">
+                <li key={`${date}-${need.id}`} data-inbox-kind="short">
                   <RosterCoverGap
+                    inList
                     date={date}
                     need={need}
                     assignments={assignments.data!.assignments}
@@ -211,7 +219,7 @@ export function RosterApproveTab({
           </Button>
         </div>
       ) : overview && !coverReady ? (
-        <p role="status">Loading cover…</p>
+        <WorkStateLoading label="Loading cover…" />
       ) : null}
       {leave.data?.leave.length ? (
         <section className="grid gap-2">

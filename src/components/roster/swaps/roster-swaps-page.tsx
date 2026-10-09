@@ -7,6 +7,7 @@ import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { RosterSentBar, type SentReceipt } from "@/components/roster/requests/roster-sent-bar";
 import { kindOf, shiftTimes, useRosterNow } from "@/components/roster/roster-format";
@@ -20,11 +21,9 @@ import {
   RosterNote,
   RosterRow,
   RosterSectionHead,
-  rosterOutlineButton,
 } from "@/components/roster/roster-list";
-import { SwapAnswerCard } from "@/components/roster/swaps/swap-flow-sheet";
+import { SwapAnswerCard } from "@/components/roster/swaps/swap-answer-card";
 import { SwapProgressLine } from "@/components/roster/swaps/swap-progress-line";
-import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterRead, useRosterTeams, postRosterAction } from "@/components/roster/use-roster-team";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
@@ -36,10 +35,11 @@ import { gradeRank, placementProblem } from "@/lib/roster/team/eligibility";
 import type { RosterAction, RosterManageSwap, RosterOpenShift, RosterSwap } from "@/lib/roster/team/model";
 import { requestStatusWords } from "@/lib/roster/team/request-status";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
-import { ArrowLeftRight, CalendarOff, CheckCircle2, HandHelping, Info, Plane } from "lucide-react";
+import { ArrowLeftRight, CalendarOff, CheckCircle2, HandHelping, Info, Plane, Users } from "lucide-react";
+import { useModeBandCount, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
-import { RosterNewButton } from "@/components/roster/roster-new-button";
-import { usePhoneFooterLayerScrollHidden } from "@/components/clinical-dashboard/phone-footer-layer-portal";
+import { RosterNewButton, useRosterNewButtonClearance } from "@/components/roster/roster-new-button";
 
 const activeOpen = (item: RosterOpenShift) =>
   item.status === "reported" || item.status === "open" || item.status === "claimed";
@@ -65,16 +65,7 @@ const timeRange = (item: { startsAt: string; endsAt: string }) => {
 const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
 
 function TryAgainNote({ children, onRetry }: { children: ReactNode; onRetry: () => void }) {
-  return (
-    <div className="grid gap-2">
-      <RosterNote icon={Info} role="alert">
-        <p>{children}</p>
-      </RosterNote>
-      <button type="button" className={cn(rosterOutlineButton, "justify-self-start px-4")} onClick={onRetry}>
-        Try again
-      </button>
-    </div>
-  );
+  return <WorkStateNotice kind="error" title={children} onRetry={onRetry} />;
 }
 
 function EmptyRow({ children }: { children: string }) {
@@ -88,7 +79,7 @@ function EmptyRow({ children }: { children: string }) {
 /** Swaps and open shifts for one team. Answers are session-only React state; nothing is stored on the device. */
 export function RosterSwapsPage() {
   const now = useRosterNow();
-  const phoneFooterHidden = usePhoneFooterLayerScrollHidden() === true;
+  const newButtonClearance = useRosterNewButtonClearance();
   const teams = useRosterTeams();
   const ownShifts = useRosterShifts();
   const enabled = useMemo(() => teams.data?.teams.filter((team) => team.enabled) ?? [], [teams.data]);
@@ -344,9 +335,14 @@ export function RosterSwapsPage() {
   }
 
   const ready = !!serviceId && !!actorId && requests.status === "ready";
+  // The band's eyebrow and the Swaps tab count (mockup `rost_swaps`), only from loaded swaps.
+  const answerWords = needsYou.length ? `${needsYou.length} to answer` : "Nothing to answer";
+  const sentWords = sentSwaps.length ? ` · ${sentSwaps.length} sent` : "";
+  useModeBandHeading(ready ? { eyebrow: `${answerWords}${sentWords}` } : null);
+  useModeBandCount("swaps", ready ? needsYou.length || null : null);
 
   return (
-    <InformationPageShell testId="roster-swaps-page" className={phoneFooterHidden ? "max-sm:pb-4" : "max-sm:pb-20"}>
+    <InformationPageShell testId="roster-swaps-page" className={newButtonClearance}>
       <RosterPageHeader
         icon={ArrowLeftRight}
         eyebrow="Roster"
@@ -354,7 +350,7 @@ export function RosterSwapsPage() {
         subtitle={
           <>
             Swaps and open shifts. To start a swap, tap one of your shifts on the{" "}
-            <Link href="/roster/team" className="underline underline-offset-2">
+            <Link href="/roster/team" className="work-hit underline underline-offset-2">
               Team calendar
             </Link>
             .
@@ -381,7 +377,6 @@ export function RosterSwapsPage() {
         }
       />
       <div className="grid min-w-0 gap-3" data-mode-identity="roster">
-        <RosterSampleNotice sample={teams.data?.sample} />
         {enabled.length > 1 ? (
           <label className="grid max-w-sm gap-1 text-sm text-[color:var(--text-muted)]">
             Team
@@ -404,11 +399,7 @@ export function RosterSwapsPage() {
             <p>Choose a team to see its swaps.</p>
           </RosterNote>
         ) : null}
-        {teams.status === "loading" ? (
-          <p role="status" className="mx-1 text-sm text-[color:var(--text-muted)]">
-            Loading your teams…
-          </p>
-        ) : null}
+        {teams.status === "loading" ? <WorkStateLoading label="Loading your teams…" rows={2} /> : null}
         {teams.status === "signed-out" ? (
           <RosterSignInNotice testId="roster-swaps-signed-out">Sign in to see your swaps.</RosterSignInNotice>
         ) : null}
@@ -421,9 +412,18 @@ export function RosterSwapsPage() {
         ) : null}
         {teams.status === "error" ? <TryAgainNote onRetry={teams.reload}>{teams.message}</TryAgainNote> : null}
         {teams.status === "ready" && !enabled.length ? (
-          <RosterNote icon={Info}>
-            <p>No confirmed team yet, so there are no swaps to show.</p>
-          </RosterNote>
+          <WorkCard testId="roster-swaps-no-team">
+            <WorkEmpty
+              icon={Users}
+              title="No team yet"
+              body="No confirmed team yet, so there are no swaps to show. Swaps happen inside a roster team: join one with the invite link or code from your roster manager."
+              action={
+                <WorkButton icon={Users} href="/roster/join">
+                  Join a team
+                </WorkButton>
+              }
+            />
+          </WorkCard>
         ) : null}
         {teams.status === "ready" && serviceId && !actorId ? (
           <TryAgainNote onRetry={teams.reload}>

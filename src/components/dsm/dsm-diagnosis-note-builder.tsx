@@ -2,6 +2,7 @@
 
 import { MessageSquareText, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { Button } from "@/components/ui/button";
@@ -39,15 +40,38 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
   // wording on screen matches the wording the note will carry.
   const rowNoun = isDsmCriteria ? "criterion" : "key feature";
 
-  const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>({});
-  const [specifiers, setSpecifiers] = useState<string[]>([]);
-  const [specifierText, setSpecifierText] = useState("");
-  const [excluded, setExcluded] = useState<string[]>([]);
-  const [includeCriterionText, setIncludeCriterionText] = useState(true);
+  const initialDraft = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const draft = sessionStorage.getItem(`psychsift_dsm_draft_${record.icdCode}`);
+      return draft ? JSON.parse(draft) : null;
+    } catch {
+      return null;
+    }
+  }, [record.icdCode]);
+
+  const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>(() => initialDraft?.statuses ?? {});
+  const [specifiers, setSpecifiers] = useState<string[]>(() => initialDraft?.specifiers ?? []);
+  const [specifierText, setSpecifierText] = useState(() => initialDraft?.specifierText ?? "");
+  const [excluded, setExcluded] = useState<string[]>(() => initialDraft?.excluded ?? []);
+  const [includeCriterionText, setIncludeCriterionText] = useState(() => initialDraft?.includeCriterionText ?? true);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const copyTimer = useRef<number | null>(null);
 
   const criterionKey = (label: string, index: number) => label || String(index + 1);
+
+  const isDirty =
+    Object.keys(statuses).length > 0 || specifiers.length > 0 || specifierText.trim().length > 0 || excluded.length > 0;
+  useDirtyStateGuard(isDirty);
+
+  useEffect(() => {
+    if (isDirty || !includeCriterionText) {
+      sessionStorage.setItem(
+        `psychsift_dsm_draft_${record.icdCode}`,
+        JSON.stringify({ statuses, specifiers, specifierText, excluded, includeCriterionText }),
+      );
+    }
+  }, [record.icdCode, isDirty, statuses, specifiers, specifierText, excluded, includeCriterionText]);
 
   const note = useMemo(
     () =>
@@ -72,36 +96,6 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
     return list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
   }
 
-  const storageKey = `psychsift:draft:dsm-note:${record.icdCode || record.title}`;
-
-  const isDirty = useMemo(
-    () =>
-      Object.keys(statuses).length > 0 ||
-      specifiers.length > 0 ||
-      specifierText.trim().length > 0 ||
-      excluded.length > 0,
-    [statuses, specifiers, specifierText, excluded],
-  );
-
-  // Restore draft from sessionStorage on mount
-  useEffect(() => {
-    try {
-      const saved = window.sessionStorage.getItem(storageKey);
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      queueMicrotask(() => {
-        if (parsed.statuses) setStatuses(parsed.statuses);
-        if (Array.isArray(parsed.specifiers)) setSpecifiers(parsed.specifiers);
-        if (typeof parsed.specifierText === "string") setSpecifierText(parsed.specifierText);
-        if (Array.isArray(parsed.excluded)) setExcluded(parsed.excluded);
-        if (typeof parsed.includeCriterionText === "boolean") setIncludeCriterionText(parsed.includeCriterionText);
-      });
-    } catch {
-      // Ignore corrupted session storage
-    }
-  }, [storageKey]);
-
-  // Prevent accidental navigation when form is dirty
   useEffect(() => {
     if (!isDirty) return;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -112,28 +106,6 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
-  // Persist draft to sessionStorage on state changes
-  useEffect(() => {
-    try {
-      if (isDirty) {
-        window.sessionStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            statuses,
-            specifiers,
-            specifierText,
-            excluded,
-            includeCriterionText,
-          }),
-        );
-      } else {
-        window.sessionStorage.removeItem(storageKey);
-      }
-    } catch {
-      // Ignore quota errors
-    }
-  }, [isDirty, storageKey, statuses, specifiers, specifierText, excluded, includeCriterionText]);
-
   function resetBuilder() {
     setStatuses({});
     setSpecifiers([]);
@@ -141,7 +113,7 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
     setExcluded([]);
     setIncludeCriterionText(true);
     try {
-      window.sessionStorage.removeItem(storageKey);
+      sessionStorage.removeItem(`psychsift_dsm_draft_${record.icdCode}`);
     } catch {
       // Ignore storage errors
     }

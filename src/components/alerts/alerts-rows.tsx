@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, Lock, type LucideIcon } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { modeDot, modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
+import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
+import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 
@@ -14,20 +15,32 @@ import { cn, eyebrowText } from "@/components/ui-primitives";
  * because ModeRow only links; these rows open a sheet.
  */
 
-/** A row that opens a sheet: title, secondary line, chevron. */
+/**
+ * A row that opens a sheet: an optional area icon, title, secondary line, then a chevron, or an on/off
+ * switch beside it (the mockup's Morning brief and Quiet hours), which stays a separate tap from the row.
+ */
 export function AlertsButtonRow({
   title,
   subtitle,
   onSelect,
+  icon: Icon,
+  mode,
+  toggle,
   testId,
 }: {
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
   readonly onSelect: () => void;
+  /** A round icon in the area's colour before the title. */
+  readonly icon?: LucideIcon;
+  /** The area the icon takes its colour from, e.g. `roster`. */
+  readonly mode?: string;
+  /** An on/off switch at the row's end, in place of the chevron. */
+  readonly toggle?: { readonly enabled: boolean; readonly onToggle: () => void; readonly label: string };
   readonly testId?: string;
 }) {
   return (
-    <li className={cn(modeInsetHairline, "flex min-w-0")}>
+    <li className={cn(modeInsetHairline, "flex min-w-0 items-center")}>
       <button
         type="button"
         onClick={onSelect}
@@ -39,14 +52,30 @@ export function AlertsButtonRow({
           "flex w-full min-w-0 items-center gap-x-3 pl-3 pr-2 text-left",
         )}
       >
+        {Icon ? (
+          <span
+            aria-hidden="true"
+            data-mode-identity={mode}
+            className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
+          >
+            <Icon aria-hidden="true" className="size-4" strokeWidth={2} />
+          </span>
+        ) : null}
         <span className="grid min-w-0 flex-1 gap-0.5 py-1">
           <span className={cn(modeNameText, "break-words text-base-minus leading-5 text-[color:var(--text-heading)]")}>
             {title}
           </span>
           {subtitle ? <span className={cn(modeSecondaryText, "break-words leading-5")}>{subtitle}</span> : null}
         </span>
-        <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+        {toggle ? null : (
+          <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+        )}
       </button>
+      {toggle ? (
+        <span className="shrink-0 pr-1.5">
+          <ToggleSwitch enabled={toggle.enabled} onToggle={toggle.onToggle} aria-label={toggle.label} />
+        </span>
+      ) : null}
     </li>
   );
 }
@@ -66,9 +95,15 @@ export function AlertsQuietRow({
 }) {
   return (
     <li
-      className={cn(modeInsetHairline, modeRowHeight.double, "flex min-w-0 items-center pl-3 pr-1")}
+      className={cn(modeInsetHairline, modeRowHeight.double, "flex min-w-0 items-center gap-x-3 pl-3 pr-1")}
       data-testid={testId}
     >
+      <span
+        aria-hidden="true"
+        className="grid size-7 shrink-0 place-items-center rounded-full bg-[color:var(--work-wash)] text-[color:var(--text-muted)]"
+      >
+        <Lock aria-hidden="true" className="size-3.5" />
+      </span>
       <span className="grid min-w-0 flex-1 gap-0.5 py-1">
         <span className={cn(modeNameText, "break-words text-base-minus leading-5 text-[color:var(--text-muted)]")}>
           {title}
@@ -76,17 +111,6 @@ export function AlertsQuietRow({
         <span className={cn(modeSecondaryText, "break-words leading-5")}>{reason}</span>
       </span>
     </li>
-  );
-}
-
-/** The area's dot in its mode colour, before the subtitle (decorative: the words carry the meaning). */
-export function AreaDot({ mode }: { readonly mode: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      data-mode-identity={mode}
-      className={cn(modeDot, "mr-1.5 align-middle bg-[color:var(--mode-identity)]")}
-    />
   );
 }
 

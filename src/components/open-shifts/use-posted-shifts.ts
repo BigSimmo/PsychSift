@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
 import { fetchRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { setOpenShiftsIsPoster } from "@/lib/teaching/page-visibility";
 import { useOnlineStatus } from "@/lib/use-online-status";
@@ -32,7 +33,8 @@ export type PostedTeam = {
 };
 
 export type PostedShiftsState = {
-  readonly status: "loading" | "ready" | "signed-out" | "not-poster" | "error";
+  /** `no-team`: in no Roster team at all; `not-poster`: in a team, but not one of its roster managers. */
+  readonly status: "loading" | "ready" | "signed-out" | "no-team" | "not-poster" | "error";
   readonly shifts: readonly PostedShift[];
   readonly teams: readonly PostedTeam[];
   readonly failedTeams: readonly string[];
@@ -85,6 +87,9 @@ async function loadTeam(team: RosterTeam): Promise<{ shifts: PostedShift[]; team
 export function usePostedShifts(): PostedShiftsState {
   const online = useOnlineStatus();
   const teams = useRosterTeams();
+  // With example data on, the example team's manager side shows here as it does in Roster's Manage team,
+  // so the poster's screens are not a dead end. Its answers are example receipts: nothing is saved.
+  const example = useSignedOutSample("rost");
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
@@ -94,11 +99,11 @@ export function usePostedShifts(): PostedShiftsState {
     setGeneration((value) => value + 1);
   }, []);
 
-  const managed = useMemo(
-    () =>
-      teams.data?.sample ? [] : (teams.data?.teams ?? []).filter((team) => team.enabled && team.role === "manager"),
-    [teams.data],
+  const memberOf = useMemo(
+    () => (teams.data?.sample && !example ? [] : (teams.data?.teams ?? []).filter((team) => team.enabled)),
+    [teams.data, example],
   );
+  const managed = useMemo(() => memberOf.filter((team) => team.role === "manager"), [memberOf]);
   const key = managed
     .map((team) => team.serviceId)
     .sort()
@@ -139,6 +144,7 @@ export function usePostedShifts(): PostedShiftsState {
   const base = { reload, offline: !online, actorId };
   const empty = { shifts: [], teams: [], failedTeams: [], readAt: null, refreshFailed: false, message: null };
   if (teams.status === "signed-out") return { ...base, ...empty, status: "signed-out" };
+  if (teams.status === "ready" && memberOf.length === 0) return { ...base, ...empty, status: "no-team" };
   if (teams.status === "ready" && managed.length === 0) return { ...base, ...empty, status: "not-poster" };
   const current = loaded && loaded.key === key && loaded.actorId === actorId ? loaded : null;
   if (current) {

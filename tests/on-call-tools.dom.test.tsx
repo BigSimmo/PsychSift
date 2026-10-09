@@ -42,6 +42,15 @@ import { OnCallCalendarPage } from "@/components/on-call/on-call-calendar-page";
 import { OnCallFirstNightPage } from "@/components/on-call/on-call-first-night-page";
 import { onCallLadderAnsweredMarkId } from "@/components/on-call/now/needs-you";
 
+/**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
+
 const AFTER_HOURS = new Date("2026-09-26T14:00:00.000Z"); // Saturday 22:00 Perth
 const HOSPITAL_LADDER_ID = "40000000-0000-4000-8000-000000000001";
 const EMERGENCY_ID = "40000000-0000-4000-8000-000000000002";
@@ -130,7 +139,7 @@ describe("who to call now (Escalate)", () => {
 
   it("puts the after-hours steps first at night, with a call button, and keeps the rest below", () => {
     state.entries = [LADDER];
-    render(<OnCallCallNowPage now={new Date(2026, 8, 22, 23, 0)} />);
+    render(<OnCallCallNowPage now={perthWall(2026, 8, 22, 23, 0)} />);
     expect(screen.getByTestId("on-call-now-period")).toHaveTextContent("After hours");
     const now = screen.getByTestId("on-call-now-steps");
     expect(
@@ -148,7 +157,7 @@ describe("who to call now (Escalate)", () => {
   it("switches the ladder with the situation chips", async () => {
     const user = userEvent.setup();
     state.entries = [LADDER, { ...LADDER, id: "fire", slug: "fire", title: "Fire alarm", sortOrder: 1 }];
-    render(<OnCallCallNowPage now={new Date(2026, 8, 22, 10, 0)} />);
+    render(<OnCallCallNowPage now={perthWall(2026, 8, 22, 10, 0)} />);
     const chips = screen.getByTestId("on-call-now-scenarios");
     expect(within(chips).getByRole("button", { name: "Agitated patient on the ward" })).toHaveAttribute(
       "aria-pressed",
@@ -162,11 +171,11 @@ describe("who to call now (Escalate)", () => {
   it("opens the situation Now linked to, and falls back quietly when the link matches nothing", () => {
     state.entries = [LADDER, { ...LADDER, id: "fire", slug: "fire", title: "Fire alarm", sortOrder: 1 }];
     window.history.replaceState(null, "", "/on-call/now?situation=fire");
-    render(<OnCallCallNowPage now={new Date(2026, 8, 22, 10, 0)} />);
+    render(<OnCallCallNowPage now={perthWall(2026, 8, 22, 10, 0)} />);
     expect(screen.getByRole("button", { name: "Fire alarm" })).toHaveAttribute("aria-pressed", "true");
     cleanup();
     window.history.replaceState(null, "", "/on-call/now?situation=nothing-here");
-    render(<OnCallCallNowPage now={new Date(2026, 8, 22, 10, 0)} />);
+    render(<OnCallCallNowPage now={perthWall(2026, 8, 22, 10, 0)} />);
     expect(screen.getByRole("button", { name: "Agitated patient on the ward" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -175,7 +184,7 @@ describe("who to call now (Escalate)", () => {
   });
 
   it("points to the Playbook when there are no scenarios", () => {
-    render(<OnCallCallNowPage now={new Date(2026, 8, 22, 10, 0)} />);
+    render(<OnCallCallNowPage now={perthWall(2026, 8, 22, 10, 0)} />);
     expect(screen.getByTestId("on-call-now-empty")).toBeInTheDocument();
   });
 
@@ -253,8 +262,8 @@ describe("check these", () => {
   it("updates the review queue when left open overnight", () => {
     vi.useFakeTimers();
     try {
-      const justBeforeMidnight = new Date(2026, 8, 26, 23, 59);
-      const due = new Date(new Date(2026, 8, 27).getTime() + 30 * 86_400_000);
+      const justBeforeMidnight = perthWall(2026, 8, 26, 23, 59);
+      const due = new Date(perthWall(2026, 8, 27).getTime() + 30 * 86_400_000);
       due.setUTCFullYear(due.getUTCFullYear() - 1);
       vi.setSystemTime(justBeforeMidnight);
       state.entries = [entry({ id: "due", section: "contacts", lastVerifiedAt: due.toISOString() })];
@@ -344,16 +353,16 @@ describe("On Call calendar", () => {
         details: { nextOccurrence: "12:30", nextOccurrenceDate: "2026-09-02", recurrenceRule: { frequency: "weekly" } },
       }),
     ];
-    render(<OnCallCalendarPage now={new Date(2026, 8, 30, 9, 0)} />);
+    render(<OnCallCalendarPage now={perthWall(2026, 8, 30, 9, 0)} />);
     const day = screen.getByTestId("on-call-calendar-view-day");
     expect(day).toHaveTextContent("Registrar teaching");
-    expect(day).toHaveTextContent("12:30 pm");
+    expect(day).toHaveTextContent("12:30");
     expect(day).toHaveTextContent("Every week");
   });
 
   it("is titled for what it holds and points to where the shifts are", () => {
     state.entries = [];
-    render(<OnCallCalendarPage now={new Date(2026, 8, 30, 9, 0)} />);
+    render(<OnCallCalendarPage now={perthWall(2026, 8, 30, 9, 0)} />);
     expect(screen.getByRole("heading", { level: 1, name: "Teaching and expiry dates" })).toBeInTheDocument();
     expect(screen.getByTestId("on-call-calendar-shifts-link")).toHaveAttribute("href", "/roster/shifts");
   });
@@ -361,7 +370,7 @@ describe("On Call calendar", () => {
   it("moves today at midnight on a page nobody is touching", () => {
     vi.useFakeTimers();
     try {
-      vi.setSystemTime(new Date(2026, 8, 30, 23, 58));
+      vi.setSystemTime(perthWall(2026, 8, 30, 23, 58));
       state.entries = [];
       render(<OnCallCalendarPage />);
       expect(screen.getByTestId("on-call-calendar-view-day")).toHaveTextContent("Wednesday 30 September · Today");

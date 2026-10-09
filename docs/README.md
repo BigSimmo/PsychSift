@@ -1,6 +1,6 @@
 # PsychSift Documentation Index
 
-_Updated 2026-10-01 - index the on-demand focused-task workflow; Documentation owns._
+_Updated 2026-10-08 — catalogue Context7, CME and live-version guides; clarify issue authority; Documentation owns._
 
 Categorised map of every tracked Markdown document under `docs/`: the load-bearing docs lead
 each category, and an "Also catalogued" list completes it (the immutable
@@ -131,6 +131,8 @@ Every remaining tracked document in this category (architecture and design, plus
 - [decisions/ccz4hb-review-coverage.md](decisions/ccz4hb-review-coverage.md) — Decision: restoring automated review coverage (#CCZ4HB) — the row closed — but see the 2026-09-02 correction below, which removes the premise that decision rested on.
 - [product/clinical-trust-direction.md](product/clinical-trust-direction.md) — Clinical trust product direction — Decision date: 2026-08-23 Decision:
 
+- [cme-adoption-contract.md](cme-adoption-contract.md) — CME adoption contract and evidence requirements
+
 ## Operations runbooks
 
 - [launch-operator-runbook.md](launch-operator-runbook.md) — launch/operational duties and SLO probes
@@ -140,13 +142,14 @@ Every remaining tracked document in this category (architecture and design, plus
 - [disaster-recovery-runbook.md](disaster-recovery-runbook.md) — backup/restore and recovery drills
 - [auth-connection-cap-runbook.md](auth-connection-cap-runbook.md) — Supabase auth connection cap (operator)
 - [staging-setup.md](staging-setup.md) — staging environment bootstrap
+- [live-version-switch.md](live-version-switch.md) — live version-switch behavior and operational checks
 - [database-drift-detection.md](database-drift-detection.md) — schema drift detection (`npm run check:drift`)
 - [supabase-migration-reconciliation.md](supabase-migration-reconciliation.md) — migration drift and repair policy
 - [db-maintenance.md](db-maintenance.md) — Supabase advisor snapshots and the standing disposition per finding class
 - [observability-slos.md](observability-slos.md) — health probes, SLO counters, degraded modes
 - [openai-rag-operations.md](openai-rag-operations.md) — OpenAI/RAG provider operations and modes
-- [outstanding-issues.md](outstanding-issues.md) — single universal task ledger and repository memory
-- [operator-backlog.md](operator-backlog.md) — provider/operator runbook detail (status is canonical in the universal ledger)
+- [outstanding-issues.md](outstanding-issues.md) — protected repository issue history and queue; use the immutable issues inbox
+- [operator-backlog.md](operator-backlog.md) — provider/operator runbook detail; task authority is defined in task-receipts.md
 - [deploy-corrector-public-titles.md](deploy-corrector-public-titles.md) — public-title corrector deploy notes
 - [operator-apply-performance-latency-remediation.md](operator-apply-performance-latency-remediation.md) — operator apply steps for the performance/latency migration batch
 - [reconciliation-playbook.md](reconciliation-playbook.md) — broad chat/worktree reconciliation and archive-safe cleanup (not for ordinary feature work)
@@ -241,6 +244,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/codex-productivity-defaults.md](agents/codex-productivity-defaults.md) — Codex Productivity Defaults
 - [agents/codex-reasoning-effort.md](agents/codex-reasoning-effort.md) — Codex Reasoning Effort Calibration
 - [agents/codex-review-throttling.md](agents/codex-review-throttling.md) — Codex Review Throttling & Thread Resolution — Do not review branches opportunistically.
+- [agents/context7.md](agents/context7.md) — shared library-docs workflow, version matching, authentication and query privacy
 - [agents/cursor-cloud.md](agents/cursor-cloud.md) — Cursor Cloud Specific Instructions — Durable notes for Cloud Agents.
 - [agents/dead-code-deletion.md](agents/dead-code-deletion.md) — Deleting Code You Believe Is Dead — "Nothing imports it" is necessary and nowhere near sufficient.
 - [agents/external-skill-precedence.md](agents/external-skill-precedence.md) — External Skill Precedence and Evidence — User-global skills and output-style plugins are installed outside this repo and know nothing about its contracts.

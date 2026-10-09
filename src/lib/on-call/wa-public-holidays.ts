@@ -1,4 +1,5 @@
 import { onCallLocalDateKey } from "@/lib/on-call/local-date";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 
 /**
  * Western Australian public holidays, as published by the WA Government
@@ -180,13 +181,11 @@ function holidaysFor(year: number): ReadonlySet<string> {
 }
 
 /**
- * Read in the viewer's own zone, like `isOnCallOutOfHours` beside it in "Who do
- * I call now?": the two answers combine into one "in hours or not", so they
- * must read the same clock. A Perth zone here against a device-local hour there
- * would disagree for the eight hours either side of midnight on any device not
- * set to Perth.
+ * Read in the work time zone, like `isOnCallOutOfHours` beside it in "Who do I
+ * call now?": the two answers combine into one "in hours or not", so they must
+ * read the same clock, and both take the same `zone`.
  */
-export function isWaPublicHoliday(now: Date): boolean {
-  const key = onCallLocalDateKey(now);
+export function isWaPublicHoliday(now: Date, zone: string = currentWorkTimeZone()): boolean {
+  const key = onCallLocalDateKey(now, zone);
   return holidaysFor(Number(key.slice(0, 4))).has(key);
 }

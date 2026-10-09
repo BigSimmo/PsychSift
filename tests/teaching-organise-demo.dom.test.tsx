@@ -94,7 +94,7 @@ describe("Organise in the demo", () => {
     const fetchMock = serveFetch(() => null);
     render(<TeachingOrganise demoMode />);
     expect(await screen.findByTestId("teaching-organise-demo")).toHaveTextContent(
-      "no real invitations, membership changes or records are sent",
+      "No real invitations, membership changes or records are sent",
     );
     expect(screen.getByText("Example teaching service")).toBeInTheDocument();
     const soon = screen.getByTestId("teaching-organise-soon");

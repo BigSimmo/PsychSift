@@ -1,11 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { BookOpen, Users } from "lucide-react";
+import type { ReactNode } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
 import { formatCmeHours } from "@/components/cme/cme-dashboard-next-step";
+import { CmeFlatList, CmeFlatRow, CmeGroup } from "@/components/cme/cme-flat-list";
+import { CmeHint, CmeKvCard, CmeMiniMeter } from "@/components/cme/cme-work-kit";
+import { WorkButton } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { isHoursRequirementShape } from "@/lib/cme/requirement-gaps";
 import type { CmeRoutineGapScenario } from "@/lib/cme/pace";
 import { describeConfirmedSource } from "@/lib/cme/presets";
 import { formatRoutineDueDate } from "@/lib/cme/routines";
@@ -40,6 +43,13 @@ function contribution(entry: CmeEntry, requirement?: CmeRequirement): number {
   return 0;
 }
 
+const shortWeekday = new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "UTC" });
+
+/** "Thu 31 Dec" for the year's last day. */
+function yearEndLabel(year: number): string {
+  return `${shortWeekday.format(new Date(Date.UTC(year, 11, 31)))} 31 Dec`;
+}
+
 function filteredLogHref(year: number, requirement?: CmeRequirement): string {
   const category = requirement?.spec.shape === "hours-in-category" ? requirement.spec.category : null;
   return `/cme/log?year=${year}${category ? `&category=${category}` : ""}`;
@@ -61,6 +71,10 @@ export function CmeTodayDetailSheet({
   totalHours,
   totalGap,
   gapScenarios,
+  routineEstimateHours = 0,
+  remainingAfterRoutines = null,
+  stillToFindWeekly = null,
+  weeks = null,
 }: {
   detail: CmeTodayDetail;
   onClose: () => void;
@@ -71,6 +85,14 @@ export function CmeTodayDetailSheet({
   totalHours: number;
   totalGap: number;
   gapScenarios: readonly CmeRoutineGapScenario[];
+  /** What the owner's routines would likely add by 31 December (the catch-up plan). */
+  routineEstimateHours?: number;
+  /** Hours still to find after routines, or null when there is no plan. */
+  remainingAfterRoutines?: number | null;
+  /** That figure spread over the weeks left, or null when a weekly figure means nothing. */
+  stillToFindWeekly?: number | null;
+  /** The year in weeks chart, moved here from the hero. */
+  weeks?: ReactNode;
 }) {
   const detailRequirement =
     detail && detail !== "hours" && detail !== "gap"
@@ -87,38 +109,94 @@ export function CmeTodayDetailSheet({
       open={detail !== null}
       onClose={onClose}
       title={detail === "gap" ? "Close the gap" : (detailRequirement?.label ?? "CPD hours")}
-      description={detail === "gap" ? "Illustrative routine scenarios" : "What makes up this figure"}
+      description={
+        detail === "gap"
+          ? `${formatCmeHours(totalGap)} h to go by ${yearEndLabel(set.year)}`
+          : "What makes up this figure"
+      }
       testId="cme-today-detail-sheet"
     >
       {detail === "gap" ? (
-        <div className="space-y-4 text-sm text-[color:var(--text)]">
-          <p>
+        <div className="grid gap-4 text-sm text-[color:var(--text)]">
+          <CmeKvCard
+            label="The gap"
+            rows={[
+              { label: "Logged", value: `${formatCmeHours(totalHours)} h` },
+              ...(routineEstimateHours > 0
+                ? [{ label: "Routines likely add", value: `${formatCmeHours(routineEstimateHours)} h` }]
+                : []),
+              {
+                label: "Still to find",
+                value: `${formatCmeHours(remainingAfterRoutines ?? totalGap)} h${
+                  stillToFindWeekly !== null ? ` · ${stillToFindWeekly.toFixed(1)} h a week` : ""
+                }`,
+              },
+            ]}
+          />
+          <CmeHint>
             {formatCmeHours(totalGap)} h remain to your {formatCmeHours(set.totalHours)} h target. This is based on your
             saved entries and the target you confirmed on {formatRoutineDueDate(set.confirmedOn)}.
-          </p>
-          {gapScenarios.length ? (
-            <ul className="space-y-2" data-testid="cme-gap-scenarios">
-              {gapScenarios.map((scenario) => (
-                <li key={scenario.routineId} className={cn(cardSurface, "p-3")}>
-                  <strong>{scenario.title}</strong>: {scenario.occurrences} ×{" "}
-                  {formatCmeHours(scenario.hoursPerOccurrence)} h{` = ${formatCmeHours(scenario.projectedHours)} h`}
-                  {scenario.closesGap ? null : " by 31 Dec, short of the gap on its own"}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No active routine with usual hours is saved. You can still log individual activities.</p>
-          )}
-          <p className={textMuted}>
-            These are examples using your routine templates. Only activities you actually do and save count as CPD; a
+          </CmeHint>
+          {statuses.some((status) => {
+            const requirement = set.requirements.find((item) => item.id === status.requirementId);
+            return requirement && isHoursRequirementShape(requirement.spec.shape) && status.progress;
+          }) ? (
+            <CmeGroup label="Against the minimums">
+              <CmeFlatList>
+                {set.requirements
+                  .filter((requirement) => isHoursRequirementShape(requirement.spec.shape))
+                  .map((requirement) => {
+                    const status = statuses.find((item) => item.requirementId === requirement.id);
+                    if (!status?.progress) return null;
+                    const { value, target } = status.progress;
+                    return (
+                      <CmeFlatRow
+                        key={requirement.id}
+                        title={requirement.label}
+                        subtitle={`${formatCmeHours(value)} of ${formatCmeHours(target)} h · ${status.met ? "reached" : status.summary}`}
+                        end={<CmeMiniMeter fraction={target > 0 ? value / target : 0} />}
+                      />
+                    );
+                  })}
+              </CmeFlatList>
+            </CmeGroup>
+          ) : null}
+          <CmeGroup label="Routines to 31 Dec">
+            {gapScenarios.length ? (
+              <CmeFlatList testId="cme-gap-scenarios">
+                {gapScenarios.map((scenario) => (
+                  <CmeFlatRow
+                    key={scenario.routineId}
+                    lead={
+                      /peer|group|supervis|balint|meeting/i.test(scenario.title) ? (
+                        <Users aria-hidden="true" strokeWidth={2} />
+                      ) : (
+                        <BookOpen aria-hidden="true" strokeWidth={2} />
+                      )
+                    }
+                    title={scenario.title}
+                    subtitle={`${scenario.occurrences} × ${formatCmeHours(scenario.hoursPerOccurrence)} h = ${formatCmeHours(scenario.projectedHours)} h by 31 Dec${scenario.closesGap ? "" : ", short of the gap on its own"}`}
+                    end={<b className="nums whitespace-nowrap">{`${formatCmeHours(scenario.projectedHours)} h`}</b>}
+                  />
+                ))}
+              </CmeFlatList>
+            ) : (
+              <CmeHint>No active routine with usual hours is saved. You can still log individual activities.</CmeHint>
+            )}
+          </CmeGroup>
+          {weeks ? <CmeGroup label="Each week">{weeks}</CmeGroup> : null}
+          <CmeHint>
+            These are examples using your routine templates. Only activities you actually do and save count as CPD. A
             routine never logs itself. Category and other requirements may still need attention.
-          </p>
-          <Link
-            href={`/cme/routines?year=${set.year}`}
-            className="inline-flex min-h-tap items-center underline underline-offset-2"
-          >
-            Review routines
-          </Link>
+          </CmeHint>
+          <div className="cpd-two">
+            <WorkButton variant="secondary" href={`/cme/routines?year=${set.year}`}>
+              Review routines
+            </WorkButton>
+            <WorkButton variant="primary" href={`/cme/log?year=${set.year}`}>
+              View log
+            </WorkButton>
+          </div>
         </div>
       ) : (
         <div className="space-y-4 text-sm text-[color:var(--text)]">
@@ -158,14 +236,11 @@ export function CmeTodayDetailSheet({
               </ul>
             </>
           )}
-          <Link
-            href={filteredLogHref(set.year, detailRequirement)}
-            className="inline-flex min-h-tap items-center underline underline-offset-2"
-          >
+          <WorkButton variant="secondary" size="wide" href={filteredLogHref(set.year, detailRequirement)}>
             {detailRequirement?.spec.shape === "hours-in-category"
               ? `View ${cmeCategoryLabels[detailRequirement.spec.category].toLowerCase()} in Log`
               : "View this year's Log"}
-          </Link>
+          </WorkButton>
         </div>
       )}
     </Sheet>

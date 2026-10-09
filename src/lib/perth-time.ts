@@ -1,12 +1,20 @@
 import { CALENDAR_UTC_OFFSET_MINUTES } from "@/lib/calendar/calendar-event";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zonedWallToIso, zoneOffsetMs } from "@/lib/work-time/format";
+import { DEFAULT_WORK_TIME_ZONE, isWorkTimeZone } from "@/lib/work-time/zones";
 
 /**
- * Shared Perth wall-clock and calendar-date arithmetic.
+ * Shared wall-clock and calendar-date arithmetic in the WORK time zone.
  *
- * Perth (AWST) is UTC+8 with no daylight saving time. A fixed UTC+8 offset is
- * exact year-round, identical to the offset used in the calendar and on-call
- * modules. Every function here is pure and ignores device local time zone so
- * calculations and displays remain deterministic regardless of client locale.
+ * The names say Perth because Perth is the default and was once the only zone;
+ * every reader and writer here now takes a trailing `zone`, defaulting to the
+ * one the doctor chose (`currentWorkTimeZone()`, Perth on the server and when
+ * nothing is chosen). Reads and the write (`perthWallToIso`) move together, so
+ * an 08:00 shift typed in Sydney is stored as 08:00 Sydney and shown as 08:00.
+ *
+ * Perth (AWST) is UTC+8 with no daylight saving, so in Perth these are the
+ * same fixed-offset sums they always were. Other zones go through Intl with the
+ * zone named. Nothing here reads the device's own zone.
  */
 
 export const PERTH_TIME_ZONE = "Australia/Perth";
@@ -17,32 +25,43 @@ export const PERTH_OFFSET_MS = PERTH_UTC_OFFSET_MINUTES * 60 * 1000;
  * Derives the Perth calendar date `YYYY-MM-DD` for an instant (Date, ISO string, or epoch ms).
  * Defaults to current time when omitted.
  */
-export function perthCalendarDate(instant: Date | string | number = new Date()): string {
+export function perthCalendarDate(
+  instant: Date | string | number = new Date(),
+  zone: string = currentWorkTimeZone(),
+): string {
   const ms =
     typeof instant === "string" ? Date.parse(instant) : typeof instant === "number" ? instant : instant.getTime();
   if (Number.isNaN(ms)) {
     throw new Error(`perthCalendarDate: invalid instant ${String(instant)}`);
   }
-  return new Date(ms + PERTH_OFFSET_MS).toISOString().slice(0, 10);
+  return new Date(ms + zoneOffsetMs(ms, zone)).toISOString().slice(0, 10);
 }
 
-/** The Perth calendar date of an instant, `YYYY-MM-DD`. */
-export function perthDateOf(instant: string | Date | number = new Date()): string {
-  return perthCalendarDate(instant);
+/** The work-zone (default Perth) calendar date of an instant, `YYYY-MM-DD`. */
+export function perthDateOf(
+  instant: string | Date | number = new Date(),
+  zone: string = currentWorkTimeZone(),
+): string {
+  return perthCalendarDate(instant, zone);
 }
 
-/** The Perth wall-clock time of an instant, `HH:MM`. */
-export function perthTimeOf(instant: string | Date | number): string {
+/** The work-zone (default Perth) wall-clock time of an instant, `HH:MM`. */
+export function perthTimeOf(instant: string | Date | number, zone: string = currentWorkTimeZone()): string {
   const ms =
     typeof instant === "string" ? Date.parse(instant) : typeof instant === "number" ? instant : instant.getTime();
   if (Number.isNaN(ms)) {
     throw new Error(`perthTimeOf: invalid instant ${String(instant)}`);
   }
-  return new Date(ms + PERTH_OFFSET_MS).toISOString().slice(11, 16);
+  return new Date(ms + zoneOffsetMs(ms, zone)).toISOString().slice(11, 16);
 }
 
-/** `YYYY-MM-DD` + `HH:MM` in Perth → ISO instant, or null for an impossible date or time. */
-export function perthWallToIso(date: string, time: string): string | null {
+/**
+ * `YYYY-MM-DD` + `HH:MM` on the work zone's (default Perth) wall clock → ISO
+ * instant, or null for an impossible date or time, or one skipped by a
+ * daylight-saving jump in an eastern zone.
+ */
+export function perthWallToIso(date: string, time: string, zone: string = currentWorkTimeZone()): string | null {
+  if (isWorkTimeZone(zone) && zone !== DEFAULT_WORK_TIME_ZONE) return zonedWallToIso(date, time, zone);
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   const timeMatch = /^(\d{2}):(\d{2})$/.exec(time);
   if (!dateMatch || !timeMatch) return null;
@@ -69,7 +88,7 @@ export function addCalendarDays(date: string, days: number): string {
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
-/** "Mon 3 Oct" for a Perth date. */
+/** "Mon 3 Oct" for a `YYYY-MM-DD` date (already a zone date, so no zone is needed). */
 export function formatPerthDay(date: string): string {
   const parsed = new Date(`${date}T00:00:00Z`);
   return `${WEEKDAYS[parsed.getUTCDay()]} ${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()]}`;

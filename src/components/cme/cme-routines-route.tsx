@@ -7,13 +7,13 @@ import { CmeDateField, useCmeDateChecks } from "@/components/cme/cme-date-field"
 import { useCmeOneTapRoutineLog } from "@/components/cme/cme-one-tap-routine-log";
 import { cmeRoutineLogHref } from "@/components/cme/cme-route-navigation";
 import { CmeRoutinesPage } from "@/components/cme/cme-routines-page";
-import { cardSurface } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import { cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 import {
   cmeRoutineCadenceLabels,
   cmeRoutineCadences,
@@ -108,6 +108,11 @@ export function CmeRoutinesRoute({
       setError("Fix the date before saving.");
       return;
     }
+    // The name is stored and becomes each logged activity's title, so the shared patient-detail check reads it.
+    if (cpdTitlePatientProblem(draft.title)) {
+      setError("Take out the patient details from the routine name to save it.");
+      return;
+    }
     if (demoMode) {
       setError("Demo mode is read-only. Sign in to save routines to a private CPD record.");
       return;
@@ -135,16 +140,16 @@ export function CmeRoutinesRoute({
     }
   }
 
-  async function archive() {
+  async function archive(restore = false) {
     if (!editingId || editingId === "new" || saving) return;
     if (demoMode) {
-      setError("Demo mode is read-only. Sign in to archive a private routine.");
+      setError(`Demo mode is read-only. Sign in to ${restore ? "restore" : "archive"} a private routine.`);
       return;
     }
     setSaving(true);
     setError(null);
     try {
-      const archivedDraft = { ...draft, archivedAt: new Date().toISOString() };
+      const archivedDraft = { ...draft, archivedAt: restore ? null : new Date().toISOString() };
       const response = await fetch(`/api/cme/routines/${editingId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -165,11 +170,8 @@ export function CmeRoutinesRoute({
   return (
     <>
       {editingId ? (
-        <section
-          className="mx-auto mt-6 w-[calc(100%-2rem)] max-w-3xl sm:w-[calc(100%-3rem)]"
-          data-testid="cme-routine-form"
-        >
-          <form onSubmit={(event) => void save(event)} className={cn(cardSurface, "space-y-4 p-4")}>
+        <section className="mx-auto mt-3 w-[calc(100%-1.5rem)] max-w-3xl" data-testid="cme-routine-form">
+          <form onSubmit={(event) => void save(event)} className="work-card work-card--pad space-y-4">
             {/* h2: the page's own "Routines" heading below is its one h1. */}
             <h2
               ref={formHeadingRef}
@@ -217,7 +219,7 @@ export function CmeRoutinesRoute({
               onChange={(event) =>
                 setDraft((current) => ({ ...current, usualHours: Number(event.target.value), usualAllocations: [] }))
               }
-              hint="Changing the duration clears the saved category split; review the split when you log the activity."
+              hint="Changing the duration clears the saved category split. Review the split when you log the activity."
             />
             <CmeDateField
               label="Next due"
@@ -240,9 +242,15 @@ export function CmeRoutinesRoute({
                 Cancel
               </Button>
               {editingId !== "new" ? (
-                <Button type="button" variant="toolbar" onClick={() => void archive()}>
-                  Archive routine
-                </Button>
+                draft.archivedAt ? (
+                  <Button type="button" variant="toolbar" onClick={() => void archive(true)}>
+                    Restore routine
+                  </Button>
+                ) : (
+                  <Button type="button" variant="toolbar" onClick={() => void archive()}>
+                    Archive routine
+                  </Button>
+                )
               ) : null}
             </div>
           </form>

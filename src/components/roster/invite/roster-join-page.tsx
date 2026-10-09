@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
-import { InformationPageShell } from "@/components/information-page-shell";
+import { InformationPageBreadcrumbs, InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { RosterAlertsSwitch } from "@/components/roster/alerts/roster-alerts-section";
@@ -12,6 +12,9 @@ import { Button, buttonFaceClass } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { UserPlus } from "lucide-react";
 import { RosterPageHeader } from "@/components/roster/roster-ui";
+
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { formatZonedDay, zonedToday } from "@/lib/work-time/format";
 
 import { RosterSignInNotice } from "./roster-sign-in-notice";
 
@@ -50,17 +53,9 @@ function joinedCopy(overview: Overview | null): Extract<JoinState, { kind: "join
   };
 }
 
+/** "Fri 9 Oct", or "Fri 9 Apr 2027" when the rotation ends in another year. */
 function formatRotationEnd(value: string): string {
-  const date = new Date(`${value}T12:00:00Z`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: "Australia/Perth",
-  })
-    .format(date)
-    .replace(",", "");
+  return formatZonedDay(value, zonedToday(currentWorkTimeZone()));
 }
 
 export function RosterJoinPage() {
@@ -187,6 +182,8 @@ export function RosterJoinPage() {
   return (
     <InformationPageShell testId="roster-join-main" width="narrow">
       <div className="grid gap-5">
+        {/* The page keeps its own header (no band), so it always offers a way back. */}
+        <InformationPageBreadcrumbs home={{ label: "Roster", href: "/roster" }} />
         <RosterPageHeader icon={UserPlus} title="Join a team roster" ask={false} />
         {state.kind === "joining" ? <p role="status">Joining your team…</p> : null}
         {state.kind === "signed-out" ? (
@@ -208,10 +205,15 @@ export function RosterJoinPage() {
               </p>
             ) : null}
             <ModeGroupedList eyebrow="Optional" testId="roster-join-options">
-              <ModeRow title="Alerts for swaps and changes" trailing={<RosterAlertsSwitch />} />
+              <ModeRow
+                title="Alerts for swaps and changes"
+                subtitle="Lock screen says only that something changed"
+                trailing={<RosterAlertsSwitch />}
+              />
               {calendarShifts !== null ? (
                 <ModeRow
                   title="Shifts in my calendar"
+                  subtitle="Adds team shifts to your calendar link"
                   trailing={
                     <ToggleSwitch
                       enabled={calendarShifts}
@@ -237,6 +239,9 @@ export function RosterJoinPage() {
               spellCheck={false}
               required
             />
+            <p className="m-0 text-xs text-[color:var(--text-muted)]" data-testid="roster-join-privacy">
+              The team and its managers see your team shifts. Shifts you add yourself stay private.
+            </p>
             <Button type="submit" variant="primary">
               Join team
             </Button>

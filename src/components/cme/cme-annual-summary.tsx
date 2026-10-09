@@ -3,9 +3,14 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { cardSurface } from "@/components/card-recipes";
+import { ApplicationsEntryLink } from "@/components/cme/applications/applications-entry-link";
+import { CpdHomeEntryLink } from "@/components/cme/cpd-home/cpd-home-entry-link";
 import { CmeYearClosePanel } from "@/components/cme/cme-year-close-panel";
 import { Button, buttonFaceClass } from "@/components/ui/button";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 import { formatCalendarDateLong, formatCalendarMonthLabel } from "@/lib/cme/cpd-year";
 import { evaluateYear } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries } from "@/lib/cme/export";
@@ -90,6 +95,8 @@ export function CmeAnnualSummary({
   /** The instant the close window is judged against; the page passes its own clock. */
   now?: Date;
 }) {
+  // Example records never leave the app: while CPD shows example data, both exports explain instead.
+  const example = useExampleData("cpd").active;
   const active = activeCmeYearEntries(entries, set.year);
   const status = evaluateYear({ set, entries: active });
   const months = groupByMonth(active);
@@ -113,34 +120,57 @@ export function CmeAnnualSummary({
       .cme-annual-summary .cme-print-controls { display: none !important; }
       .cme-annual-summary section { break-inside: avoid; }
     }`}</style>
-      <div className="cme-print-controls mb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href={`/cme/log?year=${set.year}`} className={buttonFaceClass({ variant: "secondary" })}>
-            Back to log
-          </Link>
-          <Button testId="cme-summary-save-pdf" onClick={() => savePdf(set.year)}>
-            Save as PDF
-          </Button>
-          <a href={`/api/cme/export?year=${set.year}`} download className={buttonFaceClass({ variant: "secondary" })}>
-            Download CSV
-          </a>
-        </div>
-        <p className={cn(textMuted, "mt-2 text-xs")}>
-          Opens your device&apos;s print screen. Choose Save as PDF, or Share on a phone, to send it to your college or
-          keep a copy.
-        </p>
-      </div>
-
       <header className="grid gap-1">
         <h1 className={cmePageTitle}>CPD annual summary — {set.year}</h1>
-        {demoMode ? (
-          <p className={cn(textMuted, "text-sm")}>Synthetic demonstration — not a personal CPD record.</p>
-        ) : null}
+        {demoMode ? <p className={cn(textMuted, "text-sm")}>Example data, not a personal CPD record.</p> : null}
         <p className="text-sm font-normal tabular-nums">
           {active.length} active activities · {status.totalHours} / {set.totalHours} hours · Recorded costs AUD $
           {(costs / 100).toFixed(2)}
         </p>
       </header>
+      {/* Title first, then the ways on from this year, then the page's own buttons. Not printed. */}
+      <div className="cme-print-controls mt-4 mb-5 grid gap-4">
+        {/* Both lead to new work-mode screens, so the classic work mode keeps neither. */}
+        <NewWorkModeOnly>
+          <nav aria-label="More from your CPD year" className="grid gap-2" data-testid="cme-summary-more">
+            <CpdHomeEntryLink year={set.year} />
+            <ApplicationsEntryLink />
+          </nav>
+        </NewWorkModeOnly>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/cme/log?year=${set.year}`} className={buttonFaceClass({ variant: "secondary" })}>
+              Back to log
+            </Link>
+            <Button
+              testId="cme-summary-save-pdf"
+              onClick={() => {
+                if (guardExampleAction(example, "export")) savePdf(set.year);
+              }}
+            >
+              Save as PDF
+            </Button>
+            {example ? (
+              // The export route reads the account, so on an example page it would hand over REAL records.
+              <Button variant="secondary" onClick={() => guardExampleAction(true, "export")}>
+                Download CSV
+              </Button>
+            ) : (
+              <a
+                href={`/api/cme/export?year=${set.year}`}
+                download
+                className={buttonFaceClass({ variant: "secondary" })}
+              >
+                Download CSV
+              </a>
+            )}
+          </div>
+          <p className={cn(textMuted, "mt-2 text-xs")}>
+            Opens your device&apos;s print screen. Choose Save as PDF, or Share on a phone, to send it to your college
+            or keep a copy.
+          </p>
+        </div>
+      </div>
 
       <section className={cn(cardSurface, "mt-4 grid gap-2 p-4 text-sm")}>
         <p>
@@ -148,7 +178,7 @@ export function CmeAnnualSummary({
         </p>
         <p className={textMuted}>
           Archived entries are excluded. Formal peer review is a subset of reviewing hours. Source links identify
-          learning material; they do not prove attendance or completion. Evidence files remain attached to individual
+          learning material. They do not prove attendance or completion. Evidence files remain attached to individual
           entries. This summary is a personal record, not a compliance certificate.
         </p>
       </section>
@@ -203,14 +233,14 @@ export function CmeAnnualSummary({
                   <p className={textMuted}>{formatCalendarDateLong(entry.date)}</p>
                   <p>{entry.allocations.map((a) => `${cmeCategoryLabels[a.category]}: ${a.hours} h`).join(" · ")}</p>
                   <p>Formal peer review: {entry.formalPeerReviewHours ?? 0} h (within reviewing)</p>
-                  {entry.buckets.length ? <p>Domains: {entry.buckets.join("; ")}</p> : null}
+                  {entry.buckets.length ? <p>Domains: {entry.buckets.join(", ")}</p> : null}
                   {entry.reflection ? <p className="whitespace-pre-wrap">{entry.reflection}</p> : null}
                   <p className={textMuted}>
                     Cost: {entry.costCents === null ? "Not recorded" : `AUD ${(entry.costCents / 100).toFixed(2)}`}
                   </p>
                   {entry.sourceUrl ? <p className="break-all">Learning source: {entry.sourceUrl}</p> : null}
                   {entry.documentId ? (
-                    <p className={textMuted}>Private source document linked; not certified as evidence.</p>
+                    <p className={textMuted}>Private source document linked. Not certified as evidence.</p>
                   ) : null}
                   {(entry.evidenceCount ?? 0) > 0 ? (
                     <p>

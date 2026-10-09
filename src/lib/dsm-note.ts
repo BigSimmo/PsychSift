@@ -1,10 +1,5 @@
-import {
-  dsmCriteriaView,
-  dsmSpecifierSplit,
-  type DsmDiagnosis,
-  type DsmLabeledText,
-  type DsmSpecifier,
-} from "@/lib/dsm-criteria-view";
+import type { DsmDiagnosis, DsmLabeledText, DsmSpecifier } from "@/lib/dsm-types";
+import { dsmCriteriaView, dsmSpecifierSplit } from "@/lib/dsm-view";
 import { plainClinicalText } from "@/lib/plain-clinical-text";
 
 export { plainClinicalText };

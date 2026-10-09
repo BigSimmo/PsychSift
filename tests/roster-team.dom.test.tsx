@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RosterTeamPage } from "@/components/roster/team/roster-team-page";
+import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 
 // The calendar keeps its view and date in the URL, so the mock URL is live:
 // router.replace updates it and useSearchParams reads it back.
@@ -78,21 +79,36 @@ function mockTeam(enabled = true, sample = false, assignments: unknown[] = [sams
   );
 }
 describe("Roster team journey", () => {
-  it("shows an overnight team shift and links to the team's phone numbers", async () => {
+  it("shows an overnight team shift and links to the phone numbers in On Call", async () => {
     mockTeam();
     render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
     expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
     expect(screen.getByText("to 08:00")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Phone numbers are in On call/ }).getAttribute("href")).toBe(
-      "/on-call/service?service=example",
-    );
+    expect(screen.getByRole("link", { name: /Phone numbers/ }).getAttribute("href")).toBe("/on-call/call");
     fireEvent.click(screen.getByRole("button", { name: "Previous day" }));
     expect(await screen.findByText("from 21:30")).toBeTruthy();
   });
-  it("labels the sample team served while team rosters are held", async () => {
+  it("hides the made-up team served while team rosters are held when example data is off", async () => {
+    window.localStorage.clear();
+    resetExampleDataForTests();
     mockTeam(true, true);
     render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
-    expect((await screen.findByTestId("roster-sample-notice")).textContent).toMatch(/Example team/);
+    expect(await screen.findByTestId("roster-team-no-team")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Registrars" })).toBeNull();
+  });
+  it("shows the made-up team, with no per-page label, while example data is on", async () => {
+    window.localStorage.clear();
+    resetExampleDataForTests();
+    setExampleDataOn(true);
+    mockTeam(true, true);
+    render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
+    expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
+    expect(screen.queryByTestId("roster-sample-notice")).toBeNull();
+    act(() => {
+      setExampleDataOn(false);
+      resetExampleDataForTests();
+    });
+    window.localStorage.clear();
   });
   it("shows no sample label for a real team", async () => {
     mockTeam();
@@ -175,5 +191,56 @@ describe("Roster team journey", () => {
     expect(screen.getByTestId("roster-team-legend").textContent).toBe(
       "D day · E evening · N night · C on call · L leave · W other work · blank is off.",
     );
+  });
+  it("lists who is on now, until when, and hides the list when nobody is on", async () => {
+    mockTeam();
+    // 23:00 Perth on Thu 15 Oct: Sam's night (21:30 to 08:00) covers it.
+    const { unmount } = render(<RosterTeamPage now={new Date("2026-10-15T15:00:00Z")} />);
+    const list = await screen.findByTestId("roster-team-on-now");
+    expect(screen.getByRole("heading", { name: "On now" })).toBeTruthy();
+    expect(list.textContent).toContain("Dr Sam Example");
+    expect(list.textContent).toContain("Night · until 08:00");
+    unmount();
+    mockTeam();
+    // 12:00 Perth on Fri 16 Oct: the night has ended.
+    render(<RosterTeamPage now={new Date("2026-10-16T04:00:00Z")} />);
+    expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
+    expect(screen.queryByTestId("roster-team-on-now")).toBeNull();
+  });
+  it("says there is no team yet and offers Join a team, with no detail reads", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ actorId: "alex", teams: [] })),
+    );
+    render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
+    const empty = await screen.findByTestId("roster-team-no-team");
+    expect(empty.textContent).toContain("No team yet");
+    expect(empty.querySelector('a[href="/roster/join"]')?.textContent).toContain("Join a team");
+    expect(vi.mocked(fetch).mock.calls.every(([url]) => url === "/api/roster/team")).toBe(true);
+  });
+  it("lists who is on with you later today, and only when a shift of yours starts later today", async () => {
+    const mine = {
+      ...samsNight,
+      id: "mine",
+      userId: "alex",
+      name: "Alex Example",
+      startsAt: "2026-10-15T17:00:00+08:00",
+      endsAt: "2026-10-15T23:00:00+08:00",
+      shiftCode: "E",
+      kind: "evening",
+    };
+    mockTeam(true, false, [samsNight, mine]);
+    // 08:00 Perth on Thu 15 Oct: Alex starts at 17:00, Sam's night from 21:30 overlaps it.
+    const { unmount } = render(<RosterTeamPage now={new Date("2026-10-15T00:00:00Z")} />);
+    const section = await screen.findByTestId("roster-team-with-you");
+    expect(screen.getByRole("heading", { name: "On with you tonight" })).toBeTruthy();
+    expect(section.textContent).toContain("Your evening");
+    expect(section.textContent).toContain("Dr Sam Example");
+    unmount();
+    mockTeam(true, false, [samsNight, mine]);
+    // 18:00 Perth: Alex's shift is on now, so the On now list covers it instead.
+    render(<RosterTeamPage now={new Date("2026-10-15T10:00:00Z")} />);
+    expect(await screen.findByRole("heading", { name: "Registrars" })).toBeTruthy();
+    expect(screen.queryByTestId("roster-team-with-you")).toBeNull();
   });
 });

@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 
-import { TeachingThisWeek } from "@/components/teaching/teaching-this-week";
+import { TeachingToday } from "@/components/teaching/teaching-today";
 import { teachingDemoMode } from "@/lib/teaching/sample";
 
 export const metadata: Metadata = {
-  title: "This week | Teaching | PsychSift",
-  description: "The teaching session on now with one-tap check in, then every session this week, day by day.",
+  title: "Today | Teaching | PsychSift",
+  description: "The teaching session that matters now, with check in and Log to CPD, then what needs you.",
 };
 
-/* Like My Work and CPD it declares no search surface, so it renders its own body. Demo mode is read on the server. */
-export default async function TeachingThisWeekRoute() {
-  return <TeachingThisWeek demoMode={await teachingDemoMode()} />;
+/*
+ * Today (work-mode redesign, owner request 6 Oct 2026): the hero by phase, Next for you, Needs you,
+ * the rest of the week and attendance. The week itself is the Week tab (/teaching/week). Like My
+ * Work and CPD it declares no search surface, so it renders its own body. Demo mode is read on the
+ * server.
+ */
+export default async function TeachingTodayRoute() {
+  return <TeachingToday demoMode={await teachingDemoMode()} />;
 }

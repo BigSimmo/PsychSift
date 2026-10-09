@@ -22,19 +22,19 @@ describe("CPD loading state", () => {
     expect(status.className).toContain(CLEARANCE);
     expect(status.className).toContain("max-w-5xl");
     expect(screen.getByTestId("cme-loading-lead").className).toContain("lg:grid-cols-");
-    expect(screen.getByTestId("cme-loading-header").className).toMatch(/\bh-12\b/);
-    // A plain outlined card at the container radius, like the loaded summary: no dark panel.
+    // work-mode redesign, owner request 6 Oct 2026: the band names the page, so
+    // there is no header shape; the hero sits at the hero radius, "To log" is
+    // a two-row card, and nothing is a dark panel.
+    expect(screen.queryByTestId("cme-loading-header")).toBeNull();
     const hero = screen.getByTestId("cme-loading-hero");
-    expect(hero.className).toMatch(/\brounded-lg\b/);
+    expect(hero.className).toContain("--work-radius-hero");
     expect(hero.className).not.toContain("--surface-summary");
-    expect(screen.getByTestId("cme-loading-card").className).toMatch(/\bh-12\b/);
+    expect(screen.getByTestId("cme-loading-card").className).toMatch(/\bh-26\b/);
     expect(screen.getAllByTestId("cme-loading-chip")).toHaveLength(2);
     const rows = container.querySelectorAll<HTMLElement>('[data-testid="cme-loading-rows"] [data-skeleton-row]');
     expect(rows).toHaveLength(3);
     for (const row of rows) expect(row.className).toMatch(/\bmin-h-13\b/);
-    const inOrder = ["cme-loading-header", "cme-loading-hero", "cme-loading-card", "cme-loading-rows"].map((id) =>
-      screen.getByTestId(id),
-    );
+    const inOrder = ["cme-loading-hero", "cme-loading-card", "cme-loading-rows"].map((id) => screen.getByTestId(id));
     for (let index = 1; index < inOrder.length; index += 1) {
       expect(
         inOrder[index - 1]!.compareDocumentPosition(inOrder[index]!) & Node.DOCUMENT_POSITION_FOLLOWING,

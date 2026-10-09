@@ -159,6 +159,6 @@ export function useOnCallDidntConnectAt(entryId: string): string | null {
 export function useOnCallHospitalPhone(): boolean {
   const stored = useSyncExternalStore(subscribe, readOnCallHospitalPhone, () => false);
   // The signed-out sample's numbers never dial, whatever this phone was set to before.
-  const sample = useSignedOutSample();
+  const sample = useSignedOutSample("call");
   return stored && !sample;
 }

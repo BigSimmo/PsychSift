@@ -34,6 +34,10 @@ import {
   resolveDashboardModeSurface,
 } from "@/components/clinical-dashboard/dashboard-mode-surface";
 import * as SidebarDialogs from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
+import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { prefetchTwoPaneSideMenu, TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
+import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useSettingsGuideFlow } from "@/components/clinical-dashboard/use-settings-guide-flow";
 import {
   deriveSidebarIdentity,
@@ -636,6 +640,12 @@ function ClinicalDashboardContent({
     localNoAuthMode,
   });
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);
+  // The two-pane side menu (owner pick 8 Oct 2026) replaces the phone menu behind the Live version switch.
+  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  const newWorkMode = useNewWorkMode();
+  // From 768 px the two-pane menu's strip stays on screen as a rail (1024 px up
+  // keeps the full sidebar). A rail button opens the menu on its own pane.
+  const [menuPane, setMenuPane] = useState<TwoPaneMenuPane | null>(null);
   const {
     favouritesAccessible,
     accountSetupOpen,
@@ -2908,6 +2918,26 @@ function ClinicalDashboardContent({
     setupBlockedQuery,
   });
 
+  const desktopSidebar = (
+    <ClinicalDesktopSidebar
+      collapsed={settingsState.sidebarCollapsed}
+      recentQueries={recentQueries}
+      identity={sidebarIdentity}
+      activeMode={searchMode}
+      onCollapsedChange={settingsState.setSidebarCollapsed}
+      onNewChat={startNewChat}
+      onPickRecent={pickRecentQuery}
+      onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+      onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+      onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
+      onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
+      onPrefetchApplications={prefetchApplications}
+      onOpenSearch={openSidebarSearch}
+      onSelectMode={selectSearchMode}
+      showAccountLibrary={favouritesAccessible}
+    />
+  );
+
   return (
     <div
       className={cn(
@@ -2930,23 +2960,27 @@ function ClinicalDashboardContent({
         } as CSSProperties
       }
     >
-      <ClinicalDesktopSidebar
-        collapsed={settingsState.sidebarCollapsed}
-        recentQueries={recentQueries}
-        identity={sidebarIdentity}
-        activeMode={searchMode}
-        onCollapsedChange={settingsState.setSidebarCollapsed}
-        onNewChat={startNewChat}
-        onPickRecent={pickRecentQuery}
-        onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
-        onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
-        onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
-        onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
-        onPrefetchApplications={prefetchApplications}
-        onOpenSearch={openSidebarSearch}
-        onSelectMode={selectSearchMode}
-        showAccountLibrary={favouritesAccessible}
-      />
+      {twoPaneSideMenu ? (
+        <>
+          <TwoPaneSideRail
+            identity={sidebarIdentity}
+            side="clinical"
+            workAvailable={newWorkMode}
+            showAccountLibrary={favouritesAccessible}
+            hideOnDesktop
+            onOpenMenu={(pane) => {
+              closeDashboardTransientSurfaces("mobileSidebar");
+              setMenuPane(pane);
+              settingsState.setMobileSidebarOpen(true);
+            }}
+            onPrefetchMenu={prefetchTwoPaneSideMenu}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+          />
+          <div className="hidden lg:contents">{desktopSidebar}</div>
+        </>
+      ) : (
+        desktopSidebar
+      )}
       <PhoneFooterLayerFrame
         className="phone-viewport-frame relative flex min-h-0 min-w-0 flex-1 flex-col md:h-full"
         scrollHidden={chromeScrollHidden}
@@ -3006,6 +3040,7 @@ function ClinicalDashboardContent({
           showDesktopNewChat={false}
           onOpenMobileSidebar={() => {
             closeDashboardTransientSurfaces("mobileSidebar");
+            setMenuPane(null);
             settingsState.setMobileSidebarOpen(true);
           }}
           queryModeOptions={clinicalQueryModeOptions}
@@ -3627,23 +3662,48 @@ function ClinicalDashboardContent({
           onClose={closeAccountSetup}
           intent={accountSetupIntent}
         />
-        <ClinicalMobileSidebar
-          open={settingsState.mobileSidebarOpen}
-          recentQueries={recentQueries}
-          identity={sidebarIdentity}
-          activeMode={searchMode}
-          onOpenChange={settingsState.setMobileSidebarOpen}
-          onNewChat={startNewChat}
-          onPickRecent={pickRecentQuery}
-          onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
-          onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
-          onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
-          onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
-          onPrefetchApplications={prefetchApplications}
-          onOpenSearch={openSidebarSearch}
-          onSelectMode={selectSearchMode}
-          showAccountLibrary={favouritesAccessible}
-        />
+        {twoPaneSideMenu ? (
+          <TwoPaneSideMenuHost
+            open={settingsState.mobileSidebarOpen}
+            onOpenChange={settingsState.setMobileSidebarOpen}
+            identity={sidebarIdentity}
+            startSide="clinical"
+            openPane={menuPane}
+            workAvailable={newWorkMode}
+            currentArea={null}
+            activeMode={searchMode}
+            recentQueries={recentQueries}
+            showAccountLibrary={favouritesAccessible}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onSelectMode={selectSearchMode}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+            onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+            onSignOut={async () => {
+              clinicalAskSession.clear();
+              await auth.signOut();
+            }}
+          />
+        ) : (
+          <ClinicalMobileSidebar
+            open={settingsState.mobileSidebarOpen}
+            recentQueries={recentQueries}
+            identity={sidebarIdentity}
+            activeMode={searchMode}
+            onOpenChange={settingsState.setMobileSidebarOpen}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+            onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+            onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
+            onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSearch={openSidebarSearch}
+            onSelectMode={selectSearchMode}
+            showAccountLibrary={favouritesAccessible}
+          />
+        )}
       </PhoneFooterLayerFrame>
     </div>
   );

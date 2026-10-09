@@ -17,6 +17,7 @@ import {
 import {
   ArrowLeft,
   Bell,
+  Clock,
   BookOpen,
   BriefcaseBusiness,
   Check,
@@ -26,6 +27,7 @@ import {
   CircleUserRound,
   Globe2,
   History,
+  Layers,
   Loader2,
   LockKeyhole,
   LogOut,
@@ -53,6 +55,10 @@ import {
 import { type SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { useAccountData } from "@/components/account-data-provider";
 import { useTheme } from "@/components/clinical-dashboard/use-theme";
+import { useClassicWorkMode } from "@/components/work-mode-launch/use-classic-work-mode";
+import { useLiveVersionSwitch } from "@/components/live-version/live-version-provider";
+import { LIVE_PREVIEW_FEATURES } from "@/lib/live-version/features";
+import type { LiveVersionChoice } from "@/lib/live-version/live-version";
 import {
   ANSWER_STYLE_OPTIONS,
   DENSITY_OPTIONS,
@@ -85,6 +91,11 @@ import {
 } from "@/components/clinical-dashboard/settings-sections";
 import { type OAuthProvider, useAuthSession } from "@/lib/supabase/client";
 import { workStageLabel, type AppPreferences } from "@/lib/account-preferences";
+import { useExampleData } from "@/lib/example-data/store";
+import { exampleAreasLine } from "@/lib/example-data/labels";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { workZoneNote } from "@/lib/work-time/labels";
+import { WORK_TIME_ZONES } from "@/lib/work-time/zones";
 import type { ThemePreference } from "@/lib/theme";
 
 const APPEARANCE_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string; icon: LucideIcon }> = [
@@ -271,6 +282,10 @@ export function SettingsDialog({
 
   const { theme, preference: themePreference, setPreference: setThemePreference } = useTheme();
   const { preferences, setPreference, resetPreferences, syncState, retrySync } = useAppPreferences();
+  // The work-mode launch switch's instant rollback: shown only to readers the new
+  // work mode is offered to (src/lib/work-mode-launch).
+  const classicWorkMode = useClassicWorkMode();
+  const liveVersion = useLiveVersionSwitch();
   // Hide-on-scroll for the mobile glass header (phone-gated inside the hook), so
   // the top goes fully edge-to-edge while scrolling — the same behaviour as the
   // app's search bar. Desktop keeps its title bar pinned and never hides it.
@@ -1222,6 +1237,38 @@ export function SettingsDialog({
                       options={MOTION_OPTIONS}
                     />
                   </SettingsField>
+                  <WorkTimeZoneField
+                    value={preferences.timeZone}
+                    onChange={(value) => setPreference("timeZone", value)}
+                  />
+                  {liveVersion.available ? (
+                    <SettingsField
+                      icon={FlaskConical}
+                      label="Live version"
+                      labelId="settings-live-version-label"
+                      description={`Shown to testers only. Newest turns on work that is not live for everyone yet: ${LIVE_PREVIEW_FEATURES.map((feature) => feature.label).join(", ")}.`}
+                      stacked
+                    >
+                      <SegmentedControl
+                        ariaLabelledBy="settings-live-version-label"
+                        layout="equal"
+                        value={liveVersion.choice}
+                        onChange={liveVersion.setChoice}
+                        options={LIVE_VERSION_OPTIONS}
+                      />
+                    </SettingsField>
+                  ) : null}
+                  <ExampleDataField />
+                  {/* The live version switch already covers the new screens for a tester. */}
+                  {classicWorkMode.available && !liveVersion.available ? (
+                    <SettingsToggleField
+                      icon={History}
+                      label="Hide new work screens"
+                      description="Turns off the work screens added in this update, on this device only."
+                      checked={classicWorkMode.classic}
+                      onChange={classicWorkMode.setClassic}
+                    />
+                  ) : null}
                 </SettingsGroup>
               </SettingsSection>
 
@@ -1660,6 +1707,58 @@ function NotYetActiveBadge({ id }: { id?: string }) {
       <span aria-hidden="true" className="h-1 w-1 shrink-0 rounded-full bg-[color:var(--decoration-soft)]" />
       Not active yet
     </span>
+  );
+}
+
+const WORK_TIME_ZONE_OPTIONS = WORK_TIME_ZONES.map((zone) => ({ value: zone.id, label: zone.label }));
+
+/**
+ * The work time zone (Perth by default): every roster, shift and "today" in work
+ * mode reads in it, whatever the device is set to. When the phone is on a
+ * different clock the description says so, because that is exactly when a
+ * shift time would otherwise look wrong.
+ */
+function WorkTimeZoneField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { zone, deviceZone, differsFromDevice } = useWorkTimeZone();
+  const description = workZoneNote(zone, deviceZone, differsFromDevice);
+  return (
+    <SettingsField
+      icon={Clock}
+      label="Time zone"
+      description={description}
+      htmlFor="settings-time-zone"
+      labelId="settings-time-zone-label"
+    >
+      <SettingsSelect
+        id="settings-time-zone"
+        label="Time zone"
+        labelledBy="settings-time-zone-label"
+        value={value}
+        onChange={onChange}
+        options={WORK_TIME_ZONE_OPTIONS}
+      />
+    </SettingsField>
+  );
+}
+
+/** The one example data switch for every work area (`src/lib/example-data/`). */
+const LIVE_VERSION_OPTIONS: ReadonlyArray<{ value: LiveVersionChoice; label: string }> = [
+  { value: "everyone", label: "Everyone's" },
+  { value: "newest", label: "Newest" },
+];
+
+function ExampleDataField() {
+  const { on, activeAreas, turnOn, turnOff } = useExampleData();
+  return (
+    <SettingsToggleField
+      icon={Layers}
+      label="Example data"
+      description={
+        on ? exampleAreasLine(activeAreas.length) : "Made-up data in every work area, marked Example. Nothing is saved."
+      }
+      checked={on}
+      onChange={(next) => (next ? turnOn() : turnOff())}
+    />
   );
 }
 

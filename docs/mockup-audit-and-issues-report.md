@@ -66,17 +66,17 @@ The audit and subsequent adversarial review identified **9 concrete issues** spa
 
 ### Issue 1: Five Truly Unreferenced Tools Layout Exploration Drafts
 
-- **Severity:** `P3` (Clean candidate for retirement)
-- **Locations:**
+- **Severity:** `P3` (Resolved 2026-10-09)
+- **Status:** **RESOLVED** — Formally retired with owner approval on 2026-10-09. Recorded in `mockups/README.md` under `## Retired mockups` (superseded by `tools-search-mode`), route folders removed, and `docs/site-map.md` updated.
+- **Locations (Former):**
   - `src/app/mockups/tools-action-workbench/page.tsx`
   - `src/app/mockups/tools-clinical-lanes/page.tsx`
   - `src/app/mockups/tools-split-clinical-brief/page.tsx`
   - `src/app/mockups/tools-split-compact-sheet/page.tsx`
   - `src/app/mockups/tools-split-safety-deck/page.tsx`
 - **Context & Background:** In August 2026, nine parallel layout directions were explored for the Tools page. Direction A was formally selected and shipped to production in PR #1958 (`tools-search-directions`), and `tools-search-mode` was documented as the perfected winner in `mockups/README.md`.
-- **Adversarial Verification:** An AST and string grep across `tests/` confirmed that these **5 exact routes** have zero test imports, zero DOM assertions, and are never requested in Playwright specs.
-- **Risk:** None. Deleting them is safe, provided the retirement is recorded in `mockups/README.md` and `docs/site-map.md` is regenerated.
-- **Recommendation:** Retire these 5 routes when convenient by recording them in `mockups/README.md` under `## Retired mockups` and running `npm run sitemap:update`.
+- **Adversarial Verification:** An AST and string grep across `tests/` confirmed that these **5 exact routes** had zero test imports, zero DOM assertions, and were never requested in Playwright specs.
+- **Verification Evidence:** `npm run check:mockups` passes clean (81 routes indexed, 21 recorded as retired). `tests/mockup-retirement.test.ts` (70/70) and `npm run sitemap:check` both pass 100% green.
 
 ---
 
@@ -163,7 +163,8 @@ The audit and subsequent adversarial review identified **9 concrete issues** spa
 
 ### Issue 7: Outdated Calculator Clinical Divergence Note in `mockups/README.md`
 
-- **Severity:** `P3` (Documentation drift)
+- **Severity:** `P3` (Resolved 2026-10-09)
+- **Status:** **RESOLVED** — Note in `mockups/README.md:184-188` updated on 2026-10-09 to record that the divergence was investigated, sanitized, and verified by `tests/calculator-mockup-clinical-safety.test.ts`.
 - **Location:** `mockups/README.md:184-188`
 - **Context & Background:** On 2026-09-02, a note was added to `mockups/README.md` stating that `src/components/calculator-mockups/calculator-pathways.ts` still carried directive prescribing, ECT, and admission advice that PR #2491 had stripped from production.
 - **Adversarial Verification:**
@@ -171,8 +172,7 @@ The audit and subsequent adversarial review identified **9 concrete issues** spa
   ```typescript
   describe("calculator copy carries no directive clinical instructions", () => { ... });
   ```
-  The test passes 100% green. The mockup file is longer (209 lines vs 77 lines) because it retains non-directive UI flow descriptions, but the clinical risk has already been eliminated.
-- **Recommendation:** Update lines 184–188 of `mockups/README.md` to record that clinical safety directives were audited and confirmed clean by `tests/calculator-mockup-clinical-safety.test.ts`.
+  The test passes 100% green (5 of 5 tests passing). The mockup file is longer (209 lines vs 77 lines) because it retains non-directive UI flow descriptions, but the clinical risk has already been eliminated.
 
 ---
 
@@ -220,13 +220,13 @@ The audit and subsequent adversarial review identified **9 concrete issues** spa
 
 | Issue #     | Topic                                                 | Severity | Status / Action Item                                                        |
 | :---------- | :---------------------------------------------------- | :------: | :-------------------------------------------------------------------------- |
-| **Issue 1** | 5 Unpinned Tools Layout Drafts                        |   `P3`   | **Ready for retirement** whenever owner approves.                           |
+| **Issue 1** | 5 Unpinned Tools Layout Drafts                        |   `P3`   | **RESOLVED (2026-10-09)**: Formally retired, recorded in index, routes removed. |
 | **Issue 2** | 4 Tools Drafts Coupled to Tests                       |   `P2`   | **Retain as test harnesses** (or decouple tests first).                     |
 | **Issue 3** | Boundary Test Assertion on Tools Mockup               |   `P2`   | **Retain component** to satisfy `production-mockup-boundary.test.ts`.       |
 | **Issue 4** | Production Proxy Redirect (`document-search-command`) |   `P2`   | **Preserve redirect** in `src/proxy.ts` and `scripts/generate-site-map.ts`. |
 | **Issue 5** | Unresolved Therapy Popups & Nav                       |   `P3`   | **Stable resting state**; await owner design choice.                        |
 | **Issue 6** | Search Chrome & Settings Drafts                       |   `P3`   | **Stable resting state**; low-priority candidate for future batch review.   |
-| **Issue 7** | Stale Calculator Divergence Note                      |   `P3`   | **Update `mockups/README.md`** (safety verified by test suite).             |
+| **Issue 7** | Stale Calculator Divergence Note                      |   `P3`   | **RESOLVED (2026-10-09)**: Updated `mockups/README.md` (safety verified by test suite). |
 | **Issue 8** | Systemic Backwards Import Anchors                     |   `P1`   | **Do not delete independently**; core architectural dependency.             |
 | **Issue 9** | Tier B Admin Apps Under Mockups Namespace             |   `P1`   | **Protected by CI**; plan future migration to `/admin/`.                    |
 

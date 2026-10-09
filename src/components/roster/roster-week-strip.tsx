@@ -1,9 +1,11 @@
 import { SHIFT_KIND_LABEL, SHIFT_LETTER, type ShiftKind } from "@/lib/roster/shift-kind";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
-import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, formatPerthDay } from "@/lib/roster/shifts/perth-time";
 import { cn } from "@/components/ui-primitives";
 
 import { kindOf } from "./roster-format";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
  * This week as seven letter squares (Today), and as a 24-hour chart (Shifts).
@@ -155,8 +157,9 @@ export function RosterWeekChart({
   readonly now: Date;
   readonly testId?: string;
 }) {
+  const { zone } = useWorkTimeZone();
   const days = Array.from({ length: 7 }, (_, index) => addDaysToDate(monday, index));
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   const nowTop = ((now.getTime() - Date.parse(`${today}T00:00:00+08:00`)) / DAY_MS) * 100;
   return (
     <div

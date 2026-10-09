@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState } from "react";
 
-import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { kindOf, useRosterNow } from "@/components/roster/roster-format";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,14 @@ import { formatHours, gapTimes, hoursBetween, kindLabel } from "@/lib/open-shift
 import { parseOffer } from "@/lib/open-shifts/parse-offer";
 import { rosterCheckFor } from "@/lib/open-shifts/roster-check";
 import type { FatigueShift } from "@/lib/roster/fatigue-rules";
-import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 import { SignInAction } from "./open-shifts-sign-in";
 import { CheckLine, FootAction, OPEN_SHIFTS_HREF, SubHeader, formatShiftTimes } from "./open-shifts-ui";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 const KINDS = ["day", "evening", "night", "on_call", "other"] as const;
 type Kind = (typeof KINDS)[number];
@@ -30,13 +33,14 @@ const field =
  * phone and never sent or saved.
  */
 export function OpenShiftsLogPage() {
-  const signedOut = useSignedOutSample();
+  const { zone } = useWorkTimeZone();
+  const signedOut = useSignedOut();
   const shifts = useRosterShifts();
   const offline = !useOnlineStatus();
   const router = useRouter();
   const id = useId();
   const nowMs = useRosterNow().getTime();
-  const today = perthDateOf(new Date(nowMs));
+  const today = zonedDateOf(nowMs, zone);
   const [message, setMessage] = useState("");
   const [readNote, setReadNote] = useState<string | null>(null);
   const [place, setPlace] = useState("");
@@ -75,17 +79,23 @@ export function OpenShiftsLogPage() {
     if (parsed.end) setEnd(parsed.end);
     setReadNote(
       parsed.date && parsed.start
-        ? "Date and times filled in below; check each field."
+        ? "Date and times filled in below. Check each field."
         : parsed.date
-          ? "Found the date; set the times yourself."
+          ? "Found the date. Set the times yourself."
           : parsed.start
-            ? "Found the times; set the date yourself."
+            ? "Found the times. Set the date yourself."
             : "Couldn't find a date or time in the message. Fill them in below.",
     );
   }
 
   async function save() {
     if (!times) return;
+    // The place is saved with the shift, so it gets the one patient-detail catch. Ward and hospital capitals are fine.
+    const placeProblem = checkPatientDetail(place, { allowCapitals: true });
+    if (placeProblem) {
+      setError(`Not saved. Place: ${placeProblem.body}`);
+      return;
+    }
     setBusy(true);
     setError(null);
     const failure = await shifts.addManual({
@@ -102,7 +112,7 @@ export function OpenShiftsLogPage() {
 
   return (
     <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
-      <SubHeader backHref={`${OPEN_SHIFTS_HREF}/mine`} backLabel="My shifts" title="Log a shift" />
+      <SubHeader backHref={`${OPEN_SHIFTS_HREF}/mine`} backLabel="My requests" title="Log a shift" />
       <form
         className="flex flex-col gap-5 px-3 pt-2"
         onSubmit={(event) => {

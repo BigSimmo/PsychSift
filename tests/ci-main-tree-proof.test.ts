@@ -504,7 +504,7 @@ describe("tested-tree reconstruction against a real repository", () => {
  * relative-import closure of every script those jobs and the build lifecycle run.
  */
 describe("unrelated-input allowlist", () => {
-  const root = fileURLToPath(new URL("..", import.meta.url));
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const rel = (file: string) => path.relative(root, file).split(path.sep).join("/");
   const at = (file: string) => path.join(root, file);
   const walk = (directory: string, out: string[] = []) => {

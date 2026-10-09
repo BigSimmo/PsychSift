@@ -10,6 +10,15 @@ import {
   waPublicHolidaysByRule,
 } from "@/lib/on-call/wa-public-holidays";
 
+/**
+ * A Perth wall-clock instant, with the same arguments as `new Date(y, m, d, h)`
+ * (month from 0). Working hours and "today" are read in the work time zone
+ * (Perth by default), never the device's, so these tests no longer depend on
+ * the zone the test runner happens to be in.
+ */
+const perthWall = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0) =>
+  new Date(Date.UTC(year, month, day, hour - 8, minute, second));
+
 function entry(overrides: Partial<OnCallEntry> & Pick<OnCallEntry, "id" | "section">): OnCallEntry {
   return {
     slug: overrides.id,
@@ -40,11 +49,11 @@ const LADDER = entry({
   },
 });
 
-// Working hours are read in the viewer's own zone (`isOnCallOutOfHours`), so
-// these are local wall-clock times: 10:00 on a Tuesday, and 10:00 on the WA
+// Working hours are read in the work time zone (`isOnCallOutOfHours`), Perth by
+// default, so these are Perth wall-clock times: 10:00 on a Tuesday, and 10:00 on the WA
 // King's Birthday holiday.
-const TUESDAY_MORNING = new Date(2026, 8, 22, 10, 0);
-const KINGS_BIRTHDAY_MORNING = new Date(2026, 8, 28, 10, 0);
+const TUESDAY_MORNING = perthWall(2026, 8, 22, 10, 0);
+const KINGS_BIRTHDAY_MORNING = perthWall(2026, 8, 28, 10, 0);
 
 describe("who do I call now", () => {
   it("leads with the in-hours steps on a working morning, keeping the others below", () => {
@@ -76,16 +85,16 @@ describe("who do I call now", () => {
 });
 
 describe("WA public holidays", () => {
-  it("reads the date on the same clock as the in-hours rule: the viewer's own", () => {
-    // Local fields, as isOnCallOutOfHours uses: 00:30 on the King's Birthday
+  it("reads the date on the same clock as the in-hours rule: the work zone's", () => {
+    // Perth wall clock, as isOnCallOutOfHours uses: 00:30 on the King's Birthday
     // is a holiday, 23:30 the night before is not, whatever zone runs the test.
-    expect(isWaPublicHoliday(new Date(2026, 8, 28, 0, 30))).toBe(true);
-    expect(isWaPublicHoliday(new Date(2026, 8, 27, 23, 30))).toBe(false);
+    expect(isWaPublicHoliday(perthWall(2026, 8, 28, 0, 30))).toBe(true);
+    expect(isWaPublicHoliday(perthWall(2026, 8, 27, 23, 30))).toBe(false);
   });
 
-  it("never mixes clocks: a weekday morning is in hours unless that local date is a holiday", () => {
-    expect(onCallCallNowPeriod(new Date(2026, 8, 29, 10, 0))).toBe("in-hours");
-    expect(onCallCallNowPeriod(new Date(2026, 8, 28, 10, 0))).toBe("after-hours");
+  it("never mixes clocks: a weekday morning is in hours unless that Perth date is a holiday", () => {
+    expect(onCallCallNowPeriod(perthWall(2026, 8, 29, 10, 0))).toBe("in-hours");
+    expect(onCallCallNowPeriod(perthWall(2026, 8, 28, 10, 0))).toBe("after-hours");
   });
 
   it("the rules reproduce every published year exactly, substitute days included", () => {
@@ -112,8 +121,8 @@ describe("WA public holidays", () => {
       "2029-12-25",
       "2029-12-26",
     ]);
-    expect(isWaPublicHoliday(new Date(2029, 2, 30, 10))).toBe(true);
-    expect(isWaPublicHoliday(new Date(2029, 3, 3, 10))).toBe(false);
+    expect(isWaPublicHoliday(perthWall(2029, 2, 30, 10))).toBe(true);
+    expect(isWaPublicHoliday(perthWall(2029, 3, 3, 10))).toBe(false);
   });
 
   it("gives the expected extra day when Anzac Day falls on Easter, and never lists a date twice", () => {

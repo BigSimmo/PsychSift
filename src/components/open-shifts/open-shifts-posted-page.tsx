@@ -12,7 +12,8 @@ import { formatHours, gradeLabel, hoursBetween, kindLabel } from "@/lib/open-shi
 import { groupPosted } from "@/lib/open-shifts/posted";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
-import { LoadFailed } from "./open-shifts-states";
+import { SignInAction } from "./open-shifts-sign-in";
+import { LoadFailed, NoTeam } from "./open-shifts-states";
 import {
   FlatList,
   ListSkeleton,
@@ -85,6 +86,10 @@ export function OpenShiftsPostedPage() {
         <ListSkeleton rows={4} />
       ) : state.status === "error" ? (
         <LoadFailed what="Your posted shifts" message={state.message} onRetry={state.reload} />
+      ) : state.status === "signed-out" ? (
+        <SignInAction label="Sign in to post shifts" />
+      ) : state.status === "no-team" ? (
+        <NoTeam />
       ) : state.status !== "ready" ? (
         <div className="px-3 py-8">
           <h2 className="text-base font-semibold text-[color:var(--text-heading)]">Only roster managers post shifts</h2>
@@ -170,7 +175,7 @@ export function OpenShiftsPostedPage() {
             ) : (
               <Link
                 href="/open-shifts/post/new"
-                className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)]"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[color:var(--work-primary,var(--mode-identity))] px-4 text-sm font-semibold text-[color:var(--work-primary-text,var(--mode-identity-contrast))] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)]"
               >
                 <Plus aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
                 Post a shift

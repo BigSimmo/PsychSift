@@ -1,20 +1,20 @@
 "use client";
 
-import { FileSpreadsheet } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { AdminNote, AdminPage, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
+import { focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
-import { InformationPageBreadcrumbs, InformationPageShell } from "@/components/information-page-shell";
-import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
+import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeInsetHairline, modeModuleSurface } from "@/components/mode-kit/recipes";
-import { EmptyState } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
+import { WorkButton, WorkChip, WorkDock, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
-import { focusRing } from "@/components/card-recipes";
+import { cn } from "@/components/ui-primitives";
 import {
   buildComplianceOverview,
   COMPLIANCE_EXPORT_HEADER,
@@ -31,7 +31,9 @@ import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { buildXlsx, XLSX_MIME } from "@/lib/admin/xlsx-lite";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
+import { useExampleData } from "@/lib/example-data/store";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 /** The columns a reader can drop. Item (column 0) always stays, so every row still names its requirement. */
 const OPTIONAL_COLUMNS = COMPLIANCE_EXPORT_HEADER.slice(1);
@@ -66,6 +68,8 @@ const RANGE_OPTIONS = [
  */
 export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
+  // The example data banner already says these are example records; this notice is for the demo build.
+  const examplesBanner = useExampleData("admin").active;
   const mountedAt = useMemo(() => new Date(), []);
   const now = nowProp ?? mountedAt;
   const today = perthCalendarDate(now);
@@ -94,6 +98,8 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
   }
 
   function save() {
+    // Example records never leave the app (the local demo build keeps its labelled demo export).
+    if (!guardExampleAction(state.sample, "export")) return;
     const bytes = buildXlsx([
       { name: "Items", rows: selection, widths: header.map((name) => WIDTHS[name] ?? 18) },
       {
@@ -111,16 +117,25 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
     announce("Compliance spreadsheet saved.");
   }
 
+  useModeBandHeading({ eyebrow: "Compliance", title: "Export a copy" });
+
   return (
-    <InformationPageShell testId="admin-compliance-export-main">
+    <AdminPage testId="admin-compliance-export-main">
       <div className="grid min-w-0 gap-1">
         <InformationPageBreadcrumbs home={{ label: "Compliance", href: ADMIN_PAGE_HREFS.compliance }} />
-        <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Export a copy</h1>
-        <p className={cn(textMuted, "text-sm")}>Your own record as a spreadsheet, saved on this device</p>
+        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+          Export a copy
+        </PageTitleUnderBand>
+        <p className="text-sm text-[color:var(--text-muted)]">Your own record as a spreadsheet, saved on this device</p>
       </div>
 
       {loadState === "loading" ? (
-        <ModeModuleSkeleton rows={6} twoLine testId="admin-compliance-export-loading" />
+        <div className="grid min-w-0 gap-5" data-testid="admin-compliance-export-loading" aria-busy="true">
+          <span className="sr-only">Loading your compliance</span>
+          <AdminSkeleton className="h-36" />
+          <AdminSkeleton className="h-24" />
+          <AdminSkeleton className="h-16" />
+        </div>
       ) : loadState === "failed" ? (
         <AdminLoadFailed
           reason={state.loadError ?? "failed"}
@@ -129,45 +144,38 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
         />
       ) : loadState === "signed-out" ? (
         <>
-          <EmptyState
+          <WorkStateNotice
+            kind="signed-out"
             title="Sign in to export your compliance"
             body="Your records are kept for your signed-in account only."
-            actions={
-              <Button variant="primary" onClick={() => setSignInOpen(true)}>
-                Sign in
-              </Button>
-            }
+            onSignIn={() => setSignInOpen(true)}
             testId="admin-compliance-export-signed-out"
           />
           <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
         </>
       ) : (
         <div className="grid min-w-0 gap-5" data-testid="admin-compliance-export-ready">
-          {state.demoMode ? (
+          {state.demoMode && !examplesBanner ? (
             <ModeNotice testId="admin-compliance-export-demo-notice">
               Example records. These dates are made up, and nothing here is your own.
             </ModeNotice>
           ) : null}
 
-          <section className={cn(modeModuleSurface, "grid min-w-0 gap-3 p-4")} aria-labelledby="export-preview">
-            <div className="flex min-w-0 items-center gap-2">
-              <FileSpreadsheet aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-              <h2
-                id="export-preview"
-                className="min-w-0 flex-1 truncate text-sm font-medium text-[color:var(--text-heading)]"
-                title={fileName}
-              >
-                {fileName}
-              </h2>
-              <span
-                className={cn(textMuted, "shrink-0 text-xs tabular-nums")}
-                data-testid="admin-compliance-export-count"
-              >
+          <section className={cn("work-card", adminStyles.exportFile)} aria-labelledby="export-preview">
+            <div className="work-row">
+              <WorkIconCircle icon={FileSpreadsheet} />
+              <span className="work-row__text">
+                <h2 id="export-preview" className="work-row__title truncate" title={fileName}>
+                  {fileName}
+                </h2>
+                <span className="work-row__sub">Two sheets: Items, and About this file.</span>
+              </span>
+              <span className="work-row__end tabular-nums" data-testid="admin-compliance-export-count">
                 {`${body.length} ${body.length === 1 ? "row" : "rows"}`}
               </span>
             </div>
             {body.length === 0 ? (
-              <p className={cn(textMuted, "text-sm")} data-testid="admin-compliance-export-empty">
+              <p className={adminStyles.exportBody} data-testid="admin-compliance-export-empty">
                 {`No recorded dates fall in the next 60 days.${overview.counts["not-recorded"] > 0 ? ` ${overview.counts["not-recorded"]} items have no date recorded yet.` : ""} Choose Everything to export every item.`}
               </p>
             ) : (
@@ -176,18 +184,15 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
                 tabIndex={0}
                 role="region"
                 aria-label="Preview of the file"
-                className={cn(focusRing, "min-w-0 overflow-x-auto rounded-sm")}
+                className={cn(focusRing, adminStyles.exportPreview)}
                 data-testid="admin-compliance-export-preview"
+                data-no-tab-swipe=""
               >
-                <table aria-labelledby="export-preview" className="w-full min-w-0 border-collapse text-left text-xs">
+                <table aria-labelledby="export-preview">
                   <thead>
                     <tr>
                       {header.map((name) => (
-                        <th
-                          key={name}
-                          scope="col"
-                          className="border-b border-[color:var(--border)] py-1.5 pr-3 font-medium whitespace-nowrap text-[color:var(--text-muted)]"
-                        >
+                        <th key={name} scope="col">
                           {name}
                         </th>
                       ))}
@@ -197,12 +202,7 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
                     {body.slice(0, PREVIEW_ROWS).map((row, index) => (
                       <tr key={`${row[0]}-${index}`}>
                         {row.map((cell, cellIndex) => (
-                          <td
-                            key={header[cellIndex]}
-                            className="border-b border-[color:var(--border)] py-1.5 pr-3 align-top text-[color:var(--text)]"
-                          >
-                            {cell}
-                          </td>
+                          <td key={header[cellIndex]}>{cell}</td>
                         ))}
                       </tr>
                     ))}
@@ -211,55 +211,41 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
               </div>
             )}
             {body.length > PREVIEW_ROWS ? (
-              <p className={cn(textMuted, "text-xs")}>{`${body.length - PREVIEW_ROWS} more rows in the file`}</p>
+              <p className={adminStyles.exportBody}>{`${body.length - PREVIEW_ROWS} more rows in the file`}</p>
             ) : null}
-            <div className={cn(modeInsetHairline, "grid gap-1 pt-3")}>
-              <p className="text-xs text-[color:var(--text)]">Two sheets: Items, and About this file.</p>
-              <p className={cn(textMuted, "text-xs")}>
-                About this file: every date was entered by you. Nothing here has been checked with the issuing body.
-              </p>
-            </div>
           </section>
 
-          <fieldset className="grid min-w-0 gap-2">
-            <legend className={cn(eyebrowText, "mb-2 flex w-full justify-between px-1")}>
-              <span>Columns</span>
-              <span className="tabular-nums" data-testid="admin-compliance-export-column-count">
-                {`${header.length} of ${COMPLIANCE_EXPORT_HEADER.length}`}
-              </span>
-            </legend>
-            <div className="flex min-w-0 flex-wrap gap-2">
-              <span className="inline-flex min-h-12 items-center rounded-full border border-[color:var(--border)] px-4 text-sm text-[color:var(--text-muted)]">
+          <div className={adminStyles.section} role="group" aria-labelledby="export-columns">
+            <WorkSectionLabel
+              as="h2"
+              id="export-columns"
+              count={
+                <span data-testid="admin-compliance-export-column-count">{`${header.length} of ${COMPLIANCE_EXPORT_HEADER.length}`}</span>
+              }
+            >
+              Columns
+            </WorkSectionLabel>
+            <div className="work-chips flex-wrap">
+              <span className="work-chip" data-testid="admin-compliance-export-column-item">
                 Item, always
               </span>
-              {OPTIONAL_COLUMNS.map((name) => {
-                const on = columns.includes(name);
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => toggleColumn(name)}
-                    data-testid={`admin-compliance-export-column-${name.toLowerCase().replaceAll(" ", "-")}`}
-                    className={cn(
-                      focusRing,
-                      "inline-flex min-h-12 items-center rounded-full border px-4 text-sm",
-                      on
-                        ? "border-[color:var(--text-heading)] font-medium text-[color:var(--text-heading)] forced-colors:border-2"
-                        : "border-[color:var(--border)] text-[color:var(--text-muted)]",
-                    )}
-                  >
-                    {name}
-                  </button>
-                );
-              })}
+              {OPTIONAL_COLUMNS.map((name) => (
+                <WorkChip
+                  key={name}
+                  selected={columns.includes(name)}
+                  onClick={() => toggleColumn(name)}
+                  testId={`admin-compliance-export-column-${name.toLowerCase().replaceAll(" ", "-")}`}
+                >
+                  {name}
+                </WorkChip>
+              ))}
             </div>
-          </fieldset>
+          </div>
 
-          <div className="grid min-w-0 gap-2">
-            <p id="export-dates" className={cn(eyebrowText, "px-1")}>
+          <div className={adminStyles.section}>
+            <WorkSectionLabel as="h2" id="export-dates">
               Dates
-            </p>
+            </WorkSectionLabel>
             <SegmentedControl
               ariaLabelledBy="export-dates"
               value={range}
@@ -269,22 +255,25 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
             />
           </div>
 
-          <div className="grid min-w-0 gap-2">
-            <Button
+          <AdminNote>
+            About this file: every date was entered by you. Nothing here has been checked with the issuing body. This
+            file is for you. Nothing is sent to your health service.
+          </AdminNote>
+
+          <WorkDock aria-label="Export actions">
+            <WorkButton
               variant="primary"
-              block
+              size="wide"
+              icon={Download}
               onClick={save}
               disabled={body.length === 0}
               testId="admin-compliance-export-save"
             >
               Save to this device
-            </Button>
-            <p className={cn(textMuted, "px-1 text-xs")}>
-              This file is for you. Nothing is sent to your health service.
-            </p>
-          </div>
+            </WorkButton>
+          </WorkDock>
         </div>
       )}
-    </InformationPageShell>
+    </AdminPage>
   );
 }

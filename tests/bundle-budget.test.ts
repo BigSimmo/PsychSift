@@ -711,7 +711,9 @@ describe("committed route bundle budgets", () => {
     const bundle = JSON.parse(readFileSync(path.resolve("bundle-budget.json"), "utf8"));
     const lighthouse = JSON.parse(readFileSync(path.resolve("lighthouse-budget.json"), "utf8"));
 
-    expect(Object.keys(bundle.routes)).toEqual(lighthouse.routes);
+    // The Lighthouse journeys come first; the main work-mode pages follow them (added by the
+    // work-mode speed review, 7 Oct 2026) and carry the same enforced numeric shape.
+    expect(Object.keys(bundle.routes).slice(0, lighthouse.routes.length)).toEqual(lighthouse.routes);
     for (const routeBudget of Object.values(bundle.routes) as Array<{ gzipBytes: unknown; tolerancePct: unknown }>) {
       expect(routeBudget.gzipBytes).toEqual(expect.any(Number));
       expect(routeBudget.tolerancePct).toBe(10);

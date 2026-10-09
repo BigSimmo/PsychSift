@@ -69,8 +69,8 @@ export function NowRightNow({
   };
 
   return (
-    <section aria-labelledby={headingId} data-testid="on-call-now-right-now" className="grid min-w-0 gap-2 px-3">
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3">
+    <section aria-labelledby={headingId} data-testid="on-call-now-right-now" className="grid min-w-0 gap-1">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 px-1">
         <h2 id={headingId} className={eyebrowText}>
           {periodLabel ? `Right now · ${periodLabel}` : "Right now"}
         </h2>
@@ -80,103 +80,107 @@ export function NowRightNow({
         />
       </div>
 
-      {status === "loading" ? (
-        <div aria-hidden="true" data-testid="on-call-now-right-now-outline" className="grid gap-2 py-1">
-          <span className="h-5 w-3/5 rounded-sm bg-[color:var(--surface-subtle)]" />
-          <span className="h-3 w-2/5 rounded-sm bg-[color:var(--surface-subtle)]" />
-          <span className="h-12 w-full rounded-sm bg-[color:var(--surface-subtle)]" />
-        </div>
-      ) : (
-        <>
-          <div className="grid min-w-0 gap-1">
-            <p className={cn(modeHeadingText, "break-words text-xl leading-7 text-[color:var(--text-heading)]")}>
-              {title}
-            </p>
-            {cover ? (
-              <p
-                className={cn(modeNumberText, "flex items-center gap-1.5 text-sm text-[color:var(--text-muted)]")}
-                data-testid="on-call-now-right-now-until"
-              >
-                <Clock aria-hidden="true" strokeWidth={1.5} className="size-icon-xs shrink-0" />
-                <span>
-                  <span className="font-semibold text-[color:var(--text)]">{`Until ${cover.until}`}</span>
-                  {` · ${onCallDurationWords(cover.minutesLeft)} to go`}
-                </span>
-              </p>
-            ) : null}
+      {/* The answer sits in one flat white card (work-mode redesign, owner
+          request 6 Oct 2026); still calm, never the dark hero. */}
+      <div className="work-card work-card--pad grid min-w-0 gap-2">
+        {status === "loading" ? (
+          <div aria-hidden="true" data-testid="on-call-now-right-now-outline" className="grid gap-2 py-1">
+            <span className="h-5 w-3/5 rounded-sm bg-[color:var(--surface-subtle)]" />
+            <span className="h-3 w-2/5 rounded-sm bg-[color:var(--surface-subtle)]" />
+            <span className="h-12 w-full rounded-sm bg-[color:var(--surface-subtle)]" />
           </div>
-
-          {answer && dial ? (
-            <div
-              className="flex min-w-0 items-center justify-between gap-3 border-t border-[color:var(--border)] pt-2"
-              data-testid={`on-call-now-right-now-${answer.id}`}
-            >
-              <button
-                type="button"
-                aria-haspopup="dialog"
-                aria-label={`${dial.display}. Dialling details for ${title}`}
-                onClick={() => setSheetOpen(true)}
-                className={cn(focusRing, "grid min-h-12 min-w-0 content-center rounded-md text-left")}
-              >
-                <span className={cn(modeNumberText, "text-lg-minus font-medium text-[color:var(--text-heading)]")}>
-                  {dial.display}
-                </span>
-                {dial.route === "hospital-phone" || calledAt ? (
-                  <span className={modeSecondaryText}>
-                    {[
-                      dial.route === "hospital-phone" ? "From a hospital phone" : null,
-                      calledAt ? `You called ${formatOnCallTime(calledAt)}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                ) : null}
-              </button>
-              {route?.tel ? (
-                <a
-                  href={route.tel}
-                  onClick={recordCall}
-                  aria-label={`Call ${title}, ${spokenOnCallNumber(route.display)}`}
-                  className={cn(onCallOutlineButton, focusRing, "shrink-0")}
+        ) : (
+          <>
+            <div className="grid min-w-0 gap-1">
+              <p className={cn(modeHeadingText, "break-words text-xl leading-7 text-[color:var(--text-heading)]")}>
+                {title}
+              </p>
+              {cover ? (
+                <p
+                  className={cn(modeNumberText, "flex items-center gap-1.5 text-sm text-[color:var(--text-muted)]")}
+                  data-testid="on-call-now-right-now-until"
                 >
-                  <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
-                  Call
-                </a>
+                  <Clock aria-hidden="true" strokeWidth={1.5} className="size-icon-xs shrink-0" />
+                  <span>
+                    <span className="font-semibold text-[color:var(--text)]">{`Until ${cover.until}`}</span>
+                    {` · ${onCallDurationWords(cover.minutesLeft)} to go`}
+                  </span>
+                </p>
               ) : null}
             </div>
-          ) : (
-            <p className="border-t border-[color:var(--border)] pt-2" data-testid="on-call-now-right-now-not-set-up">
-              <OnCallStateLabel state={{ kind: "not-set-up" }} />
-            </p>
-          )}
 
-          {cover ? (
-            <div className="grid gap-1" data-testid="on-call-now-right-now-track">
-              <div aria-hidden="true" className="relative h-3">
-                <OnCallTrackBar percent={cover.progress} className="absolute inset-x-0 top-1" />
-                <span
-                  className="absolute top-0 size-3 -translate-x-1/2 rounded-full border-2 border-[color:var(--mode-identity)] bg-[color:var(--surface)]"
-                  style={{ left: `${cover.progress}%` }}
-                />
-              </div>
-              <p className={cn(modeNumberText, "relative h-4 text-xs font-semibold text-[color:var(--text)]")}>
-                <span className="absolute left-0">{cover.from}</span>
-                {/* "Now" sits under the dot, kept clear of both ends. */}
-                <span
-                  className="absolute -translate-x-1/2 whitespace-nowrap"
-                  style={{ left: `clamp(4.5rem, ${cover.progress}%, calc(100% - 4.5rem))` }}
+            {answer && dial ? (
+              <div
+                className="flex min-w-0 items-center justify-between gap-3 border-t border-[color:var(--border)] pt-2"
+                data-testid={`on-call-now-right-now-${answer.id}`}
+              >
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-label={`${dial.display}. Dialling details for ${title}`}
+                  onClick={() => setSheetOpen(true)}
+                  className={cn(focusRing, "grid min-h-12 min-w-0 content-center rounded-md text-left")}
                 >
-                  {`Now ${cover.nowTime}`}
-                </span>
-                <span className="absolute right-0">{cover.until}</span>
+                  <span className={cn(modeNumberText, "text-lg-minus font-medium text-[color:var(--text-heading)]")}>
+                    {dial.display}
+                  </span>
+                  {dial.route === "hospital-phone" || calledAt ? (
+                    <span className={modeSecondaryText}>
+                      {[
+                        dial.route === "hospital-phone" ? "From a hospital phone" : null,
+                        calledAt ? `You called ${formatOnCallTime(calledAt)}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  ) : null}
+                </button>
+                {route?.tel ? (
+                  <a
+                    href={route.tel}
+                    onClick={recordCall}
+                    aria-label={`Call ${title}, ${spokenOnCallNumber(route.display)}`}
+                    className={cn(onCallOutlineButton, focusRing, "shrink-0")}
+                  >
+                    <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
+                    Call
+                  </a>
+                ) : null}
+              </div>
+            ) : (
+              <p className="border-t border-[color:var(--border)] pt-2" data-testid="on-call-now-right-now-not-set-up">
+                <OnCallStateLabel state={{ kind: "not-set-up" }} />
               </p>
-              <p className={cn(modeSecondaryText, "text-xs")}>
-                {`Cover as of ${cover.nowTime}, from the hospital's handbook`}
-              </p>
-            </div>
-          ) : null}
-        </>
-      )}
+            )}
+
+            {cover ? (
+              <div className="grid gap-1" data-testid="on-call-now-right-now-track">
+                <div aria-hidden="true" className="relative h-3">
+                  <OnCallTrackBar percent={cover.progress} className="absolute inset-x-0 top-1" />
+                  <span
+                    className="absolute top-0 size-3 -translate-x-1/2 rounded-full border-2 border-[color:var(--mode-identity)] bg-[color:var(--surface)]"
+                    style={{ left: `${cover.progress}%` }}
+                  />
+                </div>
+                <p className={cn(modeNumberText, "relative h-4 text-xs font-semibold text-[color:var(--text)]")}>
+                  <span className="absolute left-0">{cover.from}</span>
+                  {/* "Now" sits under the dot, kept clear of both ends. */}
+                  <span
+                    className="absolute -translate-x-1/2 whitespace-nowrap"
+                    style={{ left: `clamp(4.5rem, ${cover.progress}%, calc(100% - 4.5rem))` }}
+                  >
+                    {`Now ${cover.nowTime}`}
+                  </span>
+                  <span className="absolute right-0">{cover.until}</span>
+                </p>
+                <p className={cn(modeSecondaryText, "text-xs")}>
+                  {`Cover as of ${cover.nowTime}, from the hospital's handbook`}
+                </p>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
 
       {answer && dial ? (
         <OnCallDialSheet

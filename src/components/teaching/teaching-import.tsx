@@ -1,22 +1,21 @@
 "use client";
 
-import { Upload } from "lucide-react";
+import { Check, FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { focusRing } from "@/components/card-recipes";
-import { modeInsetHairline, modeModuleSurface } from "@/components/mode-kit/recipes";
+import { WorkButton } from "@/components/mode-kit/work";
 import { REPEAT_LABELS } from "@/components/teaching/organise-sheets";
 import { shortDayLabel } from "@/components/teaching/teaching-dates";
 import { withUnit } from "@/components/teaching/teaching-number";
-import { ModeNotice } from "@/components/mode-kit/notice";
+import { T5Icon, T5List, T5Note, T5Section } from "@/components/teaching/t5-kit";
 import {
   TeachingAccountPage,
   TeachingDepthPage,
   teachingStickySubmit,
 } from "@/components/teaching/teaching-depth-page";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
-import { Button, buttonFaceClass } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost, teachingUpload } from "@/lib/teaching/client";
 import { DEMO_TEACHING_SERVICE_ID } from "@/lib/teaching/demo-programme";
 import {
@@ -90,22 +89,10 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
       resource={resource}
       ready={demoMode || resource.status === "ready"}
     >
-      <p>
-        Use a service timetable only: no patient details, attendance, passcodes or slides. The file is read on this
-        device; only timetable rows are sent for preview.
-      </p>
-      <a
-        className={cn(
-          "inline-flex min-h-tap items-center self-start px-1 text-sm font-medium text-[color:var(--primary)]",
-          focusRing,
-        )}
-        href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE_CSV)}`}
-        download="teaching-template.csv"
-      >
-        Download CSV template
-      </a>
+      {/* Work-mode redesign, owner request 6 Oct 2026: the file is the first card, the preview is a
+          labelled list with a tick or an alert per row, and the rules sit as a footnote. */}
       {teams.length === 0 ? (
-        <ModeNotice>Only a service organiser or admin can import its timetable.</ModeNotice>
+        <T5Note tone="notice">Only a service organiser or admin can import its timetable.</T5Note>
       ) : (
         <>
           {teams.length > 1 ? (
@@ -122,108 +109,134 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
               }}
               options={teams.map((team) => ({ value: team.id, label: team.name }))}
             />
-          ) : (
-            <p className={cn("text-sm", textMuted)}>
-              Service: <span className="font-medium text-[color:var(--text-heading)]">{teams[0].name}</span>
-            </p>
-          )}
-          <div className="grid gap-1">
-            <input
-              id={fileId}
-              type="file"
-              accept=".csv,.xlsx"
-              className="peer sr-only"
-              disabled={busy}
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                const current = ++sequence.current;
-                setFileName(file?.name ?? null);
-                setPreview(null);
-                setError(null);
-                setResult(null);
-                if (!file || !service) return;
-                if (file.size > IMPORT_MAX_FILE_BYTES) {
-                  setError("Use a file no larger than 1 MB.");
-                  return;
-                }
-                setBusy(true);
-                try {
-                  // An .xlsx is read on the server so exceljs never ships to the browser; CSV stays local.
-                  const rows = /\.xlsx$/i.test(file.name)
-                    ? (await teachingUpload<{ rows: SheetRow[] }>(TEACHING_IMPORT_READ_URL, formWith(file))).rows
-                    : /\.csv$/i.test(file.name)
-                      ? parseCsv(await file.text())
-                      : null;
-                  if (!rows) throw new Error("Choose a CSV or XLSX file.");
-                  const next = demoMode
-                    ? previewRows(rows, [])
-                    : await teachingPost<ImportPreview>(teachingDepthUrl(service), { action: "import.preview", rows });
-                  if (current === sequence.current) setPreview(next);
-                } catch (cause) {
-                  if (current === sequence.current)
-                    setError(
-                      cause instanceof Error && !("code" in cause) ? cause.message : teachingErrorMessage(cause),
-                    );
-                } finally {
-                  if (current === sequence.current) setBusy(false);
-                }
-              }}
-            />
-            <label
-              htmlFor={fileId}
-              className={cn(
-                buttonFaceClass({ variant: "secondary", block: true }),
-                "cursor-pointer peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--focus)] peer-disabled:cursor-default peer-disabled:text-[color:var(--disabled)]",
-              )}
-            >
-              <Upload aria-hidden="true" className="size-icon-md shrink-0" />
-              Choose CSV or XLSX (up to 1 MB)
-            </label>
-            {fileName ? <p className={cn("px-1 text-sm", textMuted)}>{fileName}</p> : null}
-          </div>
+          ) : null}
+          <T5Section label="Timetable file" right={teams.length === 1 ? teams[0].name : undefined}>
+            <div className="work-card grid gap-2 p-3">
+              <div className="flex items-center gap-3">
+                <T5Icon icon={FileSpreadsheet} />
+                <div className="grid min-w-0 gap-0.5">
+                  <p className="text-sm font-bold leading-tight break-words text-[color:var(--text-heading)]">
+                    {fileName ?? "No file chosen"}
+                  </p>
+                  <p className="text-xs leading-snug text-[color:var(--text-muted)]">
+                    Read on this device. CSV or XLSX, up to 1 MB.
+                  </p>
+                </div>
+              </div>
+              <input
+                id={fileId}
+                type="file"
+                accept=".csv,.xlsx"
+                className="peer sr-only"
+                disabled={busy}
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  const current = ++sequence.current;
+                  setFileName(file?.name ?? null);
+                  setPreview(null);
+                  setError(null);
+                  setResult(null);
+                  if (!file || !service) return;
+                  if (file.size > IMPORT_MAX_FILE_BYTES) {
+                    setError("Use a file no larger than 1 MB.");
+                    return;
+                  }
+                  setBusy(true);
+                  try {
+                    // An .xlsx is read on the server so exceljs never ships to the browser; CSV stays local.
+                    const rows = /\.xlsx$/i.test(file.name)
+                      ? (await teachingUpload<{ rows: SheetRow[] }>(TEACHING_IMPORT_READ_URL, formWith(file))).rows
+                      : /\.csv$/i.test(file.name)
+                        ? parseCsv(await file.text())
+                        : null;
+                    if (!rows) throw new Error("Choose a CSV or XLSX file.");
+                    const next = demoMode
+                      ? previewRows(rows, [])
+                      : await teachingPost<ImportPreview>(teachingDepthUrl(service), {
+                          action: "import.preview",
+                          rows,
+                        });
+                    if (current === sequence.current) setPreview(next);
+                  } catch (cause) {
+                    if (current === sequence.current)
+                      setError(
+                        cause instanceof Error && !("code" in cause) ? cause.message : teachingErrorMessage(cause),
+                      );
+                  } finally {
+                    if (current === sequence.current) setBusy(false);
+                  }
+                }}
+              />
+              <label
+                htmlFor={fileId}
+                className={cn(
+                  "flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-[var(--work-radius-field)] border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-4 text-sm font-bold text-[color:var(--mode-identity)]",
+                  "peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--focus)] peer-disabled:cursor-default peer-disabled:text-[color:var(--disabled)]",
+                )}
+              >
+                <Upload aria-hidden="true" className="size-icon-md shrink-0" />
+                {fileName ? "Choose another CSV or XLSX (up to 1 MB)" : "Choose CSV or XLSX (up to 1 MB)"}
+              </label>
+              <a
+                className={cn(
+                  "inline-flex min-h-12 items-center justify-center text-sm font-bold text-[color:var(--mode-identity)]",
+                  focusRing,
+                )}
+                href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE_CSV)}`}
+                download="teaching-template.csv"
+              >
+                Download CSV template
+              </a>
+            </div>
+          </T5Section>
           {busy ? (
-            <p role="status" className={cn("text-sm", textMuted)}>
+            <p role="status" className="text-xs text-[color:var(--text-muted)]">
               Working…
             </p>
           ) : null}
           {preview ? (
-            <section className="grid gap-2">
-              <h2 className="text-base-minus font-medium text-[color:var(--text-heading)]">
-                Preview — nothing imported yet
-              </h2>
-              <ul role="list" className={modeModuleSurface} data-testid="teaching-import-preview">
+            <T5Section label="Preview" right="Nothing imported yet">
+              <T5List testId="teaching-import-preview">
                 {preview.rows.map((row, index) => {
                   const ready = preview.ready?.length === preview.rows.length ? preview.ready[index] : null;
+                  const failed = row.errors.length > 0;
                   return (
-                    <li key={row.line} className={cn(modeInsetHairline, "grid min-h-13 gap-0.5 px-3 py-1")}>
-                      <p className="text-base-minus font-medium leading-5 break-words text-[color:var(--text-heading)]">
-                        {row.title || `Line ${row.line}`}
-                      </p>
-                      {ready ? (
-                        <p className={cn("text-sm leading-5", textMuted)} data-testid="teaching-import-preview-when">
-                          {previewLine(ready)}
+                    <li key={row.line} className="flex items-start gap-3 px-3 py-2.5">
+                      <T5Icon icon={failed ? TriangleAlert : Check} tone={failed ? "red" : "green"} />
+                      <div className="grid min-w-0 gap-0.5">
+                        <p className="text-sm font-bold leading-tight break-words text-[color:var(--text-heading)]">
+                          {row.title || `Line ${row.line}`}
                         </p>
-                      ) : (
-                        <p className={cn("text-sm leading-5", textMuted)}>Line {row.line}</p>
-                      )}
-                      {row.errors.map((message) => (
-                        <p key={message} role="alert" className="text-sm leading-5 text-[color:var(--text-heading)]">
-                          {message}
-                        </p>
-                      ))}
+                        {ready ? (
+                          <p
+                            className="text-xs leading-snug text-[color:var(--text-muted)]"
+                            data-testid="teaching-import-preview-when"
+                          >
+                            {previewLine(ready)}
+                          </p>
+                        ) : (
+                          <p className="text-xs leading-snug text-[color:var(--text-muted)]">Line {row.line}</p>
+                        )}
+                        {row.errors.map((message) => (
+                          <p
+                            key={message}
+                            role="alert"
+                            className="text-xs leading-snug text-[color:var(--danger-text)]"
+                          >
+                            {message}
+                          </p>
+                        ))}
+                      </div>
                     </li>
                   );
                 })}
-              </ul>
-              <p>
-                Import adds new series. Presenters must be assigned in Organise afterwards. Check dates and Perth times
-                before importing.
-              </p>
+              </T5List>
+              <T5Note tone="notice" icon="alert">
+                Check dates and Perth times. Import adds new series, then assign presenters in Organise.
+              </T5Note>
               <div className={teachingStickySubmit}>
-                <Button
-                  type="button"
-                  variant="primary"
-                  block
+                <WorkButton
+                  size="wide"
                   disabled={busy || !preview.ready?.length}
                   onClick={async () => {
                     if (!preview.ready?.length || !service || busy) return;
@@ -251,14 +264,26 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
                   }}
                 >
                   Import these sessions
-                </Button>
+                </WorkButton>
               </div>
-            </section>
+            </T5Section>
           ) : null}
         </>
       )}
-      {error ? <p role="alert">{error}</p> : null}
-      {result ? <p role="status">{result}</p> : null}
+      {error ? (
+        <p role="alert" className="text-xs font-semibold text-[color:var(--danger-text)]">
+          {error}
+        </p>
+      ) : null}
+      {result ? (
+        <p role="status" className="text-xs font-semibold text-[color:var(--success-text)]">
+          {result}
+        </p>
+      ) : null}
+      <T5Note icon="shield">
+        A service timetable only. No patient details, attendance, passcodes or slides. Only timetable rows are sent for
+        preview.
+      </T5Note>
     </TeachingDepthPage>
   );
 }

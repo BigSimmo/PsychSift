@@ -4,19 +4,26 @@ import { useCallback, useEffect, useState } from "react";
 
 import { managerWaiting } from "@/components/roster/manage/roster-manage-waiting";
 import { fetchRosterRead, type RosterTeamsPayload } from "@/components/roster/use-roster-team";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
 import { fatigueMyDayItems, ruleEnginesOn, type MyDayRuleShift } from "@/lib/my-day/rule-items";
-import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, formatPerthDay } from "@/lib/roster/shifts/perth-time";
+import { sickNeedsYouItems } from "@/lib/roster/sick/sick-report";
 import type { RosterManage, RosterOverview, RosterRequests, RosterTeam } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
 import { useAuthSession } from "@/lib/supabase/client";
+import { sharedGet } from "@/lib/shared-get";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zonedDateOf } from "@/lib/work-time/format";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /** What one team contributes: the same reads Roster Today's team strip makes. */
 export interface RosterMyDayTeamInput {
   readonly team: Pick<RosterTeam, "serviceId" | "role">;
   readonly overview: Pick<RosterOverview, "nextCutoffOn"> | null;
-  readonly requests: Pick<RosterRequests, "swaps"> | null;
+  /** `openShifts` carries the reader's own sick reports, when the read returned them. */
+  readonly requests: (Pick<RosterRequests, "swaps"> & Partial<Pick<RosterRequests, "openShifts">>) | null;
   /** Read only for a team the reader manages. */
   readonly manage: Pick<RosterManage, "swaps" | "openShifts"> | null;
 }
@@ -33,12 +40,17 @@ export interface RosterMyDayInput {
 /**
  * Roster's own "Needs you" rows, mapped for My Day. Same selectors as
  * `RosterTodayTeam`: `swapProgress(...).tab === "needs_you"`, `managerWaiting`
- * (decisions-in-strip, managers only) and the 14-day roster cutoff nudge.
+ * (decisions-in-strip, managers only), the 14-day roster cutoff nudge, and a
+ * sick report still waiting for cover (`sickNeedsYouItems`, an update).
  * Sample data yields nothing.
  */
-export function rosterMyDayItems(input: RosterMyDayInput, now: Date): MyDayItem[] {
+export function rosterMyDayItems(
+  input: RosterMyDayInput,
+  now: Date,
+  zone: string = currentWorkTimeZone(),
+): MyDayItem[] {
   if (input.sample) return [];
-  const today = perthDateOf(now);
+  const today = zonedDateOf(now, zone);
   const items: MyDayItem[] = [];
   for (const { team, overview, requests, manage } of input.teams) {
     for (const swap of requests?.swaps ?? []) {
@@ -78,6 +90,18 @@ export function rosterMyDayItems(input: RosterMyDayInput, now: Date): MyDayItem[
       });
     }
   }
+  // A sick report still waiting for cover, once across teams (Sick for tomorrow's own selector).
+  const openShifts = input.teams.flatMap(({ requests }) => requests?.openShifts ?? []);
+  for (const report of sickNeedsYouItems(openShifts, now)) {
+    items.push({
+      id: report.id,
+      mode: "roster",
+      title: report.title,
+      due: report.dueOn,
+      severity: "info",
+      href: report.href,
+    });
+  }
   if (input.ownShifts) items.push(...fatigueMyDayItems(input.ownShifts, now));
   return items;
 }
@@ -96,7 +120,7 @@ type OwnShifts = { ok: true; shifts: MyDayRuleShift[] | undefined } | { ok: fals
  */
 async function loadOwnShifts(signal: AbortSignal): Promise<OwnShifts> {
   try {
-    const response = await fetch("/api/roster/shifts", { cache: "no-store", signal });
+    const response = await sharedGet("/api/roster/shifts", { signal });
     if (!response.ok) return { ok: false };
     const body = (await response.json().catch(() => null)) as {
       shifts?: unknown;
@@ -126,7 +150,7 @@ async function loadRoster(signal: AbortSignal, withOwnShifts: boolean): Promise<
 async function loadRosterTeams(signal: AbortSignal): Promise<Loaded | null> {
   let response: Response;
   try {
-    response = await fetch("/api/roster/team", { cache: "no-store", signal });
+    response = await sharedGet("/api/roster/team", { signal });
   } catch {
     return signal.aborted ? null : { status: "failed" };
   }
@@ -171,6 +195,9 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
   retry: () => void;
 } {
   const { authEpoch } = useAuthSession();
+  // A sick report links to Sick for tomorrow, a new work mode screen the classic work mode does not have.
+  const routeVisible = useWorkModeRouteVisible();
+  const { zone } = useWorkTimeZone();
   const [stored, setStored] = useState<{ epoch: number; loaded: Loaded } | null>(null);
   const [generation, setGeneration] = useState(0);
   const retry = useCallback(() => setGeneration((value) => value + 1), []);
@@ -189,7 +216,14 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
   if (!stored || stored.epoch !== authEpoch) return { result: loading, retry };
   const loaded = stored.loaded;
   if (loaded.status === "ready") {
-    return { result: { mode: "roster", status: "ready", items: rosterMyDayItems(loaded.input, now) }, retry };
+    return {
+      result: {
+        mode: "roster",
+        status: "ready",
+        items: rosterMyDayItems(loaded.input, now, zone).filter((item) => routeVisible(item.href)),
+      },
+      retry,
+    };
   }
   return { result: { mode: "roster", status: loaded.status, items: [] }, retry };
 }

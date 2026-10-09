@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
-import { Sheet } from "@/components/ui/sheet";
+import { AdminSheet } from "@/components/admin/admin-kit";
+import { WorkButton } from "@/components/mode-kit/work";
 import { TextField } from "@/components/ui/text-field";
 import { cn, controlDisabled, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
@@ -22,6 +22,9 @@ import type { AdminRequirementCatalogueItem } from "@/lib/admin/requirements";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
+import { isOnCallExampleEntry } from "@/lib/on-call/entry-store";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 const REASON_MESSAGE: Record<Exclude<ReturnType<typeof buildRenewedEntryBody>, { ok: true }>["reason"], string> = {
   missing: "Type the new expiry date.",
@@ -68,6 +71,8 @@ export function AdminRenewedSheet({
   const subjectTitle = entry?.title ?? createItem?.title ?? "";
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
+  // Example records never leave the app, a calendar file included.
+  const { active: adminExample } = useExampleData("admin");
   const [saved, setSaved] = useState<OnCallEntry | null>(null);
   const [earlier, setEarlier] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -89,6 +94,8 @@ export function AdminRenewedSheet({
   const previousExpiresOn = entry ? complianceExpiresOn(entry) : undefined;
 
   async function save() {
+    // Belt and braces: an example row is never written to the account.
+    if (entry && isOnCallExampleEntry(entry)) return;
     const subject = entry ?? (createItem ? catalogueItemDraftEntry(createItem) : null);
     if (!subject) return;
     const result = buildRenewedEntryBody(subject, { newExpiresOn: date, proofNote: note } satisfies RenewedInput);
@@ -120,6 +127,7 @@ export function AdminRenewedSheet({
 
   async function undo() {
     if (!saved) return;
+    if (entry && isOnCallExampleEntry(entry)) return;
     setBusy(true);
     try {
       if (!entry) {
@@ -149,13 +157,14 @@ export function AdminRenewedSheet({
   }
 
   function addToCalendar() {
+    if (!guardExampleAction(adminExample, "export")) return;
     if (!saved) return;
     const event = renewalCalendarEvent(saved, new Date());
     if (event) downloadTextFile(toIcs([event]), icsFileName(saved.title), "text/calendar;charset=utf-8");
   }
 
   return (
-    <Sheet
+    <AdminSheet
       open={open}
       onClose={handleClose}
       title={entry ? `Renewed: ${subjectTitle}` : `New expiry date`}
@@ -165,16 +174,15 @@ export function AdminRenewedSheet({
         saved ? null : (
           <div className="grid gap-2">
             {error ? <InlineNotice tone="neutral">{error}</InlineNotice> : null}
-            <Button
+            <WorkButton
               variant="primary"
-              block
-              busy={busy}
-              disabled={!canSave}
+              size="wide"
               onClick={() => void save()}
               testId="admin-renewed-save"
+              disabled={busy || !canSave}
             >
               {error ? "Retry" : "Save new date"}
-            </Button>
+            </WorkButton>
           </div>
         )
       }
@@ -188,9 +196,9 @@ export function AdminRenewedSheet({
             {`Recorded as expiring ${formatRecordedDate(date)} · as you typed it`}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={addToCalendar} testId="admin-renewed-calendar">
+            <WorkButton variant="secondary" onClick={addToCalendar} testId="admin-renewed-calendar">
               Add to my calendar
-            </Button>
+            </WorkButton>
             {saved ? (
               <button
                 type="button"
@@ -234,6 +242,6 @@ export function AdminRenewedSheet({
           />
         </div>
       )}
-    </Sheet>
+    </AdminSheet>
   );
 }

@@ -66,7 +66,7 @@ export const demoServiceDetail: ServiceDetail = {
   service: { id: DEMO_SERVICE_ID, name: "Synthetic Metro Psychiatry Service" },
   membership: { role: "admin", clinicalReviewer: true },
   // After-hours times so the local demo shows Right now's period and track.
-  sites: [{ id: DEMO_SITE_ID, name: "Demonstration Hospital", afterHoursStart: "17:00", afterHoursEnd: "08:00" }],
+  sites: [{ id: DEMO_SITE_ID, name: "Example Hospital", afterHoursStart: "17:00", afterHoursEnd: "08:00" }],
   entries: [
     demoEntry(
       "61000000-0000-4000-8000-000000000019",
@@ -199,7 +199,7 @@ export const demoServiceDetail: ServiceDetail = {
         section: "documentation",
         kind: "clinical",
         title: "Example reviewed clinical summary",
-        body: "Synthetic example showing independent review metadata; it contains no clinical advice.",
+        body: "Synthetic example showing independent review metadata. It contains no clinical advice.",
         phone: "",
         sources: [
           {

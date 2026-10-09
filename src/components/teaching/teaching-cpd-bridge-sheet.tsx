@@ -1,12 +1,13 @@
 "use client";
 
+import { T5Button } from "@/components/teaching/t5-kit";
+
 import { withUnit } from "./teaching-number";
 import { Check, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
@@ -119,11 +120,11 @@ export function TeachingCpdBridgeSheet({
       testId={testId}
       footer={
         savedResult ? (
-          <Button block onClick={onClose} testId={`${testId}-done`}>
+          <T5Button block onClick={onClose} testId={`${testId}-done`}>
             Done
-          </Button>
+          </T5Button>
         ) : (
-          <Button
+          <T5Button
             variant="primary"
             block
             busy={busy}
@@ -132,14 +133,14 @@ export function TeachingCpdBridgeSheet({
             testId={`${testId}-log-button`}
           >
             {`Log ${withUnit(hours.toFixed(1), "h")} to CPD`}
-          </Button>
+          </T5Button>
         )
       }
     >
       <div className="grid gap-3 py-1">
         <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3">
           <span className="text-2xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
-            Verified Attendance
+            Verified attendance
           </span>
           <p className="mt-1 text-base-minus font-medium text-[color:var(--text-heading)]">{title}</p>
           <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">
@@ -224,7 +225,7 @@ export function TeachingCpdBridgeSheet({
 
             <Link
               href={teachingCpdEntryHref(savedResult.entryId)}
-              className={cn("text-xs text-[color:var(--primary)] underline underline-offset-2", focusRing)}
+              className={cn("text-xs text-[color:var(--mode-identity)] underline underline-offset-2", focusRing)}
             >
               Add reflection or attach slide notes in CPD
             </Link>

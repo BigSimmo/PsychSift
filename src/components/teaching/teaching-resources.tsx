@@ -16,7 +16,7 @@ import {
   resourceWriteError,
   thisWeekMeta,
 } from "@/components/teaching/resources-model";
-import { T5Icon, T5Link, T5List, T5Meta, T5Page, T5Row, T5Section } from "@/components/teaching/t5-kit";
+import { T5Icon, T5Link, T5List, T5Meta, T5Page, T5Row, T5Section, T5Button } from "@/components/teaching/t5-kit";
 import { addDays, mondayOf, perthDateKey, shortDayLabel } from "@/components/teaching/teaching-dates";
 import { catchUpSessions, TeachingCatchUp } from "@/components/teaching/teaching-catch-up";
 import { TeachingContextBar } from "@/components/teaching/teaching-modules";
@@ -28,7 +28,6 @@ import { ALL_TEAMS } from "@/components/teaching/teaching-view-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
-import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
@@ -36,6 +35,7 @@ import { cn } from "@/components/ui-primitives";
 import { teachingPost } from "@/lib/teaching/client";
 import type { CollectionRead, ResourceRow, ResourcesForWeek, TeamSummary } from "@/lib/teaching/model";
 import { sampleExamPrep } from "@/lib/teaching/term-tracker";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import {
   useSignedOutSampleRead,
@@ -174,7 +174,7 @@ export function TeachingResources({
             autoComplete="off"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-sm text-[color:var(--text-heading)] outline-none placeholder:text-[color:var(--text-muted)]"
+            className="min-w-0 flex-1 self-stretch bg-transparent text-sm text-[color:var(--text-heading)] outline-none placeholder:text-[color:var(--text-muted)]"
           />
         </label>
         <T5Section
@@ -371,7 +371,9 @@ function NewCollectionSheet({
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const ready = name.trim().length > 0 && (Boolean(serviceId) || sampleMode);
+  // Everyone in the service sees the name, so the shared patient-detail check reads it first.
+  const nameProblem = name.trim() ? checkPatientDetail(name, { allowCapitals: true }) : null;
+  const ready = name.trim().length > 0 && (Boolean(serviceId) || sampleMode) && !nameProblem;
 
   async function create() {
     if (!ready || busy) return;
@@ -399,7 +401,7 @@ function NewCollectionSheet({
       onClose={onClose}
       title="New collection"
       footer={
-        <Button
+        <T5Button
           variant="primary"
           block
           disabled={!ready}
@@ -408,13 +410,14 @@ function NewCollectionSheet({
           onClick={() => void create()}
         >
           Create collection
-        </Button>
+        </T5Button>
       }
     >
       <div className="grid gap-3">
         <TextField
           label="Name"
           hint="Everyone in the service sees this name. Do not add patient details."
+          error={nameProblem ? `${nameProblem.title} ${nameProblem.body}` : undefined}
           value={name}
           maxLength={80}
           onChange={(event) => setName(event.target.value)}

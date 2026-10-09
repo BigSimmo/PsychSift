@@ -5,19 +5,18 @@ import Link from "next/link";
 import { useId, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 import type { CmeCategory } from "@/lib/cme/types";
 
 /**
- * CPD's quiet building blocks (the 5 Oct mock-up, Work search v12 style): flat
- * lists on the page with hairline dividers, a small uppercase label above each
- * group, grey leading marks and one accent colour. Built on the mode kit's
- * recipes (row heights, inset hairline, pressed state) so sizes and colours
- * stay on the app's tokens; only the bordered card around the list is dropped.
+ * CPD's building blocks in the work-mode look (work-mode redesign, owner request
+ * 6 Oct 2026): a small-caps label above each group, then a white card with a
+ * hairline, rows divided by hairlines, a flat icon circle leading each row and
+ * one accent colour. Built on the shared work kit's classes (`work-label`,
+ * `work-card`, `work-row`) so every CPD page reads like the rest of work mode.
  */
 
-/** A group's label row: the uppercase label, with an optional link or note at the right. */
+/** A group's label row: the small-caps label, with an optional link or note at the right. */
 export function CmeGroupLabel({
   label,
   end,
@@ -30,11 +29,8 @@ export function CmeGroupLabel({
   readonly as?: "h2" | "h3";
 }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-      <Heading
-        id={id}
-        className="text-2xs font-semibold uppercase leading-4 tracking-label text-[color:var(--text-muted)]"
-      >
+    <div className="work-label flex-wrap">
+      <Heading id={id} className="m-0 text-inherit font-inherit">
         {label}
       </Heading>
       {end}
@@ -61,7 +57,7 @@ export function CmeGroup({
     <section
       aria-labelledby={label ? headingId : undefined}
       data-testid={testId}
-      className={cn("grid min-w-0 gap-1", className)}
+      className={cn("grid min-w-0 gap-2", className)}
     >
       {label ? <CmeGroupLabel id={headingId} label={label} end={end} /> : null}
       {children}
@@ -88,8 +84,9 @@ export function CmeTextLink({
 }) {
   const classes = cn(
     focusRing,
+    "cpd-text-link",
     wrap ? "whitespace-normal text-left" : "whitespace-nowrap",
-    "relative inline-flex min-h-12 items-center gap-1 text-sm-minus font-medium normal-case tracking-normal text-[color:var(--clinical-accent)] no-underline hover:underline",
+    "relative inline-flex min-h-12 items-center gap-1 text-sm-minus font-semibold normal-case tracking-normal text-[color:var(--clinical-accent)] no-underline hover:underline",
     className,
   );
   if (href) {
@@ -106,7 +103,7 @@ export function CmeTextLink({
   );
 }
 
-/** The flat list itself: rows on the page surface, hairlines between them. */
+/** The list itself: a white card, hairlines between its rows. */
 export function CmeFlatList({
   children,
   testId,
@@ -120,53 +117,60 @@ export function CmeFlatList({
   readonly className?: string;
 }) {
   return (
-    <ul role="list" aria-label={label} data-testid={testId} className={cn("grid min-w-0", className)}>
+    <ul role="list" aria-label={label} data-testid={testId} className={cn("work-card work-rows min-w-0", className)}>
       {children}
     </ul>
   );
 }
 
-/** The leading mark on a row: an open circle (still to do), a tick (done), or nothing. */
+/** The leading mark on a row: a flat circle (still to do), a ticked one (done), or nothing. */
 export function CmeRowMark({ state }: { readonly state: "open" | "done" | "none" }) {
-  if (state === "none") return <span aria-hidden="true" className="size-4 shrink-0" />;
+  if (state === "none") return <span aria-hidden="true" className="size-7.5 shrink-0" />;
   if (state === "done") {
     return (
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 16 16"
-        className="size-4 shrink-0 fill-none stroke-[color:var(--text-muted)] stroke-[1.6] [stroke-linecap:round] [stroke-linejoin:round]"
-      >
-        <path d="M3 8.5l3.2 3L13 4.5" />
-      </svg>
+      <span aria-hidden="true" className="work-ic" data-tone="neutral">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          className="fill-none stroke-current stroke-[1.8] [stroke-linecap:round] [stroke-linejoin:round]"
+        >
+          <path d="M3 8.5l3.2 3L13 4.5" />
+        </svg>
+      </span>
     );
   }
   return (
-    <span
-      aria-hidden="true"
-      className="mx-px size-4 shrink-0 rounded-full border-[1.5px] border-[color:var(--border-strong)] forced-colors:border-[CanvasText]"
-    />
+    <span aria-hidden="true" className="work-ic">
+      <span className="size-3 rounded-full border-2 border-current forced-colors:border-[CanvasText]" />
+    </span>
   );
 }
 
 /**
- * One row: optional leading mark or grey icon, a title, a muted second line,
- * and an end slot (a value, a text link or a chevron). With `href` the text is
- * a link and ends in a chevron; a control in `end` always sits beside the
- * link, never inside it.
+ * One row: optional leading icon (drawn in a flat circle) or mark, a title, a
+ * muted second line, and an end slot (a value, a button or a chevron). With
+ * `href` the text is a link and ends in a chevron; a control in `end` always
+ * sits beside the link, never inside it.
  */
 export function CmeFlatRow({
   title,
   subtitle,
   lead,
+  leadTone = "neutral",
   end,
   href,
   muted = false,
   testId,
   className,
+  linkEnd,
 }: {
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
+  /** Drawn inside the link in place of the chevron: a button face ("Show") the whole row answers to. */
+  readonly linkEnd?: ReactNode;
   readonly lead?: ReactNode;
+  /** A bare icon lead sits in a grey circle, or the mode's copper tint. */
+  readonly leadTone?: "neutral" | "mode";
   readonly end?: ReactNode;
   readonly href?: string;
   /** Greyed text: a line that does not apply to this person. */
@@ -174,50 +178,31 @@ export function CmeFlatRow({
   readonly testId?: string;
   readonly className?: string;
 }) {
-  const height = subtitle ? modeRowHeight.double : modeRowHeight.single;
   const text = (
-    <span className="grid min-w-0 flex-1 gap-px py-2">
-      <span
-        className={cn(
-          "break-words text-sm font-medium leading-5",
-          muted ? "text-[color:var(--text-muted)]" : "text-[color:var(--text-heading)]",
-        )}
-      >
-        {title}
-      </span>
-      {subtitle ? (
-        <span className="line-clamp-2 break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">
-          {subtitle}
-        </span>
-      ) : null}
+    <span className="work-row__text">
+      <span className={cn("work-row__title break-words", muted && "text-[color:var(--text-muted)]")}>{title}</span>
+      {subtitle ? <span className="work-row__sub line-clamp-2 break-words">{subtitle}</span> : null}
     </span>
   );
   const leadSlot = lead ? (
-    <span className="flex shrink-0 items-center text-[color:var(--text-muted)] [&_svg]:size-icon-md">{lead}</span>
+    <span className="cpd-lead" data-tone={leadTone === "mode" ? "mode" : undefined}>
+      {lead}
+    </span>
   ) : null;
   if (href) {
     return (
-      <li className={cn(modeInsetHairline, "flex min-w-0 items-center before:left-0", className)}>
-        <Link
-          href={href}
-          data-testid={testId}
-          className={cn(height, modePressable, focusRing, "flex min-w-0 flex-1 items-center gap-3 no-underline")}
-        >
+      <li className={cn("flex min-w-0 items-center", className)}>
+        <Link href={href} data-testid={testId} className={cn("work-row min-h-tap min-w-0 flex-1", end ? "pr-1" : "")}>
           {leadSlot}
           {text}
-          {end ? null : (
-            <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
-          )}
+          {linkEnd ?? (end ? null : <ChevronRight aria-hidden="true" className="work-row__chev" />)}
         </Link>
-        {end ? <span className="ml-3 flex shrink-0 items-center">{end}</span> : null}
+        {end ? <span className="flex shrink-0 items-center pr-3">{end}</span> : null}
       </li>
     );
   }
   return (
-    <li
-      data-testid={testId}
-      className={cn(modeInsetHairline, height, "flex min-w-0 items-center gap-3 before:left-0", className)}
-    >
+    <li data-testid={testId} className={cn("work-row min-w-0", className)}>
       {leadSlot}
       {text}
       {end ? <span className="flex shrink-0 items-center">{end}</span> : null}
@@ -225,7 +210,7 @@ export function CmeFlatRow({
   );
 }
 
-/** The three CPD categories as shades of CPD indigo (tokens in globals.css). */
+/** The three CPD categories as copper shades (tokens in cme-work.css and globals.css). */
 const cmeCategoryShade: Record<CmeCategory, string> = {
   educational: "bg-[color:var(--cme-cat-1)]",
   reviewing: "bg-[color:var(--cme-cat-2)]",
@@ -283,8 +268,8 @@ export function CmeNote({
       data-testid={testId}
       role={role}
       className={cn(
-        "flex items-start gap-2.5 rounded-lg border bg-[color:var(--surface-raised)] px-3 py-2.5 text-sm-minus text-[color:var(--text-muted)]",
-        tone === "warn" ? "border-[color:var(--warning-border)]" : "border-[color:var(--border)]",
+        "work-card flex items-start gap-2.5 px-3 py-2.5 text-sm-minus text-[color:var(--text-muted)]",
+        tone === "warn" ? "border-[color:var(--warning-border)]" : "",
       )}
     >
       {icon ? (

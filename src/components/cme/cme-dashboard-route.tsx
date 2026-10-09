@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 
@@ -57,7 +58,7 @@ export function CmeDashboardRoute({
 }: CmeDashboardRouteProps) {
   const router = useRouter();
   const { preferences, setPreference } = useAppPreferences();
-  const now = new Date(nowIso);
+  const now = useMemo(() => new Date(nowIso), [nowIso]);
   const oneTap = useCmeOneTapRoutineLog({ demoMode });
 
   return (

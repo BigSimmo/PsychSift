@@ -6,6 +6,7 @@ import {
   dueCountsByDate,
   formatCountdown,
   formatRingFigure,
+  nextRosteredDay,
   parseHiddenCards,
   parseSnoozes,
   selectNeedsYou,
@@ -59,6 +60,25 @@ describe("snoozes", () => {
     expect(snoozeUntil(NOW)).toBe("2026-10-04");
     // 23:30 Perth on 3 Oct is 15:30 UTC the same day.
     expect(snoozeUntil(new Date("2026-10-03T15:30:00Z"))).toBe("2026-10-04");
+  });
+});
+
+// Work-mode redesign, owner request 6 Oct 2026: Later can wait for the next rostered day.
+describe("nextRosteredDay", () => {
+  it("is the first Perth date after today with a shift that is not leave", () => {
+    const shifts = [
+      { startsAt: "2026-10-03T01:00:00Z", kind: "day" },
+      { startsAt: "2026-10-04T01:00:00Z", kind: "leave" },
+      // 06:00 Perth on Mon 5 Oct is 22:00 UTC on Sun 4 Oct.
+      { startsAt: "2026-10-04T22:00:00Z", kind: "day" },
+      { startsAt: "2026-10-07T01:00:00Z", kind: "on_call" },
+    ];
+    expect(nextRosteredDay(shifts, TODAY)).toBe("2026-10-05");
+  });
+
+  it("is null when the roster has nothing ahead within the window", () => {
+    expect(nextRosteredDay([], TODAY)).toBeNull();
+    expect(nextRosteredDay([{ startsAt: "2026-10-30T01:00:00Z", kind: "day" }], TODAY)).toBeNull();
   });
 });
 

@@ -9,6 +9,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { selectAdminOwnEntries } from "@/lib/admin/own-entries";
+import { adminPinsStorageKey } from "@/lib/admin/pins";
 import { renewalsShowCounts } from "@/lib/admin/renewals-filters";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
@@ -84,6 +85,17 @@ describe("AdminTodayPage", () => {
     );
   });
 
+  it("leads to Contract end, the Leave wallet and the starter pack from a Work and leave group", () => {
+    render(<AdminTodayPage now={NOW} />);
+    const group = screen.getByTestId("admin-work-and-leave");
+    expect(within(group).getByRole("heading", { name: "Work and leave" })).toBeInTheDocument();
+    expect(
+      within(group)
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["/admin/contract", "/admin/leave", "/admin/new-job/starter"]);
+  });
+
   it("does not call the reader's own dates an example", () => {
     render(<AdminTodayPage now={NOW} />);
     expect(screen.queryByTestId("admin-today-demo-notice")).toBeNull();
@@ -109,7 +121,7 @@ describe("AdminTodayPage", () => {
     render(<AdminTodayPage now={NOW} />);
     const greeting = screen.getByTestId("admin-today-greeting");
     expect(greeting.textContent).toContain("Good morning");
-    expect(greeting.textContent).toContain("Sat 26 Sep 2026");
+    expect(greeting.textContent).toContain("Saturday 26 September");
     expect(greeting.textContent).not.toMatch(/\d+ (items|renewals|due)/);
     expect(screen.queryByRole("navigation", { name: "Sections of this page" })).toBeNull();
   });
@@ -131,11 +143,14 @@ describe("AdminTodayPage", () => {
     expect(screen.queryByTestId("admin-today-needs-you")).toBeNull();
   });
 
-  it("keeps the lead-time drawing off the accent token, which the featured card remaps to Admin's brown (M1)", () => {
+  // Amended for the work-mode redesign, owner request 6 Oct 2026: the window
+  // now sits on the slate hero card (the frame owns the mode tint), and still
+  // never reads the accent token.
+  it("keeps the lead-time drawing off the accent token, on the Renew next hero (M1)", () => {
     state.entries = [registration];
     render(<AdminTodayPage now={NOW} />);
     const window = screen.getByTestId("admin-today-renew-next-window");
-    expect(window.closest("[data-mode-identity]")).not.toBeNull();
+    expect(window.closest(".work-hero")).not.toBeNull();
     expect(window.innerHTML).not.toContain("--clinical-accent");
   });
 
@@ -173,7 +188,8 @@ describe("AdminTodayPage", () => {
     render(<AdminTodayPage now={NOW} />);
     const card = screen.getByTestId("admin-today-renew-next");
     expect(within(card).getByText("Medical registration")).toBeTruthy();
-    expect(within(card).getByText("Expires 15 Oct 2026 · in 2 weeks")).toBeTruthy();
+    // Amended for the work-mode redesign, owner request 6 Oct 2026: the hero says "Renew by" with the weekday.
+    expect(within(card).getByText("Renew by Thu 15 Oct · in 2 weeks")).toBeTruthy();
     expect(screen.getByTestId("admin-today-renew-next-window")).toBeTruthy();
     const renewed = within(card).getByTestId("admin-today-renew-next-renewed");
     expect(renewed.getAttribute("href")).toBe(`/admin/renewals#on-call-entry-${registration.id}`);
@@ -225,7 +241,8 @@ describe("AdminTodayPage", () => {
     state.entries = [registration, step];
     render(<AdminTodayPage now={NOW} />);
     const newJob = screen.getByTestId("admin-today-new-job");
-    expect(newJob.textContent).toContain("Starts 2 Nov 2026");
+    // Amended for the work-mode redesign, owner request 6 Oct 2026: the start date carries its weekday.
+    expect(newJob.textContent).toContain("Starts Mon 2 Nov");
     expect(newJob.textContent).toContain("Sign and return your contract");
   });
 
@@ -262,12 +279,16 @@ describe("AdminTodayPage", () => {
   });
 });
 
-/** The label reads `--today-at` for both its position and its own-width shift, so it stays inside the bar. */
+/**
+ * Amended for the work-mode redesign, owner request 6 Oct 2026: the window is
+ * an SVG whose today line sits at `at`, clamped to the track, and "Today" is
+ * one of the three labels in a row under it, so it can never spill past the
+ * card's edge.
+ */
 function expectLabelAt(at: string) {
-  expect(screen.getByTestId("admin-today-renew-next-window-track").style.getPropertyValue("--today-at")).toBe(at);
-  const label = screen.getByTestId("admin-today-renew-next-window-today");
-  expect(label.className).toContain("left-[var(--today-at)]");
-  expect(label.className).toContain("-translate-x-[var(--today-at)]");
+  const window = screen.getByTestId("admin-today-renew-next-window");
+  expect(window.querySelector("svg svg")?.getAttribute("x")).toBe(at);
+  expect(within(window).getByText("Today")).toBeTruthy();
 }
 
 describe("AdminTodayPage redesign (Admin proposal)", () => {
@@ -396,7 +417,10 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
     expect(within(empty).getByRole("link").getAttribute("href")).toBe("/admin/renewals");
   });
 
-  it("orders the page Renew next, Needs you, Coming up, New job, At a glance, Requirements", () => {
+  // Amended for the work-mode redesign, owner request 6 Oct 2026: Josh's locked
+  // mockup puts the three counts straight after Needs you, then Coming up, New
+  // job, Pinned and Requirements.
+  it("orders the page Renew next, Needs you, At a glance, Coming up, New job, Requirements", () => {
     const step = onCallEntryFixture({
       section: "logistics",
       title: "Sign and return your contract",
@@ -420,19 +444,19 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
     expect(order).toEqual([
       "admin-today-renew-next",
       "admin-today-needs-you",
+      "admin-today-at-a-glance",
       "admin-today-coming-up",
       "admin-today-new-job",
-      "admin-today-at-a-glance",
       "admin-today-requirements",
     ]);
-    // Two columns from lg: act-on (Renew next, Needs you) on the left, what is ahead on the right.
+    // Two columns from lg: act-on (Renew next, Needs you, the counts) on the left, what is ahead on the right.
     const act = ready.querySelector('[data-today-column="act"]') as HTMLElement;
     const ahead = ready.querySelector('[data-today-column="ahead"]') as HTMLElement;
     expect(act.parentElement?.className).toContain("lg:grid-cols-2");
     expect(within(act).getByTestId("admin-today-needs-you")).toBeTruthy();
-    expect(within(act).queryByTestId("admin-today-at-a-glance")).toBeNull();
+    expect(within(act).getByTestId("admin-today-at-a-glance")).toBeTruthy();
     expect(within(ahead).getByTestId("admin-today-coming-up")).toBeTruthy();
-    expect(within(ahead).getByTestId("admin-today-at-a-glance")).toBeTruthy();
+    expect(within(ahead).queryByTestId("admin-today-at-a-glance")).toBeNull();
     // The greeting stays the page's only h1.
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
@@ -444,5 +468,69 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
     expect(screen.getByTestId("admin-today-loading-at-a-glance").children).toHaveLength(3);
     expect(screen.getByTestId("admin-today-loading-needs-you")).toBeTruthy();
     expect(screen.getByTestId("admin-today-loading-coming-up")).toBeTruthy();
+  });
+});
+
+// Work-mode redesign, owner request 6 Oct 2026: the additions to Today.
+describe("AdminTodayPage work-mode additions", () => {
+  it("no longer carries the credentials wallet, which moved to New job", () => {
+    state.entries = [registration, indemnity];
+    render(<AdminTodayPage now={NOW} />);
+    expect(screen.queryByTestId("admin-credentials-wallet")).toBeNull();
+  });
+
+  it("lists numbers pinned on Help under Pinned, each opening the dial sheet", () => {
+    const security = onCallEntryFixture({
+      section: "logistics",
+      title: "Demo security escort",
+      details: { category: "Facilities", phone: "08 9000 0000" },
+      isOwn: true,
+    });
+    state.entries = [registration, security];
+    window.localStorage.setItem(adminPinsStorageKey, JSON.stringify([security.id]));
+    try {
+      render(<AdminTodayPage now={NOW} />);
+      const pinned = screen.getByTestId("admin-today-pinned");
+      expect(within(pinned).getByRole("heading", { name: /Pinned/ })).toBeTruthy();
+      expect(pinned).toHaveTextContent("Also on My Day");
+      fireEvent.click(within(pinned).getByRole("button", { name: "Call Demo security escort" }));
+      expect(screen.getByTestId("admin-today-pinned-dial")).toBeTruthy();
+    } finally {
+      window.localStorage.removeItem(adminPinsStorageKey);
+    }
+  });
+
+  it("links the Overtime row to Roster's extra time view", () => {
+    state.entries = [registration];
+    render(<AdminTodayPage now={NOW} />);
+    const link = screen.getByTestId("admin-today-overtime-link");
+    expect(link.getAttribute("href")).toBe("/roster?view=hours");
+  });
+
+  it("offers Add a renewal in the dock only when the reader can write", () => {
+    state.entries = [registration, indemnity];
+    const { unmount } = render(<AdminTodayPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-today-add"));
+    expect(screen.getByTestId("admin-quick-add-sheet")).toBeTruthy();
+    unmount();
+    state.demoMode = true;
+    render(<AdminTodayPage now={NOW} />);
+    expect(screen.queryByTestId("admin-today-add")).toBeNull();
+  });
+
+  it("puts Renewed beside the featured passed date, opening that item on Renewals", () => {
+    state.entries = [registration, wwc];
+    render(<AdminTodayPage now={NOW} />);
+    const renewed = screen.getByTestId("admin-today-needs-you-renewed");
+    expect(renewed.getAttribute("href")).toBe(`/admin/renewals#on-call-entry-${wwc.id}`);
+    expect(renewed).toHaveAccessibleName("Renewed: Working with Children card");
+  });
+
+  it("shows no Overtime, counts or lists while signed out, only sign-in and Help", () => {
+    state.signedOut = true;
+    render(<AdminTodayPage now={NOW} />);
+    expect(screen.queryByTestId("admin-today-overtime")).toBeNull();
+    expect(screen.queryByTestId("admin-today-add")).toBeNull();
+    expect(screen.getByTestId("admin-today-help-row").getAttribute("href")).toBe("/admin/help");
   });
 });

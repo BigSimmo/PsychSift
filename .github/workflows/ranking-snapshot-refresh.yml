@@ -1,0 +1,214 @@
+# Keeps the ranking snapshot inside its 30-day freshness window
+# (tests/ranking-snapshot-provenance.test.ts) without anyone rebuilding it by hand.
+#
+# After each Eval Canary run on main, if the committed snapshot is at least
+# REFRESH_AFTER_DAYS old, this rebuilds it from that run's golden-retrieval.json
+# and opens a PR. It makes NO provider calls: the canary already paid for the live
+# eval and uploaded the artifact; this job only converts it.
+#
+# Why a PR and not a direct commit: the snapshot is a protected RAG fixture
+# (AGENTS.md "RAG ranking protection"), so a person still reviews and merges it.
+# The PR is opened with secrets.GH_TOKEN, not GITHUB_TOKEN, because a PR opened
+# by GITHUB_TOKEN never triggers CI and would sit with its required checks unrun.
+#
+# Before 2026-10-07 nothing did this, so the snapshot expired on 7 Oct and turned
+# every open PR red until it was rebuilt by hand (PR #3357).
+name: Ranking Snapshot Refresh
+
+on:
+  workflow_run:
+    workflows: ["Eval Canary"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Eval Canary run id to rebuild from (empty = newest run whose golden retrieval passed)"
+        type: string
+        default: ""
+
+concurrency:
+  group: ranking-snapshot-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Refresh when the snapshot reaches this age. The canary is weekly, so the PR
+  # arrives between day 14 and day 21, leaving at least nine days to merge it.
+  REFRESH_AFTER_DAYS: "14"
+
+jobs:
+  ranking-snapshot-refresh:
+    # A failed canary can still carry a passing golden retrieval half (the answer
+    # half fails on its own), so conclusion is not filtered here; the pick step
+    # checks the golden step itself.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Read the canary run's jobs and download its artifact.
+      actions: read
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Pick the canary run
+        id: pick
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_RUN_ID: ${{ github.event.inputs.run_id }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const GOLDEN_STEP = "Golden retrieval eval (live corpus)";
+            const OVERRIDE_STEP = "Validate ranking-config override";
+            const explicit = (process.env.INPUT_RUN_ID || process.env.EVENT_RUN_ID || "").trim();
+            if (explicit && !/^\d+$/.test(explicit)) throw new Error(`run_id must be numeric, got "${explicit}"`);
+
+            let candidates;
+            if (explicit) {
+              candidates = [Number(explicit)];
+            } else {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner, repo, workflow_id: "eval-canary.yml", branch: "main", status: "completed", per_page: 10,
+              });
+              candidates = data.workflow_runs.map((run) => run.id);
+            }
+
+            for (const runId of candidates) {
+              const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+              if (run.path !== ".github/workflows/eval-canary.yml" || run.head_branch !== "main") {
+                core.info(`Run ${runId}: not an Eval Canary run on main, skipped.`);
+                continue;
+              }
+              const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({ owner, repo, run_id: runId });
+              const steps = jobs.jobs.flatMap((job) => job.steps ?? []);
+              const golden = steps.find((step) => step.name === GOLDEN_STEP);
+              const override = steps.find((step) => step.name === OVERRIDE_STEP);
+              if (golden?.conclusion !== "success") {
+                core.info(`Run ${runId}: golden retrieval did not pass (${golden?.conclusion ?? "missing"}), skipped.`);
+                continue;
+              }
+              // A dispatch with rag_ranking_config evaluates staged weights, not production
+              // ranking, so its artifact must never become the tuner's ground truth.
+              if (override && override.conclusion !== "skipped") {
+                core.info(`Run ${runId}: ran with a ranking-config override, skipped.`);
+                continue;
+              }
+              const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({ owner, repo, run_id: runId });
+              if (!artifacts.artifacts.some((artifact) => artifact.name === "eval-canary-output" && !artifact.expired)) {
+                core.info(`Run ${runId}: no eval-canary-output artifact, skipped.`);
+                continue;
+              }
+              core.setOutput("found", "true");
+              core.setOutput("run_id", String(runId));
+              core.setOutput("run_started_at", new Date(run.run_started_at).toISOString());
+              core.info(`Using Eval Canary run ${runId} (started ${run.run_started_at}).`);
+              return;
+            }
+            core.setOutput("found", "false");
+            core.notice("No usable Eval Canary run: nothing to refresh from.");
+
+      - name: Decide whether a refresh is due
+        id: due
+        if: steps.pick.outputs.found == 'true'
+        env:
+          RUN_ID: ${{ steps.pick.outputs.run_id }}
+          RUN_STARTED_AT: ${{ steps.pick.outputs.run_started_at }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const provenance = JSON.parse(fs.readFileSync("scripts/fixtures/rag-ranking-candidate-snapshot.v1.provenance.json", "utf8"));
+            const current = Date.parse(provenance.sourceRunStartedAt);
+            const candidate = Date.parse(process.env.RUN_STARTED_AT);
+            const ageDays = (Date.now() - current) / 86400000;
+            const threshold = Number(process.env.REFRESH_AFTER_DAYS);
+            let due = "true";
+            let reason = `snapshot is ${ageDays.toFixed(1)} days old`;
+            if (!(candidate > current)) { due = "false"; reason = `run ${process.env.RUN_ID} is not newer than the committed snapshot`; }
+            else if (ageDays < threshold) { due = "false"; reason += `, under ${threshold}`; }
+            console.log(`Refresh due: ${due} (${reason})`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `refresh=${due}\n`);
+          '
+
+      - name: Download the canary artifact
+        if: steps.due.outputs.refresh == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: eval-canary-output
+          run-id: ${{ steps.pick.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: .local/canary
+
+      - name: Setup Node and dependencies
+        if: steps.due.outputs.refresh == 'true'
+        uses: ./.github/actions/setup-node-cached
+
+      - name: Rebuild the snapshot and check it
+        if: steps.due.outputs.refresh == 'true'
+        env:
+          RUN_ID: ${{ steps.pick.outputs.run_id }}
+          RUN_STARTED_AT: ${{ steps.pick.outputs.run_started_at }}
+        run: |
+          set -euo pipefail
+          node scripts/run-tsx.mjs scripts/build-ranking-snapshot.ts \
+            --input .local/canary/golden-retrieval.json \
+            --output scripts/fixtures/rag-ranking-candidate-snapshot.v1.json \
+            --source-run-id "$RUN_ID"
+          node -e '
+            const fs = require("fs");
+            const file = "scripts/fixtures/rag-ranking-candidate-snapshot.v1.provenance.json";
+            const provenance = JSON.parse(fs.readFileSync(file, "utf8"));
+            provenance.sourceRunId = process.env.RUN_ID;
+            provenance.sourceRunStartedAt = process.env.RUN_STARTED_AT;
+            fs.writeFileSync(file, `${JSON.stringify(provenance, null, 2)}\n`);
+          '
+          npx prettier --write scripts/fixtures/rag-ranking-candidate-snapshot.v1.json scripts/fixtures/rag-ranking-candidate-snapshot.v1.provenance.json
+          node scripts/run-vitest.mjs run tests/ranking-snapshot-provenance.test.ts tests/ranking-tuning.test.ts tests/build-ranking-snapshot.test.ts
+          npm run check:rag:fixtures
+
+      - name: Open the refresh PR
+        if: steps.due.outputs.refresh == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          RUN_ID: ${{ steps.pick.outputs.run_id }}
+          RUN_STARTED_AT: ${{ steps.pick.outputs.run_started_at }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::GH_TOKEN secret is missing, so the refresh PR cannot be opened with CI running on it."
+            exit 1
+          fi
+          branch="chore/ranking-snapshot-$RUN_ID"
+          # One refresh PR at a time: while an earlier one waits to be merged, each
+          # weekly canary would otherwise open another that changes the same files.
+          existing=$(gh pr list --repo "$REPOSITORY" --state open --limit 200 --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("chore/ranking-snapshot-"))][0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "Ranking snapshot refresh PR #$existing is already open. Merge or close it first."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add scripts/fixtures/rag-ranking-candidate-snapshot.v1.json scripts/fixtures/rag-ranking-candidate-snapshot.v1.provenance.json
+          git commit -m "Refresh the ranking snapshot from Eval Canary run $RUN_ID"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/$branch"
+          gh pr create --repo "$REPOSITORY" --base main --head "$branch" \
+            --title "Refresh the ranking snapshot from Eval Canary run $RUN_ID" \
+            --body "$(printf '%s\n' \
+              "Before: the ranking snapshot ages towards its 30-day limit, after which the ranking snapshot test fails on every PR." \
+              "" \
+              "After: the snapshot is rebuilt from Eval Canary run [$RUN_ID]($SERVER_URL/$REPOSITORY/actions/runs/$RUN_ID) (started $RUN_STARTED_AT), whose golden retrieval step passed." \
+              "" \
+              "How: opened by the Ranking Snapshot Refresh workflow. It downloads the run's golden-retrieval.json, runs scripts/build-ranking-snapshot.ts, updates the provenance file, and checks it with the three ranking snapshot tests and check:rag:fixtures. No provider calls." \
+              "" \
+              "RAG impact: no retrieval behaviour change. Test fixture refresh from eval-canary run $RUN_ID (golden retrieval passed). No ranking code touched.")"

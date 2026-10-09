@@ -1,5 +1,7 @@
 # Repository Skills and Outstanding-Work Memory
 
+_Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
+
 <!-- BEGIN:repository-skills-and-issues -->
 
 ## Repository productivity skills
@@ -20,7 +22,12 @@ When planning would help, use the matching planner command in `docs/productivity
 
 ## Outstanding-work memory (`/issues`)
 
-`docs/outstanding-issues.md` is the universal durable cross-session ledger for tasks, recommendations, and issues. Update it when work completes, is dropped, or is materially re-scoped. Never restore completed, duplicate, speculative, or rejected work to the recommended queue.
+Follow the [task-status authority map](../task-receipts.md#status-authority).
+`docs/outstanding-issues.md` retains repository issue history and its recommended
+queue; canonical task lifecycle belongs to the PsychSift-filtered Notion source.
+Queue issue completion or scope changes through immutable inbox requests, never
+direct table edits. Never restore completed, duplicate, speculative, or rejected
+work to the recommended queue.
 
 - When the user types `/issues`, invoke the `issues` skill (`.claude/skills/issues/SKILL.md`): run `npm run issues:report -- --json` to read the cached `origin/main` ledger (read-only; mutates and commits nothing).
 - `/issues add|done|update|queue …` queue immutable request files under `docs/outstanding-issues-inbox/`. Ordinary branches never edit the canonical ledger. One deliberately serialized fresh-base branch runs `npm run issues:reconcile` after PRs land.

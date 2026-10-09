@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 
+import { AgreementEntryLink } from "@/components/agreement-ask/agreement-entry-link";
 import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
@@ -30,8 +31,10 @@ import {
   WorkProfileSection,
 } from "@/components/work-profile/work-profile-list";
 import type { WorkProfileData, WorkProfilePreferences } from "@/components/work-profile/use-work-profile-data";
+import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { JURISDICTION_OPTIONS, workStageLabel } from "@/lib/account-preferences";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
+import { countAllRecents, forgetAllRecents } from "@/lib/work-search/memory";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { ROSTER_GRADES } from "@/lib/roster/team/model";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -307,6 +310,12 @@ export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
           href={FATIGUE_RULE_SET.source.url}
           external
         />
+        {/* Ask the agreement is a new work mode screen. */}
+        <NewWorkModeOnly>
+          <li className="border-t border-[color:var(--work-line)] forced-colors:border-[color:CanvasText]">
+            <AgreementEntryLink />
+          </li>
+        </NewWorkModeOnly>
         {weekday ? (
           <WorkProfileRow
             title="Pay fortnight starts"
@@ -328,7 +337,7 @@ export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
         <WorkProfileRow
           title="Check my next 14 days"
           subtitle={
-            gate.on ? "Roster’s Hours & rest check uses these limits" : "Roster doesn’t check these now; see below"
+            gate.on ? "Roster’s Hours & rest check uses these limits" : "Roster doesn’t check these now. See below"
           }
           href="/roster/shifts?view=hours"
         />
@@ -392,8 +401,10 @@ export function PrivacyPanel({
   );
 
   const clearSearches = () => {
-    const count = countRecentQueries();
+    // Clinical search's recent queries and AI Search's Recent (kept in this tab's memory) together.
+    const count = countRecentQueries() + countAllRecents();
     clearRecentQueries();
+    forgetAllRecents();
     setCleared(count > 0 ? "Recent searches cleared" : "No recent searches to clear");
   };
 

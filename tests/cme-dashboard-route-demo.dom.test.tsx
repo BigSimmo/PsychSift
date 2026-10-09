@@ -8,6 +8,8 @@ import { DEFAULT_REMINDER_SETTINGS } from "@/lib/reminders/settings-model";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
   useAppPreferences: () => ({ preferences: { reminders: DEFAULT_REMINDER_SETTINGS }, setPreference: vi.fn() }),
+  readAppPreferences: () => ({ timeZone: "Australia/Perth" }),
+  subscribeAppPreferences: () => () => undefined,
 }));
 vi.mock("@/components/cme/cme-quick-log", () => ({
   CmeQuickLog: () => null,
@@ -21,9 +23,8 @@ vi.mock("@/components/cme/cme-teaching-prompt", () => ({
 const nowIso = "2026-09-19T02:00:00Z";
 
 describe("CmeDashboardRoute demo wording", () => {
-  it("labels sample data as made-up examples rather than saved records", () => {
+  it("never calls sample data saved records (the example data banner says it is made up)", () => {
     render(<CmeDashboardRoute set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} nowIso={nowIso} routines={[]} demoMode />);
-    expect(screen.getByText(/Made-up example records/)).toBeTruthy();
     expect(screen.queryByText(/In your account/)).toBeNull();
   });
 

@@ -7,6 +7,7 @@ import { TeachingSupervisionAdmin } from "@/components/teaching/teaching-supervi
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { WorkButton } from "@/components/mode-kit/work";
 import {
   changeBody,
   csvHref,
@@ -34,15 +35,14 @@ import {
 } from "@/components/teaching/organise-sheets";
 import {
   T5Done,
+  T5Empty,
   T5Icon,
-  T5Kicker,
   T5LiveDot,
   T5Link,
   T5List,
   T5Meta,
   T5Note,
   T5Page,
-  T5Panel,
   T5Row,
   T5Section,
   T5Time,
@@ -57,7 +57,6 @@ import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
 import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { teachingErrorMessage, teachingGet, teachingServiceUrl } from "@/lib/teaching/client";
 import { demoOrganise } from "@/lib/teaching/demo-organise";
 import {
@@ -233,7 +232,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
     async function download() {
       if (downloading) return;
       if (isDemo) {
-        setNotice("Demo only. The made-up service has no attendance to download.");
+        setNotice("Example only. The example service has no attendance to download.");
         return;
       }
       const to = perthDateKey(now!);
@@ -274,12 +273,23 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
       <>
         <div className="grid gap-x-8 lg:grid-flow-dense lg:grid-cols-2 lg:items-start">
           <div className={left}>
-            <T5Panel className="mt-3" testId="teaching-organise-soon">
-              <T5Kicker>
-                {`Next 48 hours · ${soon.length}${risks.length ? ` · ${risks.length} to check` : ""}`}
-              </T5Kicker>
+            {/* Work-mode redesign, owner request 6 Oct 2026: a labelled list like every other section,
+                not a list boxed inside a second card. */}
+            <T5Section
+              className="mt-3"
+              testId="teaching-organise-soon"
+              label={`Next 48 hours · ${soon.length}`}
+              right={
+                risks.length ? (
+                  <span className="text-[color:var(--warning-text)]">
+                    <span className="sr-only"> · </span>
+                    {`${risks.length} to check`}
+                  </span>
+                ) : undefined
+              }
+            >
               {soon.length > 0 ? (
-                <T5List ruled={false}>
+                <T5List>
                   {soon.map((s) => {
                     const risk = firstRisk?.occurrenceId === s.occurrenceId ? firstRisk : null;
                     const live = Date.parse(s.startsAt) <= now.getTime();
@@ -325,9 +335,9 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                         onClick={risk ? undefined : change}
                         end={
                           risk && change ? (
-                            <Button type="button" variant="primary" size="sm" onClick={change}>
+                            <WorkButton variant={risk.rule === "room" ? "primary" : "quiet"} onClick={change}>
                               {risk.rule === "room" ? "Set room" : "Fix"}
-                            </Button>
+                            </WorkButton>
                           ) : ready ? (
                             <T5Done label="Ready" />
                           ) : undefined
@@ -337,9 +347,9 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                   })}
                 </T5List>
               ) : (
-                <T5Meta>Nothing in the next 48 hours.</T5Meta>
+                <T5Empty>Nothing in the next 48 hours.</T5Empty>
               )}
-            </T5Panel>
+            </T5Section>
             {notice ? (
               <T5Note tone={isDemo ? "notice" : "warning"} icon={isDemo ? "info" : "alert"} className="mt-3">
                 {notice}
@@ -483,7 +493,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
               const session = open.session;
               setOpen(null);
               if (isDemo) {
-                setNotice(`Demo only. Nothing was sent; in a real service this goes to ${membersWord(count)}.`);
+                setNotice(`Demo only. Nothing was sent. In a real service this goes to ${membersWord(count)}.`);
                 return;
               }
               setNotice(null);
@@ -537,7 +547,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
           {demoMode && demo && view.status !== "signed-out" ? (
             <>
               <T5Note className="mt-0" testId="teaching-organise-demo">
-                Made-up demo service. Try any action here; no real invitations, membership changes or records are sent.
+                Example service. Try any action here. No real invitations, membership changes or records are sent.
               </T5Note>
               <ServicePicker teams={demoTeams} value={demo.service.id} onChange={() => {}} />
             </>

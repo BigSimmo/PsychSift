@@ -62,6 +62,7 @@ export function OnCallFilterChips({
       data-testid={testId}
       // Scrolls inside its own container so the page body never scrolls
       // sideways, the same treatment the home's ward strip gets.
+      data-no-tab-swipe
       className="-mx-4 flex w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 pb-1 [-webkit-overflow-scrolling:touch] sm:mx-0 sm:w-full sm:flex-wrap sm:px-0"
     >
       {options.map((option) => {

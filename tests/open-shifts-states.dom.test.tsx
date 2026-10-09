@@ -61,8 +61,8 @@ describe("Open shifts states", () => {
   });
 
   it("labels made-up records, offline copies and partial reads in the status line", () => {
-    expect(openShiftsStatus(state({ sample: "signed-out" }))).toEqual({ kind: "sample" });
-    expect(openShiftsStatus(state({ sample: "release-held" }))).toMatchObject({ kind: "text", info: true });
+    expect(openShiftsStatus(state({ sample: "example" }))).toEqual({ kind: "sample" });
+    expect(openShiftsStatus(state({ sample: "release-held" }))).toEqual({ kind: "sample" });
     expect(openShiftsStatus(state({ offline: true, readAt: new Date() }))).toEqual({ kind: "offline" });
     expect(openShiftsStatus(state({ failedTeams: ["Riverside"] }))).toEqual({
       kind: "failed",

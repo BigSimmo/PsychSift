@@ -6,7 +6,7 @@ import {
   favouriteMembershipResponseSchema,
   favouriteItemReferenceShape,
   favouriteSetIdSchema,
-  favouriteSetNameSchema,
+  favouriteSetNameInputSchema,
   favouriteSetResponseSchema,
   favouriteUpdateResponseSchema,
   favouritesClearResponseSchema,
@@ -14,6 +14,7 @@ import {
   maxFavouritesPerAccount,
   favouritesSnapshotSchema,
 } from "@/lib/favourites-contract";
+import { maxFavouriteSetsPerAccount } from "@/lib/favourite-set-name";
 import { PublicApiError, jsonError } from "@/lib/http";
 import { planFavouriteItemOrder } from "@/lib/favourites-order";
 import { requireCanonicalFavouriteReference } from "@/lib/favourites-reference";
@@ -24,7 +25,7 @@ import { parseJsonBody } from "@/lib/validation/body";
 export const runtime = "nodejs";
 
 const contractVersion = favouritesContractVersion;
-const setNameSchema = favouriteSetNameSchema;
+const setNameSchema = favouriteSetNameInputSchema;
 const setIdSchema = favouriteSetIdSchema;
 const itemReferenceShape = favouriteItemReferenceShape;
 
@@ -273,6 +274,16 @@ export async function POST(request: Request) {
       return Response.json(favouriteUpdateResponseSchema.parse({ version: contractVersion, updated: true }));
     }
     if (input.action === "createSet") {
+      const { count, error: countError } = await supabase
+        .from("user_favourite_sets")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if (countError) throw new Error(countError.message);
+      if ((count ?? 0) >= maxFavouriteSetsPerAccount) {
+        throw new PublicApiError(`You can have up to ${maxFavouriteSetsPerAccount} favourite sets.`, 409, {
+          code: "favourite_set_limit",
+        });
+      }
       const { data: lastSet, error: orderError } = await supabase
         .from("user_favourite_sets")
         .select("sort_order")

@@ -47,11 +47,22 @@ describe("app preference normalisation", () => {
         quietHours: { enabled: true, start: "22:00", end: "06:00" },
         maxAlertsPerDay: 5,
         brief: { enabled: true, workday: "06:30", dayOff: "10:00" },
+        bellPhone: {
+          enabled: true,
+          areas: { "on-call": true, roster: false, cme: true, teaching: true, "my-work": false },
+        },
       },
       workStage: "registrar",
       ranzcpStage: 2,
+      timeZone: "Australia/Sydney",
     };
     expect(normalizePreferences(stored)).toEqual(stored);
+  });
+
+  it("keeps the work time zone only when it is a listed Australian zone", () => {
+    expect(normalizePreferences({ timeZone: "Australia/Hobart" }).timeZone).toBe("Australia/Hobart");
+    expect(normalizePreferences({ timeZone: "Europe/London" }).timeZone).toBe("Australia/Perth");
+    expect(normalizePreferences({}).timeZone).toBe("Australia/Perth");
   });
 
   it("falls back per-field when individual values are invalid", () => {

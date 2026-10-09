@@ -3,32 +3,39 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   CheckSquare,
+  ChevronRight,
   ChevronsRight,
+  CloudOff,
   Copy,
   ExternalLink,
   FileText,
   Folder,
-  Pill,
-  Quote,
+  Heart,
+  Phone,
+  Pin,
+  Plus,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
+  Users,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { useSearchCommand } from "@/components/clinical-dashboard/search-command-context";
 import {
   favouriteSetNames,
-  type AccountFavourite,
   type AccountFavouriteSet,
   type FavouriteSetName,
   useOptionalAccountData,
 } from "@/components/account-data-provider";
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
+import { WorkButton, WorkEmpty, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
 import { SidebarAccountSetupDialog as AccountSetupDialog } from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
 import { cn, EmptyState } from "@/components/ui-primitives";
 import { Chip, type ChipAppearance } from "@/components/ui/chip";
@@ -41,12 +48,17 @@ import {
   favouriteItems as prototypeFavouriteItems,
   favouriteSets as prototypeFavouriteSets,
   favouriteTabs,
-  type FavouriteItem as PrototypeFavouriteItem,
 } from "@/components/clinical-dashboard/favourites-prototype-data";
 import type { FavouritesSample } from "@/components/clinical-dashboard/favourites-sample-data";
 import { useSavedRegistryFavourites } from "@/components/clinical-dashboard/use-saved-registry-favourites";
+import { AddWorkPageSheet } from "@/components/favourites/add-work-page-sheet";
+import { applyOverride, numberToItem, toCommandItem, workStarToItem } from "@/components/favourites/favourite-items";
+import { ArrangeShelfSheet, CustomiseFavouritesSheet } from "@/components/favourites/customise-favourites-sheet";
+import { EditFavouriteSheet } from "@/components/favourites/edit-favourite-sheet";
+import { NumberActionsSheet, NumberFormSheet } from "@/components/favourites/number-sheets";
+import { FavouritesShelf } from "@/components/favourites/favourites-shelf";
+import { FavouriteTypeTile } from "@/components/favourites/favourite-type-tile";
 import {
-  formatLastOpened,
   loadFavouriteLastOpened,
   loadFavouritePinnedIds,
   recordFavouriteOpened,
@@ -59,19 +71,19 @@ import {
   FavouriteSetNameSheet,
   type FavouriteSheetState,
 } from "@/components/favourites/favourite-sheets";
-import { FavouritesContinueCard, FavouritesQuickLaunch } from "@/components/favourites/favourites-launchpad";
+import { FavouritesContinueCard } from "@/components/favourites/favourites-launchpad";
 import { FavouritesList, FavouritesSelectBar } from "@/components/favourites/favourites-list";
 import { FavouritesSetBar, FavouritesSetChips } from "@/components/favourites/favourites-set-chips";
 import {
   buildSetChips,
-  demoOpenedAt,
+  favouriteScopeOf,
   favouritesSummary,
   groupForView,
   isSourceBacked,
   matchesFavouriteSearch,
   pickContinueItem,
   QUICK_LAUNCH_LIMIT,
-  quickLaunchItems,
+  shelfItems,
   UNSORTED_SET_NAME,
   type FavouriteItem,
   type FavouriteType,
@@ -87,12 +99,40 @@ import {
   resultFilterFacetGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
-import { appModeIcons } from "@/lib/app-mode-icons";
+import { maxFavouriteSetsPerAccount } from "@/lib/favourite-set-name";
 import { canAccessFavouritesMode } from "@/lib/app-modes";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
+import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { modeHomeComposerReservePendingValue, modeHomeDesktopComposerSlotId } from "@/lib/mode-home-composer";
 import { sharedHomePresentation } from "@/lib/ui-copy";
 import { useAuthSession } from "@/lib/supabase/client";
+import { useOnlineStatus } from "@/lib/use-online-status";
+import {
+  forgetPinOrder,
+  recordNumberOpened,
+  removeSavedNumbers,
+  RESTORE_FAILED,
+  restoreSavedNumbers,
+  setFavouritesLayout,
+  setSavedNumbersPinned,
+  telHref,
+  useFavouriteOverrides,
+  useFavouritesLayout,
+  useSavedNumbers,
+  visibleSections,
+  type FavouritesScope,
+  type FavouritesSectionId,
+  type SavedNumber,
+} from "@/lib/favourites/favourites-local";
+import {
+  recordWorkPageOpened,
+  removeWorkPageStars,
+  resolveWorkPageStars,
+  restoreWorkPageStars,
+  setWorkPageStarsPinned,
+  useWorkPageStars,
+  type WorkPageStar,
+} from "@/lib/favourites/work-page-stars";
 
 export type { FavouriteItem } from "@/components/favourites/favourites-view-model";
 
@@ -129,35 +169,24 @@ const typeAppearance: Record<FavouriteType, ChipAppearance> = {
   Form: { kind: "category", tone: "form" },
   Differential: { kind: "information", tone: "accent" },
   Therapy: { kind: "information", tone: "accent" },
+  "Work page": { kind: "information", tone: "accent" },
+  Number: { kind: "information", tone: "accent" },
 };
 
-const lastUsedByItemId: Record<string, string> = {
-  "acamprosate-renal-screen": "Today 08:44",
-  "lithium-monitoring-guideline": "Today 08:20",
-  "clozapine-monitoring-table": "Yesterday 16:12",
-  "renal-dose-search": "Today 07:55",
-  "qt-prolongation-quote": "Mon 11:03",
-};
+// The type facet: every clinical tab, plus saved work pages.
+const typeTabs: readonly { id: string; label: string }[] = [
+  ...favouriteTabs.filter((tab) => tab.id !== "all" && tab.id !== "sets"),
+  { id: "work", label: "Work pages" },
+];
 
-const typeByPrototypeType: Record<PrototypeFavouriteItem["type"], FavouriteType> = {
-  medications: "Medication",
-  documents: "Document",
-  sources: "Source",
-  services: "Service",
-  forms: "Form",
-  differentials: "Differential",
-  therapies: "Therapy",
-};
+/** Work pages and saved numbers: kept on this phone, never in a set. */
+const isWorkItem = (item: FavouriteItem) => favouriteScopeOf(item) === "work";
 
-const fallbackIconByType: Record<PrototypeFavouriteItem["type"], LucideIcon> = {
-  medications: Pill,
-  documents: FileText,
-  sources: Quote,
-  services: appModeIcons.services,
-  forms: appModeIcons.forms,
-  differentials: appModeIcons.differentials,
-  therapies: appModeIcons["therapy-compass"],
-};
+const scopeOptions: readonly { value: FavouritesScope; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "clinical", label: "Clinical" },
+  { value: "work", label: "Work" },
+];
 
 const viewOptions = {
   all: [
@@ -174,7 +203,8 @@ const viewOptions = {
 
 function favouriteCitationText(item: FavouriteItem): string {
   const evidenceLine = isSourceBacked(item) ? `Evidence: ${item.evidence}` : item.description;
-  return `${item.title}\n${evidenceLine}\n${item.href}`;
+  // The item's own title: a name the person gave it never goes into a citation.
+  return `${item.originalTitle ?? item.title}\n${evidenceLine}\n${item.href}`;
 }
 
 async function copyFavouriteCitation(item: FavouriteItem): Promise<boolean> {
@@ -206,73 +236,6 @@ async function copyFavouriteCitation(item: FavouriteItem): Promise<boolean> {
     textarea.remove();
     previouslyFocused?.focus({ preventScroll: true });
   }
-}
-
-function parseTimestamp(value: string | null | undefined): number | null {
-  if (!value) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function toCommandItem(
-  item: PrototypeFavouriteItem,
-  lastOpenedMap: Record<string, number>,
-  pinnedIds: ReadonlySet<string>,
-  favouriteMetadata: ReadonlyMap<string, AccountFavourite>,
-  setById: ReadonlyMap<string, AccountFavouriteSet>,
-  now: number,
-  example: boolean = false,
-): FavouriteItem {
-  const type =
-    item.type === "sources" && item.primaryAction === "Run"
-      ? "Saved search"
-      : (typeByPrototypeType[item.type] ?? "Source");
-  const contentType =
-    item.type === "services"
-      ? "service"
-      : item.type === "forms"
-        ? "form"
-        : item.type === "differentials"
-          ? "differential"
-          : item.type === "therapies"
-            ? "therapy"
-            : undefined;
-  const contentKey = contentType ? item.id.slice(item.id.indexOf(":") + 1) : undefined;
-  // An example must never borrow a real saved item's set, pin or last-opened time.
-  const metadata =
-    !example && contentType && contentKey ? favouriteMetadata.get(`${contentType}:${contentKey}`) : undefined;
-  const persistedOpened = parseTimestamp(metadata?.lastOpenedAt);
-  const localOpened = lastOpenedMap[item.id] ?? null;
-  const recordedOpened =
-    persistedOpened !== null || localOpened !== null ? Math.max(persistedOpened ?? 0, localOpened ?? 0) : null;
-  // Examples carry a label such as "Today 08:44"; it only becomes a time once
-  // the client clock exists, so the server and the first client frame agree.
-  const openedAt = recordedOpened ?? (example && now > 0 ? demoOpenedAt(lastUsedByItemId[item.id], now) : null);
-  const setName = metadata?.setId ? setById.get(metadata.setId)?.name : undefined;
-  return {
-    id: item.id,
-    title: item.title,
-    description: item.meta,
-    type,
-    tabId: item.type,
-    // A saved item lives in its account set or in Unsorted. The registry's
-    // "Saved services" style labels were type buckets, not sets; the Type view
-    // does that job now. Examples keep their preset set so the demo reads true.
-    set: setName ?? (example ? item.set : UNSORTED_SET_NAME),
-    evidence: item.sourceMeta,
-    lastUsed: openedAt !== null ? formatLastOpened(openedAt) : "Saved",
-    openedAt,
-    action: item.primaryAction,
-    href: item.href,
-    icon: item.icon ?? fallbackIconByType[item.type],
-    pinned: Boolean(metadata?.pinnedAt) || pinnedIds.has(item.id),
-    pinnedAt: parseTimestamp(metadata?.pinnedAt),
-    contentType,
-    contentKey,
-    setId: metadata?.setId ?? null,
-    sortOrder: metadata?.sortOrder ?? 0,
-    example,
-  };
 }
 
 function MiniIconTile({
@@ -307,6 +270,36 @@ function SmallChip({ children, appearance }: { children: React.ReactNode; appear
   );
 }
 
+/** The amber band when the account's saved items did not load. Work pages, kept on this phone, still show. */
+function FavouritesLoadFailedBand({
+  hasClinicalItems,
+  hasWorkPages,
+  onRetry,
+}: {
+  hasClinicalItems: boolean;
+  hasWorkPages: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      data-testid="favourites-load-failed"
+      className="flex min-w-0 items-center gap-2.5 rounded-[var(--work-radius-card)] border border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] py-1.5 pl-3 pr-1.5 text-sm font-semibold text-[color:var(--warning-text)]"
+    >
+      <AlertTriangle className="size-icon-sm shrink-0" aria-hidden="true" />
+      <p className="m-0 min-w-0 flex-1 py-1.5">
+        {hasClinicalItems
+          ? "Some saved clinical items did not load."
+          : hasWorkPages
+            ? "Your saved clinical items did not load. Work pages on this phone are below."
+            : "Your saved favourites did not load."}
+      </p>
+      <WorkButton variant="secondary" onClick={onRetry}>
+        Retry
+      </WorkButton>
+    </div>
+  );
+}
+
 // One empty state, rendered by whichever of the table / mobile-card layouts the
 // breakpoint is showing. Filters and the search term change without a navigation,
 // so the shared primitive's polite announcement is the right default here.
@@ -319,6 +312,105 @@ function FavouritesEmptyMatches() {
       testId="favourites-empty-matches"
       live="polite"
     />
+  );
+}
+
+/**
+ * Saved numbers: the label, the number in Geist Mono and a Call button. A tap
+ * on the row opens its actions (call, copy, edit, pin, remove). Kept on this
+ * phone, so it shows with or without an account.
+ */
+function NumbersSection({
+  items,
+  canAdd,
+  onAdd,
+  onShowActions,
+  onCall,
+}: {
+  items: readonly FavouriteItem[];
+  canAdd: boolean;
+  onAdd: () => void;
+  onShowActions: (item: FavouriteItem) => void;
+  onCall: (item: FavouriteItem) => void;
+}) {
+  return (
+    <section aria-labelledby="favourites-numbers-heading" className="grid gap-1.5" data-testid="favourites-numbers">
+      <WorkSectionLabel
+        id="favourites-numbers-heading"
+        count={items.length > 0 ? <span className="nums">{items.length}</span> : undefined}
+      >
+        Numbers
+      </WorkSectionLabel>
+      <ul className="work-card work-rows">
+        {items.map((item) => {
+          const dial = item.phone ? telHref(item.phone) : null;
+          return (
+            <li
+              key={item.id}
+              data-testid={`favourite-number-${item.numberId}`}
+              className="flex min-h-tap min-w-0 items-center gap-1 pr-1.5"
+            >
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                aria-label={`${item.title}, ${item.phone ?? ""}${item.pinned ? ", pinned to My Day" : ""}. Actions`}
+                onClick={() => onShowActions(item)}
+                className={cn(
+                  "flex min-h-tap min-w-0 flex-1 items-center gap-3 rounded-md py-2 pl-3 text-left focus-visible:-outline-offset-2",
+                  focusRing,
+                )}
+              >
+                <FavouriteTypeTile item={item} />
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate text-sm font-bold leading-snug text-[color:var(--work-ink)]">
+                    {item.title}
+                  </span>
+                  {item.note ? (
+                    <span className="truncate text-xs text-[color:var(--text-muted)]">{item.note}</span>
+                  ) : null}
+                  <span className="flex min-w-0 items-center gap-1 text-xs font-medium text-[color:var(--text-muted)]">
+                    {item.pinned ? (
+                      <Pin className="size-icon-xs shrink-0 text-[color:var(--clinical-accent)]" aria-hidden="true" />
+                    ) : null}
+                    <span className="truncate font-mono">{item.phone}</span>
+                  </span>
+                </span>
+              </button>
+              {dial ? (
+                <a
+                  href={dial}
+                  onClick={() => onCall(item)}
+                  aria-label={`Call ${item.title}`}
+                  className={cn(
+                    "inline-flex min-h-tap shrink-0 items-center gap-1.5 rounded-full bg-[color:var(--clinical-accent-soft)] px-3.5 text-sm font-bold text-[color:var(--clinical-accent)]",
+                    focusRing,
+                  )}
+                >
+                  <Phone className="size-icon-sm" aria-hidden="true" />
+                  Call
+                </a>
+              ) : null}
+            </li>
+          );
+        })}
+        {canAdd ? (
+          <li>
+            <button
+              type="button"
+              onClick={onAdd}
+              className="work-row w-full text-left"
+              data-testid="favourites-add-number"
+            >
+              <WorkIconCircle icon={Plus} tone="neutral" />
+              <span className="work-row__text">
+                <span className="work-row__title">Add a number</span>
+                <span className="work-row__sub">A ward, service or pager, never a patient</span>
+              </span>
+            </button>
+          </li>
+        ) : null}
+      </ul>
+    </section>
   );
 }
 
@@ -597,6 +689,7 @@ const getEmptyPinnedSnapshot = () => EMPTY_PINNED_SNAPSHOT;
 
 export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?: string; demoMode: boolean }) {
   const router = useRouter();
+  const online = useOnlineStatus();
   const auth = useAuthSession();
   const accountData = useOptionalAccountData();
   const searchCommand = useSearchCommand();
@@ -634,6 +727,9 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   // A signed-out visitor sees the real screen filled with a few sample items
   // that live in this page's memory only: nothing is read, saved or stored.
   const sampleMode = !demoMode && (auth.status === "signed_out" || auth.status === "expired");
+  // Work pages and the My Day shelf belong to the new work mode. A reader on the classic
+  // work mode keeps the plain list: numbers, names, notes and layout.
+  const newWorkMode = useNewWorkMode();
   const favouritesAccessible =
     sampleMode ||
     canAccessFavouritesMode({
@@ -659,6 +755,11 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     loadFavouritePinnedIds,
     getEmptyPinnedSnapshot,
   );
+  const workPageStars = useWorkPageStars();
+  const routeVisible = useWorkModeRouteVisible();
+  const savedNumbers = useSavedNumbers();
+  const overrides = useFavouriteOverrides();
+  const layout = useFavouritesLayout();
   const [sampleFavourites, setSampleFavourites] = useState<FavouritesSample | null>(null);
   const [samplePinnedIds, setSamplePinnedIds] = useState<ReadonlySet<string>>(() => new Set());
   useEffect(() => {
@@ -688,8 +789,8 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     [accountData?.favouriteSets],
   );
   const setById = useMemo(() => new Map(accountSets.map((set) => [set.id, set] as const)), [accountSets]);
-  const items = useMemo(
-    () => [
+  const items = useMemo(() => {
+    const all = [
       // Fixtures are tagged by where they came from, not by id, so a saved item can
       // never inherit the Example tag by sharing an id with a fixture.
       ...(demoMode ? prototypeFavouriteItems : []).map((item) =>
@@ -701,24 +802,50 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       ...savedRegistryFavourites.map((item) =>
         toCommandItem(item, lastOpenedMap, pinnedIds, favouriteMetadata, setById, now),
       ),
-    ],
-    [
-      demoMode,
-      sampleMode,
-      sampleFavourites,
-      savedRegistryFavourites,
-      lastOpenedMap,
-      pinnedIds,
-      favouriteMetadata,
-      setById,
-      now,
-    ],
-  );
+      // Work pages and numbers saved on this phone. The signed-out sample shows
+      // none: it reads nothing that belongs to anyone.
+      // A new-only page 404s on the classic work mode, so it stays saved but hidden there.
+      ...(sampleMode ? [] : resolveWorkPageStars(workPageStars, routeVisible).map(workStarToItem)),
+      ...(sampleMode ? [] : savedNumbers.map(numberToItem)),
+    ];
+    // The person's own names and notes, kept on this phone. Never on an example.
+    return sampleMode ? all : all.map((item) => (item.example ? item : applyOverride(item, overrides[item.id])));
+  }, [
+    demoMode,
+    sampleMode,
+    workPageStars,
+    routeVisible,
+    savedNumbers,
+    overrides,
+    sampleFavourites,
+    savedRegistryFavourites,
+    lastOpenedMap,
+    pinnedIds,
+    favouriteMetadata,
+    setById,
+    now,
+  ]);
 
   // Remove is held back until its Undo message closes, so a removed row hides
   // here at once while the account still holds it.
   const [pendingRemovalIds, setPendingRemovalIds] = useState<ReadonlySet<string>>(() => new Set());
-  const pendingRemovalsRef = useRef(new Map<string, { items: FavouriteItem[]; toastId: string | null }>());
+  const pendingRemovalsRef = useRef(
+    new Map<
+      string,
+      {
+        items: FavouriteItem[];
+        /** Every favourite removed, account and phone alike, to drop from the My Day order. */
+        removedIds: readonly string[];
+        /** Pinned favourites other than numbers that Undo puts back pinned. */
+        pinnedBack: number;
+        workRemoved: readonly WorkPageStar[];
+        numbersRemoved: readonly SavedNumber[];
+        toastId: string | null;
+      }
+    >(),
+  );
+  // Read at Undo time, so restored numbers never take My Day past its limit.
+  const pinnedCountRef = useRef(0);
   const removalCounterRef = useRef(0);
   const accountDataRef = useRef(accountData);
   const toastRef = useRef<ToastApi | null>(null);
@@ -726,17 +853,39 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     accountDataRef.current = accountData;
   }, [accountData]);
 
-  // Settles one held-back removal exactly once: `cancel` (Undo, or the account
-  // changed) keeps the favourite; `commit` deletes it through the account that
-  // is current now. Refs only, so it is safe from effects and stale closures.
-  const settleRemoval = useCallback((key: string, outcome: "commit" | "cancel") => {
+  // Settles one held-back removal exactly once: `cancel` (Undo) keeps the
+  // favourites and puts removed work pages back; `abandon` (the account
+  // changed) keeps the account's favourites but never restores a work page into
+  // someone else's phone store; `commit` deletes through the account that is
+  // current now. Refs only, so it is safe from effects and stale closures.
+  const settleRemoval = useCallback((key: string, outcome: "commit" | "cancel" | "abandon") => {
     const entry = pendingRemovalsRef.current.get(key);
     if (!entry) return;
     pendingRemovalsRef.current.delete(key);
+    if (outcome === "cancel" && entry.workRemoved.length > 0 && !restoreWorkPageStars(entry.workRemoved)) {
+      toastRef.current?.push({
+        tone: "danger",
+        title: "Could not put the work page back",
+        body: "Add it again from Add a work page.",
+      });
+    }
+    if (outcome === "cancel" && entry.numbersRemoved.length > 0) {
+      const restored = restoreSavedNumbers(entry.numbersRemoved, {
+        pinRoom: QUICK_LAUNCH_LIMIT - pinnedCountRef.current - entry.pinnedBack,
+      });
+      if (!restored.ok) {
+        toastRef.current?.push({
+          tone: "danger",
+          title: "Could not put the number back",
+          body: restored.reason === "full" ? RESTORE_FAILED.full : "Add it again from Add a number.",
+        });
+      }
+    }
+    if (outcome === "commit") forgetPinOrder(entry.removedIds);
     const ids = entry.items.map((item) => item.id);
     const release = () => setPendingRemovalIds((current) => new Set([...current].filter((id) => !ids.includes(id))));
     const account = accountDataRef.current;
-    if (outcome === "cancel" || !account) {
+    if (outcome !== "commit" || !account || entry.items.length === 0) {
       release();
       return;
     }
@@ -779,13 +928,16 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     () => items.filter((item) => !pendingRemovalIds.has(item.id)),
     [items, pendingRemovalIds],
   );
+  useEffect(() => {
+    pinnedCountRef.current = libraryItems.filter((item) => item.pinned).length;
+  }, [libraryItems]);
 
   // A different account (or signing out) must never inherit this account's
   // pending removals: keep the favourites and drop the messages.
   useEffect(
     () => () => {
       for (const [key, entry] of [...pendingRemovalsRef.current]) {
-        settleRemoval(key, "cancel");
+        settleRemoval(key, "abandon");
         if (entry.toastId) toastRef.current?.dismiss(entry.toastId);
       }
     },
@@ -803,6 +955,11 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
         ? "ready"
         : favouritesHookStatus;
 
+  // The account's saved items did not load (or only some did). Work pages live
+  // on this phone, so they still show under an amber band with Retry.
+  const clinicalLoadFailed =
+    !sampleMode && !demoMode && (favouritesHookStatus === "error" || favouritesHookStatus === "partial");
+
   const orderedSetNames = useMemo(
     () => [
       ...accountSets.map((set) => set.name as string),
@@ -810,7 +967,16 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     ],
     [accountSets, demoMode],
   );
-  const setChips = useMemo(() => buildSetChips(libraryItems, orderedSetNames), [libraryItems, orderedSetNames]);
+  // Work pages never go into a set, so they never make a set chip. They show
+  // under All, and under Work pages in the Type view.
+  const setChips = useMemo(
+    () =>
+      buildSetChips(
+        libraryItems.filter((item) => !isWorkItem(item)),
+        orderedSetNames,
+      ),
+    [libraryItems, orderedSetNames],
+  );
 
   const filterPanelId = useId();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -818,7 +984,13 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   const [selectedTypeIds, setSelectedTypeIds] = useState<ReadonlySet<string>>(() => new Set());
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [sourceBackedOnly, setSourceBackedOnly] = useState(false);
-  const [allView, setAllView] = useState<FavouritesView>("recent");
+  // The view and the scope open where Customise Favourites set them, then
+  // follow the reader's taps on this visit.
+  const [allViewChoice, setAllView] = useState<FavouritesView | null>(null);
+  const allView: FavouritesView = allViewChoice ?? layout.view;
+  const [scopeChoice, setScopeChoice] = useState<FavouritesScope | null>(null);
+  const scope: FavouritesScope = scopeChoice ?? layout.scope;
+  const inScope = (item: FavouriteItem) => scope === "all" || favouriteScopeOf(item) === scope;
   const [setView, setSetView] = useState<FavouritesView>("order");
   const [mode, setMode] = useState<PageMode>("browse");
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -834,11 +1006,22 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   const [confirmDeleteSet, setConfirmDeleteSet] = useState<AccountFavouriteSet | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedItemSnapshot, setSelectedItemSnapshot] = useState<FavouriteItem | null>(null);
+  const [addWorkPageOpen, setAddWorkPageOpen] = useState(false);
+  const [customiseOpen, setCustomiseOpen] = useState(false);
+  const [arrangeOpen, setArrangeOpen] = useState(false);
+  const [editItem, setEditItem] = useState<FavouriteItem | null>(null);
+  const [numberActionId, setNumberActionId] = useState<string | null>(null);
+  const [numberFormOpen, setNumberFormOpen] = useState(false);
+  const [editingNumber, setEditingNumber] = useState<SavedNumber | null>(null);
 
-  // A chosen set that has emptied (moved away, removed) drops out of the filter.
+  // A chosen set that has emptied (moved away, removed) drops out of the
+  // filter. Sets hold clinical items only, so Work never filters by one.
   const effectiveSelectedSets = useMemo(
-    () => new Set([...selectedSetNames].filter((name) => setChips.some((chip) => chip.name === name))),
-    [selectedSetNames, setChips],
+    () =>
+      scope === "work"
+        ? new Set<string>()
+        : new Set([...selectedSetNames].filter((name) => setChips.some((chip) => chip.name === name))),
+    [selectedSetNames, setChips, scope],
   );
   const singleSetName = effectiveSelectedSets.size === 1 ? [...effectiveSelectedSets][0]! : null;
   const view: FavouritesView = singleSetName ? setView : allView;
@@ -861,7 +1044,8 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       sourceBacked?: boolean;
     } = {},
   ) =>
-    (sets.size === 0 || sets.has(item.set)) &&
+    inScope(item) &&
+    (sets.size === 0 || (!isWorkItem(item) && sets.has(item.set))) &&
     (typeIds.size === 0 || typeIds.has(item.tabId)) &&
     (!pinned || item.pinned === true) &&
     (!sourceBacked || isSourceBacked(item)) &&
@@ -870,10 +1054,11 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   // Single source of truth for "what is in the list right now". The band's
   // match count, the empty-state branch and the list all read this one value.
   const filteredItems = libraryItems.filter((item) => passesFilters(item));
-  const groups = groupForView(filteredItems, view, now);
-  const quickLaunch = quickLaunchItems(libraryItems);
+  const shelf = shelfItems(libraryItems, layout.shelfSize, layout.pinOrder);
+  const sectionsShown = visibleSections(layout);
+  const pinnedCount = libraryItems.filter((item) => item.pinned).length;
   const continueItem = pickContinueItem(libraryItems);
-  const listAnnouncementKey = `${[...effectiveSelectedSets].sort().join("|")}::${view}`;
+  const listAnnouncementKey = `${scope}::${[...effectiveSelectedSets].sort().join("|")}::${view}`;
   const lastAnnouncementKeyRef = useRef(listAnnouncementKey);
   useEffect(() => {
     if (lastAnnouncementKeyRef.current === listAnnouncementKey) return;
@@ -882,14 +1067,19 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   }, [listAnnouncementKey, filteredItems.length]);
   const showLaunchpad = !searching && activeFilterCount === 0 && effectiveMode === "browse";
 
-  const canMutate = (item: FavouriteItem) =>
+  // Account items can be pinned, moved and removed. A work page lives on this
+  // phone: it can be pinned and removed, but never moved into a set.
+  const canMove = (item: FavouriteItem) =>
     Boolean(item.contentType && item.contentKey && accountData?.isAuthenticated && !item.example);
+  const canMutate = (item: FavouriteItem) => (isWorkItem(item) && !sampleMode) || canMove(item);
   const mutableCount = libraryItems.filter(canMutate).length;
-  const availableSetNames = favouriteSetNames.filter((name) => !accountSets.some((set) => set.name === name));
-  const canCreateSet = Boolean(accountData?.isAuthenticated) && availableSetNames.length > 0;
+  const availableSetNames = favouriteSetNames.filter(
+    (name) => !accountSets.some((set) => set.name.toLowerCase() === name.toLowerCase()),
+  );
+  const canCreateSet = Boolean(accountData?.isAuthenticated) && accountSets.length < maxFavouriteSetsPerAccount;
   const accountSetForChip = singleSetName ? accountSets.find((set) => set.name === singleSetName) : undefined;
   const singleSetMutableCount = singleSetName
-    ? filteredItems.filter((item) => item.set === singleSetName && canMutate(item)).length
+    ? filteredItems.filter((item) => item.set === singleSetName && canMove(item)).length
     : 0;
 
   const selectedItem = selectedItemId
@@ -915,6 +1105,17 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     setSelectedIds(new Set());
   }
 
+  function rememberSheetOrigin() {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && !active.closest('[role="dialog"]')) sheetOriginRef.current = active;
+  }
+
+  function openAddWorkPage() {
+    rememberSheetOrigin();
+    setSheetOpen(false);
+    setAddWorkPageOpen(true);
+  }
+
   function openSheet(next: Exclude<FavouriteSheetState, null>) {
     const active = document.activeElement;
     // Remember the row control, not a button inside a sheet being replaced. A
@@ -933,6 +1134,34 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     setSheetOpen(false);
   }
 
+  // A saved number opens its own sheet (call, copy, edit); everything else the actions sheet.
+  function showActions(item: FavouriteItem) {
+    if (item.numberId) {
+      rememberSheetOrigin();
+      setSheetOpen(false);
+      setNumberActionId(item.id);
+      return;
+    }
+    openSheet({ kind: "actions", item });
+  }
+
+  function editFavourite(item: FavouriteItem) {
+    closeSheet();
+    if (item.numberId) {
+      setEditingNumber(savedNumbers.find((entry) => entry.id === item.numberId) ?? null);
+      setNumberFormOpen(true);
+      return;
+    }
+    setEditItem(item);
+  }
+
+  function openAddNumber() {
+    rememberSheetOrigin();
+    setSheetOpen(false);
+    setEditingNumber(null);
+    setNumberFormOpen(true);
+  }
+
   // Stable on purpose: the Sheet reads this in its open effect's dependencies.
   // After Remove the origin row is gone, so fall back to the page heading.
   const returnFocusToOrigin = useCallback(
@@ -944,6 +1173,14 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   function handleOpen(item: FavouriteItem) {
     // The sample keeps no "last opened" record, in this browser or the account.
     if (sampleMode) return;
+    if (item.workKey) {
+      recordWorkPageOpened(item.workKey);
+      return;
+    }
+    if (item.numberId) {
+      recordNumberOpened(item.numberId);
+      return;
+    }
     recordFavouriteOpened(item.id);
     if (!item.example && item.contentType && item.contentKey) {
       void accountData?.recordFavouriteOpen(item.contentType, item.contentKey);
@@ -961,7 +1198,9 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   }
 
   async function setItemPinned(item: FavouriteItem, pinned: boolean) {
-    if (canMutate(item) && accountData) {
+    if (item.workKey) return setWorkPageStarsPinned(new Set([item.workKey]), pinned);
+    if (item.numberId) return setSavedNumbersPinned(new Set([item.numberId]), pinned);
+    if (canMove(item) && accountData) {
       const saved = await accountData.setFavouritePinned(item.contentType!, item.contentKey!, pinned);
       // Clear an older browser-only pin only once the account has confirmed.
       if (saved && !pinned && pinnedIds.has(item.id)) toggleFavouritePinnedId(item.id);
@@ -988,24 +1227,26 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     if (unpin) {
       const results = await Promise.all(targets.map((item) => setItemPinned(item, false)));
       const failed = results.filter((saved) => !saved).length;
+      forgetPinOrder(targets.filter((_, index) => results[index]).map((item) => item.id));
       toast.push(
         failed === 0
           ? {
               tone: "success",
-              title: targets.length === 1 ? "Removed from quick launch" : `${targets.length} removed from quick launch`,
+              title: targets.length === 1 ? "Unpinned from My Day" : `${targets.length} unpinned from My Day`,
             }
           : {
               tone: "danger",
-              title: `${failed} could not be removed from quick launch`,
+              title: `${failed} could not be unpinned`,
               body: "Check your connection and try again.",
             },
       );
       return;
     }
     const toAdd = targets.filter((item) => !item.pinned);
+    // One limit for clinical items and work pages together: My Day shows four pins.
     const room = QUICK_LAUNCH_LIMIT - libraryItems.filter((item) => item.pinned).length;
     if (room <= 0) {
-      toast.push({ tone: "warning", title: "Quick launch is full", body: "Remove one of the four first." });
+      toast.push({ tone: "warning", title: "My Day holds four pins. Unpin one first." });
       return;
     }
     const adding = toAdd.slice(0, room);
@@ -1014,20 +1255,20 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     if (failed > 0) {
       toast.push({
         tone: "danger",
-        title: `${failed} could not be added to quick launch`,
+        title: `${failed} could not be pinned`,
         body: "Check your connection and try again.",
       });
       return;
     }
     toast.push({
       tone: "success",
-      title: adding.length === 1 ? "Added to quick launch" : `${adding.length} added to quick launch`,
-      body: adding.length < toAdd.length ? "Quick launch holds four. The rest were not added." : undefined,
+      title: adding.length === 1 ? "Pinned to My Day" : `${adding.length} pinned to My Day`,
+      body: adding.length < toAdd.length ? "My Day holds four pins. The rest were not pinned." : undefined,
     });
   }
 
   async function moveItems(targets: FavouriteItem[], setId: string | null) {
-    const mutable = targets.filter(canMutate).filter((item) => (item.setId ?? null) !== setId);
+    const mutable = targets.filter(canMove).filter((item) => (item.setId ?? null) !== setId);
     if (mutable.length === 0) return;
     const results = await Promise.all(mutable.map((item) => handleMoveNow(item, setId)));
     const moved = mutable.filter((_, index) => results[index]);
@@ -1065,9 +1306,23 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
   function removeItems(targets: FavouriteItem[]) {
     const mutable = targets.filter(canMutate);
     if (mutable.length === 0) return;
+    // Account items are held back until the Undo message closes. A work page or
+    // a number is on this phone, so it leaves at once and Undo puts it back as it was.
+    const accountItems = mutable.filter((item) => !isWorkItem(item));
+    const workKeys = new Set(mutable.flatMap((item) => (item.workKey ? [item.workKey] : [])));
+    const workRemoved = workKeys.size > 0 ? removeWorkPageStars(workKeys) : [];
+    const numberIds = new Set(mutable.flatMap((item) => (item.numberId ? [item.numberId] : [])));
+    const numbersRemoved = numberIds.size > 0 ? removeSavedNumbers(numberIds) : [];
     const key = `removal-${(removalCounterRef.current += 1)}`;
-    pendingRemovalsRef.current.set(key, { items: mutable, toastId: null });
-    setPendingRemovalIds((current) => new Set([...current, ...mutable.map((item) => item.id)]));
+    pendingRemovalsRef.current.set(key, {
+      items: accountItems,
+      removedIds: mutable.map((item) => item.id),
+      pinnedBack: mutable.filter((item) => item.pinned && !item.numberId).length,
+      workRemoved,
+      numbersRemoved,
+      toastId: null,
+    });
+    setPendingRemovalIds((current) => new Set([...current, ...accountItems.map((item) => item.id)]));
     setOpenSwipeId(null);
     const toastId = toast.push({
       tone: "info",
@@ -1166,7 +1421,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       handleOpen(item);
       setSelectedItemId(item.id);
     },
-    onShowActions: (item: FavouriteItem) => openSheet({ kind: "actions", item }),
+    onShowActions: (item: FavouriteItem) => showActions(item),
     onTogglePin: (item: FavouriteItem) => void togglePin([item]),
     onMove: (item: FavouriteItem) => openSheet({ kind: "move", items: [item] }),
     onRemove: (item: FavouriteItem) => removeItems([item]),
@@ -1206,8 +1461,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       disabled: !effectiveSelectedSets.has(chip.name) && count === 0,
     };
   });
-  const typeOptions = favouriteTabs
-    .filter((tab) => tab.id !== "all" && tab.id !== "sets")
+  const typeOptions = typeTabs
     .map((tab) => {
       const projected = selectedTypeIds.has(tab.id) ? selectedTypeIds : new Set([...selectedTypeIds, tab.id]);
       const count = countWith({ typeIds: projected });
@@ -1219,7 +1473,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       };
     })
     .filter((option) => libraryItems.some((item) => item.tabId === option.value) || selectedTypeIds.has(option.value));
-  const pinnedCount = countWith({ pinned: true });
+  const pinnedOnlyCount = countWith({ pinned: true });
   const sourceBackedCount = countWith({ sourceBacked: true });
   const filterGroups = [
     resultFilterFacetGroup({
@@ -1244,8 +1498,8 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
         {
           value: "pinned",
           label: "Pinned only",
-          hint: String(pinnedCount),
-          disabled: !pinnedOnly && pinnedCount === 0,
+          hint: String(pinnedOnlyCount),
+          disabled: !pinnedOnly && pinnedOnlyCount === 0,
         },
       ],
       onToggle: () => setPinnedOnly((current) => !current),
@@ -1275,7 +1529,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     ...[...selectedTypeIds].map((id) => ({
       id: `type-${id}`,
       groupLabel: "Type",
-      valueLabel: favouriteTabs.find((tab) => tab.id === id)?.label ?? id,
+      valueLabel: typeTabs.find((tab) => tab.id === id)?.label ?? id,
       onRemove: () => toggleType(id),
     })),
     ...(pinnedOnly
@@ -1338,11 +1592,9 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     );
   }
 
-  const summary = favouritesSummary({
-    itemCount: libraryItems.length,
-    setCount: setChips.filter((chip) => chip.name !== UNSORTED_SET_NAME).length,
-    quickLaunchCount: quickLaunch.length,
-  });
+  const summary = favouritesSummary({ itemCount: libraryItems.length, pinnedCount });
+  const hasWorkPages = libraryItems.some(isWorkItem);
+  const hasClinicalItems = libraryItems.some((item) => !isWorkItem(item));
   const showBand = searching || facetFilterCount > 0 || effectiveSelectedSets.size > 1;
   // One Filter button, always beside the view switcher, so it never moves or
   // swaps element when a filter is applied.
@@ -1357,11 +1609,103 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     />
   );
 
+  // Clinical and Work: one page, three ways to look at it. Sections draw in
+  // the order Customise Favourites set, and hidden ones are left out. Continue
+  // and the shelf belong to the All view; under Clinical or Work the chosen
+  // list always shows, since hiding it would leave that view empty.
+  const scopeItems = libraryItems.filter(inScope);
+  const scopeCounts: Record<FavouritesScope, number> = {
+    all: libraryItems.length,
+    clinical: libraryItems.filter((item) => !isWorkItem(item)).length,
+    work: libraryItems.filter(isWorkItem).length,
+  };
+  const scopeSwitchShown = libraryItems.length > 0 || scope !== "all";
+  const sectionOn = (id: FavouritesSectionId) => sectionsShown.includes(id);
+  const allScope = scope === "all";
+  const showContinue = showLaunchpad && allScope && sectionOn("continue");
+  const showShelf = newWorkMode && showLaunchpad && allScope && sectionOn("shelf") && shelf.length > 0;
+  // In Select mode numbers join the Work list, so they can be ticked like anything else.
+  const numbersSectionOn = !sampleMode && scope !== "clinical" && sectionOn("numbers") && effectiveMode === "browse";
+  const numberItems = numbersSectionOn ? filteredItems.filter((item) => Boolean(item.numberId)) : [];
+  const showNumbers =
+    numbersSectionOn && (numberItems.length > 0 || (!searching && activeFilterCount === 0 && scopeItems.length > 0));
+  // A search or a filter looks through everything: a hidden list never hides a match.
+  const narrowing = searching || activeFilterCount > 0;
+  const clinicalShown = allScope ? narrowing || sectionOn("clinical") : scope === "clinical";
+  const workShown = allScope ? narrowing || sectionOn("work") : scope === "work";
+  const clinicalItems = clinicalShown ? filteredItems.filter((item) => !isWorkItem(item)) : [];
+  const workItems = workShown
+    ? filteredItems.filter((item) => isWorkItem(item) && !(numbersSectionOn && item.numberId))
+    : [];
+  const labelLists = allScope && clinicalItems.length > 0 && workItems.length > 0;
+  // The filter controls and any empty state sit where the first list does.
+  const firstListSection = layout.order.find((id) => id === "clinical" || id === "work") ?? "clinical";
+  const listsDrawn = filteredItems.length > 0;
+  // Both lists hidden on All while there is something in them: say so, quietly, with a way back.
+  const listsHiddenNote =
+    allScope &&
+    !narrowing &&
+    !clinicalShown &&
+    !workShown &&
+    filteredItems.some((item) => !isWorkItem(item) || !(numbersSectionOn && item.numberId));
+  const workScopeEmpty = (
+    <div className="grid gap-3" data-testid="favourites-work-empty">
+      <WorkEmpty
+        icon={Heart}
+        title="No work pages or numbers yet"
+        body="Keep a roster, teaching page or ward number one tap away. They stay on this phone."
+      />
+      {sampleMode ? null : (
+        <ul className="work-card work-rows" aria-label="Add to Work">
+          {newWorkMode ? (
+            <li>
+              <button
+                type="button"
+                onClick={openAddWorkPage}
+                className="work-row w-full text-left"
+                data-testid="favourites-work-empty-add-page"
+              >
+                <WorkIconCircle icon={Plus} tone="neutral" />
+                <span className="work-row__text">
+                  <span className="work-row__title">Add a work page</span>
+                  <span className="work-row__sub">A roster, teaching or admin page</span>
+                </span>
+              </button>
+            </li>
+          ) : null}
+          <li>
+            <button
+              type="button"
+              onClick={openAddNumber}
+              className="work-row w-full text-left"
+              data-testid="favourites-work-empty-add-number"
+            >
+              <WorkIconCircle icon={Phone} tone="neutral" />
+              <span className="work-row__text">
+                <span className="work-row__title">Add a number</span>
+                <span className="work-row__sub">A ward, service or pager, never a patient</span>
+              </span>
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+  const numberActionItem = numberActionId ? (libraryItems.find((item) => item.id === numberActionId) ?? null) : null;
+  const pinnedInOrder = shelfItems(
+    libraryItems.filter((item) => item.pinned),
+    Number.MAX_SAFE_INTEGER,
+    layout.pinOrder,
+  );
+
   return (
     <main
+      // Opts this page into the work-mode tokens (white cards, hairlines) the
+      // shared Favourites shelf and rows are drawn with. Nothing else keys on it.
+      data-work-frame="favourites"
       data-testid="favourites-hub"
       className={cn(
-        "min-h-0 overflow-x-clip bg-[color:var(--background)] pb-4 text-[color:var(--text)] sm:grow sm:pb-32 md:pb-0",
+        "min-h-0 overflow-x-clip bg-[color:var(--surface-raised)] pb-4 text-[color:var(--text)] sm:grow sm:pb-32 md:pb-0",
         effectiveMode === "select" && "pb-28 sm:pb-32 md:pb-28",
       )}
     >
@@ -1376,7 +1720,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
         )}
       >
         <div className="min-w-0 overflow-x-hidden px-4 pb-6 pt-4 sm:px-6 sm:pt-5 lg:px-7">
-          <div className="mx-auto grid min-w-0 max-w-[48rem] gap-4 xl:max-w-[56rem]">
+          <div className="mx-auto grid min-w-0 max-w-[48rem] gap-3 xl:max-w-[56rem]">
             {/* Owner decision 2026-08-23: this standalone command library stays
                 structurally distinct from the compact dashboard Favourites hub.
                 The marketing lockup is retired here (ledger #164), and the
@@ -1384,41 +1728,68 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
                 one summary line and a Select action, so the saved items stay
                 above the fold. The heading is not a hero. */}
             <header data-testid="favourites-command-library" className="flex min-w-0 items-end justify-between gap-3">
-              <div className="min-w-0">
+              <div className="flex min-w-0 flex-col-reverse">
                 <h1
                   id="favourites-page-heading"
                   tabIndex={-1}
-                  className="text-balance text-2xl-minus font-bold leading-tight tracking-tight text-[color:var(--text-heading)] sm:text-2xl"
+                  className="text-balance text-2xl-minus font-bold leading-tight tracking-tight text-[color:var(--work-ink)] sm:text-2xl"
                 >
                   {sharedHomePresentation.favourites.title}
                 </h1>
-                <p className="nums mt-1 text-sm font-medium text-[color:var(--text-muted)]">{summary}</p>
+                <p className="nums mb-0.5 text-xs font-semibold text-[color:var(--text-muted)]">
+                  {clinicalLoadFailed && !hasClinicalItems
+                    ? hasWorkPages
+                      ? "Work pages only"
+                      : "Not loaded"
+                    : summary}
+                </p>
               </div>
-              {mutableCount >= 2 ? (
-                <button
-                  type="button"
-                  aria-pressed={effectiveMode === "select"}
-                  onClick={() => {
-                    if (effectiveMode === "select") {
-                      leaveSpecialMode();
-                      return;
-                    }
-                    setMode("select");
-                    setSelectedIds(new Set());
-                    setOpenSwipeId(null);
-                  }}
-                  className={cn(
-                    "inline-flex min-h-tap shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold",
-                    effectiveMode === "select"
-                      ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-                      : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
-                    focusRing,
-                  )}
-                >
-                  <CheckSquare className="size-icon-sm" aria-hidden="true" />
-                  {effectiveMode === "select" ? "Done" : "Select"}
-                </button>
-              ) : null}
+              <div className="flex shrink-0 items-center gap-2">
+                {mutableCount >= 2 ? (
+                  <button
+                    type="button"
+                    aria-pressed={effectiveMode === "select"}
+                    onClick={() => {
+                      if (effectiveMode === "select") {
+                        leaveSpecialMode();
+                        return;
+                      }
+                      setMode("select");
+                      setSelectedIds(new Set());
+                      setOpenSwipeId(null);
+                    }}
+                    className={cn(
+                      "inline-flex min-h-tap shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-bold",
+                      effectiveMode === "select"
+                        ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
+                        : "border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] text-[color:var(--work-ink)] active:bg-[color:var(--work-wash)]",
+                      focusRing,
+                    )}
+                  >
+                    <CheckSquare className="size-icon-sm" aria-hidden="true" />
+                    {effectiveMode === "select" ? "Done" : "Select"}
+                  </button>
+                ) : null}
+                {sampleMode ? null : (
+                  <button
+                    type="button"
+                    aria-label="Customise Favourites"
+                    aria-haspopup="dialog"
+                    onClick={() => {
+                      rememberSheetOrigin();
+                      setSheetOpen(false);
+                      setCustomiseOpen(true);
+                    }}
+                    data-testid="favourites-customise"
+                    className={cn(
+                      "grid size-tap shrink-0 place-items-center rounded-full border border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] text-[color:var(--work-ink)] active:bg-[color:var(--work-wash)]",
+                      focusRing,
+                    )}
+                  >
+                    <SlidersHorizontal className="size-icon-md" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
             </header>
 
             <DesktopComposerPortalSlot
@@ -1441,171 +1812,395 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
               </p>
             ) : null}
 
-            {libraryItems.length > 0 ? (
-              <FavouritesSetChips
-                chips={setChips}
-                totalCount={libraryItems.length}
-                selectedSets={effectiveSelectedSets}
-                onSelect={(name) => {
-                  setSelectedSetNames(name ? new Set([name]) : new Set());
-                  setSetView("order");
-                  if (mode === "reorder") setMode("browse");
-                  setOpenSwipeId(null);
-                }}
-                onNewSet={canCreateSet ? () => openSheet({ kind: "new-set", items: [] }) : undefined}
-              />
-            ) : null}
-
-            {showBand ? (
-              <SearchResultsHeaderBand
-                modeId="favourites"
-                query={activeQuery}
-                matchCount={filteredItems.length}
-                // Without this a failed registry read renders as "0 matches", which
-                // reads as "you have no saved favourites" rather than "we could not
-                // load them". `partial` keeps unaffected items (local
-                // differentials, etc.) visible without presenting their nonzero
-                // count as the complete library.
-                status={favouritesRegistryStatus}
-                onRetry={
-                  favouritesRegistryStatus === "error" || favouritesRegistryStatus === "partial"
-                    ? refetchFavouritesRegistry
-                    : undefined
-                }
-                filterLabel="Active favourites filters"
-                appliedFilters={appliedFilters}
-                onClearFilters={activeFilterCount > 0 ? clearAllFilters : undefined}
-              />
-            ) : null}
-
-            <ResultFilterSheet
-              open={filterOpen}
-              onClose={() => setFilterOpen(false)}
-              panelId={filterPanelId}
-              testId="favourites-filter-panel"
-              title="Filter favourites"
-              description="Combine sets, item types, pinned status and source support."
-              chromeResetKey={[
-                activeQuery,
-                Array.from(effectiveSelectedSets).sort().join(","),
-                Array.from(selectedTypeIds).sort().join(","),
-                String(pinnedOnly),
-                String(sourceBackedOnly),
-              ].join("|")}
-              groups={filterGroups}
-              onClearAll={activeFilterCount > 0 ? clearAllFilters : undefined}
-              summary={{ count: filteredItems.length, noun: filteredItems.length === 1 ? "favourite" : "favourites" }}
-            />
-
-            {showLaunchpad && continueItem ? (
-              <FavouritesContinueCard item={continueItem} now={now} onOpen={handleOpen} />
-            ) : null}
-
-            {showLaunchpad ? (
-              <FavouritesQuickLaunch
-                items={quickLaunch}
-                hasPinnableItems={mutableCount > 0}
-                onOpen={handleOpen}
-                onShowActions={(item) => openSheet({ kind: "actions", item })}
-              />
-            ) : null}
-
-            {singleSetName && !showBand ? (
-              <FavouritesSetBar
-                name={singleSetName}
-                count={filteredItems.length}
-                reordering={effectiveMode === "reorder"}
-                onToggleReorder={
-                  view === "order" && singleSetMutableCount >= 2 && accountSetForChip
-                    ? () => {
-                        setOpenSwipeId(null);
-                        setMode(effectiveMode === "reorder" ? "browse" : "reorder");
-                      }
-                    : undefined
-                }
-                onRename={
-                  accountSetForChip && availableSetNames.length > 0
-                    ? () => openSheet({ kind: "rename-set", set: accountSetForChip })
-                    : undefined
-                }
-                onDelete={accountSetForChip ? () => setConfirmDeleteSet(accountSetForChip) : undefined}
-              />
-            ) : null}
-
-            {libraryItems.length > 0 ? (
-              <div className="flex min-w-0 items-center gap-2">
-                <SegmentedControl<FavouritesView>
-                  label="Organise favourites"
-                  layout="equal"
-                  value={view}
-                  onChange={(next) => {
-                    if (singleSetName) setSetView(next);
-                    else setAllView(next);
-                    if (next !== "order" && mode === "reorder") setMode("browse");
-                  }}
-                  options={singleSetName ? viewOptions.set : viewOptions.all}
-                  className="min-w-0 flex-1"
-                />
-                <span className="shrink-0">{filterTrigger}</span>
-              </div>
-            ) : null}
-
-            {effectiveMode === "reorder" ? (
-              <p className="text-sm text-[color:var(--text-muted)]">
-                Use the arrows to put this set in the order you use it. Tap Done when finished.
+            {!online ? (
+              <p
+                role="status"
+                data-testid="favourites-offline"
+                className="m-0 flex min-w-0 items-center gap-2.5 rounded-[var(--work-radius-card)] bg-[color:var(--work-wash)] px-3 py-2.5 text-sm font-semibold text-[color:var(--text-muted)]"
+              >
+                <CloudOff className="size-icon-sm shrink-0" aria-hidden="true" />
+                Offline. Showing what this device last loaded. Changes wait until you are back online.
               </p>
             ) : null}
 
-            {/* Only a successful read can say "no matches". While loading or
-                faulted an empty list means we could not look, not that the
-                library is empty; the band's fault panel reports that. */}
-            {searching && filteredItems.length === 0 && favouritesRegistryStatus === "ready" ? (
-              <SearchResultsEmptyState
-                modeId="favourites"
-                query={activeQuery}
-                appliedFilters={appliedFilters}
-                onClearFilters={activeFilterCount > 0 ? clearAllFilters : undefined}
-                onClearSearch={clearSearch}
+            {clinicalLoadFailed && !showBand ? (
+              <FavouritesLoadFailedBand
+                hasClinicalItems={hasClinicalItems}
+                hasWorkPages={hasWorkPages}
+                onRetry={refetchFavouritesRegistry}
               />
-            ) : filteredItems.length === 0 ? (
-              libraryItems.length > 0 ? (
-                <FavouritesEmptyMatches />
-              ) : favouritesRegistryStatus === "ready" ? (
-                <EmptyState
-                  icon={Folder}
-                  title="No favourites yet"
-                  body="Tap the heart on any service, form, differential or therapy to save it here."
-                  testId="favourites-empty-library"
-                />
-              ) : null
-            ) : (
-              <FavouritesList
-                groups={groups}
-                view={view}
-                now={now}
-                showSet={!singleSetName}
-                mode={effectiveMode}
-                selectedIds={selectedIds}
-                workspaceItemId={selectedItemId}
-                openSwipeId={openSwipeId}
-                onOpenSwipeChange={setOpenSwipeId}
-                canMutate={canMutate}
-                handlers={listHandlers}
-                reorder={
-                  effectiveMode === "reorder"
-                    ? {
-                        pending: reorderPending,
-                        onMove: (item, direction) => void reorderItem(item, direction),
-                        onDrop: (items) => void dropReorder(items),
+            ) : null}
+
+            {scopeSwitchShown ? (
+              <SegmentedControl<FavouritesScope>
+                label="Show favourites"
+                layout="equal"
+                value={scope}
+                onChange={(next) => {
+                  setScopeChoice(next);
+                  setOpenSwipeId(null);
+                  if (mode === "reorder") setMode("browse");
+                }}
+                options={scopeOptions.map((option) => ({ ...option, hint: String(scopeCounts[option.value]) }))}
+              />
+            ) : null}
+
+            {layout.order.map((sectionId) => (
+              <Fragment key={sectionId}>
+                {sectionId === "continue" && showContinue && continueItem ? (
+                  <FavouritesContinueCard item={continueItem} now={now} onOpen={handleOpen} />
+                ) : null}
+
+                {sectionId === "shelf" && showShelf ? (
+                  <section aria-labelledby="favourites-shelf-heading" className="grid gap-1.5">
+                    <WorkSectionLabel
+                      id="favourites-shelf-heading"
+                      action={
+                        sampleMode || libraryItems.length === 0
+                          ? undefined
+                          : {
+                              label: "Arrange",
+                              onClick: () => {
+                                rememberSheetOrigin();
+                                setSheetOpen(false);
+                                setArrangeOpen(true);
+                              },
+                            }
                       }
-                    : undefined
-                }
-              />
-            )}
+                    >
+                      On My Day
+                    </WorkSectionLabel>
+                    <FavouritesShelf
+                      items={shelf}
+                      limit={layout.shelfSize}
+                      aria-labelledby="favourites-shelf-heading"
+                      onOpen={handleOpen}
+                      onShowActions={showActions}
+                      onOpenNumber={showActions}
+                      onAdd={sampleMode ? undefined : openAddWorkPage}
+                    />
+                  </section>
+                ) : null}
+
+                {sectionId === "numbers" && showNumbers ? (
+                  <NumbersSection
+                    items={numberItems}
+                    canAdd={!searching && activeFilterCount === 0}
+                    onAdd={openAddNumber}
+                    onShowActions={showActions}
+                    onCall={handleOpen}
+                  />
+                ) : null}
+
+                {sectionId === firstListSection ? (
+                  <>
+                    {libraryItems.length > 0 && scope !== "work" ? (
+                      <FavouritesSetChips
+                        chips={setChips}
+                        totalCount={libraryItems.length}
+                        selectedSets={effectiveSelectedSets}
+                        onSelect={(name) => {
+                          setSelectedSetNames(name ? new Set([name]) : new Set());
+                          setSetView("order");
+                          if (mode === "reorder") setMode("browse");
+                          setOpenSwipeId(null);
+                        }}
+                        onNewSet={canCreateSet ? () => openSheet({ kind: "new-set", items: [] }) : undefined}
+                      />
+                    ) : null}
+
+                    {showBand ? (
+                      <SearchResultsHeaderBand
+                        modeId="favourites"
+                        query={activeQuery}
+                        matchCount={filteredItems.length}
+                        // Without this a failed registry read renders as "0 matches", which
+                        // reads as "you have no saved favourites" rather than "we could not
+                        // load them". `partial` keeps unaffected items (local
+                        // differentials, etc.) visible without presenting their nonzero
+                        // count as the complete library.
+                        status={favouritesRegistryStatus}
+                        onRetry={
+                          favouritesRegistryStatus === "error" || favouritesRegistryStatus === "partial"
+                            ? refetchFavouritesRegistry
+                            : undefined
+                        }
+                        filterLabel="Active favourites filters"
+                        appliedFilters={appliedFilters}
+                        onClearFilters={activeFilterCount > 0 ? clearAllFilters : undefined}
+                      />
+                    ) : null}
+
+                    <ResultFilterSheet
+                      open={filterOpen}
+                      onClose={() => setFilterOpen(false)}
+                      panelId={filterPanelId}
+                      testId="favourites-filter-panel"
+                      title="Filter favourites"
+                      description="Combine sets, item types, pinned status and source support."
+                      chromeResetKey={[
+                        activeQuery,
+                        Array.from(effectiveSelectedSets).sort().join(","),
+                        Array.from(selectedTypeIds).sort().join(","),
+                        String(pinnedOnly),
+                        String(sourceBackedOnly),
+                      ].join("|")}
+                      groups={filterGroups}
+                      onClearAll={activeFilterCount > 0 ? clearAllFilters : undefined}
+                      summary={{
+                        count: filteredItems.length,
+                        noun: filteredItems.length === 1 ? "favourite" : "favourites",
+                      }}
+                    />
+
+                    {singleSetName && !showBand ? (
+                      <FavouritesSetBar
+                        name={singleSetName}
+                        count={filteredItems.length}
+                        reordering={effectiveMode === "reorder"}
+                        onToggleReorder={
+                          view === "order" && singleSetMutableCount >= 2 && accountSetForChip
+                            ? () => {
+                                setOpenSwipeId(null);
+                                setMode(effectiveMode === "reorder" ? "browse" : "reorder");
+                              }
+                            : undefined
+                        }
+                        onRename={
+                          accountSetForChip
+                            ? () => openSheet({ kind: "rename-set", set: accountSetForChip })
+                            : undefined
+                        }
+                        onDelete={accountSetForChip ? () => setConfirmDeleteSet(accountSetForChip) : undefined}
+                      />
+                    ) : null}
+
+                    {/* Nothing to order when the only work items are the numbers above. */}
+                    {libraryItems.length > 0 &&
+                    (clinicalItems.length + workItems.length > 0 || searching || activeFilterCount > 0) ? (
+                      <div className="flex min-w-0 items-center gap-2 pt-1">
+                        <SegmentedControl<FavouritesView>
+                          label="Organise favourites"
+                          layout="equal"
+                          value={view}
+                          onChange={(next) => {
+                            if (singleSetName) setSetView(next);
+                            else setAllView(next);
+                            if (next !== "order" && mode === "reorder") setMode("browse");
+                          }}
+                          options={singleSetName ? viewOptions.set : viewOptions.all}
+                          className="min-w-0 flex-1"
+                        />
+                        <span className="shrink-0">{filterTrigger}</span>
+                      </div>
+                    ) : null}
+
+                    {effectiveMode === "reorder" ? (
+                      <p className="text-sm text-[color:var(--text-muted)]">
+                        Use the arrows to put this set in the order you use it. Tap Done when finished.
+                      </p>
+                    ) : null}
+
+                    {/* Only a successful read can say "no matches". While loading or
+                          faulted an empty list means we could not look, not that the
+                          library is empty; the band's fault panel reports that. */}
+                    {searching && filteredItems.length === 0 && favouritesRegistryStatus === "ready" ? (
+                      <SearchResultsEmptyState
+                        modeId="favourites"
+                        query={activeQuery}
+                        appliedFilters={appliedFilters}
+                        onClearFilters={activeFilterCount > 0 ? clearAllFilters : undefined}
+                        onClearSearch={clearSearch}
+                      />
+                    ) : filteredItems.length === 0 ? (
+                      scopeItems.length > 0 ? (
+                        <FavouritesEmptyMatches />
+                      ) : scope === "work" ? (
+                        workScopeEmpty
+                      ) : favouritesRegistryStatus === "ready" ? (
+                        <div className="grid gap-3">
+                          <WorkEmpty
+                            icon={Heart}
+                            title="Save what you open most"
+                            body={
+                              newWorkMode
+                                ? "Tap the heart on a service, form, diagnosis or therapy. Add a work page to keep it one tap away on My Day."
+                                : "Tap the heart on a service, form, diagnosis or therapy."
+                            }
+                            action={
+                              sampleMode || !newWorkMode ? undefined : (
+                                <WorkButton onClick={openAddWorkPage} testId="favourites-empty-add-work-page">
+                                  Add a work page
+                                </WorkButton>
+                              )
+                            }
+                            testId="favourites-empty-library"
+                          />
+                          <ul className="work-card work-rows" aria-label="Find something to save">
+                            <li>
+                              <Link href="/services" className="work-row">
+                                <WorkIconCircle icon={Users} />
+                                <span className="work-row__text">
+                                  <span className="work-row__title">Browse services</span>
+                                  <span className="work-row__sub">Save one to see it here</span>
+                                </span>
+                                <ChevronRight className="work-row__chev" aria-hidden="true" />
+                              </Link>
+                            </li>
+                            <li>
+                              <Link href="/forms" className="work-row">
+                                <WorkIconCircle icon={FileText} />
+                                <span className="work-row__text">
+                                  <span className="work-row__title">Browse forms</span>
+                                  <span className="work-row__sub">Mental Health Act forms and more</span>
+                                </span>
+                                <ChevronRight className="work-row__chev" aria-hidden="true" />
+                              </Link>
+                            </li>
+                          </ul>
+                        </div>
+                      ) : favouritesRegistryStatus === "loading" ? (
+                        <ul className="work-card work-rows" aria-busy="true" aria-label="Loading favourites">
+                          {[0, 1, 2, 3].map((index) => (
+                            <li key={index} className="work-row" aria-hidden="true">
+                              <span className="size-9 shrink-0 rounded-full bg-[color:var(--work-wash)]" />
+                              <span className="grid flex-1 gap-1.5">
+                                <span className="h-2.5 w-3/5 rounded-full bg-[color:var(--work-wash)]" />
+                                <span className="h-2 w-2/5 rounded-full bg-[color:var(--work-wash)]" />
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null
+                    ) : null}
+
+                    {listsHiddenNote ? (
+                      <div
+                        className="flex min-w-0 flex-wrap items-center justify-between gap-2 px-1"
+                        data-testid="favourites-lists-hidden"
+                      >
+                        <p className="m-0 min-w-0 text-sm text-[color:var(--text-muted)]">
+                          Clinical and Work lists are hidden.
+                        </p>
+                        <WorkButton
+                          variant="secondary"
+                          onClick={() =>
+                            setFavouritesLayout({
+                              hidden: layout.hidden.filter((id) => id !== "clinical" && id !== "work"),
+                            })
+                          }
+                          testId="favourites-lists-hidden-show"
+                        >
+                          Show them
+                        </WorkButton>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+
+                {sectionId === "clinical" && listsDrawn && clinicalShown && clinicalItems.length > 0 ? (
+                  <section
+                    aria-labelledby={labelLists ? "favourites-clinical-heading" : undefined}
+                    className="grid gap-1.5"
+                  >
+                    {labelLists ? (
+                      <WorkSectionLabel
+                        id="favourites-clinical-heading"
+                        count={<span className="nums">{clinicalItems.length}</span>}
+                      >
+                        Clinical
+                      </WorkSectionLabel>
+                    ) : null}
+                    <FavouritesList
+                      groups={groupForView(clinicalItems, view, now)}
+                      view={view}
+                      now={now}
+                      showSet={!singleSetName}
+                      mode={effectiveMode}
+                      selectedIds={selectedIds}
+                      workspaceItemId={selectedItemId}
+                      openSwipeId={openSwipeId}
+                      onOpenSwipeChange={setOpenSwipeId}
+                      canMutate={canMutate}
+                      canMove={canMove}
+                      handlers={listHandlers}
+                      srHeading={labelLists ? null : "Saved favourites"}
+                      reorder={
+                        effectiveMode === "reorder"
+                          ? {
+                              pending: reorderPending,
+                              onMove: (item, direction) => void reorderItem(item, direction),
+                              onDrop: (items) => void dropReorder(items),
+                            }
+                          : undefined
+                      }
+                    />
+                  </section>
+                ) : null}
+
+                {sectionId === "work" && listsDrawn && workShown && workItems.length > 0 ? (
+                  <section
+                    aria-labelledby={labelLists ? "favourites-work-heading" : undefined}
+                    className="grid gap-1.5"
+                  >
+                    {labelLists ? (
+                      <WorkSectionLabel
+                        id="favourites-work-heading"
+                        count={<span className="nums">{workItems.length}</span>}
+                      >
+                        Work
+                      </WorkSectionLabel>
+                    ) : null}
+                    <FavouritesList
+                      groups={groupForView(workItems, view, now)}
+                      view={view}
+                      now={now}
+                      showSet={!singleSetName}
+                      mode={effectiveMode}
+                      selectedIds={selectedIds}
+                      workspaceItemId={selectedItemId}
+                      openSwipeId={openSwipeId}
+                      onOpenSwipeChange={setOpenSwipeId}
+                      canMutate={canMutate}
+                      canMove={canMove}
+                      handlers={listHandlers}
+                      srHeading={labelLists ? null : "Saved favourites"}
+                      idPrefix="favourites-work-group"
+                      testId="favourites-work-list"
+                    />
+                  </section>
+                ) : null}
+              </Fragment>
+            ))}
+
+            {newWorkMode && showLaunchpad && libraryItems.length > 0 && !sampleMode && scope !== "clinical" ? (
+              <div className="work-card">
+                <button
+                  type="button"
+                  onClick={openAddWorkPage}
+                  className="work-row"
+                  data-testid="favourites-add-work-page-row"
+                >
+                  <WorkIconCircle icon={Plus} tone="neutral" />
+                  <span className="work-row__text">
+                    <span className="work-row__title">Add a work page</span>
+                    <span className="work-row__sub">Keep a roster, teaching or admin page one tap away</span>
+                  </span>
+                </button>
+              </div>
+            ) : null}
 
             {libraryItems.some((item) => item.example) ? (
               <p className="rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-3 py-2 text-xs text-[color:var(--text-muted)]">
                 {sampleMode ? "Sample favourites. The sample doesn't save." : FAVOURITE_EXAMPLES_NOTICE}
+              </p>
+            ) : null}
+
+            {libraryItems.length > 0 && !sampleMode ? (
+              <p className="m-0 flex items-start gap-1.5 px-1 text-xs leading-snug text-[color:var(--text-muted)]">
+                <ShieldCheck className="mt-px size-icon-xs shrink-0" aria-hidden="true" />
+                Clinical items follow your account. Work pages, numbers, names, notes and layout stay on this phone and
+                clear when you sign out.
               </p>
             ) : null}
 
@@ -1636,12 +2231,13 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       {effectiveMode === "select" ? (
         <FavouritesSelectBar
           count={selectedTargets.length}
+          canMove={selectedTargets.length === 0 || selectedTargets.some(canMove)}
           onDone={leaveSpecialMode}
           onPin={() => {
             void togglePin(selectedTargets);
             leaveSpecialMode();
           }}
-          onMove={() => openSheet({ kind: "move", items: selectedTargets })}
+          onMove={() => openSheet({ kind: "move", items: selectedTargets.filter(canMove) })}
           onRemove={() => setConfirmRemoveIds(selectedTargets.map((item) => item.id))}
         />
       ) : null}
@@ -1660,6 +2256,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
           onCopyCitation={copyFavouriteCitation}
           onMove={(item) => openSheet({ kind: "move", items: [item] })}
           onRemove={(item) => removeItems([item])}
+          onEdit={canMutate(sheetContent.item) ? editFavourite : undefined}
         />
       ) : null}
       {sheetContent?.kind === "move" ? (
@@ -1682,15 +2279,67 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
       ) : null}
       {sheetContent?.kind === "new-set" || sheetContent?.kind === "rename-set" ? (
         <FavouriteSetNameSheet
+          key={sheetContent.kind === "rename-set" ? sheetContent.set.id : "new-set"}
           mode={sheetContent.kind === "new-set" ? "create" : "rename"}
           open={sheetOpen}
           returnFocusTarget={returnFocusToOrigin}
-          availableNames={availableSetNames}
+          currentName={sheetContent.kind === "rename-set" ? sheetContent.set.name : undefined}
+          existingNames={accountSets.map((set) => set.name)}
+          suggestedNames={availableSetNames}
           movingCount={sheetContent.kind === "new-set" ? sheetContent.items.length : 0}
           onClose={() => closeSheet()}
           onChoose={(name) => void chooseSetName(name)}
         />
       ) : null}
+      {newWorkMode ? (
+        <AddWorkPageSheet
+          open={addWorkPageOpen}
+          onClose={() => setAddWorkPageOpen(false)}
+          returnFocusTarget={returnFocusToOrigin}
+        />
+      ) : null}
+      <NumberActionsSheet
+        item={numberActionItem}
+        onClose={() => setNumberActionId(null)}
+        onEdit={(item) => {
+          setNumberActionId(null);
+          editFavourite(item);
+        }}
+        onTogglePin={(item) => void togglePin([item])}
+        onRemove={(item) => {
+          setNumberActionId(null);
+          removeItems([item]);
+        }}
+        returnFocusTarget={returnFocusToOrigin}
+      />
+      <NumberFormSheet
+        open={numberFormOpen}
+        onClose={() => setNumberFormOpen(false)}
+        editing={editingNumber}
+        returnFocusTarget={returnFocusToOrigin}
+        pinRoom={pinnedCount < QUICK_LAUNCH_LIMIT}
+      />
+      <EditFavouriteSheet
+        item={editItem}
+        overrideName={editItem ? overrides[editItem.id]?.name : undefined}
+        overrideNote={editItem ? overrides[editItem.id]?.note : undefined}
+        onClose={() => setEditItem(null)}
+        returnFocusTarget={returnFocusToOrigin}
+      />
+      <CustomiseFavouritesSheet
+        open={customiseOpen}
+        onClose={() => setCustomiseOpen(false)}
+        returnFocusTarget={returnFocusToOrigin}
+      />
+      <ArrangeShelfSheet
+        open={arrangeOpen}
+        onClose={() => setArrangeOpen(false)}
+        returnFocusTarget={returnFocusToOrigin}
+        pinned={pinnedInOrder}
+        unpinned={libraryItems.filter((item) => !item.pinned && !item.example)}
+        pinLimit={QUICK_LAUNCH_LIMIT}
+        onTogglePin={(item) => void togglePin([item])}
+      />
       <ConfirmDialog
         open={confirmDeleteSet !== null}
         title={`Delete ${confirmDeleteSet?.name ?? "set"}?`}
