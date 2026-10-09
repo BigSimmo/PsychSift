@@ -49,7 +49,7 @@ export function RotationYearCard({
             data-testid={`${testId}-term`}
           >
             <span className="grid w-[4.75rem] flex-none gap-0.5 pt-0.5">
-              <span className="text-3xs font-bold tracking-[0.06em] text-[color:var(--mode-identity)] uppercase">
+              <span className="text-3xs font-bold tracking-label text-[color:var(--mode-identity)] uppercase">
                 {term.label}
                 {isCurrent ? <span className="sr-only">, current term</span> : null}
               </span>

@@ -50,6 +50,11 @@ export function assertSetupHasNoPatientDetail(setup: RoundSetup): void {
   if (texts.some((text) => text && looksLikePatientDetail(text))) {
     fail("That looks like a patient detail. Rounds hold rotation names and dates only.", "patient_detail");
   }
+  // People's names are wanted here, so only the "a name" finding is allowed for them.
+  const people = setup.people.flatMap((person) => [person.name, person.grade ?? ""]);
+  if (people.some((text) => text && looksLikePatientDetail(text, { allowName: true }))) {
+    fail("That looks like a patient detail. Rounds hold rotation names and dates only.", "patient_detail");
+  }
 }
 
 export function assertSetupConsistent(setup: RoundSetup): void {
@@ -105,12 +110,40 @@ export function editRoundSetup(managed: ManagedRound, setup: RoundSetup): Manage
   const rotationIds = new Set(setup.rotations.map((rotation) => rotation.id));
   const personIds = new Set(setup.people.map((person) => person.id));
   const placements = managed.allocation?.placements ?? [];
+  const terms = [...setup.terms].sort((a, b) => a.start.localeCompare(b.start));
+  let allocation = managed.allocation && round.status !== "published" ? null : managed.allocation;
   if (round.status === "published") {
     const orphan = placements.find(
       (p) => !termIds.has(p.termId) || !rotationIds.has(p.rotationId) || !personIds.has(p.personId),
     );
     if (orphan) {
       fail("Someone is placed in a term or rotation you removed. Move them first.", "placement_orphaned");
+    }
+    // Fewer places than people already placed would overfill a rotation.
+    for (const rotation of setup.rotations) {
+      for (const term of setup.terms) {
+        const placed = placements.filter((p) => p.rotationId === rotation.id && p.termId === term.id).length;
+        if (placed > rotation.places) {
+          fail(
+            `${rotation.name} has ${placed} people placed in ${term.label}. Move someone out before you lower its places.`,
+            "placement_over_capacity",
+          );
+        }
+      }
+    }
+    // People added or terms changed: the empty terms are worked out again.
+    if (managed.allocation) {
+      const filled = new Set(placements.map((p) => `${p.personId}:${p.termId}`));
+      const unfilled = setup.people.flatMap((person) =>
+        terms
+          .filter((term) => !filled.has(`${person.id}:${term.id}`))
+          .map((term) => ({ personId: person.id, termId: term.id, reason: "No rotation set for this term" })),
+      );
+      allocation = {
+        ...managed.allocation,
+        unfilled,
+        summary: summarise(placements, unfilled.length, setup.people.length),
+      };
     }
   }
   const keep = <T extends { personId: string }>(list: readonly T[]) =>
@@ -120,7 +153,7 @@ export function editRoundSetup(managed: ManagedRound, setup: RoundSetup): Manage
     round: {
       ...round,
       ...setup,
-      terms: [...setup.terms].sort((a, b) => a.start.localeCompare(b.start)),
+      terms,
       version: round.version + 1,
     },
     preferences: keep(managed.preferences).map((pref) => ({
@@ -128,10 +161,8 @@ export function editRoundSetup(managed: ManagedRound, setup: RoundSetup): Manage
       ranking: cleanRanking(pref.ranking, rotationIds),
     })),
     locks: keep(managed.locks).filter((lock) => termIds.has(lock.termId) && rotationIds.has(lock.rotationId)),
-    allocation:
-      managed.allocation && round.status !== "published"
-        ? null // the setup changed, so the old run no longer fits. Run it again.
-        : managed.allocation,
+    // Before publishing the setup change means the old run no longer fits, so it is cleared. Run it again.
+    allocation,
   };
 }
 
@@ -237,7 +268,7 @@ function summarise(placements: readonly Placement[], unfilledCount: number, peop
  * Move one person in one term by hand. Checks the target has a free place that
  * term and that the person does not already have that rotation in another term.
  */
-export function movePlacement(managed: ManagedRound, move: PlacementMove, now: Date): ManagedRound {
+export function movePlacement(managed: ManagedRound, move: PlacementMove): ManagedRound {
   const { round } = managed;
   const allocation = managed.allocation;
   if (!allocation) fail("Run the allocation first.", "no_allocation");
@@ -298,8 +329,9 @@ export function movePlacement(managed: ManagedRound, move: PlacementMove, now: D
     ...managed,
     locks,
     allocation: next,
-    round:
-      round.status === "published" ? { ...round, version: round.version + 1, publishedAt: now.toISOString() } : round,
+    // After publishing, calendars follow `version`. `publishedAt` stays the day it was published, so a hand
+    // move does not bring back My Day's "Your rotations are out" for everyone in the round.
+    round: round.status === "published" ? { ...round, version: round.version + 1 } : round,
   };
 }
 
@@ -323,6 +355,8 @@ export function setPlacementLock(managed: ManagedRound, personId: string, termId
 export function publishRound(managed: ManagedRound, now: Date): ManagedRound {
   if (!managed.allocation) fail("Run the allocation before publishing.", "no_allocation");
   if (managed.round.status === "published") fail("This round is already published.", "published");
+  // Doctors can still change their preferences while it is open, so the allocation may no longer fit.
+  if (managed.round.status === "open") fail("Close the round and run the allocation again first.", "not_closed");
   return {
     ...managed,
     round: {

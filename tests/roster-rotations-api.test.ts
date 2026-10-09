@@ -26,6 +26,10 @@ const mocks = vi.hoisted(() => ({
     missing: false,
     clock: 0,
     beforeUpdate: null as null | (() => void),
+    /** Runs right after a preference upsert lands, to stand in for an administrator acting mid-request. */
+    afterUpsert: null as null | (() => void),
+    /** How many preference updates or deletes fail before they start working again. */
+    failPreferenceWrites: 0,
   },
 }));
 
@@ -151,7 +155,16 @@ function fakeClient() {
           const existing = rows.find((row) => row.round_id === payload.round_id && row.user_id === payload.user_id);
           if (existing) Object.assign(existing, payload);
           else rows.push({ ...payload });
+          mocks.state.afterUpsert?.();
           return { data: null, error: null };
+        }
+        if (
+          (op === "update" || op === "delete") &&
+          table === "roster_rotation_preferences" &&
+          mocks.state.failPreferenceWrites > 0
+        ) {
+          mocks.state.failPreferenceWrites -= 1;
+          return { data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } };
         }
         if (op === "update") {
           mocks.state.beforeUpdate?.();
@@ -275,6 +288,8 @@ beforeEach(() => {
   mocks.state.missing = false;
   mocks.state.clock = 0;
   mocks.state.beforeUpdate = null;
+  mocks.state.afterUpsert = null;
+  mocks.state.failPreferenceWrites = 0;
   as(DOCTOR);
   seed();
 });
@@ -515,6 +530,130 @@ describe("rotation rounds API: the administrator", () => {
     expect((await POST(post({ action: "edit", setup: setup({ people }) }), context())).status).toBe(200);
     expect(preferences()).toEqual([]);
     expect((rounds()[0].setup as RoundSetup).people).toEqual(people);
+  });
+});
+
+describe("rotation rounds API: what the server trusts", () => {
+  beforeEach(() => as(MANAGER));
+
+  it("takes people's names and grades from the team, never from the request", async () => {
+    seed([]);
+    const people = [
+      { id: MANAGER, name: "Dr Alex Jarrah", grade: "Registrar" },
+      { id: DOCTOR, name: "Someone else entirely", grade: "Professor" },
+    ];
+    const response = await CREATE(
+      post({ action: "create", setup: setup({ people }) }, "https://example.org/api/roster/rotations"),
+    );
+    expect(response.status).toBe(200);
+    expect((rounds()[0].setup as RoundSetup).people).toEqual([
+      { id: MANAGER, name: "Dr Alex Jarrah", grade: "Registrar" },
+      { id: DOCTOR, name: "Dr Sam Karri", grade: "Registrar" },
+    ]);
+  });
+
+  it("keeps the round's name for someone already in it who has since left the team", async () => {
+    mocks.state.tables.on_call_service_members = mocks.state.tables.on_call_service_members.map((member) =>
+      member.user_id === DOCTOR ? { ...member, revoked_at: "2026-10-08T00:00:00Z" } : member,
+    );
+    const people = [setup().people[0], { id: DOCTOR, name: "Renamed by the request" }];
+    expect((await POST(post({ action: "edit", setup: setup({ people }) }), context())).status).toBe(200);
+    expect((rounds()[0].setup as RoundSetup).people[1]).toEqual({
+      id: DOCTOR,
+      name: "Dr Sam Karri",
+      grade: "Registrar",
+    });
+  });
+
+  it("refuses ids with line breaks or spaces, which would reach the calendar file", async () => {
+    seed([]);
+    const terms = [{ id: "t1\r\nBEGIN:VALARM", label: "Term 1", start: "2027-02-01", end: "2027-04-30" }];
+    const response = await CREATE(
+      post({ action: "create", setup: setup({ terms }) }, "https://example.org/api/roster/rotations"),
+    );
+    expect(response.status).toBe(400);
+    expect(rounds()).toEqual([]);
+    as(DOCTOR);
+    seed();
+    expect((await POST(post({ action: "save-preference", ranking: ["cl x"], submit: false }), context())).status).toBe(
+      400,
+    );
+  });
+
+  it("will not publish a round that is open again, since its allocation may no longer fit", async () => {
+    seed([
+      roundRow("open", {
+        allocation: { runAt: "2026-10-08T00:00:00Z", placements: [], unfilled: [], summary: {}, problems: [] },
+      }),
+    ]);
+    const response = await POST(post({ action: "publish" }), context());
+    expect(response.status).toBe(409);
+    expect(rounds()[0].status).toBe("open");
+  });
+});
+
+describe("rotation rounds API: changes that cross mid-request", () => {
+  const closeTheRound = () => {
+    rounds()[0].status = "closed";
+    rounds()[0].updated_at = "2026-10-09T01:59:59.000Z";
+  };
+
+  it("puts a doctor's ranking back when the administrator closed the round while it was saving", async () => {
+    preferences().push({
+      round_id: ROUND,
+      user_id: DOCTOR,
+      ranking: ["ad"],
+      submitted_at: null,
+      updated_at: "2026-10-05T00:00:00.000Z",
+    });
+    mocks.state.afterUpsert = closeTheRound;
+    const response = await POST(post({ action: "save-preference", ranking: ["cl", "ad"], submit: true }), context());
+    expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe("rotations_conflict");
+    expect(preferences()).toEqual([
+      { round_id: ROUND, user_id: DOCTOR, ranking: ["ad"], submitted_at: null, updated_at: "2026-10-05T00:00:00.000Z" },
+    ]);
+  });
+
+  it("removes a first ranking that landed after the round was allocated", async () => {
+    mocks.state.afterUpsert = closeTheRound;
+    const response = await POST(post({ action: "save-preference", ranking: ["cl", "ad"], submit: true }), context());
+    expect(response.status).toBe(409);
+    expect(preferences()).toEqual([]);
+  });
+
+  it("keeps the ranking when nothing changed the round in between", async () => {
+    const response = await POST(post({ action: "save-preference", ranking: ["cl", "ad"], submit: true }), context());
+    expect(response.status).toBe(200);
+    expect(preferences()).toEqual([expect.objectContaining({ user_id: DOCTOR, ranking: ["cl", "ad"] })]);
+  });
+
+  it("says when an edit saved but its tidy-up did not, reads correctly meanwhile, and finishes on a second save", async () => {
+    as(MANAGER);
+    preferences().push({
+      round_id: ROUND,
+      user_id: DOCTOR,
+      ranking: ["cl", "ad"],
+      submitted_at: "2026-10-05T00:00:00.000Z",
+      updated_at: "2026-10-05T00:00:00.000Z",
+    });
+    const edit = { action: "edit", setup: setup({ people: [setup().people[0]] }) };
+    mocks.state.failPreferenceWrites = 1;
+    const first = await POST(post(edit), context());
+    expect(first.status).toBe(503);
+    expect((await first.json()).code).toBe("rotations_edit_incomplete");
+    expect((rounds()[0].setup as RoundSetup).people).toHaveLength(1);
+    expect(preferences()).toHaveLength(1);
+    // Meanwhile the round reads as the edit meant: the removed doctor's ranking is not counted.
+    const managed = (await (await GET(get())).json()).managed[0];
+    expect(managed.preferences).toEqual([]);
+
+    const again = await POST(post(edit), context());
+    expect(again.status).toBe(200);
+    expect(preferences()).toEqual([]);
+    const third = await POST(post(edit), context());
+    expect(third.status).toBe(200);
+    expect((rounds()[0].setup as RoundSetup).people).toHaveLength(1);
   });
 });
 

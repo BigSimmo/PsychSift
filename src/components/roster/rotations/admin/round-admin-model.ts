@@ -590,6 +590,7 @@ function patientDetailStep(setup: RoundSetup): FormStep {
         note: undefined,
         terms: setup.terms.map((term) => ({ ...term, label: "Term" })),
         rotations: setup.rotations.map((rotation) => ({ ...rotation, name: "Rotation", site: "" })),
+        people: setup.people.map((person) => ({ id: person.id, name: "Person" })),
         ...partial,
       });
       return false;

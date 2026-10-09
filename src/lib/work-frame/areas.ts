@@ -96,7 +96,9 @@ export type WorkFrameGate =
    */
   | "signed-out"
   /** Testers on the newest live version, for a page that exists only there (Rotations). */
-  | "rotation-preferences";
+  | "rotation-preferences"
+  /** Roster managers (as "open-shifts-poster") who are also on the newest live version (Rotation rounds). */
+  | "rotation-preferences-manager";
 
 /** Actions a page can register for the More sheet to run. */
 export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
@@ -580,7 +582,7 @@ const manageTeam: WorkArea = {
           href: "/roster/manage/rotations",
           // The rounds, a new round and each round (`/roster/manage/rotations/<round>`).
           paths: ["/roster/manage/rotations", "/roster/manage/rotations/"],
-          gate: "open-shifts-poster",
+          gate: "rotation-preferences-manager",
         },
       ],
     },

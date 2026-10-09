@@ -15,9 +15,20 @@ import type { AllocationSummary, Placement, RotationLock, UnfilledTerm } from "@
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
+/**
+ * Term, rotation and person ids. Plain characters only: they reach URLs, the
+ * calendar file's event ids and stored JSON, so no spaces, line breaks or quotes.
+ */
+export const rotationIdSchema = (max: number) =>
+  z
+    .string()
+    .min(1)
+    .max(max)
+    .regex(/^[A-Za-z0-9:_.-]+$/);
+
 export const rotationTermSchema = z
   .object({
-    id: z.string().min(1).max(64),
+    id: rotationIdSchema(64),
     label: z.string().trim().min(1).max(40),
     start: isoDate,
     end: isoDate,
@@ -25,14 +36,14 @@ export const rotationTermSchema = z
   .refine((term) => term.start <= term.end, { message: "A term must end on or after its start" });
 
 export const rotationOptionSchema = z.object({
-  id: z.string().min(1).max(64),
+  id: rotationIdSchema(64),
   name: z.string().trim().min(1).max(80),
   site: z.string().trim().max(80),
   places: z.number().int().min(0).max(50),
 });
 
 export const roundPersonSchema = z.object({
-  id: z.string().min(1).max(80),
+  id: rotationIdSchema(80),
   name: z.string().trim().min(1).max(80),
   grade: z.string().trim().max(40).optional(),
 });
@@ -102,15 +113,15 @@ export type MyRound = {
 };
 
 export const savePreferenceSchema = z.object({
-  ranking: z.array(z.string().min(1).max(64)).max(60),
+  ranking: z.array(rotationIdSchema(64)).max(60),
   submit: z.boolean(),
 });
 
 export const placementMoveSchema = z.object({
-  personId: z.string().min(1).max(80),
-  termId: z.string().min(1).max(64),
+  personId: rotationIdSchema(80),
+  termId: rotationIdSchema(64),
   /** Null clears the placement for that term. */
-  rotationId: z.string().min(1).max(64).nullable(),
+  rotationId: rotationIdSchema(64).nullable(),
   /** Fix it so a re-run keeps it. */
   lock: z.boolean(),
 });

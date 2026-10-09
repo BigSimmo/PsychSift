@@ -46,7 +46,7 @@ import { useRotations, type RotationsRead } from "@/components/roster/rotations/
 import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { announce } from "@/components/ui/live-announcer";
-import { cn } from "@/components/ui-primitives";
+import { cn, controlDisabled } from "@/components/ui-primitives";
 import { ordinal } from "@/lib/roster/rotations/allocate";
 import { placesPerTerm, type ManagedRound } from "@/lib/roster/rotations/model";
 import { preferenceCounts } from "@/lib/roster/rotations/operations";
@@ -1081,10 +1081,7 @@ function AdjustSheet({
                     setChoice(option.rotation.id);
                     setProblem(null);
                   }}
-                  className={cn(
-                    "work-row disabled:cursor-not-allowed disabled:opacity-60",
-                    checked && "bg-[color:var(--mode-identity-soft-2)]",
-                  )}
+                  className={cn("work-row", controlDisabled, checked && "bg-[color:var(--mode-identity-soft-2)]")}
                   data-testid={`rotation-round-adjust-option-${option.rotation.id}`}
                 >
                   <RadioDot checked={checked} />

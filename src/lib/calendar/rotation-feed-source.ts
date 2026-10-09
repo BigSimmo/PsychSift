@@ -26,7 +26,8 @@ export function rotationCalendarEvents(placements: readonly FeedPlacement[], tod
     const term = termById(round, placement.termId);
     const rotation = rotationById(round, placement.rotationId);
     if (!term || !rotation || term.end < oldest) return [];
-    const base = `rotation-${roundId}-${placement.termId}`;
+    // Ids reach the calendar file as event ids, so only plain characters go in.
+    const base = `rotation-${roundId}-${placement.termId}`.replace(/[^A-Za-z0-9-]/g, "-");
     const notes = `${term.label}, ${round.name}`;
     return [
       {

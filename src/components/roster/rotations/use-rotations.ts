@@ -184,6 +184,36 @@ async function postLive(path: string, body: unknown): Promise<RotationActionResu
   }
 }
 
+/**
+ * One read of the server's answer. Several screens can call `useRotations` at
+ * once (My Day's card and its calendar items, for one), so a read already on
+ * its way is shared rather than sent again. A read after an action (`fresh`)
+ * always asks anew, so it never gets an answer from before the change.
+ */
+let inflight: Promise<LiveRead> | null = null;
+
+function readLive(fresh: boolean): Promise<LiveRead> {
+  if (inflight && !fresh) return inflight;
+  const request: Promise<LiveRead> = fetch("/api/roster/rotations", { credentials: "same-origin", cache: "no-store" })
+    .then(async (response): Promise<LiveRead> => {
+      if (response.status === 401) return { status: "signed-out" };
+      if (response.status === 404) return { status: "unavailable" };
+      if (response.status === 503) {
+        // Only "not live yet" offers the example. Any other 503 is a failed read Retry can fix.
+        const body = (await response.json().catch(() => ({}))) as { code?: unknown };
+        return { status: body.code === "rotations_not_live" ? "unavailable" : "error" };
+      }
+      if (!response.ok) return { status: "error" };
+      return { status: "ready", data: (await response.json()) as LivePayload };
+    })
+    .catch((): LiveRead => ({ status: "error" }))
+    .finally(() => {
+      if (inflight === request) inflight = null;
+    });
+  inflight = request;
+  return request;
+}
+
 // ---------------------------------------------------------------- hook
 
 export function useRotations({ enabled = true }: { readonly enabled?: boolean } = {}): RotationsRead {
@@ -210,14 +240,7 @@ export function useRotations({ enabled = true }: { readonly enabled?: boolean } 
     const settle = (next: LiveRead) => {
       if (current) setLive(next);
     };
-    fetch("/api/roster/rotations", { credentials: "same-origin", cache: "no-store" })
-      .then(async (response) => {
-        if (response.status === 401) return settle({ status: "signed-out" });
-        if (response.status === 503 || response.status === 404) return settle({ status: "unavailable" });
-        if (!response.ok) return settle({ status: "error" });
-        settle({ status: "ready", data: (await response.json()) as LivePayload });
-      })
-      .catch(() => settle({ status: "error" }));
+    void readLive(attempt > 0).then(settle);
     return () => {
       current = false;
     };
@@ -265,7 +288,7 @@ export function useRotations({ enabled = true }: { readonly enabled?: boolean } 
       openRound: (roundId) => apply(roundId, (r, now) => openRound(r, now)),
       closeRound: (roundId) => apply(roundId, (r) => closeRound(r)),
       runAllocation: (roundId) => apply(roundId, (r, now) => runAllocation(r, now)),
-      movePlacement: (roundId, move) => apply(roundId, (r, now) => movePlacement(r, move, now)),
+      movePlacement: (roundId, move) => apply(roundId, (r) => movePlacement(r, move)),
       setLock: (roundId, personId, termId, lock) => apply(roundId, (r) => setPlacementLock(r, personId, termId, lock)),
       publish: (roundId) => apply(roundId, (r, now) => publishRound(r, now)),
       async deleteDraft(roundId) {

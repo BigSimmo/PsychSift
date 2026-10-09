@@ -26,6 +26,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "classic-work-mode") return !newWorkMode;
       if (gate === "signed-out") return !signedIn;
       if (gate === "rotation-preferences") return rotations;
+      if (gate === "rotation-preferences-manager") return rotations && poster === true;
       return editor;
     },
     [roles, poster, editor, newWorkMode, signedIn, rotations],

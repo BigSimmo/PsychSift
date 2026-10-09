@@ -21,7 +21,7 @@ import { formatTermDates } from "@/components/roster/rotations/rotation-format";
 import { useRotations, type RotationsRead } from "@/components/roster/rotations/use-rotations";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { announce } from "@/components/ui/live-announcer";
-import { cn } from "@/components/ui-primitives";
+import { cn, controlDisabled } from "@/components/ui-primitives";
 import type { ManagedRound } from "@/lib/roster/rotations/model";
 import { zonedDateOf } from "@/lib/work-time/format";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
@@ -67,7 +67,8 @@ import { AvatarRow, RotationsAdminGate } from "./rounds-page";
 const label = "text-sm font-semibold text-[color:var(--text-heading)]";
 const hint = "text-xs text-[color:var(--work-ink-muted)]";
 const iconButton =
-  "inline-grid min-h-12 min-w-12 shrink-0 place-items-center rounded-full text-[color:var(--work-ink-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity)] disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-grid min-h-12 min-w-12 shrink-0 place-items-center rounded-full text-[color:var(--work-ink-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity)] disabled:cursor-not-allowed " +
+  controlDisabled;
 
 // ---------------------------------------------------------------- new round page
 
@@ -873,9 +874,14 @@ function WhoStep({
 
 function CapacityNote({ check }: { readonly check: ReturnType<typeof capacityCheck> }) {
   return (
-    <div className="work-card work-card--pad" aria-live="polite" data-testid="rotation-form-capacity">
-      <WorkCheckRow tone={check.tone === "ok" ? "ok" : "warn"}>{check.text}</WorkCheckRow>
-    </div>
+    <>
+      <div className="work-card work-card--pad" data-testid="rotation-form-capacity">
+        <WorkCheckRow tone={check.tone === "ok" ? "ok" : "warn"}>{check.text}</WorkCheckRow>
+      </div>
+      <p className="sr-only" aria-live="polite">
+        {check.text}
+      </p>
+    </>
   );
 }
 
@@ -937,7 +943,8 @@ export function Stepper({
 }) {
   const circle = "grid size-8 place-items-center rounded-full bg-[color:var(--work-wash)] text-[color:var(--work-ink)]";
   const button =
-    "inline-grid min-h-12 min-w-12 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity)] disabled:cursor-not-allowed disabled:opacity-40";
+    "inline-grid min-h-12 min-w-12 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity)] disabled:cursor-not-allowed " +
+    controlDisabled;
   return (
     <div role="group" aria-label={name} className="flex items-center" data-testid={testId}>
       <button
@@ -951,8 +958,9 @@ export function Stepper({
           <Minus aria-hidden="true" className="size-icon-sm" strokeWidth={2.4} />
         </span>
       </button>
+      <span className="sr-only" aria-live="polite">{`${name} ${value}`}</span>
       <output
-        aria-live="polite"
+        aria-hidden="true"
         className="min-w-6 text-center text-base font-semibold tabular-nums text-[color:var(--work-ink)]"
       >
         {value}

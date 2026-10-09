@@ -205,11 +205,7 @@ describe("reviewing an allocation", () => {
     const personId = published.round.people[0]!.id;
     const choice = moveOptions(published, personId, term.id).find((option) => !option.current && !option.blocked);
     if (!choice) return;
-    const moved = movePlacement(
-      published,
-      { personId, termId: term.id, rotationId: choice.rotation.id, lock: true },
-      NOW,
-    );
+    const moved = movePlacement(published, { personId, termId: term.id, rotationId: choice.rotation.id, lock: true });
     const placement = moved.allocation!.placements.find((p) => p.personId === personId && p.termId === term.id);
     expect(placement?.rotationId).toBe(choice.rotation.id);
     expect(placement?.locked).toBe(true);

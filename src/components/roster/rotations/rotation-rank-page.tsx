@@ -402,7 +402,7 @@ function RankEditor({
       </p>
       {round.note ? (
         <WorkCard padded>
-          <p className="m-0 text-3xs font-bold tracking-[0.06em] text-[color:var(--mode-identity)] uppercase">
+          <p className="m-0 text-3xs font-bold tracking-label text-[color:var(--mode-identity)] uppercase">
             From {round.adminName}
           </p>
           <p className="mt-1 mb-0 text-xs leading-relaxed text-[color:var(--work-ink)]">{round.note}</p>
@@ -633,18 +633,18 @@ function RankedList({
               }}
               className={`relative grid border-t border-[color:var(--work-line)] first:border-t-0 ${
                 lifted
-                  ? "z-[5] rounded-[var(--work-radius-field)] bg-[color:var(--mode-identity-soft)] shadow-[inset_0_0_0_1px_var(--mode-identity-border)]"
-                  : "motion-safe:transition-transform motion-safe:duration-150"
+                  ? "z-[5] rounded-[var(--work-radius-field)] bg-[color:var(--mode-identity-soft)] outline outline-1 -outline-offset-1 outline-[color:var(--mode-identity-border)]"
+                  : "motion-safe:transition-transform motion-safe:duration-[var(--duration-quick)]"
               }`}
               style={lifted ? { transform: `translateY(${drag?.dy ?? 0}px)` } : undefined}
               data-testid="rotation-rank-row"
             >
-              <div className="flex min-h-14 items-center gap-1.5 py-1 pr-1 pl-3">
+              <div className="flex min-h-14 items-center gap-1 py-1 pr-1 pl-3">
                 <NumberBadge index={index} />
                 <button
                   type="button"
                   ref={bind(`${id}:name`)}
-                  className="grid min-h-11 min-w-0 flex-1 rounded-[var(--work-radius-field)] px-1.5 py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
+                  className="grid min-h-12 min-w-0 flex-1 rounded-[var(--work-radius-field)] px-1.5 py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
                   aria-expanded={expanded}
                   aria-controls={panelId}
                   onClick={() => setOpen(expanded ? null : id)}
@@ -674,13 +674,13 @@ function RankedList({
                   ref={bind(`${id}:handle`)}
                   aria-label={`Reorder ${name}, ${ordinal(index + 1)}. Use the up and down arrow keys`}
                   aria-roledescription="drag handle"
-                  className="grid size-11 flex-none cursor-grab touch-none place-items-center rounded-full select-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)] active:cursor-grabbing"
+                  className="grid size-12 flex-none cursor-grab touch-none place-items-center rounded-full select-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)] active:cursor-grabbing"
                   onPointerDown={(event) => startDrag(id, event)}
                   onClick={() => say("Drag to reorder, or use the up and down arrow keys")}
                   onKeyDown={(event) => onHandleKey(id, event)}
                   data-testid="rotation-rank-handle"
                 >
-                  <span aria-hidden="true" className="grid gap-[3px]">
+                  <span aria-hidden="true" className="grid gap-0.5">
                     <i className="block h-0.5 w-3.5 rounded-full bg-[color:var(--decoration-soft)]" />
                     <i className="block h-0.5 w-3.5 rounded-full bg-[color:var(--decoration-soft)]" />
                     <i className="block h-0.5 w-3.5 rounded-full bg-[color:var(--decoration-soft)]" />
@@ -737,7 +737,7 @@ function RowIconButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="group grid size-11 flex-none place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)] disabled:cursor-default"
+      className="group grid size-12 flex-none place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)] disabled:cursor-default"
     >
       <span
         aria-hidden="true"

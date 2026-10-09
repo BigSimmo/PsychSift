@@ -243,8 +243,11 @@ export function allocateRotations(input: AllocationInput): AllocationResult {
     }
     const taken = usedTerm.get(lock.personId) ?? new Set<number>();
     const load = lockedLoad.get(lock.rotationId) ?? new Array<number>(termCount).fill(0);
-    if (taken.has(t) || load[t] >= rotations[r].places) {
-      problems.push("Two fixed placements clash (same person and term, or more than the places), so one was dropped.");
+    const repeated = lockedRotation.get(lock.personId)?.has(lock.rotationId) ?? false;
+    if (taken.has(t) || repeated || load[t] >= rotations[r].places) {
+      problems.push(
+        "Two fixed placements clash (same person and term, the same rotation twice, or more than the places), so one was dropped.",
+      );
       continue;
     }
     taken.add(t);
@@ -429,26 +432,36 @@ export function allocateRotations(input: AllocationInput): AllocationResult {
   }
 
   // Reasons and summary.
-  const takenBy = new Map<string, { personId: string; rank: number | null }[]>();
+  const takenBy = new Map<string, { personId: string; rank: number | null; locked: boolean }[]>();
   for (const assignment of assignments) {
     const list = takenBy.get(assignment.rotationId) ?? [];
-    list.push({ personId: assignment.personId, rank: rankOf(assignment.personId, assignment.rotationId) });
+    list.push({
+      personId: assignment.personId,
+      rank: rankOf(assignment.personId, assignment.rotationId),
+      locked: assignment.locked,
+    });
     takenBy.set(assignment.rotationId, list);
   }
-  const rotationName = (id: string) => rotations[rotationIndex.get(id) as number]?.name ?? "This rotation";
+  // Names come from every rotation in the round, so a closed one (0 places) is still named.
+  const allRotations = new Map(input.rotations.map((rotation) => [rotation.id, rotation]));
+  const rotationName = (id: string) => allRotations.get(id)?.name ?? "That rotation";
+  const holds = (personId: string, rotationId: string) =>
+    assignments.some((a) => a.personId === personId && a.rotationId === rotationId);
+  /** The best-ranked rotation above `rank` the person did not get, and why, in plain words. */
   const missedReason = (personId: string, rank: number | null): string => {
     const ranking = rankings.get(personId) ?? [];
     const better = rank === null ? ranking : ranking.slice(0, rank - 1);
-    const missed = better.find(
-      (id) => !(chosen.get(personId) ?? []).includes(id) && !lockedRotation.get(personId)?.has(id),
-    );
+    const missed = better.find((id) => !holds(personId, id));
     if (!missed) return "";
+    if (!rotationIndex.has(missed)) return ` ${rotationName(missed)} has no places in this round.`;
     const mine = rankOf(personId, missed) as number;
     const holders = takenBy.get(missed) ?? [];
-    const higher = holders.filter((h) => h.rank !== null && h.rank <= mine).length;
-    return higher >= holders.length
-      ? ` ${rotationName(missed)} was full with people who ranked it as high or higher.`
-      : ` ${rotationName(missed)} was full, and giving you a place there would have cost others a higher choice.`;
+    const lower = holders.filter((h) => h.rank === null || h.rank > mine);
+    if (lower.length === 0) return ` ${rotationName(missed)} was full with people who ranked it as high or higher.`;
+    if (lower.every((h) => h.locked)) {
+      return ` ${rotationName(missed)} was full, including places the rotation administrator set.`;
+    }
+    return ` ${rotationName(missed)} was full, and giving you a place there would have left others worse off.`;
   };
 
   const placements: Placement[] = assignments
@@ -461,7 +474,12 @@ export function allocateRotations(input: AllocationInput): AllocationResult {
       else if (rank !== null) {
         const missed = missedReason(assignment.personId, rank);
         reason = missed ? `Your ${ordinal(rank)} choice.${missed}` : `Your ${ordinal(rank)} choice`;
-      } else reason = "Not one you ranked. Every rotation you ranked was full";
+      } else {
+        const missed = missedReason(assignment.personId, null);
+        reason = missed
+          ? `Not one you ranked.${missed}`
+          : "Not one you ranked. You had every rotation you ranked already, so this filled a free term";
+      }
       return {
         personId: assignment.personId,
         termId: terms[assignment.term].id,
