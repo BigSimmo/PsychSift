@@ -224,7 +224,7 @@
       "kind": "Theory-linked construct",
       "group": "relational",
       "domains": ["Interpersonal", "Developmental"],
-      "summary": "Understanding one\u2019s own and others\u2019 behaviour in terms of mental states.",
+      "summary": "Understanding one’s own and others’ behaviour in terms of mental states.",
       "searchTerms": ["Mentalising / reflective functioning", "mentalising"]
     },
     {
@@ -372,48 +372,12 @@
       "searchTerms": ["Social isolation / loneliness", "social-isolation"]
     },
     {
-      "id": "cultural-explanatory-model",
-      "title": "Cultural explanatory model and identity",
-      "kind": "Cultural context",
-      "group": "cultural",
-      "domains": ["Cultural"],
-      "summary": "The person\u2019s understanding of distress, meaningful identities and acceptable ways of obtaining help.",
-      "searchTerms": ["Cultural explanatory model and identity", "cultural-explanatory-model"]
-    },
-    {
-      "id": "migration-refugee",
-      "title": "Migration, refugee and displacement context",
-      "kind": "Life-course/cultural context",
-      "group": "cultural",
-      "domains": ["Cultural", "Social"],
-      "summary": "Movement, displacement, separation, language and related social or legal circumstances.",
-      "searchTerms": ["Migration, refugee and displacement context", "migration-refugee"]
-    },
-    {
-      "id": "racism-discrimination",
-      "title": "Racism, discrimination and minority stress",
-      "kind": "Structural/cultural context",
-      "group": "cultural",
-      "domains": ["Cultural", "Social"],
-      "summary": "Experiences of inequity, exclusion or threat related to identity or social position.",
-      "searchTerms": ["Racism, discrimination and minority stress", "racism-discrimination"]
-    },
-    {
-      "id": "religion-spirituality",
-      "title": "Religion and spirituality",
-      "kind": "Cultural/meaning context",
-      "group": "cultural",
-      "domains": ["Cultural"],
-      "summary": "Beliefs, practices and communities that influence meaning, coping or help-seeking.",
-      "searchTerms": ["Religion and spirituality", "religion-spirituality"]
-    },
-    {
       "id": "risk-dynamic-state",
       "title": "Dynamic risk state and change from baseline",
       "kind": "Risk formulation concept",
       "group": "strengths-risk",
       "domains": ["Risk"],
-      "summary": "Current safety-relevant change compared with the person\u2019s own baseline.",
+      "summary": "Current safety-relevant change compared with the person’s own baseline.",
       "searchTerms": ["Dynamic risk state and change from baseline", "risk-dynamic-state"]
     },
     {
@@ -449,7 +413,7 @@
       "kind": "clinical_guide_module",
       "group": "guides",
       "domains": [],
-      "summary": "Explain this person\u2019s presentation now, using selected evidence and revisable hypotheses, then identify the implications for assessment and care.",
+      "summary": "Explain this person’s presentation now, using selected evidence and revisable hypotheses, then identify the implications for assessment and care.",
       "searchTerms": ["Rapid clinical formulation guide", "formulation"]
     },
     {
@@ -469,15 +433,6 @@
       "domains": [],
       "summary": "The prompts below are an editorial checklist for reasoning.",
       "searchTerms": ["Practical assessment-to-formulation workflow", "formulation"]
-    },
-    {
-      "id": "guide-07",
-      "title": "Medical, developmental, social and cultural considerations",
-      "kind": "clinical_guide_module",
-      "group": "guides",
-      "domains": [],
-      "summary": "This section supplies case-assessment prompts and documentation safeguards, not an exhaustive differential-diagnosis guideline.",
-      "searchTerms": ["Medical, developmental, social and cultural considerations", "formulation"]
     },
     {
       "id": "guide-08",

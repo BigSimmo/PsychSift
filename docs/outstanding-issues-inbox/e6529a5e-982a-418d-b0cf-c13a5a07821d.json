@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "e6529a5e-982a-418d-b0cf-c13a5a07821d",
+  "createdOn": "2026-10-09",
+  "action": "update",
+  "payload": {
+    "id": "#R8HED2",
+    "summary": "Five unsigned cultural formulation records were live: the PR that queued this update holds them, and each still needs a named clinician sign-off before release",
+    "baseRowFingerprint": "3b99d03565f3233363cfbed985d92bae1257298976ff01ccae3eb52f6b3dc611"
+  }
+}
