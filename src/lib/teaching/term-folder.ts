@@ -426,7 +426,7 @@ export function chooseFolderTerm(
 export const FOLDER_PRIVACY_LINE = "Status and counts only. No assessment content, ratings or comments.";
 export const FOLDER_NOT_KEPT_LINE =
   "Assessment forms are not kept in PsychSift. They are completed and signed in Clinical Learning Australia (CLA), with your Medical Education Unit.";
-export const FOLDER_CLA_URL = TERM_TRACKER_SOURCES.pmcwaCla;
+export const FOLDER_CLA_URL = TERM_TRACKER_SOURCES.claSignIn;
 
 /** What goes into an export. Gaps and the part statuses always go; names are left out unless asked for. */
 export interface FolderExportOptions {
