@@ -420,14 +420,22 @@ async function loadPreferences(
   onlyUserId?: string,
 ): Promise<PreferenceRow[]> {
   if (!roundIds.length) return [];
-  let query = client
-    .from("roster_rotation_preferences")
-    .select(PREFERENCE_COLUMNS)
-    .in("round_id", [...roundIds]);
-  if (onlyUserId) query = query.eq("user_id", onlyUserId);
-  const { data, error } = await query;
-  if (error) throw databaseError(error);
-  return (data ?? []) as PreferenceRow[];
+  const preferences: PreferenceRow[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    let query = client
+      .from("roster_rotation_preferences")
+      .select(PREFERENCE_COLUMNS)
+      .in("round_id", [...roundIds])
+      .range(from, from + pageSize - 1);
+    if (onlyUserId) query = query.eq("user_id", onlyUserId);
+    const { data, error } = await query;
+    if (error) throw databaseError(error);
+    const page = (data ?? []) as PreferenceRow[];
+    preferences.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return preferences;
 }
 
 // ---------------------------------------------------------------- read
@@ -669,6 +677,7 @@ export async function runRoundCommand(
       p_ranking: [...record.ranking],
       p_submitted_at: record.submittedAt,
       p_updated_at: record.updatedAt,
+      p_preference_updated_at: own[0]?.updated_at ?? null,
     });
     if (error) throw databaseError(error);
     if (data !== true) throw CONFLICT();

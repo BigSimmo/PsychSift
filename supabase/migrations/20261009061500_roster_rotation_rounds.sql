@@ -88,7 +88,8 @@ create function public.roster_rotation_save_preference(
   p_round_status text,
   p_ranking jsonb,
   p_submitted_at timestamptz,
-  p_updated_at timestamptz
+  p_updated_at timestamptz,
+  p_preference_updated_at timestamptz
 ) returns boolean
 language plpgsql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
 begin
@@ -102,13 +103,17 @@ begin
   insert into public.roster_rotation_preferences (round_id, user_id, ranking, submitted_at, updated_at)
   values (p_round_id, p_user_id, p_ranking, p_submitted_at, p_updated_at)
   on conflict (round_id, user_id) do update
-    set ranking = excluded.ranking, submitted_at = excluded.submitted_at, updated_at = excluded.updated_at;
+    set ranking = excluded.ranking, submitted_at = excluded.submitted_at, updated_at = excluded.updated_at
+    where roster_rotation_preferences.updated_at = p_preference_updated_at;
+  if not found then
+    return false;
+  end if;
   return true;
 end
 $$;
-revoke all on function public.roster_rotation_save_preference(uuid, uuid, timestamptz, text, jsonb, timestamptz, timestamptz)
+revoke all on function public.roster_rotation_save_preference(uuid, uuid, timestamptz, text, jsonb, timestamptz, timestamptz, timestamptz)
   from public, anon, authenticated;
-grant execute on function public.roster_rotation_save_preference(uuid, uuid, timestamptz, text, jsonb, timestamptz, timestamptz)
+grant execute on function public.roster_rotation_save_preference(uuid, uuid, timestamptz, text, jsonb, timestamptz, timestamptz, timestamptz)
   to service_role;
 
 -- Every administrator change to a round (edit, open, close, allocate, move, lock, publish). The server
@@ -164,7 +169,7 @@ begin
           where kept.user_id = p.user_id
         );
     update public.roster_rotation_preferences p
-      set ranking = kept.ranking
+      set ranking = kept.ranking, updated_at = now()
       from jsonb_to_recordset(p_preferences) as kept(user_id uuid, ranking jsonb)
       where p.round_id = p_round_id and p.user_id = kept.user_id and p.ranking is distinct from kept.ranking;
   end if;

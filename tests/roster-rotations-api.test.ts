@@ -96,6 +96,8 @@ function fakeClient() {
           updated_at: args.p_updated_at,
         };
         const existing = rows.find((row) => row.round_id === args.p_round_id && row.user_id === args.p_user_id);
+        if (existing && existing.updated_at !== args.p_preference_updated_at) return { data: false, error: null };
+        if (!existing && args.p_preference_updated_at !== null) return { data: false, error: null };
         if (existing) Object.assign(existing, next);
         else rows.push(next);
         return { data: true, error: null };
@@ -130,7 +132,10 @@ function fakeClient() {
           );
           for (const row of tables.roster_rotation_preferences) {
             const next = kept.find((k) => row.round_id === args.p_round_id && k.user_id === row.user_id);
-            if (next) row.ranking = next.ranking;
+            if (next && JSON.stringify(row.ranking) !== JSON.stringify(next.ranking)) {
+              row.ranking = next.ranking;
+              row.updated_at = tick();
+            }
           }
         }
         return { data: true, error: null };
@@ -155,6 +160,8 @@ function fakeClient() {
       let payload: Row = {};
       let single = false;
       let returning = false;
+      let rangeFrom = 0;
+      let rangeTo = Number.POSITIVE_INFINITY;
       const builder = {
         select() {
           if (op !== "select") returning = true;
@@ -193,6 +200,11 @@ function fakeClient() {
         },
         order: () => builder,
         limit: () => builder,
+        range(from: number, to: number) {
+          rangeFrom = from;
+          rangeTo = to;
+          return builder;
+        },
         maybeSingle() {
           single = true;
           return builder;
@@ -228,7 +240,8 @@ function fakeClient() {
           return { data: returning ? hit.map((row) => ({ id: row.id })) : null, error: null };
         }
         const hit = rows.filter(match).map((row) => ({ ...row }));
-        return { data: single ? (hit[0] ?? null) : hit, error: null };
+        const page = hit.slice(rangeFrom, rangeTo + 1);
+        return { data: single ? (page[0] ?? null) : page, error: null };
       };
       return builder;
     },
