@@ -71,6 +71,7 @@ describe("consultant inbox", () => {
     expect(send).toBeDisabled();
     expect(within(sheet).getByText("Choose the supervision the doctor needed.")).toBeInTheDocument();
     fireEvent.click(within(sheet).getByRole("radio", { name: "Proximal" }));
+    fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
     fireEvent.change(within(sheet).getByLabelText(/A few lines/), {
       target: { value: "Calm review of bed 12 overnight" },
     });
@@ -200,6 +201,7 @@ describe("consultant inbox, more behaviours", () => {
     fireEvent.click(screen.getByRole("button", { name: /Dr Rowan Sheoak · EPA 3/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     fireEvent.click(within(sheet).getByRole("radio", { name: "Minimal" }));
+    fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
     fireEvent.change(within(sheet).getByLabelText(/A few lines/), { target: { value: "Safe, tidy prescribing." } });
     expect(within(sheet).getByTestId("assessments-inbox-send")).toHaveTextContent("Send to Dr Rowan Sheoak");
     fireEvent.click(within(sheet).getByTestId("assessments-inbox-send"));
@@ -241,6 +243,7 @@ describe("consultant inbox, more behaviours", () => {
     fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
+    fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
     fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
     const mia = screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ });
     expect(mia).toHaveTextContent("To send");
@@ -304,6 +307,7 @@ async function sendMia() {
   fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
   const sheet = await screen.findByTestId("assessments-inbox-feedback");
   fireEvent.click(within(sheet).getByRole("radio", { name: "Proximal" }));
+  fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
   fireEvent.click(within(sheet).getByTestId("assessments-inbox-send"));
   return (await screen.findAllByTestId("toast")).at(-1)!;
 }
@@ -412,6 +416,7 @@ describe("consultant inbox, the 10-second Undo", () => {
     fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
+    fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
     fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
     fireEvent.click(screen.getByRole("button", { name: "Leave the inbox" }));
     expect(screen.queryByTestId("assessments-inbox")).toBeNull();
@@ -535,6 +540,7 @@ describe("pretend sends never lost, rushed or repeated", () => {
       fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
       const sheet = await screen.findByTestId("assessments-inbox-feedback");
       fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
+      fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
       fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
       online.mockReturnValue(true);
       await act(async () => {
@@ -553,6 +559,7 @@ describe("pretend sends never lost, rushed or repeated", () => {
       fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
       let sheet = await screen.findByTestId("assessments-inbox-feedback");
       fireEvent.click(within(sheet).getByRole("radio", { name: "Direct" }));
+      fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
       fireEvent.click(within(sheet).getByRole("button", { name: "Keep to send" }));
       // Reopen the queued answer and edit it; the connection comes back while the sheet is open.
       fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));

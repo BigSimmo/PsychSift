@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarDays, Check, Clock, Eye, EyeOff, FileText, Info, Lock, Send, Users } from "lucide-react";
+import { Bell, CalendarDays, Check, Clock, ExternalLink, Eye, EyeOff, FileText, Lock, Send, Users } from "lucide-react";
 import { useState } from "react";
 
 import { WorkButton, WorkDock } from "@/components/mode-kit/work";
@@ -47,6 +47,8 @@ import {
 } from "@/lib/teaching/assessments/model";
 import { samSignOff } from "@/lib/teaching/assessments/dct";
 import { NIGHT_DAYS, SAMPLE_REGISTRAR, SAMPLE_SUPERVISOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
+import { MEU_HOW_TO_REACH } from "@/lib/teaching/assessments/content";
+import { TERM_TRACKER_SOURCES } from "@/lib/teaching/term-tracker";
 
 const SUP = SAMPLE_SUPERVISOR.short;
 
@@ -156,7 +158,9 @@ export function EndOfTermSteps({ s, dct }: ScreenProps) {
           Play the DCT&apos;s part
         </LinkButton>
       ) : null}
-      {st === "sup-signed" || (st === "doc-signed" && !signOff) ? <WhatHappensNext /> : null}
+      {st === "sup-signed" || (st === "doc-signed" && !signOff) ? (
+        <WhatHappensNext signed={st === "doc-signed"} />
+      ) : null}
       {primary || (!s.request.sent && !selfDone(s) && !selfLocked(s)) ? (
         <WorkDock>
           {primary}
@@ -174,23 +178,56 @@ export function EndOfTermSteps({ s, dct }: ScreenProps) {
       <SmallPrint>
         A term supervisor may delegate the end-of-term assessment to another clinical supervisor, then countersigns it.
       </SmallPrint>
+      <SmallPrint>{MEU_HOW_TO_REACH}</SmallPrint>
     </>
   );
 }
 
 /**
- * After the supervisor submits: what the doctor does in CLA, and the 14-day written reply. The AMC term assessment
- * form's sign-off says the doctor "may respond in writing to the Director of Clinical Training within 14 days", but
- * not when the 14 days start, so this says to ask the MEU. DCT sign-off is the CLA form the DCT or EDMS completes
- * (CLA supervisors' guide, Release 2.0, p.39). Delegation, then countersigning: AMC Section 3A.
+ * After the supervisor submits, and again once the doctor signs (site audit A3): acknowledge in CLA, then DCT
+ * sign-off, and the 14-day written reply. The AMC term assessment form's sign-off says the doctor "may respond in
+ * writing to the Director of Clinical Training within 14 days", but not when the 14 days start, so this says to ask
+ * the MEU and shows no date (rules audit U8). DCT sign-off is the CLA form the DCT or EDMS completes (CLA
+ * supervisors' guide, Release 2.0, p.39). "Open CLA" goes to PMCWA's CLA page, and says so (site audit M7).
  */
-function WhatHappensNext() {
+function WhatHappensNext({ signed }: { signed: boolean }) {
   return (
-    <Inset tone="plain" icon={Info} title="What happens next">
-      In CLA you acknowledge the form. That means you have discussed it, not that you agree. If you disagree with any
-      point, you can write to the DCT within 14 days. Ask your MEU when the 14 days start. Then the DCT completes DCT
-      sign-off in CLA.
-    </Inset>
+    <section aria-label="What happens next" className="grid gap-2" data-testid="assess-what-next">
+      <List label="What happens next">
+        <StepRow
+          state={signed ? "ok" : "now"}
+          title={signed ? "Signed here" : "Read and acknowledge"}
+          detail={
+            signed
+              ? "Acknowledge the form in CLA too. That means you have discussed it, not that you agree."
+              : "In CLA you acknowledge the form. That means you have discussed it, not that you agree."
+          }
+        />
+        <StepRow
+          state={signed ? "now" : "lock"}
+          title="DCT sign-off"
+          detail="Then the DCT completes DCT sign-off in CLA."
+        />
+        <StepRow
+          state="lock"
+          title="Your written reply, if you disagree"
+          detail="You can write to the DCT within 14 days. Ask your MEU when the 14 days start."
+        />
+      </List>
+      <a
+        href={TERM_TRACKER_SOURCES.pmcwaCla}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="work-button"
+        data-variant="secondary"
+        data-size="wide"
+        data-testid="assess-what-next-cla"
+      >
+        Open CLA, via PMCWA
+        <ExternalLink aria-hidden="true" strokeWidth={2} />
+        <span className="sr-only">(opens outside PsychSift)</span>
+      </a>
+    </section>
   );
 }
 

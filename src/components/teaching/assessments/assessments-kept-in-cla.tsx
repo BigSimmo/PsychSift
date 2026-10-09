@@ -4,6 +4,7 @@ import { ExternalLink, FileText, GraduationCap, Mail, Target, Undo2, UserCheck, 
 
 import { WorkButton, WorkCard, WorkEmpty, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { useAuthSession } from "@/lib/supabase/client";
+import { MEU_HOW_TO_REACH } from "@/lib/teaching/assessments/content";
 import { TERM_TRACKER_SOURCES } from "@/lib/teaching/term-tracker";
 
 /**
@@ -131,7 +132,7 @@ export function AssessmentsKeptInCla() {
           CLA guides
           <span className="sr-only"> (opens outside PsychSift)</span>
         </a>
-        , checked 9 Oct 2026. Your MEU has the final word.
+        , checked 9 Oct 2026. Your MEU has the final word. {MEU_HOW_TO_REACH}
       </p>
     </section>
   );

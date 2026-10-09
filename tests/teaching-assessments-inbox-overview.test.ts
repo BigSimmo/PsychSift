@@ -124,7 +124,10 @@ describe("consultant inbox", () => {
     expect(feedbackProblem("Saw Mr Smith on the ward")).not.toBeNull();
     expect(feedbackProblem("URN 1234567 reviewed")).not.toBeNull();
     expect(sendBlocker({ level: null, text: "" })).toBe("Choose the supervision the doctor needed.");
-    expect(sendBlocker({ level: "direct", text: "" })).toBeNull();
+    expect(sendBlocker({ level: "direct", text: "", observed: "direct" })).toBeNull();
+    // The quick answer asks the AMC EPA form's declaration too (rules audit M9).
+    expect(sendBlocker({ level: "direct", text: "" })).toMatch(/^Say how you know/);
+    expect(sendBlocker({ level: "direct", text: "", observed: "team" })).toBeNull();
     expect(sendBlocker({ level: "direct", text: "bed 4 was busy" })).toBe("Remove the patient details to send.");
     expect(sendBlocker({ level: "direct", text: "x".repeat(501) })).toBe("Keep it to 500 characters.");
   });

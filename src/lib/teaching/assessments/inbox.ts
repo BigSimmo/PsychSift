@@ -1,4 +1,9 @@
-import { epa as epaInfo, type EpaNumber, type SupervisionLevel } from "@/lib/teaching/assessments/content";
+import {
+  epa as epaInfo,
+  type EpaNumber,
+  type EpaObserved,
+  type SupervisionLevel,
+} from "@/lib/teaching/assessments/content";
 import { stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, SAMPLE_SUPERVISOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
@@ -83,6 +88,8 @@ export interface InboxAnswer {
   readonly status: InboxStatus;
   readonly level: SupervisionLevel | null;
   readonly text: string;
+  /** How the assessor knows, the declaration the AMC EPA form asks [EPA1p]. Kept so Undo and reopening keep it. */
+  readonly observed?: EpaObserved | null;
   readonly reason: CantReason | null;
   /** Who the doctor is pointed to when it is passed on. */
   readonly suggestion?: string | null;
@@ -339,11 +346,16 @@ export function feedbackProblem(text: string): FeedbackProblem | null {
   };
 }
 
-/** Why Send is not available yet, in plain words; null when it can go. */
-export function sendBlocker(answer: Pick<InboxAnswer, "level" | "text">): string | null {
+/**
+ * Why Send is not available yet, in plain words; null when it can go. Like the full EPA form, the quick answer
+ * needs the assessor's declaration first: they directly observed some part of the clinical interaction, or a
+ * team member who was there told them [EPA1p] [EPA4p] (rules audit M9).
+ */
+export function sendBlocker(answer: Pick<InboxAnswer, "level" | "text" | "observed">): string | null {
   if (!answer.level) return "Choose the supervision the doctor needed.";
   if (answer.text.length > FEEDBACK_MAX_CHARS) return `Keep it to ${FEEDBACK_MAX_CHARS} characters.`;
   if (feedbackProblem(answer.text)) return "Remove the patient details to send.";
+  if (!answer.observed) return "Say how you know: you saw some of it, or a team member who was there told you.";
   return null;
 }
 
@@ -387,6 +399,9 @@ export function claCopyText(item: InboxRequest, answer: InboxAnswer): string {
     item.title,
     `Doctor: ${item.doctor.name}`,
     answer.level ? `Supervision needed: ${levelWord(answer.level)}` : null,
+    answer.observed
+      ? `How I know: ${answer.observed === "direct" ? "I directly observed some part of it" : "a team member who was there told me"}`
+      : null,
     answer.text.trim() ? `Feedback: ${answer.text.trim()}` : null,
     `Asked ${item.askedOn}`,
   ]

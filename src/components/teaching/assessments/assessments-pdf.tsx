@@ -23,6 +23,8 @@ import {
   SAMPLE_DOCTOR,
   SAMPLE_MIDTERM,
   SAMPLE_PAST_FORMS,
+  delegatedEndOfTermLine,
+  registrarMidTermLine,
   sampleTerm,
   type PastForm,
   type SampleTerm,
@@ -207,13 +209,15 @@ export function FormPdf({ s, params, role, dct }: ScreenProps) {
         Layout based on the AMC template. Your hospital&apos;s may differ.
       </Inset>
     );
-  else if (past || of === "mid")
+  else if (past || of === "mid") {
+    // AMC Section 3A: a delegated end-of-term, countersigned by the term supervisor, or a registrar's mid-term.
+    const who = past && term ? (kind === "eot" ? delegatedEndOfTermLine(term) : registrarMidTermLine(term)) : null;
     status = (
       <Inset tone="ok" icon={Check} title="Signed copy">
-        {dctSigned ? "DCT sign-off done." : "Kept here for your records."}
+        {[dctSigned ? "DCT sign-off done." : "Kept here for your records.", who].filter(Boolean).join(" ")}
       </Inset>
     );
-  else if (signOff)
+  } else if (signOff)
     status = (
       <Inset tone="ok" icon={Check} title={`DCT sign-off done ${signOff.date}`}>
         A printable copy only. The form itself is in CLA.

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 
 import { useModeBandCount } from "@/components/mode-band/mode-band";
-import { WorkBody, WorkButton, useWorkUndoToast } from "@/components/mode-kit/work";
+import { WorkBody, WorkButton, WorkSectionLabel, useWorkUndoToast } from "@/components/mode-kit/work";
 import { AssessSegmented, AssessSkeleton } from "@/components/teaching/assessments/assess-kit";
 import {
   rememberDct,
@@ -19,7 +19,12 @@ import {
 import { AssessorForm } from "@/components/teaching/assessments/assessments-assessor";
 import { DctHome, DctPlan, DctSignoff, type DctProps } from "@/components/teaching/assessments/assessments-dct";
 import { AssessmentsHome } from "@/components/teaching/assessments/assessments-home";
-import { AllAssessments, TermDetails, YearRequirements } from "@/components/teaching/assessments/assessments-year";
+import {
+  AllAssessments,
+  BeginningOfTerm,
+  TermDetails,
+  YearRequirements,
+} from "@/components/teaching/assessments/assessments-year";
 import { AssessmentForm } from "@/components/teaching/assessments/assessments-form";
 import { AskSupervisor, BookMeeting, EndOfTermSteps } from "@/components/teaching/assessments/assessments-steps";
 import { AssessmentReport, SignForm } from "@/components/teaching/assessments/assessments-report";
@@ -40,6 +45,8 @@ import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-
 import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
 import { viewHref, type AssessmentsView } from "@/components/teaching/assessments/assessments-parts";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
+import { perthDateKey } from "@/components/teaching/teaching-dates";
+import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
 import {
   assessmentsReducer,
@@ -54,6 +61,12 @@ import { SAMPLE_DOCTOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
 import { dctReducer, dctWaiting, initialDctState, type DctState } from "@/lib/teaching/assessments/dct";
 import { useAuthSession } from "@/lib/supabase/client";
 import { useExampleData } from "@/lib/example-data/store";
+
+/* Teaching's term card, with the doctor's own EPA tally, loads only on a signed-in doctor's Progress tab. */
+const TeachingTermCard = dynamic(
+  () => import("@/components/teaching/teaching-term-card").then((m) => m.TeachingTermCard),
+  { loading: () => <AssessSkeleton label="Loading your EPA counts" /> },
+);
 
 /* The printable form is heavy and opened rarely, so it loads only when asked for. */
 const FormPdf = dynamic(() => import("@/components/teaching/assessments/assessments-pdf").then((m) => m.FormPdf), {
@@ -100,10 +113,11 @@ const VIEWS: readonly AssessmentsView[] = [
   "dctsign",
   "plan",
   "epaform",
+  "botd",
 ];
 
 /** Views that are the doctor's own: they never take the supervisor's side. */
-const DOCTOR_ONLY: ReadonlySet<AssessmentsView> = new Set(["hub", "reqs", "term", "request", "book", "report"]);
+const DOCTOR_ONLY: ReadonlySet<AssessmentsView> = new Set(["hub", "reqs", "term", "request", "book", "report", "botd"]);
 /** Views that are the DCT's own. */
 const DCT_ONLY: ReadonlySet<AssessmentsView> = new Set(["dctsign", "plan"]);
 /**
@@ -205,6 +219,8 @@ function Screen(props: ScreenProps & Omit<DctProps, keyof ScreenProps> & { view:
       return <YearRequirements {...props} tab />;
     case "term":
       return <TermDetails {...props} />;
+    case "botd":
+      return <BeginningOfTerm {...props} />;
     case "all":
       return <AllAssessments {...props} />;
     case "form":
@@ -406,9 +422,12 @@ function useOpenView(): "help" | "words" | null {
 /** Signed in, or signed out with the example off: the CLA notice, except on the pages that hold no records. */
 function AssessmentsNoExample({ signedOut }: { signedOut: boolean }) {
   const open = useOpenView();
+  const progress = useSearchParams().get("view") === "progress";
   const { turnOn } = useExampleData("assess");
   const router = useRouter();
   if (open) return <AssessmentsOpenPage view={open} />;
+  // Signed in, the Progress tab shows the doctor's own EPA counts from Teaching, not a second copy of the notice.
+  if (progress && !signedOut) return <AssessmentsSignedInProgress />;
   return (
     <>
       <AssessmentsKeptInCla />
@@ -428,6 +447,27 @@ function AssessmentsNoExample({ signedOut }: { signedOut: boolean }) {
         </WorkButton>
       ) : null}
     </>
+  );
+}
+
+/**
+ * A signed-in doctor's Progress tab (site audit A2): the counts-only EPA tally they keep themselves under
+ * Teaching > Term, reused as the term card, with the full counter one tap away. It reads the term tracker the
+ * doctor already keeps on this device (backed up to their account), so nothing new is stored. Records themselves
+ * stay in CLA.
+ */
+function AssessmentsSignedInProgress() {
+  const now = useTeachingNow();
+  return (
+    <section data-testid="teaching-assessments-progress" aria-label="Your EPA counts" className="grid gap-3">
+      <WorkSectionLabel id="assess-progress-counts" action={{ label: "Count EPAs", href: "/teaching/term" }}>
+        Your EPA counts
+      </WorkSectionLabel>
+      {now ? <TeachingTermCard demoMode={false} today={perthDateKey(now)} /> : <AssessSkeleton />}
+      <p className="m-0 px-1 text-sm text-[color:var(--text-muted)]">
+        Counts you log yourself in Teaching, with no case details. Your forms and EPAs themselves stay in CLA.
+      </p>
+    </section>
   );
 }
 
