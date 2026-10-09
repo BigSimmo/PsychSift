@@ -50,7 +50,7 @@ describe("Assessments example-only gate", () => {
     expect(screen.getByTestId("teaching-assessments-kept-in-cla")).toHaveTextContent("Assessments are kept in CLA");
     expect(screen.getByTestId("teaching-assessments-open-cla")).toHaveAttribute(
       "href",
-      "https://pmcwa.org.au/education-training/cla",
+      "https://cla.epads.mkmapps.com",
     );
     expect(screen.queryByTestId("example-only-gate-look")).toBeNull();
     expect(screen.queryByTestId("sample-page")).toBeNull();

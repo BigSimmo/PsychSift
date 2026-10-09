@@ -20,7 +20,7 @@ import { UNDO_MS } from "@/components/teaching/use-delayed-post";
 import { announce } from "@/components/ui/live-announcer";
 import { useOptionalToast } from "@/components/ui/toast";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
-import type { SupervisionLevel } from "@/lib/teaching/assessments/content";
+import type { EpaObserved, SupervisionLevel } from "@/lib/teaching/assessments/content";
 import {
   extrasReducer,
   initialExtras,
@@ -39,7 +39,7 @@ import { useOnlineStatus } from "@/lib/use-online-status";
  * what was sent or reminded. Like the rest of the sample, a reload starts again.
  */
 
-export type SendEntry = { id: string; level: SupervisionLevel; text: string };
+export type SendEntry = { id: string; level: SupervisionLevel; text: string; observed?: EpaObserved };
 
 /** An Undo for something already done on the page (Later, Can't do, a reminder), taken back on tap. */
 export type UndoOffer = {

@@ -106,9 +106,9 @@ describe("Assessments: Get help on each side (M15, M20, A9, U3)", () => {
 });
 
 describe("Assessments: the CLA notice (M7, M12, W4)", () => {
-  it("names PMCWA's page and registrar supervision, and who does each term assessment", () => {
+  it("names the CLA link and registrar supervision, and who does each term assessment", () => {
     render(<AssessmentsKeptInCla />);
-    expect(screen.getByTestId("teaching-assessments-open-cla")).toHaveTextContent("About CLA (PMCWA)");
+    expect(screen.getByTestId("teaching-assessments-open-cla")).toHaveTextContent("Open CLA");
     expect(screen.getByRole("link", { name: "Registrar supervision" })).toHaveAttribute(
       "href",
       "/teaching/supervision",
