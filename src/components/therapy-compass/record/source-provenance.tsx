@@ -2,6 +2,7 @@
 
 import { Disclosure } from "@/components/ui/disclosure";
 import { SourceDesignationBadge, SourceStatusBadge } from "@/components/ui-primitives";
+import sourceAcquisitions from "@/data/source-acquisitions.json";
 import { therapySourceMetadata } from "@/lib/therapy-source-governance";
 
 import { splitSourceCitations } from "../prose";
@@ -23,11 +24,25 @@ import type { Therapy } from "../data/types";
  * the collapsed row, so a record awaiting clinician sign-off says so without
  * anyone opening anything.
  */
+function isAdoptedCitation(authority: string): boolean {
+  const matchingSource = sourceAcquisitions.find((record) => {
+    const code = record.publisherCode?.trim();
+    const version = record.version?.trim();
+    return Boolean(code && version && authority === `${code} ${version.split(" ")[0]}`);
+  });
+
+  // Authorities that are not in the acquisition register retain their existing
+  // provenance. Registered sources, however, must be adopted before they can
+  // appear as a therapy citation.
+  return !matchingSource || matchingSource.disposition === "adopted";
+}
+
 export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
   const reviewed = therapy.reviewStatus === "reviewed";
   const source = therapy.sources[0] ?? null;
   const blob = source?.reference?.trim() || therapy.sourceNotes?.trim() || "";
-  const { citations, notes } = splitSourceCitations(blob);
+  const { citations: allCitations, notes } = splitSourceCitations(blob);
+  const citations = allCitations.filter((citation) => isAdoptedCitation(citation.authority));
   const reviewStatus = reviewed ? "Reviewed" : "Awaiting review";
   const reviewStatusClass = reviewed
     ? "text-xs font-semibold text-[color:var(--success-text)]"
