@@ -1,6 +1,7 @@
 "use client";
 
 import { ApplicationsTodayCard } from "@/components/cme/applications/applications-today-card";
+import { MyDayRotationsCard } from "@/components/my-day/my-day-rotations-card";
 import { shiftName } from "@/components/my-day/my-day-today-cards";
 import { FirstWeekTodayCardLive } from "@/components/on-call/first-week/first-week-today-card";
 import { SickTomorrowTodayCard } from "@/components/roster/sick/roster-sick-entry";
@@ -20,7 +21,9 @@ import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
  *   first week (the handbook is read only then);
  * - Job applications, when a date the doctor added is coming up or a referee
  *   has gone quiet (this device only);
- * - the term evidence folder, when a current term is set up on this device.
+ * - the term evidence folder, when a current term is set up on this device;
+ * - rotations: ranking open and not sent, or just published (rotation
+ *   preferences preview only).
  *
  * A card that opens a screen the launch switch holds back for this reader is
  * not drawn. The signed-out sample never draws these (the caller checks).
@@ -43,6 +46,7 @@ export function MyDayFeatureCards({
   const hasTerm = Boolean(terms?.terms.some((term) => term.id === terms.currentTermId));
   return (
     <>
+      <MyDayRotationsCard now={now} />
       {tomorrowShift && visible("/roster/sick") ? (
         <SickTomorrowTodayCard
           tomorrowShift={`${sickDayWord(tomorrowShift.startsAt, now)} · ${shiftName(tomorrowShift.kind)}`}

@@ -734,6 +734,11 @@
         "area": "product"
       },
       {
+        "path": "/roster/manage/rotations/new",
+        "file": "src/app/(search-app)/roster/manage/rotations/new/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/reference/colour-coding",
         "file": "src/app/reference/colour-coding/page.tsx",
         "area": "product"
@@ -979,6 +984,11 @@
         "area": "product"
       },
       {
+        "path": "/roster/rotations",
+        "file": "src/app/(search-app)/roster/rotations/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/privacy-live-signal-perfected",
         "file": "src/app/mockups/privacy-live-signal-perfected/page.tsx",
         "area": "mockup"
@@ -992,6 +1002,11 @@
         "path": "/mockups/sidebar-live",
         "file": "src/app/mockups/sidebar-live/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/roster/manage/rotations",
+        "file": "src/app/(search-app)/roster/manage/rotations/page.tsx",
+        "area": "product"
       },
       {
         "path": "/differentials/compare",
@@ -1022,6 +1037,11 @@
         "path": "/mockups/care-plan/patients/[patientId]/safety-plan/print",
         "file": "src/app/mockups/care-plan/patients/[patientId]/safety-plan/print/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/roster/rotations/[roundId]",
+        "file": "src/app/(search-app)/roster/rotations/[roundId]/page.tsx",
+        "area": "product"
       },
       {
         "path": "/first-nations/mistakes",
@@ -1446,6 +1466,11 @@
       {
         "path": "/specifiers/map",
         "file": "src/app/(search-app)/specifiers/map/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/roster/manage/rotations/[roundId]",
+        "file": "src/app/(search-app)/roster/manage/rotations/[roundId]/page.tsx",
         "area": "product"
       },
       {
@@ -2053,6 +2078,10 @@
         "file": "src/app/api/differentials/presentations/[slug]/route.ts"
       },
       {
+        "path": "/api/roster/rotations/[roundId]",
+        "file": "src/app/api/roster/rotations/[roundId]/route.ts"
+      },
+      {
         "path": "/api/site-content/publications",
         "file": "src/app/api/site-content/publications/route.ts"
       },
@@ -2127,6 +2156,10 @@
       {
         "path": "/api/on-call/services/join",
         "file": "src/app/api/on-call/services/join/route.ts"
+      },
+      {
+        "path": "/api/roster/rotations",
+        "file": "src/app/api/roster/rotations/route.ts"
       },
       {
         "path": "/api/account/favourites",

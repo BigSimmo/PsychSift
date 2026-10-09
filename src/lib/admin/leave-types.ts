@@ -42,7 +42,7 @@ export interface LeaveType {
   readonly detailPlaceholder?: string;
   /** Who the message is for. */
   readonly to: string;
-  /** Plan it in Roster first (annual and professional development leave only). */
+  /** Where Roster plans this card's leave, starting on its kind (`ROSTER_LEAVE_WALLET_CARD`). */
   readonly rosterHref?: string;
   /** Discreet: front name only, never in search, alerts or recent pages. */
   readonly discreet?: boolean;
@@ -64,7 +64,7 @@ export const LEAVE_TYPES: readonly LeaveType[] = [
     ],
     slots: ["firstDay", "lastDay"],
     to: "Medical Workforce",
-    rosterHref: "/roster/requests",
+    rosterHref: "/roster/requests?start=leave&kind=annual",
   },
   {
     id: "personal",
@@ -76,9 +76,11 @@ export const LEAVE_TYPES: readonly LeaveType[] = [
       { text: "Tell your roster manager as early as you can" },
       { text: "Copy the message below and send it" },
       { text: "Ask what evidence your service needs", hint: "Check your agreement" },
+      { text: "Mark it in Roster so your team knows you are off", hint: "No reason is kept" },
     ],
     slots: ["day"],
     to: "your roster manager",
+    rosterHref: "/roster/requests?start=leave&kind=personal",
   },
   {
     id: "exam",
@@ -86,11 +88,16 @@ export const LEAVE_TYPES: readonly LeaveType[] = [
     fullName: "Exam leave",
     line: "For a college exam",
     icon: "book",
-    steps: [{ text: "Book the exam first", hint: "Keep the receipt" }, APPLY_IN_HR],
+    steps: [
+      { text: "Book the exam first", hint: "Keep the receipt" },
+      { text: "Plan it in Roster", hint: "Shows clashes with your shifts" },
+      APPLY_IN_HR,
+    ],
     slots: ["firstDay", "lastDay", "detail"],
     detailLabel: "Exam",
     detailPlaceholder: "For example, written exam",
     to: "Medical Workforce",
+    rosterHref: "/roster/requests?start=leave&kind=exam",
   },
   {
     id: "conference",
@@ -99,7 +106,7 @@ export const LEAVE_TYPES: readonly LeaveType[] = [
     line: "Plan it in Roster as PD leave",
     icon: "board",
     steps: [
-      { text: "Plan it in Roster as professional development leave" },
+      { text: "Plan it in Roster as conference or PD leave" },
       APPLY_IN_HR,
       { text: "Keep the receipts for your CPD record" },
     ],
@@ -107,7 +114,7 @@ export const LEAVE_TYPES: readonly LeaveType[] = [
     detailLabel: "Conference or course",
     detailPlaceholder: "For example, college congress",
     to: "Medical Workforce",
-    rosterHref: "/roster/requests",
+    rosterHref: "/roster/requests?start=leave&kind=pd_leave",
   },
   {
     id: "compassionate",

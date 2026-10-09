@@ -1,0 +1,43 @@
+"use client";
+
+import { useMemo } from "react";
+
+import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { WORK_CALENDAR_SOURCES, type WorkCalendarSourceRead } from "@/components/work-calendar/sources";
+import { mergeEntries, type WorkCalendarEntry } from "@/lib/work-calendar/entries";
+
+/**
+ * Everything on the reader's work calendar besides shifts (rotations, and any
+ * source added to `WORK_CALENDAR_SOURCES`), merged and sorted.
+ *
+ * Shown only to readers in the "rotation-preferences" live preview. For anyone
+ * else the status is "off", no source fetches, and the list is empty, so the
+ * calendar views draw exactly what they drew before.
+ *
+ * `status` is "loading" while any source is still loading and "ready" after.
+ * A source that failed or is not available yet adds nothing: the calendar
+ * views stay quiet about it, and the feature's own page says what went wrong.
+ */
+export type WorkCalendarStatus = "off" | "loading" | "ready";
+
+export type WorkCalendarEntriesRead = {
+  readonly status: WorkCalendarStatus;
+  readonly entries: readonly WorkCalendarEntry[];
+  /** Each source's own read, by source id. */
+  readonly sources: Readonly<Record<string, WorkCalendarSourceRead>>;
+};
+
+export function useWorkCalendarEntries(): WorkCalendarEntriesRead {
+  const enabled = useLivePreview("rotation-preferences");
+  // A static list, so every source hook runs in the same order on every render.
+  const reads = WORK_CALENDAR_SOURCES.map((source) => source.read(enabled));
+  // The lists are small. Keyed on their content, the merged list stays the same object until something changes.
+  const signature = JSON.stringify(reads);
+  return useMemo<WorkCalendarEntriesRead>(() => {
+    const parsed = JSON.parse(signature) as WorkCalendarSourceRead[];
+    const sources = Object.fromEntries(WORK_CALENDAR_SOURCES.map((source, index) => [source.id, parsed[index]!]));
+    if (!enabled) return { status: "off", entries: [], sources };
+    const status: WorkCalendarStatus = parsed.some((read) => read.status === "loading") ? "loading" : "ready";
+    return { status, entries: mergeEntries(parsed.map((read) => read.entries)), sources };
+  }, [enabled, signature]);
+}

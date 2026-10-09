@@ -137,6 +137,24 @@ describe("LeaveWalletPage", () => {
     await waitFor(() => expect(copyText).toHaveBeenCalledWith(expect.stringContaining("Mon 9 Nov")));
   });
 
+  it("shows exam leave booked in Roster and plans more there on the exam kind", async () => {
+    leavePayload = {
+      leave: [
+        { id: "e", kind: "exam", startsOn: "2026-11-09", endsOn: "2026-11-10", status: "planned" },
+        { id: "a", kind: "annual", startsOn: "2026-12-21", endsOn: "2027-01-04", status: "applied" },
+      ],
+    };
+    render(<LeaveWalletPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-leave-card-exam"));
+    const booked = await screen.findByTestId("admin-leave-exam-booked");
+    await waitFor(() => expect(booked).toHaveTextContent("Planned"));
+    expect(booked).not.toHaveTextContent("Applied");
+    expect(screen.getByTestId("admin-leave-exam-roster")).toHaveAttribute(
+      "href",
+      "/roster/requests?start=leave&kind=exam",
+    );
+  });
+
   it("keeps Copy off while a date error stands", () => {
     render(<LeaveWalletPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-leave-card-exam"));

@@ -575,6 +575,11 @@ describe("production dynamic route reachability", () => {
       // `/open-shifts/post/${serviceId}/${openShiftId}` template literals.
       "/open-shifts/post/[serviceId]/[openShiftId]",
       "/open-shifts/shift/[serviceId]/[openShiftId]",
+      // Rotation preferences (behind the live version switch, 9 Oct 2026): one round for a doctor
+      // and one for its administrator. Reached from the Rotations and Manage team round lists,
+      // which build `/roster/rotations/${id}` and `/roster/manage/rotations/${id}` links.
+      "/roster/manage/rotations/[roundId]",
+      "/roster/rotations/[roundId]",
       "/services/[slug]",
       "/sources/[sourceId]",
       "/specifiers/[slug]",
