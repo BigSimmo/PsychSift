@@ -1,13 +1,17 @@
 "use client";
 
 import { CalendarCheck, CalendarX, Users } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState, type ComponentProps } from "react";
 
+import { LeaveEntitlementList } from "@/components/admin/leave/leave-entitlement-list";
+import { focusRing } from "@/components/card-recipes";
 import { WorkCard, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { rosterField } from "@/components/roster/roster-ui";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { cn } from "@/components/ui-primitives";
 import { RosterLeaveStaffingCheck } from "@/components/roster/staffing/roster-leave-staffing-check";
 import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
@@ -15,13 +19,19 @@ import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment, RosterTeam } from "@/lib/roster/team/model";
 import type { RosterLeave } from "@/lib/roster/leave";
+import {
+  ROSTER_LEAVE_KIND_LABEL,
+  ROSTER_LEAVE_KINDS,
+  ROSTER_LEAVE_WALLET_CARD,
+  type RosterLeaveKind,
+} from "@/lib/roster/leave-kinds";
 
 import { clashDayWords, leaveChecks } from "./roster-leave-checks";
 import { RosterSwapTicket } from "./roster-swap-ticket";
 import type { RequestSent } from "./request-ui";
 
 type LeaveBody = {
-  kind: "annual" | "pd_leave";
+  kind: RosterLeaveKind;
   startsOn: string;
   endsOn: string;
   status: "planned" | "applied" | "approved";
@@ -35,6 +45,7 @@ export function RosterLeaveSheet(props: ComponentProps<typeof LeaveSession>) {
         props.actorId,
         props.initialDate,
         props.initialTo,
+        props.initialKind,
         props.existing,
         props.teams.map((team) => team.serviceId),
       ])}
@@ -53,6 +64,7 @@ function LeaveSession({
   loadedTo = null,
   initialDate,
   initialTo,
+  initialKind,
   existing,
   onSent,
   onSaved,
@@ -69,12 +81,14 @@ function LeaveSession({
   loadedTo?: string | null;
   initialDate?: string | null;
   initialTo?: string | null;
+  /** The kind a new entry starts on, from a Leave wallet card. Ignored when reviewing an entry. */
+  initialKind?: RosterLeaveKind;
   existing?: RosterLeave | null;
   onSent: RequestSent;
   onSaved: (leave: RosterLeave) => void;
   onDeleted: (id: string) => void;
 }) {
-  const [kind, setKind] = useState<LeaveBody["kind"]>(existing?.kind ?? "annual");
+  const [kind, setKind] = useState<LeaveBody["kind"]>(existing?.kind ?? initialKind ?? "annual");
   const [status, setStatus] = useState<LeaveBody["status"]>(existing?.status ?? "planned");
   const [startsOn, setStartsOn] = useState(existing?.startsOn ?? initialDate ?? "");
   const [endsOn, setEndsOn] = useState(existing?.endsOn ?? initialTo ?? initialDate ?? "");
@@ -247,10 +261,37 @@ function LeaveSession({
             onChange={(event) => setKind(event.target.value as LeaveBody["kind"])}
             className={rosterField}
           >
-            <option value="annual">Annual leave</option>
-            <option value="pd_leave">Professional development leave</option>
+            {ROSTER_LEAVE_KINDS.map((option) => (
+              <option key={option} value={option}>
+                {ROSTER_LEAVE_KIND_LABEL[option]}
+              </option>
+            ))}
           </select>
         </label>
+        {kind === "personal" ? (
+          <p className="text-sm" data-testid="roster-leave-personal-note">
+            Your roster managers see this as personal leave, by name. Your team sees only how many are off.
+          </p>
+        ) : null}
+        <NewWorkModeOnly>
+          <details className="group grid gap-2 text-sm" data-testid="roster-leave-entitlement">
+            <summary className={cn(focusRing, "min-h-12 cursor-pointer content-center font-medium")}>
+              What the agreement allows
+            </summary>
+            <div className="grid gap-2 pt-1">
+              <LeaveEntitlementList card={ROSTER_LEAVE_WALLET_CARD[kind]} testIdPrefix="roster-leave-entitlement" />
+              <Link
+                href={`/admin/leave?card=${ROSTER_LEAVE_WALLET_CARD[kind]}`}
+                className={cn(
+                  focusRing,
+                  "inline-flex min-h-12 w-fit items-center text-sm font-medium text-[color:var(--clinical-accent)]",
+                )}
+              >
+                Open in Leave wallet
+              </Link>
+            </div>
+          </details>
+        </NewWorkModeOnly>
         <label className="grid gap-1 text-sm">
           From
           <input

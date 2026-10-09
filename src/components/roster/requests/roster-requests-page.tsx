@@ -1,6 +1,18 @@
 "use client";
 
-import { ArrowLeftRight, CalendarDays, CalendarOff, CalendarX2, HandHelping, Inbox, Info, Plane } from "lucide-react";
+import {
+  ArrowLeftRight,
+  BookOpen,
+  CalendarDays,
+  CalendarOff,
+  CalendarX2,
+  HandHelping,
+  Inbox,
+  Info,
+  Plane,
+  Thermometer,
+  type LucideIcon,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -25,6 +37,7 @@ import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-te
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterLeave } from "@/lib/roster/leave";
+import { isRosterLeaveKind, ROSTER_LEAVE_KIND_LABEL, type RosterLeaveKind } from "@/lib/roster/leave-kinds";
 
 import { RosterSentBar, type SentReceipt } from "./roster-sent-bar";
 import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
@@ -66,6 +79,8 @@ type ActiveSheet = {
   date?: string;
   to?: string;
   dateKind?: "cant" | "prefer_off";
+  /** The kind a new leave entry starts on, from a Leave wallet card. */
+  leaveKind?: RosterLeaveKind;
 } | null;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -82,9 +97,12 @@ const LEAVE_MARK: Record<RosterLeave["status"], string> = {
   applied: "applied in HR",
   approved: "approved in HR",
 };
-const LEAVE_KIND: Record<RosterLeave["kind"], string> = {
-  annual: "Annual leave",
-  pd_leave: "Professional development",
+const LEAVE_KIND = ROSTER_LEAVE_KIND_LABEL;
+const LEAVE_ICON: Record<RosterLeaveKind, LucideIcon> = {
+  annual: Plane,
+  pd_leave: CalendarDays,
+  exam: BookOpen,
+  personal: Thermometer,
 };
 const MONTH_NAMES = [
   "January",
@@ -219,6 +237,8 @@ export function RosterRequestsPage() {
     // Query parameters may prefill a sheet; they can never identify the actor.
     if ((assignment && !UUID.test(assignment)) || (date && !DATE.test(date)) || (to && !DATE.test(to))) return null;
     if (start === "dates" && dateKind && dateKind !== "cant" && dateKind !== "prefer_off") return null;
+    // An unknown leave kind starts the sheet on its default rather than refusing the hand-off.
+    const leaveKind = start === "leave" && isRosterLeaveKind(dateKind) ? dateKind : undefined;
     let targetServiceId = serviceId;
     if (start !== "leave" && enabled.length > 1) {
       if (teamId && (!UUID.test(teamId) || !enabled.some((team) => team.serviceId === teamId))) return null;
@@ -233,7 +253,8 @@ export function RosterRequestsPage() {
         person: start === "swap" && person && UUID.test(person) ? person : undefined,
         date: date ?? undefined,
         to: to ?? undefined,
-        dateKind: dateKind === "prefer_off" ? "prefer_off" : undefined,
+        dateKind: start === "dates" && dateKind === "prefer_off" ? "prefer_off" : undefined,
+        leaveKind,
       } satisfies NonNullable<ActiveSheet>,
     };
   })();
@@ -277,7 +298,7 @@ export function RosterRequestsPage() {
     return (
       <RosterRow
         key={item.id}
-        lead={<RosterIconLead icon={item.kind === "annual" ? Plane : CalendarDays} />}
+        lead={<RosterIconLead icon={LEAVE_ICON[item.kind]} />}
         title={LEAVE_KIND[item.kind]}
         sub={leaveLine(item)}
         label={`Review ${LEAVE_KIND[item.kind].toLowerCase()}, ${leaveLine(item)}`}
@@ -543,6 +564,7 @@ export function RosterRequestsPage() {
           loadedTo={range.to}
           initialDate={sheet?.kind === "leave" ? sheet.date : undefined}
           initialTo={sheet?.kind === "leave" ? sheet.to : undefined}
+          initialKind={sheet?.kind === "leave" ? sheet.leaveKind : undefined}
           existing={leave.find((item) => item.id === sheet?.leaveId)}
           onSent={onSent}
           onSaved={(entry) => setLeave((old) => [...old.filter((item) => item.id !== entry.id), entry])}

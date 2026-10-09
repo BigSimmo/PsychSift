@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ROSTER_LEAVE_KINDS } from "@/lib/roster/leave-kinds";
+
 /**
  * Roster for a health service: the shapes of every team read and write.
  *
@@ -335,7 +337,7 @@ export const rosterTeamLeaveSchema = z.object({
     z.object({
       userId: uuid,
       name: z.string().nullable(),
-      kind: z.enum(["annual", "pd_leave"]),
+      kind: z.enum(ROSTER_LEAVE_KINDS),
       startsOn: isoDate,
       endsOn: isoDate,
       status: z.enum(["planned", "applied", "approved"]),
