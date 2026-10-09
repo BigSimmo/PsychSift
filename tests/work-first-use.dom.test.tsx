@@ -81,6 +81,14 @@ describe("first-use copy", () => {
     }
   });
 
+  it("says Assessments is an example of CLA, with real records kept in CLA", () => {
+    const assess = FIRST_USE.assess;
+    expect(`${assess.title} ${assess.body}`).toContain("CLA");
+    expect(assess.body).toContain("Your real records stay in CLA.");
+    expect(JSON.stringify(assess)).not.toMatch(/start/i);
+    expect(assess.secondary.href).toBe("/teaching/assessments?view=words");
+  });
+
   it("covers every work area", () => {
     const areas: WorkAreaId[] = ["day", "notify", "rost", "open", "manage", "teach", "assess", "cpd", "admin", "call"];
     expect(Object.keys(FIRST_USE).sort()).toEqual([...areas].sort());

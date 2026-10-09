@@ -76,7 +76,7 @@ export const WORK_SETUP_AREA_COPY: Record<
 > = {
   rost: { name: "Roster", sub: "Your shifts, team, swaps and leave", identity: "roster" },
   teach: { name: "Teaching", sub: "Sessions, logbook and term dates", identity: "teaching" },
-  assess: { name: "Assessments", sub: "Forms, EPAs and supervision", identity: "teaching" },
+  assess: { name: "Assessments", sub: "How CLA works, and registrar supervision", identity: "teaching" },
   cpd: { name: "CPD", sub: "Your year, log and plan", identity: "cme" },
   admin: { name: "Admin", sub: "Renewals, compliance and new jobs", identity: "my-work" },
   call: { name: "On Call", sub: "Who to ring, handbook and handover", identity: "on-call" },
