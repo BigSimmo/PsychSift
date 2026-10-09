@@ -1924,6 +1924,17 @@ jobs:
     # which keeps `fullyParallel: false` / `retries: 0` determinism inside each
     # job while cutting wall-clock to the slowest engine rather than their sum.
     timeout-minutes: 45
+    # REPORTS, NEVER BLOCKS, ON MAIN (ledger #HYSWAF; owner decisions 2026-09-25 and 2026-10-09,
+    # "Report only"). Railway's "Wait for CI" holds a production deploy until every Actions
+    # workflow on the pushed commit finishes, and skips the deploy if any workflow concludes
+    # failure. It reads the whole run's conclusion, not single jobs. This matrix is the lane that is
+    # chronically red on main (#9Z197J), so without this one red Safari leg would skip the deploy of
+    # every screen change. On main a failing leg still shows as a red job, and
+    # `main-failure-routing` names it in the pinned issue from the job listing, because a
+    # continue-on-error job reports `success` through `needs`. Push events only: that routing job
+    # runs only on main pushes, so the weekly schedule and manual dispatch stay blocking and visibly
+    # red rather than going quiet. Release branches and every other job keep blocking as before.
+    continue-on-error: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     strategy:
       # One engine's failure must not cancel its siblings: a cancelled sibling
       # reports no verdict, which is the exact failure mode this change exists to
@@ -2178,7 +2189,8 @@ jobs:
               "Visual baselines (advisory)": process.env.VISUAL_BASELINE_RESULT || "unknown",
             };
             const badResult = (value) => value === "failure" || value === "cancelled" || value === "unknown";
-            const red = Object.entries(declared).some(([, value]) => badResult(value));
+            // `red` is decided below, once the job listing is in: a declared bad result OR any
+            // failing listed job, so it can only be wider than the declared results alone.
 
             // Name the individual jobs, including each matrix leg, so the issue says
             // "release-browser-matrix (webkit)" rather than only that something went red. Falls
@@ -2193,8 +2205,11 @@ jobs:
                 run_id: context.runId,
                 per_page: 100,
               });
+              // Every non-passing conclusion counts, so a matrix leg that hits its timeout is
+              // still reported now that continue-on-error hides it from `needs`.
+              const failingConclusions = new Set(["failure", "cancelled", "timed_out", "startup_failure"]);
               failingJobs = jobs
-                .filter((job) => job.conclusion === "failure" || job.conclusion === "cancelled")
+                .filter((job) => failingConclusions.has(job.conclusion))
                 .map((job) => `- \`${job.name}\`: ${job.conclusion}`);
             } catch (error) {
               jobListing = `unavailable (${error.message})`;
@@ -2205,6 +2220,17 @@ jobs:
                 .filter(([, value]) => badResult(value))
                 .map(([name, value]) => `- \`${name}\`: ${value}`);
             }
+            // On main the browser matrix is continue-on-error so a red Safari leg cannot skip the
+            // Railway deploy, which makes `needs.release-browser-matrix.result` read `success` even
+            // when a leg failed. The job listing still carries the leg's real `failure`, so it is
+            // what decides red here. If the listing is unavailable and the matrix ran, its verdict
+            // is unknown, and unknown is reported, never assumed green.
+            const matrixRan = declared["release-browser-matrix"] !== "skipped";
+            if (jobListing !== "listed" && matrixRan) {
+              declared["release-browser-matrix"] = `${declared["release-browser-matrix"]} (legs unverified: job listing ${jobListing})`;
+              failingJobs.push("- `release-browser-matrix`: verdict unknown, the job listing was unavailable");
+            }
+            const red = Object.entries(declared).some(([, value]) => badResult(value)) || failingJobs.length > 0;
 
             // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
             // assignee on their phone, for the opening and for every later comment. Best-effort, so
