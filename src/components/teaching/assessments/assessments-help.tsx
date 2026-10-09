@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import { WorkButton, WorkChip, WorkChips, WorkTag } from "@/components/mode-kit/work";
+import { WorkButton, WorkChip, WorkChips, WorkTag, useWorkUndoToast } from "@/components/mode-kit/work";
 import {
   AssessHeader,
   AssessNote,
@@ -37,14 +37,26 @@ import {
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
 import { Sheet } from "@/components/ui/sheet";
 import {
+  CASE_COMPLEXITIES,
   EPAS,
   GLOSSARY,
   SUPERVISION_LEVELS,
   epa as epaInfo,
+  type CaseComplexity,
   type EpaNumber,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
-import { epa1ThisTerm, looksLikePatientDetails, pendingEpaRequest } from "@/lib/teaching/assessments/model";
+import {
+  EPA_REPLY_MAX,
+  assessorName,
+  epa1ThisTerm,
+  epaOpenForDoctor,
+  epaRequestWords,
+  epaWithAssessor,
+  looksLikePatientDetails,
+  pendingEpaRequest,
+  validReply,
+} from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, SAMPLE_REGISTRAR, SAMPLE_SUPERVISOR } from "@/lib/teaching/assessments/sample";
 
 const SUP = SAMPLE_SUPERVISOR.short;
@@ -54,6 +66,7 @@ export type SheetState =
   | { kind: "epa"; pick: EpaNumber }
   | { kind: "supepa"; index: number }
   | { kind: "recordepa"; pick?: EpaNumber }
+  | { kind: "myepa"; index: number }
   | { kind: "disagree" }
   | { kind: "words" };
 
@@ -157,9 +170,12 @@ export function ConcernsHelp({ openSheet, role }: ScreenProps) {
 
 const LEVEL_OPTIONS = SUPERVISION_LEVELS.map((l) => ({
   id: l.id,
-  title: l.title.replace(" supervision", ""),
+  title: l.formLabel,
   detail: l.detail,
 }));
+
+/** CLA has no decline or send back button, so both sides are told how it really works there. */
+const IN_CLA_NOTE = "CLA has no send back button. In CLA, tell the doctor, and they cancel the request.";
 
 function RequestEpaSheet({
   s,
@@ -179,7 +195,7 @@ function RequestEpaSheet({
         onChange={(id) => setEpa(Number(id) as EpaNumber)}
         options={EPAS.map((e) => ({
           id: String(e.id),
-          title: `EPA ${e.id} · ${e.title}`,
+          title: `EPA ${e.id} · ${e.formal}`,
           detail: e.detail,
           tag: e.id === 1 && !epa1ThisTerm(s) ? <WorkTag tone="amber">Needed this term</WorkTag> : undefined,
         }))}
@@ -193,7 +209,10 @@ function RequestEpaSheet({
           { value: "reg", label: `${SAMPLE_REGISTRAR.name}, registrar` },
         ]}
       />
-      <AssessNote>At least one EPA a term must be from your term supervisor or another specialist.</AssessNote>
+      <AssessNote>
+        At least one EPA a term must be from your term supervisor or another specialist. Registrars, nurses and
+        pharmacists can assess the rest once they have done EPA assessor training.
+      </AssessNote>
       <WorkButton
         icon={Send}
         size="wide"
@@ -218,26 +237,49 @@ function RequestEpaSheet({
 /** The supervisor's EPA: from the doctor's request (index), or straight from the dock (no index). */
 function RecordEpaSheet({
   s,
+  dispatch,
   saveEpa,
   index,
   pick,
   close,
-}: Pick<ScreenProps, "s" | "saveEpa"> & { index?: number; pick?: EpaNumber; close: () => void }) {
+}: Pick<ScreenProps, "s" | "dispatch" | "saveEpa"> & { index?: number; pick?: EpaNumber; close: () => void }) {
   const request = index === undefined ? null : s.epaRequests[index];
   const [chosen, setChosen] = useState<EpaNumber | null>(pick ?? null);
   const [level, setLevel] = useState<SupervisionLevel | null>(null);
+  const [complexity, setComplexity] = useState<CaseComplexity | null>(null);
   const [note, setNote] = useState("");
-  if (index !== undefined && (!request || request.status !== "requested"))
-    return <AssessNote center>This request has already been recorded.</AssessNote>;
+  const [answer, setAnswer] = useState<"not-yet" | "sent-back" | null>(null);
+  if (index !== undefined && (!request || !epaWithAssessor(request)))
+    return (
+      <AssessNote center>
+        {request?.status === "cancelled"
+          ? `${SAMPLE_DOCTOR.first} cancelled this request.`
+          : request?.status === "sent-back"
+            ? `You sent this back to ${SAMPLE_DOCTOR.first}.`
+            : "This request has already been recorded."}
+      </AssessNote>
+    );
+  if (index !== undefined && request && answer)
+    return (
+      <AnswerEpaRequest
+        index={index}
+        kind={answer}
+        dispatch={dispatch}
+        onDone={close}
+        onCancel={() => setAnswer(null)}
+      />
+    );
   const epa = request ? request.epa : chosen;
   const info = epa ? epaInfo(epa) : null;
   const why = !epa ? "Choose which EPA first." : !level ? "Choose a supervision level first." : null;
   return (
     <div className="grid gap-3">
       {request ? (
-        <AssessNote
-          icon={MessageSquare}
-        >{`${SAMPLE_DOCTOR.first} asked for this. ${info!.title}: ${info!.detail}`}</AssessNote>
+        <AssessNote icon={MessageSquare}>
+          {request.status === "not-yet"
+            ? `You said you can't assess this yet. ${info!.formal}: ${info!.detail}`
+            : `${SAMPLE_DOCTOR.first} asked for this. ${info!.formal}: ${info!.detail}`}
+        </AssessNote>
       ) : (
         <>
           <WorkChips label="Which EPA">
@@ -247,7 +289,7 @@ function RecordEpaSheet({
               </WorkChip>
             ))}
           </WorkChips>
-          {info ? <AssessNote>{`${info.title}: ${info.detail}`}</AssessNote> : null}
+          {info ? <AssessNote>{`${info.formal}: ${info.detail}`}</AssessNote> : null}
         </>
       )}
       <OptionCard
@@ -258,6 +300,17 @@ function RecordEpaSheet({
         options={LEVEL_OPTIONS}
       />
       <AssessNote>Direct is feedback for that moment, not a fail.</AssessNote>
+      <WorkChips label="Case complexity (optional)">
+        {CASE_COMPLEXITIES.map((c) => (
+          <WorkChip
+            key={c.id}
+            selected={complexity === c.id}
+            onClick={() => setComplexity(complexity === c.id ? null : c.id)}
+          >
+            {c.title}
+          </WorkChip>
+        ))}
+      </WorkChips>
       <AssessTextField
         id="assess-epa-note"
         label="One thing to keep doing (optional)"
@@ -271,14 +324,176 @@ function RecordEpaSheet({
         onClick={() => {
           if (!epa || !level) return;
           const trimmed = note.trim() || undefined;
-          if (index !== undefined) saveEpa({ type: "record-epa", index, level, note: trimmed });
-          else saveEpa({ type: "record-epa-direct", epa, level, note: trimmed });
+          const extra = { ...(complexity ? { complexity } : {}), note: trimmed };
+          if (index !== undefined) saveEpa({ type: "record-epa", index, level, ...extra });
+          else saveEpa({ type: "record-epa-direct", epa, level, ...extra });
           close();
         }}
       >
         {epa ? `Save EPA ${epa}` : "Save EPA"}
       </WorkButton>
       {why ? <WhyNot id="assess-save-epa-why">{why}</WhyNot> : null}
+      {request ? (
+        <div className="grid gap-2 pt-1" data-testid="assess-epa-cant">
+          <p className="work-label m-0">{`Can't do it?`}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {request.status === "requested" ? (
+              <WorkButton variant="secondary" onClick={() => setAnswer("not-yet")}>
+                {`Can't assess yet`}
+              </WorkButton>
+            ) : null}
+            <WorkButton variant="secondary" onClick={() => setAnswer("sent-back")}>
+              Send back
+            </WorkButton>
+          </div>
+          <AssessNote>{IN_CLA_NOTE}</AssessNote>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The assessor's other two answers. "Can't assess yet" keeps the request with them (a note is optional).
+ * "Send back" returns it to the doctor and needs a short note, so the doctor knows whom to ask instead.
+ */
+function AnswerEpaRequest({
+  index,
+  kind,
+  dispatch,
+  onDone,
+  onCancel,
+}: Pick<ScreenProps, "dispatch"> & {
+  index: number;
+  kind: "not-yet" | "sent-back";
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [reply, setReply] = useState("");
+  const toast = useWorkUndoToast();
+  const [done, setDone] = useState<string | null>(null);
+  const back = kind === "sent-back";
+  const trimmed = reply.trim();
+  const why =
+    back && !trimmed
+      ? `Say why, so ${SAMPLE_DOCTOR.first} knows whom to ask.`
+      : trimmed.length > EPA_REPLY_MAX
+        ? `Keep it under ${EPA_REPLY_MAX} characters.`
+        : looksLikePatientDetails(trimmed)
+          ? "Take out the patient details first."
+          : null;
+  if (done) return <AssessNote center>{done}</AssessNote>;
+  return (
+    <div className="grid gap-3">
+      <AssessNote icon={MessageSquare}>
+        {back
+          ? `${SAMPLE_DOCTOR.first} gets it back with your note and can ask someone else.`
+          : `It stays in your list. ${SAMPLE_DOCTOR.first} sees that you can't assess it yet.`}
+      </AssessNote>
+      <AssessTextField
+        id={`assess-epa-${kind}`}
+        label={back ? `Why, for ${SAMPLE_DOCTOR.first}` : `What you still need to see (optional)`}
+        value={reply}
+        onChange={setReply}
+        required={back}
+        placeholder={
+          back ? "I wasn't on the ward that day. Ask the night registrar." : "I'd like to see a full admission."
+        }
+        single
+      />
+      <WorkButton
+        size="wide"
+        disabled={!!why || !validReply(trimmed, back)}
+        onClick={() => {
+          const message = back
+            ? `Sent back to ${SAMPLE_DOCTOR.name}`
+            : `${SAMPLE_DOCTOR.first} told you can't assess it yet`;
+          dispatch(
+            back
+              ? { type: "epa-send-back", index, reply: trimmed }
+              : { type: "epa-not-yet", index, ...(trimmed ? { reply: trimmed } : {}) },
+          );
+          const undo = () => dispatch({ type: "undo-epa-answer", index });
+          if (toast) {
+            toast(message, undo, 10000);
+            onDone();
+          } else setDone(`${message}.`);
+        }}
+      >
+        {back ? `Send back to ${SAMPLE_DOCTOR.first}` : `Tell ${SAMPLE_DOCTOR.first}`}
+      </WorkButton>
+      {why ? <WhyNot id={`assess-epa-${kind}-why`}>{why}</WhyNot> : null}
+      <WorkButton variant="secondary" size="wide" onClick={onCancel}>
+        Back to recording
+      </WorkButton>
+    </div>
+  );
+}
+
+/** The doctor's own open request: cancel it while it is with the assessor, or ask again once sent back. */
+function MyEpaSheet({
+  s,
+  dispatch,
+  openSheet,
+  index,
+  close,
+}: Pick<ScreenProps, "s" | "dispatch" | "openSheet"> & { index: number; close: () => void }) {
+  const toast = useWorkUndoToast();
+  const [done, setDone] = useState<string | null>(null);
+  const r = s.epaRequests[index];
+  if (done) return <AssessNote center>{done}</AssessNote>;
+  if (!r || !epaOpenForDoctor(r))
+    return (
+      <AssessNote center>
+        {r?.status === "done" ? "This EPA has been recorded." : "This request is no longer open."}
+      </AssessNote>
+    );
+  const info = epaInfo(r.epa);
+  const name = assessorName(r.who);
+  const cancel = () => {
+    dispatch({ type: "cancel-epa-request", index });
+    // Undo puts it back exactly as it was, including any note from the assessor.
+    const undo = () => dispatch({ type: "restore-epa-request", index, request: r });
+    const message = r.status === "sent-back" ? `EPA ${r.epa} request removed` : `EPA ${r.epa} request cancelled`;
+    if (toast) {
+      toast(message, undo, 10000);
+      close();
+    } else setDone(`${message}.`);
+  };
+  return (
+    <div className="grid gap-3">
+      <AssessNote icon={MessageSquare}>{`${info.formal}: ${info.detail}`}</AssessNote>
+      <ul role="list" className="work-card work-rows m-0 list-none p-0">
+        <StepRow
+          state={r.status === "sent-back" ? "now" : "lock"}
+          title={
+            r.status === "sent-back"
+              ? `Sent back by ${name}`
+              : r.status === "not-yet"
+                ? `${name} can't assess it yet`
+                : `Waiting for ${name}`
+          }
+          detail={r.reply ? `"${r.reply}"` : r.status === "requested" ? "Needed by Sun 8 Nov" : undefined}
+          tag={
+            epaRequestWords(r).tag ? (
+              <WorkTag tone={r.status === "sent-back" ? "amber" : "neutral"}>{epaRequestWords(r).tag}</WorkTag>
+            ) : undefined
+          }
+        />
+      </ul>
+      {r.status === "sent-back" ? (
+        <WorkButton icon={Send} size="wide" onClick={() => openSheet({ kind: "epa", pick: r.epa })}>
+          Ask someone else
+        </WorkButton>
+      ) : null}
+      <WorkButton variant="secondary" size="wide" onClick={cancel}>
+        {r.status === "sent-back" ? "Remove from my list" : "Cancel request"}
+      </WorkButton>
+      <AssessNote>
+        {r.status === "sent-back"
+          ? IN_CLA_NOTE
+          : "In CLA, cancelling is deleting the emailed form, from its three-dot menu."}
+      </AssessNote>
     </div>
   );
 }
@@ -349,17 +564,20 @@ export function AssessmentsSheets({
   s,
   dispatch,
   saveEpa,
-}: Pick<ScreenProps, "s" | "dispatch" | "saveEpa"> & { sheet: SheetState; close: () => void }) {
+  openSheet,
+}: Pick<ScreenProps, "s" | "dispatch" | "saveEpa" | "openSheet"> & { sheet: SheetState; close: () => void }) {
   const title =
     sheet?.kind === "epa"
       ? "Request an EPA"
       : sheet?.kind === "supepa"
         ? `EPA ${s.epaRequests[sheet.index]?.epa ?? ""} · ${SAMPLE_DOCTOR.name}`
-        : sheet?.kind === "recordepa"
-          ? `Record an EPA · ${SAMPLE_DOCTOR.name}`
-          : sheet?.kind === "disagree"
-            ? "Disagree with a report"
-            : "Words used here";
+        : sheet?.kind === "myepa"
+          ? `Your EPA ${s.epaRequests[sheet.index]?.epa ?? ""} request`
+          : sheet?.kind === "recordepa"
+            ? `Record an EPA · ${SAMPLE_DOCTOR.name}`
+            : sheet?.kind === "disagree"
+              ? "Disagree with a report"
+              : "Words used here";
   return (
     <Sheet open={sheet !== null} onClose={close} title={title}>
       {/* The sheet opens outside the page, so it names the Teaching colours again. */}
@@ -368,10 +586,34 @@ export function AssessmentsSheets({
           <RequestEpaSheet key={sheet.pick} s={s} dispatch={dispatch} pick={sheet.pick} close={close} />
         ) : null}
         {sheet?.kind === "supepa" ? (
-          <RecordEpaSheet key={`r${sheet.index}`} s={s} saveEpa={saveEpa} index={sheet.index} close={close} />
+          <RecordEpaSheet
+            key={`r${sheet.index}`}
+            s={s}
+            dispatch={dispatch}
+            saveEpa={saveEpa}
+            index={sheet.index}
+            close={close}
+          />
         ) : null}
         {sheet?.kind === "recordepa" ? (
-          <RecordEpaSheet key={`d${sheet.pick ?? 0}`} s={s} saveEpa={saveEpa} pick={sheet.pick} close={close} />
+          <RecordEpaSheet
+            key={`d${sheet.pick ?? 0}`}
+            s={s}
+            dispatch={dispatch}
+            saveEpa={saveEpa}
+            pick={sheet.pick}
+            close={close}
+          />
+        ) : null}
+        {sheet?.kind === "myepa" ? (
+          <MyEpaSheet
+            key={`m${sheet.index}`}
+            s={s}
+            dispatch={dispatch}
+            openSheet={openSheet}
+            index={sheet.index}
+            close={close}
+          />
         ) : null}
         {sheet?.kind === "disagree" ? <DisagreeSheet s={s} dispatch={dispatch} /> : null}
         {sheet?.kind === "words" ? <WordsSheet /> : null}

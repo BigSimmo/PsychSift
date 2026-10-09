@@ -4,6 +4,7 @@ import {
   EVIDENCE_SOURCES,
   LAST_FORM_STEP,
   domain,
+  type CaseComplexity,
   type DomainNumber,
   type EpaNumber,
   type GlobalRating,
@@ -55,16 +56,34 @@ export type AssessmentForm = {
 export type SignatureInk = { width: number; height: number; path: string };
 export type Signature = { typed: string; image: SignatureInk | null; date: string; day: number };
 
+/**
+ * Where an EPA request stands. CLA itself has no decline or send back button: there the assessor tells the
+ * doctor, and the doctor deletes the emailed form. These example states show that conversation.
+ * - requested: with the assessor.
+ * - not-yet: the assessor can't assess it yet (hasn't seen enough). It stays with them.
+ * - sent-back: the assessor returned it to the doctor with a note, so the doctor can ask someone else.
+ * - cancelled: the doctor cancelled it. Kept in place, never shown, so every other request keeps its index.
+ * - done: recorded with a supervision level.
+ */
+export type EpaRequestStatus = "requested" | "not-yet" | "sent-back" | "cancelled" | "done";
+
 export type EpaRequest = {
   epa: EpaNumber;
   who: "sup" | "reg";
-  status: "requested" | "done";
+  status: EpaRequestStatus;
   level?: SupervisionLevel;
+  /** Case complexity, optional, as the EPA form records it. */
+  complexity?: CaseComplexity;
   /** "One thing to keep doing", optional, written by the supervisor. */
   note?: string;
+  /** The assessor's words to the doctor with "Can't assess yet" (optional) or "Send back" (required). */
+  reply?: string;
   /** Recorded by the supervisor without a request from the doctor (the dock's Record EPA). */
   direct?: boolean;
 };
+
+/** The longest assessor reply: a sentence or two, never a case summary. */
+export const EPA_REPLY_MAX = 200;
 
 export type AssessmentsState = {
   now: number;
@@ -185,14 +204,36 @@ export function epaRecords(s: AssessmentsState): EpaRecord[] {
       by: r.who === "sup" ? SAMPLE_SUPERVISOR.name : SAMPLE_REGISTRAR.name,
       role: r.who === "sup" ? "term supervisor" : "registrar",
       level: r.level!,
+      ...(r.complexity ? { complexity: r.complexity } : {}),
     }));
   return [...SAMPLE_EPA_RECORDS, ...done];
 }
 
 export const epasInTerm = (s: AssessmentsState, term: TermId) => epaRecords(s).filter((r) => r.term === term);
 export const epa1ThisTerm = (s: AssessmentsState) => epasInTerm(s, "t4").some((r) => r.epa === 1);
+/** Still with the assessor: asked, or "can't assess yet". */
+export const epaWithAssessor = (r: EpaRequest) => r.status === "requested" || r.status === "not-yet";
+/** Shown on the doctor's side as open: with the assessor, or sent back and not yet dealt with. */
+export const epaOpenForDoctor = (r: EpaRequest) => epaWithAssessor(r) || r.status === "sent-back";
 export const pendingEpaRequest = (s: AssessmentsState, epa: EpaNumber) =>
-  s.epaRequests.find((r) => r.epa === epa && r.status === "requested");
+  s.epaRequests.find((r) => r.epa === epa && epaWithAssessor(r));
+export const sentBackEpaRequest = (s: AssessmentsState, epa: EpaNumber) =>
+  s.epaRequests.find((r) => r.epa === epa && r.status === "sent-back");
+export const assessorName = (who: EpaRequest["who"]) =>
+  who === "sup" ? SAMPLE_SUPERVISOR.name : SAMPLE_REGISTRAR.name;
+
+/** How the doctor's side words an open request, and its tag ("Not yet", "Sent back"). */
+export function epaRequestWords(r: EpaRequest): { line: string; tag: string | null } {
+  const name = assessorName(r.who);
+  const said = r.reply ? ` "${r.reply}"` : "";
+  if (r.status === "not-yet") return { line: `${name} can't assess it yet.${said}`, tag: "Not yet" };
+  if (r.status === "sent-back") return { line: `Sent back by ${name}.${said}`, tag: "Sent back" };
+  return { line: `Requested from ${name}`, tag: null };
+}
+
+/** The doctor's open requests with their index, in the order they were asked. */
+export const openEpaRequests = (s: AssessmentsState) =>
+  s.epaRequests.map((r, index) => ({ r, index })).filter(({ r }) => epaOpenForDoctor(r));
 
 export function epaCounts(s: AssessmentsState): Record<EpaNumber, number> {
   const by: Record<EpaNumber, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
@@ -217,6 +258,8 @@ export function doctorActions(s: AssessmentsState): number {
   let n = 0;
   const st = stage(s);
   if (!epa1ThisTerm(s) && !pendingEpaRequest(s, 1)) n++;
+  // A request sent back for another EPA is the doctor's to answer too (EPA 1's is counted just above).
+  n += s.epaRequests.filter((r) => r.status === "sent-back" && r.epa !== 1).length;
   if (st === "start" || st === "self-draft" || st === "self-done") n++;
   else if (st === "sup-signed") n++;
   else if (st === "doc-signed" && !s.sentToMeu) n++;
@@ -228,7 +271,7 @@ export function doctorActions(s: AssessmentsState): number {
 export function supervisorTodo(s: AssessmentsState): number {
   let n = 2;
   if (s.request.sent && !s.sigs.sup) n++;
-  n += s.epaRequests.filter((r) => r.status === "requested" && r.who === "sup").length;
+  n += s.epaRequests.filter((r) => epaWithAssessor(r) && r.who === "sup").length;
   return n;
 }
 
@@ -526,11 +569,34 @@ export type AssessmentsAction =
   | { type: "sign"; who: Who; typed: string; image: SignatureInk | null }
   | { type: "sent-to-meu" }
   | { type: "request-epa"; epa: EpaNumber; who: "sup" | "reg" }
-  | { type: "record-epa"; index: number; level: SupervisionLevel; note?: string }
-  | { type: "record-epa-direct"; epa: EpaNumber; level: SupervisionLevel; note?: string }
+  | { type: "record-epa"; index: number; level: SupervisionLevel; complexity?: CaseComplexity; note?: string }
+  | {
+      type: "record-epa-direct";
+      epa: EpaNumber;
+      level: SupervisionLevel;
+      complexity?: CaseComplexity;
+      note?: string;
+    }
   | { type: "undo-record-epa"; index: number }
+  | { type: "epa-not-yet"; index: number; reply?: string }
+  | { type: "epa-send-back"; index: number; reply: string }
+  | { type: "undo-epa-answer"; index: number }
+  | { type: "cancel-epa-request"; index: number }
+  | { type: "restore-epa-request"; index: number; request: EpaRequest }
   | { type: "toggle-availability"; day: number; time: string }
   | { type: "set-disagree-draft"; value: string };
+
+const validComplexity = (c: CaseComplexity) => c === "low" || c === "medium" || c === "high";
+
+/** A reply is short, has no patient details, and is present when it must be. */
+export function validReply(reply: string, required: boolean): boolean {
+  if (required && !reply) return false;
+  return reply.length <= EPA_REPLY_MAX && !looksLikePatientDetails(reply);
+}
+
+function answerAt(list: readonly EpaRequest[], index: number, status: EpaRequestStatus, reply: string): EpaRequest[] {
+  return list.map((x, i) => (i === index ? { epa: x.epa, who: x.who, status, ...(reply ? { reply } : {}) } : x));
+}
 
 /** A form that is locked rejects every edit. */
 function editForm(s: AssessmentsState, who: Who, change: (f: AssessmentForm) => AssessmentForm): AssessmentsState {
@@ -641,21 +707,37 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
     }
     case "sent-to-meu":
       return s.sigs.doc ? { ...s, sentToMeu: true } : s;
-    case "request-epa":
+    case "request-epa": {
       if (![1, 2, 3, 4].includes(a.epa) || (a.who !== "sup" && a.who !== "reg") || pendingEpaRequest(s, a.epa))
         return s;
-      return { ...s, epaRequests: [...s.epaRequests, { epa: a.epa, who: a.who, status: "requested" }] };
+      // Asking again replaces a request that was sent back for the same EPA.
+      const epaRequests = s.epaRequests.map((x) =>
+        x.epa === a.epa && x.status === "sent-back" ? { ...x, status: "cancelled" as const } : x,
+      );
+      return { ...s, epaRequests: [...epaRequests, { epa: a.epa, who: a.who, status: "requested" }] };
+    }
     case "record-epa": {
       const r = s.epaRequests[a.index];
-      if (!r || r.status !== "requested" || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
+      if (!r || !epaWithAssessor(r) || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
+      if (a.complexity !== undefined && !validComplexity(a.complexity)) return s;
       const note = a.note?.trim();
       const epaRequests = s.epaRequests.map((x, i) =>
-        i === a.index ? { ...x, status: "done" as const, level: a.level, ...(note ? { note } : {}) } : x,
+        i === a.index
+          ? {
+              epa: x.epa,
+              who: x.who,
+              status: "done" as const,
+              level: a.level,
+              ...(a.complexity ? { complexity: a.complexity } : {}),
+              ...(note ? { note } : {}),
+            }
+          : x,
       );
       return { ...s, epaRequests };
     }
     case "record-epa-direct": {
       if (![1, 2, 3, 4].includes(a.epa) || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
+      if (a.complexity !== undefined && !validComplexity(a.complexity)) return s;
       const note = a.note?.trim();
       const done: EpaRequest = {
         epa: a.epa,
@@ -663,9 +745,46 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
         status: "done",
         level: a.level,
         direct: true,
+        ...(a.complexity ? { complexity: a.complexity } : {}),
         ...(note ? { note } : {}),
       };
       return { ...s, epaRequests: [...s.epaRequests, done] };
+    }
+    case "epa-not-yet": {
+      // Only a request still waiting for its first answer can be put off.
+      const r = s.epaRequests[a.index];
+      const reply = a.reply?.trim() ?? "";
+      if (!r || r.status !== "requested" || !validReply(reply, false)) return s;
+      return { ...s, epaRequests: answerAt(s.epaRequests, a.index, "not-yet", reply) };
+    }
+    case "epa-send-back": {
+      const r = s.epaRequests[a.index];
+      const reply = a.reply.trim();
+      if (!r || !epaWithAssessor(r) || !validReply(reply, true)) return s;
+      return { ...s, epaRequests: answerAt(s.epaRequests, a.index, "sent-back", reply) };
+    }
+    case "undo-epa-answer": {
+      // Undo straight after "Can't assess yet" or "Send back": the request is waiting again.
+      const r = s.epaRequests[a.index];
+      if (!r || (r.status !== "not-yet" && r.status !== "sent-back")) return s;
+      return { ...s, epaRequests: answerAt(s.epaRequests, a.index, "requested", "") };
+    }
+    case "restore-epa-request": {
+      // Undo straight after a cancel: back exactly as it was, unless the doctor has since asked again.
+      const r = s.epaRequests[a.index];
+      if (!r || r.status !== "cancelled" || !epaOpenForDoctor(a.request) || a.request.epa !== r.epa) return s;
+      if (epaWithAssessor(a.request) && pendingEpaRequest(s, r.epa)) return s;
+      if (a.request.status === "sent-back" && s.epaRequests.some((x) => x.epa === r.epa && epaOpenForDoctor(x)))
+        return s;
+      return { ...s, epaRequests: s.epaRequests.map((x, i) => (i === a.index ? { ...a.request } : x)) };
+    }
+    case "cancel-epa-request": {
+      const r = s.epaRequests[a.index];
+      if (!r || !epaOpenForDoctor(r)) return s;
+      return {
+        ...s,
+        epaRequests: s.epaRequests.map((x, i) => (i === a.index ? { ...x, status: "cancelled" as const } : x)),
+      };
     }
     case "undo-record-epa": {
       // Undo straight after saving: a request goes back to waiting, one recorded without a request goes.
