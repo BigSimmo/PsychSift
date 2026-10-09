@@ -35,7 +35,12 @@ const COURSE_HOSPITAL_ROLES: ReadonlySet<string> = new Set(["workforce", "dct"])
  * example, labelled as such. The server checks the real permission when the
  * saved version lands; this only decides what the menu shows.
  */
-export function useCourseOrganiser(): { readonly organiser: boolean; readonly sample: boolean } {
+export function useCourseOrganiser(): {
+  readonly organiser: boolean;
+  /** Holds Medical Workforce or the DCT, so posts only for the teams linked to their hospital. */
+  readonly hospitalRole: boolean;
+  readonly sample: boolean;
+} {
   const signedIn = useSignedIn();
   const session = useSessionIfAvailable();
   const poster = useOpenShiftsIsPoster();
@@ -48,7 +53,8 @@ export function useCourseOrganiser(): { readonly organiser: boolean; readonly sa
       teamManager: poster === true,
       heldRoles,
     });
-  return { organiser, sample: !organiser && active };
+  const hospitalRole = signedIn && canManageCourses({ administrator: false, teamManager: false, heldRoles });
+  return { organiser, hospitalRole, sample: !organiser && active };
 }
 
 function useSessionIfAvailable() {

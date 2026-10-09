@@ -73,7 +73,7 @@ export function AdminCoursesPage() {
   const courseId = params.get("course");
   const postingNew = params.get("new") === "1";
   const bookings = useBookings();
-  const { organiser, sample } = useCourseOrganiser();
+  const { organiser, hospitalRole, sample } = useCourseOrganiser();
   const { page, posting, manages } = bookings;
   // Saved courses: only the ones this reader runs (the read also carries courses they can book).
   const state = useMemo(
@@ -121,7 +121,7 @@ export function AdminCoursesPage() {
             </WorkCard>
           ) : null}
           {!canPost && !state?.courses.length ? (
-            <NotAnOrganiser noTeams={organiser} />
+            <NotAnOrganiser noTeams={hospitalRole} />
           ) : !state ? null : postingNew && canPost ? (
             <CourseForm key="new" state={state} bookings={bookings} course={null} />
           ) : courseId ? (
