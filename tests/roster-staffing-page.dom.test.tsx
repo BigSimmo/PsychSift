@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   announce: vi.fn(),
   reload: vi.fn(),
   status: "ready" as string,
+  needs: [] as unknown[] | null | undefined,
   teams: { status: "ready" as string, message: null as string | null, reload: vi.fn(), data: null as unknown },
 }));
 vi.mock("@/components/roster/use-roster-team", () => ({
@@ -42,6 +43,9 @@ vi.mock("@/components/roster/use-roster-team", () => ({
           };
     return { status: "ready", data, message: null, readAt: new Date("2026-10-06T11:30:00Z"), reload: mocks.reload };
   },
+}));
+vi.mock("@/components/roster/staffing/use-staffing-needs", () => ({
+  useStaffingNeeds: () => ({ needs: mocks.needs, reload: vi.fn() }),
 }));
 vi.mock("@/components/roster/ask/roster-ask-box", () => ({ RosterAskButton: () => null }));
 vi.mock("@/components/ui/live-announcer", () => ({ announce: mocks.announce }));
@@ -98,6 +102,7 @@ add("5e000000-0000-4000-8000-000000000007", "2026-10-19", "on_call");
 beforeEach(() => {
   mocks.reads.length = 0;
   mocks.status = "ready";
+  mocks.needs = [];
   mocks.announce.mockReset();
   periodEnd = "2026-10-25";
   mocks.teams = { status: "ready", message: null, reload: vi.fn(), data: { teams: [team], actorId: ME } };
@@ -107,13 +112,16 @@ afterEach(cleanup);
 
 const column = (date: string) => document.querySelector(`[data-staffing-day="${date}"]`)!.firstElementChild!;
 
-it("shows the next three weeks, each day read out in words, and says no safe number is set", () => {
+it("shows the next three weeks, each day read out in words, and says no safe number has been set", () => {
   render(<RosterStaffingPage now={NOW} />);
   expect(screen.getByRole("heading", { name: "Team staffing", level: 1 })).toBeTruthy();
   expect(document.querySelectorAll("[data-staffing-day]")).toHaveLength(21);
   expect(column("2026-10-22").getAttribute("aria-label")).toBe("Thu 22: 5 on, including you");
   expect(column("2026-10-24").getAttribute("aria-label")).toBe("Sat 24: 2 on");
-  expect(screen.getByTestId("staffing-safe-note").textContent).toContain("safe number isn't set in PsychSift");
+  expect(screen.getByTestId("staffing-safe-note").textContent).toContain(
+    "Your roster manager hasn't set a safe number for this team yet.",
+  );
+  expect(document.querySelector("[data-below-safe]")).toBeNull();
   expect(document.body.textContent).not.toMatch(/\bsafe to\b|is safe|stays safe/i);
   // One assignments read, inside the read's 62-day limit.
   const read = mocks.reads.find((item) => item.what === "assignments")!;
@@ -271,4 +279,61 @@ it("on a 320 px phone each day stays a 48 px button and the week scrolls inside 
   const fields = screen.getByTestId("staffing-date-fields");
   expect(fields.className).toContain("sm:grid-cols-2");
   expect(fields.className.split(/\s+/)).not.toContain("grid-cols-2");
+});
+
+// The team's safe number: Monday to Friday, 4 on Day shifts, as the roster manager set it.
+const weekdayDayNeeds = [1, 2, 3, 4, 5].map((weekday) => ({
+  weekday,
+  date: null,
+  kind: "day",
+  grade: null,
+  siteId: null,
+  needed: 4,
+}));
+
+it("judges each day against the safe number and names the leave day it would take below", async () => {
+  mocks.needs = weekdayDayNeeds;
+  render(<RosterStaffingPage now={NOW} />);
+  expect(column("2026-10-19").getAttribute("aria-label")).toBe("Mon 19: 4 on, needs 4");
+  // Weekends have no need set, so they are not judged.
+  expect(column("2026-10-24").getAttribute("aria-label")).toBe("Sat 24: 2 on");
+  expect(screen.getByTestId("staffing-safe-note").textContent).toBe(
+    "The safe number is the Day and Evening cover your roster manager set for the whole team. Your roster manager decides.",
+  );
+  // The note asking for a safe number goes once one is set.
+  expect(screen.queryByTestId("staffing-ask-copy")).toBeNull();
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("First day"), "2026-10-22");
+  await user.clear(screen.getByLabelText("Last day"));
+  await user.type(screen.getByLabelText("Last day"), "2026-10-23");
+  const result = screen.getByTestId("staffing-result");
+  expect(result.textContent).toBe(
+    "Below safe number: Fri 23. With you away, Fri 23 has 3 on, needs 4. You're rostered on 2 of these days.",
+  );
+  expect(result.className).toContain("var(--warning-text)");
+  expect(column("2026-10-23").getAttribute("aria-label")).toBe(
+    "Fri 23: 3 on, needs 4, below safe number, you off on leave, fewest on, in your leave",
+  );
+  expect(document.querySelector('[data-staffing-day="2026-10-23"]')!.getAttribute("data-below-safe")).toBe("true");
+  expect(document.querySelector('[data-staffing-day="2026-10-22"]')!.hasAttribute("data-below-safe")).toBe(false);
+  // Other dates offered never go below the safe number.
+  expect(screen.getByTestId("staffing-options").textContent).toContain("Wed 21 to Thu 22 Oct");
+  // Never anyone else's name, and never "safe" as a promise.
+  expect(document.body.textContent).not.toMatch(/\bsafe to\b|is safe|stays safe/i);
+});
+
+it("says when a need for one grade or site isn't judged, and when the safe number couldn't be read", () => {
+  mocks.needs = [
+    ...weekdayDayNeeds,
+    { weekday: 1, date: null, kind: "day", grade: "consultant", siteId: null, needed: 1 },
+  ];
+  render(<RosterStaffingPage now={NOW} />);
+  expect(screen.getByTestId("staffing-safe-note").textContent).toContain(
+    "Needs for one grade or one site aren't judged here.",
+  );
+  cleanup();
+  mocks.needs = null;
+  render(<RosterStaffingPage now={NOW} />);
+  expect(screen.getByTestId("staffing-safe-note").textContent).toContain("Your team's safe number couldn't be checked");
+  expect(document.querySelector("[data-below-safe]")).toBeNull();
 });

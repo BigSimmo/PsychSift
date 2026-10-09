@@ -33,16 +33,22 @@ it("never fetches manager data or renders controls for an ordinary member", asyn
 
 it("opens the team named by ?team= when the reader manages more than one", async () => {
   window.history.replaceState(null, "", "/roster/manage?team=second");
+  // Only the team list is answered. Every other read waits, so the team's own
+  // loads can't crash the page after the heading has been checked.
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue(
-      Response.json({
-        actorId: "alex",
-        teams: [
-          { serviceId: "first", name: "First team", enabled: true, role: "manager", grade: null },
-          { serviceId: "second", name: "Second team", enabled: true, role: "manager", grade: null },
-        ],
-      }),
+    vi.fn((input: RequestInfo | URL) =>
+      String(input).endsWith("/api/roster/team")
+        ? Promise.resolve(
+            Response.json({
+              actorId: "alex",
+              teams: [
+                { serviceId: "first", name: "First team", enabled: true, role: "manager", grade: null },
+                { serviceId: "second", name: "Second team", enabled: true, role: "manager", grade: null },
+              ],
+            }),
+          )
+        : new Promise<Response>(() => {}),
     ),
   );
   render(<RosterManagePage />);

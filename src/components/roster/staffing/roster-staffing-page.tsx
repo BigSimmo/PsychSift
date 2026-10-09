@@ -28,9 +28,12 @@ import { useExampleData } from "@/lib/example-data/store";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import {
   alternativeDates,
+  belowSafeDays,
   dayCount,
+  hasSafeNumber,
   isIsoDate,
   leaveStaffing,
+  safeNumberNote,
   shortDay,
   staffingAskText,
   spanWords,
@@ -38,21 +41,17 @@ import {
   type StaffingWindow,
 } from "@/lib/roster/staffing/team-staffing";
 
-import {
-  SAFE_NUMBER_NOTE,
-  StaffingFrame,
-  StaffingResult,
-  StaffingStatusNote,
-  lowestOf,
-} from "./roster-leave-staffing-check";
+import { StaffingFrame, StaffingResult, StaffingStatusNote, lowestOf } from "./roster-leave-staffing-check";
 import { RosterStaffingLegend, RosterStaffingStrip } from "./roster-staffing-strip";
 import { useTeamStaffing } from "./use-team-staffing";
 
 /**
  * Team staffing (feature #7): plan leave with the team in view. The strip
- * shows how many of the team are on each day, from one assignments read. Pick
- * dates (type them or tap two days) to see your leave on it, the fewest on,
- * and same-length dates with more of the team on. "Plan this leave" opens the
+ * shows how many of the team are on each day, from one assignments read, and
+ * marks a day below the team's safe number (the cover its roster manager set).
+ * Pick dates (type them or tap two days) to see your leave on it, the fewest
+ * on, and same-length dates with more of the team on and none below the safe
+ * number. "Plan this leave" opens the
  * existing Plan leave sheet with the dates filled in. Nothing is kept on the
  * device; the dates live in this page only (and in the address, if it was
  * opened with `?from=&to=`).
@@ -129,8 +128,16 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
   const staffing = useTeamStaffing(serviceId, span, actorId);
   // The whole read window, so a run can be extended into the next week with a tap.
   const shown = staffing.days;
-  const result = leave && staffing.status === "ready" ? leaveStaffing(staffing.days, leave) : null;
-  const options = leave && staffing.status === "ready" ? alternativeDates(staffing.days, leave, today) : [];
+  const needs = staffing.needs;
+  const result = leave && staffing.status === "ready" ? leaveStaffing(staffing.days, leave, needs) : null;
+  // No other dates until the safe number has been read, so none is offered below it.
+  const options =
+    leave && staffing.status === "ready" && needs !== undefined
+      ? alternativeDates(staffing.days, leave, today, 2, needs)
+      : [];
+  const belowShown = staffing.status === "ready" ? belowSafeDays(shown, leave, needs) : [];
+  // The note asks the roster manager for a safe number, so it only shows once the read says none is set.
+  const askForSafeNumber = needs != null && !hasSafeNumber(needs);
 
   function setDates(next: { from: string; to: string }) {
     setEdit(next);
@@ -341,10 +348,14 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                       leave={leave}
                       today={today}
                       lowestDays={result ? lowestOf(result) : []}
+                      needs={needs}
                       onPick={pick}
                       testId="staffing-strip"
                     />
-                    <RosterStaffingLegend showYou={!!leave && shown.some((day) => day.youWork)} />
+                    <RosterStaffingLegend
+                      showYou={!!leave && shown.some((day) => day.youWork)}
+                      showBelow={belowShown.length > 0}
+                    />
                     {result ? <StaffingResult result={result} /> : null}
                     {leave && span.capped ? (
                       <p className="text-xs text-[color:var(--text-muted)]">
@@ -354,22 +365,31 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
                   </StaffingFrame>
                 ) : null}
                 <RosterNote icon={Info} role="note" testId="staffing-safe-note">
-                  <p>{SAFE_NUMBER_NOTE}</p>
+                  <p>{safeNumberNote(needs)}</p>
                 </RosterNote>
-                <button
-                  type="button"
-                  onClick={() => void copyAsk()}
-                  className={cn(rosterOutlineButton, "w-full justify-start px-4 text-left")}
-                  data-testid="staffing-ask-copy"
-                >
-                  <ClipboardCopy aria-hidden="true" className="size-icon-md shrink-0" />
-                  <span className="min-w-0">{askCopied ? "Copied" : "Copy a note for your roster manager"}</span>
-                </button>
+                {askForSafeNumber ? (
+                  <button
+                    type="button"
+                    onClick={() => void copyAsk()}
+                    className={cn(rosterOutlineButton, "w-full justify-start px-4 text-left")}
+                    data-testid="staffing-ask-copy"
+                  >
+                    <ClipboardCopy aria-hidden="true" className="size-icon-md shrink-0" />
+                    <span className="min-w-0">{askCopied ? "Copied" : "Copy a note for your roster manager"}</span>
+                  </button>
+                ) : null}
               </section>
             ) : null}
             {options.length ? (
               <section className="grid gap-2" aria-labelledby="staffing-alt-head">
-                <RosterSectionHead id="staffing-alt-head" title="Same length, more of the team on" />
+                <RosterSectionHead
+                  id="staffing-alt-head"
+                  title={
+                    hasSafeNumber(needs)
+                      ? "Same length, more on and none below safe number"
+                      : "Same length, more of the team on"
+                  }
+                />
                 <ul role="list" className={cn(modeModuleSurface, "shadow-none")} data-testid="staffing-options">
                   {options.map((option) => (
                     <li

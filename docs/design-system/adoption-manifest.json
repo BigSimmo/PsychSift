@@ -2093,6 +2093,7 @@
         "src/components/teaching/teaching-modules.tsx",
         "src/components/therapy-compass/screens/compare-screen.tsx",
         "src/components/therapy-compass/screens/sheets-screen.tsx",
+        "src/components/work-screens/admin/people-sheets.tsx",
         "src/components/work-screens/assessments/assessments-export-page.tsx",
         "src/components/work-screens/assessments/assessments-trainee-page.tsx"
       ],
@@ -2127,6 +2128,7 @@
         "src/components/teaching/teaching-modules.tsx",
         "src/components/therapy-compass/screens/compare-screen.tsx",
         "src/components/therapy-compass/screens/sheets-screen.tsx",
+        "src/components/work-screens/admin/people-sheets.tsx",
         "src/components/work-screens/assessments/assessments-export-page.tsx",
         "src/components/work-screens/assessments/assessments-trainee-page.tsx"
       ],
@@ -2372,6 +2374,7 @@
         "src/components/work-screens/admin/courses-page.tsx",
         "src/components/work-screens/admin/documents-page.tsx",
         "src/components/work-screens/admin/pay-page.tsx",
+        "src/components/work-screens/admin/people-sheets.tsx",
         "src/components/work-screens/admin/requests-page.tsx",
         "src/components/work-screens/admin/sharing-page.tsx",
         "src/components/work-screens/admin/tax-page.tsx",
@@ -2510,6 +2513,7 @@
         "src/components/work-screens/admin/courses-page.tsx",
         "src/components/work-screens/admin/documents-page.tsx",
         "src/components/work-screens/admin/pay-page.tsx",
+        "src/components/work-screens/admin/people-sheets.tsx",
         "src/components/work-screens/admin/requests-page.tsx",
         "src/components/work-screens/admin/sharing-page.tsx",
         "src/components/work-screens/admin/tax-page.tsx",
@@ -3273,6 +3277,8 @@
         "src/app/(search-app)/admin/courses/page.tsx",
         "src/app/(search-app)/admin/documents/page.tsx",
         "src/app/(search-app)/admin/help/page.tsx",
+        "src/app/(search-app)/admin/hospital/page.tsx",
+        "src/app/(search-app)/admin/hospital/sick/page.tsx",
         "src/app/(search-app)/admin/leave/page.tsx",
         "src/app/(search-app)/admin/new-job/pack/page.tsx",
         "src/app/(search-app)/admin/new-job/page.tsx",
@@ -3281,6 +3287,7 @@
         "src/app/(search-app)/admin/new-job/starter/page.tsx",
         "src/app/(search-app)/admin/page.tsx",
         "src/app/(search-app)/admin/pay/page.tsx",
+        "src/app/(search-app)/admin/people/page.tsx",
         "src/app/(search-app)/admin/renewals/page.tsx",
         "src/app/(search-app)/admin/requests/page.tsx",
         "src/app/(search-app)/admin/sharing/page.tsx",
@@ -3557,6 +3564,26 @@
           "sanctionedPatternsPresent": []
         },
         {
+          "file": "src/app/(search-app)/admin/hospital/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/admin/hospital/sick/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["ModeHome"]
+        },
+        {
           "file": "src/app/(search-app)/admin/leave/page.tsx",
           "exists": true,
           "imports": [],
@@ -3628,6 +3655,16 @@
         },
         {
           "file": "src/app/(search-app)/admin/pay/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/admin/people/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -6261,6 +6298,8 @@
       "src/app/(search-app)/admin/courses/page.tsx",
       "src/app/(search-app)/admin/documents/page.tsx",
       "src/app/(search-app)/admin/help/page.tsx",
+      "src/app/(search-app)/admin/hospital/page.tsx",
+      "src/app/(search-app)/admin/hospital/sick/page.tsx",
       "src/app/(search-app)/admin/leave/page.tsx",
       "src/app/(search-app)/admin/new-job/pack/page.tsx",
       "src/app/(search-app)/admin/new-job/page.tsx",
@@ -6269,6 +6308,7 @@
       "src/app/(search-app)/admin/new-job/starter/page.tsx",
       "src/app/(search-app)/admin/page.tsx",
       "src/app/(search-app)/admin/pay/page.tsx",
+      "src/app/(search-app)/admin/people/page.tsx",
       "src/app/(search-app)/admin/renewals/page.tsx",
       "src/app/(search-app)/admin/requests/page.tsx",
       "src/app/(search-app)/admin/sharing/page.tsx",
@@ -6478,6 +6518,8 @@
       "src/app/(search-app)/admin/courses/page.tsx",
       "src/app/(search-app)/admin/documents/page.tsx",
       "src/app/(search-app)/admin/help/page.tsx",
+      "src/app/(search-app)/admin/hospital/page.tsx",
+      "src/app/(search-app)/admin/hospital/sick/page.tsx",
       "src/app/(search-app)/admin/leave/page.tsx",
       "src/app/(search-app)/admin/new-job/pack/page.tsx",
       "src/app/(search-app)/admin/new-job/page.tsx",
@@ -6486,6 +6528,7 @@
       "src/app/(search-app)/admin/new-job/starter/page.tsx",
       "src/app/(search-app)/admin/page.tsx",
       "src/app/(search-app)/admin/pay/page.tsx",
+      "src/app/(search-app)/admin/people/page.tsx",
       "src/app/(search-app)/admin/renewals/page.tsx",
       "src/app/(search-app)/admin/requests/page.tsx",
       "src/app/(search-app)/admin/sharing/page.tsx",
@@ -6692,7 +6735,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 222,
+    "inheritedCkbV2RootCount": 225,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6701,8 +6744,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 223,
-    "productionRouteCount": 215,
-    "nextUiEntryCount": 323
+    "rootCount": 226,
+    "productionRouteCount": 218,
+    "nextUiEntryCount": 326
   }
 }
