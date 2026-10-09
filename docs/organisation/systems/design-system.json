@@ -55,6 +55,7 @@
     "src/lib/category-identity-icons.ts",
     "src/lib/category-identity.ts",
     "src/lib/cn.ts",
+    "src/lib/glass-fallback.ts",
     "src/lib/semantic-flags.ts",
     "src/lib/semantic-tone.ts",
     "src/lib/tailwind-merge.ts",
@@ -83,6 +84,7 @@
     "tests/error-state.dom.test.tsx",
     "tests/eslint-*",
     "tests/figma-sync-*",
+    "tests/glass-fallback.test.ts",
     "tests/global-v2-activation.test.ts",
     "tests/helpers/style-contracts.ts",
     "tests/icon-button.dom.test.tsx",
@@ -105,6 +107,8 @@
     "tests/ui-style-contract.spec.ts",
     "tests/ui-token-layer-resolution.spec.ts",
     "tests/ui-v2-*",
-    "tests/ui-visual-*"
+    "tests/ui-visual-*",
+    "tests/work-mode-contrast.test.ts",
+    "tests/work-state.dom.test.tsx"
   ]
 }
