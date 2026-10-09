@@ -52,11 +52,11 @@ const TITLE = "Hospital";
 const NO_HOSPITALS: readonly HospitalRef[] = [];
 
 /*
- * Rotation rounds and Courses are registered in `features.ts` on their own
- * branches. Widened through `string` so this builds before they merge. Drop the
- * casts once both ids are on this branch.
+ * Rotation rounds is registered in `features.ts`. Courses is registered on its
+ * own branch, so its id is widened through `string` until that merges. Drop the
+ * cast once it is on this branch.
  */
-const ROTATION_PREVIEW = "rotation-preferences" as string as LivePreviewFeatureId;
+const ROTATION_PREVIEW: LivePreviewFeatureId = "rotation-preferences";
 const COURSE_PREVIEW = "course-bookings" as string as LivePreviewFeatureId;
 
 /** The preview screens this reader gets. Each row still shows only to a role that may use it. */
