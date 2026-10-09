@@ -94,11 +94,24 @@ export const MY_DAY_EARLIER_ALERTS_STORAGE_KEY = "psychsift:my-day:earlier-alert
  */
 export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
 /**
+ * localStorage — Roster rotation preferences while example data is on: the example
+ * rounds (invented names, rotations and dates) as the reader changed them. Real
+ * rounds live with the team on the server and are never kept here.
+ */
+export const ROSTER_ROTATIONS_EXAMPLE_STORAGE_KEY = "psychsift:roster:rotations-example-v1";
+/**
  * localStorage — Remind me notes: short text and a due time, kept on this
  * device only. The sheet refuses initials, bed and record numbers and names,
  * and a shared device keeps none; cleared at every account transition.
  */
 export const REMIND_ME_STORAGE_KEY = "psychsift:alerts:remind-me-v1";
+/**
+ * localStorage — bell reminders this phone has queued to buzz it: an opaque
+ * random id per reminder, the bell item's id and its due time. No words, and
+ * the server holds only the random id and the time; cleared at every account
+ * transition.
+ */
+export const BELL_PHONE_QUEUE_STORAGE_KEY = "psychsift:alerts:bell-queue-v1";
 /**
  * localStorage — the Psychiatry hub's recently opened records: path, the page's
  * own title (a diagnosis, therapy or form name), section and time.
@@ -265,10 +278,12 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_EARLIER_ALERTS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, ADMIN_PAPERWORK_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, ROSTER_ROTATIONS_EXAMPLE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, BELL_PHONE_QUEUE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
   removeQuietly(() => window.localStorage, CPD_HOME_SEND_STORAGE_KEY);

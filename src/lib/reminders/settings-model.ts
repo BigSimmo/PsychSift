@@ -117,12 +117,31 @@ export type MorningBriefSettings = {
   readonly dayOff: string;
 };
 
+/**
+ * The bell's areas whose reminders may buzz the phone, in the bell's chip
+ * order. Your reminders (Remind me notes) are not one: they already buzz at
+ * the time set, so a second alert would be noise.
+ */
+export const BELL_PHONE_AREAS = ["on-call", "roster", "cme", "teaching", "my-work"] as const;
+export type BellPhoneArea = (typeof BELL_PHONE_AREAS)[number];
+
+/**
+ * Bell reminders on the phone: a reminder in the bell that falls due later
+ * buzzes the phone that queued it, never with its words. Off by default, so
+ * nobody is buzzed who did not ask. An area switched off never buzzes.
+ */
+export type BellPhoneSettings = {
+  readonly enabled: boolean;
+  readonly areas: Readonly<Record<BellPhoneArea, boolean>>;
+};
+
 export type ReminderSettings = {
   readonly types: Readonly<Record<ReminderType, ReminderTypeSettings>>;
   readonly quietHours: ReminderQuietHours;
   /** Calendar alerts a single Perth day may carry. */
   readonly maxAlertsPerDay: number;
   readonly brief: MorningBriefSettings;
+  readonly bellPhone: BellPhoneSettings;
 };
 
 export type ReminderSettingsPatch = {
@@ -130,6 +149,10 @@ export type ReminderSettingsPatch = {
   readonly quietHours?: Partial<ReminderQuietHours>;
   readonly maxAlertsPerDay?: number;
   readonly brief?: Partial<MorningBriefSettings>;
+  readonly bellPhone?: {
+    readonly enabled?: boolean;
+    readonly areas?: Partial<Record<BellPhoneArea, boolean>>;
+  };
 };
 
 export const MIN_ALERTS_PER_DAY = 1;
@@ -153,6 +176,10 @@ export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
   quietHours: { enabled: false, start: "21:00", end: "07:00" },
   maxAlertsPerDay: 3,
   brief: { enabled: false, workday: "07:00", dayOff: "09:00" },
+  bellPhone: {
+    enabled: false,
+    areas: { "on-call": true, roster: true, cme: true, teaching: true, "my-work": true },
+  },
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -186,6 +213,8 @@ export function normalizeReminderSettings(input: unknown): ReminderSettings {
   const types = isPlainObject(input.types) ? input.types : {};
   const quiet = isPlainObject(input.quietHours) ? input.quietHours : {};
   const brief = isPlainObject(input.brief) ? input.brief : {};
+  const bellPhone = isPlainObject(input.bellPhone) ? input.bellPhone : {};
+  const bellAreas = isPlainObject(bellPhone.areas) ? bellPhone.areas : {};
   const defaults = DEFAULT_REMINDER_SETTINGS;
   const cap = input.maxAlertsPerDay;
   return {
@@ -207,6 +236,15 @@ export function normalizeReminderSettings(input: unknown): ReminderSettings {
       workday: typeof brief.workday === "string" && isValidTime(brief.workday) ? brief.workday : defaults.brief.workday,
       dayOff: typeof brief.dayOff === "string" && isValidTime(brief.dayOff) ? brief.dayOff : defaults.brief.dayOff,
     },
+    bellPhone: {
+      enabled: typeof bellPhone.enabled === "boolean" ? bellPhone.enabled : defaults.bellPhone.enabled,
+      areas: Object.fromEntries(
+        BELL_PHONE_AREAS.map((area) => [
+          area,
+          typeof bellAreas[area] === "boolean" ? bellAreas[area] : defaults.bellPhone.areas[area],
+        ]),
+      ) as Record<BellPhoneArea, boolean>,
+    },
   };
 }
 
@@ -222,6 +260,10 @@ export function mergeReminderSettings(base: ReminderSettings, patch: ReminderSet
     quietHours: { ...base.quietHours, ...(patch.quietHours ?? {}) },
     maxAlertsPerDay: patch.maxAlertsPerDay ?? base.maxAlertsPerDay,
     brief: { ...base.brief, ...(patch.brief ?? {}) },
+    bellPhone: {
+      enabled: patch.bellPhone?.enabled ?? base.bellPhone.enabled,
+      areas: { ...base.bellPhone.areas, ...(patch.bellPhone?.areas ?? {}) },
+    },
   });
 }
 

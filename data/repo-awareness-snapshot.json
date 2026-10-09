@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-08"
+    "committed_at": "2026-10-09"
   },
   "routes": {
     "modes": [
@@ -734,6 +734,11 @@
         "area": "product"
       },
       {
+        "path": "/roster/manage/rotations/new",
+        "file": "src/app/(search-app)/roster/manage/rotations/new/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/reference/colour-coding",
         "file": "src/app/reference/colour-coding/page.tsx",
         "area": "product"
@@ -979,6 +984,11 @@
         "area": "product"
       },
       {
+        "path": "/roster/rotations",
+        "file": "src/app/(search-app)/roster/rotations/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/privacy-live-signal-perfected",
         "file": "src/app/mockups/privacy-live-signal-perfected/page.tsx",
         "area": "mockup"
@@ -992,6 +1002,11 @@
         "path": "/mockups/sidebar-live",
         "file": "src/app/mockups/sidebar-live/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/roster/manage/rotations",
+        "file": "src/app/(search-app)/roster/manage/rotations/page.tsx",
+        "area": "product"
       },
       {
         "path": "/differentials/compare",
@@ -1022,6 +1037,11 @@
         "path": "/mockups/care-plan/patients/[patientId]/safety-plan/print",
         "file": "src/app/mockups/care-plan/patients/[patientId]/safety-plan/print/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/roster/rotations/[roundId]",
+        "file": "src/app/(search-app)/roster/rotations/[roundId]/page.tsx",
+        "area": "product"
       },
       {
         "path": "/first-nations/mistakes",
@@ -1449,6 +1469,11 @@
         "area": "product"
       },
       {
+        "path": "/roster/manage/rotations/[roundId]",
+        "file": "src/app/(search-app)/roster/manage/rotations/[roundId]/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/development/clinical-trust",
         "file": "src/app/mockups/development/clinical-trust/page.tsx",
         "area": "mockup"
@@ -1845,6 +1870,10 @@
         "file": "src/app/api/roster/owner/teams/route.ts"
       },
       {
+        "path": "/api/work/roles",
+        "file": "src/app/api/work/roles/route.ts"
+      },
+      {
         "path": "/api/roster/extra-time",
         "file": "src/app/api/roster/extra-time/route.ts"
       },
@@ -2049,6 +2078,10 @@
         "file": "src/app/api/differentials/presentations/[slug]/route.ts"
       },
       {
+        "path": "/api/roster/rotations/[roundId]",
+        "file": "src/app/api/roster/rotations/[roundId]/route.ts"
+      },
+      {
         "path": "/api/site-content/publications",
         "file": "src/app/api/site-content/publications/route.ts"
       },
@@ -2123,6 +2156,10 @@
       {
         "path": "/api/on-call/services/join",
         "file": "src/app/api/on-call/services/join/route.ts"
+      },
+      {
+        "path": "/api/roster/rotations",
+        "file": "src/app/api/roster/rotations/route.ts"
       },
       {
         "path": "/api/account/favourites",
@@ -18623,6 +18660,14 @@
         "scope": "branch-cleanup",
         "outcome": "exact merged PR #1481 head; inactive clean worktree archived in verified batch1 bundle",
         "checks": "GitHub merged exact head, clean status, no Git operation, no open PR claim, bundle verify ok SHA256 18D9CFFD334278987D8FCCBED5F34125148BFF98C83D39287268103A5326BD2A"
+      },
+      {
+        "date": "2026-10-09",
+        "ref": "codex/chat-context7-docs-repair-2e43",
+        "head": "9ed0de528f2ba9720008865866788c91e5477b61",
+        "scope": "context7-documentation-publication",
+        "outcome": "Addressed ten documentation audit recommendations and three baseline-confirmed Windows test path failures; preserved clinical, retrieval and immutable-ledger controls",
+        "checks": "Whole format and selected static guards/lint passed; typecheck passed with 8GB heap after initial 4GB OOM; full unit run 27410 passed, 5 failed, 93 skipped; all failed cases and link checker rerun passed 90/90; build passed in isolated D checkout; fixture checks passed with existing medication sign-off hash warning; no live provider eval or browser validation"
       },
       {
         "date": "2026-08-12",

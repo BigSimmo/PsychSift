@@ -6,6 +6,7 @@ import { useCmeMyDaySource } from "@/components/my-day/sources/cme";
 import { useEntriesMyDaySources } from "@/components/my-day/sources/entries";
 import { useRosterMyDaySource } from "@/components/my-day/sources/roster";
 import { useTeachingMyDaySource } from "@/components/my-day/sources/teaching";
+import { useWorkCalendarMyDayItems, withWorkCalendarItems } from "@/components/my-day/sources/work-calendar";
 import type { NewJobProgress } from "@/lib/admin/new-job-progress";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
@@ -34,23 +35,29 @@ export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; rea
   const roster = useRosterMyDaySource({ enabled, now });
   const cme = useCmeMyDaySource({ enabled, now });
   const teaching = useTeachingMyDaySource({ enabled, now });
+  // Rotation starts and ends (and other work calendar entries) ride on Roster's read: they never fail My Day.
+  const calendarItems = useWorkCalendarMyDayItems({ enabled, now });
+  const rosterResult = useMemo(
+    () => withWorkCalendarItems(roster.result, calendarItems),
+    [roster.result, calendarItems],
+  );
 
   // Every source answering "signed out" while auth still says authenticated means the session lapsed: the whole
   // view is signed out (so the sign-in prompt shows), not a failed read that Retry could never fix.
   const sessionLapsed =
     enabled &&
-    [entries.onCall, roster.result, cme.result, teaching.result, entries.admin].every(
+    [entries.onCall, rosterResult, cme.result, teaching.result, entries.admin].every(
       (source) => source.status === "signed-out",
     );
   const sources: readonly MyDaySourceResult[] = useMemo(() => {
-    const all = [entries.onCall, roster.result, cme.result, teaching.result, entries.admin];
+    const all = [entries.onCall, rosterResult, cme.result, teaching.result, entries.admin];
     // While enabled, a source that answers "signed out" (the session lapsed under it) did not check anything.
     return enabled
       ? all.map((source): MyDaySourceResult =>
           source.status === "signed-out" ? { ...source, status: "failed" } : source,
         )
       : all;
-  }, [enabled, entries.onCall, entries.admin, roster.result, cme.result, teaching.result]);
+  }, [enabled, entries.onCall, entries.admin, rosterResult, cme.result, teaching.result]);
   const items = useMemo(() => mergeMyDayItems(sources.map((source) => source.items)), [sources]);
 
   const retryEntries = entries.retry;
