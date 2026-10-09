@@ -18,6 +18,9 @@ vi.mock("@/components/roster/use-roster-team", () => ({
   postRosterAction: mocks.post,
 }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => ({ status: "authenticated", authEpoch: 1 }) }));
+vi.mock("@/components/roster/staffing/use-staffing-needs", () => ({
+  useStaffingNeeds: () => ({ needs: [], reload: () => undefined }),
+}));
 vi.mock("@/components/roster/ask/roster-ask-box", () => ({ RosterAskButton: () => null }));
 vi.mock("@/components/roster/use-roster-shifts", () => ({ useRosterShifts: () => ({ status: "ready", shifts: [] }) }));
 vi.mock("@/components/ui/sheet", () => ({
@@ -214,7 +217,7 @@ it("offers Team staffing before the Leave list", async () => {
   expect(entry.compareDocumentPosition(leaveList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
-it("Plan leave shows the team staffing check for the picked dates, never a safe number", async () => {
+it("Plan leave shows the team staffing check for the picked dates, and says when no safe number is set", async () => {
   const user = userEvent.setup();
   reads.requests.swaps = [];
   render(<RosterRequestsPage />);
@@ -226,7 +229,7 @@ it("Plan leave shows the team staffing check for the picked dates, never a safe 
   // No published roster for these dates: not checked, never shown as fine.
   expect(check.textContent).toContain("Can't check yet.");
   expect(check.textContent).toContain("Counts Day and Evening (late) shifts only.");
-  expect(check.textContent).toContain("safe number isn't set in PsychSift");
+  expect(check.textContent).toContain("Your roster manager hasn't set a safe number for this team yet.");
 });
 
 it("checks planned leave against my team shifts: the clash, its day, and who else is off", async () => {

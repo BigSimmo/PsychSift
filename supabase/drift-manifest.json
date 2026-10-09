@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-08T00:40:52.772Z",
+  "generated_at": "2026-10-09T00:47:26.208Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "d8a46a6023c8b50590ba338e9ddf5c06508f1fd6ff02282ce682458e5a4ad3c6",
-  "replay_seconds": 20,
+  "schema_sha256": "bac0ef424fdfd01b82e3f4c64adc71e1d72643c050e6a7e946e69db4c5d872fb",
+  "replay_seconds": 33,
   "snapshot": {
     "views": [
       {
@@ -12879,6 +12879,194 @@
         "reloptions": null,
         "rls_forced": false,
         "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "work_hospital_teams",
+        "columns": [
+          {
+            "name": "hospital_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "linked_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "linked_by",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "work_hospitals",
+        "columns": [
+          {
+            "name": "archived_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_by",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "name",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "work_role_grants",
+        "columns": [
+          {
+            "name": "granted_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "granted_by",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "hospital_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "revoked_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "revoked_by",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "role",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "subject_user_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "user_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
       }
     ],
     "indexes": [
@@ -15647,6 +15835,60 @@
         "name": "work_backups_pkey",
         "table": "work_backups",
         "def_hash": "71ff6f06617b918855729f2b7b8fdc2d"
+      },
+      {
+        "def": "CREATE INDEX work_hospital_teams_hospital_idx ON public.work_hospital_teams USING btree (hospital_id)",
+        "name": "work_hospital_teams_hospital_idx",
+        "table": "work_hospital_teams",
+        "def_hash": "4805e874f904906c476d67cc2915ac99"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_hospital_teams_pkey ON public.work_hospital_teams USING btree (service_id)",
+        "name": "work_hospital_teams_pkey",
+        "table": "work_hospital_teams",
+        "def_hash": "e85c3e044d234954ef48c9b3076843aa"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_hospitals_name_idx ON public.work_hospitals USING btree (lower(btrim(name))) WHERE (archived_at IS NULL)",
+        "name": "work_hospitals_name_idx",
+        "table": "work_hospitals",
+        "def_hash": "dd2a3e429d401eb6defeee800148744d"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_hospitals_pkey ON public.work_hospitals USING btree (id)",
+        "name": "work_hospitals_pkey",
+        "table": "work_hospitals",
+        "def_hash": "e6fca205ce54a034bf8a59152955f764"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_role_grants_active_idx ON public.work_role_grants USING btree (user_id, role, hospital_id, COALESCE(service_id, '00000000-0000-0000-0000-000000000000'::uuid), COALESCE(subject_user_id, '00000000-0000-0000-0000-000000000000'::uuid)) WHERE (revoked_at IS NULL)",
+        "name": "work_role_grants_active_idx",
+        "table": "work_role_grants",
+        "def_hash": "92828cb1d0f95f5dd411ce283599a59e"
+      },
+      {
+        "def": "CREATE INDEX work_role_grants_hospital_idx ON public.work_role_grants USING btree (hospital_id) WHERE (revoked_at IS NULL)",
+        "name": "work_role_grants_hospital_idx",
+        "table": "work_role_grants",
+        "def_hash": "ffd4d9ccdefaa1e6839c38ac53e43cc8"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX work_role_grants_pkey ON public.work_role_grants USING btree (id)",
+        "name": "work_role_grants_pkey",
+        "table": "work_role_grants",
+        "def_hash": "8d2ec7fa2af6a68166037dda60c39270"
+      },
+      {
+        "def": "CREATE INDEX work_role_grants_subject_idx ON public.work_role_grants USING btree (subject_user_id) WHERE (revoked_at IS NULL)",
+        "name": "work_role_grants_subject_idx",
+        "table": "work_role_grants",
+        "def_hash": "61ed7a4d3dbbe49d6aa86b3f820975e4"
+      },
+      {
+        "def": "CREATE INDEX work_role_grants_user_idx ON public.work_role_grants USING btree (user_id) WHERE (revoked_at IS NULL)",
+        "name": "work_role_grants_user_idx",
+        "table": "work_role_grants",
+        "def_hash": "84bd8bbcbe4bc645bf8e674db83b2a03"
       }
     ],
     "policies": [
@@ -19058,6 +19300,22 @@
         ],
         "def_hash": "d354c856a77f9249398d4768d2e27d8d",
         "signature": "public.withdraw_public_source_version(uuid,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "43573717a05ab9e4f4da2fdcc0a289bb",
+        "signature": "public.work_can(uuid,text,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "bd56290b6046a516b82b66989a6b5386",
+        "signature": "public.work_user_id_by_email(text)"
       }
     ],
     "extensions": [
@@ -23495,6 +23753,96 @@
         "def": "CHECK ((section = ANY (ARRAY['term_tracker'::text, 'exam_prep'::text, 'job_applications'::text])))",
         "name": "work_backups_section_check",
         "table": "work_backups"
+      },
+      {
+        "def": "FOREIGN KEY (hospital_id) REFERENCES public.work_hospitals(id) ON DELETE CASCADE",
+        "name": "work_hospital_teams_hospital_id_fkey",
+        "table": "work_hospital_teams"
+      },
+      {
+        "def": "FOREIGN KEY (linked_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "work_hospital_teams_linked_by_fkey",
+        "table": "work_hospital_teams"
+      },
+      {
+        "def": "PRIMARY KEY (service_id)",
+        "name": "work_hospital_teams_pkey",
+        "table": "work_hospital_teams"
+      },
+      {
+        "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
+        "name": "work_hospital_teams_service_id_fkey",
+        "table": "work_hospital_teams"
+      },
+      {
+        "def": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "work_hospitals_created_by_fkey",
+        "table": "work_hospitals"
+      },
+      {
+        "def": "CHECK (((btrim(name) <> ''::text) AND (char_length(name) <= 160)))",
+        "name": "work_hospitals_name_check",
+        "table": "work_hospitals"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "work_hospitals_pkey",
+        "table": "work_hospitals"
+      },
+      {
+        "def": "FOREIGN KEY (granted_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "work_role_grants_granted_by_fkey",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "FOREIGN KEY (hospital_id) REFERENCES public.work_hospitals(id) ON DELETE CASCADE",
+        "name": "work_role_grants_hospital_id_fkey",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "CHECK (((subject_user_id IS NULL) OR (subject_user_id <> user_id)))",
+        "name": "work_role_grants_not_self",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "CHECK (((granted_by IS NULL) OR (granted_by <> user_id)))",
+        "name": "work_role_grants_not_self_granted",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "work_role_grants_pkey",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "FOREIGN KEY (revoked_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "work_role_grants_revoked_by_fkey",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "CHECK ((role = ANY (ARRAY['workforce'::text, 'dct'::text, 'supervisor'::text])))",
+        "name": "work_role_grants_role_check",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
+        "name": "work_role_grants_service_id_fkey",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "CHECK ((((role = ANY (ARRAY['workforce'::text, 'dct'::text])) AND (service_id IS NULL) AND (subject_user_id IS NULL)) OR ((role = 'supervisor'::text) AND ((service_id IS NULL) <> (subject_user_id IS NULL)))))",
+        "name": "work_role_grants_shape",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "FOREIGN KEY (subject_user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "work_role_grants_subject_user_id_fkey",
+        "table": "work_role_grants"
+      },
+      {
+        "def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "work_role_grants_user_id_fkey",
+        "table": "work_role_grants"
       }
     ],
     "storage_buckets": [

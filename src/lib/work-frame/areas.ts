@@ -94,7 +94,13 @@ export type WorkFrameGate =
    * Readers who are not signed in. For an example-only area whose real records a signed-in
    * doctor keeps elsewhere (Assessments, kept in CLA: owner decision 7 Oct 2026).
    */
-  | "signed-out";
+  | "signed-out"
+  /**
+   * Hospital-side roles: the site administrator, Medical Workforce or the DCT, from
+   * `useWorkRoles`. Also open while example data is switched on or the reader is signed
+   * out, so the example hospital can be looked around. The page checks again on the server.
+   */
+  | "hospital-role";
 
 /** Actions a page can register for the More sheet to run. */
 export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
@@ -1035,6 +1041,25 @@ const admin: WorkArea = {
           icon: "layers",
           href: "/admin/workforce",
           band: false,
+        },
+        {
+          id: "admin-people",
+          label: "People and roles",
+          short: "People",
+          sub: "Who holds which role",
+          icon: "users",
+          href: "/admin/people",
+          gate: "hospital-role",
+        },
+        {
+          id: "admin-hospital",
+          label: "Hospital",
+          sub: "Your hospital role screens",
+          icon: "shield",
+          href: "/admin/hospital",
+          // The trailing slash makes the item current on Sick calls too.
+          paths: ["/admin/hospital", "/admin/hospital/"],
+          gate: "hospital-role",
         },
         // Extra time is kept in Roster's hours panel, so the tap leaves Admin.
         {

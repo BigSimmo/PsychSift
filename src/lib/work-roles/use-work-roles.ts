@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 
+import { useAuthIfAvailable } from "@/lib/example-data/store";
 import {
   decideWorkCapability,
   heldWorkRoles,
@@ -29,6 +30,8 @@ let request: Promise<void> | null = null;
 /** Bumped on every reset, so an answer for the account before a sign-in or sign-out is dropped. */
 let generation = 0;
 const listeners = new Set<() => void>();
+/** The account the roles were read for. Undefined until the first read, null when signed out. */
+let readFor: string | null | undefined;
 
 function publish(next: Snapshot) {
   snapshot = next;
@@ -41,7 +44,8 @@ function load(): Promise<void> {
   const settle = (next: Snapshot) => {
     if (started === generation) publish(next);
   };
-  request = fetch("/api/work/roles", { cache: "no-store", credentials: "same-origin" })
+  request = Promise.resolve()
+    .then(() => fetch("/api/work/roles", { cache: "no-store", credentials: "same-origin" }))
     .then(async (response) => {
       if (response.status === 401) return settle({ status: "signed-out", grants: [] });
       if (!response.ok) return settle({ status: "unavailable", grants: [] });
@@ -77,11 +81,22 @@ export type WorkRolesView = {
   readonly can: (capability: WorkCapability, scope: WorkScope) => boolean;
 };
 
-export function useWorkRoles(): WorkRolesView {
+/** Pass `enabled: false` (for example while signed out) to skip the read. */
+export function useWorkRoles(enabled = true): WorkRolesView {
+  const auth = useAuthIfAvailable();
+  const userId = auth?.session?.user?.id ?? null;
   const current = useSyncExternalStore(subscribe, readSnapshot, serverSnapshot);
   useEffect(() => {
+    if (!enabled) return;
+    // Another account signed in on this page: forget the last one's roles first.
+    if (readFor !== undefined && readFor !== userId) {
+      readFor = userId;
+      resetWorkRoles();
+      return;
+    }
+    readFor = userId;
     if (current.status === "loading") void load();
-  }, [current.status]);
+  }, [enabled, userId, current.status]);
   const check = useCallback(
     (capability: WorkCapability, scope: WorkScope) =>
       current.status === "ready" && decideWorkCapability(current.grants, capability, scope),

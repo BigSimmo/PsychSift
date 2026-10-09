@@ -1274,6 +1274,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/hospital",
+        "file": "src/app/(search-app)/admin/hospital/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/cme/plan",
         "file": "src/app/(search-app)/cme/plan/page.tsx",
         "area": "product"
@@ -1299,6 +1304,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/people",
+        "file": "src/app/(search-app)/admin/people/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/calculators-search",
         "file": "src/app/mockups/calculators-search/page.tsx",
         "area": "mockup"
@@ -1307,6 +1317,11 @@
         "path": "/mockups/care-plan/patients",
         "file": "src/app/mockups/care-plan/patients/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/admin/hospital/sick",
+        "file": "src/app/(search-app)/admin/hospital/sick/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/care-plan/patients/[patientId]/presentations/[presentationId]",
@@ -1829,6 +1844,10 @@
         "file": "src/app/api/health/ready/route.ts"
       },
       {
+        "path": "/api/work/hospital/sick",
+        "file": "src/app/api/work/hospital/sick/route.ts"
+      },
+      {
         "path": "/api/roster/links/refresh",
         "file": "src/app/api/roster/links/refresh/route.ts"
       },
@@ -1887,6 +1906,10 @@
       {
         "path": "/api/documents/bulk/reindex",
         "file": "src/app/api/documents/bulk/reindex/route.ts"
+      },
+      {
+        "path": "/api/roster/team/[serviceId]/staffing-needs",
+        "file": "src/app/api/roster/team/[serviceId]/staffing-needs/route.ts"
       },
       {
         "path": "/api/documents/[id]",
@@ -2087,6 +2110,10 @@
       {
         "path": "/api/cme/drafts",
         "file": "src/app/api/cme/drafts/route.ts"
+      },
+      {
+        "path": "/api/work/people",
+        "file": "src/app/api/work/people/route.ts"
       },
       {
         "path": "/api/cme/routines/[id]",

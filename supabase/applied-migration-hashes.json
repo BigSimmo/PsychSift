@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-08T00:41:12.606Z",
+  "sealed_at": "2026-10-09T00:52:55.352Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -275,8 +275,8 @@
     "20260926040000_anonymous_rate_limits_atomic.sql": "af977ae6728cab227278bd32bcc36efe8cdea6639ba4fe5b1666f5cfcb3b77ba",
     "20260926041000_retire_invoke_ingestion_worker.sql": "d6d900e67a702d9b369ca1723d0f8d453f1c9712c185a9d37ed234b7c2ff406b",
     "20260926041100_indexing_v3_agent_cron_sends_jwt.sql": "3ca22bc98e8683cb5296d5ef29132b09a0fa2b08abc51942b45f8fc162eb6740",
-    "20260926060000_cme_cpd_records.sql": "4f3e111d652a3cc24de1eb9158b4aacdf36ba2ee183577111ee31ce8a5acd931",
     "20260926051500_on_call_shifts.sql": "7d503bd4bba6cfb2aed9250030a58e5fa86cd07a60345428103e9133d96f08c9",
+    "20260926060000_cme_cpd_records.sql": "4f3e111d652a3cc24de1eb9158b4aacdf36ba2ee183577111ee31ce8a5acd931",
     "20260926170000_repair_import_stamped_locally_reviewed.sql": "417bfc4a5d46f92d2e695a1670eeab493192a1552ff8545f60e7ff94c2f0330d",
     "20260926225209_roster_shared_services_hardening.sql": "0c65fa74f18f012917e4204570739b9372dd34ded0f316498411776ceb2eecbd",
     "20260926225309_on_call_service_items.sql": "95a53ff9f2e049847c8b7bfb2e669cf653143b3b05863efea653aae8652cde10",
@@ -293,6 +293,7 @@
     "20261006070000_alerts_timed_sender.sql": "7000c08a6cdfd77e0ee7114af5d3f0e8ba324e20882f5e140331e7a7dd23bf16",
     "20261006120000_favourite_set_custom_names.sql": "093317106ee3a26ba9f251ce7da4f5e934afcf68553aa0b8e85912f47d8b41f0",
     "20261008003000_work_admin_paperwork.sql": "1bf1871f2e5a7d171b0c45347a29586b9b9e0f91170ae3a579a0e40c8a227f1c",
-    "20261008003100_work_backups.sql": "d9a2d479983fa8f3ec8edbd69b6cd1e3fff125980d98fc6866bbd2ed41f1283e"
+    "20261008003100_work_backups.sql": "d9a2d479983fa8f3ec8edbd69b6cd1e3fff125980d98fc6866bbd2ed41f1283e",
+    "20261009010000_work_roles.sql": "fa118aa4e94f7b2e2a72efa405b44dcdea37aadb94e7f549501dccdfcb8076b6"
   }
 }

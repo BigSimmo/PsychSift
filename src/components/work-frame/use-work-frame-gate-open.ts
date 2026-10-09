@@ -4,9 +4,13 @@ import { useCallback, useSyncExternalStore } from "react";
 
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { useExampleData } from "@/lib/example-data/store";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
 import { useOpenShiftsIsPoster, useTeachingRoles } from "@/lib/teaching/page-visibility";
 import type { WorkFrameGate, WorkFrameItem } from "@/lib/work-frame/areas";
+import { useWorkRoles } from "@/lib/work-roles/use-work-roles";
+
+const HOSPITAL_ROLES = new Set(["administrator", "workforce", "dct"]);
 
 /** Whether this reader may see an item with this gate, as the work frame's tabs and More sheet decide it. */
 export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boolean {
@@ -15,6 +19,9 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const editor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
   const newWorkMode = useNewWorkMode();
   const signedIn = useSignedIn();
+  const workRoles = useWorkRoles(signedIn);
+  const examplesOn = useExampleData().mode === "on";
+  const hospitalRole = examplesOn || !signedIn || workRoles.roles.some((role) => HOSPITAL_ROLES.has(role));
   return useCallback(
     (gate) => {
       if (!gate) return true;
@@ -23,9 +30,10 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "new-work-mode") return newWorkMode;
       if (gate === "classic-work-mode") return !newWorkMode;
       if (gate === "signed-out") return !signedIn;
+      if (gate === "hospital-role") return hospitalRole;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn],
+    [roles, poster, editor, newWorkMode, signedIn, hospitalRole],
   );
 }
 

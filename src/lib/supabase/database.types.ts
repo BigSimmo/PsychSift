@@ -4727,6 +4727,29 @@ export type Database = {
         { owner_id: string; section: string; record: Json | null; updated_at: string },
         "owner_id" | "section"
       >;
+      work_hospitals: GeneratedTable<
+        { id: string; name: string; created_by: string | null; created_at: string; archived_at: string | null },
+        "name"
+      >;
+      work_hospital_teams: GeneratedTable<
+        { service_id: string; hospital_id: string; linked_by: string | null; linked_at: string },
+        "service_id" | "hospital_id"
+      >;
+      work_role_grants: GeneratedTable<
+        {
+          id: string;
+          user_id: string;
+          role: "workforce" | "dct" | "supervisor";
+          hospital_id: string;
+          service_id: string | null;
+          subject_user_id: string | null;
+          granted_by: string | null;
+          granted_at: string;
+          revoked_by: string | null;
+          revoked_at: string | null;
+        },
+        "user_id" | "role" | "hospital_id"
+      >;
     };
     Views: {
       document_strict_gate_status: {
@@ -4823,6 +4846,17 @@ export type Database = {
       };
       service_member_active: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
       roster_can_invite: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
+      work_can: {
+        Args: {
+          p_actor_id: string;
+          p_capability: string;
+          p_service_id?: string | null;
+          p_hospital_id?: string | null;
+          p_subject_user?: string | null;
+        };
+        Returns: boolean;
+      };
+      work_user_id_by_email: { Args: { p_email: string }; Returns: string | null };
       cme_confirm_year: { Args: { p_owner_id: string; p_set: Json }; Returns: string };
       cme_save_plan_goals: { Args: { p_owner_id: string; p_year_id: string; p_goals: Json }; Returns: Json };
       cme_save_plan_goals_checked: {

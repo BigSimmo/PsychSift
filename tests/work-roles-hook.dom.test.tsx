@@ -29,7 +29,7 @@ describe("useWorkRoles", () => {
 
     // Sign-out while the first read is still out: a fresh read starts straight away.
     act(() => resetWorkRoles());
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
     await act(async () => {
       first.resolve(new Response(JSON.stringify({ grants: [{ role: "administrator" }] }), { status: 200 }));

@@ -3,10 +3,13 @@ import { cn } from "@/components/ui-primitives";
 import { WEEKDAYS } from "@/lib/roster/shifts/perth-time";
 import {
   STAFFING_COUNTS_WORDS,
+  hasSafeNumber,
   inRange,
+  judgeDay,
   onIfAway,
   staffingDayLabel,
   type StaffingDay,
+  type StaffingNeed,
   type StaffingWindow,
 } from "@/lib/roster/staffing/team-staffing";
 
@@ -27,11 +30,16 @@ import {
 /** Bar track height in px; the track itself is `h-14` (56px), so keep the two in step. */
 const BAR_PX = 56;
 
+/** The amber review tag the roster already uses for a crossed rule: border, tint and text together. */
+export const BELOW_SAFE_TAG =
+  "border border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] text-[color:var(--warning-text)]";
+
 export function RosterStaffingStrip({
   days,
   leave,
   today,
   lowestDays = [],
+  needs = null,
   onPick,
   label = "How many of the team are on a Day or Evening shift each day",
   testId,
@@ -41,12 +49,15 @@ export function RosterStaffingStrip({
   readonly today: string;
   /** The leave days with the fewest on, marked for the eye and for screen readers. */
   readonly lowestDays?: readonly string[];
+  /** The team's cover needs. Null or absent: no safe number to judge against. */
+  readonly needs?: readonly StaffingNeed[] | null;
   readonly onPick?: (date: string) => void;
   readonly label?: string;
   readonly testId?: string;
 }) {
   const known = days.map((day) => day.on ?? 0);
   const top = Math.max(1, ...known);
+  const judging = hasSafeNumber(needs);
   const weeks: StaffingDay[][] = [];
   for (let index = 0; index < days.length; index += 7) weeks.push(days.slice(index, index + 7));
 
@@ -65,12 +76,14 @@ export function RosterStaffingStrip({
             const unknown = day.on === null;
             const count = unknown ? null : away ? onIfAway(day)! : day.on!;
             const lowest = away && lowestDays.includes(day.date);
+            const judgement = judging && needs ? judgeDay(day, needs, away) : null;
+            const below = !!judgement?.below;
             const past = day.date < today;
             const filled = count ?? 0;
             const height = unknown ? BAR_PX * 0.7 : Math.max(2, Math.round((filled / top) * BAR_PX));
             const youHeight = away && day.youWork && !unknown ? Math.max(4, Math.round(BAR_PX / top)) : 0;
             const weekday = WEEKDAYS[new Date(`${day.date}T00:00:00Z`).getUTCDay()]!;
-            const sentence = `${staffingDayLabel(day, leave)}${lowest ? ", fewest on" : ""}${away ? ", in your leave" : ""}${past ? ", past" : ""}`;
+            const sentence = `${staffingDayLabel(day, leave, judging ? needs : null)}${lowest ? ", fewest on" : ""}${away ? ", in your leave" : ""}${past ? ", past" : ""}`;
             const body = (
               <>
                 <span
@@ -79,9 +92,11 @@ export function RosterStaffingStrip({
                     "text-xs font-bold leading-none",
                     unknown
                       ? "text-[color:var(--text-muted)]"
-                      : lowest
-                        ? "text-[color:var(--mode-identity)]"
-                        : "text-[color:var(--text-heading)]",
+                      : below
+                        ? "text-[color:var(--warning-text)]"
+                        : lowest
+                          ? "text-[color:var(--mode-identity)]"
+                          : "text-[color:var(--text-heading)]",
                   )}
                 >
                   {unknown ? "?" : count}
@@ -122,6 +137,18 @@ export function RosterStaffingStrip({
                     {Number(day.date.slice(8, 10))}
                   </span>
                 </span>
+                {judging ? (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "nums min-h-4 whitespace-nowrap rounded-sm px-1 text-2xs font-semibold leading-4",
+                      below ? BELOW_SAFE_TAG : "text-[color:var(--text-muted)]",
+                    )}
+                    data-staffing-need={judgement ? judgement.needed : undefined}
+                  >
+                    {judgement ? `needs ${judgement.needed}` : ""}
+                  </span>
+                ) : null}
               </>
             );
             const tile = cn(
@@ -130,7 +157,12 @@ export function RosterStaffingStrip({
               !away && "border border-transparent",
             );
             return (
-              <li key={day.date} className="min-w-12" data-staffing-day={day.date}>
+              <li
+                key={day.date}
+                className="min-w-12"
+                data-staffing-day={day.date}
+                data-below-safe={below ? "true" : undefined}
+              >
                 {onPick && !past ? (
                   <button
                     type="button"
@@ -158,7 +190,14 @@ export function RosterStaffingStrip({
   );
 }
 
-export function RosterStaffingLegend({ showYou }: { readonly showYou: boolean }) {
+export function RosterStaffingLegend({
+  showYou,
+  showBelow = false,
+}: {
+  readonly showYou: boolean;
+  /** Some day shown is below the safe number. */
+  readonly showBelow?: boolean;
+}) {
   return (
     <div
       aria-hidden="true"
@@ -179,6 +218,12 @@ export function RosterStaffingLegend({ showYou }: { readonly showYou: boolean })
         <i className="inline-block h-2 w-3 rounded-sm border border-[color:var(--border-strong)] bg-[repeating-linear-gradient(135deg,var(--surface-subtle)_0_3px,var(--surface-raised)_3px_5px)]" />
         Not published
       </span>
+      {showBelow ? (
+        <span className="inline-flex items-center gap-1.5">
+          <i className={cn("inline-block h-2 w-3 rounded-sm", BELOW_SAFE_TAG)} />
+          Below safe number
+        </span>
+      ) : null}
     </div>
   );
 }

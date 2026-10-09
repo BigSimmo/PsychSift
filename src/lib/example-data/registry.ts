@@ -10,6 +10,8 @@ import type { EpaRecord } from "@/lib/teaching/assessments/sample";
 import type { SessionSummary } from "@/lib/teaching/model";
 import type { TermTrackerState } from "@/lib/teaching/term-tracker";
 import type { WorkAreaId } from "@/lib/work-frame/areas";
+import type { ExampleHospitalHub } from "@/lib/work-roles/hospital-hub";
+import type { ExampleWorkPeople } from "@/lib/work-roles/people-model";
 import type { AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
 import type { EarlierAlert } from "@/lib/work-screens/my-day/earlier-alerts";
 import { DEFAULT_WORK_TIME_ZONE } from "@/lib/work-time/zones";
@@ -50,6 +52,8 @@ export type ExampleDatasets = {
   "admin.pay": AdminPaperwork;
   "admin.tax": AdminPaperwork;
   "admin.workforce": ExampleWorkforce;
+  "admin.people": ExampleWorkPeople;
+  "admin.hospital": ExampleHospitalHub;
 };
 
 export type ExampleDatasetKey = keyof ExampleDatasets;
@@ -87,6 +91,9 @@ const LOADERS: { [K in ExampleDatasetKey]: Loader<K> } = {
   "admin.pay": async () => (await import("@/lib/example-data/datasets/admin-paperwork")).examplePayslips(),
   "admin.tax": async () => (await import("@/lib/example-data/datasets/admin-paperwork")).exampleTax(),
   "admin.workforce": async () => (await import("@/lib/example-data/datasets/admin-workforce")).exampleWorkforce(),
+  "admin.people": async () => (await import("@/lib/example-data/datasets/admin-people")).exampleWorkPeople(),
+  "admin.hospital": async (now, zone) =>
+    (await import("@/lib/example-data/datasets/admin-hospital")).exampleHospitalHub(now, zone),
 };
 
 /** Which area each dataset belongs to, so a screen only shows it while that area's example data is on. */
@@ -109,6 +116,8 @@ export const EXAMPLE_DATASET_AREA: { readonly [K in ExampleDatasetKey]: WorkArea
   "admin.pay": "admin",
   "admin.tax": "admin",
   "admin.workforce": "admin",
+  "admin.people": "admin",
+  "admin.hospital": "admin",
 };
 
 export const EXAMPLE_DATASET_KEYS = Object.keys(LOADERS) as ExampleDatasetKey[];

@@ -61,6 +61,8 @@ export type WorkRoleGrant =
     }
   | {
       readonly role: "supervisor";
+      /** The hospital that gave the role, for display and for who may remove it. */
+      readonly hospitalId?: string | null;
       /** A whole-team supervisor. */
       readonly serviceId?: string | null;
       /** A supervisor of one trainee. */
