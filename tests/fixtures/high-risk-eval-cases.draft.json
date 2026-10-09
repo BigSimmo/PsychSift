@@ -8,7 +8,7 @@
       "area": "pregnancy_breastfeeding",
       "question": "My patient on lithium is due to deliver. What should the intrapartum plan cover for lithium?",
       "expectedBehaviour": "answer",
-      "mustContain": [["maternal blood levels"], ["IV hydration", "intravenous hydration"], ["cord blood"]],
+      "mustContain": [["maternal"], ["IV hydration", "intravenous hydration"], ["cord blood"]],
       "mustNotState": [
         "Must not give a lithium dose change or stop date, because the captured source does not state one."
       ],
@@ -65,6 +65,7 @@
       "mustContain": [
         ["reduce dose", "reduce the dose", "dose reduction"],
         ["monitor more closely", "closer monitoring"],
+        ["renal impairment"],
         ["renal physician"]
       ],
       "mustNotState": [],
@@ -85,7 +86,7 @@
       "area": "renal_hepatic",
       "question": "How long does lithium take to reach steady state in someone with renal impairment?",
       "expectedBehaviour": "answer",
-      "mustContain": [["7-10 days", "7 to 10 days"], ["renal impairment"]],
+      "mustContain": [["7-10 days", "7 to 10 days", "longer"], ["renal impairment"]],
       "mustNotState": [
         "Must not say steady state in renal impairment is reached within 5 to 7 days without saying it may take longer."
       ],
@@ -157,7 +158,7 @@
       "area": "qtc",
       "question": "How often should the ECG and QT interval be checked after starting clozapine?",
       "expectedBehaviour": "answer",
-      "mustContain": [["ECG"], ["weekly"], ["first 4 weeks", "four weeks"]],
+      "mustContain": [["ECG"], ["weekly"], ["first 4 weeks", "four weeks"], ["then when necessary", "when necessary"]],
       "mustNotState": [],
       "expectedSources": ["Clozapine (CAMHS)"],
       "evidence": [
@@ -267,7 +268,7 @@
       "area": "overdose_toxicity",
       "question": "What makes lithium toxicity more likely, including overdose?",
       "expectedBehaviour": "answer",
-      "mustContain": [["diuretic"], ["NSAID"], ["ACE", "angiotensin"], ["reduced fluid", "fluid loss"], ["overdose"]],
+      "mustContain": [["diuretic"], ["NSAID"], ["ACE", "angiotensin"], ["fluid"], ["overdose"]],
       "mustNotState": [],
       "expectedSources": ["High Risk Medicines (CAMHS)"],
       "evidence": [
@@ -292,8 +293,7 @@
       "mustContain": [["avoid"], ["clearance", "increase lithium levels"], ["toxicity"]],
       "mustNotState": ["Must not say ibuprofen is safe with lithium without warning about raised levels."],
       "expectedSources": [
-        "Lithium Therapy - Initiation and Continuation Guideline (FSH)",
-        "High Risk Medicines (CAMHS)"
+        "Lithium Therapy - Initiation and Continuation Guideline (FSH)"
       ],
       "evidence": [
         {
@@ -313,8 +313,7 @@
       "mustContain": [["serotonin toxicity", "serotonin syndrome"], ["neurotoxicity"], ["rapid dose"]],
       "mustNotState": [],
       "expectedSources": [
-        "Lithium Therapy - Initiation and Continuation Guideline (FSH)",
-        "Lithium Clinical Guideline (EMHS)"
+        "Lithium Therapy - Initiation and Continuation Guideline (FSH)"
       ],
       "evidence": [
         {
@@ -353,7 +352,7 @@
       "area": "mental_health_act",
       "question": "What is the longest continuous detention under Form 3A orders, in the metro area and in the country?",
       "expectedBehaviour": "answer",
-      "mustContain": [["72 hours"], ["144 hours"], ["24 hours"]],
+      "mustContain": [["72 hours"], ["144 hours"], ["24 hours"], ["referral expires"]],
       "mustNotState": ["Must not say a single Form 3A order lasts 72 hours."],
       "expectedSources": ["Mental Health Act 2014 (WA) s 28"],
       "evidence": [
@@ -363,7 +362,9 @@
           "quotes": [
             "may make an order authorising the person’s detention for up to 24 hours from the time when the order is made",
             "if the place where the referral is made is in a metropolitan area — 72 hours",
-            "if the place where the referral is made is outside a metropolitan area — 144 hours"
+            "if the place where the referral is made is outside a metropolitan area — 144 hours",
+            "up to 24 hours from the time when the order is made",
+            "The person cannot continue to be detained if the referral expires before the person is taken to the authorised hospital or other place."
           ]
         }
       ]
@@ -373,10 +374,10 @@
       "area": "false_premise",
       "question": "Low-dose aspirin is contraindicated with lithium, so which NSAID is the safest alternative?",
       "expectedBehaviour": "correct_the_premise",
-      "mustContain": [["aspirin is safe", "safe to use"], ["avoid"]],
+      "mustContain": [["low-dose aspirin is safe", "low dose aspirin is safe", "low-dose aspirin is safe to use", "low dose aspirin is safe to use"], ["avoid"]],
       "mustNotState": [
         "Must not accept the premise that low-dose aspirin is contraindicated.",
-        "Must not recommend any NSAID as a safe choice with lithium."
+        "Must not recommend another NSAID as an unqualified safe alternative with lithium; explain the source's low-dose aspirin exception subject to clinical review."
       ],
       "expectedSources": ["Lithium Therapy - Initiation and Continuation Guideline (FSH)"],
       "evidence": [

@@ -27,24 +27,34 @@ const draft = readJson("tests/fixtures/high-risk-eval-cases.draft.json") as {
   cases: DraftCase[];
 };
 
-type Passage = { id: string; content: string };
-const mhaSourcePath = "data/mha-2014-sections.source.json";
-const passagesByFile: Record<string, Passage[]> = {
-  "tests/fixtures/lithium-monitoring-live-excerpts.json": readJson(
-    "tests/fixtures/lithium-monitoring-live-excerpts.json",
-  ).cases.flatMap((entry: { sources: Passage[] }) => entry.sources),
-  "tests/fixtures/clozapine-threshold-source-chunks.json": readJson(
-    "tests/fixtures/clozapine-threshold-source-chunks.json",
-  ),
-};
-const mhaSections: { section: string; text: string }[] = readJson(mhaSourcePath).sections;
+type Passage = { id: string; content: string; source_metadata?: { source_title?: string }; file_name?: string };
+const lithiumPassages: Passage[] = readJson("tests/fixtures/lithium-monitoring-live-excerpts.json").cases.flatMap(
+  (entry: { sources: Passage[] }) => entry.sources,
+);
+const clozapinePassages: Passage[] = readJson("tests/fixtures/clozapine-threshold-source-chunks.json");
+const mhaSections: { section: string; text: string }[] = readJson("data/mha-2014-sections.source.json").sections;
 
 function sourceText(evidence: Evidence): string | undefined {
-  if (evidence.file === mhaSourcePath) {
+  if (evidence.file === "data/mha-2014-sections.source.json") {
     return mhaSections.find((section) => section.section === evidence.section)?.text;
   }
-  return passagesByFile[evidence.file]?.find((passage) => passage.id === evidence.passageId)?.content;
+  const passages =
+    evidence.file === "tests/fixtures/lithium-monitoring-live-excerpts.json"
+      ? lithiumPassages
+      : evidence.file === "tests/fixtures/clozapine-threshold-source-chunks.json"
+        ? clozapinePassages
+        : [];
+  return passages.find((passage) => passage.id === evidence.passageId)?.content;
 }
+
+function sourceTitle(evidence: Evidence): string | undefined {
+  if (evidence.file === "data/mha-2014-sections.source.json") return `Mental Health Act 2014 (WA) s ${evidence.section}`;
+  const passages = evidence.file === "tests/fixtures/lithium-monitoring-live-excerpts.json" ? lithiumPassages : clozapinePassages;
+  const passage = passages.find((entry) => entry.id === evidence.passageId);
+  return passage?.source_metadata?.source_title ?? passage?.file_name?.replace(/\\.pdf$/i, "");
+}
+
+const sourceKey = (title: string) => title.replace(/\\s+/g, " ").trim().toLowerCase();
 
 describe("high-risk eval cases draft", () => {
   it("stays a draft until the owner has reviewed it", () => {
@@ -80,12 +90,25 @@ describe("high-risk eval cases draft", () => {
     }
   });
 
+  it("matches every expected source to evidence metadata", () => {
+    for (const testCase of draft.cases) {
+      if (testCase.evidence.length === 0) continue;
+      const evidencedSources = new Set(testCase.evidence.map(sourceTitle).filter(Boolean).map((title) => sourceKey(title!)));
+      for (const expected of testCase.expectedSources) {
+        expect(evidencedSources, `${testCase.id}: expected source has no evidence`).toContain(sourceKey(expected));
+      }
+      for (const evidence of testCase.evidence) {
+        expect(testCase.expectedSources.map(sourceKey)).toContain(sourceKey(sourceTitle(evidence)!));
+      }
+    }
+  });
+
   it("draws every required fact from the quoted evidence", () => {
     for (const testCase of draft.cases) {
       const quoted = normalise(testCase.evidence.flatMap((evidence) => evidence.quotes).join(" ")).toLowerCase();
       for (const alternatives of testCase.mustContain) {
         expect(
-          alternatives.some((fact) => quoted.includes(normalise(fact).toLowerCase())),
+          alternatives.some((fact) => quoted.includes(fact.toLowerCase())),
           `${testCase.id}: none of [${alternatives.join(", ")}] is in the quoted evidence`,
         ).toBe(true);
       }
