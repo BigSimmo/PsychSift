@@ -163,10 +163,13 @@ function epaCell(count: number, epa1 = true): OverviewCell & { count: number } {
  * once the DCT has signed it off: the AMC term assessment form ends with the DCT's signature and feedback, and
  * in CLA the DCT completes "DCT sign-off" (CLA training guide for supervisors, assessors, DCTs and EDMS, p.39).
  */
+/** The end-of-term's word once the doctor and supervisor have signed and only the DCT's sign-off is left. */
+const SIGNED_BY_BOTH = "Signed by both";
+
 function endCell(now: number, signed: boolean, dctSignedOn: string | null): OverviewCell {
   if (signed && dctSignedOn) return { status: "done", detail: `DCT sign-off ${dctSignedOn}` };
   // Still due until the DCT signs off, so it stays in the due list and its reminders.
-  if (signed) return { status: "due", word: "Signed by both", detail: "Signed by both. DCT sign-off next" };
+  if (signed) return { status: "due", word: SIGNED_BY_BOTH, detail: "Signed by both. DCT sign-off next" };
   return now < 0 ? { status: "not_yet", detail: "Opens Mon 26 Oct" } : { status: "due", detail: "Due Fri 20 Nov" };
 }
 
@@ -258,11 +261,15 @@ export function midTermSummary(rows: readonly OverviewDoctor[]): MidTermSummary 
   };
 }
 
-/** The forms a reminder can be about: a mid-term or end-of-term that is due or overdue. EPAs are the doctor's to ask for. */
+/**
+ * The forms a reminder can be about: a mid-term or end-of-term that is due or overdue. EPAs are the doctor's to
+ * ask for. An end-of-term signed by both is left out: only the DCT's sign-off is left, not the supervisor's.
+ */
 export function remindableForms(row: OverviewDoctor): FormKind[] {
   const out: FormKind[] = [];
   if (row.mid.status === "due" || row.mid.status === "overdue") out.push("mid");
-  if (row.end.status === "due" || row.end.status === "overdue") out.push("end");
+  const awaitingDct = row.end.word === SIGNED_BY_BOTH;
+  if (!awaitingDct && (row.end.status === "due" || row.end.status === "overdue")) out.push("end");
   return out;
 }
 

@@ -4,7 +4,13 @@ import { traineeHref } from "@/components/teaching/assessments/assessments-parts
 import { resolveRole } from "@/components/teaching/assessments/teaching-assessments";
 import { PANEL_FACTS, guestAssessors, GUEST_ASSESSORS } from "@/lib/teaching/assessments/dct";
 import { assessmentsReducer, initialAssessmentsState, type AssessmentsAction } from "@/lib/teaching/assessments/model";
-import { cellLabel, cellWord, doctorTimeline, overviewDoctors } from "@/lib/teaching/assessments/overview";
+import {
+  cellLabel,
+  cellWord,
+  doctorTimeline,
+  overviewDoctors,
+  remindableForms,
+} from "@/lib/teaching/assessments/overview";
 import { EXAMPLE_ASSESSMENTS_SUPERVISION } from "@/lib/example-data/datasets/assessments-supervision";
 import { initialTraineeState, traineeView } from "@/lib/work-screens/assessments/trainee";
 
@@ -76,6 +82,8 @@ describe("Assessments: the term overview's status rules (rules audit M13)", () =
     // Still due until the DCT signs off, so it stays in the due list and its reminders.
     expect(before.end.status).toBe("due");
     expect(before.bucket).not.toBe("on_track");
+    // The supervisor has already signed, so no reminder asks her to finish it.
+    expect(remindableForms(before)).not.toContain("end");
     const after = overviewDoctors(s, "Wed 28 Oct").find((r) => r.id === "sam")!;
     expect(cellWord(after.end)).toBe("Done");
     expect(after.end.detail).toBe("DCT sign-off Wed 28 Oct");
