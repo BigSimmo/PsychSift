@@ -367,7 +367,7 @@ describe("term evidence folder", () => {
     });
     const demo = termFolderCsv(folder, today, FOLDER_EXPORT_DEFAULTS, { demo: true });
     expect(demo.slice(1).split("\r\n").slice(0, 2)).toEqual([
-      '"Made-up demo, not your records"',
+      '"Example data, not your records"',
       '"Term evidence folder"',
     ]);
     expect(termFolderCsv(folder, today, FOLDER_EXPORT_DEFAULTS)).not.toContain("Made-up");

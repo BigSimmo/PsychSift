@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
+import { WorkStateLoading } from "@/components/mode-kit/work-state";
 import {
   endsNextDay,
   formatHours,
@@ -333,16 +334,7 @@ export function FootAction({ children, note }: { children: ReactNode; note?: Rea
   );
 }
 
-/** Loading rows: the shape of the list, never "nothing open". */
+/** Loading rows: the shape of the list, never "nothing open". The shared work-mode skeleton. */
 export function ListSkeleton({ rows = 3 }: { rows?: number }) {
-  return (
-    <div role="status" aria-label="Loading open shifts" className="flex flex-col gap-2 py-2">
-      {Array.from({ length: rows }, (_, index) => (
-        <div
-          key={index}
-          className="h-14 animate-pulse rounded-[var(--work-radius-card,14px)] bg-[color:var(--surface-wash)] motion-reduce:animate-none"
-        />
-      ))}
-    </div>
-  );
+  return <WorkStateLoading label="Loading open shifts" rows={rows} />;
 }

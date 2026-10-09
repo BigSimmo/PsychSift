@@ -130,11 +130,11 @@ describe("Service handbook lifecycle isolation", () => {
     view.rerender(<ServicePage initialServiceId={serviceId} initialSiteId={siteId} />);
 
     // Signed out now shows the invented sample service, never the previous owner's.
-    expect(screen.getByText(/Synthetic demonstration only/)).toBeVisible();
+    expect(screen.getByText(/Example only\. The service/)).toBeVisible();
     expect(screen.queryByText("Synthetic private service")).toBeNull();
 
     releaseDetail?.(json(detail));
-    await waitFor(() => expect(screen.getByText(/Synthetic demonstration only/)).toBeVisible());
+    await waitFor(() => expect(screen.getByText(/Example only\. The service/)).toBeVisible());
     expect(screen.queryByText("Synthetic private service")).toBeNull();
   });
 });

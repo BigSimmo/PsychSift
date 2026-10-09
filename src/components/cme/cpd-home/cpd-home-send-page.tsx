@@ -867,7 +867,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             ? "This is marked as a shared device, so the list of files is not kept. Nothing is sent for you."
             : store.mode === "memory"
               ? "This browser is not keeping changes. They last until you leave the page. Nothing is sent for you."
-              : "Sample record. Files made here are not kept, and nothing is sent."}
+              : "Example record. Files made here are not kept, and nothing is sent."}
       </QuietNote>
 
       <ActionDock testId="cpd-home-dock">
@@ -1106,7 +1106,7 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
                   ? "Shared device: marking added lasts for this page only."
                   : store.mode === "memory"
                     ? "This browser is not keeping changes. Marking added lasts until you leave the page."
-                    : "Sample record: marking added is not kept."}
+                    : "Example record: marking added is not kept."}
               </QuietNote>
             ) : null}
           </div>

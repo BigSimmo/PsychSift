@@ -14,7 +14,7 @@ import type { CmeEntry } from "@/lib/cme/types";
 import { withoutExampleRecords } from "@/lib/example-data/guards";
 import {
   featureNotificationItem,
-  perthToday,
+  workToday,
   type FeatureNeedsYouItem,
   type NotificationSource,
   type NotificationSourceStatus,
@@ -103,6 +103,7 @@ export function useFeatureNotificationSources({
   enabled,
   clock,
   readAt,
+  zone,
 }: {
   /** False while signed out: nothing is read and nothing is emitted. */
   readonly enabled: boolean;
@@ -110,10 +111,12 @@ export function useFeatureNotificationSources({
   readonly clock: Date;
   /** When the reads started, for the first week pack's own read. */
   readonly readAt: Date;
+  /** The work time zone "today" is read in (the feed's own); the saved one when left out. */
+  readonly zone?: string;
 }): NotificationSource[] {
   const { authEpoch } = useAuthSession();
   const demo = useDemoBuild();
-  const today = perthToday(clock);
+  const today = workToday(clock, zone);
   const year = Number(today.slice(0, 4));
 
   // On Call entries: the same shared read the bell already makes.

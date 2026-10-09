@@ -85,7 +85,7 @@ describe("Service handbook edit preserves intentional empty fields", () => {
     const title = screen.getByRole("textbox", { name: /^Title/ });
     await user.type(title, "Emergency: Code");
     expect(screen.getByTestId("service-entry-placement")).toHaveTextContent(
-      "Will appear in: Now (emergency) and Call › Hospital",
+      "Will appear in: Now (emergency) and Call, then Hospital",
     );
     expect(screen.getByTestId("service-entry-warnings")).toHaveTextContent(
       "An emergency number needs a site to be pinned on Now. Without one it shows on Call only.",
@@ -128,7 +128,7 @@ describe("Service handbook edit preserves intentional empty fields", () => {
       <ServiceEntryEditor entry={entry} sites={[site]} defaultSiteId={site.id} onSave={vi.fn()} onCancel={() => {}} />,
     );
     expect(screen.getByTestId("service-entry-save-note")).toHaveTextContent(
-      "Draft saves do not change the published date. Publishing sets Updated; Still correct records a separate confirmation.",
+      "Draft saves do not change the published date. Publishing sets Updated, and Still correct records a separate confirmation.",
     );
   });
 });

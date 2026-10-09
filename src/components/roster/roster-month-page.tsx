@@ -1,12 +1,15 @@
 "use client";
 
-import { Clock, FileUp, LogIn, Plus, RefreshCw, TriangleAlert, Users } from "lucide-react";
+import { Clock, FileUp, Plus, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
+import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import {
   WorkBody,
   WorkButton,
@@ -24,12 +27,18 @@ import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
 import { restCuesByTeam } from "@/lib/roster/rest-cues";
 import { SHIFT_KIND_LABEL, type ShiftKind } from "@/lib/roster/shift-kind";
 import { formatSpanUntil, leadShift, shiftSpan } from "@/lib/roster/shifts-overview";
-import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import {
+  MONTHS,
+  WEEKDAYS,
+  addDaysToDate,
+  formatPerthDay,
+  perthDateOf,
+  perthTimeOf,
+} from "@/lib/roster/shifts/perth-time";
 import type { RosterSwap } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 
-import { useRosterSignIn } from "./invite/roster-sign-in-notice";
 import { RosterAddSheet, type RosterAddView } from "./roster-add-sheet";
 import { RosterDaySheet, type RosterDayColleague } from "./roster-day-sheet";
 import { kindOf, useRosterNow } from "./roster-format";
@@ -85,9 +94,13 @@ function toMonthShift(shift: OnCallShift): MonthShift {
 }
 
 const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
-const monthShort = (date: string) =>
-  new Intl.DateTimeFormat("en-AU", { month: "short", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+const monthShort = (date: string) => MONTHS[Number(date.slice(5, 7)) - 1]!;
 const dayWords = (date: string) => `${weekdayOf(date)} ${Number(date.slice(8, 10))}`;
+
+/** Roster reads keep their signed-out answer, so a sign-in started here reloads the page. */
+function reloadPage() {
+  window.location.reload();
+}
 
 function MonthLoading() {
   return (
@@ -108,7 +121,7 @@ function MonthLoading() {
           </div>
         </div>
       </WorkCard>
-      <p role="status" className="text-center text-2xs font-medium text-[color:var(--text-muted)]">
+      <p role="status" className="sr-only">
         Loading your roster…
       </p>
     </div>
@@ -196,7 +209,6 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // The app has no sign-in page, so "Sign in" opens the account dialog, as every other area does.
-  const signIn = useRosterSignIn();
 
   const grid = monthGridRange(month);
   const loadedFrom = addDaysToDate(today, -LOADED_PAST_DAYS);
@@ -209,6 +221,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
     [grid.start, grid.end, today],
   );
   const shifts = useRosterShifts(teamRange);
+  // The frame's example data banner already says these are examples.
+  const exampleBanner = useRosterSignedOutSample();
   const teams = useRosterTeams();
   const enabledTeams = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).filter((team) => team.enabled);
   const oneTeamId = enabledTeams.length === 1 ? enabledTeams[0]!.serviceId : null;
@@ -323,7 +337,9 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
 
   const notices = (
     <>
-      {shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
+      {shifts.demoMode && !exampleBanner ? (
+        <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice>
+      ) : null}
       {notice ? <ModeNotice>{notice}</ModeNotice> : null}
       {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
     </>
@@ -473,42 +489,23 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
     if (shifts.status === "loading") return <MonthLoading />;
     if (shifts.status === "signed-out")
       return (
-        <>
-          <WorkCard>
-            <WorkEmpty
-              icon={Users}
-              title="Sign in to see your roster"
-              body="Your shifts, swaps and leave show here once you sign in."
-              action={
-                <WorkButton icon={LogIn} onClick={signIn.open}>
-                  Sign in
-                </WorkButton>
-              }
-              testId="roster-month-signed-out"
-            />
-          </WorkCard>
-          {signIn.dialog}
-        </>
+        <WorkSignInNotice
+          icon={Users}
+          title="Sign in to see your roster"
+          body="Your shifts, swaps and leave show here once you sign in."
+          onSignedIn={reloadPage}
+          testId="roster-month-signed-out"
+        />
       );
     if (shifts.status === "error")
       return (
         <div className="grid gap-2.25" data-testid="roster-shifts-error">
-          <WorkCard>
-            <div className="work-row items-start" role="alert">
-              <span aria-hidden="true" className="work-ic" data-tone="red">
-                <TriangleAlert aria-hidden="true" strokeWidth={2} />
-              </span>
-              <span className="work-row__text">
-                <span className="work-row__title">Couldn&apos;t load your roster</span>
-                <span className="work-row__sub">A connection problem. Nothing in your roster has changed.</span>
-                <span className="mt-2">
-                  <WorkButton variant="secondary" icon={RefreshCw} onClick={() => void shifts.reload()}>
-                    Try again
-                  </WorkButton>
-                </span>
-              </span>
-            </div>
-          </WorkCard>
+          <WorkStateNotice
+            kind="error"
+            title="Couldn't load your roster"
+            body="A connection problem. Nothing in your roster has changed."
+            onRetry={() => void shifts.reload()}
+          />
           <WorkCard>
             <WorkIconRow
               icon={Clock}
@@ -607,7 +604,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
         <MonthTotalsCard totals={totals} partial={partial} month={month} />
         <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
           {shifts.sample
-            ? "Sample shifts and team are invented."
+            ? "Example shifts and team, all made up."
             : "Your copy of the roster. Check official changes with your service."}
         </p>
         <p className="m-0 -mt-1 px-1 text-center text-2xs text-[color:var(--text-muted)]">

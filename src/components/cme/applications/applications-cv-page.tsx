@@ -248,7 +248,7 @@ export function ApplicationsCvPage({
       }`}</style>
 
       {store.mode === "sample" ? (
-        <QuietNote icon={Shield}>Sample CV from made-up records. Nothing is kept.</QuietNote>
+        <QuietNote icon={Shield}>Example CV from made-up records. Nothing is kept.</QuietNote>
       ) : null}
 
       <div role="group" aria-label="Years to include" className="flex flex-wrap gap-2" data-no-tab-swipe>

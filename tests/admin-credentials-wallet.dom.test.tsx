@@ -15,9 +15,9 @@ describe("AdminCredentialsWallet", () => {
 
   it("renders credentials wallet with passcards", () => {
     render(<AdminCredentialsWallet />);
-    expect(screen.getByText("Credentials Wallet")).toBeTruthy();
-    expect(screen.getByText("Ahpra Registration")).toBeTruthy();
-    expect(screen.getByText("Prescriber Number")).toBeTruthy();
+    expect(screen.getByText("Credentials wallet")).toBeTruthy();
+    expect(screen.getByText("Ahpra registration")).toBeTruthy();
+    expect(screen.getByText("Prescriber number")).toBeTruthy();
     expect(
       screen.getByText("Stored on this device only. Use it on your own phone, not a shared ward computer."),
     ).toBeTruthy();
@@ -49,7 +49,7 @@ describe("AdminCredentialsWallet", () => {
     const editBtn = screen.getByTestId("admin-credentials-wallet-edit-button");
     fireEvent.click(editBtn);
 
-    expect(screen.getByText("Edit Doctor Credentials")).toBeTruthy();
+    expect(screen.getByText("Edit doctor credentials")).toBeTruthy();
     const saveBtn = screen.getByTestId("admin-credentials-wallet-save-button");
     fireEvent.click(saveBtn);
   });

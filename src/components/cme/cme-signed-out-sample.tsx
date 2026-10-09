@@ -162,7 +162,7 @@ function SampleBody({ pathname, query }: { readonly pathname: string; readonly q
   }
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-sample-unavailable">
-      <p>This page is not part of the sample. It works on your own CPD record, so it needs you to sign in.</p>
+      <p>This page is not part of the example data. It works on your own CPD record, so it needs you to sign in.</p>
       <Link
         href="/cme"
         className="mt-2 inline-flex min-h-tap items-center text-sm font-semibold text-[color:var(--clinical-accent)]"

@@ -163,7 +163,7 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
           ? `Offered ${formatRecordedDate(to!)}`
           : "Not granted";
     // Undo puts back this one request only, never another decision made since.
-    say(`${words}. Sample only, nothing was sent`, () =>
+    say(`${words}. Example only, nothing was sent`, () =>
       setExtensions((current) => current.map((entry) => (entry.id === extension.id ? extension : entry))),
     );
   }
@@ -174,7 +174,7 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
     const ids = Object.keys(sent);
     const words = ids.length === 1 ? `Reminder to ${nameOf(ids[0]!)}` : `${ids.length} reminders`;
     // Undo puts back exactly what was there before this send.
-    say(`${words}. Sample only, nothing was sent`, () => setReminded(before));
+    say(`${words}. Example only, nothing was sent`, () => setReminded(before));
   }
 
   const remindAll = doctors.filter((entry) => remindableItems(entry).length > 0 && !reminded[entry.id]);

@@ -34,6 +34,7 @@
 
 import { sweepAccountDeviceData } from "@/lib/account-device-sweep";
 import { LIVE_VERSION_COOKIE } from "@/lib/live-version/live-version";
+import { WORK_MODE_PREFERENCE_COOKIE } from "@/lib/work-mode-launch/launch";
 
 export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
 
@@ -194,8 +195,12 @@ export const OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY = "psychsift.open-shifts.filt
  * only those fields go at a transition.
  */
 export const APP_PREFERENCES_STORAGE_KEY = "clinical-kb-preferences";
-/** `timeZone` is the work time zone: the next person on this browser starts on the Perth default, not this one's zone. */
-export const ACCOUNT_SCOPED_PREFERENCE_KEYS = ["workStage", "ranzcpStage", "timeZone"] as const;
+/**
+ * `timeZone` is the work time zone: the next person on this browser starts on the Perth default, not this one's zone.
+ * `reminders` holds quiet hours and alert choices, which belong to the person (owner decision, 8 October 2026);
+ * the account copy comes back at their next sign-in.
+ */
+export const ACCOUNT_SCOPED_PREFERENCE_KEYS = ["workStage", "ranzcpStage", "timeZone", "reminders"] as const;
 
 function stripAccountScopedPreferences(): void {
   try {
@@ -228,6 +233,8 @@ export function clearAccountScopedBrowserStorage(): void {
   // Cookie — the live version switch (src/lib/live-version): a tester's choice of version only.
   try {
     document.cookie = `${LIVE_VERSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+    // Cookie — the classic or new work view choice: the person's, so the next person starts on the default.
+    document.cookie = `${WORK_MODE_PREFERENCE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
   } catch {
     // No document (a worker) or cookies blocked: nothing was set.
   }

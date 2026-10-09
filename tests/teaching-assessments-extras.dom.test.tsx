@@ -116,7 +116,9 @@ describe("consultant inbox", () => {
     }
     expect(screen.getByRole("radio", { name: /Waiting · 1/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Dr Ash Zamia/ }));
-    expect(await screen.findByTestId("assessments-inbox-status")).toHaveTextContent("isn't built into the sample");
+    expect(await screen.findByTestId("assessments-inbox-status")).toHaveTextContent(
+      "isn't built into the example data",
+    );
   });
 
   it("is reached from the supervisor home with a waiting count", () => {

@@ -495,6 +495,7 @@ const openShifts: WorkArea = {
           href: "/open-shifts/log",
           band: false,
         },
+        { id: "open-shifts-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
       ],
     },
   ],
@@ -567,6 +568,7 @@ const manageTeam: WorkArea = {
           href: "/roster/team",
           paths: [],
         },
+        { id: "manage-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
       ],
     },
     {
@@ -651,13 +653,14 @@ const teaching: WorkArea = {
           opens: "assess",
           gate: "signed-out",
         },
+        // Supervision is a Teaching page (owner decision, 8 October 2026): a signed-in doctor keeps
+        // their assessments in CLA, so it must not drop them into Assessments' CLA-only tabs.
         {
           id: "supervision",
           label: "Supervision",
           sub: "Hours to confirm",
           icon: "users",
           href: "/teaching/supervision",
-          paths: [],
         },
         {
           id: "organise",
@@ -712,11 +715,15 @@ const assessments: WorkArea = {
       sub: "Hours to confirm",
       icon: "users",
       href: "/teaching/supervision",
+      // A link into Teaching, which draws the Supervision page.
+      paths: [],
     },
   ],
   groups: [
+    // The supervisor's own pages, under the name the tabs' role switch gives that side, so a doctor on
+    // "My training" can tell these open the supervisor's view and not their own.
     {
-      label: "Assessments",
+      label: "I supervise",
       items: [
         { id: "assess-epa", label: "Record an EPA", sub: "Two taps", icon: "plus", action: "assess-record-epa" },
         {
@@ -757,6 +764,20 @@ const assessments: WorkArea = {
           paths: ["/teaching/assessments"],
           query: { view: "overview" },
         },
+        // Export saves the supervisor's records, and its back arrow returns to the supervisor's To do.
+        {
+          id: "assess-export",
+          label: "Export",
+          sub: "Spreadsheets and forms",
+          icon: "download",
+          href: "/teaching/assessments/export",
+        },
+      ],
+    },
+    // Pages both sides share: each keeps whichever side was last shown.
+    {
+      label: "Assessments",
+      items: [
         {
           id: "assess-history",
           label: "History",
@@ -785,12 +806,13 @@ const assessments: WorkArea = {
           paths: ["/teaching/assessments"],
           query: { view: "help" },
         },
+        // "Get help" above is for concerns about a doctor, so this one says what it is.
         {
-          id: "assess-export",
-          label: "Export",
-          sub: "Spreadsheets and forms",
-          icon: "download",
-          href: "/teaching/assessments/export",
+          id: "assess-how",
+          label: "How it works",
+          sub: "Assessments help",
+          icon: "help",
+          action: "work-help",
         },
       ],
     },
@@ -986,7 +1008,9 @@ const admin: WorkArea = {
           icon: "folder",
           href: "/admin/documents",
         },
-        { id: "help", label: "Help", sub: "Crisis lines first", icon: "help", href: "/admin/help" },
+        // The crisis lines and contacts page, named for what it holds so it is not taken for How Admin works.
+        { id: "help", label: "Numbers", sub: "Crisis lines first", icon: "phone", href: "/admin/help" },
+        { id: "admin-help", label: "Help", sub: "How Admin works", icon: "help", action: "work-help" },
       ],
     },
     {
@@ -995,7 +1019,7 @@ const admin: WorkArea = {
         {
           id: "admin-contract",
           label: "Contract",
-          sub: "End date and reminders",
+          sub: "When it ends",
           icon: "file",
           href: "/admin/contract",
         },
@@ -1017,7 +1041,8 @@ const admin: WorkArea = {
         },
         {
           id: "admin-ready",
-          label: "Ready for day one",
+          label: "Day one check",
+          title: "Ready for day one",
           short: "Day one",
           sub: "Before you start",
           icon: "check-list",
@@ -1180,9 +1205,9 @@ const onCall: WorkArea = {
         },
         {
           id: "logistics",
-          label: "Admin",
-          sub: "Help and numbers",
-          icon: "help",
+          label: "Numbers",
+          sub: "Crisis lines first",
+          icon: "phone",
           href: ON_CALL_ADMIN_ROWS_HREF,
           paths: [],
           leadsTo: "my-work",
@@ -1232,7 +1257,7 @@ export const WORK_AREAS: Readonly<Record<WorkAreaId, WorkArea>> = {
 const NOTIFICATIONS_PATH = "/my-day/notifications";
 
 /** Assessments is a sub-area of Teaching: these paths draw its frame, not Teaching's. */
-const ASSESSMENT_PATHS: readonly string[] = ["/teaching/assessments", "/teaching/supervision"];
+const ASSESSMENT_PATHS: readonly string[] = ["/teaching/assessments"];
 
 /**
  * The work area a band draws for this mode and address, or null for every mode

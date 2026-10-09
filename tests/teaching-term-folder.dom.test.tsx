@@ -41,7 +41,7 @@ describe("term evidence folder page", () => {
     const card = await screen.findByTestId("term-folder-card");
     const meter = within(card).getByRole("img");
     expect(meter.getAttribute("aria-label")).toMatch(/^7\sparts: /);
-    expect(screen.getByText(/Made-up demo\. Nothing here is your data/)).toBeInTheDocument();
+    expect(screen.getByText(/Example data\. Nothing here is your own/)).toBeInTheDocument();
     expect(screen.getByTestId("term-folder-not-kept")).toHaveTextContent("Assessment forms");
     expect(screen.getAllByText(/Status and counts only|No assessment content/).length).toBeGreaterThan(0);
     // Work-mode redesign, owner request 6 Oct 2026: Export opens a sheet (choose parts, names off, gaps first).
@@ -73,7 +73,7 @@ describe("term evidence folder page", () => {
     render(<TermFolderPage demoMode={false} termId={null} />);
     expect(await screen.findByTestId("term-folder-card")).toBeInTheDocument();
     // The shared example banner says it under the band, so the page does not say it a second time.
-    expect(screen.queryByText(/Made-up demo/)).toBeNull();
+    expect(screen.queryByText(/Example data\. Nothing here/)).toBeNull();
   });
 
   it("is linked from the Term page", () => {
@@ -192,7 +192,7 @@ describe("term evidence folder page", () => {
     render(<TermFolderPage demoMode termId={null} />);
     fireEvent.click(await screen.findByTestId("term-folder-copy"));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
-    expect((writeText.mock.calls[0] as unknown as [string])[0].split("\n")[0]).toBe("Made-up demo, not your records.");
+    expect((writeText.mock.calls[0] as unknown as [string])[0].split("\n")[0]).toBe("Example data, not your records.");
   });
 
   it("says inside the demo CSV that it is made up", async () => {
@@ -200,7 +200,7 @@ describe("term evidence folder page", () => {
     fireEvent.click(await screen.findByTestId("term-folder-export-open"));
     const href = decodeURIComponent((await screen.findByTestId("term-folder-csv")).getAttribute("href")!);
     expect(href).toMatch(
-      /^data:text\/csv;charset=utf-8,\uFEFF"Made-up demo, not your records"\r\n"Term evidence folder"/,
+      /^data:text\/csv;charset=utf-8,\uFEFF"Example data, not your records"\r\n"Term evidence folder"/,
     );
   });
 
