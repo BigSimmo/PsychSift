@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "fadf94bc-4571-44e4-bb05-896347d3211e",
+  "createdOn": "2026-10-09",
+  "action": "update",
+  "payload": {
+    "id": "#Z3GZ5P",
+    "summary": "DSM-5-TR specifier catalogue: 514 of 585 items still pending clinician review, and the 71 marked reviewed in PR #3143 name no clinician reviewer",
+    "baseRowFingerprint": "af13113ecbfe0ac872234ab6c7957aef45832bccc8bc51418553ed14b2ea7668"
+  }
+}
