@@ -1,4 +1,8 @@
 {
-  "clozapine": ["tga-product-information-clozapine"],
-  "lithium-carbonate-ir-sr": ["tga-product-information-lithium-carbonate"]
+  "clozapine": ["tga-product-information-clozapine", "wa-health-clozapine-guideline-2024"],
+  "lithium-carbonate-ir-sr": [
+    "tga-product-information-lithium-carbonate",
+    "australian-prescriber-lithium-therapy-and-its-interactions",
+    "australian-prescriber-lithium-therapy-interactions-correction"
+  ]
 }

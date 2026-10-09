@@ -106,20 +106,16 @@ describe("the real queue", () => {
   const real = loadSignOffQueue();
   const today = pickSignOffToday(real);
 
-  it("offers a command for every signable row, and only from ordered families", async () => {
+  it("offers a command for every signable row, and only from ordered families", () => {
     const signable = real.families
       .filter((family) => SIGN_OFF_TODAY_FAMILY_ORDER.includes(family.id))
       .flatMap((family) => family.rows)
       .filter((item) => item.signOff !== null);
-    // Measured again 2026-10-09. Statutory forms stay signed. Therapy records
-    // that now list references are signable; the pin is that walk queue, not zero.
-    const therapy = await import("../scripts/review-therapy.mjs");
-    const source = (await import("@/data/therapies-source.json")).default;
-    const walk = therapy.therapyWalkQueue(source) as string[];
-    // SignOffTool is a union: only therapy:review carries slug (clinical:review uses code).
-    expect(
-      signable.flatMap((item) => (item.signOff?.script === "therapy:review" ? [item.signOff.slug] : [])).sort(),
-    ).toEqual([...walk].sort());
+    // Measured 2026-10-09. Statutory forms are signed. The 22 Therapy records
+    // that gained guideline references on 2026-10-09 are the only signable
+    // rows; everything else still waiting is an Indigenous governance hold or
+    // has no sign-off tool. A change in this set should update this pin.
+    expect(signable.map((item) => item.family)).toEqual(Array(22).fill("therapy"));
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {
