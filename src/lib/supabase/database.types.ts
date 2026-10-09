@@ -4376,6 +4376,7 @@ export type Database = {
           kind: string;
           min_grade: string | null;
           posted_by: string | null;
+          reported_at: string | null;
           service_id: string;
           shift_code: string;
           site_id: string | null;
@@ -4395,6 +4396,7 @@ export type Database = {
           kind: string;
           min_grade?: string | null;
           posted_by?: string | null;
+          reported_at?: string | null;
           service_id: string;
           shift_code: string;
           site_id?: string | null;
@@ -4414,6 +4416,7 @@ export type Database = {
           kind?: string;
           min_grade?: string | null;
           posted_by?: string | null;
+          reported_at?: string | null;
           service_id?: string;
           shift_code?: string;
           site_id?: string | null;

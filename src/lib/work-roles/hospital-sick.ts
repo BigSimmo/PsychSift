@@ -83,8 +83,10 @@ export async function readHospitalSickCalls(
     client.from("on_call_services").select("id,name").in("id", serviceIds),
     client
       .from("roster_open_shifts")
-      .select("id,service_id,assignment_id,starts_at,ends_at,shift_code,kind,status,posted_by,created_at")
+      .select("id,service_id,assignment_id,starts_at,ends_at,shift_code,kind,status,reported_at")
       .in("service_id", serviceIds)
+      // Only shifts reported as "I can't make it". A give-away or a manager's post is never a sick call.
+      .not("reported_at", "is", null)
       .in("status", ["reported", "open", "claimed", "approved"])
       .not("assignment_id", "is", null)
       .gte("starts_at", window.from)
@@ -94,13 +96,22 @@ export async function readHospitalSickCalls(
   ]);
   if (services.error || !services.data || shifts.error || !shifts.data) throw unavailable();
 
-  const posters = [...new Set(shifts.data.map((row) => row.posted_by).filter((id): id is string => Boolean(id)))];
-  const members = posters.length
+  // The doctor is whoever the shift was rostered to, not whoever reported it (a manager can report for them).
+  const assignmentIds = [
+    ...new Set(shifts.data.map((row) => row.assignment_id).filter((id): id is string => Boolean(id))),
+  ];
+  const assignments = assignmentIds.length
+    ? await client.from("roster_assignments").select("id,user_id").in("id", assignmentIds)
+    : { data: [] as { id: string; user_id: string | null }[], error: null };
+  if (assignments.error || !assignments.data) throw unavailable();
+  const doctorOf = new Map(assignments.data.map((row) => [row.id, row.user_id]));
+  const doctors = [...new Set(assignments.data.map((row) => row.user_id).filter((id): id is string => Boolean(id)))];
+  const members = doctors.length
     ? await client
         .from("on_call_service_members")
         .select("service_id,user_id,display_name")
         .in("service_id", serviceIds)
-        .in("user_id", posters)
+        .in("user_id", doctors)
     : { data: [] as { service_id: string; user_id: string; display_name: string | null }[], error: null };
   if (members.error || !members.data) throw unavailable();
   const names = new Map(members.data.map((row) => [`${row.service_id}:${row.user_id}`, row.display_name?.trim()]));
@@ -113,18 +124,19 @@ export async function readHospitalSickCalls(
       .sort((a, b) => a.name.localeCompare(b.name)),
     calls: shifts.data.flatMap((row) => {
       const status = STATUS[row.status];
-      if (!status) return [];
+      if (!status || !row.reported_at) return [];
+      const doctor = row.assignment_id ? doctorOf.get(row.assignment_id) : null;
       return [
         {
           id: row.id,
           serviceId: row.service_id,
           teamName: teamNames.get(row.service_id) ?? "Team",
-          name: (row.posted_by && names.get(`${row.service_id}:${row.posted_by}`)) || "Team member",
+          name: (doctor && names.get(`${row.service_id}:${doctor}`)) || "Team member",
           kind: row.kind as HospitalSickCall["kind"],
           shiftCode: row.shift_code,
           startsAt: row.starts_at,
           endsAt: row.ends_at,
-          reportedAt: row.created_at,
+          reportedAt: row.reported_at,
           status,
         },
       ];

@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-09T00:47:26.208Z",
+  "generated_at": "2026-10-09T01:03:08.847Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "bac0ef424fdfd01b82e3f4c64adc71e1d72643c050e6a7e946e69db4c5d872fb",
-  "replay_seconds": 33,
+  "schema_sha256": "5dd25bd0a8f50ff59f423362bdc4980cedf822c03e483e3a0cdc9a66e92dbc09",
+  "replay_seconds": 17,
   "snapshot": {
     "views": [
       {
@@ -8806,6 +8806,14 @@
             "generated": ""
           },
           {
+            "name": "reported_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "service_id",
             "type": "uuid",
             "default": null,
@@ -15069,6 +15077,12 @@
         "def_hash": "42e5a735881b8ad6dd6a322837794c8b"
       },
       {
+        "def": "CREATE INDEX roster_open_shifts_reported_idx ON public.roster_open_shifts USING btree (service_id, starts_at) WHERE (reported_at IS NOT NULL)",
+        "name": "roster_open_shifts_reported_idx",
+        "table": "roster_open_shifts",
+        "def_hash": "ddd4a38728d1ca2af1564861f0aa0f6e"
+      },
+      {
         "def": "CREATE INDEX roster_open_shifts_service_idx ON public.roster_open_shifts USING btree (service_id, status, starts_at)",
         "name": "roster_open_shifts_service_idx",
         "table": "roster_open_shifts",
@@ -17161,6 +17175,11 @@
         "table": "roster_leave"
       },
       {
+        "def": "CREATE TRIGGER roster_open_shifts_mark_reported BEFORE INSERT ON public.roster_open_shifts FOR EACH ROW EXECUTE FUNCTION public.roster_open_shifts_mark_reported()",
+        "name": "roster_open_shifts_mark_reported",
+        "table": "roster_open_shifts"
+      },
+      {
         "def": "CREATE TRIGGER roster_team_settings_updated_at BEFORE UPDATE ON public.roster_team_settings FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "roster_team_settings_updated_at",
         "table": "roster_team_settings"
@@ -18558,6 +18577,13 @@
         ],
         "def_hash": "3970f82d1ac917820e8f1d2d8cc9b88e",
         "signature": "public.roster_on_membership_revoked()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ec95d16e7ca4b764c68b5187e2f61bee",
+        "signature": "public.roster_open_shifts_mark_reported()"
       },
       {
         "acl": [
