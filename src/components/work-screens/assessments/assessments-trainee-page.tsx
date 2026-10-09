@@ -21,6 +21,7 @@ import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } 
 import {
   rememberExtras,
   rememberTrainee,
+  rememberedDct,
   rememberedExtras,
   rememberedStory,
   rememberedTrainee,
@@ -56,7 +57,8 @@ import {
 } from "@/lib/teaching/assessments/inbox";
 import { initialExtras, readyToSend, settleForAnotherScreen } from "@/lib/teaching/assessments/extras";
 import { initialAssessmentsState } from "@/lib/teaching/assessments/model";
-import { CELL_WORDS, type CellStatus } from "@/lib/teaching/assessments/overview";
+import { initialDctState, samSignOff } from "@/lib/teaching/assessments/dct";
+import { cellWord, type CellStatus } from "@/lib/teaching/assessments/overview";
 import { SAMPLE_DOCTOR } from "@/lib/teaching/assessments/sample";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { patientDetailProblem } from "@/lib/work-screens/assessments/patient-check";
@@ -238,7 +240,14 @@ export function AssessmentsTraineePage({
   const timers = useRef(new Map<string, number>());
   // Every send that can still be taken back: held for its 10 seconds, or kept as To send while offline.
   const live = useRef(new Set<string>());
-  const view = useMemo(() => traineeView(s, state, doctorId, supervision), [s, state, doctorId, supervision]);
+  // The DCT's sign-off as left in this tab, so the end-of-term reads the same as the Term overview.
+  const [dctSignedOn] = useState(
+    () => samSignOff((memoryKey === undefined ? null : rememberedDct(memoryKey)) ?? initialDctState())?.date ?? null,
+  );
+  const view = useMemo(
+    () => traineeView(s, state, doctorId, supervision, dctSignedOn),
+    [s, state, doctorId, supervision, dctSignedOn],
+  );
   useModeBandHeading(
     view
       ? { eyebrow: `${view.row.grade} · ${view.row.unit}`, title: view.row.name }
@@ -498,7 +507,7 @@ export function AssessmentsTraineePage({
                 tone="neutral"
                 title={step.title}
                 sub={step.detail}
-                end={<WorkTag tone={CELL_TONE[step.status]}>{CELL_WORDS[step.status]}</WorkTag>}
+                end={<WorkTag tone={CELL_TONE[step.status]}>{cellWord(step)}</WorkTag>}
               />
             </li>
           ))}

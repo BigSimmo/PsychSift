@@ -20,6 +20,7 @@ import {
   SAMPLE_EPA_RECORDS,
   SAMPLE_REGISTRAR,
   SAMPLE_SUPERVISOR,
+  SAMPLE_TERMS,
   WINDOW_DAYS,
   type EpaRecord,
   type Ratings,
@@ -47,7 +48,11 @@ export type AssessmentForm = {
   global: GlobalRating | null;
   strengths: string;
   areas: string;
-  /** Supervisor ticked "Notify the MEU now" for an improvement plan. */
+  /**
+   * Supervisor ticked "Tell the MEU (you do this yourself)" about an improvement plan. Advisory only: the AMC term
+   * assessment form says a 1 or 2 means "Liaise with the MEU or DCT to complete an Improving Performance Action
+   * Plan" (AMC Prevocational training term assessment form, e-portfolio and paper versions). It never blocks.
+   */
   ipap: boolean;
   fullWording: boolean;
 };
@@ -126,6 +131,11 @@ export type AssessmentsState = {
   avail: Record<number, string[]>;
   sigs: { sup: Signature | null; doc: Signature | null };
   epaRequests: EpaRequest[];
+  /**
+   * No longer one of the doctor's steps. In CLA the supervisor submits the end-of-term form and the doctor
+   * acknowledges it there, then the DCT completes DCT sign-off (CLA Training Guide for Prevocational Doctors,
+   * Release 2.0, p.12, and the supervisors' guide, p.39), so nobody emails a PDF. Kept so older screens compile.
+   */
   sentToMeu: boolean;
   remindWhenOpen: boolean;
   addToMyDay: boolean;
@@ -214,17 +224,28 @@ export const meetingDate = (s: AssessmentsState) => (s.meetingDay === null ? nul
 export const selfLocked = (s: AssessmentsState) => supReady(s);
 export const supLocked = (s: AssessmentsState) => s.sigs.sup !== null;
 
+/**
+ * Where the end-of-term form is up to. In CLA "End of Term Assessment can only be initiated by a supervisor
+ * linked to the prevocational doctor" (CLA Training Guide for Prevocational Doctors, Release 2.0, p.12), so the
+ * supervisor's draft starts whether or not the doctor has said they're ready.
+ */
 export function stage(s: AssessmentsState): Stage {
   if (s.sigs.doc) return "doc-signed";
   if (s.sigs.sup) return "sup-signed";
   if (meetingHeld(s)) return "met";
   if (supReady(s)) return "ready";
-  if (s.request.sent) return s.sup.status === "draft" ? "sup-draft" : "requested";
+  if (s.sup.status === "draft") return "sup-draft";
+  if (s.request.sent) return "requested";
   if (selfDone(s)) return "self-done";
   if (s.self.status === "draft") return "self-draft";
   return "start";
 }
 
+/**
+ * Every EPA recorded this year. A guest assessor's answer is marked `unapproved`: CLA creates it "as a Guest
+ * Assessor with a status of Unapproved" until the MEU approves it (CLA detailed FAQs v2.0, p.5, and the
+ * supervisors' training guide, Release 2.0, p.17).
+ */
 export function epaRecords(s: AssessmentsState): EpaRecord[] {
   const done = s.epaRequests
     .filter((r) => r.status === "done" && r.level)
@@ -236,6 +257,7 @@ export function epaRecords(s: AssessmentsState): EpaRecord[] {
         r.who === "sup" ? "term supervisor" : r.who === "reg" ? "registrar" : guestKind(r.guest).title.toLowerCase(),
       level: r.level!,
       ...(r.complexity ? { complexity: r.complexity } : {}),
+      ...(r.who === "guest" ? { unapproved: true } : {}),
     }));
   return [...SAMPLE_EPA_RECORDS, ...done];
 }
@@ -255,7 +277,13 @@ export const guestKind = (id: GuestKind | undefined) => GUEST_KINDS.find((k) => 
 export const assessorName = (r: Pick<EpaRequest, "who" | "guest">) =>
   r.who === "sup" ? SAMPLE_SUPERVISOR.name : r.who === "reg" ? SAMPLE_REGISTRAR.name : guestKind(r.guest).name;
 
-/** An EPA that counts as this term's one from the term supervisor or another specialist. */
+/** The words a screen shows beside a guest assessor's EPA until the MEU approves it. */
+export const UNAPPROVED_WORDS = "Unapproved until the MEU approves";
+
+/**
+ * An EPA that counts as this term's one from "the primary clinical supervisor or an equivalent specialist"
+ * (AMC Section 3A, Assessment approach, p.50).
+ */
 export const fromSpecialist = (r: Pick<EpaRecord, "role">) =>
   r.role === "consultant" || r.role === "term supervisor" || r.role === "specialist";
 
@@ -281,15 +309,39 @@ export function epaCounts(s: AssessmentsState): Record<EpaNumber, number> {
 }
 
 /**
- * EPAs still needed this year, from the rules: at least 10 a year, EPA 1 in each of
- * the 5 terms, and at least 2 of each other EPA. Terms 1 to 3 each have an EPA 1, so
- * EPA 1 is still owed for this term (if not done) and for term 5.
+ * The fewest EPAs still needed this year, from the AMC rules: "At least 10 EPAs must be assessed across the year
+ * with at least 2 in each term", EPA 1 "at least once in each term", and EPAs 2 to 4 at least twice each (AMC
+ * Section 3A, Assessment approach, p.50, and the certification checklist in Section 3C, p.58).
+ *
+ * Only terms not yet finished can take more. Each needs enough to reach 2, and an EPA 1 if it has none. Those
+ * of its slots that need not be EPA 1 can go to EPAs 2 to 4 still short. Anything left over is added on top,
+ * and the year never needs fewer than 10 in all.
  */
+export function epaStillNeeded(
+  records: readonly Pick<EpaRecord, "term" | "epa">[],
+  openTerms: readonly TermId[],
+): number {
+  let termSlots = 0;
+  let freeSlots = 0;
+  for (const term of openTerms) {
+    const inTerm = records.filter((r) => r.term === term);
+    const epa1 = inTerm.some((r) => r.epa === 1) ? 0 : 1;
+    const slots = Math.max(2 - inTerm.length, epa1);
+    termSlots += slots;
+    freeSlots += slots - epa1;
+  }
+  const others = ([2, 3, 4] as const).reduce(
+    (sum, k) => sum + Math.max(0, 2 - records.filter((r) => r.epa === k).length),
+    0,
+  );
+  return Math.max(10 - records.length, termSlots + Math.max(0, others - freeSlots));
+}
+
+/** The sample's terms that can still take EPAs: this one and the next. */
+const OPEN_TERMS: readonly TermId[] = SAMPLE_TERMS.filter((t) => t.status !== "done").map((t) => t.id);
+
 export function epaNeedMore(s: AssessmentsState): number {
-  const by = epaCounts(s);
-  const epa1Owed = epa1ThisTerm(s) ? 1 : 2;
-  const others = ([2, 3, 4] as const).reduce((sum, k) => sum + Math.max(0, 2 - by[k]), 0);
-  return Math.max(10 - epaRecords(s).length, epa1Owed + others);
+  return epaStillNeeded(epaRecords(s), OPEN_TERMS);
 }
 
 /** Only things the doctor must do now count on the tab. */
@@ -301,59 +353,64 @@ export function doctorActions(s: AssessmentsState): number {
   n += s.epaRequests.filter((r) => r.status === "sent-back" && r.epa !== 1).length;
   if (st === "start" || st === "self-draft" || st === "self-done") n++;
   else if (st === "sup-signed") n++;
-  else if (st === "doc-signed" && !s.sentToMeu) n++;
   else if (st === "ready" && windowOpen(s) && !s.booking) n++;
   return n;
 }
 
-/** What the supervisor has to finish: two made-up requests, Sam's form and any EPA asked of them. */
+/**
+ * What the supervisor has to finish: two made-up requests, Sam's form and any EPA asked of them. Sam's form is
+ * theirs to start whether or not Sam has said they're ready (CLA Training Guide for Prevocational Doctors, p.12).
+ */
 export function supervisorTodo(s: AssessmentsState): number {
   let n = 2;
-  if (s.request.sent && !s.sigs.sup) n++;
+  if (!s.sigs.sup) n++;
   n += s.epaRequests.filter((r) => epaWithAssessor(r) && r.who === "sup").length;
   return n;
 }
 
 const SUP = SAMPLE_SUPERVISOR.short;
 
-export function endOfTermLine(s: AssessmentsState): string {
+/**
+ * The DCT's sign-off on this form, when given (`samSignOff(dct)` in dct.ts). Passed in rather than imported,
+ * because dct.ts reads this file. In CLA the DCT or EDMS completes the "DCT Sign-off" form after the term
+ * supervisor and the doctor (CLA training guide for supervisors, assessors, DCTs and EDMS, Release 2.0, p.39).
+ */
+export type DctSignOff = { readonly date: string } | null;
+
+export function endOfTermLine(s: AssessmentsState, signOff: DctSignOff = null): string {
   switch (stage(s)) {
     case "start":
-      return `Rate yourself first (optional), then ask ${SUP}`;
+      return `Rate yourself (optional), then tell ${SUP} you're ready`;
     case "self-draft":
       return `Self-assessment saved at step ${s.self.step + 1} of 8`;
     case "self-done":
-      return `Self-assessment done. Ask ${SUP} next.`;
+      return `Self-assessment done. Tell ${SUP} you're ready.`;
     case "requested":
     case "sup-draft":
-      return `Sent to ${SUP}. She's preparing her view.`;
+      return s.request.sent ? `Told ${SUP}. She's preparing her view.` : `${SUP} is preparing her view.`;
     case "ready":
       if (s.booking) return `${SUP}'s draft is done. Meeting ${bookingLabel(s.booking)}.`;
       return windowOpen(s)
         ? `${SUP}'s draft is done. Book your meeting.`
         : `${SUP}'s draft is done. Booking opens Mon 26 Oct.`;
     case "met":
-      return `Discussed on ${meetingDate(s)}. ${SUP} signs next.`;
+      return `Discussed on ${meetingDate(s)}. ${SUP} submits it next.`;
     case "sup-signed":
-      return `${SUP} has signed. Read your report and sign.`;
+      return `${SUP} has submitted it. Read your report and acknowledge it.`;
     case "doc-signed":
-      return s.sentToMeu
-        ? "Emailed to your MEU. The DCT countersigns next."
-        : "Signed by you both. Email the PDF to your MEU by Fri 20 Nov.";
+      return signOff ? `DCT sign-off done ${signOff.date}.` : "You've acknowledged it. The DCT signs off next.";
   }
 }
 
 export type PillTone = "neutral" | "accent" | "warm" | "ok" | "bad";
 export type Pill = { label: string; tone: PillTone };
 
-export function endOfTermPill(s: AssessmentsState): Pill {
+export function endOfTermPill(s: AssessmentsState, signOff: DctSignOff = null): Pill {
   switch (stage(s)) {
     case "doc-signed":
-      return s.sentToMeu
-        ? { label: "Awaiting DCT countersign", tone: "neutral" }
-        : { label: "Not sent yet", tone: "warm" };
+      return signOff ? { label: "DCT signed off", tone: "ok" } : { label: "Awaiting DCT sign-off", tone: "neutral" };
     case "sup-signed":
-      return { label: "Your turn to sign", tone: "warm" };
+      return { label: "Your turn to acknowledge", tone: "warm" };
     case "start":
       return { label: "Not started", tone: "accent" };
     case "self-draft":
@@ -365,41 +422,57 @@ export function endOfTermPill(s: AssessmentsState): Pill {
         ? { label: "Book your meeting", tone: "accent" }
         : { label: "Booking opens Mon 26 Oct", tone: "neutral" };
     case "met":
-      return { label: `Waiting for ${SUP} to sign`, tone: "neutral" };
+      return { label: `Waiting for ${SUP} to submit`, tone: "neutral" };
     default:
       return { label: `Waiting for ${SUP}'s draft`, tone: "neutral" };
   }
 }
 
 export type StepState = "ok" | "now" | "lock";
-export type Step = { state: StepState; title: string; detail: string };
+/** `optional` steps (rating yourself, telling the supervisor) are passed over once a later step is under way. */
+export type Step = { state: StepState; title: string; detail: string; optional?: boolean };
 
 /** True when the supervisor's draft is still not done on Thu 5 Nov (window day 8) or later. */
-export const supervisorLate = (s: AssessmentsState) => s.request.sent && !supReady(s) && s.now >= 8;
+export const supervisorLate = (s: AssessmentsState) => !supReady(s) && s.now >= 8;
 
-/** The eight end-of-term steps, in order. */
-export function endOfTermSteps(s: AssessmentsState): Step[] {
+/**
+ * The seven end-of-term steps, in order. The last three follow CLA: the term supervisor submits the form, the
+ * doctor acknowledges it, and the DCT completes DCT sign-off (CLA Training Guide for Prevocational Doctors,
+ * Release 2.0, p.12; supervisors' guide, p.39; AMC term assessment form, sign-off section). The meeting and its
+ * booking window are this example's own, not a CLA or MEU rule.
+ */
+export function endOfTermSteps(s: AssessmentsState, signOff: DctSignOff = null): Step[] {
   const sent = s.request.sent;
   const late = supervisorLate(s);
-  const step = (state: StepState, title: string, detail: string): Step => ({ state, title, detail });
+  const step = (state: StepState, title: string, detail: string, optional = false): Step =>
+    optional ? { state, title, detail, optional } : { state, title, detail };
+  const tell = `Tell ${SUP} you're ready (optional)`;
   return [
     selfDone(s)
-      ? step("ok", "Rate yourself (optional)", "Saved")
+      ? step("ok", "Rate yourself (optional)", "Saved", true)
       : selfLocked(s)
-        ? step("lock", "Rate yourself (optional)", s.self.status === "draft" ? "Not finished" : "Skipped")
+        ? step("lock", "Rate yourself (optional)", s.self.status === "draft" ? "Not finished" : "Skipped", true)
         : step(
             "now",
             "Rate yourself (optional)",
             s.self.status === "draft" ? `Saved at step ${s.self.step + 1} of 8` : "About 10 minutes",
+            true,
           ),
     sent
-      ? step("ok", `Ask ${SUP}`, `Sent ${dayLabel(s.request.sentOn)}`)
-      : step("now", `Ask ${SUP}`, "Due to the MEU Fri 20 Nov"),
+      ? step("ok", tell, `Told her ${dayLabel(s.request.sentOn)}`, true)
+      : supReady(s)
+        ? step("lock", tell, "Not needed. Her view is done.", true)
+        : step(
+            "now",
+            tell,
+            s.sup.status === "draft" ? "She has already started the form." : "She starts the form either way.",
+            true,
+          ),
     supReady(s)
       ? step("ok", `${SUP} prepares her view`, "Draft done")
-      : sent
+      : s.sup.status === "draft" || sent
         ? step("now", `${SUP} prepares her view`, late ? "Not finished yet" : "In progress")
-        : step("lock", `${SUP} prepares her view`, "After you ask"),
+        : step("lock", `${SUP} prepares her view`, "Only a supervisor can start it"),
     meetingHeld(s)
       ? step("ok", "Meet and discuss", meetingDate(s)!)
       : s.booking
@@ -408,28 +481,34 @@ export function endOfTermSteps(s: AssessmentsState): Step[] {
           ? step("now", "Book and meet", "Open until Fri 6 Nov")
           : step("lock", "Book and meet", "Booking opens Mon 26 Oct"),
     s.sigs.sup
-      ? step("ok", `${SUP} signs`, s.sigs.sup.date)
+      ? step("ok", `${SUP} submits it in CLA`, s.sigs.sup.date)
       : meetingHeld(s)
-        ? step("now", `${SUP} signs`, "Next")
-        : step("lock", `${SUP} signs`, "After the meeting"),
+        ? step("now", `${SUP} submits it in CLA`, "Next")
+        : step("lock", `${SUP} submits it in CLA`, "After the meeting"),
     s.sigs.doc
-      ? step("ok", "You sign", s.sigs.doc.date)
+      ? step("ok", "You acknowledge it in CLA", s.sigs.doc.date)
       : s.sigs.sup
-        ? step("now", "You sign", "Read your report first")
-        : step("lock", "You sign", `After ${SUP}`),
-    s.sentToMeu
-      ? step("ok", "Email the PDF to your MEU", "Marked as sent (made-up)")
+        ? step("now", "You acknowledge it in CLA", "Read your report first")
+        : step("lock", "You acknowledge it in CLA", `After ${SUP}`),
+    signOff
+      ? step("ok", "DCT sign-off in CLA", signOff.date)
       : s.sigs.doc
-        ? step("now", "Email the PDF to your MEU", "By Fri 20 Nov. PsychSift doesn't send it for you.")
-        : step("lock", "Email the PDF to your MEU", "By Fri 20 Nov"),
-    step("lock", "DCT countersigns", "Your MEU tells you when it's done"),
+        ? step("now", "DCT sign-off in CLA", "With the DCT")
+        : step("lock", "DCT sign-off in CLA", "After you acknowledge it"),
   ];
 }
 
-/** "Step n of 8": the first step that is neither done nor skipped. */
+/**
+ * "Step n of 7": the first step that is neither done nor passed over. A step left behind by a later done step
+ * (a skipped self-rating) is passed over, and so is an optional step once a later required one is under way.
+ */
 export function currentStepNumber(steps: readonly Step[]): number {
-  // A step left behind by a later done step (a skipped self-rating) is not the current one.
-  const i = steps.findIndex((x, n) => x.state !== "ok" && !steps.slice(n + 1).some((y) => y.state === "ok"));
+  const i = steps.findIndex((x, n) => {
+    if (x.state === "ok") return false;
+    const later = steps.slice(n + 1);
+    if (later.some((y) => y.state === "ok")) return false;
+    return !(x.optional && later.some((y) => !y.optional && y.state === "now"));
+  });
   return i < 0 ? steps.length : i + 1;
 }
 
@@ -452,6 +531,12 @@ export const lowDomains = (f: { ratings: Ratings | Record<DomainNumber, Rating> 
     return r !== null && r <= 2;
   });
 
+/**
+ * When to suggest talking to the MEU or DCT about an improvement plan. A domain rated 1 or 2 is the AMC form's
+ * own trigger ("Liaise with the MEU or DCT to complete an Improving Performance Action Plan", AMC term assessment
+ * form). Adding a Conditional pass or Unsatisfactory global rating is this example's choice, not an AMC rule
+ * (Section 3B, Improving performance, starts with an informal discussion). It is advice, never a blocker.
+ */
 export const needsImprovementPlan = (f: AssessmentForm) =>
   lowDomains(f).length > 0 || f.global === "cond" || f.global === "unsat";
 
@@ -475,8 +560,9 @@ export function formBlockers(f: AssessmentForm, who: Who): string[] {
   if (who === "sup") {
     if (!f.global) reasons.push("Choose a global rating.");
     const lowNoFeedback = lowDomains(f).filter((k) => !f.feedback[k].trim());
+    // A 1 or 2 needs written feedback: "Domain ratings of 1 or 2 will require further information" (AMC term
+    // assessment form), and CLA asks for a written justification (supervisors' guide, Release 2.0, pp.8 and 25).
     if (lowNoFeedback.length) reasons.push(`Add feedback for domain ${lowNoFeedback.join(", ")}.`);
-    if (needsImprovementPlan(f) && !f.ipap) reasons.push("Tick to notify the MEU.");
   }
   return reasons;
 }
@@ -623,11 +709,17 @@ export type AssessmentsAction =
       complexity?: CaseComplexity;
       note?: string;
     }
-  | { type: "undo-record-epa"; index: number }
+  | { type: "undo-record-epa"; index: number; previous?: EpaRequest }
   | { type: "epa-not-yet"; index: number; reply?: string }
   | { type: "epa-send-back"; index: number; reply: string }
   /** `previous` is the request as it was before the answer, so Undo puts back a "not yet" and its note too. */
-  | { type: "undo-epa-answer"; index: number; previous?: EpaRequest }
+  | {
+      type: "undo-epa-answer";
+      index: number;
+      previous?: EpaRequest;
+      /** The answer this Undo belongs to, so an older Undo never reverses a newer answer. */
+      answered?: { status: EpaRequestStatus; reply: string };
+    }
   | { type: "cancel-epa-request"; index: number }
   | { type: "restore-epa-request"; index: number; request: EpaRequest }
   | { type: "toggle-availability"; day: number; time: string }
@@ -693,8 +785,8 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       return editForm(s, a.who, (f) => f);
     case "form-finish": {
       if (formBlockers(s[a.who], a.who).length) return s;
-      // The supervisor's view starts only once the doctor has asked for it.
-      if (a.who === "sup" && !s.request.sent) return s;
+      // The supervisor's draft needs no request from the doctor: in CLA only a linked supervisor starts an
+      // end-of-term form (CLA Training Guide for Prevocational Doctors, Release 2.0, p.12).
       return editForm(s, a.who, (f) => ({ ...f, status: "done" }));
     }
     case "form-example": {
@@ -844,6 +936,7 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       // Undo straight after "Can't assess yet" or "Send back": the request is waiting again.
       const r = s.epaRequests[a.index];
       if (!r || (r.status !== "not-yet" && r.status !== "sent-back")) return s;
+      if (a.answered && (r.status !== a.answered.status || (r.reply ?? "") !== a.answered.reply)) return s;
       const p = a.previous;
       if (p && p.epa === r.epa && epaWithAssessor(p)) {
         return { ...s, epaRequests: answerAt(s.epaRequests, a.index, p.status, p.reply ?? "") };
@@ -872,6 +965,10 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       const r = s.epaRequests[a.index];
       if (!r || r.status !== "done") return s;
       if (r.direct) return { ...s, epaRequests: s.epaRequests.filter((_, i) => i !== a.index) };
+      // Recorded after "Can't assess yet": back to that, note included.
+      const p = a.previous;
+      if (p && p.epa === r.epa && epaWithAssessor(p))
+        return { ...s, epaRequests: answerAt(s.epaRequests, a.index, p.status, p.reply ?? "") };
       const epaRequests = s.epaRequests.map((x, i) =>
         i === a.index ? { ...asked(x), status: "requested" as const } : x,
       );
@@ -887,7 +984,7 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
   }
 }
 
-/** Kinds of experience (A to D) from terms already countersigned. */
+/** Kinds of experience (A to D) from terms already finished. */
 export function kindsDone(terms: readonly { status: string; category: string }[]): number {
   return new Set(terms.filter((t) => t.status === "done").map((t) => t.category)).size;
 }

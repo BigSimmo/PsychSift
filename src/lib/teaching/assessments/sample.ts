@@ -125,6 +125,8 @@ export type EpaRecord = {
   role: string;
   level: SupervisionLevel;
   complexity?: CaseComplexity;
+  /** A guest assessor's answer, Unapproved in CLA until the MEU approves it (CLA detailed FAQs v2.0, p.5). */
+  unapproved?: boolean;
 };
 
 export const SAMPLE_EPA_RECORDS: readonly EpaRecord[] = [
@@ -188,7 +190,7 @@ type ExampleAnswers = {
 /** "Fill with example answers": made-up wording about skills, never about patients. */
 export const EXAMPLE_ANSWERS: { self: ExampleAnswers; sup: ExampleAnswers } = {
   self: {
-    sources: ["Registrars", "Nursing staff", "EPAs", "Learning record"],
+    sources: ["Registrars", "Nursing staff", "EPAs", "PGY1/PGY2 record of learning"],
     ticks: ticksAllExcept(["1.3", "1.6", "1.9", "2.7", "3.4", "3.5", "4.3", "4.4"]),
     ratings: { 1: 3, 2: 4, 3: 3, 4: 3 },
     feedback: {
@@ -202,7 +204,7 @@ export const EXAMPLE_ANSWERS: { self: ExampleAnswers; sup: ExampleAnswers } = {
     areas: "Presenting a full formulation on ward round. Speed with admission paperwork.",
   },
   sup: {
-    sources: ["Nursing staff", "Registrars", "Allied health", "EPAs"],
+    sources: ["Nursing staff", "Registrars", "Allied health professionals", "EPAs"],
     ticks: ticksAllExcept(["1.3", "1.6", "2.7", "3.4", "3.5", "4.4"]),
     ratings: { 1: 4, 2: 4, 3: 3, 4: 3 },
     feedback: {

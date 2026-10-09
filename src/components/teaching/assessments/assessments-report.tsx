@@ -39,6 +39,7 @@ import {
   type SignatureInk,
   type Who,
 } from "@/lib/teaching/assessments/model";
+import { samSignOff } from "@/lib/teaching/assessments/dct";
 import { SAMPLE_DOCTOR, SAMPLE_MIDTERM, SAMPLE_SUPERVISOR } from "@/lib/teaching/assessments/sample";
 
 const DOC = SAMPLE_DOCTOR;
@@ -119,8 +120,9 @@ function SignatureLine({ role, name, mark }: { role: string; name: string; mark:
   );
 }
 
-export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
+export function AssessmentReport({ s, params, openSheet, dct }: ScreenProps) {
   const mid = params.get("of") !== "eot";
+  const signOff = !mid && s.sigs.doc ? samSignOff(dct) : null;
   if (!mid && !supReady(s))
     return (
       <>
@@ -151,7 +153,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
             aria-hidden="true"
             className={cn(
               "grid size-10 shrink-0 place-items-center rounded-full",
-              // Nothing shows green before the DCT countersigns, so a good rating stays neutral here.
+              // Nothing shows green before DCT sign-off, so a good rating stays neutral here.
               mid || good
                 ? "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
                 : "bg-[color:var(--warning-bg)] text-[color:var(--warning-text)]",
@@ -171,17 +173,19 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
             <p className={secondaryText}>
               {mid
                 ? "There's no overall rating at mid-term."
-                : s.sigs.doc
-                  ? "Not final until the DCT countersigns. The Assessment Review Panel reviews the year."
-                  : "Not final until you've both signed and the DCT countersigns."}
+                : signOff
+                  ? `DCT sign-off done ${signOff.date}. The Assessment Review Panel reviews the year.`
+                  : s.sigs.doc
+                    ? "Not final until DCT sign-off. The Assessment Review Panel reviews the year."
+                    : "Not final until you've both signed and the DCT signs off."}
             </p>
           </div>
         </div>
       </Panel>
       {ipap ? (
-        <Inset tone="warm" title="Under the form, these ratings mean an improvement plan (IPAP) is needed">
-          It is extra support with agreed goals and a review date. It is recorded, and the Assessment Review Panel sees
-          it at the end of the year. Your DCT or MEU will contact you. You can also start the conversation.
+        <Inset tone="warm" title="These ratings mean talking to the MEU or DCT about an improvement plan">
+          An Improving Performance Action Plan (IPAP) is extra support with agreed goals and a review date. Your term
+          supervisor, the DCT or the MEU will talk it through with you. You can also start the conversation.
         </Inset>
       ) : null}
       <SectionLabel>{`You and ${SUP}`}</SectionLabel>
@@ -216,8 +220,8 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
         ))}
       </List>
       <SmallPrint>
-        Your self-assessment is shared only with {SUP}. Only the supervisor&apos;s form goes to the MEU. PsychSift
-        doesn&apos;t send it for you.
+        Here your self-assessment is shared only with {SUP}. In CLA your self-assessment is your own form, which you
+        start and complete. Made-up: nothing is sent.
       </SmallPrint>
       <SectionLabel>Signatures</SectionLabel>
       <ul role="list" className="grid">
@@ -244,27 +248,25 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
           }
         />
         <SignatureLine
-          role="DPME or DCT"
-          name="Medical Education Unit"
+          role="DCT sign-off"
+          name="Director of Clinical Training"
           mark={
             <Pill
-              pill={{
-                label: mid
-                  ? "Not needed at mid-term"
-                  : docSigned
-                    ? s.sentToMeu
-                      ? "Waiting"
-                      : "After you email it"
-                    : "After you",
-                tone: "neutral",
-              }}
+              pill={
+                signOff
+                  ? { label: `Signed off ${signOff.date}`, tone: "ok" }
+                  : {
+                      label: mid ? "Not needed at mid-term" : docSigned ? "Waiting" : "After you",
+                      tone: "neutral",
+                    }
+              }
             />
           }
         />
       </ul>
       {!mid && s.sigs.sup && !s.sigs.doc ? (
         <WorkButton href={viewHref("sign")} icon={PenLine} size="wide">
-          Read and sign
+          Read and acknowledge
         </WorkButton>
       ) : null}
       <div className="grid grid-cols-2 gap-2">
@@ -438,8 +440,8 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
         </TickRow>
       </ul>
       <SmallPrint>
-        Your signature is saved with the form, with the date and time{sup ? ", through your secure email link" : ""}. On
-        these made-up records it stays on this page. Made-up date: {todayLabel(s)}.
+        In CLA you {sup ? "submit the form" : "acknowledge the form"} there. Made-up: nothing is sent, and your
+        signature stays on this page. Made-up date: {todayLabel(s)}.
       </SmallPrint>
       <AssessButton
         icon={PenLine}

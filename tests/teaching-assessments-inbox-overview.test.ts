@@ -58,13 +58,23 @@ describe("consultant inbox", () => {
 
   it("lists Ash's mid-term and the made-up EPAs, overdue only once the window opens", () => {
     const before = inboxRequests(at(-1), {});
-    expect(before.map((i) => i.id)).toEqual(["ben-mid", "mia-epa-2", "ella-epa-4", "ravi-epa-3"]);
+    expect(before.map((i) => i.id)).toEqual(["ben-mid", "sam-eot", "mia-epa-2", "ella-epa-4", "ravi-epa-3"]);
     expect(before.find((i) => i.id === "ben-mid")!.overdue).toBe(false);
     const during = inboxRequests(at(0), {});
     const ben = during.find((i) => i.id === "ben-mid")!;
     expect(ben.overdue).toBe(true);
     expect(ben.due).toBe("Overdue since Fri 16 Oct");
     expect(sortInbox(during, "oldest")[0]!.id).toBe("ben-mid");
+  });
+
+  it("always offers Sam's end-of-term, before Sam asks, with a made-up due date", () => {
+    // In CLA only a linked supervisor starts the end-of-term form, so it does not wait for a request.
+    const eot = inboxRequests(at(-1), {}).find((i) => i.id === "sam-eot")!;
+    expect(eot.notAsked).toBe(true);
+    expect(eot.status).toBe("waiting");
+    expect(eot.due).toBe("Due Fri 20 Nov (made-up)");
+    expect(eot.open).toEqual({ kind: "href", view: "form" });
+    expect(inboxRowStatus(eot).tag).toBe("By Fri 20 Nov (made-up)");
   });
 
   it("adds Sam's end-of-term and EPA requests from the sample's own story", () => {
@@ -90,12 +100,13 @@ describe("consultant inbox", () => {
 
   it("filters, counts and sorts what is waiting", () => {
     const items = inboxRequests(at(0), {});
-    expect(filterCounts(items)).toEqual({ all: 4, overdue: 1, epas: 3, forms: 1 });
+    expect(filterCounts(items)).toEqual({ all: 5, overdue: 1, epas: 3, forms: 2 });
     expect(sortInbox(items, "doctor").map((i) => i.doctor.name)).toEqual([
       "Dr Ash Zamia",
       "Dr Charlie Balga",
       "Dr Frankie Mulga",
       "Dr Rowan Sheoak",
+      "Dr Sam Karri",
     ]);
     const later = inboxRequests(at(0), {
       "ella-epa-4": { status: "later", level: null, text: "", reason: "not_this_week" },
@@ -342,8 +353,9 @@ describe("inbox rows, passing on, and what the doctor sees", () => {
     });
     expect(claCopyText(item, s.answers["mia-epa-2"]!)).toBe(
       [
-        "EPA 2 · Acutely unwell patient",
-        "Supervisor: Dr Robin Wattle",
+        "EPA 2 · Recognition and care of the acutely unwell patient",
+        // The supervisor's own notes for their CLA answer (rules audit W1), so they name the doctor.
+        `Doctor: ${item.doctor.name}`,
         "Supervision needed: Proximal",
         "Feedback: Calm, clear escalation.",
         "Asked Fri 2 Oct",
@@ -460,7 +472,7 @@ describe("term overview reminders, export and words", () => {
     const entries = assessmentsSampleSearchEntries();
     expect(entries.map((e) => e.href)).toEqual([
       "/teaching/assessments?view=inbox&as=supervisor",
-      "/teaching/assessments?view=overview&as=supervisor",
+      "/teaching/assessments?view=overview&as=dct",
     ]);
     for (const e of entries) expect(e.title).toMatch(/made-up sample/);
   });

@@ -156,4 +156,21 @@ describe("work frame navigation", () => {
     expect(tab.label).toBe("Registrar supervision");
     expect(workFrameTabLabel(tab)).toBe("Registrar");
   });
+
+  // CLA site audit, 9 Oct 2026: the service-wide Term overview is the DCT's (M3), and History only repeats the
+  // CLA notice for a signed-in reader (P1), so both are offered to signed-out readers only.
+  it("puts the Term overview on the DCT side and keeps it and History signed-out only", () => {
+    const assess = WORK_AREAS.assess;
+    const items = assess.groups.flatMap((group) => group.items);
+    const supervise = assess.groups.find((group) => group.label === "I supervise")!;
+    expect(supervise.items.map((item) => item.id)).not.toContain("assess-overview");
+    const dct = assess.groups.find((group) => group.label === "DCT");
+    const overview = dct?.items.find((item) => item.id === "assess-overview");
+    expect(overview?.href).toBe("/teaching/assessments?view=overview&as=dct");
+    expect(overview?.gate).toBe("signed-out");
+    expect(items.find((item) => item.id === "assess-history")?.gate).toBe("signed-out");
+    // Get help and Help and words hold no records, so every reader keeps them (A1).
+    expect(items.find((item) => item.id === "assess-help")?.gate).toBeUndefined();
+    expect(items.find((item) => item.id === "assess-words")?.gate).toBeUndefined();
+  });
 });

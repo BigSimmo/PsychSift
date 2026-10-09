@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 
+import { initialDctState } from "@/lib/teaching/assessments/dct";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useReducer, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -115,6 +116,7 @@ function FormHarness() {
         s={s}
         dispatch={dispatch}
         saveEpa={dispatch}
+        dct={initialDctState()}
         params={new URLSearchParams({ view: "epaform", i: "0" })}
         role="supervisor"
         openSheet={vi.fn()}

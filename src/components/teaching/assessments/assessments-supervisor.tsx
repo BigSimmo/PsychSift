@@ -6,7 +6,6 @@ import {
   CalendarDays,
   Check,
   Clock,
-  Copy,
   EyeOff,
   FileText,
   History,
@@ -15,7 +14,6 @@ import {
   Plus,
   ShieldCheck,
   TriangleAlert,
-  Users,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -86,8 +84,11 @@ import {
   termWeek,
   weeksDone,
   windowOpen,
+  UNAPPROVED_WORDS,
   type AssessmentsState,
+  type DctSignOff,
 } from "@/lib/teaching/assessments/model";
+import { samSignOff } from "@/lib/teaching/assessments/dct";
 import {
   MEETING_TIMES,
   NIGHT_DAYS,
@@ -111,7 +112,9 @@ const BEN = { id: "ben", name: "Dr Ash Zamia", initials: "AZ", grade: "PGY2", du
 const MIA = { id: "mia", requestId: "mia-epa-2", name: "Dr Frankie Mulga", initials: "FM" } as const;
 
 const benOverdue = (s: AssessmentsState) => s.now >= 0;
-const countersigned = SAMPLE_TERMS.filter((t) => t.status === "done").length;
+/** Earlier terms' end-of-term forms with DCT sign-off, plus this term's once the DCT side has signed it off. */
+const signedOff = (dct: ScreenProps["dct"]) =>
+  SAMPLE_TERMS.filter((t) => t.status === "done").length + (samSignOff(dct) ? 1 : 0);
 const midTermsSigned = SAMPLE_TERMS.filter((t) => t.midSigned).length + 1;
 
 /** Thirty minutes after a "14:30" time. */
@@ -138,7 +141,7 @@ const meetingIsToday = (s: AssessmentsState) => !!s.booking && s.now >= s.bookin
 
 /* ------------------------------------------------------------- the hero */
 
-function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">) {
+function SamHero({ s, dispatch, go, signOff }: Pick<ScreenProps, "s" | "dispatch" | "go"> & { signOff: DctSignOff }) {
   const st = stage(s);
   const done = stepsDone(s);
   const timesButton = (
@@ -146,36 +149,22 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
       Set times
     </WorkButton>
   );
-  let eyebrow = "End-of-term · due to the MEU Fri 20 Nov";
+  let eyebrow = "End-of-term · made-up due date Fri 20 Nov";
   let sub: string;
   let actions: ReactNode;
-  if (st === "start" || st === "self-draft" || st === "self-done") {
-    sub = `${DOC.grade}. ${DOC.first} hasn't asked yet. Doctors ask in the last weeks of term.`;
-    actions = (
-      <>
-        <WorkButton
-          variant="secondary"
-          icon={Copy}
-          onClick={() => {
-            dispatch({ type: "form-example", who: "self" });
-            dispatch({ type: "form-finish", who: "self" });
-            dispatch({ type: "send-request" });
-          }}
-        >
-          Try an example request
-        </WorkButton>
-        {timesButton}
-      </>
-    );
-  } else if (st === "requested" || st === "sup-draft") {
+  if (st === "start" || st === "self-draft" || st === "self-done" || st === "requested" || st === "sup-draft") {
+    // In CLA only a linked supervisor starts the end-of-term form (CLA Training Guide for Prevocational
+    // Doctors, Release 2.0, p.12), so the draft never waits for the doctor to ask.
     sub =
-      st === "requested"
-        ? `${DOC.grade}. ${DOC.first} asked you on ${dayLabel(s.request.sentOn)}. You rate first.`
-        : `${DOC.grade}. Your draft is saved at step ${withUnit(s.sup.step + 1, "of")} ${FORM_TOTAL}.`;
+      st === "sup-draft"
+        ? `${DOC.grade}. Your draft is saved at step ${withUnit(s.sup.step + 1, "of")} ${FORM_TOTAL}.`
+        : st === "requested"
+          ? `${DOC.grade}. ${DOC.first} told you on ${dayLabel(s.request.sentOn)} they're ready. You rate first.`
+          : `${DOC.grade}. You start the end-of-term form. ${DOC.first} may tell you when they're ready.`;
     actions = (
       <>
         <WorkButton variant="secondary" icon={PenLine} href={viewHref("form", asSup)}>
-          {st === "requested" ? "Start draft" : "Continue draft"}
+          {st === "sup-draft" ? "Continue draft" : "Start draft"}
         </WorkButton>
         {timesButton}
       </>
@@ -214,7 +203,7 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
     );
   } else if (st === "met") {
     eyebrow = `Met ${meetingDate(s)}`;
-    sub = `You sign next, then ${DOC.first} signs and emails the PDF to the MEU.`;
+    sub = `You submit it next. Then ${DOC.first} acknowledges it and the DCT signs off, all in CLA.`;
     actions = (
       <WorkButton variant="secondary" icon={PenLine} href={viewHref("sign", asSup)}>
         Sign now
@@ -222,15 +211,15 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
     );
   } else if (st === "sup-signed") {
     eyebrow = `Signed ${s.sigs.sup?.date ?? ""}`;
-    sub = `Waiting for ${DOC.first} to read the report and sign.`;
+    sub = `Waiting for ${DOC.first} to read the report and acknowledge it.`;
     actions = (
       <WorkButton variant="secondary" icon={Layers} href={viewHref("side", asSup)}>
         Side by side
       </WorkButton>
     );
   } else {
-    eyebrow = "Signed by you both";
-    sub = `${DOC.first} emails the PDF to the MEU. The DCT countersigns next.`;
+    eyebrow = signOff ? `DCT signed off ${signOff.date}` : "Signed by you both";
+    sub = signOff ? "The end-of-term form is complete." : "DCT sign-off is next, in CLA.";
     actions = (
       <WorkButton variant="secondary" icon={FileText} href={viewHref("pdf", { ...asSup, of: "eot" })}>
         View PDF
@@ -258,7 +247,7 @@ function SamHero({ s, dispatch, go }: Pick<ScreenProps, "s" | "dispatch" | "go">
 
 /* ---------------------------------------------------------- the To do tab */
 
-export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
+export function SupervisorHome({ s, dispatch, openSheet, go, dct }: ScreenProps) {
   const overdue = benOverdue(s);
   // Frankie's EPA is answered in the inbox or on Frankie's page: the row says so rather than staying New.
   const miaAnswer = useAssessmentsExtras().extras.answers[MIA.requestId]?.status;
@@ -291,7 +280,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
   return (
     <>
       <AssessHeader eyebrow={`Term 4 · week ${withUnit(termWeek(s), "of")} 10`} title="Assessments" />
-      <SamHero s={s} dispatch={dispatch} go={go} />
+      <SamHero s={s} dispatch={dispatch} go={go} signOff={samSignOff(dct)} />
       <SectionLabel end={<SectionNote>{epaRows.length + 2}</SectionNote>}>Requests</SectionLabel>
       <List label="Requests">
         {overdue ? ben : null}
@@ -311,7 +300,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
         <Row
           avatar={MIA.initials}
           title={`${MIA.name} · EPA 2`}
-          subtitle="Acutely unwell patient · asked Fri 2 Oct"
+          subtitle={`${epaInfo(2).title} · asked Fri 2 Oct`}
           tag={miaTag}
           href={traineeHref(MIA.id)}
         />
@@ -321,13 +310,6 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
           title={`Everything from ${DOC.name}`}
           subtitle="Requests, supervision and corrections"
           href={traineeHref("sam")}
-        />
-        <Row
-          icon={Users}
-          iconTone="mode"
-          title="Confirm supervision"
-          subtitle="Hours your doctors logged with you"
-          href="/teaching/supervision"
         />
       </List>
       <AssessNote icon={ShieldCheck}>
@@ -362,7 +344,12 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
           />
         </li>
         <li>
-          <WorkDateRow month="Nov" day={20} title="Forms due to the MEU" sub={`End-of-term, ${DOC.name}`} />
+          <WorkDateRow
+            month="Nov"
+            day={20}
+            title="Forms due to the MEU"
+            sub={`End-of-term, ${DOC.name} · made-up date`}
+          />
         </li>
       </List>
       <AssessCallout icon={EyeOff} tone="neutral" title="You rate first">
@@ -477,12 +464,12 @@ function MeetingList({ s }: { s: AssessmentsState }) {
   );
 }
 
-export function SideBySide({ s, dispatch, go }: ScreenProps) {
+export function SideBySide({ s, dispatch, go, dct }: ScreenProps) {
   const st = stage(s);
+  const signOff = samSignOff(dct);
   const self = selfDone(s) ? s.self : null;
   const back = { href: home, label: "To do" };
   if (st === "start" || st === "self-draft" || st === "self-done" || st === "requested" || st === "sup-draft") {
-    const drafting = st === "requested" || st === "sup-draft";
     return (
       <>
         <AssessHeader eyebrow={DOC.name} title="Side by side" back={back} />
@@ -491,8 +478,8 @@ export function SideBySide({ s, dispatch, go }: ScreenProps) {
           title="Finish your draft first"
           body={`${DOC.first}'s self-assessment appears here only after you finish your own draft, so your view is your own.`}
           action={
-            <WorkButton icon={PenLine} href={drafting ? viewHref("form", asSup) : home}>
-              {drafting ? "Open your draft" : "Back to To do"}
+            <WorkButton icon={PenLine} href={viewHref("form", asSup)}>
+              {st === "sup-draft" ? "Open your draft" : "Start your draft"}
             </WorkButton>
           }
         />
@@ -547,8 +534,12 @@ export function SideBySide({ s, dispatch, go }: ScreenProps) {
             title="Meet and discuss"
             detail={met ? meetingDate(s) : `Today, ${time}`}
           />
-          <StepRow state={met ? "now" : "lock"} title="You sign" detail={met ? "Now" : "After the meeting"} />
-          <StepRow state="lock" title={`${DOC.first} signs`} detail="Then emails the PDF to the MEU" />
+          <StepRow
+            state={met ? "now" : "lock"}
+            title="You submit it in CLA"
+            detail={met ? "Now" : "After the meeting"}
+          />
+          <StepRow state="lock" title={`${DOC.first} acknowledges it in CLA`} detail="Then DCT sign-off in CLA" />
         </List>
         <TalkingPoints s={s} />
         <RatingsCard s={s} />
@@ -567,8 +558,10 @@ export function SideBySide({ s, dispatch, go }: ScreenProps) {
       {signed ? (
         <AssessCallout icon={Check} tone="neutral" title="Signed by you">
           {s.sigs.doc
-            ? `${DOC.first} has signed too, and emails the PDF to the MEU. The DCT countersigns next.`
-            : `${DOC.first} has an alert to read and sign.`}
+            ? signOff
+              ? `${DOC.first} has acknowledged it, and the DCT signed off on ${signOff.date}.`
+              : `${DOC.first} has acknowledged it too. DCT sign-off is next, in CLA.`
+            : `${DOC.first} reads the report and acknowledges it next.`}
         </AssessCallout>
       ) : (
         <AssessCallout icon={Check} title="Draft finished">
@@ -668,7 +661,7 @@ export function SupervisorTimes({ s, dispatch, go }: ScreenProps) {
         <WorkButton
           icon={Check}
           onClick={() => {
-            toast?.(offered ? `${offered} times offered to ${DOC.first}` : "No times offered yet");
+            toast?.(offered ? `${offered} times saved. Made-up: nothing is sent.` : "No times offered yet");
             go(home);
           }}
         >
@@ -681,10 +674,10 @@ export function SupervisorTimes({ s, dispatch, go }: ScreenProps) {
 
 /* -------------------------------------------------------- the Progress tab */
 
-function samEndOfTerm(s: AssessmentsState): string {
+function samEndOfTerm(s: AssessmentsState, dctSignedOff: boolean): string {
   switch (stage(s)) {
     case "requested":
-      return "Asked, draft not started";
+      return "Ready, draft not started";
     case "sup-draft":
       return "Your draft is saved";
     case "ready":
@@ -694,13 +687,13 @@ function samEndOfTerm(s: AssessmentsState): string {
     case "sup-signed":
       return "Signed by you";
     case "doc-signed":
-      return "Signed by you both";
+      return dctSignedOff ? "DCT signed off" : "Signed by you both";
     default:
-      return "Not asked yet";
+      return "Draft not started";
   }
 }
 
-export function SupervisorProgress({ s }: ScreenProps) {
+export function SupervisorProgress({ s, dct }: ScreenProps) {
   const [range, setRange] = useState<"term" | "year">("term");
   const week = termWeek(s);
   const weeks = weeksDone(s);
@@ -762,11 +755,11 @@ export function SupervisorProgress({ s }: ScreenProps) {
       {range === "term" ? (
         <>
           <AssessKeyValue k="Mid-term" v={`Signed ${SAMPLE_MIDTERM.date}`} />
-          <AssessKeyValue k="End-of-term" v={samEndOfTerm(s)} />
+          <AssessKeyValue k="End-of-term" v={samEndOfTerm(s, !!samSignOff(dct))} />
         </>
       ) : (
         <>
-          <AssessKeyValue k="End-of-term forms" v={`${withUnit(countersigned, "of")} 5 countersigned`} />
+          <AssessKeyValue k="End-of-term forms" v={`${withUnit(signedOff(dct), "of")} 5 with DCT sign-off`} />
           <AssessKeyValue
             k="Leave"
             v={`${withUnit(SAMPLE_LEAVE.used, "of")} ${withUnit(SAMPLE_LEAVE.limit, "days")}`}
@@ -797,8 +790,8 @@ export function SupervisorProgress({ s }: ScreenProps) {
             <TermTrack week={week} />
             <AssessNote icon={CalendarDays} center>
               {windowOpen(s)
-                ? "Booking is open until Fri 6 Nov. Forms due Fri 20 Nov."
-                : "Booking opens Mon 26 Oct. Forms due Fri 20 Nov."}
+                ? "Booking is open until Fri 6 Nov. Made-up due date Fri 20 Nov."
+                : "Booking opens Mon 26 Oct. Made-up due date Fri 20 Nov."}
             </AssessNote>
           </div>
           {overdue ? [ben, sam] : [sam, ben]}
@@ -818,7 +811,7 @@ export function SupervisorProgress({ s }: ScreenProps) {
 
 /* ---------------------------------------------------------- doctor record */
 
-export function DoctorRecord({ s, openSheet }: ScreenProps) {
+export function DoctorRecord({ s, openSheet, dct }: ScreenProps) {
   const w = weeksDone(s);
   const total = epaRecords(s).length;
   const more = epaNeedMore(s);
@@ -837,7 +830,7 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
       letter,
       name: any?.categoryName ?? letter,
       state,
-      note: done ? `Done in term ${done.n}` : now ? "This term, counts once countersigned" : "Not yet",
+      note: done ? `Done in term ${done.n}` : now ? "This term" : "Not yet",
     };
   });
   return (
@@ -881,6 +874,7 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
       <List label="EPAs">
         {EPAS.map((x) => {
           const n = by[x.id];
+          const unapproved = epaRecords(s).filter((r) => r.epa === x.id && r.unapproved).length;
           let tag: ReactNode;
           if (x.id === 1)
             tag = epa1ThisTerm(s) ? (
@@ -898,7 +892,10 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
                 </span>
                 <span className="work-row__text">
                   <span className="work-row__title">{x.title}</span>
-                  <span className="work-row__sub">{n === 1 ? "1 recorded" : `${n} recorded`}</span>
+                  <span className="work-row__sub">
+                    {`${n} recorded`}
+                    {unapproved ? `. ${unapproved} from a guest assessor: ${UNAPPROVED_WORDS.toLowerCase()}.` : ""}
+                  </span>
                 </span>
                 <span className="work-row__end">{tag}</span>
               </div>
@@ -911,7 +908,7 @@ export function DoctorRecord({ s, openSheet }: ScreenProps) {
           Term assessments
         </h3>
         <AssessKeyValue k="Mid-term" v={`${withUnit(midTermsSigned, "of")} 4 so far`} />
-        <AssessKeyValue k="End-of-term" v={`${withUnit(countersigned, "of")} 5 countersigned`} />
+        <AssessKeyValue k="End-of-term" v={`${withUnit(signedOff(dct), "of")} 5 with DCT sign-off`} />
         <AssessKeyValue k="Leave" v={`${withUnit(SAMPLE_LEAVE.used, "of")} ${withUnit(SAMPLE_LEAVE.limit, "days")}`} />
       </section>
       <AssessNote icon={ShieldCheck}>Counts are records here. CLA stays the official record.</AssessNote>
@@ -935,7 +932,8 @@ type HistoryItem = { kind: Exclude<HistoryFilter, "all">; node: ReactNode };
 const levelWord = (level: Parameters<typeof supervisionLevelName>[0]) =>
   supervisionLevelName(level).replace(" supervision", "").toLowerCase();
 
-export function SupervisorHistory({ s }: ScreenProps) {
+export function SupervisorHistory({ s, dct }: ScreenProps) {
+  const signOff = samSignOff(dct);
   const [filter, setFilter] = useState<HistoryFilter>("all");
   const yours = epaRecords(s).filter((r) => r.term === "t4" && r.by === SAMPLE_SUPERVISOR.name);
   const items: HistoryItem[] = [];
@@ -948,7 +946,11 @@ export function SupervisorHistory({ s }: ScreenProps) {
           icon={FileText}
           title={`${DOC.name} · end-of-term`}
           subtitle={s.sigs.doc ? `Both signed ${s.sigs.doc.date}` : `You signed ${s.sigs.sup.date}`}
-          tag={<WorkTag tone="neutral">{s.sigs.doc ? "Awaiting DCT" : `Waiting for ${DOC.first}`}</WorkTag>}
+          tag={
+            <WorkTag tone="neutral">
+              {s.sigs.doc ? (signOff ? "DCT signed off" : "Awaiting DCT sign-off") : `Waiting for ${DOC.first}`}
+            </WorkTag>
+          }
           href={viewHref("pdf", { ...asSup, of: "eot" })}
         />
       ),
@@ -1001,17 +1003,7 @@ export function SupervisorHistory({ s }: ScreenProps) {
       {shown.length ? (
         <>
           <SectionLabel end={<SectionNote>31 Aug to 8 Nov</SectionNote>}>Term 4 · Psychiatry</SectionLabel>
-          <List label="Term 4">
-            {shown.map((i) => i.node)}
-            {filter === "all" ? (
-              <Row
-                icon={Users}
-                title="Supervision"
-                subtitle="Confirmed hours are on the Supervision tab"
-                href="/teaching/supervision"
-              />
-            ) : null}
-          </List>
+          <List label="Term 4">{shown.map((i) => i.node)}</List>
         </>
       ) : (
         <WorkEmpty
@@ -1038,31 +1030,38 @@ export function SupervisorHistory({ s }: ScreenProps) {
 
 /* ---------------------------------------------------------- help and words */
 
+const WORDS_FOR: Record<ScreenProps["role"], { eyebrow: string; back: string; label: string }> = {
+  doctor: { eyebrow: "For doctors in training", back: viewHref("home"), label: "Assessments" },
+  supervisor: { eyebrow: "For supervisors", back: home, label: "To do" },
+  dct: { eyebrow: "For the DCT", back: viewHref("home", { as: "dct" }), label: "Assessments" },
+};
+
 export function SupervisorWords({ role }: ScreenProps) {
-  const sup = role === "supervisor";
+  const words = WORDS_FOR[role];
   return (
     <>
-      <AssessHeader
-        eyebrow={sup ? "For supervisors" : "For doctors in training"}
-        title="Help and words"
-        back={{ href: sup ? home : viewHref("home"), label: sup ? "To do" : "Assessments" }}
-      />
-      <SectionLabel>How to rate</SectionLabel>
-      <List label="How to rate">
-        <Row icon={BookOpen} iconTone="mode" title="Rate against PGY1 or PGY2" subtitle="Not against a registrar" />
-        <Row
-          icon={TriangleAlert}
-          iconTone="mode"
-          title="A doctor is struggling"
-          subtitle="Talk to the DCT or MEU early. Any 1 or 2 needs a plan."
-        />
-        <Row
-          icon={Award}
-          iconTone="mode"
-          title="Direct supervision is not a fail"
-          subtitle="It is feedback for that moment"
-        />
-      </List>
+      <AssessHeader eyebrow={words.eyebrow} title="Help and words" back={{ href: words.back, label: words.label }} />
+      {role === "doctor" ? null : (
+        <>
+          <SectionLabel>How to rate</SectionLabel>
+          <List label="How to rate">
+            <Row icon={BookOpen} iconTone="mode" title="Rate against PGY1 or PGY2" subtitle="Not against a registrar" />
+            {/* AMC term assessment form: a 1 or 2 means "Liaise with the MEU or DCT to complete an IPAP". */}
+            <Row
+              icon={TriangleAlert}
+              iconTone="mode"
+              title="A doctor is struggling"
+              subtitle="Talk to the DCT or MEU early. A 1 or 2 means talking to them about an improvement plan."
+            />
+            <Row
+              icon={Award}
+              iconTone="mode"
+              title="Direct supervision is not a fail"
+              subtitle="It is feedback for that moment"
+            />
+          </List>
+        </>
+      )}
       <SectionLabel>Words used here</SectionLabel>
       <dl className="work-card m-0">
         {GLOSSARY.map(([term, meaning]) => (
