@@ -4,6 +4,7 @@ import {
   type EpaNumber,
   type GlobalRating,
   type Rating,
+  type CaseComplexity,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
 
@@ -123,6 +124,7 @@ export type EpaRecord = {
   by: string;
   role: string;
   level: SupervisionLevel;
+  complexity?: CaseComplexity;
 };
 
 export const SAMPLE_EPA_RECORDS: readonly EpaRecord[] = [

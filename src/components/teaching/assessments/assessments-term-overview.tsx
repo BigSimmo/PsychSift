@@ -88,7 +88,8 @@ import { TERM_TRACKER_SOURCES } from "@/lib/teaching/term-tracker";
  * comments are never part of this view, so they cannot leak from it.
  */
 
-const asSup = { as: "supervisor" };
+/** The overview keeps whoever opened it: a supervisor, or the DCT from their own home. */
+const asRole = (role: ScreenProps["role"]) => ({ as: role === "dct" ? "dct" : "supervisor" });
 const CLA_URL = TERM_TRACKER_SOURCES.pmcwaCla;
 
 const TONE: Record<CellStatus, PillTone> = { done: "ok", due: "accent", overdue: "bad", not_yet: "neutral" };
@@ -322,7 +323,8 @@ function bellLabel(state: BellState, row: OverviewDoctor, forms: string): string
   return `Remind ${row.supervisor} about ${row.name}'s ${forms}`;
 }
 
-function OverviewHome({ s }: ScreenProps) {
+function OverviewHome({ s, role }: ScreenProps) {
+  const asSup = asRole(role);
   const r = useReminders(s);
   const [tab, setTab] = useState<"doctors" | "supervisors" | "sent">("doctors");
   const [filter, setFilter] = useState<OverviewFilter>("all");
@@ -800,7 +802,8 @@ const TIMELINE_ICON: Record<CellStatus, LucideIcon> = {
   not_yet: Minus,
 };
 
-function DoctorDetail({ s, doctorId }: ScreenProps & { doctorId: string }) {
+function DoctorDetail({ s, doctorId, role }: ScreenProps & { doctorId: string }) {
+  const asSup = asRole(role);
   const r = useReminders(s);
   const whyId = useId();
   const rows = useMemo(() => overviewDoctors(s), [s]);

@@ -20941,12 +20941,12 @@ create table public.roster_unavailability (
 );
 
 -- The one planned-leave record (Admin reads it; leave is approved in the HR system).
--- Owner table: a doctor on their own can plan leave too. No reason, no sick or carer's kinds.
+-- Owner table: a doctor on their own can plan leave too. No reason is ever stored, only the kind.
 create table public.roster_leave (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users (id) on delete cascade,
   service_id uuid references public.on_call_services (id) on delete set null,
-  kind text not null check (kind in ('annual', 'pd_leave')),
+  kind text not null check (kind in ('annual', 'pd_leave', 'exam', 'personal')),
   starts_on date not null,
   ends_on date not null,
   status text not null default 'planned' check (status in ('planned', 'applied', 'approved')),
