@@ -52,15 +52,13 @@ const TITLE = "Hospital";
 const NO_HOSPITALS: readonly HospitalRef[] = [];
 
 const ROTATION_PREVIEW: LivePreviewFeatureId = "rotation-preferences";
+const COURSES_PREVIEW: LivePreviewFeatureId = "course-bookings";
 
-/**
- * The preview screens this reader gets. Each row still shows only to a role
- * that may use it. Courses stays off until its screen is on main (PR 3380),
- * then reads `useLivePreview("course-bookings")` like Rotation rounds.
- */
+/** The preview screens this reader gets. Each row still shows only to a role that may use it. */
 function useHospitalPreviews(): HospitalPreviews {
   const rotationRounds = useLivePreview(ROTATION_PREVIEW);
-  return useMemo(() => ({ rotationRounds, courses: false }), [rotationRounds]);
+  const courses = useLivePreview(COURSES_PREVIEW);
+  return useMemo(() => ({ rotationRounds, courses }), [rotationRounds, courses]);
 }
 
 /**

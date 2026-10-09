@@ -70,12 +70,12 @@ export const FIRST_USE: Readonly<Record<WorkAreaId, FirstUseCopy>> = {
   },
   assess: {
     icon: "pen",
-    title: "No assessments yet",
-    body: "Start a workplace-based assessment when you're ready.",
-    primary: { label: "Start an assessment", href: "/teaching/assessments" },
-    // `?view=words` is not a view the page knows (it would fall back to the
-    // home screen), so this opens the assessments help screen instead.
-    secondary: { label: "How they work", href: "/teaching/assessments?view=help" },
+    title: "Assessments are kept in CLA",
+    body: "This is an example of how Clinical Learning Australia (CLA) works. Your real records stay in CLA.",
+    primary: { label: "Open Assessments", href: "/teaching/assessments" },
+    // `?view=words` is Help and words: the plain-word meanings of CLA's terms.
+    // `?view=help` is Get help, for concerns, so it is not the one here.
+    secondary: { label: "Help and words", href: "/teaching/assessments?view=words" },
   },
   cpd: {
     icon: "award",

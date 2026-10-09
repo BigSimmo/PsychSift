@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
+import { useCourseOrganiser } from "@/components/work-screens/admin/use-course-organiser";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useAuthIfAvailable, useExampleData } from "@/lib/example-data/store";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
@@ -51,10 +52,15 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const examplesOn = useExampleData().mode === "on";
   const hospitalRole = examplesOn || !signedIn || heldRoles.some((role) => HOSPITAL_ROLES.has(role));
   const hospitalHub = hospitalRole || heldRoles.some((role) => HOSPITAL_HUB_ROLES.has(role));
+  const bookings = useLivePreview("course-bookings");
+  const courses = useCourseOrganiser();
+  const courseOrganiser = bookings && (courses.organiser || courses.sample);
   const rotations = useLivePreview("rotation-preferences");
   return useCallback(
     (gate) => {
       if (!gate) return true;
+      if (gate === "course-bookings") return bookings;
+      if (gate === "course-organiser") return courseOrganiser;
       if (gate === "teaching-organiser") return roles.some((role) => role === "organiser" || role === "admin");
       if (gate === "open-shifts-poster") return poster === true;
       if (gate === "new-work-mode") return newWorkMode;
@@ -66,7 +72,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "rotation-preferences-manager") return rotations && poster === true;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn, hospitalRole, hospitalHub, rotations],
+    [roles, poster, editor, newWorkMode, signedIn, hospitalRole, hospitalHub, bookings, courseOrganiser, rotations],
   );
 }
 

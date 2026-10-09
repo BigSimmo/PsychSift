@@ -69,8 +69,12 @@ function featureGroups(own: FeatureSearchOwn | null): FeatureSearchGroup[] {
       ? [{ area: "cpd" as const, icon: "flag" as const, records: applicationsSearchRecords(applications) }]
       : []),
     { area: "teach", icon: "folder", records: termFolderSearchEntries() },
-    // Pages only: the two made-up sample views hold no real records.
-    { area: "assess", icon: "inbox", records: assessmentsSampleSearchEntries() },
+    // Pages only: the two made-up sample views hold no real records. Signed out only, like the
+    // Assessments example itself: a signed-in doctor's records are kept in CLA, and these pages would
+    // show them only the "kept in CLA" notice.
+    ...(own === null
+      ? [{ area: "assess" as const, icon: "inbox" as const, records: assessmentsSampleSearchEntries() }]
+      : []),
   ];
 }
 

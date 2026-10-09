@@ -6,6 +6,7 @@ import {
   type WorkRoleGrant,
   type WorkScope,
 } from "@/lib/work-roles/model";
+import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { formatZonedDay, formatZonedRange, zonedDateOf } from "@/lib/work-time/format";
 
 /**
@@ -355,9 +356,6 @@ export type HospitalPreviews = {
 /** Rotation rounds, for whoever manages rotations. No team in the address yet. */
 export const ROTATION_ROUNDS_HREF = "/roster/manage/rotations";
 
-/** Courses. Moves to `ADMIN_WORK_SCREEN_HREFS` once PR 3380 lands. */
-export const COURSE_HREFS = { list: "/admin/courses", post: "/admin/courses?new=1" } as const;
-
 const PREVIEW_ROWS: readonly {
   readonly preview: keyof HospitalPreviews;
   readonly capability: WorkCapability;
@@ -384,13 +382,22 @@ const PREVIEW_ROWS: readonly {
   {
     preview: "courses",
     capability: "courses.manage",
+    // Courses still lets in only the administrator and roster managers. Medical Workforce and the
+    // DCT join when that screen checks `work_can` for "courses.manage", so drop this then.
+    onlyRoles: ["administrator", "manager"],
     links: [
-      { id: "courses", label: "Courses", sub: "Courses and bookings", href: COURSE_HREFS.list, icon: "course" },
+      {
+        id: "courses",
+        label: "Courses",
+        sub: "Courses and bookings",
+        href: ADMIN_WORK_SCREEN_HREFS.courses,
+        icon: "course",
+      },
       {
         id: "post-course",
         label: "Post a course",
         sub: "Add one for doctors to book",
-        href: COURSE_HREFS.post,
+        href: ADMIN_WORK_SCREEN_HREFS.postCourse,
         icon: "post",
       },
     ],

@@ -72,6 +72,22 @@ export type WorkFrameHeaderProps = {
 };
 
 /**
+ * A tab's name as the row shows it. A short name ("Registrar") is what the row draws, and screen
+ * readers and voice control get the full name ("Registrar supervision"), which starts with the short
+ * one, so "Registrar" is never read as a person.
+ */
+function WorkFrameTabName({ item, className }: { readonly item: WorkFrameItem; readonly className: string }) {
+  const short = workFrameTabLabel(item);
+  if (short === item.label) return <span className={className}>{short}</span>;
+  return (
+    <span className={className}>
+      <span aria-hidden="true">{short}</span>
+      <span className="sr-only">{item.label}</span>
+    </span>
+  );
+}
+
+/**
  * The work-mode header band (work-mode redesign, owner request 6 Oct 2026):
  * the area's pale tint with a dot texture and a faint line drawing, an eyebrow
  * and title with one optional glass action, then the three pinned tabs and
@@ -164,7 +180,7 @@ export function WorkFrameHeader({
         tabIndex={out ? -1 : undefined}
         aria-current={!out && item.id === currentId ? "page" : undefined}
       >
-        <span className="work-band__tab-label">{workFrameTabLabel(item)}</span>
+        <WorkFrameTabName item={item} className="work-band__tab-label" />
         {count > 0 ? (
           <span className="mode-band__badge work-band__count">
             <span aria-hidden="true">{count}</span>
@@ -226,7 +242,11 @@ export function WorkFrameHeader({
           onClick={() => setMoreOpen(true)}
           data-testid="work-frame-more"
         >
-          <span className="work-band__more-label">{onMorePage ? workFrameTabLabel(current) : "More"}</span>
+          {onMorePage ? (
+            <WorkFrameTabName item={current} className="work-band__more-label" />
+          ) : (
+            <span className="work-band__more-label">More</span>
+          )}
           {onMorePage ? <span className="sr-only">, current page. Opens all {area.name} pages</span> : null}
           <ChevronDown aria-hidden="true" className="work-band__more-chev" strokeWidth={2.2} />
         </button>
@@ -559,7 +579,7 @@ function WorkTabPicker({
                   <Icon aria-hidden="true" strokeWidth={2} />
                 </span>
                 <span className="work-more-tile__text">
-                  <span className="work-more-tile__name">{workFrameTabLabel(item)}</span>
+                  <WorkFrameTabName item={item} className="work-more-tile__name" />
                 </span>
                 <span aria-hidden="true" className="work-more-tile__slot">
                   {picked ? slot + 1 : ""}

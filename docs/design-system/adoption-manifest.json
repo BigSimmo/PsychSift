@@ -2369,6 +2369,8 @@
         "src/components/work-frame/work-side-menu.tsx",
         "src/components/work-help/work-help-sheet.tsx",
         "src/components/work-profile/work-stage-sheet.tsx",
+        "src/components/work-screens/admin/bookings-page.tsx",
+        "src/components/work-screens/admin/courses-page.tsx",
         "src/components/work-screens/admin/documents-page.tsx",
         "src/components/work-screens/admin/pay-page.tsx",
         "src/components/work-screens/admin/people-sheets.tsx",
@@ -2506,6 +2508,8 @@
         "src/components/work-frame/work-side-menu.tsx",
         "src/components/work-help/work-help-sheet.tsx",
         "src/components/work-profile/work-stage-sheet.tsx",
+        "src/components/work-screens/admin/bookings-page.tsx",
+        "src/components/work-screens/admin/courses-page.tsx",
         "src/components/work-screens/admin/documents-page.tsx",
         "src/components/work-screens/admin/pay-page.tsx",
         "src/components/work-screens/admin/people-sheets.tsx",
@@ -3265,9 +3269,11 @@
       "documentedDisposition": null,
       "routes": [
         "src/app/(display)/teaching/display/[token]/page.tsx",
+        "src/app/(search-app)/admin/bookings/page.tsx",
         "src/app/(search-app)/admin/compliance/export/page.tsx",
         "src/app/(search-app)/admin/compliance/page.tsx",
         "src/app/(search-app)/admin/contract/page.tsx",
+        "src/app/(search-app)/admin/courses/page.tsx",
         "src/app/(search-app)/admin/documents/page.tsx",
         "src/app/(search-app)/admin/help/page.tsx",
         "src/app/(search-app)/admin/hospital/page.tsx",
@@ -3487,6 +3493,16 @@
           "sanctionedPatternsPresent": []
         },
         {
+          "file": "src/app/(search-app)/admin/bookings/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["ModeHome"]
+        },
+        {
           "file": "src/app/(search-app)/admin/compliance/export/page.tsx",
           "exists": true,
           "imports": [],
@@ -3508,6 +3524,16 @@
         },
         {
           "file": "src/app/(search-app)/admin/contract/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["ModeHome"]
+        },
+        {
+          "file": "src/app/(search-app)/admin/courses/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -6264,9 +6290,11 @@
   "routeCoverage": {
     "discovered": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
+      "src/app/(search-app)/admin/bookings/page.tsx",
       "src/app/(search-app)/admin/compliance/export/page.tsx",
       "src/app/(search-app)/admin/compliance/page.tsx",
       "src/app/(search-app)/admin/contract/page.tsx",
+      "src/app/(search-app)/admin/courses/page.tsx",
       "src/app/(search-app)/admin/documents/page.tsx",
       "src/app/(search-app)/admin/help/page.tsx",
       "src/app/(search-app)/admin/hospital/page.tsx",
@@ -6482,9 +6510,11 @@
     ],
     "declared": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
+      "src/app/(search-app)/admin/bookings/page.tsx",
       "src/app/(search-app)/admin/compliance/export/page.tsx",
       "src/app/(search-app)/admin/compliance/page.tsx",
       "src/app/(search-app)/admin/contract/page.tsx",
+      "src/app/(search-app)/admin/courses/page.tsx",
       "src/app/(search-app)/admin/documents/page.tsx",
       "src/app/(search-app)/admin/help/page.tsx",
       "src/app/(search-app)/admin/hospital/page.tsx",
@@ -6704,7 +6734,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 223,
+    "inheritedCkbV2RootCount": 225,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6713,8 +6743,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 47,
-    "rootCount": 224,
-    "productionRouteCount": 216,
-    "nextUiEntryCount": 324
+    "rootCount": 226,
+    "productionRouteCount": 218,
+    "nextUiEntryCount": 326
   }
 }
