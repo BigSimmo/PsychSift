@@ -55,6 +55,13 @@ const AREA_IDS: readonly WorkAreaId[] = ["day", "rost", "teach", "assess", "cpd"
  */
 const LINKED: Partial<Record<WorkAreaId, WorkAreaId>> = { admin: "call", call: "admin" };
 /**
+ * Inner areas that show their parent's example data: Open shifts draws Roster's
+ * example roster and listings, and Notifications draws My Day's example day. So
+ * the banner shows there whenever the parent shows examples. Manage team shows
+ * no examples, so it is not listed.
+ */
+const SHOWS_EXAMPLES_OF: Partial<Record<WorkAreaId, WorkAreaId>> = { open: "rost", notify: "day" };
+/**
  * Areas whose records are read on the server (Teaching, CPD), where the
  * browser cannot see whether real data exists before the page renders. The
  * auto default only fills them once the area has reported "empty", so a new
@@ -343,7 +350,7 @@ export function useExampleData(area?: WorkAreaId): ExampleDataControl {
     return {
       mode: stored.choice ?? "auto",
       on: stored.choice === "on" || activeAreas.length > 0,
-      active: area ? activeAreas.includes(area) : false,
+      active: area ? activeAreas.includes(SHOWS_EXAMPLES_OF[area] ?? area) : false,
       activeAreas,
       turnOn,
       turnOff,

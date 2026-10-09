@@ -31,6 +31,26 @@ describe("work frame navigation", () => {
     }
   });
 
+  it("offers How it works in every area's More (My Day links its help centre instead)", () => {
+    for (const area of areas) {
+      const items = workAreaItems(area);
+      const help =
+        items.some((item) => item.action === "work-help") || items.some((item) => item.href === "/my-day/help");
+      expect(help, area.name).toBe(true);
+    }
+  });
+
+  it("names the crisis lines page Numbers in Admin and On Call, apart from How it works", () => {
+    const adminNumbers = workAreaItems(WORK_AREAS.admin).find((item) => item.href === "/admin/help");
+    expect(adminNumbers?.label).toBe("Numbers");
+    const callNumbers = workAreaItems(WORK_AREAS.call).find((item) => item.href === "/admin/help");
+    expect(callNumbers?.label).toBe("Numbers");
+    for (const area of areas)
+      for (const item of workAreaItems(area))
+        if (item.label === "Help" && item.href !== "/my-day/help")
+          expect(item.action, `${area.name}: ${item.id}`).toBe("work-help");
+  });
+
   it("links every inner area from its parent's More, and back to that parent", () => {
     const inner = areas.filter((area) => area.parent);
     expect(inner.map((area) => area.id).sort()).toEqual(["assess", "manage", "notify", "open"]);

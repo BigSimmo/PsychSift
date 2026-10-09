@@ -16,9 +16,11 @@ import {
   onCallNotificationItem,
   summariseNotifications,
   withoutAdminDuplicates,
+  workToday,
   type NotificationItem,
   type NotificationSource,
 } from "@/lib/needs-you/feed";
+import { myDayNeedsYouFromFeed, myDayNeedsYouItem } from "@/lib/my-day/needs-you-feed";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import type { OnCallNotification } from "@/lib/on-call/notifications";
 
@@ -81,6 +83,56 @@ describe("urgency and due wording", () => {
     expect(formatNotificationDue("2026-10-05", NOW)).toBe("Was due yesterday");
     expect(formatNotificationDue(null, NOW)).toBe("");
     expect(formatNotificationDue("not a date", NOW)).toBe("");
+  });
+});
+
+// Work mode improvements, 8 Oct 2026: the feed's "today" is the work time zone's day, the same one My Day
+// draws, so near midnight the bell and My Day never disagree.
+describe("the work time zone's day", () => {
+  // 23:30 on Mon 5 Oct in Perth, already 02:30 on Tue 6 Oct in Sydney (daylight time).
+  const LATE = new Date("2026-10-05T15:30:00Z");
+
+  it("reads today in the zone it is given, Perth by default", () => {
+    expect(workToday(LATE, "Australia/Perth")).toBe("2026-10-05");
+    expect(workToday(LATE, "Australia/Sydney")).toBe("2026-10-06");
+    expect(workToday(LATE)).toBe("2026-10-05");
+  });
+
+  it("judges urgency, due words and snoozes against that same day", () => {
+    const due = note({ id: "a", due: "2026-10-05" });
+    expect(notificationUrgency(due, LATE, "Australia/Perth")).toBe("today");
+    expect(notificationUrgency(due, LATE, "Australia/Sydney")).toBe("overdue");
+    expect(formatNotificationDue("2026-10-06", LATE, "Australia/Sydney")).toBe("Today");
+    expect(formatNotificationDue("2026-10-05T22:00:00Z", LATE, "Australia/Sydney")).toBe("Today 09:00");
+    // Snoozed until the 6th: still hidden on the 5th in Perth, back on the 6th in Sydney.
+    const snoozes = { a: "2026-10-06" };
+    expect(summariseNotifications([source([due])], snoozes, LATE, "Australia/Perth").count).toBe(0);
+    expect(summariseNotifications([source([due])], snoozes, LATE, "Australia/Sydney").count).toBe(1);
+  });
+});
+
+describe("My Day's Needs you, read from the feed", () => {
+  it("lists what shows, then what Later hid, with the feed's own overdue judgement", () => {
+    const summary = summariseNotifications(
+      [
+        source([
+          note({ id: "over", due: "2026-10-01", area: "my-work", detail: "Recorded date" }),
+          note({ id: "hid", due: "2026-10-09", area: "cme" }),
+          note({ id: "own", area: "my-day", snoozable: false, href: "/my-day/alerts" }),
+        ]),
+      ],
+      { hid: "2026-10-07" },
+      NOW,
+      "Australia/Perth",
+    );
+    const list = myDayNeedsYouFromFeed(summary, NOW, "Australia/Perth");
+    expect(list.map((item) => [item.id, item.mode, item.severity, item.snoozable])).toEqual([
+      ["over", "my-work", "overdue", true],
+      ["own", "my-day", "info", false],
+      ["hid", "cme", "soon", true],
+    ]);
+    expect(list[0]?.detail).toBe("Recorded date");
+    expect(myDayNeedsYouItem(note({ id: "x", due: "2026-10-06" }), NOW, "Australia/Perth").severity).toBe("soon");
   });
 });
 

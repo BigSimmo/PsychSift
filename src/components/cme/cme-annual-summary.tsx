@@ -122,9 +122,7 @@ export function CmeAnnualSummary({
     }`}</style>
       <header className="grid gap-1">
         <h1 className={cmePageTitle}>CPD annual summary — {set.year}</h1>
-        {demoMode ? (
-          <p className={cn(textMuted, "text-sm")}>Synthetic demonstration — not a personal CPD record.</p>
-        ) : null}
+        {demoMode ? <p className={cn(textMuted, "text-sm")}>Example data, not a personal CPD record.</p> : null}
         <p className="text-sm font-normal tabular-nums">
           {active.length} active activities · {status.totalHours} / {set.totalHours} hours · Recorded costs AUD $
           {(costs / 100).toFixed(2)}
@@ -235,7 +233,7 @@ export function CmeAnnualSummary({
                   <p className={textMuted}>{formatCalendarDateLong(entry.date)}</p>
                   <p>{entry.allocations.map((a) => `${cmeCategoryLabels[a.category]}: ${a.hours} h`).join(" · ")}</p>
                   <p>Formal peer review: {entry.formalPeerReviewHours ?? 0} h (within reviewing)</p>
-                  {entry.buckets.length ? <p>Domains: {entry.buckets.join("; ")}</p> : null}
+                  {entry.buckets.length ? <p>Domains: {entry.buckets.join(", ")}</p> : null}
                   {entry.reflection ? <p className="whitespace-pre-wrap">{entry.reflection}</p> : null}
                   <p className={textMuted}>
                     Cost: {entry.costCents === null ? "Not recorded" : `AUD ${(entry.costCents / 100).toFixed(2)}`}

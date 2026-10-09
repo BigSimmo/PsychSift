@@ -481,7 +481,10 @@ area's three pinned tabs, its More sheet groups and their routes, gates and page
 `WorkFrameHeader` (`src/components/work-frame/`): the tinted band, underline tabs, More sheet and
 side swipe. Styles and the area palettes' partner tokens live in `src/app/work-mode.css`; the
 shared content pieces (cards, rows, hero, rings, chips, buttons, dock, week strip, Undo toast) are
-in `src/components/mode-kit/work.tsx`. Clinical modes keep the old band.
+in `src/components/mode-kit/work.tsx`. Every work area's signed-out, no-team, empty, offline and
+failed-read states, and its loading skeleton, come from `src/components/mode-kit/work-state.tsx`
+(`WorkStateNotice`, `WorkStateLoading`); `work-sign-in-notice.tsx` adds the sign-in dialog. Clinical
+modes keep the old band.
 
 **Example data and the work time zone.** `src/lib/example-data/` is the one example data switch for
 every work area: `store.ts` (the switch, an auto default for new accounts and signed-out visitors,

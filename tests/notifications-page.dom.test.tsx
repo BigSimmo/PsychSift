@@ -63,7 +63,9 @@ vi.mock("@/lib/on-call/notifications", async () => {
   };
 });
 
-vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
+// The rest of the module stays real: the feed reads the work time zone through it.
+vi.mock("@/components/clinical-dashboard/use-app-preferences", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/clinical-dashboard/use-app-preferences")>()),
   useAppPreferences: () => ({
     preferences: { reminders: { types: {} } },
     setPreference: vi.fn(),

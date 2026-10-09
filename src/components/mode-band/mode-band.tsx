@@ -50,7 +50,7 @@ import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-p
 import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
-import { formatZonedDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
+import { formatZonedDay, formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 
 /**
  * Modes that carry their own identity colour (`data-mode-identity` in
@@ -191,11 +191,9 @@ function GreetingTitle({ fallback }: { fallback: string }) {
   return <>{now ? greetingFor(new Date(now), zone) : fallback}</>;
 }
 
-/** "Wednesday 7 October" in the work time zone. */
+/** "Wednesday 7 October" in the work time zone: the house long form for headers. */
 function dateLong(now: Date, zone: string): string {
-  return new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long", timeZone: zone }).format(
-    now,
-  );
+  return formatZonedLongDay(zonedDateOf(now, zone));
 }
 
 function modeHomePath(modeId: AppModeId): string | undefined {

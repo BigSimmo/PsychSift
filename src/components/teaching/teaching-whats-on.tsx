@@ -128,7 +128,7 @@ export function TeachingWhatsOn({
             {whatsOnHeading(read.data.healthServices)}
           </p>
           {demoMode ? (
-            <span className="shrink-0 text-xs text-[color:var(--text-muted)]">Demo · made-up people</span>
+            <span className="shrink-0 text-xs text-[color:var(--text-muted)]">Example · made-up people</span>
           ) : null}
         </div>
         {live.length > 0 ? (

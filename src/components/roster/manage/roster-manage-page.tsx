@@ -5,6 +5,7 @@ import { Suspense, useCallback, useState } from "react";
 import { WithoutModeBand } from "@/components/mode-band/mode-band";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { Button } from "@/components/ui/button";
+import { WorkStateLoading } from "@/components/mode-kit/work-state";
 import { useRosterNow } from "@/components/roster/roster-format";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import type { RosterTeam } from "@/lib/roster/team/model";
@@ -91,7 +92,7 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
         <Button onClick={overview.reload}>Try again</Button>
       </div>
     );
-  if (!overview.data) return <p role="status">Loading your team…</p>;
+  if (!overview.data) return <WorkStateLoading label="Loading your team…" />;
   if (overview.data.me.role !== "manager") return <NotManager />;
   // Phones keep one column with the tabs first and the calendar below; from
   // `lg` the calendar sits on the left and the tabs on the right.
@@ -132,7 +133,7 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
         data-roster-print
         className="order-2 grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4 lg:order-1"
       >
-        <Suspense fallback={<p role="status">Loading the team roster…</p>}>
+        <Suspense fallback={<WorkStateLoading label="Loading the team roster…" />}>
           <TeamCalendar
             team={team}
             actorId={actorId}
@@ -167,7 +168,7 @@ export function RosterManagePage() {
           ask={false}
         />
         {teams.status === "loading" ? (
-          <p role="status">Loading your teams…</p>
+          <WorkStateLoading label="Loading your teams…" />
         ) : teams.status !== "ready" ? (
           <div role="alert">
             <p>{teams.message}</p>
@@ -193,7 +194,7 @@ export function RosterManagePage() {
                 </select>
               </label>
             ) : null}
-            <Suspense fallback={<p role="status">Loading your team…</p>}>
+            <Suspense fallback={<WorkStateLoading label="Loading your team…" />}>
               <ManagerTeam key={team.serviceId} team={team} actorId={teams.data?.actorId ?? null} />
             </Suspense>
           </>

@@ -83,13 +83,13 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
   const cards = [
     {
       key: "ahpra",
-      label: "Ahpra Registration",
+      label: "Ahpra registration",
       value: creds.ahpraNumber || "MED000...",
       realValue: creds.ahpraNumber,
     },
     {
       key: "prescriber",
-      label: "Prescriber Number",
+      label: "Prescriber number",
       value: creds.prescriberNumber || "7 digits",
       realValue: creds.prescriberNumber,
     },
@@ -112,7 +112,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
       <div className="flex items-center justify-between">
         <h3 className={cn(eyebrowText, "flex items-center gap-1.5")}>
           <CreditCard className="size-3.5" aria-hidden="true" />
-          Credentials Wallet
+          Credentials wallet
         </h3>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 text-2xs text-[color:var(--text-muted)]">
@@ -210,7 +210,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           setSaveError(null);
           setEditing(false);
         }}
-        title="Edit Doctor Credentials"
+        title="Edit doctor credentials"
         testId={`${testId}-sheet`}
         footer={
           <Button variant="primary" block onClick={handleSave} testId={`${testId}-save-button`}>
@@ -231,7 +231,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           )}
 
           <TextField
-            label="Ahpra Registration Number"
+            label="Ahpra registration number"
             placeholder="e.g. MED0001234567"
             value={draft.ahpraNumber}
             onChange={(e) => setDraft({ ...draft, ahpraNumber: e.target.value })}
@@ -239,7 +239,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           />
 
           <TextField
-            label="Prescriber Number"
+            label="Prescriber number"
             placeholder="7-digit prescriber number"
             value={draft.prescriberNumber}
             onChange={(e) => setDraft({ ...draft, prescriberNumber: e.target.value })}
@@ -247,7 +247,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           />
 
           <div className="grid gap-2 border-t border-[color:var(--border)] pt-2">
-            <span className="text-xs font-medium text-[color:var(--text-heading)]">Hospital Site Provider Numbers</span>
+            <span className="text-xs font-medium text-[color:var(--text-heading)]">Hospital site provider numbers</span>
             {draft.providerNumbers.map((p, idx) => (
               <div key={p.id} className="grid grid-cols-[1fr_1fr] gap-2">
                 <TextField
