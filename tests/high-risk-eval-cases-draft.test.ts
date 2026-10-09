@@ -28,23 +28,22 @@ const draft = readJson("tests/fixtures/high-risk-eval-cases.draft.json") as {
 };
 
 type Passage = { id: string; content: string };
-const lithiumPassages: Passage[] = readJson("tests/fixtures/lithium-monitoring-live-excerpts.json").cases.flatMap(
-  (entry: { sources: Passage[] }) => entry.sources,
-);
-const clozapinePassages: Passage[] = readJson("tests/fixtures/clozapine-threshold-source-chunks.json");
-const mhaSections: { section: string; text: string }[] = readJson("data/mha-2014-sections.source.json").sections;
+const mhaSourcePath = "data/mha-2014-sections.source.json";
+const passagesByFile: Record<string, Passage[]> = {
+  "tests/fixtures/lithium-monitoring-live-excerpts.json": readJson(
+    "tests/fixtures/lithium-monitoring-live-excerpts.json",
+  ).cases.flatMap((entry: { sources: Passage[] }) => entry.sources),
+  "tests/fixtures/clozapine-threshold-source-chunks.json": readJson(
+    "tests/fixtures/clozapine-threshold-source-chunks.json",
+  ),
+};
+const mhaSections: { section: string; text: string }[] = readJson(mhaSourcePath).sections;
 
 function sourceText(evidence: Evidence): string | undefined {
-  if (evidence.file === "data/mha-2014-sections.source.json") {
+  if (evidence.file === mhaSourcePath) {
     return mhaSections.find((section) => section.section === evidence.section)?.text;
   }
-  const passages =
-    evidence.file === "tests/fixtures/lithium-monitoring-live-excerpts.json"
-      ? lithiumPassages
-      : evidence.file === "tests/fixtures/clozapine-threshold-source-chunks.json"
-        ? clozapinePassages
-        : [];
-  return passages.find((passage) => passage.id === evidence.passageId)?.content;
+  return passagesByFile[evidence.file]?.find((passage) => passage.id === evidence.passageId)?.content;
 }
 
 describe("high-risk eval cases draft", () => {
