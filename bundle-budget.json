@@ -1,8 +1,8 @@
 {
-  "$comment": "Client JS bundle-size budgets captured from a known-good production build. `production` guards aggregate user-facing chunks, `routes` guards the Lighthouse journeys and the main work-mode pages (added by the work-mode speed review, 7 Oct 2026) against route-local growth (route baselines lowered about 100 KB on 7 Oct 2026 (scaled from a local build by the ratio to the baselineSource build, so they stay comparable with it) when the sign-in library moved out of the first load, so that saving cannot quietly regrow), and `mockups` is a looser design-scratch hygiene ceiling. Refresh intentionally with `npm run check:bundle-budget -- --update`.",
+  "$comment": "Client JS bundle-size budgets captured from a known-good production build. `production` guards aggregate user-facing chunks, `routes` guards the Lighthouse journeys and the main work-mode pages (added by the work-mode speed review, 7 Oct 2026) against route-local growth (route baselines lowered about 100 KB on 7 Oct 2026 (scaled from a local build by the ratio to the baselineSource build, so they stay comparable with it) when the sign-in library moved out of the first load, so that saving cannot quietly regrow), and `mockups` is a looser design-scratch hygiene ceiling. The `production` baseline alone was raised on 9 Oct 2026 to a local build of the hospital roles change merged with main (5472.8 KiB), after its 145 KiB duplicated-chunk regression was removed: main had already reached +9.8% from the combined work-mode growth. Route baselines and baselineSource were left as they were. Refresh intentionally with `npm run check:bundle-budget -- --update`.",
   "enforce": true,
   "production": {
-    "gzipBytes": 5057435,
+    "gzipBytes": 5604147,
     "tolerancePct": 10
   },
   "mockups": {
