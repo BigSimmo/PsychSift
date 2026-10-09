@@ -28,19 +28,37 @@ export const SAMPLE_SUPERVISOR = {
 export const SAMPLE_REGISTRAR = { name: "Dr Jo Banksia", role: "Psychiatry registrar" } as const;
 
 export type TermId = "t1" | "t2" | "t3" | "t4" | "t5";
+type KindLetter = "A" | "B" | "C" | "D";
 export type SampleTerm = {
   id: TermId;
   n: number;
   name: string;
-  category: "A" | "B" | "C" | "D";
+  category: KindLetter;
   categoryName: string;
+  /**
+   * A second kind of experience, when the term is accredited for two. [TE3]: each term is accredited for "1 or 2"
+   * categories. [MBA-RS]: "Up to two types can be counted per term".
+   */
+  category2?: { letter: KindLetter; name: string };
   from: string;
   to: string;
   weeks: number;
   status: "done" | "current" | "next";
   supervisor: string;
+  /**
+   * The beginning-of-term discussion (CLA's BOTD form [CLA-GL]). AMC Section 3A: "a mandatory discussion between
+   * the prevocational doctor and term supervisor" that sets the learning objectives and the term's assessments.
+   */
+  botd?: { date: string; goals: readonly string[] };
   midSigned?: string;
+  /** AMC Section 3A: a registrar may complete the mid-term "with formal sign-off by the primary clinical supervisor". */
+  midByRegistrar?: { registrar: string; signedOffBy: string };
   signed?: string;
+  /**
+   * AMC Section 3A: the term supervisor may delegate the end-of-term to another clinical supervisor, and then
+   * countersigns it. CLA has a Term Supervisor sign-off form for this [CLA-RES].
+   */
+  eotDelegated?: { to: string; countersigned: string };
 };
 
 export const SAMPLE_TERMS: readonly SampleTerm[] = [
@@ -50,11 +68,17 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     name: "Emergency Medicine",
     category: "A",
     categoryName: "Undifferentiated illness",
+    // The one made-up term accredited for two kinds of experience.
+    category2: { letter: "C", name: "Acute and critical illness" },
     from: "2 Feb",
     to: "12 Apr",
     weeks: 10,
     status: "done",
     supervisor: "Dr Alex Jarrah",
+    botd: {
+      date: "Tue 3 Feb",
+      goals: ["Commit to a plan sooner on simple presentations.", "Ask for an EPA 2 on an acutely unwell patient."],
+    },
     midSigned: "6 Mar",
     signed: "21 Apr",
   },
@@ -69,8 +93,14 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     weeks: 10,
     status: "done",
     supervisor: "Dr Casey Marri",
+    botd: {
+      date: "Tue 14 Apr",
+      goals: ["Write safe post-operative fluid plans.", "Ask for an EPA 3 on prescribing."],
+    },
     midSigned: "15 May",
     signed: "30 Jun",
+    // The made-up story's delegated end-of-term: completed by another clinical supervisor, countersigned by Dr Marri.
+    eotDelegated: { to: "Dr Morgan Wandoo", countersigned: "30 Jun" },
   },
   {
     id: "t3",
@@ -83,7 +113,13 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     weeks: 10,
     status: "done",
     supervisor: "Dr Jordan Tuart",
+    botd: {
+      date: "Tue 23 Jun",
+      goals: ["Recognise the deteriorating patient earlier overnight.", "Ask for an EPA 1 and an EPA 2."],
+    },
     midSigned: "24 Jul",
+    // The made-up story's registrar mid-term, signed off by Dr Tuart as primary clinical supervisor.
+    midByRegistrar: { registrar: "Dr Pat Tingle", signedOffBy: "Dr Jordan Tuart" },
     signed: "7 Sep",
   },
   {
@@ -97,6 +133,10 @@ export const SAMPLE_TERMS: readonly SampleTerm[] = [
     weeks: 10,
     status: "current",
     supervisor: "Dr Robin Wattle",
+    botd: {
+      date: "Wed 2 Sep",
+      goals: ["Present a full formulation on ward round.", "Get an EPA 1 done this term.", "Learn lithium monitoring."],
+    },
   },
   {
     id: "t5",
@@ -116,6 +156,51 @@ export const CURRENT_TERM = SAMPLE_TERMS[3]!;
 
 export function sampleTerm(id: string | null | undefined): SampleTerm {
   return SAMPLE_TERMS.find((term) => term.id === id) ?? CURRENT_TERM;
+}
+
+/** The term's kinds of experience: one, or two when it is accredited for two ([TE3], [MBA-RS]). */
+export function termKinds(term: Pick<SampleTerm, "category" | "category2">): KindLetter[] {
+  return term.category2 ? [term.category, term.category2.letter] : [term.category];
+}
+
+/** The sample terms that give a kind of experience, first to last, optionally only those with one status. */
+export function termsWithKind(letter: KindLetter, status?: SampleTerm["status"]): SampleTerm[] {
+  return SAMPLE_TERMS.filter((t) => termKinds(t).includes(letter) && (!status || t.status === status));
+}
+
+/** A kind of experience's name, as the sample terms give it. */
+export function kindName(letter: KindLetter): string {
+  const t = termsWithKind(letter)[0];
+  if (!t) return letter;
+  return t.category === letter ? t.categoryName : (t.category2?.name ?? letter);
+}
+
+/** "Term 3", or "Terms 1 and 3" when more than one term gave it. */
+export function termNumbers(terms: readonly SampleTerm[]): string {
+  return `${terms.length > 1 ? "Terms" : "Term"} ${terms.map((t) => t.n).join(" and ")}`;
+}
+
+/** "A · Undifferentiated illness", or both kinds when the term has two. */
+export function termKindsLabel(term: SampleTerm): string {
+  return term.category2
+    ? `${term.category} and ${term.category2.letter} · ${term.categoryName} and ${term.category2.name.toLowerCase()}`
+    : `${term.category} · ${term.categoryName}`;
+}
+
+/** Who did a delegated end-of-term (AMC Section 3A), in the made-up story's words. Null when the term supervisor did. */
+export function delegatedEndOfTermLine(term: SampleTerm): string | null {
+  const d = term.eotDelegated;
+  return d
+    ? `Completed by ${d.to} (clinical supervisor) and countersigned by ${term.supervisor} (term supervisor) on ${d.countersigned} (made-up).`
+    : null;
+}
+
+/** Who did a registrar's mid-term (AMC Section 3A), in the made-up story's words. Null when no registrar did. */
+export function registrarMidTermLine(term: SampleTerm): string | null {
+  const m = term.midByRegistrar;
+  return m
+    ? `Completed by ${m.registrar} (registrar), with formal sign-off by ${m.signedOffBy} (primary clinical supervisor).`
+    : null;
 }
 
 export type EpaRecord = {

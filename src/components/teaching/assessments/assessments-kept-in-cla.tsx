@@ -4,6 +4,7 @@ import { ExternalLink, FileText, GraduationCap, Mail, Target, Undo2, UserCheck, 
 
 import { WorkButton, WorkCard, WorkEmpty, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { useAuthSession } from "@/lib/supabase/client";
+import { MEU_HOW_TO_REACH } from "@/lib/teaching/assessments/content";
 import { TERM_TRACKER_SOURCES } from "@/lib/teaching/term-tracker";
 
 /**
@@ -94,15 +95,15 @@ export function AssessmentsKeptInCla() {
         action={
           <div className="flex flex-wrap justify-center gap-2">
             <a
-              href={TERM_TRACKER_SOURCES.pmcwaCla}
+              href={TERM_TRACKER_SOURCES.claSignIn}
               target="_blank"
               rel="noopener noreferrer"
               className="work-button"
               data-variant="primary"
               data-testid="teaching-assessments-open-cla"
             >
-              {/* The link is PMCWA's page about CLA, not CLA itself, so it says so (site audit M7). */}
-              About CLA (PMCWA)
+              {/* The link is CLA's own sign-in page, so it is named for where it goes (site audit M7). */}
+              Open CLA
               <ExternalLink aria-hidden="true" strokeWidth={2} />
               <span className="sr-only">(opens outside PsychSift)</span>
             </a>
@@ -131,7 +132,7 @@ export function AssessmentsKeptInCla() {
           CLA guides
           <span className="sr-only"> (opens outside PsychSift)</span>
         </a>
-        , checked 9 Oct 2026. Your MEU has the final word.
+        , checked 9 Oct 2026. Your MEU has the final word. {MEU_HOW_TO_REACH}
       </p>
     </section>
   );

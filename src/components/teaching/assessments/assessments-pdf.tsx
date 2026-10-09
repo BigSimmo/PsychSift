@@ -23,6 +23,8 @@ import {
   SAMPLE_DOCTOR,
   SAMPLE_MIDTERM,
   SAMPLE_PAST_FORMS,
+  delegatedEndOfTermLine,
+  registrarMidTermLine,
   sampleTerm,
   type PastForm,
   type SampleTerm,
@@ -180,6 +182,9 @@ export function FormPdf({ s, params, role, dct }: ScreenProps) {
     supDate = s.sigs.sup ? (meetingDate(s) ?? s.sigs.sup.date) : "";
     docDate = s.sigs.doc?.date ?? "";
   }
+  // AMC Section 3A: a delegated end-of-term shows who completed it and the term supervisor who countersigned it.
+  const delegated = past && kind === "eot" ? term?.eotDelegated : undefined;
+  if (delegated) supDate = delegated.countersigned;
   // This term's end-of-term carries the DCT's sign-off once the DCT side has given it.
   const signOff = of === "eot" && s.sigs.doc ? samSignOff(dct) : null;
   const dctSigned = past && kind === "eot";
@@ -207,13 +212,15 @@ export function FormPdf({ s, params, role, dct }: ScreenProps) {
         Layout based on the AMC template. Your hospital&apos;s may differ.
       </Inset>
     );
-  else if (past || of === "mid")
+  else if (past || of === "mid") {
+    // AMC Section 3A: a delegated end-of-term, countersigned by the term supervisor, or a registrar's mid-term.
+    const who = past && term ? (kind === "eot" ? delegatedEndOfTermLine(term) : registrarMidTermLine(term)) : null;
     status = (
       <Inset tone="ok" icon={Check} title="Signed copy">
-        {dctSigned ? "DCT sign-off done." : "Kept here for your records."}
+        {[dctSigned ? "DCT sign-off done." : "Kept here for your records.", who].filter(Boolean).join(" ")}
       </Inset>
     );
-  else if (signOff)
+  } else if (signOff)
     status = (
       <Inset tone="ok" icon={Check} title={`DCT sign-off done ${signOff.date}`}>
         A printable copy only. The form itself is in CLA.
@@ -318,7 +325,15 @@ export function FormPdf({ s, params, role, dct }: ScreenProps) {
               <div className="min-h-8 border border-[color:var(--border-strong)] px-1.5 py-1">{f.areas}</div>
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-              <Field label="Term supervisor">{fill(term?.supervisor)}</Field>
+              {delegated ? (
+                <>
+                  <Field label="Completed by (clinical supervisor)">{delegated.to}</Field>
+                  <Field label="Signature">{sig(delegated.to.replace("Dr ", ""))}</Field>
+                </>
+              ) : null}
+              <Field label={delegated ? "Countersigned by (term supervisor)" : "Term supervisor"}>
+                {fill(term?.supervisor)}
+              </Field>
               <Field label="Position">{fill("Consultant")}</Field>
               <Field label="Signature">{supSig}</Field>
               <Field label="Date">{supDate}</Field>

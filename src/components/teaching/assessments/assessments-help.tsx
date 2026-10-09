@@ -40,6 +40,7 @@ import {
   CASE_COMPLEXITIES,
   EPAS,
   GLOSSARY,
+  MEU_HOW_TO_REACH,
   SUPERVISION_LEVELS,
   epa as epaInfo,
   type CaseComplexity,
@@ -148,9 +149,7 @@ export function ConcernsHelp({ openSheet, role }: ScreenProps) {
           </List>
         </>
       )}
-      <AssessNote icon={Building2}>
-        Your Medical Education Unit (MEU): find it on your hospital&apos;s intranet, or ask your term supervisor.
-      </AssessNote>
+      <AssessNote icon={Building2}>{MEU_HOW_TO_REACH}</AssessNote>
       <SectionLabel>Bullying, harassment or unsafe work</SectionLabel>
       <List label="Bullying, harassment or unsafe work">
         <Row

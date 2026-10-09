@@ -45,13 +45,21 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import type { ExampleSupervisionByDoctor } from "@/lib/example-data/datasets/assessments-supervision";
-import { SUPERVISION_LEVELS, epa as epaInfo, type SupervisionLevel } from "@/lib/teaching/assessments/content";
+import { OptionCard } from "@/components/teaching/assessments/assess-kit";
+import {
+  EPA_OBSERVED,
+  SUPERVISION_LEVELS,
+  epa as epaInfo,
+  type EpaObserved,
+  type SupervisionLevel,
+} from "@/lib/teaching/assessments/content";
 import {
   CANT_REASONS,
   FEEDBACK_MAX_CHARS,
   LATER_WHEN,
   SUGGESTED_COLLEAGUES,
   inboxRowStatus,
+  sendBlocker,
   type CantReason,
   type InboxRequest,
 } from "@/lib/teaching/assessments/inbox";
@@ -107,7 +115,7 @@ type SheetState =
   | { kind: "correction" }
   | null;
 
-type Draft = { level: SupervisionLevel | null; text: string };
+type Draft = { level: SupervisionLevel | null; text: string; observed: EpaObserved | null };
 
 function PatientNote({
   problem,
@@ -149,24 +157,27 @@ function PatientNote({
 
 function NoteField({
   label,
+  hint,
   value,
   onChange,
   placeholder,
   testId,
 }: {
   label: string;
+  /** Right-hand label hint; defaults to Optional. Inbox uses "Needed: their role" for team observation. */
+  hint?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   testId: string;
 }) {
   const id = useId();
-  const hint = useId();
+  const describedById = useId();
   return (
     <div className="grid gap-1.5">
       <label htmlFor={id} className="flex justify-between px-1 text-sm font-semibold text-[color:var(--text-heading)]">
         <span>{label}</span>
-        <span className="font-normal text-[color:var(--text-muted)]">Optional</span>
+        <span className="font-normal text-[color:var(--text-muted)]">{hint ?? "Optional"}</span>
       </label>
       <textarea
         id={id}
@@ -174,13 +185,13 @@ function NoteField({
         maxLength={FEEDBACK_MAX_CHARS}
         value={value}
         placeholder={placeholder}
-        aria-describedby={hint}
+        aria-describedby={describedById}
         onChange={(event) => onChange(event.target.value)}
         onFocus={(event) => event.currentTarget.scrollIntoView({ block: "center", behavior: resolveScrollBehavior() })}
         className={cn(fieldControlPlain, "h-auto min-h-24 resize-y scroll-mb-24 py-2 leading-6")}
         data-testid={testId}
       />
-      <p id={hint} className="flex justify-between gap-2 px-1 text-xs text-[color:var(--text-muted)]">
+      <p id={describedById} className="flex justify-between gap-2 px-1 text-xs text-[color:var(--text-muted)]">
         <span>No names, initials, record or bed numbers.</span>
         <span className="nums">{`${value.length} of ${FEEDBACK_MAX_CHARS}`}</span>
       </p>
@@ -319,10 +330,11 @@ export function AssessmentsTraineePage({
       hold(key, () => dispatch({ type: "confirm-commit", id }));
       resumed.push(() => (cancel(key) ? (dispatch({ type: "confirm-undo", id }), true) : false));
     }
-    for (const { id, level, text } of readyToSend(current.extras.answers)) {
+    for (const entry of readyToSend(current.extras.answers)) {
+      const { id } = entry;
       const key = `answer:${id}`;
       if (timers.current.has(key)) continue;
-      dispatch({ type: "extras", action: { type: "inbox-send", id, level, text, at: clockNow() } });
+      dispatch({ type: "extras", action: { type: "inbox-send", ...entry, at: clockNow() } });
       hold(key, () => dispatch({ type: "extras", action: { type: "inbox-commit", id } }));
       resumed.push(() =>
         cancel(key) ? (dispatch({ type: "extras", action: { type: "inbox-undo", id } }), true) : false,
@@ -375,18 +387,22 @@ export function AssessmentsTraineePage({
 
   function sendAnswer(item: InboxRequest) {
     const draft = drafts[item.id];
-    if (!draft?.level) return;
+    if (!draft?.level || !draft.observed || sendBlocker(draft)) return;
+    const { level, observed } = draft;
     const text = draft.text.trim();
     setSheet(null);
     const key = `answer:${item.id}`;
     const undo = undoable(key, () => dispatch({ type: "extras", action: { type: "inbox-undo", id: item.id } }));
     if (!online) {
-      dispatch({ type: "extras", action: { type: "inbox-queue", id: item.id, level: draft.level, text } });
+      dispatch({ type: "extras", action: { type: "inbox-queue", id: item.id, level, text, observed } });
       live.current.add(key);
       tell(`Kept to send to ${item.doctor.name} when you are back online`, undo);
       return;
     }
-    dispatch({ type: "extras", action: { type: "inbox-send", id: item.id, level: draft.level, text, at: clockNow() } });
+    dispatch({
+      type: "extras",
+      action: { type: "inbox-send", id: item.id, level, text, observed, at: clockNow() },
+    });
     hold(key, () => dispatch({ type: "extras", action: { type: "inbox-commit", id: item.id } }));
     tell(`Sending to ${item.doctor.name} in 10 s`, undo);
   }
@@ -442,7 +458,7 @@ export function AssessmentsTraineePage({
   const cantItem = sheet?.kind === "cant" ? openItem(sheet.id) : null;
   const statusItem = sheet?.kind === "status" ? openItem(sheet.id) : null;
   const askSession = sheet?.kind === "ask" ? (view.toConfirm.find((x) => x.id === sheet.id) ?? null) : null;
-  const draft = answerItem ? (drafts[answerItem.id] ?? { level: null, text: "" }) : null;
+  const draft = answerItem ? (drafts[answerItem.id] ?? { level: null, text: "", observed: null }) : null;
   const draftProblem = draft ? patientDetailProblem(draft.text) : null;
   const askProblem = patientDetailProblem(ask.note);
   const askBlocker = !ask.field
@@ -452,13 +468,8 @@ export function AssessmentsTraineePage({
       : !online
         ? "You're offline. Ask once you are back online."
         : null;
-  const answerBlocker = !draft
-    ? null
-    : !draft.level
-      ? "Choose the supervision the doctor needed."
-      : draftProblem
-        ? "Take out the patient details to send."
-        : null;
+  // The same check as the inbox's quick answer, declaration included [EPA1p].
+  const answerBlocker = draft ? sendBlocker(draft) : null;
 
   return (
     <main className="min-w-0" data-testid="assessments-trainee-page">
@@ -746,6 +757,14 @@ export function AssessmentsTraineePage({
         {answerItem && draft ? (
           <div className="grid gap-3">
             {answerItem.epa ? <p className={cn(textMuted, "text-sm")}>{epaInfo(answerItem.epa).detail}</p> : null}
+            <p className="px-1 text-sm font-semibold text-[color:var(--text-heading)]">How you know</p>
+            <OptionCard
+              legend="How you know"
+              name={`assess-trainee-observed-${answerItem.id}`}
+              value={draft.observed}
+              onChange={(observed) => setDrafts({ ...drafts, [answerItem.id]: { ...draft, observed } })}
+              options={EPA_OBSERVED}
+            />
             <SegmentedControl
               label={`Supervision ${first} needed`}
               layout="equal"
@@ -762,6 +781,7 @@ export function AssessmentsTraineePage({
             ) : null}
             <NoteField
               label="A few lines"
+              hint={draft.observed === "team" ? "Needed: their role" : "Optional"}
               value={draft.text}
               onChange={(text) => setDrafts({ ...drafts, [answerItem.id]: { ...draft, text } })}
               placeholder="What went well, and one thing to try next time."
