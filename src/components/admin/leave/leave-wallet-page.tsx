@@ -22,6 +22,7 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { ContractEndEntryLink } from "@/components/admin/contract/contract-entry-link";
+import { LeaveEntitlementList } from "@/components/admin/leave/leave-entitlement-list";
 import {
   copyLabel,
   JuniorBackLink,
@@ -62,14 +63,10 @@ import {
   type LeaveType,
   type LeaveTypeId,
 } from "@/lib/admin/leave-types";
-import {
-  LEAVE_CASUAL_NOTE,
-  LEAVE_ENTITLEMENTS,
-  LEAVE_SIGN_OFF,
-  leaveAgreementPastEndDate,
-} from "@/lib/admin/leave-entitlements";
+import { LEAVE_SIGN_OFF, leaveAgreementPastEndDate } from "@/lib/admin/leave-entitlements";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
+import { rosterLeaveKindForCard } from "@/lib/roster/leave-kinds";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -98,9 +95,9 @@ function CardIcon({ icon }: { icon: LeaveIcon }) {
 type ShownRosterLeave = JuniorRosterLeaveState | { readonly status: "signed-out" };
 const SIGNED_OUT_LEAVE: ShownRosterLeave = { status: "signed-out" };
 
-/** The doctor's own bookings in Roster for the two kinds Roster holds. */
+/** The doctor's own bookings in Roster, for the cards Roster holds a kind for. */
 function RosterBookings({ type, leave, today }: { type: LeaveType; leave: ShownRosterLeave; today: string }) {
-  const kind = type.id === "annual" ? "annual" : type.id === "conference" ? "pd_leave" : null;
+  const kind = rosterLeaveKindForCard(type.id);
   if (!kind) return null;
   const rows =
     leave.status === "ready"
@@ -335,29 +332,7 @@ function OpenCard({
         data-testid={`admin-leave-${type.id}-entitlement`}
       >
         <p className={eyebrowText}>What you can take</p>
-        {LEAVE_ENTITLEMENTS[type.id].map((group) => (
-          <div key={group.heading ?? "all"} className="grid gap-1">
-            {group.heading ? (
-              <p className="text-xs font-semibold text-[color:var(--text-heading)]">{group.heading}</p>
-            ) : null}
-            <ul className="grid gap-1.5">
-              {group.lines.map((line) => (
-                <li key={line.text} className="grid gap-0.5 text-sm text-[color:var(--text)]">
-                  <span>{line.text}</span>
-                  <span className={cn(textMuted, "text-xs")}>Clause {line.clause}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-        <p className="grid gap-0.5 text-sm text-[color:var(--text)]" data-testid={`admin-leave-${type.id}-casual`}>
-          <span>{LEAVE_CASUAL_NOTE.text}</span>
-          <span className={cn(textMuted, "text-xs")}>Clause {LEAVE_CASUAL_NOTE.clause}</span>
-        </p>
-        <p className={cn(textMuted, "text-xs")}>
-          From the AMA Industrial Agreement 2024, checked and signed off {formatDateEcho(LEAVE_SIGN_OFF.signedOn)}. Your
-          health service confirms what applies to you.
-        </p>
+        <LeaveEntitlementList card={type.id} testIdPrefix={`admin-leave-${type.id}`} />
         <AgreementEndNote today={today} testId={`admin-leave-${type.id}-agreement-end`} />
         <a
           href={LEAVE_AGREEMENT.url}
@@ -417,11 +392,11 @@ function OpenCard({
         </ol>
         {type.rosterHref ? (
           <Link
-            href="/roster/requests"
+            href={type.rosterHref}
             className={cn(buttonFaceClass({ variant: "secondary", size: "sm" }), "w-fit")}
             data-testid={`admin-leave-${type.id}-roster`}
           >
-            Plan it in Roster
+            {type.id === "personal" ? "Mark it in Roster" : "Plan it in Roster"}
           </Link>
         ) : null}
       </div>

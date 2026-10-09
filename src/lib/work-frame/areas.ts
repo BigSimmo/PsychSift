@@ -719,7 +719,10 @@ const assessments: WorkArea = {
     },
     {
       id: "assess-supervision",
-      label: "Supervision",
+      // Registrar supervision hours are not part of CLA or the prevocational framework, so the name says whose
+      // they are (owner decision 9 Oct 2026). The tab row shows the short name.
+      label: "Registrar supervision",
+      short: "Registrar",
       sub: "Hours to confirm",
       icon: "users",
       href: "/teaching/supervision",
@@ -729,11 +732,20 @@ const assessments: WorkArea = {
   ],
   groups: [
     // The supervisor's own pages, under the name the tabs' role switch gives that side, so a doctor on
-    // "My training" can tell these open the supervisor's view and not their own.
+    // "My training" can tell these open the supervisor's view and not their own. A signed-in doctor keeps
+    // real records in CLA and every one of these pages would only say so, so they are for signed-out
+    // readers only (owner decision 9 Oct 2026).
     {
       label: "I supervise",
       items: [
-        { id: "assess-epa", label: "Record an EPA", sub: "Two taps", icon: "plus", action: "assess-record-epa" },
+        {
+          id: "assess-epa",
+          label: "Record an EPA",
+          sub: "Two taps",
+          icon: "plus",
+          action: "assess-record-epa",
+          gate: "signed-out",
+        },
         {
           id: "assess-times",
           label: "Your times",
@@ -742,6 +754,7 @@ const assessments: WorkArea = {
           href: "/teaching/assessments?view=times&as=supervisor",
           paths: ["/teaching/assessments"],
           query: { view: "times" },
+          gate: "signed-out",
         },
         {
           id: "assess-record",
@@ -752,6 +765,7 @@ const assessments: WorkArea = {
           href: "/teaching/assessments?view=record&as=supervisor",
           paths: ["/teaching/assessments"],
           query: { view: "record" },
+          gate: "signed-out",
         },
         {
           id: "assess-inbox",
@@ -761,6 +775,7 @@ const assessments: WorkArea = {
           href: "/teaching/assessments?view=inbox&as=supervisor",
           paths: ["/teaching/assessments"],
           query: { view: "inbox" },
+          gate: "signed-out",
         },
         {
           id: "assess-overview",
@@ -771,6 +786,7 @@ const assessments: WorkArea = {
           href: "/teaching/assessments?view=overview&as=supervisor",
           paths: ["/teaching/assessments"],
           query: { view: "overview" },
+          gate: "signed-out",
         },
         // Export saves the supervisor's records, and its back arrow returns to the supervisor's To do.
         {
@@ -779,6 +795,7 @@ const assessments: WorkArea = {
           sub: "Spreadsheets and forms",
           icon: "download",
           href: "/teaching/assessments/export",
+          gate: "signed-out",
         },
       ],
     },

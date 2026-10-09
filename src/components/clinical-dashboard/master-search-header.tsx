@@ -86,6 +86,7 @@ import { useHeaderModePill } from "@/components/clinical-dashboard/master-search
 import { useScopeDocumentList } from "@/components/clinical-dashboard/master-search-header-scope-documents";
 import { workAreaFor } from "@/lib/work-frame/areas";
 import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { LargeTextFlag } from "@/components/work-frame/use-large-text";
 import { modePickerHint } from "@/lib/mode-picker-hints";
 import {
   modePickerCardClass,
@@ -2847,6 +2848,8 @@ export function MasterSearchHeader({
             </button>
           ) : null}
           {appModeHasWorkSearch(selectedAppMode.id) ? <StaffWorkHeaderControls modeId={selectedAppMode.id} /> : null}
+          {/* At large text, work pages let cut-off labels wrap (work-mode.css). */}
+          {appModeHasWorkSearch(selectedAppMode.id) ? <LargeTextFlag /> : null}
         </div>
       </div>
 

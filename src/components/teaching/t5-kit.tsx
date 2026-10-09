@@ -263,9 +263,17 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
   // A row that opens something and also carries an end (a ✓, a figure, a link): the end sits beside
   // the link or button rather than inside it, so the row stays tappable and no control nests in another.
   if ((href || onClick) && end) {
-    const inner = cn("flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-sm py-2.25 text-left", focusRing);
+    // At large text the end drops onto its own line under the row, so a tag never covers the words.
+    const inner = cn(
+      "flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-sm py-2.25 text-left [html[data-large-text]_&]:basis-full",
+      focusRing,
+    );
     return (
-      <li id={id} data-testid={testId} className="flex min-w-0 items-center gap-2.5 px-3">
+      <li
+        id={id}
+        data-testid={testId}
+        className="flex min-w-0 items-center gap-2.5 px-3 [html[data-large-text]_&]:flex-wrap [html[data-large-text]_&]:pb-2"
+      >
         {href ? (
           external ? (
             <a href={href} target="_blank" rel="noreferrer" className={inner}>

@@ -8,12 +8,16 @@ import { useModeBandCount } from "@/components/mode-band/mode-band";
 import { WorkBody, useWorkUndoToast } from "@/components/mode-kit/work";
 import { AssessSegmented, AssessSkeleton } from "@/components/teaching/assessments/assess-kit";
 import {
+  rememberDct,
   rememberRole,
   rememberStory,
+  rememberedDct,
   rememberedRole,
   rememberedStory,
   type AssessRole,
 } from "@/components/teaching/assessments/assess-memory";
+import { AssessorForm } from "@/components/teaching/assessments/assessments-assessor";
+import { DctHome, DctPlan, DctSignoff, type DctProps } from "@/components/teaching/assessments/assessments-dct";
 import { AssessmentsHome } from "@/components/teaching/assessments/assessments-home";
 import { AllAssessments, TermDetails, YearRequirements } from "@/components/teaching/assessments/assessments-year";
 import { AssessmentForm } from "@/components/teaching/assessments/assessments-form";
@@ -47,6 +51,7 @@ import {
   type AssessmentsState,
 } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
+import { dctReducer, dctWaiting, initialDctState } from "@/lib/teaching/assessments/dct";
 import { useAuthSession } from "@/lib/supabase/client";
 import { useExampleData } from "@/lib/example-data/store";
 
@@ -90,10 +95,15 @@ const VIEWS: readonly AssessmentsView[] = [
   "words",
   "inbox",
   "overview",
+  "dctsign",
+  "plan",
+  "epaform",
 ];
 
 /** Views that are the doctor's own: they never take the supervisor's side. */
 const DOCTOR_ONLY: ReadonlySet<AssessmentsView> = new Set(["hub", "reqs", "term", "request", "book", "report"]);
+/** Views that are the DCT's own. */
+const DCT_ONLY: ReadonlySet<AssessmentsView> = new Set(["dctsign", "plan"]);
 /** The tabs show the role switch. */
 const TAB_VIEWS: ReadonlySet<AssessmentsView> = new Set(["home", "progress"]);
 /**
@@ -101,7 +111,17 @@ const TAB_VIEWS: ReadonlySet<AssessmentsView> = new Set(["home", "progress"]);
  * in the address they keep whoever's assessments were last shown, so a supervisor who
  * opens one from the tabs or More stays the supervisor.
  */
-const ROLE_KEPT: ReadonlySet<AssessmentsView> = new Set(["home", "progress", "all", "words", "help"]);
+const ROLE_KEPT: ReadonlySet<AssessmentsView> = new Set([
+  "home",
+  "progress",
+  "all",
+  "words",
+  "help",
+  "overview",
+  "epaform",
+]);
+
+const isRole = (as: string | null): as is Role => as === "doctor" || as === "supervisor" || as === "dct";
 
 const DATE_OPTIONS = [
   { value: "-1", label: "Mon 5 Oct (week 6)" },
@@ -111,14 +131,17 @@ const DATE_OPTIONS = [
 /** Whose screen this is: the address says, or a tab keeps the last choice, or it is the doctor's. */
 export function resolveRole(view: AssessmentsView, as: string | null, remembered: Role): Role {
   if (DOCTOR_ONLY.has(view)) return "doctor";
-  if (as === "supervisor" || as === "doctor") return as;
+  if (DCT_ONLY.has(view)) return "dct";
+  if (isRole(as)) return as;
   return ROLE_KEPT.has(view) ? remembered : "doctor";
 }
 
-function Screen(props: ScreenProps & { view: AssessmentsView }) {
+function Screen(props: ScreenProps & Omit<DctProps, keyof ScreenProps> & { view: AssessmentsView }) {
   const { view, role } = props;
   if (view === "help") return <ConcernsHelp {...props} />;
   if (view === "words") return <SupervisorWords {...props} />;
+  // What an assessor gets from a request: the same page from the doctor's or the supervisor's side.
+  if (view === "epaform") return <AssessorForm {...props} />;
   // The two added sample views (features 16 and 4) read the same made-up records from either role.
   // They have no real data source yet, so a real user only reaches them with Assessments example data on.
   if (view === "inbox")
@@ -133,6 +156,18 @@ function Screen(props: ScreenProps & { view: AssessmentsView }) {
         <AssessmentsTermOverview {...props} />
       </ExampleOnlyGate>
     );
+  if (role === "dct") {
+    // The DCT has a home, a form to sign and a plan. Their Progress tab is the whole service's term overview.
+    if (view === "dctsign") return <DctSignoff {...props} />;
+    if (view === "plan") return <DctPlan {...props} />;
+    if (view === "progress")
+      return (
+        <ExampleOnlyGate area="assess" what="The term overview">
+          <AssessmentsTermOverview {...props} />
+        </ExampleOnlyGate>
+      );
+    return <DctHome {...props} />;
+  }
   if (role === "supervisor") {
     if (view === "form") return <AssessmentForm {...props} who="sup" />;
     if (view === "sign") return <SignForm {...props} who="sup" />;
@@ -217,6 +252,8 @@ function AssessmentsApp() {
     () => rememberedStory(memoryKey) ?? initialAssessmentsState(),
   );
   useEffect(() => rememberStory(memoryKey, s), [memoryKey, s]);
+  const [dct, dctDispatch] = useReducer(dctReducer, undefined, () => rememberedDct(memoryKey) ?? initialDctState());
+  useEffect(() => rememberDct(memoryKey, dct), [memoryKey, dct]);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const requested = params.get("view") as AssessmentsView | null;
@@ -226,7 +263,7 @@ function AssessmentsApp() {
   const role = resolveRole(view, as, rememberedRole());
   useEffect(() => {
     // An address that names a side makes the tabs keep it.
-    if ((as === "supervisor" || as === "doctor") && !DOCTOR_ONLY.has(view)) {
+    if (isRole(as) && !DOCTOR_ONLY.has(view) && !DCT_ONLY.has(view)) {
       rememberRole(as);
     }
   }, [as, view]);
@@ -253,7 +290,10 @@ function AssessmentsApp() {
   const root = useRef<HTMLDivElement>(null);
   const place = params.toString();
   const first = useRef(true);
-  useModeBandCount("assess-todo", role === "supervisor" ? supervisorTodo(s) : doctorActions(s));
+  useModeBandCount(
+    "assess-todo",
+    role === "dct" ? dctWaiting(s, dct).length : role === "supervisor" ? supervisorTodo(s) : doctorActions(s),
+  );
   // More's "Record an EPA": the supervisor's two-tap EPA, from wherever the page is.
   useWorkFrameAction("assess-record-epa", role === "supervisor" ? () => setSheet({ kind: "recordepa" }) : null);
   useEffect(() => {
@@ -278,7 +318,7 @@ function AssessmentsApp() {
     if (next === role) return;
     rememberRole(next);
     const tab = view === "progress" ? "progress" : "home";
-    go(viewHref(tab, next === "supervisor" ? { as: "supervisor" } : { as: "doctor" }));
+    go(viewHref(tab, { as: next }));
   };
   return (
     <div ref={root} className="contents [&_:is(input,textarea,select,button)]:scroll-mb-24">
@@ -290,11 +330,12 @@ function AssessmentsApp() {
           options={[
             { value: "doctor", label: "My training" },
             { value: "supervisor", label: "I supervise" },
+            { value: "dct", label: "DCT" },
           ]}
         />
       ) : null}
       <AssessmentsExtrasProvider memoryKey={memoryKey}>
-        <Screen {...props} view={view} />
+        <Screen {...props} dct={dct} dctDispatch={dctDispatch} view={view} />
       </AssessmentsExtrasProvider>
       {view === "home" ? <TryTheStory s={s} dispatch={dispatch} /> : null}
       {savedNote ? (

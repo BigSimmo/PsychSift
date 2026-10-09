@@ -205,26 +205,41 @@ export const FORM_STEPS = ["about", "d1", "d2", "d3", "d4", "global", "summary",
 export const LAST_FORM_STEP = FORM_STEPS.length - 1;
 
 export type EpaNumber = 1 | 2 | 3 | 4;
-export const EPAS: readonly { id: EpaNumber; title: string; short: string; detail: string }[] = [
+/**
+ * The four EPAs of the AMC National Framework, the same for PGY1 and PGY2 (assessed at a higher level in PGY2).
+ * `title` is the short name rows use. `formal` is the name on the AMC term assessment form, and `detail`
+ * follows the AMC's own description (Training and assessment requirements, Section 2B). Sources are listed
+ * in /mnt/project-files/work-mode-build/assessments-cla-sources-check.md, checked 9 Oct 2026.
+ */
+export const EPAS: readonly { id: EpaNumber; title: string; formal: string; short: string; detail: string }[] = [
   {
     id: 1,
     title: "Clinical assessment",
+    formal: "Clinical assessment",
     short: "Assessment",
-    detail: "History, examination, differential diagnosis and a management plan.",
+    detail: "History, examination, a differential diagnosis and a management plan, including investigations.",
   },
   {
     id: 2,
     title: "Acutely unwell patient",
+    formal: "Recognition and care of the acutely unwell patient",
     short: "Acutely unwell",
-    detail: "Recognise, assess, escalate and give immediate care.",
+    detail: "Recognise, assess, escalate and give immediate care to deteriorating and acutely unwell patients.",
   },
   {
     id: 3,
     title: "Prescribing",
+    formal: "Prescribing",
     short: "Prescribing",
-    detail: "Prescribe drugs, fluids, blood products and oxygen to suit the patient.",
+    detail: "Prescribe drugs, fluids, blood products and inhaled therapies, including oxygen, to suit the patient.",
   },
-  { id: 4, title: "Team communication", short: "Communication", detail: "Documentation, handover and referral." },
+  {
+    id: 4,
+    title: "Team communication",
+    formal: "Team communication: documentation, handover and referrals",
+    short: "Communication",
+    detail: "Documentation, handover and referral, written and spoken.",
+  },
 ];
 
 export function epa(id: EpaNumber) {
@@ -232,14 +247,46 @@ export function epa(id: EpaNumber) {
 }
 
 export type SupervisionLevel = "direct" | "proximal" | "minimal";
-export const SUPERVISION_LEVELS: readonly { id: SupervisionLevel; title: string; detail: string }[] = [
-  { id: "direct", title: "Direct supervision", detail: "The supervisor needs to watch the work directly." },
-  { id: "proximal", title: "Proximal supervision", detail: "The supervisor is close by and checks the work promptly." },
-  { id: "minimal", title: "Minimal supervision", detail: "The supervisor trusts the doctor to do it." },
-];
+/**
+ * The EPA form's three-point scale. `formLabel` is the AMC form's exact wording, `title` the short name rows
+ * use, and `detail` a plain reading of the form's descriptor, addressed to the assessor.
+ */
+export const SUPERVISION_LEVELS: readonly { id: SupervisionLevel; title: string; formLabel: string; detail: string }[] =
+  [
+    {
+      id: "direct",
+      title: "Direct supervision",
+      formLabel: "Requires direct supervision",
+      detail: "You or the day-to-day supervisor need to be there to watch and review the work.",
+    },
+    {
+      id: "proximal",
+      title: "Proximal supervision",
+      formLabel: "Requires proximal supervision",
+      detail: "You need to be easy to reach, and able to review the work straight away.",
+    },
+    {
+      id: "minimal",
+      title: "Minimal supervision",
+      formLabel: "Requires minimal supervision",
+      detail: "You trust them to do it, and need only be in the building for a general overview.",
+    },
+  ];
 
 export function supervisionLevelName(id: SupervisionLevel): string {
   return SUPERVISION_LEVELS.find((level) => level.id === id)!.title;
+}
+
+/** Case complexity, as the EPA form records it. */
+export type CaseComplexity = "low" | "medium" | "high";
+export const CASE_COMPLEXITIES: readonly { id: CaseComplexity; title: string }[] = [
+  { id: "low", title: "Low" },
+  { id: "medium", title: "Medium" },
+  { id: "high", title: "High" },
+];
+
+export function caseComplexityName(id: CaseComplexity): string {
+  return CASE_COMPLEXITIES.find((c) => c.id === id)!.title;
 }
 
 export const GLOSSARY: readonly [string, string][] = [
@@ -264,7 +311,14 @@ export const GLOSSARY: readonly [string, string][] = [
   ],
   ["IPAP", "Improving Performance Action Plan. Extra support with goals and a review date."],
   ["Assessment Review Panel", "Recommends at the end of the year whether you've completed PGY1 or PGY2."],
-  ["CLA", "Clinical Learning Australia. The national e-portfolio used in WA."],
+  [
+    "CLA",
+    "Clinical Learning Australia. The AMC's national e-portfolio for PGY1 and PGY2 training. Your MEU tells you if your hospital uses it.",
+  ],
+  [
+    "Guest assessor",
+    "An EPA assessor without a CLA account, who answers from an emailed link. Shows as Unapproved until the MEU approves them.",
+  ],
   [
     "A, B, C, D",
     "Kinds of experience: undifferentiated illness, chronic illness, acute and critical illness, peri-operative/procedural.",

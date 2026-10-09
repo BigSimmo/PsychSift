@@ -78,6 +78,7 @@ import {
   epasInTerm,
   kindsDone,
   meetingDate,
+  epaWithAssessor,
   pendingEpaRequest,
   selfDone,
   stage,
@@ -274,9 +275,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
       <WorkTag>New</WorkTag>
     );
   const offered = Object.values(s.avail).flat().length;
-  const epaRows = s.epaRequests
-    .map((r, i) => ({ r, i }))
-    .filter(({ r }) => r.who === "sup" && r.status === "requested");
+  const epaRows = s.epaRequests.map((r, i) => ({ r, i })).filter(({ r }) => r.who === "sup" && epaWithAssessor(r));
   const ben = (
     <Row
       avatar={BEN.initials}
@@ -301,7 +300,7 @@ export function SupervisorHome({ s, dispatch, openSheet, go }: ScreenProps) {
             key={`epa-${i}`}
             avatar={DOC.initials}
             title={`${DOC.name} · EPA ${r.epa}`}
-            subtitle={`${epaInfo(r.epa).title} · by Sun 8 Nov`}
+            subtitle={`${epaInfo(r.epa).title} · ${r.status === "not-yet" ? "not yet, " : ""}by Sun 8 Nov`}
             end={
               <WorkButton variant="tinted" onClick={() => openSheet({ kind: "supepa", index: i })}>
                 Record<span className="sr-only">{` EPA ${r.epa} for ${DOC.name}`}</span>
