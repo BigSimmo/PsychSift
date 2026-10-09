@@ -20,12 +20,14 @@ import { useOpenShiftsIsPoster } from "@/lib/teaching/page-visibility";
 export function canManageCourses(input: {
   readonly administrator: boolean;
   readonly teamManager: boolean;
-  readonly hospitalRole?: boolean;
+  readonly heldRoles?: readonly string[];
 }): boolean {
-  return input.administrator || input.teamManager || input.hospitalRole === true;
+  return (
+    input.administrator || input.teamManager || (input.heldRoles ?? []).some((role) => COURSE_HOSPITAL_ROLES.has(role))
+  );
 }
 
-const COURSE_HOSPITAL_ROLES = new Set(["workforce", "dct"]);
+const COURSE_HOSPITAL_ROLES: ReadonlySet<string> = new Set(["workforce", "dct"]);
 
 /**
  * Whether this reader sees the organiser's Courses page. Organisers do; with
@@ -44,7 +46,7 @@ export function useCourseOrganiser(): { readonly organiser: boolean; readonly sa
     canManageCourses({
       administrator: isAdministratorUser(session),
       teamManager: poster === true,
-      hospitalRole: heldRoles.some((role) => COURSE_HOSPITAL_ROLES.has(role)),
+      heldRoles,
     });
   return { organiser, sample: !organiser && active };
 }
