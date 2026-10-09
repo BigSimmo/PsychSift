@@ -394,7 +394,13 @@ export function validateCourseDraft(
   for (const field of ["title", "about", "location"] as const) {
     if (errors[field]) continue;
     const warning = checkPatientDetail(draft[field], { allowCapitals: true });
-    if (warning) errors[field] = "This looks like patient details. Remove them before posting.";
+    if (!warning) continue;
+    // A bare "Room 2" reads as a bed number to the shared check. Asking for the room's full name
+    // keeps the check intact and gives doctors a place they can actually find.
+    errors[field] =
+      field === "location" && /^\s*(?:room|rm)\s*\d+\s*$/i.test(draft.location)
+        ? "Name the room in full, for example Seminar room 2."
+        : "This looks like patient details. Remove them before posting.";
   }
   return errors;
 }

@@ -500,6 +500,13 @@ describe("validateCourseDraft", () => {
     expect(validateCourseDraft(draft({ closesOn: "2026-13-01" }), today).closesOn).toBe("Choose a date.");
   });
 
+  it("asks for a room's full name when a location reads as a bed number", () => {
+    expect(validateCourseDraft(draft({ location: "Room 2" }), today).location).toBe(
+      "Name the room in full, for example Seminar room 2.",
+    );
+    expect(validateCourseDraft(draft({ location: "Seminar room 2" }), today).location).toBeUndefined();
+  });
+
   it("refuses a closing day already past, unless the course already had it", () => {
     expect(validateCourseDraft(draft({ closesOn: "2026-10-07" }), today).closesOn).toBe("Choose today or a later day.");
     expect(validateCourseDraft(draft({ closesOn: TODAY }), today).closesOn).toBeUndefined();

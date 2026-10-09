@@ -65,7 +65,8 @@ export type ApiRateLimitBucket =
   | "teaching"
   | "teaching_code"
   | "roster"
-  | "work_sync";
+  | "work_sync"
+  | "work_bookings";
 
 export type ApiRateLimitResult = {
   limited: boolean;
@@ -121,6 +122,9 @@ const apiRateLimitDefaults = {
   // Work choices that follow the doctor between devices (saved work pages, My Day
   // choices). Each change is one small write; same shape as roster.
   work_sync: { limit: 60, windowSeconds: 60 },
+  // Admin Bookings: booking or cancelling a place, and an organiser posting or changing a
+  // course. Each is one small write; same shape as work_sync.
+  work_bookings: { limit: 60, windowSeconds: 60 },
 } as const satisfies Record<ApiRateLimitBucket, { limit: number; windowSeconds: number }>;
 
 const anonymousApiRateLimitDefaults: Partial<Record<ApiRateLimitBucket, { limit: number; windowSeconds: number }>> = {
