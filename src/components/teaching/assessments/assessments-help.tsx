@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Building2,
   Clock,
   Copy,
   Flag,
@@ -77,12 +78,25 @@ function PhoneNumber({ children }: { children: string }) {
   return <WorkTag tone="neutral">{children}</WorkTag>;
 }
 
+/**
+ * Get help, for whichever side opened it (site audit M20): the doctor being assessed gets the routes for an
+ * assessment they disagree with, and a supervisor or DCT gets the short version first. The phone lines are
+ * for anyone.
+ * - PMCWA (08) 9222 4010: PMCWA's own CLA page, https://pmcwa.org.au/education-training/cla, read 9 Oct 2026.
+ * - Doctors' Health Advisory Service WA, 24/7 advice line 08 6388 4904: https://www.dhaswa.com.au/contact-us/,
+ *   read 9 Oct 2026. The number shown before, (08) 9321 3098, is no longer the one that page displays.
+ * - Lifeline 13 11 14: the same DHASWA page.
+ * - The written reply to the DCT within 14 days: AMC term assessment form. Improving performance starts with an
+ *   informal discussion: AMC Section 3B, p.53.
+ * - WA uses the title Director of Clinical Training (WA Health, medical education in WA hospitals).
+ */
 export function ConcernsHelp({ openSheet, role }: ScreenProps) {
   const sup = role === "supervisor";
+  const forDoctor = role === "doctor";
   return (
     <>
       <AssessHeader
-        eyebrow="PsychSift doesn't tell your supervisor"
+        eyebrow={forDoctor ? "For the doctor being assessed" : role === "dct" ? "For the DCT" : "For supervisors"}
         title="Concerns and help"
         back={
           sup
@@ -92,34 +106,57 @@ export function ConcernsHelp({ openSheet, role }: ScreenProps) {
       />
       <CallStrip sub="Or Lifeline 13 11 14, 24 hours" />
       <AssessNote icon={ShieldCheck}>
-        PsychSift doesn&apos;t tell anyone you opened this page. It doesn&apos;t receive or pass on complaints. These
-        are the usual routes in WA.
+        {forDoctor
+          ? "PsychSift doesn't tell your supervisor, or anyone, that you opened this page. It doesn't receive or pass on complaints. These are the usual routes in WA."
+          : "PsychSift doesn't tell anyone you opened this page. It doesn't receive or pass on complaints. These are the usual routes in WA."}
       </AssessNote>
-      <SectionLabel>About an assessment</SectionLabel>
-      <List label="About an assessment">
-        <Row
-          icon={MessageSquare}
-          title="Talk it through first"
-          subtitle={`With ${SUP} or your Director of Clinical Training (DCT). Most things are sorted this way.`}
-        />
-        <Row
-          icon={PenLine}
-          title="Disagree with a report"
-          subtitle="Respond in writing to the DCT within 14 days. Ask your MEU when the 14 days start."
-          onClick={() => openSheet({ kind: "disagree" })}
-        />
-        <Row
-          icon={Clock}
-          title="More time or a different assessor"
-          subtitle="Ask your Medical Education Unit (MEU). They manage due dates and forms."
-        />
-      </List>
+      {forDoctor ? (
+        <>
+          <SectionLabel>About an assessment</SectionLabel>
+          <List label="About an assessment">
+            <Row
+              icon={MessageSquare}
+              title="Talk it through first"
+              subtitle="With your term supervisor or your Director of Clinical Training (DCT). Most things are sorted this way."
+            />
+            <Row
+              icon={PenLine}
+              title="Disagree with a report"
+              subtitle="Respond in writing to the DCT within 14 days. Ask your MEU when the 14 days start."
+              onClick={() => openSheet({ kind: "disagree" })}
+            />
+            <Row
+              icon={Clock}
+              title="More time or a different assessor"
+              subtitle="Ask your Medical Education Unit (MEU). They manage due dates and forms."
+            />
+          </List>
+        </>
+      ) : (
+        <>
+          <SectionLabel>Worried about a doctor</SectionLabel>
+          <List label="Worried about a doctor">
+            <Row
+              icon={MessageSquare}
+              title={
+                role === "dct"
+                  ? "Worried about a doctor? Talk to your MEU and their term supervisor."
+                  : "Worried about a doctor? Talk to your DCT or MEU."
+              }
+              subtitle="Early is better. Improving performance starts with an informal discussion."
+            />
+          </List>
+        </>
+      )}
+      <AssessNote icon={Building2}>
+        Your Medical Education Unit (MEU): find it on your hospital&apos;s intranet, or ask your term supervisor.
+      </AssessNote>
       <SectionLabel>Bullying, harassment or unsafe work</SectionLabel>
       <List label="Bullying, harassment or unsafe work">
         <Row
           icon={Users}
-          title="Your DCT or Director of Postgraduate Medical Education"
-          subtitle="They can advise and act. Ask what can stay confidential before you share details."
+          title="Your Director of Clinical Training (DCT)"
+          subtitle="They can advise and act. Some hospitals use a different title. Ask what can stay confidential before you share details."
         />
         <Row
           icon={Flag}
@@ -145,7 +182,7 @@ export function ConcernsHelp({ openSheet, role }: ScreenProps) {
           iconTone="ok"
           title="Doctors' Health Advisory Service WA"
           subtitle="24 hours, for any doctor or medical student."
-          tag={<PhoneNumber>(08) 9321 3098</PhoneNumber>}
+          tag={<PhoneNumber>(08) 6388 4904</PhoneNumber>}
         />
         <Row
           icon={Users}
@@ -166,7 +203,6 @@ export function ConcernsHelp({ openSheet, role }: ScreenProps) {
         Write down dates, places and what was said while it&apos;s fresh, somewhere you control, such as your personal
         email. PsychSift doesn&apos;t keep a private record for this.
       </AssessNote>
-      <AssessNote center>Phone numbers to be checked against PMCWA and WA Health before release.</AssessNote>
     </>
   );
 }
@@ -240,8 +276,8 @@ function RequestEpaSheet({
         </>
       ) : (
         <AssessNote>
-          At least one EPA a term should be from your primary clinical supervisor or another specialist. Registrars,
-          nurses and pharmacists can assess the rest once they have done EPA assessor training.
+          At least one EPA a term should be from your primary clinical supervisor or an equivalent specialist.
+          Registrars, nurses and pharmacists can assess the rest once they have done EPA assessor training.
         </AssessNote>
       )}
       <WorkButton
@@ -378,7 +414,7 @@ function RecordEpaSheet({
       </WorkButton>
       {why ? <WhyNot id="assess-save-epa-why">{why}</WhyNot> : null}
       {index !== undefined ? (
-        <WorkButton variant="tinted" size="wide" href={viewHref("epaform", { i: String(index) })}>
+        <WorkButton variant="tinted" size="wide" href={viewHref("epaform", { i: String(index), as: "supervisor" })}>
           Open the full EPA form
         </WorkButton>
       ) : null}
@@ -465,7 +501,8 @@ export function AnswerEpaRequest({
               ? { type: "epa-send-back", index, reply: trimmed }
               : { type: "epa-not-yet", index, ...(trimmed ? { reply: trimmed } : {}) },
           );
-          const undo = () => dispatch({ type: "undo-epa-answer", index, previous: request });
+          const answered = { status: back ? ("sent-back" as const) : ("not-yet" as const), reply: trimmed };
+          const undo = () => dispatch({ type: "undo-epa-answer", index, previous: request, answered });
           if (toast) {
             toast(message, undo, 10000);
             onDone();
@@ -538,7 +575,7 @@ function MyEpaSheet({
           Ask someone else
         </WorkButton>
       ) : (
-        <WorkButton variant="tinted" size="wide" href={viewHref("epaform", { i: String(index) })}>
+        <WorkButton variant="tinted" size="wide" href={viewHref("epaform", { i: String(index), as: "doctor" })}>
           See what they get
         </WorkButton>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, ArrowRight, BookOpen, FileText, List as ListIcon, Plus, Shield } from "lucide-react";
+import { Activity, ArrowRight, BookOpen, ExternalLink, FileText, List as ListIcon, Plus, Shield } from "lucide-react";
 
 import { WorkButton, WorkDock, WorkHero, WorkRing, WorkTag } from "@/components/mode-kit/work";
 import { AssessHeader, AssessNote } from "@/components/teaching/assessments/assess-kit";
@@ -13,9 +13,12 @@ import {
   TextLink,
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
+import { CLA_SOURCES } from "@/components/teaching/assessments/assessments-kept-in-cla";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
+import { samSignOff } from "@/lib/teaching/assessments/dct";
 import {
   YEAR_WEEKS,
+  assessorName,
   endOfTermLine,
   kindsDone,
   endOfTermPill,
@@ -35,7 +38,6 @@ import {
   CURRENT_TERM,
   SAMPLE_DOCTOR,
   SAMPLE_LEAVE,
-  SAMPLE_REGISTRAR,
   SAMPLE_SUPERVISOR,
   SAMPLE_TERMS,
 } from "@/lib/teaching/assessments/sample";
@@ -86,7 +88,7 @@ function EpaTermStep({ s, openSheet }: Pick<ScreenProps, "s" | "openSheet">) {
         detail={
           pending.status === "not-yet"
             ? `${epaRequestWords(pending).line} Needed by Sun 8 Nov.`
-            : `Waiting for ${pending.who === "sup" ? SAMPLE_SUPERVISOR.short : SAMPLE_REGISTRAR.name}. Needed by Sun 8 Nov. ${recorded}`
+            : `Waiting for ${pending.who === "sup" ? SAMPLE_SUPERVISOR.short : assessorName(pending)}. Needed by Sun 8 Nov. ${recorded}`
         }
         tag={pending.status === "not-yet" ? <Pill pill={{ label: "Not yet", tone: "neutral" }} /> : undefined}
         onClick={() => openSheet({ kind: "myepa", index: s.epaRequests.indexOf(pending) })}
@@ -114,11 +116,12 @@ function EpaTermStep({ s, openSheet }: Pick<ScreenProps, "s" | "openSheet">) {
   );
 }
 
-export function AssessmentsHome({ s, openSheet }: ScreenProps) {
+export function AssessmentsHome({ s, openSheet, dct }: ScreenProps) {
   const t = CURRENT_TERM;
   const week = termWeek(s);
   const weeks = weeksDone(s);
   const started = stage(s) !== "start";
+  const signOff = s.sigs.doc ? samSignOff(dct) : null;
   return (
     <>
       <AssessHeader eyebrow={`${SAMPLE_DOCTOR.grade} 2026 · term ${withUnit(4, "of")} 5`} title={t.name} />
@@ -126,7 +129,7 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
         testId="assess-doctor-hero"
         eyebrow={`${t.categoryName} (${t.category})`}
         title={`Week ${withUnit(week, "of")} 10`}
-        sub={`${windowOpen(s) ? "Booking is open until Fri 6 Nov." : "Booking opens Mon 26 Oct."} Form due to your MEU Fri 20 Nov.`}
+        sub={`${windowOpen(s) ? "Booking is open until Fri 6 Nov." : "Booking opens Mon 26 Oct."} Made-up due date Fri 20 Nov.`}
         ring={
           <WorkRing
             value={weeks}
@@ -156,10 +159,10 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
         />
         <EpaTermStep s={s} openSheet={openSheet} />
         <StepRow
-          state="now"
+          state={signOff ? "ok" : "now"}
           title="End-of-term assessment"
-          detail={endOfTermLine(s)}
-          tag={<Pill pill={endOfTermPill(s)} />}
+          detail={endOfTermLine(s, signOff)}
+          tag={<Pill pill={endOfTermPill(s, signOff)} />}
           href={viewHref("hub")}
         />
       </List>
@@ -185,7 +188,7 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
         <Row
           icon={FileText}
           title="Blank form"
-          subtitle="Your hospital's term assessment form"
+          subtitle="Example term assessment form"
           href={viewHref("pdf", { of: "blank" })}
         />
         <Row
@@ -200,9 +203,24 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
           subtitle="Every abbreviation in plain words"
           href={viewHref("words")}
         />
+        {/* CLA_SOURCES.claGuides: the CLA resources page. The phone app: CLA detailed FAQs v2.0, p.7. */}
+        <li className="min-w-0">
+          <a href={CLA_SOURCES.claGuides} target="_blank" rel="noopener noreferrer" className="work-row">
+            <span aria-hidden="true" className="work-ic">
+              <ExternalLink aria-hidden="true" strokeWidth={2} />
+            </span>
+            <span className="work-row__text">
+              <span className="work-row__title">
+                CLA training guides
+                <span className="sr-only"> (opens outside PsychSift)</span>
+              </span>
+              <span className="work-row__sub">How to use CLA. CLA also has a phone app.</span>
+            </span>
+          </a>
+        </li>
       </List>
       <AssessNote icon={BookOpen} center>
-        Rules from the AMC National Framework, run in WA by PMCWA. Due dates are set by your MEU.
+        Rules from the AMC National Framework, accredited in WA by PMCWA. Due dates are set by your MEU.
       </AssessNote>
       <WorkDock>
         <WorkButton icon={ArrowRight} href={viewHref("hub")}>

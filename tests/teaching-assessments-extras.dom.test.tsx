@@ -13,6 +13,7 @@ import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-
 import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
 import { ToastProvider, useToast } from "@/components/ui/toast";
+import { initialDctState } from "@/lib/teaching/assessments/dct";
 import { assessmentsReducer, initialAssessmentsState, type AssessmentsState } from "@/lib/teaching/assessments/model";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -27,6 +28,7 @@ function props(s: AssessmentsState, extra: Partial<ScreenProps> = {}): ScreenPro
     openSheet: vi.fn(),
     go: vi.fn(),
     saveEpa: vi.fn(),
+    dct: initialDctState(),
     ...extra,
   };
 }
@@ -114,7 +116,8 @@ describe("consultant inbox", () => {
       fireEvent.click(await screen.findByRole("radio", { name: /Better from another consultant/ }));
       fireEvent.click(screen.getByTestId("assessments-inbox-cant-send"));
     }
-    expect(screen.getByRole("radio", { name: /Waiting · 1/ })).toBeInTheDocument();
+    // Ash's mid-term, and Sam's end-of-term, which is always there for the supervisor to start.
+    expect(screen.getByRole("radio", { name: /Waiting · 2/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Dr Ash Zamia/ }));
     expect(await screen.findByTestId("assessments-inbox-status")).toHaveTextContent(
       "isn't built into the example data",
@@ -127,11 +130,9 @@ describe("consultant inbox", () => {
       "href",
       "/teaching/assessments?view=inbox&as=supervisor",
     );
-    expect(screen.getByText(/4 requests waiting/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Term overview/ })).toHaveAttribute(
-      "href",
-      "/teaching/assessments?view=overview&as=supervisor",
-    );
+    expect(screen.getByText(/5 requests waiting/)).toBeInTheDocument();
+    // The service-wide Term overview is the DCT's, so the supervisor's More views no longer offer it.
+    expect(screen.queryByRole("link", { name: /Term overview/ })).toBeNull();
   });
 });
 
@@ -153,7 +154,7 @@ describe("consultant inbox, more behaviours", () => {
       .getAllByRole("button")
       .map((b) => b.textContent ?? "");
     expect(names[0]).toMatch(/^.*Dr Ash Zamia/);
-    expect(names.at(-1)).toMatch(/Dr Rowan Sheoak/);
+    expect(names.at(-1)).toMatch(/Dr Sam Karri/);
   });
 
   it("moves a request to Later from the sheet, with Undo", async () => {
@@ -189,7 +190,7 @@ describe("consultant inbox, more behaviours", () => {
     const preview = await screen.findByTestId("assessments-inbox-doctor");
     expect(preview).toHaveTextContent("Your supervisor passed this on");
     fireEvent.click(within(preview).getByRole("button", { name: "Move back to my inbox" }));
-    expect(screen.getByRole("radio", { name: /Waiting · 4/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Waiting · 5/ })).toBeInTheDocument();
   });
 
   it("shows what the doctor sees once sent, and copies it for Clinical Learning Australia", async () => {
@@ -270,7 +271,21 @@ describe("consultant inbox, more behaviours", () => {
   });
 
   it("says Nothing waiting with a way to see what was done", async () => {
-    renderWith(<AssessmentsInbox {...props(initialAssessmentsState())} />);
+    // Sam's end-of-term is always in the list until it is signed, so the story starts with it signed by both.
+    const signed = [
+      { type: "form-example", who: "self" } as const,
+      { type: "form-finish", who: "self" } as const,
+      { type: "send-request" } as const,
+      { type: "form-example", who: "sup" } as const,
+      { type: "form-finish", who: "sup" } as const,
+      { type: "set-now", now: 1 } as const,
+      { type: "book", day: 2, time: "14:30" } as const,
+      { type: "set-now", now: 2 } as const,
+      { type: "meeting-held" } as const,
+      { type: "sign", who: "sup", typed: "Robin Wattle", image: null } as const,
+      { type: "sign", who: "self", typed: "Sam Karri", image: null } as const,
+    ].reduce(assessmentsReducer, initialAssessmentsState());
+    renderWith(<AssessmentsInbox {...props(signed)} />);
     for (const name of [/Dr Frankie Mulga/, /Dr Charlie Balga/, /Dr Rowan Sheoak/, /Dr Ash Zamia/]) {
       fireEvent.click(screen.getByRole("button", { name }));
       fireEvent.click(await screen.findByRole("button", { name: "Can't do this one" }));
@@ -279,7 +294,7 @@ describe("consultant inbox, more behaviours", () => {
     const empty = screen.getByTestId("assessments-inbox-empty");
     expect(empty).toHaveTextContent("Nothing waiting");
     fireEvent.click(within(empty).getByRole("button", { name: "See done" }));
-    expect(screen.getByRole("radio", { name: /Done · 4/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Done · 5/ })).toBeChecked();
     expect(screen.getAllByText("Passed on")).toHaveLength(4);
   });
 });
@@ -666,10 +681,7 @@ describe("term overview", () => {
     expect(within(page).getByRole("heading", { name: "Dr Taylor Kwongan" })).toBeInTheDocument();
     expect(within(page).getByText("Overdue since Fri 2 Oct")).toBeInTheDocument();
     expect(within(page).getByText("Content stays private")).toBeInTheDocument();
-    expect(within(page).getByRole("link", { name: /Open Clinical Learning Australia/ })).toHaveAttribute(
-      "target",
-      "_blank",
-    );
+    expect(within(page).getByRole("link", { name: /About CLA \(PMCWA\)/ })).toHaveAttribute("target", "_blank");
     expect(within(page).getByText("No reminders yet.")).toBeInTheDocument();
     fireEvent.click(within(page).getByTestId("assessments-overview-doctor-remind"));
     expect(

@@ -139,8 +139,10 @@ export function traineeView(
   state: TraineeState,
   id: string,
   supervisionByDoctor: ExampleSupervisionByDoctor,
+  /** The date the DCT signed off Dr Sam Karri's end-of-term, if they have. */
+  dctSignedOn: string | null = null,
 ): TraineeView | null {
-  const row = overviewDoctors(s).find((r) => r.id === id);
+  const row = overviewDoctors(s, dctSignedOn).find((r) => r.id === id);
   if (!row) return null;
   const yours = row.supervisor === SAMPLE_SUPERVISOR.name;
   const requests = inboxRequests(s, state.extras.answers).filter((item) => item.doctor.name === row.name);

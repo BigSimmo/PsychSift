@@ -56,7 +56,10 @@ const OBSERVED_OPTIONS = [
   },
 ];
 
-export function AssessorForm({ s, params, saveEpa, dispatch }: ScreenProps) {
+export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps) {
+  // The doctor opens this from "See what they get": a preview only, so they can never answer their own EPA
+  // (site audit B3). The live form is the assessor's, on the supervisor's side.
+  const preview = role === "doctor";
   const raw = params.get("i");
   const index = raw !== null && /^\d+$/.test(raw) ? Number(raw) : -1;
   const r = index >= 0 ? s.epaRequests[index] : undefined;
@@ -82,7 +85,7 @@ export function AssessorForm({ s, params, saveEpa, dispatch }: ScreenProps) {
   const header = (
     <AssessHeader
       eyebrow={guest ? "EPA request · no account needed" : `EPA request · to ${assessorName(r)}`}
-      title={`${DOC.name} asked you to assess EPA ${r.epa}`}
+      title={preview ? "What the assessor sees" : `${DOC.name} asked you to assess EPA ${r.epa}`}
       back={{ href: home, label: "Assessments" }}
     />
   );
@@ -91,7 +94,9 @@ export function AssessorForm({ s, params, saveEpa, dispatch }: ScreenProps) {
       <>
         {header}
         <AssessCallout icon={ShieldCheck} tone="neutral" title="Submitted" role="status" testId="assess-epa-form-done">
-          {`${formLevel(r.level!)}. In CLA the link stops working now, and ${DOC.first} sees your answers.`}
+          {preview
+            ? `${formLevel(r.level!)}. In CLA the link stops working once it is submitted.`
+            : `${formLevel(r.level!)}. In CLA the link stops working now, and ${DOC.first} sees your answers.`}
         </AssessCallout>
         <Card>
           <AssessKeyValue k="EPA" v={`${r.epa} · ${info.formal}`} />
@@ -117,7 +122,7 @@ export function AssessorForm({ s, params, saveEpa, dispatch }: ScreenProps) {
       </>
     );
   }
-  if (answer) {
+  if (answer && !preview) {
     return (
       <>
         {header}
@@ -163,7 +168,10 @@ export function AssessorForm({ s, params, saveEpa, dispatch }: ScreenProps) {
     <>
       {header}
       <AssessNote icon={MessageSquare}>{`${info.formal}: ${info.detail}`}</AssessNote>
-      {r.status === "not-yet" ? (
+      {preview ? (
+        <AssessNote>{`A preview of the form ${assessorName(r)} fills in. Only they can answer it.`}</AssessNote>
+      ) : null}
+      {r.status === "not-yet" && !preview ? (
         <AssessNote>{`You told ${DOC.first} you can't assess it yet. It stays here until you can.`}</AssessNote>
       ) : null}
       <SectionLabel>{`${DOC.first}'s part`}</SectionLabel>
@@ -179,6 +187,7 @@ export function AssessorForm({ s, params, saveEpa, dispatch }: ScreenProps) {
         value={observed}
         onChange={setObserved}
         options={OBSERVED_OPTIONS}
+        disabled={preview}
       />
       <SectionLabel>{`Level of supervision ${DOC.first} needed`}</SectionLabel>
       <OptionCard
@@ -187,57 +196,82 @@ export function AssessorForm({ s, params, saveEpa, dispatch }: ScreenProps) {
         value={level}
         onChange={setLevel}
         options={LEVEL_OPTIONS}
+        disabled={preview}
       />
-      <WorkChips label="Case complexity (optional)">
-        {CASE_COMPLEXITIES.map((c) => (
-          <WorkChip
-            key={c.id}
-            selected={complexity === c.id}
-            onClick={() => setComplexity(complexity === c.id ? null : c.id)}
-          >
-            {c.title}
-          </WorkChip>
-        ))}
-      </WorkChips>
-      <WorkChips label={`Is that level right for a ${DOC.grade} at this stage? (optional)`}>
-        {[true, false].map((yes) => (
-          <WorkChip
-            key={String(yes)}
-            selected={rightLevel === yes}
-            onClick={() => setRightLevel(rightLevel === yes ? null : yes)}
-          >
-            {yes ? "Yes" : "No"}
-          </WorkChip>
-        ))}
-      </WorkChips>
-      <AssessTextField id="assess-epa-well" label="What went well (optional)" value={well} onChange={setWell} />
+      {/* A disabled fieldset turns the chips off in the preview: the kit's chips have no disabled prop. */}
+      <fieldset disabled={preview} className="m-0 grid min-w-0 gap-3 border-0 p-0">
+        <WorkChips label="Case complexity (optional)">
+          {CASE_COMPLEXITIES.map((c) => (
+            <WorkChip
+              key={c.id}
+              selected={complexity === c.id}
+              onClick={() => setComplexity(complexity === c.id ? null : c.id)}
+            >
+              {c.title}
+            </WorkChip>
+          ))}
+        </WorkChips>
+        <WorkChips label={`Is that level right for a ${DOC.grade} at this stage? (optional)`}>
+          {[true, false].map((yes) => (
+            <WorkChip
+              key={String(yes)}
+              selected={rightLevel === yes}
+              onClick={() => setRightLevel(rightLevel === yes ? null : yes)}
+            >
+              {yes ? "Yes" : "No"}
+            </WorkChip>
+          ))}
+        </WorkChips>
+      </fieldset>
+      <AssessTextField
+        id="assess-epa-well"
+        label="What went well (optional)"
+        value={well}
+        onChange={setWell}
+        readOnly={preview}
+      />
       <AssessTextField
         id="assess-epa-better"
         label="What could be better (optional)"
         value={better}
         onChange={setBetter}
+        readOnly={preview}
       />
-      <AssessTextField id="assess-epa-goal" label="Agreed learning goal (optional)" value={goal} onChange={setGoal} />
-      <WorkButton icon={Send} size="wide" disabled={!!why} onClick={submit}>
-        {`Submit EPA ${r.epa}`}
-      </WorkButton>
-      {why ? <WhyNot id="assess-epa-form-why">{why}</WhyNot> : null}
-      <div className="grid gap-2 pt-1">
-        <p className="work-label m-0">{`Can't do it?`}</p>
-        <div className="grid grid-cols-2 gap-2">
-          {r.status === "requested" ? (
-            <WorkButton variant="secondary" onClick={() => setAnswer("not-yet")}>
-              {`Can't assess yet`}
-            </WorkButton>
-          ) : null}
-          <WorkButton variant="secondary" onClick={() => setAnswer("sent-back")}>
-            Send back
+      <AssessTextField
+        id="assess-epa-goal"
+        label="Agreed learning goal (optional)"
+        value={goal}
+        onChange={setGoal}
+        readOnly={preview}
+      />
+      {preview ? (
+        <AssessNote icon={ShieldCheck}>
+          {`Example only. In CLA ${assessorName(r)} answers from the emailed link or on your device, and submits it themselves.`}
+        </AssessNote>
+      ) : (
+        <>
+          <WorkButton icon={Send} size="wide" disabled={!!why} onClick={submit}>
+            {`Submit EPA ${r.epa}`}
           </WorkButton>
-        </div>
-      </div>
-      <AssessNote icon={ShieldCheck}>
-        {`Example only. In CLA the assessor answers from the emailed link, with no account needed. ${IN_CLA_NOTE}`}
-      </AssessNote>
+          {why ? <WhyNot id="assess-epa-form-why">{why}</WhyNot> : null}
+          <div className="grid gap-2 pt-1">
+            <p className="work-label m-0">{`Can't do it?`}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {r.status === "requested" ? (
+                <WorkButton variant="secondary" onClick={() => setAnswer("not-yet")}>
+                  {`Can't assess yet`}
+                </WorkButton>
+              ) : null}
+              <WorkButton variant="secondary" onClick={() => setAnswer("sent-back")}>
+                Send back
+              </WorkButton>
+            </div>
+          </div>
+          <AssessNote icon={ShieldCheck}>
+            {`Example only. In CLA the assessor answers from the emailed link, with no account needed. ${IN_CLA_NOTE}`}
+          </AssessNote>
+        </>
+      )}
     </>
   );
 }

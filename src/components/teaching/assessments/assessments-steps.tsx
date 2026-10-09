@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarDays, Check, Clock, Eye, EyeOff, FileText, Lock, Send, Users } from "lucide-react";
+import { Bell, CalendarDays, Check, Clock, Eye, EyeOff, FileText, Info, Lock, Send, Users } from "lucide-react";
 import { useState } from "react";
 
 import { WorkButton, WorkDock } from "@/components/mode-kit/work";
@@ -35,14 +35,17 @@ import {
   dayStatus,
   endOfTermLine,
   endOfTermSteps,
+  epasInTerm,
   meetingHeld,
   meetingDate,
   selfDone,
+  selfLocked,
   stage,
   supReady,
   supervisorLate,
   windowOpen,
 } from "@/lib/teaching/assessments/model";
+import { samSignOff } from "@/lib/teaching/assessments/dct";
 import { NIGHT_DAYS, SAMPLE_REGISTRAR, SAMPLE_SUPERVISOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
 
 const SUP = SAMPLE_SUPERVISOR.short;
@@ -83,27 +86,33 @@ function SampleOnlyButton({ children }: { children: string }) {
   );
 }
 
-export function EndOfTermSteps({ s }: ScreenProps) {
+/**
+ * Whose move it is on the made-up story. The supervisor's draft, marking the meeting held and her signature are
+ * done from "I supervise", so the doctor's side points there rather than stalling.
+ */
+function supervisorsTurn(s: ScreenProps["s"]): boolean {
   const st = stage(s);
-  const steps = endOfTermSteps(s);
+  if (st === "requested" || st === "sup-draft" || st === "met") return true;
+  return st === "ready" && !!s.booking && s.now >= s.booking.day;
+}
+
+export function EndOfTermSteps({ s, dct }: ScreenProps) {
+  const st = stage(s);
+  const signOff = samSignOff(dct);
+  const steps = endOfTermSteps(s, signOff);
   const late = supervisorLate(s);
+  const canTell = !s.request.sent && !supReady(s);
   let primary: React.ReactNode = null;
-  if (!s.request.sent)
+  if (canTell)
     primary = (
       <WorkButton href={viewHref("request")} icon={Send}>
-        {`Ask ${SUP}`}
+        {`Tell ${SUP} you're ready`}
       </WorkButton>
     );
   else if (st === "sup-signed")
     primary = (
       <WorkButton href={viewHref("report", { of: "eot" })} icon={FileText}>
-        Read and sign your report
-      </WorkButton>
-    );
-  else if (st === "doc-signed" && !s.sentToMeu)
-    primary = (
-      <WorkButton href={viewHref("pdf", { of: "eot" })} icon={Send}>
-        Email the PDF to your MEU
+        Read and acknowledge your report
       </WorkButton>
     );
   else if (windowOpen(s) && !s.booking && !meetingHeld(s))
@@ -122,8 +131,10 @@ export function EndOfTermSteps({ s }: ScreenProps) {
       />
       <Panel>
         <Eyebrow accent>{`Step ${currentStepNumber(steps)} of ${steps.length}`}</Eyebrow>
-        <h2 className="text-xl leading-tight font-semibold text-[color:var(--text-heading)]">{endOfTermLine(s)}</h2>
-        <p className={secondaryText}>Due to your MEU by Fri 20 Nov. Your MEU sets this date, so check it with them.</p>
+        <h2 className="text-xl leading-tight font-semibold text-[color:var(--text-heading)]">
+          {endOfTermLine(s, signOff)}
+        </h2>
+        <p className={secondaryText}>Made-up due date: Fri 20 Nov. Your MEU sets the real one.</p>
       </Panel>
       {late ? (
         <Inset tone="warm" title={`${SUP} hasn't finished her draft`} role="status">
@@ -135,10 +146,21 @@ export function EndOfTermSteps({ s }: ScreenProps) {
           <StepRow key={step.title} state={step.state} title={step.title} detail={step.detail} />
         ))}
       </List>
-      {primary || (!s.request.sent && !selfDone(s)) ? (
+      {supervisorsTurn(s) ? (
+        <LinkButton href={viewHref("home", { as: "supervisor" })} icon={Users}>
+          {`Play ${SUP}'s part`}
+        </LinkButton>
+      ) : null}
+      {st === "doc-signed" && !signOff ? (
+        <LinkButton href={viewHref("home", { as: "dct" })} icon={Users}>
+          Play the DCT&apos;s part
+        </LinkButton>
+      ) : null}
+      {st === "sup-signed" || (st === "doc-signed" && !signOff) ? <WhatHappensNext /> : null}
+      {primary || (!s.request.sent && !selfDone(s) && !selfLocked(s)) ? (
         <WorkDock>
           {primary}
-          {!s.request.sent && !selfDone(s) ? (
+          {!s.request.sent && !selfDone(s) && !selfLocked(s) ? (
             <WorkButton variant="secondary" href={viewHref("form")}>
               Rate first
             </WorkButton>
@@ -146,35 +168,63 @@ export function EndOfTermSteps({ s }: ScreenProps) {
         </WorkDock>
       ) : null}
       {s.request.sent && !supReady(s) ? <SampleOnlyButton>{`Remind ${SUP}`}</SampleOnlyButton> : null}
-      {st === "met" ? <SampleOnlyButton>{`Remind ${SUP} to sign`}</SampleOnlyButton> : null}
+      {st === "met" ? <SampleOnlyButton>{`Remind ${SUP} to submit it`}</SampleOnlyButton> : null}
       {late ? <LinkButton href={viewHref("help")}>Ask your MEU for help</LinkButton> : null}
-      {s.sigs.doc ? <LinkButton href={viewHref("pdf", { of: "eot" })}>View the signed PDF</LinkButton> : null}
+      {s.sigs.doc ? <LinkButton href={viewHref("pdf", { of: "eot" })}>View a printable copy</LinkButton> : null}
+      <SmallPrint>
+        A term supervisor may delegate the end-of-term assessment to another clinical supervisor, then countersigns it.
+      </SmallPrint>
     </>
   );
 }
 
+/**
+ * After the supervisor submits: what the doctor does in CLA, and the 14-day written reply. The AMC term assessment
+ * form's sign-off says the doctor "may respond in writing to the Director of Clinical Training within 14 days", but
+ * not when the 14 days start, so this says to ask the MEU. DCT sign-off is the CLA form the DCT or EDMS completes
+ * (CLA supervisors' guide, Release 2.0, p.39). Delegation, then countersigning: AMC Section 3A.
+ */
+function WhatHappensNext() {
+  return (
+    <Inset tone="plain" icon={Info} title="What happens next">
+      In CLA you acknowledge the form. That means you have discussed it, not that you agree. If you disagree with any
+      point, you can write to the DCT within 14 days. Ask your MEU when the 14 days start. Then the DCT completes DCT
+      sign-off in CLA.
+    </Inset>
+  );
+}
+
+/**
+ * "Tell Dr Wattle you're ready": optional, because in CLA only a linked supervisor starts the end-of-term form
+ * (CLA Training Guide for Prevocational Doctors, Release 2.0, p.12). She can start it without this.
+ */
 export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
   const r = s.request;
+  const termEpas = epasInTerm(s, "t4");
   return (
     <>
       <ScreenHeader
         back={viewHref("hub")}
         backLabel="End-of-term"
-        title="Ask your supervisor"
+        title="Tell your supervisor you're ready"
         subtitle="End-of-term · Psychiatry"
       />
       {r.sent ? (
-        <Inset tone="ok" icon={Check} title={`${SUP} has your request`}>
+        <Inset tone="ok" icon={Check} title={`${SUP} knows you're ready`}>
           Open the end-of-term steps to see where it is up to.
         </Inset>
-      ) : null}
+      ) : (
+        <Inset tone="plain" title="Optional">
+          In CLA, {SUP} starts the end-of-term form herself. This just tells her you&apos;re ready and what to look at.
+        </Inset>
+      )}
       {selfDone(s) ? null : (
         <Inset tone="plain" title="You haven't rated yourself">
           That&apos;s optional, but it makes the meeting more useful. You can do it after sending, until {SUP} finishes
           her draft.
         </Inset>
       )}
-      <SectionLabel end={<SectionNote>From your Work profile</SectionNote>}>Send to</SectionLabel>
+      <SectionLabel end={<SectionNote>From your Work profile</SectionNote>}>Tell</SectionLabel>
       <List>
         <Row avatar={SAMPLE_SUPERVISOR.initials} title={SAMPLE_SUPERVISOR.name} subtitle={SAMPLE_SUPERVISOR.role} />
         <TickRow
@@ -188,12 +238,14 @@ export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
       <List>
         <Row icon={Eye} title="The blank form" subtitle="What she sees now" />
         <Row icon={EyeOff} title="Your ratings and notes" subtitle="Hidden until she finishes her draft" />
-        <Row icon={Clock} title="Fri 20 Nov" subtitle="Due to the MEU" />
+        <Row icon={Clock} title="Fri 20 Nov" subtitle="Made-up due date. Your MEU sets the real one." />
       </List>
       <SectionLabel end={<SectionNote>You choose</SectionNote>}>Evidence to share</SectionLabel>
       <List>
         <TickRow checked={s.share.epa} onChange={() => dispatch({ type: "toggle-share", key: "epa" })}>
-          EPAs this term (EPA 3)
+          {termEpas.length
+            ? `EPAs this term (${termEpas.map((x) => `EPA ${x.epa}`).join(", ")})`
+            : "EPAs this term (none yet)"}
         </TickRow>
         <TickRow checked={s.share.mid} onChange={() => dispatch({ type: "toggle-share", key: "mid" })}>
           Mid-term report, Fri 2 Oct
@@ -210,10 +262,7 @@ export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
         onChange={(value) => dispatch({ type: "set-request-message", value })}
         placeholder="Anything you'd like her to look at."
       />
-      <SmallPrint>
-        {SUP} gets a secure link by email, or it appears in her PsychSift inbox if she has one. On these made-up records
-        nothing is sent.
-      </SmallPrint>
+      <SmallPrint>Made-up: nothing is sent. In real life, tell {SUP} yourself.</SmallPrint>
       {r.sent ? null : (
         <AssessButton
           icon={Send}
@@ -224,7 +273,7 @@ export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
             go(viewHref("hub"));
           }}
         >
-          Send request
+          {`Tell ${SUP}`}
         </AssessButton>
       )}
     </>
@@ -302,22 +351,28 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
           <Lock aria-hidden="true" className="size-icon-lg text-[color:var(--text-muted)]" />
           <h2 className="text-lg font-semibold text-[color:var(--text-heading)]">Opens Mon 26 Oct</h2>
           <p className={secondaryText}>
-            The booking window is the last two weeks of term. That keeps the meeting near the end of term, so the form
-            can reach the MEU by Fri 20 Nov.
+            In this example, booking opens in the last two weeks of term so the meeting sits near the end of term.
           </p>
           <AssessButton
             variant={s.remindWhenOpen ? "secondary" : "primary"}
             icon={s.remindWhenOpen ? Check : Bell}
             onClick={() => dispatch({ type: "toggle-remind-open" })}
           >
-            {s.remindWhenOpen ? "Reminder set" : "Remind me when it opens"}
+            {s.remindWhenOpen ? "Reminder on (made-up)" : "Remind me when it opens"}
           </AssessButton>
+          {s.remindWhenOpen ? (
+            <p role="status" className={secondaryText}>
+              Made-up: nothing is sent.
+            </p>
+          ) : null}
         </Panel>
         <List>
           <Row icon={CalendarDays} title="Mon 26 Oct to Fri 6 Nov" subtitle="Term ends Sun 8 Nov" />
           <Row icon={Clock} title="30 minutes" subtitle={`At times ${SUP} has offered`} />
         </List>
-        <SmallPrint center>Your MEU can change the window for your hospital.</SmallPrint>
+        <SmallPrint center>
+          The booking window is PsychSift&apos;s example feature. It is not a CLA or MEU rule.
+        </SmallPrint>
       </>
     );
 
@@ -337,13 +392,13 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
           <TickRow checked={s.remindDayBefore} onChange={() => dispatch({ type: "toggle-remind-day" })}>
             Remind me the day before
           </TickRow>
-          <Row icon={Users} title={`${SUP} has been told`} subtitle="She gets an email, or it shows in her inbox" />
+          <Row icon={Users} title={`Let ${SUP} know`} subtitle="Made-up: nothing is sent" />
         </List>
         <SmallPrint>On these made-up records, nothing is added to My Day and no one is told.</SmallPrint>
         {confirmCancel ? (
           <>
             <Inset tone="warm" title="Cancel this booking?" role="status">
-              {SUP} will be told. You can pick another time while the window is open.
+              Let {SUP} know. You can pick another time while the window is open.
             </Inset>
             <div className="grid grid-cols-2 gap-2">
               <AssessButton variant="secondary" onClick={() => setConfirmCancel(false)}>
@@ -435,7 +490,7 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
           </div>
         </>
       ) : (
-        <p className={secondaryText}>No times left in the window. Message {SUP} from Supervision.</p>
+        <p className={secondaryText}>No times left. Ask {SUP} for another time.</p>
       )}
       <AssessButton
         icon={Check}

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 
 import { useModeBandCount } from "@/components/mode-band/mode-band";
-import { WorkBody, useWorkUndoToast } from "@/components/mode-kit/work";
+import { WorkBody, WorkButton, useWorkUndoToast } from "@/components/mode-kit/work";
 import { AssessSegmented, AssessSkeleton } from "@/components/teaching/assessments/assess-kit";
 import {
   rememberDct,
@@ -51,7 +51,7 @@ import {
   type AssessmentsState,
 } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
-import { dctReducer, dctWaiting, initialDctState } from "@/lib/teaching/assessments/dct";
+import { dctReducer, dctWaiting, initialDctState, type DctState } from "@/lib/teaching/assessments/dct";
 import { useAuthSession } from "@/lib/supabase/client";
 import { useExampleData } from "@/lib/example-data/store";
 
@@ -73,6 +73,8 @@ export type ScreenProps = {
   go: (href: string) => void;
   /** Records an EPA and offers Undo for a few seconds ("EPA 1 saved for Dr Sam Karri"). */
   saveEpa: (action: EpaSave) => void;
+  /** The DCT's sign-offs, so the doctor's and supervisor's sides show when Sam's form is signed off. */
+  dct: DctState;
 };
 
 const VIEWS: readonly AssessmentsView[] = [
@@ -104,6 +106,20 @@ const VIEWS: readonly AssessmentsView[] = [
 const DOCTOR_ONLY: ReadonlySet<AssessmentsView> = new Set(["hub", "reqs", "term", "request", "book", "report"]);
 /** Views that are the DCT's own. */
 const DCT_ONLY: ReadonlySet<AssessmentsView> = new Set(["dctsign", "plan"]);
+/**
+ * The only views the DCT side draws. Any other view with the DCT side named or remembered (History, a form,
+ * the PDF) is the doctor's, so it never draws the DCT's home under another title (site audit B2).
+ */
+const DCT_VIEWS: ReadonlySet<AssessmentsView> = new Set([
+  "home",
+  "progress",
+  "overview",
+  "words",
+  "help",
+  "dctsign",
+  "plan",
+  "epaform",
+]);
 /** The tabs show the role switch. */
 const TAB_VIEWS: ReadonlySet<AssessmentsView> = new Set(["home", "progress"]);
 /**
@@ -132,8 +148,8 @@ const DATE_OPTIONS = [
 export function resolveRole(view: AssessmentsView, as: string | null, remembered: Role): Role {
   if (DOCTOR_ONLY.has(view)) return "doctor";
   if (DCT_ONLY.has(view)) return "dct";
-  if (isRole(as)) return as;
-  return ROLE_KEPT.has(view) ? remembered : "doctor";
+  const role = isRole(as) ? as : ROLE_KEPT.has(view) ? remembered : "doctor";
+  return role === "dct" && !DCT_VIEWS.has(view) ? "doctor" : role;
 }
 
 function Screen(props: ScreenProps & Omit<DctProps, keyof ScreenProps> & { view: AssessmentsView }) {
@@ -272,12 +288,13 @@ function AssessmentsApp() {
   const saveEpa = useCallback(
     (action: EpaSave) => {
       const index = action.type === "record-epa" ? action.index : s.epaRequests.length;
-      const epa = action.type === "record-epa" ? s.epaRequests[index]?.epa : action.epa;
+      const previous = action.type === "record-epa" ? s.epaRequests[index] : undefined;
+      const epa = action.type === "record-epa" ? previous?.epa : action.epa;
       dispatch(action);
       setSavedNote(null);
       const message = `EPA ${epa ?? ""} saved for ${SAMPLE_DOCTOR.name}`;
       const undo = () => {
-        dispatch({ type: "undo-record-epa", index });
+        dispatch({ type: "undo-record-epa", index, ...(previous ? { previous } : {}) });
         setSavedNote(`EPA ${epa ?? ""} taken back.`);
       };
       if (toast) toast(message, undo, 6000);
@@ -285,7 +302,7 @@ function AssessmentsApp() {
     },
     [s.epaRequests, toast],
   );
-  const props: ScreenProps = { s, dispatch, params, role, openSheet: setSheet, go, saveEpa };
+  const props: ScreenProps = { s, dispatch, params, role, openSheet: setSheet, go, saveEpa, dct };
   const onTab = TAB_VIEWS.has(view);
   const root = useRef<HTMLDivElement>(null);
   const place = params.toString();
@@ -324,7 +341,9 @@ function AssessmentsApp() {
     <div ref={root} className="contents [&_:is(input,textarea,select,button)]:scroll-mb-24">
       {onTab ? (
         <AssessSegmented
-          label="Whose assessments"
+          // The switch shows "DCT" (owner decision). Its options take plain text only, so the group's name
+          // gives screen readers the full title (site audit P8).
+          label="Whose assessments. DCT is the Director of Clinical Training"
           value={role}
           onChange={switchRole}
           options={[
@@ -335,7 +354,7 @@ function AssessmentsApp() {
         />
       ) : null}
       <AssessmentsExtrasProvider memoryKey={memoryKey}>
-        <Screen {...props} dct={dct} dctDispatch={dctDispatch} view={view} />
+        <Screen {...props} dctDispatch={dctDispatch} view={view} />
       </AssessmentsExtrasProvider>
       {view === "home" ? <TryTheStory s={s} dispatch={dispatch} /> : null}
       {savedNote ? (
@@ -345,6 +364,70 @@ function AssessmentsApp() {
       ) : null}
       <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />
     </div>
+  );
+}
+
+/**
+ * Get help and Help and words hold no records (WA routes for concerns, phone lines, the 14-day written reply,
+ * plain-word definitions), so every reader can open them, signed in or not (site audit A1). Nothing here
+ * comes from the made-up story: the disagree draft lives in this page only.
+ */
+function AssessmentsOpenPage({ view }: { view: "help" | "words" }) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const [s, dispatch] = useReducer(assessmentsReducer, undefined, initialAssessmentsState);
+  const [dct] = useState(initialDctState);
+  const [sheet, setSheet] = useState<SheetState>(null);
+  const as = params.get("as");
+  const props: ScreenProps = {
+    s,
+    dispatch,
+    params,
+    role: as === "supervisor" || as === "dct" ? as : "doctor",
+    openSheet: setSheet,
+    go: (href) => router.push(href),
+    saveEpa: () => undefined,
+    dct,
+  };
+  return (
+    <>
+      {view === "help" ? <ConcernsHelp {...props} /> : <SupervisorWords {...props} />}
+      <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />
+    </>
+  );
+}
+
+/** The address's view when it is one every reader may open, else null. */
+function useOpenView(): "help" | "words" | null {
+  const view = useSearchParams().get("view");
+  return view === "help" || view === "words" ? view : null;
+}
+
+/** Signed in, or signed out with the example off: the CLA notice, except on the pages that hold no records. */
+function AssessmentsNoExample({ signedOut }: { signedOut: boolean }) {
+  const open = useOpenView();
+  const { turnOn } = useExampleData("assess");
+  const router = useRouter();
+  if (open) return <AssessmentsOpenPage view={open} />;
+  return (
+    <>
+      <AssessmentsKeptInCla />
+      {signedOut ? (
+        // A signed-out reader who turned the example off can turn it back on here (site audit B6), as
+        // ExampleOnlyGate does on the export and trainee pages.
+        <WorkButton
+          variant="secondary"
+          size="wide"
+          onClick={() => {
+            turnOn();
+            router.refresh();
+          }}
+          testId="teaching-assessments-look-around"
+        >
+          Look around with example data
+        </WorkButton>
+      ) : null}
+    </>
   );
 }
 
@@ -364,7 +447,9 @@ function AssessmentsPage({ demoMode }: { demoMode: boolean }) {
           <AssessmentsApp />
         </Suspense>
       ) : (
-        <AssessmentsKeptInCla />
+        <Suspense fallback={<AssessSkeleton />}>
+          <AssessmentsNoExample signedOut={access === "signed-out"} />
+        </Suspense>
       )}
     </WorkBody>
   );

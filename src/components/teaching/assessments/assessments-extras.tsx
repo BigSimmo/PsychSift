@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Inbox, LayoutGrid } from "lucide-react";
+import { Download, Inbox } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -321,16 +321,18 @@ export function useOfflineSince(): string | null {
   return online ? null : (since ?? openedAt);
 }
 
-/** The two added views, reached from the supervisor's home. */
+/**
+ * The supervisor's added views. The service-wide Term overview is the DCT's, so it is reached from the DCT's
+ * side and not offered here (site audit M3): in CLA a supervisor sees only the doctors allocated to them.
+ */
 export function AssessmentsSampleViewsNav({ s }: { s: AssessmentsState }) {
   const { extras } = useAssessmentsExtras();
   const waiting = inboxRequests(s, extras.answers).filter(isWaiting).length;
   // These are new work mode screens: a reader on the classic work mode is not sent to them.
   const visible = useWorkModeRouteVisible();
   const inboxHref = viewHref("inbox", { as: "supervisor" });
-  const overviewHref = viewHref("overview", { as: "supervisor" });
   const exportHref = "/teaching/assessments/export";
-  if (!visible(inboxHref) && !visible(overviewHref) && !visible(exportHref)) return null;
+  if (!visible(inboxHref) && !visible(exportHref)) return null;
   return (
     <>
       <SectionLabel>More views</SectionLabel>
@@ -345,14 +347,6 @@ export function AssessmentsSampleViewsNav({ s }: { s: AssessmentsState }) {
                 : "Nothing waiting"
             }
             href={inboxHref}
-          />
-        ) : null}
-        {visible(overviewHref) ? (
-          <Row
-            icon={LayoutGrid}
-            title="Term overview"
-            subtitle="Every doctor's assessments as status only · for a DCT or MEU"
-            href={overviewHref}
           />
         ) : null}
         {visible(exportHref) ? (
