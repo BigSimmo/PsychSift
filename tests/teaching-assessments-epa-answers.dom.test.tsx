@@ -145,3 +145,13 @@ describe("Assessments: the assessor's full EPA form", () => {
     expect(screen.getByTestId("statuses")).toHaveTextContent("not-yet");
   });
 });
+
+describe("Assessments: the quick record sheet", () => {
+  it("won't save a note longer than the form allows", () => {
+    render(<Harness first={{ kind: "supepa", index: 0 }} />);
+    fireEvent.click(screen.getByRole("radio", { name: /Requires minimal supervision/ }));
+    fireEvent.change(screen.getByLabelText(/One thing to keep doing/), { target: { value: "x".repeat(301) } });
+    expect(screen.getByRole("button", { name: "Save EPA 1" })).toBeDisabled();
+    expect(screen.getByText("Keep it under 300 characters.")).toBeInTheDocument();
+  });
+});

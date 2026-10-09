@@ -46,6 +46,7 @@ import {
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
 import {
+  EPA_FEEDBACK_MAX,
   EPA_REPLY_MAX,
   assessorName,
   epa1ThisTerm,
@@ -310,9 +311,11 @@ function RecordEpaSheet({
     ? "Choose which EPA first."
     : !level
       ? "Choose a supervision level first."
-      : looksLikePatientDetails(note)
-        ? "Take out the patient details first."
-        : null;
+      : note.trim().length > EPA_FEEDBACK_MAX
+        ? `Keep it under ${EPA_FEEDBACK_MAX} characters.`
+        : looksLikePatientDetails(note)
+          ? "Take out the patient details first."
+          : null;
   return (
     <div className="grid gap-3">
       {request ? (
