@@ -117,6 +117,8 @@ function NewRoundStart({
 }) {
   const now = useRosterNow();
   const makeId = useIdMaker(read.source);
+  // A save in flight belongs to this team's form, so the team can't change until it finishes.
+  const [saving, setSaving] = useState(false);
   const latest = read.managed.find((round) => round.round.serviceId === team?.serviceId)?.round;
 
   if (!team) {
@@ -151,6 +153,7 @@ function NewRoundStart({
           <select
             value={team.serviceId}
             onChange={(event) => onChooseTeam(event.target.value)}
+            disabled={saving}
             className={rosterField}
             data-testid="rotation-new-round-team"
           >
@@ -170,6 +173,7 @@ function NewRoundStart({
         roster={people}
         serviceId={team.serviceId}
         carriedFrom={latest?.name ?? null}
+        onBusyChange={setSaving}
         onDone={onDone}
         onCancel={onCancel}
       />
@@ -201,6 +205,8 @@ export type RoundFormProps = {
   readonly carriedFrom?: string | null;
   /** The team a new round is for. */
   readonly serviceId?: string;
+  /** Told when a save starts and ends. */
+  readonly onBusyChange?: (busy: boolean) => void;
   readonly onDone: (roundId: string | undefined) => void;
   readonly onCancel: () => void;
 };
@@ -212,6 +218,7 @@ export function RoundForm({
   editing,
   carriedFrom,
   serviceId,
+  onBusyChange,
   onDone,
   onCancel,
 }: RoundFormProps) {
@@ -233,6 +240,8 @@ export function RoundForm({
         : { terms: new Set<string>(), rotations: new Set<string>(), people: new Set<string>() },
     [editing],
   );
+
+  useEffect(() => onBusyChange?.(busy), [busy, onBusyChange]);
 
   // Move focus to the step's heading when the step changes, not on first load.
   useEffect(() => {
