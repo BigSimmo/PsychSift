@@ -41,7 +41,7 @@ describe("workFrameCurrentItem", () => {
 
   it("keeps the supervisor's Inbox and Term overview off the To do tab", () => {
     expect(current("?view=inbox&as=supervisor")).toBe("assess-inbox");
-    expect(current("?view=overview&as=supervisor")).toBe("assess-overview");
+    expect(current("?view=overview&as=dct")).toBe("assess-overview");
     expect(current("")).toBe("assess-todo");
     expect(current("?view=home")).toBe("assess-todo");
   });
@@ -56,7 +56,6 @@ describe("workFrameCurrentItem", () => {
       "assess-times",
       "assess-record",
       "assess-inbox",
-      "assess-overview",
       "assess-export",
     ]);
     expect(shared?.label).toBe("Assessments");

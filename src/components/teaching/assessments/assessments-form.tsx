@@ -65,6 +65,7 @@ import {
   selfLocked,
   supLocked,
   supReady,
+  UNAPPROVED_WORDS,
   type AssessmentForm as FormState,
   type Who,
 } from "@/lib/teaching/assessments/model";
@@ -129,7 +130,7 @@ function AboutStep({ s, dispatch, who, locked }: StepProps & { locked: boolean }
           </p>
         </div>
         <AssessKeyValue k="Form" v="End-of-term" />
-        <AssessKeyValue k="Due to the MEU" v="Fri 20 Nov" />
+        <AssessKeyValue k="Due to the MEU" v="Fri 20 Nov (made-up)" />
         <AssessKeyValue k="Meeting" v={s.booking ? bookingLabel(s.booking) : "Not booked yet"} />
       </section>
       {sup && s.request.registrar ? (
@@ -168,7 +169,7 @@ function AboutStep({ s, dispatch, who, locked }: StepProps & { locked: boolean }
             icon={Target}
             iconTone={r.level === "direct" ? "muted" : "ok"}
             title={`EPA ${r.epa} · ${epaInfo(r.epa).title}`}
-            subtitle={`${supervisionLevelName(r.level)} · ${r.by} (${r.role})`}
+            subtitle={`${supervisionLevelName(r.level)} · ${r.by} (${r.role})${r.unapproved ? `. ${UNAPPROVED_WORDS}.` : ""}`}
           />
         ))}
         {sup ? (
@@ -233,7 +234,7 @@ function DomainStep({ s, dispatch, who, k }: StepProps & { k: DomainNumber }) {
       </div>
       <AssessNote>
         {sup
-          ? "Not seen directly? Use other evidence, or leave it unticked (not applicable)."
+          ? "If an outcome was not observed, say which in the feedback, and whether other evidence was provided in the record of learning."
           : "Tick the ones you could give an example of."}
       </AssessNote>
       <SectionLabel
@@ -249,13 +250,15 @@ function DomainStep({ s, dispatch, who, k }: StepProps & { k: DomainNumber }) {
         onChange={(rating) => dispatch({ type: "set-rating", who, domain: k, rating })}
       />
       {low && sup ? (
-        <AssessCallout icon={TriangleAlert} tone="red" title="A 1 or 2 needs an improvement plan">
-          Say which outcomes weren&apos;t met. Before you finish, you&apos;ll be asked to notify the MEU.
+        <AssessCallout icon={TriangleAlert} tone="red" title="A 1 or 2 means talking to the MEU or DCT">
+          Say which outcomes weren&apos;t met. The AMC form asks you to liaise with the MEU or DCT about an improvement
+          plan (IPAP).
         </AssessCallout>
       ) : null}
       {low && !sup ? (
         <AssessCallout icon={BookOpen} tone="neutral" title="Worth raising at your meeting">
-          Self-ratings aren&apos;t part of the official record.
+          {/* CLA Training Guide for Prevocational Doctors, p.12: only the doctor starts and completes it. */}
+          In CLA you start and complete your own self-assessment.
         </AssessCallout>
       ) : null}
       <AssessTextField
@@ -306,13 +309,12 @@ function GlobalStep({ s, dispatch, who }: StepProps) {
       ) : null}
       {sup && (f.global === "cond" || f.global === "unsat") ? (
         <AssessCallout icon={TriangleAlert} tone="red" title="Conditional pass or Unsatisfactory">
-          This needs the DCT involved. Before you finish, you&apos;ll be asked to notify the MEU so an improvement plan
-          can start.
+          Talk to the MEU or DCT about what happens next, such as an improvement plan.
         </AssessCallout>
       ) : null}
       {sup ? (
         <AssessNote icon={Lock}>
-          {`Not final until you both sign and the DCT countersigns. No improvement plan is open for ${DOC.first}.`}
+          {`Not final until you both sign and the DCT signs off. No improvement plan is open for ${DOC.first}.`}
         </AssessNote>
       ) : null}
     </>
@@ -462,8 +464,8 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
         {sup && needsImprovementPlan(f) && !locked ? (
           <div className="work-card">
             <ToggleRow
-              title="Notify the MEU now"
-              sub={`So they can start an improvement plan (IPAP) with ${DOC.first}`}
+              title="Tell the MEU (you do this yourself)"
+              sub={`About an improvement plan (IPAP) with ${DOC.first}. Optional. Made-up: nothing is sent.`}
               checked={f.ipap}
               onChange={() => dispatch({ type: "toggle-ipap", who })}
             />

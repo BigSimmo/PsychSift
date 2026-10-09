@@ -38,8 +38,11 @@ export const CLA_SOURCES = {
  * - Unapproved guest assessors: CLA detailed FAQs v2.0, p.5, and the supervisors' training guide, p.17.
  * - Cancelling: CLA supervisors' training guide, p.32 (delete or change the recipient from the three-dot menu).
  *   No CLA guide or form has a decline, send back or "unable to assess" option.
- * - Term assessments: AMC Section 3A. Only a linked supervisor starts an end-of-term form: CLA FAQs v2.0.
- * - Who can assess: AMC Section 3A, p.50, and the AMC FAQ, November 2023.
+ * - Term assessments: AMC Section 3A, pp.47-49 (the primary clinical supervisor completes the mid-term; the term
+ *   supervisor is responsible for the end-of-term, may delegate it and then countersigns). Only a linked supervisor
+ *   starts an end-of-term form: CLA training guide for prevocational doctors, p.12.
+ * - Who can assess: AMC Section 3A, p.50 ("primary clinical supervisor or an equivalent specialist"), and the AMC
+ *   FAQ, November 2023.
  * - RANZCP registrars: the College's own system (owner, 8 Oct 2026).
  */
 const HOW_CLA_WORKS = [
@@ -66,12 +69,12 @@ const HOW_CLA_WORKS = [
   {
     icon: Users,
     title: "Who can assess",
-    sub: "At least one EPA a term from your term supervisor or another specialist. Trained registrars, nurses and pharmacists can do the rest.",
+    sub: "At least one EPA a term from your primary clinical supervisor or an equivalent specialist. Trained registrars, nurses and pharmacists can do the rest.",
   },
   {
     icon: FileText,
     title: "Term assessments",
-    sub: "Mid-term and end-of-term, by your term supervisor. Only a supervisor linked to you can start the end-of-term form.",
+    sub: "Mid-term, usually by your primary clinical supervisor. End-of-term, by your term supervisor or someone they delegate, which they then countersign. Only a supervisor linked to you can start the end-of-term form.",
   },
   {
     icon: GraduationCap,
@@ -87,7 +90,7 @@ export function AssessmentsKeptInCla() {
       <WorkEmpty
         icon={FileText}
         title="Assessments are kept in CLA"
-        body="Forms and EPAs stay in Clinical Learning Australia (CLA) and with your Medical Education Unit. Supervision hours are kept here in Teaching."
+        body="Forms and EPAs stay in Clinical Learning Australia (CLA) and with your Medical Education Unit. Registrar supervision hours are kept here in Teaching."
         action={
           <div className="flex flex-wrap justify-center gap-2">
             <a
@@ -98,12 +101,13 @@ export function AssessmentsKeptInCla() {
               data-variant="primary"
               data-testid="teaching-assessments-open-cla"
             >
-              Open CLA
+              {/* The link is PMCWA's page about CLA, not CLA itself, so it says so (site audit M7). */}
+              About CLA (PMCWA)
               <ExternalLink aria-hidden="true" strokeWidth={2} />
               <span className="sr-only">(opens outside PsychSift)</span>
             </a>
             <WorkButton variant="secondary" href="/teaching/supervision">
-              Supervision hours
+              Registrar supervision
             </WorkButton>
           </div>
         }

@@ -775,17 +775,6 @@ const assessments: WorkArea = {
           query: { view: "inbox" },
           gate: "signed-out",
         },
-        {
-          id: "assess-overview",
-          label: "Term overview",
-          short: "Overview",
-          sub: "Your doctors",
-          icon: "layers",
-          href: "/teaching/assessments?view=overview&as=supervisor",
-          paths: ["/teaching/assessments"],
-          query: { view: "overview" },
-          gate: "signed-out",
-        },
         // Export saves the supervisor's records, and its back arrow returns to the supervisor's To do.
         {
           id: "assess-export",
@@ -809,6 +798,8 @@ const assessments: WorkArea = {
           href: "/teaching/assessments?view=all",
           paths: ["/teaching/assessments"],
           query: { view: "all" },
+          // Signed in, History only repeats the CLA notice, so it is for signed-out readers (site audit P1).
+          gate: "signed-out",
         },
         {
           id: "assess-words",
@@ -836,6 +827,24 @@ const assessments: WorkArea = {
           sub: "Assessments help",
           icon: "help",
           action: "work-help",
+        },
+      ],
+    },
+    // The service-wide Term overview is the DCT's: in CLA a term supervisor sees only their own doctors
+    // (site audit M3). Like the supervisor's pages it is the made-up example, so signed-out only.
+    {
+      label: "DCT",
+      items: [
+        {
+          id: "assess-overview",
+          label: "Term overview",
+          short: "Overview",
+          sub: "Every doctor, status only",
+          icon: "layers",
+          href: "/teaching/assessments?view=overview&as=dct",
+          paths: ["/teaching/assessments"],
+          query: { view: "overview" },
+          gate: "signed-out",
         },
       ],
     },

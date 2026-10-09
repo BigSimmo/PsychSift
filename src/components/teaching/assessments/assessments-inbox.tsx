@@ -5,8 +5,8 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 
 import { focusRing } from "@/components/card-recipes";
 import { WorkEmpty } from "@/components/mode-kit/work";
-import { AssessCallout } from "@/components/teaching/assessments/assess-kit";
 import { useAssessmentsExtras, useOfflineSince } from "@/components/teaching/assessments/assessments-extras";
+import { IN_CLA_NOTE } from "@/components/teaching/assessments/assessments-help";
 import {
   Inset,
   KeyValue,
@@ -60,7 +60,6 @@ import {
   type InboxSort,
 } from "@/lib/teaching/assessments/inbox";
 import type { PillTone } from "@/lib/teaching/assessments/model";
-import { SAMPLE_DOCTOR } from "@/lib/teaching/assessments/sample";
 import { overviewDoctors } from "@/lib/teaching/assessments/overview";
 
 /*
@@ -101,7 +100,7 @@ function rowTitle(item: InboxRequest): string {
 
 function rowSubtitle(item: InboxRequest): string {
   const what = item.kind === "epa" && item.epa ? `${epaInfo(item.epa).title} · ` : "";
-  return `${what}${[item.doctor.grade, `asked ${item.askedOn}`].join(" · ")}`;
+  return `${what}${[item.doctor.grade, item.notAsked ? "you can start it" : `asked ${item.askedOn}`].join(" · ")}`;
 }
 
 /** One request: a thin status rail, the doctor, what was asked and when, and one status tag. */
@@ -140,7 +139,7 @@ function InboxRow({ item, onOpen }: { item: InboxRequest; onOpen: () => void }) 
   );
 }
 
-export function AssessmentsInbox({ s, dispatch, openSheet, go }: ScreenProps) {
+export function AssessmentsInbox({ s, openSheet, go, role }: ScreenProps) {
   const { extras, dispatchExtras, sendAnswers, undoSends, offerUndo, setEditing } = useAssessmentsExtras();
   const offlineSince = useOfflineSince();
   const [tab, setTab] = useState<"waiting" | "done">("waiting");
@@ -390,32 +389,6 @@ export function AssessmentsInbox({ s, dispatch, openSheet, go }: ScreenProps) {
           })}
         </List>
       )}
-      {s.request.sent ? null : (
-        // Sam's end-of-term is the one form built into the sample: without this, a supervisor who opens the
-        // inbox first has no form to open, sign or send back.
-        <AssessCallout
-          icon={UserRound}
-          tone="neutral"
-          title={`${SAMPLE_DOCTOR.name} hasn't asked yet`}
-          testId="assessments-inbox-try-request"
-          action={
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                dispatch({ type: "form-example", who: "self" });
-                dispatch({ type: "form-finish", who: "self" });
-                dispatch({ type: "send-request" });
-                announce(`${SAMPLE_DOCTOR.name}'s end-of-term request is in your inbox.`);
-              }}
-            >
-              Try it
-            </Button>
-          }
-        >
-          Try an example end-of-term request to rate, sign or ask about.
-        </AssessCallout>
-      )}
       <SmallPrint>
         Status here. Open a request to see what was asked. Dr Ash Zamia, Dr Frankie Mulga, Dr Rowan Sheoak and Dr
         Charlie Balga are made-up. Nothing is sent to anyone.
@@ -462,7 +435,7 @@ export function AssessmentsInbox({ s, dispatch, openSheet, go }: ScreenProps) {
         ) : null}
         {open && (sheet?.mode === "feedback" || sheet?.mode === "status") && doctorIds.has(open.doctor.name) ? (
           <p className="m-0 text-center" data-testid="assessments-inbox-trainee-link">
-            <TextLink href={traineeHref(doctorIds.get(open.doctor.name)!)}>
+            <TextLink href={traineeHref(doctorIds.get(open.doctor.name)!, role)}>
               {`Everything from ${open.doctor.name}`}
             </TextLink>
           </p>
@@ -704,6 +677,8 @@ function CantSheet({
         {reason === "not_this_week" ? "Move to Later" : "Send"}
       </Button>
       <SmallPrint center>With Undo. Made-up: nothing reaches anyone.</SmallPrint>
+      {/* CLA has no decline, send back or defer action (rules audit W3), so the sheet says how it really works. */}
+      <SmallPrint center>{IN_CLA_NOTE}</SmallPrint>
       <Button variant="ghost" block onClick={onBack}>
         Back to the request
       </Button>
@@ -780,9 +755,12 @@ function DoctorSheet({ item, answer, onRestore }: { item: InboxRequest; answer: 
         </>
       ) : null}
       {passed ? (
-        <Button variant="secondary" block onClick={onRestore}>
-          Move back to my inbox
-        </Button>
+        <>
+          <SmallPrint center>{IN_CLA_NOTE}</SmallPrint>
+          <Button variant="secondary" block onClick={onRestore}>
+            Move back to my inbox
+          </Button>
+        </>
       ) : (
         <>
           <Button
@@ -793,7 +771,7 @@ function DoctorSheet({ item, answer, onRestore }: { item: InboxRequest; answer: 
               try {
                 await copyTextToClipboard(claCopyText(item, answer));
                 setCopied("copied");
-                announce("Copied for Clinical Learning Australia");
+                announce("Your notes are copied");
               } catch {
                 setCopied("failed");
                 announce("Copy did not work on this browser.");
@@ -801,15 +779,18 @@ function DoctorSheet({ item, answer, onRestore }: { item: InboxRequest; answer: 
             }}
             testId="assessments-inbox-copy-cla"
           >
-            {copied === "copied" ? "Copied" : "Copy for Clinical Learning Australia"}
+            {copied === "copied" ? "Copied" : "Copy my notes for CLA"}
           </Button>
           {copied === "failed" ? (
             <p role="status" className="px-1 text-center text-sm text-[color:var(--warning-text)]">
               Copy did not work on this browser. Select the words above instead.
             </p>
           ) : (
+            // In CLA the assessor submits the EPA themselves, from the emailed link or on the doctor's device
+            // (CLA factsheets "How to complete an EPA", 18 Jul 2025). Rules audit W1: never the doctor pasting it.
             <SmallPrint center>
-              The doctor pastes it into their official record. No import format is claimed.
+              In CLA, the assessor submits this themselves, from the emailed link or on the doctor&apos;s device. These
+              are your notes to paste into your own answer there.
             </SmallPrint>
           )}
         </>

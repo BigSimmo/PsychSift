@@ -28,7 +28,9 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
+import { Pgy2Rules, RuleLine, YearEnd } from "@/components/teaching/assessments/assessments-year-end";
 import { EPAS, caseComplexityName, epa as epaInfo, supervisionLevelName } from "@/lib/teaching/assessments/content";
+import { samSignOff, type DctSignature, type DctState } from "@/lib/teaching/assessments/dct";
 import {
   YEAR_WEEKS,
   endOfTermLine,
@@ -42,6 +44,7 @@ import {
   fromSpecialist,
   openEpaRequests,
   weeksDone,
+  UNAPPROVED_WORDS,
   type AssessmentsState,
   type EpaRequest,
 } from "@/lib/teaching/assessments/model";
@@ -54,13 +57,32 @@ import {
   type EpaRecord,
   type SampleTerm,
 } from "@/lib/teaching/assessments/sample";
+import {
+  ABSENCE_RULE,
+  KINDS_PER_TERM_RULE,
+  PGY1_SERVICE_TERM_RULE,
+  PGY1_TERM_LINES,
+  YEAR_LENGTH_RULE,
+} from "@/lib/teaching/assessments/year-rules";
 import { withUnit } from "@/components/teaching/teaching-number";
 
 /**
- * Green only once the DCT has countersigned the term. The row's own line says "countersigned by the DCT", so
- * the tag stays one short word and never squeezes the row's words into a sliver at 320 px.
+ * Green only once the DCT has signed off the term's form. The row's own line says "DCT sign-off done", so the tag
+ * stays one short word and never squeezes the row's words into a sliver at 320 px.
  */
 const SIGNED_PILL = <Pill pill={{ label: "Satisfactory", tone: "ok" }} />;
+/** Term 4 once the DCT signs it off in the story. The rating itself is on the form, so the tag says only that. */
+const SIGNED_OFF_PILL = <Pill pill={{ label: "Signed off", tone: "ok" }} />;
+
+/**
+ * The DCT's sign-off on Sam's term 4 form, once given. Only while Sam's own signature stands, so a remembered
+ * sign-off never outlives a reset story.
+ */
+function termFourSignOff(s: AssessmentsState, dct: DctState): DctSignature | null {
+  return s.sigs.doc ? samSignOff(dct) : null;
+}
+
+const signedOffLine = (signOff: DctSignature) => `DCT sign-off done ${signOff.date}`;
 
 function Requirement({
   title,
@@ -88,23 +110,30 @@ function Requirement({
   );
 }
 
-/** Kinds of experience A to D from the sample terms: done once countersigned, now for this term. */
-function kindsFor(s: AssessmentsState) {
+/** Kinds of experience A to D from the sample terms: done once the DCT signs off the term, now for this term. */
+function kindsFor(s: AssessmentsState, signOff: DctSignature | null) {
   return (["A", "B", "C", "D"] as const).map((letter) => {
     const done = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "done");
     const now = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "current");
     const any = done ?? now ?? SAMPLE_TERMS.find((t) => t.category === letter);
-    const state: KindState = done ? "done" : now ? "now" : "todo";
+    const state: KindState = done || (now && signOff) ? "done" : now ? "now" : "todo";
+    const nowNote = signOff
+      ? `Term 4 · ${signedOffLine(signOff)}`
+      : s.sigs.doc
+        ? "Term 4 · DCT sign-off next"
+        : "Now, term 4";
     return {
       letter,
       name: any?.categoryName ?? letter,
       state,
-      note: done ? `Term ${done.n}` : now ? (s.sigs.doc ? "Term 4 · awaiting DCT" : "Now, term 4") : "Not yet",
+      note: done ? `Term ${done.n}` : now ? nowNote : "Not yet",
     };
   });
 }
 
-export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: boolean }) {
+export function YearRequirements({ s, openSheet, dct, tab }: ScreenProps & { tab?: boolean }) {
+  const signOff = termFourSignOff(s, dct);
+  const signedTerms = signOff ? 4 : 3;
   const w = weeksDone(s);
   const total = epaRecords(s).length;
   const more = epaNeedMore(s);
@@ -120,7 +149,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
       />
       <div className="work-card work-card--pad grid gap-2">
         <div className="work-label">
-          <span>Supervised weeks</span>
+          <span>Weeks of term time</span>
           <em className="work-label__count">{`${YEAR_WEEKS - w} to go`}</em>
         </div>
         <div className="assess-stat">
@@ -130,8 +159,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
         </div>
         <AssessMeter fraction={w / YEAR_WEEKS} />
         <p className="m-0 text-sm text-[color:var(--text-muted)]">
-          At least 47 weeks of supervised practice, including professional development leave. Your year runs 2 Feb 2026
-          to 31 Jan 2027.
+          {`${YEAR_LENGTH_RULE} Your year runs 2 Feb 2026 to 31 Jan 2027.`}
         </p>
       </div>
       {epa1ThisTerm(s) ? null : (
@@ -150,21 +178,25 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
       )}
 
       <SectionLabel end={<SectionNote>PGY1 needs all four</SectionNote>}>Kinds of experience</SectionLabel>
-      <KindsStrip kinds={kindsFor(s)} />
+      <KindsStrip kinds={kindsFor(s, signOff)} />
+      {/* [3C p.58-59]: the panel judges completion across the year. The DCT signs off each end-of-term form [TAF]. */}
       <AssessNote>
-        Each term&apos;s kind is set by its accreditation. A term counts once the DCT countersigns it.
+        {`${KINDS_PER_TERM_RULE} The DCT signs off each end-of-term form, and the panel judges completion across the year.`}
       </AssessNote>
 
       <SectionLabel>Terms and spread</SectionLabel>
       <List>
         <Requirement
-          title="Terms completed"
-          value="3 of at least 4 countersigned"
-          percent={75}
+          title="Terms with DCT sign-off"
+          value={`${withUnit(signedTerms, "of")} at least 4`}
+          percent={(signedTerms / 4) * 100}
+          ok={!!signOff}
           note={
-            s.sigs.doc
-              ? "Term 4 is signed by you both and counts once the DCT countersigns."
-              : "Term 4 counts once it's signed and the DCT countersigns."
+            signOff
+              ? `Term 4: ${signedOffLine(signOff)}.`
+              : s.sigs.doc
+                ? "Term 4 is signed by you both. DCT sign-off is next."
+                : "Term 4 is next, once you both sign and the DCT signs off."
           }
         />
         <Requirement title="Largest specialty" value="Medicine 42% planned · limit 50%" percent={84} ok />
@@ -174,13 +206,22 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
           percent={92}
           note="Close to the limit. Check with your MEU before swapping into another geriatric term."
         />
-        <Requirement title="Service terms (relief, nights)" value="None · limit 20%" percent={0} ok />
+        <Requirement
+          title="Service terms (relief, nights)"
+          value="None · limit 20%"
+          percent={0}
+          ok
+          note={PGY1_SERVICE_TERM_RULE}
+        />
         <Requirement
           title="Sick, personal and carer's leave"
           value={`${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} working days`}
           percent={(SAMPLE_LEAVE.used / SAMPLE_LEAVE.limit) * 100}
-          note="Over 10 working days away, the Assessment Review Panel reviews your progress. Which leave counts is not confirmed here, so check with your MEU."
+          note={ABSENCE_RULE}
         />
+        {PGY1_TERM_LINES.map((line) => (
+          <RuleLine key={line}>{line}</RuleLine>
+        ))}
       </List>
 
       <SectionLabel end={<TextLink onClick={() => openSheet({ kind: "epa", pick: 1 })}>Request one</TextLink>}>
@@ -200,7 +241,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
           ok={thisTerm.length >= 2}
         />
         <Requirement
-          title="From a term supervisor or specialist this term"
+          title="From your primary clinical supervisor or an equivalent specialist this term"
           value={
             specialistEpa
               ? `Done: EPA ${specialistEpa.epa} with ${specialistEpa.by.replace("Dr Robin Wattle", SAMPLE_SUPERVISOR.short)}`
@@ -236,20 +277,22 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
         </li>
       </List>
       <SmallPrint>
-        Counts are EPAs recorded in PsychSift. Any recorded only in Clinical Learning Australia (CLA) won&apos;t show
-        here. A &quot;direct supervision&quot; result is recorded as feedback for that moment. It is not a fail on its
-        own.
+        In this example, counts are the made-up EPAs on this page. A &quot;direct supervision&quot; result is recorded
+        as feedback for that moment. It is not a fail on its own.
       </SmallPrint>
 
       <SectionLabel>Term assessments</SectionLabel>
       <List>
         <Requirement title="Mid-term (terms over 5 weeks)" value="4 of 4 so far" percent={100} ok />
-        <Requirement title="End-of-term" value="3 of 5 countersigned" percent={60} />
+        <Requirement
+          title="End-of-term"
+          value={`${withUnit(signedTerms, "of")} 5 with DCT sign-off`}
+          percent={(signedTerms / 5) * 100}
+        />
       </List>
-      <SmallPrint>PGY2 has its own rules. They&apos;ll show here when you start PGY2.</SmallPrint>
-      <SmallPrint center>
-        AMC National Framework 2024 · rules to be checked against the source before release
-      </SmallPrint>
+      <YearEnd grade={SAMPLE_DOCTOR.grade} />
+      <Pgy2Rules />
+      <SmallPrint center>AMC National Framework 2024 · Medical Board of Australia</SmallPrint>
       <WorkDock>
         <WorkButton icon={Plus} onClick={() => openSheet({ kind: "epa", pick: epa1ThisTerm(s) ? 2 : 1 })}>
           Request an EPA
@@ -268,7 +311,8 @@ function EpaRecordRow({ r }: { r: EpaRecord }) {
       icon={Target}
       iconTone={r.level === "direct" ? "muted" : "ok"}
       title={`EPA ${r.epa} · ${epaInfo(r.epa).title}`}
-      subtitle={`${supervisionLevelName(r.level)}${r.complexity ? ` · ${caseComplexityName(r.complexity)} complexity` : ""} · ${r.by} (${r.role})`}
+      subtitle={`${supervisionLevelName(r.level)}${r.complexity ? ` · ${caseComplexityName(r.complexity)} complexity` : ""} · ${r.by} (${r.role})${r.unapproved ? `. ${UNAPPROVED_WORDS}.` : ""}`}
+      tag={r.unapproved ? <WorkTag tone="amber">Unapproved</WorkTag> : undefined}
     />
   );
 }
@@ -288,8 +332,9 @@ function EpaRequestRow({ r, index, openSheet }: { r: EpaRequest; index: number }
   );
 }
 
-export function TermDetails({ s, params, openSheet }: ScreenProps) {
+export function TermDetails({ s, params, openSheet, dct }: ScreenProps) {
   const t = sampleTerm(params.get("term"));
+  const signOff = termFourSignOff(s, dct);
   const current = t.status === "current";
   const done = t.status === "done";
   const eps = epasInTerm(s, t.id);
@@ -309,10 +354,10 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
           href={viewHref("report", { of: "mid" })}
         />
         <StepRow
-          state="now"
+          state={signOff ? "ok" : "now"}
           title="End-of-term assessment"
-          detail={endOfTermLine(s)}
-          tag={<Pill pill={endOfTermPill(s)} />}
+          detail={signOff ? signedOffLine(signOff) : endOfTermLine(s)}
+          tag={signOff ? SIGNED_OFF_PILL : <Pill pill={endOfTermPill(s)} />}
           href={viewHref("hub")}
         />
       </>
@@ -330,7 +375,7 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
         <StepRow
           state="ok"
           title="End-of-term assessment"
-          detail={`Signed ${t.signed} · countersigned by the DCT`}
+          detail={`Signed ${t.signed} · DCT sign-off done`}
           tag={SIGNED_PILL}
           href={viewHref("pdf", { of: "past", kind: "eot", term: t.id })}
         />
@@ -345,7 +390,12 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
           detail={`At the start of the term, with ${t.supervisor}`}
         />
         <StepRow state="lock" title="Mid-term assessment" detail="Around the middle of the term" />
-        <StepRow state="lock" title="End-of-term assessment" detail="Booking opens two weeks before the end" />
+        {/* Rules audit U4: the booking window is PsychSift's own example feature. CLA and the AMC set none. */}
+        <StepRow
+          state="lock"
+          title="End-of-term assessment"
+          detail="In this example, booking opens two weeks before the end. That's a PsychSift feature, not a CLA rule."
+        />
       </>
     );
   return (
@@ -412,14 +462,14 @@ type Item =
   | { term: SampleTerm; type: "epa"; record: EpaRecord; todo?: false }
   | { term: SampleTerm; type: "epa"; request: EpaRequest; index: number; todo: true };
 
-function allItems(s: AssessmentsState): Item[] {
+function allItems(s: AssessmentsState, signOff: DctSignature | null): Item[] {
   const items: Item[] = [];
   for (const t of SAMPLE_TERMS.filter((x) => x.status === "done")) {
     items.push({
       term: t,
       type: "eot",
       title: "End-of-term",
-      detail: `Signed ${t.signed} · countersigned by the DCT`,
+      detail: `Signed ${t.signed} · DCT sign-off done`,
       tag: SIGNED_PILL,
       href: viewHref("pdf", { of: "past", kind: "eot", term: t.id }),
     });
@@ -437,11 +487,11 @@ function allItems(s: AssessmentsState): Item[] {
     term: t4,
     type: "eot",
     title: "End-of-term",
-    detail: endOfTermLine(s),
-    tag: <Pill pill={endOfTermPill(s)} />,
+    detail: signOff ? signedOffLine(signOff) : endOfTermLine(s),
+    tag: signOff ? SIGNED_OFF_PILL : <Pill pill={endOfTermPill(s)} />,
     href: viewHref("hub"),
-    // Still the doctor's to do until the signed PDF is marked as emailed to the MEU.
-    todo: !s.sentToMeu,
+    // In CLA the form stays open until the DCT signs it off, so it stays in To do until then.
+    todo: !signOff,
   });
   items.push({
     term: t4,
@@ -463,9 +513,11 @@ const FILTERS: readonly [Filter, string][] = [
   ["epa", "EPAs"],
 ];
 
-export function AllAssessments({ s, openSheet }: ScreenProps) {
+export function AllAssessments({ s, openSheet, dct }: ScreenProps) {
   const [filter, setFilter] = useState<Filter>("all");
-  const shown = allItems(s).filter((i) => filter === "all" || (filter === "todo" ? i.todo : i.type === filter));
+  const shown = allItems(s, termFourSignOff(s, dct)).filter(
+    (i) => filter === "all" || (filter === "todo" ? i.todo : i.type === filter),
+  );
   const terms = [...new Set(shown.map((i) => i.term))].sort((a, b) => b.n - a.n);
   return (
     <>
