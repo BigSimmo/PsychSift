@@ -8,7 +8,7 @@
       "area": "pregnancy_breastfeeding",
       "question": "My patient on lithium is due to deliver. What should the intrapartum plan cover for lithium?",
       "expectedBehaviour": "answer",
-      "mustContain": [["maternal"], ["IV hydration", "intravenous hydration"], ["cord blood"]],
+      "mustContain": [["maternal blood levels"], ["IV hydration", "intravenous hydration"], ["cord blood"]],
       "mustNotState": [
         "Must not give a lithium dose change or stop date, because the captured source does not state one."
       ],
@@ -85,7 +85,7 @@
       "area": "renal_hepatic",
       "question": "How long does lithium take to reach steady state in someone with renal impairment?",
       "expectedBehaviour": "answer",
-      "mustContain": [["7-10 days", "7 to 10 days", "longer"], ["renal impairment"]],
+      "mustContain": [["7-10 days", "7 to 10 days"], ["renal impairment"]],
       "mustNotState": [
         "Must not say steady state in renal impairment is reached within 5 to 7 days without saying it may take longer."
       ],
@@ -267,7 +267,7 @@
       "area": "overdose_toxicity",
       "question": "What makes lithium toxicity more likely, including overdose?",
       "expectedBehaviour": "answer",
-      "mustContain": [["diuretic"], ["NSAID"], ["ACE", "angiotensin"], ["fluid"], ["overdose"]],
+      "mustContain": [["diuretic"], ["NSAID"], ["ACE", "angiotensin"], ["reduced fluid", "fluid loss"], ["overdose"]],
       "mustNotState": [],
       "expectedSources": ["High Risk Medicines (CAMHS)"],
       "evidence": [

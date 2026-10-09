@@ -86,7 +86,7 @@ describe("high-risk eval cases draft", () => {
       const quoted = normalise(testCase.evidence.flatMap((evidence) => evidence.quotes).join(" ")).toLowerCase();
       for (const alternatives of testCase.mustContain) {
         expect(
-          alternatives.some((fact) => quoted.includes(fact.toLowerCase())),
+          alternatives.some((fact) => quoted.includes(normalise(fact).toLowerCase())),
           `${testCase.id}: none of [${alternatives.join(", ")}] is in the quoted evidence`,
         ).toBe(true);
       }
