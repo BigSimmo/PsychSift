@@ -1,3 +1,4 @@
+import { useBookingCalendarEntries } from "@/components/work-calendar/use-booking-calendar-entries";
 import { useRotationCalendarEntries } from "@/components/work-calendar/use-rotation-calendar-entries";
 import type { WorkCalendarEntry } from "@/lib/work-calendar/entries";
 
@@ -5,7 +6,8 @@ import type { WorkCalendarEntry } from "@/lib/work-calendar/entries";
  * Every feature that puts entries on a doctor's work calendar (Roster month,
  * My Day, and later the calendar feed), in one static list.
  *
- * A source is a React hook: `read(enabled)` returns its entries. The list never
+ * A source is a React hook: `read(enabled)` returns its entries. `enabled` says
+ * the calendar is on for this reader; each source also checks its own preview. The list never
  * changes at run time, so `useWorkCalendarEntries` calls every source in the
  * same order on every render, as the rules of hooks need. With `enabled` false
  * a source must not fetch anything and returns `{ status: "off", entries: [] }`.
@@ -32,6 +34,6 @@ export type WorkCalendarSource = {
 export const WORK_CALENDAR_SOURCES: readonly WorkCalendarSource[] = [
   // Rotation preferences: the reader's published rotation placements.
   { id: "rotations", read: useRotationCalendarEntries },
-  // Course bookings: add one line here, e.g.
-  // { id: "bookings", read: useBookingCalendarEntries },
+  // Course bookings: the courses the reader has a place on.
+  { id: "bookings", read: useBookingCalendarEntries },
 ];
