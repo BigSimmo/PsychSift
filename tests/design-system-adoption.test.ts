@@ -1514,7 +1514,8 @@ describe("design-system adoption manifest", () => {
     // 205 -> 208: the alerts bell's Notifications pages (To do, Earlier, Settings).
     // 208 -> 213: Roster rotation preferences (the doctor's list and ranking page, and the
     // administrator's rounds list, new round and round pages).
-    expect(manifest.routeCoverage.discovered).toHaveLength(213);
+    // 213 -> 216: hospital-side roles (Admin People and roles, Hospital, and its Sick calls page).
+    expect(manifest.routeCoverage.discovered).toHaveLength(216);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);
