@@ -38,7 +38,8 @@ export function TeachingContextBar({
 }) {
   if (teams.length === 0) return null;
   return (
-    <div className="flex min-h-12 items-center justify-between gap-3 px-0.5">
+    // At large text the demo tag drops under the service name rather than covering it.
+    <div className="flex min-h-12 items-center justify-between gap-3 px-0.5 [html[data-large-text]_&]:flex-wrap">
       {teams.length === 1 ? (
         <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-[color:var(--text-heading)]">
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)]" />
