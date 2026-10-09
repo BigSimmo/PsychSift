@@ -41,11 +41,18 @@ import {
   useWorkUndoToast,
   type WorkTone,
 } from "@/components/mode-kit/work";
+import { OptionCard } from "@/components/teaching/assessments/assess-kit";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import type { ExampleSupervisionByDoctor } from "@/lib/example-data/datasets/assessments-supervision";
-import { SUPERVISION_LEVELS, epa as epaInfo, type SupervisionLevel } from "@/lib/teaching/assessments/content";
+import {
+  EPA_OBSERVED,
+  SUPERVISION_LEVELS,
+  epa as epaInfo,
+  type EpaObserved,
+  type SupervisionLevel,
+} from "@/lib/teaching/assessments/content";
 import {
   CANT_REASONS,
   FEEDBACK_MAX_CHARS,
@@ -107,7 +114,7 @@ type SheetState =
   | { kind: "correction" }
   | null;
 
-type Draft = { level: SupervisionLevel | null; text: string };
+type Draft = { level: SupervisionLevel | null; text: string; observed: EpaObserved | null };
 
 function PatientNote({
   problem,
@@ -319,10 +326,11 @@ export function AssessmentsTraineePage({
       hold(key, () => dispatch({ type: "confirm-commit", id }));
       resumed.push(() => (cancel(key) ? (dispatch({ type: "confirm-undo", id }), true) : false));
     }
-    for (const { id, level, text } of readyToSend(current.extras.answers)) {
+    for (const entry of readyToSend(current.extras.answers)) {
+      const { id, level, text, observed } = entry;
       const key = `answer:${id}`;
       if (timers.current.has(key)) continue;
-      dispatch({ type: "extras", action: { type: "inbox-send", id, level, text, at: clockNow() } });
+      dispatch({ type: "extras", action: { type: "inbox-send", id, level, text, observed, at: clockNow() } });
       hold(key, () => dispatch({ type: "extras", action: { type: "inbox-commit", id } }));
       resumed.push(() =>
         cancel(key) ? (dispatch({ type: "extras", action: { type: "inbox-undo", id } }), true) : false,
@@ -375,18 +383,24 @@ export function AssessmentsTraineePage({
 
   function sendAnswer(item: InboxRequest) {
     const draft = drafts[item.id];
-    if (!draft?.level) return;
+    if (!draft?.level || !draft.observed) return;
     const text = draft.text.trim();
     setSheet(null);
     const key = `answer:${item.id}`;
     const undo = undoable(key, () => dispatch({ type: "extras", action: { type: "inbox-undo", id: item.id } }));
     if (!online) {
-      dispatch({ type: "extras", action: { type: "inbox-queue", id: item.id, level: draft.level, text } });
+      dispatch({
+        type: "extras",
+        action: { type: "inbox-queue", id: item.id, level: draft.level, text, observed: draft.observed },
+      });
       live.current.add(key);
       tell(`Kept to send to ${item.doctor.name} when you are back online`, undo);
       return;
     }
-    dispatch({ type: "extras", action: { type: "inbox-send", id: item.id, level: draft.level, text, at: clockNow() } });
+    dispatch({
+      type: "extras",
+      action: { type: "inbox-send", id: item.id, level: draft.level, text, observed: draft.observed, at: clockNow() },
+    });
     hold(key, () => dispatch({ type: "extras", action: { type: "inbox-commit", id: item.id } }));
     tell(`Sending to ${item.doctor.name} in 10 s`, undo);
   }
@@ -442,7 +456,7 @@ export function AssessmentsTraineePage({
   const cantItem = sheet?.kind === "cant" ? openItem(sheet.id) : null;
   const statusItem = sheet?.kind === "status" ? openItem(sheet.id) : null;
   const askSession = sheet?.kind === "ask" ? (view.toConfirm.find((x) => x.id === sheet.id) ?? null) : null;
-  const draft = answerItem ? (drafts[answerItem.id] ?? { level: null, text: "" }) : null;
+  const draft = answerItem ? (drafts[answerItem.id] ?? { level: null, text: "", observed: null }) : null;
   const draftProblem = draft ? patientDetailProblem(draft.text) : null;
   const askProblem = patientDetailProblem(ask.note);
   const askBlocker = !ask.field
@@ -456,9 +470,11 @@ export function AssessmentsTraineePage({
     ? null
     : !draft.level
       ? "Choose the supervision the doctor needed."
-      : draftProblem
-        ? "Take out the patient details to send."
-        : null;
+      : !draft.observed
+        ? "Say how you know: you saw some of it, or a team member who was there told you."
+        : draftProblem
+          ? "Take out the patient details to send."
+          : null;
 
   return (
     <main className="min-w-0" data-testid="assessments-trainee-page">
@@ -746,6 +762,15 @@ export function AssessmentsTraineePage({
         {answerItem && draft ? (
           <div className="grid gap-3">
             {answerItem.epa ? <p className={cn(textMuted, "text-sm")}>{epaInfo(answerItem.epa).detail}</p> : null}
+            <OptionCard
+              legend="How you know"
+              name={`assess-trainee-observed-${answerItem.id}`}
+              value={draft.observed}
+              onChange={(observed) =>
+                setDrafts({ ...drafts, [answerItem.id]: { ...draft, observed } })
+              }
+              options={EPA_OBSERVED}
+            />
             <SegmentedControl
               label={`Supervision ${first} needed`}
               layout="equal"
