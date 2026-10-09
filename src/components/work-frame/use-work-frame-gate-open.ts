@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
+import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
@@ -15,6 +16,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const editor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
   const newWorkMode = useNewWorkMode();
   const signedIn = useSignedIn();
+  const rotations = useLivePreview("rotation-preferences");
   return useCallback(
     (gate) => {
       if (!gate) return true;
@@ -23,9 +25,11 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "new-work-mode") return newWorkMode;
       if (gate === "classic-work-mode") return !newWorkMode;
       if (gate === "signed-out") return !signedIn;
+      if (gate === "rotation-preferences") return rotations;
+      if (gate === "rotation-preferences-manager") return rotations && poster === true;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn],
+    [roles, poster, editor, newWorkMode, signedIn, rotations],
   );
 }
 

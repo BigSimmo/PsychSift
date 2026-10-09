@@ -1512,7 +1512,9 @@ describe("design-system adoption manifest", () => {
     // 188 -> 205: work mode integration (7 Oct 2026): the 14 wiring screens, My Day Favourites,
     // Set up Work and Help.
     // 205 -> 208: the alerts bell's Notifications pages (To do, Earlier, Settings).
-    expect(manifest.routeCoverage.discovered).toHaveLength(208);
+    // 208 -> 213: Roster rotation preferences (the doctor's list and ranking page, and the
+    // administrator's rounds list, new round and round pages).
+    expect(manifest.routeCoverage.discovered).toHaveLength(213);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

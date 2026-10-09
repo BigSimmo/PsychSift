@@ -65,6 +65,10 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
     "Invite-link landing page reached from shared invite URLs; in-app entry is a ModeRow on Roster Today/Team, which this Link-only scan does not model.",
   ],
   [
+    "/roster/manage/rotations/new",
+    "Reached from the New round WorkButton (a next/link wrapper) on Manage team, Rotations (NEW_ROUND_HREF), which this Link-only scan does not model.",
+  ],
+  [
     "/roster/manage",
     "Manager surface reached via ModeRow rows on Roster Today and Alerts (manager-only), which this Link-only scan does not model.",
   ],
