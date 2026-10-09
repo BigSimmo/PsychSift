@@ -144,4 +144,16 @@ describe("work frame navigation", () => {
       rost: ["a", "b", "c"],
     });
   });
+
+  // Owner decision 9 Oct 2026: a signed-in doctor keeps real records in CLA, so the supervisor's pages are
+  // offered only to signed-out readers, and the Supervision tab says it is about registrars.
+  it("offers Assessments' supervisor pages to signed-out readers only and names the registrar tab", () => {
+    const assess = WORK_AREAS.assess;
+    const supervise = assess.groups.find((group) => group.label === "I supervise");
+    expect(supervise?.items.length).toBeGreaterThan(0);
+    for (const item of supervise!.items) expect(item.gate, item.label).toBe("signed-out");
+    const tab = assess.tabs.find((item) => item.id === "assess-supervision")!;
+    expect(tab.label).toBe("Registrar supervision");
+    expect(workFrameTabLabel(tab)).toBe("Registrar");
+  });
 });

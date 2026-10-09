@@ -8,16 +8,21 @@ export const assessTopic: WorkHelpTopic = {
   identity: "teaching",
   summary: "Term assessments, EPAs and supervision hours",
   tabs: [
-    { label: "To do", body: "Forms to finish this term, shown on made-up records for now." },
-    { label: "Progress", body: "Where you stand for the year, shown on made-up records for now." },
+    { label: "To do", body: "Signed in, how CLA works. Signed out, forms to finish, on made-up records." },
+    { label: "Progress", body: "Signed in, how CLA works. Signed out, the year's targets, on made-up records." },
     { label: "Supervision", body: "Supervision hours to log and confirm." },
   ],
   questions: [
     {
       id: "keep-assessments",
       q: "Can I keep my assessments here?",
-      a: "Not yet. Your term assessments and EPAs stay in Clinical Learning Australia (CLA) and with your Medical Education Unit (MEU). You can try the page on made-up records, and nothing is saved or sent.",
+      a: "No. Your term assessments and EPAs stay in Clinical Learning Australia (CLA) and with your Medical Education Unit (MEU). Signed in, Assessments shows how CLA works. Signed out, you can try it on made-up records, and nothing is saved or sent.",
       link: { label: "Assessments", href: "/teaching/assessments" },
+    },
+    {
+      id: "cant-assess",
+      q: "What if an assessor can't do my EPA?",
+      a: "CLA has no send back button, so they tell you. Delete the emailed form, or change who it goes to, from its three-dot menu in CLA, and ask someone else.",
     },
     {
       id: "log-supervision",
