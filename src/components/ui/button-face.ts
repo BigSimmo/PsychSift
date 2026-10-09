@@ -11,7 +11,7 @@ export type ButtonSize = "sm" | "md" | "lg";
 // mean "important" — importance is `primary`.
 const VARIANT: Record<ButtonVariant, string> = {
   primary:
-    "bg-[color:var(--command)] text-[color:var(--command-contrast)] shadow-[var(--e1)] hover:bg-[color:var(--command-hover)] hover:shadow-[var(--shadow-hover)] active:bg-[color:var(--command-active)]",
+    "bg-[color:var(--command)] text-[color:var(--command-contrast)] shadow-[var(--e1)] hover:bg-[color:var(--command-hover)] hover:shadow-[var(--e3)] active:bg-[color:var(--command-active)]",
   secondary:
     "border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--shadow-inset)] hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)]",
   toolbar:
