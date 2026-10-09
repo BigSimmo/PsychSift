@@ -149,7 +149,7 @@ function MyDayHoursBody({ now }: { now: Date }) {
   return (
     <div className="grid gap-2.5" data-testid="my-day-hours-ready">
       {shifts.demoMode ? (
-        <ModeNotice testId="my-day-hours-demo-notice">Demo data: these shifts are invented examples.</ModeNotice>
+        <ModeNotice testId="my-day-hours-demo-notice">Example data: these shifts are made up.</ModeNotice>
       ) : null}
       {settingsFailed ? (
         <ModeNotice tone="warning" testId="my-day-hours-settings-failed">

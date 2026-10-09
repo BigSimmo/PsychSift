@@ -503,7 +503,7 @@ describe("AdminRenewalsPage — Copy for workforce and Add all to my calendar", 
     fireEvent.click(screen.getByTestId("admin-renewals-copy"));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     const text = String(writeText.mock.calls[0]?.[0]);
-    expect(text).toMatch(/^Dates as I recorded them, copied .+; not checked with issuers\n/);
+    expect(text).toMatch(/^Dates as I recorded them, copied .+\. Not checked with issuers\n/);
     expect(text).toContain("Not recorded yet · missing proof");
     expect(text).not.toMatch(/\bverified\b/i);
     expect(text).not.toMatch(/\bcompliant\b/i);

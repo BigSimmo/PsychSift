@@ -140,7 +140,7 @@ export function TeachingCpdBridgeSheet({
       <div className="grid gap-3 py-1">
         <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3">
           <span className="text-2xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
-            Verified Attendance
+            Verified attendance
           </span>
           <p className="mt-1 text-base-minus font-medium text-[color:var(--text-heading)]">{title}</p>
           <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">

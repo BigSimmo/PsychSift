@@ -642,33 +642,6 @@ a.nextLine {
   flex: none;
 }
 
-/* The alert card: a failed load or a failed save, grey with an icon. */
-.alert {
-  display: grid;
-  gap: calc(var(--spacing) * 2);
-  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3.5);
-}
-
-.alertHead {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--spacing) * 2.5);
-}
-
-.alertTitle {
-  margin: 0;
-  font-size: var(--text-sm-minus);
-  font-weight: 600;
-  color: var(--text-heading);
-}
-
-.alertBody {
-  margin: calc(var(--spacing) * 0.5) 0 0;
-  font-size: var(--text-xs);
-  line-height: var(--work-leading-body);
-  color: var(--text-muted);
-}
-
 /* ------------------------------------------------------------ skeleton */
 
 .skel {

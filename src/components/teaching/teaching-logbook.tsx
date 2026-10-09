@@ -462,7 +462,7 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
       <T5Page>
         <h1 className="sr-only">Logbook</h1>
         {demoMode && !exampleShown ? (
-          <T5Note tone="notice">Made-up demo. Changes stay on this page and are not saved.</T5Note>
+          <T5Note tone="notice">Example data. Changes stay on this page and are not saved.</T5Note>
         ) : null}
         {termRowEl}
         {body}

@@ -515,7 +515,7 @@ export const FOLDER_LOADING_REASON =
   "Still filling from your records. Export, copy or print once every part has loaded.";
 
 /** The first line of anything the made-up demo hands out, so a forwarded copy still says what it is. */
-export const FOLDER_DEMO_LINE = "Made-up demo, not your records";
+export const FOLDER_DEMO_LINE = "Example data, not your records";
 
 /**
  * Why the folder cannot be exported or copied yet, or null. Before the term starts there is nothing in it, and

@@ -22,6 +22,9 @@ const overview = {
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  // The rotation end shows its year only when it is not this year, so pin the year.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-08T02:00:00Z"));
   window.history.replaceState({ appRouter: "preserved" }, "", "/roster/join");
   fetchMock = vi.fn(async (input: string) => {
     if (input === "/api/on-call/services/join") return Response.json({ serviceId: SERVICE });
@@ -34,6 +37,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe("joining a Roster team", () => {

@@ -22,7 +22,7 @@ import type { RosterReadWhat } from "@/lib/roster/team/model";
  * Loaded on demand by `RosterSampleGate`, only for a signed-out visitor.
  */
 
-export const ROSTER_SAMPLE_REFUSAL = "The sample doesn't save. Sign in to use your own roster.";
+export const ROSTER_SAMPLE_REFUSAL = "Example data doesn't save. Sign in to use your own roster.";
 
 const READS = new Set(["GET", "HEAD"]);
 const json = (body: unknown, status = 200) =>
@@ -35,7 +35,7 @@ function refusal() {
   return json({ error: ROSTER_SAMPLE_REFUSAL, message: ROSTER_SAMPLE_REFUSAL, code: "sample_read_only" }, 400);
 }
 
-const notInSample = () => json({ code: "sample_not_found", message: "That isn't in the sample." }, 404);
+const notInSample = () => json({ code: "sample_not_found", message: "That isn't in the example data." }, 404);
 
 /** `/api/roster/team/<serviceId>?what=...&from=...&to=...` */
 function teamReadFor(search: URLSearchParams, now: Date): Response {
@@ -48,7 +48,7 @@ function teamReadFor(search: URLSearchParams, now: Date): Response {
     const overview = answer as ReturnType<typeof demoRosterRead<"overview">>;
     return json({ ...overview, settings: { ...overview.settings, rules: {}, rulesSource: null } });
   } catch {
-    return json({ code: "roster_invalid_request", message: "The sample doesn't have that." }, 400);
+    return json({ code: "roster_invalid_request", message: "The example data doesn't have that." }, 400);
   }
 }
 

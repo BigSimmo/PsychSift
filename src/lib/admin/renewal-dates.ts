@@ -4,6 +4,7 @@ import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { onCallTeachingDateParts } from "@/lib/on-call/teaching-schedule";
+import { formatZonedDay } from "@/lib/work-time/format";
 
 /** Spec: "The lead time defaults to 30 days, and the doctor can change it when editing an item." */
 export const ADMIN_DEFAULT_LEAD_TIME_DAYS = 30;
@@ -91,17 +92,13 @@ export function formatRelativeDate(date: string, today: string): string {
   return days > 0 ? `in ${span}` : `${span} ago`;
 }
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-
 /**
- * A typed date echoed back in words under the field: "Thu 30 Sep 2027". The input
- * is a calendar day, so it is read at UTC midnight to keep the day it names. Built
- * from fixed tables rather than `Intl`, because en-AU's short month is "Sept" in
- * current ICU and "Sep" in older builds; the page prints "Sep" everywhere.
+ * A date in words, the work-mode compact form from `formatZonedDay`: "Thu 30 Sep 2027".
+ * Pass `today` and the year shows only when it differs ("Thu 30 Sep" in the same
+ * year). Without `today` the year always shows, so a date with no reference day is
+ * never misread as this year's. Empty for anything that is not a real day.
  */
-export function formatDateEcho(date: string): string {
-  const day = utcDay(date);
-  if (day === null) return "";
-  const [year, month, dayOfMonth] = date.split("-").map(Number);
-  return `${WEEKDAYS[new Date(day * DAY_MS).getUTCDay()]} ${dayOfMonth} ${MONTHS[month - 1]} ${year}`;
+export function formatDateEcho(date: string, today?: string): string {
+  if (utcDay(date) === null) return "";
+  return today ? formatZonedDay(date, today) : `${formatZonedDay(date)} ${date.slice(0, 4)}`;
 }

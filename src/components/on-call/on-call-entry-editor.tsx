@@ -290,7 +290,7 @@ const COMPLIANCE_DETAIL_FIELDS: DetailFieldSpec[] = [
     label: "Days of notice you need",
     kind: "number",
     clearWhenEmpty: true,
-    hint: "How far ahead this one has to be started. A police clearance takes months; an online module takes days.",
+    hint: "How far ahead this one has to be started. A police clearance takes months, an online module takes days.",
   },
   {
     key: "issuingBody",
@@ -377,7 +377,7 @@ const SECTION_DETAIL_FIELDS: Record<OnCallSection, DetailFieldSpec[]> = {
       label: "Next occurrence date",
       kind: "text",
       type: "date",
-      hint: "YYYY-MM-DD. Needed for Coming up on the home; the free-text field above is still what Teaching shows.",
+      hint: "YYYY-MM-DD. Needed for Coming up on the home. The free-text field above is still what Teaching shows.",
     },
     {
       key: RECURRENCE_RULE_KEY,

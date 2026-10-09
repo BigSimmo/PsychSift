@@ -92,7 +92,7 @@ export function restCues(myShifts: readonly RestCueShift[], rules: RosterRules):
       shiftId: row.id,
       restHours: restBefore(worked, row),
       ...(night && night.of > 1 ? { nightOf: night } : {}),
-      ...(words ? { warning: words.join("; ") } : {}),
+      ...(words ? { warning: words.join(" ") } : {}),
     };
   });
 }

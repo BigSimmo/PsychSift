@@ -808,7 +808,7 @@ export function OnCallHandoverPage() {
 
                     <div className="grid min-w-0 gap-1.5">
                       <FieldLabel number={1} note={wardCopied ? "Ward copied from last" : null}>
-                        Bed & Ward
+                        Bed and ward
                       </FieldLabel>
                       <div className="grid min-w-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
                         <input
