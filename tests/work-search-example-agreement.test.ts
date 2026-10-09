@@ -4,7 +4,7 @@ import { buildMyDaySample } from "@/components/my-day/my-day-sample";
 import { searchShowsExamples } from "@/components/work-search/use-work-search-records";
 import { addDaysToDate, perthDateOf } from "@/lib/perth-time";
 import { answerWorkQuestion } from "@/lib/work-search/answers";
-import type { WorkAreaRead, WorkItem } from "@/lib/work-search/model";
+import type { WorkAreaRead } from "@/lib/work-search/model";
 import { workSearchSample } from "@/lib/work-search/sample";
 
 /**
@@ -73,40 +73,39 @@ describe("example mode: AI Search agrees with My Day", () => {
 describe("searchShowsExamples (signed in)", () => {
   const off = { active: false, mode: "auto" as const };
   const auto = { active: true, mode: "auto" as const };
-  const realShift = [{ id: "roster:shift:1" }] as unknown as WorkItem[];
 
   it("answers Roster from examples only where Roster's page shows them", () => {
     const base = { teaching: false, cpd: false };
     // Switch off: always the reader's own roster.
     expect(searchShowsExamples({ ...base, roster: off, rosterReported: "empty", rosterRead: null }).roster).toBe(false);
-    // Auto: an empty real roster shows examples, a roster with shifts never does.
+    // Auto, before Roster has reported: search's own read uses Roster's test (no shifts and no import).
     expect(
-      searchShowsExamples({
-        ...base,
-        roster: auto,
-        rosterReported: "unknown",
-        rosterRead: { status: "ready", sample: false, items: [] },
-      }).roster,
+      searchShowsExamples({ ...base, roster: auto, rosterReported: "unknown", rosterRead: { empty: true } }).roster,
     ).toBe(true);
     expect(
-      searchShowsExamples({
-        ...base,
-        roster: auto,
-        rosterReported: "unknown",
-        rosterRead: { status: "ready", sample: false, items: realShift },
-      }).roster,
+      searchShowsExamples({ ...base, roster: auto, rosterReported: "unknown", rosterRead: { empty: false } }).roster,
     ).toBe(false);
     // Auto, still reading: wait rather than flash examples over real shifts.
     expect(searchShowsExamples({ ...base, roster: auto, rosterReported: "unknown", rosterRead: null }).roster).toBe(
       false,
     );
+    expect(
+      searchShowsExamples({ ...base, roster: auto, rosterReported: "unknown", rosterRead: { empty: null } }).roster,
+    ).toBe(false);
+    // Roster's own report wins over search's read, so the two never disagree.
+    expect(
+      searchShowsExamples({ ...base, roster: auto, rosterReported: "has-data", rosterRead: { empty: true } }).roster,
+    ).toBe(false);
+    expect(
+      searchShowsExamples({ ...base, roster: auto, rosterReported: "empty", rosterRead: { empty: false } }).roster,
+    ).toBe(true);
     // Turned on: examples, as Roster shows them.
     expect(
       searchShowsExamples({
         ...base,
         roster: { active: true, mode: "on" },
         rosterReported: "has-data",
-        rosterRead: { status: "ready", sample: false, items: realShift },
+        rosterRead: { empty: false },
       }).roster,
     ).toBe(true);
   });
@@ -120,5 +119,25 @@ describe("searchShowsExamples (signed in)", () => {
       cpd: false,
     });
     expect(result).toEqual({ roster: false, teaching: true, cme: false });
+  });
+});
+
+describe("example mode: CPD pace", () => {
+  it("works the example year's pace out from CPD's own day, whatever today is", () => {
+    const pace = (now: Date) => {
+      const sample = workSearchSample(now);
+      const answer = answerWorkQuestion("cpd targets", {
+        items: sample.items,
+        areas: READY,
+        today: perthDateOf(now),
+        now: now.getTime(),
+        cpd: sample.cpd,
+      });
+      return answer?.meta;
+    };
+    const onTheDay = pace(new Date("2026-09-19T02:00:00Z"));
+    expect(onTheDay?.some((line) => line.startsWith("About "))).toBe(true);
+    expect(pace(new Date("2026-12-01T02:00:00Z"))).toEqual(onTheDay);
+    expect(pace(new Date("2027-03-01T02:00:00Z"))).toEqual(onTheDay);
   });
 });

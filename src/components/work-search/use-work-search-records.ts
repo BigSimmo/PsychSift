@@ -60,14 +60,20 @@ type Read<T> = { status: "ready"; body: T; sample: boolean } | { status: "failed
 type Fetched = {
   readonly epoch: number;
   readonly at: number;
-  readonly roster: { status: WorkAreaStatus; sample: boolean; items: WorkItem[] };
+  /** `empty` is Roster's own test (no shifts and no import), null until the shifts read answers for real. */
+  readonly roster: { status: WorkAreaStatus; sample: boolean; items: WorkItem[]; empty: boolean | null };
   readonly teaching: { status: WorkAreaStatus; sample: boolean; items: WorkItem[] };
   readonly cme: { status: WorkAreaStatus; sample: boolean; items: WorkItem[] };
   readonly cpd: WorkSearchCpd | null;
 };
 
 /** The confirmed CPD targets and the activities they are measured against, for the built-in answer. */
-export type WorkSearchCpd = { readonly set: CmeRequirementSet | null; readonly entries: readonly CmeEntry[] };
+export type WorkSearchCpd = {
+  readonly set: CmeRequirementSet | null;
+  readonly entries: readonly CmeEntry[];
+  /** The day the pace is worked out from, when it is not today (CPD's example year has its own). */
+  readonly today?: string;
+};
 
 const FRESH_FOR_MS = 2 * 60 * 1000;
 /** A read that hangs is reported as failed (with Retry) rather than "still loading" for ever. */
@@ -112,7 +118,7 @@ async function fetchRecords(epoch: number, now: number, signal: AbortSignal): Pr
     to: addDaysToDate(today, TEACHING_LOOKAHEAD_DAYS),
   });
   const [shifts, leave, week, cme, year] = await Promise.all([
-    readJson<{ shifts: OnCallShift[] }>("/api/roster/shifts", signal),
+    readJson<{ shifts: OnCallShift[]; latestImport?: unknown }>("/api/roster/shifts", signal),
     readJson<{ leave: RosterLeave[] }>("/api/roster/leave", signal),
     readJson<TeachingWeekResponse>(`/api/teaching?${weekQuery.toString()}`, signal),
     readJson<{ entries: CmeEntry[]; year?: number }>("/api/cme/entries", signal),
@@ -130,6 +136,11 @@ async function fetchRecords(epoch: number, now: number, signal: AbortSignal): Pr
         ...(shifts.status === "ready" ? shiftWorkItems(shifts.body.shifts ?? []) : []),
         ...(leave.status === "ready" ? leaveWorkItems(leave.body.leave ?? []) : []),
       ],
+      // The same test Roster reports to auto mode: leave alone does not count, an import does.
+      empty:
+        shifts.status === "ready" && !shifts.sample
+          ? (shifts.body.shifts?.length ?? 0) === 0 && !shifts.body.latestImport
+          : null,
     },
     teaching: {
       status: week.status,
@@ -164,18 +175,14 @@ async function fetchRecords(epoch: number, now: number, signal: AbortSignal): Pr
 export function searchShowsExamples(input: {
   readonly roster: { readonly active: boolean; readonly mode: ExampleDataMode };
   readonly rosterReported: AreaDataState;
-  readonly rosterRead: {
-    readonly status: WorkAreaStatus;
-    readonly sample: boolean;
-    readonly items: readonly WorkItem[];
-  } | null;
+  /** Search's own roster read, for when Roster has not reported this visit. */
+  readonly rosterRead: { readonly empty: boolean | null } | null;
   readonly teaching: boolean;
   readonly cpd: boolean;
 }): { readonly roster: boolean; readonly teaching: boolean; readonly cme: boolean } {
-  const read = input.rosterRead;
+  // Roster's own report wins. Before Roster has been opened, search's read applies the same test.
   const rosterEmpty =
-    input.rosterReported === "empty" ||
-    (read !== null && read.status === "ready" && !read.sample && read.items.length === 0);
+    input.rosterReported === "unknown" ? input.rosterRead?.empty === true : input.rosterReported === "empty";
   return {
     roster: input.roster.active && (input.roster.mode === "on" || rosterEmpty),
     teaching: input.teaching,
