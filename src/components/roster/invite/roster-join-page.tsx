@@ -13,6 +13,9 @@ import { TextField } from "@/components/ui/text-field";
 import { UserPlus } from "lucide-react";
 import { RosterPageHeader } from "@/components/roster/roster-ui";
 
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { formatZonedDay, zonedToday } from "@/lib/work-time/format";
+
 import { RosterSignInNotice } from "./roster-sign-in-notice";
 
 type JoinState =
@@ -50,17 +53,9 @@ function joinedCopy(overview: Overview | null): Extract<JoinState, { kind: "join
   };
 }
 
+/** "Fri 9 Oct", or "Fri 9 Apr 2027" when the rotation ends in another year. */
 function formatRotationEnd(value: string): string {
-  const date = new Date(`${value}T12:00:00Z`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: "Australia/Perth",
-  })
-    .format(date)
-    .replace(",", "");
+  return formatZonedDay(value, zonedToday(currentWorkTimeZone()));
 }
 
 export function RosterJoinPage() {

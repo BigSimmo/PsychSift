@@ -25,6 +25,7 @@ import {
   type AssessmentsAction,
   type AssessmentsState,
 } from "@/lib/teaching/assessments/model";
+import { GLOSSARY } from "@/lib/teaching/assessments/content";
 import { EXAMPLE_ANSWERS, SAMPLE_MIDTERM } from "@/lib/teaching/assessments/sample";
 
 const run = (...actions: AssessmentsAction[]) =>
@@ -424,5 +425,24 @@ describe("Teaching assessments: post-build review guards", () => {
     const asked = assessmentsReducer(s, { type: "request-epa", epa: 2, who: "sup" });
     const i = asked.epaRequests.length - 1;
     expect(assessmentsReducer(asked, { type: "record-epa", index: i, level: "bogus" as never })).toBe(asked);
+  });
+});
+
+// CLA review, 8 Oct 2026: the AMC framework and CLA name each person who takes part in an
+// assessment, so Help and words explains every one of them.
+describe("Help and words", () => {
+  it("names each role in a prevocational term assessment", () => {
+    const terms = GLOSSARY.map(([term]) => term);
+    for (const role of [
+      "Term supervisor",
+      "Primary clinical supervisor",
+      "Assessor",
+      "DCT",
+      "MEU",
+      "MEO",
+      "Assessment Review Panel",
+    ]) {
+      expect(terms).toContain(role);
+    }
   });
 });

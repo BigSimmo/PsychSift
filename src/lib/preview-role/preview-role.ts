@@ -103,7 +103,13 @@ const JUNIOR_SCREENS: readonly PreviewRoleScreen[] = [
   { label: "My Day", href: "/my-day", sub: "Today, week and hours", ready: true },
   { label: "Roster", href: "/roster", sub: "Month, team and swaps", ready: true },
   { label: "Teaching", href: "/teaching", sub: "Today, week and logbook", ready: true },
-  { label: "Assessments", href: "/teaching/assessments", sub: "To do, progress and supervision", ready: true },
+  // The bare address keeps whichever side was last shown, so the junior doctor's lens names its own side.
+  {
+    label: "Assessments",
+    href: "/teaching/assessments?as=doctor",
+    sub: "To do, progress and supervision",
+    ready: true,
+  },
   { label: "CPD", href: "/cme", sub: "Year, log and learning", ready: true },
   { label: "Admin", href: "/admin", sub: "Today, renewals and new job", ready: true },
   { label: "On Call", href: "/on-call", sub: "Now, call and refer", ready: true },

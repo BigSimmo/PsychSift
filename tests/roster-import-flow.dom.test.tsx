@@ -225,7 +225,7 @@ describe("Roster import flow, a file over the shift cap", () => {
     await importFile("roster.ics", icsWithShifts(ON_CALL_SHIFT_IMPORT_MAX + 5));
     expect(
       await screen.findByText(
-        `Only the first ${ON_CALL_SHIFT_IMPORT_MAX} shifts were read; 5 more were left out. Export a shorter date range.`,
+        `Only the first ${ON_CALL_SHIFT_IMPORT_MAX} shifts were read, and 5 more were left out. Export a shorter date range.`,
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Save/ })).toBeNull();

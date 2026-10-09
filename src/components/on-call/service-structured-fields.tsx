@@ -29,7 +29,7 @@ export function ServiceStructuredFields({
         <legend>Staff, role and cover times</legend>
         <p className="text-sm text-[color:var(--text-muted)]">
           Add a staff name only when approved for your service, or leave it blank for role-only cover. These times
-          repeat daily until the entry is changed or withdrawn. Times use the hospital’s Perth clock; an end before the
+          repeat daily until the entry is changed or withdrawn. Times use the hospital’s Perth clock. An end before the
           start means overnight.
         </p>
         <TextField

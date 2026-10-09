@@ -45,7 +45,7 @@ describe("TeachingContextBar", () => {
     const { rerender } = render(<TeachingContextBar teams={[teamA]} value="all" onChange={onChange} demoTag />);
     expect(screen.getByText("Hospital A psychiatry")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).toBeNull();
-    expect(screen.getByText("Demo · made-up people")).toBeInTheDocument();
+    expect(screen.getByText("Example · made-up people")).toBeInTheDocument();
     rerender(<TeachingContextBar teams={[teamA, teamB]} value="all" onChange={onChange} demoTag={false} />);
     const select = screen.getByRole("combobox", { name: "Service" });
     expect(
@@ -394,7 +394,7 @@ describe("TeachingStateNotice", () => {
     const moduleEl = screen.getByTestId(`teaching-state-${state}`);
     expect(within(moduleEl).getByText(title)).toBeInTheDocument();
     expect(within(moduleEl).getByText(body)).toBeInTheDocument();
-    expect(moduleEl.textContent).not.toMatch(/Demo · made-up people|teaching_|\d{3}/);
+    expect(moduleEl.textContent).not.toMatch(/Example · made-up people|teaching_|\d{3}/);
   });
 
   it("offers Try again on error and offline, and announces offline as a status", () => {

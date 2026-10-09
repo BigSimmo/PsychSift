@@ -371,7 +371,7 @@ export function AlertsQuietHoursSheet({
         ) : null}
         <SheetNote>
           A calendar alert that would go off in quiet hours moves to the end of them. Roster phone alerts don&apos;t
-          follow quiet hours yet; that arrives with the next update.
+          follow quiet hours yet. That arrives with the next update.
         </SheetNote>
       </div>
     </Sheet>
@@ -491,7 +491,7 @@ export function AlertsDailyLimitSheet({
         </div>
         <SheetNote>
           On a busy day the most important are kept: renewal dates first, then shifts, CPD year-end, CPD routines and
-          teaching. This limit covers calendar alerts today; Roster&apos;s own phone alerts are not counted yet.
+          teaching. This limit covers calendar alerts today. Roster&apos;s own phone alerts are not counted yet.
         </SheetNote>
       </div>
     </Sheet>

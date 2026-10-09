@@ -118,7 +118,7 @@ export function OnCallWhosOnPage({ now: pinned }: { now?: Date } = {}) {
       {ready ? (
         <>
           {!items.length ? (
-            <p className="px-3 text-sm">No published cover for this time. Cover is unknown; check with switchboard.</p>
+            <p className="px-3 text-sm">No published cover for this time. Cover is unknown. Check with switchboard.</p>
           ) : null}
           <div className="px-3">
             <Select

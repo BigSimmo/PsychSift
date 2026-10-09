@@ -180,7 +180,7 @@ function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
   const notices = (
     <>
       {items.demoMode || shifts.demoMode ? (
-        <ModeNotice testId="my-day-week-demo-notice">Demo data: these items are invented examples.</ModeNotice>
+        <ModeNotice testId="my-day-week-demo-notice">Example data: these items are made up.</ModeNotice>
       ) : null}
       {failed.length > 0 ? (
         <div className="grid gap-2" data-testid="my-day-week-failed-notice">

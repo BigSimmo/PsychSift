@@ -130,7 +130,7 @@ export function parseRosterCsv(text: string): RosterParseResult {
     );
   }
   if (overLimit)
-    notes.push(`Only the first ${ON_CALL_SHIFT_IMPORT_MAX} shifts were read; ${overLimit} more were left out.`);
+    notes.push(`Only the first ${ON_CALL_SHIFT_IMPORT_MAX} shifts were read, and ${overLimit} more were left out.`);
   shifts.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   return { shifts, notes };
 }

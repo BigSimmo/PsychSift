@@ -95,7 +95,7 @@ export function cpdStandardMismatches(set: CmeRequirementSet): CpdStandardMismat
       id: "total",
       yours: set.totalHours,
       standard: rules.totalHours.hours,
-      words: `Your total target is ${set.totalHours} hours; the Board's minimum is ${rules.totalHours.hours}.`,
+      words: `Your total target is ${set.totalHours} hours, and the Board's minimum is ${rules.totalHours.hours}.`,
       quote: rules.totalHours.quote,
     });
   }
@@ -111,8 +111,8 @@ export function cpdStandardMismatches(set: CmeRequirementSet): CpdStandardMismat
       standard: rules.educationalHours.hours,
       words:
         educationalHours === null
-          ? `Your targets have no educational activities line; the Board asks for at least ${rules.educationalHours.hours} hours.`
-          : `Your educational target is ${educationalHours} hours; the Board asks for at least ${rules.educationalHours.hours}.`,
+          ? `Your targets have no educational activities line. The Board asks for at least ${rules.educationalHours.hours} hours.`
+          : `Your educational target is ${educationalHours} hours, and the Board asks for at least ${rules.educationalHours.hours}.`,
       quote: rules.educationalHours.quote,
     });
   }
@@ -137,8 +137,8 @@ export function cpdStandardMismatches(set: CmeRequirementSet): CpdStandardMismat
       standard: combinedRule.hours,
       words:
         spec === null
-          ? `Your targets have no reviewing performance and measuring outcomes line; the Board asks for at least ${combinedRule.hours} hours, with ${combinedRule.minimumEachHours} in each.`
-          : `Your reviewing and measuring target is ${spec.minimumHours} hours with ${spec.minimumEachHours} in each; the Board asks for at least ${combinedRule.hours}, with ${combinedRule.minimumEachHours} in each.`,
+          ? `Your targets have no reviewing performance and measuring outcomes line. The Board asks for at least ${combinedRule.hours} hours, with ${combinedRule.minimumEachHours} in each.`
+          : `Your reviewing and measuring target is ${spec.minimumHours} hours with ${spec.minimumEachHours} in each, and the Board asks for at least ${combinedRule.hours}, with ${combinedRule.minimumEachHours} in each.`,
       quote: combinedRule.quote,
     });
   }

@@ -131,6 +131,9 @@ describe("renewal dates", () => {
     expect(formatUpdatedMonth("not a date")).toBe("");
     expect(formatDateEcho("2027-09-30")).toBe("Thu 30 Sep 2027");
     expect(formatDateEcho("30/09/2027")).toBe("");
+    // With today given, the year shows only when it differs (the work-mode house rule).
+    expect(formatDateEcho("2027-09-30", "2027-01-04")).toBe("Thu 30 Sep");
+    expect(formatDateEcho("2027-09-30", "2026-10-09")).toBe("Thu 30 Sep 2027");
   });
 
   it("words the distance on one ladder, never a countdown (Josh, 16:31Z; spec review)", () => {

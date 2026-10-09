@@ -20,6 +20,12 @@ import { addDaysToDate, perthDateOf, perthWallToIso } from "@/lib/roster/shifts/
  * something to draw. Every name, place and id is made up. The reader is
  * "Dr Alex Example", a registrar and the team's roster manager. Dates are
  * worked out from `now`, so the demo always has a current and a next fortnight.
+ *
+ * THE ONE EXAMPLE ROSTER. Dr Alex Example's own shifts (`exampleOwnShift`) are
+ * the example roster every work area shows: Roster (team and personal), My Day,
+ * Open shifts' roster check, work search and the local demo build's
+ * `/api/roster/shifts` all read them through `demoMyShifts`, so they agree about
+ * the same day. On Call's example ("on call tonight, 17:00 to 08:00") matches it.
  */
 
 /** A read the sample team has no answer for; the API maps it to its invalid-request error. */
@@ -54,6 +60,43 @@ const PATTERN = [
   { code: "N", kind: "night", start: "21:30", end: "08:00", overnight: true },
 ] as const;
 
+type PatternShift = {
+  readonly code: string;
+  readonly kind: RosterAssignment["kind"];
+  readonly start: string;
+  readonly end: string;
+  readonly overnight: boolean;
+};
+
+const OWN_ON_CALL: PatternShift = { code: "C", kind: "on_call", start: "17:00", end: "08:00", overnight: true };
+/** Days in the example doctor's own cycle, counted from today. */
+const OWN_CYCLE_DAYS = 8;
+
+/** The sample reader's leave: one working week, five weeks after this Monday. */
+function leaveStart(now: Date): string {
+  return addDaysToDate(periodStart(now), 35);
+}
+
+/**
+ * Dr Alex Example's own shift on `date`, or null on a day off. An eight-day
+ * cycle counted from today: on call from 17:00 to 08:00 (tonight is the first),
+ * a day off, day shifts on the weekdays between, a day off, a night shift, and a
+ * day off before the next on call. Nothing is rostered during their leave.
+ */
+function exampleOwnShift(date: string, now: Date): PatternShift | null {
+  const leave = leaveStart(now);
+  if (date >= leave && date <= addDaysToDate(leave, 4)) return null;
+  const offset = Math.round(
+    (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${perthDateOf(now)}T00:00:00Z`)) / 86_400_000,
+  );
+  const step = ((offset % OWN_CYCLE_DAYS) + OWN_CYCLE_DAYS) % OWN_CYCLE_DAYS;
+  if (step === 0) return OWN_ON_CALL;
+  if (step === 6) return PATTERN[2];
+  if (step === 1 || step === 5 || step === 7) return null;
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return weekday === 0 || weekday === 6 ? null : PATTERN[0];
+}
+
 function periodStart(now: Date): string {
   const today = perthDateOf(now);
   const weekday = new Date(`${today}T00:00:00Z`).getUTCDay();
@@ -75,9 +118,13 @@ function demoAssignments(now: Date): RosterAssignment[] {
   for (let day = -DEMO_DAYS_BEFORE; day < DEMO_DAYS_AFTER; day += 1) {
     const date = addDaysToDate(start, day);
     PEOPLE.forEach((person, index) => {
-      // Each person works five days in seven, rotating through day, evening and night.
-      if ((((day + index) % 7) + 7) % 7 >= 5) return;
-      const shift = PATTERN[(((Math.floor(day / 7) + index) % PATTERN.length) + PATTERN.length) % PATTERN.length];
+      // The reader keeps the one example roster; everyone else works five days
+      // in seven, rotating through day, evening and night.
+      let shift: PatternShift | null;
+      if (person.userId === DEMO_ME_ID) shift = exampleOwnShift(date, now);
+      else if ((((day + index) % 7) + 7) % 7 >= 5) shift = null;
+      else shift = PATTERN[(((Math.floor(day / 7) + index) % PATTERN.length) + PATTERN.length) % PATTERN.length];
+      if (!shift) return;
       rows.push({
         id: hexId(0x1000 + (day + DEMO_DAYS_BEFORE) * 16 + index),
         userId: person.userId,
@@ -293,8 +340,9 @@ export function demoRosterRead<W extends RosterReadWhat>(
 }
 
 /**
- * The sample reader's own shifts (Dr Alex Example's), as a personal roster, so
- * Today and Shifts have a full example. Same shifts as the sample team shows.
+ * The sample reader's own shifts (Dr Alex Example's), as a personal roster: the
+ * one example roster (see the top of this file). Same shifts as the sample team
+ * shows.
  */
 export function demoMyShifts(now = new Date()): OnCallShift[] {
   return demoAssignments(now)
@@ -303,7 +351,7 @@ export function demoMyShifts(now = new Date()): OnCallShift[] {
       id: `sample-${row.id}`,
       startsAt: row.startsAt,
       endsAt: row.endsAt,
-      title: `${SHIFT_KIND_LABEL[row.kind as ShiftKind] ?? row.shiftCode} shift`,
+      title: row.kind === "on_call" ? "On call" : `${SHIFT_KIND_LABEL[row.kind as ShiftKind] ?? row.shiftCode} shift`,
       location: row.siteName,
       sourceUid: null,
       kind: row.kind as ShiftKind,
@@ -315,7 +363,7 @@ export function demoMyShifts(now = new Date()): OnCallShift[] {
 
 /** The sample reader's own leave: one week of approved annual leave next month. */
 export function demoRosterLeave(now = new Date()) {
-  const start = addDaysToDate(periodStart(now), 35);
+  const start = leaveStart(now);
   return [
     {
       id: "d0000000-0000-4000-8000-000000000006",
