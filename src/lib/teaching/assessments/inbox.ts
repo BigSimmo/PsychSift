@@ -56,6 +56,8 @@ export interface InboxRequest {
   readonly title: string;
   /** "Fri 2 Oct" */
   readonly askedOn: string;
+  /** Sam's end-of-term before Sam has said they are ready: in CLA only the supervisor starts it. */
+  readonly notAsked?: true;
   /** Days since asked, on the made-up calendar. */
   readonly age: number;
   /** "By Sun 8 Nov", "Due Fri 16 Oct", or null. */
@@ -156,22 +158,27 @@ export function inboxRequests(s: AssessmentsState, answers: Readonly<Record<stri
     open: { kind: "status" },
     doneLine: answers["ben-mid"] ? doneLineFor(answers["ben-mid"]) : null,
   });
-  if (s.request.sent) {
+  {
+    // Always here: "End of Term Assessment can only be initiated by a supervisor linked to the prevocational
+    // doctor" (CLA training guide for prevocational doctors, p.12), so the supervisor can start it without
+    // waiting to be asked. The due date is made up: real ones are set by the MEU.
     const st = stage(s);
     const signed = st === "sup-signed" || st === "doc-signed";
+    const asked = s.request.sent;
     items.push({
       id: "sam-eot",
       doctor: SAM,
       kind: "form",
       epa: null,
       title: "End-of-term assessment",
-      askedOn: WINDOW_DAYS[s.request.sentOn] ? dayText(s.request.sentOn) : "Mon 5 Oct",
-      age: today - sampleDayOffset(s.request.sentOn),
-      due: "Due Fri 20 Nov",
+      askedOn: !asked ? "Not yet" : WINDOW_DAYS[s.request.sentOn] ? dayText(s.request.sentOn) : "Mon 5 Oct",
+      ...(asked ? {} : { notAsked: true as const }),
+      age: asked ? today - sampleDayOffset(s.request.sentOn) : 0,
+      due: "Due Fri 20 Nov (made-up)",
       dueDay: 46,
       overdue: false,
       status: signed ? "sent" : "waiting",
-      open: { kind: "href", view: st === "requested" || st === "sup-draft" ? "form" : "side" },
+      open: { kind: "href", view: st === "ready" || st === "met" || signed ? "side" : "form" },
       doneLine: signed ? "Signed by you" : null,
     });
   }
@@ -262,6 +269,7 @@ export function inboxRowStatus(item: InboxRequest): { rail: InboxRail; tag: stri
   if (item.overdue) return { rail: "overdue", tag: "Overdue", tone: "bad" };
   if (item.status === "later") return { rail: "none", tag: `Later · ${LATER_WHEN}`, tone: "neutral" };
   if (item.age >= WAITING_LONG_DAYS) return { rail: "long", tag: ageText(item.age), tone: "warm" };
+  if (item.notAsked && item.due) return { rail: "none", tag: item.due.replace(/^Due /, "By "), tone: "neutral" };
   if (item.age <= 1) return { rail: "new", tag: "New", tone: "accent" };
   if (item.due) return { rail: "none", tag: item.due.replace(/^Due /, "By "), tone: "neutral" };
   return { rail: "none", tag: ageText(item.age), tone: "neutral" };
@@ -368,13 +376,16 @@ export function doctorView(item: InboxRequest, answer: InboxAnswer): DoctorView 
 }
 
 /**
- * Plain text for the doctor to paste into their official record in Clinical Learning Australia. PsychSift
- * does not claim any import format, so this is words only, in the order the doctor reads them.
+ * The supervisor's own notes, to paste into their own answer in Clinical Learning Australia. In CLA the
+ * assessor fills in "Assessor to complete this section" and submits it themselves, from the emailed link or on
+ * the doctor's device (CLA factsheets "How to complete an EPA", for assessors and for prevocational doctors,
+ * 18 Jul 2025). The doctor never types an assessor's rating into their own record (rules audit W1). PsychSift
+ * claims no import format, so this is words only.
  */
 export function claCopyText(item: InboxRequest, answer: InboxAnswer): string {
   return [
     item.title,
-    `Supervisor: ${SAMPLE_SUPERVISOR.name}`,
+    `Doctor: ${item.doctor.name}`,
     answer.level ? `Supervision needed: ${levelWord(answer.level)}` : null,
     answer.text.trim() ? `Feedback: ${answer.text.trim()}` : null,
     `Asked ${item.askedOn}`,

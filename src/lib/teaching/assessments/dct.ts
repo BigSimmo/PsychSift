@@ -1,5 +1,5 @@
 import { DOMAINS, RATING_LABELS, type GlobalRating, type Rating } from "@/lib/teaching/assessments/content";
-import { meetingDate, stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
+import { guestKind, meetingDate, stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
 import { overviewDoctors, type OverviewDoctor } from "@/lib/teaching/assessments/overview";
 import { SAMPLE_DOCTOR, SAMPLE_SUPERVISOR, WINDOW_DAYS, type Ratings } from "@/lib/teaching/assessments/sample";
 
@@ -14,8 +14,13 @@ import { SAMPLE_DOCTOR, SAMPLE_SUPERVISOR, WINDOW_DAYS, type Ratings } from "@/l
  * - Improving performance has three phases: informal discussion, a formal Improving Performance Action
  *   Plan (IPAP) agreed by the DCT, term supervisor and doctor, then managed supervised practice.
  * - Guest assessors have no CLA account and show as Unapproved until the MEU approves them.
- * - The Assessment Review Panel has at least three members, meets at least once a year, and its chair
- *   should generally not be the DCT.
+ * - The Assessment Review Panel has at least three members and meets at least once a year. "The chair should
+ *   generally be a senior doctor, but not the DCT" (AMC Guide to Assessment Review Panels, p.8), and
+ *   "Prevocational doctors should not be included as panel members" (same guide, p.7).
+ * - The form says "within 14 days" but not when they start, so the DCT's screens never show a last day.
+ * - In CLA a submitted form is not edited by whoever submitted it. The MEU can return it to draft (CLA
+ *   detailed FAQs v2.0, p.8 and p.13, and the doctors' training guide, p.19), so a sign-off is only undone
+ *   in the few seconds of Undo.
  *
  * Every person and date here is invented. Dr Sam Karri's form joins the queue once the story has it signed
  * by both, so the DCT's step follows the supervisor's and the doctor's.
@@ -36,11 +41,19 @@ export interface DctForm {
   readonly ratings: Ratings;
   readonly discussed: string;
   readonly bothSigned: string;
-  /** The last day the doctor can respond in writing. */
+  /**
+   * The made-up last day the doctor can respond in writing, for the story's clock only. The AMC form says
+   * "within 14 days" without saying when they start, so no screen shows it.
+   */
   readonly responseUntil: string;
   readonly responseOpen: boolean;
   /** The supervisor flagged an improvement plan on the form. */
   readonly ipap: boolean;
+  /** The rest of the AMC term form, so the DCT can read all of it before signing. */
+  readonly strengths: string;
+  readonly areas: string;
+  /** Written feedback per domain, where the supervisor gave some. */
+  readonly feedback: Readonly<Partial<Record<1 | 2 | 3 | 4, string>>>;
 }
 
 type FixedForm = Omit<DctForm, "responseOpen"> & {
@@ -64,6 +77,9 @@ const FIXED_FORMS: readonly FixedForm[] = [
     responseUntil: "Fri 9 Oct",
     closesFrom: 0,
     ipap: false,
+    strengths: "Calm in a busy department and quick to ask for help.",
+    areas: "Shorter handovers at the end of a night shift.",
+    feedback: {},
   },
   {
     id: "noah-t3",
@@ -80,6 +96,9 @@ const FIXED_FORMS: readonly FixedForm[] = [
     responseUntil: "Fri 11 Sep",
     closesFrom: -1,
     ipap: false,
+    strengths: "Thorough ward rounds and clear notes.",
+    areas: "Escalate a deteriorating patient sooner.",
+    feedback: {},
   },
 ];
 
@@ -94,11 +113,13 @@ export function windowDayPlus(day: number, days: number): string {
   return `${WEEKDAYS[at.getUTCDay()]} ${at.getUTCDate()} ${MONTHS[at.getUTCMonth()]}`;
 }
 
+export const SAM_FORM_ID = "sam-t4";
+
 /** Dr Sam Karri's end-of-term form, once both have signed it. */
 function samForm(s: AssessmentsState): DctForm | null {
   if (stage(s) !== "doc-signed" || !s.sigs.doc) return null;
   return {
-    id: "sam-t4",
+    id: SAM_FORM_ID,
     doctor: SAMPLE_DOCTOR.name,
     initials: SAMPLE_DOCTOR.initials,
     grade: SAMPLE_DOCTOR.grade,
@@ -113,6 +134,13 @@ function samForm(s: AssessmentsState): DctForm | null {
     // The story's last day is Fri 6 Nov, so Sam's 14 days are always still running.
     responseOpen: true,
     ipap: s.sup.ipap,
+    strengths: s.sup.strengths.trim(),
+    areas: s.sup.areas.trim(),
+    feedback: Object.fromEntries(
+      Object.entries(s.sup.feedback)
+        .map(([n, text]) => [n, text.trim()] as const)
+        .filter(([, text]) => text),
+    ),
   };
 }
 
@@ -150,6 +178,11 @@ export function dctReducer(state: DctState, action: DctAction): DctState {
       return { signed: Object.fromEntries(Object.entries(state.signed).filter(([id]) => id !== action.id)) };
     }
   }
+}
+
+/** The DCT's sign-off on Dr Sam Karri's own form, once given, for the doctor's and supervisor's screens. */
+export function samSignOff(d: DctState): DctSignature | null {
+  return d.signed[SAM_FORM_ID] ?? null;
 }
 
 /** The forms still waiting for the DCT. */
@@ -237,7 +270,8 @@ export function improvementPlan(id: string | null): ImprovementPlan | null {
 /* ---------------------------------------------------------- the rest of the service */
 
 export interface GuestAssessor {
-  readonly name: string;
+  /** Null for a guest the story asked by role only. */
+  readonly name: string | null;
   readonly role: string;
   readonly what: string;
 }
@@ -248,9 +282,23 @@ export const GUEST_ASSESSORS: readonly GuestAssessor[] = [
   { name: "Kim Jarrah", role: "Pharmacist", what: "EPA 3 for Dr Taylor Kwongan" },
 ];
 
+/**
+ * The guest assessors the DCT sees: the made-up ones, then any guest who has answered Dr Sam Karri's EPA in the
+ * story. CLA creates a guest "as a Guest Assessor with a status of Unapproved" once they submit the EPA, and
+ * they stay that way until the MEU approves them (CLA detailed FAQs v2.0, p.5, and the supervisors' training
+ * guide, p.17). This matches the EPAs `epaRecords` marks unapproved. The story gives them no name, so they
+ * show by role.
+ */
+export function guestAssessors(s: AssessmentsState): GuestAssessor[] {
+  const story = s.epaRequests
+    .filter((r) => r.who === "guest" && r.status === "done")
+    .map((r) => ({ name: null, role: guestKind(r.guest).title, what: `EPA ${r.epa} for ${SAMPLE_DOCTOR.name}` }));
+  return [...GUEST_ASSESSORS, ...story];
+}
+
 export const PANEL_FACTS: readonly string[] = [
-  "At least three members. The chair is a senior doctor, and generally not the DCT.",
-  "Doctors in training are never panellists.",
+  "At least three members. The chair should generally be a senior doctor, but not the DCT.",
+  "Prevocational doctors (PGY1 and PGY2) are never panellists.",
   "Meets at least once a year to judge whether each doctor has met the outcomes.",
   "Looks mainly at EPAs, end-of-term forms and the record of learning.",
   "Can ask for more information, recommend progression, recommend delayed progression with actions, or refer to the Director of Medical Services.",

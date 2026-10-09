@@ -1,8 +1,9 @@
 /*
- * Teaching › Assessments: the fixed wording of a WA prevocational term assessment.
+ * Teaching › Assessments: the fixed wording of a prevocational term assessment.
  * The domains, outcomes, rating scale and global ratings follow the AMC National
- * Framework 2024 template (as used on the RPBG 2025 form). These are rules text, not
- * patient data; they are to be checked against the source before real records exist.
+ * Framework 2024 term assessment form (e-portfolio and paper versions, checked 9 Oct
+ * 2026; sources in work-mode-build/assessments-cla-sources-check.md). Hospitals lay
+ * their own forms out differently. These are rules text, not patient data.
  */
 
 export const RATING_LABELS = [
@@ -27,7 +28,8 @@ export const GLOBAL_RATINGS: readonly { id: GlobalRating; title: string; detail:
   {
     id: "cond",
     title: "Conditional pass",
-    detail: "More information, assessment or support needed before deciding.",
+    // AMC term assessment form: "Further information, assessment and/or remediation will be required before deciding".
+    detail: "Further information, assessment or remediation is needed before deciding.",
   },
   {
     id: "unsat",
@@ -48,11 +50,15 @@ export type Domain = { n: DomainNumber; title: string; subtitle: string; outcome
 
 const outcome = (id: string, name: string, detail: string): Outcome => ({ id, name, detail });
 
+/**
+ * Titles are the AMC term assessment form's domain headings, subtitles the Section 2A domain names, and outcome
+ * names the form's short labels (1.3 has a colon where the form has a spaced hyphen).
+ */
 export const DOMAINS: readonly Domain[] = [
   {
     n: 1,
     title: "Clinical practice",
-    subtitle: "The doctor as practitioner",
+    subtitle: "The prevocational doctor as a practitioner",
     outcomes: [
       outcome(
         "1.1",
@@ -66,7 +72,7 @@ export const DOMAINS: readonly Domain[] = [
       ),
       outcome(
         "1.3",
-        "Communication with Aboriginal and Torres Strait Islander patients",
+        "Communication: Aboriginal and Torres Strait Islander patients",
         "Culturally safe, empathic communication that respects Indigenous knowledges of wellbeing and health.",
       ),
       outcome(
@@ -97,7 +103,7 @@ export const DOMAINS: readonly Domain[] = [
       ),
       outcome(
         "1.10",
-        "Using and adapting to systems",
+        "Utilising and adapting to dynamic systems",
         "Use documentation, communication and decision-support systems well.",
       ),
     ],
@@ -105,7 +111,7 @@ export const DOMAINS: readonly Domain[] = [
   {
     n: 2,
     title: "Professionalism and leadership",
-    subtitle: "The doctor as a professional and leader",
+    subtitle: "The prevocational doctor as a professional and leader",
     outcomes: [
       outcome(
         "2.1",
@@ -136,7 +142,7 @@ export const DOMAINS: readonly Domain[] = [
   {
     n: 3,
     title: "Health and society",
-    subtitle: "The doctor as a health advocate",
+    subtitle: "The prevocational doctor as a health advocate",
     outcomes: [
       outcome("3.1", "Population health", "Bring prevention, screening and health promotion into individual care."),
       outcome(
@@ -156,7 +162,7 @@ export const DOMAINS: readonly Domain[] = [
       ),
       outcome(
         "3.5",
-        "Impacts of colonisation and racism",
+        "Understanding impacts of colonisation and racism",
         "Know the ongoing effects of colonisation, intergenerational trauma and racism on health.",
       ),
       outcome(
@@ -169,7 +175,7 @@ export const DOMAINS: readonly Domain[] = [
   {
     n: 4,
     title: "Science and scholarship",
-    subtitle: "The doctor as scientist and scholar",
+    subtitle: "The prevocational doctor as a scientist and scholar",
     outcomes: [
       outcome("4.1", "Knowledge", "Apply knowledge of common and important presentations across ages and settings."),
       outcome("4.2", "Evidence-informed practice", "Find, appraise and apply evidence."),
@@ -191,13 +197,14 @@ export function domain(n: DomainNumber): Domain {
   return DOMAINS[n - 1]!;
 }
 
+/** The "Sources of information" ticks on the AMC paper term assessment form. Its "Other" has its own field. */
 export const EVIDENCE_SOURCES = [
   "Nursing staff",
   "Registrars",
-  "Allied health",
+  "Allied health professionals",
   "Other specialists",
   "EPAs",
-  "Learning record",
+  "PGY1/PGY2 record of learning",
 ] as const;
 
 /** The eight steps of the form, in order. */
@@ -221,7 +228,7 @@ export const EPAS: readonly { id: EpaNumber; title: string; formal: string; shor
   },
   {
     id: 2,
-    title: "Acutely unwell patient",
+    title: "Recognition and care of the acutely unwell patient",
     formal: "Recognition and care of the acutely unwell patient",
     short: "Acutely unwell",
     detail: "Recognise, assess, escalate and give immediate care to deteriorating and acutely unwell patients.",
@@ -263,13 +270,15 @@ export const SUPERVISION_LEVELS: readonly { id: SupervisionLevel; title: string;
       id: "proximal",
       title: "Proximal supervision",
       formLabel: "Requires proximal supervision",
-      detail: "You need to be easy to reach, and able to review the work straight away.",
+      // AMC EPA form: "easily contacted, and able to provide immediate or detailed review of work".
+      detail: "You need to be easy to reach, and able to review the work straight away or in detail.",
     },
     {
       id: "minimal",
       title: "Minimal supervision",
       formLabel: "Requires minimal supervision",
-      detail: "You trust them to do it, and need only be in the building for a general overview.",
+      // AMC EPA form and Section 2B, p.25: "contactable/in the building and able to provide a general overview".
+      detail: "You trust them to do it, and need only be contactable or in the building for a general overview.",
     },
   ];
 
@@ -289,28 +298,41 @@ export function caseComplexityName(id: CaseComplexity): string {
   return CASE_COMPLEXITIES.find((c) => c.id === id)!.title;
 }
 
+/**
+ * Help and words. Sources (work-mode-build/assessments-cla-sources-check.md): PMCWA accredits prevocational posts
+ * in WA (Medical Board list of postgraduate medical councils, §12). WA Health uses the title Director of Clinical
+ * Training (§12, owner decision 9 Oct 2026). The primary clinical supervisor is "the consultant responsible for
+ * managing the patients" and may change during the term (AMC Section 2, p.22), and completes the mid-term (AMC
+ * Section 3A). The specialist EPA is AMC Section 3A, p.50. The panel makes a global judgement, and for PGY1 the
+ * Medical Board decides on general registration (AMC Guide to Assessment Review Panels, p.5; Section 3C, p.59).
+ */
 export const GLOSSARY: readonly [string, string][] = [
   ["AMC", "Australian Medical Council. Sets the national framework for PGY1 and PGY2 training."],
-  ["PMCWA", "Postgraduate Medical Council of WA. Runs the framework in WA."],
+  ["PMCWA", "Postgraduate Medical Council of WA. Accredits prevocational training posts in WA."],
   ["MEU", "Medical Education Unit. Your hospital's team for forms, due dates and support."],
-  ["DCT", "Director of Clinical Training. Senior doctor responsible for junior doctors' training at your hospital."],
-  ["DPME", "Director of Postgraduate Medical Education. Leads the MEU."],
+  [
+    "DCT",
+    "Director of Clinical Training. Senior doctor responsible for junior doctors' training at your hospital. Some hospitals use a different title.",
+  ],
   ["MEO", "Medical Education Officer. Works in the MEU, sets up terms and tracks forms."],
   ["Term supervisor", "Runs your term orientation and assessment, and signs your end-of-term assessment."],
   [
     "Primary clinical supervisor",
-    "The consultant or senior doctor you work with in the term. Usually completes your mid-term assessment.",
+    "The consultant responsible for managing your patients. This may change during the term. Usually completes your mid-term assessment.",
   ],
   [
     "Assessor",
-    "Anyone trained to rate an EPA, such as a registrar or specialist. Nurses and pharmacists can contribute.",
+    "Anyone trained to rate an EPA, such as a registrar or specialist. Nurses and pharmacists can contribute. At least one EPA each term is by your primary clinical supervisor or an equivalent specialist.",
   ],
   [
     "EPA",
     "Entrustable professional activity. A short observed task (like a clinical assessment) rated by how much supervision you needed.",
   ],
   ["IPAP", "Improving Performance Action Plan. Extra support with goals and a review date."],
-  ["Assessment Review Panel", "Recommends at the end of the year whether you've completed PGY1 or PGY2."],
+  [
+    "Assessment Review Panel",
+    "Judges at the end of the year whether you've achieved the outcomes. For PGY1, the Medical Board then decides on general registration.",
+  ],
   [
     "CLA",
     "Clinical Learning Australia. The AMC's national e-portfolio for PGY1 and PGY2 training. Your MEU tells you if your hospital uses it.",

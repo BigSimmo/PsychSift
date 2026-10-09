@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, Download, Info, Minus, Plus, Send } from "lucide-react";
+import { Check, Clock, Download, Info, Minus, Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Inset, ScreenHeader, viewHref } from "@/components/teaching/assessments/assessments-parts";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/teaching/assessments/content";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
+import { samSignOff } from "@/lib/teaching/assessments/dct";
 import { blankForm, meetingDate, type AssessmentForm, type Signature } from "@/lib/teaching/assessments/model";
 import {
   CURRENT_TERM,
@@ -28,9 +29,12 @@ import {
 } from "@/lib/teaching/assessments/sample";
 
 /*
- * The paper form on screen: the RPBG 2025 layout, three A4 pages, filled from the
- * record it belongs to. Loaded only when opened. "Save a copy" uses the browser's
- * own print, so the copy is made on the device and nothing is uploaded.
+ * A printable copy only: an example health service's form, laid out on the AMC term
+ * assessment form (paper version), three A4 pages, filled from the record it belongs
+ * to. In CLA the supervisor submits the form, the doctor acknowledges it and the DCT
+ * completes DCT sign-off there (CLA Training Guide for Prevocational Doctors, p.12;
+ * supervisors' guide, p.39), so nothing here is emailed. Loaded only when opened.
+ * "Save a copy" uses the browser's own print, so nothing is uploaded.
  */
 
 type Filled = Pick<
@@ -136,9 +140,8 @@ const signed = (s: Signature) =>
     sig(s.typed)
   );
 
-export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
+export function FormPdf({ s, params, role, dct }: ScreenProps) {
   const [zoom, setZoom] = useState(false);
-  const [sentNote, setSentNote] = useState(false);
   const example = useExampleData("assess").active;
   // A past term with no saved form, or an unknown form, opens the blank form rather than a filled-looking one.
   const asked = params.get("of");
@@ -177,11 +180,16 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
     supDate = s.sigs.sup ? (meetingDate(s) ?? s.sigs.sup.date) : "";
     docDate = s.sigs.doc?.date ?? "";
   }
+  // This term's end-of-term carries the DCT's sign-off once the DCT side has given it.
+  const signOff = of === "eot" && s.sigs.doc ? samSignOff(dct) : null;
   const dctSigned = past && kind === "eot";
+  const dctBox = dctSigned
+    ? { name: "Dr M. Grant", position: "DCT", sign: sig("M Grant"), date: term?.signed ?? "", feedback: "" }
+    : signOff
+      ? { name: "DCT", position: "Director of Clinical Training", sign: sig("DCT"), ...signOff }
+      : null;
   const fill = (text: ReactNode) => (blank ? null : text);
-  const label = blank
-    ? "Blank · RPBG 2025 form"
-    : `${kind === "mid" ? "Mid-term" : "End-of-term"} · ${term?.name ?? ""}`;
+  const label = blank ? "Blank · example form" : `${kind === "mid" ? "Mid-term" : "End-of-term"} · ${term?.name ?? ""}`;
   const back =
     role === "supervisor"
       ? viewHref("side", { as: "supervisor" })
@@ -192,30 +200,30 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
           : of === "mid"
             ? viewHref("report", { of: "mid" })
             : viewHref("hub");
-  const canSend = of === "eot" && role === "doctor" && !!s.sigs.doc;
   let status: ReactNode;
   if (blank)
     status = (
-      <Inset tone="plain" icon={Info} title="Your hospital's form">
-        The MEU uploads the current version. This is RPBG 2025, built on the AMC template.
+      <Inset tone="plain" icon={Info} title="Example form">
+        Layout based on the AMC template. Your hospital&apos;s may differ.
       </Inset>
     );
   else if (past || of === "mid")
     status = (
       <Inset tone="ok" icon={Check} title="Signed copy">
-        {dctSigned ? "Countersigned by the DCT." : "Kept here for your records."}
+        {dctSigned ? "DCT sign-off done." : "Kept here for your records."}
+      </Inset>
+    );
+  else if (signOff)
+    status = (
+      <Inset tone="ok" icon={Check} title={`DCT sign-off done ${signOff.date}`}>
+        A printable copy only. The form itself is in CLA.
       </Inset>
     );
   else if (s.sigs.doc)
     status = (
-      <Inset
-        tone="plain"
-        icon={Check}
-        title={s.sentToMeu ? "Signed by you both · marked as emailed (made-up)" : "Signed by you both · not sent yet"}
-      >
-        {s.sentToMeu
-          ? "The DCT countersigns next. Your MEU tells you when it's done."
-          : "Email it to your MEU by Fri 20 Nov for the DCT to countersign. PsychSift doesn't send it for you. Your MEU will tell you if it also goes into Clinical Learning Australia (CLA)."}
+      <Inset tone="plain" icon={Check} title="Signed by you both · printable copy">
+        In CLA the supervisor submits the form and the doctor acknowledges it there. The DCT then completes DCT sign-off
+        in CLA. Nothing here is emailed.
       </Inset>
     );
   else
@@ -244,7 +252,7 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
           <Paper page={1}>
             <div className="flex items-baseline justify-between gap-2 border-b-2 border-[color:var(--text-heading)] pb-1">
               <b className="text-sm">Prevocational Training Term Assessment Form</b>
-              <span>Royal Perth Bentley Group</span>
+              <span>Example health service</span>
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               <Field label="Name">{fill(SAMPLE_DOCTOR.name)}</Field>
@@ -272,16 +280,10 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
                 </span>
               </div>
             </div>
-            <div className="grid gap-1">
-              <span>
-                <b>Nominations for Goatcher and Goatcher Clarke Awards</b> (interns only)
-              </span>
-              <div className="grid grid-cols-2 gap-x-3">
-                <Field label="Goatcher Award" />
-                <Field label="Goatcher Clarke Award (surgical term)" />
-              </div>
-            </div>
-            <p className="italic">Outcomes not observed are left unticked (not applicable).</p>
+            <p className="italic">
+              If any outcomes were not observed, say which, and whether other evidence was provided in the record of
+              learning.
+            </p>
             <DomainBlock d={DOMAINS[0]!} f={f} />
           </Paper>
           <Paper page={2}>
@@ -304,7 +306,8 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
               ))}
             </div>
             <p className="italic">
-              If a rating of 1 or 2 is given in any domain, an Improving Performance Action Plan (IPAP) is mandatory.
+              If a rating of 1 or 2 is given in any domain, liaise with the MEU or DCT to complete an Improving
+              Performance Action Plan (IPAP).
             </p>
             <div className="grid gap-0.5">
               <b>Strengths</b>
@@ -328,36 +331,18 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               <Field label="Signature">{docSig}</Field>
               <Field label="Date">{docDate}</Field>
-              <Field label="DPME/DCT name">{dctSigned ? "Dr M. Grant" : ""}</Field>
-              <Field label="Position">{dctSigned ? "DCT" : ""}</Field>
-              <Field label="Signature">{dctSigned ? sig("M Grant") : null}</Field>
-              <Field label="Date">{dctSigned ? term?.signed : ""}</Field>
+              <Field label="DCT name">{dctBox?.name ?? ""}</Field>
+              <Field label="Position">{dctBox?.position ?? ""}</Field>
+              <Field label="Signature">{dctBox?.sign ?? null}</Field>
+              <Field label="Date">{dctBox?.date ?? ""}</Field>
             </div>
             <div className="grid gap-0.5">
-              <b>Feedback</b>
-              <div className="min-h-8 border border-[color:var(--border-strong)]" />
+              <b>Director of Clinical Training feedback</b>
+              <div className="min-h-8 border border-[color:var(--border-strong)] px-1.5 py-1">{dctBox?.feedback}</div>
             </div>
           </Paper>
         </div>
       </div>
-      {canSend && !s.sentToMeu ? (
-        <AssessButton
-          icon={Send}
-          variant="primary"
-          block
-          onClick={() => {
-            dispatch({ type: "sent-to-meu" });
-            setSentNote(true);
-          }}
-        >
-          Email the PDF to your MEU
-        </AssessButton>
-      ) : null}
-      {sentNote ? (
-        <p role="status" className="px-1 text-center text-xs text-[color:var(--text-muted)]">
-          Made-up records: nothing was emailed. It is marked as sent so you can see the next step.
-        </p>
-      ) : null}
       <AssessButton
         icon={Download}
         variant="secondary"

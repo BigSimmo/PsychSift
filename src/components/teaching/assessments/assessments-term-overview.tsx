@@ -46,10 +46,11 @@ import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
+import { samSignOff } from "@/lib/teaching/assessments/dct";
 import { remindedKeys } from "@/lib/teaching/assessments/extras";
 import { termWeek, todayLabel, type PillTone } from "@/lib/teaching/assessments/model";
 import {
-  CELL_WORDS,
+  cellWord,
   DEFAULT_EXPORT_OPTIONS,
   OVERVIEW_CSV_NAME,
   OVERVIEW_FILTERS,
@@ -323,14 +324,17 @@ function bellLabel(state: BellState, row: OverviewDoctor, forms: string): string
   return `Remind ${row.supervisor} about ${row.name}'s ${forms}`;
 }
 
-function OverviewHome({ s, role }: ScreenProps) {
+function OverviewHome({ s, role, params, dct }: ScreenProps) {
   const asSup = asRole(role);
+  // The DCT's Progress tab draws this page as a tab, so it has no back arrow there (site audit P2).
+  const onTab = params.get("view") === "progress";
   const r = useReminders(s);
   const [tab, setTab] = useState<"doctors" | "supervisors" | "sent">("doctors");
   const [filter, setFilter] = useState<OverviewFilter>("all");
   const [showAll, setShowAll] = useState(false);
   const [sheet, setSheet] = useState<"bulk" | "export" | null>(null);
-  const rows = useMemo(() => overviewDoctors(s), [s]);
+  const signedOn = samSignOff(dct)?.date ?? null;
+  const rows = useMemo(() => overviewDoctors(s, signedOn), [s, signedOn]);
   const counts = overviewCounts(rows);
   const summary = midTermSummary(rows);
   const epasMet = rows.filter((row) => row.epas.status === "done").length;
@@ -360,8 +364,8 @@ function OverviewHome({ s, role }: ScreenProps) {
   return (
     <div className="grid gap-3" data-testid="assessments-overview">
       <ScreenHeader
-        back={viewHref("home", asSup)}
-        backLabel="your requests"
+        back={onTab ? undefined : viewHref("home", asSup)}
+        backLabel="Assessments"
         title="Term overview"
         subtitle="Made-up doctors · status only"
       />
@@ -802,11 +806,12 @@ const TIMELINE_ICON: Record<CellStatus, LucideIcon> = {
   not_yet: Minus,
 };
 
-function DoctorDetail({ s, doctorId, role }: ScreenProps & { doctorId: string }) {
+function DoctorDetail({ s, doctorId, role, dct }: ScreenProps & { doctorId: string }) {
   const asSup = asRole(role);
   const r = useReminders(s);
   const whyId = useId();
-  const rows = useMemo(() => overviewDoctors(s), [s]);
+  const signedOn = samSignOff(dct)?.date ?? null;
+  const rows = useMemo(() => overviewDoctors(s, signedOn), [s, signedOn]);
   const row = rows.find((x) => x.id === doctorId);
   const back = viewHref("overview", asSup);
   if (!row)
@@ -857,12 +862,7 @@ function DoctorDetail({ s, doctorId, role }: ScreenProps & { doctorId: string })
               </span>
               <Pill
                 pill={{
-                  label:
-                    item.id === "epas"
-                      ? item.status === "done"
-                        ? "At target"
-                        : "Below target"
-                      : CELL_WORDS[item.status],
+                  label: item.id === "epas" ? (item.status === "done" ? "At target" : "Below target") : cellWord(item),
                   tone: TONE[item.status],
                 }}
               />
@@ -876,8 +876,8 @@ function DoctorDetail({ s, doctorId, role }: ScreenProps & { doctorId: string })
           <span className="grid gap-0.5">
             <b className={titleText}>Content stays private</b>
             <span className={secondaryText}>
-              Ratings, comments and self-ratings are not shown here. Read and countersign forms in Clinical Learning
-              Australia.
+              Ratings, comments and self-ratings are not shown here. Read and sign off forms in Clinical Learning
+              Australia, where the DCT completes DCT sign-off.
             </span>
           </span>
         </span>
@@ -890,7 +890,8 @@ function DoctorDetail({ s, doctorId, role }: ScreenProps & { doctorId: string })
             "inline-flex min-h-12 items-center justify-between gap-2 rounded-lg text-sm font-medium text-[color:var(--mode-identity)] no-underline",
           )}
         >
-          <span>Open Clinical Learning Australia</span>
+          {/* The link is PMCWA's page about CLA, not CLA itself (site audit M7). */}
+          <span>About CLA (PMCWA)</span>
           <span className="inline-flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
             Opens outside PsychSift
             <ExternalLink aria-hidden="true" className="size-icon-xs" />
@@ -934,17 +935,20 @@ function DoctorDetail({ s, doctorId, role }: ScreenProps & { doctorId: string })
           ) : null}
         </>
       )}
-      <Link
-        href={traineeHref(row.id)}
-        className={cn(
-          focusRing,
-          "inline-flex min-h-12 items-center justify-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
-        )}
-        data-testid="assessments-overview-doctor-trainee"
-      >
-        {`Requests and supervision for ${row.name}`}
-        <ChevronRight aria-hidden="true" className="size-icon-sm" />
-      </Link>
+      {/* The doctor's own page is the supervisor's view, so the DCT is not sent there (site audit M4). */}
+      {role === "dct" ? null : (
+        <Link
+          href={traineeHref(row.id, role)}
+          className={cn(
+            focusRing,
+            "inline-flex min-h-12 items-center justify-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
+          )}
+          data-testid="assessments-overview-doctor-trainee"
+        >
+          {`Requests and supervision for ${row.name}`}
+          <ChevronRight aria-hidden="true" className="size-icon-sm" />
+        </Link>
+      )}
       <Link
         href={back}
         className={cn(

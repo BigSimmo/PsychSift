@@ -28,7 +28,9 @@ describe("Assessments: the DCT's home", () => {
     render(<Harness screen="home" />);
     expect(screen.getByText("2 forms to sign off")).toBeInTheDocument();
     expect(screen.getByText("Dr Charlie Balga · Term 3")).toBeInTheDocument();
-    expect(screen.getByText("Reply until Fri 9 Oct")).toBeInTheDocument();
+    // No last day is shown: the AMC form does not say when the 14 days start.
+    expect(screen.getByText("Can still reply")).toBeInTheDocument();
+    expect(screen.queryByText(/Reply until/)).toBeNull();
     expect(
       within(screen.getByRole("list", { name: "Improvement plans" })).getByText("Dr Rowan Sheoak"),
     ).toBeInTheDocument();
@@ -47,15 +49,15 @@ describe("Assessments: the DCT's home", () => {
 });
 
 describe("Assessments: the DCT signs one form", () => {
-  it("signs with feedback and can take it back", () => {
+  it("signs with feedback, then sends changes to the MEU", () => {
     render(<Harness screen="sign" id="noah-t3" />);
     expect(screen.getByText("No written reply from Lou")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/Feedback for Lou/), { target: { value: "A strong term." } });
     fireEvent.click(screen.getByRole("button", { name: "Sign off as DCT" }));
     expect(screen.getByTestId("assess-dct-signed")).toHaveTextContent('"A strong term."');
     expect(screen.getByText("Signed off for Dr Lou Quandong.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Take back" }));
-    expect(screen.getByRole("button", { name: "Sign off as DCT" })).toBeInTheDocument();
+    expect(screen.getByTestId("assess-dct-signed")).toHaveTextContent("ask your MEU to return it to draft");
+    expect(screen.queryByRole("button", { name: "Take back" })).toBeNull();
   });
 
   it("won't sign feedback that looks like patient details", () => {
@@ -81,11 +83,26 @@ describe("Assessments: an improvement plan", () => {
   });
 });
 
-describe("Assessments: taking back a DCT sign-off", () => {
-  it("clears the signed-off line", () => {
+describe("Assessments: changing a DCT sign-off", () => {
+  // Rules audit W7: in CLA only the MEU returns a submitted form to draft, so there is no Take back.
+  it("offers no Take back once signed", () => {
     render(<Harness screen="sign" id="noah-t3" />);
     fireEvent.click(screen.getByRole("button", { name: "Sign off as DCT" }));
-    fireEvent.click(screen.getByRole("button", { name: "Take back" }));
-    expect(screen.queryByText("Signed off for Dr Lou Quandong.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Take back" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sign off as DCT" })).toBeNull();
+  });
+
+  it("tells the DCT the doctor can still reply, with no last day", () => {
+    render(<Harness screen="sign" id="ella-t3" />);
+    expect(screen.getByText(/your MEU says when the 14 days start/)).toBeInTheDocument();
+    expect(screen.getByText(/Charlie can still write to you within the 14 days/)).toBeInTheDocument();
+    expect(screen.queryByText(/Fri 9 Oct/)).toBeNull();
+  });
+
+  it("shows the supervisor's comments before signing", () => {
+    render(<Harness screen="sign" id="ella-t3" />);
+    const comments = screen.getByRole("list", { name: "Supervisor's comments" });
+    expect(comments).toHaveTextContent("Strengths");
+    expect(comments).toHaveTextContent("Areas for improvement");
   });
 });
