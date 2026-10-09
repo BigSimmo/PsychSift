@@ -26,6 +26,8 @@ type Snapshot = { readonly status: WorkRolesStatus; readonly grants: readonly Wo
 const LOADING: Snapshot = { status: "loading", grants: [] };
 let snapshot: Snapshot = LOADING;
 let request: Promise<void> | null = null;
+/** Bumped on every reset, so an answer for the account before a sign-in or sign-out is dropped. */
+let generation = 0;
 const listeners = new Set<() => void>();
 
 function publish(next: Snapshot) {
@@ -34,21 +36,29 @@ function publish(next: Snapshot) {
 }
 
 function load(): Promise<void> {
-  request ??= fetch("/api/work/roles", { cache: "no-store", credentials: "same-origin" })
+  if (request) return request;
+  const started = generation;
+  const settle = (next: Snapshot) => {
+    if (started === generation) publish(next);
+  };
+  request = fetch("/api/work/roles", { cache: "no-store", credentials: "same-origin" })
     .then(async (response) => {
-      if (response.status === 401) return publish({ status: "signed-out", grants: [] });
-      if (!response.ok) return publish({ status: "unavailable", grants: [] });
+      if (response.status === 401) return settle({ status: "signed-out", grants: [] });
+      if (!response.ok) return settle({ status: "unavailable", grants: [] });
       const body = (await response.json()) as { grants?: unknown };
-      publish({ status: "ready", grants: Array.isArray(body.grants) ? (body.grants as WorkRoleGrant[]) : [] });
+      settle({ status: "ready", grants: Array.isArray(body.grants) ? (body.grants as WorkRoleGrant[]) : [] });
     })
-    .catch(() => publish({ status: "unavailable", grants: [] }));
+    .catch(() => settle({ status: "unavailable", grants: [] }));
   return request;
 }
 
 /** Forget the roles, for sign-in, sign-out, or after a role is given or removed. */
 export function resetWorkRoles(): void {
+  generation += 1;
   request = null;
   publish(LOADING);
+  // A screen already showing "loading" won't re-run its effect, so start the fresh read here.
+  if (listeners.size) void load();
 }
 
 function subscribe(listener: () => void) {

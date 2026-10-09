@@ -62,8 +62,9 @@ export async function loadWorkRoleContext(client: Client, user: AuthenticatedUse
   return { userId: user.id, grants };
 }
 
-/** The one check. True only when a role the person holds covers this scope. */
+/** The one check. True only when a role the person holds covers this scope. Nobody reviews their own assessments. */
 export function can(context: WorkRoleContext, capability: WorkCapability, scope: WorkScope): boolean {
+  if (capability === "assessments.review" && scope.kind === "trainee" && scope.userId === context.userId) return false;
   return decideWorkCapability(context.grants, capability, scope);
 }
 
@@ -86,6 +87,5 @@ export function canManageRotations(context: WorkRoleContext, serviceId: string):
 
 /** Review and sign a trainee's assessment. Pass the trainee's team so a whole-team supervisor or the DCT counts. */
 export function canReviewAssessments(context: WorkRoleContext, traineeId: string, serviceId?: string | null): boolean {
-  if (traineeId === context.userId) return false;
   return can(context, "assessments.review", { kind: "trainee", userId: traineeId, serviceId: serviceId ?? null });
 }
