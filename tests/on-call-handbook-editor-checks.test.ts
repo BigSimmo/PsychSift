@@ -46,10 +46,10 @@ describe("handbookPlacementLine", () => {
         siteId: SITE,
         phone: "9000 0001",
       }),
-    ).toBe("Will appear in: Call › Hospital › Medicine");
+    ).toBe("Will appear in: Call, then Hospital, then Medicine");
     expect(
       handbookPlacementLine({ title: "Ward: 4B", section: "resources", kind: "operational", siteId: SITE, phone: "" }),
-    ).toBe("Will appear in: Find › Wards");
+    ).toBe("Will appear in: Find, then Wards");
     expect(
       handbookPlacementLine({
         title: "Emergency: Code",
@@ -58,7 +58,7 @@ describe("handbookPlacementLine", () => {
         siteId: SITE,
         phone: "55",
       }),
-    ).toBe("Will appear in: Now (emergency) and Call › Hospital");
+    ).toBe("Will appear in: Now (emergency) and Call, then Hospital");
   });
 });
 

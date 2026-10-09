@@ -26,7 +26,7 @@ export const onCallFilledButton =
 
 /** An action at the right of an eyebrow, or any quiet link: teal, 13px, 600. */
 export const onCallActionLink =
-  "inline-flex min-h-12 shrink-0 items-center rounded-sm px-1 text-sm font-semibold text-[color:var(--mode-identity)] no-underline";
+  "work-hit inline-flex min-h-12 shrink-0 items-center rounded-sm px-1 text-sm font-semibold text-[color:var(--mode-identity)] no-underline";
 
 /** A chip: a 48px tap around a 36px outlined pill; selected is a soft teal tint with a 1px teal line. */
 export const onCallChipTap = "group inline-flex min-h-12 min-w-0 items-center";

@@ -11,6 +11,7 @@ vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => ({ status: "sign
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { APP_PREFERENCES_STORAGE_KEY, clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
+import { WORK_MODE_PREFERENCE_COOKIE } from "@/lib/work-mode-launch/launch";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -45,5 +46,24 @@ describe("account transition and the work stage", () => {
     window.localStorage.setItem(APP_PREFERENCES_STORAGE_KEY, raw);
     clearAccountScopedBrowserStorage();
     expect(window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY)).toBe(raw);
+  });
+
+  it("removes quiet hours and alert choices, which are the person's", () => {
+    window.localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        density: "compact",
+        reminders: { quietHours: { enabled: true, start: "22:00", end: "07:00" } },
+      }),
+    );
+    clearAccountScopedBrowserStorage();
+    const stored = JSON.parse(window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY) ?? "{}");
+    expect(stored).toEqual({ density: "compact" });
+  });
+
+  it("clears the classic or new work view choice", () => {
+    document.cookie = `${WORK_MODE_PREFERENCE_COOKIE}=classic; path=/`;
+    clearAccountScopedBrowserStorage();
+    expect(document.cookie).not.toContain(`${WORK_MODE_PREFERENCE_COOKIE}=`);
   });
 });

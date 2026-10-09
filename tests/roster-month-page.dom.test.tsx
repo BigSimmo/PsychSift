@@ -44,6 +44,7 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
 }));
 
 import { RosterMonthPage } from "@/components/roster/roster-month-page";
+import { RosterSignedOutSampleProvider } from "@/components/roster/roster-sample-context";
 
 const NOW = new Date("2026-10-06T07:42:00+08:00");
 
@@ -307,6 +308,18 @@ describe("Roster Month tab", () => {
     state.shifts = { status: "loading", shifts: [] };
     render(<RosterMonthPage now={NOW} />);
     expect(screen.getByTestId("roster-month-loading")).toHaveTextContent("Loading your roster…");
+    // The words are for screen readers; the grey shape is what shows.
+    expect(screen.getByRole("status")).toHaveClass("sr-only");
+  });
+
+  it("signed out, Sign in opens the sign-in dialog in place rather than leaving the page", () => {
+    state.shifts = { status: "signed-out", shifts: [] };
+    render(<RosterMonthPage now={NOW} />);
+    const notice = screen.getByTestId("roster-month-signed-out");
+    expect(notice).toHaveAttribute("data-work-state", "signed-out");
+    expect(within(notice).queryByRole("link")).toBeNull();
+    fireEvent.click(within(notice).getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("dialog", { name: "Continue to your workspace" })).toBeInTheDocument();
   });
 
   it("offers an import, Add a shift and Join a team to a doctor with no roster yet", () => {
@@ -338,7 +351,21 @@ describe("Roster Month tab", () => {
   it("says the sample is invented and offers no add button", () => {
     ready([teamDay], { sample: true });
     render(<RosterMonthPage now={NOW} />);
-    expect(screen.getByText("Sample shifts and team are invented.")).toBeInTheDocument();
+    expect(screen.getByText("Example shifts and team, all made up.")).toBeInTheDocument();
     expect(screen.queryByTestId("roster-month-add")).toBeNull();
+  });
+
+  it("says a demo build's roster is an example once: its own note, or the frame's banner when that shows", () => {
+    ready([teamDay], { demoMode: true });
+    render(<RosterMonthPage now={NOW} />);
+    expect(screen.getByText("Example only. Sign in to add your own shifts.")).toBeInTheDocument();
+    cleanup();
+
+    render(
+      <RosterSignedOutSampleProvider value>
+        <RosterMonthPage now={NOW} />
+      </RosterSignedOutSampleProvider>,
+    );
+    expect(screen.queryByText("Example only. Sign in to add your own shifts.")).toBeNull();
   });
 });

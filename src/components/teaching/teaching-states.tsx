@@ -1,15 +1,17 @@
 "use client";
 
-import { CalendarDays, CloudOff, LogIn, TriangleAlert, Users, Wrench, type LucideIcon } from "lucide-react";
+import { CalendarDays, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
-import { ActionStrip, type TeachingAction } from "@/components/teaching/teaching-actions";
+import { WorkButton } from "@/components/mode-kit/work";
+import { WorkStateNotice, type WorkStateKind } from "@/components/mode-kit/work-state";
 import { Sheet } from "@/components/ui/sheet";
 
 /*
- * The page states in Teaching's words (v5.2 screens 12 to 16). Each is one
- * module: a title, one line and a full-width button. No demo tag, no codes.
+ * The page states in Teaching's words (v5.2 screens 12 to 16), drawn as the
+ * shared work-mode state (`WorkStateNotice`) so Teaching looks like every other
+ * area: a title, one line and the actions. No demo tag, no codes.
  */
 export type TeachingNoticeState = "empty" | "no-team" | "signed-out" | "offline" | "error" | "setup";
 
@@ -28,13 +30,14 @@ const COPY: Record<TeachingNoticeState, { title: string; body: (serviceName?: st
   setup: { title: "Teaching is being set up", body: () => "It will appear here when it's ready." },
 };
 
-const ICONS: Record<TeachingNoticeState, LucideIcon> = {
-  empty: CalendarDays,
-  "no-team": Users,
-  "signed-out": LogIn,
-  offline: CloudOff,
-  error: TriangleAlert,
-  setup: Wrench,
+/** Teaching's own states that are not one of the shared kinds keep their badge. */
+const KIND: Record<TeachingNoticeState, { kind: WorkStateKind; icon?: LucideIcon }> = {
+  empty: { kind: "empty", icon: CalendarDays },
+  "no-team": { kind: "no-team" },
+  "signed-out": { kind: "signed-out" },
+  offline: { kind: "offline" },
+  error: { kind: "error" },
+  setup: { kind: "empty", icon: Wrench },
 };
 
 export function TeachingStateNotice({
@@ -59,40 +62,51 @@ export function TeachingStateNotice({
   testId?: string;
 }) {
   const [howOpen, setHowOpen] = useState(false);
-  const actions: TeachingAction[] = [];
+  let extra: ReactNode = null;
   if (state === "signed-out") {
-    if (onSignIn) actions.push({ id: "sign-in", label: "Sign in", onClick: onSignIn, emphasis: "primary" });
-    if (onOpenDemo) actions.push({ id: "demo", label: "Open the demo", onClick: onOpenDemo, emphasis: "text" });
-    else if (demoHref) actions.push({ id: "demo", label: "Open the demo", href: demoHref, emphasis: "text" });
+    if (onOpenDemo) {
+      extra = (
+        <WorkButton variant="quiet" onClick={onOpenDemo}>
+          Open the demo
+        </WorkButton>
+      );
+    } else if (demoHref) {
+      // A plain <a>, not a client-side Link: the sample route sets a cookie, so it needs a full navigation.
+      extra = (
+        <a href={demoHref} className="work-button" data-variant="quiet">
+          Open the demo
+        </a>
+      );
+    }
   }
-  if ((state === "error" || state === "offline") && onRetry)
-    actions.push({ id: "retry", label: "Try again", onClick: onRetry, emphasis: "secondary" });
-  if (state === "empty" && onSwitchService)
-    actions.push({ id: "switch", label: "Switch service", onClick: onSwitchService, emphasis: "secondary" });
-  if (state === "no-team")
-    actions.push({ id: "how", label: "How to join a service", onClick: () => setHowOpen(true), emphasis: "secondary" });
+  if (state === "empty" && onSwitchService) {
+    extra = (
+      <WorkButton variant="secondary" onClick={onSwitchService}>
+        Switch service
+      </WorkButton>
+    );
+  }
+  if (state === "no-team") {
+    extra = (
+      <WorkButton variant="secondary" onClick={() => setHowOpen(true)}>
+        How to join a service
+      </WorkButton>
+    );
+  }
 
-  const Icon = ICONS[state];
-  // Work-mode redesign, owner request 6 Oct 2026: a calm empty card, a flat badge, one line and
-  // the actions, in place of the v5 module.
+  const { kind, icon } = KIND[state];
   return (
-    <section
-      data-testid={testId ?? `teaching-state-${state}`}
-      role={state === "offline" ? "status" : undefined}
-      className="work-card grid justify-items-center gap-1.5 px-4.5 pt-6.5 pb-4 text-center"
-    >
-      <span
-        aria-hidden="true"
-        className="work-ic work-ic--lg mb-1"
-        data-tone={state === "offline" || state === "error" ? "amber" : undefined}
-      >
-        <Icon aria-hidden="true" strokeWidth={2} />
-      </span>
-      <p className="text-base-minus font-bold text-[color:var(--text-heading)]">{COPY[state].title}</p>
-      <p className="max-w-[17rem] text-xs leading-normal text-[color:var(--text-muted)]">
-        {COPY[state].body(serviceName)}
-      </p>
-      <ActionStrip layout="stack" actions={actions} className="w-full max-w-[17rem] pt-1.5" />
+    <>
+      <WorkStateNotice
+        kind={kind}
+        icon={icon}
+        title={COPY[state].title}
+        body={COPY[state].body(serviceName)}
+        onSignIn={onSignIn}
+        onRetry={onRetry}
+        action={extra}
+        testId={testId ?? `teaching-state-${state}`}
+      />
       {state === "no-team" ? (
         <Sheet open={howOpen} onClose={() => setHowOpen(false)} title="How to join a service">
           <div className="grid gap-2 text-sm text-[color:var(--text-heading)]">
@@ -104,6 +118,6 @@ export function TeachingStateNotice({
           </div>
         </Sheet>
       ) : null}
-    </section>
+    </>
   );
 }

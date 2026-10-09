@@ -12,6 +12,7 @@ import { focusRing } from "@/components/card-recipes";
 import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkButton, WorkCard, WorkDock, WorkEmpty, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
 import { cn } from "@/components/ui-primitives";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
@@ -131,19 +132,13 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
               testId="admin-credential-pack-signed-out"
             />
           ) : (
-            <WorkEmpty
-              icon={LogIn}
+            <WorkStateNotice
+              kind="signed-out"
+              bare
               title="Sign in to make a credential pack"
               body="It uses your own records and the numbers saved on this device."
-              action={
-                <WorkButton
-                  icon={LogIn}
-                  onClick={() => setSignInOpen(true)}
-                  testId="admin-credential-pack-signed-out-sign-in"
-                >
-                  Sign in
-                </WorkButton>
-              }
+              onSignIn={() => setSignInOpen(true)}
+              signInTestId="admin-credential-pack-signed-out-sign-in"
               testId="admin-credential-pack-signed-out"
             />
           )}

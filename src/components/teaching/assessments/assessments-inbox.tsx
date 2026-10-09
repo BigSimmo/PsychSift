@@ -719,7 +719,7 @@ function StatusSheet({ item, onLater, onCant }: { item: InboxRequest; onLater: (
         {item.due ? <KeyValue k="Due" v={item.due.replace(/^(Due|By|Overdue since) /, "")} /> : null}
         <KeyValue k="Status" v={item.overdue ? "Overdue" : "Waiting for you"} />
       </div>
-      <Inset tone="plain" title="This form isn't built into the sample">
+      <Inset tone="plain" title="This form isn't built into the example data">
         {`${item.doctor.name} is a made-up example. In use, the ${item.title.toLowerCase()} opens here, the way Sam's end-of-term does.`}
       </Inset>
       {item.status === "waiting" ? (

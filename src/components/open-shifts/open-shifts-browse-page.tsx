@@ -32,6 +32,7 @@ import { OpenShiftsCalendar } from "./open-shifts-calendar";
 import { clearSavedFilters, readSavedFilters, saveFilters } from "./open-shifts-saved-filters";
 import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { SignInAction } from "./open-shifts-sign-in";
+import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
 import { FlatList, ListSkeleton, Note, ShiftRow, advertHref, formatDayLong, formatDayShort } from "./open-shifts-ui";
 import { LoadFailed, NoTeam, openShiftsStatus } from "./open-shifts-states";
 import { useOpenShifts } from "./use-open-shifts";
@@ -133,7 +134,7 @@ export function OpenShiftsBrowsePage() {
       ) : null}
 
       {state.status === "signed-out" ? (
-        <SignInAction label="Sign in to see open shifts" />
+        <WorkSignInNotice title="Sign in to see open shifts" testId="open-shifts-signed-out" />
       ) : state.status === "no-team" ? (
         <NoTeam />
       ) : state.status === "error" ? (

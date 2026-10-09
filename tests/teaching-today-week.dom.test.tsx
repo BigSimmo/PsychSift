@@ -434,7 +434,7 @@ describe("Today", () => {
     serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? apiError(401, "teaching_signed_out") : null));
     render(<TeachingToday demoMode={false} />);
     const moduleEl = await screen.findByTestId("teaching-state-signed-out");
-    expect(screen.queryByText("Demo · made-up people")).toBeNull();
+    expect(screen.queryByText("Example · made-up people")).toBeNull();
     fireEvent.click(within(moduleEl).getByRole("button", { name: "Sign in" }));
     expect(screen.getByTestId("sign-in-dialog")).toBeInTheDocument();
     // The one example data switch, not a Teaching-only cookie, and a refresh so server pages re-read.
@@ -448,7 +448,7 @@ describe("Today", () => {
   it("the sample is the same switch as demo mode: made-up people, no API call", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     render(<TeachingToday demoMode />);
-    expect(await screen.findByText("Demo · made-up people")).toBeInTheDocument();
+    expect(await screen.findByText("Example · made-up people")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

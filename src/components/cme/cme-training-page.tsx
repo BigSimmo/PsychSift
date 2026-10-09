@@ -673,7 +673,7 @@ export function CmeTrainingPage({
   return (
     <main data-testid="cme-training" data-mode-identity="cme" className="w-full">
       <CmeBandHeading
-        eyebrow={sampleView ? "Sample record" : rotation ? rotation.label : "Your own record"}
+        eyebrow={sampleView ? "Example record" : rotation ? rotation.label : "Your own record"}
         title="Training"
       />
       <WorkBody>

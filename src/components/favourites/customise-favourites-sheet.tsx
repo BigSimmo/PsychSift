@@ -83,7 +83,7 @@ export function CustomiseFavouritesSheet({
       open={open}
       onClose={onClose}
       resolveReturnFocusTarget={resolveReturnFocus}
-      title="Customise Favourites"
+      title="Customise favourites"
       description="Changes save as you make them."
       closeLabel="Close customise favourites"
       testId="customise-favourites-sheet"

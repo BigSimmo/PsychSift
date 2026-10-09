@@ -568,7 +568,7 @@ export const DEMO_CME_YEAR: CmeRequirementSet = {
   // as a real regulatory citation the app had made on its own authority — the one
   // thing this mode exists to never do.
   confirmedOn: "2026-01-08",
-  confirmedSource: "Example CPD standard (synthetic — not a real regulatory source)",
+  confirmedSource: "Example CPD standard (made up, not a real regulatory source)",
   totalHours: 50,
   requirements: [
     {

@@ -4,6 +4,7 @@ import { ChevronRight, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { TextField } from "@/components/ui/text-field";
@@ -57,7 +58,7 @@ function Fairness({ serviceId, overview }: { serviceId: string; overview: Roster
         </Button>
       </div>
     );
-  if (result?.key !== key) return <p role="status">Loading fairness counts…</p>;
+  if (result?.key !== key) return <WorkStateLoading label="Loading fairness counts…" />;
   const rows = fairnessCounts(result.assignments, { from: period.periodStart, to: period.periodEnd });
   return (
     <section className="grid gap-2">
@@ -238,20 +239,22 @@ export function RosterCoverTab({ serviceId, overview }: { serviceId: string; ove
   const [to, setTo] = useState(addDaysToDate(today, 13));
   if (!assignments.data || !maker.data) {
     const failed = assignments.status === "error" || maker.status === "error";
+    const message = assignments.message ?? maker.message;
+    if (!message) return <WorkStateLoading label="Loading cover…" />;
     return (
-      <div role={failed ? "alert" : "status"}>
-        <p>{assignments.message ?? maker.message ?? "Loading cover…"}</p>
-        {failed ? (
-          <Button
-            onClick={() => {
-              assignments.reload();
-              maker.reload();
-            }}
-          >
-            Try again
-          </Button>
-        ) : null}
-      </div>
+      <WorkStateNotice
+        kind="error"
+        title={message}
+        role={failed ? "alert" : "status"}
+        onRetry={
+          failed
+            ? () => {
+                assignments.reload();
+                maker.reload();
+              }
+            : undefined
+        }
+      />
     );
   }
   const shifts = assignments.data.assignments;

@@ -155,6 +155,10 @@ describe("topic structure", () => {
     expect(workHelpTopicForArea("rost").id).toBe("rost");
     expect(workHelpTopicForArea("call").id).toBe("call");
     expect(workHelpTopicForArea("day").id).toBe("day");
+    expect(workHelpTopicForArea("open").id).toBe("open-shifts");
+    expect(workHelpTopicForArea("manage").id).toBe("rost");
+    expect(workHelpTopicForArea("assess").id).toBe("assess");
+    expect(workHelpTopicForArea("admin").id).toBe("admin");
   });
 });
 
