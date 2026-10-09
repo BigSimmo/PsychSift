@@ -377,8 +377,8 @@ function toManagedRound(row: RoundRow, teamName: string, preferences: readonly P
       ? (row.allocation as RotationAllocation)
       : null;
   // Read as the round's rules say they should be, whatever the stored rows hold: only people still in the
-  // round, and only rotations still on offer. A round edit that saved but did not finish tidying its
-  // preference rows (see `savePreferenceChanges`) then reads exactly as if it had.
+  // round, and only rotations still on offer. An edit tidies the stored rows too (see `saveRound`), so this
+  // is a second guard, not the only one.
   const inRound = new Set(round.people.map((person) => person.id));
   const offered = new Set(round.rotations.map((rotation) => rotation.id));
   const healed = preferences
@@ -579,97 +579,36 @@ async function isActiveMember(client: AdminClient, serviceId: string, userId: st
   return data === true;
 }
 
-/** Save the round's own row, only if it is unchanged since it was read. */
-async function saveRound(client: AdminClient, row: RoundRow, next: ManagedRound): Promise<void> {
-  const { data, error } = await client
-    .from("roster_rotation_rounds")
-    .update(roundColumns(next))
-    .eq("id", row.id)
-    .eq("updated_at", row.updated_at)
-    .select("id");
-  if (error) throw databaseError(error);
-  if (!data?.length) throw CONFLICT();
-}
-
 /**
- * A doctor's save checked the round's rules against the round as it was read. If the administrator closed,
- * allocated, edited or deleted the round before the write landed, the write may break those rules (a ranking
- * arriving after the allocation ran). So the round is read again after the write: if it changed, the doctor's
- * row goes back to what it was (or away, if there was none) and the answer is the usual 409, so the doctor
- * reloads and sees the round as it now is. The undo only touches the row this request wrote, so a later save
- * by the same doctor is never undone.
+ * Save an administrator's change, only if neither the round nor any doctor's ranking moved since they were
+ * read (409 otherwise). One database transaction, so an allocation never leaves out a ranking saved after
+ * the read, and an edit's tidy-up of the rankings (`preferences`, the full set the edit keeps) cannot half
+ * finish or overwrite a newer ranking.
  */
-async function confirmRoundUnchanged(
+async function saveRound(
   client: AdminClient,
   row: RoundRow,
-  userId: string,
-  previous: PreferenceRow | null,
-  writtenAt: string,
+  seen: readonly PreferenceRow[],
+  next: ManagedRound,
+  preferences: readonly RotationPreferenceRecord[] | null,
 ): Promise<void> {
-  const { data, error } = await client
-    .from("roster_rotation_rounds")
-    .select("updated_at,status")
-    .eq("id", row.id)
-    .maybeSingle();
+  const columns = roundColumns(next);
+  const { data, error } = await client.rpc("roster_rotation_save_round", {
+    p_round_id: row.id,
+    p_round_updated_at: row.updated_at,
+    p_seen_preferences: seen.map((pref) => ({ user_id: pref.user_id, updated_at: pref.updated_at })),
+    p_status: columns.status,
+    p_setup: columns.setup,
+    p_locks: [...columns.locks],
+    p_allocation: columns.allocation,
+    p_admin_name: columns.admin_name,
+    p_version: columns.version,
+    p_opened_at: columns.opened_at,
+    p_published_at: columns.published_at,
+    p_preferences: preferences && preferences.map((pref) => ({ user_id: pref.personId, ranking: [...pref.ranking] })),
+  });
   if (error) throw databaseError(error);
-  const current = data as { updated_at: string; status: string } | null;
-  if (current && current.updated_at === row.updated_at && current.status === row.status) return;
-  if (current) {
-    const { error: undoError } = previous
-      ? await client
-          .from("roster_rotation_preferences")
-          .update({
-            ranking: [...toPreference(previous).ranking],
-            submitted_at: previous.submitted_at,
-            updated_at: previous.updated_at,
-          })
-          .eq("round_id", row.id)
-          .eq("user_id", userId)
-          .eq("updated_at", writtenAt)
-      : await client
-          .from("roster_rotation_preferences")
-          .delete()
-          .eq("round_id", row.id)
-          .eq("user_id", userId)
-          .eq("updated_at", writtenAt);
-    if (undoError) throw databaseError(undoError);
-  }
-  // A deleted round took the row with it (the preferences cascade), so there is nothing to undo.
-  throw CONFLICT();
-}
-
-/**
- * After an edit, the preference rows the rules changed: people removed, choices no longer on offer. It runs
- * after the round itself is saved, so it can fail on its own. Reads never depend on it (`toManagedRound`
- * reads every row as the rules say it should be), and running it again is safe: `before` is the stored rows
- * as they are, so a second run makes only the changes the first one did not finish.
- */
-async function savePreferenceChanges(
-  client: AdminClient,
-  roundId: string,
-  before: readonly RotationPreferenceRecord[],
-  after: readonly RotationPreferenceRecord[],
-): Promise<void> {
-  const kept = new Map(after.map((pref) => [pref.personId, pref]));
-  const removed = before.filter((pref) => !kept.has(pref.personId)).map((pref) => pref.personId);
-  if (removed.length) {
-    const { error } = await client
-      .from("roster_rotation_preferences")
-      .delete()
-      .eq("round_id", roundId)
-      .in("user_id", removed);
-    if (error) throw databaseError(error);
-  }
-  for (const pref of before) {
-    const next = kept.get(pref.personId);
-    if (!next || next.ranking.join("\n") === pref.ranking.join("\n")) continue;
-    const { error } = await client
-      .from("roster_rotation_preferences")
-      .update({ ranking: [...next.ranking] })
-      .eq("round_id", roundId)
-      .eq("user_id", pref.personId);
-    if (error) throw databaseError(error);
-  }
+  if (data !== true) throw CONFLICT();
 }
 
 function applyManagerAction(managed: ManagedRound, command: RoundCommand, now: Date): ManagedRound {
@@ -718,20 +657,21 @@ export async function runRoundCommand(
         : withdrawPreference(managed, userId, now);
     const record = next.preferences.find((pref) => pref.personId === userId);
     if (!record) return { ok: true };
-    // TODO(rotations migration): move this write and its check into one SQL
-    // function that locks the round row, so a close cannot land in between.
-    const { error } = await client.from("roster_rotation_preferences").upsert(
-      {
-        round_id: row.id,
-        user_id: userId,
-        ranking: [...record.ranking],
-        submitted_at: record.submittedAt,
-        updated_at: record.updatedAt,
-      },
-      { onConflict: "round_id,user_id" },
-    );
+    // The rules above were checked against the round as it was read. The write lands only while the round
+    // is still that version, under a lock on the round row, so a close, allocation or edit by the
+    // administrator cannot slip in between. If the round moved on, nothing is written and the doctor
+    // reloads (409).
+    const { data, error } = await client.rpc("roster_rotation_save_preference", {
+      p_round_id: row.id,
+      p_user_id: userId,
+      p_round_updated_at: row.updated_at,
+      p_round_status: row.status,
+      p_ranking: [...record.ranking],
+      p_submitted_at: record.submittedAt,
+      p_updated_at: record.updatedAt,
+    });
     if (error) throw databaseError(error);
-    await confirmRoundUnchanged(client, row, userId, own[0] ?? null, record.updatedAt);
+    if (data !== true) throw CONFLICT();
     return { ok: true };
   }
 
@@ -757,26 +697,13 @@ export async function runRoundCommand(
 
   const preferences = await loadPreferences(client, [row.id]);
   const managed = toManagedRound(row, await teamNameOf(client, row.service_id), preferences);
-  // The rows as stored, not as read: what `savePreferenceChanges` tidies after an edit.
-  const stored = preferences.map(toPreference);
   const trusted: RoundCommand =
     command.action === "edit"
       ? { ...command, setup: await withTeamNames(client, row.service_id, command.setup, managed.round.people) }
       : command;
   const next = applyManagerAction(managed, trusted, now);
-  await saveRound(client, row, next);
-  if (trusted.action === "edit") {
-    try {
-      await savePreferenceChanges(client, row.id, stored, next.preferences);
-    } catch {
-      // The round is saved and reads correctly already. Saving the same edit again finishes the tidy-up.
-      throw new PublicApiError(
-        "The round was saved, but tidying the team's rankings did not finish. Save again to finish it.",
-        503,
-        { code: "rotations_edit_incomplete" },
-      );
-    }
-  }
+  // Only an edit can change who is in the round or what is on offer, so only an edit tidies the rankings.
+  await saveRound(client, row, preferences, next, trusted.action === "edit" ? next.preferences : null);
   return { ok: true };
 }
 

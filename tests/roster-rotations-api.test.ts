@@ -26,10 +26,8 @@ const mocks = vi.hoisted(() => ({
     missing: false,
     clock: 0,
     beforeUpdate: null as null | (() => void),
-    /** Runs right after a preference upsert lands, to stand in for an administrator acting mid-request. */
-    afterUpsert: null as null | (() => void),
-    /** How many preference updates or deletes fail before they start working again. */
-    failPreferenceWrites: 0,
+    /** Runs as a preference save reaches the database, to stand in for an administrator acting mid-request. */
+    beforeSave: null as null | (() => void),
   },
 }));
 
@@ -76,7 +74,67 @@ function fakeClient() {
         }),
       },
     },
-    async rpc(name: string, args: { p_service_id: string; p_user_id: string }) {
+    async rpc(name: string, args: Record<string, unknown>) {
+      if (name === "roster_rotation_save_preference") {
+        if (mocks.state.missing) return { data: null, error: { code: "PGRST202", message: "no function" } };
+        mocks.state.beforeSave?.();
+        const round = (tables.roster_rotation_rounds ?? []).find((r) => r.id === args.p_round_id);
+        if (
+          !round ||
+          round.updated_at !== args.p_round_updated_at ||
+          round.status !== args.p_round_status ||
+          Date.parse((round.setup as { closesAt: string }).closesAt) <= Date.now()
+        ) {
+          return { data: false, error: null };
+        }
+        const rows = (tables.roster_rotation_preferences ??= []);
+        const next = {
+          round_id: args.p_round_id,
+          user_id: args.p_user_id,
+          ranking: args.p_ranking,
+          submitted_at: args.p_submitted_at,
+          updated_at: args.p_updated_at,
+        };
+        const existing = rows.find((row) => row.round_id === args.p_round_id && row.user_id === args.p_user_id);
+        if (existing) Object.assign(existing, next);
+        else rows.push(next);
+        return { data: true, error: null };
+      }
+      if (name === "roster_rotation_save_round") {
+        if (mocks.state.missing) return { data: null, error: { code: "PGRST202", message: "no function" } };
+        mocks.state.beforeUpdate?.();
+        const round = (tables.roster_rotation_rounds ?? []).find((r) => r.id === args.p_round_id);
+        if (!round || round.updated_at !== args.p_round_updated_at) return { data: false, error: null };
+        // The rankings must be exactly the ones the server read: same people, each unchanged since.
+        const stored = (tables.roster_rotation_preferences ?? []).filter((row) => row.round_id === args.p_round_id);
+        const seen = args.p_seen_preferences as Array<{ user_id: string; updated_at: string }>;
+        const unchanged =
+          stored.length === seen.length &&
+          seen.every((s) => stored.some((row) => row.user_id === s.user_id && row.updated_at === s.updated_at));
+        if (!unchanged) return { data: false, error: null };
+        Object.assign(round, {
+          status: args.p_status,
+          setup: args.p_setup,
+          locks: args.p_locks,
+          allocation: args.p_allocation,
+          admin_name: args.p_admin_name,
+          version: args.p_version,
+          opened_at: args.p_opened_at,
+          published_at: args.p_published_at,
+          updated_at: tick(),
+        });
+        const kept = args.p_preferences as Array<{ user_id: string; ranking: string[] }> | null;
+        if (kept) {
+          tables.roster_rotation_preferences = (tables.roster_rotation_preferences ?? []).filter(
+            (row) => row.round_id !== args.p_round_id || kept.some((k) => k.user_id === row.user_id),
+          );
+          for (const row of tables.roster_rotation_preferences) {
+            const next = kept.find((k) => row.round_id === args.p_round_id && k.user_id === row.user_id);
+            if (next) row.ranking = next.ranking;
+          }
+        }
+        return { data: true, error: null };
+      }
       const active = (tables.on_call_service_members ?? []).some(
         (m) => m.service_id === args.p_service_id && m.user_id === args.p_user_id && m.revoked_at === null,
       );
@@ -155,16 +213,7 @@ function fakeClient() {
           const existing = rows.find((row) => row.round_id === payload.round_id && row.user_id === payload.user_id);
           if (existing) Object.assign(existing, payload);
           else rows.push({ ...payload });
-          mocks.state.afterUpsert?.();
           return { data: null, error: null };
-        }
-        if (
-          (op === "update" || op === "delete") &&
-          table === "roster_rotation_preferences" &&
-          mocks.state.failPreferenceWrites > 0
-        ) {
-          mocks.state.failPreferenceWrites -= 1;
-          return { data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } };
         }
         if (op === "update") {
           mocks.state.beforeUpdate?.();
@@ -288,8 +337,7 @@ beforeEach(() => {
   mocks.state.missing = false;
   mocks.state.clock = 0;
   mocks.state.beforeUpdate = null;
-  mocks.state.afterUpsert = null;
-  mocks.state.failPreferenceWrites = 0;
+  mocks.state.beforeSave = null;
   as(DOCTOR);
   seed();
 });
@@ -598,7 +646,7 @@ describe("rotation rounds API: changes that cross mid-request", () => {
     rounds()[0].updated_at = "2026-10-09T01:59:59.000Z";
   };
 
-  it("puts a doctor's ranking back when the administrator closed the round while it was saving", async () => {
+  it("keeps a doctor's earlier ranking when the administrator closed the round while it was saving", async () => {
     preferences().push({
       round_id: ROUND,
       user_id: DOCTOR,
@@ -606,7 +654,7 @@ describe("rotation rounds API: changes that cross mid-request", () => {
       submitted_at: null,
       updated_at: "2026-10-05T00:00:00.000Z",
     });
-    mocks.state.afterUpsert = closeTheRound;
+    mocks.state.beforeSave = closeTheRound;
     const response = await POST(post({ action: "save-preference", ranking: ["cl", "ad"], submit: true }), context());
     expect(response.status).toBe(409);
     expect((await response.json()).code).toBe("rotations_conflict");
@@ -615,8 +663,8 @@ describe("rotation rounds API: changes that cross mid-request", () => {
     ]);
   });
 
-  it("removes a first ranking that landed after the round was allocated", async () => {
-    mocks.state.afterUpsert = closeTheRound;
+  it("writes no first ranking once the round was allocated mid-request", async () => {
+    mocks.state.beforeSave = closeTheRound;
     const response = await POST(post({ action: "save-preference", ranking: ["cl", "ad"], submit: true }), context());
     expect(response.status).toBe(409);
     expect(preferences()).toEqual([]);
@@ -628,7 +676,30 @@ describe("rotation rounds API: changes that cross mid-request", () => {
     expect(preferences()).toEqual([expect.objectContaining({ user_id: DOCTOR, ranking: ["cl", "ad"] })]);
   });
 
-  it("says when an edit saved but its tidy-up did not, reads correctly meanwhile, and finishes on a second save", async () => {
+  // A doctor's save that commits after the administrator read the round, but before the administrator saved.
+  const doctorSavesMeanwhile = (ranking: string[]) => () => {
+    const mine = preferences().find((row) => row.user_id === DOCTOR);
+    if (mine) Object.assign(mine, { ranking, updated_at: "2026-10-09T01:59:30.000Z" });
+    else
+      preferences().push({
+        round_id: ROUND,
+        user_id: DOCTOR,
+        ranking,
+        submitted_at: "2026-10-09T01:59:30.000Z",
+        updated_at: "2026-10-09T01:59:30.000Z",
+      });
+  };
+
+  it("never allocates without a ranking a doctor saved after the administrator read the round", async () => {
+    as(MANAGER);
+    mocks.state.beforeUpdate = doctorSavesMeanwhile(["ad", "cl"]);
+    const response = await POST(post({ action: "allocate" }), context());
+    expect(response.status).toBe(409);
+    expect(rounds()[0]).toMatchObject({ status: "open", allocation: null });
+    expect(preferences()).toEqual([expect.objectContaining({ user_id: DOCTOR, ranking: ["ad", "cl"] })]);
+  });
+
+  it("never lets an edit's tidy-up overwrite a ranking saved after the administrator read it", async () => {
     as(MANAGER);
     preferences().push({
       round_id: ROUND,
@@ -637,23 +708,36 @@ describe("rotation rounds API: changes that cross mid-request", () => {
       submitted_at: "2026-10-05T00:00:00.000Z",
       updated_at: "2026-10-05T00:00:00.000Z",
     });
-    const edit = { action: "edit", setup: setup({ people: [setup().people[0]] }) };
-    mocks.state.failPreferenceWrites = 1;
-    const first = await POST(post(edit), context());
-    expect(first.status).toBe(503);
-    expect((await first.json()).code).toBe("rotations_edit_incomplete");
-    expect((rounds()[0].setup as RoundSetup).people).toHaveLength(1);
-    expect(preferences()).toHaveLength(1);
-    // Meanwhile the round reads as the edit meant: the removed doctor's ranking is not counted.
-    const managed = (await (await GET(get())).json()).managed[0];
-    expect(managed.preferences).toEqual([]);
+    const rotations = [setup().rotations[1]];
+    mocks.state.beforeUpdate = doctorSavesMeanwhile(["ad"]);
+    const response = await POST(post({ action: "edit", setup: setup({ rotations, minRanked: 1 }) }), context());
+    expect(response.status).toBe(409);
+    expect((rounds()[0].setup as RoundSetup).rotations).toHaveLength(2);
+    expect(preferences()).toEqual([expect.objectContaining({ user_id: DOCTOR, ranking: ["ad"] })]);
+  });
 
-    const again = await POST(post(edit), context());
-    expect(again.status).toBe(200);
+  it("tidies the rankings in the same save as the edit", async () => {
+    as(MANAGER);
+    preferences().push({
+      round_id: ROUND,
+      user_id: DOCTOR,
+      ranking: ["cl", "ad"],
+      submitted_at: "2026-10-05T00:00:00.000Z",
+      updated_at: "2026-10-05T00:00:00.000Z",
+    });
+    const rotations = [setup().rotations[1]];
+    expect((await POST(post({ action: "edit", setup: setup({ rotations, minRanked: 1 }) }), context())).status).toBe(
+      200,
+    );
+    expect((rounds()[0].setup as RoundSetup).rotations).toEqual(rotations);
+    expect(preferences()).toEqual([expect.objectContaining({ user_id: DOCTOR, ranking: ["ad"] })]);
+  });
+
+  it("refuses a ranking that reaches the database after the closing time", async () => {
+    mocks.state.beforeSave = () => vi.setSystemTime(new Date("2026-12-01T00:00:01Z"));
+    const response = await POST(post({ action: "save-preference", ranking: ["cl", "ad"], submit: true }), context());
+    expect(response.status).toBe(409);
     expect(preferences()).toEqual([]);
-    const third = await POST(post(edit), context());
-    expect(third.status).toBe(200);
-    expect((rounds()[0].setup as RoundSetup).people).toHaveLength(1);
   });
 });
 
