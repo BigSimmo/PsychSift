@@ -76,13 +76,17 @@ jobs:
             npm run test:cross-tenant:staging
           fi
 
+      # On schedule, `timeout 15m` can SIGTERM the harness before writeEvidence runs, so the
+      # evidence file may be absent. Warn (not error) then: continue-on-error on the harness would
+      # otherwise be undone by this upload failing the job and still blocking Railway deploys.
+      # Dispatched runs stay strict — a deliberate proof must leave evidence.
       - name: Upload tenancy evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: staging-tenancy-evidence-${{ github.run_id }}
           path: artifacts/staging-tenancy-evidence.json
-          if-no-files-found: error
+          if-no-files-found: ${{ github.event_name == 'schedule' && 'warn' || 'error' }}
           retention-days: 14
 
   # The harness failed on every scheduled run from at least 2026-09-21 to 2026-09-25, each time on

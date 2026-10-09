@@ -53,4 +53,15 @@ describe("staging tenancy workflow", () => {
     );
     expect(workflow.match(/continue-on-error:/g)).toHaveLength(1);
   });
+
+  // A hung scheduled harness must die as a failed step (continue-on-error), not a job cancel.
+  it("caps a scheduled harness below the job timeout so a hang stays a soft step failure", () => {
+    expect(workflow).toMatch(/timeout-minutes:\s*45/);
+    expect(workflow).toContain("timeout 15m npm run test:cross-tenant:staging");
+  });
+
+  // timeout 15m can SIGTERM before writeEvidence; missing evidence must not re-fail the schedule.
+  it("warns on missing evidence for schedule only, and stays strict on dispatch", () => {
+    expect(workflow).toContain("if-no-files-found: ${{ github.event_name == 'schedule' && 'warn' || 'error' }}");
+  });
 });
