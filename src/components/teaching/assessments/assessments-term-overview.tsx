@@ -91,7 +91,7 @@ import { TERM_TRACKER_SOURCES } from "@/lib/teaching/term-tracker";
 
 /** The overview keeps whoever opened it: a supervisor, or the DCT from their own home. */
 const asRole = (role: ScreenProps["role"]) => ({ as: role === "dct" ? "dct" : "supervisor" });
-const CLA_URL = TERM_TRACKER_SOURCES.pmcwaCla;
+const CLA_URL = TERM_TRACKER_SOURCES.claSignIn;
 
 const TONE: Record<CellStatus, PillTone> = { done: "ok", due: "accent", overdue: "bad", not_yet: "neutral" };
 
@@ -890,8 +890,8 @@ function DoctorDetail({ s, doctorId, role, dct }: ScreenProps & { doctorId: stri
             "inline-flex min-h-12 items-center justify-between gap-2 rounded-lg text-sm font-medium text-[color:var(--mode-identity)] no-underline",
           )}
         >
-          {/* The link is PMCWA's page about CLA, not CLA itself (site audit M7). */}
-          <span>About CLA (PMCWA)</span>
+          {/* The link is CLA's own sign-in page, so it is named for where it goes (site audit M7). */}
+          <span>Open CLA</span>
           <span className="inline-flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
             Opens outside PsychSift
             <ExternalLink aria-hidden="true" className="size-icon-xs" />

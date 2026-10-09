@@ -42,11 +42,13 @@ export const ABSENCE_RULE = `If you're away for more than ${unit(10, "working da
 /**
  * PGY1 rules shown as plain lines beside the sample's own meters.
  * - Different specialties: [MBA-RS] "a minimum of four terms … in different specialties".
- * - Clinical team: [TE3] "embedded in a clinical team for at least half of each year".
+ * - Clinical team: [TE3] "Prevocational doctors should be embedded in a clinical team for at least half of each
+ *   year". An admission or short-stay ward with multiple supervisors "would not normally be considered being part
+ *   of a clinical team".
  */
 export const PGY1_TERM_LINES: readonly string[] = [
-  "Your terms are in different specialties.",
-  "You're part of a clinical team for at least half the year.",
+  `At least ${unit(4, "terms")} in different specialties.`,
+  "Part of a clinical team for at least half the year. An admission or short-stay ward with several supervisors would not normally count.",
 ];
 
 /** [TE3]: each term is accredited for "1 or 2" categories. [MBA-RS]: "Up to two types can be counted per term". */

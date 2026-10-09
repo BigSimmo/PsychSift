@@ -41,13 +41,15 @@ export function YearEnd({ grade }: { grade: "PGY1" | "PGY2" }) {
         ) : (
           <StepRow state="lock" title="Certificate of completion" detail={PGY2_CERTIFICATE} />
         )}
+        {/* [CLA-GL]: the MEU administrator generates the Transcript of Learning at the end of the year. */}
+        <StepRow state="lock" title="Transcript of learning" detail={TRANSCRIPT_LINE} />
       </List>
       <List label="What the panel can decide">
         {PANEL_OUTCOMES.map((line) => (
           <RuleLine key={line}>{line}</RuleLine>
         ))}
       </List>
-      <SmallPrint>{grade === "PGY1" ? `${PGY1_TIME_LIMIT} ${TRANSCRIPT_LINE}` : TRANSCRIPT_LINE}</SmallPrint>
+      {grade === "PGY1" ? <SmallPrint>{PGY1_TIME_LIMIT}</SmallPrint> : null}
     </section>
   );
 }

@@ -299,6 +299,28 @@ export function caseComplexityName(id: CaseComplexity): string {
 }
 
 /**
+ * How the assessor knows. The AMC paper EPA forms [EPA1p] [EPA4p] ask the assessor to declare "The patient(s) is
+ * known to me and I have directly observed some part of the clinical interaction", or that they spoke to a team
+ * member who observed it. The full form and the inbox's quick answer both ask it before an EPA can go.
+ */
+export type EpaObserved = "direct" | "team";
+export const EPA_OBSERVED: readonly { id: EpaObserved; title: string; detail?: string }[] = [
+  { id: "direct", title: "I directly observed some part of it" },
+  {
+    id: "team",
+    title: "A team member who was there told me",
+    detail: "Name their role in your feedback.",
+  },
+];
+
+/**
+ * Where to find the MEU, for the screens that say "ask your MEU". No hospital's contacts are invented: every WA
+ * hospital has its own Medical Education Unit. Shown once on a screen, not on every line that names the MEU.
+ */
+export const MEU_HOW_TO_REACH =
+  "Your Medical Education Unit (MEU): find it on your hospital's intranet, or ask your term supervisor.";
+
+/**
  * Help and words. Sources (work-mode-build/assessments-cla-sources-check.md): PMCWA accredits prevocational posts
  * in WA (Medical Board list of postgraduate medical councils, §12). WA Health uses the title Director of Clinical
  * Training (§12, owner decision 9 Oct 2026). The primary clinical supervisor is "the consultant responsible for
@@ -316,6 +338,12 @@ export const GLOSSARY: readonly [string, string][] = [
   ],
   ["MEO", "Medical Education Officer. Works in the MEU, sets up terms and tracks forms."],
   ["Term supervisor", "Runs your term orientation and assessment, and signs your end-of-term assessment."],
+  // AMC Section 3A: "a mandatory discussion between the prevocational doctor and term supervisor" that sets the
+  // learning objectives and the term's assessments. CLA calls its form the BOTD [CLA-GL].
+  [
+    "BOTD",
+    "Beginning-of-term discussion. A required talk with your term supervisor at the start of each term. It sets your learning goals and the term's assessments.",
+  ],
   [
     "Primary clinical supervisor",
     "The consultant responsible for managing your patients. This may change during the term. Usually completes your mid-term assessment.",

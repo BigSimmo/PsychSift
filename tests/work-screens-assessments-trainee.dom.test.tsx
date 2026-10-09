@@ -54,6 +54,9 @@ describe("supervisor's view of a trainee", () => {
       target: { value: "Calm, clear escalation." },
     });
     expect(within(sheet).queryByTestId("assessments-trainee-patient-detail")).toBeNull();
+    // The assessor's declaration, as in the inbox [EPA1p]: Send waits for it.
+    expect(send).toBeDisabled();
+    fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
     fireEvent.click(send);
     expect(await screen.findByText(new RegExp(`Sending to ${escape(doctorName("mia"))} in 10`))).toBeInTheDocument();
     expect(screen.queryByTestId("assessments-trainee-request-mia-epa-2")).toBeNull();
