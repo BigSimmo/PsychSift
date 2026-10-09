@@ -26,6 +26,7 @@ import {
   myBooking,
   myBookings,
   ordinal,
+  organiserCourses,
   placesLeft,
   placesWords,
   validateCourseDraft,
@@ -328,6 +329,19 @@ describe("cancelMyBooking", () => {
     const result = cancelMyBooking(s, "c");
     expect(result?.promoted).toBeNull();
     expect(placesLeft(result!.state, c)).toBe(2);
+  });
+
+  it("refuses from the course day on, so nobody is moved onto a started course", () => {
+    const c = course("c", { capacity: 1, date: TODAY });
+    const s = state(
+      [c],
+      [
+        booking("me", "c", "booked", "2026-10-01T00:00:00Z", { self: true }),
+        booking("w", "c", "waitlisted", "2026-10-02T00:00:00Z"),
+      ],
+    );
+    expect(cancelMyBooking(s, "c", { today: TODAY })).toBeNull();
+    expect(cancelMyBooking(s, "c", { today: "2026-10-07" })?.promoted?.id).toBe("w");
   });
 
   it("does nothing without a live booking, or for an attended one", () => {
@@ -696,6 +710,8 @@ describe("myBookings", () => {
     expect(mine.earlier.map((e) => [e.course.id, e.status])).toEqual([
       ["course-cancelled", "course-cancelled"],
       ["dropped", "cancelled"],
+      // Still waiting when the day came: kept under Earlier rather than vanishing.
+      ["past-waiting", "waitlisted"],
       ["past", "attended"],
     ]);
   });
@@ -850,5 +866,18 @@ describe("example bookings dataset", () => {
       const texts = [c.title, c.about, c.location, c.organiser, c.renewal ?? "", c.change?.summary ?? ""];
       for (const text of texts) expect(looksLikePatientDetail(text), text).toBe(false);
     }
+  });
+});
+
+describe("organiserCourses", () => {
+  it("leaves a deleted draft out of the history but keeps a cancelled posted course", () => {
+    const posted = course("posted", { date: "2026-10-22" });
+    const draft = course("draft", { status: "draft", date: "2026-10-23" });
+    let s = state([posted, draft]);
+    s = cancelCourse(s, "posted", { at: "2026-10-08T00:00:00Z" })!.state;
+    s = cancelCourse(s, "draft", { at: "2026-10-08T00:00:00Z" })!.state;
+    const lists = organiserCourses(s, TODAY);
+    expect(lists.drafts).toEqual([]);
+    expect(lists.past.map((c) => c.id)).toEqual(["posted"]);
   });
 });

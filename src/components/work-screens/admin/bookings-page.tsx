@@ -50,6 +50,7 @@ import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import {
   bookingCalendarEvents,
+  bookingCalendarId,
   COURSE_KIND_LABELS,
   courseAvailability,
   courseById,
@@ -385,7 +386,9 @@ function MyBookingsView({ state, today }: { readonly state: BookingsState; reado
                     ? "You cancelled"
                     : status === "attended"
                       ? "Attended"
-                      : "Booked";
+                      : status === "waitlisted"
+                        ? "Still on the waitlist, no place came up"
+                        : "Booked";
               return (
                 <WorkDateRow
                   key={course.id}
@@ -395,7 +398,11 @@ function MyBookingsView({ state, today }: { readonly state: BookingsState; reado
                   sub={words}
                   end={
                     <WorkTag tone="neutral">
-                      {status === "attended" || status === "booked" ? "Done" : "Cancelled"}
+                      {status === "attended" || status === "booked"
+                        ? "Done"
+                        : status === "waitlisted"
+                          ? "No place"
+                          : "Cancelled"}
                     </WorkTag>
                   }
                   href={ADMIN_WORK_SCREEN_HREFS.bookingCourse(course.id)}
@@ -505,7 +512,7 @@ function CourseDetail({
   const addToPhone = () => {
     if (!guardExampleAction(examples, "export")) return;
     const events = bookingCalendarEvents(state, (id) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(id)).filter(
-      (event) => event.title === course.title && event.date === course.date,
+      (event) => event.id === bookingCalendarId(course.id),
     );
     downloadTextFile(toIcs(events, { name: course.title }), icsFileName(course.title), "text/calendar;charset=utf-8");
   };

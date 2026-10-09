@@ -38,7 +38,10 @@ export const OTHER_DOCTOR_LABEL = "Another doctor";
 const BOOKINGS_ERRORS: Record<string, { status: number; message: string }> = {
   work_bookings_auth_required: { status: 401, message: "Sign in to use bookings." },
   work_bookings_invalid_request: { status: 400, message: "Check the details and try again." },
-  work_bookings_role_denied: { status: 403, message: "Only the course organiser or an administrator can do that." },
+  work_bookings_role_denied: {
+    status: 403,
+    message: "Only the course organiser, a manager of its team or an administrator can do that.",
+  },
   work_bookings_not_found: { status: 404, message: "That course has changed. Refresh and try again." },
   work_bookings_already: { status: 409, message: "You already have a place or are on the waitlist." },
   work_bookings_course_cancelled: { status: 409, message: "This course was cancelled." },

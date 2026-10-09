@@ -176,7 +176,7 @@ export interface MyBookings {
   readonly waitlisted: readonly BookingCourse[];
   /** Booked courses the organiser changed or cancelled, newest change first. */
   readonly changed: readonly BookingCourse[];
-  /** Past, attended or cancelled, newest first. */
+  /** Past (attended, cancelled, or still waiting when the day came), newest first. */
   readonly earlier: readonly { readonly course: BookingCourse; readonly status: BookingStatus | "course-cancelled" }[];
 }
 
@@ -200,7 +200,7 @@ export function myBookings(state: BookingsState, today: string): MyBookings {
       booked.push(course);
       if (course.change) changed.push(course);
     } else if (ahead && mine.status === "waitlisted") waitlisted.push(course);
-    else if (!ahead && mine.status !== "waitlisted") earlier.push({ course, status: mine.status });
+    else if (!ahead) earlier.push({ course, status: mine.status });
     else if (mine.status === "cancelled") earlier.push({ course, status: "cancelled" });
   }
   booked.sort(bySchedule);
@@ -265,14 +265,19 @@ export function bookPlace(
 
 /**
  * Cancel the reader's booking or leave the waitlist. A freed place goes to the
- * first person waiting, whose entry then goes into their calendar.
+ * first person waiting, whose entry then goes into their calendar. From the course
+ * day on (`today`, when given) it refuses, as the saved version does, so nobody is
+ * moved onto a course that has started.
  */
 export function cancelMyBooking(
   state: BookingsState,
   courseId: string,
+  options: { readonly today?: string } = {},
 ): { readonly state: BookingsState; readonly promoted: CourseBooking | null } | null {
   const mine = myBooking(state, courseId);
   if (!mine || mine.status === "attended") return null;
+  const course = courseById(state, courseId);
+  if (options.today && course && course.date <= options.today) return null;
   // Leaving the waitlist drops the row: the reader never held a place, so their calendar never had
   // the course, and a "cancelled" row would put a struck-out entry there it never needed.
   if (mine.status === "waitlisted") {
@@ -517,12 +522,17 @@ export function cancelCourse(
   };
 }
 
-/** Courses an organiser manages, upcoming first then past, drafts at the top. */
+/**
+ * Courses an organiser manages, upcoming first then past, drafts at the top. A
+ * deleted draft (cancelled before it was ever posted, so it carries no change
+ * note) was never seen by anyone and is left out of the history.
+ */
 export function organiserCourses(state: BookingsState, today: string) {
   const drafts = state.courses.filter((course) => course.status === "draft").sort(bySchedule);
   const upcoming = state.courses.filter((course) => course.status === "posted" && course.date > today).sort(bySchedule);
   const past = state.courses
     .filter((course) => course.status !== "draft" && !(course.status === "posted" && course.date > today))
+    .filter((course) => !(course.status === "cancelled" && !course.change))
     .sort((a, b) => bySchedule(b, a));
   const full = upcoming.filter((course) => placesLeft(state, course) === 0 && waitlistFor(state, course.id).length > 0);
   return { drafts, upcoming, past, full };

@@ -38,8 +38,9 @@ vi.mock("@/components/account-data-provider", () => ({
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({ AccountSetupDialog: () => null }));
 
 // Signed in, not a brand-new account: the example data switch follows only what the test sets.
+const auth = vi.hoisted(() => ({ session: null as null | { user: { id: string } } }));
 vi.mock("@/lib/supabase/client", () => ({
-  useAuthSession: () => ({ status: "authenticated", session: null, authEpoch: 0 }),
+  useAuthSession: () => ({ status: "authenticated", session: auth.session, authEpoch: 0 }),
 }));
 
 import { AdminBookingsPage } from "@/components/work-screens/admin/bookings-page";
@@ -63,6 +64,7 @@ function calendarEntry(courseId: string) {
 }
 
 beforeEach(() => {
+  auth.session = null;
   window.localStorage.clear();
   resetExampleDataForTests();
   resetBookings();
@@ -303,6 +305,30 @@ describe("Saved courses (example data off, signed in)", () => {
 
   beforeEach(() => {
     act(() => setExampleDataOn(false));
+  });
+
+  it("shows loading, not the last account's courses, while another account's read is on its way", async () => {
+    auth.session = { user: { id: "account-a" } };
+    let second: (() => void) | null = null;
+    let reads = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      reads += 1;
+      if (reads === 1) return Response.json(read({ booked: true }));
+      await new Promise<void>((resolve) => (second = resolve));
+      return Response.json(read());
+    });
+    const view = withToasts(<AdminBookingsPage />);
+    expect(await screen.findByText("Grand round", undefined, LOAD)).toBeTruthy();
+
+    auth.session = { user: { id: "account-b" } };
+    view.rerender(
+      <ToastProvider>
+        <AdminBookingsPage />
+      </ToastProvider>,
+    );
+    expect(screen.queryByText("Grand round")).toBeNull();
+    await act(async () => second?.());
+    expect(await screen.findByText("Grand round", undefined, LOAD)).toBeTruthy();
   });
 
   it("books through the server and shows what it saved, with no Undo", async () => {

@@ -87,8 +87,14 @@ type Loaded =
 export function useSavedBookings(enabled = true): UseSavedBookings {
   const { zone } = useWorkTimeZone();
   const online = useOnlineStatus();
-  const headers = useAuthHeadersIfAvailable();
-  const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
+  const { headers, account } = useAuthIfAvailable();
+  // Each read is kept with the account it was for, so after a switch of account the
+  // pages show loading, never the last account's bookings, until the new read lands.
+  const [read, setRead] = useState<{ readonly account: string; readonly loaded: Loaded }>({
+    account,
+    loaded: { status: "loading" },
+  });
+  const loaded: Loaded = read.account === account ? read.loaded : { status: "loading" };
   // Only the newest read may land, so a slow answer cannot overwrite a newer one.
   const generation = useRef(0);
 
@@ -98,11 +104,11 @@ export function useSavedBookings(enabled = true): UseSavedBookings {
       const response = await fetch(BOOKINGS_URL, { cache: "no-store", headers });
       const body: unknown = response.ok ? await response.json() : null;
       if (mine !== generation.current) return;
-      setLoaded(response.status === 401 ? { status: "signed-out" } : readAnswer(body));
+      setRead({ account, loaded: response.status === 401 ? { status: "signed-out" } : readAnswer(body) });
     } catch {
-      if (mine === generation.current) setLoaded({ status: "error" });
+      if (mine === generation.current) setRead({ account, loaded: { status: "error" } });
     }
-  }, [headers]);
+  }, [headers, account]);
 
   useEffect(() => {
     if (!enabled) {
@@ -202,12 +208,14 @@ function refusal<T>(status: number, body: Record<string, unknown> | null): Saved
 
 const NO_HEADERS: Readonly<Record<string, string>> = {};
 
-function useAuthHeadersIfAvailable(): Readonly<Record<string, string>> {
+/** The request headers and whose account they are ("" signed out or outside the provider). */
+function useAuthIfAvailable(): { readonly headers: Readonly<Record<string, string>>; readonly account: string } {
   try {
-    return useAuthSession().authorizationHeader ?? NO_HEADERS;
+    const auth = useAuthSession();
+    return { headers: auth.authorizationHeader ?? NO_HEADERS, account: auth.session?.user?.id ?? "" };
   } catch (error) {
     if (error instanceof Error && error.message === "useAuthSession must be used within AuthProvider.")
-      return NO_HEADERS;
+      return { headers: NO_HEADERS, account: "" };
     throw error;
   }
 }

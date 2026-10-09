@@ -160,7 +160,7 @@ export function useBookings({ enabled = true }: { readonly enabled?: boolean } =
         }));
       if (!exampleState) return NOT_READY;
       const before = exampleState.bookings.find((row) => row.courseId === courseId && row.self && live(row.status));
-      const result = cancelMyBooking(exampleState, courseId);
+      const result = cancelMyBooking(exampleState, courseId, { today });
       if (!result || !before) return { ok: false, message: "That didn't cancel. Try again." };
       setBookings(result.state);
       return {
@@ -169,7 +169,7 @@ export function useBookings({ enabled = true }: { readonly enabled?: boolean } =
         undo: () => setBookings(exampleState),
       };
     },
-    [active, exampleState, saved],
+    [active, exampleState, saved, today],
   );
 
   const saveCourse = useCallback(
