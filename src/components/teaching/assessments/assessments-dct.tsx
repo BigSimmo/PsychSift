@@ -22,6 +22,7 @@ import {
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
 import { Sheet } from "@/components/ui/sheet";
+import { withUnit } from "@/components/teaching/teaching-number";
 import { DOMAINS, globalRatingName } from "@/lib/teaching/assessments/content";
 import {
   DCT_FEEDBACK_MAX,
@@ -90,7 +91,7 @@ export function DctHome({ s, dct }: DctProps) {
             value={`${signed}/${forms.length}`}
             label="signed"
             fraction={forms.length ? signed / forms.length : 1}
-            accessibleLabel={`${signed} of ${forms.length} end-of-term forms signed off`}
+            accessibleLabel={`${withUnit(signed, "of")} ${forms.length} end-of-term forms signed off`}
           />
         }
       />
