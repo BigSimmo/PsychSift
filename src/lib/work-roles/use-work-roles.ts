@@ -99,6 +99,16 @@ export function watchHeldWorkRoles(userId: string, listener: (roles: readonly Wo
   return unsubscribe;
 }
 
+/**
+ * Signed out: forget the account the roles were read for, so signing back in, even as the same
+ * account, reads them again and a role removed in between is not shown.
+ */
+export function forgetWorkRolesAccount(): void {
+  if (!readFor) return;
+  readFor = null;
+  resetWorkRoles();
+}
+
 export type WorkRolesView = {
   readonly status: WorkRolesStatus;
   readonly grants: readonly WorkRoleGrant[];

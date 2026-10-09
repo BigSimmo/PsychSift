@@ -2,7 +2,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { resetWorkRoles, useWorkRoles, watchHeldWorkRoles } from "@/lib/work-roles/use-work-roles";
+import {
+  forgetWorkRolesAccount,
+  resetWorkRoles,
+  useWorkRoles,
+  watchHeldWorkRoles,
+} from "@/lib/work-roles/use-work-roles";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -82,6 +87,31 @@ describe("useWorkRoles", () => {
     expect(next[0]).toEqual([]);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     stopNext();
+  });
+
+  it("reads the roles again when the same account signs back in, so a removed role is gone", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ grants: [{ role: "workforce", hospitalId: "h1" }] }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ grants: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    resetWorkRoles();
+
+    const seen: string[][] = [];
+    const stop = watchHeldWorkRoles("user-c", (roles) => seen.push([...roles]));
+    await waitFor(() => expect(seen.at(-1)).toEqual(["workforce"]));
+    stop();
+    forgetWorkRolesAccount();
+
+    const again: string[][] = [];
+    const stopAgain = watchHeldWorkRoles("user-c", (roles) => again.push([...roles]));
+    expect(again[0]).toEqual([]);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(again.at(-1)).toEqual([]));
+    expect(again.flat()).not.toContain("workforce");
+    stopAgain();
   });
 
   it("never shows, even for one render, roles read for another account", async () => {

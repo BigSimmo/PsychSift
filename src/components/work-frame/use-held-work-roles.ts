@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuthIfAvailable } from "@/lib/example-data/store";
 
@@ -13,8 +13,18 @@ import { useAuthIfAvailable } from "@/lib/example-data/store";
 export function useHeldWorkRoles(signedIn: boolean): readonly string[] {
   const userId = useAuthIfAvailable()?.session?.user?.id ?? null;
   const [held, setHeld] = useState<{ readonly userId: string; readonly roles: readonly string[] } | null>(null);
+  const watched = useRef(false);
   useEffect(() => {
-    if (!signedIn || !userId) return;
+    if (!signedIn || !userId) {
+      // Signed out after watching: forget those roles, so signing back in reads them again.
+      if (watched.current) {
+        watched.current = false;
+        setHeld(null);
+        void import("@/lib/work-roles/use-work-roles").then(({ forgetWorkRolesAccount }) => forgetWorkRolesAccount());
+      }
+      return;
+    }
+    watched.current = true;
     let stop: (() => void) | null = null;
     let live = true;
     void import("@/lib/work-roles/use-work-roles").then(({ watchHeldWorkRoles }) => {
