@@ -151,8 +151,12 @@ export type RoundCommand = z.infer<typeof roundCommandSchema>;
  */
 async function readRoleContext(client: AdminClient, userId: string): Promise<WorkRoleContext> {
   const { data, error } = await client.auth.admin.getUserById(userId);
-  const appMetadata = !error && data?.user?.app_metadata ? data.user.app_metadata : {};
-  return loadWorkRoleContext(client, { id: userId, appMetadata });
+  if (error || !data?.user) {
+    throw new PublicApiError("Your roles could not be checked. Try again shortly.", 503, {
+      code: "work_roles_unavailable",
+    });
+  }
+  return loadWorkRoleContext(client, { id: userId, appMetadata: data.user.app_metadata ?? {} });
 }
 
 function isSiteAdministrator(context: WorkRoleContext): boolean {
@@ -256,6 +260,45 @@ async function readTeamPeople(client: AdminClient, serviceId: string): Promise<R
       return grade ? { id: member.user_id, name, grade } : { id: member.user_id, name };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Read active people for all manageable teams with one query per source table. */
+async function readTeamsPeople(
+  client: AdminClient,
+  serviceIds: readonly string[],
+): Promise<Map<string, RotationTeamPerson[]>> {
+  if (!serviceIds.length) return new Map();
+  const [members, roles] = await Promise.all([
+    client
+      .from("on_call_service_members")
+      .select("service_id,user_id,display_name")
+      .in("service_id", [...serviceIds])
+      .is("revoked_at", null),
+    client
+      .from("roster_member_roles")
+      .select("service_id,user_id,roster_name,grade")
+      .in("service_id", [...serviceIds])
+      .is("revoked_at", null),
+  ]);
+  if (members.error) throw databaseError(members.error);
+  if (roles.error) throw databaseError(roles.error);
+  const rolesByTeam = new Map<string, Map<string, NonNullable<typeof roles.data>[number]>>();
+  for (const role of roles.data ?? []) {
+    const teamRoles = rolesByTeam.get(role.service_id) ?? new Map();
+    teamRoles.set(role.user_id, role);
+    rolesByTeam.set(role.service_id, teamRoles);
+  }
+  const people = new Map<string, RotationTeamPerson[]>();
+  for (const member of members.data ?? []) {
+    const teamPeople = people.get(member.service_id) ?? [];
+    const role = rolesByTeam.get(member.service_id)?.get(member.user_id);
+    const name = (role?.roster_name ?? member.display_name ?? "").trim() || "Team member";
+    const grade = role?.grade ? GRADE_LABEL[role.grade] : undefined;
+    teamPeople.push(grade ? { id: member.user_id, name, grade } : { id: member.user_id, name });
+    people.set(member.service_id, teamPeople);
+  }
+  for (const teamPeople of people.values()) teamPeople.sort((a, b) => a.name.localeCompare(b.name));
+  return people;
 }
 
 /**
@@ -428,20 +471,27 @@ async function loadPreferences(
   // The API returns at most 1,000 rows per request, and the overview can span many rounds, so read in
   // pages until a short page comes back. Missing rows would show doctors as having sent nothing.
   const rows: PreferenceRow[] = [];
-  for (let from = 0; ; from += PREFERENCE_PAGE) {
+  let last: Pick<PreferenceRow, "round_id" | "user_id"> | undefined;
+  for (;;) {
     let query = client
       .from("roster_rotation_preferences")
       .select(PREFERENCE_COLUMNS)
       .in("round_id", [...roundIds]);
     if (onlyUserId) query = query.eq("user_id", onlyUserId);
+    if (last) {
+      query = query.or(
+        `round_id.gt.${last.round_id},and(round_id.eq.${last.round_id},user_id.gt.${last.user_id})`,
+      );
+    }
     const { data, error } = await query
       .order("round_id")
       .order("user_id")
-      .range(from, from + PREFERENCE_PAGE - 1);
+      .limit(PREFERENCE_PAGE);
     if (error) throw databaseError(error);
     const page = (data ?? []) as PreferenceRow[];
     rows.push(...page);
     if (page.length < PREFERENCE_PAGE) return rows;
+    last = page[page.length - 1];
   }
 }
 
@@ -472,20 +522,29 @@ export async function readRotations(client: AdminClient, userId: string): Promis
   const memberIds = new Set(teams.map((team) => team.serviceId));
   const manageIds = new Set(manageable.map((team) => team.serviceId));
 
-  // The site administrator can run every team's rounds; anyone else reads their own teams' and the teams they run.
-  let roundsQuery = client
-    .from("roster_rotation_rounds")
-    .select(ROUND_COLUMNS)
-    .order("created_at", { ascending: false })
-    .limit(MAX_ROUNDS);
-  if (!siteAdministrator) {
-    const visible = new Set([...memberIds, ...manageIds]);
-    if (!visible.size) return { mine: [], managed: [], canManage: false, teams: [], team: null };
-    roundsQuery = roundsQuery.in("service_id", [...visible]);
+  // The site administrator can run every team's rounds. For other users, keep a recent page per
+  // visible team so activity on one covered team cannot hide another team's rounds.
+  const visible = new Set([...memberIds, ...manageIds]);
+  if (!siteAdministrator && !visible.size) {
+    return { mine: [], managed: [], canManage: false, teams: [], team: null };
   }
-  const { data, error } = await roundsQuery;
-  if (error) throw databaseError(error);
-  const rows = (data ?? []) as RoundRow[];
+  const serviceIds = siteAdministrator ? [undefined] : [...visible];
+  const roundPages = await Promise.all(
+    serviceIds.map(async (serviceId) => {
+      let query = client
+        .from("roster_rotation_rounds")
+        .select(ROUND_COLUMNS)
+        .order("created_at", { ascending: false })
+        .limit(MAX_ROUNDS);
+      if (serviceId) query = query.eq("service_id", serviceId);
+      const { data, error } = await query;
+      if (error) throw databaseError(error);
+      return (data ?? []) as RoundRow[];
+    }),
+  );
+  const rows = roundPages
+    .flat()
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   const names = new Map(teams.map((team) => [team.serviceId, team.name]));
   const unnamed = [...new Set(rows.map((row) => row.service_id).filter((id) => !names.has(id)))];
@@ -500,7 +559,9 @@ export async function readRotations(client: AdminClient, userId: string): Promis
   ]);
   const preferencesByRound = new Map<string, PreferenceRow[]>();
   for (const pref of [...allPreferences, ...myPreferences]) {
-    preferencesByRound.set(pref.round_id, [...(preferencesByRound.get(pref.round_id) ?? []), pref]);
+    const preferences = preferencesByRound.get(pref.round_id) ?? [];
+    preferences.push(pref);
+    preferencesByRound.set(pref.round_id, preferences);
   }
 
   const mine: MyRound[] = [];
@@ -516,9 +577,14 @@ export async function readRotations(client: AdminClient, userId: string): Promis
 
   // A Medical Workforce lead can cover every team at a hospital, so each team comes back and the new-round
   // form lets them choose.
-  const withPeople = await Promise.all(
-    manageable.map(async (team) => ({ ...team, people: await readTeamPeople(client, team.serviceId) })),
+  const peopleByTeam = await readTeamsPeople(
+    client,
+    manageable.map((team) => team.serviceId),
   );
+  const withPeople = manageable.map((team) => ({
+    ...team,
+    people: peopleByTeam.get(team.serviceId) ?? [],
+  }));
   return {
     mine,
     managed,
