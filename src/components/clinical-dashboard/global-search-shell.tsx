@@ -262,7 +262,7 @@ function GlobalSearchShellDashboardGate(props: GlobalSearchShellProps) {
   const fallbackMode = visibleShellModes[0]?.id ?? initialMode;
   const initialSearchMode =
     props.availableModeIds?.length && !props.availableModeIds.includes(initialMode) ? fallbackMode : initialMode;
-  const requestedMode = searchParams.get("mode");
+  const requestedMode = searchParams.get("mode") ?? (pathname === "/documents/search" ? "documents" : null);
   const resolvedSearchMode =
     isAppModeId(requestedMode) &&
     isAppModeVisible(requestedMode) &&
@@ -270,7 +270,9 @@ function GlobalSearchShellDashboardGate(props: GlobalSearchShellProps) {
       ? requestedMode
       : initialSearchMode;
   const requestedQuery = (searchParams.get("q") ?? searchParams.get("query") ?? "").trim();
-  const hasSubmittedModeSearch = searchParams.get("run") === "1" && requestedQuery.length > 0;
+  const hasSubmittedModeSearch =
+    (searchParams.get("run") === "1" || (pathname === "/documents/search" && requestedQuery.length > 0)) &&
+    requestedQuery.length > 0;
   const rendersClinicalDashboard = shouldRenderClinicalDashboard({
     hasSubmittedSearch: hasSubmittedModeSearch,
     mode: resolvedSearchMode,

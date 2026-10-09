@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "23129e93-9af9-43c3-a488-4b4f97653764",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#PVVAPA",
+    "outcome": "Resolved: tests/ui-hydration.spec.ts:64 already uses expectHydrated(page.locator('main').first()) and no networkidle wait remains.",
+    "baseRowFingerprint": "d1787103f1f624177e499340ac180e93cd69e1c1ed4d44a5b268322bd4a28c84"
+  }
+}

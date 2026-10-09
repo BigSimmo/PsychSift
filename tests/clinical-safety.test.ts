@@ -997,6 +997,29 @@ describe("safety finding precision (characterisation)", () => {
     }
   });
 
+  it("finishes extractSafetyFindings in under 200ms on a 200,000-character input (#747FC0)", () => {
+    // #747FC0: conciseSourceText bounds input text to 4,000 characters before any
+    // scrubbing or pattern checks, preventing ~89-second stalls on huge source blocks.
+    const hugeContent = `Escalate for urgent review when red flag features are present. ${"a".repeat(200_000)}`;
+    const largeAnswer: RagAnswer = {
+      ...answer,
+      sources: [
+        {
+          ...answer.sources[0],
+          content: hugeContent,
+        },
+      ],
+    };
+
+    const started = performance.now();
+    const findings = extractSafetyFindings(largeAnswer);
+    const duration = performance.now() - started;
+
+    expect(duration).toBeLessThan(200);
+    expect(findings.length).toBeGreaterThan(0);
+    expect(findings[0]?.label).toBe("Red flag");
+  });
+
   it("over-calls an intransitive `ceased`, which is the accepted cost of the fix (#GHC4XZ)", () => {
     // NOT a passing behaviour -- a known false positive, pinned so it is deliberate rather than
     // discovered later. "The tremor ceased overnight." is an observation, not an instruction, and

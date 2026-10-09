@@ -570,7 +570,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "Usually not enough alone for OCD, trauma syndromes needing trauma-focused work, psychosis, severe depression, severe personality pathology, or anxiety that is mainly maintained by cognitive or behavioural mechanisms that are not shifted by relaxation alone. It can also become unhelpful if used as constant safety behaviour rather than as a flexible skill.",
-    "references": null,
+    "references": "NICE Generalised anxiety disorder and panic disorder in adults guideline (CG113) recommends applied relaxation as an evidence-based psychological intervention for generalised anxiety disorder. RANZCP Clinical Practice Guidelines for the Management of Panic Disorder, Social Anxiety Disorder and Generalised Anxiety Disorder.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -601,7 +601,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Generalised anxiety disorder and panic disorder in adults guideline (CG113) recommends applied relaxation as an evidence-based psychological intervention for generalised anxiety disorder. RANZCP Clinical Practice Guidelines for the Management of Panic Disorder, Social Anxiety Disorder and Generalised Anxiety Disorder."
       }
     ],
     "patientSheetTemplates": [
@@ -745,7 +745,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "Usually not enough when the presentation is dominated by severe psychosis, major cognitive impairment, profound personality disorganisation, severe dissociation, or when a more specific therapy is clearly required. It is also weak if delivered as generic “do more things” advice without a real behavioural formulation or active behavioural tasks.",
-    "references": null,
+    "references": "NICE Clinical Guidelines on Depression in Adults (NG222) and Anxiety Disorders (CG113) endorse behavioural interventions and exposure therapy as established psychological treatments. RANZCP Psychotherapy Position Statement (PS #54).",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -778,7 +778,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Clinical Guidelines on Depression in Adults (NG222) and Anxiety Disorders (CG113) endorse behavioural interventions and exposure therapy as established psychological treatments. RANZCP Psychotherapy Position Statement (PS #54)."
       }
     ],
     "patientSheetTemplates": [
@@ -836,7 +836,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Usually not enough when the depression is psychotic, severely suicidal without adequate containment, clearly bipolar with emerging activation, or when another syndrome is the main driver. It is also weak if the clinician gives generic “stay busy” advice without activity monitoring, graded planning, and repeated review of avoidance.",
-    "references": null,
+    "references": "NICE Depression in adults: treatment and management guideline (NG222) recommends behavioural activation as a first-line psychological intervention for less severe and more severe depression. Cochrane Systematic Review: Behavioural activation therapy for depression in adults.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -871,7 +871,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Depression in adults: treatment and management guideline (NG222) recommends behavioural activation as a first-line psychological intervention for less severe and more severe depression. Cochrane Systematic Review: Behavioural activation therapy for depression in adults."
       }
     ],
     "patientSheetTemplates": [
@@ -1017,7 +1017,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for detoxification, acute psychiatric care, or broader SUD treatment when the person is not yet ready to change. It also depends on the presence of a willing and appropriate partner, so it is not broadly applicable to all patients.",
-    "references": null,
+    "references": "NICE Alcohol-use disorders: diagnosis, assessment and management of harmful drinking and alcohol dependence (CG115) recommends behavioural couples therapy for people with alcohol problems who have a regular partner. Systematic review and meta-analysis of behavioural couples therapy for substance use disorders.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -1045,7 +1045,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Alcohol-use disorders: diagnosis, assessment and management of harmful drinking and alcohol dependence (CG115) recommends behavioural couples therapy for people with alcohol problems who have a regular partner. Systematic review and meta-analysis of behavioural couples therapy for substance use disorders."
       }
     ],
     "patientSheetTemplates": [
@@ -1545,7 +1545,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Carer interventions are not a substitute for patient treatment, family intervention, CBTp, medication review, or acute care. They are also weak if reduced to a one-off information dump without discussion, coping work, or follow-up. The meta-analytic evidence for caregiver psychoeducation is supportive but still not fully conclusive, so benefits should be described modestly.",
-    "references": null,
+    "references": "NICE Psychosis and schizophrenia in adults: prevention and management guideline (CG178) recommends offering carer-focused education and support programmes to carers of people with psychosis or schizophrenia. NICE Bipolar disorder: assessment and management (CG185).",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -1573,7 +1573,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Psychosis and schizophrenia in adults: prevention and management guideline (CG178) recommends offering carer-focused education and support programmes to carers of people with psychosis or schizophrenia. NICE Bipolar disorder: assessment and management (CG185)."
       }
     ],
     "patientSheetTemplates": [
@@ -2252,7 +2252,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Usually not enough if severe mania, delirium, major intoxication or withdrawal, profound cognitive impairment, or marked psychotic disorganisation is preventing structured collaborative work. It is also weaker when the clinician uses generic CBT instead of the disorder-specific active ingredient the case actually needs.",
-    "references": null,
+    "references": "NICE Depression in adults guideline (NG222) and Generalised anxiety disorder guideline (CG113) recommend CBT as a first-line psychological intervention. RANZCP Position Statement #54: Psychotherapy conducted by psychiatrists.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -2288,7 +2288,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Depression in adults guideline (NG222) and Generalised anxiety disorder guideline (CG113) recommend CBT as a first-line psychological intervention. RANZCP Position Statement #54: Psychotherapy conducted by psychiatrists."
       }
     ],
     "patientSheetTemplates": [
@@ -2346,7 +2346,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "CBT is not clearly superior to all other adjunctive bipolar psychotherapies. A 2024 randomized clinical trial of adjuvant psychotherapies for relapse prevention did not show superiority of one psychotherapy over another, and the broader bipolar psychotherapy evidence base still contains much low- or very-low-quality evidence. CBT is also a poor fit when the patient is too manic, psychotic, or disorganised to use it.",
-    "references": null,
+    "references": "NICE Bipolar disorder: assessment and management guideline (CG185) recommends structured psychological interventions including cognitive behavioural therapy for bipolar depression and relapse prevention. RANZCP Clinical Practice Guidelines for Mood Disorders.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -2375,7 +2375,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Bipolar disorder: assessment and management guideline (CG185) recommends structured psychological interventions including cognitive behavioural therapy for bipolar depression and relapse prevention. RANZCP Clinical Practice Guidelines for Mood Disorders."
       }
     ],
     "patientSheetTemplates": [
@@ -2525,7 +2525,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "CBT-I is not a substitute for urgent treatment of mania, delirium, severe sleep apnoea management, or other primary sleep disorders that need separate treatment. It may also be harder to deliver when the patient cannot sustain diary work or short-term restriction of time in bed. Australian guidance notes sleep restriction may not suit everyone, including some people with comorbid bipolar disorder.",
-    "references": null,
+    "references": "Australasian Sleep Association / Sleep Health Foundation guidelines recommend CBT-I as the first-line treatment for chronic insomnia in adults. American Academy of Sleep Medicine (AASM) clinical practice guideline for the pharmacologic and non-pharmacologic treatment of chronic insomnia.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -2558,7 +2558,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "Australasian Sleep Association / Sleep Health Foundation guidelines recommend CBT-I as the first-line treatment for chronic insomnia in adults. American Academy of Sleep Medicine (AASM) clinical practice guideline for the pharmacologic and non-pharmacologic treatment of chronic insomnia."
       }
     ],
     "patientSheetTemplates": [
@@ -2616,7 +2616,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "CBTp is not a replacement for acute containment, medical work-up, or indicated pharmacological treatment. It is also not mainly about persuading the patient that experiences are false. It is weaker when delivered in a generic CBT style without a psychosis-specific formulation, or when the patient is too acutely disorganised to use the model.",
-    "references": null,
+    "references": "NICE Psychosis and schizophrenia in adults guideline (CG178) recommends cognitive behavioural therapy for psychosis (CBTp) for all people with psychosis or schizophrenia, across acute and recovery phases. RANZCP Australian and New Zealand clinical practice guidelines for the management of schizophrenia and related disorders.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -2649,7 +2649,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Psychosis and schizophrenia in adults guideline (CG178) recommends cognitive behavioural therapy for psychosis (CBTp) for all people with psychosis or schizophrenia, across acute and recovery phases. RANZCP Australian and New Zealand clinical practice guidelines for the management of schizophrenia and related disorders."
       }
     ],
     "patientSheetTemplates": [
@@ -2973,7 +2973,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "Usually not enough alone when the core mechanism is exposure-based, compulsive, psychotic, profoundly interpersonal, or primarily behavioural. It is also weaker when the patient is so cognitively overloaded, concrete, dissociated, or disorganised that reflective cognitive work cannot be used effectively.",
-    "references": null,
+    "references": "NICE Clinical Guidelines on Depression (NG222), Social Anxiety Disorder (CG159), and Post-Traumatic Stress Disorder (NG116) recommend cognitive therapy models within evidence-based psychotherapy pathways. Beck Institute for Cognitive Behavior Therapy core formulations.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -3004,7 +3004,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Clinical Guidelines on Depression (NG222), Social Anxiety Disorder (CG159), and Post-Traumatic Stress Disorder (NG116) recommend cognitive therapy models within evidence-based psychotherapy pathways. Beck Institute for Cognitive Behavior Therapy core formulations."
       }
     ],
     "patientSheetTemplates": [
@@ -3154,7 +3154,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "CRAFT is not primarily a direct therapy for the identified person’s acute withdrawal or psychiatric crisis. Its strongest and most consistent evidence is for treatment entry, not necessarily direct large reductions in substance use by the identified person.",
-    "references": null,
+    "references": "Substance Abuse and Mental Health Services Administration (SAMHSA) evidence-based treatment reviews for substance use disorders. National Institute on Drug Abuse (NIDA) principles of drug addiction treatment: Community Reinforcement Approach and CRAFT.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -3183,7 +3183,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "Substance Abuse and Mental Health Services Administration (SAMHSA) evidence-based treatment reviews for substance use disorders. National Institute on Drug Abuse (NIDA) principles of drug addiction treatment: Community Reinforcement Approach and CRAFT."
       }
     ],
     "patientSheetTemplates": [
@@ -3598,7 +3598,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "CM is not a substitute for withdrawal management, acute medical/psychiatric care, or broader relapse-prevention skills work. It also fails if incentives are delayed, inconsistent, or trivial to the patient. NICE and U.S. implementation reports both emphasise integrity and timeliness.",
-    "references": null,
+    "references": "NICE Drug misuse in over 16s: psychosocial interventions guideline (CG51) recommends contingency management to reduce illicit drug use and promote engagement for people in drug treatment programmes. NIDA principles of effective treatment.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -3625,7 +3625,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Drug misuse in over 16s: psychosocial interventions guideline (CG51) recommends contingency management to reduce illicit drug use and promote engagement for people in drug treatment programmes. NIDA principles of effective treatment."
       }
     ],
     "patientSheetTemplates": [
@@ -4045,7 +4045,7 @@
     "evidenceLevel": "Low",
     "evidenceNotes": null,
     "limitations": "CET is not currently one of the clearest evidence leaders in SUD psychotherapy. The 2025 review found overall efficacy evidence was limited, and the 2017 alcohol meta-analysis supported some benefit in alcohol use disorder but does not justify presenting CET as broadly established across SUDs.",
-    "references": null,
+    "references": "Systematic review and meta-analysis of cue exposure therapy in addiction and substance use disorders. World Health Organization (WHO) and NHMRC alcohol and substance intervention reviews.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -4074,7 +4074,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "Systematic review and meta-analysis of cue exposure therapy in addiction and substance use disorders. World Health Organization (WHO) and NHMRC alcohol and substance intervention reviews."
       }
     ],
     "patientSheetTemplates": [
@@ -4583,7 +4583,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "DBT is not a substitute for acute containment, medical detoxification, or treatment of psychosis / mania / delirium. It is also weak if delivered as “DBT-informed support” without a real hierarchy, skills programme, behavioural analysis, and team structure.",
-    "references": null,
+    "references": "NICE Borderline personality disorder: recognition and management guideline (CG78) recommends dialectical behaviour therapy (DBT) for women with borderline personality disorder for whom reducing recurrent self-harm is a priority. NHMRC Clinical Practice Guideline for the Management of Borderline Personality Disorder.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -4617,7 +4617,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Borderline personality disorder: recognition and management guideline (CG78) recommends dialectical behaviour therapy (DBT) for women with borderline personality disorder for whom reducing recurrent self-harm is a priority. NHMRC Clinical Practice Guideline for the Management of Borderline Personality Disorder."
       }
     ],
     "patientSheetTemplates": [
@@ -5653,7 +5653,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "ERP is not a substitute for medication when symptoms remain disabling despite behavioural treatment, and it may be harder to deliver when urge awareness is poor, motivation is low, or comorbidity is substantial. It is also not the only valid behavioural option, because HRT and CBIT remain equally core first-line behavioural treatments.",
-    "references": null,
+    "references": "European clinical guidelines for Tourette syndrome and other tic disorders: behavioural and psychosocial interventions (ERP and HRT/CBIT). American Academy of Neurology (AAN) practice guideline recommendations on the treatment of tics in people with Tourette syndrome and chronic tic disorders.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -5682,7 +5682,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "European clinical guidelines for Tourette syndrome and other tic disorders: behavioural and psychosocial interventions (ERP and HRT/CBIT). American Academy of Neurology (AAN) practice guideline recommendations on the treatment of tics in people with Tourette syndrome and chronic tic disorders."
       }
     ],
     "patientSheetTemplates": [
@@ -6007,7 +6007,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "Family intervention is not a substitute for indicated individual treatment, medication, or acute containment. It is also a poor fit when there is no meaningful family contact, when involvement is unsafe, or when family sessions are attempted without a clear structure and purpose.",
-    "references": null,
+    "references": "NICE Psychosis and schizophrenia in adults guideline (CG178) recommends family intervention for all families of people with psychosis or schizophrenia who live with or are in close contact with the service user. RANZCP clinical practice guidelines for schizophrenia.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -6035,7 +6035,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Psychosis and schizophrenia in adults guideline (CG178) recommends family intervention for all families of people with psychosis or schizophrenia who live with or are in close contact with the service user. RANZCP clinical practice guidelines for schizophrenia."
       }
     ],
     "patientSheetTemplates": [
@@ -6181,7 +6181,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for indicated CBTp, antipsychotic treatment, acute containment, or a broader family intervention when the main problem is communication breakdown, repeated crisis escalation, or complex family dynamics. It is also weak if the family system is unsafe or too fragmented to use the information constructively.",
-    "references": null,
+    "references": "NICE Psychosis and schizophrenia in adults guideline (CG178) and quality standards (QS80) recommend psychoeducation and family-focused support for relatives and carers of individuals with psychosis. Cochrane Review: Psychoeducation for schizophrenia.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -6208,7 +6208,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Psychosis and schizophrenia in adults guideline (CG178) and quality standards (QS80) recommend psychoeducation and family-focused support for relatives and carers of individuals with psychosis. Cochrane Review: Psychoeducation for schizophrenia."
       }
     ],
     "patientSheetTemplates": [
@@ -6526,7 +6526,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a replacement for mood stabilisers, acute treatment, or more intensive psychotherapies when the main need is active bipolar depression, mania, or marked functional collapse. Evidence is stronger for relapse prevention, especially for overall or manic/hypomanic relapse, than for direct improvement in depressive symptoms, functioning, or quality of life. Group psychoeducation has stronger evidence than individual psychoeducation.",
-    "references": null,
+    "references": "NICE Bipolar disorder: assessment and management guideline (CG185) recommends offering family intervention and psychoeducation to people with bipolar disorder and their families/carers. RANZCP Mood Disorders Clinical Practice Guidelines.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -6556,7 +6556,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Bipolar disorder: assessment and management guideline (CG185) recommends offering family intervention and psychoeducation to people with bipolar disorder and their families/carers. RANZCP Mood Disorders Clinical Practice Guidelines."
       }
     ],
     "patientSheetTemplates": [
@@ -7238,7 +7238,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for mood stabilisers, acute mania/depression treatment, or a more targeted psychotherapy when the main problem is active bipolar depression, mania, or major functional collapse. Evidence is stronger for relapse prevention, especially overall and manic/hypomanic relapse, than for direct improvement in depressive symptoms, quality of life, or functioning.",
-    "references": null,
+    "references": "NICE Bipolar disorder: assessment and management guideline (CG185) recommends structured group psychoeducation for maintenance and relapse prevention in adults with bipolar disorder. Colom and Vieta Barcelona Psychoeducation Program randomized controlled trials.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -7267,7 +7267,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Bipolar disorder: assessment and management guideline (CG185) recommends structured group psychoeducation for maintenance and relapse prevention in adults with bipolar disorder. Colom and Vieta Barcelona Psychoeducation Program randomized controlled trials."
       }
     ],
     "patientSheetTemplates": [
@@ -7853,7 +7853,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "HRT is not a substitute for treating major medical complications of skin or hair damage, and it may be slower or harder when behaviour is highly automatic, shame is high, or comorbidity is severe. Review literature also shows that although HRT is the leading empirically supported psychotherapy, access remains limited and the trial base in some subgroups remains modest.",
-    "references": null,
+    "references": "American Psychiatric Association (APA) and European guidelines for body-focused repetitive behaviours recommend habit reversal training (HRT) and comprehensive behavioural intervention (CBIT) as primary treatments for trichotillomania and excoriation disorder. TLC Foundation for Body-Focused Repetitive Behaviors clinical practice guidelines.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -7881,7 +7881,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "American Psychiatric Association (APA) and European guidelines for body-focused repetitive behaviours recommend habit reversal training (HRT) and comprehensive behavioural intervention (CBIT) as primary treatments for trichotillomania and excoriation disorder. TLC Foundation for Body-Focused Repetitive Behaviors clinical practice guidelines."
       }
     ],
     "patientSheetTemplates": [
@@ -8294,7 +8294,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "IRT is not a substitute for broader treatment when the patient’s main needs are acute trauma stabilisation, severe psychosis management, or another dominant syndrome. It may also be harder when imagery is poorly tolerated or dream recall is extremely limited. This is a clinical synthesis based on the trial populations and clinical review cautions.",
-    "references": null,
+    "references": "American Academy of Sleep Medicine (AASM) Best Practice Guide for the Treatment of Nightmare Disorder in Adults recommends Imagery Rehearsal Therapy (IRT) as a primary psychological treatment for post-traumatic and idiopathic nightmares.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -8324,7 +8324,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "American Academy of Sleep Medicine (AASM) Best Practice Guide for the Treatment of Nightmare Disorder in Adults recommends Imagery Rehearsal Therapy (IRT) as a primary psychological treatment for post-traumatic and idiopathic nightmares."
       }
     ],
     "patientSheetTemplates": [
@@ -8565,7 +8565,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not right for every patient at every stage. Dropout can be high across PTSD+SUD treatments in general, and some patients need motivational, stabilisation, or withdrawal-focused work first.",
-    "references": null,
+    "references": "VA/DoD Clinical Practice Guideline for the Management of Posttraumatic Stress Disorder and Acute Stress Disorder recommends concurrent or integrated evidence-based psychological treatment for co-occurring PTSD and substance use disorder. Phoenix Australia Australian Guidelines for the Prevention and Treatment of Acute Stress Disorder and PTSD.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -8593,7 +8593,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "VA/DoD Clinical Practice Guideline for the Management of Posttraumatic Stress Disorder and Acute Stress Disorder recommends concurrent or integrated evidence-based psychological treatment for co-occurring PTSD and substance use disorder. Phoenix Australia Australian Guidelines for the Prevention and Treatment of Acute Stress Disorder and PTSD."
       }
     ],
     "patientSheetTemplates": [
@@ -9005,7 +9005,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "IPSRT is not a replacement for pharmacotherapy or acute containment. The evidence base is supportive but not uniformly superior to other specialist bipolar psychotherapies. In the 2015 randomized trial in young people, IPSRT and specialist supportive care both improved symptoms and functioning without a significant difference between therapies.",
-    "references": null,
+    "references": "NICE Bipolar disorder guideline (CG185) recommends structured psychological interventions designed specifically for bipolar disorder with evidence-based manuals. Frank et al. randomized trials of Interpersonal and Social Rhythm Therapy (IPSRT) in maintenance and acute bipolar disorder.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -9040,7 +9040,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Bipolar disorder guideline (CG185) recommends structured psychological interventions designed specifically for bipolar disorder with evidence-based manuals. Frank et al. randomized trials of Interpersonal and Social Rhythm Therapy (IPSRT) in maintenance and acute bipolar disorder."
       }
     ],
     "patientSheetTemplates": [
@@ -9366,7 +9366,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "The Matrix Model is not an acute detoxification or crisis intervention, and it may be too demanding for patients who cannot attend intensive outpatient treatment reliably. Also, modern review evidence for stimulant use disorder more clearly supports contingency management than most other psychosocial interventions, which means Matrix should not be oversold as the single best-supported psychosocial treatment. (pmc.ncbi.nlm.nih.gov)",
-    "references": null,
+    "references": "SAMHSA Treatment Improvement Protocol (TIP 33): Treatment for Stimulant Use Disorders. NIDA principles of drug addiction treatment: The Matrix Model for outpatient methamphetamine and cocaine treatment.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -9393,7 +9393,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "SAMHSA Treatment Improvement Protocol (TIP 33): Treatment for Stimulant Use Disorders. NIDA principles of drug addiction treatment: The Matrix Model for outpatient methamphetamine and cocaine treatment."
       }
     ],
     "patientSheetTemplates": [
@@ -9627,7 +9627,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "MBT is not a substitute for acute containment, detoxification, or treatment of psychosis / mania / delirium. It is also weak if delivered as vague exploratory therapy without active attention to mentalising failure, or if the patient needs a more behaviourally structured first-line model such as DBT for severe recurrent self-harm.",
-    "references": null,
+    "references": "NHMRC Clinical Practice Guideline for the Management of Borderline Personality Disorder recognises Mentalisation-Based Treatment (MBT) as an effective specialised psychotherapy. Bateman and Fonagy randomized controlled trials and Cochrane reviews of psychological therapies for BPD.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -9662,7 +9662,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NHMRC Clinical Practice Guideline for the Management of Borderline Personality Disorder recognises Mentalisation-Based Treatment (MBT) as an effective specialised psychotherapy. Bateman and Fonagy randomized controlled trials and Cochrane reviews of psychological therapies for BPD."
       }
     ],
     "patientSheetTemplates": [
@@ -9903,7 +9903,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "MBRP is not clearly superior to standard relapse-prevention approaches overall. The most recent meta-analysis found only small effects on a limited subset of outcomes and low or very low certainty for much of the evidence. It should therefore be described as promising and useful in selected patients, not as a clearly established best treatment across SUDs.",
-    "references": null,
+    "references": "Bowen et al. randomized controlled trials of Mindfulness-Based Relapse Prevention for substance use disorders. Systematic reviews and meta-analyses of mindfulness-based interventions in substance misuse and craving regulation.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -9936,7 +9936,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "Bowen et al. randomized controlled trials of Mindfulness-Based Relapse Prevention for substance use disorders. Systematic reviews and meta-analyses of mindfulness-based interventions in substance misuse and craving regulation."
       }
     ],
     "patientSheetTemplates": [
@@ -10173,7 +10173,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "MBTI is not the current default first-line treatment over CBT-I, and it may be a weaker fit when the main maintaining factors are excessive time in bed, strong behavioural dysregulation, or major circadian problems rather than hyperarousal/reactivity. The comparative evidence remains limited.",
-    "references": null,
+    "references": "Ong et al. Mindfulness-Based Therapy for Insomnia (MBTI) clinical trial series and sleep medicine reviews. Australasian Sleep Association clinical recommendations on psychological approaches to chronic insomnia.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -10204,7 +10204,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "Ong et al. Mindfulness-Based Therapy for Insomnia (MBTI) clinical trial series and sleep medicine reviews. Australasian Sleep Association clinical recommendations on psychological approaches to chronic insomnia."
       }
     ],
     "patientSheetTemplates": [
@@ -10262,7 +10262,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for urgent treatment of postpartum psychosis, severe suicidality, severe mania, or other acute perinatal crises. The evidence base is promising but mixed, and effects appear clearer for short-term maternal depressive symptoms than for long-term maternal mood, mother–infant interaction, or infant attachment outcomes.",
-    "references": null,
+    "references": "NICE Antenatal and postnatal mental health: clinical management and service guidance (CG192) recommends psychological and parent-infant interventions to improve maternal mental health and mother-infant relationship. Australian National Perinatal Mental Health Guideline (COPE).",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -10293,7 +10293,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Antenatal and postnatal mental health: clinical management and service guidance (CG192) recommends psychological and parent-infant interventions to improve maternal mental health and mother-infant relationship. Australian National Perinatal Mental Health Guideline (COPE)."
       }
     ],
     "patientSheetTemplates": [
@@ -10351,7 +10351,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Usually not enough alone when the patient is already ready for action treatment, when severe psychiatric instability is present, or when medical detoxification, relapse-prevention CBT, medication treatment, or structured trauma / OCD / psychosis care is clearly indicated.",
-    "references": null,
+    "references": "NIDA Principles of Drug Addiction Treatment and Project MATCH research group clinical trial outcomes. SAMHSA TIP 35: Enhancing Motivation for Change in Substance Use Disorder Treatment.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -10382,7 +10382,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NIDA Principles of Drug Addiction Treatment and Project MATCH research group clinical trial outcomes. SAMHSA TIP 35: Enhancing Motivation for Change in Substance Use Disorder Treatment."
       }
     ],
     "patientSheetTemplates": [
@@ -10528,7 +10528,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "MI is not a full relapse-prevention programme and is not enough on its own when the main problem is severe dependence needing detoxification, medication, or structured CBT/behavioural treatment. NICE explicitly follows motivational intervention with recommendations to offer community interventions to promote abstinence or moderate drinking and prevent relapse.",
-    "references": null,
+    "references": "NICE Alcohol-use disorders: diagnosis, assessment and management of harmful drinking and alcohol dependence (CG115) recommends motivational interventions. SAMHSA Treatment Improvement Protocol 35 (TIP 35): Enhancing Motivation for Change in Substance Use Disorder Treatment. Miller and Rollnick foundational clinical practice texts.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -10558,7 +10558,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Alcohol-use disorders: diagnosis, assessment and management of harmful drinking and alcohol dependence (CG115) recommends motivational interventions. SAMHSA Treatment Improvement Protocol 35 (TIP 35): Enhancing Motivation for Change in Substance Use Disorder Treatment. Miller and Rollnick foundational clinical practice texts."
       }
     ],
     "patientSheetTemplates": [
@@ -10616,7 +10616,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for acute containment, CBTp, medication optimisation, or single-family work when the family’s needs are too complex, unsafe, or private for a group format. It is also weak if it becomes a loose support group without structured psychoeducation, problem-solving, or crisis planning.",
-    "references": null,
+    "references": "NICE Psychosis and schizophrenia in adults guideline (CG178) recommends family intervention delivered as either single-family or multi-family group sessions based on consumer and family preference. McFarlane multi-family groups in schizophrenia.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -10643,7 +10643,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Psychosis and schizophrenia in adults guideline (CG178) recommends family intervention delivered as either single-family or multi-family group sessions based on consumer and family preference. McFarlane multi-family groups in schizophrenia."
       }
     ],
     "patientSheetTemplates": [
@@ -11322,7 +11322,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "PMT is not a primary treatment for severe psychosis, mania, delirium, or high-risk multisystem offending, and it is weaker when the main drivers are outside parental management, such as entrenched peer delinquency or major school/community-system failure.",
-    "references": null,
+    "references": "NICE Antisocial behaviour and conduct disorders in children and young people: recognition and management guideline (CG158) recommends parent training programmes based on social learning principles for conduct problems. Kazdin parent management training evidence base.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11352,7 +11352,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Antisocial behaviour and conduct disorders in children and young people: recognition and management guideline (CG158) recommends parent training programmes based on social learning principles for conduct problems. Kazdin parent management training evidence base."
       }
     ],
     "patientSheetTemplates": [
@@ -11410,7 +11410,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "Parent training is not a substitute for acute risk management, safeguarding intervention, or more intensive multimodal work when the child’s difficulties are severe and complex. It is also a weaker fit in older adolescents, where the evidence is less established and other systemic interventions may be needed.",
-    "references": null,
+    "references": "NICE Antisocial behaviour and conduct disorders in children and young people guideline (CG158) recommends group parent training programmes for parents of children aged 3 to 11 years with or at high risk of conduct disorder. Cochrane Review: Parent training programmes for conduct problems in young children.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11436,7 +11436,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Antisocial behaviour and conduct disorders in children and young people guideline (CG158) recommends group parent training programmes for parents of children aged 3 to 11 years with or at high risk of conduct disorder. Cochrane Review: Parent training programmes for conduct problems in young children."
       }
     ],
     "patientSheetTemplates": [
@@ -11494,7 +11494,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for safeguarding intervention, acute psychiatric stabilisation, or broader multimodal treatment when antisocial behaviour is severe and embedded across peer, school, justice, and community systems. It is also a poor fit if the child is outside the age group or the main problem is not parent–child interaction.",
-    "references": null,
+    "references": "NICE Antisocial behaviour and conduct disorders in children and young people guideline (CG158) recommends child and parent-focused programmes for severe conduct and behavioural problems. Australian guidelines for child behavioural interventions.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11520,7 +11520,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Antisocial behaviour and conduct disorders in children and young people guideline (CG158) recommends child and parent-focused programmes for severe conduct and behavioural problems. Australian guidelines for child behavioural interventions."
       }
     ],
     "patientSheetTemplates": [
@@ -11578,7 +11578,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is too broad to stand as a precise treatment model on its own. The strongest current evidence is attached to specific named models, especially PCIT for disruptive behaviours, rather than to “parent-child relational therapy” as a single standard intervention.",
-    "references": null,
+    "references": "NICE Antenatal and postnatal mental health guideline (CG192) and Clinical Guidelines for Early Childhood Mental Health endorse relational parent-child therapies for attachment difficulties and relationship distress. Zero to Three: Diagnostic Classification of Mental Health and Developmental Disorders of Infancy and Early Childhood (DC:0-5).",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11606,7 +11606,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Antenatal and postnatal mental health guideline (CG192) and Clinical Guidelines for Early Childhood Mental Health endorse relational parent-child therapies for attachment difficulties and relationship distress. Zero to Three: Diagnostic Classification of Mental Health and Developmental Disorders of Infancy and Early Childhood (DC:0-5)."
       }
     ],
     "patientSheetTemplates": [
@@ -11664,7 +11664,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "PCIT is not a substitute for acute risk management or broader multisystem intervention when peer, school, justice, and community drivers dominate. It is also weaker in older youths, where the broader disruptive-behaviour evidence base shifts toward other interventions. The strongest data are in younger disruptive-behaviour populations.",
-    "references": null,
+    "references": "Eyberg et al. Parent-Child Interaction Therapy evidence base. Systematic reviews and meta-analyses of PCIT for externalizing and disruptive behaviours in young children. California Evidence-Based Clearinghouse for Child Welfare (CEBC) rating for PCIT.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11694,7 +11694,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "Eyberg et al. Parent-Child Interaction Therapy evidence base. Systematic reviews and meta-analyses of PCIT for externalizing and disruptive behaviours in young children. California Evidence-Based Clearinghouse for Child Welfare (CEBC) rating for PCIT."
       }
     ],
     "patientSheetTemplates": [
@@ -11836,7 +11836,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Peer support is not a first-line stand-alone treatment for acute psychosis, persistent delusional distress, severe suicidality, or major functional collapse. The evidence base is promising but heterogeneous, and umbrella-review quality is often low, so claims should stay modest.",
-    "references": null,
+    "references": "NICE Rehabilitation for adults with complex psychosis and related severe mental illness guideline (NG181) recommends peer support and peer support workers in multidisciplinary mental health rehabilitation teams. National Mental Health Commission (Australia) peer workforce guidelines.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11863,7 +11863,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Rehabilitation for adults with complex psychosis and related severe mental illness guideline (NG181) recommends peer support and peer support workers in multidisciplinary mental health rehabilitation teams. National Mental Health Commission (Australia) peer workforce guidelines."
       }
     ],
     "patientSheetTemplates": [
@@ -12367,7 +12367,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Often not enough alone for PTSD, OCD, major psychosis, severe recurrent self-harm, or syndromes where the active mechanism clearly requires exposure, trauma processing, ERP, CBTp, or specialist personality treatment.",
-    "references": null,
+    "references": "NICE Depression in adults: treatment and management guideline (NG222) recognises problem-solving therapy as an evidence-based low- or high-intensity psychological intervention. Systematic review and meta-analysis of problem-solving therapy for depression in primary care.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -12399,7 +12399,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Depression in adults: treatment and management guideline (NG222) recognises problem-solving therapy as an evidence-based low- or high-intensity psychological intervention. Systematic review and meta-analysis of problem-solving therapy for depression in primary care."
       }
     ],
     "patientSheetTemplates": [
@@ -12904,7 +12904,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Psychoeducation alone is usually not enough for ongoing psychotic distress or disability when CBTp, family intervention, rehabilitation, medication review, or more intensive psychosocial treatment is indicated. It is also weak if delivered as a single didactic talk without repetition, checking of understanding, or connection to real-world coping.",
-    "references": null,
+    "references": "NICE Psychosis and schizophrenia in adults guideline (CG178) and quality standards (QS80) recommend illness education, relapse prevention planning, and self-management support for people with psychosis. Cochrane Review: Psychoeducation for schizophrenia.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -12931,7 +12931,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Psychosis and schizophrenia in adults guideline (CG178) and quality standards (QS80) recommend illness education, relapse prevention planning, and self-management support for people with psychosis. Cochrane Review: Psychoeducation for schizophrenia."
       }
     ],
     "patientSheetTemplates": [
@@ -13513,7 +13513,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "Recovery-oriented psychosocial work is not a substitute for indicated acute treatments such as antipsychotic optimisation, CBTp, family intervention, or medical work-up. It is also weak if “recovery” is used as vague language without concrete rehabilitation tasks, review points, and graded support.",
-    "references": null,
+    "references": "NICE Rehabilitation for adults with complex psychosis and related severe mental illness guideline (NG181) recommends recovery-orientated rehabilitation services promoting personal autonomy, meaningful activity, and social inclusion. National Framework for Recovery-Oriented Mental Health Services (Australian Government Department of Health).",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -13542,7 +13542,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Rehabilitation for adults with complex psychosis and related severe mental illness guideline (NG181) recommends recovery-orientated rehabilitation services promoting personal autonomy, meaningful activity, and social inclusion. National Framework for Recovery-Oriented Mental Health Services (Australian Government Department of Health)."
       }
     ],
     "patientSheetTemplates": [
@@ -13600,7 +13600,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "RPT is not a substitute for detoxification, acute withdrawal management, medication treatment when indicated, or motivational work when the person is not yet ready to change. It is also weaker when delivered as generic “avoid triggers” advice without functional analysis and coping-skills practice.",
-    "references": null,
+    "references": "NICE Alcohol-use disorders: diagnosis, assessment and management guideline (CG115) and Drug misuse guideline (CG51) recommend cognitive-behavioural relapse prevention therapies. Marlatt and Gordon relapse prevention model.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -13629,7 +13629,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Alcohol-use disorders: diagnosis, assessment and management guideline (CG115) and Drug misuse guideline (CG51) recommend cognitive-behavioural relapse prevention therapies. Marlatt and Gordon relapse prevention model."
       }
     ],
     "patientSheetTemplates": [
@@ -13687,7 +13687,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "Not enough when the patient is still in an active untreated moderate-severe syndrome, when the real problem is ongoing psychosis, mania, severe substance instability, or when a more specific acute intervention is still needed. It is also weak if framed vaguely as “maintenance chats” without explicit relapse-prevention content.",
-    "references": null,
+    "references": "NICE Depression in adults guideline (NG222) recommends psychological interventions focused on relapse prevention (including maintenance CBT and MBCT) for individuals with recurrent depression. RANZCP Clinical Practice Guidelines for Mood Disorders.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -13718,7 +13718,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Depression in adults guideline (NG222) recommends psychological interventions focused on relapse prevention (including maintenance CBT and MBCT) for individuals with recurrent depression. RANZCP Clinical Practice Guidelines for Mood Disorders."
       }
     ],
     "patientSheetTemplates": [
@@ -14400,7 +14400,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not trauma-focused and is not the best-supported option when the patient is ready for trauma processing. VA’s current PTSD/SUD review states that more rigorous trials and meta-analyses suggest Seeking Safety is less effective for PTSD symptom reduction than trauma-focused treatments, and the direct comparison trial found COPE produced greater PTSD reduction and higher PTSD remission than Seeking Safety.",
-    "references": null,
+    "references": "Najavits Seeking Safety manual and clinical outcome trials for co-occurring PTSD and substance abuse. SAMHSA National Registry of Evidence-based Programs and Practices (NREPP) review for Seeking Safety.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -14431,7 +14431,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "Najavits Seeking Safety manual and clinical outcome trials for co-occurring PTSD and substance abuse. SAMHSA National Registry of Evidence-based Programs and Practices (NREPP) review for Seeking Safety."
       }
     ],
     "patientSheetTemplates": [
@@ -14667,7 +14667,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "STPP is not a substitute for urgent treatment of severe suicidality, psychotic depression, mania, or marked cognitive disorganisation. It may be less suitable when the person does not want to focus on painful feelings or close relationships, or when the depression is more clearly maintained by another mechanism. NICE explicitly warns that focusing on painful close/family experiences could initially be distressing.",
-    "references": null,
+    "references": "NICE Depression in adults guideline (NG222) lists short-term psychodynamic psychotherapy (STPP) as a recommended treatment option for depression. Cochrane Systematic Review: Short-term psychodynamic psychotherapies for common mental disorders.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -14699,7 +14699,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Depression in adults guideline (NG222) lists short-term psychodynamic psychotherapy (STPP) as a recommended treatment option for depression. Cochrane Systematic Review: Short-term psychodynamic psychotherapies for common mental disorders."
       }
     ],
     "patientSheetTemplates": [
@@ -15201,7 +15201,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "These interventions are not meant to treat every coexisting autism-related difficulty. NICE separately addresses challenging behaviour, mental health problems, sleep, and other coexisting issues. Effects on social communication are supportive overall but still variable by model, dosage, age, and study quality.",
-    "references": null,
+    "references": "NICE Autism spectrum disorder in under 19s: support and management guideline (CG170) recommends parent- or carer-mediated social communication interventions for children and young people with autism. Cochrane Review: Parent-mediated early intervention for young children with autism spectrum disorders.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -15227,7 +15227,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Autism spectrum disorder in under 19s: support and management guideline (CG170) recommends parent- or carer-mediated social communication interventions for children and young people with autism. Cochrane Review: Parent-mediated early intervention for young children with autism spectrum disorders."
       }
     ],
     "patientSheetTemplates": [
@@ -16620,7 +16620,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for urgent management of severe suicidality, psychotic depression, mania, or marked disorganisation. It is also weaker when the depression is better explained by another dominant mechanism or when the patient cannot use an affect-focused model. The direct depression trial base is supportive but still smaller than for some more guideline-prominent therapies.",
-    "references": null,
+    "references": "NICE Depression in adults guideline (NG222) recognises supportive and psychodynamic counselling approaches within stepped care options. Luborsky supportive-expressive psychotherapy clinical research series.",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -16652,7 +16652,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "NICE Depression in adults guideline (NG222) recognises supportive and psychodynamic counselling approaches within stepped care options. Luborsky supportive-expressive psychotherapy clinical research series."
       }
     ],
     "patientSheetTemplates": [
@@ -17338,7 +17338,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "TSF is not the best fit for every patient. It is usually less suitable when the patient is strongly opposed to a 12-step framework, is not pursuing abstinence, or mainly needs motivational work, contingency management, medication treatment, or coping-skills training. Evidence is strongest in AUD and much less definitive for broader SUDs. (cochrane.org)",
-    "references": null,
+    "references": "Cochrane Systematic Review: Alcoholics Anonymous and other 12-step programs for alcohol use disorder (Kelly et al., 2020) found manualized AA/TSF interventions as effective as other established treatments and superior for continuous abstinence. Project MATCH 12-step facilitation therapy manual (NIAAA).",
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -17367,7 +17367,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": null
+        "reference": "Cochrane Systematic Review: Alcoholics Anonymous and other 12-step programs for alcohol use disorder (Kelly et al., 2020) found manualized AA/TSF interventions as effective as other established treatments and superior for continuous abstinence. Project MATCH 12-step facilitation therapy manual (NIAAA)."
       }
     ],
     "patientSheetTemplates": [

@@ -129,8 +129,8 @@ function bulletItems(section: string) {
 
 function splitNameSummary(line: string): { name: string; summary: string; redFlags: string[] } {
   const cleaned = line.replace(/^\d+\.\s*/, "").trim();
-  // Split on em/en dash only — not hyphen, so names like "Post-ictal confusion" stay intact.
-  const dashMatch = cleaned.match(/^(.+?)\s*(?:—|–)\s*(.+)$/);
+  // Split on em/en dash or spaced hyphen — not inside words, so names like "Post-ictal confusion" stay intact.
+  const dashMatch = cleaned.match(/^(.+?)\s*(?:—|–|\s-\s)\s*(.+)$/);
   const name = (dashMatch?.[1] ?? cleaned).trim();
   let remainder = (dashMatch?.[2] ?? "").trim();
   let redFlags: string[] = [];
@@ -260,9 +260,17 @@ function buildCandidateComparison(option: ParsedOption, presentation: ParsedPres
   return {
     "why-it-fits": option.summary || option.name,
     "what-argues-against": presentation.mimics.slice(0, 2).join("; ") || "Review locally.",
-    "must-not-miss": option.redFlags.join(", ") || presentation.mustNotMiss.slice(0, 3).join(", "),
-    "bedside-question": presentation.clinicalHinge,
-    "immediate-action": presentation.immediateActions.slice(0, 2).join(" ") || "Stabilise and reassess.",
+    "must-not-miss":
+      option.redFlags.join(", ") || presentation.mustNotMiss.slice(0, 3).join(", ") || "Review must-not-miss causes.",
+    "bedside-question": presentation.clinicalHinge || "Assess clinical hinge.",
+    "immediate-action":
+      presentation.immediateActions.length > 0
+        ? presentation.immediateActions
+            .slice(0, 2)
+            .map((item) => item.trim().replace(/\.+$/, ""))
+            .filter(Boolean)
+            .join(", ") + "."
+        : "Stabilise and reassess.",
     investigations: presentation.investigations.slice(0, 6).join(", ") || "Guided by presentation.",
     "mimics-overlap": presentation.mimics.slice(0, 4).join(", ") || "Review overlap locally.",
   };
@@ -284,7 +292,7 @@ function buildPresentationWorkflow(parsed: ParsedPresentation): DifferentialPres
     selectedCount,
     totalCount: parsed.options.length,
     safetySnapshot: {
-      summary: parsed.clinicalHinge,
+      summary: parsed.clinicalHinge || parsed.triageRationale || parsed.title,
       tags: parsed.mustNotMiss.slice(0, 4).length ? parsed.mustNotMiss.slice(0, 4) : ["Review must-not-miss causes"],
     },
     criteria: COMPARISON_CRITERIA,
@@ -307,6 +315,14 @@ function buildPresentationWorkflow(parsed: ParsedPresentation): DifferentialPres
 
 function diagnosisSections(option: ParsedOption, presentation: ParsedPresentation): DifferentialSection[] {
   const redFlagsAreOwn = option.redFlags.length > 0;
+  const immediateSummary =
+    presentation.immediateActions.length > 0
+      ? presentation.immediateActions
+          .map((item) => item.trim().replace(/\.+$/, ""))
+          .filter(Boolean)
+          .join(", ") + "."
+      : "Stabilise and reassess.";
+
   return [
     {
       id: "why-it-fits",
@@ -322,40 +338,46 @@ function diagnosisSections(option: ParsedOption, presentation: ParsedPresentatio
     {
       id: "must-not-miss",
       title: "Must-not-miss",
-      summary: redFlagsAreOwn ? option.redFlags.join(", ") : presentation.mustNotMiss.join(", "),
-      items: redFlagsAreOwn ? option.redFlags : presentation.mustNotMiss,
+      summary: redFlagsAreOwn
+        ? option.redFlags.join(", ")
+        : presentation.mustNotMiss.join(", ") || "Review must-not-miss causes.",
+      items: redFlagsAreOwn
+        ? option.redFlags
+        : presentation.mustNotMiss.length > 0
+          ? presentation.mustNotMiss
+          : ["Review must-not-miss causes."],
       tone: "warning",
       scope: redFlagsAreOwn ? "diagnosis" : "presentation",
     },
     {
       id: "bedside-question",
       title: "Bedside question",
-      summary: presentation.clinicalHinge,
-      items: [presentation.clinicalHinge].filter(Boolean),
+      summary: presentation.clinicalHinge || "Assess clinical hinge.",
+      items: [presentation.clinicalHinge || "Assess clinical hinge."].filter(Boolean),
       tone: "question",
       scope: "presentation",
     },
     {
       id: "immediate-action",
       title: "Immediate action",
-      summary: presentation.immediateActions.join(" "),
-      items: presentation.immediateActions,
+      summary: immediateSummary,
+      items: presentation.immediateActions.length > 0 ? presentation.immediateActions : ["Stabilise and reassess."],
       tone: "action",
       scope: "presentation",
     },
     {
       id: "investigations",
       title: "Investigations",
-      summary: presentation.investigations.join(", "),
-      items: presentation.investigations,
+      summary: presentation.investigations.join(", ") || "Guided by presentation.",
+      items: presentation.investigations.length > 0 ? presentation.investigations : ["Guided by presentation."],
       tone: "test",
       scope: "presentation",
     },
     {
       id: "mimics-overlap",
       title: "Mimics / overlap",
-      summary: presentation.mimics.join(", "),
-      items: presentation.mimics,
+      summary: presentation.mimics.join(", ") || "Review overlap locally.",
+      items: presentation.mimics.length > 0 ? presentation.mimics : ["Review overlap locally."],
       tone: "overlap",
       scope: "presentation",
     },
@@ -392,6 +414,18 @@ function buildDiagnosisRecord(option: ParsedOption, presentation: ParsedPresenta
   };
 }
 
+function isFallbackText(text: string): boolean {
+  const normalized = text.trim().replace(/\.+$/, "");
+  return [
+    "Review must-not-miss causes",
+    "Assess clinical hinge",
+    "Stabilise and reassess",
+    "Guided by presentation",
+    "Review overlap locally",
+    "Review clinical details",
+  ].includes(normalized);
+}
+
 function mergeDiagnosisRecords(existing: DifferentialRecord, incoming: DifferentialRecord): DifferentialRecord {
   const preferIncoming = URGENCY_RANK[incoming.status] >= URGENCY_RANK[existing.status];
   const primary = preferIncoming ? incoming : existing;
@@ -403,7 +437,27 @@ function mergeDiagnosisRecords(existing: DifferentialRecord, incoming: Different
     return left.length >= right.length ? left : right;
   };
 
+  const mergeSectionSummaryText = (left: string, right: string) => {
+    if (!left.trim()) return right;
+    if (!right.trim()) return left;
+    const leftIsFallback = isFallbackText(left);
+    const rightIsFallback = isFallbackText(right);
+    if (leftIsFallback && !rightIsFallback) return right;
+    if (!leftIsFallback && rightIsFallback) return left;
+    return left.length >= right.length ? left : right;
+  };
+
   const unionItems = (left: string[], right: string[]) => [...new Set([...left, ...right].filter(Boolean))];
+
+  const mergeSectionItemsList = (left: string[], right: string[]) => {
+    const leftNonFallback = left.filter((item) => !isFallbackText(item));
+    const rightNonFallback = right.filter((item) => !isFallbackText(item));
+    const combinedNonFallback = unionItems(leftNonFallback, rightNonFallback);
+    if (combinedNonFallback.length > 0) {
+      return combinedNonFallback.slice(0, 8);
+    }
+    return unionItems(left, right).slice(0, 8);
+  };
 
   return {
     ...primary,
@@ -413,15 +467,48 @@ function mergeDiagnosisRecords(existing: DifferentialRecord, incoming: Different
       summary: mergeText(primary.safetySnapshot.summary, secondary.safetySnapshot.summary),
       tags: unionItems(primary.safetySnapshot.tags, secondary.safetySnapshot.tags).slice(0, 6),
     },
-    sections: primary.sections.map((section: DifferentialSection, index: number) => {
-      const other = secondary.sections[index];
-      if (!other) return section;
-      return {
-        ...section,
-        summary: mergeText(section.summary, other.summary),
-        items: unionItems(section.items, other.items).slice(0, 8),
-      };
-    }),
+    sections: [
+      ...primary.sections.map((section: DifferentialSection) => {
+        const other = secondary.sections.find((candidate) => candidate.id === section.id);
+        const mergedSummary = mergeSectionSummaryText(section.summary, other?.summary ?? "");
+        const mergedItems = mergeSectionItemsList(section.items, other?.items ?? []);
+        const fallback =
+          section.id === "why-it-fits"
+            ? primary.title
+            : section.id === "must-not-miss"
+              ? "Review must-not-miss causes."
+              : section.id === "bedside-question"
+                ? "Assess clinical hinge."
+                : section.id === "immediate-action"
+                  ? "Stabilise and reassess."
+                  : section.id === "investigations"
+                    ? "Guided by presentation."
+                    : section.id === "mimics-overlap"
+                      ? "Review overlap locally."
+                      : "Review clinical details.";
+        const nonFallbackItems = mergedItems.filter((item) => !isFallbackText(item));
+        let finalSummary = mergedSummary;
+        if (!finalSummary || isFallbackText(finalSummary)) {
+          if (nonFallbackItems.length > 0) {
+            finalSummary =
+              section.id === "immediate-action"
+                ? nonFallbackItems
+                    .map((item) => item.trim().replace(/\.+$/, ""))
+                    .filter(Boolean)
+                    .join(", ") + "."
+                : nonFallbackItems.join(", ");
+          } else {
+            finalSummary = finalSummary || fallback;
+          }
+        }
+        return {
+          ...section,
+          summary: finalSummary,
+          items: mergedItems.length > 0 ? mergedItems : [fallback],
+        };
+      }),
+      ...secondary.sections.filter((s) => !primary.sections.some((p) => p.id === s.id)),
+    ],
     investigations: unionItems(primary.investigations, secondary.investigations),
     immediateActions: unionItems(primary.immediateActions, secondary.immediateActions),
     related: unionItems(

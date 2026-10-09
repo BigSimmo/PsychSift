@@ -26,4 +26,24 @@ describe("the demo year", () => {
   it("lives inside its year", () => {
     for (const entry of DEMO_CME_ENTRIES) expect(entry.date.startsWith("2026-")).toBe(true);
   });
+
+  it("includes multi-allocation and routine-sourced entries while preserving category totals", () => {
+    const multi = DEMO_CME_ENTRIES.filter((e) => e.allocations.length > 1);
+    expect(multi.length).toBeGreaterThanOrEqual(1);
+
+    const routineLinked = DEMO_CME_ENTRIES.filter((e) => e.routineId !== null);
+    expect(routineLinked.length).toBeGreaterThanOrEqual(1);
+
+    const categorySums = { educational: 0, reviewing: 0, measuring: 0 };
+    for (const e of DEMO_CME_ENTRIES) {
+      for (const a of e.allocations) {
+        categorySums[a.category] += a.hours;
+      }
+    }
+    expect(categorySums).toEqual({
+      educational: 22.5,
+      reviewing: 8.0,
+      measuring: 2.0,
+    });
+  });
 });

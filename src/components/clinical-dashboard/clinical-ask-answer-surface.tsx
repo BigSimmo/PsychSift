@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Check, ClipboardCopy, Printer } from "lucide-react";
+import { ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import type { AnswerFeedbackType } from "@/lib/answer-feedback";
 import type { ClinicalAskFeedbackMetadata, ClinicalAskResponse } from "@/lib/clinical-ask/contracts";
@@ -75,6 +76,7 @@ export function ClinicalAskAnswerSurface({
   feedbackMetadata?: ClinicalAskFeedbackMetadata | null;
 }) {
   const label = clinicalAskModeProfile(response.mode).label;
+  const clarificationUnavailableId = useId();
   const firstClarificationRef = useRef<HTMLInputElement>(null);
   const [includeQuestion, setIncludeQuestion] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
@@ -121,9 +123,23 @@ export function ClinicalAskAnswerSurface({
           </label>
         ))}
         {onContinue ? (
-          <button type="button" disabled={!requiredClarificationsComplete} onClick={onContinue}>
-            Continue with confirmed context
-          </button>
+          <>
+            <button
+              type="button"
+              aria-disabled={!requiredClarificationsComplete ? true : undefined}
+              aria-describedby={!requiredClarificationsComplete ? clarificationUnavailableId : undefined}
+              title={!requiredClarificationsComplete ? "Fill in all required clarifications to continue" : undefined}
+              onClick={requiredClarificationsComplete ? onContinue : ignoreUnavailableActivation}
+              className={!requiredClarificationsComplete ? "cursor-not-allowed opacity-50" : undefined}
+            >
+              Continue with confirmed context
+            </button>
+            {!requiredClarificationsComplete ? (
+              <span id={clarificationUnavailableId} className="sr-only">
+                Fill in all required clarifications before continuing.
+              </span>
+            ) : null}
+          </>
         ) : null}
       </section>
     );

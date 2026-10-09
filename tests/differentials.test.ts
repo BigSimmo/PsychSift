@@ -216,6 +216,101 @@ SOURCE: v10`;
     // The appendix keeps its options as diagnoses, parented by the retitled entry.
     expect(snapshot.diagnoses.find((diagnosis) => diagnosis.slug === "ocd")).toBeDefined();
   });
+
+  it("preserves section summaries across merged presentation records (#VMG7D8)", () => {
+    const entryA = `=== ENTRY 1 ===
+Presentation Alpha
+Urgency: routine
+Axis: organic
+Population: general
+
+IMMEDIATE ACTIONS:
+- Check vitals immediately
+- Ensure patient safety
+
+OPTIONS:
+1. Shared Diagnosis — First entry summary. Red flags: Shock.
+
+SOURCE: v10`;
+
+    const entryB = `=== ENTRY 2 ===
+Presentation Beta
+Urgency: emergent
+Axis: organic
+Population: general
+
+OPTIONS:
+1. Shared Diagnosis — Higher urgency variant without immediate actions. Red flags: Coma.
+
+SOURCE: v10`;
+
+    const snapshot = buildDifferentialSnapshot({
+      entryFiles: [
+        { name: "01_Alpha.txt", content: entryA },
+        { name: "02_Beta.txt", content: entryB },
+      ],
+      presetsMarkdown: "",
+      flowsMarkdown: "",
+      aliasesMarkdown: "",
+      governanceMarkdown: "",
+    });
+
+    const diagnosis = snapshot.diagnoses.find((d) => d.slug === "shared-diagnosis");
+    expect(diagnosis).toBeDefined();
+    const actionSection = diagnosis?.sections.find((s) => s.id === "immediate-action");
+    expect(actionSection).toBeDefined();
+    // Entry B (emergent) had no immediate actions, but Entry A's section summary must be preserved.
+    expect(actionSection?.summary).toContain("Check vitals");
+    expect(actionSection?.items.length).toBeGreaterThan(0);
+    expect(actionSection?.items).not.toContain("Stabilise and reassess.");
+  });
+
+  it("does not overwrite short real clinical actions with longer generic fallback text (#VMG7D8)", () => {
+    const entryA = `=== ENTRY 1 ===
+Presentation Alpha
+Urgency: routine
+Axis: organic
+Population: general
+
+IMMEDIATE ACTIONS:
+- Check ECG
+
+OPTIONS:
+1. Short Action Dx — Summary. Red flags: None.
+
+SOURCE: v10`;
+
+    const entryB = `=== ENTRY 2 ===
+Presentation Beta
+Urgency: emergent
+Axis: organic
+Population: general
+
+OPTIONS:
+1. Short Action Dx — Higher urgency without immediate actions. Red flags: Coma.
+
+SOURCE: v10`;
+
+    const snapshot = buildDifferentialSnapshot({
+      entryFiles: [
+        { name: "01_Alpha.txt", content: entryA },
+        { name: "02_Beta.txt", content: entryB },
+      ],
+      presetsMarkdown: "",
+      flowsMarkdown: "",
+      aliasesMarkdown: "",
+      governanceMarkdown: "",
+    });
+
+    const diagnosis = snapshot.diagnoses.find((d) => d.slug === "short-action-dx");
+    expect(diagnosis).toBeDefined();
+    const actionSection = diagnosis?.sections.find((s) => s.id === "immediate-action");
+    expect(actionSection).toBeDefined();
+    // "Check ECG." is only 10 chars, while "Stabilise and reassess." is 23 chars.
+    // The shorter real action must win over the longer generic placeholder.
+    expect(actionSection?.summary).toBe("Check ECG.");
+    expect(actionSection?.items).toEqual(["Check ECG"]);
+  });
 });
 
 describe("differential records", () => {
@@ -233,6 +328,22 @@ describe("differential records", () => {
     expect(
       snapshot.presentations.find((presentation) => presentation.id === "focused-diagnostic-trap-tables")?.title,
     ).toBe("Focused Diagnostic Trap Tables");
+  });
+
+  it("formats immediate action section summaries with commas and terminal periods (#Z9NS6H)", () => {
+    const snapshot = loadDifferentialSnapshot();
+    let multiItemCount = 0;
+    for (const diagnosis of snapshot.diagnoses) {
+      for (const section of diagnosis.sections || []) {
+        if (section.id === "immediate-action" && Array.isArray(section.items) && section.items.length > 1) {
+          multiItemCount += 1;
+          const spaceJoined = section.items.join(" ");
+          expect(section.summary).not.toBe(spaceJoined);
+          expect(section.summary.endsWith(".")).toBe(true);
+        }
+      }
+    }
+    expect(multiItemCount).toBeGreaterThan(0);
   });
 
   it("uses concise presentation titles while retaining imported slash titles as searchable aliases", () => {

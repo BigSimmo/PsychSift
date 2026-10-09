@@ -57,4 +57,13 @@ describe("copy for your CPD home", () => {
     expect(lines[1]).toBe(`Activity: ${entry.title}`);
     expect(text).toContain(`Year: ${DEMO_CME_YEAR.year}`);
   });
+
+  it("formats a real demo entry with multiple allocations from DEMO_CME_ENTRIES", () => {
+    const multiEntry = DEMO_CME_ENTRIES.find((e) => e.allocations.length > 1);
+    expect(multiEntry).toBeDefined();
+    if (!multiEntry) return;
+    const text = formatEntryForCpdHome(multiEntry, DEMO_CME_YEAR);
+    expect(text).toContain("Reviewing performance");
+    expect(text).toContain("Measuring outcomes");
+  });
 });

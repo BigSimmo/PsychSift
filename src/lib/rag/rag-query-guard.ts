@@ -1,7 +1,7 @@
 import type { ClinicalQueryAnalysis } from "@/lib/types";
 
-const clearlyNonClinicalConsumerPattern =
-  /\b(coffee\s*machine|espresso|kitchen|recipe|holiday|hotel|restaurant|car|mortgage|insurance|gaming|laptop|phone|television|tv|washing\s*machine|air\s*fryer|vacuum|flight|airline)\b/i;
+export const clearlyNonClinicalConsumerPattern =
+  /\b(coffee\s*machine|espresso|kitchen|recipe|holiday|hotel|restaurant|car\s*finance|mortgage|insurance|gaming|laptop|phone\s*sale|television|tv\s*show|washing\s*machine|air\s*fryer|vacuum|flight\s*booking|airline)\b/i;
 
 /**
  * Topics genuinely outside a psychiatric corpus, used to hard-pin the four medical
@@ -57,8 +57,8 @@ export const clearlyOutsideCorpusMedicalPattern =
  * this check does not force a search: the query still meets the soft tail, where
  * `classifyCorpusGrounding` lets the corpus decide.
  */
-const psychiatricOrClinicalContextPattern =
-  /\b(?:ssri|antidepressant|antipsychotic|lithium|bipolar|depression|depressive|anxiety|psychiatry|psychiatric|triage|crisis|consultation|therapy|dose|dosage|medication|schizophrenia|catatonia|flight of ideas|mania|manic|hypomania|hypomanic|psychosis|psychotic|trauma|traumatic|ptsd|disorder|symptoms?|discharge|ward|patients?|self[^a-z0-9]{0,3}harm|suicid(?:e|al|ality)|overdose)\b/i;
+export const psychiatricOrClinicalContextPattern =
+  /\b(?:ssri|antidepressant|antipsychotic|lithium|bipolar|depression|depressive|anxiety|psychiatry|psychiatric|triage|crisis|consultation|therapy|dose|dosage|medication|schizophrenia|schizoaffective|catatonia|flight of ideas|mania|manic|hypomania|hypomanic|psychosis|psychotic|trauma|traumatic|ptsd|disorder|symptoms?|discharge|ward|patients?|self[^a-z0-9]{0,3}harm|suicid(?:e|al|ality)|overdose)\b/i;
 
 export const unavailableDocumentNoisePattern =
   /\b(?:newly uploaded|future synthetic|not been uploaded|not uploaded|2027 revised|airport travel policy|gardening equipment checklist)\b/i;

@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   compareArtifacts,
+  decodeManifestDigest,
+  encodeManifestDigest,
   hashArtifactDirectory,
   listArtifactFiles,
   main,
@@ -140,8 +142,16 @@ describe("hashing an artifact directory", () => {
 });
 
 describe("comparing a download against the recorded digest", () => {
-  const recorded = { doclingVersion: "2.124.0", recordedAt: "2026-09-19", files: { "a.bin": sha256("one") } };
-  const pinned = { ...recorded, treeDigest: treeDigestFromFiles(recorded.files) };
+  const recordedFiles = { "a.bin": sha256("one") };
+  const recorded = {
+    doclingVersion: "2.124.0",
+    recordedAt: "2026-09-19",
+    files: { "a.bin": encodeManifestDigest(recordedFiles["a.bin"]) },
+  };
+  const pinned = {
+    ...recorded,
+    treeDigest: encodeManifestDigest(treeDigestFromFiles(recordedFiles)),
+  };
 
   it("accepts an identical download", () => {
     const actual = hashArtifactDirectory(makeModelDirectory({ "a.bin": "one" }));
@@ -185,8 +195,8 @@ describe("the manifest's own self-consistency check", () => {
     const problems = manifestProblems({
       doclingVersion: "2.124.0",
       recordedAt: "2026-09-19",
-      treeDigest: sha256("not the right fold"),
-      files: { "a.bin": sha256("one") },
+      treeDigest: encodeManifestDigest(sha256("not the right fold")),
+      files: { "a.bin": encodeManifestDigest(sha256("one")) },
     });
     expect(problems).toContain("treeDigest does not match the recorded per-file digests");
   });
@@ -195,7 +205,7 @@ describe("the manifest's own self-consistency check", () => {
     const problems = manifestProblems({
       doclingVersion: "2.124.0",
       recordedAt: "2026-09-19",
-      treeDigest: sha256("anything"),
+      treeDigest: encodeManifestDigest(sha256("anything")),
       files: {},
     });
     expect(problems).toContain("treeDigest is recorded but no per-file digests are — a mismatch could not name a file");
@@ -206,9 +216,27 @@ describe("the manifest's own self-consistency check", () => {
       doclingVersion: "2.124.0",
       recordedAt: null,
       treeDigest: null,
-      files: { "a.bin": sha256("one") },
+      files: { "a.bin": encodeManifestDigest(sha256("one")) },
     });
     expect(problems).toContain("treeDigest is null but files are recorded — record the digest or clear the files");
+  });
+
+  it("rejects a contiguous 64-hex digest so secret scanners cannot be re-tripped", () => {
+    const problems = manifestProblems({
+      doclingVersion: "2.124.0",
+      recordedAt: "2026-09-19",
+      treeDigest: sha256("one"),
+      files: { "a.bin": sha256("one") },
+    });
+    expect(problems.some((problem) => problem.includes("scanner-safe digest"))).toBe(true);
+  });
+
+  it("round-trips encode/decode without changing the SHA-256 value", () => {
+    const raw = sha256("payload");
+    const encoded = encodeManifestDigest(raw);
+    expect(encoded).toHaveLength(4);
+    expect(encoded.every((part) => part.length === 16)).toBe(true);
+    expect(decodeManifestDigest(encoded)).toBe(raw);
   });
 });
 
@@ -217,8 +245,8 @@ describe("the verifier as the image build runs it", () => {
   const pinnedManifest = {
     doclingVersion: "2.124.0",
     recordedAt: "2026-09-19",
-    treeDigest: treeDigestFromFiles(recordedFiles),
-    files: recordedFiles,
+    treeDigest: encodeManifestDigest(treeDigestFromFiles(recordedFiles)),
+    files: { "a.bin": encodeManifestDigest(recordedFiles["a.bin"]) },
   };
 
   it("exits 0 on a matching download", () => {
@@ -245,7 +273,7 @@ describe("the verifier as the image build runs it", () => {
   });
 
   it("exits non-zero on a manifest that is not self-consistent, rather than trusting it", () => {
-    const broken = { ...pinnedManifest, treeDigest: sha256("wrong") };
+    const broken = { ...pinnedManifest, treeDigest: encodeManifestDigest(sha256("wrong")) };
     const result = runMain(makeModelDirectory({ "a.bin": "one" }), makeManifestFile(broken));
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("not self-consistent");
@@ -268,7 +296,10 @@ describe("the verifier as the image build runs it", () => {
     const block = result.stdout.slice(result.stdout.indexOf("{"));
     const recorded = JSON.parse(block);
     expect(manifestProblems(recorded)).toEqual([]);
-    expect(recorded.treeDigest).toBe(treeDigestFromFiles({ "a.bin": sha256("one") }));
+    expect(recorded.treeDigest).toStrictEqual(
+      encodeManifestDigest(treeDigestFromFiles({ "a.bin": sha256("one") })),
+    );
+    expect(recorded.files["a.bin"]).toStrictEqual(encodeManifestDigest(sha256("one")));
   });
 });
 

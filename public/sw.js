@@ -7,7 +7,7 @@
  */
 
 const CACHE_PREFIX = "clinical-kb-pwa-";
-const CACHE_VERSION = "2026-09-28-v2";
+const CACHE_VERSION = "2026-10-09-v1";
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `${CACHE_PREFIX}static-${CACHE_VERSION}`;
 const STATIC_CACHE_PREFIX = `${CACHE_PREFIX}static-`;

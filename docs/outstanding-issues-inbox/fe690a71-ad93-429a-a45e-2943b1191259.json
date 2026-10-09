@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "fe690a71-ad93-429a-a45e-2943b1191259",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#23Q709",
+    "outcome": "Resolved: Added /scripts/stamp-service-worker.mjs to watchPatterns in railway.app.json so service worker changes trigger automated builds.",
+    "baseRowFingerprint": "9b4dca48dc31e707d6b8c4d79c3ee44e926ad70995dec441a2ab2cf96d98acbb"
+  }
+}

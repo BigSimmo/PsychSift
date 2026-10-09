@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "0ae58da9-54c9-4dd6-87a8-7b511af4be79",
+  "createdOn": "2026-10-09",
+  "action": "done",
+  "payload": {
+    "id": "#G20QE6",
+    "outcome": "Resolved: Study budget / payslip claim export pack component and tests created in src/components/cme/cme-claim-pack.tsx and tests/cme-claim-pack.test.ts.",
+    "baseRowFingerprint": "55c3635fa92ffd861323ed12f4d8267d49d05c963882cd2ef5442f6b449e8ba4"
+  }
+}

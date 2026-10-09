@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { buttonFaceClass } from "@/components/ui/button-face";
 
 export const metadata: Metadata = {
   title: "Document Search - PsychSift",
@@ -16,6 +18,11 @@ export default function DocumentsSearchRoute() {
         Enter a query in the Documents composer to search the indexed sources. Results open the source document at the
         matching page and passage.
       </p>
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <Link href="/?mode=documents&focus=1" className={buttonFaceClass({ variant: "primary" })}>
+          Open Documents search
+        </Link>
+      </div>
     </main>
   );
 }

@@ -9,7 +9,7 @@ import { useCmeSample } from "@/components/cme/cme-sample-context";
 import { stillShortCategories } from "@/components/cme/cme-still-short";
 import { CmeDetailNavHeader } from "@/components/cme/cme-nav-header";
 import { CmeEntryForm, type CmeEntryDraft } from "@/components/cme/cme-entry-form";
-import { cn, eyebrowText, InlineNotice, textMuted } from "@/components/ui-primitives";
+import { cn, eyebrowText, fieldControlPlain, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/lib/account-scoped-browser-state";
 import type { CmeDraft, CmeDraftPayload } from "@/lib/cme/drafts";
 import { recentRepeatableActivities } from "@/lib/cme/recent-activities";
@@ -17,8 +17,12 @@ import type { CmeRoutine } from "@/lib/cme/routines";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { perthCalendarDate } from "@/lib/perth-time";
 import { cmePageWidth } from "@/components/cme/cme-page-frame";
+import { Checkbox } from "@/components/ui/choice";
 
 export { CME_NEW_ENTRY_DRAFT_KEY };
+
+/** Same shape `z.string().uuid()` accepts on `/api/cme/entries`. */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Reads the message the API actually sent, so the form shows the reason rather
@@ -84,6 +88,9 @@ export function CmeNewEntryRoute({
   const router = useRouter();
   const sample = useCmeSample();
   const [requestId] = useState(() => crypto.randomUUID());
+  const [isReplacement, setIsReplacement] = useState(Boolean(missedSessionId));
+  const [linkedMissedSessionId, setLinkedMissedSessionId] = useState(missedSessionId ?? "");
+  const missedSessionDraft = linkedMissedSessionId.trim();
   const [waiting, setWaiting] = useState<WaitingOnValue>({
     waitingOn: resumeDraft?.waitingOn ?? null,
     waitingNote: resumeDraft?.waitingNote ?? "",
@@ -142,6 +149,9 @@ export function CmeNewEntryRoute({
 
   async function saveEntry(entry: CmeEntryDraft) {
     if (demoMode) throw new Error("Demo mode is read-only. Sign in to save this activity to a private CPD record.");
+    // The entries API accepts only a UUID. A free-text reason must not be sent as
+    // missedSessionId or the whole save is rejected with 400.
+    const effectiveMissedSessionId = isReplacement && UUID_PATTERN.test(missedSessionDraft) ? missedSessionDraft : null;
     const response = await fetch("/api/cme/entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -149,14 +159,14 @@ export function CmeNewEntryRoute({
         ...entry,
         requestId,
         ...(resumeDraft ? { draftId: resumeDraft.id } : {}),
-        ...(missedSessionId ? { missedSessionId } : {}),
+        ...(effectiveMissedSessionId ? { missedSessionId: effectiveMissedSessionId } : {}),
       }),
     });
     if (!response.ok) throw new Error(await entrySaveError(response));
     // The activity is saved either way; if the missed session could not be linked to it, say so on
     // the log, so the missed record is not mistaken for replaced and replaced a second time.
     const saved = (await response.json().catch(() => null)) as { linkedMissedSession?: boolean } | null;
-    const missedUnlinked = missedSessionId && saved?.linkedMissedSession === false ? "&missed=unlinked" : "";
+    const missedUnlinked = effectiveMissedSessionId && saved?.linkedMissedSession === false ? "&missed=unlinked" : "";
     router.push(`/cme/log?year=${entry.date.slice(0, 4)}&saved=1${missedUnlinked}`);
     router.refresh();
   }
@@ -183,7 +193,11 @@ export function CmeNewEntryRoute({
   return (
     <>
       {/* The band is hidden on a form, so the form keeps its own way back (work-mode redesign, owner request 6 Oct 2026). */}
-      <CmeDetailNavHeader title="Log an activity" back={{ href: "/cme/log", label: "Log" }} testIdPrefix="cme-new" />
+      <CmeDetailNavHeader
+        title="Log an activity"
+        back={{ href: "/cme/log", label: "CPD log" }}
+        testIdPrefix="cme-new"
+      />
       <main data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-6 pt-3 sm:px-6")}>
         <h1 className="sr-only">Log an activity</h1>
         <p className="cpd-hint m-0">
@@ -243,6 +257,39 @@ export function CmeNewEntryRoute({
             </InlineNotice>
           </div>
         ) : null}
+
+        <div className="mt-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4">
+          <Checkbox
+            label="This activity replaces a missed teaching or supervision session"
+            checked={isReplacement}
+            onChange={(event) => setIsReplacement(event.target.checked)}
+            data-testid="cme-replacement-checkbox"
+          />
+          {isReplacement ? (
+            <div className="mt-3 pl-6">
+              <label
+                htmlFor="cme-missed-session-input"
+                className="block text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]"
+              >
+                Missed session ID or reason
+              </label>
+              <input
+                id="cme-missed-session-input"
+                type="text"
+                value={linkedMissedSessionId}
+                onChange={(e) => setLinkedMissedSessionId(e.target.value)}
+                className={cn("mt-1", fieldControlPlain)}
+                data-testid="cme-missed-session-input"
+                aria-describedby="cme-missed-session-hint"
+              />
+              <p id="cme-missed-session-hint" className="mt-1.5 text-xs text-[color:var(--text-muted)]">
+                {missedSessionDraft && !UUID_PATTERN.test(missedSessionDraft)
+                  ? "That isn't a session ID, so this activity will save without linking a missed session."
+                  : "Paste the missed session ID. A written reason is not a session ID and is not sent."}
+              </p>
+            </div>
+          ) : null}
+        </div>
 
         <div className="mt-6">
           <CmeEntryForm

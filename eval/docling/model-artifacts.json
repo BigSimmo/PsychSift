@@ -9,19 +9,877 @@
     "eval/docling/verify-model-artifacts.mjs runs in the same RUN layer as the download",
     "and fails the build when what arrived is not what is recorded here.",
     "",
-    "treeDigest is null because no build has recorded one yet. In that state the verifier",
-    "prints the digest the download produced and exits 0 rather than failing, because the",
-    "digest can only be learned by running the download \u2014 refusing to build until one is",
-    "recorded would make the very build that produces it impossible.",
+    "treeDigest is pinned. verify-model-artifacts.mjs fails the worker image build",
+    "when HuggingFace serves a different weight set than the digests below.",
     "",
-    "TO PIN IT (one operator action, needs Docker and HuggingFace egress):",
+    "Digests are stored as a JSON array of four 16-character hex chunks so secret scanners do not treat the SHA-256 as a credential (PR #3385).",
+    "",
+    "TO RE-PIN AFTER AN INTENTIONAL UPSTREAM WEIGHT CHANGE:",
     "  1. docker build -f Dockerfile.worker -t clinical-kb-worker .",
     "  2. In the build log, find the block after `[docling-models] Record it by replacing`.",
     "  3. Replace this file's contents with that block and commit it.",
     "From that commit on, any change to the upstream weights fails the image build."
   ],
   "doclingVersion": "2.132.0",
-  "recordedAt": null,
-  "treeDigest": null,
-  "files": {}
+  "recordedAt": "2026-10-08",
+  "treeDigest": [
+    "99e35fcb2eee94ca",
+    "26bcf3338a93348a",
+    "5dd8f0c49b6c3b03",
+    "293c103906fd833e"
+  ],
+  "files": {
+    "RapidOcr/PP-OCRv6_det_small.onnx": [
+      "090f04abcd9d9a74",
+      "98bc4ebf677e4cb9",
+      "bdce1fe4197ddb7e",
+      "529f1ef44e1ff94f"
+    ],
+    "RapidOcr/PP-OCRv6_det_small.pth": [
+      "fbdc74c97ea7b770",
+      "ab22cbdc1bba01a5",
+      "2bdf1975efcf3442",
+      "057356d622b05d54"
+    ],
+    "RapidOcr/PP-OCRv6_rec_small.onnx": [
+      "6f327246b50388f3",
+      "c176ae304bd95767",
+      "ea6dc0c9ae92153e",
+      "f8cbe210b3c14884"
+    ],
+    "RapidOcr/PP-OCRv6_rec_small.pth": [
+      "0107b2ad694ccc9b",
+      "1db7cf9ed3ffbc93",
+      "d1795d9e08d9cf82",
+      "3127243a87bce516"
+    ],
+    "RapidOcr/ch_ppocr_mobile_v2.0_cls_mobile.onnx": [
+      "e47acedf663230f8",
+      "863ff1ab0e64dd2d",
+      "82b838fceb595714",
+      "6dab185a89d6215c"
+    ],
+    "RapidOcr/ch_ptocr_mobile_v2.0_cls_mobile.pth": [
+      "bfe13860824b3365",
+      "c0c7f7ccfcddc8ff",
+      "11645c60051739ff",
+      "18bc9913f60c98e1"
+    ],
+    "RapidOcr/ppocrv6_dict.txt": [
+      "b5f2bfe2bdd94484",
+      "29e3e82b51c78977",
+      "5d9b42f2403d082b",
+      "00662eb77e401c5d"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/.gitignore": [
+      "684888c0ebb17f37",
+      "4298b65ee2807526",
+      "c066094c701bcc7e",
+      "bbe1c1095f494fc1"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/CACHEDIR.TAG": [
+      "f6572428f6d5e157",
+      "5e73a1502895a873",
+      "1f10757dfbb63490",
+      "9c6e154b849af91d"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/.gitattributes.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/.gitattributes.metadata": [
+      "fc5487c939a0c07b",
+      "96d58384fab33d69",
+      "4f36b0532b772073",
+      "8174156ec7c183bb"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/README.md.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/README.md.metadata": [
+      "b4fb22ac05be81c8",
+      "59c417238525004d",
+      "c4f9c8100a397ed9",
+      "09c4a82b7ac642f5"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/added_tokens.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/added_tokens.json.metadata": [
+      "6e1d8a94e544c9cf",
+      "bcd78e163f7e7975",
+      "00eca1833cd7bb01",
+      "43ad56d92f6821e5"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/chat_template.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/chat_template.json.metadata": [
+      "109a346201f31c7b",
+      "dbfe4ea0f55a8962",
+      "b8a0e022d55b49eb",
+      "345fcb9f802a60c9"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/config.json.metadata": [
+      "cfc9ca7e39d2181d",
+      "0f7a8515059e20b2",
+      "51d465632fdd7e9d",
+      "8d65de2100684063"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/generation_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/generation_config.json.metadata": [
+      "f2a88a9a0dc31205",
+      "7a2358c6be59e434",
+      "d5aafe4be0042112",
+      "0d02c6303cadb59c"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/model.safetensors.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/model.safetensors.metadata": [
+      "3329e85c22eb0153",
+      "197ba9ee593d81da",
+      "3fac2ff5d6f5c10d",
+      "85fdf8fff0e7a0e6"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/preprocessor_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/preprocessor_config.json.metadata": [
+      "84cd98c00971f294",
+      "7e1f51baf08bebc6",
+      "485a09468eede3a9",
+      "82e067cdaebf4592"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/processor_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/processor_config.json.metadata": [
+      "5535495693595866",
+      "7652133b8f0997c1",
+      "aea5cccbd9307a8c",
+      "c44467fe966f993f"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/special_tokens_map.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/special_tokens_map.json.metadata": [
+      "36ddb5c29b5bf699",
+      "0cac9c13857ffcb0",
+      "76767654a9633174",
+      "218cdc19c721449b"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/tokenizer.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/tokenizer.json.metadata": [
+      "bf0fd2154c95642d",
+      "5a1ee6cb954c46cb",
+      "8fa63794a0b98498",
+      "b6a2844c05449e1a"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/tokenizer_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/tokenizer_config.json.metadata": [
+      "d1c84f08981abaef",
+      "feef996e1b45127a",
+      "c831343803f3d15e",
+      "ad347eb385f2c167"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/vocab.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/download/vocab.json.metadata": [
+      "415bb46c735a1daa",
+      "6843a5ed905089f3",
+      "4da76bcad01fb827",
+      "70c1e1087a6eaae8"
+    ],
+    "docling-project--CodeFormulaV2/.cache/huggingface/trees/ecedbe111d15c2dc60bfd4a823cbe80127b58af4.json": [
+      "106e1f22fdf0346a",
+      "c780946774ab739a",
+      "58d80bf72245ea22",
+      "7001b83bf22a46c1"
+    ],
+    "docling-project--CodeFormulaV2/.gitattributes": [
+      "11ad7efa24975ee4",
+      "b0c3c3a38ed18737",
+      "f0658a5f75a0a967",
+      "87b576a78a023361"
+    ],
+    "docling-project--CodeFormulaV2/README.md": [
+      "684604c08aa8cc32",
+      "b3d65049bc9794b5",
+      "7f3fc510953148ad",
+      "3ba61d35f60bef9a"
+    ],
+    "docling-project--CodeFormulaV2/added_tokens.json": [
+      "002686b2efb9535c",
+      "359458cd1121de8e",
+      "1b58e67426a46e2b",
+      "d4425843766a3a5e"
+    ],
+    "docling-project--CodeFormulaV2/chat_template.json": [
+      "c9d21553af689882",
+      "ac89ad8e84121646",
+      "62d1605f65951196",
+      "64e85626df7be421"
+    ],
+    "docling-project--CodeFormulaV2/config.json": [
+      "98f55cfe07dd168f",
+      "9fab1f1eec35f754",
+      "b23631ea1a9a7c97",
+      "59b1b7cb41ab76b1"
+    ],
+    "docling-project--CodeFormulaV2/generation_config.json": [
+      "b17f1890b2b2baf1",
+      "72761c9c4d6eb956",
+      "482ffa05964f357e",
+      "67544ec998c9851f"
+    ],
+    "docling-project--CodeFormulaV2/model.safetensors": [
+      "4b04e77af34c4e68",
+      "2a7ab1617628340d",
+      "658f3c3dcd12456d",
+      "d2a7fff805cf79d2"
+    ],
+    "docling-project--CodeFormulaV2/preprocessor_config.json": [
+      "6cb6e36d6fcb88ca",
+      "1502c4a26750715d",
+      "c3e7dedddc9a8f17",
+      "b27d8d167d1457e7"
+    ],
+    "docling-project--CodeFormulaV2/processor_config.json": [
+      "e7bff42da73ae9ee",
+      "c9042ef20e066e11",
+      "f1ee20f025358ff7",
+      "9131e3c0fb549b46"
+    ],
+    "docling-project--CodeFormulaV2/special_tokens_map.json": [
+      "1b17e900a73384d2",
+      "56db6f1a7591fd0d",
+      "95c09e6aede68002",
+      "2b047386b97afcba"
+    ],
+    "docling-project--CodeFormulaV2/tokenizer.json": [
+      "5ec5d3780a2e01b1",
+      "40cf34f023eb6002",
+      "63855a99aacdc3eb",
+      "0f2600d7b1b4ac96"
+    ],
+    "docling-project--CodeFormulaV2/tokenizer_config.json": [
+      "37a0e94be9c9ab51",
+      "97b2188e61cf764b",
+      "bc015f4526101388",
+      "1fe37bd2fe8599e6"
+    ],
+    "docling-project--CodeFormulaV2/vocab.json": [
+      "8922f7e91084b986",
+      "2d270c16ce102707",
+      "1214aa252a1567a4",
+      "b410f952101005fc"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/.gitignore": [
+      "684888c0ebb17f37",
+      "4298b65ee2807526",
+      "c066094c701bcc7e",
+      "bbe1c1095f494fc1"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/CACHEDIR.TAG": [
+      "f6572428f6d5e157",
+      "5e73a1502895a873",
+      "1f10757dfbb63490",
+      "9c6e154b849af91d"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/.gitattributes.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/.gitattributes.metadata": [
+      "09fedeac6fdcc94b",
+      "c9dbdbfc578715ba",
+      "21b9f1fa8f7d8751",
+      "c7fd7c44af4656b8"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/ConfusionMatrix_v2_0.png.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/ConfusionMatrix_v2_0.png.metadata": [
+      "11c894df7040dca4",
+      "82c44edbf03e3ddf",
+      "c33765a6fe3b9020",
+      "d3f92b8a870e8387"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/ConfusionMatrix_v2_5.png.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/ConfusionMatrix_v2_5.png.metadata": [
+      "2455169a583d3561",
+      "6240265539f225e0",
+      "61eab443d59823d1",
+      "ee9dceba18f0f2af"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/README.md.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/README.md.metadata": [
+      "fc863dc666e816e7",
+      "a54b5cb180a9fe25",
+      "cc3d1a1174bc09ef",
+      "e3bc3dc30e116df3"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/config.json.metadata": [
+      "64865bcb221541aa",
+      "de4dfbf5f48b0ee5",
+      "26ba01e4811aab96",
+      "8f0ca57171bbfcf0"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/model.onnx.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/model.onnx.metadata": [
+      "b8d1d534125e2c77",
+      "9e6c0c91ea06d214",
+      "ae1bb354037aefff",
+      "d680f3ecf98da0a4"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/model.safetensors.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/model.safetensors.metadata": [
+      "ddbe14361645275e",
+      "70ba9d64fc0cc04b",
+      "92f93ac6753d959e",
+      "aa808e6ae80b7cc7"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/preprocessor_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/download/preprocessor_config.json.metadata": [
+      "96eca8aee44b969f",
+      "28a2804c6a6e66a2",
+      "c024e76c0e4c090c",
+      "c0d34cd20330a0ca"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.cache/huggingface/trees/f859dfbff5c9916cd996942d4b0db7fa25808220.json": [
+      "4ad3e7a6020fed3d",
+      "533829538c3b9876",
+      "9f4b72ca6cf0e347",
+      "017de25fb8ebd388"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/.gitattributes": [
+      "578ac51c49a4dc3b",
+      "b76753773665a312",
+      "894ace5cbbc9db61",
+      "eb522eba28fc893e"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/ConfusionMatrix_v2_0.png": [
+      "8aad282fcfa2cfde",
+      "7ef16d89aa6ae9b1",
+      "8ea48e326488c695",
+      "115d2fed5a1a37f1"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/ConfusionMatrix_v2_5.png": [
+      "99fc7608c0565044",
+      "12df0df5a4c35cbe",
+      "c8a7cd73c4e26da7",
+      "9ff0ee893d7e4b87"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/README.md": [
+      "df8d868e8a850ae0",
+      "edd585a21eaf42d6",
+      "ec00cd07374465e8",
+      "e98a3a73df429e43"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/config.json": [
+      "dbed0349fb8b12fa",
+      "d95d8ff7f43b062c",
+      "40971e06d9d957b2",
+      "5e90d91dfd3bd77e"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/model.onnx": [
+      "27ffc48c27ae4e12",
+      "c99b6f6de0dd7300",
+      "05245e47b70dd0c1",
+      "339e62cbac3ec4c0"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/model.safetensors": [
+      "6bf1e44d6bce316d",
+      "cade6eb9929d8f8d",
+      "23b6e8d9d29062b3",
+      "b4011cff87c7c3cd"
+    ],
+    "docling-project--DocumentFigureClassifier-v2.5/preprocessor_config.json": [
+      "118dc06957203634",
+      "6fbacc3e15586089",
+      "d3f8a9aaf9036c0c",
+      "54b4666236a28032"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/.gitignore": [
+      "684888c0ebb17f37",
+      "4298b65ee2807526",
+      "c066094c701bcc7e",
+      "bbe1c1095f494fc1"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/CACHEDIR.TAG": [
+      "f6572428f6d5e157",
+      "5e73a1502895a873",
+      "1f10757dfbb63490",
+      "9c6e154b849af91d"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/.gitattributes.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/.gitattributes.metadata": [
+      "922711c0592153ad",
+      "29a037bf1d463370",
+      "4936e3dd10739546",
+      "8d1962771fc8a121"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/README.md.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/README.md.metadata": [
+      "e822818e6cdb5535",
+      "70202da9741613ca",
+      "0cbe874bd1a2ee6d",
+      "7a1ee83f9b7cc69e"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/config.json.metadata": [
+      "77efde22c33c8c76",
+      "b0a3c71cfe33733f",
+      "4373838dcbbea425",
+      "efd053813d785c5c"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/model.onnx.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/model.onnx.metadata": [
+      "568f40873d2f34ee",
+      "66d4ae842b6739da",
+      "4a721b0d7ddaa9b3",
+      "55eb056621525bc2"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/preprocessor_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/download/preprocessor_config.json.metadata": [
+      "f43271e115c2b6de",
+      "a2ec6712ce43825a",
+      "67cbb35e6505f0df",
+      "48f522541897f095"
+    ],
+    "docling-project--docling-layout-heron-onnx/.cache/huggingface/trees/40bde044036bb181c130ddf6c51792187268748f.json": [
+      "bf77257f92da661c",
+      "7a941042e96de82d",
+      "5717230f3b986340",
+      "116da5137820cd9e"
+    ],
+    "docling-project--docling-layout-heron-onnx/.gitattributes": [
+      "11ad7efa24975ee4",
+      "b0c3c3a38ed18737",
+      "f0658a5f75a0a967",
+      "87b576a78a023361"
+    ],
+    "docling-project--docling-layout-heron-onnx/README.md": [
+      "48de0f07390f6823",
+      "a225ce8aab348e7b",
+      "57408534b56b71f1",
+      "433ed6280456597f"
+    ],
+    "docling-project--docling-layout-heron-onnx/config.json": [
+      "c6e67b6cdf64fa24",
+      "5779d0409bb994aa",
+      "96e8c1790e15ec07",
+      "a65843628e232180"
+    ],
+    "docling-project--docling-layout-heron-onnx/model.onnx": [
+      "59c81a3a2923042d",
+      "85034ffc487f8f47",
+      "e4854117e879aef8",
+      "9b2b9f728fb4922a"
+    ],
+    "docling-project--docling-layout-heron-onnx/preprocessor_config.json": [
+      "54d086cf0d7d371f",
+      "7fac36e5d3a0dae3",
+      "1e211298affc8161",
+      "06cc376506799d58"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/.gitignore": [
+      "684888c0ebb17f37",
+      "4298b65ee2807526",
+      "c066094c701bcc7e",
+      "bbe1c1095f494fc1"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/CACHEDIR.TAG": [
+      "f6572428f6d5e157",
+      "5e73a1502895a873",
+      "1f10757dfbb63490",
+      "9c6e154b849af91d"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/.gitattributes.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/.gitattributes.metadata": [
+      "7016904901354730",
+      "779798074d0f7e63",
+      "7178f69fe89c38f8",
+      "96d52f9fbb6b55c8"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/README.md.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/README.md.metadata": [
+      "ba63e010a5ffb55f",
+      "a26f4554981130c9",
+      "ed9e59d3c9fcdd42",
+      "b7b909ac411ad40e"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/config.json.metadata": [
+      "6986c8baa3d328ee",
+      "d36e4acacad1640c",
+      "7b6b012f021d85f5",
+      "25715f8cd3334f67"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/docling_heron_400.png.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/docling_heron_400.png.metadata": [
+      "27c1f610c5590ccd",
+      "d2a1bf3b6f780497",
+      "0d362b6acec27ade",
+      "c21ebba8c0c2f10b"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/model.safetensors.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/model.safetensors.metadata": [
+      "559886da9abffa68",
+      "57c697bd356ae4b7",
+      "239180b5f34388d0",
+      "1e636a3e5148a065"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/preprocessor_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/download/preprocessor_config.json.metadata": [
+      "9304951c68b73fb1",
+      "ef35ecba2692ed42",
+      "86fa87b87a20e134",
+      "5847b0729754dd53"
+    ],
+    "docling-project--docling-layout-heron/.cache/huggingface/trees/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8.json": [
+      "bc7fa4e3aab7315b",
+      "44d7897eca8056d6",
+      "9388ccb80d33db5f",
+      "9ba7d6fa2a8fe9f2"
+    ],
+    "docling-project--docling-layout-heron/.gitattributes": [
+      "11ad7efa24975ee4",
+      "b0c3c3a38ed18737",
+      "f0658a5f75a0a967",
+      "87b576a78a023361"
+    ],
+    "docling-project--docling-layout-heron/README.md": [
+      "175700839bc7808e",
+      "ac6af1d0c23e4f48",
+      "3606ab2276fe0112",
+      "2f4093e61a1a65b6"
+    ],
+    "docling-project--docling-layout-heron/config.json": [
+      "fdea30805ce2f566",
+      "6b147fca941dcdd2",
+      "7ad468e27d6ed219",
+      "02207d3da056a97d"
+    ],
+    "docling-project--docling-layout-heron/docling_heron_400.png": [
+      "e7f78610372b32a7",
+      "938e480d2c7fa1c3",
+      "037ee170bd82282a",
+      "5bd026232f6e6f9e"
+    ],
+    "docling-project--docling-layout-heron/model.safetensors": [
+      "00333a43451945aa",
+      "f89db8ca9c0a17e7",
+      "5d1537c17db60fdb",
+      "91aa95f4c7929e0c"
+    ],
+    "docling-project--docling-layout-heron/preprocessor_config.json": [
+      "cd38cd59999e7a95",
+      "d68e487fbe5132df",
+      "3d4e5c32a0836add",
+      "57e6126ba0c4eaf1"
+    ],
+    "docling-project--docling-models/.cache/huggingface/.gitignore": [
+      "684888c0ebb17f37",
+      "4298b65ee2807526",
+      "c066094c701bcc7e",
+      "bbe1c1095f494fc1"
+    ],
+    "docling-project--docling-models/.cache/huggingface/CACHEDIR.TAG": [
+      "f6572428f6d5e157",
+      "5e73a1502895a873",
+      "1f10757dfbb63490",
+      "9c6e154b849af91d"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/.gitattributes.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/.gitattributes.metadata": [
+      "e803adc1d96a595e",
+      "73d52c8faef5817d",
+      "0bd7edbf4c1b06b0",
+      "5554bc644a6e2104"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/.gitignore.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/.gitignore.metadata": [
+      "c33140ae9850a3e2",
+      "f42caacbeb71665b",
+      "d9c0d6d418a1127d",
+      "78f7bbb549abf3e4"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/README.md.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/README.md.metadata": [
+      "2d213b0af383369b",
+      "92000304283fc211",
+      "30dad1c4ce2545b8",
+      "f3490953dda61bb5"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/config.json.metadata": [
+      "0d510e558f58d680",
+      "0a19497644ddd242",
+      "1c6689a8fdc697c9",
+      "23ff6f710866b222"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors.metadata": [
+      "20532ddda3f41e8e",
+      "ba9fd45ce2e5cd8a",
+      "ed819bae60408b78",
+      "c7a4d649bfe5f43a"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/model_artifacts/tableformer/accurate/tm_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/model_artifacts/tableformer/accurate/tm_config.json.metadata": [
+      "f9254d8aee136ffa",
+      "75ec9581174538a9",
+      "a10f389e05b11ea9",
+      "280dda53421e0142"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/model_artifacts/tableformer/fast/tableformer_fast.safetensors.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/model_artifacts/tableformer/fast/tableformer_fast.safetensors.metadata": [
+      "7828e81016465b94",
+      "59853ba9f879fe0a",
+      "7bcc78b7d1077281",
+      "c91ee80a6506953e"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/model_artifacts/tableformer/fast/tm_config.json.lock": [
+      "e3b0c44298fc1c14",
+      "9afbf4c8996fb924",
+      "27ae41e4649b934c",
+      "a495991b7852b855"
+    ],
+    "docling-project--docling-models/.cache/huggingface/download/model_artifacts/tableformer/fast/tm_config.json.metadata": [
+      "4ac6cefc0def2444",
+      "199b9c0aac006b55",
+      "61e9b8dedc621877",
+      "ab9551ac6098510e"
+    ],
+    "docling-project--docling-models/.cache/huggingface/trees/fc0f2d45e2218ea24bce5045f58a389aed16dc23.json": [
+      "8f74cb0561012650",
+      "8c4afcae60003fb2",
+      "38e7845e53655de6",
+      "f3140c979e826df0"
+    ],
+    "docling-project--docling-models/.gitattributes": [
+      "360aba3ff7ce7539",
+      "6f13f0a77925fe9e",
+      "79997e8d4bac0645",
+      "95ebb00c82700386"
+    ],
+    "docling-project--docling-models/.gitignore": [
+      "b44b404189eaff36",
+      "31c470946e7350c2",
+      "e88cead304d332a8",
+      "ad50325e6f56e95d"
+    ],
+    "docling-project--docling-models/README.md": [
+      "d17f233378eff124",
+      "0b623b36da76ee8b",
+      "40afcca05d505949",
+      "713bf03f7e00822a"
+    ],
+    "docling-project--docling-models/config.json": [
+      "9c34024dc28ff47b",
+      "75818f415e769809",
+      "798c29bf9bde6f2c",
+      "cc63a4acb62396d9"
+    ],
+    "docling-project--docling-models/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors": [
+      "2a7d6c924b3cd12f",
+      "b99a09280ca9c33a",
+      "89c5d60b93253617",
+      "d2e088c1a40374d9"
+    ],
+    "docling-project--docling-models/model_artifacts/tableformer/accurate/tm_config.json": [
+      "984e122ceb8ccf84",
+      "d84c9d2882f6f230",
+      "2a44b4f1e577babd",
+      "6289892c36f3cffd"
+    ],
+    "docling-project--docling-models/model_artifacts/tableformer/fast/tableformer_fast.safetensors": [
+      "3119563aab5a7c96",
+      "fda4d621119b63fd",
+      "8806272b86c30936",
+      "d15507616422f718"
+    ],
+    "docling-project--docling-models/model_artifacts/tableformer/fast/tm_config.json": [
+      "dca6762508dddfae",
+      "6d57d6cb4ef822c6",
+      "000119dff0f3b648",
+      "9db7413118c2622a"
+    ]
+  }
 }

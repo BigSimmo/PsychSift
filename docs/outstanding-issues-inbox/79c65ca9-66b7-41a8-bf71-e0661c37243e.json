@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "79c65ca9-66b7-41a8-bf71-e0661c37243e",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#CBEVBS",
+    "outcome": "Resolved: Configured standard tablet project in playwright.config.ts and registered in CI browser matrix; verified by tests/ci-browser-matrix-coverage.test.ts (8/8 passed).",
+    "baseRowFingerprint": "5a4af5f9fb84ed4fd793f25e5a5f2e8864d16ee2d63571fae69212712d72cd47"
+  }
+}

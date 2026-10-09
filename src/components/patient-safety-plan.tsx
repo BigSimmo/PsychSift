@@ -504,6 +504,7 @@ export function PatientSafetyPlan() {
   const [mobileTab, setMobileTab] = useState<"build" | "preview">("build");
   const [copied, setCopied] = useState(false);
   const [finalised, setFinalised] = useState(false);
+  const finaliseUnavailableId = useId();
   const [draftDirtyByRow, setDraftDirtyByRow] = useState<Record<string, boolean>>({});
   // Per-instance id counter — avoids a module-level mutable that would persist
   // across remounts; ids only need to be unique within this mounted plan.
@@ -748,6 +749,12 @@ export function PatientSafetyPlan() {
               type="button"
               onClick={() => setFinalised(true)}
               disabled={!ready}
+              aria-describedby={!ready ? finaliseUnavailableId : undefined}
+              title={
+                !ready
+                  ? `Complete all ${STEPS.length} steps to finalise plan (${filledSteps}/${STEPS.length} complete)`
+                  : undefined
+              }
               className={cn(primaryControl, "min-h-tap")}
             >
               {finalised ? (
@@ -757,6 +764,11 @@ export function PatientSafetyPlan() {
               )}
               {finalised ? "Plan finalised" : "Finalise plan"}
             </button>
+            {!ready ? (
+              <span id={finaliseUnavailableId} className="sr-only">
+                Complete all {STEPS.length} steps to finalise plan ({filledSteps} of {STEPS.length} steps complete).
+              </span>
+            ) : null}
           </div>
         </div>
       </header>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ClipboardCopy } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
+import { useCopyToast } from "@/components/ui/toast";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 export function CopyAfterReviewButton({
@@ -16,11 +17,13 @@ export function CopyAfterReviewButton({
   label?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const showToast = useCopyToast();
 
   async function copyText() {
     try {
       await copyTextToClipboard(text);
       setCopied(true);
+      showToast("Copied to clipboard");
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
       setCopied(false);

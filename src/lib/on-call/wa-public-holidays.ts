@@ -50,10 +50,23 @@ export const WA_PUBLIC_HOLIDAYS: ReadonlySet<string> = new Set([
   "2027-12-26",
   "2027-12-27",
   "2027-12-28",
+  // 2028
+  "2028-01-01",
+  "2028-01-03",
+  "2028-01-26",
+  "2028-03-06",
+  "2028-04-14",
+  "2028-04-16",
+  "2028-04-17",
+  "2028-04-25",
+  "2028-06-05",
+  "2028-09-25",
+  "2028-12-25",
+  "2028-12-26",
 ]);
 
 /** The last year the published list covers. Later years use the rules below. */
-export const WA_PUBLIC_HOLIDAYS_LAST_YEAR = 2027;
+export const WA_PUBLIC_HOLIDAYS_LAST_YEAR = 2028;
 
 function isoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

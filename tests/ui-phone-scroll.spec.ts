@@ -64,7 +64,15 @@ for (const { mode, route } of appModeHeaderRoutes) {
     }
 
     await dragScrollBy(page, 720, 24);
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => {
+        return page.evaluate(() => {
+          const collapse = document.querySelector<HTMLElement>('[data-testid="universal-header-collapse"]');
+          const header = document.querySelector<HTMLElement>("header#search");
+          return (collapse ?? header)?.getAttribute("data-scroll-hidden") === "true";
+        });
+      })
+      .toBe(true);
 
     const hidden = await page.evaluate(() => {
       const collapse = document.querySelector<HTMLElement>('[data-testid="universal-header-collapse"]');
@@ -100,7 +108,15 @@ for (const { mode, route } of appModeHeaderRoutes) {
     expect(await readFlipCount(page), "resting after hide cannot oscillate").toBe(1);
 
     await dragScrollBy(page, -48, 8);
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => {
+        return page.evaluate(() => {
+          const collapse = document.querySelector<HTMLElement>('[data-testid="universal-header-collapse"]');
+          const header = document.querySelector<HTMLElement>("header#search");
+          return (collapse ?? header)?.getAttribute("data-scroll-hidden") === "true";
+        });
+      })
+      .toBe(false);
     const revealed = await page.evaluate(() => {
       const collapse = document.querySelector<HTMLElement>('[data-testid="universal-header-collapse"]');
       const header = document.querySelector<HTMLElement>("header#search");
@@ -149,20 +165,25 @@ for (const { name, route, selector, phoneMotion } of pageOwnedHeaderRoutes) {
     await addPhoneScrollRunway(page);
 
     await dragScrollBy(page, 720, 24);
-    await page.waitForTimeout(500);
 
     await expect(collapse).toHaveAttribute("data-scroll-hidden", "true");
-    const hiddenCollapseHeight = await collapse.evaluate((element) => element.getBoundingClientRect().height);
-    const hiddenSafeAreaHeight = await safeArea.evaluate((element) => element.getBoundingClientRect().height);
     if (phoneMotion === "overlay") {
-      expect(hiddenCollapseHeight).toBeCloseTo(visibleCollapseHeight, 0);
-      expect(hiddenSafeAreaHeight).toBeCloseTo(visibleSafeAreaHeight, 0);
+      await expect
+        .poll(async () => collapse.evaluate((element) => element.getBoundingClientRect().height))
+        .toBeCloseTo(visibleCollapseHeight, 0);
+      await expect
+        .poll(async () => safeArea.evaluate((element) => element.getBoundingClientRect().height))
+        .toBeCloseTo(visibleSafeAreaHeight, 0);
       const overlayStack = page.locator('.phone-sticky-header-stack[data-phone-motion="overlay"]');
       await expect(overlayStack).toHaveAttribute("data-scroll-hidden", "true");
       await expect(overlayStack).toHaveCSS("pointer-events", "none");
     } else {
-      expect(hiddenCollapseHeight).toBeLessThanOrEqual(1);
-      expect(hiddenSafeAreaHeight).toBeLessThanOrEqual(1);
+      await expect
+        .poll(async () => collapse.evaluate((element) => element.getBoundingClientRect().height))
+        .toBeLessThanOrEqual(1);
+      await expect
+        .poll(async () => safeArea.evaluate((element) => element.getBoundingClientRect().height))
+        .toBeLessThanOrEqual(1);
     }
   });
 }
@@ -181,7 +202,9 @@ test("phone portaled addon focus pins the universal collapse owner during scroll
   await backLink.focus();
   await expect(backLink).toBeFocused();
   await dragScrollBy(page, 720, 24);
-  await page.waitForTimeout(500);
+  await expect
+    .poll(async () => page.evaluate(() => window.scrollY || document.documentElement.scrollTop))
+    .toBeGreaterThan(0);
 
   await expect(backLink, "focused addon control keeps keyboard focus").toBeFocused();
   await expect(backLink, "focused addon control remains visible").toBeVisible();
@@ -212,7 +235,6 @@ test("phone portaled addon focus clears when its focused control navigates away"
   await addPhoneScrollRunway(page);
 
   await dragScrollBy(page, 720, 24);
-  await page.waitForTimeout(500);
 
   await expect(
     page.getByTestId("universal-header-collapse"),
@@ -400,7 +422,12 @@ test("phone shared header releases its top safe-area band after hide", async ({ 
   }
 
   await dragScrollBy(page, 720, 24);
-  await page.waitForTimeout(500);
+  await expect
+    .poll(async () => {
+      const collapse = page.locator('[data-testid="universal-header-collapse"]');
+      return (await collapse.getAttribute("data-scroll-hidden")) === "true";
+    })
+    .toBe(true);
 
   const afterHide = await page.evaluate(() => {
     const safeArea = document.querySelector<HTMLElement>('[data-testid="chrome-safe-area-top"]');
@@ -428,7 +455,12 @@ test("phone shared header releases its top safe-area band after hide", async ({ 
   expect(afterHide.mainRight, "phone scroll surface reaches the right edge").toBeCloseTo(afterHide.viewportWidth, 0);
 
   await dragScrollBy(page, -720, 24);
-  await page.waitForTimeout(500);
+  await expect
+    .poll(async () => {
+      const collapse = page.locator('[data-testid="universal-header-collapse"]');
+      return (await collapse.getAttribute("data-scroll-hidden")) === "true";
+    })
+    .toBe(false);
 
   const afterReveal = await page.evaluate(() => {
     const safeArea = document.querySelector<HTMLElement>('[data-testid="chrome-safe-area-top"]');
@@ -478,7 +510,7 @@ test.describe("phone PWA standalone mode bounded scroll shell (#71NT23)", () => 
 
       // Drag within the main scroller to trigger scroll-hide
       await dragScrollBy(page, 720, 24);
-      await page.waitForTimeout(500);
+      await expect.poll(async () => (await readStandaloneShellGeometry(page)).headerHidden).toBe(true);
 
       const hidden = await readStandaloneShellGeometry(page);
       expect(hidden.headerHidden, "downward drag in standalone scroller hides header").toBe(true);
@@ -489,7 +521,7 @@ test.describe("phone PWA standalone mode bounded scroll shell (#71NT23)", () => 
 
       // Upward drag reveals header
       await dragScrollBy(page, -720, 24);
-      await page.waitForTimeout(500);
+      await expect.poll(async () => (await readStandaloneShellGeometry(page)).headerHidden).toBe(false);
 
       const revealed = await readStandaloneShellGeometry(page);
       expect(revealed.headerHidden, "upward drag in standalone scroller reveals header").toBe(false);
@@ -534,7 +566,6 @@ test.describe("phone PWA standalone mode bounded scroll shell (#71NT23)", () => 
 
       await addPhoneScrollRunway(page);
       await dragScrollBy(page, 720, 24);
-      await page.waitForTimeout(500);
 
       await expect(collapse).toHaveAttribute("data-scroll-hidden", "true");
       if (phoneMotion === "overlay") {

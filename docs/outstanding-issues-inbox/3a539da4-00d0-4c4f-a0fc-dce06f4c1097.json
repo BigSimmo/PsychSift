@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "3a539da4-00d0-4c4f-a0fc-dce06f4c1097",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#RHGAYP",
+    "outcome": "Resolved: Created src/components/on-call/compliance-list.tsx with 'General Requirement' fallback badge for unlabelled rows; verified in tests/on-call-compliance.dom.test.tsx.",
+    "baseRowFingerprint": "9598237398ee225b6c40f755b3a06f0bc5285fd8088555ffd840ede1cc5130a1"
+  }
+}
