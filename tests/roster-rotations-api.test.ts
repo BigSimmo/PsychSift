@@ -13,6 +13,7 @@ const OUTSIDER = "7a000000-0000-4000-8000-000000000004";
 const SITE_ADMIN = "7a000000-0000-4000-8000-000000000005";
 const WORKFORCE = "7a000000-0000-4000-8000-000000000006";
 const HOSPITAL = "7a000000-0000-4000-8000-0000000000bb";
+const SERVICE_TWO = "7a000000-0000-4000-8000-000000000011";
 const ROUND = "7a000000-0000-4000-8000-0000000000aa";
 
 type Row = Record<string, unknown>;
@@ -482,6 +483,62 @@ describe("rotation rounds API: a doctor's own preference", () => {
     mocks.state.tables.work_role_grants[0].revoked_at = "2026-10-09T00:00:00Z";
     expect((await (await GET(get())).json()).managed).toEqual([]);
     expect((await POST(post({ action: "open" }), context())).status).toBe(404);
+  });
+
+  it("lets Medical Workforce start a round for any team at their hospital, not only the first", async () => {
+    mocks.state.tables.on_call_services.push({
+      id: SERVICE_TWO,
+      name: "Adult psychiatry registrars",
+      verified_at: "2026-09-30T00:00:00Z",
+      is_demo: false,
+    });
+    mocks.state.tables.on_call_service_members.push({
+      service_id: SERVICE_TWO,
+      user_id: OUTSIDER,
+      display_name: "Jo",
+      revoked_at: null,
+    });
+    mocks.state.tables.work_hospitals = [{ id: HOSPITAL, name: "Example Hospital", archived_at: null }];
+    mocks.state.tables.work_hospital_teams = [
+      { hospital_id: HOSPITAL, service_id: SERVICE },
+      { hospital_id: HOSPITAL, service_id: SERVICE_TWO },
+    ];
+    mocks.state.tables.work_role_grants = [
+      {
+        user_id: WORKFORCE,
+        role: "workforce",
+        hospital_id: HOSPITAL,
+        service_id: null,
+        subject_user_id: null,
+        revoked_at: null,
+      },
+    ];
+    as(WORKFORCE);
+    const body = await (await GET(get())).json();
+    expect(body.teams.map((team: { serviceId: string; name: string }) => [team.serviceId, team.name])).toEqual([
+      [SERVICE_TWO, "Adult psychiatry registrars"],
+      [SERVICE, "Psychiatry registrars"],
+    ]);
+    expect(body.teams[1].people.map((person: { id: string }) => person.id)).toEqual([MANAGER, DOCTOR]);
+
+    const people = [{ id: OUTSIDER, name: "Dr Jo Mitchell", grade: "Registrar" }];
+    const response = await CREATE(
+      post(
+        { action: "create", setup: setup({ people }), serviceId: SERVICE },
+        "https://example.org/api/roster/rotations",
+      ),
+    );
+    // The chosen team's rules apply: someone outside it cannot be named in its round.
+    expect(response.status).toBe(400);
+    const created = await CREATE(
+      post(
+        { action: "create", setup: setup({ people }), serviceId: SERVICE_TWO },
+        "https://example.org/api/roster/rotations",
+      ),
+    );
+    expect(created.status).toBe(200);
+    const { roundId } = await created.json();
+    expect(rounds().find((round) => round.id === roundId)).toMatchObject({ service_id: SERVICE_TWO });
   });
 
   it("saves the session user's ranking, and only theirs", async () => {

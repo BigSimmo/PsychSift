@@ -451,7 +451,16 @@ export type RotationsOverview = {
   readonly mine: MyRound[];
   readonly managed: ManagedRound[];
   readonly canManage: boolean;
-  readonly team: { readonly serviceId: string; readonly name: string; readonly people: RotationTeamPerson[] } | null;
+  /** Every team the reader may start a round for, each with its active members. */
+  readonly teams: RotationTeamWithPeople[];
+  /** The first of `teams`, for screens that show one team. */
+  readonly team: RotationTeamWithPeople | null;
+};
+
+type RotationTeamWithPeople = {
+  readonly serviceId: string;
+  readonly name: string;
+  readonly people: RotationTeamPerson[];
 };
 
 /** Everything the rotation screens read for one signed-in user. */
@@ -471,7 +480,7 @@ export async function readRotations(client: AdminClient, userId: string): Promis
     .limit(MAX_ROUNDS);
   if (!siteAdministrator) {
     const visible = new Set([...memberIds, ...manageIds]);
-    if (!visible.size) return { mine: [], managed: [], canManage: false, team: null };
+    if (!visible.size) return { mine: [], managed: [], canManage: false, teams: [], team: null };
     roundsQuery = roundsQuery.in("service_id", [...visible]);
   }
   const { data, error } = await roundsQuery;
@@ -505,14 +514,17 @@ export async function readRotations(client: AdminClient, userId: string): Promis
     }
   }
 
-  const teamForNewRounds = manageable[0] ?? (siteAdministrator ? teams[0] : undefined);
+  // A Medical Workforce lead can cover every team at a hospital, so each team comes back and the new-round
+  // form lets them choose.
+  const withPeople = await Promise.all(
+    manageable.map(async (team) => ({ ...team, people: await readTeamPeople(client, team.serviceId) })),
+  );
   return {
     mine,
     managed,
     canManage: siteAdministrator || manageable.length > 0,
-    team: teamForNewRounds
-      ? { ...teamForNewRounds, people: await readTeamPeople(client, teamForNewRounds.serviceId) }
-      : null,
+    teams: withPeople,
+    team: withPeople[0] ?? null,
   };
 }
 

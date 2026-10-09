@@ -63,11 +63,14 @@ export function RotationRoundsPage() {
   const now = useRosterNow();
   const people = read.managed[0]?.round.people.length;
   useModeBandHeading({
-    eyebrow: read.team
-      ? people
-        ? `${read.team.name} · ${plural(people, "person", "people")}`
-        : read.team.name
-      : "Manage team",
+    eyebrow:
+      read.teams.length > 1
+        ? `${read.teams.length} teams`
+        : read.team
+          ? people
+            ? `${read.team.name} · ${plural(people, "person", "people")}`
+            : read.team.name
+          : "Manage team",
     title: "Rotation rounds",
   });
   return (
