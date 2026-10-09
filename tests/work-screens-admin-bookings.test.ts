@@ -7,6 +7,8 @@ import {
   bookedFor,
   bookingCalendarEvents,
   bookingCalendarId,
+  bookingWorkCalendarEntries,
+  bookingWorkCalendarId,
   bookPlace,
   cancelCourse,
   cancelMyBooking,
@@ -613,6 +615,35 @@ describe("bookingCalendarEvents", () => {
     expect(event?.id).toBe("booking-example-course-bls");
     expect(event?.date).toBe("2026-10-29");
     expect(bookingCalendarId("plain")).toBe("booking-plain");
+  });
+});
+
+describe("bookingWorkCalendarEntries", () => {
+  const href = (id: string) => `/admin/bookings?course=${encodeURIComponent(id)}`;
+
+  it("maps the reader's courses to shared work calendar entries", () => {
+    const s = state(
+      [course("example:course-bls"), course("plain", { status: "cancelled", kind: "requirement", date: "2026-10-23" })],
+      [
+        booking("me1", "example:course-bls", "booked", "2026-10-01T00:00:00Z", { self: true }),
+        booking("me2", "plain", "booked", "2026-10-01T00:00:00Z", { self: true }),
+      ],
+    );
+    const entries = bookingWorkCalendarEntries(s, href);
+    expect(entries.map((e) => [e.id, e.status, e.isExample])).toEqual([
+      ["example:booking:course-bls", "confirmed", true],
+      ["booking:plain", "cancelled", false],
+    ]);
+    expect(entries[0]).toMatchObject({
+      kind: "course",
+      start: "2026-10-22",
+      end: "2026-10-22",
+      startTime: "13:00",
+      endTime: "16:30",
+      detail: "Course · Medical Education",
+      href: href("example:course-bls"),
+    });
+    expect(bookingWorkCalendarId("x")).toBe("booking:x");
   });
 });
 

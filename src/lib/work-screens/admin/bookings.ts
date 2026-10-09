@@ -580,6 +580,59 @@ export function bookingCalendarEvents(state: BookingsState, href: (courseId: str
   return events.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
 }
 
+/**
+ * The same courses in the shared work calendar's entry shape (`WorkCalendarEntry`, owned by
+ * Rotation preferences in `src/lib/work-calendar/entries.ts`), typed structurally here so this file
+ * does not depend on that module before it lands. Ids are `booking:<courseId>`, and an example
+ * course's id starts `example:` as the shared calendar's example guard expects.
+ */
+export interface BookingWorkCalendarEntry {
+  readonly id: string;
+  readonly kind: "course";
+  readonly title: string;
+  readonly detail: string;
+  readonly start: string;
+  readonly end: string;
+  readonly startTime: string;
+  readonly endTime: string;
+  readonly location: string;
+  readonly status: "confirmed" | "cancelled";
+  readonly href: string;
+  readonly updatedAt: string;
+  readonly isExample: boolean;
+}
+
+export function bookingWorkCalendarId(courseId: string): string {
+  return courseId.startsWith("example:") ? `example:booking:${courseId.slice(8)}` : `booking:${courseId}`;
+}
+
+export function bookingWorkCalendarEntries(
+  state: BookingsState,
+  href: (courseId: string) => string,
+): BookingWorkCalendarEntry[] {
+  return bookingCalendarEvents(state, href).flatMap((event) => {
+    const course = state.courses.find((item) => bookingCalendarId(item.id) === event.id);
+    if (!course) return [];
+    return [
+      {
+        id: bookingWorkCalendarId(course.id),
+        kind: "course" as const,
+        title: course.title,
+        detail: `${COURSE_KIND_LABELS[course.kind]} · ${course.organiser}`,
+        start: course.date,
+        end: course.date,
+        startTime: course.startTime,
+        endTime: course.endTime,
+        location: course.location,
+        status: event.status === "cancelled" ? ("cancelled" as const) : ("confirmed" as const),
+        href: event.href ?? href(course.id),
+        updatedAt: course.change?.at ?? course.updatedAt,
+        isExample: course.id.startsWith("example:"),
+      },
+    ];
+  });
+}
+
 /* ------------------------------------------------------------------ words */
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
