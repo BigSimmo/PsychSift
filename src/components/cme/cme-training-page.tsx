@@ -1100,7 +1100,7 @@ const SAMPLE_ACTION_MESSAGE =
 
 /** Where the official records live. The ePortfolio link is the one Teaching already uses. */
 const TRAINING_PORTAL_HREF = "https://www.ranzcp.org/";
-const EPORTFOLIO_HREF = TERM_TRACKER_SOURCES.pmcwaCla;
+const EPORTFOLIO_HREF = TERM_TRACKER_SOURCES.claSignIn;
 
 /**
  * Assessment rule figures shown beside the EPA parts. The words are copied

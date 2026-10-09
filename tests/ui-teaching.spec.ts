@@ -144,7 +144,7 @@ for (const [path, testId] of [
 }
 
 for (const [path, heading] of [
-  ["supervision", "Supervision"],
+  ["supervision", "Registrar supervision"],
   ["feedback", "Feedback"],
   ["review", "Weekly CPD review"],
   ["import", "Import a timetable"],

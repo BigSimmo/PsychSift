@@ -7,6 +7,7 @@ vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => ({ status: "sign
 
 import { AssessmentsExportPage } from "@/components/work-screens/assessments/assessments-export-page";
 import { initialAssessmentsState } from "@/lib/teaching/assessments/model";
+import { SAMPLE_DOCTOR } from "@/lib/teaching/assessments/sample";
 import { EXAMPLE_NOT_SAVED, exportDoctors } from "@/lib/work-screens/assessments/export";
 
 describe("Assessments export", () => {
@@ -29,12 +30,22 @@ describe("Assessments export", () => {
   it("explains a doctor with no forms here, and keeps every link in the supervisor's view", () => {
     render(<AssessmentsExportPage />);
     fireEvent.click(screen.getByTestId("assessments-export-doctor-ben"));
-    expect(screen.getByTestId("assessments-export-no-forms")).toBeInTheDocument();
+    expect(screen.getByTestId("assessments-export-no-forms")).toHaveTextContent(
+      `This sample holds signed forms for ${SAMPLE_DOCTOR.name} only.`,
+    );
     fireEvent.click(screen.getByTestId("assessments-export-doctor-all"));
     for (const link of screen.getAllByRole("link")) {
-      const href = link.getAttribute("href") ?? "";
-      expect(href === "/teaching/supervision" || href.includes("as=supervisor")).toBe(true);
+      expect(link.getAttribute("href") ?? "").toContain("as=supervisor");
     }
+  });
+
+  it("says the real form is signed off in CLA, and leaves registrar supervision hours out", () => {
+    render(<AssessmentsExportPage />);
+    const page = screen.getByTestId("assessments-export-page");
+    expect(page).toHaveTextContent("The real form is completed and signed off in CLA.");
+    expect(page).not.toHaveTextContent(/email/i);
+    expect(page).not.toHaveTextContent(/supervision hours/i);
+    expect(screen.queryByRole("link", { name: /supervision hours/i })).toBeNull();
   });
 
   it("asks for a choice when nothing is included", () => {
