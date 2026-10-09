@@ -74,6 +74,25 @@ function subscribe(listener: () => void) {
 const readSnapshot = () => snapshot;
 const serverSnapshot = () => LOADING;
 
+/**
+ * The roles held, for the work frame's menu, which loads this module only when
+ * it is needed so the role rules don't weigh on every page. Calls `listener`
+ * now and on every change, and returns the unsubscribe. `userId` is the
+ * signed-in account: a different one forgets the last one's roles first.
+ */
+export function watchHeldWorkRoles(userId: string, listener: (roles: readonly WorkRole[]) => void): () => void {
+  if (readFor !== undefined && readFor !== userId) {
+    readFor = userId;
+    resetWorkRoles();
+  }
+  readFor = userId;
+  const notify = () => listener(snapshot.status === "ready" ? heldWorkRoles(snapshot.grants) : []);
+  const unsubscribe = subscribe(notify);
+  notify();
+  if (snapshot.status === "loading") void load();
+  return unsubscribe;
+}
+
 export type WorkRolesView = {
   readonly status: WorkRolesStatus;
   readonly grants: readonly WorkRoleGrant[];
