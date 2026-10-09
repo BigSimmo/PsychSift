@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-09T01:30:38.948Z",
+  "generated_at": "2026-10-09T06:09:01.907Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "742f1d98859886a908006eb6a9e1364f4fa7991295e0bf32b533d447f7a1f5b0",
-  "replay_seconds": 20,
+  "schema_sha256": "2c7ec6ee17feb975dea9a56b64ae545e00723654eab50553c0cd371ed9402b87",
+  "replay_seconds": 17,
   "snapshot": {
     "views": [
       {
@@ -9059,6 +9059,174 @@
           "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
+        "name": "roster_rotation_preferences",
+        "columns": [
+          {
+            "name": "ranking",
+            "type": "jsonb",
+            "default": "'[]'::jsonb",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "round_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "submitted_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "user_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "roster_rotation_rounds",
+        "columns": [
+          {
+            "name": "admin_name",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "allocation",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_by",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "locks",
+            "type": "jsonb",
+            "default": "'[]'::jsonb",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "opened_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "published_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "setup",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": "'draft'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "version",
+            "type": "integer",
+            "default": "1",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
         "name": "roster_shift_codes",
         "columns": [
           {
@@ -15175,6 +15343,30 @@
         "def_hash": "4a61ddd3e3f16d4985c340bdef59fc4e"
       },
       {
+        "def": "CREATE UNIQUE INDEX roster_rotation_preferences_pkey ON public.roster_rotation_preferences USING btree (round_id, user_id)",
+        "name": "roster_rotation_preferences_pkey",
+        "table": "roster_rotation_preferences",
+        "def_hash": "cc80c9468ce897fa594302ccd831bce8"
+      },
+      {
+        "def": "CREATE INDEX roster_rotation_preferences_user_idx ON public.roster_rotation_preferences USING btree (user_id)",
+        "name": "roster_rotation_preferences_user_idx",
+        "table": "roster_rotation_preferences",
+        "def_hash": "4a372d0811a7ab4756a30e0a6953dc80"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX roster_rotation_rounds_pkey ON public.roster_rotation_rounds USING btree (id)",
+        "name": "roster_rotation_rounds_pkey",
+        "table": "roster_rotation_rounds",
+        "def_hash": "4db4aac0afe5801ad1568699c644dde1"
+      },
+      {
+        "def": "CREATE INDEX roster_rotation_rounds_service_idx ON public.roster_rotation_rounds USING btree (service_id, created_at DESC)",
+        "name": "roster_rotation_rounds_service_idx",
+        "table": "roster_rotation_rounds",
+        "def_hash": "fe0cc16994dadaac59b497377b3c2670"
+      },
+      {
         "def": "CREATE UNIQUE INDEX roster_shift_codes_pkey ON public.roster_shift_codes USING btree (service_id, code)",
         "name": "roster_shift_codes_pkey",
         "table": "roster_shift_codes",
@@ -17207,6 +17399,11 @@
         "table": "roster_leave"
       },
       {
+        "def": "CREATE TRIGGER roster_rotation_rounds_updated_at BEFORE UPDATE ON public.roster_rotation_rounds FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
+        "name": "roster_rotation_rounds_updated_at",
+        "table": "roster_rotation_rounds"
+      },
+      {
         "def": "CREATE TRIGGER roster_team_settings_updated_at BEFORE UPDATE ON public.roster_team_settings FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "roster_team_settings_updated_at",
         "table": "roster_team_settings"
@@ -18686,6 +18883,30 @@
         ],
         "def_hash": "2cbc744433ed015d042ab70a677e22e5",
         "signature": "public.roster_retention_purge()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f68faeae96cbbb46f282f48e1177d9cc",
+        "signature": "public.roster_rotation_can_manage(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "aaa7a6002f2c9e4c9fef2451bc5bb7e6",
+        "signature": "public.roster_rotation_save_preference(uuid,uuid,timestamp with time zone,text,jsonb,timestamp with time zone,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c9b4ae6731f86839dbe0ad29f5017c0e",
+        "signature": "public.roster_rotation_save_round(uuid,timestamp with time zone,jsonb,text,jsonb,jsonb,jsonb,text,integer,timestamp with time zone,timestamp with time zone,jsonb)"
       },
       {
         "acl": [
@@ -22269,6 +22490,86 @@
         "def": "CHECK ((version > 0))",
         "name": "roster_publications_version_check",
         "table": "roster_publications"
+      },
+      {
+        "def": "PRIMARY KEY (round_id, user_id)",
+        "name": "roster_rotation_preferences_pkey",
+        "table": "roster_rotation_preferences"
+      },
+      {
+        "def": "CHECK (((jsonb_typeof(ranking) = 'array'::text) AND (jsonb_array_length(ranking) <= 60)))",
+        "name": "roster_rotation_preferences_ranking",
+        "table": "roster_rotation_preferences"
+      },
+      {
+        "def": "FOREIGN KEY (round_id) REFERENCES public.roster_rotation_rounds(id) ON DELETE CASCADE",
+        "name": "roster_rotation_preferences_round_id_fkey",
+        "table": "roster_rotation_preferences"
+      },
+      {
+        "def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "roster_rotation_preferences_user_id_fkey",
+        "table": "roster_rotation_preferences"
+      },
+      {
+        "def": "CHECK (((btrim(admin_name) <> ''::text) AND (char_length(admin_name) <= 80)))",
+        "name": "roster_rotation_rounds_admin_name",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "CHECK (((allocation IS NULL) OR (jsonb_typeof(allocation) = 'object'::text)))",
+        "name": "roster_rotation_rounds_allocation_object",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "CHECK (((allocation IS NULL) OR (octet_length((allocation)::text) <= 1048576)))",
+        "name": "roster_rotation_rounds_allocation_size",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "roster_rotation_rounds_created_by_fkey",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "CHECK ((jsonb_typeof(locks) = 'array'::text))",
+        "name": "roster_rotation_rounds_locks_array",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "roster_rotation_rounds_pkey",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "CHECK (((status <> 'published'::text) OR (published_at IS NOT NULL)))",
+        "name": "roster_rotation_rounds_published_at",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
+        "name": "roster_rotation_rounds_service_id_fkey",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "CHECK ((jsonb_typeof(setup) = 'object'::text))",
+        "name": "roster_rotation_rounds_setup_object",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "CHECK ((octet_length((setup)::text) <= 262144))",
+        "name": "roster_rotation_rounds_setup_size",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "CHECK ((status = ANY (ARRAY['draft'::text, 'open'::text, 'closed'::text, 'published'::text])))",
+        "name": "roster_rotation_rounds_status",
+        "table": "roster_rotation_rounds"
+      },
+      {
+        "def": "CHECK ((version > 0))",
+        "name": "roster_rotation_rounds_version",
+        "table": "roster_rotation_rounds"
       },
       {
         "def": "CHECK (((char_length(btrim(code)) >= 1) AND (char_length(btrim(code)) <= 12)))",

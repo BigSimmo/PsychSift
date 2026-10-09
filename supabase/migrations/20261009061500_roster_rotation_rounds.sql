@@ -77,9 +77,10 @@ revoke all on function public.roster_rotation_can_manage(uuid, uuid) from public
 grant execute on function public.roster_rotation_can_manage(uuid, uuid) to service_role;
 
 -- A doctor's ranking is checked against the round as the server read it. This writes it only while the
--- round is still that version (same updated_at and status), holding a share lock on the round row so a
--- close, allocation or edit cannot commit in between. False means the round moved on: nothing is written
--- and the server answers 409, so the doctor reloads and sees the round as it now is.
+-- round is still that version (same updated_at and status) and still before its closing time, holding a
+-- share lock on the round row so a close, allocation or edit cannot commit in between. False means the
+-- round moved on: nothing is written and the server answers 409, so the doctor reloads and sees the round
+-- as it now is. Share locks do not block each other, so doctors still save side by side.
 create function public.roster_rotation_save_preference(
   p_round_id uuid,
   p_user_id uuid,
@@ -93,6 +94,7 @@ language plpgsql volatile security invoker set search_path = public, pg_catalog,
 begin
   perform 1 from public.roster_rotation_rounds
     where id = p_round_id and updated_at = p_round_updated_at and status = p_round_status
+      and (setup->>'closesAt')::timestamptz > clock_timestamp()
     for share;
   if not found then
     return false;
@@ -107,4 +109,69 @@ $$;
 revoke all on function public.roster_rotation_save_preference(uuid, uuid, timestamptz, text, jsonb, timestamptz, timestamptz)
   from public, anon, authenticated;
 grant execute on function public.roster_rotation_save_preference(uuid, uuid, timestamptz, text, jsonb, timestamptz, timestamptz)
+  to service_role;
+
+-- Every administrator change to a round (edit, open, close, allocate, move, lock, publish). The server
+-- worked the change out from the round and every doctor's ranking as it read them. This saves it only if
+-- none of that has moved since: the round row is locked first, which waits for any doctor's save already
+-- under way and holds off new ones, then the rankings are compared with the ones the server read. A
+-- ranking saved in between returns false, nothing is written and the administrator reloads (409), so an
+-- allocation never leaves out a ranking a doctor was told was saved. An edit's tidy-up of the rankings
+-- (people taken out, rotations no longer offered) runs in the same transaction, so it can neither half
+-- finish nor overwrite a ranking saved after the read.
+create function public.roster_rotation_save_round(
+  p_round_id uuid,
+  p_round_updated_at timestamptz,
+  p_seen_preferences jsonb,
+  p_status text,
+  p_setup jsonb,
+  p_locks jsonb,
+  p_allocation jsonb,
+  p_admin_name text,
+  p_version integer,
+  p_opened_at timestamptz,
+  p_published_at timestamptz,
+  p_preferences jsonb
+) returns boolean
+language plpgsql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
+begin
+  perform 1 from public.roster_rotation_rounds
+    where id = p_round_id and updated_at = p_round_updated_at
+    for update;
+  if not found then
+    return false;
+  end if;
+  if (select count(*) from public.roster_rotation_preferences where round_id = p_round_id)
+       <> coalesce(jsonb_array_length(p_seen_preferences), -1)
+     or exists (
+       select 1 from jsonb_to_recordset(p_seen_preferences) as seen(user_id uuid, updated_at timestamptz)
+       where not exists (
+         select 1 from public.roster_rotation_preferences p
+         where p.round_id = p_round_id and p.user_id = seen.user_id and p.updated_at = seen.updated_at
+       )
+     ) then
+    return false;
+  end if;
+  update public.roster_rotation_rounds
+    set status = p_status, setup = p_setup, locks = p_locks, allocation = nullif(p_allocation, 'null'::jsonb),
+        admin_name = p_admin_name, version = p_version, opened_at = p_opened_at, published_at = p_published_at
+    where id = p_round_id;
+  if p_preferences is not null then
+    delete from public.roster_rotation_preferences p
+      where p.round_id = p_round_id
+        and not exists (
+          select 1 from jsonb_to_recordset(p_preferences) as kept(user_id uuid, ranking jsonb)
+          where kept.user_id = p.user_id
+        );
+    update public.roster_rotation_preferences p
+      set ranking = kept.ranking
+      from jsonb_to_recordset(p_preferences) as kept(user_id uuid, ranking jsonb)
+      where p.round_id = p_round_id and p.user_id = kept.user_id and p.ranking is distinct from kept.ranking;
+  end if;
+  return true;
+end
+$$;
+revoke all on function public.roster_rotation_save_round(uuid, timestamptz, jsonb, text, jsonb, jsonb, jsonb, text, integer, timestamptz, timestamptz, jsonb)
+  from public, anon, authenticated;
+grant execute on function public.roster_rotation_save_round(uuid, timestamptz, jsonb, text, jsonb, jsonb, jsonb, text, integer, timestamptz, timestamptz, jsonb)
   to service_role;

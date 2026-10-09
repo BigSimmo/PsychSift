@@ -4927,6 +4927,23 @@ export type Database = {
         };
         Returns: boolean;
       };
+      roster_rotation_save_round: {
+        Args: {
+          p_round_id: string;
+          p_round_updated_at: string;
+          p_seen_preferences: Json;
+          p_status: string;
+          p_setup: Json;
+          p_locks: Json;
+          p_allocation: Json | null;
+          p_admin_name: string;
+          p_version: number;
+          p_opened_at: string | null;
+          p_published_at: string | null;
+          p_preferences: Json | null;
+        };
+        Returns: boolean;
+      };
       cme_confirm_year: { Args: { p_owner_id: string; p_set: Json }; Returns: string };
       cme_save_plan_goals: { Args: { p_owner_id: string; p_year_id: string; p_goals: Json }; Returns: Json };
       cme_save_plan_goals_checked: {
