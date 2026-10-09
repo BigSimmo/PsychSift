@@ -1611,6 +1611,15 @@ export const UNTIERED_TABLE_DECLARATIONS = [
     reason:
       "Tenancy columns are named `owner_role`/`owner_user_id`, so no tier claims this table. Administrator-gated cross-tenant governance triage queue: GET and PATCH call authorizeAndLimit before this helper runs, the projection is triage disposition metadata (signal type/id, status, resolution code, reviewer id and timestamps) and never question, answer, excerpt or patient text, and per-owner filtering would defeat the oversight purpose (tenancy review §6).",
   },
+  {
+    file: "src/app/api/roster/team/[serviceId]/staffing-needs/route.ts",
+    table: "roster_staffing_needs",
+    fn: "readStaffingNeeds",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason:
+      "Team-scoped by service_id, which the query filters on. requireActiveMember runs first and calls roster_read (overview) for the session actor, which raises unless the actor is an active, unrevoked member of a verified or demo team, exactly as for every other team read. The projection is weekday, date, kind, grade, site id and count only: no row id, user id or name (tenancy review §6).",
+  },
 ];
 
 /**

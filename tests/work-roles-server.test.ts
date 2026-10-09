@@ -8,7 +8,7 @@ const teamSupervisor: WorkRoleGrant = { role: "supervisor", serviceId: "team-a" 
 
 describe("work roles server check", () => {
   it("never lets anyone review their own assessments, whichever check a route uses", () => {
-    const context: WorkRoleContext = { userId: "me", grants: [dct, teamSupervisor] };
+    const context: WorkRoleContext = { userId: "me", grants: [dct, teamSupervisor], ready: true };
     const self = { kind: "trainee", userId: "me", serviceId: "team-a" } as const;
     const other = { kind: "trainee", userId: "sam", serviceId: "team-a" } as const;
     expect(can(context, "assessments.review", self)).toBe(false);

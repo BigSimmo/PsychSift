@@ -1,4 +1,9 @@
-import { epa as epaInfo, type EpaNumber, type SupervisionLevel } from "@/lib/teaching/assessments/content";
+import {
+  epa as epaInfo,
+  type EpaNumber,
+  type EpaObserved,
+  type SupervisionLevel,
+} from "@/lib/teaching/assessments/content";
 import { stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, SAMPLE_SUPERVISOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
@@ -83,6 +88,8 @@ export interface InboxAnswer {
   readonly status: InboxStatus;
   readonly level: SupervisionLevel | null;
   readonly text: string;
+  /** How the assessor knows, the declaration the AMC EPA form asks [EPA1p]. Kept so Undo and reopening keep it. */
+  readonly observed?: EpaObserved | null;
   readonly reason: CantReason | null;
   /** Who the doctor is pointed to when it is passed on. */
   readonly suggestion?: string | null;
@@ -228,8 +235,11 @@ function doneLineFor(answer: InboxAnswer): string | null {
     const what = [answer.level ? levelWord(answer.level) : null, answer.text.trim() ? "with a few lines" : null]
       .filter(Boolean)
       .join(", ");
-    if (answer.status === "queued")
-      return answer.level ? `To send · ${what}` : "To send · choose a supervision level so it can go";
+    if (answer.status === "queued") {
+      if (!answer.level) return "To send · choose a supervision level so it can go";
+      if (!answer.observed) return "To send · say how you know so it can go";
+      return `To send · ${what}`;
+    }
     return answer.sentAt ? `Sent ${answer.sentAt} · ${what}` : what;
   }
   if (answer.status === "passed") {
@@ -339,11 +349,17 @@ export function feedbackProblem(text: string): FeedbackProblem | null {
   };
 }
 
-/** Why Send is not available yet, in plain words; null when it can go. */
-export function sendBlocker(answer: Pick<InboxAnswer, "level" | "text">): string | null {
+/**
+ * Why Send is not available yet, in plain words; null when it can go. Like the full EPA form, the quick answer
+ * needs the assessor's declaration first: they directly observed some part of the clinical interaction, or a
+ * team member who was there told them [EPA1p] [EPA4p] (rules audit M9).
+ */
+export function sendBlocker(answer: Pick<InboxAnswer, "level" | "text" | "observed">): string | null {
   if (!answer.level) return "Choose the supervision the doctor needed.";
   if (answer.text.length > FEEDBACK_MAX_CHARS) return `Keep it to ${FEEDBACK_MAX_CHARS} characters.`;
   if (feedbackProblem(answer.text)) return "Remove the patient details to send.";
+  if (!answer.observed) return "Say how you know: you saw some of it, or a team member who was there told you.";
+  if (answer.observed === "team" && !answer.text.trim()) return "Name the team member's role in your few lines.";
   return null;
 }
 
@@ -387,6 +403,9 @@ export function claCopyText(item: InboxRequest, answer: InboxAnswer): string {
     item.title,
     `Doctor: ${item.doctor.name}`,
     answer.level ? `Supervision needed: ${levelWord(answer.level)}` : null,
+    answer.observed
+      ? `How I know: ${answer.observed === "direct" ? "I directly observed some part of it" : "a team member who was there told me"}`
+      : null,
     answer.text.trim() ? `Feedback: ${answer.text.trim()}` : null,
     `Asked ${item.askedOn}`,
   ]

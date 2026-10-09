@@ -226,7 +226,7 @@ export function AssessmentReport({ s, params, openSheet, dct }: ScreenProps) {
       <SectionLabel>Signatures</SectionLabel>
       <ul role="list" className="grid">
         <SignatureLine
-          role="Term supervisor"
+          role={mid ? "Primary clinical supervisor" : "Term supervisor"}
           name={SAMPLE_SUPERVISOR.name}
           mark={
             supSigned ? (
@@ -264,6 +264,13 @@ export function AssessmentReport({ s, params, openSheet, dct }: ScreenProps) {
           }
         />
       </ul>
+      {mid ? (
+        // AMC Section 3A: the primary clinical supervisor completes the mid-term. A registrar may complete it "with
+        // formal sign-off by the primary clinical supervisor".
+        <SmallPrint>
+          {`Your primary clinical supervisor does the mid-term. In this story that is ${SUP}, who is also your term supervisor. A registrar can do it instead, with formal sign-off by your primary clinical supervisor.`}
+        </SmallPrint>
+      ) : null}
       {!mid && s.sigs.sup && !s.sigs.doc ? (
         <WorkButton href={viewHref("sign")} icon={PenLine} size="wide">
           Read and acknowledge

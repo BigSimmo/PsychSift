@@ -29,7 +29,13 @@ import {
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
 import { Pgy2Rules, RuleLine, YearEnd } from "@/components/teaching/assessments/assessments-year-end";
-import { EPAS, caseComplexityName, epa as epaInfo, supervisionLevelName } from "@/lib/teaching/assessments/content";
+import {
+  EPAS,
+  MEU_HOW_TO_REACH,
+  caseComplexityName,
+  epa as epaInfo,
+  supervisionLevelName,
+} from "@/lib/teaching/assessments/content";
 import { samSignOff, type DctSignature, type DctState } from "@/lib/teaching/assessments/dct";
 import {
   YEAR_WEEKS,
@@ -53,7 +59,13 @@ import {
   SAMPLE_LEAVE,
   SAMPLE_SUPERVISOR,
   SAMPLE_TERMS,
+  delegatedEndOfTermLine,
+  kindName,
+  registrarMidTermLine,
   sampleTerm,
+  termKindsLabel,
+  termNumbers,
+  termsWithKind,
   type EpaRecord,
   type SampleTerm,
 } from "@/lib/teaching/assessments/sample";
@@ -113,10 +125,9 @@ function Requirement({
 /** Kinds of experience A to D from the sample terms: done once the DCT signs off the term, now for this term. */
 function kindsFor(s: AssessmentsState, signOff: DctSignature | null) {
   return (["A", "B", "C", "D"] as const).map((letter) => {
-    const done = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "done");
-    const now = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "current");
-    const any = done ?? now ?? SAMPLE_TERMS.find((t) => t.category === letter);
-    const state: KindState = done || (now && signOff) ? "done" : now ? "now" : "todo";
+    const done = termsWithKind(letter, "done");
+    const now = termsWithKind(letter, "current")[0];
+    const state: KindState = done.length || (now && signOff) ? "done" : now ? "now" : "todo";
     const nowNote = signOff
       ? `Term 4 · ${signedOffLine(signOff)}`
       : s.sigs.doc
@@ -124,9 +135,9 @@ function kindsFor(s: AssessmentsState, signOff: DctSignature | null) {
         : "Now, term 4";
     return {
       letter,
-      name: any?.categoryName ?? letter,
+      name: kindName(letter),
       state,
-      note: done ? `Term ${done.n}` : now ? nowNote : "Not yet",
+      note: done.length ? termNumbers(done) : now ? nowNote : "Not yet",
     };
   });
 }
@@ -292,6 +303,7 @@ export function YearRequirements({ s, openSheet, dct, tab }: ScreenProps & { tab
       </List>
       <YearEnd grade={SAMPLE_DOCTOR.grade} />
       <Pgy2Rules />
+      <SmallPrint>{MEU_HOW_TO_REACH}</SmallPrint>
       <SmallPrint center>AMC National Framework 2024 · Medical Board of Australia</SmallPrint>
       <WorkDock>
         <WorkButton icon={Plus} onClick={() => openSheet({ kind: "epa", pick: epa1ThisTerm(s) ? 2 : 1 })}>
@@ -346,6 +358,7 @@ export function TermDetails({ s, params, openSheet, dct }: ScreenProps) {
           state="ok"
           title="Beginning-of-term discussion"
           detail="Wed 2 Sep · goals: formulation on ward round, EPA 1, lithium monitoring"
+          href={viewHref("botd", { term: t.id })}
         />
         <StepRow
           state="ok"
@@ -365,17 +378,22 @@ export function TermDetails({ s, params, openSheet, dct }: ScreenProps) {
   else if (done)
     steps = (
       <>
-        <StepRow state="ok" title="Beginning-of-term discussion" detail={`With ${t.supervisor}`} />
+        <StepRow
+          state="ok"
+          title="Beginning-of-term discussion"
+          detail={`${t.botd ? `${t.botd.date} with` : "With"} ${t.supervisor}. Goals agreed.`}
+          href={viewHref("botd", { term: t.id })}
+        />
         <StepRow
           state="ok"
           title="Mid-term assessment"
-          detail={`Signed ${t.midSigned}`}
+          detail={[`Signed ${t.midSigned}.`, registrarMidTermLine(t)].filter(Boolean).join(" ")}
           href={viewHref("pdf", { of: "past", kind: "mid", term: t.id })}
         />
         <StepRow
           state="ok"
           title="End-of-term assessment"
-          detail={`Signed ${t.signed} · DCT sign-off done`}
+          detail={[`Signed ${t.signed} · DCT sign-off done.`, delegatedEndOfTermLine(t)].filter(Boolean).join(" ")}
           tag={SIGNED_PILL}
           href={viewHref("pdf", { of: "past", kind: "eot", term: t.id })}
         />
@@ -402,7 +420,7 @@ export function TermDetails({ s, params, openSheet, dct }: ScreenProps) {
     <>
       <ScreenHeader back={viewHref("home")} backLabel="Assessments" title={`Term ${t.n}`} subtitle={t.name} />
       <Panel>
-        <Eyebrow accent>{`${t.category} · ${t.categoryName}`}</Eyebrow>
+        <Eyebrow accent>{termKindsLabel(t)}</Eyebrow>
         <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">{t.name}</h2>
         <KeyValue k="Dates" v={`${t.from} to ${t.to}`} />
         <KeyValue k="Length" v={`${t.weeks} weeks`} />
@@ -448,6 +466,79 @@ export function TermDetails({ s, params, openSheet, dct }: ScreenProps) {
   );
 }
 
+/**
+ * The beginning-of-term discussion, read-only (rules audit M12, site audit A6). AMC Section 3A: "a mandatory
+ * discussion between the prevocational doctor and term supervisor", which sets the learning objectives and the
+ * term's assessments, including any extra EPAs or activities. CLA calls its form the BOTD [CLA-GL]. The mid-term
+ * is completed by the primary clinical supervisor, or by a registrar "with formal sign-off by the primary clinical
+ * supervisor" (AMC Section 3A). The EPA minimums are AMC Section 3A, p.50.
+ */
+export function BeginningOfTerm({ params }: ScreenProps) {
+  const t = sampleTerm(params.get("term"));
+  const back = viewHref("term", { term: t.id });
+  const midHref =
+    t.status === "current"
+      ? viewHref("report", { of: "mid" })
+      : t.status === "done"
+        ? viewHref("pdf", { of: "past", kind: "mid", term: t.id })
+        : undefined;
+  return (
+    <>
+      <ScreenHeader
+        back={back}
+        backLabel={`Term ${t.n}`}
+        title="Beginning-of-term discussion"
+        subtitle={`Term ${t.n} · ${t.name}`}
+      />
+      <Panel>
+        <Eyebrow accent>{t.botd ? "Done" : "Not yet"}</Eyebrow>
+        <p className="text-sm text-[color:var(--text-heading)]">
+          A required discussion between you and your term supervisor at the start of the term. It sets your learning
+          goals and the assessments for the term.
+        </p>
+        <KeyValue k="With" v={`${t.supervisor}, term supervisor`} />
+        <KeyValue k="When" v={t.botd ? `${t.botd.date} (made-up)` : "At the start of the term"} />
+      </Panel>
+      {t.botd ? (
+        <>
+          <SectionLabel>Goals agreed</SectionLabel>
+          <List label="Goals agreed">
+            {t.botd.goals.map((goal) => (
+              <RuleLine key={goal}>{goal}</RuleLine>
+            ))}
+          </List>
+        </>
+      ) : null}
+      <SectionLabel>Assessments for the term</SectionLabel>
+      <List label="Assessments for the term">
+        <Row
+          icon={FileText}
+          title="Mid-term"
+          subtitle={
+            registrarMidTermLine(t) ??
+            "By your primary clinical supervisor. A registrar can do it, with formal sign-off by your primary clinical supervisor."
+          }
+          href={midHref}
+        />
+        <Row
+          icon={Target}
+          title="EPAs"
+          subtitle="At least 2 this term, with EPA 1. At least one from your primary clinical supervisor or an equivalent specialist."
+        />
+        <Row
+          icon={FileText}
+          title="End-of-term"
+          subtitle={
+            delegatedEndOfTermLine(t) ??
+            `By ${t.supervisor}, your term supervisor, or a clinical supervisor they delegate it to.`
+          }
+        />
+      </List>
+      <SmallPrint>In CLA this is the BOTD form. Made-up goals about skills, never about patients.</SmallPrint>
+    </>
+  );
+}
+
 type Filter = "all" | "todo" | "eot" | "mid" | "epa";
 type Item =
   | {
@@ -469,7 +560,7 @@ function allItems(s: AssessmentsState, signOff: DctSignature | null): Item[] {
       term: t,
       type: "eot",
       title: "End-of-term",
-      detail: `Signed ${t.signed} · DCT sign-off done`,
+      detail: [`Signed ${t.signed} · DCT sign-off done.`, delegatedEndOfTermLine(t)].filter(Boolean).join(" "),
       tag: SIGNED_PILL,
       href: viewHref("pdf", { of: "past", kind: "eot", term: t.id }),
     });
@@ -477,7 +568,9 @@ function allItems(s: AssessmentsState, signOff: DctSignature | null): Item[] {
       term: t,
       type: "mid",
       title: "Mid-term",
-      detail: `Signed ${t.midSigned} · ${t.supervisor}`,
+      detail: registrarMidTermLine(t)
+        ? `Signed ${t.midSigned}. ${registrarMidTermLine(t)}`
+        : `Signed ${t.midSigned} · ${t.supervisor}`,
       href: viewHref("pdf", { of: "past", kind: "mid", term: t.id }),
     });
     for (const record of epasInTerm(s, t.id)) items.push({ term: t, type: "epa", record });
