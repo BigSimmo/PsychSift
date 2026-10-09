@@ -108,22 +108,25 @@ const EXAMPLE_POSTING: BookingsPosting = { administrator: true, teams: [] };
  * Courses, with Undo. With it off, the courses are the saved, shared ones: each
  * action asks the server, which checks places, the waitlist and permissions under
  * a lock, then the page reads again, so what it shows is what was saved.
+ *
+ * With `enabled` false (the work calendar, outside the preview) it reads nothing.
  */
-export function useBookings(): UseBookings {
+export function useBookings({ enabled = true }: { readonly enabled?: boolean } = {}): UseBookings {
   const { active } = useExampleData("admin");
   const signedIn = useSignedIn();
   const { zone } = useWorkTimeZone();
   const online = useOnlineStatus();
-  const read = useRegistryDataset("admin.bookings", active);
+  const read = useRegistryDataset("admin.bookings", enabled && active);
   const snapshot = useSyncExternalStore(subscribeBookings, readBookingsSnapshot, serverBookingsSnapshot);
-  const saved = useSavedBookings(!active && signedIn);
+  const saved = useSavedBookings(enabled && !active && signedIn);
   const today = zonedToday(zone);
   const source = `example:${zone}:${today}`;
 
   useEffect(() => {
+    if (!enabled) return;
     if (!active) resetBookings();
     else if (read.status === "ready") seedBookings(source, read.data);
-  }, [active, read, source]);
+  }, [enabled, active, read, source]);
 
   const exampleState = active && snapshot.source === source ? snapshot.state : null;
 

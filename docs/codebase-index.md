@@ -450,6 +450,12 @@ map each mode's existing selectors (Admin's `today-selectors`, On Call notificat
 progress, CPD routines and drafts, Teaching's needs-you counts) onto items, and
 `use-my-day-items.ts` merges them for the `/my-day` page and the home card. Read-only; nothing stored.
 
+**Work roles.** `src/lib/work-roles/` is the one hospital-side role and permission model for work mode
+(site administrator, Medical Workforce, DCT, supervisor or assessor, roster manager). `model.ts` holds the
+pure rules (`decideWorkCapability`, `decideGrantWorkRole`), `server.ts` reads a person's roles and exposes
+`can()` plus `canManageCourses`, `canManageRotations` and `canReviewAssessments` for routes, and
+`use-work-roles.ts` is the client hook behind `/api/work/roles`, for choosing what to show only.
+
 **Work choices sync.** `src/lib/work-sync/` copies a few device-kept work choices (saved work pages,
 My Day's hidden cards, moved-to-tomorrow items and quick note; `sections.ts`) to the account and back.
 The device stores stay what the pages read; `work-sync-client.ts`, started by
@@ -488,6 +494,10 @@ guard) and `people.ts` (the obviously made-up names and places). The banner, swi
 states are in `src/components/example-data/` and `src/components/work-first-use/`.
 `src/lib/work-time/` holds the work time zone (Perth by default, saved as `preferences.timeZone`) and
 the zone-aware date and time helpers every shift and "today" uses instead of the device clock.
+`src/lib/work-calendar/` is the shared shape for planned work entries (published rotations now,
+booked courses next) that the Roster month, My Day and the calendar link read through
+`useWorkCalendarEntries()` and the source list in `src/components/work-calendar/sources.ts`.
+Rotation preference rounds (rank, allocate, publish) live in `src/lib/roster/rotations/`.
 
 **Work-mode launch switch.** `src/lib/work-mode-launch/` decides who sees the new-only work
 screens. `launch.ts` resolves the setting (`WORK_MODE_LAUNCH` off, preview or everyone, with

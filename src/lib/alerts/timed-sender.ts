@@ -1,7 +1,8 @@
 import "server-only";
 
+import { BELL_PHONE_REF_PREFIX } from "@/lib/alerts/bell-phone";
 import { briefIsDue, morningBriefTime, type BriefShift } from "@/lib/alerts/morning-brief";
-import { normalizeReminderSettings } from "@/lib/reminders/settings";
+import { applyQuietHours, normalizeReminderSettings, type ReminderSettings } from "@/lib/reminders/settings";
 import { pushCodeToOwnerDevice, pushCodeToOwners, webPushConfigured } from "@/lib/roster/alerts/send";
 import { addDaysToDate, perthDateOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 import type { RosterAdminClient } from "@/lib/roster/team/api";
@@ -15,6 +16,10 @@ import type { RosterAdminClient } from "@/lib/roster/team/api";
  *   (owner decision 1, 5 Oct 2026); the row is deleted as it is taken. A
  *   reminder breaks through quiet hours at the exact time the reader set
  *   (decision 2), so quiet hours are not applied to it.
+ * - each bell reminder a phone queued (its id starts `w-`), as `{t:"due"}`,
+ *   to that phone. The phone chose the time and a random id, never the words.
+ *   Unlike a note the reader set, it respects quiet hours, and it is dropped
+ *   if the reader has since turned bell reminders off on their account.
  * - the morning brief, as `{t:"brief"}`, once per Perth day, at the time
  *   `morningBriefTime` gives.
  *
@@ -29,20 +34,61 @@ const OWNER_LIMIT = 500;
 
 type ClaimedReminder = { owner_id: string; ref: string; due_at: string; endpoint: string };
 
+/** The lock-screen line for a bell reminder; the service worker owns its words. */
+export const BELL_PUSH_CODE = "due";
+
+function isBellReminder(row: ClaimedReminder): boolean {
+  return row.ref.startsWith(BELL_PHONE_REF_PREFIX);
+}
+
+/** Bell reminders are still wanted, outside quiet hours, by each owner's saved settings. Null when unreadable. */
+async function bellSettingsFor(
+  client: RosterAdminClient,
+  ownerIds: readonly string[],
+): Promise<Map<string, ReminderSettings> | null> {
+  if (!ownerIds.length) return new Map();
+  const { data, error } = await client
+    .from("user_preferences")
+    .select("user_id, preferences")
+    .in("user_id", [...new Set(ownerIds)]);
+  if (error) return null;
+  return new Map(
+    (data ?? []).map((row) => [
+      row.user_id as string,
+      normalizeReminderSettings((row.preferences as { reminders?: unknown })?.reminders),
+    ]),
+  );
+}
+
+function bellStillWanted(settings: ReminderSettings | undefined, now: Date): boolean {
+  if (!settings?.bellPhone.enabled) return false;
+  return applyQuietHours(now.getTime(), settings.quietHours) === now.getTime();
+}
+
 export async function sendDueReminders(client: RosterAdminClient, now: Date): Promise<number> {
   const { data, error } = await client.rpc("alert_claim_due_reminders", {
     p_now: now.toISOString(),
     p_limit: 200,
   });
   if (error) throw new Error("Reminder claim unavailable");
+  const rows = ((data ?? []) as ClaimedReminder[]).filter(
+    (row) => now.getTime() - Date.parse(row.due_at) < REMINDER_LATE_LIMIT_MS,
+  );
+  // A bell reminder is only sent when its owner's settings can be read and still want it: when in doubt, stay quiet.
+  const bell = await bellSettingsFor(
+    client,
+    rows.filter(isBellReminder).map((row) => row.owner_id),
+  );
   let sent = 0;
   let failed = 0;
-  for (const row of (data ?? []) as ClaimedReminder[]) {
-    if (now.getTime() - Date.parse(row.due_at) >= REMINDER_LATE_LIMIT_MS) continue;
+  for (const row of rows) {
+    const bellRow = isBellReminder(row);
+    if (bellRow && !bellStillWanted(bell?.get(row.owner_id), now)) continue;
     // Only the phone that holds the words is buzzed; another device would have nothing to show.
     // One failure must not lose the rest of this batch, which is already taken.
     try {
-      if (await pushCodeToOwnerDevice(client, row.owner_id, row.endpoint, "reminder", 15 * 60)) sent += 1;
+      const code = bellRow ? BELL_PUSH_CODE : "reminder";
+      if (await pushCodeToOwnerDevice(client, row.owner_id, row.endpoint, code, 15 * 60)) sent += 1;
     } catch {
       failed += 1;
     }

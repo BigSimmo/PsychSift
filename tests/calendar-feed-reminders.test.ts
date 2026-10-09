@@ -28,6 +28,8 @@ vi.mock("@/lib/cme/repository", () => ({
 }));
 vi.mock("@/lib/on-call/repository", () => ({ fetchVisibleOnCallEntries: mocks.onCall }));
 vi.mock("@/lib/teaching/feed-repository", () => ({ fetchTeachingFeedSessions: mocks.teachingFeed }));
+// Published rotations have their own source and tests (tests/roster-rotations-feed.test.ts).
+vi.mock("@/lib/calendar/rotation-feed-source", () => ({ fetchRotationFeedEvents: async () => [] }));
 
 import { GET as feed } from "@/app/api/calendar/feed/[token]/route";
 

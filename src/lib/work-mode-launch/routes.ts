@@ -61,6 +61,9 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/my-day/help", owner: "walkthrough-help" },
   // Notifications: To do, Earlier and Settings, and everything below them.
   { path: "/my-day/notifications", owner: "alerts" },
+  // Rotation preferences: a doctor's rounds and year, and the administrator's rounds (each matches its rounds below it).
+  { path: "/roster/rotations", owner: "roster-rotations" },
+  { path: "/roster/manage/rotations", owner: "roster-rotations" },
 ];
 
 function pathMatches(pathname: string, entryPath: string): boolean {

@@ -1,6 +1,7 @@
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { ExampleWorkforce } from "@/lib/example-data/datasets/admin-workforce";
 import type { BookingsState } from "@/lib/work-screens/admin/bookings";
+import type { ExampleRotationRounds } from "@/lib/example-data/datasets/roster-rotations";
 import type { ExampleSupervisionByDoctor } from "@/lib/example-data/datasets/assessments-supervision";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
@@ -35,6 +36,7 @@ import { zonedDateOf } from "@/lib/work-time/format";
 export type ExampleDatasets = {
   "roster.myShifts": OnCallShift[];
   "roster.teams": RosterTeam[];
+  "roster.rotations": ExampleRotationRounds;
   "openShifts.listings": OpenShiftListing[];
   "onCall.entries": readonly OnCallEntry[];
   "teaching.sessions": SessionSummary[];
@@ -64,6 +66,8 @@ const addDays = (date: string, days: number) =>
 const LOADERS: { [K in ExampleDatasetKey]: Loader<K> } = {
   "roster.myShifts": async (now) => (await import("@/lib/roster/team/demo-team-core")).demoMyShifts(now),
   "roster.teams": async () => (await import("@/lib/roster/team/demo-team-core")).demoRosterTeams(),
+  "roster.rotations": async (now) =>
+    (await import("@/lib/example-data/datasets/roster-rotations")).exampleRotationRounds(now),
   "openShifts.listings": async (now) => (await import("@/lib/open-shifts/sample")).sampleListings(now),
   "onCall.entries": async () => (await import("@/lib/on-call/demo-entries")).DEMO_ON_CALL_ENTRIES,
   "teaching.sessions": async (now, zone) => {
@@ -97,6 +101,7 @@ const LOADERS: { [K in ExampleDatasetKey]: Loader<K> } = {
 export const EXAMPLE_DATASET_AREA: { readonly [K in ExampleDatasetKey]: WorkAreaId } = {
   "roster.myShifts": "rost",
   "roster.teams": "rost",
+  "roster.rotations": "rost",
   "openShifts.listings": "rost",
   "onCall.entries": "call",
   "teaching.sessions": "teach",

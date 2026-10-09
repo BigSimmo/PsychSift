@@ -20,6 +20,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const bookings = useLivePreview("course-bookings");
   const courses = useCourseOrganiser();
   const courseOrganiser = bookings && (courses.organiser || courses.sample);
+  const rotations = useLivePreview("rotation-preferences");
   return useCallback(
     (gate) => {
       if (!gate) return true;
@@ -30,9 +31,11 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "new-work-mode") return newWorkMode;
       if (gate === "classic-work-mode") return !newWorkMode;
       if (gate === "signed-out") return !signedIn;
+      if (gate === "rotation-preferences") return rotations;
+      if (gate === "rotation-preferences-manager") return rotations && poster === true;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn, bookings, courseOrganiser],
+    [roles, poster, editor, newWorkMode, signedIn, bookings, courseOrganiser, rotations],
   );
 }
 

@@ -4764,6 +4764,28 @@ export type Database = {
         },
         "course_id" | "owner_id" | "display_name" | "status"
       >;
+      roster_rotation_rounds: GeneratedTable<
+        {
+          id: string;
+          service_id: string;
+          status: string;
+          setup: Json;
+          locks: Json;
+          allocation: Json | null;
+          admin_name: string;
+          version: number;
+          created_by: string | null;
+          created_at: string;
+          opened_at: string | null;
+          published_at: string | null;
+          updated_at: string;
+        },
+        "service_id" | "setup" | "admin_name"
+      >;
+      roster_rotation_preferences: GeneratedTable<
+        { round_id: string; user_id: string; ranking: Json; submitted_at: string | null; updated_at: string },
+        "round_id" | "user_id"
+      >;
     };
     Views: {
       document_strict_gate_status: {
@@ -4892,6 +4914,7 @@ export type Database = {
       };
       service_member_active: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
       roster_can_invite: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
+      roster_rotation_can_manage: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
       cme_confirm_year: { Args: { p_owner_id: string; p_set: Json }; Returns: string };
       cme_save_plan_goals: { Args: { p_owner_id: string; p_year_id: string; p_goals: Json }; Returns: Json };
       cme_save_plan_goals_checked: {
