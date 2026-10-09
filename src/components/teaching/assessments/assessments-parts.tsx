@@ -12,6 +12,7 @@ import {
   AssessTextField,
   OutcomeRow,
 } from "@/components/teaching/assessments/assess-kit";
+import type { AssessRole } from "@/components/teaching/assessments/assess-memory";
 import { cn } from "@/components/ui-primitives";
 import type { Pill as PillValue, PillTone, StepState } from "@/lib/teaching/assessments/model";
 
@@ -56,9 +57,13 @@ export function viewHref(view: AssessmentsView, params: Record<string, string> =
   return query ? `${assessmentsPath}?${query}` : assessmentsPath;
 }
 
-/** One doctor as their supervisor sees them: requests, supervision to confirm, corrections. */
-export function traineeHref(doctorId: string): string {
-  return `${assessmentsPath}/trainee/${encodeURIComponent(doctorId)}?as=supervisor`;
+/**
+ * One doctor's page: requests, supervision to confirm, corrections. It keeps the caller's side (their `as`),
+ * so following it, and its back arrow, never switches a reader to another side (site audit M4). The
+ * supervisor's own screens only ever run on the supervisor's side, so that is the side when none is given.
+ */
+export function traineeHref(doctorId: string, side: AssessRole = "supervisor"): string {
+  return `${assessmentsPath}/trainee/${encodeURIComponent(doctorId)}?as=${side}`;
 }
 
 export const secondaryText = "text-xs leading-snug text-[color:var(--text-muted)]";
@@ -293,12 +298,19 @@ export function ScreenHeader({
   title,
   subtitle,
 }: {
-  back: string;
+  /** No back arrow when the screen is a tab. */
+  back: string | undefined;
   backLabel: string;
   title: string;
   subtitle?: string;
 }) {
-  return <AssessHeader eyebrow={subtitle ?? "Assessments"} title={title} back={{ href: back, label: backLabel }} />;
+  return (
+    <AssessHeader
+      eyebrow={subtitle ?? "Assessments"}
+      title={title}
+      back={back ? { href: back, label: backLabel } : undefined}
+    />
+  );
 }
 
 /** A plain key-value line. */

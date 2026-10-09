@@ -35,7 +35,12 @@ export interface OverviewCell {
   readonly status: CellStatus;
   /** "Done Fri 2 Oct", "Due Fri 16 Oct", "Overdue since Fri 2 Oct", "1 of 2" */
   readonly detail: string;
+  /** The status word, where it is not the usual one for the status ("Signed by both" before DCT sign-off). */
+  readonly word?: string;
 }
+
+/** The word a status cell shows: its own word, or the usual one for its status. */
+export const cellWord = (cell: Pick<OverviewCell, "status" | "word">): string => cell.word ?? CELL_WORDS[cell.status];
 
 export interface OverviewDoctor {
   readonly id: string;
@@ -142,13 +147,25 @@ const FIXED: readonly Fixed[] = [
 
 const TARGET = DEFAULT_EPA_TARGETS.perTerm;
 
-function epaCell(count: number): OverviewCell & { count: number } {
-  return { status: count >= TARGET ? "done" : "due", detail: `${count}\u00a0of\u00a0${TARGET}`, count };
+/**
+ * EPAs this term. "Done" only with at least 2 this term and EPA 1 among them: "At least 10 EPAs must be assessed
+ * across the year with at least 2 in each term", and EPA 1 "should be assessed at least once in each term"
+ * (AMC Section 3A, p.50). The made-up doctors other than Dr Sam Karri are taken to have had EPA 1 this term.
+ */
+function epaCell(count: number, epa1 = true): OverviewCell & { count: number } {
+  const detail = `${count}\u00a0of\u00a0${TARGET}`;
+  if (count >= TARGET && !epa1) return { status: "due", detail: `${detail}, no EPA 1 yet`, count };
+  return { status: count >= TARGET ? "done" : "due", detail, count };
 }
 
-/** End-of-term opens with the window on Mon 26 Oct and goes to the MEU by Fri 20 Nov. */
-function endCell(now: number, signed: boolean): OverviewCell {
-  if (signed) return { status: "done", detail: "Signed by both" };
+/**
+ * End-of-term opens with the window on Mon 26 Oct and goes to the MEU by Fri 20 Nov. It shows "Done" only
+ * once the DCT has signed it off: the AMC term assessment form ends with the DCT's signature and feedback, and
+ * in CLA the DCT completes "DCT sign-off" (CLA training guide for supervisors, assessors, DCTs and EDMS, p.39).
+ */
+function endCell(now: number, signed: boolean, dctSignedOn: string | null): OverviewCell {
+  if (signed && dctSignedOn) return { status: "done", detail: `DCT sign-off ${dctSignedOn}` };
+  if (signed) return { status: "done", word: "Signed by both", detail: "Signed by both. DCT sign-off next" };
   return now < 0 ? { status: "not_yet", detail: "Opens Mon 26 Oct" } : { status: "due", detail: "Due Fri 20 Nov" };
 }
 
@@ -158,9 +175,10 @@ function bucketOf(cells: readonly OverviewCell[]): DoctorBucket {
   return "on_track";
 }
 
-export function overviewDoctors(s: AssessmentsState): OverviewDoctor[] {
+/** Every doctor this term. `dctSignedOn` is the date the DCT signed off Dr Sam Karri's form, if they have. */
+export function overviewDoctors(s: AssessmentsState, dctSignedOn: string | null = null): OverviewDoctor[] {
   const st = stage(s);
-  const samEpas = epasInTerm(s, "t4").length;
+  const samTerm = epasInTerm(s, "t4");
   const sam = {
     id: "sam",
     name: SAMPLE_DOCTOR.name,
@@ -169,8 +187,11 @@ export function overviewDoctors(s: AssessmentsState): OverviewDoctor[] {
     unit: "Psychiatry",
     supervisor: NAIR,
     mid: { status: "done", detail: `Done ${SAMPLE_MIDTERM.date}` } as OverviewCell,
-    epas: epaCell(samEpas),
-    end: endCell(s.now, st === "doc-signed"),
+    epas: epaCell(
+      samTerm.length,
+      samTerm.some((r) => r.epa === 1),
+    ),
+    end: endCell(s.now, st === "doc-signed", dctSignedOn),
   };
   const rows = [
     { ...sam, bucket: bucketOf([sam.mid, sam.epas, sam.end]) },
@@ -182,7 +203,7 @@ export function overviewDoctors(s: AssessmentsState): OverviewDoctor[] {
             ? { status: "overdue", detail: `Overdue since ${f.mid.due}` }
             : { status: "due", detail: `Due ${f.mid.due}` };
       const epas = epaCell(f.epas);
-      const end = endCell(s.now, false);
+      const end = endCell(s.now, false, null);
       return {
         id: f.id,
         name: f.name,
@@ -445,13 +466,13 @@ export function supervisorMix(group: SupervisorGroup): { done: number; due: numb
 export function cellLabel(what: "Mid-term" | "EPAs" | "End-of-term", cell: OverviewCell): string {
   if (what === "EPAs")
     return `EPAs ${cell.detail.replace(/\u00a0/g, " ")}, ${cell.status === "done" ? "at the term target" : "below the term target"}`;
-  return `${what} ${CELL_WORDS[cell.status].toLowerCase()}`;
+  return `${what} ${cellWord(cell).toLowerCase()}`;
 }
 
 /** One doctor's term as a status timeline. Words only: what is done, due or not yet, never what was written. */
 export function doctorTimeline(
   row: OverviewDoctor,
-): { id: FormKind | "epas"; title: string; detail: string; status: CellStatus }[] {
+): { id: FormKind | "epas"; title: string; detail: string; status: CellStatus; word?: string }[] {
   return [
     { id: "mid", title: "Mid-term assessment", detail: row.mid.detail, status: row.mid.status },
     {
@@ -460,7 +481,13 @@ export function doctorTimeline(
       detail: `${row.epas.detail.replace(/\u00a0/g, " ")} recorded`,
       status: row.epas.status,
     },
-    { id: "end", title: "End-of-term assessment", detail: row.end.detail, status: row.end.status },
+    {
+      id: "end",
+      title: "End-of-term assessment",
+      detail: row.end.detail,
+      status: row.end.status,
+      ...(row.end.word ? { word: row.end.word } : {}),
+    },
   ];
 }
 
@@ -491,7 +518,8 @@ export function assessmentsSampleSearchEntries(): AssessmentsSampleSearchEntry[]
       title: "Term overview (made-up sample)",
       area: "teaching",
       keywords: ["term overview", "DCT", "status", "overdue", "remind", "mid-term", "end-of-term", "MEU"],
-      href: "/teaching/assessments?view=overview&as=supervisor",
+      // The service-wide overview is the DCT's (site audit M3).
+      href: "/teaching/assessments?view=overview&as=dct",
     },
   ];
 }
