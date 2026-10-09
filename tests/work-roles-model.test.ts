@@ -12,7 +12,12 @@ const admin: WorkRoleGrant = { role: "administrator" };
 const managerA: WorkRoleGrant = { role: "manager", serviceId: "team-a" };
 const workforceH: WorkRoleGrant = { role: "workforce", hospitalId: "hosp-1", serviceIds: ["team-a", "team-b"] };
 const dctH: WorkRoleGrant = { role: "dct", hospitalId: "hosp-1", serviceIds: ["team-a", "team-b"] };
-const supervisorOfSam: WorkRoleGrant = { role: "supervisor", subjectUserId: "sam" };
+const supervisorOfSam: WorkRoleGrant = {
+  role: "supervisor",
+  hospitalId: "hosp-1",
+  subjectUserId: "sam",
+  hospitalServiceIds: ["team-a", "team-b"],
+};
 const supervisorTeamB: WorkRoleGrant = { role: "supervisor", serviceId: "team-b" };
 
 describe("work roles model", () => {
@@ -44,6 +49,17 @@ describe("work roles model", () => {
       false,
     );
     expect(decideWorkCapability([supervisorTeamB], "assessments.review", sam)).toBe(false);
+    // A one-trainee role stays in the hospital that gave it, and a named team must belong to it.
+    expect(
+      decideWorkCapability([supervisorOfSam], "assessments.review", {
+        kind: "trainee",
+        userId: "sam",
+        serviceId: "team-z",
+      }),
+    ).toBe(false);
+    expect(decideWorkCapability([supervisorOfSam], "assessments.review", { kind: "trainee", userId: "sam" })).toBe(
+      true,
+    );
     expect(decideWorkCapability([dctH], "assessments.review", sam)).toBe(true);
     expect(decideWorkCapability([admin], "assessments.review", sam)).toBe(false);
     expect(decideWorkCapability([workforceH], "assessments.review", sam)).toBe(false);
