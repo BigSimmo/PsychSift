@@ -631,11 +631,6 @@ function bySchedule(a: BookingCourse, b: BookingCourse): number {
   return `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`) || a.title.localeCompare(b.title);
 }
 
-function minutesOf(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number);
-  return (hours ?? 0) * 60 + (minutes ?? 0);
-}
-
 function parseDate(date: string): Date | null {
   if (!DATE.test(date)) return null;
   const parsed = new Date(`${date}T00:00:00Z`);
