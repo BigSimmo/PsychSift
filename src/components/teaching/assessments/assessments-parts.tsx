@@ -44,7 +44,10 @@ export type AssessmentsView =
   | "record"
   | "words"
   | "inbox"
-  | "overview";
+  | "overview"
+  | "dctsign"
+  | "plan"
+  | "epaform";
 
 /** The page's own address for a screen: one route, so the phone's Back button walks back through it. */
 export function viewHref(view: AssessmentsView, params: Record<string, string> = {}): string {

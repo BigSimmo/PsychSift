@@ -28,7 +28,7 @@ import {
   viewHref,
 } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
-import { EPAS, epa as epaInfo, supervisionLevelName } from "@/lib/teaching/assessments/content";
+import { EPAS, caseComplexityName, epa as epaInfo, supervisionLevelName } from "@/lib/teaching/assessments/content";
 import {
   YEAR_WEEKS,
   endOfTermLine,
@@ -37,14 +37,17 @@ import {
   epaCounts,
   epaNeedMore,
   epaRecords,
+  epaRequestWords,
   epasInTerm,
+  fromSpecialist,
+  openEpaRequests,
   weeksDone,
   type AssessmentsState,
+  type EpaRequest,
 } from "@/lib/teaching/assessments/model";
 import {
   SAMPLE_DOCTOR,
   SAMPLE_LEAVE,
-  SAMPLE_REGISTRAR,
   SAMPLE_SUPERVISOR,
   SAMPLE_TERMS,
   sampleTerm,
@@ -107,7 +110,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
   const more = epaNeedMore(s);
   const by = epaCounts(s);
   const thisTerm = epasInTerm(s, "t4");
-  const fromSpecialist = thisTerm.find((r) => r.role !== "registrar");
+  const specialistEpa = thisTerm.find(fromSpecialist);
   return (
     <>
       <AssessHeader
@@ -199,12 +202,12 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
         <Requirement
           title="From a term supervisor or specialist this term"
           value={
-            fromSpecialist
-              ? `Done: EPA ${fromSpecialist.epa} with ${fromSpecialist.by.replace("Dr Robin Wattle", SAMPLE_SUPERVISOR.short)}`
+            specialistEpa
+              ? `Done: EPA ${specialistEpa.epa} with ${specialistEpa.by.replace("Dr Robin Wattle", SAMPLE_SUPERVISOR.short)}`
               : "None recorded here yet"
           }
-          percent={fromSpecialist ? 100 : 0}
-          ok={!!fromSpecialist}
+          percent={specialistEpa ? 100 : 0}
+          ok={!!specialistEpa}
         />
         <li className="grid gap-1.5 px-3.5 py-3">
           <b className="text-sm font-semibold text-[color:var(--text-heading)]">Each EPA</b>
@@ -265,13 +268,24 @@ function EpaRecordRow({ r }: { r: EpaRecord }) {
       icon={Target}
       iconTone={r.level === "direct" ? "muted" : "ok"}
       title={`EPA ${r.epa} · ${epaInfo(r.epa).title}`}
-      subtitle={`${supervisionLevelName(r.level)} · ${r.by} (${r.role})`}
+      subtitle={`${supervisionLevelName(r.level)}${r.complexity ? ` · ${caseComplexityName(r.complexity)} complexity` : ""} · ${r.by} (${r.role})`}
     />
   );
 }
 
-function requestedFrom(who: "sup" | "reg") {
-  return who === "sup" ? SAMPLE_SUPERVISOR.name : SAMPLE_REGISTRAR.name;
+/** An EPA the doctor asked for that is still open: waiting, not yet, or sent back. Opens what they can do. */
+function EpaRequestRow({ r, index, openSheet }: { r: EpaRequest; index: number } & Pick<ScreenProps, "openSheet">) {
+  const words = epaRequestWords(r);
+  return (
+    <Row
+      icon={Clock}
+      iconTone={r.status === "sent-back" ? "amber" : "muted"}
+      title={`EPA ${r.epa} · ${epaInfo(r.epa).title}`}
+      subtitle={words.line}
+      tag={words.tag ? <WorkTag tone={r.status === "sent-back" ? "amber" : "neutral"}>{words.tag}</WorkTag> : undefined}
+      onClick={() => openSheet({ kind: "myepa", index })}
+    />
+  );
 }
 
 export function TermDetails({ s, params, openSheet }: ScreenProps) {
@@ -358,16 +372,9 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
               <EpaRecordRow key={`${r.epa}-${i}`} r={r} />
             ))}
             {current
-              ? s.epaRequests
-                  .filter((r) => r.status === "requested")
-                  .map((r) => (
-                    <Row
-                      key={`req-${r.epa}`}
-                      icon={Clock}
-                      title={`EPA ${r.epa} · ${epaInfo(r.epa).title}`}
-                      subtitle={`Requested from ${requestedFrom(r.who)}`}
-                    />
-                  ))
+              ? openEpaRequests(s).map(({ r, index }) => (
+                  <EpaRequestRow key={`req-${index}`} r={r} index={index} openSheet={openSheet} />
+                ))
               : null}
           </List>
         </>
@@ -403,7 +410,7 @@ type Item =
       todo?: boolean;
     }
   | { term: SampleTerm; type: "epa"; record: EpaRecord; todo?: false }
-  | { term: SampleTerm; type: "epa"; request: { epa: 1 | 2 | 3 | 4; who: "sup" | "reg" }; todo: true };
+  | { term: SampleTerm; type: "epa"; request: EpaRequest; index: number; todo: true };
 
 function allItems(s: AssessmentsState): Item[] {
   const items: Item[] = [];
@@ -444,8 +451,7 @@ function allItems(s: AssessmentsState): Item[] {
     href: viewHref("report", { of: "mid" }),
   });
   for (const record of epasInTerm(s, "t4")) items.push({ term: t4, type: "epa", record });
-  for (const r of s.epaRequests.filter((x) => x.status === "requested"))
-    items.push({ term: t4, type: "epa", request: { epa: r.epa, who: r.who }, todo: true });
+  for (const { r, index } of openEpaRequests(s)) items.push({ term: t4, type: "epa", request: r, index, todo: true });
   return items;
 }
 
@@ -457,7 +463,7 @@ const FILTERS: readonly [Filter, string][] = [
   ["epa", "EPAs"],
 ];
 
-export function AllAssessments({ s }: ScreenProps) {
+export function AllAssessments({ s, openSheet }: ScreenProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const shown = allItems(s).filter((i) => filter === "all" || (filter === "todo" ? i.todo : i.type === filter));
   const terms = [...new Set(shown.map((i) => i.term))].sort((a, b) => b.n - a.n);
@@ -488,12 +494,7 @@ export function AllAssessments({ s }: ScreenProps) {
                 .map((i, n) => {
                   if (i.type === "epa")
                     return "request" in i ? (
-                      <Row
-                        key={`r${n}`}
-                        icon={Clock}
-                        title={`EPA ${i.request.epa} · ${epaInfo(i.request.epa).title}`}
-                        subtitle={`Requested from ${requestedFrom(i.request.who)}`}
-                      />
+                      <EpaRequestRow key={`r${n}`} r={i.request} index={i.index} openSheet={openSheet} />
                     ) : (
                       <EpaRecordRow key={`e${n}`} r={i.record} />
                     );

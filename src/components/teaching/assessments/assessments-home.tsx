@@ -23,7 +23,9 @@ import {
   epaNeedMore,
   epaRecords,
   epasInTerm,
+  epaRequestWords,
   pendingEpaRequest,
+  sentBackEpaRequest,
   stage,
   termWeek,
   weeksDone,
@@ -81,7 +83,24 @@ function EpaTermStep({ s, openSheet }: Pick<ScreenProps, "s" | "openSheet">) {
       <StepRow
         state="now"
         title="EPA 1 requested"
-        detail={`Waiting for ${pending.who === "sup" ? SAMPLE_SUPERVISOR.short : SAMPLE_REGISTRAR.name}. Needed by Sun 8 Nov. ${recorded}`}
+        detail={
+          pending.status === "not-yet"
+            ? `${epaRequestWords(pending).line} Needed by Sun 8 Nov.`
+            : `Waiting for ${pending.who === "sup" ? SAMPLE_SUPERVISOR.short : SAMPLE_REGISTRAR.name}. Needed by Sun 8 Nov. ${recorded}`
+        }
+        tag={pending.status === "not-yet" ? <Pill pill={{ label: "Not yet", tone: "neutral" }} /> : undefined}
+        onClick={() => openSheet({ kind: "myepa", index: s.epaRequests.indexOf(pending) })}
+      />
+    );
+  const back = sentBackEpaRequest(s, 1);
+  if (back)
+    return (
+      <StepRow
+        state="now"
+        title="EPA 1 sent back"
+        detail={`${epaRequestWords(back).line} Ask someone else. Needed by Sun 8 Nov.`}
+        tag={<Pill pill={{ label: "Ask again", tone: "warm" }} />}
+        onClick={() => openSheet({ kind: "myepa", index: s.epaRequests.indexOf(back) })}
       />
     );
   return (
