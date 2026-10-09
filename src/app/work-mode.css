@@ -2658,3 +2658,35 @@ html[data-work-frame] .app-toast-region {
     border: 1px solid ButtonText;
   }
 }
+
+/* ------------------------------------------------------------ large text */
+
+/* At large text (`html[data-large-text]`, set by useLargeTextFlag: 125% text
+   and up, or a phone narrower than 19rem), a label that normally shortens
+   with "..." or stops after two lines wraps in full instead, so nothing on a
+   work page or sheet is cut off at 200% (large text follow-up, 9 Oct 2026).
+   Only the top bar in a work mode sets the flag, so clinical pages are
+   untouched.
+   The top bar keeps its own behaviour (owner choice, 9 Oct 2026). At normal
+   text none of this applies. */
+html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .truncate {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+html[data-large-text]
+  :is(main, [role="dialog"], [data-inpage-sticky-header])
+  :is(.line-clamp-1, .line-clamp-2, .line-clamp-3, .line-clamp-4) {
+  -webkit-line-clamp: none;
+  line-clamp: none;
+  overflow: visible;
+}
+
+/* A fixed-height chip grows with its wrapped label. */
+html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .truncate.h-7\.5 {
+  height: auto;
+  min-height: calc(var(--spacing) * 7.5);
+  padding-block: calc(var(--spacing) * 1);
+}
