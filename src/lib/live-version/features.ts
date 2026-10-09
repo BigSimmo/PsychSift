@@ -29,6 +29,12 @@ export const LIVE_PREVIEW_FEATURES = [
     since: "2026-10-07",
   },
   {
+    id: "course-bookings",
+    label: "Course bookings in Admin",
+    owner: "course-bookings",
+    since: "2026-10-09",
+  },
+  {
     id: "two-pane-side-menu",
     label: "New side menu",
     owner: "mode-picker",
