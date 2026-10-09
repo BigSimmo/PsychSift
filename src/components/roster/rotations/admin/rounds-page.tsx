@@ -164,7 +164,7 @@ export function RotationsAdminGate({
         <WorkEmpty
           icon={Lock}
           title="For roster managers"
-          body="Only your team's roster manager runs rotation rounds. You can rank your own rotations in Roster."
+          body="Rotation rounds are run by your team's roster manager or Medical Workforce. You can rank your own rotations in Roster."
           action={
             <WorkButton variant="secondary" href={ROTATIONS_HREF} testId="rotations-admin-your-rotations">
               Your rotations
