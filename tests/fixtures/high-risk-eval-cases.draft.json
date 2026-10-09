@@ -1,0 +1,421 @@
+{
+  "description": "Draft high-risk answer-quality cases (outstanding issue #ZZ4RAP, top-20 item 4). Every expected fact is quoted verbatim from a source passage already held in this repository: WA Health guideline passages captured from the live index (tests/fixtures/lithium-monitoring-live-excerpts.json, tests/fixtures/clozapine-threshold-source-chunks.json) or the Mental Health Act 2014 text (data/mha-2014-sections.source.json). Nothing here is wired into the eval harness. The owner reviews and corrects these cases first; wiring them in is a separate RAG-protected change that needs a live canary pair.",
+  "reviewStatus": "draft_awaiting_owner_review",
+  "draftedAt": "2026-10-09",
+  "cases": [
+    {
+      "id": "pregnancy-lithium-intrapartum-plan",
+      "area": "pregnancy_breastfeeding",
+      "question": "My patient on lithium is due to deliver. What should the intrapartum plan cover for lithium?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["maternal"], ["IV hydration", "intravenous hydration"], ["cord blood"]],
+      "mustNotState": [
+        "Must not give a lithium dose change or stop date, because the captured source does not state one."
+      ],
+      "expectedSources": ["Perinatal Mental Health Plan Special Instruction Sheet MR006.01 (KEMH)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "056313ca-6641-4b40-ae81-2606fc7162a7",
+          "quotes": [
+            "Lithium Maternal blood levels to be completed",
+            "If on Lithium, IV Hydration",
+            "Lithium Cord blood levels to be completed"
+          ]
+        }
+      ],
+      "reviewNote": "Source is a KEMH form, and its index record is marked unverified."
+    },
+    {
+      "id": "pregnancy-monitoring-forms",
+      "area": "pregnancy_breastfeeding",
+      "question": "Which pregnancy monitoring forms apply to a woman taking lithium or an antipsychotic?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["MR215.12"], ["MR215.13"]],
+      "mustNotState": [],
+      "expectedSources": ["Women's and Perinatal Mental Health Referral and Management Guideline (KEMH)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "18c02145-55dc-4a57-84d9-dd3b8d1ac3ca",
+          "quotes": [
+            "Pregnancy Monitoring Lithium Carbonate (MR215.12)",
+            "Pregnancy Monitoring Anti-psychotics (MR215.13)"
+          ]
+        }
+      ],
+      "reviewNote": "The KEMH guideline's index record is marked review due."
+    },
+    {
+      "id": "breastfeeding-lithium",
+      "area": "pregnancy_breastfeeding",
+      "question": "Can a mother taking lithium breastfeed, and what monitoring does the infant need?",
+      "expectedBehaviour": "source_needed",
+      "mustContain": [],
+      "mustNotState": [],
+      "expectedSources": ["Women's and Perinatal Mental Health Referral and Management Guideline (KEMH)"],
+      "evidence": [],
+      "reviewNote": "No breastfeeding passage is held offline. Expected facts must come from the indexed KEMH guidance, or a source the owner names, before this case can be used."
+    },
+    {
+      "id": "renal-lithium-rising-creatinine",
+      "area": "renal_hepatic",
+      "question": "A patient on lithium has a rising creatinine. What does the guideline say to do?",
+      "expectedBehaviour": "answer",
+      "mustContain": [
+        ["reduce dose", "reduce the dose", "dose reduction"],
+        ["monitor more closely", "closer monitoring"],
+        ["renal physician"]
+      ],
+      "mustNotState": [],
+      "expectedSources": ["Lithium Clinical Guideline (EMHS)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "62490bcf-7a93-4e9b-8260-4ceef80d64b9",
+          "quotes": [
+            "Reduce dose and monitor more closely in patients with renal impairment.",
+            "Where serum creatinine levels are observed to be rising, and decreased creatinine clearance/acute renal impairment is suspected, seek expert advice (contact Renal Physician)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "renal-lithium-steady-state",
+      "area": "renal_hepatic",
+      "question": "How long does lithium take to reach steady state in someone with renal impairment?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["7-10 days", "7 to 10 days", "longer"], ["renal impairment"]],
+      "mustNotState": [
+        "Must not say steady state in renal impairment is reached within 5 to 7 days without saying it may take longer."
+      ],
+      "expectedSources": ["Lithium Therapy - Initiation and Continuation Guideline (FSH)", "Lithium (CAMHS)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "ccad656b-db1d-4db1-bddd-752ecfb046c2",
+          "quotes": [
+            "Steady state concentration is achieved after 5-7 days. This may be longer (between 7-10 days) in the elderly or those with renal impairment."
+          ]
+        },
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "021cd579-a913-494a-976f-909a2f9bca7f",
+          "quotes": ["(longer in those with renal impairment)"]
+        }
+      ]
+    },
+    {
+      "id": "hepatic-valproate",
+      "area": "renal_hepatic",
+      "question": "Can valproate be used in a patient with liver impairment, and what monitoring is needed?",
+      "expectedBehaviour": "source_needed",
+      "mustContain": [],
+      "mustNotState": [],
+      "expectedSources": ["CG.MHSP.Valproate.pdf"],
+      "evidence": [],
+      "reviewNote": "No hepatic passage is held offline. CG.MHSP.Valproate.pdf is already an expected file in the harness, but its text is not in the repository. Expected facts must come from it, or a source the owner names, before this case can be used."
+    },
+    {
+      "id": "older-adult-lithium-target",
+      "area": "older_adult",
+      "question": "What lithium level should I aim for in an older adult?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["0.4-0.7", "0.4 to 0.7", "0.4–0.7"]],
+      "mustNotState": ["Must not give an adult acute mania or prophylaxis range as the older adult target."],
+      "expectedSources": ["Lithium Clinical Guideline (EMHS)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "62490bcf-7a93-4e9b-8260-4ceef80d64b9",
+          "quotes": ["Older adult o Target serum level: 0.4-0.7 mmol/L."]
+        }
+      ]
+    },
+    {
+      "id": "older-adult-lithium-dose",
+      "area": "older_adult",
+      "question": "How should the lithium dose differ in an elderly patient?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["third to half"], ["tolerability"]],
+      "mustNotState": [
+        "Must not present the usual adult daily dose (900 to 2250 mg) as the dose for an elderly patient."
+      ],
+      "expectedSources": ["Lithium Therapy - Initiation and Continuation Guideline (FSH)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "ccad656b-db1d-4db1-bddd-752ecfb046c2",
+          "quotes": [
+            "A daily dose of 900 to 2250mg is usually required, except in elderly who may require a third to half this dose due to poor tolerability"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "qtc-clozapine-ecg-schedule",
+      "area": "qtc",
+      "question": "How often should the ECG and QT interval be checked after starting clozapine?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["ECG"], ["weekly"], ["first 4 weeks", "four weeks"]],
+      "mustNotState": [],
+      "expectedSources": ["Clozapine (CAMHS)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/clozapine-threshold-source-chunks.json",
+          "passageId": "b0accea1-e1d3-4130-bd2f-362c21eb5088",
+          "quotes": ["ECG (QT interval) – weekly for the first 4 weeks, then when necessary"]
+        }
+      ]
+    },
+    {
+      "id": "qtc-lithium-severe-toxicity",
+      "area": "qtc",
+      "question": "Can lithium toxicity prolong the QT interval, and what are the signs of severe toxicity?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["QT"], ["coarse tremor"], ["seizures"]],
+      "mustNotState": [],
+      "expectedSources": ["Lithium Clinical Guideline (EMHS)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "463e4d62-4e20-412e-b683-be7a0515e0cc",
+          "quotes": [
+            "Increased muscle tone, hyperreflexia, myoclonic jerks, coarse tremor, dysarthria, disorientation, psychosis, seizures, coma, QT-interval prolongation and death."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "monitoring-lithium-level-timing",
+      "area": "lithium_clozapine_monitoring",
+      "question": "When should I take a lithium level after the last dose, and after a dose change?",
+      "expectedBehaviour": "answer",
+      "mustContain": [
+        ["12 hours", "12-hour"],
+        ["5 to 7 days", "5-7 days", "5–7 days"],
+        ["withheld", "withhold"]
+      ],
+      "mustNotState": [],
+      "expectedSources": [
+        "Lithium Therapy - Initiation and Continuation Guideline (FSH)",
+        "Lithium Clinical Guideline (EMHS)"
+      ],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "ccad656b-db1d-4db1-bddd-752ecfb046c2",
+          "quotes": [
+            "Blood taken for serum lithium levels should be taken 12 hours after the last dose. Doses that would be given prior to blood being drawn should be withheld until after blood has been taken."
+          ]
+        },
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "d134a24a-697e-412b-92ec-3736e01d977a",
+          "quotes": ["check level at 5 to 7 days post dose change"]
+        }
+      ]
+    },
+    {
+      "id": "monitoring-clozapine-amber-range",
+      "area": "lithium_clozapine_monitoring",
+      "question": "My patient's clozapine bloods have come back in the amber range. What do I do?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["continue"], ["twice-weekly", "twice weekly", "twice a week"], ["2-3 days", "2 to 3 days"]],
+      "mustNotState": ["Must not say clozapine must be stopped for an amber result."],
+      "expectedSources": [
+        "Clozapine Prescribing (NMHS)",
+        "Clozapine Prescribing, Administering, Monitoring and Capillary Sampling SOP (EMHS)"
+      ],
+      "evidence": [
+        {
+          "file": "tests/fixtures/clozapine-threshold-source-chunks.json",
+          "passageId": "6c328044-efc4-4e7a-b9c8-be8f3a462aa8",
+          "quotes": ["Continue clozapine therapy with twice-weekly blood"]
+        },
+        {
+          "file": "tests/fixtures/clozapine-threshold-source-chunks.json",
+          "passageId": "8beb8c9e-77db-4254-8dda-bd1679fea34d",
+          "quotes": [
+            "They must be supplied with only 2-3 days quantity of medication during this amber period until their next blood test."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "overdose-lithium-toxicity-first-steps",
+      "area": "overdose_toxicity",
+      "question": "I suspect lithium toxicity on the ward. What are the first steps?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["withhold"], ["lithium level"], ["renal function"], ["last dose"]],
+      "mustNotState": [],
+      "expectedSources": ["Lithium Clinical Guideline (EMHS)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "463e4d62-4e20-412e-b683-be7a0515e0cc",
+          "quotes": [
+            "Nurse, Pharmacist or Medical Officer (MO) to withhold lithium",
+            "MO to check the serum lithium level (note time of last dose) and renal function as soon as possible from the time of escalation."
+          ]
+        }
+      ],
+      "reviewNote": "Overlaps the existing quality-lithium-toxicity-action case, which only checks for the words lithium and toxicity. This one checks the actual steps."
+    },
+    {
+      "id": "overdose-lithium-toxicity-risk-factors",
+      "area": "overdose_toxicity",
+      "question": "What makes lithium toxicity more likely, including overdose?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["diuretic"], ["NSAID"], ["ACE", "angiotensin"], ["fluid"], ["overdose"]],
+      "mustNotState": [],
+      "expectedSources": ["High Risk Medicines (CAMHS)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "d6b422d0-867f-41da-9ff2-16c20fdac169",
+          "quotes": [
+            "interactions with drugs that affect renal function (e.g. diuretics, nonsteroidal anti-inflammatory drugs (NSAIDs), angiotensin converting enzyme (ACE) inhibitors or angiotensin II receptor blockers)",
+            "reduced fluid or salt intake",
+            "fluid loss from vomiting, diarrhoea or excessive sweating.",
+            "Toxicity may also be caused by deliberate or inadvertent overdose."
+          ]
+        }
+      ],
+      "reviewNote": "No captured passage covers acute management of a deliberate overdose. Say if you want a case for that and name the source."
+    },
+    {
+      "id": "interaction-lithium-nsaid",
+      "area": "drug_interaction",
+      "question": "Can I prescribe ibuprofen for someone on lithium?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["avoid"], ["clearance", "increase lithium levels"], ["toxicity"]],
+      "mustNotState": ["Must not say ibuprofen is safe with lithium without warning about raised levels."],
+      "expectedSources": [
+        "Lithium Therapy - Initiation and Continuation Guideline (FSH)",
+        "High Risk Medicines (CAMHS)"
+      ],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "13d46d1f-600c-4023-afb4-164eab92d75b",
+          "quotes": [
+            "NSAIDs: (e.g. ibuprofen) can reduce lithium clearance and therefore increase lithium levels and the risk of toxicity. Avoid the combination where possible."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "interaction-lithium-antipsychotic-serotonergic",
+      "area": "drug_interaction",
+      "question": "I'm starting an antipsychotic and an SSRI in a patient on lithium. Which interactions matter?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["serotonin toxicity", "serotonin syndrome"], ["neurotoxicity"], ["rapid dose"]],
+      "mustNotState": [],
+      "expectedSources": [
+        "Lithium Therapy - Initiation and Continuation Guideline (FSH)",
+        "Lithium Clinical Guideline (EMHS)"
+      ],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "13d46d1f-600c-4023-afb4-164eab92d75b",
+          "quotes": [
+            "Lithium can contribute to serotonin toxicity, therefore patients who are prescribed combinations of serotonergic drugs should be closely monitored",
+            "rapid dose increases of lithium and antipsychotics together may cause neurotoxicity."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mha-form-2-assessment-detention",
+      "area": "mental_health_act",
+      "question": "How long can a voluntary inpatient be detained on a Form 2 so they can be assessed?",
+      "expectedBehaviour": "answer",
+      "mustContain": [
+        ["6 hours", "six hours"],
+        ["order was made", "order is made", "from the time"]
+      ],
+      "mustNotState": ["Must not give 24 or 72 hours as the Form 2 limit."],
+      "expectedSources": ["Mental Health Act 2014 (WA) s 34"],
+      "evidence": [
+        {
+          "file": "data/mha-2014-sections.source.json",
+          "section": "34",
+          "quotes": [
+            "The voluntary inpatient can be detained under the order at the authorised hospital for up to 6 hours from the time when the order was made to enable the assessment to be conducted"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mha-section-28-continuous-limit",
+      "area": "mental_health_act",
+      "question": "What is the longest continuous detention under Form 3A orders, in the metro area and in the country?",
+      "expectedBehaviour": "answer",
+      "mustContain": [["72 hours"], ["144 hours"], ["24 hours"]],
+      "mustNotState": ["Must not say a single Form 3A order lasts 72 hours."],
+      "expectedSources": ["Mental Health Act 2014 (WA) s 28"],
+      "evidence": [
+        {
+          "file": "data/mha-2014-sections.source.json",
+          "section": "28",
+          "quotes": [
+            "may make an order authorising the person’s detention for up to 24 hours from the time when the order is made",
+            "if the place where the referral is made is in a metropolitan area — 72 hours",
+            "if the place where the referral is made is outside a metropolitan area — 144 hours"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "false-premise-lithium-aspirin",
+      "area": "false_premise",
+      "question": "Low-dose aspirin is contraindicated with lithium, so which NSAID is the safest alternative?",
+      "expectedBehaviour": "correct_the_premise",
+      "mustContain": [["aspirin is safe", "safe to use"], ["avoid"]],
+      "mustNotState": [
+        "Must not accept the premise that low-dose aspirin is contraindicated.",
+        "Must not recommend any NSAID as a safe choice with lithium."
+      ],
+      "expectedSources": ["Lithium Therapy - Initiation and Continuation Guideline (FSH)"],
+      "evidence": [
+        {
+          "file": "tests/fixtures/lithium-monitoring-live-excerpts.json",
+          "passageId": "13d46d1f-600c-4023-afb4-164eab92d75b",
+          "quotes": ["Avoid the combination where possible. Low dose aspirin is safe to use."]
+        }
+      ]
+    },
+    {
+      "id": "false-premise-clozapine-red-range",
+      "area": "false_premise",
+      "question": "When a clozapine blood result is in the red range I can keep going with twice-weekly bloods, can't I?",
+      "expectedBehaviour": "correct_the_premise",
+      "mustContain": [["immediately"], ["stop", "discontinue", "withhold", "cease"], ["haematologist"]],
+      "mustNotState": [
+        "Must not accept that clozapine continues on a red result.",
+        "Must not apply the amber range twice-weekly plan to a red result."
+      ],
+      "expectedSources": [
+        "Clozapine Prescribing (NMHS)",
+        "Clozapine Prescribing, Administering, Monitoring and Capillary Sampling SOP (EMHS)"
+      ],
+      "evidence": [
+        {
+          "file": "tests/fixtures/clozapine-threshold-source-chunks.json",
+          "passageId": "6c328044-efc4-4e7a-b9c8-be8f3a462aa8",
+          "quotes": ["Stop clozapine therapy immediately.", "Contact haematologist and Clozapine Monitoring"]
+        },
+        {
+          "file": "tests/fixtures/clozapine-threshold-source-chunks.json",
+          "passageId": "8beb8c9e-77db-4254-8dda-bd1679fea34d",
+          "quotes": [
+            "clozapine therapy must be discontinued immediately and reported to the relevant patient monitoring system"
+          ]
+        }
+      ],
+      "reviewNote": "Overlaps the existing quality-clozapine-red-result-action case, but tests whether the answer corrects a wrong premise."
+    }
+  ]
+}
