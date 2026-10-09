@@ -1,11 +1,5 @@
 import { DOMAINS, RATING_LABELS, type GlobalRating, type Rating } from "@/lib/teaching/assessments/content";
-import {
-  epaWithAssessor,
-  guestKind,
-  meetingDate,
-  stage,
-  type AssessmentsState,
-} from "@/lib/teaching/assessments/model";
+import { guestKind, meetingDate, stage, type AssessmentsState } from "@/lib/teaching/assessments/model";
 import { overviewDoctors, type OverviewDoctor } from "@/lib/teaching/assessments/overview";
 import { SAMPLE_DOCTOR, SAMPLE_SUPERVISOR, WINDOW_DAYS, type Ratings } from "@/lib/teaching/assessments/sample";
 
@@ -289,14 +283,15 @@ export const GUEST_ASSESSORS: readonly GuestAssessor[] = [
 ];
 
 /**
- * The guest assessors the DCT sees: the made-up ones, then any guest Dr Sam Karri asked in the story whose
- * request is still open. A guest has no CLA account, so CLA shows them as Unapproved until the MEU approves
- * them (CLA detailed FAQs v2.0, p.5, and the supervisors' training guide, p.17). The story gives them no
- * name, so they show by role.
+ * The guest assessors the DCT sees: the made-up ones, then any guest who has answered Dr Sam Karri's EPA in the
+ * story. CLA creates a guest "as a Guest Assessor with a status of Unapproved" once they submit the EPA, and
+ * they stay that way until the MEU approves them (CLA detailed FAQs v2.0, p.5, and the supervisors' training
+ * guide, p.17). This matches the EPAs `epaRecords` marks unapproved. The story gives them no name, so they
+ * show by role.
  */
 export function guestAssessors(s: AssessmentsState): GuestAssessor[] {
   const story = s.epaRequests
-    .filter((r) => r.who === "guest" && epaWithAssessor(r))
+    .filter((r) => r.who === "guest" && r.status === "done")
     .map((r) => ({ name: null, role: guestKind(r.guest).title, what: `EPA ${r.epa} for ${SAMPLE_DOCTOR.name}` }));
   return [...GUEST_ASSESSORS, ...story];
 }

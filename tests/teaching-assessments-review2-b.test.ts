@@ -71,9 +71,13 @@ describe("Assessments: the term overview's status rules (rules audit M13)", () =
     expect(cellWord(before.end)).toBe("Signed by both");
     expect(cellLabel("End-of-term", before.end)).toBe("End-of-term signed by both");
     expect(doctorTimeline(before).at(-1)?.word).toBe("Signed by both");
+    // Still due until the DCT signs off, so it stays in the due list and its reminders.
+    expect(before.end.status).toBe("due");
+    expect(before.bucket).not.toBe("on_track");
     const after = overviewDoctors(s, "Wed 28 Oct").find((r) => r.id === "sam")!;
     expect(cellWord(after.end)).toBe("Done");
     expect(after.end.detail).toBe("DCT sign-off Wed 28 Oct");
+    expect(after.end.status).toBe("done");
   });
 });
 
@@ -83,12 +87,12 @@ describe("Assessments: DCT facts (M16, M13)", () => {
     expect(PANEL_FACTS[0]).toContain("The chair should generally be a senior doctor, but not the DCT.");
   });
 
-  it("adds the story's open guest requests, and drops them once cancelled", () => {
+  it("adds a story guest once they answer, as CLA makes them Unapproved on submitting", () => {
     const asked = run([{ type: "request-epa", epa: 3, who: "guest", guest: "pharmacist" }]);
-    const guests = guestAssessors(asked);
+    expect(guestAssessors(asked)).toHaveLength(GUEST_ASSESSORS.length);
+    const answered = assessmentsReducer(asked, { type: "record-epa", index: 0, level: "proximal" });
+    const guests = guestAssessors(answered);
     expect(guests).toHaveLength(GUEST_ASSESSORS.length + 1);
     expect(guests.at(-1)).toEqual({ name: null, role: "Pharmacist", what: "EPA 3 for Dr Sam Karri" });
-    const cancelled = assessmentsReducer(asked, { type: "cancel-epa-request", index: 0 });
-    expect(guestAssessors(cancelled)).toHaveLength(GUEST_ASSESSORS.length);
   });
 });

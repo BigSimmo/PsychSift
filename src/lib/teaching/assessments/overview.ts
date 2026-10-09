@@ -165,7 +165,8 @@ function epaCell(count: number, epa1 = true): OverviewCell & { count: number } {
  */
 function endCell(now: number, signed: boolean, dctSignedOn: string | null): OverviewCell {
   if (signed && dctSignedOn) return { status: "done", detail: `DCT sign-off ${dctSignedOn}` };
-  if (signed) return { status: "done", word: "Signed by both", detail: "Signed by both. DCT sign-off next" };
+  // Still due until the DCT signs off, so it stays in the due list and its reminders.
+  if (signed) return { status: "due", word: "Signed by both", detail: "Signed by both. DCT sign-off next" };
   return now < 0 ? { status: "not_yet", detail: "Opens Mon 26 Oct" } : { status: "due", detail: "Due Fri 20 Nov" };
 }
 

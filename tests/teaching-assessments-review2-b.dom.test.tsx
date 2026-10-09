@@ -126,11 +126,13 @@ describe("Assessments: the DCT's guest assessors (M13)", () => {
     return <DctHome s={s} params={new URLSearchParams()} go={vi.fn()} dct={dct} dctDispatch={dctDispatch} />;
   }
 
-  it("lists the story's own open guest request beside the made-up ones", () => {
-    const s = [{ type: "request-epa", epa: 2, who: "guest", guest: "nurse" } as AssessmentsAction].reduce(
-      assessmentsReducer,
-      initialAssessmentsState(),
-    );
+  it("lists the story's own answered guest beside the made-up ones", () => {
+    const s = (
+      [
+        { type: "request-epa", epa: 2, who: "guest", guest: "nurse" },
+        { type: "record-epa", index: 0, level: "proximal" },
+      ] as AssessmentsAction[]
+    ).reduce(assessmentsReducer, initialAssessmentsState());
     render(<Home s={s} />);
     fireEvent.click(screen.getByRole("button", { name: /Guest assessors/ }));
     const guests = screen.getByTestId("assess-dct-guests");
