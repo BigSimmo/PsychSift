@@ -66,7 +66,7 @@
       "capability": "High — release/SRE + Operator",
       "timing": "Now that #056 is closed; schedule against the next exact candidate SHA.",
       "estimate": "2–4 hours plus soak",
-      "detail": "Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending."
+      "detail": "Harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live run remains pending: deploy one exact-SHA image with the tenancy profile and retain evidence, transition that same image to the authenticated soak profile and check search/answer/error/429/auth stop conditions, then rehearse rollback to the previous image and record both health SHAs. Follow docs/launch-operator-runbook.md §4."
     },
     {
       "order": 6,
@@ -104,8 +104,8 @@
       "priority": "P2",
       "type": "task",
       "summary": "Complete staging soak and rollback rehearsal",
-      "detail": "Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending.",
-      "source": "PR #3087 review",
+      "detail": "Harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live run remains pending: (1) deploy one exact-SHA image with the tenancy profile and retain evidence, (2) transition that same image to the authenticated soak profile and check search/answer/error/429/auth stop conditions, (3) rehearse rollback to the previous image and record both health SHAs.",
+      "source": "PR #3087 review; docs/launch-operator-runbook.md §4",
       "added": "2026-07-24"
     },
     {
@@ -203,8 +203,8 @@
       "priority": "P1",
       "type": "task",
       "summary": "Close remaining privacy provider, legal, and clinical approvals",
-      "detail": "OWNER REAFFIRMATION 2026-10-06: Confirmed active protective constraint through 2026-12-01. No identifiable patient data may enter the app until external provider and legal approvals close.",
-      "source": "session 2026-09-01 owner attestation closeout",
+      "detail": "OWNER REAFFIRMATION 2026-10-06: Confirmed active protective constraint through 2026-12-01. No identifiable patient data may enter the app until external provider and legal approvals close. Six approvals remain: OpenAI ZDR/provider approval, OpenAI DPA, Railway DPA, whole-of-flow APP 8 basis, APP 1/APP 5 notice approval, and clinical PHI-minimisation acceptance. Owner action order: obtain the provider decisions and evidence first, have the authorised legal signatory record the DPAs and APP 8 basis, then have the privacy adviser approve the notice and the clinical safety owner accept or strengthen PHI minimisation. Track evidence in docs/governance/privacy-readiness.v1.json, with closeout context in docs/governance/privacy-closeout-2026-09-01.md and the role attestations in docs/governance/privacy-role-attestation-pack-2026-09-01.md; do not lift the prohibition until all six are closed.",
+      "source": "session 2026-09-01 owner attestation closeout; docs/governance/privacy-readiness.v1.json",
       "added": "2026-09-01"
     },
     {
@@ -275,7 +275,7 @@
       "priority": "P2",
       "type": "issue",
       "summary": "release-browser-matrix Firefox/WebKit failures: four of six Firefox ones fixed (three sub-pixel artefacts merged, dark-mode test ordering merged), two Firefox and all eight WebKit still open, and the job is not in PR required so it never blocks a merge",
-      "detail": "Failure count substantially reduced by layout tolerance and settled-click repairs; main-failure-routing active.",
+      "detail": "Failure count substantially reduced by layout tolerance and settled-click repairs; main-failure-routing active. The unresolved classes remain the two Firefox failures and eight WebKit phone-chrome failures, including shared-scroll and safe-area investigation versus layout-tolerance measurement artefacts. Reproduce before changing them; do not quarantine tests or relax assertions unless the failure is proven to be a measurement artefact.",
       "source": "Release matrix review",
       "added": "2026-09-07"
     },
@@ -283,8 +283,8 @@
       "id": "#Z3GZ5P",
       "priority": "P2",
       "type": "task",
-      "summary": "DSM-5-TR specifier catalogue has no clinician sign-off: 585 items, 71 source-verified, 0 reviewed",
-      "detail": "71 specifiers signed off in PR #3143; pending review dropped from 585 to 514.",
+      "summary": "DSM-5-TR specifier catalogue has no clinician sign-off: 585 items, 71 source-verified, 514 pending clinician review",
+      "detail": "71 specifiers signed off in PR #3143; pending review dropped from 585 to 514. Source verification and clinician sign-off are separate statuses: 71 are signed off, while 514 still require review.",
       "source": "PR #3143 review",
       "added": "2026-09-07"
     },
@@ -1283,7 +1283,7 @@
       "priority": "P3",
       "type": "task",
       "summary": "Therapy catalogue: add clinical references for 47 unsourced records to enable clinician sign-off",
-      "detail": "158 of 205 therapies were signed off by owner in #SBKXZ7. 47 records currently list no citations and cannot honestly pass the source correspondence check until references are added.",
+      "detail": "158 of 205 therapies were signed off by owner in #SBKXZ7. 47 records currently list no citations and cannot honestly pass the source correspondence check until references are added; after references are added, each still requires clinician review and recorded approval before it can be signed off.",
       "source": "Owner sign-off batch 2026-10-06",
       "added": "2026-10-06"
     },
