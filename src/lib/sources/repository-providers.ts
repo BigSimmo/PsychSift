@@ -311,7 +311,10 @@ const therapyProvider: ClinicalSourceProvider = {
               therapy.reviewStatus === "needs_review" || therapy.reviewChecklist?.sourceChecked === false
                 ? "unverified"
                 : "unknown",
-            referenceText: source.reference,
+            // The import record is not the provenance for the later NICE
+            // citation. Keep that citation out of the uploaded-document entry
+            // until its register record has been adopted.
+            referenceText: source.reference.includes("These references were added on ") ? null : source.reference,
           },
         ),
       ),

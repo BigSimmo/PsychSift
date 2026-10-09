@@ -26,7 +26,12 @@ import type { Therapy } from "../data/types";
 export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
   const reviewed = therapy.reviewStatus === "reviewed";
   const source = therapy.sources[0] ?? null;
-  const blob = source?.reference?.trim() || therapy.sourceNotes?.trim() || "";
+  // References appended from the source register are not part of the
+  // historical upload. They remain in the record for later adoption, but must
+  // not be presented as a clinical citation while their register entry is a
+  // candidate (or rejected).
+  const hasUnadoptedRegisterReference = source?.reference?.includes("These references were added on ") ?? false;
+  const blob = hasUnadoptedRegisterReference ? therapy.sourceNotes?.trim() || "" : source?.reference?.trim() || therapy.sourceNotes?.trim() || "";
   const { citations, notes } = splitSourceCitations(blob);
   const reviewStatus = reviewed ? "Reviewed" : "Awaiting review";
   const reviewStatusClass = reviewed
