@@ -248,61 +248,61 @@ export function CmeNewEntryRoute({
           </div>
         ) : null}
 
-      <div className="mt-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4">
-        <label className="flex items-start gap-2.5 cursor-pointer text-sm font-medium text-[color:var(--text)]">
-          <input
-            type="checkbox"
-            checked={isReplacement}
-            onChange={(e) => setIsReplacement(e.target.checked)}
-            className="mt-0.5 rounded border-[color:var(--border)] text-[color:var(--clinical-accent)] focus:ring-[color:var(--focus)]"
-            data-testid="cme-replacement-checkbox"
-          />
-          <span>This activity replaces a missed teaching or supervision session</span>
-        </label>
-        {isReplacement ? (
-          <div className="mt-3 pl-6">
-            <label
-              htmlFor="cme-missed-session-input"
-              className="block text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]"
-            >
-              Missed session ID or reason
-            </label>
+        <div className="mt-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4">
+          <label className="flex items-start gap-2.5 cursor-pointer text-sm font-medium text-[color:var(--text)]">
             <input
-              id="cme-missed-session-input"
-              type="text"
-              value={linkedMissedSessionId}
-              onChange={(e) => setLinkedMissedSessionId(e.target.value)}
-              className={cn("mt-1", fieldControlPlain)}
-              data-testid="cme-missed-session-input"
+              type="checkbox"
+              checked={isReplacement}
+              onChange={(e) => setIsReplacement(e.target.checked)}
+              className="mt-0.5 rounded border-[color:var(--border)] text-[color:var(--clinical-accent)] focus:ring-[color:var(--focus)]"
+              data-testid="cme-replacement-checkbox"
             />
-          </div>
-        ) : null}
-      </div>
+            <span>This activity replaces a missed teaching or supervision session</span>
+          </label>
+          {isReplacement ? (
+            <div className="mt-3 pl-6">
+              <label
+                htmlFor="cme-missed-session-input"
+                className="block text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]"
+              >
+                Missed session ID or reason
+              </label>
+              <input
+                id="cme-missed-session-input"
+                type="text"
+                value={linkedMissedSessionId}
+                onChange={(e) => setLinkedMissedSessionId(e.target.value)}
+                className={cn("mt-1", fieldControlPlain)}
+                data-testid="cme-missed-session-input"
+              />
+            </div>
+          ) : null}
+        </div>
 
-      <div className="mt-6">
-        <CmeEntryForm
-          onSubmit={saveEntry}
-          initialEntry={initialEntry}
-          existingEntries={existingEntries}
-          initialStatedHours={routine ? null : undefined}
-          availableDomains={domains}
-          stillShort={stillShortCategories(set, existingEntries)}
-          // A continued account draft is not also mirrored to this tab's storage.
-          draftStorageKey={resumeDraft || sample ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
-          initialDraft={resumeDraft?.payload}
-          onSaveDraft={demoMode ? undefined : saveDraft}
-          draftControls={
-            <WaitingOnControls
-              idPrefix="cme-entry-draft"
-              value={waiting}
-              onWaitingOnChange={(waitingOn) => setWaiting((current) => ({ ...current, waitingOn }))}
-              onWaitingNoteChange={(waitingNote) => setWaiting((current) => ({ ...current, waitingNote }))}
-              onFollowUpOnChange={(followUpOn) => setWaiting((current) => ({ ...current, followUpOn }))}
-            />
-          }
-        />
-      </div>
-    </main>
-  </>
+        <div className="mt-6">
+          <CmeEntryForm
+            onSubmit={saveEntry}
+            initialEntry={initialEntry}
+            existingEntries={existingEntries}
+            initialStatedHours={routine ? null : undefined}
+            availableDomains={domains}
+            stillShort={stillShortCategories(set, existingEntries)}
+            // A continued account draft is not also mirrored to this tab's storage.
+            draftStorageKey={resumeDraft || sample ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
+            initialDraft={resumeDraft?.payload}
+            onSaveDraft={demoMode ? undefined : saveDraft}
+            draftControls={
+              <WaitingOnControls
+                idPrefix="cme-entry-draft"
+                value={waiting}
+                onWaitingOnChange={(waitingOn) => setWaiting((current) => ({ ...current, waitingOn }))}
+                onWaitingNoteChange={(waitingNote) => setWaiting((current) => ({ ...current, waitingNote }))}
+                onFollowUpOnChange={(followUpOn) => setWaiting((current) => ({ ...current, followUpOn }))}
+              />
+            }
+          />
+        </div>
+      </main>
+    </>
   );
 }

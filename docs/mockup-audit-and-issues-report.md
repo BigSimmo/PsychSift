@@ -218,17 +218,17 @@ The audit and subsequent adversarial review identified **9 concrete issues** spa
 
 ## 4. Summary Table of Issues & Action Items
 
-| Issue #     | Topic                                                 | Severity | Status / Action Item                                                        |
-| :---------- | :---------------------------------------------------- | :------: | :-------------------------------------------------------------------------- |
-| **Issue 1** | 5 Unpinned Tools Layout Drafts                        |   `P3`   | **RESOLVED (2026-10-09)**: Formally retired, recorded in index, routes removed. |
-| **Issue 2** | 4 Tools Drafts Coupled to Tests                       |   `P2`   | **Retain as test harnesses** (or decouple tests first).                     |
-| **Issue 3** | Boundary Test Assertion on Tools Mockup               |   `P2`   | **Retain component** to satisfy `production-mockup-boundary.test.ts`.       |
-| **Issue 4** | Production Proxy Redirect (`document-search-command`) |   `P2`   | **Preserve redirect** in `src/proxy.ts` and `scripts/generate-site-map.ts`. |
-| **Issue 5** | Unresolved Therapy Popups & Nav                       |   `P3`   | **Stable resting state**; await owner design choice.                        |
-| **Issue 6** | Search Chrome & Settings Drafts                       |   `P3`   | **Stable resting state**; low-priority candidate for future batch review.   |
+| Issue #     | Topic                                                 | Severity | Status / Action Item                                                                    |
+| :---------- | :---------------------------------------------------- | :------: | :-------------------------------------------------------------------------------------- |
+| **Issue 1** | 5 Unpinned Tools Layout Drafts                        |   `P3`   | **RESOLVED (2026-10-09)**: Formally retired, recorded in index, routes removed.         |
+| **Issue 2** | 4 Tools Drafts Coupled to Tests                       |   `P2`   | **Retain as test harnesses** (or decouple tests first).                                 |
+| **Issue 3** | Boundary Test Assertion on Tools Mockup               |   `P2`   | **Retain component** to satisfy `production-mockup-boundary.test.ts`.                   |
+| **Issue 4** | Production Proxy Redirect (`document-search-command`) |   `P2`   | **Preserve redirect** in `src/proxy.ts` and `scripts/generate-site-map.ts`.             |
+| **Issue 5** | Unresolved Therapy Popups & Nav                       |   `P3`   | **Stable resting state**; await owner design choice.                                    |
+| **Issue 6** | Search Chrome & Settings Drafts                       |   `P3`   | **Stable resting state**; low-priority candidate for future batch review.               |
 | **Issue 7** | Stale Calculator Divergence Note                      |   `P3`   | **RESOLVED (2026-10-09)**: Updated `mockups/README.md` (safety verified by test suite). |
-| **Issue 8** | Systemic Backwards Import Anchors                     |   `P1`   | **Do not delete independently**; core architectural dependency.             |
-| **Issue 9** | Tier B Admin Apps Under Mockups Namespace             |   `P1`   | **Protected by CI**; plan future migration to `/admin/`.                    |
+| **Issue 8** | Systemic Backwards Import Anchors                     |   `P1`   | **Do not delete independently**; core architectural dependency.                         |
+| **Issue 9** | Tier B Admin Apps Under Mockups Namespace             |   `P1`   | **Protected by CI**; plan future migration to `/admin/`.                                |
 
 ---
 
