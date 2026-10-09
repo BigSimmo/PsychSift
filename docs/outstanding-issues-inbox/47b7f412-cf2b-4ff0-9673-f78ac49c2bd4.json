@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "47b7f412-cf2b-4ff0-9673-f78ac49c2bd4",
+  "createdOn": "2026-10-09",
+  "action": "update",
+  "payload": {
+    "id": "#V3E3BV",
+    "summary": "15 of 16 candidate clinical sources reviewed in PR #3143, none adopted yet, so 47 Therapy records still cite nothing",
+    "detail": "15 candidate sources reviewed to locally_reviewed in PR #3143; 47 therapies still need citations adopted. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): Commit 88dd7aaea registered 23 reconciled Therapy sources in src/data/source-acquisitions.json, taking the ledger from 8 to 31. Sixteen are disposition candidate with validationStatus unverified: 14 NICE guidelines at rung 5, one RANZCP president's update at rung 3, and therapy-wa-aboriginal-impact-policy (WA Aboriginal Health Impact Statement and Declaration Policy). Publication dates and current status were re-read from each publisher's own page on 2026-09-16 and all matched the handover; nine NICE guidelines are filed review_due because the publisher's most recent date for them is over five years old. Nothing is adopted, so no Therapy record may cite any of them yet. This is the gate on the 47 records that currently have null references and null evidenceNotes. Distinct from #SBKXZ7, which tracks clinician sign-off of the 205 therapy records themselves rather than source adoption. Seven further sources were recorded as rejections with the reason each would need resolved before re-capture; five are blocked because the publisher prints an update date but no publication date. Next action: owner reviews the 16 candidates and decides adoption. npm run check:source-acquisitions lists them under 'Awaiting clinical sign-off'.",
+    "baseRowFingerprint": "645a1d796da53d507fcfc5a1ecd40a1122db200826d0522b6b224cb1caf0f2fa"
+  }
+}
