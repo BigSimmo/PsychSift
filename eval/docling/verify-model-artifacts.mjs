@@ -119,8 +119,11 @@ export function listArtifactFiles(dir) {
         // A dangling symlink is a broken artifact set, not a file to skip.
         throw new Error(`${TAG} cannot stat ${absolute} — the artifact set is incomplete`);
       }
-      if (stats.isDirectory()) walk(absolute);
-      else if (stats.isFile()) found.push(relative(dir, absolute).split(sep).join("/"));
+      if (stats.isDirectory()) {
+        // HuggingFace local-dir bookkeeping (timestamps/etags), not model weights.
+        if (entry.name === ".cache") continue;
+        walk(absolute);
+      } else if (stats.isFile()) found.push(relative(dir, absolute).split(sep).join("/"));
     }
   };
   walk(dir);
@@ -217,9 +220,7 @@ export function manifestProblems(manifest) {
     return problems;
   }
   if (decodeManifestDigest(manifest.treeDigest) === null) {
-    problems.push(
-      "treeDigest must be null or a scanner-safe digest (JSON array of four 16-character hex chunks)",
-    );
+    problems.push("treeDigest must be null or a scanner-safe digest (JSON array of four 16-character hex chunks)");
     return problems;
   }
   if (!manifest.files || Object.keys(manifest.files).length === 0) {
@@ -231,9 +232,7 @@ export function manifestProblems(manifest) {
   for (const [path, digest] of Object.entries(manifest.files)) {
     const decoded = decodeManifestDigest(digest);
     if (!decoded) {
-      problems.push(
-        `files["${path}"] is not a scanner-safe digest (JSON array of four 16-character hex chunks)`,
-      );
+      problems.push(`files["${path}"] is not a scanner-safe digest (JSON array of four 16-character hex chunks)`);
     } else {
       decodedFiles[path] = decoded;
     }
