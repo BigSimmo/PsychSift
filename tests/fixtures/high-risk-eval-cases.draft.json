@@ -319,7 +319,12 @@
       "area": "drug_interaction",
       "question": "I'm starting an antipsychotic and an SSRI in a patient on lithium. Which interactions matter?",
       "expectedBehaviour": "answer",
-      "mustContain": [["serotonin toxicity", "serotonin syndrome"], ["neurotoxicity"], ["rapid dose"]],
+      "mustContain": [
+        ["serotonin toxicity", "serotonin syndrome"],
+        ["neurotoxicity"],
+        ["rapid dose"],
+        ["closely monitored", "close monitoring", "monitor closely"]
+      ],
       "mustNotState": [],
       "expectedSources": [
         "Lithium Therapy - Initiation and Continuation Guideline (FSH)",
@@ -351,7 +356,7 @@
       "expectedBehaviour": "answer",
       "mustContain": [
         ["6 hours", "six hours"],
-        ["order was made", "order is made", "from the time"]
+        ["order was made", "order is made"]
       ],
       "mustNotState": ["Must not give 24 or 72 hours as the Form 2 limit."],
       "expectedSources": ["Mental Health Act 2014 (WA) s 34"],
@@ -373,7 +378,8 @@
       "mustContain": [["72 hours"], ["144 hours"], ["24 hours"], ["referral expires", "referral expiry"]],
       "mustNotState": [
         "Must not say a single Form 3A order lasts 72 hours.",
-        "Must not present the 72 or 144 hour maximum as available if the referral has expired."
+        "Must not present the 72 or 144 hour maximum as available if the referral has expired.",
+        "Must not swap the metropolitan (72 hours) and non-metropolitan (144 hours) limits."
       ],
       "expectedSources": ["Mental Health Act 2014 (WA) s 28"],
       "evidence": [
