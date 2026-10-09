@@ -718,6 +718,8 @@ export async function runRoundCommand(
         : withdrawPreference(managed, userId, now);
     const record = next.preferences.find((pref) => pref.personId === userId);
     if (!record) return { ok: true };
+    // TODO(rotations migration): move this write and its check into one SQL
+    // function that locks the round row, so a close cannot land in between.
     const { error } = await client.from("roster_rotation_preferences").upsert(
       {
         round_id: row.id,

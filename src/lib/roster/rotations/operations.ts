@@ -134,10 +134,19 @@ export function editRoundSetup(managed: ManagedRound, setup: RoundSetup): Manage
     // People added or terms changed: the empty terms are worked out again.
     if (managed.allocation) {
       const filled = new Set(placements.map((p) => `${p.personId}:${p.termId}`));
+      // A gap the allocator already explained keeps its reason.
+      const earlier = new Map(managed.allocation.unfilled.map((gap) => [`${gap.personId}:${gap.termId}`, gap]));
       const unfilled = setup.people.flatMap((person) =>
         terms
           .filter((term) => !filled.has(`${person.id}:${term.id}`))
-          .map((term) => ({ personId: person.id, termId: term.id, reason: "No rotation set for this term" })),
+          .map(
+            (term) =>
+              earlier.get(`${person.id}:${term.id}`) ?? {
+                personId: person.id,
+                termId: term.id,
+                reason: "No rotation set for this term",
+              },
+          ),
       );
       allocation = {
         ...managed.allocation,

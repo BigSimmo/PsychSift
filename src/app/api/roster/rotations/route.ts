@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
 import { isDemoMode } from "@/lib/env";
+import { publicErrorResponse } from "@/lib/http";
 import { withRosterApi } from "@/lib/roster/team/api";
 import {
   createRotationRound,
@@ -25,10 +24,7 @@ export const runtime = "nodejs";
  */
 
 function notLive(): Response {
-  return NextResponse.json(
-    { error: ROTATIONS_NOT_LIVE_MESSAGE, code: "rotations_not_live" },
-    { status: 503, headers: { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Authorization" } },
-  );
+  return publicErrorResponse(ROTATIONS_NOT_LIVE_MESSAGE, 503, { code: "rotations_not_live" });
 }
 
 export async function GET(request: Request) {
