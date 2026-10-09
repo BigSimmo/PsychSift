@@ -382,9 +382,6 @@ const PREVIEW_ROWS: readonly {
   {
     preview: "courses",
     capability: "courses.manage",
-    // Courses still lets in only the administrator and roster managers. Medical Workforce and the
-    // DCT join when that screen checks `work_can` for "courses.manage", so drop this then.
-    onlyRoles: ["administrator", "manager"],
     links: [
       {
         id: "courses",
