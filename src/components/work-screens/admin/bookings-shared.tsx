@@ -41,14 +41,17 @@ export function PlacesMeter({ state, course }: { readonly state: BookingsState; 
         className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--work-wash)]"
         data-full={left === 0 ? "" : undefined}
       >
-        <span
-          className={
-            left === 0
-              ? "block h-full rounded-full bg-[color:var(--warning)]"
-              : "block h-full rounded-full bg-[color:var(--mode-identity)]"
-          }
-          style={{ width: `${percent}%` }}
-        />
+        {/* Drawn as SVG, like AdminMeter, so the width needs no inline style. */}
+        <svg width="100%" height="100%" className="block">
+          <rect
+            x="0"
+            y="0"
+            width={`${percent}%`}
+            height="100%"
+            rx="3"
+            className={left === 0 ? "fill-[color:var(--text-muted)]" : "fill-[color:var(--mode-identity)]"}
+          />
+        </svg>
       </span>
       <span>{placesWords(state, course)}</span>
     </span>
