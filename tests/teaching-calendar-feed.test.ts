@@ -25,6 +25,8 @@ vi.mock("@/lib/cme/repository", () => ({
   fetchOwnerCmeRoutines: mocks.cmeRoutines,
 }));
 vi.mock("@/lib/on-call/repository", () => ({ fetchVisibleOnCallEntries: mocks.onCall }));
+// Published rotations have their own source and tests (tests/roster-rotations-feed.test.ts).
+vi.mock("@/lib/calendar/rotation-feed-source", () => ({ fetchRotationFeedEvents: async () => [] }));
 
 import { GET as feed } from "@/app/api/calendar/feed/[token]/route";
 
