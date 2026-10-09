@@ -5,7 +5,7 @@ import { expect, test, type Locator, type Page } from "playwright/test";
 import { demoDocuments, getDemoDocument, getDemoDocumentPayload } from "../src/lib/demo-data";
 import { getDifferentialDetailContext, getDifferentialRecord } from "../src/lib/differentials";
 import { loadMedicationSnapshot } from "../src/lib/medication-snapshot";
-import { expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
+import { expectSingleSettledOwner, visibleByTestId, visibleByText } from "./playwright-settlement";
 
 const routeViewports = [
   { name: "desktop", width: 1280, height: 900 },
@@ -595,7 +595,7 @@ test.describe("previously uncovered production routes", () => {
       async (currentPage) => {
         await expect(currentPage.getByRole("main")).toBeVisible();
         await expect(currentPage.getByRole("heading", { name: "Diagnoses", level: 1 })).toBeVisible();
-        await expect(currentPage.getByText("Compare likely causes and exclusion clues.")).toBeVisible();
+        await expect(visibleByText(currentPage, "Compare likely causes and exclusion clues.")).toBeVisible();
         await expect(visibleByTestId(currentPage, "search-query-ribbon")).toBeVisible();
         await expect(currentPage.getByTestId("differentials-stream-match-controls")).toHaveCount(0);
         await expect(currentPage.getByRole("button", { name: "Prev match" })).toHaveCount(0);
@@ -678,8 +678,10 @@ test.describe("previously uncovered production routes", () => {
     for (const width of differentialDesignSweepViewports) {
       await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
       await expect(page.getByRole("heading", { name: "Presentations", level: 1 })).toBeVisible();
+      // Visible owner only: WebKit can still hold the hidden streaming twin of this lede beside
+      // the live one under the reserve pad, and a bare getByText then fails strict mode (#093).
       await expect(
-        page.getByText("Start with what is happening now, then open a pathway to compare likely causes."),
+        visibleByText(page, "Start with what is happening now, then open a pathway to compare likely causes."),
       ).toBeVisible();
       await expect(visibleByTestId(page, "search-query-ribbon")).toBeVisible();
       await expect(page.getByTestId("differentials-stream-match-controls")).toHaveCount(0);
