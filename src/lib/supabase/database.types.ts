@@ -4955,6 +4955,35 @@ export type Database = {
       };
       work_user_id_by_email: { Args: { p_email: string }; Returns: string | null };
       roster_rotation_can_manage: { Args: { p_service_id: string; p_user_id: string }; Returns: boolean };
+      roster_rotation_save_preference: {
+        Args: {
+          p_round_id: string;
+          p_user_id: string;
+          p_round_updated_at: string;
+          p_round_status: string;
+          p_ranking: Json;
+          p_submitted_at: string | null;
+          p_updated_at: string;
+        };
+        Returns: boolean;
+      };
+      roster_rotation_save_round: {
+        Args: {
+          p_round_id: string;
+          p_round_updated_at: string;
+          p_seen_preferences: Json;
+          p_status: string;
+          p_setup: Json;
+          p_locks: Json;
+          p_allocation: Json | null;
+          p_admin_name: string;
+          p_version: number;
+          p_opened_at: string | null;
+          p_published_at: string | null;
+          p_preferences: Json | null;
+        };
+        Returns: boolean;
+      };
       cme_confirm_year: { Args: { p_owner_id: string; p_set: Json }; Returns: string };
       cme_save_plan_goals: { Args: { p_owner_id: string; p_year_id: string; p_goals: Json }; Returns: Json };
       cme_save_plan_goals_checked: {
