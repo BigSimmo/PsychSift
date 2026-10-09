@@ -255,6 +255,16 @@ describe("main CI failure routing, executed", () => {
     expect(created[0]!.body).toContain("release-browser-matrix (webkit, mobile-webkit, 5, 5)");
   });
 
+  it("still alerts when a continue-on-error matrix leg timed out", async () => {
+    const { created } = await runRouting({
+      results: green,
+      jobs: [{ name: "release-browser-matrix (firefox, firefox, 1, 5)", conclusion: "timed_out" }],
+      openIssues: [],
+    });
+    expect(created).toHaveLength(1);
+    expect(created[0]!.body).toContain("release-browser-matrix (firefox, firefox, 1, 5)`: timed_out");
+  });
+
   it("reports an unverified matrix rather than assuming it green when jobs cannot be listed", async () => {
     const { created, closed } = await runRouting({ results: green, listingFails: true, openIssues: [ownIssue] });
     expect(closed).toHaveLength(0);

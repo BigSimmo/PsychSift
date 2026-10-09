@@ -2204,8 +2204,11 @@ jobs:
                 run_id: context.runId,
                 per_page: 100,
               });
+              // Every non-passing conclusion counts, so a matrix leg that hits its timeout is
+              // still reported now that continue-on-error hides it from `needs`.
+              const failingConclusions = new Set(["failure", "cancelled", "timed_out", "startup_failure"]);
               failingJobs = jobs
-                .filter((job) => job.conclusion === "failure" || job.conclusion === "cancelled")
+                .filter((job) => failingConclusions.has(job.conclusion))
                 .map((job) => `- \`${job.name}\`: ${job.conclusion}`);
             } catch (error) {
               jobListing = `unavailable (${error.message})`;
