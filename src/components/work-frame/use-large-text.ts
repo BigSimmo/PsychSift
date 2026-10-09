@@ -50,3 +50,9 @@ export function useLargeTextFlag(): void {
     };
   }, []);
 }
+
+/** Mounts {@link useLargeTextFlag}; drawn by the top bar in every work mode. */
+export function LargeTextFlag(): null {
+  useLargeTextFlag();
+  return null;
+}
