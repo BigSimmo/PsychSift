@@ -1931,9 +1931,10 @@ jobs:
     # chronically red on main (#9Z197J), so without this one red Safari leg would skip the deploy of
     # every screen change. On main a failing leg still shows as a red job, and
     # `main-failure-routing` names it in the pinned issue from the job listing, because a
-    # continue-on-error job reports `success` through `needs`. Release branches and every other job
-    # keep blocking exactly as before.
-    continue-on-error: ${{ github.ref == 'refs/heads/main' }}
+    # continue-on-error job reports `success` through `needs`. Push events only: that routing job
+    # runs only on main pushes, so the weekly schedule and manual dispatch stay blocking and visibly
+    # red rather than going quiet. Release branches and every other job keep blocking as before.
+    continue-on-error: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     strategy:
       # One engine's failure must not cancel its siblings: a cancelled sibling
       # reports no verdict, which is the exact failure mode this change exists to

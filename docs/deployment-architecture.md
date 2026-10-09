@@ -109,10 +109,10 @@ or neutral run never blocks, a cancelled run blocks only when no other run on
 the commit passed, and two hours without every run finishing skips the deploy.
 Scheduled runs that land on the same `main` commit while a deploy waits count
 too. Since 2026-10-09 (owner choice "Report only") `release-browser-matrix` is
-`continue-on-error` on `main`, so a red Firefox or WebKit leg still shows as a
+`continue-on-error` on pushes to `main`, so a red Firefox or WebKit leg still shows as a
 red job and still opens the pinned `main-ci-failure` issue, but cannot fail the
 CI run and so cannot skip a deploy. Every other job, and the matrix on release
-branches, still fails the run. A screen change then goes live once the matrix
+branches, the weekly schedule and manual dispatch, still fails the run. A screen change then goes live once the matrix
 finishes, roughly 30 minutes after merge.
 
 To add actual human approval to a GitHub-initiated production deploy, first

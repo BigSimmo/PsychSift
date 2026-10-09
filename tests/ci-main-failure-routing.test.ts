@@ -151,7 +151,10 @@ describe("main CI failure routing", () => {
    */
   it("lets a red browser-matrix leg report without failing the main run", () => {
     const matrix = workflow.slice(workflow.indexOf("  release-browser-matrix:"), routingIndex);
-    expect(matrix).toMatch(/^ {4}continue-on-error: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}$/m);
+    // Main pushes only: the routing job runs only there, so a scheduled or dispatched run must stay red.
+    expect(matrix).toMatch(
+      /^ {4}continue-on-error: \$\{\{ github\.event_name == 'push' && github\.ref == 'refs\/heads\/main' \}\}$/m,
+    );
     // Exactly one continue-on-error in the job: the main-only one above, nothing at step level.
     expect(matrix.match(/continue-on-error:/g)).toHaveLength(1);
   });
