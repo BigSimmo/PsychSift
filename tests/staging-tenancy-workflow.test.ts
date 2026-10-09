@@ -39,4 +39,20 @@ describe("staging tenancy workflow", () => {
     expect(routingSection).not.toContain("secrets.");
     expect(workflow).toContain("permissions:\n  contents: read");
   });
+
+  // Railway "Wait for CI" skips a deploy when any run on the waiting commit fails, and this
+  // scheduled run is red every night until staging tracks main (#057). Scheduled failures must
+  // report through the pinned issue without failing the run; dispatched runs stay blocking.
+  it("lets a scheduled harness failure report without failing the run", () => {
+    expect(workflow).toMatch(/^ {8}id: harness\n {8}continue-on-error: \$\{\{ github\.event_name == 'schedule' \}\}$/m);
+    expect(workflow).toContain("harness: ${{ steps.harness.outcome }}");
+    // The routing job must read the step outcome, since a continue-on-error step leaves the job
+    // result at success and would otherwise close the issue on a failed night.
+    expect(workflow).toContain(
+      "HARNESS_RESULT: ${{ needs.cross-tenant.result == 'success' && needs.cross-tenant.outputs.harness || needs.cross-tenant.result }}",
+    );
+    expect(workflow.match(/continue-on-error:/g)).toHaveLength(1);
+    expect(workflow).toContain("timeout-minutes: 45");
+    expect(workflow).toContain("timeout 15m npm run test:cross-tenant:staging");
+  });
 });

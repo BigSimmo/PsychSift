@@ -570,7 +570,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "Usually not enough alone for OCD, trauma syndromes needing trauma-focused work, psychosis, severe depression, severe personality pathology, or anxiety that is mainly maintained by cognitive or behavioural mechanisms that are not shifted by relaxation alone. It can also become unhelpful if used as constant safety behaviour rather than as a flexible skill.",
-    "references": "Generalised anxiety disorder and panic disorder in adults, recommendation 1.2.18: \"If a person with GAD chooses a high-intensity psychological intervention, offer either CBT or applied relaxation.\" Not named for panic disorder. https://www.nice.org.uk/guidance/cg113/chapter/Recommendations. (NICE CG113) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -601,7 +601,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Generalised anxiety disorder and panic disorder in adults, recommendation 1.2.18: \"If a person with GAD chooses a high-intensity psychological intervention, offer either CBT or applied relaxation.\" Not named for panic disorder. https://www.nice.org.uk/guidance/cg113/chapter/Recommendations. (NICE CG113) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -836,7 +836,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Usually not enough when the depression is psychotic, severely suicidal without adequate containment, clearly bipolar with emerging activation, or when another syndrome is the main driver. It is also weak if the clinician gives generic “stay busy” advice without activity monitoring, graded planning, and repeated review of avoidance.",
-    "references": "Depression in adults: treatment and management, lists group and individual behavioural activation in Table 1 (less severe depression) and individual behavioural activation in Table 2 (more severe depression). Recommendations 1.5.2 and 1.6.1 state that all treatments in these tables can be used as first-line treatments. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -871,7 +871,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Depression in adults: treatment and management, lists group and individual behavioural activation in Table 1 (less severe depression) and individual behavioural activation in Table 2 (more severe depression). Recommendations 1.5.2 and 1.6.1 state that all treatments in these tables can be used as first-line treatments. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -1017,7 +1017,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for detoxification, acute psychiatric care, or broader SUD treatment when the person is not yet ready to change. It also depends on the presence of a willing and appropriate partner, so it is not broadly applicable to all patients.",
-    "references": "Alcohol-use disorders, recommendation 1.3.3.2: \"Offer behavioural couples therapy for harmful drinkers and people with mild alcohol dependence who have a regular partner who is willing to participate in treatment\". Alcohol only. Other substances are not covered by this guideline. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -1045,7 +1045,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Alcohol-use disorders, recommendation 1.3.3.2: \"Offer behavioural couples therapy for harmful drinkers and people with mild alcohol dependence who have a regular partner who is willing to participate in treatment\". Alcohol only. Other substances are not covered by this guideline. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -1545,7 +1545,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Carer interventions are not a substitute for patient treatment, family intervention, CBTp, medication review, or acute care. They are also weak if reduced to a one-off information dump without discussion, coping work, or follow-up. The meta-analytic evidence for caregiver psychoeducation is supportive but still not fully conclusive, so benefits should be described modestly.",
-    "references": "Psychosis and schizophrenia in adults, recommendation 1.1.4.4: \"Offer a carer-focused education and support programme, which may be part of a family intervention for psychosis and schizophrenia, as early as possible to all carers.\" https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) Bipolar disorder: assessment and management, recommendation 1.1.8 makes the same offer to carers of people with bipolar disorder. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -1573,7 +1573,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Psychosis and schizophrenia in adults, recommendation 1.1.4.4: \"Offer a carer-focused education and support programme, which may be part of a family intervention for psychosis and schizophrenia, as early as possible to all carers.\" https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) Bipolar disorder: assessment and management, recommendation 1.1.8 makes the same offer to carers of people with bipolar disorder. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -2252,7 +2252,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Usually not enough if severe mania, delirium, major intoxication or withdrawal, profound cognitive impairment, or marked psychotic disorganisation is preventing structured collaborative work. It is also weaker when the clinician uses generic CBT instead of the disorder-specific active ingredient the case actually needs.",
-    "references": "Depression in adults: treatment and management, lists individual CBT in Tables 1 and 2 and group CBT in Table 1 as treatment options for depression. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) Generalised anxiety disorder and panic disorder in adults, recommendation 1.2.18 offers CBT or applied relaxation for GAD, and recommendations 1.3.12 to 1.3.19 cover CBT for panic disorder. https://www.nice.org.uk/guidance/cg113/chapter/Recommendations. (NICE CG113) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -2288,7 +2288,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Depression in adults: treatment and management, lists individual CBT in Tables 1 and 2 and group CBT in Table 1 as treatment options for depression. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) Generalised anxiety disorder and panic disorder in adults, recommendation 1.2.18 offers CBT or applied relaxation for GAD, and recommendations 1.3.12 to 1.3.19 cover CBT for panic disorder. https://www.nice.org.uk/guidance/cg113/chapter/Recommendations. (NICE CG113) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -2346,7 +2346,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "CBT is not clearly superior to all other adjunctive bipolar psychotherapies. A 2024 randomized clinical trial of adjuvant psychotherapies for relapse prevention did not show superiority of one psychotherapy over another, and the broader bipolar psychotherapy evidence base still contains much low- or very-low-quality evidence. CBT is also a poor fit when the patient is too manic, psychotic, or disorganised to use it.",
-    "references": "Bipolar disorder: assessment and management, recommendation 1.6.1 offers adults with bipolar depression \"a choice of psychological intervention (cognitive behavioural therapy, interpersonal therapy or behavioural couples therapy)\". CBT is not named for relapse prevention, where recommendation 1.7.3 offers a structured intervention designed for bipolar disorder. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -2375,7 +2375,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Bipolar disorder: assessment and management, recommendation 1.6.1 offers adults with bipolar depression \"a choice of psychological intervention (cognitive behavioural therapy, interpersonal therapy or behavioural couples therapy)\". CBT is not named for relapse prevention, where recommendation 1.7.3 offers a structured intervention designed for bipolar disorder. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -2616,7 +2616,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "CBTp is not a replacement for acute containment, medical work-up, or indicated pharmacological treatment. It is also not mainly about persuading the patient that experiences are false. It is weaker when delivered in a generic CBT style without a psychosis-specific formulation, or when the patient is too acutely disorganised to use the model.",
-    "references": "Psychosis and schizophrenia in adults, recommendation 1.4.4.1: \"Offer CBT to all people with psychosis or schizophrenia\". Recommendation 1.3.7.1 sets delivery at one to one over at least 16 planned sessions. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -2649,7 +2649,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Psychosis and schizophrenia in adults, recommendation 1.4.4.1: \"Offer CBT to all people with psychosis or schizophrenia\". Recommendation 1.3.7.1 sets delivery at one to one over at least 16 planned sessions. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -4583,7 +4583,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "DBT is not a substitute for acute containment, medical detoxification, or treatment of psychosis / mania / delirium. It is also weak if delivered as “DBT-informed support” without a real hierarchy, skills programme, behavioural analysis, and team structure.",
-    "references": "Borderline personality disorder, recommendation 1.3.4.5: \"For women with borderline personality disorder for whom reducing recurrent self-harm is a priority, consider a comprehensive dialectical behaviour therapy programme.\" https://www.nice.org.uk/guidance/cg78/chapter/Recommendations. (NICE CG78) Self-harm: assessment, management and preventing recurrence, recommendation 1.11.4 says to consider DBT adapted for adolescents (DBT-A) for children and young people with significant emotional dysregulation who self-harm frequently. It does not name DBT for adults. https://www.nice.org.uk/guidance/ng225/chapter/Recommendations. (NICE NG225) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -4617,7 +4617,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Borderline personality disorder, recommendation 1.3.4.5: \"For women with borderline personality disorder for whom reducing recurrent self-harm is a priority, consider a comprehensive dialectical behaviour therapy programme.\" https://www.nice.org.uk/guidance/cg78/chapter/Recommendations. (NICE CG78) Self-harm: assessment, management and preventing recurrence, recommendation 1.11.4 says to consider DBT adapted for adolescents (DBT-A) for children and young people with significant emotional dysregulation who self-harm frequently. It does not name DBT for adults. https://www.nice.org.uk/guidance/ng225/chapter/Recommendations. (NICE NG225) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -6007,7 +6007,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "Family intervention is not a substitute for indicated individual treatment, medication, or acute containment. It is also a poor fit when there is no meaningful family contact, when involvement is unsafe, or when family sessions are attempted without a clear structure and purpose.",
-    "references": "Psychosis and schizophrenia in adults, recommendation 1.4.4.2: \"Offer family intervention to all families of people with psychosis or schizophrenia who live with or are in close contact with the service user\". Recommendation 1.3.7.2 sets at least 10 planned sessions over 3 months to 1 year. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -6035,7 +6035,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Psychosis and schizophrenia in adults, recommendation 1.4.4.2: \"Offer family intervention to all families of people with psychosis or schizophrenia who live with or are in close contact with the service user\". Recommendation 1.3.7.2 sets at least 10 planned sessions over 3 months to 1 year. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -6181,7 +6181,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for indicated CBTp, antipsychotic treatment, acute containment, or a broader family intervention when the main problem is communication breakdown, repeated crisis escalation, or complex family dynamics. It is also weak if the family system is unsafe or too fragmented to use the information constructively.",
-    "references": "Psychosis and schizophrenia in adults, does not name psychoeducation. Recommendation 1.3.7.2 says family intervention should \"have a specific supportive, educational or treatment function\", and recommendation 1.1.4.4 offers carers a carer-focused education and support programme. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -6208,7 +6208,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Psychosis and schizophrenia in adults, does not name psychoeducation. Recommendation 1.3.7.2 says family intervention should \"have a specific supportive, educational or treatment function\", and recommendation 1.1.4.4 offers carers a carer-focused education and support programme. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -6526,7 +6526,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a replacement for mood stabilisers, acute treatment, or more intensive psychotherapies when the main need is active bipolar depression, mania, or marked functional collapse. Evidence is stronger for relapse prevention, especially for overall or manic/hypomanic relapse, than for direct improvement in depressive symptoms, functioning, or quality of life. Group psychoeducation has stronger evidence than individual psychoeducation.",
-    "references": "Bipolar disorder: assessment and management, recommendation 1.7.2: \"Offer a family intervention to people with bipolar disorder who are living, or in close contact, with their family\". Family-focused psychoeducation is not named. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -6556,7 +6556,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Bipolar disorder: assessment and management, recommendation 1.7.2: \"Offer a family intervention to people with bipolar disorder who are living, or in close contact, with their family\". Family-focused psychoeducation is not named. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -7238,7 +7238,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for mood stabilisers, acute mania/depression treatment, or a more targeted psychotherapy when the main problem is active bipolar depression, mania, or major functional collapse. Evidence is stronger for relapse prevention, especially overall and manic/hypomanic relapse, than for direct improvement in depressive symptoms, quality of life, or functioning.",
-    "references": "Bipolar disorder: assessment and management, recommendation 1.7.3 offers a structured psychological intervention (individual, group or family) designed for bipolar disorder with a published evidence-based manual, to prevent relapse. Recommendation 1.7.4 says these interventions should provide information about bipolar disorder. The word psychoeducation is not used. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -7267,7 +7267,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Bipolar disorder: assessment and management, recommendation 1.7.3 offers a structured psychological intervention (individual, group or family) designed for bipolar disorder with a published evidence-based manual, to prevent relapse. Recommendation 1.7.4 says these interventions should provide information about bipolar disorder. The word psychoeducation is not used. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -10528,7 +10528,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "MI is not a full relapse-prevention programme and is not enough on its own when the main problem is severe dependence needing detoxification, medication, or structured CBT/behavioural treatment. NICE explicitly follows motivational intervention with recommendations to offer community interventions to promote abstinence or moderate drinking and prevent relapse.",
-    "references": "Alcohol-use disorders, recommendation 1.3.1.1: \"For all people who misuse alcohol, carry out a motivational intervention as part of the initial assessment. The intervention should contain the key elements of motivational interviewing\". Alcohol only. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -10558,7 +10558,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Alcohol-use disorders, recommendation 1.3.1.1: \"For all people who misuse alcohol, carry out a motivational intervention as part of the initial assessment. The intervention should contain the key elements of motivational interviewing\". Alcohol only. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -10616,7 +10616,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for acute containment, CBTp, medication optimisation, or single-family work when the family’s needs are too complex, unsafe, or private for a group format. It is also weak if it becomes a loose support group without structured psychoeducation, problem-solving, or crisis planning.",
-    "references": "Psychosis and schizophrenia in adults, recommendation 1.3.7.2 says family intervention should \"take account of the whole family's preference for either single-family intervention or multi-family group intervention\". It is a delivery format, not a separate recommendation. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -10643,7 +10643,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Psychosis and schizophrenia in adults, recommendation 1.3.7.2 says family intervention should \"take account of the whole family's preference for either single-family intervention or multi-family group intervention\". It is a delivery format, not a separate recommendation. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -11322,7 +11322,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "PMT is not a primary treatment for severe psychosis, mania, delirium, or high-risk multisystem offending, and it is weaker when the main drivers are outside parental management, such as entrenched peer delinquency or major school/community-system failure.",
-    "references": "Attention deficit hyperactivity disorder, recommendation 1.5.11 offers a parent-training programme when a child aged 5 or over with ADHD has symptoms of oppositional defiant disorder or conduct disorder, and 1.5.12 says to consider individual parent-training programmes. This is in the ADHD context only. https://www.nice.org.uk/guidance/ng87/chapter/recommendations. (NICE NG87) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11352,7 +11352,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Attention deficit hyperactivity disorder, recommendation 1.5.11 offers a parent-training programme when a child aged 5 or over with ADHD has symptoms of oppositional defiant disorder or conduct disorder, and 1.5.12 says to consider individual parent-training programmes. This is in the ADHD context only. https://www.nice.org.uk/guidance/ng87/chapter/recommendations. (NICE NG87) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -11410,7 +11410,7 @@
     "evidenceLevel": "High",
     "evidenceNotes": null,
     "limitations": "Parent training is not a substitute for acute risk management, safeguarding intervention, or more intensive multimodal work when the child’s difficulties are severe and complex. It is also a weaker fit in older adolescents, where the evidence is less established and other systemic interventions may be needed.",
-    "references": "Attention deficit hyperactivity disorder, recommendation 1.5.7: \"Offer an ADHD-focused group parent-training programme to parents or carers of children under 5 years with ADHD as first-line treatment.\" Recommendation 1.5.11 covers ADHD with oppositional or conduct symptoms. This is in the ADHD context only. https://www.nice.org.uk/guidance/ng87/chapter/recommendations. (NICE NG87) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11436,7 +11436,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Attention deficit hyperactivity disorder, recommendation 1.5.7: \"Offer an ADHD-focused group parent-training programme to parents or carers of children under 5 years with ADHD as first-line treatment.\" Recommendation 1.5.11 covers ADHD with oppositional or conduct symptoms. This is in the ADHD context only. https://www.nice.org.uk/guidance/ng87/chapter/recommendations. (NICE NG87) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -11836,7 +11836,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Peer support is not a first-line stand-alone treatment for acute psychosis, persistent delusional distress, severe suicidality, or major functional collapse. The evidence base is promising but heterogeneous, and umbrella-review quality is often low, so claims should stay modest.",
-    "references": "Psychosis and schizophrenia in adults, recommendation 1.1.5.1: \"Consider peer support for people with psychosis or schizophrenia to help improve service user experience and quality of life.\" https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -11863,7 +11863,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Psychosis and schizophrenia in adults, recommendation 1.1.5.1: \"Consider peer support for people with psychosis or schizophrenia to help improve service user experience and quality of life.\" https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -12367,7 +12367,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "Often not enough alone for PTSD, OCD, major psychosis, severe recurrent self-harm, or syndromes where the active mechanism clearly requires exposure, trauma processing, ERP, CBTp, or specialist personality treatment.",
-    "references": "Depression in adults: treatment and management, lists individual problem-solving in Table 2 (more severe depression). In Table 1 problem-solving appears only as guided self-help material. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) Self-harm: assessment, management and preventing recurrence, recommendation 1.11.3 offers adults who self-harm a CBT-informed psychological intervention, naming CBT or problem-solving therapy as examples. https://www.nice.org.uk/guidance/ng225/chapter/Recommendations. (NICE NG225) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -12399,7 +12399,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Depression in adults: treatment and management, lists individual problem-solving in Table 2 (more severe depression). In Table 1 problem-solving appears only as guided self-help material. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) Self-harm: assessment, management and preventing recurrence, recommendation 1.11.3 offers adults who self-harm a CBT-informed psychological intervention, naming CBT or problem-solving therapy as examples. https://www.nice.org.uk/guidance/ng225/chapter/Recommendations. (NICE NG225) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -13687,7 +13687,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "Not enough when the patient is still in an active untreated moderate-severe syndrome, when the real problem is ongoing psychosis, mania, severe substance instability, or when a more specific acute intervention is still needed. It is also weak if framed vaguely as “maintenance chats” without explicit relapse-prevention content.",
-    "references": "Depression in adults: treatment and management, recommendation 1.8.5 says to consider group CBT or mindfulness-based cognitive therapy for relapse prevention in people who do not wish to continue antidepressants, and 1.8.6 says the course should have an explicit focus on relapse prevention skills. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -13718,7 +13718,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Depression in adults: treatment and management, recommendation 1.8.5 says to consider group CBT or mindfulness-based cognitive therapy for relapse prevention in people who do not wish to continue antidepressants, and 1.8.6 says the course should have an explicit focus on relapse prevention skills. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -14667,7 +14667,7 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": null,
     "limitations": "STPP is not a substitute for urgent treatment of severe suicidality, psychotic depression, mania, or marked cognitive disorganisation. It may be less suitable when the person does not want to focus on painful feelings or close relationships, or when the depression is more clearly maintained by another mechanism. NICE explicitly warns that focusing on painful close/family experiences could initially be distressing.",
-    "references": "Depression in adults: treatment and management, lists short-term psychodynamic psychotherapy (STPP) in Table 1 (less severe depression) and Table 2 (more severe depression). https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -14699,7 +14699,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Depression in adults: treatment and management, lists short-term psychodynamic psychotherapy (STPP) in Table 1 (less severe depression) and Table 2 (more severe depression). https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -16620,7 +16620,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "It is not a substitute for urgent management of severe suicidality, psychotic depression, mania, or marked disorganisation. It is also weaker when the depression is better explained by another dominant mechanism or when the patient cannot use an affect-focused model. The direct depression trial base is supportive but still smaller than for some more guideline-prominent therapies.",
-    "references": "Depression in adults: treatment and management, lists STPP and counselling in Tables 1 and 2. The counselling it means \"Uses an empirically validated protocol developed specifically for depression.\" Supportive-expressive therapy and psychodynamic counselling are not named. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -16652,7 +16652,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Depression in adults: treatment and management, lists STPP and counselling in Tables 1 and 2. The counselling it means \"Uses an empirically validated protocol developed specifically for depression.\" Supportive-expressive therapy and psychodynamic counselling are not named. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
@@ -17338,7 +17338,7 @@
     "evidenceLevel": "Moderate",
     "evidenceNotes": null,
     "limitations": "TSF is not the best fit for every patient. It is usually less suitable when the patient is strongly opposed to a 12-step framework, is not pursuing abstinence, or mainly needs motivational work, contingency management, medication treatment, or coping-skills training. Evidence is strongest in AUD and much less definitive for broader SUDs. (cochrane.org)",
-    "references": "Alcohol-use disorders, recommendation 1.3.1.7 says to \"give information on the value and availability of community support networks and self-help groups (for example, Alcoholics Anonymous or SMART Recovery)\". Twelve-step facilitation is not named. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
+    "references": null,
     "reviewStatus": "needs_review",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
@@ -17367,7 +17367,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Alcohol-use disorders, recommendation 1.3.1.7 says to \"give information on the value and availability of community support networks and self-help groups (for example, Alcoholics Anonymous or SMART Recovery)\". Twelve-step facilitation is not named. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register."
+        "reference": null
       }
     ],
     "patientSheetTemplates": [
