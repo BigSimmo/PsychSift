@@ -159,6 +159,12 @@ describe("my planned leave", () => {
     expect((await response.json()).leave[0]).toMatchObject({ id: LEAVE, startsOn: "2026-12-22" });
   });
 
+  it("refuses a leave kind Roster does not hold before writing", async () => {
+    const response = await POST(request("POST", { ...body, kind: "sick" }));
+    expect(response.status).toBe(400);
+    expect(queries).toHaveLength(0);
+  });
+
   it("refuses an owner supplied by the caller before writing", async () => {
     const response = await POST(request("POST", { ...body, ownerId: OTHER }));
     expect(response.status).toBe(400);

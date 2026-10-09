@@ -298,7 +298,7 @@ describe("ContractEndPage", () => {
       ],
     };
     render(<ContractEndPage now={NOW} />);
-    const leave = await screen.findByText("Professional development");
+    const leave = await screen.findByText("Conference or PD leave");
     expect(leave).toBeTruthy();
     expect(screen.getByText("Sat 10 Oct 2026")).toBeTruthy();
     expect(screen.queryByText(/Mon 1 Mar 2027/)).toBeNull();

@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+import { isRosterLeaveKind, ROSTER_LEAVE_KIND_LABEL, type RosterLeaveKind } from "@/lib/roster/leave-kinds";
+
 /** The doctor's own planned, applied and approved leave from Roster, read once into memory. */
 export type JuniorRosterLeave = {
   readonly id: string;
-  readonly kind: "annual" | "pd_leave";
+  readonly kind: RosterLeaveKind;
   readonly startsOn: string;
   readonly endsOn: string;
   readonly status: "planned" | "applied" | "approved";
@@ -25,7 +27,7 @@ function parseLeave(value: unknown): JuniorRosterLeave[] {
     const row = item as Record<string, unknown>;
     if (
       typeof row.id === "string" &&
-      (row.kind === "annual" || row.kind === "pd_leave") &&
+      isRosterLeaveKind(row.kind) &&
       typeof row.startsOn === "string" &&
       DATE.test(row.startsOn) &&
       typeof row.endsOn === "string" &&
@@ -69,7 +71,4 @@ export const ROSTER_LEAVE_STATUS_WORDS: Record<JuniorRosterLeave["status"], stri
   approved: "Approved",
 };
 
-export const ROSTER_LEAVE_KIND_WORDS: Record<JuniorRosterLeave["kind"], string> = {
-  annual: "Annual leave",
-  pd_leave: "Professional development",
-};
+export const ROSTER_LEAVE_KIND_WORDS: Readonly<Record<RosterLeaveKind, string>> = ROSTER_LEAVE_KIND_LABEL;

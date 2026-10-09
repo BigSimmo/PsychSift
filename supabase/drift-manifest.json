@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-08T00:40:52.772Z",
+  "generated_at": "2026-10-09T00:23:20.272Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "d8a46a6023c8b50590ba338e9ddf5c06508f1fd6ff02282ce682458e5a4ad3c6",
-  "replay_seconds": 20,
+  "schema_sha256": "a63da06aadda2b09f737700c95ba3b251a2a6bf892f34a55084afa79fe558fad",
+  "replay_seconds": 21,
   "snapshot": {
     "views": [
       {
@@ -21652,7 +21652,7 @@
         "table": "roster_leave"
       },
       {
-        "def": "CHECK ((kind = ANY (ARRAY['annual'::text, 'pd_leave'::text])))",
+        "def": "CHECK ((kind = ANY (ARRAY['annual'::text, 'pd_leave'::text, 'exam'::text, 'personal'::text])))",
         "name": "roster_leave_kind_check",
         "table": "roster_leave"
       },
