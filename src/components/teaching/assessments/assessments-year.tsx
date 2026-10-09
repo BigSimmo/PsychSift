@@ -176,7 +176,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
           title="Sick, personal and carer's leave"
           value={`${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} working days`}
           percent={(SAMPLE_LEAVE.used / SAMPLE_LEAVE.limit) * 100}
-          note="Over 10 working days, the Assessment Review Panel will monitor your progress."
+          note="Over 10 working days away, the Assessment Review Panel reviews your progress. Which leave counts is not confirmed here, so check with your MEU."
         />
       </List>
 
@@ -188,7 +188,7 @@ export function YearRequirements({ s, openSheet, tab }: ScreenProps & { tab?: bo
           title="This year"
           value={`${total} recorded here · at least ${more} more needed`}
           percent={(total / (total + more)) * 100}
-          note="At least 10 a year, with EPA 1 in every term and at least 2 of each other EPA. For your terms that means at least 11."
+          note="At least 10 a year and at least 2 in every term, with EPA 1 in every term and at least 2 of each other EPA. For your terms that means at least 11."
         />
         <Requirement
           title="This term"
@@ -285,7 +285,7 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
       <>
         <StepRow
           state="ok"
-          title="Beginning-of-term talk"
+          title="Beginning-of-term discussion"
           detail="Wed 2 Sep · goals: formulation on ward round, EPA 1, lithium monitoring"
         />
         <StepRow
@@ -306,7 +306,7 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
   else if (done)
     steps = (
       <>
-        <StepRow state="ok" title="Beginning-of-term talk" detail={`With ${t.supervisor}`} />
+        <StepRow state="ok" title="Beginning-of-term discussion" detail={`With ${t.supervisor}`} />
         <StepRow
           state="ok"
           title="Mid-term assessment"
@@ -325,7 +325,11 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
   else
     steps = (
       <>
-        <StepRow state="lock" title="Beginning-of-term talk" detail={`In your first week, with ${t.supervisor}`} />
+        <StepRow
+          state="lock"
+          title="Beginning-of-term discussion"
+          detail={`At the start of the term, with ${t.supervisor}`}
+        />
         <StepRow state="lock" title="Mid-term assessment" detail="Around the middle of the term" />
         <StepRow state="lock" title="End-of-term assessment" detail="Booking opens two weeks before the end" />
       </>

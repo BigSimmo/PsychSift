@@ -34,6 +34,7 @@
 
 import { sweepAccountDeviceData } from "@/lib/account-device-sweep";
 import { LIVE_VERSION_COOKIE } from "@/lib/live-version/live-version";
+import { WORK_MODE_PREFERENCE_COOKIE } from "@/lib/work-mode-launch/launch";
 
 export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
 
@@ -98,6 +99,13 @@ export const ADMIN_PAPERWORK_STORAGE_KEY = "psychsift:admin:paperwork-v1";
  * and a shared device keeps none; cleared at every account transition.
  */
 export const REMIND_ME_STORAGE_KEY = "psychsift:alerts:remind-me-v1";
+/**
+ * localStorage — bell reminders this phone has queued to buzz it: an opaque
+ * random id per reminder, the bell item's id and its due time. No words, and
+ * the server holds only the random id and the time; cleared at every account
+ * transition.
+ */
+export const BELL_PHONE_QUEUE_STORAGE_KEY = "psychsift:alerts:bell-queue-v1";
 /**
  * localStorage — the Psychiatry hub's recently opened records: path, the page's
  * own title (a diagnosis, therapy or form name), section and time.
@@ -188,8 +196,12 @@ export const OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY = "psychsift.open-shifts.filt
  * only those fields go at a transition.
  */
 export const APP_PREFERENCES_STORAGE_KEY = "clinical-kb-preferences";
-/** `timeZone` is the work time zone: the next person on this browser starts on the Perth default, not this one's zone. */
-export const ACCOUNT_SCOPED_PREFERENCE_KEYS = ["workStage", "ranzcpStage", "timeZone"] as const;
+/**
+ * `timeZone` is the work time zone: the next person on this browser starts on the Perth default, not this one's zone.
+ * `reminders` holds quiet hours and alert choices, which belong to the person (owner decision, 8 October 2026);
+ * the account copy comes back at their next sign-in.
+ */
+export const ACCOUNT_SCOPED_PREFERENCE_KEYS = ["workStage", "ranzcpStage", "timeZone", "reminders"] as const;
 
 function stripAccountScopedPreferences(): void {
   try {
@@ -222,6 +234,8 @@ export function clearAccountScopedBrowserStorage(): void {
   // Cookie — the live version switch (src/lib/live-version): a tester's choice of version only.
   try {
     document.cookie = `${LIVE_VERSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+    // Cookie — the classic or new work view choice: the person's, so the next person starts on the default.
+    document.cookie = `${WORK_MODE_PREFERENCE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
   } catch {
     // No document (a worker) or cookies blocked: nothing was set.
   }
@@ -262,6 +276,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, BELL_PHONE_QUEUE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
   removeQuietly(() => window.localStorage, CPD_HOME_SEND_STORAGE_KEY);

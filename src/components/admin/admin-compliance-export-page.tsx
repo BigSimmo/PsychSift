@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileSpreadsheet, LogIn } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AdminNote, AdminPage, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
@@ -10,15 +10,8 @@ import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setu
 import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import {
-  WorkButton,
-  WorkCard,
-  WorkChip,
-  WorkDock,
-  WorkEmpty,
-  WorkIconCircle,
-  WorkSectionLabel,
-} from "@/components/mode-kit/work";
+import { WorkButton, WorkChip, WorkDock, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { cn } from "@/components/ui-primitives";
@@ -151,19 +144,13 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
         />
       ) : loadState === "signed-out" ? (
         <>
-          <WorkCard>
-            <WorkEmpty
-              icon={LogIn}
-              title="Sign in to export your compliance"
-              body="Your records are kept for your signed-in account only."
-              action={
-                <WorkButton variant="primary" onClick={() => setSignInOpen(true)}>
-                  Sign in
-                </WorkButton>
-              }
-              testId="admin-compliance-export-signed-out"
-            />
-          </WorkCard>
+          <WorkStateNotice
+            kind="signed-out"
+            title="Sign in to export your compliance"
+            body="Your records are kept for your signed-in account only."
+            onSignIn={() => setSignInOpen(true)}
+            testId="admin-compliance-export-signed-out"
+          />
           <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
         </>
       ) : (

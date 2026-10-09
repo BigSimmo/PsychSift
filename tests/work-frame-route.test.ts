@@ -46,6 +46,27 @@ describe("workFrameCurrentItem", () => {
     expect(current("?view=home")).toBe("assess-todo");
   });
 
+  // CLA review, 8 Oct 2026: a doctor on "My training" tapped "Doctor record" and silently became the
+  // supervisor. The supervisor's pages now sit under the role switch's own name for that side.
+  it("groups the supervisor's More pages apart from the pages both sides share", () => {
+    const [supervise, shared] = assess.groups;
+    expect(supervise?.label).toBe("I supervise");
+    expect(supervise?.items.map((item) => item.id)).toEqual([
+      "assess-epa",
+      "assess-times",
+      "assess-record",
+      "assess-inbox",
+      "assess-overview",
+      "assess-export",
+    ]);
+    expect(shared?.label).toBe("Assessments");
+    for (const item of shared?.items ?? []) expect(item.href ?? "").not.toContain("as=supervisor");
+    const supervisorLinks = assess.groups
+      .flatMap((group) => group.items)
+      .filter((item) => item.href?.includes("as=supervisor"));
+    for (const item of supervisorLinks) expect(supervise?.items).toContain(item);
+  });
+
   it("ticks Privacy on the profile's privacy tab and Work profile elsewhere", () => {
     const day = WORK_AREAS.day;
     expect(workFrameCurrentItem(day, "/my-day/profile", "?tab=privacy")?.id).toBe("my-day-privacy");

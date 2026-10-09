@@ -33,6 +33,7 @@ import { MY_DAY_CARD_LABELS, MY_DAY_PAGE_CARDS, type MyDayCardId } from "@/lib/m
 import { myDayActionLabel } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
+import type { MyDayNeedsYouItem } from "@/lib/my-day/needs-you-feed";
 import { shortMonth } from "@/lib/my-day/quiet-figures";
 import { withMyDayReturn } from "@/lib/my-day/return-link";
 import { formatPerthDay } from "@/lib/roster/shifts/perth-time";
@@ -56,7 +57,7 @@ const CARD_SUBLINE: Partial<Record<MyDayCardId, string>> = {
   flag: "One overdue item",
   "quick-actions": "Four shortcuts",
   "needs-you": "So nothing is missed",
-  "this-week": "Week and Month",
+  "this-week": "Week and month",
   cpd: "Hours against your target",
   renewals: "Next 6 months",
   calls: "Counts only, this phone",
@@ -373,12 +374,12 @@ export function MyDayLaterSheet({
   onPick,
   onRemindMe,
 }: {
-  readonly item: MyDayItem | null;
+  readonly item: MyDayNeedsYouItem | null;
   readonly tomorrow: string;
   readonly nextWorkingDay: string;
   readonly onClose: () => void;
-  readonly onPick: (item: MyDayItem, until: string) => void;
-  readonly onRemindMe: (item: MyDayItem) => void;
+  readonly onPick: (item: MyDayNeedsYouItem, until: string) => void;
+  readonly onRemindMe: (item: MyDayNeedsYouItem) => void;
 }) {
   return (
     <Sheet

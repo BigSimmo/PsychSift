@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { ClipboardList, Copy, FileText, LogIn } from "lucide-react";
+import { ClipboardList, Copy, FileText } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
@@ -23,7 +23,8 @@ import { AdminNewJobStart } from "@/components/admin/new-job/admin-new-job-start
 import { AdminNewJobStepRow } from "@/components/admin/new-job/admin-new-job-step-row";
 import { AdminSavedUndoBar } from "@/components/admin/new-job/admin-saved-undo-bar";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { WorkButton, WorkCard, WorkEmpty, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkCard, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
@@ -347,18 +348,13 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
             <AdminSkeleton className="h-56" />
           </div>
         ) : loadState === "signed-out" ? (
-          <WorkCard testId="admin-new-job-signed-out">
-            <WorkEmpty
-              icon={LogIn}
-              title="Sign in to see your New job records"
-              body="They are kept for your signed-in account only."
-              action={
-                <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)}>
-                  Sign in
-                </WorkButton>
-              }
-            />
-          </WorkCard>
+          <WorkStateNotice
+            kind="signed-out"
+            title="Sign in to see your New job records"
+            body="They are kept for your signed-in account only."
+            onSignIn={() => setSignInOpen(true)}
+            testId="admin-new-job-signed-out"
+          />
         ) : (
           <>
             <section

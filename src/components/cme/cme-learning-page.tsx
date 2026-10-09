@@ -12,6 +12,7 @@ import { WorkBody } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import { EmptyState, cn } from "@/components/ui-primitives";
 import { formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
+import { formatZonedLongDay } from "@/lib/work-time/format";
 import { canAddLearningToCalendar, learningCalendarEventIcs, learningCalendarFileName } from "@/lib/cme/calendar-event";
 import {
   LEARNING_DIRECTORY_STALE_AFTER_DAYS,
@@ -39,12 +40,7 @@ const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "S
 
 /** "Thursday 1 October", with the year only when it is not this year. */
 function longDateWithWeekday(dateOnly: string, today: string): string {
-  const date = new Date(`${dateOnly}T00:00:00Z`);
-  const weekday = new Intl.DateTimeFormat("en-AU", { weekday: "long", timeZone: "UTC" }).format(date);
-  const dayMonth = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "long", timeZone: "UTC" }).format(date);
-  return dateOnly.slice(0, 4) === today.slice(0, 4)
-    ? `${weekday} ${dayMonth}`
-    : `${weekday} ${dayMonth} ${dateOnly.slice(0, 4)}`;
+  return formatZonedLongDay(dateOnly, today);
 }
 
 /**

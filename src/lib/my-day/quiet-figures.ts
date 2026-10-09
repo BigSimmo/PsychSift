@@ -6,6 +6,7 @@
 
 import { duePerthDate } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
+import type { MyDayNeedsYouItem, MyDayNeedsYouMode } from "@/lib/my-day/needs-you-feed";
 import { SHIFT_KIND_LABEL, type ShiftKind } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
@@ -21,6 +22,9 @@ export const MY_DAY_AREA_NAME: Readonly<Record<MyDaySourceMode, string>> = {
   teaching: "Teaching",
   roster: "Roster",
 };
+
+/** The area words on a Needs you row, which also lists the reader's own reminders. */
+const NEEDS_YOU_AREA_NAME: Readonly<Record<MyDayNeedsYouMode, string>> = { ...MY_DAY_AREA_NAME, "my-day": "Reminders" };
 
 function utc(date: string): number {
   return Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)));
@@ -236,8 +240,8 @@ export interface ItemLine {
  * an Admin date says "Date passed" rather than "Overdue" (Admin records dates,
  * it does not judge them).
  */
-export function itemLine(item: MyDayItem, today: string): ItemLine {
-  const area = MY_DAY_AREA_NAME[item.mode];
+export function itemLine(item: MyDayNeedsYouItem, today: string): ItemLine {
+  const area = NEEDS_YOU_AREA_NAME[item.mode];
   const date = duePerthDate(item.due);
   const detail = item.detail ? `${item.detail} · ` : "";
   if (item.severity === "overdue" && date) {

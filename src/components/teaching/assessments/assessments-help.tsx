@@ -193,7 +193,9 @@ function RequestEpaSheet({
           { value: "reg", label: `${SAMPLE_REGISTRAR.name}, registrar` },
         ]}
       />
-      <AssessNote>At least one EPA a term must be from your term supervisor or another specialist.</AssessNote>
+      <AssessNote>
+        At least one EPA a term should be from your primary clinical supervisor or another specialist.
+      </AssessNote>
       <WorkButton
         icon={Send}
         size="wide"

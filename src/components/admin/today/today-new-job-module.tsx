@@ -24,7 +24,7 @@ export function TodayNewJobModule({ progress, today }: { progress: NewJobProgres
         <div className="flex min-w-0 items-center gap-3">
           <WorkIconCircle icon={BriefcaseBusiness} />
           <span className="work-row__text">
-            <span className="work-row__title">{`Starts ${formatDateEcho(progress.startsOn)}`}</span>
+            <span className="work-row__title">{`Starts ${formatDateEcho(progress.startsOn, today)}`}</span>
             <span className="work-row__sub">{formatRelativeDate(progress.startsOn, today)}</span>
           </span>
           <span className="work-row__end tabular-nums">{`${progress.done} of ${progress.total}`}</span>

@@ -59,7 +59,7 @@ describe("Roster signed-out sample transport", () => {
     expect(overview.body.settings.rulesSource).toBeNull();
   });
 
-  it("refuses every write with 'The sample doesn't save' and sends nothing", async () => {
+  it("refuses every write with 'Example data doesn't save' and sends nothing", async () => {
     const targets: [string, string][] = [
       ["POST", "/api/roster/shifts"],
       ["POST", "/api/roster/shifts/manual"],
@@ -76,7 +76,7 @@ describe("Roster signed-out sample transport", () => {
       expect(response.status, `${method} ${path}`).toBe(400);
       const body = await response.json();
       expect(body.message).toBe(ROSTER_SAMPLE_REFUSAL);
-      expect(body.message).toContain("The sample doesn't save");
+      expect(body.message).toContain("Example data doesn't save");
     }
     expect(realFetch).not.toHaveBeenCalled();
   });

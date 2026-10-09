@@ -25,6 +25,7 @@ import { ModeActionButton } from "@/components/mode-kit/action-button";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { useModeBandHeading, WithoutModeBand } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import { WorkHero, WorkRing } from "@/components/mode-kit/work";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
 import { modeDot } from "@/components/mode-kit/recipes";
@@ -59,7 +60,7 @@ import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
 import { restCuesByTeam, type RestCue } from "@/lib/roster/rest-cues";
 import { importChangeNotices } from "@/lib/roster/what-changed";
 import { RosterChangeRows } from "./roster-change-rows";
-import { zonedDateOf, zonedWallToIso } from "@/lib/work-time/format";
+import { formatZonedLongDay, zonedDateOf, zonedWallToIso } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
@@ -389,6 +390,8 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const { zone } = useWorkTimeZone();
   const now = useRosterNow(pinnedNow);
   const shifts = useRosterShifts();
+  // The frame's example data banner already says these are examples.
+  const exampleBanner = useRosterSignedOutSample();
   const teams = useRosterTeams();
   const hasTeam = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).some((team) => team.enabled);
   const links = useRosterLinks();
@@ -492,14 +495,14 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   );
   const greeting = greetingFor(now, zone);
   // Under the work-mode band the date and the greeting are the band's words (mockup `rost_today`).
-  useModeBandHeading({ eyebrow: formatPerthDay(today), title: greeting.text });
+  useModeBandHeading({ eyebrow: formatZonedLongDay(today), title: greeting.text });
   const fresh = hasFreshLink(links.links, now);
   const staleLink = staleRosterLink(links.links, now);
 
   const header = (
     <RosterPageHeader
       icon={greeting.icon}
-      eyebrow={formatPerthDay(today)}
+      eyebrow={formatZonedLongDay(today)}
       title="Today"
       subtitle={
         <div className="grid gap-0.5">
@@ -665,7 +668,9 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
         status={
           <>
             {header}
-            {ready && shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
+            {ready && shifts.demoMode && !exampleBanner ? (
+              <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice>
+            ) : null}
             {ready && saved ? <ModeNotice>{saved}</ModeNotice> : null}
             {ready && refreshWarning ? (
               <ModeNotice tone="warning" testId="roster-today-refresh-warning">

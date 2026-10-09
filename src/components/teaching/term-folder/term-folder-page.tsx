@@ -427,7 +427,7 @@ function TermFolderContent({ demoMode, termId }: { demoMode: boolean; termId: st
           Term
         </Link>
         {demoMode && !exampleShown ? (
-          <T5Note className="mt-0 mb-1">Made-up demo. Nothing here is your data, and nothing is saved.</T5Note>
+          <T5Note className="mt-0 mb-1">Example data. Nothing here is your own, and nothing is saved.</T5Note>
         ) : null}
         {body}
       </T5Page>

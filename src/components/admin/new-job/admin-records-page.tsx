@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, FileText, LogIn, Printer } from "lucide-react";
+import { Copy, FileText, Printer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -14,6 +14,7 @@ import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkButton, WorkCard, WorkDock, WorkEmpty, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { cn } from "@/components/ui-primitives";
 import {
   adminRecordsSections,
@@ -163,19 +164,14 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
           <AdminSkeleton className="h-24" />
         </div>
       ) : loadState === "signed-out" ? (
-        <WorkCard>
-          <WorkEmpty
-            icon={LogIn}
-            title="Sign in to see your Admin records"
-            body="They are kept for your signed-in account only."
-            action={
-              <WorkButton icon={LogIn} onClick={() => setSignInOpen(true)} testId="admin-records-signed-out-sign-in">
-                Sign in
-              </WorkButton>
-            }
-            testId="admin-records-signed-out"
-          />
-        </WorkCard>
+        <WorkStateNotice
+          kind="signed-out"
+          title="Sign in to see your Admin records"
+          body="They are kept for your signed-in account only."
+          onSignIn={() => setSignInOpen(true)}
+          signInTestId="admin-records-signed-out-sign-in"
+          testId="admin-records-signed-out"
+        />
       ) : (
         <>
           {sections.map((section) => (

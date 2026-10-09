@@ -274,7 +274,7 @@ export function complianceExportAboutRows(
     ? [
         selection.range === "next-60-days"
           ? [
-              `Range: next ${COMPLIANCE_EXPORT_SOON_DAYS} days only, dates already passed included. ${selection.rows} of ${overview.total + overview.notForThisJob.length} items are in this file; items with no recorded date, no end date, a date further ahead, or marked not for this job are left out.`,
+              `Range: next ${COMPLIANCE_EXPORT_SOON_DAYS} days only, dates already passed included. ${selection.rows} of ${overview.total + overview.notForThisJob.length} items are in this file. Items with no recorded date, no end date, a date further ahead, or marked not for this job are left out.`,
             ]
           : ["Range: every item."],
         selection.omittedColumns.length > 0

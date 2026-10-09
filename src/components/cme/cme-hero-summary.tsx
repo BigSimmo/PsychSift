@@ -98,7 +98,7 @@ export function CmeHeroSummary(props: CmeHeroSummaryProps) {
         <span className="text-base-minus text-[color:var(--surface-summary-muted)]">{` of ${formatHours(targetHours)} h`}</span>
       </span>
       <span className="sr-only">
-        Hours logged in each week of {year}; {weeksLeft} weeks to go.
+        Hours logged in each week of {year}, with {weeksLeft} weeks to go.
       </span>
       <span data-testid="cme-hero-bar" aria-hidden="true" className="mt-3 flex h-8 items-end gap-px">
         {weeks.map(({ index, hours, state }) => (

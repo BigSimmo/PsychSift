@@ -148,16 +148,17 @@ export function nextRosteredDay(
 }
 
 /**
- * The "Needs you" card: the merged items (already overdue first) less anything
- * moved to later, capped. `total` is every item, which "All N" opens.
+ * The "Needs you" card: the items (already in order) less anything moved to
+ * later, capped. `total` is every item, which "All N" opens. An item Later
+ * cannot move (`snoozable: false`) always shows, the same rule the bell uses.
  */
-export function selectNeedsYou(
-  items: readonly MyDayItem[],
+export function selectNeedsYou<T extends { readonly id: string; readonly snoozable?: boolean }>(
+  items: readonly T[],
   snoozes: MyDaySnoozes,
   today: string,
   cap: number = MY_DAY_NEEDS_YOU_CAP,
-): { readonly shown: readonly MyDayItem[]; readonly waiting: number; readonly total: number } {
-  const waiting = items.filter((item) => !isSnoozed(snoozes, item.id, today));
+): { readonly shown: readonly T[]; readonly waiting: number; readonly total: number } {
+  const waiting = items.filter((item) => item.snoozable === false || !isSnoozed(snoozes, item.id, today));
   return { shown: waiting.slice(0, cap), waiting: waiting.length, total: items.length };
 }
 

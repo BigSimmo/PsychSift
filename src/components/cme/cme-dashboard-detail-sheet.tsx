@@ -194,7 +194,7 @@ export function CmeTodayDetailSheet({
               Review routines
             </WorkButton>
             <WorkButton variant="primary" href={`/cme/log?year=${set.year}`}>
-              View Log
+              View log
             </WorkButton>
           </div>
         </div>
