@@ -46,7 +46,7 @@ export const EARLIER_ALERT_AREAS: Readonly<
 };
 export const EARLIER_ALERT_AREA_ORDER: readonly EarlierAlertArea[] = ["roster", "brief", "reminder", "test"];
 
-export type AlertCode = "changed" | "request" | "offer" | "manage" | "test" | "brief" | "reminder";
+export type AlertCode = "changed" | "request" | "offer" | "manage" | "test" | "brief" | "reminder" | "due";
 
 export type AlertCodeInfo = {
   /** The lock screen's title, as the worker draws it. */
@@ -109,6 +109,13 @@ export const ALERT_CODES: Readonly<Record<AlertCode, AlertCodeInfo>> = {
     path: "/my-day/alerts",
     area: "reminder",
     source: "Reminder",
+  },
+  due: {
+    lockTitle: "PsychSift",
+    lockBody: "Something in My Day needs you. Open PsychSift to see it.",
+    path: "/my-day/notifications",
+    area: "reminder",
+    source: "Bell reminder",
   },
 };
 

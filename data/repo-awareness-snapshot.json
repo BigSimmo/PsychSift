@@ -1870,6 +1870,10 @@
         "file": "src/app/api/roster/owner/teams/route.ts"
       },
       {
+        "path": "/api/work/roles",
+        "file": "src/app/api/work/roles/route.ts"
+      },
+      {
         "path": "/api/roster/extra-time",
         "file": "src/app/api/roster/extra-time/route.ts"
       },
