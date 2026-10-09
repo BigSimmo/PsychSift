@@ -604,13 +604,14 @@ async function savePreferenceChanges(
   after: readonly RotationPreferenceRecord[],
 ): Promise<void> {
   const kept = new Map(after.map((pref) => [pref.personId, pref]));
-  const removed = before.filter((pref) => !kept.has(pref.personId)).map((pref) => pref.personId);
-  if (removed.length) {
+  const removed = before.filter((pref) => !kept.has(pref.personId));
+  for (const pref of removed) {
     const { error } = await client
       .from("roster_rotation_preferences")
       .delete()
       .eq("round_id", roundId)
-      .in("user_id", removed);
+      .eq("user_id", pref.personId)
+      .eq("updated_at", pref.updatedAt);
     if (error) throw databaseError(error);
   }
   for (const pref of before) {
@@ -618,9 +619,10 @@ async function savePreferenceChanges(
     if (!next || next.ranking.join("\n") === pref.ranking.join("\n")) continue;
     const { error } = await client
       .from("roster_rotation_preferences")
-      .update({ ranking: [...next.ranking] })
+      .update({ ranking: [...next.ranking], updated_at: new Date().toISOString() })
       .eq("round_id", roundId)
-      .eq("user_id", pref.personId);
+      .eq("user_id", pref.personId)
+      .eq("updated_at", pref.updatedAt);
     if (error) throw databaseError(error);
   }
 }

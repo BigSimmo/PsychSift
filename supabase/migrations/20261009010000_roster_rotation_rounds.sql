@@ -92,7 +92,10 @@ create function public.roster_rotation_save_preference(
 language plpgsql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
 begin
   perform 1 from public.roster_rotation_rounds
-    where id = p_round_id and updated_at = p_round_updated_at and status = p_round_status
+    where id = p_round_id
+      and updated_at = p_round_updated_at
+      and status = p_round_status
+      and (p_round_status <> 'open' or (setup->>'closesAt')::timestamptz > clock_timestamp())
     for share;
   if not found then
     return false;
@@ -101,6 +104,11 @@ begin
   values (p_round_id, p_user_id, p_ranking, p_submitted_at, p_updated_at)
   on conflict (round_id, user_id) do update
     set ranking = excluded.ranking, submitted_at = excluded.submitted_at, updated_at = excluded.updated_at;
+  -- Preference writes advance the round's optimistic-concurrency token. This makes a manager
+  -- that read preferences before this transaction retry rather than saving a stale allocation.
+  update public.roster_rotation_rounds
+    set updated_at = clock_timestamp()
+    where id = p_round_id;
   return true;
 end
 $$;
