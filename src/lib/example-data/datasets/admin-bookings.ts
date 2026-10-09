@@ -164,7 +164,8 @@ export function exampleBookings(now: Date, zone: string): BookingsState {
     ...people(7, 8).map((person, i) => booking("restraint", person, "booked", -6 + i)),
     ...people(17, 1).map((person, i) => booking("grand-round", person, "booked", -9 + (i % 6))),
     booking("grand-round", EXAMPLE_SELF, "booked", -5),
-    booking("ect", EXAMPLE_PEOPLE[3], "booked", -3),
+    ...people(6, 12).map((person, i) => booking("ect", person, "booked", -4 + (i % 3))),
+    booking("mha-forms", EXAMPLE_SELF, "waitlisted", 0),
     booking("manual-handling", EXAMPLE_SELF, "attended", -40),
     ...people(9, 5).map((person, i) => booking("manual-handling", person, "attended", -40 + i)),
   ];

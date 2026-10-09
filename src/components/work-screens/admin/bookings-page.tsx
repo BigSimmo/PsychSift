@@ -448,8 +448,13 @@ function CourseDetail({
   const blocked = !online && !examples;
 
   const say = (message: string, previous: BookingsState) => {
-    setNotice(message);
-    toast?.(message, () => {
+    // The toast carries the message and its Undo. Without one (a bare render), say it on the page.
+    if (!toast) {
+      setNotice(message);
+      return;
+    }
+    setNotice(null);
+    toast(message, () => {
       update(previous);
       setNotice(null);
     });
@@ -528,9 +533,11 @@ function CourseDetail({
           {timeRange(course)}, {formatCourseLength(course)}
         </p>
         <PlacesMeter state={state} course={course} />
-        <div className="mt-3 flex flex-wrap gap-2">
-          <AvailabilityTag availability={availability} state={state} course={course} />
-        </div>
+        {availability === "book" ? null : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <AvailabilityTag availability={availability} state={state} course={course} />
+          </div>
+        )}
       </WorkCard>
 
       {course.change && (inCalendar || availability === "cancelled") ? <CourseChangeNote course={course} /> : null}

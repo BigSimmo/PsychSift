@@ -103,7 +103,7 @@ export function AdminCoursesPage() {
         <ModeModuleSkeleton rows={5} twoLine eyebrow testId="admin-courses-loading" />
       ) : (
         <>
-          {sample && !organiser ? (
+          {sample && !organiser && !posting && !courseId ? (
             <WorkCard padded testId="admin-courses-sample">
               <p className="text-sm font-semibold text-[color:var(--text-heading)]">
                 This is the organiser&apos;s side
@@ -165,7 +165,7 @@ function CourseList({ state, today }: { readonly state: BookingsState; readonly 
       {upcoming.length ? (
         <WorkCard testId="admin-courses-upcoming">
           {upcoming.map((course) => (
-            <OrganiserRow key={course.id} state={state} course={course} />
+            <OrganiserRow key={course.id} state={state} course={course} upcoming />
           ))}
         </WorkCard>
       ) : (
@@ -198,7 +198,15 @@ function CourseList({ state, today }: { readonly state: BookingsState; readonly 
   );
 }
 
-function OrganiserRow({ state, course }: { readonly state: BookingsState; readonly course: BookingCourse }) {
+function OrganiserRow({
+  state,
+  course,
+  upcoming = false,
+}: {
+  readonly state: BookingsState;
+  readonly course: BookingCourse;
+  readonly upcoming?: boolean;
+}) {
   const tile = courseDateTile(course.date);
   const booked = bookedFor(state, course.id).length;
   return (
@@ -209,7 +217,7 @@ function OrganiserRow({ state, course }: { readonly state: BookingsState; readon
       sub={
         <>
           {timeRange(course)}, {booked} booked
-          {course.status === "posted" ? <PlacesMeter state={state} course={course} /> : null}
+          {upcoming ? <PlacesMeter state={state} course={course} /> : null}
         </>
       }
       end={
@@ -285,7 +293,7 @@ function OrganiserCourse({
         : course.status === "draft"
           ? "Draft removed"
           : "Course cancelled";
-    setNotice(message);
+    if (!toast) setNotice(message);
     toast?.(message, () => {
       bookings.update(previous);
       setNotice(null);
@@ -497,7 +505,12 @@ function CourseForm({
     const found = validateCourseDraft(draft, { today: bookings.today, booked });
     const clean = Object.fromEntries(Object.entries(found).filter(([, value]) => value)) as CourseDraftErrors;
     setErrors(clean);
-    return !hasDraftErrors(clean);
+    const ok = !hasDraftErrors(clean);
+    if (!ok)
+      window.setTimeout(() => {
+        document.querySelector<HTMLElement>('[data-testid="admin-courses-form-body"] [aria-invalid="true"]')?.focus();
+      }, 0);
+    return ok;
   };
 
   const save = (post: boolean) => {
@@ -537,7 +550,7 @@ function CourseForm({
       result.promoted ? `${people(result.promoted)} moved off the waitlist` : null,
     ].filter(Boolean);
     const message = parts.join(". ");
-    onSaved?.(message);
+    if (!toast) onSaved?.(message);
     toast?.(message, () => bookings.update(previous));
     onDone?.();
   };
@@ -547,7 +560,7 @@ function CourseForm({
   const preview = draft.title.trim() || "Course title";
 
   return (
-    <>
+    <div className="contents" data-testid="admin-courses-form-body">
       <WorkCard padded testId="admin-courses-form">
         <Step n={1} label="What" />
         <WorkChips label="Kind">
@@ -639,7 +652,7 @@ function CourseForm({
             checkPatient
             testId="admin-courses-location"
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3">
             <PaperworkField
               label="Places"
               type="number"
@@ -751,7 +764,7 @@ function CourseForm({
           </p>
         </Sheet>
       ) : null}
-    </>
+    </div>
   );
 }
 
