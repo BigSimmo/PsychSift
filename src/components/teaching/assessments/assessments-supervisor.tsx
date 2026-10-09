@@ -98,6 +98,9 @@ import {
   SAMPLE_SUPERVISOR,
   SAMPLE_TERMS,
   WINDOW_DAYS,
+  kindName,
+  termNumbers,
+  termsWithKind,
 } from "@/lib/teaching/assessments/sample";
 import { withUnit } from "@/components/teaching/teaching-number";
 
@@ -821,16 +824,23 @@ export function DoctorRecord({ s, openSheet, dct }: ScreenProps) {
     pending && pending.who === "sup"
       ? openSheet({ kind: "supepa", index: s.epaRequests.indexOf(pending) })
       : openSheet({ kind: "recordepa", pick: 1 });
+  // Match Year Requirements: once DCT signs off, this term's kind is done — not still "This term".
+  const signOff = s.sigs.doc ? samSignOff(dct) : null;
   const kinds = (["A", "B", "C", "D"] as const).map((letter) => {
-    const done = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "done");
-    const now = SAMPLE_TERMS.find((t) => t.category === letter && t.status === "current");
-    const any = done ?? now ?? SAMPLE_TERMS.find((t) => t.category === letter);
-    const state: KindState = done ? "done" : now ? "now" : "todo";
+    const done = termsWithKind(letter, "done");
+    const now = termsWithKind(letter, "current")[0];
+    const state: KindState = done.length || (now && signOff) ? "done" : now ? "now" : "todo";
     return {
       letter,
-      name: any?.categoryName ?? letter,
+      name: kindName(letter),
       state,
-      note: done ? `Done in term ${done.n}` : now ? "This term" : "Not yet",
+      note: done.length
+        ? `Done in ${termNumbers(done).toLowerCase()}`
+        : now && signOff
+          ? `DCT signed off ${signOff.date}`
+          : now
+            ? "This term"
+            : "Not yet",
     };
   });
   return (

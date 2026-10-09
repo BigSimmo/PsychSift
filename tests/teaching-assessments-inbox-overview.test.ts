@@ -124,7 +124,11 @@ describe("consultant inbox", () => {
     expect(feedbackProblem("Saw Mr Smith on the ward")).not.toBeNull();
     expect(feedbackProblem("URN 1234567 reviewed")).not.toBeNull();
     expect(sendBlocker({ level: null, text: "" })).toBe("Choose the supervision the doctor needed.");
-    expect(sendBlocker({ level: "direct", text: "" })).toBeNull();
+    expect(sendBlocker({ level: "direct", text: "", observed: "direct" })).toBeNull();
+    // The quick answer asks the AMC EPA form's declaration too (rules audit M9).
+    expect(sendBlocker({ level: "direct", text: "" })).toMatch(/^Say how you know/);
+    expect(sendBlocker({ level: "direct", text: "", observed: "team" })).toMatch(/^Name the team member's role/);
+    expect(sendBlocker({ level: "direct", text: "Ward nurse saw it", observed: "team" })).toBeNull();
     expect(sendBlocker({ level: "direct", text: "bed 4 was busy" })).toBe("Remove the patient details to send.");
     expect(sendBlocker({ level: "direct", text: "x".repeat(501) })).toBe("Keep it to 500 characters.");
   });
@@ -365,7 +369,13 @@ describe("inbox rows, passing on, and what the doctor sees", () => {
   });
 
   it("keeps an offline answer as To send, and Undo brings it back to waiting", () => {
-    const queued = extrasReducer(initialExtras, { type: "inbox-queue", id: "mia-epa-2", level: "minimal", text: "Ok" });
+    const queued = extrasReducer(initialExtras, {
+      type: "inbox-queue",
+      id: "mia-epa-2",
+      level: "minimal",
+      text: "Ok",
+      observed: "direct",
+    });
     expect(queued.answers["mia-epa-2"]).toMatchObject({ status: "queued", level: "minimal", text: "Ok" });
     const item = inboxRequests(at(-1), queued.answers).find((i) => i.id === "mia-epa-2")!;
     expect(isWaiting(item)).toBe(true);
@@ -382,8 +392,16 @@ describe("inbox rows, passing on, and what the doctor sees", () => {
   });
 
   it("never makes up a supervision level for a To send answer that has none", () => {
-    const queued = extrasReducer(initialExtras, { type: "inbox-queue", id: "mia-epa-2", level: "minimal", text: "Ok" });
-    expect(readyToSend(queued.answers)).toEqual([{ id: "mia-epa-2", level: "minimal", text: "Ok" }]);
+    const queued = extrasReducer(initialExtras, {
+      type: "inbox-queue",
+      id: "mia-epa-2",
+      level: "minimal",
+      text: "Ok",
+      observed: "direct",
+    });
+    expect(readyToSend(queued.answers)).toEqual([
+      { id: "mia-epa-2", level: "minimal", text: "Ok", observed: "direct" },
+    ]);
     // An answer kept without a level (not possible from the sheet, but never assumed) stays unsent, with a reason.
     const noLevel = { ...queued.answers, "ravi-epa-3": { ...EMPTY_ANSWER, status: "queued" as const, text: "Ok" } };
     expect(readyToSend(noLevel).map((entry) => entry.id)).toEqual(["mia-epa-2"]);

@@ -7,6 +7,7 @@ import { focusRing } from "@/components/card-recipes";
 import { WorkEmpty } from "@/components/mode-kit/work";
 import { useAssessmentsExtras, useOfflineSince } from "@/components/teaching/assessments/assessments-extras";
 import { IN_CLA_NOTE } from "@/components/teaching/assessments/assessments-help";
+import { OptionCard } from "@/components/teaching/assessments/assess-kit";
 import {
   Inset,
   KeyValue,
@@ -32,7 +33,13 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, fieldControlPlain } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
-import { SUPERVISION_LEVELS, epa as epaInfo, type SupervisionLevel } from "@/lib/teaching/assessments/content";
+import {
+  EPA_OBSERVED,
+  SUPERVISION_LEVELS,
+  epa as epaInfo,
+  type EpaObserved,
+  type SupervisionLevel,
+} from "@/lib/teaching/assessments/content";
 import {
   CANT_REASONS,
   EMPTY_ANSWER,
@@ -77,7 +84,7 @@ const SORTS: readonly { value: InboxSort; label: string }[] = [
   { value: "doctor", label: "Doctor" },
 ];
 
-type Draft = { level: SupervisionLevel | null; text: string };
+type Draft = { level: SupervisionLevel | null; text: string; observed: EpaObserved | null };
 type SheetMode = { id: string; mode: "feedback" | "cant" | "status" | "doctor" } | null;
 
 const RAIL: Record<InboxRail, string> = {
@@ -179,11 +186,11 @@ export function AssessmentsInbox({ s, openSheet, go, role }: ScreenProps) {
     const kept = drafts[item.id];
     if (kept) return kept;
     const answer = extras.answers[item.id] ?? EMPTY_ANSWER;
-    return { level: answer.level, text: answer.text };
+    return { level: answer.level, text: answer.text, observed: answer.observed ?? null };
   }
 
   function send(item: InboxRequest, draft: Draft) {
-    if (!draft.level || sendBlocker(draft)) return;
+    if (!draft.level || !draft.observed || sendBlocker(draft)) return;
     setSheet(null);
     setDrafts((all) => {
       const next = { ...all };
@@ -192,11 +199,20 @@ export function AssessmentsInbox({ s, openSheet, go, role }: ScreenProps) {
     });
     if (offlineSince) {
       // Kept exactly as typed. The patient-detail check reads a cleaned copy and never changes this text.
-      dispatchExtras({ type: "inbox-queue", id: item.id, level: draft.level, text: draft.text });
+      dispatchExtras({
+        type: "inbox-queue",
+        id: item.id,
+        level: draft.level,
+        text: draft.text,
+        observed: draft.observed,
+      });
       announce(`Kept to send to ${item.doctor.name} when you are back online.`);
       return;
     }
-    sendAnswers([{ id: item.id, level: draft.level, text: draft.text }], `Sending to ${item.doctor.name} in 10 s`);
+    sendAnswers(
+      [{ id: item.id, level: draft.level, text: draft.text, observed: draft.observed }],
+      `Sending to ${item.doctor.name} in 10 s`,
+    );
   }
 
   function moveLater(item: InboxRequest) {
@@ -488,6 +504,15 @@ function FeedbackSheet({
         {info ? <KeyValue k="EPA" v={`${item.epa} · ${info.title}`} /> : null}
       </div>
       {info ? <p className={secondaryText}>{info.detail}</p> : null}
+      {/* The AMC EPA form's declaration [EPA1p], asked here as on the full form, so the quick answer skips nothing. */}
+      <p className="px-1 text-sm font-semibold text-[color:var(--text-heading)]">How you know</p>
+      <OptionCard
+        legend="How you know"
+        name={`assess-inbox-observed-${item.id}`}
+        value={draft.observed}
+        onChange={(observed) => onDraft({ ...draft, observed })}
+        options={EPA_OBSERVED}
+      />
       <SegmentedControl
         label={`Supervision ${first} needed`}
         layout="equal"
@@ -504,7 +529,9 @@ function FeedbackSheet({
           className="flex justify-between px-1 text-sm font-semibold text-[color:var(--text-heading)]"
         >
           <span>A few lines</span>
-          <span className="font-normal text-[color:var(--text-muted)]">Optional</span>
+          <span className="font-normal text-[color:var(--text-muted)]">
+            {draft.observed === "team" ? "Needed: their role" : "Optional"}
+          </span>
         </label>
         <textarea
           id={textId}

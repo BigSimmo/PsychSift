@@ -7,6 +7,7 @@ import {
   type CaseComplexity,
   type DomainNumber,
   type EpaNumber,
+  type EpaObserved,
   type GlobalRating,
   type Rating,
   SUPERVISION_LEVELS,
@@ -22,8 +23,10 @@ import {
   SAMPLE_SUPERVISOR,
   SAMPLE_TERMS,
   WINDOW_DAYS,
+  termKinds,
   type EpaRecord,
   type Ratings,
+  type SampleTerm,
   type TermId,
   type Ticks,
 } from "@/lib/teaching/assessments/sample";
@@ -89,11 +92,17 @@ export const GUEST_KINDS: readonly { id: GuestKind; title: string; name: string 
 /** The rest of the AMC EPA form: how the assessor knows, whether the level fits the year, and feedback. */
 export type EpaFeedback = {
   /** "I directly observed some part of it", or a team member who was there told them. */
-  observed?: "direct" | "team";
+  observed?: EpaObserved;
   /** Was the rating right for the level of training? */
   rightLevel?: boolean;
   better?: string;
   goal?: string;
+  /**
+   * The outcome statements the assessor confirmed, out of those the doctor ticked. The doctor ticks the outcome
+   * statements they believe were shown [CLA-FS-D], and the assessor ticks or unticks them [CLA-FS-A]. In CLA the
+   * confirmed ones update the doctor's Progress View [CLA-FS-A].
+   */
+  outcomes?: string[];
 };
 
 /** The longest free-text EPA feedback: a few sentences, never a case summary. */
@@ -743,17 +752,26 @@ function answerAt(list: readonly EpaRequest[], index: number, status: EpaRequest
 const validText = (text: string | undefined) =>
   text === undefined || (text.length <= EPA_FEEDBACK_MAX && !looksLikePatientDetails(text));
 
-/** The feedback with blanks dropped, or null when any part is too long or looks like patient details. */
+/** The 28 outcome statement ids ([2A]), the only ones an EPA can confirm. */
+const OUTCOME_IDS: ReadonlySet<string> = new Set(DOMAINS.flatMap((d) => d.outcomes.map((o) => o.id)));
+
+/**
+ * The feedback with blanks dropped, or null when any part is too long, looks like patient details, or names an
+ * outcome statement that does not exist.
+ */
 function cleanFeedback(f: EpaFeedback): EpaFeedback | null {
   if (f.observed !== undefined && f.observed !== "direct" && f.observed !== "team") return null;
   const better = f.better?.trim() || undefined;
   const goal = f.goal?.trim() || undefined;
   if (!validText(better) || !validText(goal)) return null;
+  if (f.outcomes !== undefined && !f.outcomes.every((id) => OUTCOME_IDS.has(id))) return null;
+  const outcomes = f.outcomes ? [...new Set(f.outcomes)] : [];
   return {
     ...(f.observed ? { observed: f.observed } : {}),
     ...(typeof f.rightLevel === "boolean" ? { rightLevel: f.rightLevel } : {}),
     ...(better ? { better } : {}),
     ...(goal ? { goal } : {}),
+    ...(outcomes.length ? { outcomes } : {}),
   };
 }
 
@@ -984,7 +1002,10 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
   }
 }
 
-/** Kinds of experience (A to D) from terms already finished. */
-export function kindsDone(terms: readonly { status: string; category: string }[]): number {
-  return new Set(terms.filter((t) => t.status === "done").map((t) => t.category)).size;
+/**
+ * Kinds of experience (A to D) from terms already finished. A term accredited for two counts both: [TE3] "1 or 2"
+ * per term, [MBA-RS] "Up to two types can be counted per term".
+ */
+export function kindsDone(terms: readonly Pick<SampleTerm, "status" | "category" | "category2">[]): number {
+  return new Set(terms.filter((t) => t.status === "done").flatMap(termKinds)).size;
 }

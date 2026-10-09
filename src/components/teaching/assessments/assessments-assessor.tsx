@@ -11,15 +11,20 @@ import {
   AssessNote,
   AssessTextField,
   OptionCard,
+  OutcomeRow,
 } from "@/components/teaching/assessments/assess-kit";
 import { AnswerEpaRequest, IN_CLA_NOTE, LEVEL_OPTIONS } from "@/components/teaching/assessments/assessments-help";
 import { Card, SectionLabel, WhyNot, viewHref } from "@/components/teaching/assessments/assessments-parts";
 import type { ScreenProps } from "@/components/teaching/assessments/teaching-assessments";
 import {
   CASE_COMPLEXITIES,
+  DOMAINS,
+  EPA_OBSERVED,
   epa as epaInfo,
   SUPERVISION_LEVELS,
   type CaseComplexity,
+  type EpaNumber,
+  type EpaObserved,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
 import {
@@ -36,25 +41,33 @@ import { SAMPLE_DOCTOR } from "@/lib/teaching/assessments/sample";
  * What an assessor gets from the doctor's EPA request: the whole AMC EPA form on one page (feature for the
  * owner's 8 Oct review of CLA). In CLA this is the emailed link's "personalised response page", which needs no
  * account and stops working once submitted. The fields follow the AMC EPA assessment form: how the assessor
- * knows, the supervision level, case complexity, whether the rating was right for the level of training, and
- * what went well, what could be better and an agreed learning goal. MADE-UP SAMPLE ONLY.
+ * knows, the supervision level, case complexity, whether the rating was right for the level of training, the
+ * outcome statements the doctor ticked (the assessor confirms or unticks them [CLA-FS-A]), and what went well,
+ * what could be better and an agreed learning goal. MADE-UP SAMPLE ONLY.
  */
 
 const DOC = SAMPLE_DOCTOR;
 /** The doctor's own part of the made-up request. */
 const DOCTOR_PART = { case: "Made-up case. No patient details.", own: "proximal" as SupervisionLevel };
 
+/**
+ * The outcome statements the made-up doctor ticked for each EPA: the doctor's own example choice, not an AMC
+ * mapping. In CLA the doctor ticks the outcome statements they believe were shown [CLA-FS-D], and the assessor
+ * ticks or unticks them [CLA-FS-A].
+ */
+const DOCTOR_OUTCOMES: Record<EpaNumber, readonly string[]> = {
+  1: ["1.2", "1.4", "1.5", "1.7"],
+  2: ["1.1", "1.4", "1.9"],
+  3: ["1.8", "4.2"],
+  4: ["1.1", "1.2", "2.5"],
+};
+
+const OUTCOME_NAMES: ReadonlyMap<string, string> = new Map(
+  DOMAINS.flatMap((d) => d.outcomes.map((o) => [o.id, o.name] as const)),
+);
+
 /** The level as the AMC form words it ("Requires proximal supervision"). */
 const formLevel = (id: SupervisionLevel) => SUPERVISION_LEVELS.find((l) => l.id === id)?.formLabel ?? id;
-
-const OBSERVED_OPTIONS = [
-  { id: "direct" as const, title: "I directly observed some part of it" },
-  {
-    id: "team" as const,
-    title: "A team member who was there told me",
-    detail: "Name their role in your feedback.",
-  },
-];
 
 export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps) {
   // The doctor opens this from "See what they get": a preview only, so they can never answer their own EPA
@@ -63,13 +76,15 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
   const raw = params.get("i");
   const index = raw !== null && /^\d+$/.test(raw) ? Number(raw) : -1;
   const r = index >= 0 ? s.epaRequests[index] : undefined;
-  const [observed, setObserved] = useState<"direct" | "team" | null>(null);
+  const [observed, setObserved] = useState<EpaObserved | null>(null);
   const [level, setLevel] = useState<SupervisionLevel | null>(null);
   const [complexity, setComplexity] = useState<CaseComplexity | null>(null);
   const [rightLevel, setRightLevel] = useState<boolean | null>(null);
   const [well, setWell] = useState("");
   const [better, setBetter] = useState("");
   const [goal, setGoal] = useState("");
+  // Every outcome the doctor ticked starts confirmed. The assessor unticks any they did not see.
+  const [unticked, setUnticked] = useState<readonly string[]>([]);
   const [answer, setAnswer] = useState<"not-yet" | "sent-back" | null>(null);
   const home = viewHref("home");
   if (!r) {
@@ -106,6 +121,14 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
           {typeof r.feedback?.rightLevel === "boolean" ? (
             <AssessKeyValue k="Right for a PGY1 now" v={r.feedback.rightLevel ? "Yes" : "No"} />
           ) : null}
+          <AssessKeyValue
+            k="Outcome statements confirmed"
+            v={
+              r.feedback?.outcomes?.length
+                ? r.feedback.outcomes.map((id) => `${id} ${OUTCOME_NAMES.get(id) ?? ""}`.trim()).join(", ")
+                : "None"
+            }
+          />
         </Card>
       </>
     );
@@ -138,15 +161,19 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
     );
   }
   const texts = [well, better, goal].map((x) => x.trim());
+  const ticked = DOCTOR_OUTCOMES[r.epa] ?? [];
+  const confirmed = ticked.filter((id) => !unticked.includes(id));
   const why = !observed
     ? "Say how you know first."
     : !level
       ? "Choose a supervision level first."
-      : texts.some((x) => x.length > EPA_FEEDBACK_MAX)
-        ? `Keep each answer under ${EPA_FEEDBACK_MAX} characters.`
-        : texts.some(looksLikePatientDetails)
-          ? "Take out the patient details first."
-          : null;
+      : observed === "team" && !texts.some((x) => x.length > 0)
+        ? "Name their role in your feedback."
+        : texts.some((x) => x.length > EPA_FEEDBACK_MAX)
+          ? `Keep each answer under ${EPA_FEEDBACK_MAX} characters.`
+          : texts.some(looksLikePatientDetails)
+            ? "Take out the patient details first."
+            : null;
   const submit = () => {
     if (why || !observed || !level) return;
     const feedback: EpaFeedback = {
@@ -154,6 +181,7 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
       ...(rightLevel === null ? {} : { rightLevel }),
       ...(texts[1] ? { better: texts[1] } : {}),
       ...(texts[2] ? { goal: texts[2] } : {}),
+      ...(confirmed.length ? { outcomes: confirmed } : {}),
     };
     saveEpa({
       type: "record-epa",
@@ -186,7 +214,7 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
         name="assess-epa-observed"
         value={observed}
         onChange={setObserved}
-        options={OBSERVED_OPTIONS}
+        options={EPA_OBSERVED}
         disabled={preview}
       />
       <SectionLabel>{`Level of supervision ${DOC.first} needed`}</SectionLabel>
@@ -223,6 +251,22 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
           ))}
         </WorkChips>
       </fieldset>
+      <SectionLabel>Outcome statements</SectionLabel>
+      <div className="work-card" role="group" aria-label={`Outcome statements ${DOC.first} ticked`}>
+        {ticked.map((id) => (
+          <OutcomeRow
+            key={id}
+            number={id}
+            title={OUTCOME_NAMES.get(id) ?? id}
+            checked={!unticked.includes(id)}
+            disabled={preview}
+            onToggle={() => setUnticked(unticked.includes(id) ? unticked.filter((x) => x !== id) : [...unticked, id])}
+          />
+        ))}
+      </div>
+      <AssessNote>
+        {`${DOC.first} ticked these. Untick any you didn't see shown. In CLA the ones you confirm update ${DOC.first}'s Progress View.`}
+      </AssessNote>
       <AssessTextField
         id="assess-epa-well"
         label="What went well (optional)"

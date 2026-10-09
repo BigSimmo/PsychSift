@@ -60,6 +60,10 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/my-day/help", owner: "walkthrough-help" },
   // Notifications: To do, Earlier and Settings, and everything below them.
   { path: "/my-day/notifications", owner: "alerts" },
+  // Hospital roles: People and roles, for Medical Workforce, the DCT and administrators.
+  { path: "/admin/people", owner: "hospital-roles" },
+  // Hospital roles: Hospital, the way in for hospital role holders, and its sick calls.
+  { path: "/admin/hospital", owner: "hospital-roles" },
   // Rotation preferences: a doctor's rounds and year, and the administrator's rounds (each matches its rounds below it).
   { path: "/roster/rotations", owner: "roster-rotations" },
   { path: "/roster/manage/rotations", owner: "roster-rotations" },
