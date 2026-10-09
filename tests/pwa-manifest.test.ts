@@ -196,8 +196,8 @@ describe("PWA manifest and public bootstrap resources", () => {
     // value (never reuse a previous one, even for rollbacks) and record the
     // new offline.html hash here.
     const expectedPairing = {
-      cacheVersion: "2026-10-09-v1",
-      offlineHtmlSha256: "c6852177ca94a8aa873a5664cf29a3da623a076828be666e2aae39c0cab03808",
+      cacheVersion: "2026-10-09-v2",
+      offlineHtmlSha256: "0dcf69822c992741c7781ab47282b0c1b74ae2e50c6eb0fb94e9e3fcd9a927a7",
     };
 
     const workerSource = readFileSync(join(process.cwd(), "public", "sw.js"), "utf8");
