@@ -38,6 +38,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "new-work-mode") return newWorkMode;
       if (gate === "classic-work-mode") return !newWorkMode;
       if (gate === "signed-out") return !signedIn;
+      if (gate === "signed-in") return signedIn;
       if (gate === "hospital-role") return hospitalRole;
       if (gate === "hospital-hub") return hospitalHub;
       if (gate === "rotation-preferences") return true;

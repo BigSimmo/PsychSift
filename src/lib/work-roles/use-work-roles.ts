@@ -100,6 +100,28 @@ export function watchHeldWorkRoles(userId: string, listener: (roles: readonly Wo
 }
 
 /**
+ * The roles in full (with their hospital and team), for the Notification
+ * centre's Sick calls source, which loads this module only for a reader who
+ * holds a hospital role. Same rules as `watchHeldWorkRoles`: calls `listener`
+ * now and on every change, and a different account forgets the last one's first.
+ */
+export function watchWorkRoleGrants(
+  userId: string,
+  listener: (view: { readonly status: WorkRolesStatus; readonly grants: readonly WorkRoleGrant[] }) => void,
+): () => void {
+  if (readFor !== undefined && readFor !== userId) {
+    readFor = userId;
+    resetWorkRoles();
+  }
+  readFor = userId;
+  const notify = () => listener({ status: snapshot.status, grants: snapshot.grants });
+  const unsubscribe = subscribe(notify);
+  notify();
+  if (snapshot.status === "loading") void load();
+  return unsubscribe;
+}
+
+/**
  * Signed out: forget the account the roles were read for, so signing back in, even as the same
  * account, reads them again and a role removed in between is not shown.
  */

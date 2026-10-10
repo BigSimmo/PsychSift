@@ -181,6 +181,14 @@ const settingsSectionScrollMarginClass = "scroll-mt-[max(6rem,calc(env(safe-area
  */
 type PinnedSection = { id: SettingsSectionId; offset: number; distance: number; settled: boolean };
 
+/**
+ * Work AI Search keeps its Recent list in this tab's memory only. Loaded on
+ * demand so the clinical Settings chunk does not carry the search's checks.
+ */
+function forgetWorkSearchRecents() {
+  void import("@/lib/work-search/memory").then((memory) => memory.forgetAllRecents());
+}
+
 function readRecentQueryCount(): number {
   if (typeof window === "undefined") return 0;
   // The Psychiatry and Medicines hubs' recently opened records ride on the same switch and the same Clear.
@@ -626,6 +634,7 @@ export function SettingsDialog({
     clearRecentQueries();
     clearPsychiatryVisits();
     clearMedicineVisits();
+    forgetWorkSearchRecents();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches cleared.");
   }
@@ -645,6 +654,7 @@ export function SettingsDialog({
     clearRecentQueries();
     clearPsychiatryVisits();
     clearMedicineVisits();
+    forgetWorkSearchRecents();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches turned off and existing ones cleared.");
   }

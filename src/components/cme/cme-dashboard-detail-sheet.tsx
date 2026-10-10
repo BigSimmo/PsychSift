@@ -190,7 +190,7 @@ export function CmeTodayDetailSheet({
             routine never logs itself. Category and other requirements may still need attention.
           </CmeHint>
           <div className="cpd-two">
-            <WorkButton variant="secondary" href={`/cme/routines?year=${set.year}`}>
+            <WorkButton variant="secondary" href="/cme/routines">
               Review routines
             </WorkButton>
             <WorkButton variant="primary" href={`/cme/log?year=${set.year}`}>
