@@ -17,6 +17,7 @@ import { listNames } from "@/components/my-day/my-day-page-parts";
 import { QuietFoot, QuietLabel, quietCard } from "@/components/my-day/my-day-quiet";
 import { MyDaySegmented } from "@/components/my-day/my-day-today-cards";
 import { cmeRoutineItemsThrough } from "@/components/my-day/sources/cme";
+import { adminCalendarRenewalItems } from "@/components/my-day/sources/entries";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { useFeatureNotificationSources } from "@/components/needs-you/use-feature-notification-sources";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
@@ -32,10 +33,11 @@ import { useWorkCalendarEntries } from "@/components/work-calendar/use-work-cale
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { appModeDefinition } from "@/lib/app-modes";
-import { guardExampleAction } from "@/lib/example-data/guards";
+import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 import { addMonths, monthTitle, monthWeeks } from "@/lib/my-day/figures";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import { shiftTitle } from "@/lib/my-day/quiet-figures";
+import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { useAdminPaperwork } from "@/lib/work-screens/admin/paperwork-store";
 import {
   adminRequestItems,
@@ -79,6 +81,8 @@ import { formatZonedDay, formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/
 type CalendarView = "month" | "list";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+/** Roster's shift read starts this many days back, so older shifts are not on the calendar. */
+const SHIFT_HISTORY_DAYS = 21;
 /** How many items a day's cell lists before "+ more". */
 const CELL_ITEMS = 3;
 
@@ -204,9 +208,12 @@ function CalendarBody({
   const month = shownMonth ?? today.slice(0, 7);
   const from = `${month}-01`;
   const to = monthEnd(month);
-  const range = useMemo(() => ({ from, to }), [from, to]);
+  // Roster's team read and Teaching read Perth dates: a day either side keeps a month edge covered in another zone.
+  const range = useMemo(() => ({ from: addDaysToDate(from, -1), to: addDaysToDate(to, 1) }), [from, to]);
   const [view, setView] = useState<CalendarView>("month");
-  const [selected, setSelected] = useState(today);
+  const [chosen, setSelected] = useState(today);
+  // The chosen day stays in the shown month, even when the clock passes midnight into the next one.
+  const selected = chosen.startsWith(month) ? chosen : today.startsWith(month) ? today : `${month}-01`;
   const [hidden, setHidden] = useState<ReadonlySet<MainCalendarArea>>(() => new Set());
   const [adding, setAdding] = useState<MainCalendarItem | null>(null);
   const addReturn = useRef<HTMLElement | null>(null);
@@ -233,6 +240,7 @@ function CalendarBody({
     [features, routeVisible],
   );
 
+  const example = items.demoMode || shifts.demoMode;
   // Example shifts belong to a sample doctor, never to the reader: left out unless this is a demo.
   const showShifts = shifts.status === "ready" && (!shifts.sample || shifts.demoMode);
   const sampleOmitted = shifts.status === "ready" && shifts.sample && !shifts.demoMode;
@@ -244,7 +252,12 @@ function CalendarBody({
   const all = useMemo(
     () =>
       mergeCalendarItems([
-        workEntryItems(calendar.entries),
+        // Example rotations and courses belong to a made-up doctor: only a demo shows them.
+        workEntryItems(
+          example
+            ? calendar.entries
+            : calendar.entries.filter((entry) => !entry.isExample && !isExampleRecord(entry.id)),
+        ),
         showShifts ? shifts.shifts.map((shift) => shiftItem(shift, zone)) : [],
         leaveItems(leave.status === "ready" ? leave.leave : []),
         sessions.map((session) => sessionItem(session, zone)),
@@ -253,6 +266,8 @@ function CalendarBody({
           areaLabel,
           zone,
         ),
+        // Every recorded Admin date, past My Day's capped list, so any month shows its renewals.
+        myDayCalendarItems(adminCalendarRenewalItems(items.adminEntries ?? [], now), areaLabel, zone),
         adminRequestItems(paperwork.state?.requests ?? []),
         alertCalendarItems(alerts, areaLabel, zone),
         reminderCalendarItems(notes, now, zone),
@@ -265,6 +280,8 @@ function CalendarBody({
       sessions,
       items.items,
       items.cmeRoutines,
+      items.adminEntries,
+      example,
       to,
       now,
       reminders,
@@ -282,7 +299,9 @@ function CalendarBody({
     shifts.status === "loading" ||
     shifts.teamLoading ||
     teaching.status === "loading" ||
-    teaching.status === "idle";
+    teaching.status === "idle" ||
+    calendar.status === "loading" ||
+    leave.status === "loading";
   if (loading) {
     return (
       <>
@@ -300,6 +319,9 @@ function CalendarBody({
   const failed: string[] = items.sources
     .filter((source) => source.status === "failed")
     .map((source) => appModeDefinition(source.mode).label);
+  for (const [id, source] of Object.entries(calendar.sources)) {
+    if (source.status === "error") failed.push(id === "rotations" ? "Rotations" : "Course bookings");
+  }
   if (shifts.status === "error" || shifts.status === "signed-out") failed.push("Roster shifts");
   if (shifts.teamMessage) failed.push("Team shifts");
   if (leave.status === "failed") failed.push("Leave");
@@ -314,7 +336,6 @@ function CalendarBody({
     setLeaveReload((count) => count + 1);
   };
 
-  const example = items.demoMode || shifts.demoMode;
   const addingEvent = adding ? calendarItemEvent(adding) : null;
   const openAdd = (item: MainCalendarItem, from: HTMLElement) => {
     addReturn.current = from;
@@ -362,6 +383,11 @@ function CalendarBody({
       {sampleOmitted ? (
         <ModeNotice testId="my-day-calendar-sample-notice">
           Roster is showing example shifts only, so your shifts aren&apos;t shown here.
+        </ModeNotice>
+      ) : null}
+      {from < addDaysToDate(today, -SHIFT_HISTORY_DAYS) ? (
+        <ModeNotice testId="my-day-calendar-history-notice">
+          Shifts from more than three weeks ago aren&apos;t shown on this calendar.
         </ModeNotice>
       ) : null}
       {teaching.status === "setup" ? (
@@ -654,7 +680,8 @@ function DayCell({
       className={cn(
         focusRing,
         "grid min-h-14 w-full content-start justify-items-center gap-1 rounded-lg px-0.5 pt-1 pb-1.5 sm:min-h-24 sm:justify-items-stretch lg:min-h-28",
-        selected && "bg-[color:var(--work-wash)]",
+        selected &&
+          "bg-[color:var(--work-wash)] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight]",
       )}
     >
       <span
