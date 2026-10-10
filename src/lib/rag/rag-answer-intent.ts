@@ -76,19 +76,28 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
 }
 
 // How one medicine acts on another is an interaction question: "What effect does ibuprofen have on
-// lithium levels?", "effects of ibuprofen on lithium", "ibuprofen affects lithium", or the mechanism
-// of the pair. The effect must land on a named medicine: effects on sleep or weight, a medicine's own
+// lithium levels?", "…on the plasma levels of lithium", "ibuprofen affects the clearance of lithium",
+// or the mechanism of the pair. The effect's target must itself be a named medicine (or its measured
+// level, clearance, …): effects on sleep, weight or "patients receiving quetiapine", a medicine's own
 // adverse effects, or a comparison of two medicines keep their own routes.
+const effectTargetLeadPattern =
+  /^(?:(?:the|its|their)\s+)?(?:(?:serum|plasma|blood|trough|renal)\s+)?(?:(?:levels?|concentrations?|clearance|exposure|metabolism|excretion|absorption)\s+of\s+(?:the\s+)?)?/;
+
 function actsOnNamedMedicine(normalized: string) {
   if (/\b(?:compar\w*|versus|vs)\b/.test(normalized)) return false;
   if (/\bmechanism\b/.test(normalized)) return true;
   const targets = [
     ...normalized.matchAll(
-      /(?<!\b(?:side|adverse|undesirable|unwanted|unintended)[-\s])\beffects?\b[^?]*?\bon\s+((?:\S+\s*){1,3})/g,
+      /(?<!\b(?:side|adverse|undesirable|unwanted|unintended)[-\s])\beffects?\b[^?]*?\bon\s+([^?,;]*)/g,
     ),
-    ...normalized.matchAll(/\baffect(?:s|ed|ing)?\s+((?:\S+\s*){1,3})/g),
+    ...normalized.matchAll(/\baffect(?:s|ed|ing)?\s+([^?,;]*)/g),
   ];
-  return targets.some((match) => medicationEntitiesInText(match[1]).length > 0);
+  return targets.some((match) => {
+    // The target starts the phrase: "lithium levels" or "the clearance of lithium", never a later
+    // mention such as "patients receiving quetiapine".
+    const head = match[1].replace(effectTargetLeadPattern, "").split(/\s+/).slice(0, 2).join(" ");
+    return medicationEntitiesInText(head).length > 0 && medicationEntitiesInText(head.split(" ")[0] ?? "").length > 0;
+  });
 }
 
 // "on", "taking" or "with" must introduce one of the named medicines: "use lithium after stopping

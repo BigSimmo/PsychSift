@@ -3238,6 +3238,19 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
     }
   });
 
+  it("finds a medicine target after level or clearance wording, but not in patient context", () => {
+    for (const query of [
+      "How does ibuprofen affect the clearance of lithium?",
+      "What effect does ibuprofen have on the plasma levels of lithium?",
+      "How does ibuprofen affect the level of lithium?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).toBe("contraindication");
+    }
+    expect(
+      classifyAnswerIntent("How does lithium affect patients receiving quetiapine?", "medication_dose_risk"),
+    ).not.toBe("contraindication");
+  });
+
   it("does not treat 'with' + a condition as an interaction", () => {
     expect(
       classifyAnswerIntent(
