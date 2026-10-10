@@ -3207,6 +3207,15 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
     }
   });
 
+  it("keeps an effects-of question an interaction question even when it mentions monitoring", () => {
+    expect(
+      classifyAnswerIntent(
+        "What are the effects of ibuprofen on lithium levels during monitoring?",
+        "medication_dose_risk",
+      ),
+    ).toBe("contraindication");
+  });
+
   it("does not treat 'with' + a condition as an interaction", () => {
     expect(
       classifyAnswerIntent(

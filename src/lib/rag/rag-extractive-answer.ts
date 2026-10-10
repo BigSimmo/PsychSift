@@ -105,6 +105,9 @@ import {
   sourceLabelledNumericBandConflictsAffectingText,
   sourceDirectlySupportsAnswerText,
   sourceEvidenceText,
+  bulletItemsAfter,
+  toxicityActionHeadingPattern,
+  toxicityListHeadingPattern,
 } from "@/lib/rag/rag-claim-support";
 import {
   atomicNmhsClozapineRedRangeSegment,
@@ -114,11 +117,6 @@ import {
   reflowWrappedEscalationRecipientLines,
 } from "@/lib/rag/rag-source-segmentation";
 import { containsDanglingProceduralComparatorStepArtifact } from "@/lib/rag/rag-extractive-artifacts";
-import {
-  bulletItemsAfter,
-  toxicityActionHeadingPattern,
-  toxicityListHeadingPattern,
-} from "@/lib/rag/rag-toxicity-list";
 
 import {
   classifyAnswerIntent,
