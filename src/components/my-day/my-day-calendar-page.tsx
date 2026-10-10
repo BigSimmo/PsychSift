@@ -272,7 +272,7 @@ function CalendarBody({
         ),
         // Every recorded Admin date, past My Day's capped list, so any month shows its renewals.
         myDayCalendarItems(adminCalendarRenewalItems(items.adminEntries ?? [], now), areaLabel, zone),
-        adminRequestItems(paperwork.state?.requests ?? []),
+        routeVisible("/admin/requests") ? adminRequestItems(paperwork.state?.requests ?? []) : [],
         alertCalendarItems(alerts, areaLabel, zone),
         reminderCalendarItems(notes, now, zone),
       ]),
@@ -290,6 +290,7 @@ function CalendarBody({
       now,
       reminders,
       paperwork.state,
+      routeVisible,
       alerts,
       notes,
       zone,
