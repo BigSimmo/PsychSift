@@ -50,7 +50,7 @@ import {
   type RotationDraft,
   type RoundDraft,
 } from "./round-admin-model";
-import { AvatarRow, RotationsAdminGate } from "./rounds-page";
+import { AvatarRow, RotationNoTeam, RotationsAdminGate } from "./rounds-page";
 
 /**
  * The round form (mockup `S.newround`): three steps on one page, Terms,
@@ -121,22 +121,7 @@ function NewRoundStart({
   const [saving, setSaving] = useState(false);
   const latest = read.managed.find((round) => round.round.serviceId === team?.serviceId)?.round;
 
-  if (!team) {
-    return (
-      <WorkCard testId="rotation-new-round-no-team">
-        <WorkEmpty
-          icon={Users}
-          title="No team to run a round for"
-          body="Rounds are for the team you manage in Roster."
-          action={
-            <WorkButton variant="secondary" href="/roster/manage" testId="rotation-new-round-manage">
-              Back to Manage team
-            </WorkButton>
-          }
-        />
-      </WorkCard>
-    );
-  }
+  if (!team) return <RotationNoTeam />;
   const people = team.people.map((person) => ({ ...person }));
   const initial = newRoundDraft({
     now,
