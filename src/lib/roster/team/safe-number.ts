@@ -130,10 +130,20 @@ export function safeNumberNeeds(grid: SafeNumberGrid, current: readonly Need[]):
     .filter((need) => !isEditorNeed(need))
     .map(toInput)
     .filter((need): need is RosterStaffingNeedInput => need !== null);
+  // A team can contain duplicate owned rows (for example after an import). Keep
+  // their aggregate, but split it into database-sized rows rather than making
+  // one row whose `needed` value is above the table's limit.
   const owned = SAFE_NUMBER_KINDS.flatMap((kind) =>
-    grid[kind].flatMap((needed, index): RosterStaffingNeedInput[] =>
-      needed > 0 ? [{ weekday: index + 1, date: null, kind, grade: null, siteId: null, needed }] : [],
-    ),
+    grid[kind].flatMap((needed, index): RosterStaffingNeedInput[] => {
+      const rows: RosterStaffingNeedInput[] = [];
+      let remaining = Math.max(0, Math.round(needed));
+      while (remaining > 0) {
+        const part = Math.min(200, remaining);
+        rows.push({ weekday: index + 1, date: null, kind, grade: null, siteId: null, needed: part });
+        remaining -= part;
+      }
+      return rows;
+    }),
   );
   return [...kept, ...owned];
 }
