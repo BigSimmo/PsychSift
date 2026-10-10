@@ -2039,6 +2039,19 @@ describe("high-risk answer support (#ZZ4RAP)", () => {
     ).toBe(false);
   });
 
+  it("keeps the direction of a listed finding", () => {
+    const finding = source(
+      "finding",
+      "Signs of toxicity: increased lithium levels in older patients after dehydration.",
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Signs of toxicity: reduced lithium levels in older patients after dehydration.",
+        finding,
+      ),
+    ).toBe(false);
+  });
+
   it("does not let a verbatim match drop a leading negation", () => {
     const negated = source("negated", "Do not stop clozapine therapy until the haematologist has reviewed the result.");
     expect(

@@ -483,6 +483,7 @@ function evidenceTextSupportsClaim(
   antecedentText?: string,
 ) {
   if (!compatibleFactualRelation(claim, evidence)) return false;
+  if (!compatibleFindingDirections(claim, evidence)) return false;
   const claimEntities = entities(claim);
   const evidenceEntities = entities(evidence);
   // Only the medicines named in the segment directly before may stand in for "the combination";
@@ -547,6 +548,23 @@ function namesFindingNotChange(text: string, match: RegExpMatchArray) {
   return /(?:^|^o|[,:;(•-]|,\s*(?:and|or)|\b(?:include|includes|including|such as))\s*$/.test(
     text.slice(0, match.index),
   );
+}
+
+// A finding still has a direction: "Increased lithium levels" does not support "Reduced lithium
+// levels". Every finding direction the claim names must appear among the evidence's findings.
+function findingDirections(value: string, findingsOnly: boolean) {
+  const text = cleanText(value).toLowerCase();
+  return new Set(
+    [...text.matchAll(/\b(?:increased|decreased|reduced)\b/g)]
+      .filter((match) => !findingsOnly || namesFindingNotChange(text, match))
+      .map((match) => (match[0] === "increased" ? "up" : "down")),
+  );
+}
+
+function compatibleFindingDirections(claim: string, evidence: string) {
+  // The evidence carries its title prefix, so count every participle it states, not only list-position ones.
+  const evidenceDirections = findingDirections(evidence, false);
+  return [...findingDirections(claim, true)].every((direction) => evidenceDirections.has(direction));
 }
 
 // Relation words bind two arguments; their occurrence anywhere in a chunk does

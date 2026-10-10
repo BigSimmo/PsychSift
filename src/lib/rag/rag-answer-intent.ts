@@ -80,7 +80,12 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
 function isTwoMedicineInteractionQuery(query: string, normalized: string) {
   if (medicationEntitiesInText(query).length < 2) return false;
   if (/\b(?:interact\w*|together|combin\w*|co-?prescrib\w*)\b/.test(normalized)) return true;
-  if (!/\b(?:prescrib\w*|give|giving|use|using|start|starting|add|adding|take|taking)\b/.test(normalized)) return false;
+  if (
+    !/\b(?:prescrib\w*|give|giving|use|using|start|starting|add|adding|take|taking|be\s+(?:given|used|taken|started|added|administered|co-?administered))\b/.test(
+      normalized,
+    )
+  )
+    return false;
   return [...normalized.matchAll(/\b(?:on|taking|with)\s+((?:\S+\s*){1,4})/g)].some(
     (match) => medicationEntitiesInText(match[1]).length > 0,
   );

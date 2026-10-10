@@ -3181,6 +3181,12 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
     );
   });
 
+  it("routes a passive co-administration question to contraindication", () => {
+    expect(classifyAnswerIntent("Can ibuprofen be administered with lithium?", "medication_dose_risk")).toBe(
+      "contraindication",
+    );
+  });
+
   it("does not treat 'with' + a condition as an interaction", () => {
     expect(
       classifyAnswerIntent(
