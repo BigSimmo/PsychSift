@@ -305,7 +305,8 @@ function CalendarBody({
     teaching.status === "loading" ||
     teaching.status === "idle" ||
     calendar.status === "loading" ||
-    leave.status === "loading";
+    leave.status === "loading" ||
+    features.some((source) => source.status === "loading");
   // The skeleton is for the first read only. A month change keeps the header and its
   // buttons in place (so focus and the month announcement survive) and says it is updating.
   const [settled, setSettled] = useState(false);
