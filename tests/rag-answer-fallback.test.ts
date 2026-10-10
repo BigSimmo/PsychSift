@@ -8817,6 +8817,11 @@ describe("high-risk answer recovery (#ZZ4RAP)", () => {
       forceGenerationRoute: true,
     });
     expect(visibleText(backup)).not.toMatch(/therapeutic ranges|maintenance dose|2500\s*mg/i);
+    // The "Signs and symptoms of severe toxicity:" heading carries over to its bullets (owner decision).
+    expect(visibleText(backup)).toMatch(
+      /signs and symptoms of severe toxicity include increased muscle tone, hyperreflexia[^.]*QT-interval prolongation and death\./i,
+    );
+    expect(visibleText(backup)).not.toMatch(/toxicity include \W*escalation/i);
   });
 
   it("answers what makes lithium toxicity more likely only from toxicity text", async () => {

@@ -80,6 +80,12 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
 function isTwoMedicineInteractionQuery(query: string, normalized: string) {
   if (medicationEntitiesInText(query).length < 2) return false;
   if (/\b(?:interact\w*|together|combin\w*|co-?prescrib\w*)\b/.test(normalized)) return true;
+  // Owner decision (#ZZ4RAP): dosing, switching or mechanism questions about two named medicines get
+  // the source's avoid/caution interaction guidance, not dose guidance.
+  if (
+    /\b(?:doses?|dosing|dosage|switch\w*|cross-?taper\w*|mechanism|affect\w*|effects?\s+(?:of|on))\b/.test(normalized)
+  )
+    return true;
   if (
     !/\b(?:prescrib\w*|give|giving|use|using|start|starting|add|adding|take|taking|be\s+(?:given|used|taken|started|added|administered|co-?administered))\b/.test(
       normalized,

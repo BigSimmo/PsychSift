@@ -3187,6 +3187,16 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
     );
   });
 
+  it("routes two-medicine dosing, switching and mechanism questions to interaction guidance", () => {
+    for (const query of [
+      "What dose of ibuprofen is safe with lithium?",
+      "How do I switch from sertraline to clozapine?",
+      "What is the mechanism of the ibuprofen and lithium effect?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).toBe("contraindication");
+    }
+  });
+
   it("does not treat 'with' + a condition as an interaction", () => {
     expect(
       classifyAnswerIntent(

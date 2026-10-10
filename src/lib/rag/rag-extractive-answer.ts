@@ -1507,6 +1507,38 @@ function baselineMonitoringFactFromResult(
   };
 }
 
+const wordsOf = (text: string) => (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).join(" ");
+
+// A heading such as "Signs and symptoms of severe toxicity:" carries its toxicity context to the
+// bullets listed under it, up to the next colon-led heading (owner decision, #ZZ4RAP).
+// Sub-bullets ("o …", "- …") listed directly under a heading, with their wrapped lines. The list ends at
+// the first line that is neither a new sub-bullet nor the continuation of an unfinished one.
+function subBulletItemsAfter(lines: string[]) {
+  const items: string[] = [];
+  for (const line of lines) {
+    if (/^\s*[o\-–]\s+/.test(line)) items.push(line.replace(/^\s*[o\-–]\s+/, ""));
+    else if (items.length > 0 && !/[.!?]\s*$/.test(items[items.length - 1])) items[items.length - 1] += ` ${line}`;
+    else break;
+  }
+  return items;
+}
+
+function toxicityHeadingFor(sentence: string, content: string | null | undefined, query: string) {
+  // A question about one severity ("signs of severe toxicity") takes only that severity's list.
+  const severities = query.toLowerCase().match(/\b(?:severe|mild|moderate)\b/g) ?? [];
+  const opening = wordsOf(sentence).split(" ").slice(0, 6).join(" ");
+  if (!content || !opening) return null;
+  const lines = content.split("\n");
+  for (const [index, line] of lines.entries()) {
+    if (!/\btoxic\w*[^\n]*:\s*$/i.test(line)) continue;
+    if (severities.length > 0 && !severities.some((severity) => line.toLowerCase().includes(severity))) continue;
+    if (subBulletItemsAfter(lines.slice(index + 1)).some((item) => wordsOf(item).startsWith(opening))) {
+      return line.replace(/^[\s•]+|:\s*$/g, "").trim();
+    }
+  }
+  return null;
+}
+
 function bindMonitoringAnaphoricQualifiers(sentences: string[], intent: AnswerIntent) {
   if (intent !== "monitoring_schedule" && intent !== "contraindication") return sentences;
   const bound: string[] = [];
@@ -1684,8 +1716,9 @@ function extractClinicalFactsFromResults(
         : splitClinicalEvidenceSentences(text),
       intent,
     );
-    for (const sentence of sentences) {
-      if (referencesConflictingBand(sentence)) continue;
+    for (const rawSentence of sentences) {
+      if (referencesConflictingBand(rawSentence)) continue;
+      let sentence = rawSentence;
       if (
         labelledTargetFacts.length > 1 &&
         (/(?:^|:\s*)Target\s+(?:serum|plasma)\s+level\s*:/i.test(sentence) ||
@@ -1695,7 +1728,14 @@ function extractClinicalFactsFromResults(
       }
       // A toxicity-features question is answered only by text about toxicity; a dose cap or
       // titration note from the same chunk is not an answer to it (#ZZ4RAP).
-      if (toxicityFeatureQuery && !/\btoxic\w*/i.test(sentence)) continue;
+      // A colon-led lead-in ("…complete the following:") introduces a list; it is not itself an answer.
+      if (toxicityFeatureQuery && /:\s*$/.test(sentence)) continue;
+      if (toxicityFeatureQuery && !/\btoxic\w*/i.test(sentence)) {
+        const heading = toxicityHeadingFor(sentence, result.content, query);
+        if (!heading) continue;
+        // State the bullet under its heading: "Signs and symptoms of severe toxicity include increased muscle tone, …".
+        sentence = `${heading} include ${lowerFirst(sentence)}`;
+      }
       if (!factSentenceMatchesQueryFromResult(sentence, result, query, intent)) continue;
       const kind = factKindForSentence(sentence, query, intent);
       if (!kind) continue;
