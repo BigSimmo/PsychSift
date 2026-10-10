@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import {
   allowRateLimitInMemoryFallbackOnUnavailable,
@@ -18,6 +19,7 @@ import {
   deleteOwnerShifts,
   fetchLatestShiftImport,
   fetchOwnerShifts,
+  fetchOwnerShiftsBetween,
   replaceOwnerShifts,
 } from "@/lib/roster/shifts/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -28,7 +30,8 @@ export const runtime = "nodejs";
 
 /**
  * My shifts: the signed-in doctor's own roster. List the last three weeks and
- * what is coming up, with the latest import (GET), save an imported roster
+ * what is coming up, with the latest import (GET), or one span of dates
+ * (`GET ?from=YYYY-MM-DD&to=YYYY-MM-DD`, at most 62 days) for an older month, save an imported roster
  * (POST), or delete all of the doctor's Roster data: calendar links, settings,
  * shifts and imports (DELETE). The owner comes from the validated session
  * only, never the request, and every query is filtered by it.
@@ -45,6 +48,41 @@ const PAST_SHIFT_DAYS = 21;
 
 function listFrom(now = new Date()): Date {
   return new Date(now.getTime() - PAST_SHIFT_DAYS * 24 * 60 * 60 * 1000);
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** The longest span one dated read may ask for: a month, with room for zone padding. */
+const SHIFT_SPAN_MAX_DAYS = 62;
+
+/** A real calendar date: "2026-02-30" parses to March, so it is refused. */
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const time = Date.parse(`${value}T00:00:00Z`);
+    return !Number.isNaN(time) && new Date(time).toISOString().startsWith(value);
+  });
+
+const spanSchema = z
+  .object({ from: isoDate, to: isoDate })
+  .refine(({ from, to }) => to >= from, { message: "to before from" })
+  .refine(({ from, to }) => (Date.parse(to) - Date.parse(from)) / DAY_MS <= SHIFT_SPAN_MAX_DAYS, {
+    message: "span too long",
+  });
+
+/**
+ * The dated read's window, from the start of `from` to the end of `to` in UTC.
+ * Null when neither is given (the main list), "invalid" when either is wrong.
+ */
+function spanOf(request: Request): { from: Date; to: Date } | null | "invalid" {
+  const params = new URL(request.url).searchParams;
+  if (!params.has("from") && !params.has("to")) return null;
+  const parsed = spanSchema.safeParse({ from: params.get("from"), to: params.get("to") });
+  if (!parsed.success) return "invalid";
+  return {
+    from: new Date(`${parsed.data.from}T00:00:00Z`),
+    to: new Date(Date.parse(`${parsed.data.to}T00:00:00Z`) + DAY_MS),
+  };
 }
 
 async function authorise(request: Request) {
@@ -67,6 +105,12 @@ function demoRefusal() {
 
 export async function GET(request: Request) {
   try {
+    const span = spanOf(request);
+    if (span === "invalid") {
+      return publicErrorResponse(`Ask for real dates, at most ${SHIFT_SPAN_MAX_DAYS} days apart.`, 400, {
+        code: "invalid_shift_span",
+      });
+    }
     if (isDemoMode()) {
       return NextResponse.json(
         { shifts: demoOnCallShifts(new Date()), latestImport: null, demoMode: true },
@@ -75,6 +119,10 @@ export async function GET(request: Request) {
     }
     const { supabase, user, rateLimit } = await authorise(request);
     if (rateLimit.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rateLimit);
+    if (span) {
+      const shifts = await fetchOwnerShiftsBetween(supabase, user.id, span.from, span.to);
+      return NextResponse.json({ shifts }, { headers: noStore });
+    }
     const [shifts, latestImport] = await Promise.all([
       fetchOwnerShifts(supabase, user.id, listFrom()),
       fetchLatestShiftImport(supabase, user.id),

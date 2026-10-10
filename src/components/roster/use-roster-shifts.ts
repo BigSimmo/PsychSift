@@ -47,6 +47,10 @@ export type RosterShiftsState = {
    * days outside the last range (a week further away) are not yet known.
    */
   readonly teamRefreshing?: boolean;
+  /** With `ownHistory`: your own shifts for the older part of the range are still being read. */
+  readonly historyLoading?: boolean;
+  /** With `ownHistory`: your own shifts for the older part of the range could not be read. */
+  readonly historyFailed?: boolean;
   readonly latestImport: OnCallShiftImportSummary | null;
   readonly demoMode: boolean;
   /** The shifts are the sample doctor's example roster; the reader's first saved shift replaces them. */
@@ -105,12 +109,59 @@ async function fetchShifts(signal?: AbortSignal): Promise<Loaded> {
   }
 }
 
-export function useRosterShifts(teamRange?: { from: string; to: string }): RosterShiftsState {
+/** Mirrors PAST_SHIFT_DAYS in `GET /api/roster/shifts`: the main list starts this many days back. */
+const LISTED_PAST_DAYS = 21;
+
+/** Own shifts in both lists once, soonest first. */
+function unionShifts(listed: readonly OnCallShift[], older: readonly OnCallShift[]): readonly OnCallShift[] {
+  const seen = new Set(listed.map((shift) => shift.id));
+  const extra = older.filter((shift) => !seen.has(shift.id));
+  if (!extra.length) return listed;
+  return [...extra, ...listed].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+}
+
+/**
+ * `teamRange` sets the dates team shifts are read for. With `ownHistory`, your
+ * own shifts are read for the part of that range older than the main list
+ * reaches too (one dated read, kept in memory only), so an older month shows
+ * them. Screens that only look around today leave it off.
+ */
+export function useRosterShifts(
+  teamRange?: { from: string; to: string },
+  options?: { readonly ownHistory?: boolean },
+): RosterShiftsState {
   const { zone } = useWorkTimeZone();
   const teams = useRosterTeams();
   const today = zonedToday(zone);
-  const from = teamRange?.from ?? addDaysToDate(today, -21);
+  const from = teamRange?.from ?? addDaysToDate(today, -LISTED_PAST_DAYS);
   const to = teamRange?.to ?? addDaysToDate(today, 40);
+  const listedFrom = addDaysToDate(today, -LISTED_PAST_DAYS);
+  // The dated read stops where the main list starts (a day of overlap, merged by ID).
+  const historyTo = to < listedFrom ? to : listedFrom;
+  const wantsHistory = Boolean(options?.ownHistory && teamRange && from < listedFrom);
+  const [history, setHistory] = useState<{
+    from: string;
+    to: string;
+    shifts: readonly OnCallShift[];
+    failed: boolean;
+  } | null>(null);
+  const [historyReload, setHistoryReload] = useState(0);
+  useEffect(() => {
+    if (!wantsHistory) return;
+    const controller = new AbortController();
+    const query = new URLSearchParams({ from, to: historyTo });
+    sharedGet(`${ROSTER_SHIFTS_URL}?${query}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("older shifts unavailable");
+        const payload = await readPayload(response);
+        if (!controller.signal.aborted)
+          setHistory({ from, to: historyTo, shifts: payload.shifts ?? [], failed: false });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setHistory({ from, to: historyTo, shifts: [], failed: true });
+      });
+    return () => controller.abort();
+  }, [wantsHistory, from, historyTo, historyReload]);
   const [teamData, setTeamData] = useState<{
     payload: typeof teams.data;
     owner: string;
@@ -287,6 +338,7 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
   const reloadTeams = teams.reload;
   const reload = useCallback(async () => {
     reloadTeams();
+    setHistoryReload((count) => count + 1);
     await load();
   }, [reloadTeams, load]);
 
@@ -306,9 +358,14 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
     ? teamPayload.teams.filter((team) => team.enabled).length
     : 0;
 
+  const currentHistory = wantsHistory && history?.from === from && history.to === historyTo ? history : null;
+  const own = currentHistory ? unionShifts(shifts, currentHistory.shifts) : shifts;
+
   return {
     status,
-    shifts: shownTeamData && actorId ? mergeMyShifts(shifts, shownTeamData.rows, actorId) : shifts,
+    shifts: shownTeamData && actorId ? mergeMyShifts(own, shownTeamData.rows, actorId) : own,
+    historyLoading: wantsHistory && !currentHistory,
+    historyFailed: Boolean(currentHistory?.failed),
     teamLoading:
       teams.status === "loading" ||
       (teams.status === "ready" && Boolean(actorId) && enabledTeamCount > 0 && !shownTeamData),

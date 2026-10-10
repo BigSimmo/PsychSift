@@ -83,8 +83,6 @@ import { formatZonedDay, formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/
 type CalendarView = "month" | "list";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
-/** Roster's shift read starts this many days back, so older shifts are not on the calendar. */
-const SHIFT_HISTORY_DAYS = 21;
 /** How many items a day's cell lists before "+ more". */
 const CELL_ITEMS = 3;
 
@@ -224,7 +222,7 @@ function CalendarBody({
   const addReturn = useRef<HTMLElement | null>(null);
 
   const items = useMyDayItems({ enabled: true, now });
-  const shifts = useRosterShifts(range);
+  const shifts = useRosterShifts(range, { ownHistory: true });
   const teaching = useTeachingWeek(range, { demoMode: false }, now);
   const reminders = useAppPreferences().preferences.reminders;
   const calendar = useWorkCalendarEntries();
@@ -307,6 +305,7 @@ function CalendarBody({
     items.status === "loading" ||
     shifts.status === "loading" ||
     shifts.teamLoading ||
+    shifts.historyLoading ||
     teaching.status === "loading" ||
     teaching.status === "idle" ||
     calendar.status === "loading" ||
@@ -338,6 +337,7 @@ function CalendarBody({
   }
   if (shifts.status === "error" || shifts.status === "signed-out") failed.push("Roster shifts");
   if (shifts.teamMessage) failed.push("Team shifts");
+  if (shifts.historyFailed) failed.push("Older Roster shifts");
   if (leave.status === "failed") failed.push("Leave");
   if (teaching.status === "offline" || teaching.status === "error" || teaching.status === "signed-out") {
     failed.push("Teaching sessions");
@@ -398,11 +398,6 @@ function CalendarBody({
       {sampleOmitted ? (
         <ModeNotice testId="my-day-calendar-sample-notice">
           Roster is showing example shifts only, so your shifts aren&apos;t shown here.
-        </ModeNotice>
-      ) : null}
-      {from < addDaysToDate(today, -SHIFT_HISTORY_DAYS) ? (
-        <ModeNotice testId="my-day-calendar-history-notice">
-          Shifts from more than three weeks ago aren&apos;t shown on this calendar.
         </ModeNotice>
       ) : null}
       {teaching.status === "setup" ? (
@@ -915,7 +910,7 @@ function MonthList({
             )}
           >
             {list.map((item) => (
-              <ItemRow key={item.key} item={item} onAdd={onAdd} />
+              <ItemRow key={item.key} item={item} testId={`my-day-calendar-list-item-${item.key}`} onAdd={onAdd} />
             ))}
           </ul>
         </li>
