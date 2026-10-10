@@ -310,7 +310,9 @@ function teachingEntry(session: SessionSummaryRead, shifts: readonly MyShift[]):
     state: cancelled ? "Cancelled" : null,
     warn: cancelled,
     clash: cancelled || session.allDay ? null : clashWithShifts(shifts, session.startsAt, session.endsAt),
-    href: sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
+    href:
+      sessionHref(session) ??
+      `/teaching/week?week=${perthDateOf(session.startsAt)}#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
     testId: `my-day-week-session-${session.occurrenceId}`,
   };
 }

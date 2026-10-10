@@ -33,6 +33,7 @@ import { useWorkCalendarEntries } from "@/components/work-calendar/use-work-cale
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { appModeDefinition } from "@/lib/app-modes";
+import { CALENDAR_TIME_ZONE } from "@/lib/calendar/calendar-event";
 import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 import { addMonths, monthTitle, monthWeeks } from "@/lib/my-day/figures";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
@@ -164,7 +165,10 @@ function sessionItem(session: SessionSummaryRead, zone: string): MainCalendarIte
     detail: [session.venue, session.isPresenter ? "you lead" : null].filter(Boolean).join(" · ") || null,
     state: cancelled ? "Cancelled" : null,
     warn: cancelled,
-    href: sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
+    // Teaching Week opens on this week unless told otherwise, so a relocated session names its own.
+    href:
+      sessionHref(session) ??
+      `/teaching/week?week=${zonedDateOf(session.startsAt, CALENDAR_TIME_ZONE)}#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
     band: false,
     ...(session.allDay
       ? {}
