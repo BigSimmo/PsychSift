@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { rosterActionSchema, type RosterMaker } from "@/lib/roster/team/model";
 import {
+  applySafeNumberChanges,
   emptySafeNumberGrid,
   otherNeedCount,
   safeNumberGrid,
@@ -89,5 +90,18 @@ describe("the list needs.set is sent", () => {
     const refused = [need({ kind: "leave" }), need({ grade: "other", weekday: 2 })];
     expect(safeNumberNeeds(emptySafeNumberGrid(), refused)).toEqual([]);
     expect(otherNeedCount(refused)).toBe(0);
+  });
+});
+
+describe("only the numbers that changed", () => {
+  it("lays this manager's changes over the fresh numbers and keeps everything else as read", () => {
+    const opened = setSafeNumber(emptySafeNumberGrid(), "day", [1, 2, 3, 4, 5], 2);
+    const edited = setSafeNumber(opened, "day", [1, 2, 3, 4, 5], 3);
+    const fresh = setSafeNumber(opened, "night", [6, 7], 1);
+    const merged = applySafeNumberChanges(fresh, opened, edited);
+    expect(merged.day).toEqual([3, 3, 3, 3, 3, 0, 0]);
+    expect(merged.night).toEqual([0, 0, 0, 0, 0, 1, 1]);
+    // Undo the same way: back to what was read, for the cells the save changed only.
+    expect(applySafeNumberChanges(merged, merged, fresh)).toEqual(fresh);
   });
 });

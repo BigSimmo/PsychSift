@@ -161,6 +161,35 @@ it("Undo puts back only the safe number, keeping a need another manager set afte
   await waitFor(() => expect((screen.getByLabelText("Day, Monday to Friday") as HTMLInputElement).value).toBe("2"));
 });
 
+it("keeps a number another manager changed while this editor was open, saving only this manager's change", async () => {
+  let current: readonly object[] = needs;
+  const { posts } = stubTeam({ maker: () => Response.json({ codes: [], needs: current, drafts: [] }) });
+  render(<RosterSafeNumber serviceId="team" overview={overview} />);
+  fireEvent.click(await screen.findByRole("button", { name: "One more, Day, Monday to Friday" }));
+  // Meanwhile another manager sets a weekend night number.
+  const night = [6, 7].map((weekday) => ({
+    id: id(20 + weekday),
+    weekday,
+    date: null,
+    kind: "night",
+    grade: null,
+    siteId: null,
+    needed: 1,
+  }));
+  current = [...needs, ...night];
+  fireEvent.click(screen.getByRole("button", { name: "Save safe number" }));
+  await screen.findByText(/^Saved\./);
+  expect(posts[0]).toEqual({
+    action: "needs.set",
+    needs: [
+      { weekday: null, date: "2026-12-25", kind: "night", grade: "registrar", siteId: null, needed: 1 },
+      ...[1, 2, 3, 4, 5].map((weekday) => ({ weekday, date: null, kind: "day", grade: null, siteId: null, needed: 3 })),
+      ...[6, 7].map((weekday) => ({ weekday, date: null, kind: "night", grade: null, siteId: null, needed: 1 })),
+    ],
+  });
+  expect((screen.getByLabelText("Night, Saturday and Sunday") as HTMLInputElement).value).toBe("1");
+});
+
 it("shows Saving while the save is on its way and keeps the numbers locked", async () => {
   let answer: (response: Response) => void = () => {};
   stubTeam({ post: () => new Promise<Response>((resolve) => (answer = resolve)) });

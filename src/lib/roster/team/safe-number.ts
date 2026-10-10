@@ -107,6 +107,21 @@ export function setSafeNumber(
   return { ...grid, [kind]: grid[kind].map((current, index) => (weekdays.includes(index + 1) ? next : current)) };
 }
 
+/**
+ * Only the numbers that differ between `from` and `to`, laid over `fresh`.
+ * Save uses it so a number another manager changed since this editor opened is
+ * kept, and Undo uses it so it puts back only the numbers its save changed.
+ */
+export function applySafeNumberChanges(
+  fresh: SafeNumberGrid,
+  from: SafeNumberGrid,
+  to: SafeNumberGrid,
+): SafeNumberGrid {
+  const pick = (kind: SafeNumberKind) =>
+    fresh[kind].map((value, index) => (to[kind][index] !== from[kind][index] ? to[kind][index]! : value));
+  return { day: pick("day"), evening: pick("evening"), night: pick("night") };
+}
+
 /** A need as `needs.set` takes it: no id. Null when the table would refuse it, so it can never be sent. */
 function toInput(need: Need): RosterStaffingNeedInput | null {
   if (!(ROSTER_OPEN_SHIFT_KINDS as readonly string[]).includes(need.kind)) return null;

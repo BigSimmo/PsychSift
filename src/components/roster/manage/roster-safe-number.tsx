@@ -1,7 +1,7 @@
 "use client";
 
 import { Minus, Moon, Plus, Sun, Sunset, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { WorkButton, WorkCard, WorkIconRow, WorkSectionLabel, useWorkUndoToast } from "@/components/mode-kit/work";
 import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
@@ -13,6 +13,7 @@ import {
   SAFE_NUMBER_KINDS,
   SAFE_NUMBER_MAX,
   SAFE_NUMBER_WEEKDAYS,
+  applySafeNumberChanges,
   otherNeedCount,
   safeNumberGrid,
   safeNumberIsGrouped,
@@ -124,6 +125,8 @@ function Editor({
   const [perDayChoice, setPerDayChoice] = useState<boolean | null>(null);
   const [state, setState] = useState<SaveState>({ kind: "idle" });
   const [others, setOthers] = useState(() => otherNeedCount(needs));
+  // One save or Undo at a time. Undo is tapped from a toast, so it can't read the saving state.
+  const busy = useRef(false);
   const grid = draft ?? confirmed;
   const dirty = !sameSafeNumbers(grid, confirmed);
   const saving = state.kind === "saving";
@@ -148,47 +151,59 @@ function Editor({
     return false;
   }
 
-  // Undo puts back only this editor's numbers, over a fresh read, so a need another manager set
-  // between the save and the Undo is kept.
-  async function undo(previous: SafeNumberGrid) {
-    setState({ kind: "saving" });
-    const fresh = await fetchRosterRead(serviceId, "maker");
-    if (!fresh.ok) {
-      if (fresh.code === "sample_read_only") setState({ kind: "example" });
-      else failed(fresh.message);
-      return;
+  // Undo puts back only the numbers its save changed, over a fresh read, so a need or a number
+  // another manager set since is kept, and so are the manager's own unsaved changes.
+  async function undo(saved: SafeNumberGrid, previous: SafeNumberGrid) {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      setState({ kind: "saving" });
+      const fresh = await fetchRosterRead(serviceId, "maker");
+      if (!fresh.ok) {
+        if (fresh.code === "sample_read_only") setState({ kind: "example" });
+        else failed(fresh.message);
+        return;
+      }
+      const reverted = applySafeNumberChanges(safeNumberGrid(fresh.data.needs), saved, previous);
+      if (!(await send(safeNumberNeeds(reverted, fresh.data.needs)))) return;
+      setConfirmed(reverted);
+      setDraft((current) => (current ? applySafeNumberChanges(reverted, saved, current) : null));
+      setOthers(otherNeedCount(fresh.data.needs));
+      setState({ kind: "idle" });
+      onSaved?.();
+    } finally {
+      busy.current = false;
     }
-    if (!(await send(safeNumberNeeds(previous, fresh.data.needs)))) return;
-    setConfirmed(previous);
-    setDraft(null);
-    setOthers(otherNeedCount(fresh.data.needs));
-    setState({ kind: "idle" });
-    onSaved?.();
   }
 
   async function save() {
-    if (saving || !dirty) return;
+    if (saving || !dirty || busy.current) return;
     if (example) {
       setState({ kind: "example" });
       return;
     }
-    setState({ kind: "saving" });
-    // Read the team's needs again, so a need another manager set since this page opened is kept.
-    const fresh = await fetchRosterRead(serviceId, "maker");
-    if (!fresh.ok) {
-      if (fresh.code === "sample_read_only") setState({ kind: "example" });
-      else failed(fresh.message);
-      return;
+    busy.current = true;
+    try {
+      setState({ kind: "saving" });
+      // Read the team's needs again, so a need or a number another manager set since this page opened is kept.
+      const fresh = await fetchRosterRead(serviceId, "maker");
+      if (!fresh.ok) {
+        if (fresh.code === "sample_read_only") setState({ kind: "example" });
+        else failed(fresh.message);
+        return;
+      }
+      const previous = safeNumberGrid(fresh.data.needs);
+      const saved = applySafeNumberChanges(previous, confirmed, grid);
+      if (!(await send(safeNumberNeeds(saved, fresh.data.needs)))) return;
+      setConfirmed(saved);
+      setDraft(null);
+      setOthers(otherNeedCount(fresh.data.needs));
+      setState({ kind: "saved" });
+      onSaved?.();
+      toast?.("Safe number saved", () => void undo(saved, previous));
+    } finally {
+      busy.current = false;
     }
-    const previous = safeNumberGrid(fresh.data.needs);
-    const saved = grid;
-    if (!(await send(safeNumberNeeds(saved, fresh.data.needs)))) return;
-    setConfirmed(saved);
-    setDraft(null);
-    setOthers(otherNeedCount(fresh.data.needs));
-    setState({ kind: "saved" });
-    onSaved?.();
-    toast?.("Safe number saved", () => void undo(previous));
   }
 
   const rows = perDay
