@@ -41,7 +41,11 @@ function actionSamples(id: string, userId: string, date: string): RosterAction[]
     })),
     { action: "open.release", openShiftId: id },
     { action: "seen.mark", publicationId: id },
-    { action: "needs.set", needs: [{ weekday: 1, date: null, kind: "day", grade: null, siteId: null, needed: 1 }] },
+    {
+      action: "needs.set",
+      expectedIds: [],
+      needs: [{ weekday: 1, date: null, kind: "day", grade: null, siteId: null, needed: 1 }],
+    },
   ];
 }
 
