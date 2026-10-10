@@ -302,7 +302,11 @@ function CalendarBody({
     teaching.status === "idle" ||
     calendar.status === "loading" ||
     leave.status === "loading";
-  if (loading) {
+  // The skeleton is for the first read only. A month change keeps the header and its
+  // buttons in place (so focus and the month announcement survive) and says it is updating.
+  const [settled, setSettled] = useState(false);
+  if (!loading && !settled) setSettled(true);
+  if (loading && !settled) {
     return (
       <>
         <span role="status" className="sr-only">
@@ -356,7 +360,7 @@ function CalendarBody({
     });
 
   return (
-    <div className="grid min-w-0 gap-2.5" data-testid="my-day-calendar-ready">
+    <div className="grid min-w-0 gap-2.5" data-testid="my-day-calendar-ready" aria-busy={loading}>
       <MyDaySegmented
         options={[
           ["month", "Month"],
@@ -432,7 +436,12 @@ function CalendarBody({
         </div>
       ) : null}
 
-      <MonthHeader month={month} today={today} onMonth={changeMonth} summary={monthSummary(shown, from, to)} />
+      <MonthHeader
+        month={month}
+        today={today}
+        onMonth={changeMonth}
+        summary={loading ? "Updating…" : monthSummary(shown, from, to)}
+      />
       <Bands items={bandsOverlapping(shown, from, to)} today={today} />
 
       {view === "month" ? (
