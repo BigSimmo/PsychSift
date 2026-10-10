@@ -176,7 +176,8 @@ function CalendarBody({
   const teaching = useTeachingWeek(range, { demoMode: false }, now);
   const reminders = useAppPreferences().preferences.reminders;
   const calendar = useWorkCalendarEntries();
-  const leave = useJuniorRosterLeave(true);
+  const [leaveReload, setLeaveReload] = useState(0);
+  const leave = useJuniorRosterLeave(true, leaveReload);
   const paperwork = useAdminPaperwork(null);
 
   // Example shifts belong to a sample doctor, never to the reader: left out unless this is a demo.
@@ -253,6 +254,7 @@ function CalendarBody({
     items.retry();
     void shifts.reload();
     teaching.retry();
+    setLeaveReload((count) => count + 1);
   };
 
   const changeMonth = (next: string) => {
