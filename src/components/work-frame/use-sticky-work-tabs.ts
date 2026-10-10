@@ -61,7 +61,11 @@ export function useStickyWorkTabs(band: HTMLElement | null, navRef: RefObject<HT
       const slid = Number.parseFloat(style.translate.split(" ")[1] ?? "0") || 0;
       band.toggleAttribute("data-stuck", band.getBoundingClientRect().top - slid - edge <= stickTop + 1);
       // The band moves with no scroll event while it slides, so keep reading.
-      if (slide?.playState === "running") onScroll();
+      // That includes a CSS transition: under reduced motion the app gives
+      // every property a near-zero one, so `top` still reads its old value the
+      // frame the bar hides, and a band left in its own place stayed marked
+      // stuck with its title trimmed off (found 10 Oct 2026).
+      if (band.getAnimations?.().some((animation) => animation.playState === "running")) onScroll();
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(checkStuck);
@@ -122,8 +126,13 @@ export function useStickyWorkTabs(band: HTMLElement | null, navRef: RefObject<HT
     syncBar();
     const bar = typeof MutationObserver === "undefined" ? null : new MutationObserver(syncBar);
     bar?.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["data-scroll-hidden"] });
+    // The phone reserve lands on the root's style after a quiet window, later
+    // than any resize here, and moves where the band sticks with no scroll.
+    const reserve = typeof MutationObserver === "undefined" ? null : new MutationObserver(onScroll);
+    reserve?.observe(root, { attributes: true, attributeFilter: ["style"] });
     return () => {
       bar?.disconnect();
+      reserve?.disconnect();
       slide?.cancel();
       window.removeEventListener("resize", measure);
       document.removeEventListener("scroll", onScroll, { capture: true });

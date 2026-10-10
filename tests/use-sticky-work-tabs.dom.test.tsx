@@ -52,6 +52,30 @@ describe("useStickyWorkTabs", () => {
     });
     expect(band.hasAttribute("data-stuck")).toBe(false);
   });
+
+  it("rechecks when the phone reserve lands on the root with no scroll", async () => {
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+    const { getByTestId } = render(<Band />);
+    const band = getByTestId("band");
+    const rect = vi.spyOn(band, "getBoundingClientRect").mockReturnValue(rectAt(300));
+    act(() => {
+      document.dispatchEvent(new Event("scroll"));
+    });
+    expect(band.hasAttribute("data-stuck")).toBe(false);
+
+    // The reserve lands and the band now sticks where it already sits.
+    band.style.top = "78px";
+    rect.mockReturnValue(rectAt(78));
+    await act(async () => {
+      document.documentElement.style.setProperty("--phone-overlay-chrome-h", "62px");
+      await Promise.resolve();
+    });
+    expect(band.hasAttribute("data-stuck")).toBe(true);
+    document.documentElement.style.removeProperty("--phone-overlay-chrome-h");
+  });
 });
 
 describe("work band hide rule", () => {
