@@ -137,6 +137,14 @@ export type AnswerQualityEvalCase = RagEvalCase & {
   expectedIntent: AnswerQualityIntent;
   mustContainAny?: string[];
   mustNotContain?: string[];
+  /**
+   * High-risk cases (#ZZ4RAP): every group must be matched by one of its alternatives, or intent
+   * coverage fails. Each alternative is quoted from a held source passage, proven by
+   * tests/high-risk-eval-cases-draft.test.ts against tests/fixtures/high-risk-eval-cases.draft.json.
+   */
+  requiredConceptGroups?: readonly (readonly string[])[];
+  /** Claims that fail intent coverage when present. Kept to substrings a correct answer never contains. */
+  forbiddenConcepts?: readonly string[];
 };
 
 export type AnswerQualityMetricScore = {
@@ -164,6 +172,22 @@ function containsAny(text: string, values: string[] | undefined) {
   if (!values?.length) return true;
   const normalized = text.toLowerCase();
   return values.some((value) => normalized.includes(value.toLowerCase()));
+}
+
+// Dash variants are folded so a range quoted as "7-10 days" also matches "7–10 days".
+const foldDashes = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/\*\*/g, "")
+    .replace(/[\u2010-\u2015]/g, "-");
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Word start only, so "continue" never matches inside "discontinue"; the end stays open for plurals ("NSAIDs").
+const containsConcept = (folded: string, concept: string) =>
+  new RegExp(`(?<![a-z0-9])${escapeRegExp(foldDashes(concept))}`).test(folded);
+
+function missingConceptGroups(text: string, groups: AnswerQualityEvalCase["requiredConceptGroups"]) {
+  const folded = foldDashes(text);
+  return (groups ?? []).filter((group) => !group.some((concept) => containsConcept(folded, concept)));
 }
 
 function containsNone(text: string, values: string[] | undefined) {
@@ -243,7 +267,22 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
     ...(duplicated ? ["runaway duplication"] : []),
   ];
   const artifactOk = !artifactPattern.test(text) && containsNone(text, testCase.mustNotContain);
-  const intentOk = !sourceBackedReviewStub && containsAny(text, testCase.mustContainAny);
+  const missingGroups = missingConceptGroups(text, testCase.requiredConceptGroups);
+  const forbiddenPresent = (testCase.forbiddenConcepts ?? []).filter((concept) =>
+    containsConcept(foldDashes(text), concept),
+  );
+  const intentOk =
+    !sourceBackedReviewStub &&
+    containsAny(text, testCase.mustContainAny) &&
+    missingGroups.length === 0 &&
+    forbiddenPresent.length === 0;
+  const intentReason = sourceBackedReviewStub
+    ? "source-backed review stub"
+    : forbiddenPresent.length
+      ? `forbidden claim: ${forbiddenPresent.join(", ")}`
+      : missingGroups.length
+        ? `required fact missing: ${missingGroups.map((group) => group.join(" / ")).join("; ")}`
+        : "intent cue missing";
   const failClosedOk =
     testCase.supported || (unsupported && /no current source|could not find|not enough|no relevant/i.test(text));
 
@@ -258,7 +297,7 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
     {
       metric: "intent_coverage",
       score: intentOk ? 1 : 0,
-      reason: intentOk ? "covered" : sourceBackedReviewStub ? "source-backed review stub" : "intent cue missing",
+      reason: intentOk ? "covered" : intentReason,
     },
     { metric: "fail_closed", score: failClosedOk ? 1 : 0, reason: failClosedOk ? "safe" : "did not fail closed" },
   ] satisfies AnswerQualityMetricScore[];
@@ -836,6 +875,193 @@ export const answerQualityEvalCases: AnswerQualityEvalCase[] = [
     allowedRoutes: ["unsupported"],
     minCitations: 0,
     mustContainAny: ["No relevant clinical source"],
+  },
+  // High-risk cases (#ZZ4RAP), added on the owner's go-ahead of 2026-10-10. Questions and required
+  // facts mirror tests/fixtures/high-risk-eval-cases.draft.json, where every fact is quoted from a
+  // held source passage. The two source_needed cases (breastfeeding lithium, hepatic valproate)
+  // stay out until a source is held. The Mental Health Act cases cite the Act text, whose indexed
+  // copy has no recorded file name, so they name no expected file. Where several lithium guidelines
+  // hold the evidence, only the FSH guideline is named: the wide alias tier cannot tell two lithium
+  // guidelines apart in one case, and FSH holds most of the quoted facts.
+  {
+    ...commonQualityCase,
+    id: "high-risk-pregnancy-lithium-intrapartum-plan",
+    question: "My patient on lithium is due to deliver. What should the intrapartum plan cover for lithium?",
+    expectedIntent: "general",
+    expectedFiles: ["Perinatal Mental Health Plan Special Instruction Sheet MR006.01(KEMH)"],
+    requiredConceptGroups: [["maternal blood levels"], ["IV hydration", "intravenous hydration"], ["cord blood"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-pregnancy-monitoring-forms",
+    question: "Which pregnancy monitoring forms apply to a woman taking lithium or an antipsychotic?",
+    expectedIntent: "document_lookup",
+    expectedFiles: ["Women S And Perinatal Mental Health Referral And Management Guideline(KEMH)"],
+    requiredConceptGroups: [["MR215.12"], ["MR215.13"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-renal-lithium-rising-creatinine",
+    question:
+      "A patient on lithium has a rising creatinine and I suspect acute renal impairment. What does the guideline say to do?",
+    expectedIntent: "general",
+    expectedFiles: ["Lithium Clinical Guideline(EMHS)"],
+    requiredConceptGroups: [["renal physician"], ["expert advice"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-renal-lithium-steady-state",
+    question: "How long does lithium take to reach steady state in someone with renal impairment?",
+    expectedIntent: "monitoring_schedule",
+    expectedFiles: ["Lithium Therapy - Initiation And Continuation Guideline(FSH)"],
+    requiredConceptGroups: [["7-10 days", "7 to 10 days"], ["renal impairment"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-older-adult-lithium-target",
+    question: "What lithium level should I aim for in an older adult?",
+    expectedIntent: "monitoring_schedule",
+    expectedFiles: ["Lithium Clinical Guideline(EMHS)"],
+    requiredConceptGroups: [["0.4-0.7", "0.4 to 0.7", "0.4–0.7"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-older-adult-lithium-dose",
+    question: "How should the lithium dose differ in an elderly patient?",
+    expectedIntent: "dose",
+    expectedFiles: ["Lithium Therapy - Initiation And Continuation Guideline(FSH)"],
+    requiredConceptGroups: [["third to half"], ["tolerability"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-qtc-clozapine-ecg-schedule",
+    question: "How often should the ECG and QT interval be checked after starting clozapine?",
+    expectedIntent: "monitoring_schedule",
+    expectedFiles: ["Clozapine (CAMHS).pdf"],
+    requiredConceptGroups: [
+      ["ECG"],
+      ["weekly"],
+      ["first 4 weeks", "four weeks"],
+      ["when necessary", "as needed", "as clinically indicated"],
+    ],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-qtc-lithium-severe-toxicity",
+    question: "Can lithium toxicity prolong the QT interval, and what are the signs of severe toxicity?",
+    expectedIntent: "general",
+    expectedFiles: ["Lithium Clinical Guideline(EMHS)"],
+    requiredConceptGroups: [["QT"], ["coarse tremor"], ["seizures"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-monitoring-lithium-level-timing",
+    question: "When should I take a lithium level after the last dose, and after a dose change?",
+    expectedIntent: "monitoring_schedule",
+    expectedFiles: ["Lithium Therapy - Initiation And Continuation Guideline(FSH)"],
+    requiredConceptGroups: [
+      ["12 hours", "12-hour"],
+      ["5 to 7 days", "5-7 days", "5–7 days"],
+      ["withheld", "withhold"],
+    ],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-monitoring-clozapine-amber-range",
+    question: "My patient's clozapine bloods have come back in the amber range. What do I do?",
+    expectedIntent: "monitoring_schedule",
+    expectedFiles: [
+      "Clozapine Prescribing (NMHS).pdf",
+      "Clozapine Prescribing, Administering, Monitoring and Capillary Sampling SOP (EMHS).pdf",
+    ],
+    requiredConceptGroups: [
+      ["continue"],
+      ["twice-weekly", "twice weekly", "twice a week"],
+      ["2-3 days", "2 to 3 days"],
+    ],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-overdose-lithium-toxicity-first-steps",
+    question: "I suspect lithium toxicity on the ward. What are the first steps?",
+    expectedIntent: "general",
+    expectedFiles: ["Lithium Clinical Guideline(EMHS)"],
+    requiredConceptGroups: [["withhold"], ["lithium level"], ["renal function"], ["last dose"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-overdose-lithium-toxicity-risk-factors",
+    question: "What makes lithium toxicity more likely, including overdose?",
+    expectedIntent: "general",
+    expectedFiles: ["High Risk Medicines(CAMHS)"],
+    requiredConceptGroups: [
+      ["diuretic"],
+      ["NSAID"],
+      ["ACE", "angiotensin"],
+      ["reduced fluid", "fluid loss"],
+      ["overdose"],
+    ],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-interaction-lithium-nsaid",
+    question: "Can I prescribe ibuprofen for someone on lithium?",
+    expectedIntent: "contraindication",
+    expectedFiles: ["Lithium Therapy - Initiation And Continuation Guideline(FSH)", "High Risk Medicines(CAMHS)"],
+    requiredConceptGroups: [["avoid"], ["clearance", "increase lithium levels"], ["toxicity"]],
+    forbiddenConcepts: ["ibuprofen is safe"],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-interaction-lithium-antipsychotic-serotonergic",
+    question: "I'm starting an antipsychotic and an SSRI in a patient on lithium. Which interactions matter?",
+    expectedIntent: "general",
+    expectedFiles: ["Lithium Therapy - Initiation And Continuation Guideline(FSH)"],
+    requiredConceptGroups: [
+      ["serotonin toxicity", "serotonin syndrome"],
+      ["neurotoxicity"],
+      ["rapid dose"],
+      ["closely monitored", "close monitoring", "monitor closely"],
+    ],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-mha-form-2-assessment-detention",
+    question: "How long can a voluntary inpatient be detained on a Form 2 so they can be assessed?",
+    expectedIntent: "general",
+    expectedFiles: [],
+    requiredConceptGroups: [
+      ["6 hours", "six hours"],
+      ["order was made", "order is made"],
+    ],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-mha-section-28-continuous-limit",
+    question: "What is the longest continuous detention under Form 3A orders, in the metro area and in the country?",
+    expectedIntent: "general",
+    expectedFiles: [],
+    requiredConceptGroups: [["72 hours"], ["144 hours"], ["24 hours"], ["referral expires", "referral expiry"]],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-false-premise-lithium-aspirin",
+    question: "Low-dose aspirin is contraindicated with lithium, so which NSAID is the safest alternative?",
+    expectedIntent: "general",
+    expectedFiles: ["Lithium Therapy - Initiation And Continuation Guideline(FSH)"],
+    requiredConceptGroups: [["low dose aspirin is safe", "low-dose aspirin is safe"], ["avoid"]],
+    forbiddenConcepts: ["ibuprofen is safe"],
+  },
+  {
+    ...commonQualityCase,
+    id: "high-risk-false-premise-clozapine-red-range",
+    question: "When a clozapine blood result is in the red range I can keep going with twice-weekly bloods, can't I?",
+    expectedIntent: "red_result_action",
+    expectedFiles: [
+      "Clozapine Prescribing (NMHS).pdf",
+      "Clozapine Prescribing, Administering, Monitoring and Capillary Sampling SOP (EMHS).pdf",
+    ],
+    requiredConceptGroups: [["immediately"], ["stop", "discontinue", "withhold", "cease"], ["haematologist"]],
   },
 ];
 
