@@ -282,6 +282,32 @@ test("Roster Requests keeps the phone New pill clear of the last row", async ({ 
   await expect.poll(() => shell.evaluate((el) => getComputedStyle(el).paddingBottom)).toBe("96px");
 });
 
+test("Rotation admin without a team gets People and roles on both routes", async ({ page }) => {
+  await syntheticTeam(page);
+  await page.route("**/api/roster/rotations", (route) =>
+    route.fulfill({
+      json: {
+        mine: [],
+        managed: [],
+        canManage: true,
+        teams: [],
+        team: null,
+      },
+    }),
+  );
+
+  for (const path of ["/roster/manage/rotations/new", "/roster/manage/rotations"]) {
+    await page.goto(path);
+    await expect(page.getByTestId("rotation-no-team")).toBeVisible();
+    await expect(page.getByTestId("rotation-no-team").getByRole("link", { name: "People and roles" })).toHaveAttribute(
+      "href",
+      "/admin/people",
+    );
+    await expect(page.getByTestId("rotation-rounds-new")).toHaveCount(0);
+    await expect(page.getByTestId("rotation-rounds-new-empty")).toHaveCount(0);
+  }
+});
+
 test("Roster manager route refuses ordinary members", async ({ page }) => {
   await syntheticTeam(page, false);
   await page.goto("/roster/manage");
