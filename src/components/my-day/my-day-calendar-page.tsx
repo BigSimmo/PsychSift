@@ -2,7 +2,8 @@
 
 import { ChevronLeft, ChevronRight, Info } from "lucide-react";
 import Link from "next/link";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
+import { mondayOf } from "@/components/teaching/teaching-dates";
 
 import { useJuniorRosterLeave } from "@/components/admin/junior/use-roster-leave";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -14,6 +15,7 @@ import { listNames } from "@/components/my-day/my-day-page-parts";
 import { QuietFoot, QuietLabel, quietCard } from "@/components/my-day/my-day-quiet";
 import { MyDaySegmented } from "@/components/my-day/my-day-today-cards";
 import { cmeRoutineItemsThrough } from "@/components/my-day/sources/cme";
+import { adminCalendarRenewalItems } from "@/components/my-day/sources/entries";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { kindOf } from "@/components/roster/roster-format";
@@ -27,6 +29,7 @@ import { useWorkCalendarEntries } from "@/components/work-calendar/use-work-cale
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { appModeDefinition } from "@/lib/app-modes";
 import { addMonths, monthTitle, monthWeeks } from "@/lib/my-day/figures";
+import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import type { MyDaySourceMode } from "@/lib/my-day/model";
 import { shiftTitle } from "@/lib/my-day/quiet-figures";
@@ -127,7 +130,9 @@ function sessionItem(session: SessionSummaryRead, zone: string): MainCalendarIte
     detail: [session.venue, session.isPresenter ? "you lead" : null].filter(Boolean).join(" · ") || null,
     state: cancelled ? "Cancelled" : null,
     warn: cancelled,
-    href: sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
+    href:
+      sessionHref(session) ??
+      `/teaching/week?weekStart=${mondayOf(zonedDateOf(session.startsAt, "Australia/Perth"))}#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
     band: false,
   };
 }
@@ -166,10 +171,16 @@ function CalendarBody({
   const month = shownMonth ?? today.slice(0, 7);
   const from = `${month}-01`;
   const to = monthEnd(month);
-  const range = useMemo(() => ({ from, to }), [from, to]);
+  // Teaching and team Roster interpret dates in Perth; pad the request so a month edge
+  // remains covered when the reader's configured work zone is elsewhere.
+  const range = useMemo(
+    () => ({ from: addDaysToDate(from, -1), to: addDaysToDate(to, 1) }),
+    [from, to],
+  );
   const [view, setView] = useState<CalendarView>("month");
   const [selected, setSelected] = useState(today);
   const [hidden, setHidden] = useState<ReadonlySet<MyDaySourceMode>>(() => new Set());
+  const hasLoadedOnce = useRef(false);
 
   const items = useMyDayItems({ enabled: true, now });
   const shifts = useRosterShifts(range);
@@ -184,19 +195,34 @@ function CalendarBody({
   const showShifts = shifts.status === "ready" && (!shifts.sample || shifts.demoMode);
   const sampleOmitted = shifts.status === "ready" && shifts.sample && !shifts.demoMode;
   const sessions = useMemo(
-    () => (teaching.week ? [...teaching.week.sessions, ...teaching.week.relocated] : []),
-    [teaching.week],
+    () =>
+      (teaching.week ? [...teaching.week.sessions, ...teaching.week.relocated] : []).filter((session) => {
+        const date = zonedDateOf(session.startsAt, zone);
+        return date >= from && date <= to;
+      }),
+    [teaching.week, zone, from, to],
   );
 
   const all = useMemo(
     () =>
       mergeCalendarItems([
         workEntryItems(calendar.entries),
-        showShifts ? shifts.shifts.map((shift) => shiftItem(shift, zone)) : [],
+        showShifts
+          ? shifts.shifts
+              .filter((shift) => {
+                const date = zonedDateOf(shift.startsAt, zone);
+                return date >= from && date <= to;
+              })
+              .map((shift) => shiftItem(shift, zone))
+          : [],
         leaveItems(leave.status === "ready" ? leave.leave : []),
         sessions.map((session) => sessionItem(session, zone)),
         myDayCalendarItems(
-          mergeMyDayItems([items.items, cmeRoutineItemsThrough(items.cmeRoutines, to, now, reminders)]),
+          mergeMyDayItems([
+            items.items.filter((item) => !item.id.startsWith("my-work:date:") && item.id !== "my-work:more"),
+            adminCalendarRenewalItems(items.adminEntries),
+            cmeRoutineItemsThrough(items.cmeRoutines, to, now, reminders),
+          ]),
           areaLabel,
           zone,
         ),
@@ -209,7 +235,9 @@ function CalendarBody({
       leave,
       sessions,
       items.items,
+      items.adminEntries,
       items.cmeRoutines,
+      from,
       to,
       now,
       reminders,
@@ -225,8 +253,12 @@ function CalendarBody({
     shifts.status === "loading" ||
     shifts.teamLoading ||
     teaching.status === "loading" ||
-    teaching.status === "idle";
-  if (loading) {
+    teaching.status === "idle" ||
+    calendar.status === "loading" ||
+    leave.status === "loading" ||
+    paperwork.state === null;
+  const firstLoad = loading && !hasLoadedOnce.current;
+  if (firstLoad) {
     return (
       <>
         <span role="status" className="sr-only">
@@ -240,9 +272,15 @@ function CalendarBody({
     );
   }
 
+  if (!loading) hasLoadedOnce.current = true;
   const failed: string[] = items.sources
     .filter((source) => source.status === "failed")
     .map((source) => appModeDefinition(source.mode).label);
+  for (const [id, source] of Object.entries(calendar.sources)) {
+    if (source.status === "error" || source.status === "signed-out") {
+      failed.push(id === "rotations" ? "Rotations" : "Course bookings");
+    }
+  }
   if (shifts.status === "error" || shifts.status === "signed-out") failed.push("Roster shifts");
   if (shifts.teamMessage) failed.push("Team shifts");
   if (leave.status === "failed") failed.push("Leave");
@@ -343,6 +381,7 @@ function CalendarBody({
       ) : null}
 
       <MonthHeader month={month} today={today} onMonth={changeMonth} />
+      {loading ? <ModeNotice>Updating this month…</ModeNotice> : null}
       <Bands items={bandsOverlapping(shown, from, to)} today={today} />
 
       {view === "month" ? (
@@ -541,7 +580,7 @@ function DayCell({
       className={cn(
         focusRing,
         "grid min-h-14 w-full content-start justify-items-center gap-1 rounded-lg px-0.5 pt-1 pb-1.5 sm:min-h-24 sm:justify-items-stretch lg:min-h-28",
-        selected && "bg-[color:var(--work-wash)]",
+        selected && "bg-[color:var(--work-wash)] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight]", 
       )}
     >
       <span

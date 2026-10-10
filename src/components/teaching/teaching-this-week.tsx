@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { CalendarClock, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Network } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -127,7 +128,10 @@ function ThisWeekScreen({ demoMode }: { demoMode: boolean }) {
   const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
-  const [chosenMonday, setChosenMonday] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const requestedWeek = searchParams.get("weekStart");
+  const initialWeek = requestedWeek && /^\d{4}-\d{2}-\d{2}$/.test(requestedWeek) && mondayOf(requestedWeek) === requestedWeek ? requestedWeek : null;
+  const [chosenMonday, setChosenMonday] = useState<string | null>(initialWeek);
   const monday = chosenMonday ?? (today ? mondayOf(today) : null);
   const range = useMemo(() => (monday ? { from: monday, to: addDays(monday, 6) } : null), [monday]);
   const view = useTeachingWeek(range, { demoMode }, now);

@@ -14,6 +14,7 @@ import {
   type AdminLoadState,
 } from "@/lib/admin/own-entries";
 import { renewalStartOn } from "@/lib/admin/renewal-dates";
+import { renewalsFilterItemExpiresOn, renewalsFilterItems } from "@/lib/admin/renewals-filters";
 import { selectComingUp, selectNeedsYou } from "@/lib/admin/today-selectors";
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { RenewalRow } from "@/lib/my-day/figures";
@@ -148,6 +149,24 @@ export function adminRenewalRows(own: readonly OnCallEntry[], now: Date): Renewa
       href: renewalsItemHref(row.entryId),
     })),
   );
+}
+
+export function adminCalendarRenewalItems(own: readonly OnCallEntry[]): MyDayItem[] {
+  return renewalsFilterItems(own).flatMap((item) => {
+    const date = renewalsFilterItemExpiresOn(item);
+    if (!date) return [];
+    const entry = item.kind === "catalogue" ? item.row.entry : item.entry;
+    if (!entry) return [];
+    return [{
+      id: `my-work:date:${entry.id}`,
+      mode: "my-work" as const,
+      title: item.kind === "catalogue" ? item.row.item.title : entry.title,
+      detail: "Recorded date",
+      due: date,
+      severity: "info" as const,
+      href: renewalsItemHref(entry.id),
+    }];
+  });
 }
 
 export function onCallMyDayItems(entries: readonly OnCallEntry[], now: Date, reminders: ReminderSettings): MyDayItem[] {

@@ -107,15 +107,20 @@ function requireOwner(ownerId: string) {
 }
 
 /** Shifts that have not finished before `from`, soonest first. */
-export async function fetchOwnerShifts(supabase: AdminClient, ownerId: string, from: Date): Promise<OnCallShift[]> {
+export async function fetchOwnerShifts(
+  supabase: AdminClient,
+  ownerId: string,
+  from: Date,
+  to?: Date,
+): Promise<OnCallShift[]> {
   requireOwner(ownerId);
-  const { data, error } = await supabase
+  let query = supabase
     .from("on_call_shifts")
     .select(SHIFT_COLUMNS)
     .eq("owner_id", ownerId)
-    .gt("ends_at", from.toISOString())
-    .order("starts_at", { ascending: true })
-    .limit(1000);
+    .gt("ends_at", from.toISOString());
+  if (to) query = query.lt("starts_at", to.toISOString());
+  const { data, error } = await query.order("starts_at", { ascending: true }).limit(1000);
   if (error) throw error;
   return (data ?? []).map(rowToShift);
 }
