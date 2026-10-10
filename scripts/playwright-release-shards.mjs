@@ -55,6 +55,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-formulation.spec.ts": 14.6,
     "tests/ui-hydration.spec.ts": 2.0,
     "tests/ui-mode-nav-density.spec.ts": 56.7,
+    // Estimated (new 10 Oct 2026, no release timing yet): about the size of ui-roster-team.
+    "tests/ui-my-day-calendar.spec.ts": 15.0,
     "tests/ui-on-call-boards.spec.ts": 48.2,
     "tests/ui-on-call-call.spec.ts": 7.7,
     "tests/ui-on-call-now.spec.ts": 14.5,
@@ -102,6 +104,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-formulation.spec.ts": 31.6,
     "tests/ui-hydration.spec.ts": 4.3,
     "tests/ui-mode-nav-density.spec.ts": 95.9,
+    // Estimated (new 10 Oct 2026, no release timing yet): about the size of ui-roster-team.
+    "tests/ui-my-day-calendar.spec.ts": 25.0,
     "tests/ui-on-call-boards.spec.ts": 79.7,
     "tests/ui-on-call-call.spec.ts": 9.3,
     "tests/ui-on-call-now.spec.ts": 20.4,
@@ -149,6 +153,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-formulation.spec.ts": 29.9,
     "tests/ui-hydration.spec.ts": 3.4,
     "tests/ui-mode-nav-density.spec.ts": 101.8,
+    // Estimated (new 10 Oct 2026, no release timing yet): about the size of ui-roster-team.
+    "tests/ui-my-day-calendar.spec.ts": 35.0,
     "tests/ui-on-call-boards.spec.ts": 122.7,
     "tests/ui-on-call-call.spec.ts": 14.5,
     "tests/ui-on-call-now.spec.ts": 31.4,
@@ -196,6 +202,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-formulation.spec.ts": 40.1,
     "tests/ui-hydration.spec.ts": 4.4,
     "tests/ui-mode-nav-density.spec.ts": 131.3,
+    // Estimated (new 10 Oct 2026, no release timing yet): about the size of ui-roster-team.
+    "tests/ui-my-day-calendar.spec.ts": 30.0,
     "tests/ui-on-call-boards.spec.ts": 126.0,
     "tests/ui-on-call-call.spec.ts": 15.0,
     "tests/ui-on-call-now.spec.ts": 33.1,

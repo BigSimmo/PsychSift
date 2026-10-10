@@ -20,7 +20,7 @@ import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 /** Same matcher as playwright.config.ts `productionSpecPattern` (keep in sync). */
 export const productionSpecFilePattern =
-  /^(?:api-csrf-proxy|adaptive-answer-ui|answer-progress-ui-smoke|dsm-ui-smoke|ui-(?:admin|smoke|stress|accessibility|clinical-ask|cme-phone|dictionary|document-canvas|tools|tools-show-all|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts$/;
+  /^(?:api-csrf-proxy|adaptive-answer-ui|answer-progress-ui-smoke|dsm-ui-smoke|ui-(?:admin|smoke|stress|accessibility|clinical-ask|cme-phone|dictionary|document-canvas|tools|tools-show-all|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|my-day-calendar|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts$/;
 
 /**
  * Timings: mean of the successful post-critical production Chromium reports from
@@ -266,6 +266,14 @@ export const prUiSpecProfiles = Object.freeze([
     file: "tests/ui-pwa.spec.ts",
     shard: 3,
     fullSeconds: 9.1,
+    criticalSeconds: 0,
+  },
+  {
+    // Unmeasured (new 10 Oct 2026, the My Day Calendar click-through); estimated until a CI
+    // timing report exists. Shard 2 keeps both balance limits with this estimate.
+    file: "tests/ui-my-day-calendar.spec.ts",
+    shard: 2,
+    fullSeconds: 14,
     criticalSeconds: 0,
   },
   {
