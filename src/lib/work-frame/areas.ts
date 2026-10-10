@@ -216,6 +216,13 @@ const myDay: WorkArea = {
           gate: "classic-work-mode",
         },
         {
+          id: "my-day-calendar",
+          label: "Calendar",
+          sub: "Everything dated",
+          icon: "calendar",
+          href: "/my-day/calendar",
+        },
+        {
           id: "my-day-favourites",
           label: "Favourites",
           sub: "Saved pages and items",

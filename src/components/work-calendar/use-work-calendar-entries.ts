@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { WORK_CALENDAR_SOURCES, type WorkCalendarSourceRead } from "@/components/work-calendar/sources";
 import { mergeEntries, type WorkCalendarEntry } from "@/lib/work-calendar/entries";
@@ -23,6 +23,8 @@ export type WorkCalendarEntriesRead = {
   readonly entries: readonly WorkCalendarEntry[];
   /** Each source's own read, by source id. */
   readonly sources: Readonly<Record<string, WorkCalendarSourceRead>>;
+  /** Reads every source that failed again. */
+  readonly retry: () => void;
 };
 
 export function useWorkCalendarEntries({
@@ -35,11 +37,19 @@ export function useWorkCalendarEntries({
   const reads = WORK_CALENDAR_SOURCES.map((source) => source.read(enabled));
   // The lists are small. Keyed on their content, the merged list stays the same object until something changes.
   const signature = JSON.stringify(reads);
+  // The latest reads, so the one retry function stays the same object across renders.
+  const latest = useRef(reads);
+  useEffect(() => {
+    latest.current = reads;
+  });
+  const retry = useCallback(() => {
+    for (const read of latest.current) if (read.status === "error") read.retry?.();
+  }, []);
   return useMemo<WorkCalendarEntriesRead>(() => {
     const parsed = JSON.parse(signature) as WorkCalendarSourceRead[];
     const sources = Object.fromEntries(WORK_CALENDAR_SOURCES.map((source, index) => [source.id, parsed[index]!]));
-    if (!enabled) return { status: "off", entries: [], sources };
+    if (!enabled) return { status: "off", entries: [], sources, retry };
     const status: WorkCalendarStatus = parsed.some((read) => read.status === "loading") ? "loading" : "ready";
-    return { status, entries: mergeEntries(parsed.map((read) => read.entries)), sources };
-  }, [enabled, signature]);
+    return { status, entries: mergeEntries(parsed.map((read) => read.entries)), sources, retry };
+  }, [enabled, signature, retry]);
 }

@@ -53,6 +53,8 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   // Course bookings.
   { path: "/admin/bookings", owner: "course-bookings" },
   { path: "/admin/courses", owner: "course-bookings" },
+  // One calendar for everything dated.
+  { path: "/my-day/calendar", owner: "main-calendar" },
   // Favourites.
   { path: "/my-day/favourites", owner: "favourites" },
   // Setup walkthrough and help centre.
