@@ -245,5 +245,25 @@ describe("main calendar items", () => {
       }),
     ]);
     expect(workEntryItems(entries)[0]).toMatchObject({ label: "Deadline", time: "17:00", area: "roster" });
+    // A reader on Sydney's clock sees 20:00, but the export still lands at 17:00 Perth.
+    const [sydney] = workEntryItems(rotationDeadlineEntries([round], "Australia/Sydney"));
+    expect(sydney).toMatchObject({ time: "20:00" });
+    expect(calendarItemEvent(sydney!)).toMatchObject({ date: "2026-10-20", startTime: "17:00" });
+    const [alert] = alertCalendarItems(
+      [
+        {
+          id: "swap:1",
+          title: "Answer swap",
+          due: "2026-10-12T15:30:00Z",
+          area: "roster",
+          href: "/roster",
+          kind: "action",
+        },
+      ],
+      (mode) => mode,
+      "Australia/Sydney",
+    );
+    expect(alert).toMatchObject({ start: "2026-10-13", time: "02:30" });
+    expect(calendarItemEvent(alert!)).toMatchObject({ date: "2026-10-12", startTime: "23:30" });
   });
 });

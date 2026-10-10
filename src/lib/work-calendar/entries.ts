@@ -40,6 +40,8 @@ export type WorkCalendarEntry = {
   readonly startTime?: string;
   /** `HH:MM` on the work zone's clock, on `end`. */
   readonly endTime?: string;
+  /** ISO instant of the start, when the entry is one moment (a deadline), so an export can place it exactly. */
+  readonly startsAt?: string;
   /** Where, e.g. a hospital or a room. Never a patient detail. */
   readonly location?: string;
   /** Defaults to confirmed. */
@@ -270,6 +272,7 @@ export function rotationDeadlineEntries(myRounds: readonly MyRound[], zone: stri
       start: date,
       end: date,
       startTime: zonedTimeOf(closes, zone),
+      startsAt: new Date(closes).toISOString(),
       status: "confirmed",
       href: rotationRoundHref(round.id),
       ...(example ? { isExample: true } : {}),

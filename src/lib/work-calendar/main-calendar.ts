@@ -111,6 +111,7 @@ export function workEntryItems(entries: readonly WorkCalendarEntry[]): MainCalen
       band: rotation || (entry.allDay === true && entry.start !== entry.end),
       ...(minutes > 0 ? { minutes } : {}),
       ...(entry.location ? { location: entry.location } : {}),
+      ...(timed && entry.startsAt ? { startsAt: entry.startsAt } : {}),
     };
   });
 }
@@ -209,6 +210,7 @@ export function myDayCalendarItems(
         start: date,
         end: date,
         time: timed === null ? null : zonedTimeOf(timed, zone),
+        ...(timed === null ? {} : { startsAt: new Date(timed).toISOString() }),
         // The state already says the date has passed; a detail that repeats it is dropped.
         detail: item.detail && !(overdue && /passed|overdue/i.test(item.detail)) ? item.detail : null,
         state,
@@ -274,6 +276,7 @@ export function alertCalendarItems(
         start: date,
         end: date,
         time: timed === null ? null : zonedTimeOf(timed, zone),
+        ...(timed === null ? {} : { startsAt: new Date(timed).toISOString() }),
         detail: item.detail ?? null,
         state: item.overdue ? "Overdue" : null,
         warn: item.overdue === true,
