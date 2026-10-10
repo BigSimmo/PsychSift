@@ -142,6 +142,7 @@ function RoundsList({
   }
   return (
     <>
+      {!canStart ? <RotationNoTeam /> : null}
       {groups.map((group) => (
         <section key={group.id} aria-labelledby={`rotation-rounds-${group.id}`} className="grid min-w-0 gap-2.25">
           <WorkSectionLabel

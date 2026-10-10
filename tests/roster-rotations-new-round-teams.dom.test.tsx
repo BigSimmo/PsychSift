@@ -99,10 +99,12 @@ describe("site administrator in no team", () => {
     expect(screen.getByTestId("rotation-no-team-people").getAttribute("href")).toBe("/admin/people");
   });
 
-  it("offers no New round on the rounds list", async () => {
+  it("keeps managed rounds visible while offering no New round", async () => {
     const { RotationRoundsPage } = await import("@/components/roster/rotations/admin/rounds-page");
+    read.current = { ...read.current, managed: example.rounds };
     render(<RotationRoundsPage />);
     await screen.findByTestId("rotation-no-team");
+    expect(screen.getByTestId(`rotation-round-row-${example.rounds[0]!.round.id}`)).toBeTruthy();
     expect(screen.queryByTestId("rotation-rounds-new-empty")).toBeNull();
     expect(screen.queryByTestId("rotation-rounds-new")).toBeNull();
   });
