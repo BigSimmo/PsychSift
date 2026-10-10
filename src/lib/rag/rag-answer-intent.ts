@@ -2,7 +2,7 @@
 // query asks (dose, contraindication, monitoring schedule, result action, ...). Extracted from
 // rag-extractive-answer.ts to keep that module within its maintainability budget.
 import { medicationMonitoringQuerySubjects } from "@/lib/clinical-search";
-import { medicationEntitiesInText } from "@/lib/medication-entities";
+import { medicationEntitiesInText, medicationEntityMatchesInText } from "@/lib/medication-entities";
 import { normalizeSectionText } from "@/lib/rag/rag-answer-text";
 import type { RagQueryClass } from "@/lib/types";
 
@@ -95,8 +95,8 @@ function actsOnNamedMedicine(normalized: string) {
   return targets.some((match) => {
     // The target starts the phrase: "lithium levels" or "the clearance of lithium", never a later
     // mention such as "patients receiving quetiapine".
-    const head = match[1].replace(effectTargetLeadPattern, "").split(/\s+/).slice(0, 2).join(" ");
-    return medicationEntitiesInText(head).length > 0 && medicationEntitiesInText(head.split(" ")[0] ?? "").length > 0;
+    const target = match[1].replace(effectTargetLeadPattern, "").trimStart();
+    return medicationEntityMatchesInText(target).some((entity) => entity.start === 0);
   });
 }
 

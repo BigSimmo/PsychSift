@@ -3243,6 +3243,7 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
       "How does ibuprofen affect the clearance of lithium?",
       "What effect does ibuprofen have on the plasma levels of lithium?",
       "How does ibuprofen affect the level of lithium?",
+      "What effect does ibuprofen have on sodium valproate levels?",
     ]) {
       expect(classifyAnswerIntent(query, "medication_dose_risk")).toBe("contraindication");
     }
