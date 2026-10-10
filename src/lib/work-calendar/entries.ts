@@ -42,6 +42,8 @@ export type WorkCalendarEntry = {
   readonly endTime?: string;
   /** ISO instant of the start, when the entry is one moment (a deadline), so an export can place it exactly. */
   readonly startsAt?: string;
+  /** ISO instant of the end, beside `startsAt`, so an export's length is right across a clock change. */
+  readonly endsAt?: string;
   /** Where, e.g. a hospital or a room. Never a patient detail. */
   readonly location?: string;
   /** Defaults to confirmed. */

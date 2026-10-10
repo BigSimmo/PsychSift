@@ -94,8 +94,14 @@ export function workEntryItems(entries: readonly WorkCalendarEntry[]): MainCalen
     const deadline = entry.kind === "deadline";
     const timed = !entry.allDay && entry.startTime ? entry.startTime : null;
     const span = timed && entry.endTime ? `${timed} to ${entry.endTime}` : null;
-    const minutes =
-      timed && entry.endTime && entry.start === entry.end ? clockMinutes(entry.endTime) - clockMinutes(timed) : 0;
+    // Exact instants give the true length across a daylight-saving change; otherwise the clock times do.
+    const exactMinutes =
+      entry.startsAt && entry.endsAt ? (Date.parse(entry.endsAt) - Date.parse(entry.startsAt)) / 60000 : NaN;
+    const minutes = Number.isFinite(exactMinutes)
+      ? exactMinutes
+      : timed && entry.endTime && entry.start === entry.end
+        ? clockMinutes(entry.endTime) - clockMinutes(timed)
+        : 0;
     return {
       key: `entry:${entry.id}`,
       area: course ? "my-work" : "roster",

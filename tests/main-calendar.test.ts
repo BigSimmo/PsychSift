@@ -233,6 +233,19 @@ describe("main calendar items", () => {
     expect(event).toMatchObject({ date: "2026-10-14", startTime: "06:00", location: "Room 2" });
     expect(JSON.stringify(event)).not.toContain("Organiser");
     expect(googleCalendarUrl(event!)).not.toContain("Organiser");
+    // 01:30 to 03:30 in Sydney on the night clocks go forward lasts one hour, not two.
+    const [dst] = workEntryItems([
+      {
+        ...course,
+        start: "2026-10-04",
+        end: "2026-10-04",
+        startTime: "01:30",
+        endTime: "03:30",
+        startsAt: "2026-10-03T15:30:00.000Z",
+        endsAt: "2026-10-03T16:30:00.000Z",
+      },
+    ]);
+    expect(dst!.minutes).toBe(60);
   });
 
   it("puts the close of an open rotation round on the calendar", () => {

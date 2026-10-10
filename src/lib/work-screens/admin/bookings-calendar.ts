@@ -74,6 +74,7 @@ export interface BookingWorkCalendarEntry {
   readonly endTime: string;
   /** The exact start, when the zone the course's times were recorded in is known. */
   readonly startsAt?: string;
+  readonly endsAt?: string;
   readonly location: string;
   readonly status: "confirmed" | "cancelled";
   readonly href: string;
@@ -95,6 +96,7 @@ export function bookingWorkCalendarEntries(
     if (!course) return [];
     // Course times are on the reader's work clock; the exact start lets an export place them anywhere.
     const startsAt = zone ? zonedWallToIso(course.date, course.startTime, zone) : null;
+    const endsAt = zone ? zonedWallToIso(course.date, course.endTime, zone) : null;
     return [
       {
         id: bookingWorkCalendarId(course.id),
@@ -106,6 +108,7 @@ export function bookingWorkCalendarEntries(
         startTime: course.startTime,
         endTime: course.endTime,
         ...(startsAt ? { startsAt } : {}),
+        ...(startsAt && endsAt ? { endsAt } : {}),
         location: course.location,
         status: event.status === "cancelled" ? ("cancelled" as const) : ("confirmed" as const),
         href: event.href ?? href(course.id),
