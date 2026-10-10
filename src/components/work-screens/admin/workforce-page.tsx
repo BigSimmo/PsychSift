@@ -4,7 +4,6 @@ import { ArrowLeftRight, Briefcase, CalendarClock, Check, RotateCcw, Search, Sen
 import { type ReactNode, useMemo, useState } from "react";
 
 import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
-import { ExampleTag } from "@/components/example-data/example-tag";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import {
@@ -182,9 +181,6 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
   return (
     <>
       <div role="note" className="work-card work-card--pad grid gap-1" data-testid="admin-workforce-sample-label">
-        <p>
-          <ExampleTag />
-        </p>
         <p className="text-sm font-semibold text-[color:var(--text-heading)]">{WORKFORCE_SAMPLE_LABEL}</p>
         <p className="text-sm">
           Every name and date below is invented. Going live needs Josh&apos;s approval for workforce accounts, a

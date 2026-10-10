@@ -65,7 +65,7 @@ import {
   type DocumentDraft,
 } from "@/lib/work-screens/admin/documents";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-import { guardExampleAction, isExampleRecord, withoutExampleRecords } from "@/lib/example-data/guards";
+import { guardExampleAction, withoutExampleRecords } from "@/lib/example-data/guards";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   DOCUMENT_FOLDERS,
@@ -246,7 +246,7 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
                         key={document.id}
                         icon={FileText}
                         title={document.title}
-                        sub={`${isExampleRecord(document) ? "Example · " : ""}${documentLine(document)}`}
+                        sub={documentLine(document)}
                         end={
                           state === "current" || state === "no-end-date" ? undefined : (
                             <WorkTag tone="neutral">{DOCUMENT_STATE_WORDS[state]}</WorkTag>

@@ -41,7 +41,7 @@ describe("term evidence folder page", () => {
     const card = await screen.findByTestId("term-folder-card");
     const meter = within(card).getByRole("img");
     expect(meter.getAttribute("aria-label")).toMatch(/^7\sparts: /);
-    expect(screen.getByText(/Example data\. Nothing here is your own/)).toBeInTheDocument();
+    expect(screen.queryByText(/Example data\. Nothing here is your own/)).toBeNull();
     expect(screen.getByTestId("term-folder-not-kept")).toHaveTextContent("Assessment forms");
     expect(screen.getAllByText(/Status and counts only|No assessment content/).length).toBeGreaterThan(0);
     // Work-mode redesign, owner request 6 Oct 2026: Export opens a sheet (choose parts, names off, gaps first).

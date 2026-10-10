@@ -35,7 +35,6 @@ import {
   selectRenewNext,
   selectRequirementsSummary,
 } from "@/lib/admin/today-selectors";
-import { useExampleData } from "@/lib/example-data/store";
 import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
@@ -112,7 +111,6 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   const { zone } = useWorkTimeZone();
   const state = useOnCallEntries();
   // The example data banner already says these are example records; this notice is for the demo build.
-  const examplesBanner = useExampleData("admin").active;
   const { isAuthenticated } = useAccountData();
   const [tick, setTick] = useState(() => new Date());
   const now = nowProp ?? tick;
@@ -167,11 +165,6 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
         </PageTitleUnderBand>
         <p className="text-sm text-[color:var(--text-muted)]">{dateEcho}</p>
       </header>
-      {state.demoMode && load === "ready" && !examplesBanner ? (
-        <ModeNotice testId="admin-today-demo-notice">
-          Example records. These dates are made up, and nothing here is your own.
-        </ModeNotice>
-      ) : null}
 
       {load === "loading" ? (
         <TodayLoadingSkeleton />

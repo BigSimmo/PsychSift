@@ -25,7 +25,6 @@ import { ModeActionButton } from "@/components/mode-kit/action-button";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { useModeBandHeading, WithoutModeBand } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import { WorkHero, WorkRing } from "@/components/mode-kit/work";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
 import { modeDot } from "@/components/mode-kit/recipes";
@@ -391,7 +390,6 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const now = useRosterNow(pinnedNow);
   const shifts = useRosterShifts();
   // The frame's example data banner already says these are examples.
-  const exampleBanner = useRosterSignedOutSample();
   const teams = useRosterTeams();
   const hasTeam = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).some((team) => team.enabled);
   const links = useRosterLinks();
@@ -668,9 +666,6 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
         status={
           <>
             {header}
-            {ready && shifts.demoMode && !exampleBanner ? (
-              <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice>
-            ) : null}
             {ready && saved ? <ModeNotice>{saved}</ModeNotice> : null}
             {ready && refreshWarning ? (
               <ModeNotice tone="warning" testId="roster-today-refresh-warning">

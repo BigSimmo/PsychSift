@@ -4,7 +4,6 @@ import { UserX } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { ExampleTag } from "@/components/example-data/example-tag";
 import {
   WorkBody,
   WorkButton,
@@ -342,7 +341,6 @@ function SickView({
       <Picker hospitals={hospitals} current={view.hospital.id} onPick={onPick} />
 
       <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[color:var(--text-heading)]">
-        {example ? <ExampleTag /> : null}
         <span data-testid="admin-hospital-sick-summary">{sickSummaryLine(shown, today, zone)}</span>
       </p>
 

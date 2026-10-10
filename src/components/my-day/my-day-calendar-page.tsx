@@ -385,9 +385,6 @@ function CalendarBody({
         label="Show the month or a list"
         testId="my-day-calendar-view"
       />
-      {example ? (
-        <ModeNotice testId="my-day-calendar-demo-notice">Example data: these items are made up.</ModeNotice>
-      ) : null}
       {failed.length > 0 ? (
         <div className="grid gap-2" data-testid="my-day-calendar-failed-notice">
           <ModeNotice tone="warning">{`Couldn't load: ${listNames(failed)}. Showing the rest.`}</ModeNotice>
@@ -969,9 +966,6 @@ function CalendarExport({
             {`Download ${monthTitle(month)}`}
           </Button>
         </div>
-        {example ? (
-          <p className="m-0 text-xs text-[color:var(--text-muted)]">Example data can&apos;t be exported.</p>
-        ) : null}
       </div>
       <CalendarSubscribe testId="my-day-calendar-subscribe" />
     </section>

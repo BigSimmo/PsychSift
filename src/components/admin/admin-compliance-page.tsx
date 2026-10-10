@@ -36,7 +36,6 @@ import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
-import { useExampleData } from "@/lib/example-data/store";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 
 const RECORD_DATES_HREF = `${ADMIN_PAGE_HREFS.renewals}?record=missing`;
@@ -325,7 +324,6 @@ function FirstUse({ overview, canEdit }: { readonly overview: ComplianceOverview
 export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
   // The example data banner already says these are example records; this notice is for the demo build.
-  const examplesBanner = useExampleData("admin").active;
   const mountedAt = useMemo(() => new Date(), []);
   const now = nowProp ?? mountedAt;
   const today = perthCalendarDate(now);
@@ -371,11 +369,6 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
         </>
       ) : (
         <div className={adminStyles.column} data-testid="admin-compliance-ready">
-          {state.demoMode && !examplesBanner ? (
-            <ModeNotice testId="admin-compliance-demo-notice">
-              Example records. These dates are made up, and nothing here is your own.
-            </ModeNotice>
-          ) : null}
           {firstUse ? (
             <FirstUse overview={overview} canEdit={canEdit} />
           ) : (

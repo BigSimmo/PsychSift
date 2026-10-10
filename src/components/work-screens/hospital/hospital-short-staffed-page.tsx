@@ -4,7 +4,6 @@ import { ShieldCheck, UserMinus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
-import { ExampleTag } from "@/components/example-data/example-tag";
 import {
   WorkBody,
   WorkButton,
@@ -326,10 +325,9 @@ function ShortView({
 
       <Picker hospitals={hospitals} current={view.hospital.id} onPick={onPick} />
 
-      {summary || example ? (
+      {summary ? (
         <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[color:var(--text-heading)]">
-          {example ? <ExampleTag /> : null}
-          {summary ? <span data-testid="admin-hospital-short-summary">{summary}</span> : null}
+          <span data-testid="admin-hospital-short-summary">{summary}</span>
         </p>
       ) : null}
 

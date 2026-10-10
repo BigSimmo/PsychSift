@@ -3,13 +3,12 @@
 import type { ComponentType, ReactNode } from "react";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { T5Note, T5Page } from "@/components/teaching/t5-kit";
+import { T5Page } from "@/components/teaching/t5-kit";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import type { TeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 import { useAuthSession } from "@/lib/supabase/client";
-import { useExampleData } from "@/lib/example-data/store";
 
 /**
  * A depth page's submit, held at the bottom of the screen inside the page's own flow (not fixed chrome),
@@ -45,7 +44,6 @@ export function TeachingDepthPage<T>({
   children: ReactNode;
 }) {
   // The shared example banner already says the records are made up, so this note shows only without it.
-  const { active: exampleShown } = useExampleData("teach");
   let body = children;
   if (!demoMode && resource.status === "signed-out") body = <TeachingSignInNotice />;
   else if (!demoMode && ["offline", "error", "setup"].includes(resource.status))
@@ -57,9 +55,6 @@ export function TeachingDepthPage<T>({
     <InformationPageShell width="narrow" gap={false}>
       <T5Page>
         <h1 className="sr-only">{title}</h1>
-        {demoMode && !exampleShown ? (
-          <T5Note tone="notice">Example data. Changes stay on this page and are not saved.</T5Note>
-        ) : null}
         {body}
       </T5Page>
     </InformationPageShell>

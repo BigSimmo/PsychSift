@@ -127,9 +127,6 @@ export function TeachingWhatsOn({
           <p className="text-sm-minus font-bold text-[color:var(--text-heading)]">
             {whatsOnHeading(read.data.healthServices)}
           </p>
-          {demoMode ? (
-            <span className="shrink-0 text-xs text-[color:var(--text-muted)]">Example · made-up people</span>
-          ) : null}
         </div>
         {live.length > 0 ? (
           <div className="grid gap-y-2.25" data-testid="teaching-whats-on-now">

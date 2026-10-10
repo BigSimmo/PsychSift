@@ -2,7 +2,6 @@
 
 import { CalendarCheck, ListOrdered } from "lucide-react";
 
-import { ExampleTag } from "@/components/example-data/example-tag";
 import { WorkCard, WorkIconRow, WorkTag } from "@/components/mode-kit/work";
 import { useRotations } from "@/components/roster/rotations/use-rotations";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
@@ -34,10 +33,7 @@ export function MyDayRotationsCard({ now }: { readonly now: Date }) {
         sub={prompt.sub}
         href={rotationRoundHref(prompt.roundId)}
         end={
-          <span className="flex items-center gap-1.5">
-            {prompt.example ? <ExampleTag /> : null}
-            <WorkTag tone={rank ? "amber" : "green"}>{rank ? "Open" : "New"}</WorkTag>
-          </span>
+          <WorkTag tone={rank ? "amber" : "green"}>{rank ? "Open" : "New"}</WorkTag>
         }
       />
     </WorkCard>

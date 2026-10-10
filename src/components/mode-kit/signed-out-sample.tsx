@@ -4,7 +4,6 @@ import { LogIn } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import { DashTag } from "@/components/dashboard-kit/icon-chip";
 import { dashSurface } from "@/components/dashboard-kit/recipes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
@@ -17,7 +16,7 @@ const AccountSetupDialog = dynamic(
 
 /**
  * The one signed-out sample box every personal mode shares (My Day set the
- * pattern): a Sample tag, what signing in shows, and the Sign in button. The
+ * pattern): what signing in shows, and the Sign in button. The
  * page below it is the mode's own screen filled with invented data that is
  * built in the browser, reads nothing from the server and keeps nothing.
  */
@@ -53,9 +52,6 @@ export function SignedOutSampleNotice({
       data-signed-out-sample="true"
     >
       <div className="grid gap-1">
-        <p>
-          <DashTag tint="amber">Sample</DashTag>
-        </p>
         <h2 className="font-dash-title text-lg text-[color:var(--dash-ink)]">{title}</h2>
         <p className="text-sm text-[color:var(--dash-muted)]" data-testid={noticeTestId ?? `${testId}-notice`}>
           {children}

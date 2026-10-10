@@ -1,6 +1,5 @@
 "use client";
 
-import { ExampleTag } from "@/components/example-data/example-tag";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
 import { WorkCard, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
 import { HOSPITAL_SECTION_ICON } from "@/components/work-screens/hospital/hospital-icons";
@@ -48,7 +47,6 @@ function CardView({ rows, example }: { readonly rows: readonly HospitalCardRow[]
     <section aria-labelledby="hospital-roles-card-label" className="contents" data-testid="hospital-roles-card">
       <WorkSectionLabel
         id="hospital-roles-card-label"
-        count={example ? <ExampleTag /> : undefined}
         action={{ label: "Open", href: HOSPITAL_HUB_HREF }}
       >
         Hospital

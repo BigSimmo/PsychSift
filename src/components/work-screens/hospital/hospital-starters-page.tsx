@@ -4,7 +4,6 @@ import { UserPlus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ExampleTag } from "@/components/example-data/example-tag";
 import {
   WorkBody,
   WorkButton,
@@ -403,7 +402,6 @@ function StartersView({
       <Picker hospitals={hospitals} current={view.hospital.id} onPick={onPick} />
 
       <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[color:var(--text-heading)]">
-        {example ? <ExampleTag /> : null}
         <span data-testid="admin-hospital-starters-summary">{startersSummaryLine(view.starters)}</span>
       </p>
 
