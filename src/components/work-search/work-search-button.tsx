@@ -172,7 +172,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           ref={coachRef}
           id="work-search-coach"
           role="note"
-          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 hidden w-[min(14.75rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:color-mix(in_srgb,var(--surface-raised)_92%,transparent)] p-3.5 text-left shadow-[var(--e4)] backdrop-blur-xl sm:grid"
+          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 hidden w-[min(14.75rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)] sm:grid"
         >
           <span
             aria-hidden="true"

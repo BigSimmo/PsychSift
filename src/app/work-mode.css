@@ -99,6 +99,16 @@
   --work-primary-text: var(--text-heading);
 }
 
+/* The dark neutral ramp runs the other way, so --neutral-300 sits closer to the
+   card than --border does and the "strong" chip and button edge almost vanished.
+   Dark takes the theme's own strong border instead. Light is unchanged. */
+:root.dark[data-work-frame],
+.dark [data-work-frame],
+.dark .work-band,
+.dark .work-more-sheet {
+  --work-line-strong: var(--border-strong);
+}
+
 /* The app's filled "command" button (Sign in, Save, Send) is the area's primary
    colour inside a work page, as WorkButton's primary is, rather than the
    clinical near-black. On Call did this alone (on-call-work.css), so six areas
@@ -370,7 +380,8 @@ html[data-motion="reduced"] .work-band__mark {
   -webkit-backdrop-filter: var(--work-glass-blur);
 }
 
-/* Tabs: three pinned pages and More, underlined in the mode colour. */
+/* Tabs: the three pinned pages, then the area's next pages as the width allows,
+   and More last, underlined in the mode colour. */
 .work-band__tabs {
   position: relative;
   /* The space between tab labels. Each tab's tap area reaches half of it on
@@ -660,6 +671,12 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   color: var(--work-ink);
 }
 
+/* One focus colour: the bell and AI Search ring in the area colour, as the
+   band's tabs and the kit controls below them do. */
+.universal-header[data-work-frame] .universal-header-icon-control:focus-visible {
+  outline-color: var(--mode-identity);
+}
+
 /* A page reached from More shows Back. The menu button stays first, with Back
    beside it, mirroring the bell and AI Search on the right. Tablets have the
    menu strip, so the button is hidden there. */
@@ -711,7 +728,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-frame-back:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 
@@ -965,7 +982,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-more-sheet__close:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -2px;
 }
 
@@ -1454,7 +1471,7 @@ button.work-row:focus-visible {
 }
 
 a.work-hero:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 
@@ -1792,7 +1809,7 @@ a.work-hero:focus-visible {
 }
 
 .work-button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -3px;
   border-radius: var(--radius-pill);
 }
@@ -1844,7 +1861,7 @@ a.work-hero:focus-visible {
 }
 
 .work-glass-button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -2px;
 }
 
