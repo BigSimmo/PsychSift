@@ -188,8 +188,8 @@ type PinnedSection = { id: SettingsSectionId; offset: number; distance: number; 
  * Work AI Search keeps its Recent list in this tab's memory only. Loaded on
  * demand so the clinical Settings chunk does not carry the search's checks.
  */
-function forgetWorkSearchRecents() {
-  void import("@/lib/work-search/memory").then((memory) => memory.forgetAllRecents());
+function forgetWorkSearchRecents(): Promise<void> {
+  return import("@/lib/work-search/memory").then((memory) => memory.forgetAllRecents());
 }
 
 function readRecentQueryCount(): number {
@@ -634,13 +634,18 @@ export function SettingsDialog({
     }
   }
 
-  function handleClearRecent() {
+  async function handleClearRecent() {
     clearRecentQueries();
     clearPsychiatryVisits();
     clearMedicineVisits();
-    forgetWorkSearchRecents();
-    refreshRecentQueryCount();
-    setPrivacyNotice("Recent searches cleared.");
+    try {
+      await forgetWorkSearchRecents();
+      refreshRecentQueryCount();
+      setPrivacyNotice("Recent searches cleared.");
+    } catch {
+      refreshRecentQueryCount();
+      setPrivacyNotice("Could not clear Work Search recents. Please try again.");
+    }
   }
 
   /**
@@ -649,7 +654,7 @@ export function SettingsDialog({
    * their searches not to be kept, and the ones already kept are the ones they
    * were thinking of.
    */
-  function handleSaveRecentSearches(next: boolean) {
+  async function handleSaveRecentSearches(next: boolean) {
     setPreference("saveRecentSearches", next);
     if (next) {
       setPrivacyNotice("Recent searches will be remembered on this device.");
@@ -657,10 +662,14 @@ export function SettingsDialog({
     }
     clearRecentQueries();
     clearPsychiatryVisits();
-    clearMedicineVisits();
-    forgetWorkSearchRecents();
-    refreshRecentQueryCount();
-    setPrivacyNotice("Recent searches turned off and existing ones cleared.");
+    try {
+      await forgetWorkSearchRecents();
+      refreshRecentQueryCount();
+      setPrivacyNotice("Recent searches turned off and existing ones cleared.");
+    } catch {
+      refreshRecentQueryCount();
+      setPrivacyNotice("Could not clear Work Search recents. Please try again.");
+    }
   }
 
   async function handleClearSaved() {
@@ -1362,10 +1371,11 @@ export function SettingsDialog({
                   <SettingsActionRow
                     icon={Trash2}
                     label="Clear recent searches"
-                    meta={recentQueryCount > 0 ? `${recentQueryCount} saved` : "None"}
+                    // Work Search recents live in a lazily loaded tab module, so the
+                    // action stays available even when the other counters are empty.
+                    meta={recentQueryCount > 0 ? `${recentQueryCount} saved` : "None or Work Search"}
                     actionLabel="Clear recent searches"
                     onClick={handleClearRecent}
-                    disabled={recentQueryCount === 0}
                   />
                   <SettingsActionRow
                     icon={Trash2}
