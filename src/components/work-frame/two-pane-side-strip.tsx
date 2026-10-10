@@ -32,8 +32,7 @@ import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
 import type { ThemePreference } from "@/lib/theme";
 
 /**
- * The strip shared by the two-pane side menu and its tablet rail (Live version
- * switch). On a phone the strip lives inside the menu. From 768 px the same
+ * The strip shared by the two-pane side menu and its tablet rail. On a phone the strip lives inside the menu. From 768 px the same
  * strip stays on screen down the left edge, and Clinical, Work or the
  * reader's initials open the menu on that pane, its own strip landing exactly
  * over this one so only the pane appears to slide in.

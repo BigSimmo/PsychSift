@@ -9,6 +9,7 @@ import {
   Repeat,
   ShieldCheck,
   UserCheck,
+  UserMinus,
   UserPlus,
   Users,
   UserX,
@@ -20,6 +21,7 @@ import type { HospitalLinkIcon, HospitalSectionId } from "@/lib/work-roles/hospi
 /** The Hospital screens' icons, kept apart so My Day's card loads nothing else from them. */
 export const HOSPITAL_LINK_ICON: Readonly<Record<HospitalLinkIcon, LucideIcon>> = {
   sick: UserX,
+  short: UserMinus,
   starters: UserPlus,
   people: Users,
   overview: ListChecks,

@@ -41,7 +41,7 @@ describe("CalendarSubscribe", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(json({ subscribed: false, available: true }));
     const { container } = render(<CalendarSubscribe />);
     await screen.findByTestId("calendar-subscribe-create");
-    expect(container).toHaveTextContent(/your CPD deadlines, routines and teaching sessions/);
+    expect(container).toHaveTextContent(/your CPD deadlines and routines, teaching sessions/);
     expect(container.textContent).not.toMatch(/\bCME\b/);
   });
 

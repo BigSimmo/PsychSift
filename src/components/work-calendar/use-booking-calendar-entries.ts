@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
 import type { WorkCalendarSourceRead } from "@/components/work-calendar/sources";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
@@ -20,17 +19,15 @@ const NO_HEADERS: Readonly<Record<string, string>> = {};
  * place on, one timed entry each. With Admin's example data on these are the
  * example courses (ids `example:`), the same copy the Bookings pages change.
  * With it off they are the saved courses. A cancelled course comes through as
- * cancelled, so the calendar drops it. Only readers in the "course-bookings"
- * preview get entries, and none where the launch switch hides Bookings, since
- * each entry links there.
+ * cancelled, so the calendar drops it. There are no entries where the launch
+ * switch hides Bookings, since each entry links there.
  *
  * The reading itself is in `booking-calendar-feed.ts`, loaded only once this
  * source is on, so Roster and My Day stay as light as they were for everyone else.
  */
 export function useBookingCalendarEntries(calendar: boolean): WorkCalendarSourceRead {
-  const preview = useLivePreview("course-bookings");
   const visible = useWorkModeRouteVisible();
-  const enabled = calendar && preview && visible(ADMIN_WORK_SCREEN_HREFS.bookings);
+  const enabled = calendar && visible(ADMIN_WORK_SCREEN_HREFS.bookings);
   const { active } = useExampleData("admin");
   const signedIn = useSignedIn();
   const { zone } = useWorkTimeZone();
@@ -38,7 +35,9 @@ export function useBookingCalendarEntries(calendar: boolean): WorkCalendarSource
   const headers = auth?.authorizationHeader ?? NO_HEADERS;
   const account = auth?.session?.user?.id ?? "";
   // Each read is kept with what it was for, so a switch of account or example shows loading, never the last one.
-  const key = `${active}:${signedIn}:${account}:${zone}`;
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((count) => count + 1), []);
+  const key = `${active}:${signedIn}:${account}:${zone}:${attempt}`;
   const [read, setRead] = useState<{ readonly key: string; readonly value: WorkCalendarSourceRead } | null>(null);
 
   useEffect(() => {
@@ -61,5 +60,5 @@ export function useBookingCalendarEntries(calendar: boolean): WorkCalendarSource
   }, [enabled, active, signedIn, headers, zone, key]);
 
   if (!enabled) return OFF;
-  return read?.key === key ? read.value : LOADING;
+  return { ...(read?.key === key ? read.value : LOADING), retry };
 }
