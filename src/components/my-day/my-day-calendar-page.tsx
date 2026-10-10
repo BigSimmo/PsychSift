@@ -42,6 +42,7 @@ import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { useAdminPaperwork } from "@/lib/work-screens/admin/paperwork-store";
 import {
   adminRequestItems,
+  visibleCalendarItems,
   alertCalendarItems,
   bandsOverlapping,
   calendarExportEvents,
@@ -255,27 +256,30 @@ function CalendarBody({
 
   const all = useMemo(
     () =>
-      mergeCalendarItems([
-        // Example rotations and courses belong to a made-up doctor: only a demo shows them.
-        workEntryItems(
-          example
-            ? calendar.entries
-            : calendar.entries.filter((entry) => !entry.isExample && !isExampleRecord(entry.id)),
-        ),
-        showShifts ? shifts.shifts.map((shift) => shiftItem(shift, zone)) : [],
-        leaveItems(leave.status === "ready" ? leave.leave : []),
-        sessions.map((session) => sessionItem(session, zone)),
-        myDayCalendarItems(
-          mergeMyDayItems([items.items, cmeRoutineItemsThrough(items.cmeRoutines, to, now, reminders)]),
-          areaLabel,
-          zone,
-        ),
-        // Every recorded Admin date, past My Day's capped list, so any month shows its renewals.
-        myDayCalendarItems(adminCalendarRenewalItems(items.adminEntries ?? [], now), areaLabel, zone),
-        adminRequestItems(paperwork.state?.requests ?? []),
-        alertCalendarItems(alerts, areaLabel, zone),
-        reminderCalendarItems(notes, now, zone),
-      ]),
+      visibleCalendarItems(
+        mergeCalendarItems([
+          // Example rotations and courses belong to a made-up doctor: only a demo shows them.
+          workEntryItems(
+            example
+              ? calendar.entries
+              : calendar.entries.filter((entry) => !entry.isExample && !isExampleRecord(entry.id)),
+          ),
+          showShifts ? shifts.shifts.map((shift) => shiftItem(shift, zone)) : [],
+          leaveItems(leave.status === "ready" ? leave.leave : []),
+          sessions.map((session) => sessionItem(session, zone)),
+          myDayCalendarItems(
+            mergeMyDayItems([items.items, cmeRoutineItemsThrough(items.cmeRoutines, to, now, reminders)]),
+            areaLabel,
+            zone,
+          ),
+          // Every recorded Admin date, past My Day's capped list, so any month shows its renewals.
+          myDayCalendarItems(adminCalendarRenewalItems(items.adminEntries ?? [], now), areaLabel, zone),
+          adminRequestItems(paperwork.state?.requests ?? []),
+          alertCalendarItems(alerts, areaLabel, zone),
+          reminderCalendarItems(notes, now, zone),
+        ]),
+        routeVisible,
+      ),
     [
       calendar.entries,
       showShifts,
@@ -293,6 +297,7 @@ function CalendarBody({
       alerts,
       notes,
       zone,
+      routeVisible,
     ],
   );
   const present = MAIN_CALENDAR_AREAS.filter((area) => all.some((item) => item.area === area));

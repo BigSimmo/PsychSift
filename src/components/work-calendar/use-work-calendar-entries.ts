@@ -27,9 +27,12 @@ export type WorkCalendarEntriesRead = {
   readonly retry: () => void;
 };
 
-export function useWorkCalendarEntries(): WorkCalendarEntriesRead {
-  // Rotations and course bookings are on for everyone, so the calendar is too.
-  const enabled = true;
+export function useWorkCalendarEntries({
+  enabled = true,
+}: { readonly enabled?: boolean } = {}): WorkCalendarEntriesRead {
+  // Rotations and course bookings are on for everyone, so the calendar is too. A caller
+  // that reads nothing (My Day for a signed-out reader) passes `enabled: false`, and then
+  // no source fetches.
   // A static list, so every source hook runs in the same order on every render.
   const reads = WORK_CALENDAR_SOURCES.map((source) => source.read(enabled));
   // The lists are small. Keyed on their content, the merged list stays the same object until something changes.
