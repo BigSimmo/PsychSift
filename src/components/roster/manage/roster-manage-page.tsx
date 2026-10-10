@@ -175,6 +175,19 @@ export function RosterManagePage() {
             <p>{teams.message}</p>
             <Button onClick={teams.reload}>Try again</Button>
           </div>
+        ) : !team && available.length > 0 ? (
+          <WorkCard testId="roster-manage-not-your-team">
+            <WorkEmpty
+              icon={Lock}
+              title="That team isn't one you manage"
+              body="Pick one of your own teams instead."
+              action={
+                <WorkButton icon={Users} onClick={() => setSelected(available[0]!.serviceId)}>
+                  {`Open ${available[0]!.name}`}
+                </WorkButton>
+              }
+            />
+          </WorkCard>
         ) : !team ? (
           <NotManager />
         ) : (
