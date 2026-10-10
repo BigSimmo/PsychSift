@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useRotations } from "@/components/roster/rotations/use-rotations";
 import type { WorkCalendarSourceRead } from "@/components/work-calendar/sources";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
@@ -19,11 +18,9 @@ const OFF: WorkCalendarSourceRead = { status: "off", entries: [] };
  * With `enabled` false the rotations hook reads nothing.
  */
 export function useRotationCalendarEntries(calendar: boolean): WorkCalendarSourceRead {
-  // The calendar is on for either preview, so this source checks its own.
-  const preview = useLivePreview("rotation-preferences");
   // Each entry links to its round's page, so where the launch switch hides that page there are no entries.
   const visible = useWorkModeRouteVisible();
-  const enabled = calendar && preview && visible("/roster/rotations");
+  const enabled = calendar && visible("/roster/rotations");
   const rotations = useRotations({ enabled });
   const { zone } = useWorkTimeZone();
   // The rounds are rebuilt on each read, so the list is kept the same object while its content is the same.

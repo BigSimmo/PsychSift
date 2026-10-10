@@ -10,7 +10,6 @@ import type { NotificationItem } from "@/lib/needs-you/feed";
 
 const state = vi.hoisted(() => ({
   held: [] as string[],
-  preview: false,
   hidden: [] as string[],
 }));
 const watchHospitalSickNeedsYou = vi.hoisted(() => vi.fn());
@@ -27,7 +26,6 @@ vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
 vi.mock("@/components/work-frame/use-held-work-roles", () => ({
   useHeldWorkRoles: (signedIn: boolean) => (signedIn ? state.held : []),
 }));
-vi.mock("@/components/live-version/live-version-provider", () => ({ useLivePreview: () => state.preview }));
 vi.mock("@/components/work-mode-launch/work-mode-launch-provider", () => ({
   useWorkModeRouteVisible: () => (href: string) => !state.hidden.some((path) => href.startsWith(path)),
 }));
@@ -82,7 +80,6 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "false");
   localStorage.clear();
   state.held = [];
-  state.preview = false;
   state.hidden = [];
   watchHospitalSickNeedsYou.mockReset();
   watchHospitalSickNeedsYou.mockImplementation((_input, onRead: (read: unknown) => void) => {
@@ -137,14 +134,14 @@ describe("Sick calls source", () => {
 describe("Course changes source", () => {
   const render = () => renderHook(() => useCourseChangeSource({ enabled: true, demo: false, today: "2026-10-09" }));
 
-  it("reads nothing outside the course-bookings preview", () => {
+  it("reads nothing where the launch switch hides Bookings", () => {
+    state.hidden = ["/admin/bookings"];
     const { result } = render();
     expect(result.current).toMatchObject({ id: "course-changes", status: "ready", items: [] });
     expect(readCourseChanges).not.toHaveBeenCalled();
   });
 
-  it("lists changed courses in the preview", async () => {
-    state.preview = true;
+  it("lists changed courses", async () => {
     const { result } = render();
     expect(result.current.status).toBe("loading");
     await waitFor(() => expect(result.current.items).toEqual([COURSE_ITEM]));
@@ -156,7 +153,6 @@ describe("Course changes source", () => {
   });
 
   it("says the check failed when the read fails", async () => {
-    state.preview = true;
     readCourseChanges.mockRejectedValue(new Error("boom"));
     const { result } = render();
     await waitFor(() => expect(result.current.status).toBe("failed"));
@@ -167,7 +163,6 @@ describe("Course changes source", () => {
 describe("registration", () => {
   it("adds both sources to the feature sources the bell reads", async () => {
     state.held = ["workforce"];
-    state.preview = true;
     const { result } = renderHook(() =>
       useFeatureNotificationSources({ enabled: true, clock: NOW, readAt: NOW, zone: ZONE }),
     );
@@ -179,7 +174,6 @@ describe("registration", () => {
 
   it("adds nothing while signed out", () => {
     state.held = ["workforce"];
-    state.preview = true;
     const { result } = renderHook(() =>
       useFeatureNotificationSources({ enabled: false, clock: NOW, readAt: NOW, zone: ZONE }),
     );

@@ -30,7 +30,6 @@ vi.mock("@/components/account-data-provider", () => ({
 }));
 
 import { SettingsDialog } from "@/components/clinical-dashboard/settings-dialog";
-import { LiveVersionProvider } from "@/components/live-version/live-version-provider";
 import {
   matchingSettingsRowIds,
   matchingSettingsSectionIds,
@@ -50,24 +49,6 @@ function renderDialog() {
   );
 }
 
-/** Rows only a live version tester gets (the Live version switch), collected from a tester render. */
-function testerOnlyRowIds(): string[] {
-  render(
-    <LiveVersionProvider liveVersion={{ available: true, newest: true }}>
-      <SettingsDialog
-        open
-        onClose={vi.fn()}
-        identity={{ displayName: "Local session", initials: "LS", detail: "Browser only", signedIn: true }}
-        onSignOut={vi.fn()}
-        onOpenGuide={vi.fn()}
-      />
-    </LiveVersionProvider>,
-  );
-  const ids = renderedRowIds();
-  cleanup();
-  return ids;
-}
-
 function searchFor(value: string) {
   fireEvent.change(screen.getByTestId("settings-search-input"), { target: { value } });
 }
@@ -79,8 +60,8 @@ function renderedRowIds(): string[] {
     .filter(Boolean);
 }
 
-function expectSearchIndexInSync(alsoRendered: Iterable<string> = []) {
-  const rendered = new Set([...renderedRowIds(), ...alsoRendered]);
+function expectSearchIndexInSync() {
+  const rendered = new Set(renderedRowIds());
   const indexed = new Set(SETTINGS_SEARCH_ENTRIES.map((entry) => entry.id));
   for (const id of indexed) {
     expect(rendered.has(id), `${id} is indexed for search but not rendered`).toBe(true);
@@ -101,23 +82,20 @@ afterEach(async () => {
 
 describe("settings search index", () => {
   it("has an entry for every row the dialog renders", () => {
-    const testerRows = testerOnlyRowIds();
-    expect(testerRows).toContain("settings-row-live-version");
     renderDialog();
     // A row with no entry is a row nobody can search for; an entry with no row
     // is a search result that leads nowhere. Both are silent until someone
     // types the word that should have found it, so pin both directions.
-    expectSearchIndexInSync(testerRows);
+    expectSearchIndexInSync();
   });
 
   it("fails closed when a rendered row is not indexed", () => {
-    const testerRows = testerOnlyRowIds();
     renderDialog();
     const unindexed = document.createElement("div");
     unindexed.dataset.settingsSearchRow = "settings-row-unindexed-proof";
     document.body.append(unindexed);
 
-    expect(() => expectSearchIndexInSync(testerRows)).toThrowError(
+    expect(() => expectSearchIndexInSync()).toThrowError(
       "settings-row-unindexed-proof is rendered but missing from the search index",
     );
   });
