@@ -86,3 +86,33 @@ describe("new round form for two teams", () => {
     await waitFor(() => expect(router.replace).toHaveBeenCalledTimes(1));
   });
 });
+
+describe("site administrator in no team", () => {
+  beforeEach(() => {
+    read.current = { ...read.current, managed: [], teams: [], team: null };
+  });
+
+  it("points the new-round page at People and roles", async () => {
+    render(<NewRotationRoundPage />);
+    const card = await screen.findByTestId("rotation-no-team");
+    expect(card.textContent).toContain("you aren't in one");
+    expect(screen.getByTestId("rotation-no-team-people").getAttribute("href")).toBe("/admin/people");
+  });
+
+  it("offers no New round on the rounds list", async () => {
+    const { RotationRoundsPage } = await import("@/components/roster/rotations/admin/rounds-page");
+    render(<RotationRoundsPage />);
+    await screen.findByTestId("rotation-no-team");
+    expect(screen.queryByTestId("rotation-rounds-new-empty")).toBeNull();
+    expect(screen.queryByTestId("rotation-rounds-new")).toBeNull();
+  });
+
+  it("keeps existing rounds visible and explains why there is no New round", async () => {
+    read.current = { ...read.current, managed: example.rounds };
+    const { RotationRoundsPage } = await import("@/components/roster/rotations/admin/rounds-page");
+    render(<RotationRoundsPage />);
+    await screen.findByTestId("rotation-no-team");
+    expect(screen.getAllByTestId(/^rotation-round-row-/).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("rotation-rounds-new")).toBeNull();
+  });
+});
