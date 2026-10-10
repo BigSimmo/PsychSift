@@ -68,6 +68,14 @@ export function isToxicityFeatureQuery(normalized: string) {
 export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): AnswerIntent {
   const normalized = normalizeSectionText(query).toLowerCase();
   if (!normalized) return "unsupported";
+  return (
+    lookupOrContraindicationIntent(query, normalized) ??
+    resultOrScheduleIntent(normalized) ??
+    remainingAnswerIntent(query, normalized, queryClass)
+  );
+}
+
+function lookupOrContraindicationIntent(query: string, normalized: string): AnswerIntent | null {
   if (
     /\b(?:what|which|list|show|find)\s+(?:documents?|sources?|guidelines?|files?)\b.*\b(?:support|cover|contain|for|about)\b/.test(
       normalized,
@@ -90,6 +98,10 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
   ) {
     return "contraindication";
   }
+  return null;
+}
+
+function resultOrScheduleIntent(normalized: string): AnswerIntent | null {
   const hasResultActionSignal =
     /\b(?:red|amber|green|anc|fbc|wbc|result|results|threshold|withhold|cease|stop|stopped|toxicity)\b/.test(
       normalized,
@@ -114,6 +126,10 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
     return "monitoring_schedule";
   }
   if (hasResultActionSignal) return "red_result_action";
+  return null;
+}
+
+function remainingAnswerIntent(query: string, normalized: string, queryClass: RagQueryClass): AnswerIntent {
   if (/\b(?:doses?|dosing|dosage|max(?:imum)?|mg|mcg|renal|eGFR|creatinine)\b/i.test(query)) return "dose";
   if (/\b(?:pathway|refer|referral|criteria|ect|electroconvulsive)\b/.test(normalized)) return "pathway_referral";
   // Retrieval classification and answer intent are different concerns. A
