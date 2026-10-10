@@ -94,9 +94,10 @@ function errorText(payload: Payload, fallback: string): string {
 
 type Loaded = Payload | "signed-out" | "error" | "aborted";
 
-async function fetchShifts(signal?: AbortSignal): Promise<Loaded> {
+async function fetchShifts(range?: { from: string; to: string }, signal?: AbortSignal): Promise<Loaded> {
   try {
-    const response = await sharedGet(ROSTER_SHIFTS_URL, { signal });
+    const query = range ? `?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}` : "";
+    const response = await sharedGet(`${ROSTER_SHIFTS_URL}${query}`, { signal });
     if (response.status === 401) return "signed-out";
     if (!response.ok) return "error";
     return await readPayload(response);
@@ -183,13 +184,13 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
     [accept],
   );
 
-  const load = useCallback(async () => apply(await fetchShifts()), [apply]);
+  const load = useCallback(async () => apply(await fetchShifts(teamRange)), [apply, teamRange]);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchShifts(controller.signal).then(apply, () => undefined);
+    fetchShifts(teamRange, controller.signal).then(apply, () => undefined);
     return () => controller.abort();
-  }, [apply]);
+  }, [apply, teamRange]);
 
   const save = useCallback(
     async (request: OnCallShiftImportRequest) => {

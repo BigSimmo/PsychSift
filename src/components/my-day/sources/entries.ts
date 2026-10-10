@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin/own-entries";
 import { renewalStartOn } from "@/lib/admin/renewal-dates";
 import { selectComingUp, selectNeedsYou } from "@/lib/admin/today-selectors";
+import { renewalsFilterItemExpiresOn, renewalsFilterItems } from "@/lib/admin/renewals-filters";
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import type { MyDayItem, MyDayNextRenewal, MyDaySourceResult, MyDaySourceStatus } from "@/lib/my-day/model";
@@ -148,6 +149,30 @@ export function adminRenewalRows(own: readonly OnCallEntry[], now: Date): Renewa
       href: renewalsItemHref(row.entryId),
     })),
   );
+}
+
+/** All recorded renewal dates for the calendar; unlike Coming up, this is not capped or time-windowed. */
+export function adminCalendarRenewalItems(
+  own: readonly OnCallEntry[],
+  now: Date,
+  zone: string = currentWorkTimeZone(),
+): MyDayItem[] {
+  const today = zonedDateOf(now, zone);
+  return renewalsFilterItems(own).flatMap((item) => {
+    const date = renewalsFilterItemExpiresOn(item);
+    const entry = item.kind === "catalogue" ? item.row.entry : item.entry;
+    if (!date || !entry) return [];
+    const severity = date < today ? "overdue" : date === today ? "soon" : "info";
+    return [{
+      id: `my-work:date:${entry.id}`,
+      mode: "my-work" as const,
+      title: item.kind === "catalogue" ? item.row.item.title : entry.title,
+      detail: severity === "overdue" ? "Date has passed" : "Recorded date",
+      due: date,
+      severity,
+      href: renewalsItemHref(entry.id),
+    }];
+  });
 }
 
 export function onCallMyDayItems(entries: readonly OnCallEntry[], now: Date, reminders: ReminderSettings): MyDayItem[] {

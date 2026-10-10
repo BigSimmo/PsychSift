@@ -14,10 +14,12 @@ import { listNames } from "@/components/my-day/my-day-page-parts";
 import { QuietFoot, QuietLabel, quietCard } from "@/components/my-day/my-day-quiet";
 import { MyDaySegmented } from "@/components/my-day/my-day-today-cards";
 import { cmeRoutineItemsThrough } from "@/components/my-day/sources/cme";
+import { adminCalendarRenewalItems } from "@/components/my-day/sources/entries";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { kindOf } from "@/components/roster/roster-format";
 import { useRosterShifts, type MyShift } from "@/components/roster/use-roster-shifts";
+import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
 import { relocatedEntryId, sessionHref } from "@/components/teaching/teaching-view-model";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
@@ -166,7 +168,9 @@ function CalendarBody({
   const month = shownMonth ?? today.slice(0, 7);
   const from = `${month}-01`;
   const to = monthEnd(month);
-  const range = useMemo(() => ({ from, to }), [from, to]);
+  // Teaching and team Roster interpret dates in Perth; pad the request so a
+  // month edge remains covered when the reader's work zone differs.
+  const range = useMemo(() => ({ from: addDaysToDate(from, -2), to: addDaysToDate(to, 2) }), [from, to]);
   const [view, setView] = useState<CalendarView>("month");
   const [selected, setSelected] = useState(today);
   const [hidden, setHidden] = useState<ReadonlySet<MyDaySourceMode>>(() => new Set());
@@ -176,8 +180,7 @@ function CalendarBody({
   const teaching = useTeachingWeek(range, { demoMode: false }, now);
   const reminders = useAppPreferences().preferences.reminders;
   const calendar = useWorkCalendarEntries();
-  const [leaveReload, setLeaveReload] = useState(0);
-  const leave = useJuniorRosterLeave(true, leaveReload);
+  const leave = useJuniorRosterLeave(true);
   const paperwork = useAdminPaperwork(null);
 
   // Example shifts belong to a sample doctor, never to the reader: left out unless this is a demo.
@@ -196,7 +199,11 @@ function CalendarBody({
         leaveItems(leave.status === "ready" ? leave.leave : []),
         sessions.map((session) => sessionItem(session, zone)),
         myDayCalendarItems(
-          mergeMyDayItems([items.items, cmeRoutineItemsThrough(items.cmeRoutines, to, now, reminders)]),
+          mergeMyDayItems([
+            items.items.filter((item) => item.mode !== "my-work"),
+            adminCalendarRenewalItems(items.adminEntries, now, zone),
+            cmeRoutineItemsThrough(items.cmeRoutines, to, now, reminders),
+          ]),
           areaLabel,
           zone,
         ),
@@ -209,6 +216,7 @@ function CalendarBody({
       leave,
       sessions,
       items.items,
+      items.adminEntries,
       items.cmeRoutines,
       to,
       now,
@@ -225,7 +233,10 @@ function CalendarBody({
     shifts.status === "loading" ||
     shifts.teamLoading ||
     teaching.status === "loading" ||
-    teaching.status === "idle";
+    teaching.status === "idle" ||
+    calendar.status === "loading" ||
+    leave.status === "loading" ||
+    paperwork.state === null;
   if (loading) {
     return (
       <>
@@ -250,11 +261,16 @@ function CalendarBody({
     failed.push("Teaching sessions");
   }
   if (teaching.week?.relocatedUnavailable) failed.push("On Call teaching entries");
+  Object.entries(calendar.sources).forEach(([sourceId, source]) => {
+    if (source.status === "error" || source.status === "signed-out" || source.status === "unavailable") {
+      failed.push(sourceId === "rotations" ? "Rotations" : "Course bookings");
+    }
+  });
   const retry = () => {
     items.retry();
     void shifts.reload();
     teaching.retry();
-    setLeaveReload((count) => count + 1);
+    leave.retry();
   };
 
   const changeMonth = (next: string) => {
@@ -541,7 +557,7 @@ function DayCell({
       className={cn(
         focusRing,
         "grid min-h-14 w-full content-start justify-items-center gap-1 rounded-lg px-0.5 pt-1 pb-1.5 sm:min-h-24 sm:justify-items-stretch lg:min-h-28",
-        selected && "bg-[color:var(--work-wash)]",
+        selected && "bg-[color:var(--work-wash)] forced-colors:border-2 forced-colors:border-[CanvasText]",
       )}
     >
       <span

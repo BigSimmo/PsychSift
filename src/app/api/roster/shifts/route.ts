@@ -75,8 +75,10 @@ export async function GET(request: Request) {
     }
     const { supabase, user, rateLimit } = await authorise(request);
     if (rateLimit.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rateLimit);
+    const fromParam = new URL(request.url).searchParams.get("from");
+    const from = fromParam && /^\d{4}-\d{2}-\d{2}$/.test(fromParam) ? new Date(`${fromParam}T00:00:00Z`) : listFrom();
     const [shifts, latestImport] = await Promise.all([
-      fetchOwnerShifts(supabase, user.id, listFrom()),
+      fetchOwnerShifts(supabase, user.id, from),
       fetchLatestShiftImport(supabase, user.id),
     ]);
     // No invented sample here: an empty roster is the reader's real, empty

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { isRosterLeaveKind, ROSTER_LEAVE_KIND_LABEL, type RosterLeaveKind } from "@/lib/roster/leave-kinds";
 
@@ -17,6 +17,8 @@ export type JuniorRosterLeaveState =
   | { readonly status: "loading" }
   | { readonly status: "failed" }
   | { readonly status: "ready"; readonly leave: readonly JuniorRosterLeave[] };
+
+export type JuniorRosterLeaveRead = JuniorRosterLeaveState & { readonly retry: () => void };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -44,13 +46,15 @@ function parseLeave(value: unknown): JuniorRosterLeave[] {
  * Reads `/api/roster/leave` (the same route Roster's own pages read). Held in
  * memory for this page only: roster data never goes on the device. A signed
  * out reader gets an error from the route, which reads as "failed" here and
- * the page says it could not load leave rather than "no leave". A change of
- * `reload` reads it again (a page's Retry).
+ * the page says it could not load leave rather than "no leave".
  */
-export function useJuniorRosterLeave(enabled: boolean, reload = 0): JuniorRosterLeaveState {
+export function useJuniorRosterLeave(enabled: boolean): JuniorRosterLeaveRead {
   const [state, setState] = useState<JuniorRosterLeaveState>({ status: "loading" });
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
   useEffect(() => {
     if (!enabled) return;
+    setState({ status: "loading" });
     const controller = new AbortController();
     fetch("/api/roster/leave", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
@@ -62,8 +66,8 @@ export function useJuniorRosterLeave(enabled: boolean, reload = 0): JuniorRoster
         if (!controller.signal.aborted) setState({ status: "failed" });
       });
     return () => controller.abort();
-  }, [enabled, reload]);
-  return state;
+  }, [enabled, attempt]);
+  return { ...state, retry };
 }
 
 export const ROSTER_LEAVE_STATUS_WORDS: Record<JuniorRosterLeave["status"], string> = {
