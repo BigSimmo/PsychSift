@@ -34,6 +34,7 @@ export const WORK_CAPABILITIES = [
   "starters.view",
   "sick.inbox",
   "staffing.manage",
+  "staffing.overview",
   "roles.grant",
 ] as const;
 export type WorkCapability = (typeof WORK_CAPABILITIES)[number];
@@ -91,6 +92,9 @@ export const WORK_CAPABILITY_RULES: Record<WorkCapability, CapabilityRule> = {
   "starters.view": { administrator: true, hospital: ["workforce"], team: [], trainee: false },
   "sick.inbox": { administrator: true, hospital: ["workforce"], team: ["manager"], trainee: false },
   "staffing.manage": { administrator: true, hospital: ["workforce"], team: ["manager"], trainee: false },
+  // Short-staffed days across a hospital. Read only, and checked in TypeScript only: work_can() in SQL
+  // does not list it, so an SQL caller is refused (see tests/work-roles-sql-parity.test.ts).
+  "staffing.overview": { administrator: true, hospital: ["workforce"], team: [], trainee: false },
   "roles.grant": { administrator: true, hospital: ["workforce"], team: [], trainee: false },
 };
 
