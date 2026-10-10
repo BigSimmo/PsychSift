@@ -2658,7 +2658,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             onClick={toggleModeMenu}
             onKeyDown={handleModeTriggerKeyDown}
             className={cn(
-              "universal-header-mode-button inline-grid h-12 w-[min(13rem,calc(100vw-9rem))] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:w-auto sm:min-w-[13rem] sm:pr-3",
+              "universal-header-mode-button inline-grid h-12 w-auto min-w-0 max-w-[calc(100vw-9rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:pr-3",
             )}
             aria-haspopup="dialog"
             aria-expanded={modeMenuOpen}
