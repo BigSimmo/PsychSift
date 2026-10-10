@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-10T01:11:48.351Z",
+  "sealed_at": "2026-10-10T01:16:26.809Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -300,6 +300,6 @@
     "20261009084600_roster_rotation_rounds.sql": "6ce89702b93764029abbf345645963294a66c2e3462d961ce5e970d7af62da00",
     "20261009112500_work_bookings_shared_roles.sql": "50646769370fb1948011c2d3388e6192a2e8cfef341b8d23caa36fe61f3dad8b",
     "20261009225900_work_bookings_retention.sql": "67800d7b4136b2955b8f34360e9b79564d2bd9c89aa66397548b1e1b3e4fc5cb",
-    "20261010011100_work_bookings_organiser_access.sql": "e8c284f391bccc4d6327968e076ef15dd8f17d9a4ff40254a01f92ea687cad76"
+    "20261010011100_work_bookings_organiser_role.sql": "e8c284f391bccc4d6327968e076ef15dd8f17d9a4ff40254a01f92ea687cad76"
   }
 }

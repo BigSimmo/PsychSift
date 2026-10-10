@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * Courses role, not who posted the course, so an organiser who loses the role stops seeing them.
  */
 
-const sql = readFileSync("supabase/migrations/20261010011100_work_bookings_organiser_access.sql", "utf8");
+const sql = readFileSync("supabase/migrations/20261010011100_work_bookings_organiser_role.sql", "utf8");
 const schema = readFileSync("supabase/schema.sql", "utf8");
 
 function latestVisible(text: string): string {

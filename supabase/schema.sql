@@ -27243,7 +27243,7 @@ begin
 end
 $work_bookings_retention$;
 
--- Organiser access ends with the Courses role (20261010011100_work_bookings_organiser_access.sql):
+-- Organiser access ends with the Courses role (20261010011100_work_bookings_organiser_role.sql):
 -- only the site administrator and a current Courses manager of the team manage a course.
 create or replace function public.work_bookings_visible(p_actor_id uuid)
 returns table (id uuid, manage boolean)
