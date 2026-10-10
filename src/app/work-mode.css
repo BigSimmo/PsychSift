@@ -749,14 +749,15 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 /* The mode pill: glass, a flat mode-colour badge, page over area. The same
-   size as the clinical pill (Josh, 10 Oct 2026): 13rem wide and 48px tall,
-   the chevron at its right end, narrowing only where two round buttons on the
-   right leave less room. */
+   size as the clinical pill (Josh, 10 Oct 2026): at least 13rem wide and 48px
+   tall, the chevron at its right end. The width is a floor, narrowing only
+   where two round buttons on the right leave less room, so a long name
+   ("Assessments") still grows the pill up to its limit instead of shortening. */
 .universal-header[data-work-frame] .universal-header-mode-button {
   position: relative;
   isolation: isolate;
-  width: min(13rem, calc(100vw - 13rem));
-  min-width: 0;
+  width: auto;
+  min-width: min(13rem, calc(100vw - 13rem));
   /* Never narrower than a tap, so at large text sizes the badge still shows
      when the name cannot. */
   max-width: max(var(--spacing-tap, 3rem), min(15rem, calc(100vw - 11rem)));
@@ -771,7 +772,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 /* With Back beside the menu there are five controls in the row, so the pill
    hugs its name as before rather than taking the clinical pill's width. */
 .universal-header-row:has(> .universal-header-leading > #universal-header-leading > *) .universal-header-mode-button {
-  width: auto;
+  min-width: 0;
 }
 
 @media (min-width: 640px) {
