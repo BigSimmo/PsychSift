@@ -439,6 +439,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/hospital/starters",
+        "file": "src/app/(search-app)/admin/hospital/starters/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan",
         "file": "src/app/mockups/care-plan/page.tsx",
         "area": "mockup"
@@ -1931,6 +1936,10 @@
         "file": "src/app/api/documents/[id]/route.ts"
       },
       {
+        "path": "/api/work/starters/sharing",
+        "file": "src/app/api/work/starters/sharing/route.ts"
+      },
+      {
         "path": "/api/search/interaction",
         "file": "src/app/api/search/interaction/route.ts"
       },
@@ -2293,6 +2302,10 @@
       {
         "path": "/api/on-call/services",
         "file": "src/app/api/on-call/services/route.ts"
+      },
+      {
+        "path": "/api/work/hospital/starters",
+        "file": "src/app/api/work/hospital/starters/route.ts"
       },
       {
         "path": "/api/roster/shifts/manual",
@@ -2807,6 +2820,11 @@
         "path": "docs/scripts-index.md",
         "section": "root",
         "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-10-new-job-progress-shared-only-by-opt-in.md",
+        "section": "decisions",
+        "catalogued": false
       },
       {
         "path": "docs/superpowers/rag-upgrade/cloud/START-HERE.md",

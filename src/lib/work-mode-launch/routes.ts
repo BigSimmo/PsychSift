@@ -63,7 +63,7 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   // Hospital roles: People and roles, for Medical Workforce, the DCT and administrators.
   { path: "/admin/people", owner: "hospital-roles" },
   // Hospital roles: Hospital, the way in for hospital role holders, and everything below it
-  // (its sick calls and short-staffed days).
+  // (its sick calls, short-staffed days and new starters).
   { path: "/admin/hospital", owner: "hospital-roles" },
   // Rotation preferences: a doctor's rounds and year, and the administrator's rounds (each matches its rounds below it).
   { path: "/roster/rotations", owner: "roster-rotations" },
