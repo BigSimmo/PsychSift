@@ -101,32 +101,37 @@ function lookupOrContraindicationIntent(query: string, normalized: string): Answ
   return null;
 }
 
+const resultActionSignalPattern =
+  /\b(?:red|amber|green|anc|fbc|wbc|result|results|threshold|withhold|cease|stop|stopped|toxicity)\b/;
+const strongResultSignalPattern =
+  /\b(?:toxicity|what\s+action|action\s+is\s+required|required\s+action|suspected\s+\w+\s+toxicity)\b/;
+const explicitActionSignalPattern =
+  /\b(?:what\s+action|action\s+is\s+required|required\s+action|suspected\s+\w+\s+toxicity)\b/;
+const scheduleSignalPattern = /\b(?:monitor|monitoring|schedule|baseline|follow[-\s]?up|level|levels|test|tests)\b/;
+const scheduleOverviewPattern = /\b(?:schedule|baseline|follow[-\s]?up)\b/;
+
+function hasScheduleSignal(normalized: string) {
+  return scheduleSignalPattern.test(normalized) || isMonitoringLevelRangeLookupQuery(normalized);
+}
+
+function hasResultActionSignal(normalized: string) {
+  return resultActionSignalPattern.test(normalized) || explicitActionSignalPattern.test(normalized);
+}
+
 function resultOrScheduleIntent(normalized: string): AnswerIntent | null {
-  const hasResultActionSignal =
-    /\b(?:red|amber|green|anc|fbc|wbc|result|results|threshold|withhold|cease|stop|stopped|toxicity)\b/.test(
-      normalized,
-    ) || /\b(?:what\s+action|action\s+is\s+required|required\s+action|suspected\s+\w+\s+toxicity)\b/.test(normalized);
-  const hasScheduleSignal =
-    /\b(?:monitor|monitoring|schedule|baseline|follow[-\s]?up|level|levels|test|tests)\b/.test(normalized) ||
-    isMonitoringLevelRangeLookupQuery(normalized);
-  if (hasScheduleSignal && isCompoundMonitoringToxicityQuery(normalized)) return "monitoring_schedule";
+  const schedule = hasScheduleSignal(normalized);
+  if (schedule && isCompoundMonitoringToxicityQuery(normalized)) return "monitoring_schedule";
   if (isToxicityFeatureQuery(normalized)) return "general";
-  // Toxicity and explicit action queries take priority over monitoring even if schedule/baseline/follow-up terms appear.
-  const hasStrongResultSignal =
-    /\b(?:toxicity|what\s+action|action\s+is\s+required|required\s+action|suspected\s+\w+\s+toxicity)\b/.test(
-      normalized,
-    );
-  if (
-    hasResultActionSignal &&
-    (!/\b(?:schedule|baseline|follow[-\s]?up)\b/.test(normalized) || hasStrongResultSignal)
-  ) {
-    return "red_result_action";
-  }
-  if (hasScheduleSignal) {
-    return "monitoring_schedule";
-  }
-  if (hasResultActionSignal) return "red_result_action";
-  return null;
+  return resultActionOrScheduleIntent(normalized, schedule);
+}
+
+// Toxicity and explicit action queries take priority over monitoring even if schedule/baseline/follow-up terms appear.
+function resultActionOrScheduleIntent(normalized: string, schedule: boolean): AnswerIntent | null {
+  const resultAction = hasResultActionSignal(normalized);
+  const resultFirst = !scheduleOverviewPattern.test(normalized) || strongResultSignalPattern.test(normalized);
+  if (resultAction && resultFirst) return "red_result_action";
+  if (schedule) return "monitoring_schedule";
+  return resultAction ? "red_result_action" : null;
 }
 
 function remainingAnswerIntent(query: string, normalized: string, queryClass: RagQueryClass): AnswerIntent {
