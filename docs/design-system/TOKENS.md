@@ -184,6 +184,15 @@ extending it would drag in tests that mean something else.
 | ------- | --------- | --------- | ------------------------------------ |
 | On Call | `#175f63` | `#8fc9c5` | 7.4:1 light, 8.2:1 dark              |
 
+**Work mode, 2026-10-10.** The table above records the first decision only. Every Work mode
+area now declares a hue the same way: My Day (`my-day`), Roster (`roster`), Open shifts
+(`open-shifts`), Teaching and Assessments (`teaching`), CPD (`cme`), Admin (`my-work`) and On
+Call (`on-call`). Their light and dark values live in the `[data-mode-identity="…"]` blocks in
+`src/app/globals.css`, which are the only place to read or change them; do not copy hex values
+from this file or from older mock-ups. Inside a work page the hue is the whole page's identity:
+the band, its tabs, the header pill, the bell and AI Search, the kit controls and every focus
+ring. The rest of the Work mode recipe is the `--work-*` family in §9.
+
 Rules, all enforced by `tests/design-token-contract.test.ts`:
 
 - **Every mode defaults to the product accent.** The `:root` values alias `--clinical-accent*`,
