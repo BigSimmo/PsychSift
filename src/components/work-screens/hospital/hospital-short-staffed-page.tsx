@@ -32,7 +32,6 @@ import {
   useHospitalShortStaffed,
 } from "@/components/work-screens/hospital/hospital-shared";
 import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
-import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { isExampleRecord } from "@/lib/example-data/guards";
 import { STAFFING_COUNTS_WORDS } from "@/lib/roster/staffing/team-staffing";
 import {
@@ -56,6 +55,7 @@ import {
 } from "@/lib/work-roles/hospital-short-staffed-view";
 import type { WorkRoleGrant } from "@/lib/work-roles/model";
 import { zonedToday } from "@/lib/work-time/format";
+import { DEFAULT_WORK_TIME_ZONE } from "@/lib/work-time/zones";
 
 const TITLE = "Short-staffed days";
 const NO_HOSPITALS: readonly HospitalRef[] = [];
