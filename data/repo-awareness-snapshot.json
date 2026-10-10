@@ -439,6 +439,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/hospital/starters",
+        "file": "src/app/(search-app)/admin/hospital/starters/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan",
         "file": "src/app/mockups/care-plan/page.tsx",
         "area": "mockup"
@@ -736,6 +741,11 @@
       {
         "path": "/reference/colour-coding",
         "file": "src/app/reference/colour-coding/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/admin/hospital/short-staffed",
+        "file": "src/app/(search-app)/admin/hospital/short-staffed/page.tsx",
         "area": "product"
       },
       {
@@ -1931,6 +1941,10 @@
         "file": "src/app/api/documents/[id]/route.ts"
       },
       {
+        "path": "/api/work/starters/sharing",
+        "file": "src/app/api/work/starters/sharing/route.ts"
+      },
+      {
         "path": "/api/search/interaction",
         "file": "src/app/api/search/interaction/route.ts"
       },
@@ -1973,6 +1987,10 @@
       {
         "path": "/api/upload",
         "file": "src/app/api/upload/route.ts"
+      },
+      {
+        "path": "/api/work/hospital/short-staffed",
+        "file": "src/app/api/work/hospital/short-staffed/route.ts"
       },
       {
         "path": "/api/teaching/resources/services/[serviceId]",
@@ -2289,6 +2307,10 @@
       {
         "path": "/api/on-call/services",
         "file": "src/app/api/on-call/services/route.ts"
+      },
+      {
+        "path": "/api/work/hospital/starters",
+        "file": "src/app/api/work/hospital/starters/route.ts"
       },
       {
         "path": "/api/roster/shifts/manual",
@@ -2803,6 +2825,11 @@
         "path": "docs/scripts-index.md",
         "section": "root",
         "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-10-new-job-progress-shared-only-by-opt-in.md",
+        "section": "decisions",
+        "catalogued": false
       },
       {
         "path": "docs/superpowers/rag-upgrade/cloud/START-HERE.md",
@@ -4397,11 +4424,6 @@
       {
         "path": "docs/care-plan/verification-log-2026-08-21.md",
         "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/live-version-switch.md",
-        "section": "root",
         "catalogued": true
       },
       {

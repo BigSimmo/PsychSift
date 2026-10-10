@@ -13,6 +13,7 @@ import type { SessionSummary } from "@/lib/teaching/model";
 import type { TermTrackerState } from "@/lib/teaching/term-tracker";
 import type { WorkAreaId } from "@/lib/work-frame/areas";
 import type { ExampleHospitalHub } from "@/lib/work-roles/hospital-hub";
+import type { ExampleHospitalStarters } from "@/lib/work-roles/hospital-starters-model";
 import type { ExampleWorkPeople } from "@/lib/work-roles/people-model";
 import type { AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
 import type { EarlierAlert } from "@/lib/work-screens/my-day/earlier-alerts";
@@ -57,6 +58,7 @@ export type ExampleDatasets = {
   "admin.workforce": ExampleWorkforce;
   "admin.people": ExampleWorkPeople;
   "admin.hospital": ExampleHospitalHub;
+  "admin.hospitalStarters": ExampleHospitalStarters;
   "admin.bookings": BookingsState;
 };
 
@@ -100,6 +102,8 @@ const LOADERS: { [K in ExampleDatasetKey]: Loader<K> } = {
   "admin.people": async () => (await import("@/lib/example-data/datasets/admin-people")).exampleWorkPeople(),
   "admin.hospital": async (now, zone) =>
     (await import("@/lib/example-data/datasets/admin-hospital")).exampleHospitalHub(now, zone),
+  "admin.hospitalStarters": async (now, zone) =>
+    (await import("@/lib/example-data/datasets/admin-hospital-starters")).exampleHospitalStarters(now, zone),
   "admin.bookings": async (now, zone) =>
     (await import("@/lib/example-data/datasets/admin-bookings")).exampleBookings(now, zone),
 };
@@ -127,6 +131,7 @@ export const EXAMPLE_DATASET_AREA: { readonly [K in ExampleDatasetKey]: WorkArea
   "admin.workforce": "admin",
   "admin.people": "admin",
   "admin.hospital": "admin",
+  "admin.hospitalStarters": "admin",
   "admin.bookings": "admin",
 };
 

@@ -120,11 +120,12 @@ function nextUpdatedAt(previous: string | null): string {
 
 /**
  * Keys on this row that other routes own and this route must carry through:
- * `roster` (`/api/roster/settings`) and `work` (`/api/work/sync`, the work
- * choices that follow the doctor between devices). Neither is ever returned
- * here.
+ * `roster` (`/api/roster/settings`), `work` (`/api/work/sync`, the work
+ * choices that follow the doctor between devices) and `starterSharing`
+ * (`/api/work/starters/sharing`, the doctor's choice to share New job
+ * progress with Medical Workforce). None is ever returned here.
  */
-const ROUTE_OWNED_KEYS = ["roster", "work"] as const;
+const ROUTE_OWNED_KEYS = ["roster", "work", "starterSharing"] as const;
 
 /**
  * Roster's own settings live at `preferences.roster` on this same row, written

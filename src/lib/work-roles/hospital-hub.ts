@@ -6,14 +6,18 @@ import {
   type WorkRoleGrant,
   type WorkScope,
 } from "@/lib/work-roles/model";
+import { hospitalStartersHref } from "@/lib/work-roles/hospital-starters-model";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { formatZonedDay, formatZonedRange, zonedDateOf } from "@/lib/work-time/format";
+
+import type { HospitalShortStaffedView } from "./hospital-short-staffed-view";
 
 /**
  * Hospital (`/admin/hospital`): the one way in for people who hold a hospital
  * role. This file is pure and client safe. It decides which sections and rows
  * the screen shows for the roles a person holds, and lays out the hospital's
- * sick calls (`/admin/hospital/sick`). Nothing here is a permission: every
+ * sick calls (`/admin/hospital/sick`). Short-staffed days
+ * (`/admin/hospital/short-staffed`) are laid out in `hospital-short-staffed-view.ts`. Nothing here is a permission: every
  * screen it links to checks the role again on the server.
  */
 
@@ -235,6 +239,7 @@ export function sickCallHref(call: Pick<HospitalSickCall, "serviceId">): string 
 
 export const HOSPITAL_HUB_HREF = "/admin/hospital";
 export const HOSPITAL_SICK_HREF = "/admin/hospital/sick";
+export const HOSPITAL_SHORT_STAFFED_HREF = "/admin/hospital/short-staffed";
 
 const withQuery = (path: string, query: Record<string, string | null | undefined>) => {
   const search = new URLSearchParams();
@@ -253,6 +258,10 @@ export function teamCoverHref(serviceId: string): string {
 
 export function hospitalSickHref(hospitalId: string | null): string {
   return withQuery(HOSPITAL_SICK_HREF, { hospitalId });
+}
+
+export function hospitalShortStaffedHref(hospitalId: string | null): string {
+  return withQuery(HOSPITAL_SHORT_STAFFED_HREF, { hospitalId });
 }
 
 export function peopleAndRolesHref(hospitalId: string | null): string {
@@ -278,6 +287,7 @@ export type HospitalSectionId = "workforce" | "dct" | "supervisor" | "manager";
 /** What a row's icon shows. The screen maps it to an icon, so this file stays icon free. */
 export type HospitalLinkIcon =
   | "sick"
+  | "short"
   | "starters"
   | "people"
   | "overview"
@@ -343,15 +353,15 @@ export type HospitalSectionOptions = {
   /** Team names by service id, for a roster manager's rows. */
   readonly teamNames?: ReadonlyMap<string, string>;
   readonly extraLinks?: Readonly<Record<HospitalSectionId, readonly HospitalExtraLink[]>>;
-  /** Screens still behind the live preview switch, true when this reader gets them. */
+  /** Which of the other threads' screens to list, true when this reader gets them. */
   readonly previews?: HospitalPreviews;
 };
 
-/** Screens other threads build, behind the live preview switch for now. */
+/** Screens other threads built. Both have been on for everyone since 10 October 2026. */
 export type HospitalPreviews = {
-  /** `useLivePreview("rotation-preferences")`. */
+  /** Rotation rounds. */
   readonly rotationRounds: boolean;
-  /** `useLivePreview("course-bookings")`. */
+  /** Courses. */
   readonly courses: boolean;
 };
 
@@ -501,10 +511,17 @@ export function hospitalSections(
           icon: "sick",
         },
         {
+          id: "short-staffed",
+          label: "Short-staffed days",
+          sub: "Teams below their safe number",
+          href: hospitalShortStaffedHref(hospitalId),
+          icon: "short",
+        },
+        {
           id: "starters",
           label: "New starters",
-          sub: "Sample, not live yet",
-          href: NEW_STARTERS_HREF,
+          sub: "Doctors who share their New job list",
+          href: hospitalStartersHref(hospitalId),
           icon: "starters",
         },
         {
@@ -712,10 +729,12 @@ export function hospitalCardRows(
 
 /* ---------------------------------------------------------- example data */
 
-/** The example records for Hospital: a reader holding every role, and each hospital's sick calls. */
+/** The example records for Hospital: a reader holding every role, and each hospital's sick calls and short-staffed days. */
 export type ExampleHospitalHub = {
   readonly grants: readonly WorkRoleGrant[];
   readonly hospitals: readonly HospitalSickView[];
+  /** One per hospital, in the same order as `hospitals`. */
+  readonly shortStaffed: readonly HospitalShortStaffedView[];
 };
 
 /** Team names across every example hospital, for a roster manager's rows. */

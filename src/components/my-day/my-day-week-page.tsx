@@ -6,8 +6,6 @@ import Link from "next/link";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
-import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { focusRing } from "@/components/card-recipes";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -136,10 +134,6 @@ function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
   const shifts = useRosterShifts(range);
   const teaching = useTeachingWeek(range, { demoMode: false }, now);
   const reminders = useAppPreferences().preferences.reminders;
-  // The one calendar, for testers on the newest live version.
-  // Where the launch switch holds new screens back, the calendar's page is hidden too, so the card is left out.
-  const routeVisible = useWorkModeRouteVisible();
-  const fullCalendar = useLivePreview("main-calendar") && routeVisible("/my-day/calendar");
 
   const loading =
     items.status === "loading" ||
@@ -224,26 +218,25 @@ function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
         reminders={reminders}
         rosterKnown={showShifts}
       />
-      {fullCalendar ? (
-        <Link
-          href="/my-day/calendar"
-          data-testid="my-day-week-calendar-link"
-          className={cn(
-            quietCard,
-            focusRing,
-            "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
-          )}
-        >
-          <AreaIcon mode="my-day" icon={CalendarDays} />
-          <span className="grid min-w-0 flex-1">
-            <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">Open the full calendar</span>
-            <span className="text-2xs text-[color:var(--text-muted)]">
-              Shifts, leave, rotations, courses, teaching, CPD and Admin dates together
-            </span>
+      {/* The one calendar is on for everyone, with no preview or launch gate. */}
+      <Link
+        href="/my-day/calendar"
+        data-testid="my-day-week-calendar-link"
+        className={cn(
+          quietCard,
+          focusRing,
+          "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
+        )}
+      >
+        <AreaIcon mode="my-day" icon={CalendarDays} />
+        <span className="grid min-w-0 flex-1">
+          <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">Open the full calendar</span>
+          <span className="text-2xs text-[color:var(--text-muted)]">
+            Shifts, leave, rotations, courses, teaching, CPD and Admin dates together
           </span>
-          <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
-        </Link>
-      ) : null}
+        </span>
+        <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
+      </Link>
     </div>
   );
 }
