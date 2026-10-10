@@ -1312,6 +1312,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     // The find field shows one focus owner, its own border, and stays inside the sheet.
     const find = menu.getByTestId("two-pane-menu-find");
     await find.focus();
+    // The border eases in over a short transition, so wait for it to settle.
+    await expect
+      .poll(() =>
+        find.evaluate((element) => {
+          const field = element.closest(".two-pane-menu__find");
+          return field ? getComputedStyle(field).borderTopColor : null;
+        }),
+      )
+      .not.toBe("rgba(0, 0, 0, 0)");
     const fieldFocus = await find.evaluate((element) => {
       const field = element.closest(".two-pane-menu__find");
       const sheet = element.closest('[role="dialog"]');
@@ -1319,13 +1328,11 @@ test.describe("PsychSift UI smoke coverage", () => {
       const sheetRect = sheet?.getBoundingClientRect();
       return {
         inputOutline: getComputedStyle(element).outlineStyle,
-        fieldBorder: field ? getComputedStyle(field).borderTopColor : null,
         contained:
           Boolean(fieldRect && sheetRect) && fieldRect!.left >= sheetRect!.left && fieldRect!.right <= sheetRect!.right,
       };
     });
     expect(fieldFocus.inputOutline).toBe("none");
-    expect(fieldFocus.fieldBorder).not.toBe("rgba(0, 0, 0, 0)");
     expect(fieldFocus.contained).toBe(true);
 
     await closeMenu.click();
