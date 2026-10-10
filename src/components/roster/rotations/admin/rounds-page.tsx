@@ -10,6 +10,7 @@ import {
   Plus,
   RotateCcw,
   Sparkles,
+  Users,
   WifiOff,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -80,16 +81,50 @@ export function RotationRoundsPage() {
           Rotation rounds
         </PageTitleUnderBand>
         <RotationsAdminGate read={read} what="rotation rounds">
-          <RoundsList rounds={read.managed} now={now} />
+          <RoundsList rounds={read.managed} now={now} canStart={read.teams.length > 0} />
         </RotationsAdminGate>
       </WorkBody>
     </main>
   );
 }
 
-function RoundsList({ rounds, now }: { readonly rounds: readonly ManagedRound[]; readonly now: Date }) {
+/** People and roles, where the site administrator gives someone a team role. */
+const PEOPLE_AND_ROLES_HREF = "/admin/people";
+
+/**
+ * Someone who may manage rounds but has no team to start one for. Only the site administrator gets
+ * here: everyone else who can manage holds a role for at least one team.
+ */
+export function RotationNoTeam() {
+  return (
+    <WorkCard testId="rotation-no-team">
+      <WorkEmpty
+        icon={Users}
+        title="No team to run a round for"
+        body="A round belongs to a team, and you aren't in one. Join a team in Roster, or give someone a team role in People and roles."
+        action={
+          <WorkButton variant="secondary" href={PEOPLE_AND_ROLES_HREF} testId="rotation-no-team-people">
+            People and roles
+          </WorkButton>
+        }
+      />
+    </WorkCard>
+  );
+}
+
+function RoundsList({
+  rounds,
+  now,
+  canStart,
+}: {
+  readonly rounds: readonly ManagedRound[];
+  readonly now: Date;
+  /** False when there is no team to start a round for, so New round would lead nowhere. */
+  readonly canStart: boolean;
+}) {
   const groups = groupRounds(rounds);
   if (groups.length === 0) {
+    if (!canStart) return <RotationNoTeam />;
     return (
       <WorkCard testId="rotation-rounds-empty">
         <WorkEmpty
@@ -134,11 +169,13 @@ function RoundsList({ rounds, now }: { readonly rounds: readonly ManagedRound[];
           </WorkCard>
         </section>
       ))}
-      <div className="grid grid-cols-1 pt-1">
-        <WorkButton icon={Plus} size="wide" href={NEW_ROUND_HREF} testId="rotation-rounds-new">
-          New round
-        </WorkButton>
-      </div>
+      {canStart ? (
+        <div className="grid grid-cols-1 pt-1">
+          <WorkButton icon={Plus} size="wide" href={NEW_ROUND_HREF} testId="rotation-rounds-new">
+            New round
+          </WorkButton>
+        </div>
+      ) : null}
     </>
   );
 }
