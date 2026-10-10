@@ -154,8 +154,13 @@ export function useRosterShifts(
   useEffect(() => {
     if (!wantsHistory) return;
     const controller = new AbortController();
-    const query = new URLSearchParams({ from, to: historyTo });
-    sharedGet(`${ROSTER_SHIFTS_URL}?${query}`, { signal: controller.signal })
+    const url = `${ROSTER_SHIFTS_URL}?${new URLSearchParams({ from, to: historyTo })}`;
+    // A re-read after a change goes to the network itself, never joining a read that began before the change.
+    const read =
+      historyReload > 0
+        ? fetch(url, { cache: "no-store", signal: controller.signal })
+        : sharedGet(url, { signal: controller.signal });
+    read
       .then(async (response) => {
         if (!response.ok) throw new Error("older shifts unavailable");
         const payload = await readPayload(response);

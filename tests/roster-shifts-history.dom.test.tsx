@@ -113,6 +113,33 @@ describe("your own shifts in an older month", () => {
     expect(result.current.shifts).toEqual([]);
   });
 
+  it("never lets a read that began before a delete bring the deleted shifts back", async () => {
+    let releaseFirst: (response: Response) => void = () => undefined;
+    let datedReads = 0;
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "https://psychiatry.tools");
+      if (url.searchParams.has("from")) {
+        datedReads += 1;
+        if (datedReads === 1) return new Promise<Response>((resolve) => (releaseFirst = resolve));
+        return Response.json({ shifts: [] });
+      }
+      return Response.json({ shifts: [], latestImport: null });
+    });
+    const { result } = renderHook(() =>
+      useRosterShifts({ from: "2026-07-31", to: "2026-09-01" }, { ownHistory: true }),
+    );
+    await waitFor(() => expect(datedReads).toBe(1));
+    await act(async () => {
+      await result.current.deleteAll();
+    });
+    await waitFor(() => expect(datedReads).toBe(2));
+    await act(async () => {
+      releaseFirst(Response.json({ shifts: [older] }));
+    });
+    await waitFor(() => expect(result.current.historyLoading).toBe(false));
+    expect(result.current.shifts).toEqual([]);
+  });
+
   it("says when the older shifts could not be read, and keeps the main list", async () => {
     olderStatus = 500;
     const { result } = renderHook(() =>
