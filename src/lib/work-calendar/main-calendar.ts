@@ -393,3 +393,15 @@ export function filterByArea(
 ): MainCalendarItem[] {
   return hidden.size ? items.filter((item) => !hidden.has(item.area)) : [...items];
 }
+
+/**
+ * Only items whose page this reader can open. The calendar itself has no gate, but an
+ * item can link to a screen the launch switch still hides (classic mode, or a
+ * `WORK_MODE_LAUNCH` rollback), such as an Admin request on /admin/requests.
+ */
+export function visibleCalendarItems(
+  items: readonly MainCalendarItem[],
+  routeVisible: (href: string) => boolean,
+): MainCalendarItem[] {
+  return items.filter((item) => !item.href || routeVisible(item.href));
+}

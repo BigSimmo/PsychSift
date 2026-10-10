@@ -17,6 +17,7 @@ import {
   mergeCalendarItems,
   myDayCalendarItems,
   reminderCalendarItems,
+  visibleCalendarItems,
   workEntryItems,
   type MainCalendarItem,
 } from "@/lib/work-calendar/main-calendar";
@@ -86,6 +87,24 @@ describe("main calendar items", () => {
     const merged = mergeCalendarItems([items]);
     expect(itemsOnDate(merged, "2026-11-04")[0]).toMatchObject({ title: "Annual leave", state: "Applied" });
     expect(itemsOnDate(merged, "2026-11-07")).toHaveLength(0);
+  });
+
+  it("leaves out items whose page the launch switch hides (classic mode or a rollback)", () => {
+    const requests = adminRequestItems([
+      {
+        kind: "question",
+        to: "Medical Workforce",
+        message: "",
+        createdOn: "2026-10-01",
+        id: "a",
+        title: "Leave form",
+        status: "sent",
+        followUpOn: "2026-10-20",
+      },
+    ] as AdminRequest[]);
+    expect(requests).toHaveLength(1);
+    expect(visibleCalendarItems(requests, () => true)).toHaveLength(1);
+    expect(visibleCalendarItems(requests, (href) => href !== "/admin/requests")).toEqual([]);
   });
 
   it("puts sent Admin requests on the day to chase them", () => {

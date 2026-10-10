@@ -13,8 +13,10 @@ import { ROSTER_LEAVE_KINDS } from "@/lib/roster/leave-kinds";
  * `p_actor_id`) is refused before the database is asked anything.
  *
  * `publish` and `codes.set` are deliberately absent from the action union:
- * only the publish route sends them. `needs.set`, `draft.*` and
- * `agreement.record` belong to Release 3.
+ * only the publish route sends them. `draft.*` and `agreement.record` belong
+ * to Release 3. `needs.set` (the team's safe number, set by its roster
+ * manager in Manage, Team settings) is in the union: the owner approved that
+ * editor ahead of the rest of Release 3.
  */
 
 export const ROSTER_GRADES = ["intern", "resident", "registrar", "fellow", "consultant", "other"] as const;
@@ -408,6 +410,37 @@ const openPostSchema = z
     }
   });
 
+/** A calendar date that exists: the SQL casts it with `::date`, which refuses 2026-02-31. */
+const realDate = isoDate.refine((value) => {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}, "Expected a real date");
+
+/** The most cover needs one team may hold (`roster_command` raises `roster_limit` above it). */
+export const ROSTER_MAX_STAFFING_NEEDS = 2000;
+/** The most people one need may ask for (`roster_staffing_needs.needed between 0 and 200`). */
+export const ROSTER_MAX_NEEDED = 200;
+
+/**
+ * One cover need as `needs.set` writes it into `roster_staffing_needs`: a
+ * weekday (1 Monday to 7 Sunday) or one date, never both; a kind the table
+ * allows (never leave); an optional grade (never `other`) and site; and how
+ * many people it needs. No id: the SQL deletes the team's whole list and
+ * inserts this one, so a caller sends every need it means to keep.
+ */
+export const rosterStaffingNeedInputSchema = z
+  .object({
+    weekday: z.number().int().min(1).max(7).nullable(),
+    date: realDate.nullable(),
+    kind: z.enum(ROSTER_OPEN_SHIFT_KINDS),
+    grade: z.enum(["intern", "resident", "registrar", "fellow", "consultant"]).nullable(),
+    siteId: uuid.nullable(),
+    needed: z.number().int().min(0).max(ROSTER_MAX_NEEDED),
+  })
+  .strict()
+  .refine((need) => (need.weekday === null) !== (need.date === null), "Give a weekday or a date, not both.");
+export type RosterStaffingNeedInput = z.infer<typeof rosterStaffingNeedInputSchema>;
+
 export const rosterActionSchema = z.union([
   z
     .object({
@@ -456,6 +489,13 @@ export const rosterActionSchema = z.union([
   openIdAction("open.cancel"),
   z.object({ action: z.literal("open.release"), openShiftId: uuid, urgent: z.boolean().optional() }).strict(),
   z.object({ action: z.literal("seen.mark"), publicationId: uuid }).strict(),
+  // The team's safe number: replaces its whole list of cover needs. Manager only (the SQL checks).
+  z
+    .object({
+      action: z.literal("needs.set"),
+      needs: z.array(rosterStaffingNeedInputSchema).max(ROSTER_MAX_STAFFING_NEEDS),
+    })
+    .strict(),
 ]);
 export type RosterAction = z.infer<typeof rosterActionSchema>;
 export type RosterActionName = RosterAction["action"];

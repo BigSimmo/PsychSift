@@ -1,4 +1,5 @@
 import type { StaffingNeed } from "@/lib/roster/staffing/team-staffing";
+import { ROSTER_MAX_STAFFING_NEEDS, ROSTER_OPEN_SHIFT_KINDS } from "@/lib/roster/team/model";
 
 /**
  * One `roster_staffing_needs` row turned into a `StaffingNeed`: counts only,
@@ -7,13 +8,13 @@ import type { StaffingNeed } from "@/lib/roster/staffing/team-staffing";
  */
 
 /** The kinds a cover need may hold. A row of any other kind is skipped, never guessed. */
-export const STAFFING_NEED_KINDS = ["day", "evening", "night", "on_call", "other"] as const;
+export const STAFFING_NEED_KINDS = ROSTER_OPEN_SHIFT_KINDS;
 
 /** The API returns at most 1,000 rows per read, so every needs read pages by this many. */
 export const STAFFING_NEEDS_PAGE = 1000;
 
-/** The database stops one team at 2,000 needs. */
-export const STAFFING_NEEDS_PER_TEAM_LIMIT = 2000;
+/** The database stops one team at 2,000 needs: the same limit `needs.set` enforces. */
+export const STAFFING_NEEDS_PER_TEAM_LIMIT = ROSTER_MAX_STAFFING_NEEDS;
 
 export type StaffingNeedRow = {
   readonly weekday: number | null;
