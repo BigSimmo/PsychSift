@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useState, type ComponentProps } from "react";
 
+import { useTwoPaneRailShown } from "@/components/work-frame/two-pane-side-strip";
+
 const loadWorkSideMenu = () => import("@/components/work-frame/work-side-menu").then((module) => module.WorkSideMenu);
 const LazyMenu = dynamic(loadWorkSideMenu, { ssr: false });
 
@@ -55,10 +57,11 @@ export function LazyWorkSideCounts({ active }: { readonly active: boolean }) {
  */
 export function TwoPaneSideMenuHost(props: ComponentProps<typeof LazyTwoPane>) {
   const [opened, setOpened] = useState(props.open);
+  const railShown = useTwoPaneRailShown(true);
   if (props.open && !opened) setOpened(true);
   return (
     <>
-      <LazyWorkSideCounts active={opened && props.workAvailable} />
+      <LazyWorkSideCounts active={(railShown || opened) && props.workAvailable} />
       <LazyTwoPaneSideMenu {...props} />
     </>
   );
