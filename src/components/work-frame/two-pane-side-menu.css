@@ -141,8 +141,8 @@
   display: grid;
   /* End-aligned so Clear and Edit share one right edge. */
   place-items: center end;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: 3rem;
+  min-height: 3rem;
   margin: calc(var(--spacing) * -3) calc(var(--spacing) * -2) calc(var(--spacing) * -3) 0;
   color: var(--clinical-accent);
   font-size: 0.8125rem;
@@ -158,7 +158,7 @@
   display: inline-flex;
   align-items: center;
   gap: calc(var(--spacing) * 2.25);
-  min-height: 2.75rem;
+  min-height: 3rem;
   padding: 0 calc(var(--spacing) * 4) 0 calc(var(--spacing) * 3.25);
   border-radius: var(--radius-pill);
   background: var(--clinical-accent-soft);
@@ -186,7 +186,7 @@
   align-items: center;
   gap: calc(var(--spacing) * 3);
   width: 100%;
-  min-height: 2.75rem;
+  min-height: 3rem;
   padding: 0 calc(var(--spacing) * 2.5);
   border-radius: var(--radius-lg);
   color: var(--text-heading);
@@ -376,7 +376,7 @@
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 2.25);
-  min-height: 2.75rem;
+  min-height: 3rem;
   margin: 0 calc(var(--spacing) * 1) calc(var(--spacing) * 3);
   padding: 0 calc(var(--spacing) * 1) 0 calc(var(--spacing) * 3.25);
   border: 1px solid transparent;
