@@ -660,19 +660,11 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   color: var(--work-ink);
 }
 
-/* A page reached from More shows Back, so the menu button stands down. */
-.universal-header-leading:has(> #universal-header-leading > *) > .universal-header-menu {
-  display: none;
-}
-
-/* The two-pane side menu keeps the menu button on phones, first, with Back
+/* A page reached from More shows Back. The menu button stays first, with Back
    beside it, mirroring the bell and AI Search on the right. Tablets have the
-   menu strip, so the button stays hidden there. */
-@media (max-width: 767px) {
-  .universal-header-leading[data-two-pane-menu]:has(> #universal-header-leading > *) > .universal-header-menu {
-    display: grid;
-    order: -1;
-  }
+   menu strip, so the button is hidden there. */
+.universal-header-leading:has(> #universal-header-leading > *) > .universal-header-menu {
+  order: -1;
 }
 
 /* Menu and Back on the left leave too little room for an area name on most
@@ -681,7 +673,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
    The page's own title names the area just below, and the name stays in the
    button for screen readers. From 440px every area name fits whole. */
 @media (max-width: 439px) {
-  .universal-header-row:has(> .universal-header-leading[data-two-pane-menu] > #universal-header-leading > *)
+  .universal-header-row:has(> .universal-header-leading > #universal-header-leading > *)
     .universal-header-mode-button {
     grid-template-columns: auto;
     justify-content: center;
@@ -691,13 +683,13 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
     padding: 0;
   }
 
-  .universal-header-row:has(> .universal-header-leading[data-two-pane-menu] > #universal-header-leading > *)
+  .universal-header-row:has(> .universal-header-leading > #universal-header-leading > *)
     .universal-header-mode-button
     > svg {
     display: none;
   }
 
-  .universal-header-row:has(> .universal-header-leading[data-two-pane-menu] > #universal-header-leading > *)
+  .universal-header-row:has(> .universal-header-leading > #universal-header-leading > *)
     .universal-header-mode-button
     > span:not(.universal-header-mode-badge) {
     position: absolute;
