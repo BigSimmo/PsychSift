@@ -49,6 +49,9 @@ const needs = [
   { id: id(9), weekday: null, date: "2026-12-25", kind: "night", grade: "registrar", siteId: null, needed: 1 },
 ];
 
+/** The ids of the needs a save was built on, which the database checks are still the team's. */
+const idsOf = (list: readonly { id: string }[]) => list.map((need) => need.id);
+
 function stubTeam(options: { post?: () => Response | Promise<Response>; maker?: () => Response } = {}) {
   const posts: unknown[] = [];
   const reads: string[] = [];
@@ -116,6 +119,7 @@ it("saves the whole list once, keeping the dated need, reading the team's needs 
   expect(posts).toEqual([
     {
       action: "needs.set",
+      expectedIds: idsOf(needs),
       needs: [
         { weekday: null, date: "2026-12-25", kind: "night", grade: "registrar", siteId: null, needed: 1 },
         ...[1, 2, 3, 4, 5].map((weekday) => ({
@@ -135,7 +139,7 @@ it("saves the whole list once, keeping the dated need, reading the team's needs 
 });
 
 it("Undo puts back only the safe number, keeping a need another manager set after the save", async () => {
-  let current: readonly object[] = needs;
+  let current: readonly { id: string }[] = needs;
   const { posts } = stubTeam({ maker: () => Response.json({ codes: [], needs: current, drafts: [] }) });
   render(
     <ToastProvider>
@@ -152,6 +156,7 @@ it("Undo puts back only the safe number, keeping a need another manager set afte
   await waitFor(() => expect(posts).toHaveLength(2));
   expect(posts[1]).toEqual({
     action: "needs.set",
+    expectedIds: idsOf([...needs, added]),
     needs: [
       { weekday: null, date: "2026-12-25", kind: "night", grade: "registrar", siteId: null, needed: 1 },
       { weekday: null, date: "2026-12-26", kind: "day", grade: null, siteId: null, needed: 1 },
@@ -162,7 +167,7 @@ it("Undo puts back only the safe number, keeping a need another manager set afte
 });
 
 it("keeps a number another manager changed while this editor was open, saving only this manager's change", async () => {
-  let current: readonly object[] = needs;
+  let current: readonly { id: string }[] = needs;
   const { posts } = stubTeam({ maker: () => Response.json({ codes: [], needs: current, drafts: [] }) });
   render(<RosterSafeNumber serviceId="team" overview={overview} />);
   fireEvent.click(await screen.findByRole("button", { name: "One more, Day, Monday to Friday" }));
@@ -181,6 +186,7 @@ it("keeps a number another manager changed while this editor was open, saving on
   await screen.findByText(/^Saved\./);
   expect(posts[0]).toEqual({
     action: "needs.set",
+    expectedIds: idsOf([...needs, ...night]),
     needs: [
       { weekday: null, date: "2026-12-25", kind: "night", grade: "registrar", siteId: null, needed: 1 },
       ...[1, 2, 3, 4, 5].map((weekday) => ({ weekday, date: null, kind: "day", grade: null, siteId: null, needed: 3 })),
@@ -188,6 +194,67 @@ it("keeps a number another manager changed while this editor was open, saving on
     ],
   });
   expect((screen.getByLabelText("Night, Saturday and Sunday") as HTMLInputElement).value).toBe("1");
+});
+
+it("when another manager saves first, reads again and saves on top of their change instead of over it", async () => {
+  let current: readonly { id: string }[] = needs;
+  // Another manager adds a dated need after this editor's read but before its write lands.
+  const added = {
+    id: id(30),
+    weekday: null,
+    date: "2026-12-31",
+    kind: "evening",
+    grade: null,
+    siteId: null,
+    needed: 1,
+  };
+  let clashes = 1;
+  const { posts } = stubTeam({
+    maker: () => Response.json({ codes: [], needs: current, drafts: [] }),
+    post: () => {
+      if (clashes-- > 0) {
+        current = [...needs, added];
+        return Response.json(
+          { code: "roster_conflict", message: "The roster changed while you were looking. Refresh and try again." },
+          { status: 409 },
+        );
+      }
+      return Response.json({ result: { ok: true } });
+    },
+  });
+  render(<RosterSafeNumber serviceId="team" overview={overview} />);
+  fireEvent.click(await screen.findByRole("button", { name: "One more, Day, Monday to Friday" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save safe number" }));
+  await screen.findByText(/^Saved\./);
+  expect(posts).toHaveLength(2);
+  expect(posts[0]).toMatchObject({ expectedIds: idsOf(needs) });
+  expect(posts[1]).toEqual({
+    action: "needs.set",
+    expectedIds: idsOf([...needs, added]),
+    needs: [
+      { weekday: null, date: "2026-12-25", kind: "night", grade: "registrar", siteId: null, needed: 1 },
+      { weekday: null, date: "2026-12-31", kind: "evening", grade: null, siteId: null, needed: 1 },
+      ...[1, 2, 3, 4, 5].map((weekday) => ({ weekday, date: null, kind: "day", grade: null, siteId: null, needed: 3 })),
+    ],
+  });
+});
+
+it("stops after three clashes in a row, says so and keeps the numbers", async () => {
+  const { posts } = stubTeam({
+    post: () =>
+      Response.json(
+        { code: "roster_conflict", message: "The roster changed while you were looking. Refresh and try again." },
+        { status: 409 },
+      ),
+  });
+  render(<RosterSafeNumber serviceId="team" overview={overview} />);
+  fireEvent.click(await screen.findByRole("button", { name: "One more, Day, Monday to Friday" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save safe number" }));
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "The roster changed while you were looking. Refresh and try again.",
+  );
+  expect(posts).toHaveLength(3);
+  expect((screen.getByLabelText("Day, Monday to Friday") as HTMLInputElement).value).toBe("3");
 });
 
 it("rounds a typed decimal to the nearest whole number instead of dropping the point", async () => {
@@ -286,6 +353,7 @@ it("shows each day when the days differ, and sets one day without touching the o
   expect(posts).toEqual([
     {
       action: "needs.set",
+      expectedIds: idsOf(mixed),
       needs: [
         { weekday: 1, date: null, kind: "day", grade: null, siteId: null, needed: 3 },
         { weekday: 2, date: null, kind: "day", grade: null, siteId: null, needed: 1 },

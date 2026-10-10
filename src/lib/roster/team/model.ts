@@ -490,9 +490,12 @@ export const rosterActionSchema = z.union([
   z.object({ action: z.literal("open.release"), openShiftId: uuid, urgent: z.boolean().optional() }).strict(),
   z.object({ action: z.literal("seen.mark"), publicationId: uuid }).strict(),
   // The team's safe number: replaces its whole list of cover needs. Manager only (the SQL checks).
+  // `expectedIds` are the ids of the needs the editor read: the SQL refuses the write with
+  // `roster_conflict` once anyone has saved since, so a need another manager added is never lost.
   z
     .object({
       action: z.literal("needs.set"),
+      expectedIds: z.array(uuid).max(ROSTER_MAX_STAFFING_NEEDS),
       needs: z.array(rosterStaffingNeedInputSchema).max(ROSTER_MAX_STAFFING_NEEDS),
     })
     .strict(),
