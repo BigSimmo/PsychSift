@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 
 import { ExampleTag } from "@/components/example-data/example-tag";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import {
   WorkBody,
   WorkButton,
@@ -33,7 +32,6 @@ import {
 import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
-import type { LivePreviewFeatureId } from "@/lib/live-version/features";
 import {
   exampleTeamNames,
   hospitalSections,
@@ -51,15 +49,8 @@ import { zonedToday } from "@/lib/work-time/format";
 const TITLE = "Hospital";
 const NO_HOSPITALS: readonly HospitalRef[] = [];
 
-const ROTATION_PREVIEW: LivePreviewFeatureId = "rotation-preferences";
-const COURSES_PREVIEW: LivePreviewFeatureId = "course-bookings";
-
-/** The preview screens this reader gets. Each row still shows only to a role that may use it. */
-function useHospitalPreviews(): HospitalPreviews {
-  const rotationRounds = useLivePreview(ROTATION_PREVIEW);
-  const courses = useLivePreview(COURSES_PREVIEW);
-  return useMemo(() => ({ rotationRounds, courses }), [rotationRounds, courses]);
-}
+/** Rotation rounds and courses are on for everyone. Each row still shows only to a role that may use it. */
+const HOSPITAL_PREVIEWS: HospitalPreviews = { rotationRounds: true, courses: true };
 
 /**
  * Hospital (`/admin/hospital`): the one way in for people who hold a hospital
@@ -246,7 +237,7 @@ function HubView({
   readonly teamNames: ReadonlyMap<string, string> | null;
 }) {
   const roles = heldWorkRoles(grants);
-  const previews = useHospitalPreviews();
+  const previews = HOSPITAL_PREVIEWS;
   const sections = hospitalSections(grants, hospital?.id ?? null, {
     sickSummary,
     teamNames: teamNames ?? undefined,

@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------
-   Two-pane side menu (owner pick "1. Quiet strip", 8 Oct 2026), behind the
-   Live version switch. A full-height strip with the logo, the mode switch,
+   Two-pane side menu (owner pick "1. Quiet strip", 8 Oct 2026), on for
+   everyone since 10 Oct 2026. A full-height strip with the logo, the mode switch,
    My Day, Saved and Reminders, then Appearance, Settings and the reader's
    initials at the foot, beside a pane for the chosen side. Flat: the strip is a quiet ground, the pane is the sheet's own
    surface, and the current item gets a soft pill rather than a box.
@@ -693,6 +693,7 @@ a.two-pane-menu__today:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .two-pane-menu__head,
+  .two-pane-menu__find,
   .two-pane-menu__swipe .two-pane-menu__recent,
   .two-pane-menu__swipe-remove {
     transition: none;
