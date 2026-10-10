@@ -83,7 +83,14 @@ function isTwoMedicineInteractionQuery(query: string, normalized: string) {
   // Owner decision (#ZZ4RAP): dosing, switching or mechanism questions about two named medicines get
   // the source's avoid/caution interaction guidance, not dose guidance.
   // How one medicine affects another (mechanism, "effects of X on Y") is always an interaction question.
-  if (/\b(?:mechanism|affect\w*|(?<!side[-\s])effects?\s+(?:of|on))\b/.test(normalized)) return true;
+  // A list of a medicine's own effects ("adverse effects of X and Y") is not one: the effect must act on
+  // something ("effects of X on Y").
+  if (
+    /\b(?:mechanism|affect(?:s|ed|ing)?)\b|(?<!\b(?:side|adverse|undesirable|unwanted|unintended)[-\s])\beffects?\s+(?:of\s+[^?]*?\s+)?on\b/.test(
+      normalized,
+    )
+  )
+    return true;
   // Dosing or switching questions get interaction guidance unless they ask about monitoring, side
   // effects or a comparison, which keep their own routes.
   if (

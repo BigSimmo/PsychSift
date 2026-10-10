@@ -3216,6 +3216,15 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
     ).toBe("contraindication");
   });
 
+  it("keeps a two-medicine adverse-effects question off the interaction route", () => {
+    for (const query of [
+      "What are the adverse effects of clozapine and olanzapine?",
+      "What are the unwanted effects of clozapine and olanzapine?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).not.toBe("contraindication");
+    }
+  });
+
   it("does not treat 'with' + a condition as an interaction", () => {
     expect(
       classifyAnswerIntent(
