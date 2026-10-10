@@ -203,8 +203,8 @@ describe("A signed-in doctor's Progress tab (A2, item 20)", () => {
   it("shows their own EPA counts from Teaching, not a second copy of the CLA notice", async () => {
     const today = perthDateKey(new Date());
     const tracker = sampleTermTracker(today);
-    // One logged today, so this year's per-EPA list has something whatever the date the suite runs on.
-    const epas = [...tracker.epas, { id: "today", termId: tracker.currentTermId!, epa: 2 as const, on: today }];
+    // Use only today's entry so the expected per-EPA mapping is independent of the calendar date.
+    const epas = [{ id: "today", termId: tracker.currentTermId!, epa: 2 as const, on: today }];
     window.localStorage.setItem(TEACHING_TERM_TRACKER_STORAGE_KEY, JSON.stringify({ ...tracker, epas }));
     nav.search = "view=progress";
     render(<TeachingAssessments demoMode={false} />);
@@ -215,8 +215,13 @@ describe("A signed-in doctor's Progress tab (A2, item 20)", () => {
     expect(progress).toHaveTextContent("Your forms and EPAs themselves stay in CLA.");
     // Each EPA's count this year sits under the term card, one row per EPA.
     const byEpa = await within(progress).findByTestId("assessments-epa-counts");
-    expect(within(byEpa).getAllByRole("listitem")).toHaveLength(4);
-    expect(byEpa).toHaveTextContent("Recognition and care of the acutely unwell patient");
+    const rows = within(byEpa).getAllByRole("listitem");
+    expect(rows).toHaveLength(4);
+    expect(rows[0]).toHaveTextContent(/0 this year$/);
+    expect(rows[1]).toHaveTextContent("Recognition and care of the acutely unwell patient");
+    expect(rows[1]).toHaveTextContent(/1 this year$/);
+    expect(rows[2]).toHaveTextContent(/0 this year$/);
+    expect(rows[3]).toHaveTextContent(/0 this year$/);
   });
 
   it("leaves out the per-EPA list until an EPA is logged", async () => {
