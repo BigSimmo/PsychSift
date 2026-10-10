@@ -274,7 +274,7 @@ function SickExampleView({ data, wanted }: { readonly data: ExampleHospitalHub; 
   const pick = useHospitalPicker();
   const hospital = pickHospital(hospitals, wanted);
   const view = data.hospitals.find((entry) => entry.hospital.id === hospital?.id) ?? data.hospitals[0]!;
-  return <SickView key={view.hospital.id} view={view} hospitals={hospitals} onPick={pick} example managed={null} />;
+  return <SickView key={view.hospital.id} view={view} hospitals={hospitals} onPick={pick} example managed={NO_TEAMS} />;
 }
 
 /* ------------------------------------------------------------------ view */
@@ -307,6 +307,8 @@ function Picker({
   );
 }
 
+const NO_TEAMS: ReadonlySet<string> = new Set();
+
 function SickView({
   view,
   hospitals,
@@ -318,13 +320,13 @@ function SickView({
   readonly hospitals: readonly HospitalRef[];
   readonly onPick: (hospitalId: string) => void;
   readonly example: boolean;
-  /** Teams the reader is roster manager of. Null for the example, where every team opens. */
-  readonly managed: ReadonlySet<string> | null;
+  /** Teams the reader is roster manager of. Empty for the example, whose teams are not real. */
+  readonly managed: ReadonlySet<string>;
 }) {
   const tapFor = (
     call: HospitalSickView["calls"][number],
   ): { readonly href: string } | { readonly href?: undefined } =>
-    managed === null || managed.has(call.serviceId) ? { href: sickCallHref(call) } : {};
+    managed.has(call.serviceId) ? { href: sickCallHref(call) } : {};
   const { zone } = useWorkTimeZone();
   const today = zonedToday(zone);
   const [team, setTeam] = useState<string | null>(null);
@@ -431,8 +433,8 @@ function SickView({
           })}
           <p className="px-1 text-sm text-[color:var(--text-muted)]" data-testid="admin-hospital-sick-manager-note">
             Each team&apos;s roster manager decides cover.
-            {managed === null
-              ? " Tap a call to open that team's inbox."
+            {example
+              ? " In the real list, a call for a team you manage opens its inbox."
               : managed.size > 0
                 ? " Tap a call for a team you manage to open its inbox."
                 : null}
