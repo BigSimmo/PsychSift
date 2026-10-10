@@ -75,6 +75,22 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
   );
 }
 
+// How one medicine acts on another is an interaction question: "What effect does ibuprofen have on
+// lithium levels?", "effects of ibuprofen on lithium", "ibuprofen affects lithium", or the mechanism
+// of the pair. The effect must land on a named medicine: effects on sleep or weight, a medicine's own
+// adverse effects, or a comparison of two medicines keep their own routes.
+function actsOnNamedMedicine(normalized: string) {
+  if (/\b(?:compar\w*|versus|vs)\b/.test(normalized)) return false;
+  if (/\bmechanism\b/.test(normalized)) return true;
+  const targets = [
+    ...normalized.matchAll(
+      /(?<!\b(?:side|adverse|undesirable|unwanted|unintended)[-\s])\beffects?\b[^?]*?\bon\s+((?:\S+\s*){1,3})/g,
+    ),
+    ...normalized.matchAll(/\baffect(?:s|ed|ing)?\s+((?:\S+\s*){1,3})/g),
+  ];
+  return targets.some((match) => medicationEntitiesInText(match[1]).length > 0);
+}
+
 // "on", "taking" or "with" must introduce one of the named medicines: "use lithium after stopping
 // ibuprofen in someone with bipolar disorder" is a sequencing question, not an interaction one.
 function isTwoMedicineInteractionQuery(query: string, normalized: string) {
@@ -82,15 +98,7 @@ function isTwoMedicineInteractionQuery(query: string, normalized: string) {
   if (/\b(?:interact\w*|together|combin\w*|co-?prescrib\w*)\b/.test(normalized)) return true;
   // Owner decision (#ZZ4RAP): dosing, switching or mechanism questions about two named medicines get
   // the source's avoid/caution interaction guidance, not dose guidance.
-  // How one medicine affects another (mechanism, "effects of X on Y") is always an interaction question.
-  // A list of a medicine's own effects ("adverse effects of X and Y") is not one: the effect must act on
-  // something ("effects of X on Y").
-  if (
-    /\b(?:mechanism|affect(?:s|ed|ing)?)\b|(?<!\b(?:side|adverse|undesirable|unwanted|unintended)[-\s])\beffects?\s+(?:of\s+[^?]*?\s+)?on\b/.test(
-      normalized,
-    )
-  )
-    return true;
+  if (actsOnNamedMedicine(normalized)) return true;
   // Dosing or switching questions get interaction guidance unless they ask about monitoring, side
   // effects or a comparison, which keep their own routes.
   if (

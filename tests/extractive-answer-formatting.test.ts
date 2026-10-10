@@ -3225,6 +3225,19 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
     }
   });
 
+  it("routes an effect on a named medicine to interaction guidance, but not effects on an outcome or comparisons", () => {
+    expect(classifyAnswerIntent("What effect does ibuprofen have on lithium levels?", "medication_dose_risk")).toBe(
+      "contraindication",
+    );
+    for (const query of [
+      "Compare the effects of clozapine and olanzapine on weight",
+      "What are the effects of clozapine versus olanzapine on QTc?",
+      "What are the effects of clozapine and olanzapine on sleep?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).not.toBe("contraindication");
+    }
+  });
+
   it("does not treat 'with' + a condition as an interaction", () => {
     expect(
       classifyAnswerIntent(
