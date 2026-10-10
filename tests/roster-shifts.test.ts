@@ -303,8 +303,9 @@ function fakeSupabase(rows: Record<string, unknown[]>) {
       return { data, error: null };
     };
     const builder: Record<string, unknown> = {};
-    for (const method of ["select", "gte", "lt", "order", "limit"]) builder[method] = () => builder;
+    for (const method of ["select", "gte", "order", "limit"]) builder[method] = () => builder;
     builder.gt = (column: string, value: unknown) => (call.filters.push(["gt", column, value]), builder);
+    builder.lt = (column: string, value: unknown) => (call.filters.push(["lt", column, value]), builder);
     builder.update = (value: unknown) => ((call.op = "update"), (call.updatedValue = value), builder);
     builder.delete = () => ((call.op = "delete"), builder);
     builder.insert = (payload: unknown) => ((call.op = "insert"), (call.insertedRows = payload as unknown[]), builder);
@@ -407,6 +408,34 @@ describe("the My shifts API", () => {
     const days = (before - Date.parse(from as string)) / 86_400_000;
     expect(days).toBeGreaterThan(20.9);
     expect(days).toBeLessThan(21.1);
+  });
+
+  it("reads one span of dates for an older month, owner-scoped, without the import summary", async () => {
+    const calls = fakeSupabase(storedRows);
+    const response = await GET(new Request("https://psychiatry.tools/api/roster/shifts?from=2026-07-31&to=2026-09-01"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    const payload = (await response.json()) as { shifts: Array<{ title: string }>; latestImport?: unknown };
+    expect(payload.shifts.map((item) => item.title)).toEqual(["Mine"]);
+    expect(payload).not.toHaveProperty("latestImport");
+    expect(calls.map((call) => call.table)).toEqual(["on_call_shifts"]);
+    expect(calls[0]!.eq).toContainEqual(["owner_id", ownerId]);
+    expect(calls[0]!.filters).toContainEqual(["gt", "ends_at", "2026-07-31T00:00:00.000Z"]);
+    expect(calls[0]!.filters).toContainEqual(["lt", "starts_at", "2026-09-02T00:00:00.000Z"]);
+  });
+
+  it.each([
+    ["from=2026-07-31", "only one end"],
+    ["from=2026-09-01&to=2026-07-31", "backwards"],
+    ["from=2026-01-01&to=2026-06-01", "longer than 62 days"],
+    ["from=2026-02-30&to=2026-03-10", "not a real date"],
+    ["from=31/07/2026&to=01/09/2026", "the wrong format"],
+  ])("refuses a span that is %s (%s), before reading anything", async (query) => {
+    const calls = fakeSupabase(storedRows);
+    const response = await GET(new Request(`https://psychiatry.tools/api/roster/shifts?${query}`));
+    expect(response.status).toBe(400);
+    expect(calls).toHaveLength(0);
+    expect(mocks.auth).not.toHaveBeenCalled();
   });
 
   it("refuses a signed-out request", async () => {
@@ -528,6 +557,24 @@ describe("the My shifts API", () => {
     expect(demo.demoMode).toBe(true);
     expect(demo.shifts.length).toBeGreaterThan(0);
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("keeps a dated demo read to its dates", async () => {
+    mocks.demo.mockReturnValue(true);
+    const all = (await (await GET(request("GET"))).json()) as { shifts: Array<{ startsAt: string; endsAt: string }> };
+    const first = all.shifts[0]!;
+    const day = first.startsAt.slice(0, 10);
+    const dated = (await (
+      await GET(new Request(`https://psychiatry.tools/api/roster/shifts?from=${day}&to=${day}`))
+    ).json()) as { shifts: Array<{ startsAt: string; endsAt: string }>; demoMode: boolean };
+    expect(dated.demoMode).toBe(true);
+    expect(dated.shifts.length).toBeGreaterThan(0);
+    expect(dated.shifts.length).toBeLessThan(all.shifts.length);
+    const end = Date.parse(`${day}T00:00:00Z`) + 86_400_000;
+    for (const shift of dated.shifts) {
+      expect(Date.parse(shift.endsAt)).toBeGreaterThan(Date.parse(`${day}T00:00:00Z`));
+      expect(Date.parse(shift.startsAt)).toBeLessThan(end);
+    }
   });
 
   it("dismisses only the owner's own import, and 404s anyone else's", async () => {
