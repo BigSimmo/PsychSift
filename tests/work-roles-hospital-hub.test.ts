@@ -422,15 +422,15 @@ describe("preview rows: Rotation rounds and Courses", () => {
     const sections = hospitalSections([workforce(H1), dct(H1), { role: "manager", serviceId: "team-a" }], H1, {
       previews: both,
     });
-    // Courses goes to Medical Workforce, the first section that may run it. Rotation rounds still
-    // lets in only the administrator and roster managers.
+    // Both go to Medical Workforce, the first section that may run them.
     const workforceSection = sections.find((section) => section.id === "workforce")!;
-    expect(workforceSection.links.slice(-2).map((link) => [link.label, link.href])).toEqual([
+    expect(workforceSection.links.slice(-3).map((link) => [link.label, link.href])).toEqual([
+      ["Rotation rounds", "/roster/manage/rotations"],
       ["Courses", "/admin/courses"],
       ["Post a course", "/admin/courses?new=1"],
     ]);
     const manager = sections.find((section) => section.id === "manager")!;
-    expect(manager.links.at(-1)!.href).toBe("/roster/manage/rotations");
+    expect(manager.links.map((link) => link.id)).not.toContain("rotation-rounds");
     const all = sections.flatMap((section) => section.links.map((link) => link.id));
     expect(all.filter((id) => id === "rotation-rounds")).toHaveLength(1);
     expect(all.filter((id) => id === "courses")).toHaveLength(1);
@@ -466,11 +466,11 @@ describe("preview rows: Rotation rounds and Courses", () => {
     ]);
   });
 
-  it("gives Medical Workforce Courses, and keeps Rotation rounds until that screen accepts them", () => {
+  it("gives Medical Workforce both Rotation rounds and Courses", () => {
     const ids = hospitalSections([workforce(H1)], H1, { previews: both }).flatMap((section) =>
       section.links.map((link) => link.id),
     );
-    expect(ids).not.toContain("rotation-rounds");
+    expect(ids).toContain("rotation-rounds");
     expect(ids).toContain("courses");
     expect(ids).toContain("post-course");
   });

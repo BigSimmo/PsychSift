@@ -11,6 +11,9 @@ const MANAGER = "7a000000-0000-4000-8000-000000000002";
 const DOCTOR = "7a000000-0000-4000-8000-000000000003";
 const OUTSIDER = "7a000000-0000-4000-8000-000000000004";
 const SITE_ADMIN = "7a000000-0000-4000-8000-000000000005";
+const WORKFORCE = "7a000000-0000-4000-8000-000000000006";
+const HOSPITAL = "7a000000-0000-4000-8000-0000000000bb";
+const SERVICE_TWO = "7a000000-0000-4000-8000-000000000011";
 const ROUND = "7a000000-0000-4000-8000-0000000000aa";
 
 type Row = Record<string, unknown>;
@@ -24,6 +27,8 @@ const mocks = vi.hoisted(() => ({
   state: {
     tables: {} as Record<string, Record<string, unknown>[]>,
     missing: false,
+    /** Auth's user lookup fails, as in an outage. */
+    authDown: false,
     clock: 0,
     beforeUpdate: null as null | (() => void),
     /** Runs as a preference save reaches the database, to stand in for an administrator acting mid-request. */
@@ -68,10 +73,13 @@ function fakeClient() {
   return {
     auth: {
       admin: {
-        getUserById: async (id: string) => ({
-          data: { user: { id, app_metadata: id === SITE_ADMIN ? { site_role: "administrator" } : {} } },
-          error: null,
-        }),
+        getUserById: async (id: string) =>
+          mocks.state.authDown
+            ? { data: { user: null }, error: { message: "unavailable" } }
+            : {
+                data: { user: { id, app_metadata: id === SITE_ADMIN ? { site_role: "administrator" } : {} } },
+                error: null,
+              },
       },
     },
     async rpc(name: string, args: Record<string, unknown>) {
@@ -139,14 +147,6 @@ function fakeClient() {
         (m) => m.service_id === args.p_service_id && m.user_id === args.p_user_id && m.revoked_at === null,
       );
       if (name === "service_member_active") return { data: active, error: null };
-      if (name === "roster_rotation_can_manage") {
-        if (mocks.state.missing) return { data: null, error: { code: "PGRST202", message: "no function" } };
-        const manager = (tables.roster_member_roles ?? []).some(
-          (r) =>
-            r.service_id === args.p_service_id && r.user_id === args.p_user_id && r.role === "manager" && !r.revoked_at,
-        );
-        return { data: active && manager, error: null };
-      }
       throw new Error(`Unexpected rpc ${name}`);
     },
     from(table: string) {
@@ -155,6 +155,7 @@ function fakeClient() {
       let payload: Row = {};
       let single = false;
       let returning = false;
+      let rangeWindow: [number, number] | null = null;
       const builder = {
         select() {
           if (op !== "select") returning = true;
@@ -193,6 +194,10 @@ function fakeClient() {
         },
         order: () => builder,
         limit: () => builder,
+        range(from: number, to: number) {
+          rangeWindow = [from, to];
+          return builder;
+        },
         maybeSingle() {
           single = true;
           return builder;
@@ -227,7 +232,9 @@ function fakeClient() {
           tables[table] = rows.filter((row) => !match(row));
           return { data: returning ? hit.map((row) => ({ id: row.id })) : null, error: null };
         }
-        const hit = rows.filter(match).map((row) => ({ ...row }));
+        const all = rows.filter(match).map((row) => ({ ...row }));
+        // Like the real API, a read without a range still stops at 1,000 rows.
+        const hit = rangeWindow ? all.slice(rangeWindow[0], rangeWindow[1] + 1) : all.slice(0, 1000);
         return { data: single ? (hit[0] ?? null) : hit, error: null };
       };
       return builder;
@@ -335,6 +342,7 @@ beforeEach(() => {
   mocks.release.mockReturnValue(true);
   mocks.rate.mockResolvedValue({ limited: false });
   mocks.state.missing = false;
+  mocks.state.authDown = false;
   mocks.state.clock = 0;
   mocks.state.beforeUpdate = null;
   mocks.state.beforeSave = null;
@@ -406,6 +414,28 @@ describe("rotation rounds API: access", () => {
     ]);
   });
 
+  it("reads past the 1,000-row page limit so a later doctor's ranking still shows", async () => {
+    for (let i = 0; i < 1000; i += 1) {
+      preferences().push({
+        round_id: ROUND,
+        user_id: `left-${i}`,
+        ranking: ["ad"],
+        submitted_at: "2026-10-04T00:00:00Z",
+        updated_at: "2026-10-04T00:00:00Z",
+      });
+    }
+    preferences().push({
+      round_id: ROUND,
+      user_id: DOCTOR,
+      ranking: ["cl", "ad"],
+      submitted_at: "2026-10-05T00:00:00Z",
+      updated_at: "2026-10-05T00:00:00Z",
+    });
+    as(MANAGER);
+    const body = await (await GET(get())).json();
+    expect(body.managed[0].preferences).toEqual([expect.objectContaining({ personId: DOCTOR, ranking: ["cl", "ad"] })]);
+  });
+
   it("refuses every administrator action to a doctor who does not run the round", async () => {
     for (const body of [
       { action: "close" },
@@ -433,6 +463,98 @@ describe("rotation rounds API: access", () => {
 });
 
 describe("rotation rounds API: a doctor's own preference", () => {
+  it("lets Medical Workforce at the team's hospital run its rounds without being a member", async () => {
+    mocks.state.tables.work_hospitals = [{ id: HOSPITAL, name: "Example Hospital", archived_at: null }];
+    mocks.state.tables.work_hospital_teams = [{ hospital_id: HOSPITAL, service_id: SERVICE }];
+    mocks.state.tables.work_role_grants = [
+      {
+        user_id: WORKFORCE,
+        role: "workforce",
+        hospital_id: HOSPITAL,
+        service_id: null,
+        subject_user_id: null,
+        revoked_at: null,
+      },
+    ];
+    as(WORKFORCE);
+    const body = await (await GET(get())).json();
+    expect(body.canManage).toBe(true);
+    expect(body.managed).toHaveLength(1);
+    expect(body.mine).toEqual([]);
+    expect(body.team).toMatchObject({ serviceId: SERVICE, name: "Psychiatry registrars" });
+    expect((await POST(post({ action: "close" }), context())).status).toBe(200);
+    expect(rounds()[0].status).toBe("closed");
+
+    // A revoked grant runs nothing, and the round stays hidden from someone outside the team.
+    mocks.state.tables.work_role_grants[0].revoked_at = "2026-10-09T00:00:00Z";
+    expect((await (await GET(get())).json()).managed).toEqual([]);
+    expect((await POST(post({ action: "open" }), context())).status).toBe(404);
+  });
+
+  it("lets Medical Workforce start a round for any team at their hospital, not only the first", async () => {
+    mocks.state.tables.on_call_services.push({
+      id: SERVICE_TWO,
+      name: "Adult psychiatry registrars",
+      verified_at: "2026-09-30T00:00:00Z",
+      is_demo: false,
+    });
+    mocks.state.tables.on_call_service_members.push({
+      service_id: SERVICE_TWO,
+      user_id: OUTSIDER,
+      display_name: "Jo",
+      revoked_at: null,
+    });
+    mocks.state.tables.work_hospitals = [{ id: HOSPITAL, name: "Example Hospital", archived_at: null }];
+    mocks.state.tables.work_hospital_teams = [
+      { hospital_id: HOSPITAL, service_id: SERVICE },
+      { hospital_id: HOSPITAL, service_id: SERVICE_TWO },
+    ];
+    mocks.state.tables.work_role_grants = [
+      {
+        user_id: WORKFORCE,
+        role: "workforce",
+        hospital_id: HOSPITAL,
+        service_id: null,
+        subject_user_id: null,
+        revoked_at: null,
+      },
+    ];
+    as(WORKFORCE);
+    const body = await (await GET(get())).json();
+    expect(body.teams.map((team: { serviceId: string; name: string }) => [team.serviceId, team.name])).toEqual([
+      [SERVICE_TWO, "Adult psychiatry registrars"],
+      [SERVICE, "Psychiatry registrars"],
+    ]);
+    expect(body.teams[1].people.map((person: { id: string }) => person.id)).toEqual([MANAGER, DOCTOR]);
+
+    const people = [{ id: OUTSIDER, name: "Dr Jo Mitchell", grade: "Registrar" }];
+    const response = await CREATE(
+      post(
+        { action: "create", setup: setup({ people }), serviceId: SERVICE },
+        "https://example.org/api/roster/rotations",
+      ),
+    );
+    // The chosen team's rules apply: someone outside it cannot be named in its round.
+    expect(response.status).toBe(400);
+    const created = await CREATE(
+      post(
+        { action: "create", setup: setup({ people }), serviceId: SERVICE_TWO },
+        "https://example.org/api/roster/rotations",
+      ),
+    );
+    expect(created.status).toBe(200);
+    const { roundId } = await created.json();
+    expect(rounds().find((round) => round.id === roundId)).toMatchObject({ service_id: SERVICE_TWO });
+  });
+
+  it("refuses with 503 rather than guessing when roles cannot be checked", async () => {
+    mocks.state.authDown = true;
+    as(MANAGER);
+    expect((await GET(get())).status).toBe(503);
+    expect((await POST(post({ action: "close" }), context())).status).toBe(503);
+    expect(rounds()[0].status).toBe("open");
+  });
+
   it("saves the session user's ranking, and only theirs", async () => {
     const response = await POST(post({ action: "save-preference", ranking: ["ad", "cl"], submit: true }), context());
     expect(response.status).toBe(200);
