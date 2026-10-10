@@ -479,19 +479,16 @@ test.describe("Synthetic preview-origin navigation", () => {
       // The reserved preview hostname never reaches DNS: documents/assets come from
       // the validated app origin (loopback in local verification), and every API
       // request is handled by the newer synthetic route before this fallback.
+      const response = await route.fetch({
+        url: `${configuredAppOrigin}${url.pathname}${url.search}`,
+        maxRedirects: 0,
+      });
       // A request the page abandons mid-fetch (a navigation or a superseded asset)
-      // disposes its response. Fulfilling it then throws, which is not a test
-      // failure. Any other error still fails the test.
-      try {
-        const response = await route.fetch({
-          url: `${configuredAppOrigin}${url.pathname}${url.search}`,
-          maxRedirects: 0,
-        });
-        await route.fulfill({ response });
-      } catch (error) {
-        if (!/disposed|Target page, context or browser has been closed|Route is already handled/i.test(String(error)))
-          throw error;
-      }
+      // disposes its response before it can be fulfilled. Only that teardown is
+      // ignored; fetch errors and every other fulfil error still fail the test.
+      await route.fulfill({ response }).catch((error: unknown) => {
+        if (!/Fetch response has been disposed/.test(String(error))) throw error;
+      });
     });
     const query = "Synthetic preview-origin lithium completion";
     const state = await installSyntheticAnswerApis(page, query, baseURL);
