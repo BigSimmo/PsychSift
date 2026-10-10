@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "583946a8-bde3-44cd-b804-efa1a4cd48f3",
+  "createdOn": "2026-10-10",
+  "action": "update",
+  "payload": {
+    "id": "#R8HED2",
+    "summary": "Five unsigned cultural formulation records were live: PR #3412 holds them, and each needs Aboriginal governance review before release",
+    "detail": "UPDATE 2026-10-10 (PR #3412, owner chose Hide them on 9 Oct): all five now have release held, matching first-nations-sewb. All five carry Indigenous terms (scripts/lib/indigenous-content.mjs matches First Nations or SEWB in each), so under the owner rule of 2026-09-26 the clinical sign-off tool refuses them and release needs review under Aboriginal governance, not a clinician sign-off alone. Remaining action: arrange that review, then set release back to published and restore each search-index entry. PRIOR DETAIL: Found 2026-10-09 by review of the reconcile PR #3396 and confirmed in src/data/formulation-concepts.json. #DXJ70P was closed on 2026-10-06 saying 6 Indigenous records were formally held under the Indigenous Governance policy. Only first-nations-sewb has release held. Five still have release published with review status clinical_review_required and reviewer null (prepared 2026-09-14): cultural-explanatory-model, migration-refugee, racism-discrimination, religion-spirituality and guide-07. So clinicians can read five records with no clinician sign-off. Next action, an owner decision: either sign each off, or set it to held. Changing release is a clinical content change, so it needs the owner's explicit yes.",
+    "baseRowFingerprint": "3b99d03565f3233363cfbed985d92bae1257298976ff01ccae3eb52f6b3dc611"
+  }
+}
