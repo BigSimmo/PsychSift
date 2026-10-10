@@ -2944,7 +2944,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             modePickerGlassClass,
           )}
         >
-          {modeSheetView === "sections" ? (
+          {/* Built only while open: the Sheet draws nothing closed, and this list is
+              every mode's row, which the header would otherwise rebuild each time it
+              slides away or back on a scroll. */}
+          {!modeMenuOpen ? null : modeSheetView === "sections" ? (
             renderModeSectionLevel()
           ) : (
             <div
