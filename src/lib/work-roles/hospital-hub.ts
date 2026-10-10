@@ -366,9 +366,6 @@ const PREVIEW_ROWS: readonly {
   {
     preview: "rotationRounds",
     capability: "rotations.manage",
-    // Rotation rounds still lets in only the administrator and roster managers. Medical Workforce
-    // joins when that screen checks `canManageRotations`, so drop this then.
-    onlyRoles: ["administrator", "manager"],
     links: [
       {
         id: "rotation-rounds",
