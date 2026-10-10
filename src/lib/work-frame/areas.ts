@@ -99,6 +99,8 @@ export type WorkFrameGate =
    * doctor keeps elsewhere (Assessments, kept in CLA: owner decision 7 Oct 2026).
    */
   | "signed-out"
+  /** Readers who are signed in: the way into what a signed-out area keeps for everyone (Assessments help). */
+  | "signed-in"
   /**
    * Hospital-side roles: the site administrator, Medical Workforce or the DCT, from
    * `useWorkRoles`. Also open while example data is switched on or the reader is signed
@@ -686,6 +688,17 @@ const teaching: WorkArea = {
           icon: "users",
           href: "/teaching/supervision",
         },
+        // Assessments help (concerns, who to call, CLA) holds no records, so a signed-in doctor keeps it
+        // even though the Assessments example above is for signed-out readers only.
+        {
+          id: "assessment-help",
+          label: "Assessment help",
+          sub: "Concerns and CLA",
+          icon: "help",
+          href: "/teaching/assessments?view=help",
+          paths: [],
+          gate: "signed-in",
+        },
         {
           id: "organise",
           label: "Organise",
@@ -1121,13 +1134,31 @@ const admin: WorkArea = {
       items: [
         { id: "admin-pay", label: "Pay", sub: "Payslip hours", icon: "clipboard", href: "/admin/pay" },
         { id: "admin-tax", label: "Tax", sub: "Expenses checklist", icon: "file", href: "/admin/tax" },
+        // Extra time is kept in Roster's hours panel, so the tap leaves Admin.
         {
-          id: "admin-workforce",
-          label: "Workforce",
-          sub: "Their view, sample",
-          icon: "layers",
-          href: "/admin/workforce",
-          band: false,
+          id: "admin-overtime",
+          label: "Overtime",
+          sub: "Extra time in Roster",
+          icon: "clock",
+          href: "/roster?view=hours",
+          paths: [],
+          leadsTo: "roster",
+        },
+      ],
+    },
+    // Hospital role screens sit together, apart from the doctor's own pay and hours.
+    {
+      label: "Hospital roles",
+      items: [
+        {
+          id: "admin-hospital",
+          label: "Hospital",
+          sub: "Your hospital role screens",
+          icon: "shield",
+          href: "/admin/hospital",
+          // The trailing slash makes the item current on Sick calls too.
+          paths: ["/admin/hospital", "/admin/hospital/"],
+          gate: "hospital-hub",
         },
         {
           id: "admin-people",
@@ -1139,24 +1170,12 @@ const admin: WorkArea = {
           gate: "hospital-role",
         },
         {
-          id: "admin-hospital",
-          label: "Hospital",
-          sub: "Your hospital role screens",
-          icon: "shield",
-          href: "/admin/hospital",
-          // The trailing slash makes the item current on Sick calls too.
-          paths: ["/admin/hospital", "/admin/hospital/"],
-          gate: "hospital-hub",
-        },
-        // Extra time is kept in Roster's hours panel, so the tap leaves Admin.
-        {
-          id: "admin-overtime",
-          label: "Overtime",
-          sub: "Extra time in Roster",
-          icon: "clock",
-          href: "/roster?view=hours",
-          paths: [],
-          leadsTo: "roster",
+          id: "admin-workforce",
+          label: "Workforce",
+          sub: "Their view, sample",
+          icon: "layers",
+          href: "/admin/workforce",
+          band: false,
         },
       ],
     },

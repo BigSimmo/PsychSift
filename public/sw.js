@@ -336,13 +336,13 @@ const ROSTER_PUSH = {
   reminder: {
     title: "PsychSift",
     body: "A reminder you set is due. Open PsychSift to see it.",
-    path: "/my-day/alerts",
+    path: "/my-day?sheet=reminders",
   },
   // A bell reminder the phone queued. It names nothing; the bell lists what is due.
   due: {
     title: "PsychSift",
     body: "Something in My Day needs you. Open PsychSift to see it.",
-    path: "/my-day/notifications",
+    path: "/my-day?view=all",
   },
 };
 
