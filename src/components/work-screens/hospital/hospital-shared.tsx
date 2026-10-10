@@ -150,8 +150,9 @@ export function useHospitalShortStaffed(hospitalId: string | null): HospitalShor
   const [read, setRead] = useState<{ readonly key: string; readonly outcome: HospitalShortStaffedOutcome } | null>(
     null,
   );
-  // A zone change re-reads, so the four weeks always start on the page's own today.
-  const key = `${useHospitalReadKey(hospitalId, attempt)}:${zone}`;
+  // The zone is part of the read's identity, so A, B, back to A (hospital or zone) always
+  // gets a fresh key and never shows an earlier answer whose four weeks start on another day.
+  const key = useHospitalReadKey(hospitalId ? `${hospitalId}|${zone}` : null, attempt);
   useEffect(() => {
     if (!hospitalId) return;
     const controller = new AbortController();

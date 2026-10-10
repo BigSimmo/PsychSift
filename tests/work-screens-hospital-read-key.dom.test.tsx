@@ -31,3 +31,16 @@ describe("useHospitalReadKey", () => {
     expect(result.current).not.toBe(first);
   });
 });
+
+describe("useHospitalReadKey with the work zone in the identity", () => {
+  it("never repeats a key when the zone goes A, B, then back to A", () => {
+    const { result, rerender } = renderHook(({ zone }: { zone: string }) => useHospitalReadKey(`h1|${zone}`, 0), {
+      initialProps: { zone: "Australia/Perth" },
+    });
+    const first = result.current;
+    rerender({ zone: "Australia/Sydney" });
+    const second = result.current;
+    rerender({ zone: "Australia/Perth" });
+    expect(new Set([first, second, result.current]).size).toBe(3);
+  });
+});

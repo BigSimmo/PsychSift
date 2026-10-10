@@ -224,7 +224,7 @@ export async function readHospitalShortStaffed(
     const name = names.get(serviceId) ?? "Team";
     const needs = needsByTeam.get(serviceId) ?? [];
     const knownThrough = latest.get(serviceId)?.periodEnd ?? null;
-    const counted = staffingDays(shiftsByTeam.get(serviceId) ?? [], window, { actorId: null, knownThrough });
+    const counted = staffingDays(shiftsByTeam.get(serviceId) ?? [], window, { actorId: null, knownThrough, zone });
     const known = counted.filter((day) => day.on !== null);
     teams.push({
       serviceId,
