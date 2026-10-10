@@ -137,3 +137,12 @@ describe("Undo of one save", () => {
     expect(undoSafeNumberChanges(fresh, saved, previous).day.slice(0, 2)).toEqual([4, 2]);
   });
 });
+
+describe("one source for the cover-need rules", () => {
+  it("reads and writes needs under the same kinds and per-team limit", async () => {
+    const rows = await import("@/lib/roster/staffing/staffing-need-rows");
+    const model = await import("@/lib/roster/team/model");
+    expect(rows.STAFFING_NEED_KINDS).toBe(model.ROSTER_OPEN_SHIFT_KINDS);
+    expect(rows.STAFFING_NEEDS_PER_TEAM_LIMIT).toBe(model.ROSTER_MAX_STAFFING_NEEDS);
+  });
+});
