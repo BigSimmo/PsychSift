@@ -2,7 +2,11 @@
 // query asks (dose, contraindication, monitoring schedule, result action, ...). Extracted from
 // rag-extractive-answer.ts to keep that module within its maintainability budget.
 import { medicationMonitoringQuerySubjects } from "@/lib/clinical-search";
-import { medicationEntitiesInText, medicationEntityMatchesInText } from "@/lib/medication-entities";
+import {
+  medicationEntitiesInText,
+  medicationEntityMatchesInText,
+  medicationSafetyEntitiesInText,
+} from "@/lib/medication-entities";
 import { normalizeSectionText } from "@/lib/rag/rag-answer-text";
 import type { RagQueryClass } from "@/lib/types";
 
@@ -96,7 +100,11 @@ function actsOnNamedMedicine(normalized: string) {
     // The target starts the phrase: "lithium levels" or "the clearance of lithium", never a later
     // mention such as "patients receiving quetiapine".
     const target = match[1].replace(effectTargetLeadPattern, "").trimStart();
-    return medicationEntityMatchesInText(target).some((entity) => entity.start === 0);
+    // Only an unambiguous medicine counts: "vitamin D levels" is a measured nutrient, not a co-medication.
+    const unambiguous = new Set(medicationSafetyEntitiesInText(target));
+    return medicationEntityMatchesInText(target).some(
+      (entity) => entity.start === 0 && unambiguous.has(entity.canonical),
+    );
   });
 }
 

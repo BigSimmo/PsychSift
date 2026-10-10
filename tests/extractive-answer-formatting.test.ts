@@ -3247,6 +3247,9 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
     ]) {
       expect(classifyAnswerIntent(query, "medication_dose_risk")).toBe("contraindication");
     }
+    expect(classifyAnswerIntent("How does valproate affect vitamin D levels?", "medication_dose_risk")).not.toBe(
+      "contraindication",
+    );
     expect(
       classifyAnswerIntent("How does lithium affect patients receiving quetiapine?", "medication_dose_risk"),
     ).not.toBe("contraindication");
