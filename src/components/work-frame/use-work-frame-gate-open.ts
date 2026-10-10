@@ -2,7 +2,6 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useHeldWorkRoles } from "@/components/work-frame/use-held-work-roles";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
 import { useCourseOrganiser } from "@/components/work-screens/admin/use-course-organiser";
@@ -27,14 +26,12 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const examplesOn = useExampleData().mode === "on";
   const hospitalRole = examplesOn || !signedIn || heldRoles.some((role) => HOSPITAL_ROLES.has(role));
   const hospitalHub = hospitalRole || heldRoles.some((role) => HOSPITAL_HUB_ROLES.has(role));
-  const bookings = useLivePreview("course-bookings");
   const courses = useCourseOrganiser();
-  const courseOrganiser = bookings && (courses.organiser || courses.sample);
-  const rotations = useLivePreview("rotation-preferences");
+  const courseOrganiser = courses.organiser || courses.sample;
   return useCallback(
     (gate) => {
       if (!gate) return true;
-      if (gate === "course-bookings") return bookings;
+      if (gate === "course-bookings") return true;
       if (gate === "course-organiser") return courseOrganiser;
       if (gate === "teaching-organiser") return roles.some((role) => role === "organiser" || role === "admin");
       if (gate === "open-shifts-poster") return poster === true;
@@ -44,11 +41,11 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "signed-in") return signedIn;
       if (gate === "hospital-role") return hospitalRole;
       if (gate === "hospital-hub") return hospitalHub;
-      if (gate === "rotation-preferences") return rotations;
-      if (gate === "rotation-preferences-manager") return rotations && poster === true;
+      if (gate === "rotation-preferences") return true;
+      if (gate === "rotation-preferences-manager") return poster === true;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn, hospitalRole, hospitalHub, bookings, courseOrganiser, rotations],
+    [roles, poster, editor, newWorkMode, signedIn, hospitalRole, hospitalHub, courseOrganiser],
   );
 }
 

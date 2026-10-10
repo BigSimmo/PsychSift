@@ -1516,7 +1516,8 @@ describe("design-system adoption manifest", () => {
     // administrator's rounds list, new round and round pages).
     // 213 -> 215: Admin Bookings and the organiser's Courses (`/admin/bookings`, `/admin/courses`).
     // 215 -> 218: hospital-side roles (Admin People and roles, Hospital, and its Sick calls page).
-    expect(manifest.routeCoverage.discovered).toHaveLength(218);
+    // 218 -> 219: My Day's full-size Calendar (`/my-day/calendar`).
+    expect(manifest.routeCoverage.discovered).toHaveLength(219);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

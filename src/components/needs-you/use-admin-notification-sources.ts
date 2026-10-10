@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useHeldWorkRoles } from "@/components/work-frame/use-held-work-roles";
 import { useAuthIfAvailable } from "@/lib/example-data/store";
@@ -19,12 +18,10 @@ import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
  *   hospital's Sick calls screen. A team the reader manages is left out, since
  *   Roster already tells its manager.
  * - Course changes: for a doctor booked or waitlisted on a course the organiser
- *   moved or cancelled, one line per course, opening it. Only in the
- *   "course-bookings" preview.
+ *   moved or cancelled, one line per course, opening it.
  *
- * Each read is in its own module, loaded only when the source is on (a reader
- * holding the role, or in the preview), so the bell stays as light as it was
- * for everyone else. Example and demo records never reach the bell: a demo
+ * Each read is in its own module, loaded only when its source is on, so the
+ * bell stays light. Example and demo records never reach the bell: a demo
  * build reads nothing ("unavailable"), and example records are dropped.
  */
 
@@ -106,13 +103,12 @@ export function useCourseChangeSource({
   /** `YYYY-MM-DD` in the work time zone. */
   readonly today: string;
 }): NotificationSource {
-  const preview = useLivePreview("course-bookings");
   const visible = useWorkModeRouteVisible();
   const auth = useAuthIfAvailable();
   const headers = auth?.authorizationHeader ?? NO_HEADERS;
   const account = auth?.session?.user?.id ?? "";
   const epoch = auth?.authEpoch ?? 0;
-  const on = enabled && !demo && preview && account !== "" && visible(ADMIN_WORK_SCREEN_HREFS.bookings);
+  const on = enabled && !demo && account !== "" && visible(ADMIN_WORK_SCREEN_HREFS.bookings);
   // Each read is kept with the account and day it was for, so a switch shows loading, never the last one.
   const key = `${account}:${epoch}:${today}`;
   const [read, setRead] = useState<{ readonly key: string; readonly read: AdminNotificationRead } | null>(null);
@@ -133,6 +129,6 @@ export function useCourseChangeSource({
     return () => controller.abort();
   }, [on, headers, today, key]);
 
-  const current = demo && enabled && preview ? UNAVAILABLE : !on ? NOTHING : read?.key === key ? read.read : LOADING;
+  const current = demo && enabled ? UNAVAILABLE : !on ? NOTHING : read?.key === key ? read.read : LOADING;
   return useMemo(() => asSource("course-changes", "Course bookings", current), [current]);
 }
