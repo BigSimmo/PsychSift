@@ -31,6 +31,7 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const courses = useCourseOrganiser();
   const courseOrganiser = bookings && (courses.organiser || courses.sample);
   const rotations = useLivePreview("rotation-preferences");
+  const mainCalendar = useLivePreview("main-calendar");
   return useCallback(
     (gate) => {
       if (!gate) return true;
@@ -46,9 +47,22 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
       if (gate === "hospital-hub") return hospitalHub;
       if (gate === "rotation-preferences") return rotations;
       if (gate === "rotation-preferences-manager") return rotations && poster === true;
+      if (gate === "main-calendar") return mainCalendar;
       return editor;
     },
-    [roles, poster, editor, newWorkMode, signedIn, hospitalRole, hospitalHub, bookings, courseOrganiser, rotations],
+    [
+      roles,
+      poster,
+      editor,
+      newWorkMode,
+      signedIn,
+      hospitalRole,
+      hospitalHub,
+      bookings,
+      courseOrganiser,
+      rotations,
+      mainCalendar,
+    ],
   );
 }
 

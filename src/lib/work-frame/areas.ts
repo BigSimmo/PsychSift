@@ -112,7 +112,9 @@ export type WorkFrameGate =
   /** Testers on the newest live version, for a page that exists only there (Rotations). */
   | "rotation-preferences"
   /** Roster managers (as "open-shifts-poster") who are also on the newest live version (Rotation rounds). */
-  | "rotation-preferences-manager";
+  | "rotation-preferences-manager"
+  /** Testers on the newest live version, for the one calendar (`main-calendar`). */
+  | "main-calendar";
 
 /** Actions a page can register for the More sheet to run. */
 export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
@@ -214,6 +216,14 @@ const myDay: WorkArea = {
           query: { view: "all" },
           // The new work mode reads this list in Notifications (the address redirects there).
           gate: "classic-work-mode",
+        },
+        {
+          id: "my-day-calendar",
+          label: "Calendar",
+          sub: "Everything dated",
+          icon: "calendar",
+          href: "/my-day/calendar",
+          gate: "main-calendar",
         },
         {
           id: "my-day-favourites",

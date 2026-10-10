@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { useSignedIn } from "@/components/mode-kit/use-signed-out-sample";
@@ -38,7 +38,9 @@ export function useBookingCalendarEntries(calendar: boolean): WorkCalendarSource
   const headers = auth?.authorizationHeader ?? NO_HEADERS;
   const account = auth?.session?.user?.id ?? "";
   // Each read is kept with what it was for, so a switch of account or example shows loading, never the last one.
-  const key = `${active}:${signedIn}:${account}:${zone}`;
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((count) => count + 1), []);
+  const key = `${active}:${signedIn}:${account}:${zone}:${attempt}`;
   const [read, setRead] = useState<{ readonly key: string; readonly value: WorkCalendarSourceRead } | null>(null);
 
   useEffect(() => {
@@ -61,5 +63,5 @@ export function useBookingCalendarEntries(calendar: boolean): WorkCalendarSource
   }, [enabled, active, signedIn, headers, zone, key]);
 
   if (!enabled) return OFF;
-  return read?.key === key ? read.value : LOADING;
+  return { ...(read?.key === key ? read.value : LOADING), retry };
 }

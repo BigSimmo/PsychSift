@@ -35,6 +35,11 @@ export type CalendarEvent = {
   readonly title: string;
   /** Perth calendar date, `YYYY-MM-DD`. */
   readonly date: string;
+  /**
+   * Last day of an all-day event that runs over several days (a rotation term,
+   * a stretch of leave), inclusive. Ignored for a timed event; absent means one day.
+   */
+  readonly endDate?: string;
   /** Perth wall-clock start, `HH:MM`. Absent for an all-day event. */
   readonly startTime?: string;
   /** Minutes. Ignored for an all-day event. Defaults to 60. */
@@ -106,6 +111,15 @@ export function addDays(date: string, days: number): string {
 }
 
 /** Whole months later, clamped to the end of a shorter month (31 Jan + 1 month = 28/29 Feb). */
+/** The day after an all-day event's last day: its exclusive end, as calendar files and links want it. */
+export function allDayEndExclusive(event: Pick<CalendarEvent, "date" | "endDate">): string {
+  const last =
+    event.endDate && event.endDate > event.date && dateKeyToUtcMillis(event.endDate) !== null
+      ? event.endDate
+      : event.date;
+  return addDays(last, 1);
+}
+
 export function addMonthsClamped(date: string, months: number): string {
   const millis = dateKeyToUtcMillis(date);
   if (millis === null) throw new Error(`Not a calendar date: ${date}`);
