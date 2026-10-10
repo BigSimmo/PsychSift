@@ -28,6 +28,7 @@ import {
   HospitalSignedOut,
   HospitalSkeleton,
   useAdminHospitalList,
+  useHospitalReadKey,
   useHospitalScreenState,
 } from "@/components/work-screens/hospital/hospital-shared";
 import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
@@ -145,7 +146,7 @@ type StartersRead =
 function useHospitalStarters(hospitalId: string | null): StartersRead {
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<{ readonly key: string; readonly outcome: HospitalStartersOutcome } | null>(null);
-  const key = `${hospitalId ?? ""}:${attempt}`;
+  const key = useHospitalReadKey(hospitalId, attempt);
   useEffect(() => {
     if (!hospitalId) return;
     const controller = new AbortController();

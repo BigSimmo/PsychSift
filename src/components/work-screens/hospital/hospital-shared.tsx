@@ -100,6 +100,17 @@ export function useAdminHospitalList(enabled: boolean): AdminHospitalList & { re
   return { ...read.list, retry };
 }
 
+/**
+ * The key a hospital read's answer must match. It moves on every hospital change, so going
+ * from hospital A to B and back to A never shows A's earlier answer while the fresh one loads.
+ */
+export function useHospitalReadKey(hospitalId: string | null, attempt: number): string {
+  const [seen, setSeen] = useState({ hospitalId, visit: 0 });
+  const visit = seen.hospitalId === hospitalId ? seen.visit : seen.visit + 1;
+  if (seen.hospitalId !== hospitalId) setSeen({ hospitalId, visit });
+  return `${hospitalId ?? ""}:${visit}:${attempt}`;
+}
+
 export type HospitalSickRead =
   | { readonly status: "off" | "loading"; readonly retry: () => void }
   | (HospitalSickOutcome & { readonly retry: () => void });
@@ -108,7 +119,7 @@ export type HospitalSickRead =
 export function useHospitalSick(hospitalId: string | null, enabled: boolean): HospitalSickRead {
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<{ readonly key: string; readonly outcome: HospitalSickOutcome } | null>(null);
-  const key = `${hospitalId ?? ""}:${attempt}`;
+  const key = useHospitalReadKey(hospitalId, attempt);
   const active = enabled && Boolean(hospitalId);
   useEffect(() => {
     if (!active || !hospitalId) return;
@@ -137,7 +148,7 @@ export function useHospitalShortStaffed(hospitalId: string | null): HospitalShor
   const [read, setRead] = useState<{ readonly key: string; readonly outcome: HospitalShortStaffedOutcome } | null>(
     null,
   );
-  const key = `${hospitalId ?? ""}:${attempt}`;
+  const key = useHospitalReadKey(hospitalId, attempt);
   useEffect(() => {
     if (!hospitalId) return;
     const controller = new AbortController();

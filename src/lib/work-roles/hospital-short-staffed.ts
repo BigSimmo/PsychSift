@@ -71,10 +71,11 @@ type PageResult<Row> = PromiseLike<{ data: Row[] | null; error: unknown }>;
 async function readEvery<Row>(page: (from: number, to: number) => PageResult<Row>, maxRows: number): Promise<Row[]> {
   const rows: Row[] = [];
   for (let start = 0; ; start += PAGE) {
-    if (start >= maxRows) throw tooMany();
     const { data, error } = await page(start, start + PAGE - 1);
     if (error || !data) throw unavailable();
     rows.push(...data);
+    // Checked after the read, so exactly maxRows rows still loads and one more is refused.
+    if (rows.length > maxRows) throw tooMany();
     if (data.length < PAGE) return rows;
   }
 }

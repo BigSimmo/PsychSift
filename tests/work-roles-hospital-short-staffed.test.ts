@@ -39,8 +39,9 @@ function fakeClient(rows: Rows, log: Log = [], cap = 1000) {
         data = data.filter((row) => !(column in row) || row[column] === value);
         return query;
       },
-      is: (column: string) => {
+      is: (column: string, value: unknown) => {
         entry.filters.push(`is(${column})`);
+        data = data.filter((row) => !(column in row) || (row[column] ?? null) === value);
         return query;
       },
       in: (column: string, values: unknown[]) => {
@@ -453,5 +454,33 @@ describe("admin.hospital example short-staffed days", () => {
     expect(notRosteredLine(main!)).toMatch(/^Not rostered yet, so not checked: .+ from /);
     expect(campus!.days).toEqual([]);
     expect(notRosteredLine(campus!)).toMatch(/for all 4 weeks\.$/);
+  });
+});
+
+describe("readHospitalShortStaffed: size limits", () => {
+  const links = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({ service_id: `t${String(index).padStart(5, "0")}` }));
+
+  it("loads a hospital with exactly 5,000 linked teams", async () => {
+    const read = readHospitalShortStaffed(
+      fakeClient(baseRows({ work_hospital_teams: links(5_000) })),
+      context([{ role: "administrator" }]),
+      "h1",
+      NOW,
+    );
+    await expect(read).resolves.toMatchObject({ hospital: { id: "h1" } });
+  });
+
+  it("refuses one team past the limit rather than leaving some out", async () => {
+    const read = readHospitalShortStaffed(
+      fakeClient(baseRows({ work_hospital_teams: links(5_001) })),
+      context([{ role: "administrator" }]),
+      "h1",
+      NOW,
+    );
+    await expect(read).rejects.toMatchObject({
+      status: 503,
+      message: "This hospital has too many shifts to check at once.",
+    });
   });
 });
