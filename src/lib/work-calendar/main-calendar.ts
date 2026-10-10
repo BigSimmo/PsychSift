@@ -1,3 +1,4 @@
+import { isExampleRecord } from "@/lib/example-data/guards";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
 import { ROSTER_LEAVE_KIND_LABEL, type RosterLeaveKind } from "@/lib/roster/leave-kinds";
 import type { AdminRequest } from "@/lib/work-screens/admin/paperwork-model";
@@ -55,7 +56,7 @@ function validRange(start: string, end: string): boolean {
 
 /** Work calendar entries (rotations, booked courses and any later source). Waitlisted and cancelled ones stay out. */
 export function workEntryItems(entries: readonly WorkCalendarEntry[]): MainCalendarItem[] {
-  return entries.filter(isShownOnCalendar).map((entry): MainCalendarItem => {
+  return entries.filter((entry) => isShownOnCalendar(entry) && !entry.isExample && !isExampleRecord(entry.id)).map((entry): MainCalendarItem => {
     const rotation = entry.kind === "rotation";
     const course = entry.kind === "course";
     const timed = !entry.allDay && entry.startTime ? entry.startTime : null;
