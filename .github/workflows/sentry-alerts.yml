@@ -97,7 +97,12 @@ jobs:
               direction: "desc",
               per_page: 5,
             });
-            const ours = labelled.filter((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER));
+            // The repository is public, so anyone can comment on these issues. State is read only
+            // from what this workflow itself wrote, or a forged marker could hide a real alert.
+            const BOT = "github-actions[bot]";
+            const ours = labelled.filter(
+              (issue) => !issue.pull_request && issue.user?.login === BOT && String(issue.body ?? "").includes(MARKER),
+            );
             const open = ours.find((issue) => issue.state === "open") ?? null;
             // The last few closed ones are read too (the listing above is newest first), so closing
             // the issue does not make the next run re-report everything still inside the lookback.
@@ -108,12 +113,14 @@ jobs:
             const reported = new Set();
             let lastCommentIsFailure = false;
             for (const issue of ours) {
-              const comments = await github.paginate(github.rest.issues.listComments, {
-                owner,
-                repo,
-                issue_number: issue.number,
-                per_page: 100,
-              });
+              const comments = (
+                await github.paginate(github.rest.issues.listComments, {
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  per_page: 100,
+                })
+              ).filter((comment) => comment.user?.login === BOT);
               for (const comment of comments) {
                 for (const match of String(comment.body ?? "").matchAll(/<!-- sentry-issue:(\d+) -->/g)) reported.add(match[1]);
               }
