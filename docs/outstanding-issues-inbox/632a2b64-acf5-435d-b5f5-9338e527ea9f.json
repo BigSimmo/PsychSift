@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "632a2b64-acf5-435d-b5f5-9338e527ea9f",
+  "createdOn": "2026-10-10",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Six therapy records still carry import wording such as \"Your uploaded guide\" and \"This final point is a clinical inference\"",
+    "detail": "NEXT: owner decides the replacement wording for 23 occurrences across adolescent-focused-psychotherapy-for-anorexia-nervosa (4), advocacy-informed-therapeutic-work (1), habit-reversal-training-cbit (4), stair-skills-training-in-affective-and-interpersonal-regulation (6), structured-clinical-management (4) and wake-therapy-sleep-deprivation-chronotherapy (4) in src/data/therapies-source.json, then regenerate the index. Why: clinicians read import-chat phrasing as record content. Context: Codacy flagged it on PR #3398; pre-existing on main and out of that PR's scope. Owner: user (clinical wording). Confidence: high.",
+    "source": "session 2026-10-10 /ledger sweep, PR #3398 (merged 2026-10-09 as 6f9203d55)",
+    "issueUlid": "01M4JGC3MEHH4PXNVF5GZX81B8"
+  }
+}

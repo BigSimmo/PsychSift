@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "44c998b4-a3ba-4c1d-83ee-e9e7bd804ef0",
+  "createdOn": "2026-10-10",
+  "action": "update",
+  "payload": {
+    "id": "#NZ4X41",
+    "summary": "Therapy catalogue: 22 of 47 unsourced records now carry NICE references and await sign-off, 25 still have none",
+    "detail": "UPDATE 2026-10-10: PR #3398 added verbatim NICE recommendation citations (CG178, CG185, NG222, CG113, CG115, CG78, NG225, NG87, read from each publisher page on 2026-10-09) plus a record note to 22 of the 47, so they are now in therapy-signable-slugs and offered by the sign-off tool. NEXT (owner): read each and sign with npm run therapy:review -- --write --walk --reviewed-by \"Dr <surname>\". The 25 still without a reference, because no register guideline names them: behaviour-therapy, cognitive-behavioural-therapy-for-insomnia-cbt-i, cognitive-therapy, community-reinforcement-and-family-training-craft, contingency-management-cm, cue-exposure-therapy-cet-for-substance-use-disorders, exposure-and-response-prevention-for-tics-erp-for-tics, habit-reversal-training-for-trichotillomania-and-excoriation-disorder, imagery-rehearsal-therapy-irt-for-nightmare-disorder, integrated-cbt-for-ptsd-and-substance-use-disorders, interpersonal-and-social-rhythm-therapy-ipsrt, matrix-model, mentalisation-based-therapy-mbt, mindfulness-based-relapse-prevention-mbrp, mindfulness-based-therapy-for-insomnia-mbti, mother-infant-therapy-mother-infant-psychotherapy, motivational-enhancement-therapy-met, parent-and-child-training, parent-child-relational-therapy, parent-child-interaction-therapy-pcit, psychoeducation-for-psychosis, recovery-oriented-psychosocial-interventions, relapse-prevention-therapy-for-substance-use-disorders, seeking-safety, social-communication-parent-mediated-autism-interventions. They need new sources captured (sources skill, WA-first ladder) before they can be signed. Claude never records a sign-off for the owner. PRIOR DETAIL: 158 of 205 therapies were signed off by owner in #SBKXZ7. 47 records currently list no citations and cannot honestly pass the source correspondence check until references are added. Adding references does not close this row: each of the 47 records still needs clinician sign-off afterwards, recorded the same way as the 158 in #SBKXZ7.",
+    "source": "session 2026-10-10 /ledger sweep, PR #3398 (merged 2026-10-09 as 6f9203d55)",
+    "baseRowFingerprint": "634f846ecddeb8f42e8b611a07a8e28c984e0641355b368c06d968b31dc289aa"
+  }
+}
