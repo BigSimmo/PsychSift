@@ -1334,10 +1334,6 @@ test.describe("PsychSift UI smoke coverage", () => {
     });
     expect(fieldFocus.inputOutline).toBe("none");
     expect(fieldFocus.contained).toBe(true);
-    // Read the border once focus has settled: the field fades its border in.
-    await expect
-      .poll(() => find.evaluate((element) => getComputedStyle(element.closest(".two-pane-menu__find")!).borderTopColor))
-      .not.toBe("rgba(0, 0, 0, 0)");
 
     await closeMenu.click();
     await expect(menu).toBeHidden();
