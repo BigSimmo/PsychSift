@@ -5,6 +5,7 @@ import { useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { WorkButton, WorkCard, WorkIconRow, WorkSectionLabel, useWorkUndoToast } from "@/components/mode-kit/work";
 import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
+import { controlDisabled } from "@/components/ui-primitives";
 import { fetchRosterRead, postRosterAction, useRosterRead } from "@/components/roster/use-roster-team";
 import type { RosterMaker, RosterOverview, RosterStaffingNeedInput } from "@/lib/roster/team/model";
 import {
@@ -64,7 +65,7 @@ function Stepper({
   onChange: (value: number) => void;
   testId: string;
 }) {
-  const round = `${focusRing} grid min-h-12 min-w-12 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)] disabled:opacity-40`;
+  const round = `${focusRing} grid min-h-12 min-w-12 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)] ${controlDisabled}`;
   return (
     <span className="flex shrink-0 items-center gap-1" data-testid={testId}>
       <button
