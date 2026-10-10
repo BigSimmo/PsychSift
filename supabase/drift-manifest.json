@@ -2,7 +2,7 @@
   "generated_at": "2026-10-09T11:24:48.909Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "e6ff56d5a408c7f61b61b5b9a3b342fecd1e211f73e7b8c880d96186fabc53c0",
+  "schema_sha256": "4525900367eab50fc5fcd348a09a837bdfaa0793a0096b930468a488e94bb504",
   "replay_seconds": 32,
   "snapshot": {
     "views": [
@@ -19901,6 +19901,14 @@
         ],
         "def_hash": "9ce0e3e797bb096ad1d62619d124ff8b",
         "signature": "public.work_bookings_read(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8dc1b0783efffeeb251d573ad9ae23ca",
+        "signature": "public.work_bookings_retention_purge()"
       },
       {
         "acl": [

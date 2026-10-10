@@ -234,10 +234,11 @@ describe("hospitalSections", () => {
     ]);
     expect(work!.links[0]!.sub).toBe("2 need cover this week");
     expect(director!.links.map((link) => link.href)).toEqual([
-      "/teaching/assessments?view=overview&as=supervisor",
+      "/teaching/assessments?view=overview&as=dct",
       `/admin/people?hospitalId=${H1}`,
     ]);
     expect(supervisor!.links.map((link) => link.href)).toEqual([
+      "/teaching/supervision",
       "/teaching/assessments?view=inbox&as=supervisor",
       "/teaching/assessments?view=times&as=supervisor",
     ]);
@@ -361,8 +362,8 @@ describe("hospitalCardRows", () => {
     );
     expect(rows.map((row) => [row.id, row.title, row.href])).toEqual([
       ["workforce", "Medical Workforce", `/admin/hospital/sick?hospitalId=${H1}`],
-      ["dct", "Director of Clinical Training", "/teaching/assessments?view=overview&as=supervisor"],
-      ["supervisor", "Supervisor or assessor", "/teaching/assessments?view=inbox&as=supervisor"],
+      ["dct", "Director of Clinical Training", "/teaching/assessments?view=overview&as=dct"],
+      ["supervisor", "Supervisor or assessor", "/teaching/supervision"],
       ["manager", "Roster manager", "/roster/manage?team=team-a"],
     ]);
     expect(rows[0]!.sub).toBe("Sick calls, new starters, people and roles");
@@ -422,15 +423,15 @@ describe("preview rows: Rotation rounds and Courses", () => {
     const sections = hospitalSections([workforce(H1), dct(H1), { role: "manager", serviceId: "team-a" }], H1, {
       previews: both,
     });
-    // Courses goes to Medical Workforce, the first section that may run it. Rotation rounds still
-    // lets in only the administrator and roster managers.
+    // Both go to Medical Workforce, the first section that may run them.
     const workforceSection = sections.find((section) => section.id === "workforce")!;
-    expect(workforceSection.links.slice(-2).map((link) => [link.label, link.href])).toEqual([
+    expect(workforceSection.links.slice(-3).map((link) => [link.label, link.href])).toEqual([
+      ["Rotation rounds", "/roster/manage/rotations"],
       ["Courses", "/admin/courses"],
       ["Post a course", "/admin/courses?new=1"],
     ]);
     const manager = sections.find((section) => section.id === "manager")!;
-    expect(manager.links.at(-1)!.href).toBe("/roster/manage/rotations");
+    expect(manager.links.map((link) => link.id)).not.toContain("rotation-rounds");
     const all = sections.flatMap((section) => section.links.map((link) => link.id));
     expect(all.filter((id) => id === "rotation-rounds")).toHaveLength(1);
     expect(all.filter((id) => id === "courses")).toHaveLength(1);
@@ -446,7 +447,7 @@ describe("preview rows: Rotation rounds and Courses", () => {
       [
         "dct",
         [
-          "/teaching/assessments?view=overview&as=supervisor",
+          "/teaching/assessments?view=overview&as=dct",
           `/admin/people?hospitalId=${H1}`,
           "/admin/courses",
           "/admin/courses?new=1",
@@ -466,18 +467,18 @@ describe("preview rows: Rotation rounds and Courses", () => {
     ]);
   });
 
-  it("gives Medical Workforce Courses, and keeps Rotation rounds until that screen accepts them", () => {
+  it("gives Medical Workforce both Rotation rounds and Courses", () => {
     const ids = hospitalSections([workforce(H1)], H1, { previews: both }).flatMap((section) =>
       section.links.map((link) => link.id),
     );
-    expect(ids).not.toContain("rotation-rounds");
+    expect(ids).toContain("rotation-rounds");
     expect(ids).toContain("courses");
     expect(ids).toContain("post-course");
   });
 
   it("gives a supervisor neither", () => {
     const [supervisor] = hospitalSections([{ role: "supervisor", subjectUserId: "a" }], null, { previews: both });
-    expect(supervisor!.links).toHaveLength(2);
+    expect(supervisor!.links).toHaveLength(3);
   });
 
   it("gives the site administrator both, even before a hospital exists", () => {

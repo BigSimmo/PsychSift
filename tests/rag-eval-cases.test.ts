@@ -418,9 +418,10 @@ describe("captured RAG eval cases", () => {
     expect(merged[0].id).toBe("captured-capture-1");
   });
 
-  it("keeps a 30-query answer-quality fixture with the expected scoring dimensions", () => {
-    expect(answerQualityEvalCases).toHaveLength(30);
-    expect(new Set(answerQualityEvalCases.map((testCase) => testCase.id)).size).toBe(30);
+  it("keeps a 48-query answer-quality fixture (30 core + 18 high-risk) with the expected scoring dimensions", () => {
+    expect(answerQualityEvalCases).toHaveLength(48);
+    expect(new Set(answerQualityEvalCases.map((testCase) => testCase.id)).size).toBe(48);
+    expect(answerQualityEvalCases.filter((testCase) => testCase.id.startsWith("high-risk-"))).toHaveLength(18);
     expect(Object.keys(answerQualityMetricLabels).sort()).toEqual([
       "artifact_leaks",
       "fail_closed",
@@ -534,6 +535,76 @@ describe("captured RAG eval cases", () => {
       "relevance",
     ]);
     expect(scores.every((score) => score.score === 1)).toBe(true);
+  });
+
+  describe("high-risk required facts", () => {
+    const testCase = answerQualityEvalCases.find((item) => item.id === "high-risk-interaction-lithium-nsaid")!;
+    function intentOf(text: string) {
+      const answer = {
+        answer: text,
+        grounded: true,
+        confidence: "high",
+        citations: [],
+        sources: [],
+        routingMode: "fast",
+        queryClass: "medication_dose_risk",
+        answerSections: [],
+      } satisfies RagAnswer;
+      return scoreAnswerQualityEvalCase(testCase, answer).find((score) => score.metric === "intent_coverage")!;
+    }
+
+    it("passes only when every required fact group is present", () => {
+      expect(intentOf("Avoid NSAIDs: they reduce lithium clearance and risk toxicity.").score).toBe(1);
+      const missing = intentOf("Avoid NSAIDs because of toxicity.");
+      expect(missing.score).toBe(0);
+      expect(missing.reason).toContain("required fact missing: clearance / increase lithium levels");
+    });
+
+    it("fails a forbidden claim even when every fact is present", () => {
+      const forbidden = intentOf("Ibuprofen is safe. Avoid others: reduced clearance and toxicity.");
+      expect(forbidden.score).toBe(0);
+      expect(forbidden.reason).toBe("forbidden claim: ibuprofen is safe");
+      expect(intentOf("**Ibuprofen is safe**. Avoid others: reduced clearance and toxicity.").score).toBe(0);
+    });
+
+    it("matches a concept only at a word start, not inside another word", () => {
+      const amber = answerQualityEvalCases.find((item) => item.id === "high-risk-monitoring-clozapine-amber-range")!;
+      const groups = amber.requiredConceptGroups ?? [];
+      const continueGroup = groups.findIndex((group) => group.includes("continue"));
+      expect(continueGroup).toBeGreaterThanOrEqual(0);
+      const answerWith = (text: string) =>
+        ({
+          answer: text,
+          grounded: true,
+          confidence: "high",
+          citations: [],
+          sources: [],
+          routingMode: "fast",
+          queryClass: "medication_dose_risk",
+          answerSections: [],
+        }) satisfies RagAnswer;
+      const intent = (text: string) =>
+        scoreAnswerQualityEvalCase(amber, answerWith(text)).find((score) => score.metric === "intent_coverage")!;
+      expect(intent("Discontinue clozapine now.").reason).toContain(groups[continueGroup].join(" / "));
+      expect(intent("Discontinue clozapine now.").score).toBe(0);
+    });
+
+    it("matches a quoted range written with an en dash", () => {
+      const steadyState = answerQualityEvalCases.find((item) => item.id === "high-risk-renal-lithium-steady-state")!;
+      const answer = {
+        answer: "In renal impairment lithium may take 7–10 days to reach steady state.",
+        grounded: true,
+        confidence: "high",
+        citations: [],
+        sources: [],
+        routingMode: "fast",
+        queryClass: "medication_dose_risk",
+        answerSections: [],
+      } satisfies RagAnswer;
+      expect(
+        scoreAnswerQualityEvalCase(steadyState, answer).find((score) => score.metric === "intent_coverage")!.score,
+      ).toBe(1);
+    });
   });
 
   describe("readability: fragmentation and length are scored independently", () => {

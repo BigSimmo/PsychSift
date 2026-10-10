@@ -8,6 +8,7 @@ import {
   Check,
   ClipboardList,
   Clock,
+  GraduationCap,
   RotateCcw,
   UserPlus,
   Users,
@@ -598,6 +599,18 @@ function CourseDetail({
               onClick={addToPhone}
               testId="admin-bookings-ics"
             />
+            {(availability === "attended" || (availability === "booked" && course.date < today)) && !examples ? (
+              // A past course you were booked on may be CPD to log. Nothing marks a booking attended yet, so the
+              // words ask rather than claim. An example course never starts a real record.
+              <WorkIconRow
+                icon={GraduationCap}
+                title="Went to this course? Log it to CPD"
+                sub="Opens a new CPD entry with the course name"
+                href={`/cme/new?title=${encodeURIComponent(course.title)}`}
+                leadsTo="cme"
+                testId="admin-bookings-log-cpd"
+              />
+            ) : null}
           </>
         ) : (
           <WorkIconRow

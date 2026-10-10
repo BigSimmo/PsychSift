@@ -27205,3 +27205,40 @@ begin
     'organiser', jsonb_build_object('administrator', v_admin, 'teams', v_teams)
   );
 end $$;
+
+-- Course bookings keep 12 months (20261009225900_work_bookings_retention.sql): a course and its
+-- bookings are deleted once the course day is more than 365 days before today in Perth.
+create function public.work_bookings_retention_purge()
+returns jsonb
+language plpgsql security invoker set search_path = '' as $$
+declare
+  v_bookings integer;
+  v_courses integer;
+begin
+  select count(*) into v_bookings
+    from public.work_course_bookings b
+    join public.work_booking_courses c on c.id = b.course_id
+   where c.course_date < public.work_bookings_today() - 365;
+  delete from public.work_booking_courses where course_date < public.work_bookings_today() - 365;
+  get diagnostics v_courses = row_count;
+  return jsonb_build_object('courses', v_courses, 'bookings', v_bookings);
+end $$;
+
+revoke all on function public.work_bookings_retention_purge() from public, anon, authenticated;
+grant execute on function public.work_bookings_retention_purge() to service_role;
+
+-- Nightly, ten minutes after the Roster purge.
+do $work_bookings_retention$
+declare job record;
+begin
+  if to_regprocedure('public.work_bookings_retention_purge()') is null then
+    raise exception 'Missing public.work_bookings_retention_purge()';
+  end if;
+  for job in select jobid from cron.job where jobname = 'work-bookings-retention-purge' loop
+    perform cron.unschedule(job.jobid);
+  end loop;
+  perform cron.schedule(
+    'work-bookings-retention-purge', '30 3 * * *', $job$select public.work_bookings_retention_purge();$job$
+  );
+end
+$work_bookings_retention$;
