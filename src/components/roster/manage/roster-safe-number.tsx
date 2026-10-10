@@ -21,6 +21,7 @@ import {
   sameSafeNumbers,
   setSafeNumber,
   type SafeNumberGrid,
+  undoSafeNumberChanges,
   type SafeNumberKind,
 } from "@/lib/roster/team/safe-number";
 import { useOnlineStatus } from "@/lib/use-online-status";
@@ -152,7 +153,7 @@ function Editor({
     return false;
   }
 
-  // Undo puts back only the numbers its save changed, over a fresh read, so a need or a number
+  // Undo puts back only the numbers its save changed and nobody has changed since, over a fresh read, so a need or a number
   // another manager set since is kept, and so are the manager's own unsaved changes.
   async function undo(saved: SafeNumberGrid, previous: SafeNumberGrid) {
     if (busy.current) return;
@@ -165,7 +166,7 @@ function Editor({
         else failed(fresh.message);
         return;
       }
-      const reverted = applySafeNumberChanges(safeNumberGrid(fresh.data.needs), saved, previous);
+      const reverted = undoSafeNumberChanges(safeNumberGrid(fresh.data.needs), saved, previous);
       if (!(await send(safeNumberNeeds(reverted, fresh.data.needs)))) return;
       setConfirmed(reverted);
       setDraft((current) => (current ? applySafeNumberChanges(reverted, saved, current) : null));

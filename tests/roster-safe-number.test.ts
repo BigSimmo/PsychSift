@@ -9,6 +9,7 @@ import {
   safeNumberIsGrouped,
   safeNumberNeeds,
   setSafeNumber,
+  undoSafeNumberChanges,
 } from "@/lib/roster/team/safe-number";
 
 /*
@@ -115,5 +116,24 @@ describe("a total over the database's limit", () => {
     const sent = safeNumberNeeds(grid, current);
     expect(sent.filter((item) => item.kind === "day").map((item) => item.needed)).toEqual([200, 150]);
     expect(rosterActionSchema.safeParse({ action: "needs.set", needs: sent }).success).toBe(true);
+  });
+
+  it("steps down by one, not straight to 200", () => {
+    const grid = safeNumberGrid([
+      need({ weekday: 1, kind: "day", needed: 200 }),
+      need({ weekday: 1, kind: "day", needed: 150 }),
+    ]);
+    expect(setSafeNumber(grid, "day", [1], 349).day[0]).toBe(349);
+    expect(setSafeNumber(grid, "day", [1], 400).day[0]).toBe(350);
+  });
+});
+
+describe("Undo of one save", () => {
+  it("puts back only the numbers that still hold what the save wrote", () => {
+    const previous = setSafeNumber(emptySafeNumberGrid(), "day", [1, 2], 2);
+    const saved = setSafeNumber(previous, "day", [1, 2], 3);
+    // Another manager has since set Monday to 4.
+    const fresh = setSafeNumber(saved, "day", [1], 4);
+    expect(undoSafeNumberChanges(fresh, saved, previous).day.slice(0, 2)).toEqual([4, 2]);
   });
 });

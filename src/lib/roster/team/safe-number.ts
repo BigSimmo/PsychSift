@@ -103,8 +103,18 @@ export function setSafeNumber(
   weekdays: readonly number[],
   value: number,
 ): SafeNumberGrid {
-  const next = clampSafeNumber(value);
-  return { ...grid, [kind]: grid[kind].map((current, index) => (weekdays.includes(index + 1) ? next : current)) };
+  // A total already above the cap (several needs added up) may still step down
+  // one at a time, so One fewer on 350 gives 349, not 200.
+  return {
+    ...grid,
+    [kind]: grid[kind].map((current, index) =>
+      !weekdays.includes(index + 1)
+        ? current
+        : Number.isFinite(value)
+          ? Math.min(Math.max(SAFE_NUMBER_MAX, current), Math.max(0, Math.round(value)))
+          : 0,
+    ),
+  };
 }
 
 /**
@@ -119,6 +129,22 @@ export function applySafeNumberChanges(
 ): SafeNumberGrid {
   const pick = (kind: SafeNumberKind) =>
     fresh[kind].map((value, index) => (to[kind][index] !== from[kind][index] ? to[kind][index]! : value));
+  return { day: pick("day"), evening: pick("evening"), night: pick("night") };
+}
+
+/**
+ * Undo of one save: each number that save changed goes back, but only while it
+ * still holds what that save wrote. A number someone changed since is kept.
+ */
+export function undoSafeNumberChanges(
+  fresh: SafeNumberGrid,
+  saved: SafeNumberGrid,
+  previous: SafeNumberGrid,
+): SafeNumberGrid {
+  const pick = (kind: SafeNumberKind) =>
+    fresh[kind].map((value, index) =>
+      saved[kind][index] !== previous[kind][index] && value === saved[kind][index] ? previous[kind][index]! : value,
+    );
   return { day: pick("day"), evening: pick("evening"), night: pick("night") };
 }
 
