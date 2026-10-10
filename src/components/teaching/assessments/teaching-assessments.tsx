@@ -67,6 +67,11 @@ const TeachingTermCard = dynamic(
   () => import("@/components/teaching/teaching-term-card").then((m) => m.TeachingTermCard),
   { loading: () => <AssessSkeleton label="Loading your EPA counts" /> },
 );
+/* Each EPA's count this year, under the term card. */
+const AssessmentsEpaCounts = dynamic(
+  () => import("@/components/teaching/assessments/assessments-epa-counts").then((m) => m.AssessmentsEpaCounts),
+  { ssr: false },
+);
 
 /* The printable form is heavy and opened rarely, so it loads only when asked for. */
 const FormPdf = dynamic(() => import("@/components/teaching/assessments/assessments-pdf").then((m) => m.FormPdf), {
@@ -467,7 +472,14 @@ function AssessmentsSignedInProgress() {
       <WorkSectionLabel id="assess-progress-counts" action={{ label: "Count EPAs", href: "/teaching/term" }}>
         Your EPA counts
       </WorkSectionLabel>
-      {now ? <TeachingTermCard demoMode={false} today={perthDateKey(now)} /> : <AssessSkeleton />}
+      {now ? (
+        <>
+          <TeachingTermCard demoMode={false} today={perthDateKey(now)} />
+          <AssessmentsEpaCounts today={perthDateKey(now)} />
+        </>
+      ) : (
+        <AssessSkeleton />
+      )}
       <p className="m-0 px-1 text-sm text-[color:var(--text-muted)]">
         Counts you log yourself in Teaching, with no case details. Your forms and EPAs themselves stay in CLA.
       </p>
