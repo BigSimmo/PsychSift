@@ -342,6 +342,7 @@ function CalendarBody({
     void shifts.reload();
     teaching.retry();
     setLeaveReload((count) => count + 1);
+    calendar.retry();
   };
 
   const addingEvent = adding ? calendarItemEvent(adding) : null;
@@ -462,7 +463,8 @@ function CalendarBody({
 
       <CalendarExport
         month={month}
-        items={shown.filter((item) => item.start <= to && item.end >= from)}
+        // The whole month, whatever areas are hidden on screen.
+        items={all.filter((item) => item.start <= to && item.end >= from)}
         example={example}
         updating={loading}
         onDownload={(events) => {

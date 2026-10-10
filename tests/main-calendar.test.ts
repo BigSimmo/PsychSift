@@ -225,6 +225,16 @@ describe("main calendar items", () => {
     expect(calendarExportEvents([shift, ...example, ...requests])).toHaveLength(1);
   });
 
+  it("exports a course at its exact start and without the organiser's name", () => {
+    const [sydney] = workEntryItems([
+      { ...course, detail: "Course · Dr Example Organiser", startsAt: "2026-10-13T22:00:00.000Z" },
+    ]);
+    const event = calendarItemEvent(sydney!);
+    expect(event).toMatchObject({ date: "2026-10-14", startTime: "06:00", location: "Room 2" });
+    expect(JSON.stringify(event)).not.toContain("Organiser");
+    expect(googleCalendarUrl(event!)).not.toContain("Organiser");
+  });
+
   it("puts the close of an open rotation round on the calendar", () => {
     const round = {
       round: { id: "r1", name: "2027 rotations", status: "open", closesAt: "2026-10-20T09:00:00Z" },

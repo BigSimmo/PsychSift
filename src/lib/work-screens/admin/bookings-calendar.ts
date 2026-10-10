@@ -1,5 +1,6 @@
 import type { CalendarEvent } from "@/lib/calendar/calendar-event";
 import type { BookingCourse, BookingsState, CourseKind } from "@/lib/work-screens/admin/bookings";
+import { zonedWallToIso } from "@/lib/work-time/format";
 
 /*
  * The calendar side of Admin Bookings: the reader's booked courses as calendar entries. It is kept
@@ -71,6 +72,8 @@ export interface BookingWorkCalendarEntry {
   readonly end: string;
   readonly startTime: string;
   readonly endTime: string;
+  /** The exact start, when the zone the course's times were recorded in is known. */
+  readonly startsAt?: string;
   readonly location: string;
   readonly status: "confirmed" | "cancelled";
   readonly href: string;
@@ -85,10 +88,13 @@ export function bookingWorkCalendarId(courseId: string): string {
 export function bookingWorkCalendarEntries(
   state: BookingsState,
   href: (courseId: string) => string,
+  zone?: string,
 ): BookingWorkCalendarEntry[] {
   return bookingCalendarEvents(state, href).flatMap((event) => {
     const course = state.courses.find((item) => bookingCalendarId(item.id) === event.id);
     if (!course) return [];
+    // Course times are on the reader's work clock; the exact start lets an export place them anywhere.
+    const startsAt = zone ? zonedWallToIso(course.date, course.startTime, zone) : null;
     return [
       {
         id: bookingWorkCalendarId(course.id),
@@ -99,6 +105,7 @@ export function bookingWorkCalendarEntries(
         end: course.date,
         startTime: course.startTime,
         endTime: course.endTime,
+        ...(startsAt ? { startsAt } : {}),
         location: course.location,
         status: event.status === "cancelled" ? ("cancelled" as const) : ("confirmed" as const),
         href: event.href ?? href(course.id),

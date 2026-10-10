@@ -312,7 +312,9 @@ export function calendarItemEvent(item: MainCalendarItem): CalendarEvent | null 
   const exact = item.startsAt && Number.isFinite(Date.parse(item.startsAt)) ? item.startsAt : null;
   const date = exact ? zonedDateOf(exact, CALENDAR_TIME_ZONE) : item.start;
   const startTime = exact ? zonedTimeOf(exact, CALENDAR_TIME_ZONE) : item.time;
-  const notes = [item.label, item.state, item.detail].filter(Boolean).join(" · ");
+  // A course's detail names its organiser, a person, which the private feed leaves out too.
+  const detail = item.label === "Course" ? null : item.detail;
+  const notes = [item.label, item.state, detail].filter(Boolean).join(" · ");
   return {
     id: `main-${item.key.replace(/[^A-Za-z0-9-]+/g, "-")}`,
     title: item.title,

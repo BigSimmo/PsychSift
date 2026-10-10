@@ -34,6 +34,6 @@ export function useRotationCalendarEntries(calendar: boolean): WorkCalendarSourc
   );
   const entries = useMemo(() => JSON.parse(signature) as WorkCalendarEntry[], [signature]);
   if (!enabled) return OFF;
-  if (rotations.status !== "ready") return { status: rotations.status, entries };
-  return { status: "ready", entries };
+  if (rotations.status !== "ready") return { status: rotations.status, entries, retry: rotations.retry };
+  return { status: "ready", entries, retry: rotations.retry };
 }
