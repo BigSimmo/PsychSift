@@ -567,6 +567,57 @@ describe("captured RAG eval cases", () => {
       expect(intentOf("**Ibuprofen is safe**. Avoid others: reduced clearance and toxicity.").score).toBe(0);
     });
 
+    it("does not count a required fact the answer negates", () => {
+      const red = answerQualityEvalCases.find((item) => item.id === "high-risk-false-premise-clozapine-red-range")!;
+      const intent = (text: string) =>
+        scoreAnswerQualityEvalCase(red, {
+          answer: text,
+          grounded: true,
+          confidence: "high",
+          citations: [],
+          sources: [],
+          routingMode: "fast",
+          queryClass: "medication_dose_risk",
+          answerSections: [],
+        } satisfies RagAnswer).find((score) => score.metric === "intent_coverage")!;
+      expect(intent("Stop clozapine immediately and contact the haematologist.").score).toBe(1);
+      const negated = intent("Do not stop clozapine; repeat the count immediately and tell the haematologist.");
+      expect(negated.score).toBe(0);
+      expect(negated.reason).toContain("stop / discontinue / withhold / cease");
+    });
+
+    it("does not count a forbidden claim the answer is correcting", () => {
+      expect(
+        intentOf(
+          "It is not true that ibuprofen is safe. Avoid NSAIDs: they reduce lithium clearance and risk toxicity.",
+        ).score,
+      ).toBe(1);
+      expect(intentOf("NSAIDs are not ideal, but ibuprofen is safe. Avoid others: clearance and toxicity.").score).toBe(
+        0,
+      );
+    });
+
+    it("requires a citation to an expected guideline for relevance", () => {
+      const relevanceWith = (citation: Partial<RagAnswer["citations"][number]>) =>
+        scoreAnswerQualityEvalCase(testCase, {
+          answer: "Avoid NSAIDs: they reduce lithium clearance and risk toxicity.",
+          grounded: true,
+          confidence: "high",
+          citations: [{ chunk_id: "c1", ...citation } as RagAnswer["citations"][number]],
+          sources: [],
+          routingMode: "fast",
+          queryClass: "medication_dose_risk",
+          answerSections: [],
+        } satisfies RagAnswer).find((score) => score.metric === "relevance")!;
+      const unrelated = relevanceWith({ document_id: "d1", title: "Pressure Injury Prevention and Management (FSH)" });
+      expect(unrelated.score).toBe(0);
+      expect(unrelated.reason).toBe("expected source not cited");
+      expect(
+        relevanceWith({ document_id: "d2", title: "Lithium Therapy - Initiation And Continuation Guideline(FSH)" })
+          .score,
+      ).toBe(1);
+    });
+
     it("matches a concept only at a word start, not inside another word", () => {
       const amber = answerQualityEvalCases.find((item) => item.id === "high-risk-monitoring-clozapine-amber-range")!;
       const groups = amber.requiredConceptGroups ?? [];

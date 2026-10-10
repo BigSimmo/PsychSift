@@ -181,13 +181,24 @@ const foldDashes = (text: string) =>
     .replace(/\*\*/g, "")
     .replace(/[\u2010-\u2015]/g, "-");
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// A required fact does not count when it is directly negated ("do not stop clozapine"), and a
+// forbidden claim does not count when it is being corrected ("it is not true that ibuprofen is safe").
+const negatedLeadIn = /\b(?:do not|don't|never|must not|should not)\s+(?:[a-z]+\s+)?$/;
+const correctedLeadIn = /\b(?:not|incorrect|false|wrong|never|myth)\b[^.,;:!?]{0,30}$/;
+
 // Word start only, so "continue" never matches inside "discontinue"; the end stays open for plurals ("NSAIDs").
-const containsConcept = (folded: string, concept: string) =>
-  new RegExp(`(?<![a-z0-9])${escapeRegExp(foldDashes(concept))}`).test(folded);
+// An occurrence counts only when the text just before it does not match `excludedLeadIn`.
+function containsConcept(folded: string, concept: string, excludedLeadIn: RegExp) {
+  const pattern = new RegExp(`(?<![a-z0-9])${escapeRegExp(foldDashes(concept))}`, "g");
+  for (const match of folded.matchAll(pattern)) {
+    if (!excludedLeadIn.test(folded.slice(Math.max(0, match.index - 45), match.index))) return true;
+  }
+  return false;
+}
 
 function missingConceptGroups(text: string, groups: AnswerQualityEvalCase["requiredConceptGroups"]) {
   const folded = foldDashes(text);
-  return (groups ?? []).filter((group) => !group.some((concept) => containsConcept(folded, concept)));
+  return (groups ?? []).filter((group) => !group.some((concept) => containsConcept(folded, concept, negatedLeadIn)));
 }
 
 function containsNone(text: string, values: string[] | undefined) {
@@ -236,6 +247,11 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
   const fragmentPattern = /\b(?:anyMANAGEMENT|\w+\d+(?:,\d+)+)\b|[?]\s+(?:monitoring|adverse effects)\b/i;
   const unsupported = answer.confidence === "unsupported" || answer.grounded === false;
   const expectedClassOk = !testCase.expectedQueryClass || answer.queryClass === testCase.expectedQueryClass;
+  // High-risk cases (#ZZ4RAP) must cite a guideline that holds the quoted facts, not any document.
+  const expectedSourceCited =
+    !testCase.requiredConceptGroups?.length ||
+    !testCase.expectedFiles.length ||
+    expectedFileCoverage(testCase.expectedFiles, answer.citations, answer.citations.length).anyHit;
   const relevanceOk = testCase.supported
     ? testCase.acceptSourceOnly
       ? // Diffuse question: a grounded synthesis OR a source-only/unsupported answer is acceptable,
@@ -247,7 +263,7 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
         (answer.grounded || unsupported) &&
         expectedClassOk &&
         expectedFileCoverage(testCase.expectedFiles, answer.citations, answer.citations.length).anyHit
-      : answer.grounded && answer.citations.length >= testCase.minCitations && expectedClassOk
+      : answer.grounded && answer.citations.length >= testCase.minCitations && expectedClassOk && expectedSourceCited
     : unsupported;
   const fragmentedText = fragmentPattern.test(text);
   const limits =
@@ -269,7 +285,7 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
   const artifactOk = !artifactPattern.test(text) && containsNone(text, testCase.mustNotContain);
   const missingGroups = missingConceptGroups(text, testCase.requiredConceptGroups);
   const forbiddenPresent = (testCase.forbiddenConcepts ?? []).filter((concept) =>
-    containsConcept(foldDashes(text), concept),
+    containsConcept(foldDashes(text), concept, correctedLeadIn),
   );
   const intentOk =
     !sourceBackedReviewStub &&
@@ -287,7 +303,11 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
     testCase.supported || (unsupported && /no current source|could not find|not enough|no relevant/i.test(text));
 
   return [
-    { metric: "relevance", score: relevanceOk ? 1 : 0, reason: relevanceOk ? "relevant" : "missing relevance" },
+    {
+      metric: "relevance",
+      score: relevanceOk ? 1 : 0,
+      reason: relevanceOk ? "relevant" : expectedSourceCited ? "missing relevance" : "expected source not cited",
+    },
     {
       metric: "readability",
       score: readabilityOk ? 1 : 0,
