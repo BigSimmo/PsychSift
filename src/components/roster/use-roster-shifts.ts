@@ -139,7 +139,10 @@ export function useRosterShifts(
   // The dated read stops where the main list starts (a day of overlap, merged by ID).
   const historyTo = to < listedFrom ? to : listedFrom;
   const wantsHistory = Boolean(options?.ownHistory && teamRange && from < listedFrom);
+  const actorId = teams.data?.actorId;
+  const teamPayload = teams.data;
   const [history, setHistory] = useState<{
+    owner: string;
     from: string;
     to: string;
     shifts: readonly OnCallShift[];
@@ -147,7 +150,10 @@ export function useRosterShifts(
   } | null>(null);
   const [historyReload, setHistoryReload] = useState(0);
   useEffect(() => {
-    if (!wantsHistory) return;
+    if (!wantsHistory || !actorId) {
+      setHistory(null);
+      return;
+    }
     const controller = new AbortController();
     const query = new URLSearchParams({ from, to: historyTo });
     sharedGet(`${ROSTER_SHIFTS_URL}?${query}`, { signal: controller.signal })
@@ -155,13 +161,13 @@ export function useRosterShifts(
         if (!response.ok) throw new Error("older shifts unavailable");
         const payload = await readPayload(response);
         if (!controller.signal.aborted)
-          setHistory({ from, to: historyTo, shifts: payload.shifts ?? [], failed: false });
+          setHistory({ owner: actorId, from, to: historyTo, shifts: payload.shifts ?? [], failed: false });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setHistory({ from, to: historyTo, shifts: [], failed: true });
+        if (!controller.signal.aborted) setHistory({ owner: actorId, from, to: historyTo, shifts: [], failed: true });
       });
     return () => controller.abort();
-  }, [wantsHistory, from, historyTo, historyReload]);
+  }, [wantsHistory, actorId, from, historyTo, historyReload]);
   const [teamData, setTeamData] = useState<{
     payload: typeof teams.data;
     owner: string;
@@ -170,8 +176,6 @@ export function useRosterShifts(
     rows: { team: RosterTeam; assignments: RosterAssignment[] }[];
     message: string | null;
   } | null>(null);
-  const actorId = teams.data?.actorId;
-  const teamPayload = teams.data;
   useEffect(() => {
     if (!actorId || !teamPayload) return;
     const controller = new AbortController();
@@ -253,6 +257,7 @@ export function useRosterShifts(
         const payload = await readPayload(response);
         if (response.status === 401) return "Sign in to save your roster.";
         if (!response.ok) return errorText(payload, "Your roster could not be saved. Try again.");
+        setHistory(null);
         accept(payload);
         return null;
       } catch {
@@ -273,6 +278,7 @@ export function useRosterShifts(
         const payload = await readPayload(response);
         if (response.status === 401) return "Sign in to add a shift.";
         if (!response.ok) return errorText(payload, "That shift could not be saved. Try again.");
+        setHistory(null);
         await load();
         return null;
       } catch {
@@ -288,6 +294,7 @@ export function useRosterShifts(
         method: "DELETE",
       });
       if (!response.ok) return errorText(await readPayload(response), "That shift could not be removed. Try again.");
+      setHistory(null);
       setShifts((current) => current.filter((shift) => shift.seriesId !== seriesId));
       return null;
     } catch {
@@ -302,6 +309,7 @@ export function useRosterShifts(
         const payload = await readPayload(response);
         if (!response.ok)
           return { ok: false, message: errorText(payload, "Your data could not be deleted. Try again.") };
+        setHistory(null);
         accept(payload);
         return { ok: true, message: payload.message ?? null };
       } catch {
@@ -321,6 +329,7 @@ export function useRosterShifts(
       if (!response.ok) {
         return errorText(await readPayload(response), "That workplace could not be removed. Try again.");
       }
+      setHistory(null);
       setShifts((current) => current.filter((shift) => !(shift.source === "import" && shift.workplace === workplace)));
       return null;
     } catch {
@@ -358,7 +367,8 @@ export function useRosterShifts(
     ? teamPayload.teams.filter((team) => team.enabled).length
     : 0;
 
-  const currentHistory = wantsHistory && history?.from === from && history.to === historyTo ? history : null;
+  const currentHistory =
+    wantsHistory && history?.owner === actorId && history.from === from && history.to === historyTo ? history : null;
   const own = currentHistory ? unionShifts(shifts, currentHistory.shifts) : shifts;
 
   return {
