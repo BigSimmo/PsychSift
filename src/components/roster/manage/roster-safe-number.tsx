@@ -108,6 +108,27 @@ function Stepper({
   );
 }
 
+/** The editor's rows: each kind by weekday, or by weekday and weekend group. */
+function safeNumberRows(perDay: boolean) {
+  return perDay
+    ? SAFE_NUMBER_KINDS.flatMap((kind) =>
+        SAFE_NUMBER_WEEKDAYS.map(({ weekday, label }) => ({
+          key: `${kind}-${weekday}`,
+          kind,
+          sub: label,
+          weekdays: [weekday] as readonly number[],
+        })),
+      )
+    : SAFE_NUMBER_KINDS.flatMap((kind) =>
+        SAFE_NUMBER_GROUPS.map((group) => ({
+          key: `${kind}-${group.id}`,
+          kind,
+          sub: group.label,
+          weekdays: group.weekdays as readonly number[],
+        })),
+      );
+}
+
 function Editor({
   serviceId,
   needs,
@@ -145,6 +166,15 @@ function Editor({
     setState({ kind: "error", message: isOffline() ? OFFLINE_SAVE : message });
   }
 
+  /** The team's needs read again; null (with the error shown) when the read fails. */
+  async function readFresh(): Promise<{ needs: RosterMaker["needs"] } | null> {
+    const fresh = await fetchRosterRead(serviceId, "maker");
+    if (fresh.ok) return fresh.data;
+    if (fresh.code === "sample_read_only") setState({ kind: "example" });
+    else failed(fresh.message);
+    return null;
+  }
+
   async function send(list: RosterStaffingNeedInput[]): Promise<boolean> {
     const result = await postRosterAction(serviceId, { action: "needs.set", needs: list });
     if (result.ok) return true;
@@ -160,17 +190,13 @@ function Editor({
     busy.current = true;
     try {
       setState({ kind: "saving" });
-      const fresh = await fetchRosterRead(serviceId, "maker");
-      if (!fresh.ok) {
-        if (fresh.code === "sample_read_only") setState({ kind: "example" });
-        else failed(fresh.message);
-        return;
-      }
-      const reverted = undoSafeNumberChanges(safeNumberGrid(fresh.data.needs), saved, previous);
-      if (!(await send(safeNumberNeeds(reverted, fresh.data.needs)))) return;
+      const fresh = await readFresh();
+      if (!fresh) return;
+      const reverted = undoSafeNumberChanges(safeNumberGrid(fresh.needs), saved, previous);
+      if (!(await send(safeNumberNeeds(reverted, fresh.needs)))) return;
       setConfirmed(reverted);
       setDraft((current) => (current ? applySafeNumberChanges(reverted, saved, current) : null));
-      setOthers(otherNeedCount(fresh.data.needs));
+      setOthers(otherNeedCount(fresh.needs));
       setState({ kind: "idle" });
       onSaved?.();
     } finally {
@@ -188,18 +214,14 @@ function Editor({
     try {
       setState({ kind: "saving" });
       // Read the team's needs again, so a need or a number another manager set since this page opened is kept.
-      const fresh = await fetchRosterRead(serviceId, "maker");
-      if (!fresh.ok) {
-        if (fresh.code === "sample_read_only") setState({ kind: "example" });
-        else failed(fresh.message);
-        return;
-      }
-      const previous = safeNumberGrid(fresh.data.needs);
+      const fresh = await readFresh();
+      if (!fresh) return;
+      const previous = safeNumberGrid(fresh.needs);
       const saved = applySafeNumberChanges(previous, confirmed, grid);
-      if (!(await send(safeNumberNeeds(saved, fresh.data.needs)))) return;
+      if (!(await send(safeNumberNeeds(saved, fresh.needs)))) return;
       setConfirmed(saved);
       setDraft(null);
-      setOthers(otherNeedCount(fresh.data.needs));
+      setOthers(otherNeedCount(fresh.needs));
       setState({ kind: "saved" });
       onSaved?.();
       toast?.("Safe number saved", () => void undo(saved, previous));
@@ -208,23 +230,7 @@ function Editor({
     }
   }
 
-  const rows = perDay
-    ? SAFE_NUMBER_KINDS.flatMap((kind) =>
-        SAFE_NUMBER_WEEKDAYS.map(({ weekday, label }) => ({
-          key: `${kind}-${weekday}`,
-          kind,
-          sub: label,
-          weekdays: [weekday] as readonly number[],
-        })),
-      )
-    : SAFE_NUMBER_KINDS.flatMap((kind) =>
-        SAFE_NUMBER_GROUPS.map((group) => ({
-          key: `${kind}-${group.id}`,
-          kind,
-          sub: group.label,
-          weekdays: group.weekdays as readonly number[],
-        })),
-      );
+  const rows = safeNumberRows(perDay);
 
   return (
     <div className="grid gap-3">
