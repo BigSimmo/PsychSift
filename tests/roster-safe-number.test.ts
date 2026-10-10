@@ -54,9 +54,10 @@ describe("the safe number editor's numbers", () => {
     expect(safeNumberIsGrouped(setSafeNumber(even, "day", [3], 4))).toBe(false);
   });
 
-  it("keeps a number between 0 and 99", () => {
+  it("keeps a number between 0 and 200", () => {
     expect(setSafeNumber(emptySafeNumberGrid(), "night", [1], -3).night[0]).toBe(0);
-    expect(setSafeNumber(emptySafeNumberGrid(), "night", [1], 140).night[0]).toBe(99);
+    expect(setSafeNumber(emptySafeNumberGrid(), "night", [1], 240).night[0]).toBe(200);
+    expect(setSafeNumber(emptySafeNumberGrid(), "night", [1], 150).night[0]).toBe(150);
   });
 });
 
@@ -103,5 +104,16 @@ describe("only the numbers that changed", () => {
     expect(merged.night).toEqual([0, 0, 0, 0, 0, 1, 1]);
     // Undo the same way: back to what was read, for the cells the save changed only.
     expect(applySafeNumberChanges(merged, merged, fresh)).toEqual(fresh);
+  });
+});
+
+describe("a total over the database's limit", () => {
+  it("is written in parts of 200 or fewer, so another number can still be saved", () => {
+    const current = [need({ weekday: 1, kind: "day", needed: 200 }), need({ weekday: 1, kind: "day", needed: 150 })];
+    const grid = setSafeNumber(safeNumberGrid(current), "night", [2], 1);
+    expect(grid.day[0]).toBe(350);
+    const sent = safeNumberNeeds(grid, current);
+    expect(sent.filter((item) => item.kind === "day").map((item) => item.needed)).toEqual([200, 150]);
+    expect(rosterActionSchema.safeParse({ action: "needs.set", needs: sent }).success).toBe(true);
   });
 });

@@ -18,8 +18,8 @@ import { ROSTER_OPEN_SHIFT_KINDS, type RosterMaker, type RosterStaffingNeedInput
 export const SAFE_NUMBER_KINDS = ["day", "evening", "night"] as const;
 export type SafeNumberKind = (typeof SAFE_NUMBER_KINDS)[number];
 
-/** The largest number the editor offers for one shift. The database allows up to 200. */
-export const SAFE_NUMBER_MAX = 99;
+/** The largest number for one need, the same as the database allows. */
+export const SAFE_NUMBER_MAX = 200;
 
 /** Monday (1) to Friday (5), then Saturday (6) and Sunday (7): the database's weekday numbers. */
 export const SAFE_NUMBER_GROUPS = [
@@ -122,6 +122,12 @@ export function applySafeNumberChanges(
   return { day: pick("day"), evening: pick("evening"), night: pick("night") };
 }
 
+function splitNeeded(needed: number): number[] {
+  const parts: number[] = [];
+  for (let left = needed; left > 0; left -= SAFE_NUMBER_MAX) parts.push(Math.min(left, SAFE_NUMBER_MAX));
+  return parts;
+}
+
 /** A need as `needs.set` takes it: no id. Null when the table would refuse it, so it can never be sent. */
 function toInput(need: Need): RosterStaffingNeedInput | null {
   if (!(ROSTER_OPEN_SHIFT_KINDS as readonly string[]).includes(need.kind)) return null;
@@ -147,7 +153,15 @@ export function safeNumberNeeds(grid: SafeNumberGrid, current: readonly Need[]):
     .filter((need): need is RosterStaffingNeedInput => need !== null);
   const owned = SAFE_NUMBER_KINDS.flatMap((kind) =>
     grid[kind].flatMap((needed, index): RosterStaffingNeedInput[] =>
-      needed > 0 ? [{ weekday: index + 1, date: null, kind, grade: null, siteId: null, needed }] : [],
+      // Two needs read for one shift add up, so a total over the database's limit is written in parts.
+      splitNeeded(needed).map((part) => ({
+        weekday: index + 1,
+        date: null,
+        kind,
+        grade: null,
+        siteId: null,
+        needed: part,
+      })),
     ),
   );
   return [...kept, ...owned];

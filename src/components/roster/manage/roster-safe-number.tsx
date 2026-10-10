@@ -88,8 +88,9 @@ function Stepper({
         disabled={disabled}
         value={value}
         onChange={(event) => {
-          const digits = event.target.value.replace(/\D/g, "");
-          onChange(digits ? Number(digits) : 0);
+          // A typed 1.5 becomes 2, never 15.
+          const typed = Number(event.target.value);
+          onChange(Number.isFinite(typed) ? typed : 0);
         }}
         className={`${focusRing} min-h-12 w-12 rounded border border-[color:var(--border)] bg-background text-center tabular-nums`}
       />

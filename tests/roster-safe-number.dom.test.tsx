@@ -190,6 +190,14 @@ it("keeps a number another manager changed while this editor was open, saving on
   expect((screen.getByLabelText("Night, Saturday and Sunday") as HTMLInputElement).value).toBe("1");
 });
 
+it("rounds a typed decimal to the nearest whole number instead of dropping the point", async () => {
+  stubTeam();
+  render(<RosterSafeNumber serviceId="team" overview={overview} />);
+  const input = (await screen.findByLabelText("Night, Saturday and Sunday")) as HTMLInputElement;
+  fireEvent.change(input, { target: { value: "1.5" } });
+  expect(input.value).toBe("2");
+});
+
 it("shows Saving while the save is on its way and keeps the numbers locked", async () => {
   let answer: (response: Response) => void = () => {};
   stubTeam({ post: () => new Promise<Response>((resolve) => (answer = resolve)) });
