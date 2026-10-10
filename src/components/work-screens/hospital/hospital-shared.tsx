@@ -9,17 +9,24 @@ import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { usePaperworkHeading } from "@/components/work-screens/admin/paperwork-shared";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { useExampleData } from "@/lib/example-data/store";
 import { useOnlineStatus } from "@/lib/use-online-status";
-import { fetchHospitalSick, type HospitalSickOutcome } from "@/lib/work-roles/hospital-client";
+import {
+  fetchHospitalShortStaffed,
+  fetchHospitalSick,
+  type HospitalShortStaffedOutcome,
+  type HospitalSickOutcome,
+} from "@/lib/work-roles/hospital-client";
 import { HOSPITAL_HUB_HREF, type HospitalRef } from "@/lib/work-roles/hospital-hub";
 import { fetchWorkPeople } from "@/lib/work-roles/people-client";
 import { resetWorkRoles, useWorkRoles, type WorkRolesView } from "@/lib/work-roles/use-work-roles";
 
 /**
  * What the Hospital screens share: the band heading, the example data choice,
- * the reads (the administrator's hospital list, one hospital's sick calls) and
+ * the reads (the administrator's hospital list, one hospital's sick calls and
+ * short-staffed days) and
  * the states every screen draws the same way.
  */
 
@@ -94,6 +101,17 @@ export function useAdminHospitalList(enabled: boolean): AdminHospitalList & { re
   return { ...read.list, retry };
 }
 
+/**
+ * The key a hospital read's answer must match. It moves on every hospital change, so going
+ * from hospital A to B and back to A never shows A's earlier answer while the fresh one loads.
+ */
+export function useHospitalReadKey(hospitalId: string | null, attempt: number): string {
+  const [seen, setSeen] = useState({ hospitalId, visit: 0 });
+  const visit = seen.hospitalId === hospitalId ? seen.visit : seen.visit + 1;
+  if (seen.hospitalId !== hospitalId) setSeen({ hospitalId, visit });
+  return `${hospitalId ?? ""}:${visit}:${attempt}`;
+}
+
 export type HospitalSickRead =
   | { readonly status: "off" | "loading"; readonly retry: () => void }
   | (HospitalSickOutcome & { readonly retry: () => void });
@@ -102,7 +120,7 @@ export type HospitalSickRead =
 export function useHospitalSick(hospitalId: string | null, enabled: boolean): HospitalSickRead {
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<{ readonly key: string; readonly outcome: HospitalSickOutcome } | null>(null);
-  const key = `${hospitalId ?? ""}:${attempt}`;
+  const key = useHospitalReadKey(hospitalId, attempt);
   const active = enabled && Boolean(hospitalId);
   useEffect(() => {
     if (!active || !hospitalId) return;
@@ -117,6 +135,37 @@ export function useHospitalSick(hospitalId: string | null, enabled: boolean): Ho
   }, [active, hospitalId, key]);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   if (!active) return { status: "off", retry };
+  if (read?.key !== key) return { status: "loading", retry };
+  return { ...read.outcome, retry };
+}
+
+export type HospitalShortStaffedRead =
+  | { readonly status: "off" | "loading"; readonly retry: () => void }
+  | (HospitalShortStaffedOutcome & { readonly retry: () => void });
+
+/** One hospital's short-staffed days. Off without a hospital. */
+export function useHospitalShortStaffed(hospitalId: string | null): HospitalShortStaffedRead {
+  const { zone } = useWorkTimeZone();
+  const [attempt, setAttempt] = useState(0);
+  const [read, setRead] = useState<{ readonly key: string; readonly outcome: HospitalShortStaffedOutcome } | null>(
+    null,
+  );
+  // The zone is part of the read's identity, so A, B, back to A (hospital or zone) always
+  // gets a fresh key and never shows an earlier answer whose four weeks start on another day.
+  const key = useHospitalReadKey(hospitalId ? `${hospitalId}|${zone}` : null, attempt);
+  useEffect(() => {
+    if (!hospitalId) return;
+    const controller = new AbortController();
+    fetchHospitalShortStaffed(hospitalId, { signal: controller.signal, timeZone: zone }).then(
+      (outcome) => setRead({ key, outcome }),
+      () => {
+        // Aborted: a newer read replaced this one.
+      },
+    );
+    return () => controller.abort();
+  }, [hospitalId, key, zone]);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  if (!hospitalId) return { status: "off", retry };
   if (read?.key !== key) return { status: "loading", retry };
   return { ...read.outcome, retry };
 }

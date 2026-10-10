@@ -1,4 +1,9 @@
-import { addDays, eventUtcRange, type CalendarEvent, type CalendarRecurrence } from "@/lib/calendar/calendar-event";
+import {
+  allDayEndExclusive,
+  eventUtcRange,
+  type CalendarEvent,
+  type CalendarRecurrence,
+} from "@/lib/calendar/calendar-event";
 
 /**
  * An iCalendar (RFC 5545) file for a set of events: the one format every
@@ -120,7 +125,7 @@ function eventLines(event: CalendarEvent, stamp: Date): string[] {
     // All-day: DTEND is the day after, exclusive.
     lines.push(
       `DTSTART;VALUE=DATE:${compactDate(event.date)}`,
-      `DTEND;VALUE=DATE:${compactDate(addDays(event.date, 1))}`,
+      `DTEND;VALUE=DATE:${compactDate(allDayEndExclusive(event))}`,
     );
   }
   if (event.seriesOccurrence) {

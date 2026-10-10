@@ -459,8 +459,16 @@ pure rules (`decideWorkCapability`, `decideGrantWorkRole`), `server.ts` reads a 
 Granted roles live in `work_role_grants`, with hospitals in `work_hospitals` and their teams in
 `work_hospital_teams` (service role only, written by `/api/work/people` through `people.ts`); SQL callers
 use `work_can()`, kept in step with `model.ts` by `tests/work-roles-sql-parity.test.ts`. `hospital-sick.ts`
-backs `/api/work/hospital/sick` (sick calls across a hospital's teams for Medical Workforce), and
+backs `/api/work/hospital/sick` (sick calls across a hospital's teams for Medical Workforce),
+`hospital-short-staffed.ts` backs `/api/work/hospital/short-staffed` (days a linked team is below its safe
+number, read only, counts and team names only, laid out by `hospital-short-staffed-view.ts` for
+`/admin/hospital/short-staffed`; its `staffing.overview` capability is checked in TypeScript only), and
 `hospital-hub.ts`, `people-model.ts` and the two `*-client.ts` files serve `/admin/hospital` and `/admin/people`.
+`hospital-starters.ts` backs `/api/work/hospital/starters` and `/admin/hospital/starters` (New starters, held by
+`starters.view`): the New job progress of active members of the hospital's linked teams who opted in on their
+own New job page, shared items only. The opt-in is `user_preferences.preferences.starterSharing`, off by default,
+written only by `/api/work/starters/sharing` through `starter-sharing.ts`; `hospital-starters-model.ts` and
+`hospital-starters-client.ts` are the client-safe shape and fetchers.
 
 **Work choices sync.** `src/lib/work-sync/` copies a few device-kept work choices (saved work pages,
 My Day's hidden cards, moved-to-tomorrow items and quick note; `sections.ts`) to the account and back.
@@ -512,14 +520,6 @@ per-device rollback cookie. `routes.ts` lists the new-only routes, and `src/prox
 ordinary 404 for them to anyone on the classic work mode. Pages and the frame hide links with
 `useWorkModeRouteVisible()` and `NewWorkModeOnly` from `src/components/work-mode-launch/`.
 Restyled existing pages are not gated: they ship to everyone.
-
-**Live version switch.** `src/lib/live-version/` lets testers (the administrator, the
-`work_mode_preview` app-metadata flag or `WORK_MODE_PREVIEW_USER_IDS`) use unreleased work on the
-live site. `live-version.ts` resolves Newest or Everyone's from the verified user and the
-`psychsift-live-version` cookie, `features.ts` registers each preview feature, and `server.ts`
-gives `isLivePreviewOn` and `requireLivePreview`. Components gate with `useLivePreview` and
-`LivePreview` from `src/components/live-version/`. The switch sits in Settings for testers only.
-See `docs/live-version-switch.md`.
 
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own

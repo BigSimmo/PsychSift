@@ -24,7 +24,7 @@ export function bellPhoneSubtitle(
 }
 
 /**
- * Notifications › Settings › Bell reminders (live version switch, Newest only):
+ * Notifications › Settings › Bell reminders:
  * whether a reminder in the bell that falls due later buzzes the phone, and
  * from which areas. Off by default. The words stay on the phone; the lock
  * screen shows one line that names nothing.

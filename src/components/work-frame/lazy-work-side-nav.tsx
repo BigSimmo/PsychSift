@@ -30,7 +30,7 @@ export function LazyWorkSideMenu(props: ComponentProps<typeof LazyMenu>) {
   return opened ? <LazyMenu {...props} /> : null;
 }
 
-/** Warms the two-pane side menu's chunk (Live version switch). */
+/** Warms the two-pane side menu's chunk. */
 export function prefetchTwoPaneSideMenu() {
   void loadTwoPaneSideMenu();
 }
