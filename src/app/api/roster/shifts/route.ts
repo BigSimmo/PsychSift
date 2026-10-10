@@ -112,8 +112,12 @@ export async function GET(request: Request) {
       });
     }
     if (isDemoMode()) {
+      const shifts = demoOnCallShifts(new Date());
+      const filtered = span
+        ? shifts.filter((shift) => new Date(shift.endsAt) > span.from && new Date(shift.startsAt) < span.to)
+        : shifts;
       return NextResponse.json(
-        { shifts: demoOnCallShifts(new Date()), latestImport: null, demoMode: true },
+        { shifts: filtered, latestImport: null, demoMode: true },
         { headers: noStore },
       );
     }
