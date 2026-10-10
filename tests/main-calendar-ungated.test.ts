@@ -30,4 +30,9 @@ describe("My Day calendar has no gate", () => {
       expect(source).not.toMatch(/live-version|LivePreview|useWorkModeRouteVisible/);
     }
   });
+
+  it("has no preview or page gate inside the calendar component either", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/my-day/my-day-calendar-page.tsx"), "utf8");
+    expect(source).not.toMatch(/live-version|LivePreview|requireWorkModeRoute|notFound\(/);
+  });
 });
