@@ -6,6 +6,7 @@ import {
   type WorkRoleGrant,
   type WorkScope,
 } from "@/lib/work-roles/model";
+import { hospitalStartersHref } from "@/lib/work-roles/hospital-starters-model";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { formatZonedDay, formatZonedRange, zonedDateOf } from "@/lib/work-time/format";
 
@@ -501,8 +502,8 @@ export function hospitalSections(
         {
           id: "starters",
           label: "New starters",
-          sub: "Starters and contract ends",
-          href: NEW_STARTERS_HREF,
+          sub: "Doctors who share their New job list",
+          href: hospitalStartersHref(hospitalId),
           icon: "starters",
         },
         {

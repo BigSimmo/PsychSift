@@ -229,7 +229,7 @@ describe("hospitalSections", () => {
     expect(work!.title).toBe("Medical Workforce");
     expect(work!.links.map((link) => [link.label, link.href])).toEqual([
       ["Sick calls", `/admin/hospital/sick?hospitalId=${H1}`],
-      ["New starters", "/admin/workforce"],
+      ["New starters", `/admin/hospital/starters?hospitalId=${H1}`],
       ["People and roles", `/admin/people?hospitalId=${H1}`],
     ]);
     expect(work!.links[0]!.sub).toBe("2 need cover this week");
@@ -252,6 +252,19 @@ describe("hospitalSections", () => {
     expect(sections).toHaveLength(1);
     expect(sections[0]!.title).toBe("Site administrator");
     expect(sections[0]!.links[0]!.href).toBe(`/admin/hospital/sick?hospitalId=${H2}`);
+  });
+
+  it("shows the New starters row only to Medical Workforce and the site administrator", () => {
+    const startersRow = (grants: WorkRoleGrant[]) =>
+      hospitalSections(grants, H1)
+        .flatMap((section) => section.links)
+        .find((link) => link.id === "starters");
+    expect(startersRow([workforce(H1)])?.href).toBe(`/admin/hospital/starters?hospitalId=${H1}`);
+    expect(startersRow([{ role: "administrator" }])?.href).toBe(`/admin/hospital/starters?hospitalId=${H1}`);
+    expect(startersRow([dct(H1)])).toBeUndefined();
+    expect(startersRow([{ role: "supervisor", subjectUserId: "trainee-1" }])).toBeUndefined();
+    expect(startersRow([{ role: "manager", serviceId: "team-a" }])).toBeUndefined();
+    expect(startersRow([])).toBeUndefined();
   });
 
   it("keeps hospital-wide sections to the picked hospital", () => {

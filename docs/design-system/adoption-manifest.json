@@ -3286,6 +3286,7 @@
         "src/app/(search-app)/admin/help/page.tsx",
         "src/app/(search-app)/admin/hospital/page.tsx",
         "src/app/(search-app)/admin/hospital/sick/page.tsx",
+        "src/app/(search-app)/admin/hospital/starters/page.tsx",
         "src/app/(search-app)/admin/leave/page.tsx",
         "src/app/(search-app)/admin/new-job/pack/page.tsx",
         "src/app/(search-app)/admin/new-job/page.tsx",
@@ -3582,6 +3583,16 @@
         },
         {
           "file": "src/app/(search-app)/admin/hospital/sick/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["ModeHome"]
+        },
+        {
+          "file": "src/app/(search-app)/admin/hospital/starters/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -6307,6 +6318,7 @@
       "src/app/(search-app)/admin/help/page.tsx",
       "src/app/(search-app)/admin/hospital/page.tsx",
       "src/app/(search-app)/admin/hospital/sick/page.tsx",
+      "src/app/(search-app)/admin/hospital/starters/page.tsx",
       "src/app/(search-app)/admin/leave/page.tsx",
       "src/app/(search-app)/admin/new-job/pack/page.tsx",
       "src/app/(search-app)/admin/new-job/page.tsx",
@@ -6527,6 +6539,7 @@
       "src/app/(search-app)/admin/help/page.tsx",
       "src/app/(search-app)/admin/hospital/page.tsx",
       "src/app/(search-app)/admin/hospital/sick/page.tsx",
+      "src/app/(search-app)/admin/hospital/starters/page.tsx",
       "src/app/(search-app)/admin/leave/page.tsx",
       "src/app/(search-app)/admin/new-job/pack/page.tsx",
       "src/app/(search-app)/admin/new-job/page.tsx",
@@ -6742,7 +6755,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 225,
+    "inheritedCkbV2RootCount": 226,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6751,8 +6764,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 48,
-    "rootCount": 226,
-    "productionRouteCount": 218,
-    "nextUiEntryCount": 326
+    "rootCount": 227,
+    "productionRouteCount": 219,
+    "nextUiEntryCount": 327
   }
 }

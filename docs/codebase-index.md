@@ -461,6 +461,11 @@ Granted roles live in `work_role_grants`, with hospitals in `work_hospitals` and
 use `work_can()`, kept in step with `model.ts` by `tests/work-roles-sql-parity.test.ts`. `hospital-sick.ts`
 backs `/api/work/hospital/sick` (sick calls across a hospital's teams for Medical Workforce), and
 `hospital-hub.ts`, `people-model.ts` and the two `*-client.ts` files serve `/admin/hospital` and `/admin/people`.
+`hospital-starters.ts` backs `/api/work/hospital/starters` and `/admin/hospital/starters` (New starters, held by
+`starters.view`): the New job progress of active members of the hospital's linked teams who opted in on their
+own New job page, shared items only. The opt-in is `user_preferences.preferences.starterSharing`, off by default,
+written only by `/api/work/starters/sharing` through `starter-sharing.ts`; `hospital-starters-model.ts` and
+`hospital-starters-client.ts` are the client-safe shape and fetchers.
 
 **Work choices sync.** `src/lib/work-sync/` copies a few device-kept work choices (saved work pages,
 My Day's hidden cards, moved-to-tomorrow items and quick note; `sections.ts`) to the account and back.

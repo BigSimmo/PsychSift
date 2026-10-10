@@ -439,6 +439,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/hospital/starters",
+        "file": "src/app/(search-app)/admin/hospital/starters/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan",
         "file": "src/app/mockups/care-plan/page.tsx",
         "area": "mockup"
@@ -1926,6 +1931,10 @@
         "file": "src/app/api/documents/[id]/route.ts"
       },
       {
+        "path": "/api/work/starters/sharing",
+        "file": "src/app/api/work/starters/sharing/route.ts"
+      },
+      {
         "path": "/api/search/interaction",
         "file": "src/app/api/search/interaction/route.ts"
       },
@@ -2284,6 +2293,10 @@
       {
         "path": "/api/on-call/services",
         "file": "src/app/api/on-call/services/route.ts"
+      },
+      {
+        "path": "/api/work/hospital/starters",
+        "file": "src/app/api/work/hospital/starters/route.ts"
       },
       {
         "path": "/api/roster/shifts/manual",
@@ -2798,6 +2811,11 @@
         "path": "docs/scripts-index.md",
         "section": "root",
         "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-10-new-job-progress-shared-only-by-opt-in.md",
+        "section": "decisions",
+        "catalogued": false
       },
       {
         "path": "docs/superpowers/rag-upgrade/cloud/START-HERE.md",
@@ -14627,6 +14645,14 @@
         "scope": "Run PR sweep: diagnosis only, no sync",
         "outcome": "SKIPPED sync/merge - main already carries commit 14421fba 'docs(issues): reconcile 28 inbox requests into the outstanding-issues ledger (#2045)', which appears to be the same 28-request reconciliation this PR is attempting, and the inbox on main is now empty. This PR's own body explicitly says not to use Update branch and to close+re-run a fresh reconcile if main gains new inbox requests before merge - main didn't gain new pending requests, it received a duplicate full reconcile via a different PR (#2045). CI (PR required) is green and there are no review threads, but merging this now risks double-applying or conflicting with the already-landed ledger transaction. Flagged for human decision: close as superseded by #2045, or verify no unique content remains.",
         "checks": "no local checks run; diagnosis via git log or docs/outstanding-issues-inbox tree on origin/main"
+      },
+      {
+        "date": "2026-10-09",
+        "ref": "feat/adversarial-audit-hardening",
+        "head": "6f56559444b6e0c26abbf68f74d3d265c13bd74e",
+        "scope": "Run PR sweep",
+        "outcome": "Codacy void-expression braces; prior conflict/SEO/Gitar disposition still holds; GG dashboard FP residual",
+        "checks": "MERGEABLE; Codacy threads fixed locally; CI re-running after push"
       },
       {
         "date": "2026-07-30",
