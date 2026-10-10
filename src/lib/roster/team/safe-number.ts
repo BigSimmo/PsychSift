@@ -138,11 +138,6 @@ export function safeNumberNeeds(grid: SafeNumberGrid, current: readonly Need[]):
   return [...kept, ...owned];
 }
 
-/** The list as it was, for Undo: every need, ids left off. */
-export function staffingNeedInputs(current: readonly Need[]): RosterStaffingNeedInput[] {
-  return current.map(toInput).filter((need): need is RosterStaffingNeedInput => need !== null);
-}
-
 /** How many needs the editor leaves alone (dated, grade, site or on-call needs), for the note under the editor. */
 export function otherNeedCount(current: readonly Need[]): number {
   return current.filter((need) => !isEditorNeed(need) && toInput(need) !== null).length;

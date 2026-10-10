@@ -8,7 +8,6 @@ import {
   safeNumberIsGrouped,
   safeNumberNeeds,
   setSafeNumber,
-  staffingNeedInputs,
 } from "@/lib/roster/team/safe-number";
 
 /*
@@ -72,7 +71,7 @@ describe("the list needs.set is sent", () => {
     const current = [...kept, need({ weekday: 1, kind: "day", needed: 4 }), need({ weekday: 7, kind: "night" })];
     const grid = setSafeNumber(setSafeNumber(safeNumberGrid(current), "day", [1, 2, 3, 4, 5], 3), "night", [7], 0);
     const sent = safeNumberNeeds(grid, current);
-    expect(sent.slice(0, kept.length)).toEqual(staffingNeedInputs(kept));
+    expect(sent.slice(0, kept.length)).toEqual(safeNumberNeeds(emptySafeNumberGrid(), kept));
     expect(sent.slice(kept.length)).toEqual(
       [1, 2, 3, 4, 5].map((weekday) => ({ weekday, date: null, kind: "day", grade: null, siteId: null, needed: 3 })),
     );
@@ -89,7 +88,6 @@ describe("the list needs.set is sent", () => {
   it("never sends a need the table would refuse (leave, or the grade other)", () => {
     const refused = [need({ kind: "leave" }), need({ grade: "other", weekday: 2 })];
     expect(safeNumberNeeds(emptySafeNumberGrid(), refused)).toEqual([]);
-    expect(staffingNeedInputs(refused)).toEqual([]);
     expect(otherNeedCount(refused)).toBe(0);
   });
 });

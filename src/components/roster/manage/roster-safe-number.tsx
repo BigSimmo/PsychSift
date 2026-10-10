@@ -18,7 +18,6 @@ import {
   safeNumberNeeds,
   sameSafeNumbers,
   setSafeNumber,
-  staffingNeedInputs,
   type SafeNumberGrid,
   type SafeNumberKind,
 } from "@/lib/roster/team/safe-number";
@@ -148,12 +147,20 @@ function Editor({
     return false;
   }
 
-  async function undo(previous: RosterStaffingNeedInput[]) {
+  // Undo puts back only this editor's numbers, over a fresh read, so a need another manager set
+  // between the save and the Undo is kept.
+  async function undo(previous: SafeNumberGrid) {
     setState({ kind: "saving" });
-    if (!(await send(previous))) return;
-    setConfirmed(safeNumberGrid(previous));
+    const fresh = await fetchRosterRead(serviceId, "maker");
+    if (!fresh.ok) {
+      if (fresh.code === "sample_read_only") setState({ kind: "example" });
+      else failed(fresh.message);
+      return;
+    }
+    if (!(await send(safeNumberNeeds(previous, fresh.data.needs)))) return;
+    setConfirmed(previous);
     setDraft(null);
-    setOthers(otherNeedCount(previous));
+    setOthers(otherNeedCount(fresh.data.needs));
     setState({ kind: "idle" });
     onSaved?.();
   }
@@ -172,7 +179,7 @@ function Editor({
       else failed(fresh.message);
       return;
     }
-    const previous = staffingNeedInputs(fresh.data.needs);
+    const previous = safeNumberGrid(fresh.data.needs);
     const saved = grid;
     if (!(await send(safeNumberNeeds(saved, fresh.data.needs)))) return;
     setConfirmed(saved);

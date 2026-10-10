@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { RosterSafeNumber } from "@/components/roster/manage/roster-safe-number";
 import { RosterManagePage } from "@/components/roster/manage/roster-manage-page";
 import type { RosterOverview } from "@/lib/roster/team/model";
+import { ToastProvider } from "@/components/ui/toast";
 
 /*
  * The team's safe number editor in Manage, Team settings. Every team, person
@@ -131,6 +132,33 @@ it("saves the whole list once, keeping the dated need, reading the team's needs 
   ]);
   expect(onSaved).toHaveBeenCalledTimes(1);
   expect((screen.getByTestId("roster-safe-number-save") as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("Undo puts back only the safe number, keeping a need another manager set after the save", async () => {
+  let current = needs;
+  const { posts } = stubTeam({ maker: () => Response.json({ codes: [], needs: current, drafts: [] }) });
+  render(
+    <ToastProvider>
+      <RosterSafeNumber serviceId="team" overview={overview} />
+    </ToastProvider>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "One more, Day, Monday to Friday" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save safe number" }));
+  await screen.findByText(/^Saved\./);
+  // Another manager adds a dated need between the save and the Undo.
+  const added = { id: id(10), weekday: null, date: "2026-12-26", kind: "day", grade: null, siteId: null, needed: 1 };
+  current = [...needs, added];
+  fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+  await waitFor(() => expect(posts).toHaveLength(2));
+  expect(posts[1]).toEqual({
+    action: "needs.set",
+    needs: [
+      { weekday: null, date: "2026-12-25", kind: "night", grade: "registrar", siteId: null, needed: 1 },
+      { weekday: null, date: "2026-12-26", kind: "day", grade: null, siteId: null, needed: 1 },
+      ...[1, 2, 3, 4, 5].map((weekday) => ({ weekday, date: null, kind: "day", grade: null, siteId: null, needed: 2 })),
+    ],
+  });
+  await waitFor(() => expect((screen.getByLabelText("Day, Monday to Friday") as HTMLInputElement).value).toBe("2"));
 });
 
 it("shows Saving while the save is on its way and keeps the numbers locked", async () => {
