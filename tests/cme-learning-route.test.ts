@@ -43,7 +43,14 @@ describe("Learning route CPD-home default", () => {
     expect(fetchYear).toHaveBeenCalledWith(admin, "owner-1", 2026);
     expect(page.props.homeSource).toBe("au-ranzcp-2026-v1; confirmed");
     expect(page.props.view).toBe("past");
-    expect(Object.keys(page.props).sort()).toEqual(["homeSource", "items", "lastCheckedOn", "nowIso", "view"]);
+    expect(Object.keys(page.props).sort()).toEqual([
+      "homeSource",
+      "hospitalTeachingHref",
+      "items",
+      "lastCheckedOn",
+      "nowIso",
+      "view",
+    ]);
   });
 
   it("uses next year's confirmed home only when the current year is absent", async () => {

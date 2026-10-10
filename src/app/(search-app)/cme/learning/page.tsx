@@ -48,6 +48,7 @@ export default async function CmeLearningRoute({ searchParams }: { searchParams:
       nowIso={now.toISOString()}
       view={query.view === "past" ? "past" : "upcoming"}
       homeSource={homeSource}
+      hospitalTeachingHref="/teaching"
     />
   );
 }

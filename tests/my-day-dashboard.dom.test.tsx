@@ -185,7 +185,7 @@ describe("MyDayDashboard cards", () => {
       .map((link) => [link.textContent, link.getAttribute("href")]);
     // Mock-up v2: four icon tiles, Teaching dropped (it is one tap away in the week).
     expect(links).toEqual([
-      ["Log a call", "/on-call/call?from=my-day#on-call-call-log-heading"],
+      ["Log a call", "/on-call?from=my-day#log-a-call"],
       ["Log CPD", "/cme/new?from=my-day"],
       ["Who's on", "/on-call/whos-on?from=my-day"],
       ["Roster", "/roster?from=my-day"],
@@ -329,9 +329,7 @@ describe("MyDayDashboard cards", () => {
         {...props({ sources: { ...EMPTY_SOURCES, roster: { status: "ready", shifts: [onCall], sample: false } } })}
       />,
     );
-    expect(screen.getByTestId("my-day-hero-log-call").getAttribute("href")).toBe(
-      "/on-call/call?from=my-day#on-call-call-log-heading",
-    );
+    expect(screen.getByTestId("my-day-hero-log-call").getAttribute("href")).toBe("/on-call?from=my-day#log-a-call");
     expect(screen.getByTestId("my-day-card-up-next").textContent).toContain("Until 16:00 handover");
   });
 
@@ -751,9 +749,7 @@ describe("Work cards", () => {
     expect(card.textContent).toContain("HandoverSun 08:30");
     // The notes themselves stay in On Call, and the page says so.
     expect(screen.getByText(/Call notes stay in On Call/)).toBeTruthy();
-    expect(screen.getByTestId("my-day-calls-log").getAttribute("href")).toBe(
-      "/on-call/call?from=my-day#on-call-call-log-heading",
-    );
+    expect(screen.getByTestId("my-day-calls-log").getAttribute("href")).toBe("/on-call?from=my-day#log-a-call");
     expect(screen.getByTestId("my-day-calls-handover").getAttribute("href")).toBe("/on-call/handover?from=my-day");
   });
 
