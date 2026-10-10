@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-09"
+    "committed_at": "2026-10-10"
   },
   "routes": {
     "modes": [
@@ -4569,16 +4569,6 @@
       {
         "path": "docs/prompts/rag-coverage-gate-extraction.md",
         "section": "prompts",
-        "catalogued": true
-      },
-      {
-        "path": "docs/design-system/ADOPTION.md",
-        "section": "design-system",
-        "catalogued": true
-      },
-      {
-        "path": "docs/design-system/ADOPTION.md",
-        "section": "design-system",
         "catalogued": true
       },
       {
