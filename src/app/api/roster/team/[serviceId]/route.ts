@@ -20,8 +20,9 @@ export const runtime = "nodejs";
  * One team's reads (GET `?what=`) and writes (POST, one action). The actor is
  * the session user only: no query key or body key can name one, and every
  * body is strict, so a body carrying `actorId` is refused with 400. Publishing
- * and the roster maker's actions are refused here; only the publish route
- * sends them.
+ * and the roster maker's other actions are refused here; only the publish
+ * route sends them. The team's safe number (`needs.set`) is sent here, and the
+ * SQL refuses it from anyone but a manager.
  */
 
 type Context = { params: Promise<{ serviceId: string }> };

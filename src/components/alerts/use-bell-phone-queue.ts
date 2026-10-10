@@ -3,7 +3,6 @@
 import { useEffect, useMemo } from "react";
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import type { NotificationFeed } from "@/components/needs-you/use-notification-feed";
 import { BELL_PHONE_QUEUE_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import {
@@ -112,7 +111,6 @@ async function sync(
 }
 
 export function useBellPhoneQueue(feed: NotificationFeed): void {
-  const live = useLivePreview("phone-bell-alerts");
   const { preferences } = useAppPreferences();
   const settings = preferences.reminders;
   // Offline, or the bell still loading: wait, rather than mistake an unread reminder for a gone one.
@@ -125,7 +123,7 @@ export function useBellPhoneQueue(feed: NotificationFeed): void {
       new Set(feed.sources.filter((source) => source.sample).flatMap((source) => source.items.map((item) => item.id))),
     [feed.sources],
   );
-  const enabled = live && settings.bellPhone.enabled && !isSharedDevice();
+  const enabled = settings.bellPhone.enabled && !isSharedDevice();
   const wanted = useMemo(
     () => (enabled ? planBellPhoneAlerts(feed.summary.visible, settings, feed.now, sampleIds) : []),
     [enabled, feed.summary.visible, settings, feed.now, sampleIds],

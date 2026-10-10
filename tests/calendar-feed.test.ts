@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   cmeRoutines: vi.fn(),
   onCall: vi.fn(),
   teachingFeed: vi.fn(),
+  bookings: vi.fn(),
   logError: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
@@ -37,6 +38,7 @@ vi.mock("@/lib/on-call/repository", () => ({ fetchVisibleOnCallEntries: mocks.on
 vi.mock("@/lib/teaching/feed-repository", () => ({ fetchTeachingFeedSessions: mocks.teachingFeed }));
 // Published rotations have their own source and tests (tests/roster-rotations-feed.test.ts).
 vi.mock("@/lib/calendar/rotation-feed-source", () => ({ fetchRotationFeedEvents: async () => [] }));
+vi.mock("@/lib/work-screens/admin/bookings-repository", () => ({ readSavedBookings: mocks.bookings }));
 
 import { DELETE as revoke, GET as status, POST as rotate } from "@/app/api/calendar/feed/route";
 import { GET as feed } from "@/app/api/calendar/feed/[token]/route";
@@ -84,6 +86,7 @@ beforeEach(() => {
   mocks.cmeRoutines.mockResolvedValue([]);
   mocks.onCall.mockResolvedValue([]);
   mocks.teachingFeed.mockResolvedValue([]);
+  mocks.bookings.mockResolvedValue({ status: "not-set-up" });
 });
 
 describe("calendar feed tokens", () => {
@@ -171,6 +174,47 @@ describe("GET /api/calendar/feed/<token>.ics (no session)", () => {
     expect(body).toContain("SUMMARY:Registrar teaching");
     expect(body).not.toContain("My private tutorial");
     expect(mocks.onCall).toHaveBeenCalledWith(expect.anything(), ownerId, { section: "education" });
+  });
+
+  it("adds the owner's booked courses without the organiser, and still serves when bookings can't be read", async () => {
+    mocks.rpc.mockResolvedValue({ data: ownerId, error: null });
+    const course = {
+      id: "c1",
+      kind: "course",
+      title: "ALS refresher",
+      about: "",
+      date: "2099-03-04",
+      startTime: "09:00",
+      endTime: "12:00",
+      location: "Room 2",
+      capacity: 10,
+      closesOn: null,
+      organiser: "Dr Organiser",
+      renewal: null,
+      waitlist: false,
+      status: "open",
+      updatedAt: "2099-01-01T00:00:00Z",
+      change: null,
+    };
+    const booking = {
+      id: "b1",
+      courseId: "c1",
+      person: "You",
+      self: true,
+      status: "booked",
+      at: "2099-01-02T00:00:00Z",
+    };
+    mocks.bookings.mockResolvedValueOnce({ status: "ready", state: { courses: [course], bookings: [booking] } });
+    const body = await (await feedRequest(`${token}.ics`)).text();
+    expect(body).toContain("SUMMARY:ALS refresher");
+    expect(body).toContain("LOCATION:Room 2");
+    expect(body).not.toContain("Dr Organiser");
+    expect(mocks.bookings).toHaveBeenCalledWith(expect.anything(), ownerId);
+
+    mocks.bookings.mockRejectedValueOnce(new Error("bookings down"));
+    const fallback = await feedRequest(`${token}.ics`);
+    expect(fallback.status).toBe(200);
+    expect(await fallback.text()).not.toContain("ALS refresher");
   });
 
   it("fails closed with a 503 and no detail when the database errors", async () => {

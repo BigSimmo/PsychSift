@@ -224,9 +224,59 @@ describe("writing to a team", () => {
   });
 
   it("refuses publish and Release 3 actions through the general route", async () => {
-    for (const action of ["publish", "codes.set", "needs.set", "draft.open", "draft.change", "agreement.record"]) {
+    for (const action of ["publish", "codes.set", "draft.open", "draft.change", "agreement.record"]) {
       expect((await POST(jsonRequest({ action }), ctx())).status).toBe(400);
     }
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("sends the team's safe number (needs.set) with exactly the keys the SQL reads", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ok: true }, error: null });
+    const needs = [
+      { weekday: 1, date: null, kind: "day", grade: null, siteId: null, needed: 3 },
+      { weekday: null, date: "2026-12-25", kind: "night", grade: "registrar", siteId: SWAP, needed: 1 },
+    ];
+    const response = await POST(jsonRequest({ action: "needs.set", needs }), ctx());
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith("roster_command", {
+      p_actor_id: ALEX,
+      p_service_id: SERVICE,
+      p_action: "needs.set",
+      p_payload: { needs },
+    });
+  });
+
+  it("refuses a safe number the table would refuse, before the database is asked", async () => {
+    const need = { weekday: 1, date: null, kind: "day", grade: null, siteId: null, needed: 2 };
+    for (const bad of [
+      {},
+      { needs: [{ ...need, id: SWAP }] },
+      { needs: [{ ...need, actorId: USER }] },
+      { needs: [need], actorId: USER },
+      { needs: [{ ...need, weekday: 0 }] },
+      { needs: [{ ...need, weekday: 8 }] },
+      { needs: [{ ...need, weekday: 1.5 }] },
+      { needs: [{ ...need, date: "2026-10-12" }] },
+      { needs: [{ ...need, weekday: null }] },
+      { needs: [{ ...need, weekday: null, date: "2026-02-31" }] },
+      { needs: [{ ...need, kind: "leave" }] },
+      { needs: [{ ...need, grade: "other" }] },
+      { needs: [{ ...need, siteId: "site" }] },
+      { needs: [{ ...need, needed: -1 }] },
+      { needs: [{ ...need, needed: 201 }] },
+      { needs: [{ ...need, needed: 1.5 }] },
+      { needs: Array.from({ length: 2001 }, () => need) },
+    ]) {
+      expect((await POST(jsonRequest({ action: "needs.set", ...bad }), ctx())).status).toBe(400);
+    }
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("answers the held example team's safe number with an example receipt, never the database", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const response = await POST(jsonRequest({ action: "needs.set", needs: [] }), ctx());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ result: { ok: true } });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 

@@ -218,6 +218,25 @@ function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
         reminders={reminders}
         rosterKnown={showShifts}
       />
+      {/* The one calendar is on for everyone, with no preview or launch gate. */}
+      <Link
+        href="/my-day/calendar"
+        data-testid="my-day-week-calendar-link"
+        className={cn(
+          quietCard,
+          focusRing,
+          "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
+        )}
+      >
+        <AreaIcon mode="my-day" icon={CalendarDays} />
+        <span className="grid min-w-0 flex-1">
+          <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">Open the full calendar</span>
+          <span className="text-2xs text-[color:var(--text-muted)]">
+            Shifts, leave, rotations, courses, teaching, CPD and Admin dates together
+          </span>
+        </span>
+        <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
+      </Link>
     </div>
   );
 }
@@ -284,7 +303,9 @@ function teachingEntry(session: SessionSummaryRead, shifts: readonly MyShift[]):
     state: cancelled ? "Cancelled" : null,
     warn: cancelled,
     clash: cancelled || session.allDay ? null : clashWithShifts(shifts, session.startsAt, session.endsAt),
-    href: sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
+    href:
+      sessionHref(session) ??
+      `/teaching/week?week=${perthDateKey(session.startsAt)}#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
     testId: `my-day-week-session-${session.occurrenceId}`,
   };
 }

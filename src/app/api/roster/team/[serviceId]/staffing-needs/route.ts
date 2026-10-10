@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { STAFFING_NEEDS_PAGE, staffingNeedFromRow } from "@/lib/roster/staffing/staffing-need-rows";
 import type { StaffingNeed } from "@/lib/roster/staffing/team-staffing";
 import { withRosterApi, type RosterAdminClient } from "@/lib/roster/team/api";
 import { demoRosterRead } from "@/lib/roster/team/demo-team";
@@ -25,9 +26,8 @@ export const runtime = "nodejs";
 
 type Context = { params: Promise<{ serviceId: string }> };
 
-const NEED_KINDS = ["day", "evening", "night", "on_call", "other"] as const;
 /** Read a page at a time: the API returns at most 1,000 rows per read, and the database stops a team at 2,000 needs. */
-const NEEDS_PAGE = 1000;
+const NEEDS_PAGE = STAFFING_NEEDS_PAGE;
 const NEEDS_PAGES = 3;
 
 async function serviceIdFrom(request: Request, context: Context): Promise<string> {
@@ -69,15 +69,8 @@ async function readStaffingNeeds(
       .range(page * NEEDS_PAGE, page * NEEDS_PAGE + NEEDS_PAGE - 1);
     if (error || !data) throw rosterUnavailable();
     for (const row of data) {
-      if (!(NEED_KINDS as readonly string[]).includes(row.kind)) continue;
-      needs.push({
-        weekday: row.weekday,
-        date: row.on_date,
-        kind: row.kind,
-        grade: row.grade,
-        siteId: row.site_id,
-        needed: row.needed,
-      });
+      const need = staffingNeedFromRow(row);
+      if (need) needs.push(need);
     }
     if (data.length < NEEDS_PAGE) break;
   }

@@ -1,6 +1,6 @@
 # PsychSift Documentation Index
 
-_Updated 2026-10-08 — catalogue Context7, CME and live-version guides; clarify issue authority; Documentation owns._
+_Updated 2026-10-08 — catalogue Context7 and CME guides; clarify issue authority; Documentation owns._
 
 Categorised map of every tracked Markdown document under `docs/`: the load-bearing docs lead
 each category, and an "Also catalogued" list completes it (the immutable
@@ -142,7 +142,6 @@ Every remaining tracked document in this category (architecture and design, plus
 - [disaster-recovery-runbook.md](disaster-recovery-runbook.md) — backup/restore and recovery drills
 - [auth-connection-cap-runbook.md](auth-connection-cap-runbook.md) — Supabase auth connection cap (operator)
 - [staging-setup.md](staging-setup.md) — staging environment bootstrap
-- [live-version-switch.md](live-version-switch.md) — live version-switch behavior and operational checks
 - [database-drift-detection.md](database-drift-detection.md) — schema drift detection (`npm run check:drift`)
 - [supabase-migration-reconciliation.md](supabase-migration-reconciliation.md) — migration drift and repair policy
 - [db-maintenance.md](db-maintenance.md) — Supabase advisor snapshots and the standing disposition per finding class

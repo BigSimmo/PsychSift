@@ -56,9 +56,6 @@ import { type SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSi
 import { useAccountData } from "@/components/account-data-provider";
 import { useTheme } from "@/components/clinical-dashboard/use-theme";
 import { useClassicWorkMode } from "@/components/work-mode-launch/use-classic-work-mode";
-import { useLiveVersionSwitch } from "@/components/live-version/live-version-provider";
-import { LIVE_PREVIEW_FEATURES } from "@/lib/live-version/features";
-import type { LiveVersionChoice } from "@/lib/live-version/live-version";
 import {
   ANSWER_STYLE_OPTIONS,
   DENSITY_OPTIONS,
@@ -293,7 +290,6 @@ export function SettingsDialog({
   // The work-mode launch switch's instant rollback: shown only to readers the new
   // work mode is offered to (src/lib/work-mode-launch).
   const classicWorkMode = useClassicWorkMode();
-  const liveVersion = useLiveVersionSwitch();
   // Hide-on-scroll for the mobile glass header (phone-gated inside the hook), so
   // the top goes fully edge-to-edge while scrolling — the same behaviour as the
   // app's search bar. Desktop keeps its title bar pinned and never hides it.
@@ -1251,26 +1247,8 @@ export function SettingsDialog({
                     value={preferences.timeZone}
                     onChange={(value) => setPreference("timeZone", value)}
                   />
-                  {liveVersion.available ? (
-                    <SettingsField
-                      icon={FlaskConical}
-                      label="Live version"
-                      labelId="settings-live-version-label"
-                      description={`Shown to testers only. Newest turns on work that is not live for everyone yet: ${LIVE_PREVIEW_FEATURES.map((feature) => feature.label).join(", ")}.`}
-                      stacked
-                    >
-                      <SegmentedControl
-                        ariaLabelledBy="settings-live-version-label"
-                        layout="equal"
-                        value={liveVersion.choice}
-                        onChange={liveVersion.setChoice}
-                        options={LIVE_VERSION_OPTIONS}
-                      />
-                    </SettingsField>
-                  ) : null}
                   <ExampleDataField />
-                  {/* The live version switch already covers the new screens for a tester. */}
-                  {classicWorkMode.available && !liveVersion.available ? (
+                  {classicWorkMode.available ? (
                     <SettingsToggleField
                       icon={History}
                       label="Hide new work screens"
@@ -1752,11 +1730,6 @@ function WorkTimeZoneField({ value, onChange }: { value: string; onChange: (valu
 }
 
 /** The one example data switch for every work area (`src/lib/example-data/`). */
-const LIVE_VERSION_OPTIONS: ReadonlyArray<{ value: LiveVersionChoice; label: string }> = [
-  { value: "everyone", label: "Everyone's" },
-  { value: "newest", label: "Newest" },
-];
-
 function ExampleDataField() {
   const { on, activeAreas, turnOn, turnOff } = useExampleData();
   return (

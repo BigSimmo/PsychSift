@@ -14,6 +14,7 @@ import {
   type AdminLoadState,
 } from "@/lib/admin/own-entries";
 import { renewalStartOn } from "@/lib/admin/renewal-dates";
+import { renewalsFilterItemExpiresOn, renewalsFilterItems } from "@/lib/admin/renewals-filters";
 import { selectComingUp, selectNeedsYou } from "@/lib/admin/today-selectors";
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { RenewalRow } from "@/lib/my-day/figures";
@@ -148,6 +149,31 @@ export function adminRenewalRows(own: readonly OnCallEntry[], now: Date): Renewa
       href: renewalsItemHref(row.entryId),
     })),
   );
+}
+
+/**
+ * Every recorded Admin date, with no cap and no horizon, as My Day items: for
+ * the one calendar, where a reader can page to any month (owner request
+ * 10 Oct 2026). My Day's own list keeps Admin's capped "Coming up" summary.
+ */
+export function adminCalendarRenewalItems(own: readonly OnCallEntry[], now: Date): MyDayItem[] {
+  return renewalsFilterItems(own).flatMap((item): MyDayItem[] => {
+    const due = renewalsFilterItemExpiresOn(item);
+    const entry = item.kind === "catalogue" ? item.row.entry : item.entry;
+    if (!due || !entry) return [];
+    const severity = myDaySeverityForDue(due, now);
+    return [
+      {
+        id: `my-work:date:${entry.id}`,
+        mode: "my-work",
+        title: item.kind === "catalogue" ? item.row.item.title : entry.title,
+        detail: severity === "overdue" ? "Date has passed" : "Recorded date",
+        due,
+        severity,
+        href: renewalsItemHref(entry.id),
+      },
+    ];
+  });
 }
 
 export function onCallMyDayItems(entries: readonly OnCallEntry[], now: Date, reminders: ReminderSettings): MyDayItem[] {

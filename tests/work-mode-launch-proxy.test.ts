@@ -33,13 +33,6 @@ describe("proxy work-mode launch gate", () => {
     expect(hidden.headers.get("content-security-policy")).toContain("script-src");
   });
 
-  it("hides new-only screens from a tester who switched to everyone's version", async () => {
-    vi.stubEnv("WORK_MODE_LAUNCH", "preview");
-    expect(rewrittenTo(await proxy(requestFor("/admin/pay", "psychsift-live-version=newest")))).toBeNull();
-    const response = await proxy(requestFor("/admin/pay", "psychsift-live-version=everyone"));
-    expect(rewrittenTo(response)).toBe("/_work-mode-not-launched");
-  });
-
   it("honours the device's classic preference instantly", async () => {
     const response = await proxy(requestFor("/cme/applications", "psychsift-work-mode=classic"));
     expect(rewrittenTo(response)).toBe("/_work-mode-not-launched");
