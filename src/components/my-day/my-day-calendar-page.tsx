@@ -609,7 +609,7 @@ function ItemRow({ item, testId }: { readonly item: MainCalendarItem; readonly t
       >
         <span className="text-xs font-bold text-[color:var(--work-ink)] nums">{item.time ?? "All day"}</span>
         <span className="grid min-w-0">
-          <span className="min-w-0 text-sm-minus leading-snug font-bold break-words text-[color:var(--work-ink)]">
+          <span className="min-w-0 text-sm leading-snug font-bold break-words text-[color:var(--work-ink)]">
             {item.title}
           </span>
           <span className="flex min-w-0 items-baseline gap-1.5 text-2xs leading-snug text-[color:var(--text-muted)]">
