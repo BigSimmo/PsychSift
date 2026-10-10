@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  Archive,
+  ArrowRightLeft,
   Briefcase,
   Building2,
   CloudOff,
   GraduationCap,
   Link2,
+  PenLine,
   RotateCcw,
   ShieldCheck,
   UserCheck,
@@ -31,15 +34,19 @@ import {
 } from "@/components/mode-kit/work";
 import {
   PaperworkFootNote,
+  PaperworkIconButton,
   PaperworkOfflineNote,
   usePaperworkHeading,
   usePaperworkSay,
 } from "@/components/work-screens/admin/paperwork-shared";
 import {
   AddHospitalSheet,
+  ArchiveHospitalSheet,
   GiveRoleSheet,
   GrantDetailSheet,
   LinkTeamSheet,
+  MoveTeamSheet,
+  RenameHospitalSheet,
   type PeopleRun,
 } from "@/components/work-screens/admin/people-sheets";
 import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
@@ -58,6 +65,7 @@ import {
   applyExampleAction,
   exampleResponse,
   exampleViewerGrants,
+  isWholeTeamSupervisor,
   grantedLine,
   mayRemoveGrant,
   peopleScreenAllowed,
@@ -318,7 +326,8 @@ function PeopleLive({
       // The answer is that hospital read fresh, so it counts as this read too.
       setRead({ key: `${nextId ?? ""}:${attempt}`, outcome });
       setHospitalId(nextId);
-      if (action.action === "grant" || action.action === "revoke") resetWorkRoles();
+      // Roles carry their hospital's teams and name, so anything that changes those reads them again.
+      if (action.action !== "create-hospital" && action.action !== "link-team") resetWorkRoles();
       return null;
     },
     [attempt],
@@ -423,7 +432,10 @@ type OpenSheet =
   | { readonly kind: "detail"; readonly userId: string; readonly role: GrantableWorkRole }
   | { readonly kind: "give" }
   | { readonly kind: "link" }
-  | { readonly kind: "hospital" };
+  | { readonly kind: "hospital" }
+  | { readonly kind: "move"; readonly serviceId: string }
+  | { readonly kind: "rename" }
+  | { readonly kind: "archive" };
 
 const ROLE_ICON = { workforce: Briefcase, dct: GraduationCap, supervisor: UserCheck } as const;
 
@@ -473,6 +485,8 @@ function PeopleView({
     sheet?.kind === "detail" && hospital
       ? hospital.grants.filter((grant) => grant.userId === sheet.userId && grant.role === sheet.role)
       : [];
+  const moveTeam =
+    sheet?.kind === "move" ? (hospital?.teams.find((team) => team.serviceId === sheet.serviceId) ?? null) : null;
 
   return (
     <>
@@ -636,7 +650,21 @@ function PeopleView({
                       ? "No roster manager"
                       : `Roster ${team.managers.length === 1 ? "manager" : "managers"} ${team.managers.join(", ")}`
                   }
-                  end={team.needsManager ? <WorkTag tone="amber">Needs one</WorkTag> : undefined}
+                  end={
+                    administrator ? (
+                      <span className="flex items-center gap-1">
+                        {team.needsManager ? <WorkTag tone="amber">Needs one</WorkTag> : null}
+                        <PaperworkIconButton
+                          icon={ArrowRightLeft}
+                          label={`Move ${team.name} to another hospital`}
+                          onClick={() => setSheet({ kind: "move", serviceId: team.serviceId })}
+                          testId="admin-people-team-move"
+                        />
+                      </span>
+                    ) : team.needsManager ? (
+                      <WorkTag tone="amber">Needs one</WorkTag>
+                    ) : undefined
+                  }
                   testId="admin-people-team"
                 />
               ))
@@ -662,6 +690,24 @@ function PeopleView({
                 testId="admin-people-add-hospital"
               >
                 Add a hospital
+              </WorkButton>
+              <WorkButton
+                variant="secondary"
+                icon={PenLine}
+                disabled={!canWrite}
+                onClick={() => setSheet({ kind: "rename" })}
+                testId="admin-people-rename"
+              >
+                Rename hospital
+              </WorkButton>
+              <WorkButton
+                variant="secondary"
+                icon={Archive}
+                disabled={!canWrite}
+                onClick={() => setSheet({ kind: "archive" })}
+                testId="admin-people-archive"
+              >
+                Archive hospital
               </WorkButton>
             </div>
           ) : null}
@@ -714,6 +760,32 @@ function PeopleView({
 
       {sheet?.kind === "hospital" && administrator ? (
         <AddHospitalSheet hospitals={data.hospitals} online={canWrite} run={run} onClose={() => setSheet(null)} />
+      ) : null}
+
+      {sheet?.kind === "move" && hospital && administrator && moveTeam ? (
+        <MoveTeamSheet
+          team={moveTeam}
+          supervisors={hospital.grants.filter((grant) => isWholeTeamSupervisor(grant, moveTeam.serviceId)).length}
+          from={hospital}
+          hospitals={data.hospitals}
+          online={canWrite}
+          run={run}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
+
+      {sheet?.kind === "rename" && hospital && administrator ? (
+        <RenameHospitalSheet
+          hospital={hospital}
+          hospitals={data.hospitals}
+          online={canWrite}
+          run={run}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
+
+      {sheet?.kind === "archive" && hospital && administrator ? (
+        <ArchiveHospitalSheet hospital={hospital} online={canWrite} run={run} onClose={() => setSheet(null)} />
       ) : null}
     </>
   );
