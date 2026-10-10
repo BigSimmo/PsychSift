@@ -353,15 +353,15 @@ export type HospitalSectionOptions = {
   /** Team names by service id, for a roster manager's rows. */
   readonly teamNames?: ReadonlyMap<string, string>;
   readonly extraLinks?: Readonly<Record<HospitalSectionId, readonly HospitalExtraLink[]>>;
-  /** Screens still behind the live preview switch, true when this reader gets them. */
+  /** Which of the other threads' screens to list, true when this reader gets them. */
   readonly previews?: HospitalPreviews;
 };
 
-/** Screens other threads build, behind the live preview switch for now. */
+/** Screens other threads built. Both have been on for everyone since 10 October 2026. */
 export type HospitalPreviews = {
-  /** `useLivePreview("rotation-preferences")`. */
+  /** Rotation rounds. */
   readonly rotationRounds: boolean;
-  /** `useLivePreview("course-bookings")`. */
+  /** Courses. */
   readonly courses: boolean;
 };
 

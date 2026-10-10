@@ -182,6 +182,7 @@
         "src/app/(search-app)/medications/[slug]/page.tsx",
         "src/app/(search-app)/medicines/page.tsx",
         "src/app/(search-app)/my-day/alerts/page.tsx",
+        "src/app/(search-app)/my-day/calendar/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
         "src/app/(search-app)/my-day/profile/agreement/page.tsx",
