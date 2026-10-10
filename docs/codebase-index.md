@@ -459,7 +459,10 @@ pure rules (`decideWorkCapability`, `decideGrantWorkRole`), `server.ts` reads a 
 Granted roles live in `work_role_grants`, with hospitals in `work_hospitals` and their teams in
 `work_hospital_teams` (service role only, written by `/api/work/people` through `people.ts`); SQL callers
 use `work_can()`, kept in step with `model.ts` by `tests/work-roles-sql-parity.test.ts`. `hospital-sick.ts`
-backs `/api/work/hospital/sick` (sick calls across a hospital's teams for Medical Workforce), and
+backs `/api/work/hospital/sick` (sick calls across a hospital's teams for Medical Workforce),
+`hospital-short-staffed.ts` backs `/api/work/hospital/short-staffed` (days a linked team is below its safe
+number, read only, counts and team names only, laid out by `hospital-short-staffed-view.ts` for
+`/admin/hospital/short-staffed`; its `staffing.overview` capability is checked in TypeScript only), and
 `hospital-hub.ts`, `people-model.ts` and the two `*-client.ts` files serve `/admin/hospital` and `/admin/people`.
 
 **Work choices sync.** `src/lib/work-sync/` copies a few device-kept work choices (saved work pages,

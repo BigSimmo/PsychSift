@@ -12,14 +12,20 @@ import { usePaperworkHeading } from "@/components/work-screens/admin/paperwork-s
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { useExampleData } from "@/lib/example-data/store";
 import { useOnlineStatus } from "@/lib/use-online-status";
-import { fetchHospitalSick, type HospitalSickOutcome } from "@/lib/work-roles/hospital-client";
+import {
+  fetchHospitalShortStaffed,
+  fetchHospitalSick,
+  type HospitalShortStaffedOutcome,
+  type HospitalSickOutcome,
+} from "@/lib/work-roles/hospital-client";
 import { HOSPITAL_HUB_HREF, type HospitalRef } from "@/lib/work-roles/hospital-hub";
 import { fetchWorkPeople } from "@/lib/work-roles/people-client";
 import { resetWorkRoles, useWorkRoles, type WorkRolesView } from "@/lib/work-roles/use-work-roles";
 
 /**
  * What the Hospital screens share: the band heading, the example data choice,
- * the reads (the administrator's hospital list, one hospital's sick calls) and
+ * the reads (the administrator's hospital list, one hospital's sick calls and
+ * short-staffed days) and
  * the states every screen draws the same way.
  */
 
@@ -117,6 +123,34 @@ export function useHospitalSick(hospitalId: string | null, enabled: boolean): Ho
   }, [active, hospitalId, key]);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   if (!active) return { status: "off", retry };
+  if (read?.key !== key) return { status: "loading", retry };
+  return { ...read.outcome, retry };
+}
+
+export type HospitalShortStaffedRead =
+  | { readonly status: "off" | "loading"; readonly retry: () => void }
+  | (HospitalShortStaffedOutcome & { readonly retry: () => void });
+
+/** One hospital's short-staffed days. Off without a hospital. */
+export function useHospitalShortStaffed(hospitalId: string | null): HospitalShortStaffedRead {
+  const [attempt, setAttempt] = useState(0);
+  const [read, setRead] = useState<{ readonly key: string; readonly outcome: HospitalShortStaffedOutcome } | null>(
+    null,
+  );
+  const key = `${hospitalId ?? ""}:${attempt}`;
+  useEffect(() => {
+    if (!hospitalId) return;
+    const controller = new AbortController();
+    fetchHospitalShortStaffed(hospitalId, { signal: controller.signal }).then(
+      (outcome) => setRead({ key, outcome }),
+      () => {
+        // Aborted: a newer read replaced this one.
+      },
+    );
+    return () => controller.abort();
+  }, [hospitalId, key]);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  if (!hospitalId) return { status: "off", retry };
   if (read?.key !== key) return { status: "loading", retry };
   return { ...read.outcome, retry };
 }

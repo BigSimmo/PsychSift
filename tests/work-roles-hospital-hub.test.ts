@@ -229,6 +229,7 @@ describe("hospitalSections", () => {
     expect(work!.title).toBe("Medical Workforce");
     expect(work!.links.map((link) => [link.label, link.href])).toEqual([
       ["Sick calls", `/admin/hospital/sick?hospitalId=${H1}`],
+      ["Short-staffed days", `/admin/hospital/short-staffed?hospitalId=${H1}`],
       ["New starters", "/admin/workforce"],
       ["People and roles", `/admin/people?hospitalId=${H1}`],
     ]);
@@ -365,7 +366,7 @@ describe("hospitalCardRows", () => {
       ["supervisor", "Supervisor or assessor", "/teaching/assessments?view=inbox&as=supervisor"],
       ["manager", "Roster manager", "/roster/manage?team=team-a"],
     ]);
-    expect(rows[0]!.sub).toBe("Sick calls, new starters, people and roles");
+    expect(rows[0]!.sub).toBe("Sick calls, short-staffed days, new starters, people and roles");
   });
 
   it("sends a manager of several teams to Hospital to pick one", () => {
@@ -438,7 +439,7 @@ describe("preview rows: Rotation rounds and Courses", () => {
 
   it("shows nothing while the previews are off", () => {
     const sections = hospitalSections([workforce(H1)], H1, { previews: { rotationRounds: false, courses: false } });
-    expect(sections[0]!.links.map((link) => link.id)).toEqual(["sick", "starters", "people"]);
+    expect(sections[0]!.links.map((link) => link.id)).toEqual(["sick", "short-staffed", "starters", "people"]);
   });
 
   it("gives the DCT Courses but not Rotation rounds", () => {
