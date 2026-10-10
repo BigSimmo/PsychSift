@@ -1,6 +1,6 @@
 {
-  "description": "Draft high-risk answer-quality cases (outstanding issue #ZZ4RAP, top-20 item 4). Every expected fact is quoted verbatim from a source passage already held in this repository: WA Health guideline passages captured from the live index (tests/fixtures/lithium-monitoring-live-excerpts.json, tests/fixtures/clozapine-threshold-source-chunks.json) or the Mental Health Act 2014 text (data/mha-2014-sections.source.json). Nothing here is wired into the eval harness. The owner reviews and corrects these cases first; wiring them in is a separate RAG-protected change that needs a live canary pair.",
-  "reviewStatus": "draft_awaiting_owner_review",
+  "description": "High-risk answer-quality cases (outstanding issue #ZZ4RAP, top-20 item 4). Every expected fact is quoted verbatim from a source passage already held in this repository: WA Health guideline passages captured from the live index (tests/fixtures/lithium-monitoring-live-excerpts.json, tests/fixtures/clozapine-threshold-source-chunks.json) or the Mental Health Act 2014 text (data/mha-2014-sections.source.json). The owner said to go ahead on 2026-10-10, and the 18 cases with a source are wired into answerQualityEvalCases (src/lib/rag/rag-eval-cases.ts) as high-risk-<id>. The two source_needed cases stay out until a source is held. This file remains the evidence record for those cases.",
+  "reviewStatus": "owner_go_ahead",
   "draftedAt": "2026-10-09",
   "cases": [
     {
@@ -445,5 +445,10 @@
       ],
       "reviewNote": "Overlaps the existing quality-clozapine-red-result-action case, but tests whether the answer corrects a wrong premise."
     }
-  ]
+  ],
+  "ownerDecision": {
+    "date": "2026-10-10",
+    "words": "Go ahead with all final recommendations",
+    "then": "Add them (decision card: add the 18 sourced test questions to the protected answer-check file)"
+  }
 }

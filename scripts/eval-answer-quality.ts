@@ -1,4 +1,4 @@
-// Answer-quality / targeting eval (P3). Runs the 30-case `answerQualityEvalCases` fixture through
+// Answer-quality / targeting eval (P3). Runs the 48-case `answerQualityEvalCases` fixture through
 // the live answer path and reports the five answer-quality metrics PLUS a structural per-intent
 // `targeting` metric (dose→figure, red-result→withhold action, monitoring→schedule, etc.).
 //
