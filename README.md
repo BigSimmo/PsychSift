@@ -1,5 +1,7 @@
 # PsychSift
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/BigSimmo/PsychSift?utm_source=badge)
+
 _Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
 
 Local-first medical guideline RAG knowledge base for a psychiatrist in Perth,
