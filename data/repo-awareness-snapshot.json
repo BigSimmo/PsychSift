@@ -1199,6 +1199,11 @@
         "area": "mockup"
       },
       {
+        "path": "/my-day/calendar",
+        "file": "src/app/(search-app)/my-day/calendar/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/calculators-directory-grid",
         "file": "src/app/mockups/calculators-directory-grid/page.tsx",
         "area": "mockup"

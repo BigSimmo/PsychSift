@@ -225,6 +225,8 @@ const routeDescriptions: Record<string, string> = {
   "/my-work": "Compatibility redirect to `/admin`, carrying the query string.",
   "/my-day/week":
     "My Day Week: the next seven Perth days, one list per day, gathering your roster shifts, teaching sessions, CPD routines and dated My Day items. No search surface.",
+  "/my-day/calendar":
+    "My Day Calendar: one full-size month of everything dated in Work mode (shifts, leave, rotations, booked courses, teaching, CPD and Admin dates), each item linking to its own page. Behind the Live version switch. No search surface.",
   "/my-day/hours":
     "My Day Hours: your rostered hours this week and this fortnight and your next leave, from Roster's own hours helpers. No search surface.",
   "/my-day/profile":

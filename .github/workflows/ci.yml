@@ -868,6 +868,20 @@ jobs:
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}-
 
+      # A cold build already peaks near 8.3 GB of system memory (measured 2026-10-10), and
+      # rebuilding a changed branch on top of the restored cache needs more. Without swap the
+      # kernel kills webpack ("Killed", then "The runner has received a shutdown signal"),
+      # which hit PRs #3417 and #3424 three times each while the cache-free Playwright build
+      # of the same code passed. Swap only slows a build that would otherwise die.
+      - name: Add swap for the production build
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 12G /mnt/ci-build-swap
+          sudo chmod 600 /mnt/ci-build-swap
+          sudo mkswap /mnt/ci-build-swap
+          sudo swapon /mnt/ci-build-swap
+          free -m
+
       - name: Build
         env:
           # experimental.cpus only parallelises static generation (small on this
