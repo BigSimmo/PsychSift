@@ -312,7 +312,7 @@ function ShortView({
   readonly onPick: (hospitalId: string) => void;
   readonly example: boolean;
 }) {
-  // The server judged the window in Perth time, so its first day is "today" here too.
+  // The server judged the window in the reader's saved work zone (sent with the read), so its first day is "today" here too.
   const today = view.window.from;
   const dates = useMemo(() => groupShortStaffedDays(view.days, today), [view.days, today]);
   const summary = shortStaffedSummary(view);
