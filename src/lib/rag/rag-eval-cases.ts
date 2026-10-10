@@ -178,8 +178,11 @@ function containsAny(text: string, values: string[] | undefined) {
 const foldDashes = (text: string) =>
   text
     .toLowerCase()
-    .replace(/\*\*/g, "")
-    .replace(/[\u2010-\u2015]/g, "-");
+    .replace(/[\*_~`]/g, "")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/(\d)\s*-\s*(\d)/g, "$1-$2")
+    .replace(/\s+/g, " ")
+    .trim();
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Word start only, so "continue" never matches inside "discontinue"; the end stays open for plurals ("NSAIDs").
 const containsConcept = (folded: string, concept: string) =>
@@ -194,6 +197,32 @@ function containsNone(text: string, values: string[] | undefined) {
   if (!values?.length) return true;
   const normalized = text.toLowerCase();
   return values.every((value) => !normalized.includes(value.toLowerCase()));
+}
+
+function hasHighRiskLimitPolarity(testCase: AnswerQualityEvalCase, text: string) {
+  if (testCase.id !== "high-risk-mha-section-28-continuous-limit") return true;
+  const folded = foldDashes(text);
+  return (
+    /\b(?:metropolitan|metro)\b[\s\S]{0,35}\b72 hours\b/i.test(folded) &&
+    /\b(?:outside|non-?metropolitan|country)\b[\s\S]{0,35}\b144 hours\b/i.test(folded) &&
+    /\b(?:order|single)\b[\s\S]{0,35}\b24 hours\b/i.test(folded) &&
+    /\breferral expi(?:res|ry)\b/i.test(folded)
+  );
+}
+
+function hasHighRiskActionPolarity(testCase: AnswerQualityEvalCase, text: string) {
+  const folded = foldDashes(text);
+  if (testCase.id === "high-risk-false-premise-clozapine-red-range") {
+    const negated = /\b(?:do not|don't|must not|never)\s+(?:stop|discontinue|withhold|cease)\b/i.test(folded);
+    return !negated && /\b(?:stop|discontinue|withhold|cease)\b[\s\S]{0,60}\bhaematologist\b/i.test(folded);
+  }
+  if (testCase.id === "high-risk-interaction-lithium-nsaid") {
+    const notAvoid = /\b(?:do not|don't|must not|never)\s+avoid\b/i.test(folded);
+    const notClearance = /\b(?:do not|don't|must not|never)\s+(?:reduce|increase)\s+lithium\s+clearance\b/i.test(folded);
+    const notToxicity = /\b(?:do not|don't|must not|never)\s+(?:cause|risk|increase)\s+(?:lithium\s+)?toxicity\b/i.test(folded);
+    return !notAvoid && !notClearance && !notToxicity;
+  }
+  return true;
 }
 
 function isSourceBackedReviewFallback(answer: RagAnswer) {
@@ -237,7 +266,12 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
   const unsupported = answer.confidence === "unsupported" || answer.grounded === false;
   const expectedClassOk = !testCase.expectedQueryClass || answer.queryClass === testCase.expectedQueryClass;
   const relevanceOk = testCase.supported
-    ? testCase.acceptSourceOnly
+    ? testCase.id.startsWith("high-risk-") && testCase.expectedFiles.length
+      ? answer.grounded &&
+        answer.citations.length >= testCase.minCitations &&
+        expectedClassOk &&
+        expectedFileCoverage(testCase.expectedFiles, answer.citations, answer.citations.length).anyHit
+      : testCase.acceptSourceOnly
       ? // Diffuse question: a grounded synthesis OR a source-only/unsupported answer is acceptable,
         // but it must still CITE the expected documents. A prose mention is not enough — the doc-name
         // alternatives include bare topic tokens (e.g. "duress"), so a gap answer that merely names
@@ -268,14 +302,22 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
   ];
   const artifactOk = !artifactPattern.test(text) && containsNone(text, testCase.mustNotContain);
   const missingGroups = missingConceptGroups(text, testCase.requiredConceptGroups);
-  const forbiddenPresent = (testCase.forbiddenConcepts ?? []).filter((concept) =>
-    containsConcept(foldDashes(text), concept),
-  );
+  const forbiddenPresent = (testCase.forbiddenConcepts ?? []).filter((concept) => {
+    const folded = foldDashes(text);
+    if (!containsConcept(folded, concept)) return false;
+    const position = folded.indexOf(foldDashes(concept));
+    const leadIn = folded.slice(Math.max(0, position - 45), position);
+    return !/\b(?:incorrect|wrong|false|not|don't|do not|must not|never)\b[\s\S]{0,35}$/i.test(leadIn);
+  });
+  const actionPolarityOk = hasHighRiskActionPolarity(testCase, text);
+  const limitPolarityOk = hasHighRiskLimitPolarity(testCase, text);
   const intentOk =
     !sourceBackedReviewStub &&
     containsAny(text, testCase.mustContainAny) &&
     missingGroups.length === 0 &&
-    forbiddenPresent.length === 0;
+    forbiddenPresent.length === 0 &&
+    actionPolarityOk &&
+    limitPolarityOk;
   const intentReason = sourceBackedReviewStub
     ? "source-backed review stub"
     : forbiddenPresent.length
