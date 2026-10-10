@@ -135,7 +135,7 @@ it("saves the whole list once, keeping the dated need, reading the team's needs 
 });
 
 it("Undo puts back only the safe number, keeping a need another manager set after the save", async () => {
-  let current = needs;
+  let current: readonly object[] = needs;
   const { posts } = stubTeam({ maker: () => Response.json({ codes: [], needs: current, drafts: [] }) });
   render(
     <ToastProvider>
