@@ -53,3 +53,23 @@ describe("useStickyWorkTabs", () => {
     expect(band.hasAttribute("data-stuck")).toBe(false);
   });
 });
+
+describe("work band hide rule", () => {
+  // A fixed slide lifted a band that had only just pinned off its own place on
+  // the page, leaving a white hole the size of the band (found 10 Oct 2026).
+  // Hidden, the band must drop its sticky offset instead, so the sticky engine
+  // keeps it in place or slides it out, never further.
+  it("hides the pinned band through its sticky offset, not a fixed translate", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync("src/app/work-mode.css", "utf8");
+    const hidden = css.match(/\.work-band\[data-pinned\]\[data-bar-hidden\]:not\(:focus-within\)\s*\{([^}]*)\}/)?.[1];
+    expect(hidden).toContain("top: calc(-1 * (var(--work-band-tabs-top, 0px) + var(--work-tabs-h, 0px)));");
+    expect(css).not.toMatch(/\.work-band\[data-(?:stuck|pinned)\][^{]*\{[^}]*\btranslate:/);
+  });
+
+  it("carries the band colour above it for the iPhone pull-down bounce", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync("src/app/work-mode.css", "utf8");
+    expect(css).toMatch(/\.work-band\s*\{\s*box-shadow: 0 -50vh 0 50vh var\(--mode-band-bg\);/);
+  });
+});

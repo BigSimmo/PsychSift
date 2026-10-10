@@ -7,7 +7,8 @@ import { useLayoutEffect, type RefObject } from "react";
  * page scrolls far enough that the band's title has passed under the top bar,
  * the band stops moving and its tab row stays pinned just below the bar, as
  * one sticky unit with it. When the top bar slides away on a scroll down, the
- * pinned row slides away with it, and both come back together.
+ * pinned row slides away with it, and both come back together; a band not yet
+ * past its own place on the page simply stays there (work-mode.css).
  *
  * The band stays in page flow the whole time (CSS `position: sticky` with a
  * negative offset), so pinning moves nothing on the page and needs no reserve.
@@ -41,6 +42,7 @@ export function useStickyWorkTabs(band: HTMLElement | null, navRef: RefObject<HT
     // otherwise the window.
     let scroller: HTMLElement | null = null;
     let frame = 0;
+    let slide: Animation | null = null;
 
     const checkStuck = () => {
       frame = 0;
@@ -55,13 +57,39 @@ export function useStickyWorkTabs(band: HTMLElement | null, navRef: RefObject<HT
       const stickTop = Number.parseFloat(style.top);
       if (!Number.isFinite(stickTop)) return;
       const edge = scroller ? scroller.getBoundingClientRect().top + scroller.clientTop : 0;
-      // Leave out the slide that hides the band with the bar (mid-slide too),
-      // so a hidden band reads where it is held, not where it has slid to.
-      const slide = Number.parseFloat(style.translate.split(" ")[1] ?? "0") || 0;
-      band.toggleAttribute("data-stuck", band.getBoundingClientRect().top - slide - edge <= stickTop + 1);
+      // Mid-slide, read where the band is held, not where it has slid to.
+      const slid = Number.parseFloat(style.translate.split(" ")[1] ?? "0") || 0;
+      band.toggleAttribute("data-stuck", band.getBoundingClientRect().top - slid - edge <= stickTop + 1);
+      // The band moves with no scroll event while it slides, so keep reading.
+      if (slide?.playState === "running") onScroll();
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(checkStuck);
+    };
+
+    // The bar hid or came back. `data-bar-hidden` drops the band's sticky
+    // offset (work-mode.css), and the band slides from where it was to where
+    // that leaves it: out with the bar when pinned, a few pixels back to its
+    // own place when it had only just pinned. The slide is a compositor
+    // animation of `translate` from the measured gap to zero, so it stays
+    // smooth on a busy phone, and the sticky engine owns where the band ends.
+    const syncBar = () => {
+      const hidden = document.querySelector('[data-scroll-hidden="true"] .universal-header') !== null;
+      if (band.hasAttribute("data-bar-hidden") === hidden) return;
+      const from = band.getBoundingClientRect().top;
+      slide?.cancel();
+      slide = null;
+      band.toggleAttribute("data-bar-hidden", hidden);
+      const gap = from - band.getBoundingClientRect().top;
+      if (Math.abs(gap) >= 1 && motionAllowed() && typeof band.animate === "function") {
+        const tokens = getComputedStyle(root);
+        const token = (name: string) => tokens.getPropertyValue(name).trim();
+        slide = band.animate([{ translate: `0 ${gap}px` }, { translate: "0 0" }], {
+          duration: Number.parseFloat(token(hidden ? "--duration-slow" : "--duration-moderate")) || 240,
+          easing: token(hidden ? "--ease-chrome-hide" : "--ease-chrome-reveal") || "ease-out",
+        });
+      }
+      onScroll();
     };
 
     const measure = () => {
@@ -91,17 +119,31 @@ export function useStickyWorkTabs(band: HTMLElement | null, navRef: RefObject<HT
     window.addEventListener("resize", measure);
     // Capture hears the page box's scroll as well as the window's.
     document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    syncBar();
+    const bar = typeof MutationObserver === "undefined" ? null : new MutationObserver(syncBar);
+    bar?.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["data-scroll-hidden"] });
     return () => {
+      bar?.disconnect();
+      slide?.cancel();
       window.removeEventListener("resize", measure);
       document.removeEventListener("scroll", onScroll, { capture: true });
       if (frame) window.cancelAnimationFrame(frame);
       resize?.disconnect();
       band.removeAttribute("data-pinned");
       band.removeAttribute("data-stuck");
+      band.removeAttribute("data-bar-hidden");
       root.style.removeProperty("--work-tabs-h");
       root.style.removeProperty("--work-bar-h");
     };
   }, [band, navRef]);
+}
+
+/** The app's motion setting: an explicit choice wins, otherwise the system's. */
+function motionAllowed(): boolean {
+  const choice = document.documentElement.dataset.motion;
+  if (choice === "reduced") return false;
+  if (choice === "full") return true;
+  return !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
 /** The nearest ancestor a sticky element sticks within, or null for the window. */
