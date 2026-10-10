@@ -592,6 +592,10 @@ describe("captured RAG eval cases", () => {
         intent("Clozapine should not be stopped; repeat the count immediately and tell the haematologist.").score,
       ).toBe(0);
       expect(intent("Do not delay stopping clozapine; tell the haematologist immediately.").score).toBe(1);
+      expect(
+        intent("You must not only stop clozapine immediately but also repeat the count and tell the haematologist.")
+          .score,
+      ).toBe(1);
     });
 
     it("does not count a forbidden claim the answer is correcting", () => {
@@ -610,6 +614,9 @@ describe("captured RAG eval cases", () => {
       ).toBe(0);
       expect(intentOf("It is not a myth that ibuprofen is safe. Avoid others: clearance and toxicity.").score).toBe(0);
       expect(intentOf("It isn't a myth that ibuprofen is safe. Avoid others: clearance and toxicity.").score).toBe(0);
+      expect(
+        intentOf("It is not really a myth that ibuprofen is safe. Avoid others: clearance and toxicity.").score,
+      ).toBe(0);
       expect(
         intentOf("It's a myth that ibuprofen is safe. Avoid NSAIDs: they reduce lithium clearance and risk toxicity.")
           .score,
