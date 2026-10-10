@@ -559,6 +559,24 @@ describe("the My shifts API", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it("keeps a dated demo read to its dates", async () => {
+    mocks.demo.mockReturnValue(true);
+    const all = (await (await GET(request("GET"))).json()) as { shifts: Array<{ startsAt: string; endsAt: string }> };
+    const first = all.shifts[0]!;
+    const day = first.startsAt.slice(0, 10);
+    const dated = (await (
+      await GET(new Request(`https://psychiatry.tools/api/roster/shifts?from=${day}&to=${day}`))
+    ).json()) as { shifts: Array<{ startsAt: string; endsAt: string }>; demoMode: boolean };
+    expect(dated.demoMode).toBe(true);
+    expect(dated.shifts.length).toBeGreaterThan(0);
+    expect(dated.shifts.length).toBeLessThan(all.shifts.length);
+    const end = Date.parse(`${day}T00:00:00Z`) + 86_400_000;
+    for (const shift of dated.shifts) {
+      expect(Date.parse(shift.endsAt)).toBeGreaterThan(Date.parse(`${day}T00:00:00Z`));
+      expect(Date.parse(shift.startsAt)).toBeLessThan(end);
+    }
+  });
+
   it("dismisses only the owner's own import, and 404s anyone else's", async () => {
     const calls = fakeSupabase({
       on_call_shift_imports: [{ id: importId, owner_id: otherOwnerId }],

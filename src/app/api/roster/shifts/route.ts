@@ -112,10 +112,15 @@ export async function GET(request: Request) {
       });
     }
     if (isDemoMode()) {
-      return NextResponse.json(
-        { shifts: demoOnCallShifts(new Date()), latestImport: null, demoMode: true },
-        { headers: noStore },
-      );
+      const demo = demoOnCallShifts(new Date());
+      const shifts = span
+        ? demo.filter(
+            (shift) => Date.parse(shift.endsAt) > span.from.getTime() && Date.parse(shift.startsAt) < span.to.getTime(),
+          )
+        : demo;
+      return NextResponse.json(span ? { shifts, demoMode: true } : { shifts, latestImport: null, demoMode: true }, {
+        headers: noStore,
+      });
     }
     const { supabase, user, rateLimit } = await authorise(request);
     if (rateLimit.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rateLimit);

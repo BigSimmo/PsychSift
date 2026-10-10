@@ -146,6 +146,11 @@ export function useRosterShifts(
     failed: boolean;
   } | null>(null);
   const [historyReload, setHistoryReload] = useState(0);
+  // After a change to your shifts, the older ones are read again rather than shown as they were.
+  const refreshHistory = useCallback(() => {
+    setHistory(null);
+    setHistoryReload((count) => count + 1);
+  }, []);
   useEffect(() => {
     if (!wantsHistory) return;
     const controller = new AbortController();
@@ -254,12 +259,13 @@ export function useRosterShifts(
         if (response.status === 401) return "Sign in to save your roster.";
         if (!response.ok) return errorText(payload, "Your roster could not be saved. Try again.");
         accept(payload);
+        refreshHistory();
         return null;
       } catch {
         return "Your roster could not be saved. Check your connection and try again.";
       }
     },
-    [accept],
+    [accept, refreshHistory],
   );
 
   const addManual = useCallback(
@@ -274,26 +280,31 @@ export function useRosterShifts(
         if (response.status === 401) return "Sign in to add a shift.";
         if (!response.ok) return errorText(payload, "That shift could not be saved. Try again.");
         await load();
+        refreshHistory();
         return null;
       } catch {
         return "That shift could not be saved. Check your connection and try again.";
       }
     },
-    [load],
+    [load, refreshHistory],
   );
 
-  const removeSeries = useCallback(async (seriesId: string) => {
-    try {
-      const response = await fetch(`${ROSTER_SHIFTS_URL}/manual/${encodeURIComponent(seriesId)}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) return errorText(await readPayload(response), "That shift could not be removed. Try again.");
-      setShifts((current) => current.filter((shift) => shift.seriesId !== seriesId));
-      return null;
-    } catch {
-      return "That shift could not be removed. Check your connection and try again.";
-    }
-  }, []);
+  const removeSeries = useCallback(
+    async (seriesId: string) => {
+      try {
+        const response = await fetch(`${ROSTER_SHIFTS_URL}/manual/${encodeURIComponent(seriesId)}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) return errorText(await readPayload(response), "That shift could not be removed. Try again.");
+        setShifts((current) => current.filter((shift) => shift.seriesId !== seriesId));
+        refreshHistory();
+        return null;
+      } catch {
+        return "That shift could not be removed. Check your connection and try again.";
+      }
+    },
+    [refreshHistory],
+  );
 
   const deleteAll = useCallback(
     async (options?: { keepalive?: boolean }) => {
@@ -303,30 +314,37 @@ export function useRosterShifts(
         if (!response.ok)
           return { ok: false, message: errorText(payload, "Your data could not be deleted. Try again.") };
         accept(payload);
+        refreshHistory();
         return { ok: true, message: payload.message ?? null };
       } catch {
         return { ok: false, message: "Your data could not be deleted. Check your connection and try again." };
       }
     },
-    [accept],
+    [accept, refreshHistory],
   );
 
-  const removeWorkplace = useCallback(async (workplace: string) => {
-    try {
-      const response = await fetch(ROSTER_WORKPLACES_URL, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workplace }),
-      });
-      if (!response.ok) {
-        return errorText(await readPayload(response), "That workplace could not be removed. Try again.");
+  const removeWorkplace = useCallback(
+    async (workplace: string) => {
+      try {
+        const response = await fetch(ROSTER_WORKPLACES_URL, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workplace }),
+        });
+        if (!response.ok) {
+          return errorText(await readPayload(response), "That workplace could not be removed. Try again.");
+        }
+        setShifts((current) =>
+          current.filter((shift) => !(shift.source === "import" && shift.workplace === workplace)),
+        );
+        refreshHistory();
+        return null;
+      } catch {
+        return "That workplace could not be removed. Check your connection and try again.";
       }
-      setShifts((current) => current.filter((shift) => !(shift.source === "import" && shift.workplace === workplace)));
-      return null;
-    } catch {
-      return "That workplace could not be removed. Check your connection and try again.";
-    }
-  }, []);
+    },
+    [refreshHistory],
+  );
 
   const dismissChanges = useCallback(async () => {
     const current = latestImport;

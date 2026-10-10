@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { OnCallShift } from "@/lib/roster/shifts/model";
@@ -94,6 +94,23 @@ describe("your own shifts in an older month", () => {
     expect(requests.some((url) => url.includes("from="))).toBe(false);
     expect(recent.result.current.historyLoading).toBe(false);
     expect(plain.result.current.shifts.map((item) => item.id)).toEqual(["recent"]);
+  });
+
+  it("reads the older shifts again after you delete your roster, so deleted ones do not come back", async () => {
+    const { result } = renderHook(() =>
+      useRosterShifts({ from: "2026-07-31", to: "2026-09-01" }, { ownHistory: true }),
+    );
+    await waitFor(() => expect(result.current.shifts.map((item) => item.id)).toContain("older"));
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "https://psychiatry.tools");
+      requests.push(`${url.pathname}${url.search}`);
+      return Response.json({ shifts: [], latestImport: null });
+    });
+    await act(async () => {
+      await result.current.deleteAll();
+    });
+    await waitFor(() => expect(result.current.historyLoading).toBe(false));
+    expect(result.current.shifts).toEqual([]);
   });
 
   it("says when the older shifts could not be read, and keeps the main list", async () => {

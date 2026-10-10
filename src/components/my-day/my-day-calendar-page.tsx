@@ -39,6 +39,7 @@ import { addMonths, monthTitle, monthWeeks } from "@/lib/my-day/figures";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import { shiftTitle } from "@/lib/my-day/quiet-figures";
 import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
+import { useAuthSession } from "@/lib/supabase/client";
 import { useAdminPaperwork } from "@/lib/work-screens/admin/paperwork-store";
 import {
   adminRequestItems,
@@ -179,6 +180,8 @@ function sessionItem(session: SessionSummaryRead, zone: string): MainCalendarIte
 
 export function MyDayCalendarPage({ now }: { now?: Date } = {}) {
   const { zone } = useWorkTimeZone();
+  // A new account starts a fresh calendar body, so nothing read for the last one stays on screen.
+  const accountKey = useAuthSession().session?.user?.id ?? "none";
   const [shownMonth, setShownMonth] = useState<string | null>(null);
   return (
     <MyDayFrame
@@ -192,7 +195,7 @@ export function MyDayCalendarPage({ now }: { now?: Date } = {}) {
       }}
       subtitle={(at) => monthTitle(shownMonth ?? zonedDateOf(at, zone).slice(0, 7))}
     >
-      {(at) => <CalendarBody now={at} shownMonth={shownMonth} onMonth={setShownMonth} />}
+      {(at) => <CalendarBody key={accountKey} now={at} shownMonth={shownMonth} onMonth={setShownMonth} />}
     </MyDayFrame>
   );
 }
