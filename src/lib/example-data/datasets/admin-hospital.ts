@@ -6,16 +6,23 @@ import type {
   HospitalSickStatus,
   HospitalSickView,
 } from "@/lib/work-roles/hospital-hub";
+import {
+  shortStaffedWindow,
+  type HospitalShortStaffedView,
+  type ShortStaffedDay,
+} from "@/lib/work-roles/hospital-short-staffed-view";
 import type { WorkRoleGrant } from "@/lib/work-roles/model";
 import { zonedDateOf, zonedWallToIso } from "@/lib/work-time/format";
 
 /*
- * Example data for Hospital (`/admin/hospital`) and its sick calls
- * (`/admin/hospital/sick`). The reader holds every hospital role at once, so
+ * Example data for Hospital (`/admin/hospital`), its sick calls
+ * (`/admin/hospital/sick`) and its short-staffed days
+ * (`/admin/hospital/short-staffed`). The reader holds every hospital role at once, so
  * every section shows. Hospitals, wards and people come from the standard
  * example lists, every id starts "example:", and the sick calls sit around
  * today in the work time zone. A sick call carries no reason or health detail,
- * because none is ever asked for. Read through the registry,
+ * because none is ever asked for. A short-staffed day carries counts and a
+ * team name only. Read through the registry,
  * `loadExampleDataset("admin.hospital")`.
  */
 
@@ -83,6 +90,25 @@ function call(
   };
 }
 
+function short(
+  team: Team,
+  dayOffset: number,
+  on: number,
+  needed: number,
+  shortKinds: ShortStaffedDay["short"],
+  today: string,
+): ShortStaffedDay {
+  return {
+    date: addDays(today, dayOffset),
+    serviceId: team.serviceId,
+    teamName: team.name,
+    on,
+    needed,
+    short: shortKinds,
+    kinds: ["day", "evening"],
+  };
+}
+
 /** The example records, built fresh each time so page memory never changes the registry's copy. */
 export function exampleHospitalHub(now: Date, zone: string): ExampleHospitalHub {
   const today = zonedDateOf(now, zone);
@@ -134,5 +160,48 @@ export function exampleHospitalHub(now: Date, zone: string): ExampleHospitalHub 
     { role: "manager", serviceId: TEAMS.wardA.serviceId },
   ];
 
-  return { grants, hospitals: [main, campus] };
+  // Short-staffed days: one team with no safe number, one whose roster stops after two weeks, and a
+  // second hospital with nothing short, so every line the screen can show has an example.
+  const window = shortStaffedWindow(now, zone);
+  const teamRow = (team: Team, safeNumber: boolean, checkedThrough: string | null) => ({
+    serviceId: team.serviceId,
+    name: team.name,
+    safeNumber,
+    checkedThrough,
+  });
+  const mainShort: HospitalShortStaffedView = {
+    hospital: main.hospital,
+    window,
+    teams: [
+      teamRow(TEAMS.liaison, false, window.to),
+      teamRow(TEAMS.emergency, true, window.to),
+      teamRow(TEAMS.wardA, true, window.to),
+      teamRow(TEAMS.wardB, true, addDays(today, 13)),
+    ],
+    days: [
+      short(TEAMS.wardA, 1, 5, 6, [{ kind: "day", on: 3, needed: 4 }], today),
+      short(
+        TEAMS.emergency,
+        1,
+        1,
+        3,
+        [
+          { kind: "day", on: 1, needed: 2 },
+          { kind: "evening", on: 0, needed: 1 },
+        ],
+        today,
+      ),
+      short(TEAMS.wardB, 3, 4, 5, [{ kind: "evening", on: 1, needed: 2 }], today),
+      short(TEAMS.wardA, 9, 4, 6, [{ kind: "day", on: 2, needed: 4 }], today),
+      short(TEAMS.emergency, 16, 2, 3, [], today),
+    ],
+  };
+  const campusShort: HospitalShortStaffedView = {
+    hospital: campus.hospital,
+    window,
+    teams: [teamRow(TEAMS.community, true, window.to), teamRow(TEAMS.wardC, true, null)],
+    days: [],
+  };
+
+  return { grants, hospitals: [main, campus], shortStaffed: [mainShort, campusShort] };
 }
