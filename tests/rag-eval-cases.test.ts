@@ -588,6 +588,9 @@ describe("captured RAG eval cases", () => {
       expect(intent("No need to stop clozapine; repeat the count immediately and tell the haematologist.").score).toBe(
         0,
       );
+      expect(
+        intent("Clozapine should not be stopped; repeat the count immediately and tell the haematologist.").score,
+      ).toBe(0);
       expect(intent("Do not delay stopping clozapine; tell the haematologist immediately.").score).toBe(1);
     });
 
@@ -605,6 +608,11 @@ describe("captured RAG eval cases", () => {
           "Paracetamol does not interact with lithium and ibuprofen is safe. Avoid others: clearance and toxicity.",
         ).score,
       ).toBe(0);
+      expect(intentOf("It is not a myth that ibuprofen is safe. Avoid others: clearance and toxicity.").score).toBe(0);
+      expect(
+        intentOf("It's a myth that ibuprofen is safe. Avoid NSAIDs: they reduce lithium clearance and risk toxicity.")
+          .score,
+      ).toBe(1);
     });
 
     it("requires a citation to an expected guideline for relevance", () => {

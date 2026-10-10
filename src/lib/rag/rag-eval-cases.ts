@@ -187,10 +187,10 @@ const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\
 // forbidden claim does not count when it is being corrected ("it is not true that ibuprofen is safe").
 // Only an adverb may sit between the negation and the fact ("do not abruptly stop"), so "do not
 // delay stopping" still counts as the stop instruction.
-const negatedLeadIn = /\b(?:do not|don't|never|must not|should not|no need to)\s+(?:[a-z]+ly\s+)?$/;
+const negatedLeadIn = /\b(?:do not|don't|never|must not|should not|no need to)\s+(?:[a-z]+ly\s+)?(?:be\s+)?$/;
 // Only an explicit correction frame counts, so an unrelated "not" earlier in the clause cannot hide the claim.
 const correctedLeadIn =
-  /\b(?:(?:is|it's) not (?:true|correct|the case)|(?:is|it's) (?:a myth|false|incorrect|wrong)|myth)(?: that)?\s+$/;
+  /\b(?:(?:is|it's) not (?:true|correct|the case)|(?:is|it's) (?:a myth|false|incorrect|wrong)|(?<!\bnot\s)(?:a|the)\s+myth)(?: that)?\s+$/;
 
 // Word start only, so "continue" never matches inside "discontinue"; the end stays open for plurals ("NSAIDs").
 // An occurrence counts only when the text just before it does not match `excludedLeadIn`.
