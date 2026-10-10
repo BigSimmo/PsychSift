@@ -35,12 +35,6 @@ export const LIVE_PREVIEW_FEATURES = [
     since: "2026-10-09",
   },
   {
-    id: "two-pane-side-menu",
-    label: "New side menu",
-    owner: "mode-picker",
-    since: "2026-10-08",
-  },
-  {
     id: "phone-bell-alerts",
     label: "Bell reminders on your phone",
     owner: "push-alerts",
