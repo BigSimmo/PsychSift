@@ -99,6 +99,16 @@
   --work-primary-text: var(--text-heading);
 }
 
+/* The dark neutral ramp runs the other way, so --neutral-300 sits closer to the
+   card than --border does and the "strong" chip and button edge almost vanished.
+   Dark takes the theme's own strong border instead. Light is unchanged. */
+:root.dark[data-work-frame],
+.dark [data-work-frame],
+.dark .work-band,
+.dark .work-more-sheet {
+  --work-line-strong: var(--border-strong);
+}
+
 /* The app's filled "command" button (Sign in, Save, Send) is the area's primary
    colour inside a work page, as WorkButton's primary is, rather than the
    clinical near-black. On Call did this alone (on-call-work.css), so six areas
@@ -170,6 +180,17 @@ html[data-work-frame] main {
   color: var(--work-ink);
   container-type: inline-size;
   container-name: mode-band;
+}
+
+/* A pull past the top of the page (the iPhone bounce) drags the band down
+   from under the top bar. Its colour carries on above it, so the gap shows the
+   band's tint rather than a white strip between the bar and the band (owner
+   report, 10 Oct 2026). A box shadow, so the band's own overflow does not clip
+   it, it adds no scroll range, and the pinned trim (clip-path) still cuts it. */
+@media (max-width: 639px) {
+  .work-band {
+    box-shadow: 0 -50vh 0 50vh var(--mode-band-bg);
+  }
 }
 
 /* The dot texture, lined up with the top bar's so the two read as one. */
@@ -260,30 +281,34 @@ html[data-work-frame] #main-content {
 
 /* The top bar slides away on a scroll down and back on a scroll up; the
    pinned row goes and comes back with it, so the two stay one unit and a
-   hidden bar leaves the whole screen to the page. Only while pinned: a band
-   still in its own place on the page scrolls as normal. A keyboard user who
-   tabs into the hidden row brings it back (`:focus-within`), so focus never
-   lands on a tab that is off screen. */
-html:has([data-scroll-hidden="true"] .universal-header) .work-band[data-stuck]:not(:focus-within) {
-  translate: 0 calc(-1 * (var(--work-chrome-h) + var(--work-tabs-h, 0px)));
+   hidden bar leaves the whole screen to the page.
+
+   Hidden (`data-bar-hidden`, set by use-sticky-work-tabs.ts as the bar
+   goes), the band's sticky offset drops by the bar and the row, to minus the
+   band's own height. That is the shift the row needs to leave with the bar,
+   but the sticky engine applies it: a band held below its own place on the
+   page goes back to that place, and one already past it leaves the screen.
+   A fixed translate instead lifted a band that had only just pinned off its
+   own place, leaving a white hole the size of the band at the top of the page
+   (found 10 Oct 2026). The hook slides the band between the two positions on
+   the compositor.
+
+   A keyboard user who tabs into the hidden row brings it back
+   (`:focus-within`), so focus never lands on a tab that is off screen. */
+.work-band[data-pinned][data-bar-hidden]:not(:focus-within) {
+  top: calc(-1 * (var(--work-band-tabs-top, 0px) + var(--work-tabs-h, 0px)));
+}
+
+.work-band[data-stuck][data-bar-hidden]:not(:focus-within) {
   pointer-events: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .work-band[data-pinned] {
-    transition: translate var(--duration-moderate) var(--ease-chrome-reveal);
-  }
-
-  html:has([data-scroll-hidden="true"] .universal-header) .work-band[data-pinned] {
-    transition: translate var(--duration-slow) var(--ease-chrome-hide);
-  }
-
   .work-band__mark {
     transition: opacity var(--duration-moderate) var(--ease-out, ease-out);
   }
 }
 
-html[data-motion="reduced"] .work-band[data-pinned],
 html[data-motion="reduced"] .work-band__mark {
   transition: none;
 }
@@ -370,7 +395,8 @@ html[data-motion="reduced"] .work-band__mark {
   -webkit-backdrop-filter: var(--work-glass-blur);
 }
 
-/* Tabs: three pinned pages and More, underlined in the mode colour. */
+/* Tabs: the three pinned pages, then the area's next pages as the width allows,
+   and More last, underlined in the mode colour. */
 .work-band__tabs {
   position: relative;
   /* The space between tab labels. Each tab's tap area reaches half of it on
@@ -660,6 +686,12 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   color: var(--work-ink);
 }
 
+/* One focus colour: the bell and AI Search ring in the area colour, as the
+   band's tabs and the kit controls below them do. */
+.universal-header[data-work-frame] .universal-header-icon-control:focus-visible {
+  outline-color: var(--mode-identity);
+}
+
 /* A page reached from More shows Back. The menu button stays first, with Back
    beside it, mirroring the bell and AI Search on the right. Tablets have the
    menu strip, so the button is hidden there. */
@@ -711,7 +743,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-frame-back:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 
@@ -965,7 +997,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-more-sheet__close:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -2px;
 }
 
@@ -1454,7 +1486,7 @@ button.work-row:focus-visible {
 }
 
 a.work-hero:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 
@@ -1792,9 +1824,28 @@ a.work-hero:focus-visible {
 }
 
 .work-button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -3px;
   border-radius: var(--radius-pill);
+}
+
+/* A primary fill is the area colour itself, so a ring in the same colour would
+   vanish where it crosses the pill. Draw it around the pill instead, with a
+   surface gap. The transparent outline still shows in forced colours. */
+.work-button[data-variant="primary"]:focus-visible {
+  outline-color: transparent;
+}
+
+.work-button[data-variant="primary"]:focus-visible::before {
+  box-shadow:
+    0 0 0 2px var(--work-surface),
+    0 0 0 4px var(--mode-identity);
+}
+
+@media (forced-colors: active) {
+  .work-button[data-variant="primary"]:focus-visible {
+    outline-color: Highlight;
+  }
 }
 
 .work-button:disabled,
@@ -1844,7 +1895,7 @@ a.work-hero:focus-visible {
 }
 
 .work-glass-button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -2px;
 }
 
@@ -2538,7 +2589,7 @@ html[data-work-frame] .app-toast-region {
 .work-side-menu button:focus-visible,
 .work-rail a:focus-visible,
 .work-rail button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 

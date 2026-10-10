@@ -120,6 +120,29 @@ export async function fetchOwnerShifts(supabase: AdminClient, ownerId: string, f
   return (data ?? []).map(rowToShift);
 }
 
+/**
+ * Shifts that overlap `[from, to)`, soonest first: the calendar's read for a
+ * month older than the main list reaches. Uses the (owner_id, starts_at) index.
+ */
+export async function fetchOwnerShiftsBetween(
+  supabase: AdminClient,
+  ownerId: string,
+  from: Date,
+  to: Date,
+): Promise<OnCallShift[]> {
+  requireOwner(ownerId);
+  const { data, error } = await supabase
+    .from("on_call_shifts")
+    .select(SHIFT_COLUMNS)
+    .eq("owner_id", ownerId)
+    .gt("ends_at", from.toISOString())
+    .lt("starts_at", to.toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(1000);
+  if (error) throw error;
+  return (data ?? []).map(rowToShift);
+}
+
 /** The owner's most recent import, or null if they have never imported. */
 export async function fetchLatestShiftImport(
   supabase: AdminClient,
