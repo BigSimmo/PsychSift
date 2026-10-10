@@ -25,10 +25,7 @@ import {
 } from "@/lib/recent-query-storage";
 import { PatientProfileProvider } from "@/components/clinical-dashboard/patient-profile-context";
 import { SearchCommandProvider } from "@/components/clinical-dashboard/search-command-context";
-import {
-  ClinicalDesktopSidebar,
-  deriveSidebarIdentity,
-} from "@/components/clinical-dashboard/ClinicalSidebar";
+import { ClinicalDesktopSidebar, deriveSidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { landingModeForPreference, readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { useFavouritesAccess } from "@/components/clinical-dashboard/use-favourites-access";
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";

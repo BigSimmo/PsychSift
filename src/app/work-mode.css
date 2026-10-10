@@ -673,8 +673,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
    The page's own title names the area just below, and the name stays in the
    button for screen readers. From 440px every area name fits whole. */
 @media (max-width: 439px) {
-  .universal-header-row:has(> .universal-header-leading > #universal-header-leading > *)
-    .universal-header-mode-button {
+  .universal-header-row:has(> .universal-header-leading > #universal-header-leading > *) .universal-header-mode-button {
     grid-template-columns: auto;
     justify-content: center;
     gap: 0;
