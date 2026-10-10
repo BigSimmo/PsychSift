@@ -131,16 +131,23 @@ export async function fetchOwnerShiftsBetween(
   to: Date,
 ): Promise<OnCallShift[]> {
   requireOwner(ownerId);
-  const { data, error } = await supabase
-    .from("on_call_shifts")
-    .select(SHIFT_COLUMNS)
-    .eq("owner_id", ownerId)
-    .gt("ends_at", from.toISOString())
-    .lt("starts_at", to.toISOString())
-    .order("starts_at", { ascending: true })
-    .limit(1000);
-  if (error) throw error;
-  return (data ?? []).map(rowToShift);
+  const shifts: OnCallShift[] = [];
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from("on_call_shifts")
+      .select(SHIFT_COLUMNS)
+      .eq("owner_id", ownerId)
+      .gt("ends_at", from.toISOString())
+      .lt("starts_at", to.toISOString())
+      .order("starts_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []).map(rowToShift);
+    shifts.push(...page);
+    if (page.length < pageSize) return shifts;
+  }
 }
 
 /** The owner's most recent import, or null if they have never imported. */
