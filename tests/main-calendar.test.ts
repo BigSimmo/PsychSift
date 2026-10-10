@@ -1,18 +1,26 @@
 import { describe, expect, it } from "vitest";
 
+import { toIcs } from "@/lib/calendar/ics";
+import { googleCalendarUrl } from "@/lib/calendar/provider-links";
 import type { MyDayItem } from "@/lib/my-day/model";
+import type { MyRound } from "@/lib/roster/rotations/model";
 import {
   adminRequestItems,
+  alertCalendarItems,
   bandsOverlapping,
+  calendarExportEvents,
+  calendarItemEvent,
   dayList,
   filterByArea,
   itemsOnDate,
   leaveItems,
   mergeCalendarItems,
   myDayCalendarItems,
+  reminderCalendarItems,
   workEntryItems,
+  type MainCalendarItem,
 } from "@/lib/work-calendar/main-calendar";
-import type { WorkCalendarEntry } from "@/lib/work-calendar/entries";
+import { rotationDeadlineEntries, type WorkCalendarEntry } from "@/lib/work-calendar/entries";
 import type { AdminRequest } from "@/lib/work-screens/admin/paperwork-model";
 
 const ZONE = "Australia/Perth";
@@ -124,5 +132,118 @@ describe("main calendar items", () => {
     expect(items).toHaveLength(1);
     expect(filterByArea(items, new Set(["my-work"]))).toHaveLength(0);
     expect(filterByArea(items, new Set())).toHaveLength(1);
+  });
+
+  it("puts open Remind me notes at their time, kept on this device", () => {
+    const items = reminderCalendarItems(
+      [
+        {
+          id: "r1",
+          text: "Call pharmacy",
+          dueAt: "2026-10-12T00:30:00Z",
+          createdAt: "2026-10-10T00:00:00Z",
+          doneAt: null,
+        },
+        {
+          id: "r2",
+          text: "Done one",
+          dueAt: "2026-10-12T00:30:00Z",
+          createdAt: "2026-10-10T00:00:00Z",
+          doneAt: "2026-10-11T00:00:00Z",
+        },
+      ],
+      new Date("2026-10-10T00:00:00Z"),
+      ZONE,
+    );
+    expect(items).toEqual([
+      expect.objectContaining({ key: "remind:r1", area: "my-day", start: "2026-10-12", time: "08:30", warn: false }),
+    ]);
+    expect(calendarItemEvent(items[0]!)).toBeNull();
+  });
+
+  it("adds the bell's dated alerts and leaves undated ones in the bell", () => {
+    const items = alertCalendarItems(
+      [
+        {
+          id: "contract:end",
+          title: "Contract ends",
+          due: "2026-12-01",
+          area: "my-work",
+          href: "/admin",
+          kind: "action",
+        },
+        { id: "on-call:x", title: "Check entry", due: null, area: "on-call", href: "/on-call", kind: "update" },
+      ],
+      (mode) => mode,
+      ZONE,
+    );
+    expect(items.map((item) => item.key)).toEqual(["alert:contract:end"]);
+  });
+
+  it("exports what may leave the app, on Perth's clock, and nothing kept on the device or made up", () => {
+    const shift: MainCalendarItem = {
+      key: "shift:s1",
+      area: "roster",
+      label: "Shift",
+      title: "Day shift",
+      start: "2026-10-12",
+      end: "2026-10-12",
+      time: "08:00",
+      detail: "until 16:30",
+      state: null,
+      warn: false,
+      href: "/roster/shifts",
+      band: false,
+      startsAt: "2026-10-12T00:00:00Z",
+      minutes: 510,
+      reminder: "shifts",
+    };
+    expect(calendarItemEvent(shift)).toMatchObject({
+      date: "2026-10-12",
+      startTime: "08:00",
+      durationMinutes: 510,
+      reminderType: "shifts",
+    });
+    const [rotationItem] = workEntryItems([rotation]);
+    const event = calendarItemEvent(rotationItem!);
+    expect(event).toMatchObject({ date: "2026-10-05", endDate: "2026-12-20" });
+    expect(toIcs([event!])).toContain("DTEND;VALUE=DATE:20261221");
+    expect(googleCalendarUrl(event!)).toContain("dates=20261005%2F20261221");
+    const example = workEntryItems([{ ...course, id: "example:booking:c9" }]);
+    const requests = adminRequestItems([
+      {
+        id: "a",
+        kind: "question",
+        to: "HR",
+        message: "",
+        createdOn: "2026-10-01",
+        title: "Form",
+        status: "sent",
+        followUpOn: "2026-10-20",
+      },
+    ] as never);
+    expect(calendarExportEvents([shift, ...example, ...requests])).toHaveLength(1);
+  });
+
+  it("puts the close of an open rotation round on the calendar", () => {
+    const round = {
+      round: { id: "r1", name: "2027 rotations", status: "open", closesAt: "2026-10-20T09:00:00Z" },
+      personId: "p1",
+      ranking: [],
+      submittedAt: null,
+      placements: [],
+    } as unknown as MyRound;
+    const closed = { ...round, round: { ...round.round, id: "r2", status: "published" } } as unknown as MyRound;
+    const entries = rotationDeadlineEntries([round, closed], ZONE);
+    expect(entries).toEqual([
+      expect.objectContaining({
+        id: "rotation-close:r1",
+        kind: "deadline",
+        start: "2026-10-20",
+        startTime: "17:00",
+        detail: "2027 rotations · yours aren't sent yet",
+      }),
+    ]);
+    expect(workEntryItems(entries)[0]).toMatchObject({ label: "Deadline", time: "17:00", area: "roster" });
   });
 });

@@ -1,10 +1,13 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Download, Info } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 import { useJuniorRosterLeave } from "@/components/admin/junior/use-roster-leave";
+import { useRemindMe } from "@/components/alerts/use-remind-me";
+import { AddToCalendarOptions, downloadIcs } from "@/components/calendar/add-to-calendar-options";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { focusRing } from "@/components/card-recipes";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -15,6 +18,7 @@ import { QuietFoot, QuietLabel, quietCard } from "@/components/my-day/my-day-qui
 import { MyDaySegmented } from "@/components/my-day/my-day-today-cards";
 import { cmeRoutineItemsThrough } from "@/components/my-day/sources/cme";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
+import { useFeatureNotificationSources } from "@/components/needs-you/use-feature-notification-sources";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { kindOf } from "@/components/roster/roster-format";
 import { useRosterShifts, type MyShift } from "@/components/roster/use-roster-shifts";
@@ -22,18 +26,23 @@ import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
 import { relocatedEntryId, sessionHref } from "@/components/teaching/teaching-view-model";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
 import { Button } from "@/components/ui/button";
+import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { useWorkCalendarEntries } from "@/components/work-calendar/use-work-calendar-entries";
+import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { appModeDefinition } from "@/lib/app-modes";
+import { guardExampleAction } from "@/lib/example-data/guards";
 import { addMonths, monthTitle, monthWeeks } from "@/lib/my-day/figures";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
-import type { MyDaySourceMode } from "@/lib/my-day/model";
 import { shiftTitle } from "@/lib/my-day/quiet-figures";
 import { useAdminPaperwork } from "@/lib/work-screens/admin/paperwork-store";
 import {
   adminRequestItems,
+  alertCalendarItems,
   bandsOverlapping,
+  calendarExportEvents,
+  calendarItemEvent,
   dayList,
   filterByArea,
   itemsOnDate,
@@ -41,7 +50,9 @@ import {
   MAIN_CALENDAR_AREAS,
   mergeCalendarItems,
   myDayCalendarItems,
+  reminderCalendarItems,
   workEntryItems,
+  type MainCalendarArea,
   type MainCalendarItem,
 } from "@/lib/work-calendar/main-calendar";
 import { formatZonedDay, formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
@@ -49,10 +60,17 @@ import { formatZonedDay, formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/
 /**
  * My Day, Calendar: the one full-size calendar (owner request 10 Oct 2026).
  * Every dated thing in Work mode in one month: shifts, on call and leave from
- * Roster, rotations, booked courses, teaching sessions, CPD deadlines and
- * routines, renewals and expiry dates, swaps to answer, and Admin requests to
- * chase. Read-only and stored nowhere: each source is the hook its own page
- * already reads, and every row opens the page that owns it.
+ * Roster, rotations and the date preferences close, booked courses, teaching
+ * sessions, CPD deadlines and routines, renewals and expiry dates, swaps to
+ * answer, Admin requests to chase, the bell's dated alerts (first week,
+ * contract, job applications, CPD Home, term folder) and the reader's own
+ * Remind me notes. Read-only and stored nowhere: each source is the hook its
+ * own page already reads, and every row opens the page that owns it.
+ *
+ * Anything that may leave the app can be added to Google, Outlook or Apple:
+ * one item from its row, the month as a file, or every future change through
+ * the private calendar link. Remind me notes and Admin requests are kept on
+ * this device by their own features, so they are never exported.
  *
  * Assessments are not here: their records are kept in CLA, and the
  * Assessments pages only show an example of how CLA works.
@@ -71,7 +89,18 @@ function monthEnd(month: string): string {
   return `${month}-${String(days).padStart(2, "0")}`;
 }
 
-const areaLabel = (mode: MyDaySourceMode) => appModeDefinition(mode).label;
+const areaLabel = (area: MainCalendarArea) => (area === "my-day" ? "Reminders" : appModeDefinition(area).label);
+
+/** The private calendar link's card, loaded only when the page draws it. */
+const CalendarSubscribe = dynamic(
+  () => import("@/components/calendar/calendar-subscribe").then((module) => module.CalendarSubscribe),
+  { ssr: false },
+);
+
+function minutesBetween(startsAt: string, endsAt: string): number | undefined {
+  const minutes = Math.round((Date.parse(endsAt) - Date.parse(startsAt)) / 60_000);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : undefined;
+}
 
 function shiftItem(shift: MyShift, zone: string): MainCalendarItem {
   const kind = kindOf(shift);
@@ -95,6 +124,7 @@ function shiftItem(shift: MyShift, zone: string): MainCalendarItem {
       band: false,
     };
   }
+  const minutes = minutesBetween(shift.startsAt, shift.endsAt);
   const endDay = zonedDateOf(shift.endsAt, zone);
   const until = `until ${endDay === start ? "" : `${formatZonedDay(endDay).split(" ")[0]} `}${zonedTimeOf(shift.endsAt, zone)}`;
   return {
@@ -110,6 +140,9 @@ function shiftItem(shift: MyShift, zone: string): MainCalendarItem {
     warn: false,
     href: "/roster/shifts",
     band: false,
+    startsAt: shift.startsAt,
+    ...(minutes ? { minutes } : {}),
+    reminder: "shifts",
   };
 }
 
@@ -129,6 +162,11 @@ function sessionItem(session: SessionSummaryRead, zone: string): MainCalendarIte
     warn: cancelled,
     href: sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
     band: false,
+    ...(session.allDay
+      ? {}
+      : { startsAt: session.startsAt, minutes: minutesBetween(session.startsAt, session.endsAt) }),
+    ...(session.venue ? { location: session.venue } : {}),
+    reminder: "teaching",
   };
 }
 
@@ -169,7 +207,9 @@ function CalendarBody({
   const range = useMemo(() => ({ from, to }), [from, to]);
   const [view, setView] = useState<CalendarView>("month");
   const [selected, setSelected] = useState(today);
-  const [hidden, setHidden] = useState<ReadonlySet<MyDaySourceMode>>(() => new Set());
+  const [hidden, setHidden] = useState<ReadonlySet<MainCalendarArea>>(() => new Set());
+  const [adding, setAdding] = useState<MainCalendarItem | null>(null);
+  const addReturn = useRef<HTMLElement | null>(null);
 
   const items = useMyDayItems({ enabled: true, now });
   const shifts = useRosterShifts(range);
@@ -179,6 +219,19 @@ function CalendarBody({
   const [leaveReload, setLeaveReload] = useState(0);
   const leave = useJuniorRosterLeave(true, leaveReload);
   const paperwork = useAdminPaperwork(null);
+  const { reminders: notes } = useRemindMe();
+  // The bell's own feature reads (first week, contract, applications, CPD Home, term folder), started once.
+  const [readAt] = useState(() => new Date());
+  const features = useFeatureNotificationSources({ enabled: true, clock: now, readAt, zone });
+  const routeVisible = useWorkModeRouteVisible();
+  const alerts = useMemo(
+    () =>
+      features
+        .filter((source) => source.status === "ready" && !source.sample)
+        .flatMap((source) => source.items)
+        .filter((item) => routeVisible(item.href)),
+    [features, routeVisible],
+  );
 
   // Example shifts belong to a sample doctor, never to the reader: left out unless this is a demo.
   const showShifts = shifts.status === "ready" && (!shifts.sample || shifts.demoMode);
@@ -201,6 +254,8 @@ function CalendarBody({
           zone,
         ),
         adminRequestItems(paperwork.state?.requests ?? []),
+        alertCalendarItems(alerts, areaLabel, zone),
+        reminderCalendarItems(notes, now, zone),
       ]),
     [
       calendar.entries,
@@ -214,6 +269,8 @@ function CalendarBody({
       now,
       reminders,
       paperwork.state,
+      alerts,
+      notes,
       zone,
     ],
   );
@@ -257,12 +314,19 @@ function CalendarBody({
     setLeaveReload((count) => count + 1);
   };
 
+  const example = items.demoMode || shifts.demoMode;
+  const addingEvent = adding ? calendarItemEvent(adding) : null;
+  const openAdd = (item: MainCalendarItem, from: HTMLElement) => {
+    addReturn.current = from;
+    setAdding(item);
+  };
+
   const changeMonth = (next: string) => {
     onMonth(next);
     // The chosen day follows the month: today in this month, else the 1st.
     setSelected(next === today.slice(0, 7) ? today : `${next}-01`);
   };
-  const toggleArea = (area: MyDaySourceMode) =>
+  const toggleArea = (area: MainCalendarArea) =>
     setHidden((current) => {
       const next = new Set(current);
       if (next.has(area)) next.delete(area);
@@ -282,7 +346,7 @@ function CalendarBody({
         label="Show the month or a list"
         testId="my-day-calendar-view"
       />
-      {items.demoMode || shifts.demoMode ? (
+      {example ? (
         <ModeNotice testId="my-day-calendar-demo-notice">Example data: these items are made up.</ModeNotice>
       ) : null}
       {failed.length > 0 ? (
@@ -342,35 +406,76 @@ function CalendarBody({
         </div>
       ) : null}
 
-      <MonthHeader month={month} today={today} onMonth={changeMonth} />
+      <MonthHeader month={month} today={today} onMonth={changeMonth} summary={monthSummary(shown, from, to)} />
       <Bands items={bandsOverlapping(shown, from, to)} today={today} />
 
       {view === "month" ? (
-        <>
+        // Wide screens: the month beside the chosen day. Phones: the day under the month.
+        <div className="grid min-w-0 gap-2.5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-4">
           <MonthGrid month={month} today={today} selected={selected} items={shown} onSelect={setSelected} />
-          <DayPanel date={selected} today={today} items={dayList(shown, selected)} />
-        </>
+          <div className="lg:sticky lg:top-4">
+            <DayPanel date={selected} today={today} items={dayList(shown, selected)} onAdd={openAdd} />
+          </div>
+        </div>
       ) : (
-        <MonthList month={month} today={today} items={shown} />
+        <MonthList month={month} today={today} items={shown} onAdd={openAdd} />
       )}
+
+      <CalendarExport
+        month={month}
+        items={shown.filter((item) => item.start <= to && item.end >= from)}
+        example={example}
+        onDownload={(events) => {
+          if (!guardExampleAction(example, "export")) return;
+          downloadIcs(events, `PsychSift ${monthTitle(month)}`, reminders);
+        }}
+      />
 
       <div className="px-1">
         <QuietFoot icon={Info}>
-          From Roster, Teaching, CPD, Admin and On Call. Each item opens the page that owns it. Assessments stay in CLA.
+          From Roster, Teaching, CPD, Admin, On Call and your reminders. Each item opens the page that owns it.
+          Assessments stay in CLA.
         </QuietFoot>
       </div>
+
+      <Sheet
+        open={addingEvent !== null}
+        onClose={() => setAdding(null)}
+        title="Add to your calendar"
+        description={adding?.title}
+        mobilePlacement="bottom"
+        returnFocusRef={addReturn}
+        testId="my-day-calendar-add-sheet"
+      >
+        {addingEvent ? <AddToCalendarOptions event={addingEvent} reminders={reminders} example={example} /> : null}
+      </Sheet>
     </div>
   );
+}
+
+/** Late or due: amber and counted. A cancelled session is amber too, but asks nothing of the reader. */
+function needsYou(item: MainCalendarItem): boolean {
+  return item.warn && item.state !== "Cancelled";
+}
+
+/** "14 things · 2 need you", for the month header. */
+function monthSummary(items: readonly MainCalendarItem[], from: string, to: string): string {
+  const inMonth = items.filter((item) => item.start <= to && item.end >= from);
+  if (!inMonth.length) return "Nothing recorded";
+  const late = inMonth.filter(needsYou).length;
+  return `${inMonth.length} ${inMonth.length === 1 ? "thing" : "things"}${late ? ` · ${late} need${late === 1 ? "s" : ""} you` : ""}`;
 }
 
 function MonthHeader({
   month,
   today,
   onMonth,
+  summary,
 }: {
   readonly month: string;
   readonly today: string;
   readonly onMonth: (month: string) => void;
+  readonly summary: string;
 }) {
   const current = today.slice(0, 7);
   const navButton = cn(
@@ -379,7 +484,15 @@ function MonthHeader({
   );
   return (
     <div className="flex min-w-0 items-center justify-between gap-2 px-1">
-      <h2 className="m-0 min-w-0 text-base font-bold text-[color:var(--work-ink)]">{monthTitle(month)}</h2>
+      <div className="grid min-w-0">
+        <h2 className="m-0 min-w-0 text-lg font-bold text-[color:var(--work-ink)]">{monthTitle(month)}</h2>
+        <p
+          className="m-0 text-xs font-semibold text-[color:var(--text-muted)] nums"
+          data-testid="my-day-calendar-summary"
+        >
+          {summary}
+        </p>
+      </div>
       {/* The month change is announced from a hidden line, not the visible heading. */}
       <p className="sr-only" aria-live="polite">
         {monthTitle(month)}
@@ -529,7 +642,7 @@ function DayCell({
   const isToday = date === today;
   const listed = items.slice(0, CELL_ITEMS);
   const more = items.length - listed.length;
-  const late = items.some((item) => item.warn);
+  const late = items.some(needsYou);
   return (
     <button
       type="button"
@@ -598,15 +711,26 @@ function DayCell({
   );
 }
 
-function ItemRow({ item, testId }: { readonly item: MainCalendarItem; readonly testId?: string }) {
+type AddHandler = (item: MainCalendarItem, from: HTMLElement) => void;
+
+function ItemRow({
+  item,
+  testId,
+  onAdd,
+}: {
+  readonly item: MainCalendarItem;
+  readonly testId?: string;
+  readonly onAdd: AddHandler;
+}) {
+  const exportable = calendarItemEvent(item) !== null;
   return (
-    <li className="min-w-0">
+    <li className="flex min-w-0 items-center gap-1">
       <Link
         href={item.href}
         data-testid={testId}
         className={cn(
           focusRing,
-          "grid min-h-12 min-w-0 grid-cols-[3rem_minmax(0,1fr)] items-baseline gap-x-2 rounded-md py-2 no-underline",
+          "grid min-h-12 min-w-0 flex-1 grid-cols-[3rem_minmax(0,1fr)] items-baseline gap-x-2 rounded-md py-2 no-underline",
         )}
       >
         <span className="text-xs font-bold text-[color:var(--work-ink)] nums">{item.time ?? "All day"}</span>
@@ -636,6 +760,19 @@ function ItemRow({ item, testId }: { readonly item: MainCalendarItem; readonly t
           </span>
         </span>
       </Link>
+      {exportable ? (
+        <button
+          type="button"
+          onClick={(click) => onAdd(item, click.currentTarget)}
+          aria-label={`Add ${item.title} to your calendar`}
+          className={cn(
+            focusRing,
+            "grid size-12 shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] hover:bg-[color:var(--work-wash)] hover:text-[color:var(--work-ink)]",
+          )}
+        >
+          <CalendarPlus aria-hidden="true" className="size-4" />
+        </button>
+      ) : null}
     </li>
   );
 }
@@ -644,10 +781,12 @@ function DayPanel({
   date,
   today,
   items,
+  onAdd,
 }: {
   readonly date: string;
   readonly today: string;
   readonly items: readonly MainCalendarItem[];
+  readonly onAdd: AddHandler;
 }) {
   return (
     <section className="grid gap-1.5" aria-label={formatZonedLongDay(date, today)} data-testid="my-day-calendar-day">
@@ -662,11 +801,11 @@ function DayPanel({
           role="list"
           className={cn(
             quietCard,
-            "m-0 grid list-none px-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]",
+            "m-0 grid list-none py-0 pr-1 pl-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]",
           )}
         >
           {items.map((item) => (
-            <ItemRow key={item.key} item={item} testId={`my-day-calendar-item-${item.key}`} />
+            <ItemRow key={item.key} item={item} testId={`my-day-calendar-item-${item.key}`} onAdd={onAdd} />
           ))}
         </ul>
       ) : (
@@ -686,10 +825,12 @@ function MonthList({
   month,
   today,
   items,
+  onAdd,
 }: {
   readonly month: string;
   readonly today: string;
   readonly items: readonly MainCalendarItem[];
+  readonly onAdd: AddHandler;
 }) {
   const first = today.startsWith(month) ? today : `${month}-01`;
   const days = monthWeeks(month)
@@ -721,15 +862,68 @@ function MonthList({
             role="list"
             className={cn(
               quietCard,
-              "m-0 grid list-none px-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]",
+              "m-0 grid list-none py-0 pr-1 pl-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]",
             )}
           >
             {list.map((item) => (
-              <ItemRow key={item.key} item={item} />
+              <ItemRow key={item.key} item={item} onAdd={onAdd} />
             ))}
           </ul>
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Getting the calendar into Outlook, Google or Apple: the shown month as a
+ * file (it stays on this device until the reader opens it), and the private
+ * link that keeps their calendar app up to date by itself.
+ */
+function CalendarExport({
+  month,
+  items,
+  example,
+  onDownload,
+}: {
+  readonly month: string;
+  readonly items: readonly MainCalendarItem[];
+  readonly example: boolean;
+  readonly onDownload: (events: ReturnType<typeof calendarExportEvents>) => void;
+}) {
+  const events = calendarExportEvents(items);
+  const kept = items.length - events.length;
+  return (
+    <section
+      className="grid gap-1.5"
+      aria-labelledby="my-day-calendar-export-title"
+      data-testid="my-day-calendar-export"
+    >
+      <div className="px-1">
+        <QuietLabel as="h2" id="my-day-calendar-export-title" title="Add to Outlook, Google or Apple" />
+      </div>
+      <div className={cn(quietCard, "grid gap-3 px-3 py-3")}>
+        <p className="m-0 text-sm text-[color:var(--text-muted)]">
+          Tap the calendar button beside any item to add just that one, or save the whole month as a calendar file that
+          Outlook, Google and Apple Calendar all open.
+          {kept > 0 ? " Your reminders and Admin requests stay in the app." : ""}
+        </p>
+        <div>
+          <Button
+            variant="secondary"
+            disabled={!events.length}
+            onClick={() => onDownload(events)}
+            data-testid="my-day-calendar-download"
+          >
+            <Download aria-hidden="true" className="size-4" />
+            {`Download ${monthTitle(month)}`}
+          </Button>
+        </div>
+        {example ? (
+          <p className="m-0 text-xs text-[color:var(--text-muted)]">Example data can&apos;t be exported.</p>
+        ) : null}
+      </div>
+      <CalendarSubscribe testId="my-day-calendar-subscribe" />
+    </section>
   );
 }

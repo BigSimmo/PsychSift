@@ -12,7 +12,8 @@ import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
  * SUBSCRIBE — a private link the owner's own calendar app (Google, Outlook,
  * Apple) reads every few hours, so CME deadlines, routines, their On Call
  * teaching list and the Teaching sessions they chose to add appear there
- * without exporting again. See `@/lib/calendar/feed-repository` for exactly
+ * without exporting again, along with rotations, booked courses and (when
+ * turned on in Roster settings) shifts. See `@/lib/calendar/feed-repository` for exactly
  * what a feed carries.
  *
  * The link is shown once, straight after it is made: only a hash of it is
@@ -118,10 +119,11 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
         Keep your calendar up to date automatically
       </h2>
       <p className={cn(textMuted, "mt-1 text-sm")}>
-        One private link keeps Google, Outlook or Apple Calendar up to date with your CPD deadlines, routines and
-        teaching sessions, including Teaching sessions you chose to add. Cancelled sessions show as cancelled. It never
-        includes your logged activities, attendance, join links, personal entries or anything about patients. Anyone
-        with the link can see those dates, so keep it to yourself.
+        One private link keeps Google, Outlook or Apple Calendar up to date with your CPD deadlines and routines,
+        teaching sessions (including Teaching sessions you chose to add), rotations, booked courses and, once you turn
+        them on in Roster settings, your shifts. Cancelled sessions and courses show as cancelled. It never includes
+        your logged activities, attendance, join links, personal entries or anything about patients. Anyone with the
+        link can see those dates, so keep it to yourself.
       </p>
 
       {status === "loading" ? (
