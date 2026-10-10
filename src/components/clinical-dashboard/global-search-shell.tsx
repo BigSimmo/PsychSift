@@ -878,7 +878,9 @@ function GlobalStandaloneSearchShellBody({
 
     const onScrollCapture = (event: Event) => {
       const target = event.target;
-      if (!(target instanceof HTMLElement) || !main.contains(target)) return;
+      // The shell's own scroll is already reported by `handleMainScroll`;
+      // reporting it again here measured the chrome twice per scroll frame.
+      if (!(target instanceof HTMLElement) || target === main || !main.contains(target)) return;
       if (target.scrollHeight <= target.clientHeight + 1) return;
       reportChromeScrollHideRef.current({
         offset: target.scrollTop,
