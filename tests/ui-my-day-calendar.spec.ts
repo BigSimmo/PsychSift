@@ -135,8 +135,10 @@ test("switches to the list and back, filters an area, and opens Add to your cale
   await expect(roster).toHaveAttribute("aria-pressed", "true");
   await expect(shift).toBeVisible();
 
-  // The add button sits beside the item's link, in the same row.
-  const add = calendar.locator("li", { has: shift }).getByRole("button", { name: /^Add .+ to your calendar$/ });
+  // The add button sits beside the item's link, in the same row. `has` is matched inside each row,
+  // so it takes a page-rooted locator rather than one that starts from the calendar.
+  const row = calendar.locator("li", { has: page.getByTestId(`my-day-calendar-item-shift:${recent.id}`) });
+  const add = row.getByRole("button", { name: /^Add .+ to your calendar$/ });
   await add.click();
   const sheet = visibleByTestId(page, "my-day-calendar-add-sheet");
   await expect(sheet).toBeVisible();
