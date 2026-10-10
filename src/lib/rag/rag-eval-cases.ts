@@ -185,7 +185,9 @@ const foldDashes = (text: string) =>
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // A required fact does not count when it is directly negated ("do not stop clozapine"), and a
 // forbidden claim does not count when it is being corrected ("it is not true that ibuprofen is safe").
-const negatedLeadIn = /\b(?:do not|don't|never|must not|should not)\s+(?:[a-z]+\s+)?$/;
+// Only an adverb may sit between the negation and the fact ("do not abruptly stop"), so "do not
+// delay stopping" still counts as the stop instruction.
+const negatedLeadIn = /\b(?:do not|don't|never|must not|should not|no need to)\s+(?:[a-z]+ly\s+)?$/;
 // Only an explicit correction frame counts, so an unrelated "not" earlier in the clause cannot hide the claim.
 const correctedLeadIn =
   /\b(?:(?:is|it's) not (?:true|correct|the case)|(?:is|it's) (?:a myth|false|incorrect|wrong)|myth)(?: that)?\s+$/;
@@ -251,11 +253,18 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
   const fragmentPattern = /\b(?:anyMANAGEMENT|\w+\d+(?:,\d+)+)\b|[?]\s+(?:monitoring|adverse effects)\b/i;
   const unsupported = answer.confidence === "unsupported" || answer.grounded === false;
   const expectedClassOk = !testCase.expectedQueryClass || answer.queryClass === testCase.expectedQueryClass;
-  // High-risk cases (#ZZ4RAP) must cite a guideline that holds the quoted facts, not any document.
+  // High-risk cases (#ZZ4RAP) must cite the named guideline that holds the quoted facts. Exact title
+  // only: the wide alias tier would let any document with "lithium" in its title stand in.
   const expectedSourceCited =
     !testCase.requiredConceptGroups?.length ||
     !testCase.expectedFiles.length ||
-    expectedFileCoverage(testCase.expectedFiles, answer.citations, answer.citations.length).anyHit;
+    testCase.expectedFiles.some((expected) =>
+      answer.citations.some((citation) =>
+        normalizedDocumentName(`${citation.title ?? ""} ${citation.file_name ?? ""}`).includes(
+          normalizedDocumentName(expected),
+        ),
+      ),
+    );
   const relevanceOk = testCase.supported
     ? testCase.acceptSourceOnly
       ? // Diffuse question: a grounded synthesis OR a source-only/unsupported answer is acceptable,

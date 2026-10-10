@@ -585,6 +585,10 @@ describe("captured RAG eval cases", () => {
       expect(negated.score).toBe(0);
       expect(negated.reason).toContain("stop / discontinue / withhold / cease");
       expect(intent("Don’t stop clozapine; repeat the count immediately and tell the haematologist.").score).toBe(0);
+      expect(intent("No need to stop clozapine; repeat the count immediately and tell the haematologist.").score).toBe(
+        0,
+      );
+      expect(intent("Do not delay stopping clozapine; tell the haematologist immediately.").score).toBe(1);
     });
 
     it("does not count a forbidden claim the answer is correcting", () => {
@@ -618,6 +622,8 @@ describe("captured RAG eval cases", () => {
       const unrelated = relevanceWith({ document_id: "d1", title: "Pressure Injury Prevention and Management (FSH)" });
       expect(unrelated.score).toBe(0);
       expect(unrelated.reason).toBe("expected source not cited");
+      // A different lithium guideline is not the named source, even though the wide alias tier would accept it.
+      expect(relevanceWith({ document_id: "d3", title: "Lithium Clinical Guideline(EMHS)" }).score).toBe(0);
       expect(
         relevanceWith({ document_id: "d2", title: "Lithium Therapy - Initiation And Continuation Guideline(FSH)" })
           .score,
