@@ -5,6 +5,7 @@ import { isDangerSourceGovernanceMessage } from "@/lib/source-governance";
 import {
   documentExpectationAlternatives,
   expectedFileCoverage,
+  expectedFileNameMatch,
   normalizedDocumentName,
 } from "@/lib/eval-document-matching";
 import { ragProgrammeFixture, type RagProgrammeExpectation } from "@/lib/rag/rag-programme-eval";
@@ -183,8 +184,10 @@ const foldDashes = (text: string) =>
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // A required fact does not count when it is directly negated ("do not stop clozapine"), and a
 // forbidden claim does not count when it is being corrected ("it is not true that ibuprofen is safe").
-const negatedLeadIn = /\b(?:do not|don't|never|must not|should not)\s+(?:[a-z]+\s+)?$/;
-const correctedLeadIn = /\b(?:not|incorrect|false|wrong|never|myth)\b[^.,;:!?]{0,30}$/;
+const negatedLeadIn =
+  /\b(?:do not|don't|never|must not|should not)\s+(?:(?:advise|tell|instruct|recommend)\s+(?:[a-z]+\s+){0,3})?$/;
+const correctedLeadIn =
+  /\b(?:not|incorrect|false|wrong|never|myth)\b(?!\s+only\b)(?:(?!\bbut\b)[^.,;:!?]){0,30}$/;
 
 // Word start only, so "continue" never matches inside "discontinue"; the end stays open for plurals ("NSAIDs").
 // An occurrence counts only when the text just before it does not match `excludedLeadIn`.
@@ -251,7 +254,7 @@ export function scoreAnswerQualityEvalCase(testCase: AnswerQualityEvalCase, answ
   const expectedSourceCited =
     !testCase.requiredConceptGroups?.length ||
     !testCase.expectedFiles.length ||
-    expectedFileCoverage(testCase.expectedFiles, answer.citations, answer.citations.length).anyHit;
+    expectedFileNameMatch(testCase.expectedFiles, answer.citations, answer.citations.length);
   const relevanceOk = testCase.supported
     ? testCase.acceptSourceOnly
       ? // Diffuse question: a grounded synthesis OR a source-only/unsupported answer is acceptable,

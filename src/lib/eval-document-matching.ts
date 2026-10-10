@@ -96,6 +96,8 @@ const clinicalDocumentAliases: Record<string, string[]> = {
   Sertraline: ["Sertraline"],
 };
 
+type ExpectedCoverageSource = Pick<SearchResult, "file_name" | "title"> & Partial<Pick<SearchResult, "document_id">>;
+
 export function documentExpectationAlternatives(expectation: string) {
   const normalizedExpectation = normalizedDocumentName(expectation);
   const compactExpectation = normalizedExpectation.replace(/\s+/g, "");
@@ -108,7 +110,16 @@ export function documentExpectationAlternatives(expectation: string) {
   return Array.from(new Set([expectation, ...aliasValues].map(normalizedDocumentName).filter(Boolean)));
 }
 
-type ExpectedCoverageSource = Pick<SearchResult, "file_name" | "title"> & Partial<Pick<SearchResult, "document_id">>;
+// High-risk answer checks must identify the named guidance itself, rather than the wider
+// captured-case alias set used by expectedFileCoverage.
+export function expectedFileNameMatch(expectedFiles: string[], sources: ExpectedCoverageSource[], limit = 3) {
+  const expectedNames = expectedFiles.map((file) => normalizedDocumentName(file).replace(/\s+pdf$/, ""));
+  return sources.slice(0, limit).some((source) =>
+    [source.title, source.file_name].some((name) =>
+      expectedNames.includes(normalizedDocumentName(name).replace(/\s+pdf$/, "")),
+    ),
+  );
+}
 
 function resultDocumentText(source: ExpectedCoverageSource) {
   return normalizedDocumentName(`${source.title} ${source.file_name}`);
