@@ -713,6 +713,8 @@ function SupervisionBody({
   const waiting = useMemo(() => pendingConfirmations(pairings), [pairings]);
   const waitingIds = useMemo(() => new Set(waiting.map((item) => item.id)), [waiting]);
   const supervising = pairings.some((p) => p.access === "supervisor" && !p.readOnlyUntil);
+  // The page draws in Teaching's frame (item "supervision") and is Assessments' Registrar tab.
+  useModeBandCount("supervision", supervising ? waiting.length : null);
   useModeBandCount("assess-supervision", supervising ? waiting.length : null);
   if (!pairings.length)
     return (

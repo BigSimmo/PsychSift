@@ -275,8 +275,10 @@ export function peopleAndRolesHref(hospitalId: string | null): string {
 const ASSESSMENTS_IN_CLA = "Real records are kept in CLA";
 export const SUPERVISOR_INBOX_HREF = "/teaching/assessments?view=inbox&as=supervisor";
 export const SUPERVISOR_TIMES_HREF = "/teaching/assessments?view=times&as=supervisor";
-export const TERM_OVERVIEW_HREF = "/teaching/assessments?view=overview&as=supervisor";
+export const TERM_OVERVIEW_HREF = "/teaching/assessments?view=overview&as=dct";
 export const NEW_STARTERS_HREF = "/admin/workforce";
+/** The one supervisor task PsychSift holds for real: confirming a registrar's supervision hours. */
+export const REGISTRAR_SUPERVISION_HREF = "/teaching/supervision";
 
 /* ------------------------------------------------------------- sections */
 
@@ -567,6 +569,13 @@ export function hospitalSections(
       title: WORK_ROLE_LABEL.supervisor,
       note: supervisorCoverLine(grants),
       links: [
+        {
+          id: "supervision",
+          label: "Registrar supervision",
+          sub: "Hours to confirm",
+          href: REGISTRAR_SUPERVISION_HREF,
+          icon: "times",
+        },
         {
           id: "inbox",
           label: "Assessments inbox",

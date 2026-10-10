@@ -45,8 +45,8 @@ export const adminTopic: WorkHelpTopic = {
     {
       id: "useful-numbers",
       q: "Where are the crisis lines and other useful numbers?",
-      a: "Open Help from More. Crisis lines are always at the top. Pin a number you use often and it also shows on Today.",
-      link: { label: "Help", href: "/admin/help" },
+      a: "Open Numbers from More. Crisis lines are always at the top. Pin a number you use often and it also shows on Today.",
+      link: { label: "Numbers", href: "/admin/help" },
     },
   ],
   setUp: [
