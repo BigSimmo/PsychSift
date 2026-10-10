@@ -1814,6 +1814,19 @@ a.work-hero:focus-visible {
   border-radius: var(--radius-pill);
 }
 
+/* A primary fill is the area colour itself, so a ring in the same colour would
+   vanish where it crosses the pill. Draw it around the pill instead, with a
+   surface gap. The transparent outline still shows in forced colours. */
+.work-button[data-variant="primary"]:focus-visible {
+  outline-color: transparent;
+}
+
+.work-button[data-variant="primary"]:focus-visible::before {
+  box-shadow:
+    0 0 0 2px var(--work-surface),
+    0 0 0 4px var(--mode-identity);
+}
+
 .work-button:disabled,
 .work-button[aria-disabled="true"] {
   cursor: not-allowed;
