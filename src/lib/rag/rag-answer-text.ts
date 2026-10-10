@@ -188,8 +188,10 @@ function normalizeGenericMedicationCase(value: string) {
   return normalized;
 }
 
+// "e.g." and "i.e." stay inside their sentence; splitting there printed "(e. g." and let the
+// fragment filters drop the examples that followed (#ZZ4RAP).
 function answerSentenceFragments(value: string) {
-  return value.match(/(?:\d+\.\d+|[^.!?])+[.!?]?/g) ?? [value];
+  return value.match(/(?:\d+\.\d+|\b[Ee]\.[Gg]\.|\b[Ii]\.[Ee]\.|[^.!?])+[.!?]?/g) ?? [value];
 }
 
 function removeOrphanAnswerHeadings(value: string) {

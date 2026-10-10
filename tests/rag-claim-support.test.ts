@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  claimRestatesSourceVerbatim,
   assessAndEnforceClaimSupport,
   assessClaimSupport,
   enforceLabelledNumericBandCoherence,
@@ -1938,5 +1939,193 @@ describe("deterministic claim support", () => {
     const result = assessAndEnforceClaimSupport(input);
     expect(result.responseMode).toBe("comparison_matrix");
     expect(result.supportedClaims?.[0]?.supportStatus).toBe("direct");
+  });
+});
+
+describe("high-risk answer support (#ZZ4RAP)", () => {
+  // Captured live from Lithium Therapy - Initiation And Continuation Guideline (FSH), PDF wrapping kept.
+  const nsaid = source(
+    "lithium-nsaid",
+    [
+      "• NSAIDs: (e.g. ibuprofen) can reduce lithium clearance and therefore",
+      "increase lithium levels and the risk of toxicity. Avoid the combination where",
+      "possible. Low dose aspirin is safe to use.",
+      "",
+      "• Serotonergic drugs: Lithium can contribute to serotonin toxicity, therefore",
+      "patients who are prescribed combinations of serotonergic drugs should be",
+      "closely monitored",
+    ].join("\n"),
+  );
+
+  it.each([
+    [
+      "the source sentence restated word for word",
+      "NSAIDs such as ibuprofen can reduce lithium clearance and therefore increase lithium levels and the risk of toxicity.",
+      true,
+    ],
+    [
+      "a combination warning naming the medicines from the sentence before it",
+      "Avoid ibuprofen where possible in someone taking lithium.",
+      true,
+    ],
+    ["a medicine named only after the warning", "Avoid aspirin where possible in someone taking lithium.", false],
+    [
+      "a restatement that drops the end of the sentence",
+      "NSAIDs such as ibuprofen can reduce lithium clearance and therefore increase lithium levels.",
+      false,
+    ],
+    ["a restatement that starts mid-sentence", "Increase lithium levels and the risk of toxicity.", false],
+  ] as const)("%s", (_label, claim, supported) => {
+    expect(sourceDirectlySupportsAnswerText(claim, nsaid)).toBe(supported);
+  });
+
+  it("lends 'the combination' only the medicines of the sentence before it", () => {
+    const safeFirst = source(
+      "safe-first",
+      "Low dose aspirin is safe to use. NSAIDs (e.g. ibuprofen) can reduce lithium clearance and therefore increase lithium levels. Avoid the combination where possible.",
+    );
+    expect(sourceDirectlySupportsAnswerText("Avoid aspirin where possible in someone taking lithium.", safeFirst)).toBe(
+      false,
+    );
+    expect(
+      sourceDirectlySupportsAnswerText("Avoid ibuprofen where possible in someone taking lithium.", safeFirst),
+    ).toBe(true);
+  });
+
+  it("keeps a verbatim match inside one source sentence", () => {
+    const twoSentences = source(
+      "two-sentences",
+      "Stop lithium therapy straight away. When toxicity is suspected, obtain an urgent medical review.",
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Stop lithium therapy straight away when toxicity is suspected, obtain an urgent medical review.",
+        twoSentences,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not let a verbatim match change a unit or exponent", () => {
+    const units = source(
+      "units",
+      "Stop clozapine therapy immediately if the white cell count falls below 3.0 × 10⁹/L on repeat testing.",
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Stop clozapine therapy immediately if the white cell count falls below 3.0 × 10³/L on repeat testing.",
+        units,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not start a verbatim match at a block that continues a colon-led condition", () => {
+    const conditional = source(
+      "conditional",
+      [
+        "If the eGFR falls below 30 mL/min:",
+        "",
+        "Stop lithium and contact the treating psychiatrist urgently today.",
+      ].join("\n"),
+    );
+    expect(
+      claimRestatesSourceVerbatim("Stop lithium and contact the treating psychiatrist urgently today.", conditional),
+    ).toBe(false);
+  });
+
+  it("keeps the direction check on 'a risk of increased/decreased'", () => {
+    const direction = source("direction", "NSAIDs carry a risk of increased lithium levels in older patients.");
+    expect(
+      sourceDirectlySupportsAnswerText("NSAIDs carry a risk of decreased lithium levels in older patients.", direction),
+    ).toBe(false);
+  });
+
+  it("keeps the direction of a listed finding", () => {
+    const finding = source(
+      "finding",
+      "Signs of toxicity: increased lithium levels in older patients after dehydration.",
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Signs of toxicity: reduced lithium levels in older patients after dehydration.",
+        finding,
+      ),
+    ).toBe(false);
+  });
+
+  it("binds a finding's direction to the finding it modifies", () => {
+    const mixed = source("mixed", "Signs of toxicity: increased muscle tone, reduced consciousness and coarse tremor.");
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Signs of toxicity: reduced muscle tone, increased consciousness and coarse tremor.",
+        mixed,
+      ),
+    ).toBe(false);
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Signs of toxicity: increased muscle tone, reduced consciousness and coarse tremor.",
+        mixed,
+      ),
+    ).toBe(true);
+  });
+
+  it("verifies a toxicity list heading stated with one of its bullets, keeping direction", () => {
+    const contributors = source(
+      "contributors",
+      [
+        "The most significant contributors to lithium toxicity are:",
+        "",
+        "• reduced fluid or salt intake",
+        "",
+        "• fluid loss from vomiting, diarrhoea or excessive sweating.",
+      ].join("\n"),
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "The most significant contributors to lithium toxicity include reduced fluid or salt intake.",
+        contributors,
+      ),
+    ).toBe(true);
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "The most significant contributors to lithium toxicity include increased fluid or salt intake.",
+        contributors,
+      ),
+    ).toBe(false);
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "The most significant contributors to lithium toxicity include reduced fluid or salt intake.",
+        source("action", "If lithium toxicity is suspected:\n• reduced fluid or salt intake"),
+      ),
+    ).toBe(false);
+  });
+
+  it("does not let a verbatim match drop a leading negation", () => {
+    const negated = source("negated", "Do not stop clozapine therapy until the haematologist has reviewed the result.");
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Stop clozapine therapy until the haematologist has reviewed the result.",
+        negated,
+      ),
+    ).toBe(false);
+  });
+
+  it("reads a listed finding such as 'increased muscle tone' as a finding, not a change relation", () => {
+    const toxicity = source(
+      "lithium-toxicity",
+      [
+        "• Signs and symptoms of severe toxicity:",
+        "o Increased muscle tone, hyperreflexia, myoclonic jerks, coarse tremor, dysarthria,",
+        "disorientation, psychosis, seizures, coma, QT-interval prolongation and death.",
+      ].join("\n"),
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Signs and symptoms of severe toxicity include increased muscle tone, hyperreflexia, myoclonic jerks, coarse tremor, dysarthria, disorientation, psychosis, seizures, coma, QT-interval prolongation and death.",
+        toxicity,
+      ),
+    ).toBe(true);
+    // A real change relation is still checked for direction.
+    const relation = source("relation", "Dehydration increased lithium levels.");
+    expect(sourceDirectlySupportsAnswerText("Lithium levels increased dehydration.", relation)).toBe(false);
   });
 });
