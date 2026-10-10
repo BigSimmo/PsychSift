@@ -7,7 +7,12 @@ import { WorkButton, WorkCard, WorkIconRow, WorkSectionLabel, useWorkUndoToast }
 import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { controlDisabled } from "@/components/ui-primitives";
 import { fetchRosterRead, postRosterAction, useRosterRead } from "@/components/roster/use-roster-team";
-import type { RosterMaker, RosterOverview, RosterStaffingNeedInput } from "@/lib/roster/team/model";
+import {
+  ROSTER_MAX_STAFFING_NEEDS,
+  type RosterMaker,
+  type RosterOverview,
+  type RosterStaffingNeedInput,
+} from "@/lib/roster/team/model";
 import {
   SAFE_NUMBER_GROUPS,
   SAFE_NUMBER_KINDS,
@@ -148,9 +153,32 @@ function Editor({
     return false;
   }
 
-  // Undo puts back only this editor's numbers, over a fresh read, so a need another manager set
-  // between the save and the Undo is kept.
-  async function undo(previous: SafeNumberGrid) {
+  function mergeChangedNumbers(
+    base: SafeNumberGrid,
+    next: SafeNumberGrid,
+    against: SafeNumberGrid,
+  ): SafeNumberGrid {
+    return {
+      day: base.day.map((value, index) => (next.day[index] !== against.day[index] ? next.day[index] : value)),
+      evening: base.evening.map((value, index) =>
+        next.evening[index] !== against.evening[index] ? next.evening[index] : value,
+      ),
+      night: base.night.map((value, index) => (next.night[index] !== against.night[index] ? next.night[index] : value)),
+    };
+  }
+
+  function listFor(gridToSave: SafeNumberGrid, needs: RosterMaker["needs"]): RosterStaffingNeedInput[] | null {
+    const list = safeNumberNeeds(gridToSave, needs);
+    if (list.length > ROSTER_MAX_STAFFING_NEEDS) {
+      failed("This team has reached its 2,000 cover-need limit. Remove another cover need, then try again.");
+      return null;
+    }
+    return list;
+  }
+
+  // Undo changes only cells saved by this editor. A later edit to one of those
+  // cells is a conflict, not something this editor may silently overwrite.
+  async function undo(previous: SafeNumberGrid, saved: SafeNumberGrid) {
     setState({ kind: "saving" });
     const fresh = await fetchRosterRead(serviceId, "maker");
     if (!fresh.ok) {
@@ -158,8 +186,18 @@ function Editor({
       else failed(fresh.message);
       return;
     }
-    if (!(await send(safeNumberNeeds(previous, fresh.data.needs)))) return;
-    setConfirmed(previous);
+    const current = safeNumberGrid(fresh.data.needs);
+    const conflict = SAFE_NUMBER_KINDS.some((kind) =>
+      saved[kind].some((value, index) => value !== previous[kind][index] && current[kind][index] !== value),
+    );
+    if (conflict) {
+      failed("This safe number changed since it was saved. Refresh and try again before undoing.");
+      return;
+    }
+    const reverted = mergeChangedNumbers(current, previous, saved);
+    const list = listFor(reverted, fresh.data.needs);
+    if (!list || !(await send(list))) return;
+    setConfirmed(reverted);
     setDraft(null);
     setOthers(otherNeedCount(fresh.data.needs));
     setState({ kind: "idle" });
@@ -181,14 +219,17 @@ function Editor({
       return;
     }
     const previous = safeNumberGrid(fresh.data.needs);
-    const saved = grid;
-    if (!(await send(safeNumberNeeds(saved, fresh.data.needs)))) return;
+    // Overlay only cells this editor changed since its initial confirmation.
+    // Other managers' edits in the freshly-read grid are left intact.
+    const saved = mergeChangedNumbers(previous, grid, confirmed);
+    const list = listFor(saved, fresh.data.needs);
+    if (!list || !(await send(list))) return;
     setConfirmed(saved);
     setDraft(null);
     setOthers(otherNeedCount(fresh.data.needs));
     setState({ kind: "saved" });
     onSaved?.();
-    toast?.("Safe number saved", () => void undo(previous));
+    toast?.("Safe number saved", () => void undo(previous, saved));
   }
 
   const rows = perDay
