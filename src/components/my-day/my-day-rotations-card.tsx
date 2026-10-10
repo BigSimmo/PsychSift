@@ -32,9 +32,7 @@ export function MyDayRotationsCard({ now }: { readonly now: Date }) {
         title={prompt.title}
         sub={prompt.sub}
         href={rotationRoundHref(prompt.roundId)}
-        end={
-          <WorkTag tone={rank ? "amber" : "green"}>{rank ? "Open" : "New"}</WorkTag>
-        }
+        end={<WorkTag tone={rank ? "amber" : "green"}>{rank ? "Open" : "New"}</WorkTag>}
       />
     </WorkCard>
   );

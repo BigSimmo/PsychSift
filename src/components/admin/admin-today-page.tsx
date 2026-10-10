@@ -18,7 +18,6 @@ import { TodayRenewNextCard } from "@/components/admin/today/today-renew-next-ca
 import { TodayOvertimeRow, TodayRequirementsModule } from "@/components/admin/today/today-requirements-module";
 import { TodayStarred } from "@/components/admin/today/today-starred";
 import { PageTitleUnderBand, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
-import { ModeNotice } from "@/components/mode-kit/notice";
 import { todayStateCopy } from "@/components/mode-kit/today/today-copy";
 import { WorkButton, WorkCard, WorkDock, WorkIconCircle } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";

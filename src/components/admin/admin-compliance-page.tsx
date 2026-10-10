@@ -13,7 +13,6 @@ import {
 } from "@/components/admin/admin-status-tag";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
-import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkButton, WorkCard, WorkChip, WorkDock, WorkEmpty, WorkIconCircle } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import {

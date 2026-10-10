@@ -1181,9 +1181,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 </div>
               ) : nextUp.length > 0 || loading ? (
                 <section className="grid gap-2">
-                  <SectionLabel id="work-search-next">
-                    Next up
-                  </SectionLabel>
+                  <SectionLabel id="work-search-next">Next up</SectionLabel>
                   {nextUp.length > 0 ? (
                     <ListCard labelledBy="work-search-next" onKeyDown={(event) => moveFocus(event, inputRef)}>
                       {nextUp.map((item) => (

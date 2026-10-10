@@ -30,7 +30,7 @@ export function HospitalRolesCard() {
   if (roles.status !== "ready" || roles.grants.length === 0) return null;
   const hospital = hospitalsCovered(roles.grants)[0] ?? null;
   const rows = hospitalCardRows(roles.grants, hospital?.id ?? null);
-  return <CardView rows={rows} example={false} />;
+  return <CardView rows={rows} />;
 }
 
 function ExampleCard() {
@@ -38,17 +38,14 @@ function ExampleCard() {
   if (read.status !== "ready") return null;
   const hospital = hospitalsCovered(read.data.grants)[0] ?? null;
   const rows = hospitalCardRows(read.data.grants, hospital?.id ?? null, exampleTeamNames(read.data));
-  return <CardView rows={rows} example />;
+  return <CardView rows={rows} />;
 }
 
-function CardView({ rows, example }: { readonly rows: readonly HospitalCardRow[]; readonly example: boolean }) {
+function CardView({ rows }: { readonly rows: readonly HospitalCardRow[] }) {
   if (rows.length === 0) return null;
   return (
     <section aria-labelledby="hospital-roles-card-label" className="contents" data-testid="hospital-roles-card">
-      <WorkSectionLabel
-        id="hospital-roles-card-label"
-        action={{ label: "Open", href: HOSPITAL_HUB_HREF }}
-      >
+      <WorkSectionLabel id="hospital-roles-card-label" action={{ label: "Open", href: HOSPITAL_HUB_HREF }}>
         Hospital
       </WorkSectionLabel>
       <WorkCard>

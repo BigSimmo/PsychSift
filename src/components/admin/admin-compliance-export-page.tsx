@@ -9,7 +9,6 @@ import { focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
-import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkButton, WorkChip, WorkDock, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { announce } from "@/components/ui/live-announcer";
@@ -153,7 +152,6 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
         </>
       ) : (
         <div className="grid min-w-0 gap-5" data-testid="admin-compliance-export-ready">
-
           <section className={cn("work-card", adminStyles.exportFile)} aria-labelledby="export-preview">
             <div className="work-row">
               <WorkIconCircle icon={FileSpreadsheet} />

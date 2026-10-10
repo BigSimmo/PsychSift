@@ -40,11 +40,7 @@ import {
 import { cn } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 import type { HealthServiceCode } from "@/lib/teaching/model";
-import {
-  useSignedOutSampleRead,
-  useTeachingDemoMode,
-  useTeachingSignedOut,
-} from "@/components/teaching/use-teaching-sample";
+import { useSignedOutSampleRead, useTeachingSignedOut } from "@/components/teaching/use-teaching-sample";
 
 /*
  * What's on (spec §5a): the reader's health service's week, "On now" first
@@ -59,14 +55,7 @@ import {
  */
 type WhatsOnRead = { healthServices: HealthServiceCode[]; sessions: WhatsOnRowRead[] };
 
-export function TeachingWhatsOn({
-  demoMode: serverDemoMode,
-  sampleData: serverSample,
-}: {
-  demoMode: boolean;
-  sampleData?: WhatsOnRead;
-}) {
-  const demoMode = useTeachingDemoMode(serverDemoMode);
+export function TeachingWhatsOn({ sampleData: serverSample }: { demoMode: boolean; sampleData?: WhatsOnRead }) {
   const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;

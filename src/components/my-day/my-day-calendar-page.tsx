@@ -466,7 +466,6 @@ function CalendarBody({
         month={month}
         // The whole month, whatever areas are hidden on screen.
         items={all.filter((item) => item.start <= to && item.end >= from)}
-        example={example}
         updating={loading}
         onDownload={(events) => {
           if (loading || !guardExampleAction(example, "export")) return;
@@ -927,13 +926,11 @@ function MonthList({
 function CalendarExport({
   month,
   items,
-  example,
   updating,
   onDownload,
 }: {
   readonly month: string;
   readonly items: readonly MainCalendarItem[];
-  readonly example: boolean;
   /** True while the shown month is still loading, so a download can't miss part of it. */
   readonly updating: boolean;
   readonly onDownload: (events: ReturnType<typeof calendarExportEvents>) => void;
