@@ -99,13 +99,15 @@ jobs:
             });
             const ours = labelled.filter((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER));
             const open = ours.find((issue) => issue.state === "open") ?? null;
-            // The most recently closed one is read too, so closing the issue does not make the
-            // next run re-report everything still inside the lookback window.
-            const lastClosed = ours.find((issue) => issue.state === "closed") ?? null;
+            // The last few closed ones are read too (the listing above is newest first), so closing
+            // the issue does not make the next run re-report everything still inside the lookback.
+            // `latest` decides the paused state: a paused alert closed while Sentry is still
+            // unreadable must not reopen as a fresh issue on every run.
+            const latest = open ?? ours.find((issue) => issue.state === "closed") ?? null;
 
             const reported = new Set();
             let lastCommentIsFailure = false;
-            for (const issue of [open, lastClosed].filter(Boolean)) {
+            for (const issue of ours) {
               const comments = await github.paginate(github.rest.issues.listComments, {
                 owner,
                 repo,
@@ -115,7 +117,7 @@ jobs:
               for (const comment of comments) {
                 for (const match of String(comment.body ?? "").matchAll(/<!-- sentry-issue:(\d+) -->/g)) reported.add(match[1]);
               }
-              if (issue === open) lastCommentIsFailure = String(comments.at(-1)?.body ?? "").includes(FAILURE_MARKER);
+              if (issue === latest) lastCommentIsFailure = String(comments.at(-1)?.body ?? "").includes(FAILURE_MARKER);
             }
 
             async function assignOwner(issueNumber) {
