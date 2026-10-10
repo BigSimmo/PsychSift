@@ -8,7 +8,7 @@ import { currentTerm, epaLabels, epaNumbers, epaSummary } from "@/lib/teaching/t
 /**
  * A signed-in doctor's count for each of the four EPAs this year, from the counts they log in Teaching. Reads only
  * this device's term tracker (backed up to their account), so nothing new is stored and no case detail is shown.
- * Hidden until at least one EPA is logged: the term card above already says how to start.
+ * Hidden until an EPA is logged this year: the term card above already gives the year's total and how to start.
  */
 export function AssessmentsEpaCounts({ today }: { today: string }) {
   const { state } = useTermTrackerStore(null);
@@ -32,8 +32,10 @@ export function AssessmentsEpaCounts({ today }: { today: string }) {
           </span>
           <span
             className={cn(
-              "shrink-0 text-sm tabular-nums",
-              byEpa[epa] ? "font-semibold text-[color:var(--text-heading)]" : "text-[color:var(--text-muted)]",
+              "shrink-0 text-sm",
+              byEpa[epa]
+                ? "font-bold tabular-nums text-[color:var(--text-heading)]"
+                : "font-normal tabular-nums text-[color:var(--text-muted)]",
             )}
           >
             {byEpa[epa]}
