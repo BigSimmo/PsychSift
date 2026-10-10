@@ -31,7 +31,9 @@
 import { isAdministratorAppMetadata } from "@/lib/authorization";
 
 export const WORK_MODE_PREFERENCE_COOKIE = "psychsift-work-mode";
-export const WORK_MODE_CLASSIC_PREFERENCE = "classic";
+// Version the opt-out value so a cookie from the pre-rollout switch is not
+// mistaken for an intentional choice made after the new screens launched.
+export const WORK_MODE_CLASSIC_PREFERENCE = "classic-v2";
 
 export type WorkModeLaunchSetting = "off" | "preview" | "everyone";
 
