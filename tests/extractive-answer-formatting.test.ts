@@ -8,6 +8,7 @@ import {
 import {
   buildExtractiveAnswer,
   classifyAnswerIntent,
+  toxicityListSentence,
   documentSupportListIntent,
   finalizeRagAnswerQuality,
   generatedAnswerQualityFailureReason,
@@ -3197,6 +3198,15 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
     }
   });
 
+  it("keeps monitoring and side-effect questions about two medicines on their own routes", () => {
+    for (const query of [
+      "What baseline monitoring is needed when switching from olanzapine to clozapine?",
+      "What are the side effects of olanzapine compared with clozapine?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).not.toBe("contraindication");
+    }
+  });
+
   it("does not treat 'with' + a condition as an interaction", () => {
     expect(
       classifyAnswerIntent(
@@ -3204,5 +3214,50 @@ describe("two-medicine interaction intent (#ZZ4RAP)", () => {
         "medication_dose_risk",
       ),
     ).not.toBe("contraindication");
+  });
+});
+
+describe("toxicity heading carry-over (owner decision, #ZZ4RAP)", () => {
+  const query = "What are the signs of lithium toxicity?";
+
+  it("ends a bullet list at the next heading even when bullets have no closing punctuation", () => {
+    const content = ["• Signs of mild toxicity:", "o Nausea", "• Signs of severe toxicity:", "o Seizures"].join("\n");
+    expect(toxicityListSentence("Signs of mild toxicity:", content, query)).toBe(
+      "Signs of mild toxicity include nausea.",
+    );
+    expect(toxicityListSentence("Signs of severe toxicity:", content, query)).toBe(
+      "Signs of severe toxicity include seizures.",
+    );
+    expect(
+      toxicityListSentence("Signs of mild toxicity:", content, "What are the signs of severe toxicity?"),
+    ).toBeNull();
+  });
+
+  it("reads a heading followed by a blank line and direct bullets, dropping the list verb", () => {
+    const content = [
+      "The most significant contributors to lithium toxicity are4:",
+      "",
+      "• reduced fluid or salt intake",
+      "",
+      "• fluid loss from vomiting, diarrhoea or excessive sweating.",
+      "",
+      "Toxicity may also be caused by overdose.",
+    ].join("\n");
+    expect(toxicityListSentence("The most significant contributors to lithium toxicity are4:", content, query)).toBe(
+      "The most significant contributors to lithium toxicity include reduced fluid or salt intake and fluid loss from vomiting, diarrhoea or excessive sweating.",
+    );
+    expect(
+      toxicityListSentence("Features of toxicity include:", "Features of toxicity include:\n• Tremor", query),
+    ).toBe("Features of toxicity include tremor.");
+  });
+
+  it("never carries an action heading over to its steps", () => {
+    expect(
+      toxicityListSentence(
+        "If lithium toxicity is suspected:",
+        "If lithium toxicity is suspected:\n• Withhold lithium",
+        query,
+      ),
+    ).toBeNull();
   });
 });

@@ -82,8 +82,12 @@ function isTwoMedicineInteractionQuery(query: string, normalized: string) {
   if (/\b(?:interact\w*|together|combin\w*|co-?prescrib\w*)\b/.test(normalized)) return true;
   // Owner decision (#ZZ4RAP): dosing, switching or mechanism questions about two named medicines get
   // the source's avoid/caution interaction guidance, not dose guidance.
+  // Monitoring, side-effect and comparison questions keep their own routes.
   if (
-    /\b(?:doses?|dosing|dosage|switch\w*|cross-?taper\w*|mechanism|affect\w*|effects?\s+(?:of|on))\b/.test(normalized)
+    /\b(?:doses?|dosing|dosage|switch\w*|cross-?taper\w*|mechanism|affect\w*|effects?\s+(?:of|on))\b/.test(
+      normalized,
+    ) &&
+    !/\b(?:monitor\w*|baseline|schedule|side[-\s]effects?|adverse|compar\w*|versus|vs)\b/.test(normalized)
   )
     return true;
   if (

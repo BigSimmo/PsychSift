@@ -2052,6 +2052,22 @@ describe("high-risk answer support (#ZZ4RAP)", () => {
     ).toBe(false);
   });
 
+  it("binds a finding's direction to the finding it modifies", () => {
+    const mixed = source("mixed", "Signs of toxicity: increased muscle tone, reduced consciousness and coarse tremor.");
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Signs of toxicity: reduced muscle tone, increased consciousness and coarse tremor.",
+        mixed,
+      ),
+    ).toBe(false);
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Signs of toxicity: increased muscle tone, reduced consciousness and coarse tremor.",
+        mixed,
+      ),
+    ).toBe(true);
+  });
+
   it("does not let a verbatim match drop a leading negation", () => {
     const negated = source("negated", "Do not stop clozapine therapy until the haematologist has reviewed the result.");
     expect(

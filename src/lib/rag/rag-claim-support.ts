@@ -540,31 +540,32 @@ function evidenceTextSupportsClaim(
 // "Increased muscle tone" or "reduced fluid intake" names a finding, not a change one thing makes to
 // another: a participle opening a clause or list item, or following a list joiner, modifies the noun
 // after it. Reading it as a relation made a verbatim list of toxicity signs unsupportable (#ZZ4RAP).
-function namesFindingNotChange(text: string, match: RegExpMatchArray) {
-  if (match.index === undefined || !/^(?:increased|decreased|reduced)$/.test(match[0])) return false;
+function namesFindingNotChange(text: string, match: RegExpMatchArray, participle = match[0]) {
+  if (match.index === undefined || !/^(?:increased|decreased|reduced)$/.test(participle)) return false;
   // A participle that takes an object and a value ("Reduced lithium to 300 mg") is still a change.
-  if (/^\s+[a-z]+(?:\s+[a-z]+)?\s+(?:to|by|from)\s+\d/.test(text.slice(match.index + match[0].length))) return false;
+  if (/^\s+[a-z]+(?:\s+[a-z]+)?\s+(?:to|by|from)\s+\d/.test(text.slice(match.index + participle.length))) return false;
   // Only a list position counts: "a risk of decreased lithium levels" keeps its direction check.
   return /(?:^|^o|[,:;(•-]|,\s*(?:and|or)|\b(?:include|includes|including|such as))\s*$/.test(
     text.slice(0, match.index),
   );
 }
 
-// A finding still has a direction: "Increased lithium levels" does not support "Reduced lithium
-// levels". Every finding direction the claim names must appear among the evidence's findings.
-function findingDirections(value: string, findingsOnly: boolean) {
+// A finding still has a direction, bound to the finding it modifies: "increased muscle tone" does not
+// support "reduced muscle tone", even when the evidence also says "reduced consciousness" or a heading
+// says "increased" elsewhere. Each (direction, finding) pair in the claim must appear in the evidence.
+function findingDirectionPairs(value: string, findingsOnly: boolean) {
   const text = cleanText(value).toLowerCase();
   return new Set(
-    [...text.matchAll(/\b(?:increased|decreased|reduced)\b/g)]
-      .filter((match) => !findingsOnly || namesFindingNotChange(text, match))
-      .map((match) => (match[0] === "increased" ? "up" : "down")),
+    [...text.matchAll(/\b(increased|decreased|reduced)\s+([a-z]+)/g)]
+      .filter((match) => !findingsOnly || namesFindingNotChange(text, match, match[1]))
+      .map((match) => `${match[1] === "increased" ? "up" : "down"}:${match[2]}`),
   );
 }
 
 function compatibleFindingDirections(claim: string, evidence: string) {
   // The evidence carries its title prefix, so count every participle it states, not only list-position ones.
-  const evidenceDirections = findingDirections(evidence, false);
-  return [...findingDirections(claim, true)].every((direction) => evidenceDirections.has(direction));
+  const evidencePairs = findingDirectionPairs(evidence, false);
+  return [...findingDirectionPairs(claim, true)].every((pair) => evidencePairs.has(pair));
 }
 
 // Relation words bind two arguments; their occurrence anywhere in a chunk does

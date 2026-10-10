@@ -1511,30 +1511,64 @@ const wordsOf = (text: string) => (text.toLowerCase().match(/[a-z0-9]+/g) ?? [])
 
 // A heading such as "Signs and symptoms of severe toxicity:" carries its toxicity context to the
 // bullets listed under it, up to the next colon-led heading (owner decision, #ZZ4RAP).
-// Sub-bullets ("o …", "- …") listed directly under a heading, with their wrapped lines. The list ends at
-// the first line that is neither a new sub-bullet nor the continuation of an unfinished one.
-function subBulletItemsAfter(lines: string[]) {
+// Bullets listed directly under a heading, with their wrapped lines. Blank lines between bullets are
+// skipped. The list ends at a new colon-led heading, a peer "•" bullet when the heading is itself a
+// "•" item, or text after a blank line or a finished item that is not a bullet.
+function bulletItemsAfter(lines: string[], headingIsBullet: boolean) {
+  const marker = headingIsBullet ? /^\s*[o\-–]\s+/ : /^\s*[•o\-–]\s+/;
   const items: string[] = [];
+  let sawBlank = false;
   for (const line of lines) {
-    if (/^\s*[o\-–]\s+/.test(line)) items.push(line.replace(/^\s*[o\-–]\s+/, ""));
-    else if (items.length > 0 && !/[.!?]\s*$/.test(items[items.length - 1])) items[items.length - 1] += ` ${line}`;
+    if (!line.trim()) {
+      sawBlank = true;
+      continue;
+    }
+    if (/:\s*$/.test(line) || (headingIsBullet && /^\s*•/.test(line))) break;
+    if (marker.test(line)) items.push(line.replace(marker, ""));
+    else if (items.length > 0 && !sawBlank && !/(?<!\b(?:e\.g|i\.e))[.!?]\s*$/i.test(items[items.length - 1]))
+      items[items.length - 1] += ` ${line}`;
     else break;
+    sawBlank = false;
   }
   return items;
 }
 
-function toxicityHeadingFor(sentence: string, content: string | null | undefined, query: string) {
+// Only a heading that introduces a list of signs, features or contributors carries over; an action
+// heading ("If lithium toxicity is suspected:") never turns its steps into a features list.
+const toxicityListHeadingPattern =
+  /\b(?:signs?|symptoms?|features?|presentation|risk factors?|contributors?|causes?)\b[^:]*\btoxic\w*[^:]*:\s*$/i;
+const toxicityActionHeadingPattern = /\b(?:if|when|suspected|manage\w*|action|steps?|withhold|escalat\w*)\b/i;
+
+const cleanToxicityHeading = (line: string) =>
+  // "…contributors to lithium toxicity are4:" → "…contributors to lithium toxicity".
+  line
+    .replace(/^[\s•]+/, "")
+    .replace(/\s*\d*\s*:\s*$/, "")
+    .replace(/\s+(?:include|includes|are|is)(?:\s+the\s+following)?\s*\d*$/i, "")
+    .trim();
+
+/**
+ * A toxicity list heading ("Signs and symptoms of severe toxicity:") stated with the bullets listed
+ * under it: "Signs and symptoms of severe toxicity include increased muscle tone, …". Null when the
+ * sentence is not such a heading, the heading is an action heading, or it names another severity.
+ */
+export function toxicityListSentence(sentence: string, content: string | null | undefined, query: string) {
+  if (!content || !/:\s*$/.test(sentence)) return null;
   // A question about one severity ("signs of severe toxicity") takes only that severity's list.
   const severities = query.toLowerCase().match(/\b(?:severe|mild|moderate)\b/g) ?? [];
-  const opening = wordsOf(sentence).split(" ").slice(0, 6).join(" ");
-  if (!content || !opening) return null;
+  const wanted = wordsOf(sentence);
   const lines = content.split("\n");
   for (const [index, line] of lines.entries()) {
-    if (!/\btoxic\w*[^\n]*:\s*$/i.test(line)) continue;
-    if (severities.length > 0 && !severities.some((severity) => line.toLowerCase().includes(severity))) continue;
-    if (subBulletItemsAfter(lines.slice(index + 1)).some((item) => wordsOf(item).startsWith(opening))) {
-      return line.replace(/^[\s•]+|:\s*$/g, "").trim();
-    }
+    if (!wanted || !wordsOf(line).endsWith(wanted)) continue;
+    if (!toxicityListHeadingPattern.test(line) || toxicityActionHeadingPattern.test(line)) return null;
+    if (severities.length > 0 && !severities.some((severity) => line.toLowerCase().includes(severity))) return null;
+    const items = bulletItemsAfter(lines.slice(index + 1), /^\s*•/.test(line)).map((item) =>
+      item.trim().replace(/[\s.;,]+$/, ""),
+    );
+    if (items.length === 0) return null;
+    const listed = items.map((item) => lowerFirst(item));
+    const joined = listed.length > 1 ? `${listed.slice(0, -1).join(", ")} and ${listed.at(-1)}` : listed[0];
+    return `${cleanToxicityHeading(line)} include ${joined}.`;
   }
   return null;
 }
@@ -1728,19 +1762,22 @@ function extractClinicalFactsFromResults(
       }
       // A toxicity-features question is answered only by text about toxicity; a dose cap or
       // titration note from the same chunk is not an answer to it (#ZZ4RAP).
-      // A colon-led lead-in ("…complete the following:") introduces a list; it is not itself an answer.
-      if (toxicityFeatureQuery && /:\s*$/.test(sentence)) continue;
-      if (toxicityFeatureQuery && !/\btoxic\w*/i.test(sentence)) {
-        const heading = toxicityHeadingFor(sentence, result.content, query);
-        if (!heading) continue;
-        // State the bullet under its heading: "Signs and symptoms of severe toxicity include increased muscle tone, …".
-        sentence = `${heading} include ${lowerFirst(sentence)}`;
+      if (toxicityFeatureQuery) {
+        // A toxicity list heading is stated with its bullets (owner decision); any other colon-led
+        // lead-in ("…complete the following:") introduces a list and is not itself an answer.
+        if (/:\s*$/.test(sentence)) {
+          const list = toxicityListSentence(sentence, result.content, query);
+          if (!list) continue;
+          sentence = list;
+        } else if (!/\btoxic\w*/i.test(sentence)) continue;
       }
       if (!factSentenceMatchesQueryFromResult(sentence, result, query, intent)) continue;
       const kind = factKindForSentence(sentence, query, intent);
       if (!kind) continue;
       if (!factSupportsAnswerIntent(kind, sentence, query, intent, sourceProseOnly)) continue;
-      const cleaned = sentence.length <= 280 ? sentence : `${sentence.slice(0, 277).trim()}...`;
+      // A stated toxicity list is never cut mid-list.
+      const cleaned =
+        sentence.length <= 280 || sentence !== rawSentence ? sentence : `${sentence.slice(0, 277).trim()}...`;
       const key = `${kind}:${normalizeSectionText(cleaned).toLowerCase().slice(0, 160)}`;
       if (seen.has(key)) continue;
       seen.add(key);

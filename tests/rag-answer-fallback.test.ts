@@ -8831,6 +8831,8 @@ describe("high-risk answer recovery (#ZZ4RAP)", () => {
       forceGenerationRoute: true,
     });
     expect(visibleText(backup)).not.toMatch(/2500\s*mg|For make|individualised/i);
+    // A contributors list stitched from separate bullets is never shown unless claim support verifies it.
+    expect(visibleText(backup)).not.toMatch(/blockers\) reduced fluid|intake fluid loss/i);
   });
 
   it("keeps the haematologist step in the source-bound clozapine red-range answer", async () => {
