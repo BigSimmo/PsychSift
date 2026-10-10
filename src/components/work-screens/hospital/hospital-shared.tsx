@@ -9,6 +9,7 @@ import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
 import { usePaperworkHeading } from "@/components/work-screens/admin/paperwork-shared";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { useExampleData } from "@/lib/example-data/store";
 import { useOnlineStatus } from "@/lib/use-online-status";
@@ -144,22 +145,24 @@ export type HospitalShortStaffedRead =
 
 /** One hospital's short-staffed days. Off without a hospital. */
 export function useHospitalShortStaffed(hospitalId: string | null): HospitalShortStaffedRead {
+  const { zone } = useWorkTimeZone();
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<{ readonly key: string; readonly outcome: HospitalShortStaffedOutcome } | null>(
     null,
   );
-  const key = useHospitalReadKey(hospitalId, attempt);
+  // A zone change re-reads, so the four weeks always start on the page's own today.
+  const key = `${useHospitalReadKey(hospitalId, attempt)}:${zone}`;
   useEffect(() => {
     if (!hospitalId) return;
     const controller = new AbortController();
-    fetchHospitalShortStaffed(hospitalId, { signal: controller.signal }).then(
+    fetchHospitalShortStaffed(hospitalId, { signal: controller.signal, timeZone: zone }).then(
       (outcome) => setRead({ key, outcome }),
       () => {
         // Aborted: a newer read replaced this one.
       },
     );
     return () => controller.abort();
-  }, [hospitalId, key]);
+  }, [hospitalId, key, zone]);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   if (!hospitalId) return { status: "off", retry };
   if (read?.key !== key) return { status: "loading", retry };

@@ -26,7 +26,7 @@ import {
 import { notReady } from "@/lib/work-roles/people";
 import { can, isMissingTableError, type WorkRoleContext } from "@/lib/work-roles/server";
 import { zonedWallToIso } from "@/lib/work-time/format";
-import { DEFAULT_WORK_TIME_ZONE } from "@/lib/work-time/zones";
+import { DEFAULT_WORK_TIME_ZONE, isWorkTimeZone } from "@/lib/work-time/zones";
 
 /**
  * Short-staffed days across a hospital, for Medical Workforce (and the site
@@ -98,6 +98,7 @@ export async function readHospitalShortStaffed(
   context: WorkRoleContext,
   hospitalId: string,
   now = new Date(),
+  timeZone: string = DEFAULT_WORK_TIME_ZONE,
 ): Promise<HospitalShortStaffedView> {
   if (!context.ready) throw notReady();
   if (!can(context, "staffing.overview", { kind: "hospital", hospitalId })) {
@@ -109,7 +110,8 @@ export async function readHospitalShortStaffed(
   if (!hospital.data[0])
     throw new PublicApiError("That hospital is unavailable.", 404, { code: "work_hospital_not_found" });
 
-  const zone = DEFAULT_WORK_TIME_ZONE;
+  // The reader's saved work zone, so the four weeks start on the same "today" the page shows.
+  const zone = isWorkTimeZone(timeZone) ? timeZone : DEFAULT_WORK_TIME_ZONE;
   const window = shortStaffedWindow(now, zone);
   const links = await readEvery(
     (from, to) =>

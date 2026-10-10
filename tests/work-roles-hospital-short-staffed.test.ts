@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { exampleHospitalHub } from "@/lib/example-data/datasets/admin-hospital";
 import { isExampleRecord } from "@/lib/example-data/guards";
-import { hospitalShortStaffedOutcome } from "@/lib/work-roles/hospital-client";
+import { fetchHospitalShortStaffed, hospitalShortStaffedOutcome } from "@/lib/work-roles/hospital-client";
 import { hospitalSections } from "@/lib/work-roles/hospital-hub";
 import { readHospitalShortStaffed } from "@/lib/work-roles/hospital-short-staffed";
 import {
@@ -482,5 +482,39 @@ describe("readHospitalShortStaffed: size limits", () => {
       status: 503,
       message: "This hospital has too many shifts to check at once.",
     });
+  });
+});
+
+describe("readHospitalShortStaffed: the reader's work time zone", () => {
+  // 11:30 pm in Perth is already the next day in Sydney.
+  const LATE = new Date("2026-10-09T15:30:00Z");
+
+  it("starts the four weeks on the reader's own today", async () => {
+    const perthView = await readHospitalShortStaffed(fakeClient(baseRows()), WORKFORCE, "h1", LATE);
+    expect(perthView.window.from).toBe("2026-10-09");
+    const sydneyView = await readHospitalShortStaffed(
+      fakeClient(baseRows()),
+      WORKFORCE,
+      "h1",
+      LATE,
+      "Australia/Sydney",
+    );
+    expect(sydneyView.window).toEqual(shortStaffedWindow(LATE, "Australia/Sydney"));
+    expect(sydneyView.window.from).toBe("2026-10-10");
+  });
+
+  it("falls back to Perth for a zone it does not offer", async () => {
+    const view = await readHospitalShortStaffed(fakeClient(baseRows()), WORKFORCE, "h1", LATE, "Mars/Olympus");
+    expect(view.window.from).toBe("2026-10-09");
+  });
+
+  it("sends the zone with the read", async () => {
+    const urls: string[] = [];
+    const fetcher = async (url: string) => {
+      urls.push(url);
+      return new Response("{}", { status: 500 });
+    };
+    await fetchHospitalShortStaffed("h1", { fetcher, timeZone: "Australia/Sydney" });
+    expect(urls[0]).toBe("/api/work/hospital/short-staffed?hospitalId=h1&timeZone=Australia%2FSydney");
   });
 });

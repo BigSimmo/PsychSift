@@ -92,11 +92,12 @@ export async function hospitalShortStaffedOutcome(response: Response): Promise<H
 /** Reads one hospital's short-staffed days, from today through four weeks. */
 export async function fetchHospitalShortStaffed(
   hospitalId: string,
-  options: { readonly signal?: AbortSignal; readonly fetcher?: Fetcher } = {},
+  options: { readonly signal?: AbortSignal; readonly fetcher?: Fetcher; readonly timeZone?: string } = {},
 ): Promise<HospitalShortStaffedOutcome> {
   try {
+    const zone = options.timeZone ? `&timeZone=${encodeURIComponent(options.timeZone)}` : "";
     const response = await (options.fetcher ?? fetch)(
-      `${HOSPITAL_SHORT_STAFFED_ENDPOINT}?hospitalId=${encodeURIComponent(hospitalId)}`,
+      `${HOSPITAL_SHORT_STAFFED_ENDPOINT}?hospitalId=${encodeURIComponent(hospitalId)}${zone}`,
       { cache: "no-store", credentials: "same-origin", signal: options.signal },
     );
     return await hospitalShortStaffedOutcome(response);
