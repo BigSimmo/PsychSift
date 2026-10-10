@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "17cbc828-ac93-4b63-b419-a55fa2e11384",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#7D21P1",
+    "outcome": "Resolved: codebase-index.md accurately reads thirteen consolidated modes, and renderModePageIndex in generate-site-map.ts includes On Call.",
+    "baseRowFingerprint": "05b4d439e53101cc4659d1f429164fc2f37c03121a44131411778c9776576d8a"
+  }
+}

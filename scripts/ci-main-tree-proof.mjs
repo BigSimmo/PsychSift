@@ -60,7 +60,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
 export const TESTED_TREE_TITLE = "CI tested tree";
@@ -689,7 +689,7 @@ async function main() {
   writeOutputs(outcome);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     // Never fail the `changes` job over a proof problem: an empty proof is a full run.
     console.log(`::warning::${String(error?.message ?? error)}`);

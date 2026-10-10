@@ -428,8 +428,8 @@ export type MedicationHeroMetric = {
 // "Max Dose" (and a bare "Dose") carry flag:"hi" to mark the prescribing
 // ceiling's importance, not a safety stop, so both tone and ordering treat it
 // specially — share one label test so the two stay aligned.
-function isMaxDoseLabel(label: string): boolean {
-  return /^(?:max\s+)?dose$/i.test(label.trim());
+export function isMaxDoseLabel(label: string): boolean {
+  return /^(?:max(?:imum)?\s+)?doses?$/i.test(label.trim());
 }
 
 // Render Max Dose as the primary/clinical metric so red stays reserved for

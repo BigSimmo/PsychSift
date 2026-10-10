@@ -70,11 +70,11 @@ route depending on them before removal.
 
 ### Tools page
 
-| Route                                                                                                                                                                                                                              | Status                                                                                                                                                                                        |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tools-search-mode`                                                                                                                                                                                                                | Chosen design — "Perfected Tools search mode" per this README.                                                                                                                                |
-| `tools-search-directions`                                                                                                                                                                                                          | Shipped — direction A landed in #1958. Issue `#162` closed 2026-08-15; the file is kept because `tests/tools-search-directions-mockups.test.ts` compares it against the live tools catalogue. |
-| `tools-action-workbench`, `tools-clinical-lanes`, `tools-command-center`, `tools-split-clinical-brief`, `tools-split-compact-sheet`, `tools-split-pane`, `tools-split-safety-deck`, `tools-task-directory`, `tools-workflow-board` | Parallel drafts, no recorded winner — nine different Tools-page layout directions.                                                                                                            |
+| Route                                                                                      | Status                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tools-search-mode`                                                                        | Chosen design — "Perfected Tools search mode" per this README.                                                                                                                                                                                                               |
+| `tools-search-directions`                                                                  | Shipped — direction A landed in #1958. Issue `#162` closed 2026-08-15; the file is kept because `tests/tools-search-directions-mockups.test.ts` compares it against the live tools catalogue.                                                                                |
+| `tools-command-center`, `tools-split-pane`, `tools-task-directory`, `tools-workflow-board` | Parallel drafts and test harnesses — four Tools-page layout directions pinned by test suites (`tests/ui-tools.spec.ts`, `tests/ui-tools-collapse.spec.ts`, `tests/ui-tools-task-directory.spec.ts`, `tests/proxy.test.ts`). Five unpinned drafts were retired on 2026-10-09. |
 
 ### Privacy page
 
@@ -182,11 +182,11 @@ disk, so it comes out as one unit or not at all. All eight are kept:
 `calculators-guided-flow`, `calculators-popup-sheet`, `calculators-search`,
 `calculators-search-page`, `calculators-show-all`.
 
-**Known divergence, tracked separately:** production `calculator-pathways.ts` was cut from 296
-lines to 65 by #2491 on clinical-safety grounds; the mockup copy still carries the deterministic
-prescribing, ECT, admission and referral advice that was removed. These routes 404 in
-production, so this is not a patient-facing exposure, but it is a real divergence — see the
-`/issues` inbox request filed 2026-09-02.
+**Divergence resolved and verified:** production `calculator-pathways.ts` was cut from 296
+lines to 65 by #2491 on clinical-safety grounds. The mockup copy (`src/components/calculator-mockups/calculator-pathways.ts`)
+was subsequently audited and sanitized; deterministic prescribing, ECT, admission and referral directives were purged,
+and clinical safety is enforced by `tests/calculator-mockup-clinical-safety.test.ts` (100% passing). The mockup file retains
+non-directive UI flow descriptions only.
 
 ### Settings
 
@@ -315,6 +315,11 @@ problem this policy exists to prevent.
 | 2026-09-02 | `answer-evidence-popups`           | `answer-chat-perfected`          | #2362 names the five-tab Evidence sheet as one of "four mental models for one question" and replaced all four with one source rail and drawer.                                       |
 | 2026-09-26 | `caring-contacts`                  | Not applicable — feature retired | Owner decision 2026-09-26: "Go ahead and do this now (Josh, 2026-09-26 11:19 UTC, approving the plan to retire and delete Ward Flow and Caring Contacts)". Recover from git history. |
 | 2026-09-26 | `ward-flow`                        | Not applicable — feature retired | Owner decision 2026-09-26: "Go ahead and do this now (Josh, 2026-09-26 11:19 UTC, approving the plan to retire and delete Ward Flow and Caring Contacts)". Recover from git history. |
+| 2026-10-09 | `tools-action-workbench`           | `tools-search-mode`              | Direction A selected and shipped in PR #1958; unreferenced layout draft with zero test dependencies. Owner approval 2026-10-09.                                                      |
+| 2026-10-09 | `tools-clinical-lanes`             | `tools-search-mode`              | Direction A selected and shipped in PR #1958; unreferenced layout draft with zero test dependencies. Owner approval 2026-10-09.                                                      |
+| 2026-10-09 | `tools-split-clinical-brief`       | `tools-search-mode`              | Direction A selected and shipped in PR #1958; unreferenced layout draft with zero test dependencies. Owner approval 2026-10-09.                                                      |
+| 2026-10-09 | `tools-split-compact-sheet`        | `tools-search-mode`              | Direction A selected and shipped in PR #1958; unreferenced layout draft with zero test dependencies. Owner approval 2026-10-09.                                                      |
+| 2026-10-09 | `tools-split-safety-deck`          | `tools-search-mode`              | Direction A selected and shipped in PR #1958; unreferenced layout draft with zero test dependencies. Owner approval 2026-10-09.                                                      |
 
 Their shared component folder `favourites-page-mockups/` went with them on 2026-08-27. That
 retirement — a named written successor **and** a confirmed import search — is the precedent the

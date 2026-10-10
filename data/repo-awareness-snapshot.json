@@ -439,11 +439,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/tools-split-clinical-brief",
-        "file": "src/app/mockups/tools-split-clinical-brief/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/mockups/care-plan",
         "file": "src/app/mockups/care-plan/page.tsx",
         "area": "mockup"
@@ -1084,18 +1079,8 @@
         "area": "product"
       },
       {
-        "path": "/mockups/tools-clinical-lanes",
-        "file": "src/app/mockups/tools-clinical-lanes/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/mockups/therapy-navigation-dock",
         "file": "src/app/mockups/therapy-navigation-dock/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/tools-split-compact-sheet",
-        "file": "src/app/mockups/tools-split-compact-sheet/page.tsx",
         "area": "mockup"
       },
       {
@@ -1247,11 +1232,6 @@
         "path": "/roster/sick",
         "file": "src/app/(search-app)/roster/sick/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/tools-action-workbench",
-        "file": "src/app/mockups/tools-action-workbench/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/teaching/assessments/record",
@@ -1652,11 +1632,6 @@
         "path": "/my-day/hours",
         "file": "src/app/(search-app)/my-day/hours/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/tools-split-safety-deck",
-        "file": "src/app/mockups/tools-split-safety-deck/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/mockups/factsheets-topics-phone",
@@ -2243,6 +2218,10 @@
         "file": "src/app/api/images/signed-urls/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/dual-sign-off",
+        "file": "src/app/api/teaching/assessments/dual-sign-off/route.ts"
+      },
+      {
         "path": "/api/cme/year",
         "file": "src/app/api/cme/year/route.ts"
       },
@@ -2419,6 +2398,11 @@
         "path": "docs/product/clinical-trust-direction.md",
         "section": "product",
         "catalogued": true
+      },
+      {
+        "path": "docs/audit/full-repository-adversarial-audit-2026-10-09.md",
+        "section": "audit",
+        "catalogued": false
       },
       {
         "path": "docs/multi-user-auth-setup.md",
@@ -4151,6 +4135,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/mockup-audit-and-issues-report.md",
+        "section": "root",
+        "catalogued": false
+      },
+      {
         "path": "docs/care-plan/HANDOFF-START-HERE.md",
         "section": "care-plan",
         "catalogued": true
@@ -5124,6 +5113,11 @@
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-20-rag-retrieval-composition.md",
         "section": "superpowers",
         "catalogued": true
+      },
+      {
+        "path": "docs/audit/psychsift-ux-behavioral-audit-report-2026-10.md",
+        "section": "audit",
+        "catalogued": false
       },
       {
         "path": "docs/superpowers/plans/2026-08-23-lighthouse-local-build-reliability.md",

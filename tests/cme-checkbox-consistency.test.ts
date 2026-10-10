@@ -23,6 +23,7 @@ describe("CPD checkboxes", () => {
     expect(users.sort()).toEqual([
       "src/components/cme/cme-entry-form.tsx",
       "src/components/cme/cme-evidence-panel.tsx",
+      "src/components/cme/cme-new-entry-route.tsx",
       "src/components/cme/cme-setup-page.tsx",
     ]);
   });

@@ -160,7 +160,8 @@ describe("ClinicalAskWorkspace", () => {
     const field = screen.getByRole("textbox", { name: "Which care setting?" });
     const continueButton = screen.getByRole("button", { name: "Continue with confirmed context" });
     await waitFor(() => expect(field).toHaveFocus());
-    expect(continueButton).toBeDisabled();
+    expect(continueButton).toHaveAttribute("aria-disabled", "true");
+    expect(continueButton).not.toBeDisabled();
     fireEvent.change(field, { target: { value: "community" } });
     expect(field).toHaveValue("community");
     expect(continueButton).toBeEnabled();

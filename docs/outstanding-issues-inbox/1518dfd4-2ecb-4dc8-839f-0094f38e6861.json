@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "1518dfd4-2ecb-4dc8-839f-0094f38e6861",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#JMX32A",
+    "outcome": "Resolved: scripts/run-playwright.mjs:151-164 validates free ports via canListen() before starting, and waitForServer() verifies projectId and safeLocalOrigin via /api/local-project-id to prevent silent external server reuse.",
+    "baseRowFingerprint": "591ad3f2157302e4360a45a4db1d8365ebfae735873699fd3af05b9590d96acc"
+  }
+}

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { HomePageClient } from "./home-page-client";
+import { SearchAppHomeDiscovery } from "./search-app-home-discovery";
 import { appModeHomeHref, isAppModeId, isAppModeVisible, type AppModeId } from "@/lib/app-modes";
 import { isDashboardModeHref } from "@/lib/search-route-ownership";
 import { readSearchNavigationContext } from "@/lib/search-navigation-context";
@@ -94,5 +95,10 @@ export default async function Home({ searchParams }: HomeProps) {
     }
   }
 
-  return <HomePageClient initialMode={initialSearchMode} />;
+  return (
+    <>
+      <SearchAppHomeDiscovery />
+      <HomePageClient initialMode={initialSearchMode} />
+    </>
+  );
 }

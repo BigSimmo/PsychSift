@@ -14,6 +14,10 @@ import { getWorkModeLaunch } from "@/lib/work-mode-launch/server";
  * in this route-group layout prevents remounting the composer when navigating
  * between namespaced modes (e.g. /services ↔ /dsm ↔ /).
  *
+ * Canonical URLs and MedicalWebPage JSON-LD stay on the home page only
+ * (`(search-app)/page.tsx`). A layout-level canonical would point every
+ * search-app route at the home URL and invite search engines to drop them.
+ *
  * The work-mode launch state is resolved once here, on the server, so the frame
  * is drawn right on the first paint (no flash from the classic band to the new one).
  * The live version switch (src/lib/live-version) is resolved beside it, the same way.

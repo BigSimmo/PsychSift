@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "4d80c5e6-a51a-4c82-8090-8df06c834475",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#3944SV",
+    "outcome": "Resolved: Replaced bare tokens ('phone', 'car', 'tv', 'flight') with compound phrases ('phone sale', 'car finance', 'tv show', 'flight booking') in src/lib/rag/rag-query-guard.ts; verified in tests/rag-query-guard.test.ts.",
+    "baseRowFingerprint": "91b4f96238ab9f02998fbe418e3bac9709601b38a42b9ce9d1336a77f9c54b16"
+  }
+}

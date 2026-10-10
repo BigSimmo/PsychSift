@@ -1,7 +1,17 @@
 "use client";
 
 import { CheckCircle2, Info, OctagonAlert, TriangleAlert, X } from "lucide-react";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { OverlayPortal } from "@/components/ui/overlay-root";
 import { cn } from "@/components/ui-primitives";
 
@@ -153,6 +163,25 @@ export function useToast(): ToastApi {
   return { push: context.push, dismiss: context.dismiss };
 }
 
+/**
+ * Unified copy feedback hook.
+ * Announces copy completion with a polite success toast lasting 3000ms.
+ */
+export function useCopyToast(): (customTitle?: string) => void {
+  const toast = useOptionalToast();
+  return useCallback(
+    (customTitle?: string) => {
+      if (!toast) return;
+      toast.push({
+        tone: "success",
+        title: customTitle ?? "Copied to clipboard",
+        duration: 3000,
+      });
+    },
+    [toast],
+  );
+}
+
 function ToastCard({ toast, onClose }: { toast: Toast; onClose: (id: string, reason: ToastCloseReason) => void }) {
   const duration = toast.duration ?? DEFAULT_DURATION;
   // The timer pauses while the pointer or keyboard focus is on the toast, so an
@@ -242,6 +271,15 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: (id: string, rea
   );
 }
 
+const regionSubscribers = new Set<() => void>();
+let activeToastRegionId: string | null = null;
+
+function notifyRegionSubscribers() {
+  for (const listener of regionSubscribers) {
+    listener();
+  }
+}
+
 /**
  * The live region itself. Rendered automatically by `ToastProvider`; exported so a
  * surface that owns its own portal can place it. `role="status"` + `aria-live="polite"`
@@ -250,7 +288,39 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: (id: string, rea
  */
 export function ToastRegion() {
   const context = useContext(ToastContext);
-  if (!context) return null;
+  const regionId = useId();
+
+  const [isPrimary, setIsPrimary] = useState(() => {
+    if (!activeToastRegionId) {
+      activeToastRegionId = regionId;
+      return true;
+    }
+    return activeToastRegionId === regionId;
+  });
+
+  useEffect(() => {
+    const updatePrimary = () => {
+      if (!activeToastRegionId) {
+        activeToastRegionId = regionId;
+        setIsPrimary(true);
+      } else {
+        setIsPrimary(activeToastRegionId === regionId);
+      }
+    };
+
+    regionSubscribers.add(updatePrimary);
+    updatePrimary();
+
+    return () => {
+      regionSubscribers.delete(updatePrimary);
+      if (activeToastRegionId === regionId) {
+        activeToastRegionId = null;
+        notifyRegionSubscribers();
+      }
+    };
+  }, [regionId]);
+
+  if (!context || !isPrimary) return null;
   const { toasts, close } = context;
 
   const region = (
@@ -258,6 +328,7 @@ export function ToastRegion() {
       data-testid="toast-region"
       role="status"
       aria-live="polite"
+      aria-atomic="true"
       aria-relevant="additions text"
       className="app-toast-region pointer-events-none fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:inset-x-auto sm:right-0 sm:items-end"
     >

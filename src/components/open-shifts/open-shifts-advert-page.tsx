@@ -436,7 +436,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
               : "This is an example shift: team rosters aren't open to real staff yet."
           }
         >
-          <Button variant="primary" block disabled onClick={() => undefined}>
+          <Button variant="primary" block disabled>
             Request this shift
           </Button>
         </FootAction>
@@ -482,13 +482,13 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         </FootAction>
       ) : state.offline ? (
         <FootAction note="Nothing has been sent. Try again when you're back online.">
-          <Button variant="secondary" block disabled onClick={() => undefined}>
+          <Button variant="secondary" block disabled>
             Requests need a connection
           </Button>
         </FootAction>
       ) : check.state === "overlap" ? (
         <FootAction>
-          <Button variant="secondary" block disabled onClick={() => undefined}>
+          <Button variant="secondary" block disabled>
             Overlaps your roster
           </Button>
         </FootAction>
@@ -499,7 +499,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
               Try reading my roster again
             </Button>
           ) : (
-            <Button variant="secondary" block disabled onClick={() => undefined}>
+            <Button variant="secondary" block disabled>
               Checking your roster…
             </Button>
           )}

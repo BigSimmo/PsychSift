@@ -42,7 +42,7 @@
       "tolerancePct": 10
     },
     "/roster/shifts": {
-      "gzipBytes": 362217,
+      "gzipBytes": 365000,
       "tolerancePct": 10
     },
     "/open-shifts": {

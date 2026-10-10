@@ -20,6 +20,7 @@ describe("playwright browser preflight", () => {
       playwrightProjectNames.webkit,
       playwrightProjectNames.mobileWebkit,
       playwrightProjectNames.mobilePwaStandalone,
+      playwrightProjectNames.tablet,
     ];
     expect(requestedPlaywrightBrowserProjects([])).toEqual(configuredProjects);
     expect(requestedPlaywrightBrowserProjects(["tests/ui-smoke.spec.ts"])).toEqual(configuredProjects);

@@ -237,7 +237,12 @@ test.describe("tablet and desktop scroll chrome", () => {
         }
 
         await scrollBy(page, atTop.maxOffset + 320, 160);
-        await page.waitForTimeout(300);
+        await expect
+          .poll(async () => {
+            const state = await readChromeState(page);
+            return state.hidden && state.headerBottom <= 0;
+          })
+          .toBe(true);
 
         const scrolledDown = await readChromeState(page);
         expect(scrolledDown.offset, "descent moved the scroller").toBeGreaterThan(minimumRunway - 200);
@@ -247,7 +252,12 @@ test.describe("tablet and desktop scroll chrome", () => {
 
         // Three deliberate upward steps — nowhere near the top of the page.
         await scrollBy(page, -360, 120);
-        await page.waitForTimeout(300);
+        await expect
+          .poll(async () => {
+            const state = await readChromeState(page);
+            return !state.hidden && state.headerTop <= 8 && state.headerBottom > 0;
+          })
+          .toBe(true);
 
         const scrolledUp = await readChromeState(page);
         expect(scrolledUp.offset, "the reveal happens well short of the top").toBeGreaterThan(200);
@@ -269,7 +279,12 @@ test.describe("tablet and desktop scroll chrome", () => {
         const atTop = await readChromeState(page);
         expect(atTop.searchVisible).toBe(true);
         await scrollBy(page, atTop.maxOffset + 320, 160);
-        await page.waitForTimeout(300);
+        await expect
+          .poll(async () => {
+            const state = await readChromeState(page);
+            return state.hidden && state.headerBottom <= 0;
+          })
+          .toBe(true);
 
         const scrolledDown = await readChromeState(page);
         expect(scrolledDown.hidden, "the top bar still hides").toBe(true);
@@ -310,7 +325,12 @@ test.describe("tablet and desktop scroll chrome", () => {
       expect(atTop.headerTop, "top bar starts at the viewport top").toBeLessThanOrEqual(8);
 
       await scrollBy(page, atTop.maxOffset + 320, 160);
-      await page.waitForTimeout(300);
+      await expect
+        .poll(async () => {
+          const state = await readChromeState(page);
+          return state.hidden && state.headerBottom <= 0;
+        })
+        .toBe(true);
 
       const scrolledDown = await readChromeState(page);
       expect(scrolledDown.offset, "descent moved the scroller").toBeGreaterThan(requiredRunway - 200);
@@ -319,7 +339,12 @@ test.describe("tablet and desktop scroll chrome", () => {
 
       // Three deliberate upward steps — nowhere near the top of the page.
       await scrollBy(page, -360, 120);
-      await page.waitForTimeout(300);
+      await expect
+        .poll(async () => {
+          const state = await readChromeState(page);
+          return !state.hidden && state.headerTop <= 8;
+        })
+        .toBe(true);
 
       const scrolledUp = await readChromeState(page);
       expect(scrolledUp.offset, "the reveal happens well short of the top").toBeGreaterThan(200);

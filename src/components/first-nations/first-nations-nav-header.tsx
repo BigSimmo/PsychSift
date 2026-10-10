@@ -34,6 +34,7 @@ export function FirstNationsNavHeader({
     <InPageNavHeader
       title={title}
       titleHidden
+      back={{ href: "/first-nations", label: "First Nations" }}
       sections={resolved}
       activeId={activeId}
       onSelectSection={selectSection}

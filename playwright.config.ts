@@ -68,6 +68,14 @@ export default defineConfig({
         ["json", { outputFile: "test-results/playwright-results.json" }],
       ]
     : "list",
+  webServer: process.env.PLAYWRIGHT_BASE_URL
+    ? undefined
+    : {
+        command: "npm run ensure",
+        url: `${baseURL}/api/local-project-id`,
+        reuseExistingServer: false,
+        timeout: 120_000,
+      },
   use: {
     baseURL,
     headless: process.env.CI ? true : process.env.HEADED === "true" ? false : undefined,
@@ -147,6 +155,15 @@ export default defineConfig({
         deviceScaleFactor: 3,
         isMobile: true,
         hasTouch: true,
+      },
+    },
+    {
+      name: "tablet",
+      testMatch: productionSpecPattern,
+      grepInvert: mockupTag,
+      use: {
+        ...devices["iPad Mini"],
+        viewport: { width: 768, height: 1024 },
       },
     },
   ],

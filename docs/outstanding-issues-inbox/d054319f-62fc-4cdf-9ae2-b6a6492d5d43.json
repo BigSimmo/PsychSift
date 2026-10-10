@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "d054319f-62fc-4cdf-9ae2-b6a6492d5d43",
+  "createdOn": "2026-10-09",
+  "action": "done",
+  "payload": {
+    "id": "#A9GC6S",
+    "outcome": "Resolved: CME entry route supports recording missed teaching and linking replacement session; verified by tests/cme-new-entry.dom.test.tsx.",
+    "baseRowFingerprint": "4f36deed67bd4b5e3aa2eb12462adc2874442e218dbafa9949e122b8ad737ab3"
+  }
+}

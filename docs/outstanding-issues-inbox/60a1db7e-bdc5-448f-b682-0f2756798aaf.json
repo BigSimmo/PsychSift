@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "60a1db7e-bdc5-448f-b682-0f2756798aaf",
+  "createdOn": "2026-10-08",
+  "action": "done",
+  "payload": {
+    "id": "#CHPC5C",
+    "outcome": "Resolved: cold-load reserve claim and per-frame settle test merged in PR #3145 (073a787b76).",
+    "baseRowFingerprint": "3f07dd62ebb3d533ca28c8cc66db725f24d2cd444dea166dbfc71ec6b703bf1d"
+  }
+}

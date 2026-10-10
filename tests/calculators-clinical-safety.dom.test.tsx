@@ -170,7 +170,9 @@ describe("completion is not inferred from a partial score", () => {
     const partial = deriveCalculator(calc, { p1: 1 });
     render(<CopyResultButton calc={calc} state={partial} />);
 
-    expect(screen.getByRole("button", { name: "Copy result" })).toBeDisabled();
+    const copy = screen.getByRole("button", { name: "Copy result" });
+    expect(copy).toHaveAttribute("aria-disabled", "true");
+    expect(copy).not.toBeDisabled();
   });
 
   /**

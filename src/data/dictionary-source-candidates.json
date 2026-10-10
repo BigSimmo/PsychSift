@@ -51,7 +51,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2022-10-01",
       "locatorAndScope": "Homepage guideline release statement. ADHD naming and identity of the Australian guideline.",
       "limitations": "The homepage says released October 2022. Do not convert a later endorsement or website metadata timestamp into a new guideline edition. Full recommendations were not audited here.",
       "lastCheckedOn": "2026-09-11",
@@ -86,7 +86,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2024-11-01",
       "locatorAndScope": "Printed pp. 4–5; Table A pp. 6–9; principles pp. 10–15; Tables D–E pp. 17–19. Selected medicine-notation risks and context-specific accepted spellings. No psychiatric diagnosis or dose recommendation.",
       "limitations": "PDF text inspected; source-PDF image rendering failed in this environment. Not an exhaustive safe list. CC BY-NC-ND notice: link to the original, do not republish the full tables or present a modified table as official.",
       "lastCheckedOn": "2026-09-11",
@@ -251,7 +251,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2026-08-27",
       "locatorAndScope": "Opioid agonist therapy section. Opioid agonist therapy naming in an Australian prison-health context.",
       "limitations": "Prison setting does not establish terminology acceptance on a medication order. Do not claim an August 23 audit inspected a report published August 27.",
       "lastCheckedOn": "2026-09-11",
@@ -402,7 +402,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2019-04-01",
       "locatorAndScope": "Akathisia, acute dystonia, parkinsonism and tardive sections. Movement-disorder definitions and SSRI expansion",
       "limitations": "Published 2019. Used for terminology only. Older treatment statements, including VMAT2 availability/evidence, must not be imported as current guidance. DOI: 10.18773/austprescr.2019.014.",
       "lastCheckedOn": "2026-09-11",
@@ -509,8 +509,16 @@
       "documentStatus": "unknown",
       "clinicalValidationStatus": "unverified",
       "contentMode": "link_only",
-      "dates": [],
-      "publicationDate": null,
+      "dates": [
+        {
+          "kind": "publication",
+          "value": "2012-11",
+          "precision": "month",
+          "rawStatement": "November 2012 statement",
+          "attestation": "publisher_check"
+        }
+      ],
+      "publicationDate": "2012-11-01",
       "locatorAndScope": "Former page location. Legacy rights reference",
       "limitations": "Retrieval resolved to a not-found page. Replace as evidence for current WA consent/capacity rules.",
       "lastCheckedOn": null,
@@ -545,7 +553,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2013-01-01",
       "locatorAndScope": "Practitioner/provider guide. Legacy source for recovery-oriented practice",
       "limitations": "Retained from repository; not reopened in this revision. Do not infer that it defines every service-model acronym.",
       "lastCheckedOn": null,
@@ -912,7 +920,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2010-07-28",
       "locatorAndScope": "CG103; recognition and section 1.6.3. Delirium definition and coexistence/differentiation cautions",
       "limitations": "UK guideline, not WA policy. Used for terminology and the coexistence caution, not treatment dosing.",
       "lastCheckedOn": "2026-09-11",
@@ -947,7 +955,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2022-09-07",
       "locatorAndScope": "Sections 1.6.1–1.6.6. Limitations of risk scales and predictive low/medium/high labels; needs-led formulation",
       "limitations": "Targeted official search evidence obtained; direct chapter retrieval failed in this environment. Do not claim a full chapter review or Australian statutory force.",
       "lastCheckedOn": null,
@@ -982,7 +990,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2021-08-30",
       "locatorAndScope": "Introduction. SCI expansion and cross-specialty ambiguity",
       "limitations": "Name/context evidence only; no rehabilitation protocol inferred.",
       "lastCheckedOn": "2026-09-11",
@@ -1008,8 +1016,16 @@
       "documentStatus": "unknown",
       "clinicalValidationStatus": "unverified",
       "contentMode": "link_only",
-      "dates": [],
-      "publicationDate": null,
+      "dates": [
+        {
+          "kind": "publication",
+          "value": "2023-12",
+          "precision": "month",
+          "rawStatement": "December 2023 (published)",
+          "attestation": "publisher_check"
+        }
+      ],
+      "publicationDate": "2023-12-01",
       "locatorAndScope": "Assessment domains. Brief adult emergency mental-health assessment",
       "limitations": "Not a comprehensive terminology dictionary or a universal MSE instrument.",
       "lastCheckedOn": "2026-09-11",
@@ -1071,7 +1087,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2026-07-01",
       "locatorAndScope": "Title, background and scope. Consultation-liaison psychiatry terminology and CLP context.",
       "limitations": "The source supports CLP naming in the previous audit. It does not establish that CL is a nationally preferred abbreviation.",
       "lastCheckedOn": null,
@@ -1106,7 +1122,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2019-10-01",
       "locatorAndScope": "Title, purpose and definition. ECT expansion and broad treatment identity.",
       "limitations": "Older statement retained for terminology. Its listing does not make every treatment claim a current 2026 protocol.",
       "lastCheckedOn": "2026-09-11",
@@ -1141,7 +1157,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2024-05-01",
       "locatorAndScope": "Title and practice guidance. rTMS terminology and professional context.",
       "limitations": "Supports title and version only here. No treatment parameters, eligibility or safety protocol has been independently revalidated.",
       "lastCheckedOn": "2026-09-11",
@@ -1176,7 +1192,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2024-12-01",
       "locatorAndScope": "Background and assessment table. MSE identity and descriptive domains only",
       "limitations": "Paediatric setting. Do not import its examples of inferred identity, numeric mood scale, referral rules or jurisdictional obligations into a general adult dictionary.",
       "lastCheckedOn": "2026-09-11",
@@ -1326,8 +1342,16 @@
       "documentStatus": "unknown",
       "clinicalValidationStatus": "unverified",
       "contentMode": "link_only",
-      "dates": [],
-      "publicationDate": null,
+      "dates": [
+        {
+          "kind": "publication",
+          "value": "2023-09",
+          "precision": "month",
+          "rawStatement": "September 2023 (published)",
+          "attestation": "publisher_check"
+        }
+      ],
+      "publicationDate": "2023-09-01",
       "locatorAndScope": "Abbreviations table. CAHS, EMHS, NMHS, SMHS, WACHS, HSS.",
       "limitations": "Current schedule content and claimed 2026 date were not verified. Do not treat a retrieval error as proof the source is permanently removed.",
       "lastCheckedOn": null,
@@ -1663,7 +1687,7 @@
           "attestation": "inherited_from_research_master"
         }
       ],
-      "publicationDate": null,
+      "publicationDate": "2021-08-09",
       "locatorAndScope": "Policy PDF sections 3.1 and 6; document-control table. SSCD/PSOLIS names and WA public mental-health documentation requirement with policy-specific exclusions.",
       "limitations": "The policy remains applicable, but its printed review schedule still says March 2024 despite a January 2026 amendment. Keep active status separate from review-due status. Not a national requirement.",
       "lastCheckedOn": "2026-09-11",
@@ -1759,8 +1783,16 @@
       "documentStatus": "unknown",
       "clinicalValidationStatus": "unverified",
       "contentMode": "link_only",
-      "dates": [],
-      "publicationDate": null,
+      "dates": [
+        {
+          "kind": "publication",
+          "value": "2023-12-12",
+          "precision": "day",
+          "rawStatement": "2023 (tagged 2023 new, profile 12122023)",
+          "attestation": "publisher_check"
+        }
+      ],
+      "publicationDate": "2023-12-12",
       "locatorAndScope": "Self-harm/suicide evidence centre. Legacy WHO evidence-centre safety-planning reference",
       "limitations": "Not reopened in this revision. A source link is not proof of every sentence of a repository safety plan.",
       "lastCheckedOn": null,
