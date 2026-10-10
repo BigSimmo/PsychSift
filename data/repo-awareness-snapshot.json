@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-09"
+    "committed_at": "2026-10-10"
   },
   "routes": {
     "modes": [
@@ -4392,11 +4392,6 @@
       {
         "path": "docs/care-plan/verification-log-2026-08-21.md",
         "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/live-version-switch.md",
-        "section": "root",
         "catalogued": true
       },
       {
@@ -14627,6 +14622,14 @@
         "scope": "Run PR sweep: diagnosis only, no sync",
         "outcome": "SKIPPED sync/merge - main already carries commit 14421fba 'docs(issues): reconcile 28 inbox requests into the outstanding-issues ledger (#2045)', which appears to be the same 28-request reconciliation this PR is attempting, and the inbox on main is now empty. This PR's own body explicitly says not to use Update branch and to close+re-run a fresh reconcile if main gains new inbox requests before merge - main didn't gain new pending requests, it received a duplicate full reconcile via a different PR (#2045). CI (PR required) is green and there are no review threads, but merging this now risks double-applying or conflicting with the already-landed ledger transaction. Flagged for human decision: close as superseded by #2045, or verify no unique content remains.",
         "checks": "no local checks run; diagnosis via git log or docs/outstanding-issues-inbox tree on origin/main"
+      },
+      {
+        "date": "2026-10-09",
+        "ref": "feat/adversarial-audit-hardening",
+        "head": "6f56559444b6e0c26abbf68f74d3d265c13bd74e",
+        "scope": "Run PR sweep",
+        "outcome": "Codacy void-expression braces; prior conflict/SEO/Gitar disposition still holds; GG dashboard FP residual",
+        "checks": "MERGEABLE; Codacy threads fixed locally; CI re-running after push"
       },
       {
         "date": "2026-07-30",

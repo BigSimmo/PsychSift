@@ -34,7 +34,6 @@ import {
   resolveDashboardModeSurface,
 } from "@/components/clinical-dashboard/dashboard-mode-surface";
 import * as SidebarDialogs from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { prefetchTwoPaneSideMenu, TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
 import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
@@ -640,8 +639,8 @@ function ClinicalDashboardContent({
     localNoAuthMode,
   });
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);
-  // The two-pane side menu (owner pick 8 Oct 2026) replaces the phone menu behind the Live version switch.
-  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  // The two-pane side menu (owner pick 8 Oct 2026) replaces the phone menu, for everyone since 10 Oct 2026.
+  const twoPaneSideMenu = true;
   const newWorkMode = useNewWorkMode();
   // From 768 px the two-pane menu's strip stays on screen as a rail (1024 px up
   // keeps the full sidebar). A rail button opens the menu on its own pane.

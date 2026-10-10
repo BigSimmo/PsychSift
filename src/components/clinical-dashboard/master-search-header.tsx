@@ -85,7 +85,6 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useHeaderModePill } from "@/components/clinical-dashboard/master-search-header-mode-pill";
 import { useScopeDocumentList } from "@/components/clinical-dashboard/master-search-header-scope-documents";
 import { workAreaFor } from "@/lib/work-frame/areas";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { LargeTextFlag } from "@/components/work-frame/use-large-text";
 import { modePickerHint } from "@/lib/mode-picker-hints";
 import {
@@ -384,9 +383,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const router = useRouter();
   const currentPathname = usePathname();
   const [, setLastAppMode] = useLastAppMode();
-  // The two-pane side menu (Live version: Newest) keeps the menu button
+  // The two-pane side menu keeps the menu button
   // beside Back on phones, so the menu opens from every work page.
-  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  const twoPaneSideMenu = true;
   const visibleAppModeOptions = visibleAppModeDefinitionsForSession({
     authenticated: canAccessFavourites,
     demoMode: false,

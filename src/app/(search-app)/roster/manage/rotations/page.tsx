@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { RotationRoundsPage } from "@/components/roster/rotations/admin/rounds-page";
-import { requireLivePreview } from "@/lib/live-version/server";
 
 export const metadata: Metadata = {
   title: "Rotation rounds | Manage team | Roster | PsychSift",
@@ -9,6 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default async function RotationRoundsRoute() {
-  await requireLivePreview("rotation-preferences");
   return <RotationRoundsPage />;
 }

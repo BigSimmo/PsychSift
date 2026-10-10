@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import { WORK_CALENDAR_SOURCES, type WorkCalendarSourceRead } from "@/components/work-calendar/sources";
 import { mergeEntries, type WorkCalendarEntry } from "@/lib/work-calendar/entries";
 
@@ -29,9 +28,8 @@ export type WorkCalendarEntriesRead = {
 };
 
 export function useWorkCalendarEntries(): WorkCalendarEntriesRead {
-  const rotations = useLivePreview("rotation-preferences");
-  const bookings = useLivePreview("course-bookings");
-  const enabled = rotations || bookings;
+  // Rotations and course bookings are on for everyone, so the calendar is too.
+  const enabled = true;
   // A static list, so every source hook runs in the same order on every render.
   const reads = WORK_CALENDAR_SOURCES.map((source) => source.read(enabled));
   // The lists are small. Keyed on their content, the merged list stays the same object until something changes.

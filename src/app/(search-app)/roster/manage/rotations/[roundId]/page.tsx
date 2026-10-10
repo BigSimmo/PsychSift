@@ -3,7 +3,6 @@ import { Suspense } from "react";
 
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { RotationRoundPage } from "@/components/roster/rotations/admin/round-page";
-import { requireLivePreview } from "@/lib/live-version/server";
 
 export const metadata: Metadata = {
   title: "Rotation round | Manage team | Roster | PsychSift",
@@ -13,7 +12,6 @@ export const metadata: Metadata = {
 type RotationRoundRouteProps = { params: Promise<{ roundId: string }> };
 
 export default async function RotationRoundRoute({ params }: RotationRoundRouteProps) {
-  await requireLivePreview("rotation-preferences");
   const { roundId } = await params;
   return (
     // The page reads `?edit=1` from the address, so it waits for the browser's search string.

@@ -36,7 +36,6 @@ import { useFavouritesAccess } from "@/components/clinical-dashboard/use-favouri
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
 import {
   LazyTwoPaneSideMenu,
   LazyWorkSideCounts,
@@ -524,9 +523,9 @@ function GlobalStandaloneSearchShellBody({
   // The counts reader stays mounted once the phone menu has opened on a work
   // page, so reopening the menu never fetches the feed again.
   const [workMenuOpened, setWorkMenuOpened] = useState(false);
-  // The two-pane side menu (owner pick 8 Oct 2026, behind the Live version
-  // switch) replaces both phone menus, and carries the Work side on every page.
-  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  // The two-pane side menu (owner pick 8 Oct 2026, for everyone since 10 Oct)
+  // replaces both phone menus, and carries the Work side on every page.
+  const twoPaneSideMenu = true;
   const newWorkMode = useNewWorkMode();
   const twoPaneCounts = twoPaneSideMenu && newWorkMode;
   // Clinical pages hand 1024 px up to the full sidebar, so the rail (and its counts) stop there.
