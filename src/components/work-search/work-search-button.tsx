@@ -188,7 +188,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           <button
             type="button"
             onClick={dismissCoach}
-            className="pointer-events-auto inline-flex min-h-12 items-center justify-self-end focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+            className="pointer-events-auto inline-flex min-h-12 items-center justify-self-end focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity,var(--focus))]"
           >
             <span className="rounded-full bg-[color:var(--mode-identity,var(--focus))] px-4 py-2 text-sm-minus font-bold text-[color:var(--mode-identity-contrast,var(--surface-raised))]">
               Got it

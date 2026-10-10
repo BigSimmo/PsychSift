@@ -2568,7 +2568,7 @@ html[data-work-frame] .app-toast-region {
 .work-side-menu button:focus-visible,
 .work-rail a:focus-visible,
 .work-rail button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 
