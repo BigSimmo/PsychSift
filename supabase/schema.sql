@@ -26427,7 +26427,7 @@ language sql stable security invoker set search_path = '' as $$
                 or (c.service_id is not null and public.work_bookings_can_post(p_actor_id, c.service_id)))
     from public.work_booking_courses c cross join me
    where p_actor_id is not null
-     and c.course_date >= me.today - 365
+     and c.course_date >= (me.today - interval '12 months')::date
      and (
        me.admin
        or c.organiser_id = p_actor_id
@@ -27207,7 +27207,7 @@ begin
 end $$;
 
 -- Course bookings keep 12 months (20261009225900_work_bookings_retention.sql): a course and its
--- bookings are deleted once the course day is more than 365 days before today in Perth.
+-- bookings are deleted once the course day is more than 12 calendar months before today in Perth.
 create function public.work_bookings_retention_purge()
 returns jsonb
 language plpgsql security invoker set search_path = '' as $$
@@ -27218,8 +27218,9 @@ begin
   select count(*) into v_bookings
     from public.work_course_bookings b
     join public.work_booking_courses c on c.id = b.course_id
-   where c.course_date < public.work_bookings_today() - 365;
-  delete from public.work_booking_courses where course_date < public.work_bookings_today() - 365;
+   where c.course_date < (public.work_bookings_today() - interval '12 months')::date;
+  delete from public.work_booking_courses
+   where course_date < (public.work_bookings_today() - interval '12 months')::date;
   get diagnostics v_courses = row_count;
   return jsonb_build_object('courses', v_courses, 'bookings', v_bookings);
 end $$;

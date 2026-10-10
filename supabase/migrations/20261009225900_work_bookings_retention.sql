@@ -1,10 +1,10 @@
 -- Never edit an applied migration. Merging this applies it to the live database.
 -- Course bookings keep 12 months (owner request 9 Oct 2026, "go ahead with all final
 -- recommendations"), the same span as Roster and the window work_bookings_visible already reads.
--- A course, with every booking on it, is deleted once its day is more than 365 days before
--- today in Perth. Bookings cascade from the course (work_course_bookings.course_id on delete
--- cascade), so names on old courses go with it. Runs nightly from pg_cron, which is already
--- enabled (20260901033250). Adds one function and one job; no table changes.
+-- A course, with every booking on it, is deleted once its day is more than 12 calendar months
+-- before today in Perth. Bookings cascade from the course (work_course_bookings.course_id on
+-- delete cascade), so names on old courses go with it. Runs nightly from pg_cron, which is
+-- already enabled (20260901033250). Adds one function and one job; no table changes.
 set local lock_timeout = '5s';
 set local statement_timeout = '30s';
 
@@ -18,8 +18,9 @@ begin
   select count(*) into v_bookings
     from public.work_course_bookings b
     join public.work_booking_courses c on c.id = b.course_id
-   where c.course_date < public.work_bookings_today() - 365;
-  delete from public.work_booking_courses where course_date < public.work_bookings_today() - 365;
+   where c.course_date < (public.work_bookings_today() - interval '12 months')::date;
+  delete from public.work_booking_courses
+   where course_date < (public.work_bookings_today() - interval '12 months')::date;
   get diagnostics v_courses = row_count;
   return jsonb_build_object('courses', v_courses, 'bookings', v_bookings);
 end $$;
