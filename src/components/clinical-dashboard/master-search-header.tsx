@@ -85,6 +85,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useHeaderModePill } from "@/components/clinical-dashboard/master-search-header-mode-pill";
 import { useScopeDocumentList } from "@/components/clinical-dashboard/master-search-header-scope-documents";
 import { workAreaFor } from "@/lib/work-frame/areas";
+import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
 import { LargeTextFlag } from "@/components/work-frame/use-large-text";
 import { modePickerHint } from "@/lib/mode-picker-hints";
 import {
@@ -383,6 +384,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const router = useRouter();
   const currentPathname = usePathname();
   const [, setLastAppMode] = useLastAppMode();
+  // The two-pane side menu (off again since 10 Oct 2026) keeps the menu button
+  // beside Back on phones, so the menu opens from every work page.
+  const twoPaneSideMenu = TWO_PANE_SIDE_MENU;
   const visibleAppModeOptions = visibleAppModeDefinitionsForSession({
     authenticated: canAccessFavourites,
     demoMode: false,
@@ -2587,10 +2591,14 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     >
       <div className="edge-glass-header-backdrop" aria-hidden="true" />
       <div className="universal-header-row relative mx-auto grid min-h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-        <div className="universal-header-leading flex min-w-0 items-center gap-2 sm:gap-3">
+        <div
+          className="universal-header-leading flex min-w-0 items-center gap-2 sm:gap-3"
+          data-two-pane-menu={twoPaneSideMenu ? "" : undefined}
+        >
           {/* A work page reached from its area's More sheet draws its back
-              button here (`WorkFrameBack`); CSS keeps the menu button first,
-              with Back beside it. */}
+              button here (`WorkFrameBack`); CSS then stands the menu button
+              down, so the round left control is one or the other. With the
+              two-pane side menu both show, the menu first. */}
           <div id="universal-header-leading" className="contents" />
           <button
             type="button"

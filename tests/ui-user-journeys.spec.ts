@@ -223,34 +223,19 @@ test.describe("Live Browser User Journeys", () => {
     await page.goto("/favourites");
     await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
 
-    // Phones open the menu from the header and tablets from the rail; either way
-    // the account action is on the menu's You side. Desktop keeps the sidebar's.
+    // On phones the account action lives inside the menu, not the hidden desktop rail.
     const phoneMenu = page.getByRole("button", { name: "Open PsychSift menu", exact: true });
-    const railYou = page.getByTestId("two-pane-rail-you");
-    const menu = page.getByRole("dialog", { name: "PsychSift menu", exact: true });
-    let signInTrigger;
-    if ((await phoneMenu.isVisible()) || (await railYou.isVisible())) {
-      if (await phoneMenu.isVisible()) {
-        await expectHydratedHandler(phoneMenu, "onClick");
-        await phoneMenu.click();
-        await expect(menu).toBeVisible();
-        await menu.getByTestId("two-pane-menu-you").click();
-      } else {
-        await expectHydratedHandler(railYou, "onClick");
-        await railYou.click();
-        await expect(menu).toBeVisible();
-      }
-      signInTrigger = menu.getByTestId("two-pane-menu-account");
-      await expect(signInTrigger).toBeVisible();
-      await expect(signInTrigger).toContainText("Set up your workspace");
-    } else {
-      signInTrigger = page.locator(
-        'button[data-testid="collapsed-account-settings"]:visible, button[data-testid="sidebar-account-settings"]:visible',
-      );
-      await expect(signInTrigger).toHaveCount(1);
-      await expect(signInTrigger).toBeVisible();
-      await expect(signInTrigger).toHaveAccessibleName(/Guest Not signed in\. Set up workspace/);
+    if (await phoneMenu.isVisible()) {
+      await expectHydratedHandler(phoneMenu, "onClick");
+      await phoneMenu.click();
+      await expect(page.getByRole("dialog", { name: "PsychSift", exact: true })).toBeVisible();
     }
+    const signInTrigger = page.locator(
+      'button[data-testid="collapsed-account-settings"]:visible, button[data-testid="sidebar-account-settings"]:visible',
+    );
+    await expect(signInTrigger).toHaveCount(1);
+    await expect(signInTrigger).toBeVisible();
+    await expect(signInTrigger).toHaveAccessibleName(/Guest Not signed in\. Set up workspace/);
     await expectHydratedHandler(signInTrigger, "onClick");
 
     // Trigger Account Setup dialog

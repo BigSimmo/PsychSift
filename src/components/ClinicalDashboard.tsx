@@ -34,11 +34,16 @@ import {
   resolveDashboardModeSurface,
 } from "@/components/clinical-dashboard/dashboard-mode-surface";
 import * as SidebarDialogs from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
+import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
 import { prefetchTwoPaneSideMenu, TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
 import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useSettingsGuideFlow } from "@/components/clinical-dashboard/use-settings-guide-flow";
-import { deriveSidebarIdentity, ClinicalDesktopSidebar } from "@/components/clinical-dashboard/ClinicalSidebar";
+import {
+  deriveSidebarIdentity,
+  ClinicalDesktopSidebar,
+  ClinicalMobileSidebar,
+} from "@/components/clinical-dashboard/ClinicalSidebar";
 import {
   canRunDashboardSearch,
   fallbackSetupChecks,
@@ -635,6 +640,8 @@ function ClinicalDashboardContent({
     localNoAuthMode,
   });
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);
+  // The two-pane side menu (owner pick 8 Oct 2026) is off again; the classic phone menu shows (10 Oct 2026).
+  const twoPaneSideMenu = TWO_PANE_SIDE_MENU;
   const newWorkMode = useNewWorkMode();
   // From 768 px the two-pane menu's strip stays on screen as a rail (1024 px up
   // keeps the full sidebar). A rail button opens the menu on its own pane.
@@ -2953,21 +2960,27 @@ function ClinicalDashboardContent({
         } as CSSProperties
       }
     >
-      <TwoPaneSideRail
-        identity={sidebarIdentity}
-        side="clinical"
-        workAvailable={newWorkMode}
-        showAccountLibrary={favouritesAccessible}
-        hideOnDesktop
-        onOpenMenu={(pane) => {
-          closeDashboardTransientSurfaces("mobileSidebar");
-          setMenuPane(pane);
-          settingsState.setMobileSidebarOpen(true);
-        }}
-        onPrefetchMenu={prefetchTwoPaneSideMenu}
-        onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
-      />
-      <div className="hidden lg:contents">{desktopSidebar}</div>
+      {twoPaneSideMenu ? (
+        <>
+          <TwoPaneSideRail
+            identity={sidebarIdentity}
+            side="clinical"
+            workAvailable={newWorkMode}
+            showAccountLibrary={favouritesAccessible}
+            hideOnDesktop
+            onOpenMenu={(pane) => {
+              closeDashboardTransientSurfaces("mobileSidebar");
+              setMenuPane(pane);
+              settingsState.setMobileSidebarOpen(true);
+            }}
+            onPrefetchMenu={prefetchTwoPaneSideMenu}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+          />
+          <div className="hidden lg:contents">{desktopSidebar}</div>
+        </>
+      ) : (
+        desktopSidebar
+      )}
       <PhoneFooterLayerFrame
         className="phone-viewport-frame relative flex min-h-0 min-w-0 flex-1 flex-col md:h-full"
         scrollHidden={chromeScrollHidden}
@@ -3649,28 +3662,48 @@ function ClinicalDashboardContent({
           onClose={closeAccountSetup}
           intent={accountSetupIntent}
         />
-        <TwoPaneSideMenuHost
-          open={settingsState.mobileSidebarOpen}
-          onOpenChange={settingsState.setMobileSidebarOpen}
-          identity={sidebarIdentity}
-          startSide="clinical"
-          openPane={menuPane}
-          workAvailable={newWorkMode}
-          currentArea={null}
-          activeMode={searchMode}
-          recentQueries={recentQueries}
-          showAccountLibrary={favouritesAccessible}
-          onNewChat={startNewChat}
-          onPickRecent={pickRecentQuery}
-          onSelectMode={selectSearchMode}
-          onPrefetchApplications={prefetchApplications}
-          onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
-          onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
-          onSignOut={async () => {
-            clinicalAskSession.clear();
-            await auth.signOut();
-          }}
-        />
+        {twoPaneSideMenu ? (
+          <TwoPaneSideMenuHost
+            open={settingsState.mobileSidebarOpen}
+            onOpenChange={settingsState.setMobileSidebarOpen}
+            identity={sidebarIdentity}
+            startSide="clinical"
+            openPane={menuPane}
+            workAvailable={newWorkMode}
+            currentArea={null}
+            activeMode={searchMode}
+            recentQueries={recentQueries}
+            showAccountLibrary={favouritesAccessible}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onSelectMode={selectSearchMode}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+            onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+            onSignOut={async () => {
+              clinicalAskSession.clear();
+              await auth.signOut();
+            }}
+          />
+        ) : (
+          <ClinicalMobileSidebar
+            open={settingsState.mobileSidebarOpen}
+            recentQueries={recentQueries}
+            identity={sidebarIdentity}
+            activeMode={searchMode}
+            onOpenChange={settingsState.setMobileSidebarOpen}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+            onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+            onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
+            onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSearch={openSidebarSearch}
+            onSelectMode={selectSearchMode}
+            showAccountLibrary={favouritesAccessible}
+          />
+        )}
       </PhoneFooterLayerFrame>
     </div>
   );
