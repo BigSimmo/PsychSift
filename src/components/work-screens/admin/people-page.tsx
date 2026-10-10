@@ -633,7 +633,9 @@ function PeopleView({
                   title={team.name}
                   sub={
                     team.needsManager
-                      ? "No roster manager"
+                      ? administrator
+                        ? "No roster manager"
+                        : "No roster manager. Ask a site administrator to name one"
                       : `Roster ${team.managers.length === 1 ? "manager" : "managers"} ${team.managers.join(", ")}`
                   }
                   end={team.needsManager ? <WorkTag tone="amber">Needs one</WorkTag> : undefined}

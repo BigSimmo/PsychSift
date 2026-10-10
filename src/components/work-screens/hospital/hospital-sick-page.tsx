@@ -41,6 +41,7 @@ import {
   HOSPITAL_SICK_STATUS_TONE,
   HOSPITAL_SICK_STATUS_WORDS,
   maySeeHospitalSick,
+  peopleAndRolesHref,
   pickHospital,
   sickCallHref,
   sickCallLine,
@@ -146,6 +147,11 @@ function SickLive({
   readonly onExample: () => void;
 }) {
   const administrator = grants.some((grant) => grant.role === "administrator");
+  // Only a team's own roster manager can open its inbox, so only their rows link there.
+  const managed = useMemo(
+    () => new Set(grants.flatMap((grant) => (grant.role === "manager" ? [grant.serviceId] : []))),
+    [grants],
+  );
   const list = useAdminHospitalList(administrator);
   const listed = list.status === "ok" ? list.hospitals : NO_HOSPITALS;
   const hospitals = useMemo(() => sickHospitals(grants, listed), [grants, listed]);
@@ -186,7 +192,15 @@ function SickLive({
                 ? "Add a hospital and link its teams in People and roles, then its sick calls show here."
                 : "You haven't been given a hospital yet. Ask a site administrator."
             }
-            action={<BackToHospital testId="admin-hospital-sick-no-hospital-back" />}
+            action={
+              administrator ? (
+                <WorkButton href={peopleAndRolesHref(null)} testId="admin-hospital-sick-no-hospital-people">
+                  Open People and roles
+                </WorkButton>
+              ) : (
+                <BackToHospital testId="admin-hospital-sick-no-hospital-back" />
+              )
+            }
             testId="admin-hospital-sick-no-hospital"
           />
         </WorkCard>
@@ -226,7 +240,16 @@ function SickLive({
         <HospitalSkeleton testId="admin-hospital-sick-loading" />
       </>
     );
-  return <SickView key={sick.data.hospital.id} view={sick.data} hospitals={hospitals} onPick={pick} example={false} />;
+  return (
+    <SickView
+      key={sick.data.hospital.id}
+      view={sick.data}
+      hospitals={hospitals}
+      onPick={pick}
+      example={false}
+      managed={managed}
+    />
+  );
 }
 
 /* --------------------------------------------------------------- example */
@@ -251,7 +274,7 @@ function SickExampleView({ data, wanted }: { readonly data: ExampleHospitalHub; 
   const pick = useHospitalPicker();
   const hospital = pickHospital(hospitals, wanted);
   const view = data.hospitals.find((entry) => entry.hospital.id === hospital?.id) ?? data.hospitals[0]!;
-  return <SickView key={view.hospital.id} view={view} hospitals={hospitals} onPick={pick} example />;
+  return <SickView key={view.hospital.id} view={view} hospitals={hospitals} onPick={pick} example managed={null} />;
 }
 
 /* ------------------------------------------------------------------ view */
@@ -289,12 +312,19 @@ function SickView({
   hospitals,
   onPick,
   example,
+  managed,
 }: {
   readonly view: HospitalSickView;
   readonly hospitals: readonly HospitalRef[];
   readonly onPick: (hospitalId: string) => void;
   readonly example: boolean;
+  /** Teams the reader is roster manager of. Null for the example, where every team opens. */
+  readonly managed: ReadonlySet<string> | null;
 }) {
+  const tapFor = (
+    call: HospitalSickView["calls"][number],
+  ): { readonly href: string } | { readonly href?: undefined } =>
+    managed === null || managed.has(call.serviceId) ? { href: sickCallHref(call) } : {};
   const { zone } = useWorkTimeZone();
   const today = zonedToday(zone);
   const [team, setTeam] = useState<string | null>(null);
@@ -391,7 +421,7 @@ function SickView({
                           {HOSPITAL_SICK_STATUS_WORDS[call.status]}
                         </WorkTag>
                       }
-                      href={sickCallHref(call)}
+                      {...tapFor(call)}
                       testId="admin-hospital-sick-call"
                     />
                   ))}
@@ -400,7 +430,12 @@ function SickView({
             );
           })}
           <p className="px-1 text-sm text-[color:var(--text-muted)]" data-testid="admin-hospital-sick-manager-note">
-            Each team&apos;s roster manager decides cover. Tap a call to open that team&apos;s inbox.
+            Each team&apos;s roster manager decides cover.
+            {managed === null
+              ? " Tap a call to open that team's inbox."
+              : managed.size > 0
+                ? " Tap a call for a team you manage to open its inbox."
+                : null}
           </p>
         </>
       )}

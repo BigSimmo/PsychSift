@@ -154,7 +154,8 @@ export function RosterManagePage() {
     typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("team") ?? ""),
   );
   const available = teams.data?.teams.filter((team) => team.enabled && team.role === "manager") ?? [];
-  const team = available.find((item) => item.serviceId === selected) ?? available[0];
+  // A named team the reader does not manage says so, rather than quietly opening another team they do.
+  const team = selected ? available.find((item) => item.serviceId === selected) : available[0];
   return (
     <InformationPageShell>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4" data-mode-identity="roster">

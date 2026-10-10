@@ -78,7 +78,7 @@ export function AdminWorkforcePage() {
         <p className="text-sm font-semibold text-[color:var(--text-heading)]">This is the health service&apos;s side</p>
         <p className="mt-1 text-sm">
           It is for Medical Workforce staff, to see the starters, contract ends, requests and readiness doctors share
-          with them. It is not live. PsychSift has no workforce accounts yet, so you are seeing it as a doctor.
+          with them. It is not live. Live workforce records aren&apos;t built yet, so this is a sample.
         </p>
         <div className="mt-3 grid grid-cols-1">
           <WorkButton variant="secondary" href={ADMIN_PAGE_HREFS.today} testId="admin-workforce-back">

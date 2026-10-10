@@ -582,6 +582,16 @@ const manageTeam: WorkArea = {
           href: "/roster/team",
           paths: [],
         },
+        // A roster manager's Hospital screen (Cover and safe number) was reachable only from Admin.
+        {
+          id: "manage-hospital",
+          label: "Hospital",
+          sub: "Your hospital role screens",
+          icon: "shield",
+          href: "/admin/hospital",
+          paths: [],
+          gate: "hospital-hub",
+        },
         { id: "manage-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
       ],
     },
@@ -1289,8 +1299,8 @@ const onCall: WorkArea = {
         },
         {
           id: "compliance",
-          label: "Compliance",
-          sub: "Renewals",
+          label: "Renewals",
+          sub: "Dates to act on",
           icon: "repeat",
           href: "/admin/renewals",
           paths: [],
