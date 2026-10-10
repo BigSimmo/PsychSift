@@ -37,19 +37,27 @@ export function useStickyWorkTabs(band: HTMLElement | null, navRef: RefObject<HT
     const nav = navRef.current;
     if (!band || !nav) return;
     const root = document.documentElement;
-    // Where the CSS holds the band, measured from the top of the box it sticks
-    // in: the page box on an installed phone, otherwise the window.
-    let stickTop = Number.NaN;
+    // The box the band sticks in: the page box on an installed phone,
+    // otherwise the window.
     let scroller: HTMLElement | null = null;
     let frame = 0;
 
     const checkStuck = () => {
       frame = 0;
+      if (!band.hasAttribute("data-pinned")) return;
+      // Read where the CSS holds the band now, not where it was at the last
+      // measure: the phone reserve behind `--work-chrome-h` is published after
+      // this hook first measures and can change (safe area, text size) with no
+      // resize here, and a stale value left the whole title block pinned on an
+      // iPhone with the bar gone and a blank strip above it (owner report,
+      // 10 Oct 2026).
+      const style = getComputedStyle(band);
+      const stickTop = Number.parseFloat(style.top);
       if (!Number.isFinite(stickTop)) return;
       const edge = scroller ? scroller.getBoundingClientRect().top + scroller.clientTop : 0;
       // Leave out the slide that hides the band with the bar (mid-slide too),
       // so a hidden band reads where it is held, not where it has slid to.
-      const slide = Number.parseFloat(getComputedStyle(band).translate.split(" ")[1] ?? "0") || 0;
+      const slide = Number.parseFloat(style.translate.split(" ")[1] ?? "0") || 0;
       band.toggleAttribute("data-stuck", band.getBoundingClientRect().top - slide - edge <= stickTop + 1);
     };
     const onScroll = () => {
@@ -67,8 +75,6 @@ export function useStickyWorkTabs(band: HTMLElement | null, navRef: RefObject<HT
       root.style.setProperty("--work-tabs-h", `${band.offsetHeight - tabsTop}px`);
       if (bar) root.style.setProperty("--work-bar-h", `${barHeight}px`);
       band.toggleAttribute("data-pinned", true);
-      // Read back where the CSS holds the band, so phone and wide layouts agree.
-      stickTop = Number.parseFloat(getComputedStyle(band).top);
       scroller = stickyScroller(band);
       checkStuck();
     };
