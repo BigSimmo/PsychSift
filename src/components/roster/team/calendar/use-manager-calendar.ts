@@ -196,10 +196,13 @@ export function useManagerCalendar(
 
   const reloadManage = manage.reload;
   const reloadWide = wideRead.reload;
+  // The `maker` read carries the team's safe number, which the manager can change in Team settings.
+  const reloadMaker = maker.reload;
   const reload = useCallback(() => {
     reloadManage();
     reloadWide();
-  }, [reloadManage, reloadWide]);
+    reloadMaker();
+  }, [reloadManage, reloadWide, reloadMaker]);
 
   return { enabled, unavailable, cover, flags, afterSwap, pending, claimed, shortDays, checkable, reload };
 }
