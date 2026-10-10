@@ -1,6 +1,6 @@
 # PsychSift Documentation Index
 
-_Updated 2026-10-08 — catalogue Context7, CME and live-version guides; clarify issue authority; Documentation owns._
+_Updated 2026-10-08 — catalogue Context7 and CME guides; clarify issue authority; Documentation owns._
 
 Categorised map of every tracked Markdown document under `docs/`: the load-bearing docs lead
 each category, and an "Also catalogued" list completes it (the immutable
