@@ -22,7 +22,8 @@ export const runtime = "nodejs";
  * body is strict, so a body carrying `actorId` is refused with 400. Publishing
  * and the roster maker's other actions are refused here; only the publish
  * route sends them. The team's safe number (`needs.set`) is sent here, and the
- * SQL refuses it from anyone but a manager.
+ * SQL refuses it from anyone but a manager, or once anyone has saved since the
+ * read it was built on.
  */
 
 type Context = { params: Promise<{ serviceId: string }> };

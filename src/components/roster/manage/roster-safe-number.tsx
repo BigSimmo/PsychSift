@@ -7,7 +7,7 @@ import { WorkButton, WorkCard, WorkIconRow, WorkSectionLabel, useWorkUndoToast }
 import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { controlDisabled } from "@/components/ui-primitives";
 import { fetchRosterRead, postRosterAction, useRosterRead } from "@/components/roster/use-roster-team";
-import type { RosterMaker, RosterOverview, RosterStaffingNeedInput } from "@/lib/roster/team/model";
+import type { RosterMaker, RosterOverview } from "@/lib/roster/team/model";
 import {
   SAFE_NUMBER_GROUPS,
   SAFE_NUMBER_KINDS,
@@ -48,6 +48,8 @@ const KIND_WORDS: Readonly<Record<SafeNumberKind, { label: string; icon: LucideI
 const OFFLINE_SAVE =
   "You're offline, so nothing was saved. Your numbers are still here. Save again once you're back online.";
 const SAMPLE_SAVE = "This is the example team, so nothing is saved.";
+/** Saves that clash with another manager's are rebuilt on a fresh read and sent again, this many times in all. */
+const WRITE_ATTEMPTS = 3;
 
 type SaveState =
   { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "example" } | { kind: "error"; message: string };
@@ -175,12 +177,30 @@ function Editor({
     return null;
   }
 
-  async function send(list: RosterStaffingNeedInput[]): Promise<boolean> {
-    const result = await postRosterAction(serviceId, { action: "needs.set", needs: list });
-    if (result.ok) return true;
-    if (result.code === "sample_read_only") setState({ kind: "example" });
-    else failed(result.message);
-    return false;
+  /**
+   * Reads the team's needs, builds the numbers to write from that read, and sends them. The database refuses the
+   * write if anyone saved since the read, so the read is taken again and the numbers rebuilt on top of it, a few
+   * times before giving up. Returns the numbers written and the read they were built on, or null (error shown).
+   */
+  async function writeOverFresh(
+    build: (fresh: SafeNumberGrid) => SafeNumberGrid,
+  ): Promise<{ written: SafeNumberGrid; read: SafeNumberGrid; needs: RosterMaker["needs"] } | null> {
+    for (let attempt = 1; ; attempt += 1) {
+      const fresh = await readFresh();
+      if (!fresh) return null;
+      const read = safeNumberGrid(fresh.needs);
+      const written = build(read);
+      const result = await postRosterAction(serviceId, {
+        action: "needs.set",
+        expectedIds: fresh.needs.map((need) => need.id),
+        needs: safeNumberNeeds(written, fresh.needs),
+      });
+      if (result.ok) return { written, read, needs: fresh.needs };
+      if (result.code === "roster_conflict" && attempt < WRITE_ATTEMPTS) continue;
+      if (result.code === "sample_read_only") setState({ kind: "example" });
+      else failed(result.message);
+      return null;
+    }
   }
 
   // Undo puts back only the numbers its save changed and nobody has changed since, over a fresh read, so a need or a number
@@ -190,13 +210,12 @@ function Editor({
     busy.current = true;
     try {
       setState({ kind: "saving" });
-      const fresh = await readFresh();
-      if (!fresh) return;
-      const reverted = undoSafeNumberChanges(safeNumberGrid(fresh.needs), saved, previous);
-      if (!(await send(safeNumberNeeds(reverted, fresh.needs)))) return;
+      const result = await writeOverFresh((fresh) => undoSafeNumberChanges(fresh, saved, previous));
+      if (!result) return;
+      const reverted = result.written;
       setConfirmed(reverted);
       setDraft((current) => (current ? applySafeNumberChanges(reverted, saved, current) : null));
-      setOthers(otherNeedCount(fresh.needs));
+      setOthers(otherNeedCount(result.needs));
       setState({ kind: "idle" });
       onSaved?.();
     } finally {
@@ -213,15 +232,13 @@ function Editor({
     busy.current = true;
     try {
       setState({ kind: "saving" });
-      // Read the team's needs again, so a need or a number another manager set since this page opened is kept.
-      const fresh = await readFresh();
-      if (!fresh) return;
-      const previous = safeNumberGrid(fresh.needs);
-      const saved = applySafeNumberChanges(previous, confirmed, grid);
-      if (!(await send(safeNumberNeeds(saved, fresh.needs)))) return;
+      // Build on a fresh read, so a need or a number another manager set since this page opened is kept.
+      const result = await writeOverFresh((fresh) => applySafeNumberChanges(fresh, confirmed, grid));
+      if (!result) return;
+      const { written: saved, read: previous } = result;
       setConfirmed(saved);
       setDraft(null);
-      setOthers(otherNeedCount(fresh.needs));
+      setOthers(otherNeedCount(result.needs));
       setState({ kind: "saved" });
       onSaved?.();
       toast?.("Safe number saved", () => void undo(saved, previous));

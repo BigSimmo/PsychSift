@@ -81,7 +81,7 @@ describe("the list needs.set is sent", () => {
     expect(sent.some((item) => "id" in item)).toBe(false);
     expect(otherNeedCount(current)).toBe(kept.length);
     // Exactly what the route's strict schema accepts.
-    expect(rosterActionSchema.safeParse({ action: "needs.set", needs: sent }).success).toBe(true);
+    expect(rosterActionSchema.safeParse({ action: "needs.set", expectedIds: [], needs: sent }).success).toBe(true);
   });
 
   it("clears every number to an empty list when the team has no other need", () => {
@@ -115,7 +115,7 @@ describe("a total over the database's limit", () => {
     expect(grid.day[0]).toBe(350);
     const sent = safeNumberNeeds(grid, current);
     expect(sent.filter((item) => item.kind === "day").map((item) => item.needed)).toEqual([200, 150]);
-    expect(rosterActionSchema.safeParse({ action: "needs.set", needs: sent }).success).toBe(true);
+    expect(rosterActionSchema.safeParse({ action: "needs.set", expectedIds: [], needs: sent }).success).toBe(true);
   });
 
   it("steps down by one, not straight to 200", () => {
