@@ -1319,14 +1319,16 @@ test.describe("PsychSift UI smoke coverage", () => {
       const sheetRect = sheet?.getBoundingClientRect();
       return {
         inputOutline: getComputedStyle(element).outlineStyle,
-        fieldBorder: field ? getComputedStyle(field).borderTopColor : null,
         contained:
           Boolean(fieldRect && sheetRect) && fieldRect!.left >= sheetRect!.left && fieldRect!.right <= sheetRect!.right,
       };
     });
     expect(fieldFocus.inputOutline).toBe("none");
-    expect(fieldFocus.fieldBorder).not.toBe("rgba(0, 0, 0, 0)");
     expect(fieldFocus.contained).toBe(true);
+    // Read the border once focus has settled: the field fades its border in.
+    await expect
+      .poll(() => find.evaluate((element) => getComputedStyle(element.closest(".two-pane-menu__find")!).borderTopColor))
+      .not.toBe("rgba(0, 0, 0, 0)");
 
     await closeMenu.click();
     await expect(menu).toBeHidden();

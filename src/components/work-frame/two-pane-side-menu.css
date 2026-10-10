@@ -693,6 +693,7 @@ a.two-pane-menu__today:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .two-pane-menu__head,
+  .two-pane-menu__find,
   .two-pane-menu__swipe .two-pane-menu__recent,
   .two-pane-menu__swipe-remove {
     transition: none;
