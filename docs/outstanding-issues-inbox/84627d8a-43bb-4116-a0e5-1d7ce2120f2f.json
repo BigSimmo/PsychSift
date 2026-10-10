@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "84627d8a-43bb-4116-a0e5-1d7ce2120f2f",
+  "createdOn": "2026-10-10",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Therapy NICE citations sit in the original uploaded-file source entry, so the catalogue may count them as part of the upload",
+    "detail": "NEXT: give later-added guideline citations their own source entry (or a provenance field) so src/lib/sources/repository-providers.ts and the provenance panel (src/components/therapy-compass/record/source-provenance.tsx) show each citation with its real origin, then regenerate the therapy index. Why: provenance should not imply the import contained the NICE text. Context: Qodo finding on PR #3398, merged without a fix; the record note does state the references were added on 2026-10-09. Owner: assistant. Confidence: medium (not reproduced on the live catalogue). Depends on: #NZ4X41.",
+    "source": "session 2026-10-10 /ledger sweep, PR #3398 (merged 2026-10-09 as 6f9203d55)",
+    "issueUlid": "01M4JGC3JXSW6NN45GNKV5T9DY"
+  }
+}

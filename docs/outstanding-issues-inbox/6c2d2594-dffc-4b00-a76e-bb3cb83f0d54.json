@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "6c2d2594-dffc-4b00-a76e-bb3cb83f0d54",
+  "createdOn": "2026-10-10",
+  "action": "update",
+  "payload": {
+    "id": "#05WXHX",
+    "detail": "UPDATE 2026-10-10: PR #3398 proposed WA-first sources in src/data/medication-source-links.json: wa-health-clozapine-guideline-2024 for clozapine, and the Australian Prescriber lithium article plus its correction for lithium-carbonate-ir-sr. They render nothing until the owner adopts and signs off those register records. Valproate, other anticonvulsants and QTc-risk drugs still have no proposal. UPDATE 2026-09-25: step 1 shipped in PR #3017. The medication footer no longer promises a linked source (it points to current Australian product information or the local guideline); the therapy footer points to the sources named under Source & review status. OWNER DECISION: default source per medication is the TGA Product Information, plus WA guidelines where they exist; engineering proposes, owner confirms, high-risk medicines first (clozapine, lithium, valproate and other anticonvulsants, QTc/overdose-risk drugs). Real links still need the data-model change described below. PRIOR DETAIL: /medications/[slug] has 0 anchors in <main> on all four tabs; /therapy-compass/[slug] the same. Footer on every tab: 'verify every dose and interaction against the linked source'. acamprosate states Max 1998 mg/day, a serum creatinine >120 micromol/L contraindication, Half-life 13-28.4 h and an unattributed EFFICACY: MODERATE tile; the only provenance is one prose sentence on tab 4 below the fold. Root cause: medication-records.ts:118-126 derives governance from a free-text src section with no URL or document id. /dictionary and /factsheets do this correctly. Fixing properly is a database migration plus clinical governance.",
+    "source": "session 2026-10-10 /ledger sweep, PR #3398 (merged 2026-10-09 as 6f9203d55)",
+    "baseRowFingerprint": "f42607b0537dbadea2f9b8b8336d59fd1515469ace8e0863ecfd79959b91e764"
+  }
+}
