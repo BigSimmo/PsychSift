@@ -609,6 +609,7 @@ describe("captured RAG eval cases", () => {
         ).score,
       ).toBe(0);
       expect(intentOf("It is not a myth that ibuprofen is safe. Avoid others: clearance and toxicity.").score).toBe(0);
+      expect(intentOf("It isn't a myth that ibuprofen is safe. Avoid others: clearance and toxicity.").score).toBe(0);
       expect(
         intentOf("It's a myth that ibuprofen is safe. Avoid NSAIDs: they reduce lithium clearance and risk toxicity.")
           .score,
