@@ -679,7 +679,7 @@ a.two-pane-menu__today:hover {
 
 .two-pane-menu a:focus-visible,
 .two-pane-menu button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 

@@ -193,8 +193,8 @@ export function ModePickerSheetBand({ modeId, icon: Icon }: { modeId: string; ic
 }
 
 /**
- * "Currently <mode>" under the sheet title, with a small badge in the mode's
- * colour: its two-stop gradient, which is flat for a mode with no work palette.
+ * "Currently <mode>" under the sheet title, with a small badge filled flat in
+ * the mode's colour (the flat rule: no gradient badges).
  */
 export function ModePickerCurrentMode({
   modeId,
@@ -209,7 +209,7 @@ export function ModePickerCurrentMode({
     <span className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm leading-5 text-[color:var(--text-muted)]">
       <span
         data-mode-identity={modeId}
-        className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[linear-gradient(160deg,var(--mode-identity-2),var(--mode-identity)_70%)] text-[color:var(--mode-identity-contrast)] forced-colors:border"
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)] forced-colors:border"
       >
         <Icon aria-hidden="true" className="size-icon-xs" strokeWidth={2} />
       </span>
