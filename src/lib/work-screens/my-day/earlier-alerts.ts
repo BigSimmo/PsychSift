@@ -106,14 +106,14 @@ export const ALERT_CODES: Readonly<Record<AlertCode, AlertCodeInfo>> = {
   reminder: {
     lockTitle: "PsychSift",
     lockBody: "A reminder you set is due. Open PsychSift to see it.",
-    path: "/my-day/alerts",
+    path: "/my-day?sheet=reminders",
     area: "reminder",
     source: "Reminder",
   },
   due: {
     lockTitle: "PsychSift",
     lockBody: "Something in My Day needs you. Open PsychSift to see it.",
-    path: "/my-day/notifications",
+    path: "/my-day?view=all",
     area: "reminder",
     source: "Bell reminder",
   },
