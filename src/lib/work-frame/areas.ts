@@ -79,9 +79,9 @@ export type WorkFrameIconName =
 export type WorkFrameGate =
   /** Teaching organisers and admins (`modePageVisible`'s organiser rule). */
   | "teaching-organiser"
-  /** Admin Bookings, while it is behind the Live version switch (`course-bookings`). */
+  /** Admin Bookings. Open to everyone since 10 Oct 2026 (`course-bookings`). */
   | "course-bookings"
-  /** Admin Courses: course organisers, or anyone while Admin's example data is on, behind the same switch. */
+  /** Admin Courses: course organisers, or anyone while Admin's example data is on. */
   | "course-organiser"
   /** Open shifts posters (roster managers), once a read has said so. */
   | "open-shifts-poster"
@@ -109,12 +109,10 @@ export type WorkFrameGate =
   | "hospital-role"
   /** The Hospital screen: everyone "hospital-role" lets in, plus supervisors and roster managers. */
   | "hospital-hub"
-  /** Testers on the newest live version, for a page that exists only there (Rotations). */
+  /** Rotations. Open to everyone since 10 Oct 2026. */
   | "rotation-preferences"
-  /** Roster managers (as "open-shifts-poster") who are also on the newest live version (Rotation rounds). */
-  | "rotation-preferences-manager"
-  /** Testers on the newest live version, for the one calendar (`main-calendar`). */
-  | "main-calendar";
+  /** Roster managers (as "open-shifts-poster"), for Rotation rounds. */
+  | "rotation-preferences-manager";
 
 /** Actions a page can register for the More sheet to run. */
 export type WorkFrameActionId = "my-day-reminders" | "my-day-customise" | "assess-record-epa" | "work-help";
@@ -223,7 +221,6 @@ const myDay: WorkArea = {
           sub: "Everything dated",
           icon: "calendar",
           href: "/my-day/calendar",
-          gate: "main-calendar",
         },
         {
           id: "my-day-favourites",

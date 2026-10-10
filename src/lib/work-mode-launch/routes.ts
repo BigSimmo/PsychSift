@@ -50,10 +50,10 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/admin/pay", owner: "wiring" },
   { path: "/admin/tax", owner: "wiring" },
   { path: "/admin/workforce", owner: "wiring" },
-  // Course bookings (also behind the Live version switch).
+  // Course bookings.
   { path: "/admin/bookings", owner: "course-bookings" },
   { path: "/admin/courses", owner: "course-bookings" },
-  // One calendar for everything dated (also behind the Live version switch).
+  // One calendar for everything dated.
   { path: "/my-day/calendar", owner: "main-calendar" },
   // Favourites.
   { path: "/my-day/favourites", owner: "favourites" },
