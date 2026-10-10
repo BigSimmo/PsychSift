@@ -25,7 +25,7 @@ const reads = [
   "gh api repos/BigSimmo/PsychSift/pulls/3433/reviews -H 'Accept: application/vnd.github+json'",
   "gh api -X GET repos/BigSimmo/PsychSift/issues/3433/comments",
   "gh api --method=GET /repos/bigsimmo/psychsift/commits/main/status",
-  "gh api repos/{owner}/{repo}/pulls/3433/files --paginate",
+  "gh api repos/BigSimmo/PsychSift/pulls/3433/files --paginate",
   "gh api repos/BigSimmo/PsychSift/pulls/3433 2>/dev/null | jq -r .state",
   "cd /home/claude/PsychSift && gh api repos/BigSimmo/PsychSift/pulls/3433 --jq .mergeable",
   "gh pr view 3433 --json state,mergedAt,statusCheckRollup",
@@ -61,6 +61,14 @@ const writes = [
   "timeout 30 gh api -X POST repos/BigSimmo/PsychSift/issues/1/comments -f body=x",
   "bash -c 'gh api -X POST repos/BigSimmo/PsychSift/issues/1/comments -f body=x'",
   "gh api repos/other/repo/pulls/1",
+  "gh api repos/BigSimmo/PsychSift/pulls/1 | head -n 5 .env.local",
+  "gh api repos/BigSimmo/PsychSift/pulls/1 && grep '' .env.local",
+  "cd /tmp && gh api repos/other/repo/pulls/1",
+];
+
+const sensitiveReads = [
+  "gh auth status --show-token",
+  "gh auth status -t",
 ];
 
 // Writes that are not `gh api`: the hook leaves them to the normal permission flow.
@@ -87,6 +95,10 @@ describe("github-read-allow hook", () => {
 
   it.each(writes)("prompts for gh api write: %s", (command) => {
     expect(decide(command)).toBe("ask");
+  });
+
+  it.each(sensitiveReads)("does not pre-approve sensitive reads: %s", (command) => {
+    expect(decide(command)).not.toBe("allow");
   });
 
   it.each(untouchedWrites)("does not pre-approve: %s", (command) => {

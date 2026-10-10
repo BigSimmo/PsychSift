@@ -24,7 +24,7 @@
 
 import { pathToFileURL } from "node:url";
 
-const REPO_PATH = /^\/?repos\/(?:bigsimmo\/psychsift|\{owner\}\/\{repo\})(?:[/?#]|$)/i;
+const REPO_PATH = /^\/?repos\/bigsimmo\/psychsift(?:[/?#]|$)/i;
 
 const GH_READ_SUBCOMMANDS = {
   pr: new Set(["view", "list", "diff", "checks", "status"]),
@@ -120,7 +120,7 @@ export function lex(command) {
       if (!flushSegment()) return null;
     } else if ("$`()<>{}!#~".includes(ch)) {
       if (ch === ">" || ch === "{" || ch === "}") {
-        // Judged later: harmless redirects and `{owner}`/`{repo}` placeholders.
+        // Judged later as part of the endpoint validation.
         const w = ensureWord();
         w.text += ch;
         w.bare += ch;
@@ -161,9 +161,8 @@ function stripRedirects(segment) {
 
 function endpointIsReadable(word) {
   if (!REPO_PATH.test(word.text)) return false;
-  // Unquoted braces are allowed only as gh's own {owner}/{repo}/{branch} placeholders,
-  // which bash leaves literal. Unquoted globs are allowed only after the fixed repo
-  // prefix, so no expansion can turn the endpoint into a flag.
+  // Unquoted globs are allowed only after the fixed repo prefix, so no expansion
+  // can turn the endpoint into a flag.
   const bare = word.bare.replace(/[{}]/g, "");
   if (/[{}]/.test(word.text.replace(/\{(?:owner|repo|branch)\}/g, ""))) return false;
   return /^[*?[\]]*$/.test(bare) && !word.text.startsWith("-");
@@ -216,13 +215,109 @@ export function ghApiIsRead(args) {
   return endpoint !== null && endpointIsReadable(endpoint);
 }
 
+function filterIsRead(name, args) {
+  if (!args.every(plain)) return false;
+
+  // These filters must consume stdin only. Options that take a value are safe
+  // when that value is an option argument, but positional file operands are not.
+  if (name === "head" || name === "tail") {
+    for (let i = 0; i < args.length; i += 1) {
+      const text = args[i].text;
+      if (text === "-n" || text === "--lines" || text === "-c" || text === "--bytes") {
+        if (++i >= args.length || !/^[-+]?\\d+$/.test(args[i].text)) return false;
+      } else if (!/^-[0-9]+$/.test(text)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (name === "grep") {
+    let pattern = false;
+    for (let i = 0; i < args.length; i += 1) {
+      const text = args[i].text;
+      if (text === "--") {
+        if (i + 1 < args.length) {
+          if (pattern || i + 2 !== args.length) return false;
+          pattern = true;
+        }
+      } else if (
+        text === "-f" ||
+        text === "--file" ||
+        text === "-r" ||
+        text === "-R" ||
+        text === "--recursive" ||
+        text === "--dereference-recursive" ||
+        text === "-d" ||
+        text === "--directories" ||
+        text === "--include" ||
+        text === "--exclude" ||
+        text === "--exclude-dir"
+      ) {
+        return false;
+      } else if (text === "-e" || text === "--regexp") {
+        if (++i >= args.length) return false;
+        pattern = true;
+      } else if (text.startsWith("-")) {
+        // grep switches (including bundled switches) do not name files.
+      } else if (pattern) {
+        return false;
+      } else {
+        pattern = true;
+      }
+    }
+    return true;
+  }
+
+  if (name === "jq") {
+    let program = false;
+    for (let i = 0; i < args.length; i += 1) {
+      const text = args[i].text;
+      if (text === "-f" || text === "--from-file") return false;
+      if (text === "--arg" || text === "--argjson" || text === "--slurpfile" || text === "--rawfile") {
+        if (i + 2 >= args.length) return false;
+        i += 2;
+      } else if (text.startsWith("-")) {
+        // jq options without file operands.
+      } else if (program) {
+        return false;
+      } else {
+        program = true;
+      }
+    }
+    return true;
+  }
+
+  if (name === "wc") {
+    return args.every((word) => word.text.startsWith("-") && word.text !== "--files0-from");
+  }
+
+  if (name === "cut") {
+    const valueOptions = new Set(["-b", "-c", "-d", "-f", "--bytes", "--characters", "--delimiter", "--fields"]);
+    for (let i = 0; i < args.length; i += 1) {
+      if (valueOptions.has(args[i].text)) {
+        if (++i >= args.length) return false;
+      } else if (!args[i].text.startsWith("-")) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (name === "tr") {
+    return args.filter((word) => !word.text.startsWith("-")).length === 2;
+  }
+
+  return args.length === 0; // true
+}
+
 function segmentIsRead(segment) {
   const words = stripRedirects(segment);
   if (!words || words.length === 0) return { ok: false };
   const [head, ...rest] = words;
   if (!plain(head)) return { ok: false };
   if (head.text === "cd") return { ok: rest.length <= 1 && rest.every(plain), gh: false };
-  if (FILTERS.has(head.text)) return { ok: rest.every(plain), gh: false };
+  if (FILTERS.has(head.text)) return { ok: filterIsRead(head.text, rest), gh: false };
   if (head.text !== "gh") return { ok: false };
   const [sub, action, ...args] = rest;
   if (!sub || !plain(sub)) return { ok: false };
@@ -231,6 +326,7 @@ function segmentIsRead(segment) {
   }
   const actions = GH_READ_SUBCOMMANDS[sub.text];
   if (!actions || !action || !plain(action) || !actions.has(action.text)) return { ok: false };
+  if (sub.text === "auth" && action.text === "status") return { ok: args.length === 0, gh: true };
   return { ok: args.every(plain), gh: true };
 }
 
