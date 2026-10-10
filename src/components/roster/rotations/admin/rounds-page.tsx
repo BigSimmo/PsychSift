@@ -175,7 +175,9 @@ function RoundsList({
             New round
           </WorkButton>
         </div>
-      ) : null}
+      ) : (
+        <RotationNoTeam />
+      )}
     </>
   );
 }

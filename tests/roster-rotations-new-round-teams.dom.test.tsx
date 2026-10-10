@@ -106,4 +106,13 @@ describe("site administrator in no team", () => {
     expect(screen.queryByTestId("rotation-rounds-new-empty")).toBeNull();
     expect(screen.queryByTestId("rotation-rounds-new")).toBeNull();
   });
+
+  it("keeps existing rounds visible and explains why there is no New round", async () => {
+    read.current = { ...read.current, managed: example.rounds };
+    const { RotationRoundsPage } = await import("@/components/roster/rotations/admin/rounds-page");
+    render(<RotationRoundsPage />);
+    await screen.findByTestId("rotation-no-team");
+    expect(screen.getAllByTestId(/^rotation-round-row-/).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("rotation-rounds-new")).toBeNull();
+  });
 });
