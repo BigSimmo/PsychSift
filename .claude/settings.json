@@ -105,7 +105,6 @@
       "Bash(npm run classify:documents)",
       "Bash(npm run governance:release)",
       "Bash(npm run audit:source-governance:release)",
-      "Bash(gh api:*)",
       "Bash(gh pr create:*)",
       "Bash(git add -f:*)",
       "Bash(git add --force:*)",
@@ -311,6 +310,20 @@
       "Bash(npm run check:organisation)",
       "Bash(gh pr checks)",
       "Bash(gh run watch:*)",
+      "mcp__github__pull_request_read",
+      "mcp__github__issue_read",
+      "mcp__github__get_commit",
+      "mcp__github__list_commits",
+      "mcp__github__list_pull_requests",
+      "mcp__github__list_issues",
+      "mcp__github__list_branches",
+      "mcp__github__search_pull_requests",
+      "mcp__github__search_issues",
+      "mcp__github__get_file_contents",
+      "mcp__github__actions_get",
+      "mcp__github__actions_list",
+      "mcp__github__get_job_logs",
+      "mcp__github__get_check_run",
       "Bash(node --version)",
       "Bash(npm --version)",
       "Bash(npm ls:*)",
@@ -553,6 +566,16 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pr-handoff-stop.sh\" pre",
             "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/github-read-allow.sh\"",
+            "timeout": 10
           }
         ]
       },
