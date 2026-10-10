@@ -8,7 +8,7 @@ import {
 import {
   buildExtractiveAnswer,
   classifyAnswerIntent,
-  toxicityListSentence,
+  toxicityListSentences,
   documentSupportListIntent,
   finalizeRagAnswerQuality,
   generatedAnswerQualityFailureReason,
@@ -3222,14 +3222,14 @@ describe("toxicity heading carry-over (owner decision, #ZZ4RAP)", () => {
 
   it("ends a bullet list at the next heading even when bullets have no closing punctuation", () => {
     const content = ["• Signs of mild toxicity:", "o Nausea", "• Signs of severe toxicity:", "o Seizures"].join("\n");
-    expect(toxicityListSentence("Signs of mild toxicity:", content, query)).toBe(
+    expect(toxicityListSentences("Signs of mild toxicity:", content, query)).toEqual([
       "Signs of mild toxicity include nausea.",
-    );
-    expect(toxicityListSentence("Signs of severe toxicity:", content, query)).toBe(
+    ]);
+    expect(toxicityListSentences("Signs of severe toxicity:", content, query)).toEqual([
       "Signs of severe toxicity include seizures.",
-    );
+    ]);
     expect(
-      toxicityListSentence("Signs of mild toxicity:", content, "What are the signs of severe toxicity?"),
+      toxicityListSentences("Signs of mild toxicity:", content, "What are the signs of severe toxicity?"),
     ).toBeNull();
   });
 
@@ -3243,17 +3243,20 @@ describe("toxicity heading carry-over (owner decision, #ZZ4RAP)", () => {
       "",
       "Toxicity may also be caused by overdose.",
     ].join("\n");
-    expect(toxicityListSentence("The most significant contributors to lithium toxicity are4:", content, query)).toBe(
-      "The most significant contributors to lithium toxicity include reduced fluid or salt intake and fluid loss from vomiting, diarrhoea or excessive sweating.",
-    );
     expect(
-      toxicityListSentence("Features of toxicity include:", "Features of toxicity include:\n• Tremor", query),
-    ).toBe("Features of toxicity include tremor.");
+      toxicityListSentences("The most significant contributors to lithium toxicity are4:", content, query),
+    ).toEqual([
+      "The most significant contributors to lithium toxicity include reduced fluid or salt intake.",
+      "The most significant contributors to lithium toxicity include fluid loss from vomiting, diarrhoea or excessive sweating.",
+    ]);
+    expect(
+      toxicityListSentences("Features of toxicity include:", "Features of toxicity include:\n• Tremor", query),
+    ).toEqual(["Features of toxicity include tremor."]);
   });
 
   it("never carries an action heading over to its steps", () => {
     expect(
-      toxicityListSentence(
+      toxicityListSentences(
         "If lithium toxicity is suspected:",
         "If lithium toxicity is suspected:\n• Withhold lithium",
         query,

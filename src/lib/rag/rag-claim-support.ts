@@ -1,3 +1,4 @@
+import { toxicityHeadingBulletPassages } from "@/lib/rag/rag-toxicity-list";
 import {
   adjacentLabelledNumericBandConflicts,
   containsLabelledNumericBand,
@@ -739,6 +740,13 @@ function sourceEvidenceClaimSegmentGroups(source: SearchResult, claim: string) {
       ),
     ),
     split(source.index_unit?.content, source.index_unit?.title),
+    // A toxicity list heading with one of its bullets is one statement ("Signs of severe toxicity: o
+    // Increased muscle tone, …"); every support check still runs against that heading-and-bullet text.
+    toxicityHeadingBulletPassages(source.content).map((passage) => ({
+      passage,
+      evidence: [sourceContext, passage].filter(Boolean).join(". "),
+      antecedent: "",
+    })),
   ].filter((group) => group.length > 0);
 }
 

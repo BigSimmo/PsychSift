@@ -114,6 +114,11 @@ import {
   reflowWrappedEscalationRecipientLines,
 } from "@/lib/rag/rag-source-segmentation";
 import { containsDanglingProceduralComparatorStepArtifact } from "@/lib/rag/rag-extractive-artifacts";
+import {
+  bulletItemsAfter,
+  toxicityActionHeadingPattern,
+  toxicityListHeadingPattern,
+} from "@/lib/rag/rag-toxicity-list";
 
 import {
   classifyAnswerIntent,
@@ -1511,34 +1516,6 @@ const wordsOf = (text: string) => (text.toLowerCase().match(/[a-z0-9]+/g) ?? [])
 
 // A heading such as "Signs and symptoms of severe toxicity:" carries its toxicity context to the
 // bullets listed under it, up to the next colon-led heading (owner decision, #ZZ4RAP).
-// Bullets listed directly under a heading, with their wrapped lines. Blank lines between bullets are
-// skipped. The list ends at a new colon-led heading, a peer "•" bullet when the heading is itself a
-// "•" item, or text after a blank line or a finished item that is not a bullet.
-function bulletItemsAfter(lines: string[], headingIsBullet: boolean) {
-  const marker = headingIsBullet ? /^\s*[o\-–]\s+/ : /^\s*[•o\-–]\s+/;
-  const items: string[] = [];
-  let sawBlank = false;
-  for (const line of lines) {
-    if (!line.trim()) {
-      sawBlank = true;
-      continue;
-    }
-    if (/:\s*$/.test(line) || (headingIsBullet && /^\s*•/.test(line))) break;
-    if (marker.test(line)) items.push(line.replace(marker, ""));
-    else if (items.length > 0 && !sawBlank && !/(?<!\b(?:e\.g|i\.e))[.!?]\s*$/i.test(items[items.length - 1]))
-      items[items.length - 1] += ` ${line}`;
-    else break;
-    sawBlank = false;
-  }
-  return items;
-}
-
-// Only a heading that introduces a list of signs, features or contributors carries over; an action
-// heading ("If lithium toxicity is suspected:") never turns its steps into a features list.
-const toxicityListHeadingPattern =
-  /\b(?:signs?|symptoms?|features?|presentation|risk factors?|contributors?|causes?)\b[^:]*\btoxic\w*[^:]*:\s*$/i;
-const toxicityActionHeadingPattern = /\b(?:if|when|suspected|manage\w*|action|steps?|withhold|escalat\w*)\b/i;
-
 const cleanToxicityHeading = (line: string) =>
   // "…contributors to lithium toxicity are4:" → "…contributors to lithium toxicity".
   line
@@ -1552,7 +1529,7 @@ const cleanToxicityHeading = (line: string) =>
  * under it: "Signs and symptoms of severe toxicity include increased muscle tone, …". Null when the
  * sentence is not such a heading, the heading is an action heading, or it names another severity.
  */
-export function toxicityListSentence(sentence: string, content: string | null | undefined, query: string) {
+export function toxicityListSentences(sentence: string, content: string | null | undefined, query: string) {
   if (!content || !/:\s*$/.test(sentence)) return null;
   // A question about one severity ("signs of severe toxicity") takes only that severity's list.
   const severities = query.toLowerCase().match(/\b(?:severe|mild|moderate)\b/g) ?? [];
@@ -1566,9 +1543,8 @@ export function toxicityListSentence(sentence: string, content: string | null | 
       item.trim().replace(/[\s.;,]+$/, ""),
     );
     if (items.length === 0) return null;
-    const listed = items.map((item) => lowerFirst(item));
-    const joined = listed.length > 1 ? `${listed.slice(0, -1).join(", ")} and ${listed.at(-1)}` : listed[0];
-    return `${cleanToxicityHeading(line)} include ${joined}.`;
+    // One statement per bullet, so claim support can verify each against its heading and bullet.
+    return items.map((item) => `${cleanToxicityHeading(line)} include ${lowerFirst(item)}.`);
   }
   return null;
 }
@@ -1750,9 +1726,17 @@ function extractClinicalFactsFromResults(
         : splitClinicalEvidenceSentences(text),
       intent,
     );
-    for (const rawSentence of sentences) {
+    const statedLists = new Set<string>();
+    const expandedSentences = toxicityFeatureQuery
+      ? sentences.flatMap((candidate) => {
+          const listed = /:\s*$/.test(candidate) ? toxicityListSentences(candidate, result.content, query) : null;
+          listed?.forEach((statement) => statedLists.add(statement));
+          return listed ?? [candidate];
+        })
+      : sentences;
+    for (const rawSentence of expandedSentences) {
       if (referencesConflictingBand(rawSentence)) continue;
-      let sentence = rawSentence;
+      const sentence = rawSentence;
       if (
         labelledTargetFacts.length > 1 &&
         (/(?:^|:\s*)Target\s+(?:serum|plasma)\s+level\s*:/i.test(sentence) ||
@@ -1762,15 +1746,9 @@ function extractClinicalFactsFromResults(
       }
       // A toxicity-features question is answered only by text about toxicity; a dose cap or
       // titration note from the same chunk is not an answer to it (#ZZ4RAP).
-      if (toxicityFeatureQuery) {
-        // A toxicity list heading is stated with its bullets (owner decision); any other colon-led
-        // lead-in ("…complete the following:") introduces a list and is not itself an answer.
-        if (/:\s*$/.test(sentence)) {
-          const list = toxicityListSentence(sentence, result.content, query);
-          if (!list) continue;
-          sentence = list;
-        } else if (!/\btoxic\w*/i.test(sentence)) continue;
-      }
+      // A colon-led lead-in ("…complete the following:") introduces a list and is not itself an answer;
+      // toxicity list headings were already stated with their bullets above (owner decision).
+      if (toxicityFeatureQuery && (/:\s*$/.test(sentence) || !/\btoxic\w*/i.test(sentence))) continue;
       if (!factSentenceMatchesQueryFromResult(sentence, result, query, intent)) continue;
       const kind = factKindForSentence(sentence, query, intent);
       if (!kind) continue;

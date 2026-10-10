@@ -8831,7 +8831,8 @@ describe("high-risk answer recovery (#ZZ4RAP)", () => {
       forceGenerationRoute: true,
     });
     expect(visibleText(backup)).not.toMatch(/2500\s*mg|For make|individualised/i);
-    // A contributors list stitched from separate bullets is never shown unless claim support verifies it.
+    // The contributors heading carries over to each of its bullets (owner decision), one statement per bullet.
+    expect(visibleText(backup)).toMatch(/contributors to lithium toxicity include reduced fluid or salt intake\./i);
     expect(visibleText(backup)).not.toMatch(/blockers\) reduced fluid|intake fluid loss/i);
   });
 

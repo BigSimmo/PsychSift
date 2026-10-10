@@ -2068,6 +2068,37 @@ describe("high-risk answer support (#ZZ4RAP)", () => {
     ).toBe(true);
   });
 
+  it("verifies a toxicity list heading stated with one of its bullets, keeping direction", () => {
+    const contributors = source(
+      "contributors",
+      [
+        "The most significant contributors to lithium toxicity are:",
+        "",
+        "• reduced fluid or salt intake",
+        "",
+        "• fluid loss from vomiting, diarrhoea or excessive sweating.",
+      ].join("\n"),
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "The most significant contributors to lithium toxicity include reduced fluid or salt intake.",
+        contributors,
+      ),
+    ).toBe(true);
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "The most significant contributors to lithium toxicity include increased fluid or salt intake.",
+        contributors,
+      ),
+    ).toBe(false);
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "The most significant contributors to lithium toxicity include reduced fluid or salt intake.",
+        source("action", "If lithium toxicity is suspected:\n• reduced fluid or salt intake"),
+      ),
+    ).toBe(false);
+  });
+
   it("does not let a verbatim match drop a leading negation", () => {
     const negated = source("negated", "Do not stop clozapine therapy until the haematologist has reviewed the result.");
     expect(
