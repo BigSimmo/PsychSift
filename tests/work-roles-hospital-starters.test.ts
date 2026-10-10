@@ -245,6 +245,26 @@ describe("readHospitalStarters", () => {
     expect(preferenceBatches.length).toBeGreaterThan(1);
     expect(log.filter((entry) => entry.table === "on_call_entries").length).toBeGreaterThan(1);
   });
+
+  it("reads every page of linked teams, so a sharer in a team past the first 1,000 still shows", async () => {
+    const tables = baseTables();
+    const extra = Array.from({ length: 1_200 }, (_, index) => `team-${String(index).padStart(5, "0")}`);
+    tables.work_hospital_teams!.push(...extra.map((service_id) => ({ hospital_id: H1, service_id })));
+    const lastTeam = extra[extra.length - 1]!;
+    tables.on_call_services!.push({ id: lastTeam, name: "Last ward" });
+    tables.on_call_service_members!.push({
+      service_id: lastTeam,
+      user_id: "late",
+      display_name: "Dr Late Example",
+      revoked_at: null,
+    });
+    tables.user_preferences!.push({ user_id: "late", preferences: sharingOn });
+    tables.on_call_entries!.push(step("late", "Late doctor's login", {}));
+    const { client, log } = fakeClient(tables);
+    const view = await readHospitalStarters(client, workforce, H1);
+    expect(view.starters.map((starter) => starter.id)).toContain("late");
+    expect(log.filter((entry) => entry.table === "work_hospital_teams").length).toBeGreaterThan(1);
+  });
 });
 
 describe("summariseStarterRows", () => {

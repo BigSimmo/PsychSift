@@ -32,7 +32,6 @@ import {
   useHospitalShortStaffed,
 } from "@/components/work-screens/hospital/hospital-shared";
 import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
-import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { isExampleRecord } from "@/lib/example-data/guards";
 import { STAFFING_COUNTS_WORDS } from "@/lib/roster/staffing/team-staffing";
 import {
@@ -55,7 +54,6 @@ import {
   type HospitalShortStaffedView,
 } from "@/lib/work-roles/hospital-short-staffed-view";
 import type { WorkRoleGrant } from "@/lib/work-roles/model";
-import { zonedToday } from "@/lib/work-time/format";
 
 const TITLE = "Short-staffed days";
 const NO_HOSPITALS: readonly HospitalRef[] = [];
@@ -314,8 +312,8 @@ function ShortView({
   readonly onPick: (hospitalId: string) => void;
   readonly example: boolean;
 }) {
-  const { zone } = useWorkTimeZone();
-  const today = zonedToday(zone);
+  // The server judged the window in Perth time, so its first day is "today" here too.
+  const today = view.window.from;
   const dates = useMemo(() => groupShortStaffedDays(view.days, today), [view.days, today]);
   const summary = shortStaffedSummary(view);
   const noSafeNumber = noSafeNumberLine(view);

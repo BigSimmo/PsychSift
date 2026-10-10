@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       return publicErrorResponse("Roles can't be kept in PsychSift yet.", 503, { code: "work_roles_not_ready" });
     }
     const hospitalId = new URL(request.url).searchParams.get("hospitalId") ?? "";
-    if (!/^[0-9a-f-]{36}$/i.test(hospitalId)) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hospitalId)) {
       return publicErrorResponse("Choose a hospital.", 400, { code: "work_people_invalid" });
     }
     const supabase = createAdminClient();

@@ -135,9 +135,15 @@ export async function readHospitalStarters(
   if (!hospital.data[0])
     throw new PublicApiError("That hospital is unavailable.", 404, { code: "work_hospital_not_found" });
 
-  const links = await client.from("work_hospital_teams").select("service_id").eq("hospital_id", hospitalId);
-  if (links.error || !links.data) throw unavailable();
-  const serviceIds = [...new Set(links.data.map((row) => row.service_id))];
+  const links = await readAllPages((from, to) =>
+    client
+      .from("work_hospital_teams")
+      .select("service_id")
+      .eq("hospital_id", hospitalId)
+      .order("service_id")
+      .range(from, to),
+  );
+  const serviceIds = [...new Set(links.map((row) => row.service_id))];
   if (!serviceIds.length) return { hospital: hospital.data[0], teams: [], starters: [] };
 
   const services = await readBatched(serviceIds, (batch, from, to) =>
