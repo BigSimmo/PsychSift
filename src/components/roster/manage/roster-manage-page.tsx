@@ -15,6 +15,8 @@ import { RosterApproveTab } from "./roster-approve-tab";
 import { RosterCoverTab } from "./roster-cover-tab";
 import { RosterPeopleList } from "./roster-people-list";
 import { RosterTeamSettings } from "./roster-team-settings";
+import { RosterSafeNumber } from "./roster-safe-number";
+import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import { RosterPublishTab } from "./publish/roster-publish-tab";
 import { ClipboardList, Lock, Users } from "lucide-react";
 import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
@@ -68,7 +70,16 @@ function NotManager() {
   );
 }
 
-function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | null }) {
+function ManagerTeam({
+  team,
+  actorId,
+  example,
+}: {
+  team: RosterTeam;
+  actorId: string | null;
+  /** The invented example team: its settings editors send nothing. */
+  example: boolean;
+}) {
   const { serviceId } = team;
   const now = useRosterNow();
   const overview = useRosterRead(serviceId, "overview");
@@ -125,6 +136,12 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
               }}
             />
             <RosterTeamSettings serviceId={serviceId} overview={overview.data} />
+            <RosterSafeNumber
+              serviceId={serviceId}
+              overview={overview.data}
+              example={example}
+              onSaved={() => manageChanged("safe-number")}
+            />
           </>
         )}
       </div>
@@ -149,6 +166,8 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
 
 export function RosterManagePage() {
   const teams = useRosterTeams();
+  const signedOutSample = useRosterSignedOutSample();
+  const example = signedOutSample || teams.data?.sample === true;
   // A link from My Day names the team it is about (`?team=`); it only selects among the teams the reader may use.
   const [selected, setSelected] = useState(() =>
     typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("team") ?? ""),
@@ -209,7 +228,7 @@ export function RosterManagePage() {
               </label>
             ) : null}
             <Suspense fallback={<WorkStateLoading label="Loading your team…" />}>
-              <ManagerTeam key={team.serviceId} team={team} actorId={teams.data?.actorId ?? null} />
+              <ManagerTeam key={team.serviceId} team={team} actorId={teams.data?.actorId ?? null} example={example} />
             </Suspense>
           </>
         )}
