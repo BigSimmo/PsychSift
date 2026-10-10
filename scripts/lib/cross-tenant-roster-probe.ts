@@ -41,6 +41,7 @@ function actionSamples(id: string, userId: string, date: string): RosterAction[]
     })),
     { action: "open.release", openShiftId: id },
     { action: "seen.mark", publicationId: id },
+    { action: "needs.set", needs: [{ weekday: 1, date: null, kind: "day", grade: null, siteId: null, needed: 1 }] },
   ];
 }
 
@@ -111,7 +112,7 @@ export async function probeRosterIsolation(args: {
   for (const what of ["manage", "people", "publications", "maker"] as const)
     await request(tokenB, readPath(what), {}, [403]);
   for (const body of actionSamples(serviceIdA, userIdB, to).filter((sample) =>
-    ["role.set", "member.remove", "settings.set", "swap.approve", "open.approve"].includes(sample.action),
+    ["role.set", "member.remove", "settings.set", "needs.set", "swap.approve", "open.approve"].includes(sample.action),
   )) {
     await request(tokenB, path, { method: "POST", body }, [403]);
   }

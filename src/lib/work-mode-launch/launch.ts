@@ -55,6 +55,17 @@ type LaunchEnvironment = Record<string, string | undefined>;
 
 const LAUNCH_SETTINGS: ReadonlySet<string> = new Set(["off", "preview", "everyone"]);
 
+/**
+ * The audience when `WORK_MODE_LAUNCH` is unset, in every environment. On for
+ * everyone since 10 October 2026, the owner's decision when the live version
+ * switch was removed (PR #3433): the new work screens, course bookings, rotation
+ * preferences, the two-pane side menu and phone bell reminders all reach every
+ * reader. Roll the new work screens back without a deploy by setting
+ * `WORK_MODE_LAUNCH=preview` (or `off`) on Railway; a reader can still choose
+ * the classic work mode on their own device in Settings.
+ */
+export const WORK_MODE_LAUNCH_DEFAULT: WorkModeLaunchSetting = "everyone";
+
 function relaxedDefaults(environment: LaunchEnvironment): boolean {
   return environment.NODE_ENV !== "production" || environment.PLAYWRIGHT_OFFLINE_MODE === "true";
 }
@@ -64,8 +75,7 @@ export function workModeLaunchSetting(environment: LaunchEnvironment): WorkModeL
   if (value && LAUNCH_SETTINGS.has(value)) return value as WorkModeLaunchSetting;
   // An unrecognised value is a typo in a live switch: fail closed to the preview audience.
   if (value) return "preview";
-  // On for everyone since 10 October 2026 (Josh). `preview` or `off` still roll it back.
-  return "everyone";
+  return WORK_MODE_LAUNCH_DEFAULT;
 }
 
 function previewUserIds(environment: LaunchEnvironment): ReadonlySet<string> {

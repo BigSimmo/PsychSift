@@ -79,7 +79,7 @@ export function useWorkCalendarMyDayItems({
   readonly enabled: boolean;
   readonly now: Date;
 }): readonly MyDayItem[] {
-  const calendar = useWorkCalendarEntries();
+  const calendar = useWorkCalendarEntries({ enabled });
   const { zone } = useWorkTimeZone();
   const today = zonedDateOf(now, zone);
   return useMemo(
