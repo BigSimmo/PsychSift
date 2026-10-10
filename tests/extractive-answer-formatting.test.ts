@@ -3173,3 +3173,20 @@ describe("monitoring evidence gate parity (run-#60 miss class)", () => {
     });
   });
 });
+
+describe("two-medicine interaction intent (#ZZ4RAP)", () => {
+  it("routes a co-prescribing question to contraindication", () => {
+    expect(classifyAnswerIntent("Can I prescribe ibuprofen for someone on lithium?", "medication_dose_risk")).toBe(
+      "contraindication",
+    );
+  });
+
+  it("does not treat 'with' + a condition as an interaction", () => {
+    expect(
+      classifyAnswerIntent(
+        "Can I use lithium after stopping ibuprofen in someone with bipolar disorder?",
+        "medication_dose_risk",
+      ),
+    ).not.toBe("contraindication");
+  });
+});

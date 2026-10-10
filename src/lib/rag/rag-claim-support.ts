@@ -485,7 +485,7 @@ function evidenceTextSupportsClaim(
   if (!compatibleFactualRelation(claim, evidence)) return false;
   const claimEntities = entities(claim);
   const evidenceEntities = entities(evidence);
-  // Only the medicines named earlier in the same source item may stand in for "the combination";
+  // Only the medicines named in the segment directly before may stand in for "the combination";
   // every other check below still runs against this segment alone.
   for (const entity of entities(antecedentText ?? "")) evidenceEntities.add(entity);
   if (claimEntities.size > 0 && [...claimEntities].some((entity) => !evidenceEntities.has(entity))) return false;
@@ -541,7 +541,10 @@ function evidenceTextSupportsClaim(
 // after it. Reading it as a relation made a verbatim list of toxicity signs unsupportable (#ZZ4RAP).
 function namesFindingNotChange(text: string, match: RegExpMatchArray) {
   if (match.index === undefined || !/^(?:increased|decreased|reduced)$/.test(match[0])) return false;
-  return /(?:^|^o|[,:;(•-]|\b(?:include|includes|including|and|or|with|of|by|such as))\s*$/.test(
+  // A participle that takes an object and a value ("Reduced lithium to 300 mg") is still a change.
+  if (/^\s+[a-z]+(?:\s+[a-z]+)?\s+(?:to|by|from)\s+\d/.test(text.slice(match.index + match[0].length))) return false;
+  // Only a list position counts: "a risk of decreased lithium levels" keeps its direction check.
+  return /(?:^|^o|[,:;(•-]|,\s*(?:and|or)|\b(?:include|includes|including|such as))\s*$/.test(
     text.slice(0, match.index),
   );
 }
@@ -679,7 +682,7 @@ function sourceEvidenceClaimSegmentGroups(source: SearchResult, claim: string) {
           return {
             passage,
             evidence: [context, passage].filter(Boolean).join(". "),
-            antecedent: parts.slice(0, index).join(" "),
+            antecedent: precedingSentence(parts, index),
           };
         })
         .filter((segment) => Boolean(segment.passage));
@@ -720,6 +723,17 @@ function sourceEvidenceClaimSegmentGroups(source: SearchResult, claim: string) {
   ].filter((group) => group.length > 0);
 }
 
+// "Avoid the combination where possible" names its medicines only in the sentence before it. Only that
+// sentence may lend them: an earlier sentence about another medicine (even one called safe) may not.
+function precedingSentence(parts: string[], index: number) {
+  const sentence: string[] = [];
+  for (let at = index - 1; at >= 0; at -= 1) {
+    if (sentence.length > 0 && /[.!?]["')\]]*\s*$/.test(parts[at])) break;
+    sentence.unshift(parts[at]);
+  }
+  return sentence.join(" ");
+}
+
 // "Avoid the combination where possible" names its medicines only in the source text before it.
 const combinationAnaphorPattern = /\b(?:the|this|that|such)\s+combinations?\b/i;
 
@@ -727,17 +741,23 @@ const combinationAnaphorPattern = /\b(?:the|this|that|such)\s+combinations?\b/i;
 // boundaries kept as "|" so a match can be anchored to them. A colon or semicolon is not an anchor:
 // "If eGFR is below 30: stop lithium" must not support "Stop lithium" alone.
 function verbatimTokens(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/\be\.\s?g\.|\bsuch as\b|\bfor example\b/g, " eg ")
-    .replace(/\bi\.\s?e\./g, " ie ")
-    .replace(/[.!?](?=\s|$)|[•\n]/g, " | ")
-    .replace(/[^a-z0-9|<>≤≥=%.]+/g, " ")
-    .replace(/\.(?!\d)|(?<!\d)\./g, " ")
-    .replace(/([<>≤≥=%])/g, " $1 ")
-    .split(/\s+/)
-    .filter(Boolean)
-    .filter((token, index, tokens) => !(token === "o" && (index === 0 || tokens[index - 1] === "|")));
+  return (
+    value
+      .toLowerCase()
+      .replace(/\be\.\s?g\.|\bsuch as\b|\bfor example\b/g, " eg ")
+      .replace(/\bi\.\s?e\./g, " ie ")
+      .replace(/[.!?](?=\s|$)|[•\n]/g, " | ")
+      // Units and exponents are part of the value: "× 10⁹/L" must not match "× 10³/L", nor "µg" match "g".
+      .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (digits) => ` ^${[...digits].map((d) => "⁰¹²³⁴⁵⁶⁷⁸⁹".indexOf(d)).join("")} `)
+      .replace(/[µμ]/g, " micro ")
+      .replace(/(?<=\d)\s*:\s*(?=\d)/g, " ratio ")
+      .replace(/[^a-z0-9|<>≤≥=%.^/×]+/g, " ")
+      .replace(/\.(?!\d)|(?<!\d)\./g, " ")
+      .replace(/([<>≤≥=%/×])/g, " $1 ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter((token, index, tokens) => !(token === "o" && (index === 0 || tokens[index - 1] === "|")))
+  );
 }
 
 // A claim that restates whole source text word for word is supported by it, even when the segment
@@ -745,16 +765,21 @@ function verbatimTokens(value: string) {
 // lithium clearance and therefore increase lithium levels and the risk of toxicity"). The match must
 // start and end at a source sentence or list-item boundary, so a claim that drops a leading "do not",
 // a leading condition or a trailing qualifier never matches.
-function claimRestatesSourceVerbatim(claim: string, source: SearchResult) {
+export function claimRestatesSourceVerbatim(claim: string, source: SearchResult) {
   const wanted = verbatimTokens(claim).filter((token) => token !== "|");
   if (wanted.length < 6) return false;
-  return reflowBoundedSourceLines(source.content ?? "", { requireContinuationStart: true }).some((block) => {
+  const blocks = reflowBoundedSourceLines(source.content ?? "", { requireContinuationStart: true });
+  return blocks.some((block, blockIndex) => {
     const tokens = verbatimTokens(block);
+    // A block that continues a colon-led or unfinished line is governed by it, so its start is
+    // not a sentence boundary.
+    const blockStartsSentence = blockIndex === 0 || /[.!?]["')\]]*\s*$/.test(blocks[blockIndex - 1]);
     return tokens.some((_, start) => {
-      if (start > 0 && tokens[start - 1] !== "|") return false;
+      if (start === 0 ? !blockStartsSentence : tokens[start - 1] !== "|") return false;
       let position = start;
+      // The match stays inside one source sentence or list item: words joined across a boundary
+      // can attach a condition to the wrong instruction.
       for (const token of wanted) {
-        while (tokens[position] === "|") position += 1;
         if (tokens[position] !== token) return false;
         position += 1;
       }

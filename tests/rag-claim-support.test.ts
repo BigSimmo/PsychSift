@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  claimRestatesSourceVerbatim,
   assessAndEnforceClaimSupport,
   assessClaimSupport,
   enforceLabelledNumericBandCoherence,
@@ -1976,6 +1977,66 @@ describe("high-risk answer support (#ZZ4RAP)", () => {
     ["a restatement that starts mid-sentence", "Increase lithium levels and the risk of toxicity.", false],
   ] as const)("%s", (_label, claim, supported) => {
     expect(sourceDirectlySupportsAnswerText(claim, nsaid)).toBe(supported);
+  });
+
+  it("lends 'the combination' only the medicines of the sentence before it", () => {
+    const safeFirst = source(
+      "safe-first",
+      "Low dose aspirin is safe to use. NSAIDs (e.g. ibuprofen) can reduce lithium clearance and therefore increase lithium levels. Avoid the combination where possible.",
+    );
+    expect(sourceDirectlySupportsAnswerText("Avoid aspirin where possible in someone taking lithium.", safeFirst)).toBe(
+      false,
+    );
+    expect(
+      sourceDirectlySupportsAnswerText("Avoid ibuprofen where possible in someone taking lithium.", safeFirst),
+    ).toBe(true);
+  });
+
+  it("keeps a verbatim match inside one source sentence", () => {
+    const twoSentences = source(
+      "two-sentences",
+      "Stop lithium therapy straight away. When toxicity is suspected, obtain an urgent medical review.",
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Stop lithium therapy straight away when toxicity is suspected, obtain an urgent medical review.",
+        twoSentences,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not let a verbatim match change a unit or exponent", () => {
+    const units = source(
+      "units",
+      "Stop clozapine therapy immediately if the white cell count falls below 3.0 × 10⁹/L on repeat testing.",
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Stop clozapine therapy immediately if the white cell count falls below 3.0 × 10³/L on repeat testing.",
+        units,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not start a verbatim match at a block that continues a colon-led condition", () => {
+    const conditional = source(
+      "conditional",
+      [
+        "If the eGFR falls below 30 mL/min:",
+        "",
+        "Stop lithium and contact the treating psychiatrist urgently today.",
+      ].join("\n"),
+    );
+    expect(
+      claimRestatesSourceVerbatim("Stop lithium and contact the treating psychiatrist urgently today.", conditional),
+    ).toBe(false);
+  });
+
+  it("keeps the direction check on 'a risk of increased/decreased'", () => {
+    const direction = source("direction", "NSAIDs carry a risk of increased lithium levels in older patients.");
+    expect(
+      sourceDirectlySupportsAnswerText("NSAIDs carry a risk of decreased lithium levels in older patients.", direction),
+    ).toBe(false);
   });
 
   it("does not let a verbatim match drop a leading negation", () => {

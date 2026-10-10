@@ -75,6 +75,17 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
   );
 }
 
+// "on", "taking" or "with" must introduce one of the named medicines: "use lithium after stopping
+// ibuprofen in someone with bipolar disorder" is a sequencing question, not an interaction one.
+function isTwoMedicineInteractionQuery(query: string, normalized: string) {
+  if (medicationEntitiesInText(query).length < 2) return false;
+  if (/\b(?:interact\w*|together|combin\w*|co-?prescrib\w*)\b/.test(normalized)) return true;
+  if (!/\b(?:prescrib\w*|give|giving|use|using|start|starting|add|adding|take|taking)\b/.test(normalized)) return false;
+  return [...normalized.matchAll(/\b(?:on|taking|with)\s+((?:\S+\s*){1,4})/g)].some(
+    (match) => medicationEntitiesInText(match[1]).length > 0,
+  );
+}
+
 function lookupOrContraindicationIntent(query: string, normalized: string): AnswerIntent | null {
   if (
     /\b(?:what|which|list|show|find)\s+(?:documents?|sources?|guidelines?|files?)\b.*\b(?:support|cover|contain|for|about)\b/.test(
@@ -90,12 +101,7 @@ function lookupOrContraindicationIntent(query: string, normalized: string): Answ
   // Asking whether one named medicine can be given with another ("Can I prescribe ibuprofen for
   // someone on lithium?") is an interaction question: the answer is the source's avoid/caution
   // statement, never a dose cap that happens to sit in the same chunk (#ZZ4RAP).
-  if (
-    medicationEntitiesInText(query).length >= 2 &&
-    /\b(?:interact\w*|together|combin\w*|co-?prescrib\w*|(?:prescrib\w*|give|giving|use|using|start|starting|add|adding|take|taking)\b[^?]*\b(?:on|taking|with)\b)/.test(
-      normalized,
-    )
-  ) {
+  if (isTwoMedicineInteractionQuery(query, normalized)) {
     return "contraindication";
   }
   return null;
