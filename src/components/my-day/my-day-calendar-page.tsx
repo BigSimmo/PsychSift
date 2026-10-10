@@ -951,11 +951,11 @@ function CalendarExport({
         <div>
           <Button
             variant="secondary"
+            icon={Download}
             disabled={updating || !events.length}
             onClick={() => onDownload(events)}
-            data-testid="my-day-calendar-download"
+            testId="my-day-calendar-download"
           >
-            <Download aria-hidden="true" className="size-4" />
             {`Download ${monthTitle(month)}`}
           </Button>
         </div>
