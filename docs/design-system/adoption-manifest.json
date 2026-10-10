@@ -333,6 +333,7 @@
         "src/components/favourites/number-sheets.tsx",
         "src/components/mode-kit/signed-out-sample.tsx",
         "src/components/mode-kit/today/today-shell.tsx",
+        "src/components/my-day/my-day-calendar-page.tsx",
         "src/components/my-day/my-day-frame.tsx",
         "src/components/my-day/my-day-hours-page.tsx",
         "src/components/my-day/my-day-page.tsx",
@@ -465,6 +466,7 @@
         "src/components/favourites/number-sheets.tsx",
         "src/components/mode-kit/signed-out-sample.tsx",
         "src/components/mode-kit/today/today-shell.tsx",
+        "src/components/my-day/my-day-calendar-page.tsx",
         "src/components/my-day/my-day-frame.tsx",
         "src/components/my-day/my-day-hours-page.tsx",
         "src/components/my-day/my-day-page.tsx",
@@ -3354,6 +3356,7 @@
         "src/app/(search-app)/medicines/page.tsx",
         "src/app/(search-app)/my-day/alerts/earlier/page.tsx",
         "src/app/(search-app)/my-day/alerts/page.tsx",
+        "src/app/(search-app)/my-day/calendar/page.tsx",
         "src/app/(search-app)/my-day/favourites/page.tsx",
         "src/app/(search-app)/my-day/help/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
@@ -4262,6 +4265,16 @@
         },
         {
           "file": "src/app/(search-app)/my-day/alerts/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/my-day/calendar/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -6397,6 +6410,7 @@
       "src/app/(search-app)/medicines/page.tsx",
       "src/app/(search-app)/my-day/alerts/earlier/page.tsx",
       "src/app/(search-app)/my-day/alerts/page.tsx",
+      "src/app/(search-app)/my-day/calendar/page.tsx",
       "src/app/(search-app)/my-day/favourites/page.tsx",
       "src/app/(search-app)/my-day/help/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
@@ -6617,6 +6631,7 @@
       "src/app/(search-app)/medicines/page.tsx",
       "src/app/(search-app)/my-day/alerts/earlier/page.tsx",
       "src/app/(search-app)/my-day/alerts/page.tsx",
+      "src/app/(search-app)/my-day/calendar/page.tsx",
       "src/app/(search-app)/my-day/favourites/page.tsx",
       "src/app/(search-app)/my-day/help/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
@@ -6742,7 +6757,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 225,
+    "inheritedCkbV2RootCount": 226,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6751,8 +6766,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 48,
-    "rootCount": 226,
-    "productionRouteCount": 218,
-    "nextUiEntryCount": 326
+    "rootCount": 227,
+    "productionRouteCount": 219,
+    "nextUiEntryCount": 327
   }
 }
