@@ -318,13 +318,13 @@ function SickView({
   readonly hospitals: readonly HospitalRef[];
   readonly onPick: (hospitalId: string) => void;
   readonly example: boolean;
-  /** Teams the reader is roster manager of. Null for the example, where every team opens. */
+  /** Teams the reader is roster manager of. Null for the example, where calls are illustrative only. */
   readonly managed: ReadonlySet<string> | null;
 }) {
   const tapFor = (
     call: HospitalSickView["calls"][number],
   ): { readonly href: string } | { readonly href?: undefined } =>
-    managed === null || managed.has(call.serviceId) ? { href: sickCallHref(call) } : {};
+    !example && managed?.has(call.serviceId) ? { href: sickCallHref(call) } : {};
   const { zone } = useWorkTimeZone();
   const today = zonedToday(zone);
   const [team, setTeam] = useState<string | null>(null);
@@ -432,7 +432,7 @@ function SickView({
           <p className="px-1 text-sm text-[color:var(--text-muted)]" data-testid="admin-hospital-sick-manager-note">
             Each team&apos;s roster manager decides cover.
             {managed === null
-              ? " Tap a call to open that team's inbox."
+              ? " Example calls are illustrative; live calls open that team's inbox."
               : managed.size > 0
                 ? " Tap a call for a team you manage to open its inbox."
                 : null}
