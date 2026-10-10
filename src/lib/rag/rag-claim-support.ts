@@ -111,7 +111,7 @@ function splitClaims(value: string) {
     .replace(/^[ \t]*>[ \t]+(?=[A-Za-z*_`#])/gm, "")
     .replace(/[*_`#]/g, "")
     .split(
-      /\s*;\s*|(?<=[.!?])(?:[ \t]+|\n+)|\n+|,\s*(?:and|but|then)\s+(?=(?:administer|avoid|cease|continue|discontinue|escalate|give|prescribe|sedate|start|stop|use|withhold)\b)|\s+(?:and|then)\s+(?=(?:administer|avoid|cease|continue|discontinue|escalate|give|prescribe|sedate|start|stop|use|withhold)\b)/i,
+      /\s*;\s*|(?<=[.!?])(?<!\b[Ee]\.[Gg]\.|\b[Ii]\.[Ee]\.)(?:[ \t]+|\n+)|(?<=\bthe following:)[ \t]+|\n+|,\s*(?:and|but|then)\s+(?=(?:administer|avoid|cease|continue|discontinue|escalate|give|prescribe|sedate|start|stop|use|withhold)\b)|\s+(?:and|then)\s+(?=(?:administer|avoid|cease|continue|discontinue|escalate|give|prescribe|sedate|start|stop|use|withhold)\b)/i,
     )
     .map(cleanText)
     .filter(Boolean);
@@ -480,10 +480,14 @@ function evidenceTextSupportsClaim(
   passage: string,
   adjacentTopicText?: string,
   allowValueOnly = false,
+  antecedentText?: string,
 ) {
   if (!compatibleFactualRelation(claim, evidence)) return false;
   const claimEntities = entities(claim);
   const evidenceEntities = entities(evidence);
+  // Only the medicines named earlier in the same source item may stand in for "the combination";
+  // every other check below still runs against this segment alone.
+  for (const entity of entities(antecedentText ?? "")) evidenceEntities.add(entity);
   if (claimEntities.size > 0 && [...claimEntities].some((entity) => !evidenceEntities.has(entity))) return false;
   if (hasForeignMedicationClinicalValueBinding(claim, evidence)) return false;
   if (!compatiblePolarity(claim, evidence)) return false;
@@ -532,6 +536,16 @@ function evidenceTextSupportsClaim(
   return matchedTopics / claimTopics.size >= 0.5;
 }
 
+// "Increased muscle tone" or "reduced fluid intake" names a finding, not a change one thing makes to
+// another: a participle opening a clause or list item, or following a list joiner, modifies the noun
+// after it. Reading it as a relation made a verbatim list of toxicity signs unsupportable (#ZZ4RAP).
+function namesFindingNotChange(text: string, match: RegExpMatchArray) {
+  if (match.index === undefined || !/^(?:increased|decreased|reduced)$/.test(match[0])) return false;
+  return /(?:^|^o|[,:;(•-]|\b(?:include|includes|including|and|or|with|of|by|such as))\s*$/.test(
+    text.slice(0, match.index),
+  );
+}
+
 // Relation words bind two arguments; their occurrence anywhere in a chunk does
 // not support their direction, polarity or scope. This is a conservative prose
 // check in the existing support path, not a source of clinical knowledge.
@@ -541,7 +555,7 @@ function factualRelation(value: string) {
     ...text.matchAll(
       /\b(caus(?:e|es|ed)|lead(?:s)?\s+to|led\s+to|results?\s+in|results?\s+from|because(?:\s+of)?|due\s+to|caused\s+by|increas(?:e|es|ed)|reduc(?:e|es|ed)|decreas(?:e|es|ed)|improv(?:e|es|ed)|worsen(?:s|ed)?|higher\s+than|lower\s+than)\b/g,
     ),
-  ];
+  ].filter((match) => !namesFindingNotChange(text, match));
   const relation = relations[0];
   if (!relation || relation.index === undefined) return null;
   // Match passive before the shorter active "caused" alternative.
@@ -654,15 +668,19 @@ function sourceEvidenceClaimSegmentGroups(source: SearchResult, claim: string) {
       : reflowBoundedSourceLines(rawValue, { requireContinuationStart: true });
     return blocks.flatMap((block) => {
       const sharedConditional = block.match(/^\s*((?:when|whenever|if|unless)\b[^,;.!?]+),?/i)?.[1];
-      return block
-        .split(
-          /\s*;\s*|(?<=[.!?])(?:[ \t]+|\n+)|\n+|,\s*(?:but|while|whereas)\s+|\s+(?:while|whereas)\s+|,?\s+and\s+(?!a\s+(?:second|third|fourth|\d+(?:st|nd|rd|th))\s+dose\s+\d+(?:\.\d+)?\s*(?:seconds?|minutes?|hours?|days?)\b)(?=(?:a|an|the|another|other|it|this|that|they|these|those|admission|escalation|referral|restraint|sedation|transfer)\b)/i,
-        )
+      const parts = block.split(
+        /\s*;\s*|(?<=[.!?])(?<!\b[Ee]\.[Gg]\.|\b[Ii]\.[Ee]\.)(?:[ \t]+|\n+)|\n+|,\s*(?:but|while|whereas)\s+|\s+(?:while|whereas)\s+|,?\s+and\s+(?!a\s+(?:second|third|fourth|\d+(?:st|nd|rd|th))\s+dose\s+\d+(?:\.\d+)?\s*(?:seconds?|minutes?|hours?|days?)\b)(?=(?:a|an|the|another|other|it|this|that|they|these|those|admission|escalation|referral|restraint|sedation|transfer)\b)/i,
+      );
+      return parts
         .map((segment, index) => {
           const passage = index > 0 && sharedConditional ? `${sharedConditional}, ${segment.trim()}` : segment.trim();
           // Keep passage provenance separate from title/heading context. The
           // latter can lend topic context but cannot itself assert a short fact.
-          return { passage, evidence: [context, passage].filter(Boolean).join(". ") };
+          return {
+            passage,
+            evidence: [context, passage].filter(Boolean).join(". "),
+            antecedent: parts.slice(0, index).join(" "),
+          };
         })
         .filter((segment) => Boolean(segment.passage));
     });
@@ -678,7 +696,15 @@ function sourceEvidenceClaimSegmentGroups(source: SearchResult, claim: string) {
   // content/synopsis boundary.
   return [
     ...(atomicClozapineRedRange
-      ? [[{ passage: atomicClozapineRedRange, evidence: `${sourceContext}. ${atomicClozapineRedRange}` }]]
+      ? [
+          [
+            {
+              passage: atomicClozapineRedRange,
+              evidence: `${sourceContext}. ${atomicClozapineRedRange}`,
+              antecedent: "",
+            },
+          ],
+        ]
       : []),
     split(source.content, sourceContext, reflowComparisonContent),
     split(source.retrieval_synopsis, sourceContext),
@@ -694,9 +720,53 @@ function sourceEvidenceClaimSegmentGroups(source: SearchResult, claim: string) {
   ].filter((group) => group.length > 0);
 }
 
+// "Avoid the combination where possible" names its medicines only in the source text before it.
+const combinationAnaphorPattern = /\b(?:the|this|that|such)\s+combinations?\b/i;
+
+// Lowercased words, comparators and decimals, with "such as" and "for example" read as "e.g.", and sentence or list-item
+// boundaries kept as "|" so a match can be anchored to them. A colon or semicolon is not an anchor:
+// "If eGFR is below 30: stop lithium" must not support "Stop lithium" alone.
+function verbatimTokens(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\be\.\s?g\.|\bsuch as\b|\bfor example\b/g, " eg ")
+    .replace(/\bi\.\s?e\./g, " ie ")
+    .replace(/[.!?](?=\s|$)|[•\n]/g, " | ")
+    .replace(/[^a-z0-9|<>≤≥=%.]+/g, " ")
+    .replace(/\.(?!\d)|(?<!\d)\./g, " ")
+    .replace(/([<>≤≥=%])/g, " $1 ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((token, index, tokens) => !(token === "o" && (index === 0 || tokens[index - 1] === "|")));
+}
+
+// A claim that restates whole source text word for word is supported by it, even when the segment
+// split above cut that sentence at "e.g." or "and the" (#ZZ4RAP: "NSAIDs (e.g. ibuprofen) can reduce
+// lithium clearance and therefore increase lithium levels and the risk of toxicity"). The match must
+// start and end at a source sentence or list-item boundary, so a claim that drops a leading "do not",
+// a leading condition or a trailing qualifier never matches.
+function claimRestatesSourceVerbatim(claim: string, source: SearchResult) {
+  const wanted = verbatimTokens(claim).filter((token) => token !== "|");
+  if (wanted.length < 6) return false;
+  return reflowBoundedSourceLines(source.content ?? "", { requireContinuationStart: true }).some((block) => {
+    const tokens = verbatimTokens(block);
+    return tokens.some((_, start) => {
+      if (start > 0 && tokens[start - 1] !== "|") return false;
+      let position = start;
+      for (const token of wanted) {
+        while (tokens[position] === "|") position += 1;
+        if (tokens[position] !== token) return false;
+        position += 1;
+      }
+      return position === tokens.length || tokens[position] === "|";
+    });
+  });
+}
+
 function sourceSupportsClaim(claim: string, source: SearchResult, allowValueOnly = false) {
+  if (claimRestatesSourceVerbatim(claim, source)) return true;
   return sourceEvidenceClaimSegmentGroups(source, claim).some((group) =>
-    group.some(({ evidence, passage }, index) => {
+    group.some(({ evidence, passage, antecedent }, index) => {
       // S1c R3: lend only the immediately adjacent segments' topic tokens, and only
       // from segments carrying no clinical value atoms of their own — an atom-bearing
       // neighbour is a competing value context (e.g. the other population's dose), not
@@ -706,7 +776,14 @@ function sourceSupportsClaim(claim: string, source: SearchResult, allowValueOnly
         .filter((neighbour): neighbour is string => Boolean(neighbour))
         .filter((neighbour) => extractClinicalValueAtoms(neighbour).length === 0)
         .join(" ");
-      return evidenceTextSupportsClaim(claim, evidence, passage, adjacentTopicText || undefined, allowValueOnly);
+      return evidenceTextSupportsClaim(
+        claim,
+        evidence,
+        passage,
+        adjacentTopicText || undefined,
+        allowValueOnly,
+        combinationAnaphorPattern.test(passage) ? antecedent : undefined,
+      );
     }),
   );
 }
@@ -1342,7 +1419,7 @@ export function assessAndEnforceClaimSupport(answer: RagAnswer, verificationSour
     // A coordinated instruction is not independently salvageable: withholding
     // "and escalate urgently" must not turn it into a stop-only recommendation.
     return original
-      .split(/\r?\n+|(?<=[.!?])\s+/)
+      .split(/\r?\n+|(?<=[.!?])(?<!\b[Ee]\.[Gg]\.|\b[Ii]\.[Ee]\.)\s+/)
       .flatMap((sentence) => {
         const groups: string[] = [];
         for (const clause of sentence.split(/\s*;\s*/)) {

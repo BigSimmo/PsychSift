@@ -325,18 +325,21 @@ export function isLowYieldClinicalText(text: string) {
 }
 
 function sentenceFragments(text: string) {
-  return text
-    .replace(answerMetaIntroPattern, "")
-    .split(/(?<=[.!?])\s+|\s*;\s*/)
-    .map((fragment) =>
-      compactWhitespace(
-        fragment
-          .replace(answerMetaIntroPattern, "")
-          .replace(evidenceLabelPattern, " ")
-          .replace(/^\s*[.;:\-]\s*/, ""),
-      ),
-    )
-    .filter(Boolean);
+  return (
+    text
+      .replace(answerMetaIntroPattern, "")
+      // "e.g." and "i.e." do not end a sentence, so the examples after them are judged with it.
+      .split(/(?<=[.!?])(?<!\b[Ee]\.[Gg]\.|\b[Ii]\.[Ee]\.)\s+|\s*;\s*/)
+      .map((fragment) =>
+        compactWhitespace(
+          fragment
+            .replace(answerMetaIntroPattern, "")
+            .replace(evidenceLabelPattern, " ")
+            .replace(/^\s*[.;:\-]\s*/, ""),
+        ),
+      )
+      .filter(Boolean)
+  );
 }
 
 function provenanceNoiseRatio(text: string) {

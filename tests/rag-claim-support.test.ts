@@ -1940,3 +1940,71 @@ describe("deterministic claim support", () => {
     expect(result.supportedClaims?.[0]?.supportStatus).toBe("direct");
   });
 });
+
+describe("high-risk answer support (#ZZ4RAP)", () => {
+  // Captured live from Lithium Therapy - Initiation And Continuation Guideline (FSH), PDF wrapping kept.
+  const nsaid = source(
+    "lithium-nsaid",
+    [
+      "• NSAIDs: (e.g. ibuprofen) can reduce lithium clearance and therefore",
+      "increase lithium levels and the risk of toxicity. Avoid the combination where",
+      "possible. Low dose aspirin is safe to use.",
+      "",
+      "• Serotonergic drugs: Lithium can contribute to serotonin toxicity, therefore",
+      "patients who are prescribed combinations of serotonergic drugs should be",
+      "closely monitored",
+    ].join("\n"),
+  );
+
+  it.each([
+    [
+      "the source sentence restated word for word",
+      "NSAIDs such as ibuprofen can reduce lithium clearance and therefore increase lithium levels and the risk of toxicity.",
+      true,
+    ],
+    [
+      "a combination warning naming the medicines from the sentence before it",
+      "Avoid ibuprofen where possible in someone taking lithium.",
+      true,
+    ],
+    ["a medicine named only after the warning", "Avoid aspirin where possible in someone taking lithium.", false],
+    [
+      "a restatement that drops the end of the sentence",
+      "NSAIDs such as ibuprofen can reduce lithium clearance and therefore increase lithium levels.",
+      false,
+    ],
+    ["a restatement that starts mid-sentence", "Increase lithium levels and the risk of toxicity.", false],
+  ] as const)("%s", (_label, claim, supported) => {
+    expect(sourceDirectlySupportsAnswerText(claim, nsaid)).toBe(supported);
+  });
+
+  it("does not let a verbatim match drop a leading negation", () => {
+    const negated = source("negated", "Do not stop clozapine therapy until the haematologist has reviewed the result.");
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Stop clozapine therapy until the haematologist has reviewed the result.",
+        negated,
+      ),
+    ).toBe(false);
+  });
+
+  it("reads a listed finding such as 'increased muscle tone' as a finding, not a change relation", () => {
+    const toxicity = source(
+      "lithium-toxicity",
+      [
+        "• Signs and symptoms of severe toxicity:",
+        "o Increased muscle tone, hyperreflexia, myoclonic jerks, coarse tremor, dysarthria,",
+        "disorientation, psychosis, seizures, coma, QT-interval prolongation and death.",
+      ].join("\n"),
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Signs and symptoms of severe toxicity include increased muscle tone, hyperreflexia, myoclonic jerks, coarse tremor, dysarthria, disorientation, psychosis, seizures, coma, QT-interval prolongation and death.",
+        toxicity,
+      ),
+    ).toBe(true);
+    // A real change relation is still checked for direction.
+    const relation = source("relation", "Dehydration increased lithium levels.");
+    expect(sourceDirectlySupportsAnswerText("Lithium levels increased dehydration.", relation)).toBe(false);
+  });
+});

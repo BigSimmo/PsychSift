@@ -198,7 +198,7 @@ function rewriteLeadingHeadingContext(value: string) {
     if (structuralHeadingStoplistPattern.test(label)) return match;
     if (advisoryHeadingPattern.test(label)) return match;
     if (directiveHeadingPattern.test(label)) return match;
-    if (/\b[A-Z]{2,}\b/.test(label)) return match;
+    if (/\b[A-Z]{2,}s?\b/.test(label)) return match;
     return `For ${label.toLowerCase()}, `;
   });
 }
@@ -472,6 +472,19 @@ function isMonitoringLevelRangeLookupQuery(query: string) {
 }
 
 /** Classify answer intent. */
+// Signs, features or risk factors of toxicity are descriptive questions, not a request for the
+// action on a result: routing them to red_result_action left only "No current source with
+// toxicity action guidance was found" (#ZZ4RAP).
+function isToxicityFeatureQuery(normalized: string) {
+  return (
+    /\btoxicity\b/.test(normalized) &&
+    /\b(?:signs?|symptoms?|features?|presentation|risk factors?|contributors?|causes?|more likely|predispos\w*)\b/.test(
+      normalized,
+    ) &&
+    !/\b(?:what\s+(?:to\s+do|action|should)|action|steps?|manage\w*|treat\w*|withhold|cease|stop)\b/.test(normalized)
+  );
+}
+
 export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): AnswerIntent {
   const normalized = normalizeSectionText(query).toLowerCase();
   if (!normalized) return "unsupported";
@@ -486,6 +499,17 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
   if (/\b(?:contraindicat\w*|avoid|do not use|must not|should not|not use|opioid[-\s]?free)\b/.test(normalized)) {
     return "contraindication";
   }
+  // Asking whether one named medicine can be given with another ("Can I prescribe ibuprofen for
+  // someone on lithium?") is an interaction question: the answer is the source's avoid/caution
+  // statement, never a dose cap that happens to sit in the same chunk (#ZZ4RAP).
+  if (
+    medicationEntitiesInText(query).length >= 2 &&
+    /\b(?:interact\w*|together|combin\w*|co-?prescrib\w*|(?:prescrib\w*|give|giving|use|using|start|starting|add|adding|take|taking)\b[^?]*\b(?:on|taking|with)\b)/.test(
+      normalized,
+    )
+  ) {
+    return "contraindication";
+  }
   const hasResultActionSignal =
     /\b(?:red|amber|green|anc|fbc|wbc|result|results|threshold|withhold|cease|stop|stopped|toxicity)\b/.test(
       normalized,
@@ -494,6 +518,7 @@ export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): 
     /\b(?:monitor|monitoring|schedule|baseline|follow[-\s]?up|level|levels|test|tests)\b/.test(normalized) ||
     isMonitoringLevelRangeLookupQuery(normalized);
   if (hasScheduleSignal && isCompoundMonitoringToxicityQuery(normalized)) return "monitoring_schedule";
+  if (isToxicityFeatureQuery(normalized)) return "general";
   // Toxicity and explicit action queries take priority over monitoring even if schedule/baseline/follow-up terms appear.
   const hasStrongResultSignal =
     /\b(?:toxicity|what\s+action|action\s+is\s+required|required\s+action|suspected\s+\w+\s+toxicity)\b/.test(
@@ -542,6 +567,15 @@ function queryEntitySubject(query: string, intent: AnswerIntent) {
   // monitored. Prefer the one explicit medicine over the first residual token.
   const medicines = medicationEntitiesInText(query);
   if (intent === "monitoring_schedule" && medicines.length === 1) return medicines[0];
+  // A leading verb ("prescribe", "make") is never the subject. When the query
+  // names a medicine, use it rather than printing "For prescribe, …" (#ZZ4RAP).
+  if (
+    medicines.length > 0 &&
+    tokens[0] &&
+    !medicines.includes(tokens[0]) &&
+    !medicationEntitiesInText(tokens[0]).length
+  )
+    return medicines[0];
   return tokens[0];
 }
 
@@ -559,6 +593,10 @@ function queryIntentTokens(query: string, intent: AnswerIntent) {
   if (intent === "monitoring_schedule") return uniqueAnswerTokens(["monitoring", ...tokens]);
   if (intent === "red_result_action")
     return uniqueAnswerTokens(["red", "range", "blood", "result", "results", "threshold", "action", ...tokens]);
+  // An interaction question ("ibuprofen for someone on lithium") is answered by
+  // avoid-the-combination prose that never says "contraindication" (#ZZ4RAP).
+  if (intent === "contraindication" && medicationEntitiesInText(query).length >= 2)
+    return uniqueAnswerTokens(["contraindication", "avoid", "combination", "together", ...tokens]);
   if (intent === "contraindication") return uniqueAnswerTokens(["contraindication", ...tokens]);
   if (intent === "pathway_referral") return uniqueAnswerTokens(["referral", "criteria", ...tokens]);
   return tokens;
@@ -1007,7 +1045,7 @@ export function splitClinicalEvidenceSentences(value: string) {
     ),
     { joiner: "\n" },
   )
-    .split(/\r?\n+|(?<=[.!?])\s+|\s+[•]\s+|\s+\|\s+/)
+    .split(/\r?\n+|(?<=[.!?])(?<!\b[Ee]\.[Gg]\.|\b[Ii]\.[Ee]\.)\s+|\s+[•]\s+|\s+\|\s+/)
     .map((fragment) => fragment.trim())
     .filter(Boolean);
   const merged: string[] = [];
@@ -1583,10 +1621,25 @@ function baselineMonitoringFactFromResult(
 }
 
 function bindMonitoringAnaphoricQualifiers(sentences: string[], intent: AnswerIntent) {
-  if (intent !== "monitoring_schedule") return sentences;
+  if (intent !== "monitoring_schedule" && intent !== "contraindication") return sentences;
   const bound: string[] = [];
   for (const sentence of sentences) {
     const previous = bound.at(-1);
+    if (
+      intent === "contraindication" &&
+      previous &&
+      /[.!?]$/.test(previous) &&
+      /^(?:avoid|do not (?:use|combine|co-?prescribe))\b[^.]*\b(?:the|this|that|such)\s+combinations?\b/i.test(
+        sentence,
+      ) &&
+      medicationEntitiesInText(previous).length > 0
+    ) {
+      // "Avoid the combination" names no drug. Keep it with the sentence that
+      // does ("NSAIDs (e.g. ibuprofen) can reduce lithium clearance…"), so the
+      // answer states what to avoid and claim support sees the drug (#ZZ4RAP).
+      bound[bound.length - 1] = `${previous} ${sentence}`;
+      continue;
+    }
     if (previous && /\bsteady\s+state\b/i.test(previous) && /^This may be longer\b/i.test(sentence)) {
       // Keep the source's original period and anaphora together. This retains
       // the exact two supported claims while the explicit first sentence gives
@@ -1654,6 +1707,7 @@ function extractClinicalFactsFromResults(
   const seen = new Set<string>();
   const facts: ExtractedClinicalFact[] = [];
   const usableResults = results.filter((result) => resultCoversAnswerIntent(result, query, intent));
+  const toxicityFeatureQuery = intent === "general" && isToxicityFeatureQuery(query.toLowerCase());
   const adjacentBandConflicts = adjacentLabelledNumericBandConflicts(usableResults);
 
   for (const result of usableResults) {
@@ -1752,6 +1806,9 @@ function extractClinicalFactsFromResults(
       ) {
         continue;
       }
+      // A toxicity-features question is answered only by text about toxicity; a dose cap or
+      // titration note from the same chunk is not an answer to it (#ZZ4RAP).
+      if (toxicityFeatureQuery && !/\btoxic\w*/i.test(sentence)) continue;
       if (!factSentenceMatchesQueryFromResult(sentence, result, query, intent)) continue;
       const kind = factKindForSentence(sentence, query, intent);
       if (!kind) continue;
@@ -1806,7 +1863,7 @@ export function sentenceFromFact(
 /** Lower first. */
 function lowerFirst(value: string) {
   if (!value) return value;
-  if (/^[A-Z][A-Z0-9&+-]{1,}\b/.test(value)) return value;
+  if (/^[A-Z][A-Z0-9&+-]{1,}s?\b/.test(value)) return value;
   return `${value.charAt(0).toLowerCase()}${value.slice(1)}`;
 }
 
@@ -2304,8 +2361,12 @@ export function isSourceBoundClozapineBloodActionThresholdQuery(query: string, q
   return (
     queryClass === "table_threshold" &&
     namesClozapine &&
-    /\b(?:fbc|full blood count|blood count|wbc|wcc|white blood cells?|neutrophils?|anc)\b/i.test(query) &&
-    /\b(?:threshold|withhold|withheld|withholding|cease|stop|stopped|discontinue|discontinued)\b/i.test(query)
+    /\b(?:fbc|full blood count|blood count|blood results?|bloods|wbc|wcc|white blood cells?|neutrophils?|anc)\b/i.test(
+      query,
+    ) &&
+    /\b(?:threshold|withhold|withheld|withholding|cease|stop|stopped|discontinue|discontinued|red[-\s]range|red result)\b/i.test(
+      query,
+    )
   );
 }
 
@@ -2776,7 +2837,10 @@ function isAtomicNmhsClozapineRedRangeSource(result: SearchResult) {
 function buildClozapineBloodActionThresholdAnswer(args: { query: string; results: SearchResult[] }) {
   const source = args.results.find(isAtomicNmhsClozapineRedRangeSource);
   if (!source) return null;
-  const body = "Red-range WBC <3.0 × 10⁹/L and/or neutrophils <1.5 × 10⁹/L: stop clozapine therapy immediately.";
+  // The source row pairs the stop with "Contact haematologist and Clozapine Monitoring Centre";
+  // dropping it lost the escalation step from the red-range answer (#ZZ4RAP).
+  const body =
+    "Red-range WBC <3.0 × 10⁹/L and/or neutrophils <1.5 × 10⁹/L: stop clozapine therapy immediately. Contact haematologist and Clozapine Monitoring Centre.";
   return {
     answer: body,
     body,
@@ -3943,13 +4007,15 @@ function compoundMonitoringCoverageSatisfiesIntent(answer: RagAnswer, query: str
   return requestedFacetsCovered && toxicityCovered;
 }
 
-const openingSentenceTerminatorPattern = /[.!?]["')\]]*(?:\s|$)/;
+// "e.g." and "i.e." do not end a sentence: "contributors are interactions with drugs (e.g. NSAIDs)"
+// was cut at "(e.g." and rejected as an incomplete opening (#ZZ4RAP).
+const openingSentenceTerminatorPattern = /(?<!\b(?:e\.g|i\.e))[.!?]["')\]]*(?:\s|$)/i;
 const incompleteOpeningSentencePattern =
   /^(?:and|or|but|because|although|while|when|where|after|before|during|with|without|including|such as|then|to|recommended\s+over|alternative\s+agent|chart\s+reference|table\s+summari[sz]ing)\b/i;
 const sourceHeadingOpeningPattern =
   /^(?:appendix\s+\d+|dosage|dose|dosing|dosage and monitoring|dose table|monitoring|referral criteria|contraindications?|adverse effects?|required actions?|thresholds?|summary|overview|formulations?|available products?|product information|table|figure)\.?$/i;
 const openingSentenceActionPattern =
-  /\b(?:avoid|arrange|be|can|cannot|cease|check|contact|continue|could|discontinue|document|escalate|give|include|includes|included|increase|inform|involves|is|list|lists|may|might|monitor|must|need|needed|needs|notify|provide|provides|recommend(?:s|ed|ing|ation|ations)?|recommends|reduce|refer|repeat|report|required|requires|review|should|start|starts|stop|support|supports|use|uses|was|were|will|withhold|would)\b/i;
+  /\b(?:are|avoid|arrange|be|can|cannot|cease|check|contact|continue|could|discontinue|document|escalate|give|include|includes|included|increase|inform|involves|is|list|lists|may|might|monitor|must|need|needed|needs|notify|provide|provides|recommend(?:s|ed|ing|ation|ations)?|recommends|reduce|refer|repeat|report|required|requires|review|should|start|starts|stop|support|supports|use|uses|was|were|will|withhold|would)\b/i;
 
 /** First sentence. */
 function firstSentence(value: string) {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import clozapineThresholdChunks from "./fixtures/clozapine-threshold-source-chunks.json";
 import lithiumLiveExcerpts from "./fixtures/lithium-monitoring-live-excerpts.json";
 import { citationFromResult } from "../src/lib/citations";
 import {
@@ -1610,17 +1611,18 @@ describe("RAG structured-output fallback", () => {
       new Error("mock provider unavailable"),
     );
 
-    // Ledger #ZK460W. This case never reached the generic extractive path: the provider fails, the
-    // post-generation claim quality gate fires, and it lands on the source-backed review fallback.
-    // The two assertions that used to stand here — grounded true, and the delivered text containing
-    // "admission and discharge medication reconciliation" — were both satisfied by the defect: the
-    // fallback prose asserted the documents contained relevant guidance on the clinician's own
-    // query, so the echoed query satisfied the content check and the route relabelled itself
-    // grounded. What the test is actually for is the last assertion: a non-requirement comparison
-    // must not be forced into the admission/discharge comparison shape.
-    expect(answer.routingReason).toContain("source_backed_review_fallback");
-    expect(answer.grounded).toBe(false);
-    expect(answer.confidence).toBe("unsupported");
+    // Ledger #ZK460W. The provider fails here. The two assertions that once stood here (grounded
+    // true, and the text containing "admission and discharge medication reconciliation") were
+    // satisfied by a defect: the fallback prose asserted the documents contained relevant guidance
+    // on the clinician's own query. Since #ZZ4RAP a claim that restates a whole source sentence word
+    // for word counts as supported, so the extractive recovery now quotes the one source sentence,
+    // cited, instead of degrading to the review stub. What the test is actually for is unchanged: a
+    // non-requirement comparison must not be forced into the admission/discharge comparison shape.
+    expect(answer.answer).toBe(
+      "Staff document admission and discharge medication reconciliation, including medicine histories and transfer changes.",
+    );
+    expect(answer.supportedClaims?.map((claim) => claim.supportStatus)).toEqual(["direct"]);
+    expect(answer.citations.map((citation) => citation.chunk_id)).toEqual(["medication-reconciliation"]);
     expect(answer.answer).not.toMatch(/contain relevant guidance/i);
     expect(answer.answerSections).not.toEqual(
       expect.arrayContaining([
@@ -8734,4 +8736,108 @@ describe("P12B final-coverage consumer boundary", () => {
       }
     },
   );
+});
+
+describe("high-risk answer recovery (#ZZ4RAP)", () => {
+  // Captured live chunks for three of the 18 high-risk cases. A faithful model answer must
+  // survive claim support, and when generation times out the extractive backup must answer
+  // the question asked (or fail closed), never with an unrelated lithium dose cap.
+  const lithiumRows = new Map(
+    lithiumLiveExcerpts.cases
+      .flatMap((entry) => entry.sources)
+      .map((entry) => [
+        entry.id,
+        source({
+          ...entry,
+          file_name: `${entry.title}.pdf`,
+          section_heading: null,
+          source_metadata: entry.source_metadata as SearchResult["source_metadata"],
+        }),
+      ]),
+  );
+  const pick = (...prefixes: string[]) =>
+    prefixes.map((prefix) => [...lithiumRows.values()].find((row) => row.id.startsWith(prefix))!);
+  const clozapineRows = clozapineThresholdChunks
+    .filter((chunk) => /^(?:6c328044|8beb8c9e)/.test(chunk.id))
+    .map((chunk) => source({ ...chunk, title: chunk.file_name, section_heading: null }));
+  const visibleText = (answer: RagAnswer) =>
+    [answer.answer, ...(answer.answerSections ?? []).map((section) => section.body)].join(" ").replace(/\*\*/g, "");
+  const faithfulPayload = (answer: string, rows: SearchResult[]): GeneratedAnswerPayload => ({
+    answer,
+    grounded: true,
+    confidence: "high",
+    answerSections: [],
+    citations: rows.map((row) => ({ chunk_id: row.id })),
+    quoteCards: [],
+    conflictsOrGaps: [],
+  });
+  const scoreFor = async (id: string, answer: RagAnswer) => {
+    const { answerQualityEvalCases, scoreAnswerQualityEvalCase } = await import("../src/lib/rag/rag-eval-cases");
+    const testCase = answerQualityEvalCases.find((entry) => entry.id === id);
+    if (!testCase) throw new Error(`Missing eval case ${id}`);
+    return Object.fromEntries(scoreAnswerQualityEvalCase(testCase, answer).map((score) => [score.metric, score.score]));
+  };
+
+  it("keeps a faithful NSAID interaction answer and backs up with the source's avoid-the-combination warning", async () => {
+    const query = "Can I prescribe ibuprofen for someone on lithium?";
+    const rows = pick("13d46d1f", "d6b422d0");
+    const faithful = faithfulPayload(
+      "Avoid ibuprofen where possible in someone taking lithium. NSAIDs such as ibuprofen can reduce lithium clearance and therefore increase lithium levels and the risk of toxicity.",
+      rows,
+    );
+    const answered = await answerFromTextSources(query, rows, [faithful, faithful], { forceGenerationRoute: true });
+    expect(answered.grounded).toBe(true);
+    expect(visibleText(answered)).toMatch(/Avoid ibuprofen where possible/);
+    expect(await scoreFor("high-risk-interaction-lithium-nsaid", answered)).toMatchObject({ intent_coverage: 1 });
+
+    const backup = await answerFromTextSources(query, rows, [new Error("timeout"), new Error("timeout")], {
+      forceGenerationRoute: true,
+    });
+    const visible = visibleText(backup);
+    expect(backup.grounded).toBe(true);
+    expect(visible).toMatch(
+      /NSAIDs: \(e\.g\. ibuprofen\) can reduce lithium clearance and therefore increase lithium levels and the risk of toxicity\. Avoid the combination where possible\./,
+    );
+    expect(visible).not.toMatch(/2500\s*mg|For prescribe/i);
+    expect(await scoreFor("high-risk-interaction-lithium-nsaid", backup)).toMatchObject({ intent_coverage: 1 });
+  });
+
+  it("keeps a verbatim severe-toxicity answer and never backs it up with unrelated guidance", async () => {
+    const query = "Can lithium toxicity prolong the QT interval, and what are the signs of severe toxicity?";
+    const rows = pick("463e4d62", "62490bcf");
+    const faithful = faithfulPayload(
+      "Yes. Signs and symptoms of severe toxicity include increased muscle tone, hyperreflexia, myoclonic jerks, coarse tremor, dysarthria, disorientation, psychosis, seizures, coma, QT-interval prolongation and death.",
+      rows,
+    );
+    const answered = await answerFromTextSources(query, rows, [faithful, faithful], { forceGenerationRoute: true });
+    expect(visibleText(answered)).toMatch(/QT-interval prolongation and death/);
+    expect(await scoreFor("high-risk-qtc-lithium-severe-toxicity", answered)).toMatchObject({ intent_coverage: 1 });
+
+    const backup = await answerFromTextSources(query, rows, [new Error("timeout"), new Error("timeout")], {
+      forceGenerationRoute: true,
+    });
+    expect(visibleText(backup)).not.toMatch(/therapeutic ranges|maintenance dose|2500\s*mg/i);
+  });
+
+  it("answers what makes lithium toxicity more likely only from toxicity text", async () => {
+    const query = "What makes lithium toxicity more likely, including overdose?";
+    const rows = pick("d6b422d0", "13d46d1f");
+    const backup = await answerFromTextSources(query, rows, [new Error("timeout"), new Error("timeout")], {
+      forceGenerationRoute: true,
+    });
+    expect(visibleText(backup)).not.toMatch(/2500\s*mg|For make|individualised/i);
+  });
+
+  it("keeps the haematologist step in the source-bound clozapine red-range answer", async () => {
+    const query =
+      "When a clozapine blood result is in the red range I can keep going with twice-weekly bloods, can't I?";
+    const backup = await answerFromTextSources(query, clozapineRows, [new Error("timeout"), new Error("timeout")], {
+      forceGenerationRoute: true,
+    });
+    const visible = visibleText(backup);
+    expect(backup.grounded).toBe(true);
+    expect(visible).toMatch(/stop clozapine therapy immediately/i);
+    expect(visible).toMatch(/Contact haematologist and Clozapine Monitoring Centre/);
+    expect(await scoreFor("high-risk-false-premise-clozapine-red-range", backup)).toMatchObject({ intent_coverage: 1 });
+  });
 });
