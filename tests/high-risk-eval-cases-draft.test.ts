@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { answerQualityEvalCases } from "../src/lib/rag/rag-eval-cases";
 
-// Draft high-risk answer-quality cases (#ZZ4RAP). This test only proves the draft
-// is grounded: every expected fact must be quoted verbatim from a source passage the
-// repository already holds. It does not run the cases or wire them into the eval
-// harness; that waits for the owner's clinical review and a live canary pair.
+// High-risk answer-quality cases (#ZZ4RAP). This test proves the cases are grounded:
+// every expected fact must be quoted verbatim from a source passage the repository
+// already holds. It also proves the cases wired into answerQualityEvalCases match
+// this evidence record exactly, so the harness cannot drift from the quotes.
 
 type Evidence = { file: string; passageId?: string; section?: string; quotes: string[] };
 type DraftCase = {
@@ -60,8 +61,25 @@ function sourceTitle(evidence: Evidence): string | undefined {
 }
 
 describe("high-risk eval cases draft", () => {
-  it("stays a draft until the owner has reviewed it", () => {
-    expect(draft.reviewStatus).toBe("draft_awaiting_owner_review");
+  it("records the owner's go-ahead", () => {
+    expect(draft.reviewStatus).toBe("owner_go_ahead");
+  });
+
+  it("is mirrored exactly by the harness cases, leaving out the cases with no source", () => {
+    const harness = new Map(answerQualityEvalCases.map((testCase) => [testCase.id, testCase] as const));
+    for (const testCase of draft.cases) {
+      const wired = harness.get(`high-risk-${testCase.id}`);
+      if (testCase.expectedBehaviour === "source_needed") {
+        expect(wired, testCase.id).toBeUndefined();
+        continue;
+      }
+      expect(wired?.question, testCase.id).toBe(testCase.question);
+      expect(wired?.requiredConceptGroups, testCase.id).toEqual(testCase.mustContain);
+    }
+    const wiredIds = answerQualityEvalCases.filter((testCase) => testCase.id.startsWith("high-risk-"));
+    expect(wiredIds).toHaveLength(
+      draft.cases.filter((testCase) => testCase.expectedBehaviour !== "source_needed").length,
+    );
   });
 
   it("covers the owner's recommended mix of twenty cases", () => {
