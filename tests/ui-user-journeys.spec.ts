@@ -483,7 +483,12 @@ test.describe("Synthetic preview-origin navigation", () => {
         url: `${configuredAppOrigin}${url.pathname}${url.search}`,
         maxRedirects: 0,
       });
-      await route.fulfill({ response });
+      // A request the page abandons mid-fetch (a navigation or a superseded asset)
+      // disposes its response before it can be fulfilled. Only that teardown is
+      // ignored; fetch errors and every other fulfil error still fail the test.
+      await route.fulfill({ response }).catch((error: unknown) => {
+        if (!/Fetch response has been disposed/.test(String(error))) throw error;
+      });
     });
     const query = "Synthetic preview-origin lithium completion";
     const state = await installSyntheticAnswerApis(page, query, baseURL);
