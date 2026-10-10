@@ -1,6 +1,17 @@
 "use client";
 
-import { Building2, Check, Link2, Search, UserMinus, UserPlus, Users } from "lucide-react";
+import {
+  Archive,
+  ArrowRightLeft,
+  Building2,
+  Check,
+  Link2,
+  PenLine,
+  Search,
+  UserMinus,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -16,6 +27,8 @@ import {
   type GrantableWorkRole,
 } from "@/lib/work-roles/model";
 import {
+  archiveBlockedReason,
+  archiveHospitalEffects,
   EMAIL_MAX,
   EMPTY_GRANT_DRAFT,
   grantCoverLabel,
@@ -24,7 +37,9 @@ import {
   grantRequest,
   HOSPITAL_NAME_MAX,
   hospitalNameProblem,
+  moveTeamEffects,
   pickablePeople,
+  renameHospitalProblem,
   roleSentence,
   type GrantDraft,
   type LinkableTeam,
@@ -706,6 +721,346 @@ export function AddHospitalSheet({
           error={error}
           testId="admin-people-hospital-name"
         />
+        {!online ? <OfflineLine /> : null}
+      </div>
+    </Sheet>
+  );
+}
+
+/* ------------------------------------------------- fix a hospital mix-up */
+
+function EffectList({ lines, testId }: { readonly lines: readonly string[]; readonly testId: string }) {
+  return (
+    <WorkCard padded testId={testId}>
+      <ul className="grid list-disc gap-2 pl-5 text-sm">
+        {lines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+    </WorkCard>
+  );
+}
+
+/**
+ * Moves one linked team to the hospital it really belongs to: pick the
+ * hospital, read what changes, then confirm. The administrator only.
+ */
+export function MoveTeamSheet({
+  team,
+  supervisors,
+  from,
+  hospitals,
+  online,
+  run,
+  onClose,
+}: {
+  readonly team: { readonly serviceId: string; readonly name: string };
+  /** How many whole-team supervisors the move removes. */
+  readonly supervisors: number;
+  /** The hospital the team is linked to now. */
+  readonly from: PeopleHospitalRef;
+  /** Every open hospital, this one included. */
+  readonly hospitals: readonly PeopleHospitalRef[];
+  readonly online: boolean;
+  readonly run: PeopleRun;
+  readonly onClose: () => void;
+}) {
+  const [picked, setPicked] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (confirming) confirmRef.current?.focus();
+  }, [confirming]);
+
+  const others = hospitals
+    .filter((hospital) => hospital.id !== from.id)
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, "en-AU"));
+  const to = others.find((hospital) => hospital.id === picked) ?? null;
+
+  async function submit() {
+    if (!to || busy) return;
+    setBusy(true);
+    setFailure(null);
+    const failed = await run(
+      { action: "move-team", serviceId: team.serviceId, toHospitalId: to.id },
+      `${team.name} moved to ${to.name}`,
+    );
+    setBusy(false);
+    if (failed) return setFailure(failed);
+    onClose();
+  }
+
+  let footer: ReactNode;
+  if (others.length === 0) footer = undefined;
+  else if (confirming && to) {
+    footer = (
+      <div className="grid gap-2">
+        {failure ? <Problem testId="admin-people-move-problem">{failure}</Problem> : null}
+        <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+          <WorkButton
+            icon={ArrowRightLeft}
+            disabled={busy || !online}
+            onClick={() => void submit()}
+            testId="admin-people-move-yes"
+          >
+            {busy ? "Moving" : "Move team"}
+          </WorkButton>
+          <WorkButton
+            variant="quiet"
+            disabled={busy}
+            onClick={() => {
+              setConfirming(false);
+              setFailure(null);
+            }}
+            testId="admin-people-move-back"
+          >
+            Back
+          </WorkButton>
+        </div>
+      </div>
+    );
+  } else {
+    footer = (
+      <WorkButton
+        size="wide"
+        disabled={!to}
+        onClick={() => {
+          setConfirming(true);
+          setFailure(null);
+        }}
+        testId="admin-people-move-next"
+      >
+        Continue
+      </WorkButton>
+    );
+  }
+
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title="Move to another hospital"
+      description={team.name}
+      testId="admin-people-move-sheet"
+      footer={footer}
+    >
+      <div className="grid gap-3">
+        {others.length === 0 ? (
+          <WorkCard>
+            <WorkEmpty
+              icon={Building2}
+              title="No other hospital yet"
+              body="Add the hospital this team belongs to, then move it there."
+              action={
+                <WorkButton variant="secondary" onClick={onClose} testId="admin-people-move-close">
+                  Close
+                </WorkButton>
+              }
+              testId="admin-people-move-empty"
+            />
+          </WorkCard>
+        ) : confirming && to ? (
+          <div
+            ref={confirmRef}
+            tabIndex={-1}
+            role="group"
+            aria-label="Confirm moving this team"
+            className="grid gap-3 outline-none"
+            data-testid="admin-people-move-confirm"
+          >
+            <p className="text-sm font-semibold text-[color:var(--text-heading)]">
+              {`Move ${team.name} from ${from.name} to ${to.name}?`}
+            </p>
+            <WorkSectionLabel as="h3">What changes</WorkSectionLabel>
+            <EffectList
+              lines={moveTeamEffects(team.name, from.name, to.name, supervisors)}
+              testId="admin-people-move-effects"
+            />
+          </div>
+        ) : (
+          <>
+            <p className="text-sm">{`Linked to ${from.name} now. Pick the hospital it really belongs to.`}</p>
+            <ChoiceList label="Hospital" kind="radio" testId="admin-people-move-hospitals">
+              {others.map((hospital) => (
+                <ChoiceRow
+                  key={hospital.id}
+                  kind="radio"
+                  checked={picked === hospital.id}
+                  title={hospital.name}
+                  onToggle={() => {
+                    setPicked(hospital.id);
+                    setFailure(null);
+                  }}
+                  testId="admin-people-move-hospital"
+                />
+              ))}
+            </ChoiceList>
+          </>
+        )}
+        {!online ? <OfflineLine /> : null}
+      </div>
+    </Sheet>
+  );
+}
+
+/** Renames a hospital, with the same name rules as adding one. The administrator only. */
+export function RenameHospitalSheet({
+  hospital,
+  hospitals,
+  online,
+  run,
+  onClose,
+}: {
+  readonly hospital: PeopleHospitalRef;
+  readonly hospitals: readonly PeopleHospitalRef[];
+  readonly online: boolean;
+  readonly run: PeopleRun;
+  readonly onClose: () => void;
+}) {
+  const [name, setName] = useState(hospital.name);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const problem = renameHospitalProblem(name, hospital, hospitals);
+  const changed = name.trim() !== hospital.name.trim();
+  // The field draws its own patient-detail warning, so the error line leaves that one to it.
+  const patient = checkPatientDetail(name.trim(), { allowCapitals: true });
+  const error = changed && name.trim() && problem && !patient ? problem : null;
+
+  async function submit() {
+    if (problem || busy) return;
+    setBusy(true);
+    setFailure(null);
+    const failed = await run(
+      { action: "rename-hospital", hospitalId: hospital.id, name: name.trim() },
+      `Renamed to ${name.trim()}`,
+    );
+    setBusy(false);
+    if (failed) return setFailure(failed);
+    onClose();
+  }
+
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title="Rename hospital"
+      description={hospital.name}
+      testId="admin-people-rename-sheet"
+      footer={
+        <div className="grid gap-2">
+          {failure ? <Problem testId="admin-people-rename-problem">{failure}</Problem> : null}
+          <WorkButton
+            size="wide"
+            icon={PenLine}
+            disabled={Boolean(problem) || busy || !online}
+            onClick={() => void submit()}
+            testId="admin-people-rename-send"
+          >
+            {busy ? "Saving" : "Save name"}
+          </WorkButton>
+        </div>
+      }
+    >
+      <div className="grid gap-3">
+        <PaperworkField
+          label="Hospital name"
+          value={name}
+          onChange={(value) => {
+            setName(value);
+            setFailure(null);
+          }}
+          maxLength={HOSPITAL_NAME_MAX}
+          checkPatient={{ allowCapitals: true }}
+          hint="The name staff know it by. Its teams and roles stay as they are."
+          error={error}
+          testId="admin-people-rename-name"
+        />
+        {!online ? <OfflineLine /> : null}
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * Archives a hospital that has no teams left, behind a plain confirm. While
+ * teams are still linked it says to move them first. The administrator only.
+ */
+export function ArchiveHospitalSheet({
+  hospital,
+  online,
+  run,
+  onClose,
+}: {
+  readonly hospital: PeopleHospital;
+  readonly online: boolean;
+  readonly run: PeopleRun;
+  readonly onClose: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const blocked = archiveBlockedReason(hospital);
+
+  async function submit() {
+    if (blocked || busy) return;
+    setBusy(true);
+    setFailure(null);
+    const failed = await run({ action: "archive-hospital", hospitalId: hospital.id }, `${hospital.name} archived`);
+    setBusy(false);
+    if (failed) return setFailure(failed);
+    onClose();
+  }
+
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title="Archive hospital"
+      description={hospital.name}
+      testId="admin-people-archive-sheet"
+      footer={
+        blocked ? (
+          <WorkButton size="wide" variant="secondary" onClick={onClose} testId="admin-people-archive-close">
+            Close
+          </WorkButton>
+        ) : (
+          <div className="grid gap-2">
+            {failure ? <Problem testId="admin-people-archive-problem">{failure}</Problem> : null}
+            <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+              <WorkButton
+                variant="amber"
+                icon={Archive}
+                disabled={busy || !online}
+                onClick={() => void submit()}
+                testId="admin-people-archive-yes"
+              >
+                {busy ? "Archiving" : "Archive"}
+              </WorkButton>
+              <WorkButton variant="quiet" disabled={busy} onClick={onClose} testId="admin-people-archive-no">
+                Keep it
+              </WorkButton>
+            </div>
+          </div>
+        )
+      }
+    >
+      <div className="grid gap-3">
+        {blocked ? (
+          <WorkCard padded testId="admin-people-archive-blocked">
+            <p className="text-sm font-semibold text-[color:var(--text-heading)]">{blocked}</p>
+            <p className="mt-2 text-sm">
+              Use Move to another hospital on each of its teams, then come back to archive it.
+            </p>
+          </WorkCard>
+        ) : (
+          <>
+            <p className="text-sm font-semibold text-[color:var(--text-heading)]">{`Archive ${hospital.name}?`}</p>
+            <WorkSectionLabel as="h3">What changes</WorkSectionLabel>
+            <EffectList lines={archiveHospitalEffects(hospital.name)} testId="admin-people-archive-effects" />
+          </>
+        )}
         {!online ? <OfflineLine /> : null}
       </div>
     </Sheet>
