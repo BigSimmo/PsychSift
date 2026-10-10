@@ -6,6 +6,7 @@
     "worker/**/*.ts",
     "eslint-rules/**/*.mjs",
     "tests/**/*.{test.ts,dom.test.tsx,spec.ts}",
+    "bench/**/*.bench.ts",
     "*.config.{ts,mts,mjs,cjs}"
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs,cjs}", "worker/**/*.ts", "eslint-rules/**/*.mjs"],
