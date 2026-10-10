@@ -404,10 +404,10 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
               }
             />
             <T5Row
-              title="Supervision hours"
-              meta="Now under Presenting"
+              title="Registrar supervision"
+              meta="Hours to confirm"
               lead={<T5Icon icon={Users} />}
-              href="/teaching/teach#supervision"
+              href="/teaching/supervision"
             />
           </T5List>
         </T5Section>

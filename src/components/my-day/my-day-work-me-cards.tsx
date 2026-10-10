@@ -133,7 +133,7 @@ export function CallsCard({
       </dl>
       <div className="grid grid-cols-2 gap-2">
         <Link
-          href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
+          href={withMyDayReturn("/on-call#log-a-call")}
           data-testid="my-day-calls-log"
           className={cn(quietPrimary, "bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]")}
         >
