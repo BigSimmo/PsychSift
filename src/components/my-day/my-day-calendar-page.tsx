@@ -460,8 +460,9 @@ function CalendarBody({
         month={month}
         items={shown.filter((item) => item.start <= to && item.end >= from)}
         example={example}
+        updating={loading}
         onDownload={(events) => {
-          if (!guardExampleAction(example, "export")) return;
+          if (loading || !guardExampleAction(example, "export")) return;
           downloadIcs(events, `PsychSift ${monthTitle(month)}`, reminders);
         }}
       />
@@ -920,11 +921,14 @@ function CalendarExport({
   month,
   items,
   example,
+  updating,
   onDownload,
 }: {
   readonly month: string;
   readonly items: readonly MainCalendarItem[];
   readonly example: boolean;
+  /** True while the shown month is still loading, so a download can't miss part of it. */
+  readonly updating: boolean;
   readonly onDownload: (events: ReturnType<typeof calendarExportEvents>) => void;
 }) {
   const events = calendarExportEvents(items);
@@ -947,7 +951,7 @@ function CalendarExport({
         <div>
           <Button
             variant="secondary"
-            disabled={!events.length}
+            disabled={updating || !events.length}
             onClick={() => onDownload(events)}
             data-testid="my-day-calendar-download"
           >
