@@ -2377,7 +2377,7 @@
         "preparedAt": "2026-09-14"
       },
       "release": "held",
-      "releaseNote": "Held from clinical use until a named clinician reviews and signs it off. Prepared 2026-09-14 and never reviewed, so it was published without clinician sign-off.",
+      "releaseNote": "Held from clinical use pending Aboriginal governance review, named clinician sign-off, and all applicable release requirements. Prepared 2026-09-14 and never reviewed, so it was published without the required approvals.",
       "domains": ["Cultural"],
       "group": "cultural",
       "clinicalQuestion": null,
@@ -2445,7 +2445,7 @@
         "preparedAt": "2026-09-14"
       },
       "release": "held",
-      "releaseNote": "Held from clinical use until a named clinician reviews and signs it off. Prepared 2026-09-14 and never reviewed, so it was published without clinician sign-off.",
+      "releaseNote": "Held from clinical use pending Aboriginal governance review, named clinician sign-off, and all applicable release requirements. Prepared 2026-09-14 and never reviewed, so it was published without the required approvals.",
       "domains": ["Cultural", "Social"],
       "group": "cultural",
       "clinicalQuestion": null,
@@ -2513,7 +2513,7 @@
         "preparedAt": "2026-09-14"
       },
       "release": "held",
-      "releaseNote": "Held from clinical use until a named clinician reviews and signs it off. Prepared 2026-09-14 and never reviewed, so it was published without clinician sign-off.",
+      "releaseNote": "Held from clinical use pending Aboriginal governance review, named clinician sign-off, and all applicable release requirements. Prepared 2026-09-14 and never reviewed, so it was published without the required approvals.",
       "domains": ["Cultural", "Social"],
       "group": "cultural",
       "clinicalQuestion": null,
@@ -2581,7 +2581,7 @@
         "preparedAt": "2026-09-14"
       },
       "release": "held",
-      "releaseNote": "Held from clinical use until a named clinician reviews and signs it off. Prepared 2026-09-14 and never reviewed, so it was published without clinician sign-off.",
+      "releaseNote": "Held from clinical use pending Aboriginal governance review, named clinician sign-off, and all applicable release requirements. Prepared 2026-09-14 and never reviewed, so it was published without the required approvals.",
       "domains": ["Cultural"],
       "group": "cultural",
       "clinicalQuestion": null,
@@ -4023,7 +4023,7 @@
         "preparedAt": "2026-09-14"
       },
       "release": "held",
-      "releaseNote": "Held from clinical use until a named clinician reviews and signs it off. Prepared 2026-09-14 and never reviewed, so it was published without clinician sign-off.",
+      "releaseNote": "Held from clinical use pending Aboriginal governance review, named clinician sign-off, and all applicable release requirements. Prepared 2026-09-14 and never reviewed, so it was published without the required approvals.",
       "domains": [],
       "group": "guides",
       "blocks": [

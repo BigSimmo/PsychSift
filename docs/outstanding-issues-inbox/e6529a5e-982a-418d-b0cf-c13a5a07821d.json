@@ -5,7 +5,8 @@
   "action": "update",
   "payload": {
     "id": "#R8HED2",
-    "summary": "Five unsigned cultural formulation records were live: the PR that queued this update holds them, and each still needs a named clinician sign-off before release",
+    "summary": "Five unsigned cultural formulation records were live: the PR that queued this update holds them, and each still needs Aboriginal governance review and named clinician sign-off before release",
+    "detail": "All five records are held pending Aboriginal governance review, named clinician sign-off, and all applicable release requirements; preserve the holds until those approvals are complete.",
     "baseRowFingerprint": "3b99d03565f3233363cfbed985d92bae1257298976ff01ccae3eb52f6b3dc611"
   }
 }
