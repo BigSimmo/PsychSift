@@ -1827,6 +1827,12 @@ a.work-hero:focus-visible {
     0 0 0 4px var(--mode-identity);
 }
 
+@media (forced-colors: active) {
+  .work-button[data-variant="primary"]:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
 .work-button:disabled,
 .work-button[aria-disabled="true"] {
   cursor: not-allowed;
