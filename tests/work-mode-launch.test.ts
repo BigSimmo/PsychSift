@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isWorkModePreviewUser,
   resolveWorkModeLaunch,
+  WORK_MODE_LAUNCH_DEFAULT,
   workModeLaunchSetting,
   type WorkModeLaunchUser,
 } from "@/lib/work-mode-launch/launch";
@@ -24,6 +25,36 @@ describe("work-mode launch switch", () => {
     expect(workModeLaunchSetting({ ...PROD, WORK_MODE_LAUNCH: "evryone" })).toBe("preview");
     expect(workModeLaunchSetting({ NODE_ENV: "development", WORK_MODE_LAUNCH: "off" })).toBe("off");
     expect(workModeLaunchSetting({ ...PROD, WORK_MODE_LAUNCH: " Everyone " })).toBe("everyone");
+  });
+
+  it("states the unset default explicitly as everyone, for every reader including signed out", () => {
+    expect(WORK_MODE_LAUNCH_DEFAULT).toBe("everyone");
+    expect(workModeLaunchSetting({ ...PROD, WORK_MODE_LAUNCH: "" })).toBe("everyone");
+    expect(workModeLaunchSetting({ ...PROD, WORK_MODE_LAUNCH: "  " })).toBe("everyone");
+    for (const user of [admin, doctor, null]) {
+      expect(resolveWorkModeLaunch({ user, environment: PROD })).toMatchObject({
+        newWorkMode: true,
+        choiceAvailable: true,
+      });
+    }
+  });
+
+  it("rolls back from Railway: off hides the new work mode from everyone, the administrator too", () => {
+    const off = { ...PROD, WORK_MODE_LAUNCH: "off" };
+    for (const user of [admin, doctor, null]) {
+      expect(resolveWorkModeLaunch({ user, environment: off })).toMatchObject({
+        newWorkMode: false,
+        choiceAvailable: false,
+      });
+    }
+  });
+
+  it("honours a device's classic choice under the everyone default", () => {
+    expect(resolveWorkModeLaunch({ user: doctor, environment: PROD, preference: "classic" })).toMatchObject({
+      newWorkMode: false,
+      classicPreferred: true,
+      choiceAvailable: true,
+    });
   });
 
   it("shows the new work mode to everyone in production, or only to the preview audience under preview", () => {
