@@ -174,17 +174,21 @@ function containsAny(text: string, values: string[] | undefined) {
   return values.some((value) => normalized.includes(value.toLowerCase()));
 }
 
-// Dash variants are folded so a range quoted as "7-10 days" also matches "7–10 days".
+// Dash variants are folded so a range quoted as "7-10 days" also matches "7–10 days", and curly
+// apostrophes so "don’t" reads as "don't".
 const foldDashes = (text: string) =>
   text
     .toLowerCase()
     .replace(/\*\*/g, "")
+    .replace(/[‘’]/g, "'")
     .replace(/[\u2010-\u2015]/g, "-");
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // A required fact does not count when it is directly negated ("do not stop clozapine"), and a
 // forbidden claim does not count when it is being corrected ("it is not true that ibuprofen is safe").
 const negatedLeadIn = /\b(?:do not|don't|never|must not|should not)\s+(?:[a-z]+\s+)?$/;
-const correctedLeadIn = /\b(?:not|incorrect|false|wrong|never|myth)\b[^.,;:!?]{0,30}$/;
+// Only an explicit correction frame counts, so an unrelated "not" earlier in the clause cannot hide the claim.
+const correctedLeadIn =
+  /\b(?:(?:is|it's) not (?:true|correct|the case)|(?:is|it's) (?:a myth|false|incorrect|wrong)|myth)(?: that)?\s+$/;
 
 // Word start only, so "continue" never matches inside "discontinue"; the end stays open for plurals ("NSAIDs").
 // An occurrence counts only when the text just before it does not match `excludedLeadIn`.

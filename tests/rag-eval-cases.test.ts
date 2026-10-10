@@ -584,6 +584,7 @@ describe("captured RAG eval cases", () => {
       const negated = intent("Do not stop clozapine; repeat the count immediately and tell the haematologist.");
       expect(negated.score).toBe(0);
       expect(negated.reason).toContain("stop / discontinue / withhold / cease");
+      expect(intent("Don’t stop clozapine; repeat the count immediately and tell the haematologist.").score).toBe(0);
     });
 
     it("does not count a forbidden claim the answer is correcting", () => {
@@ -595,6 +596,11 @@ describe("captured RAG eval cases", () => {
       expect(intentOf("NSAIDs are not ideal, but ibuprofen is safe. Avoid others: clearance and toxicity.").score).toBe(
         0,
       );
+      expect(
+        intentOf(
+          "Paracetamol does not interact with lithium and ibuprofen is safe. Avoid others: clearance and toxicity.",
+        ).score,
+      ).toBe(0);
     });
 
     it("requires a citation to an expected guideline for relevance", () => {
