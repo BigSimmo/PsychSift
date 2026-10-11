@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 const routerPush = vi.fn();
@@ -62,21 +62,22 @@ it("opens from a single icon and shows no suggestion buttons", () => {
   expect(screen.queryByRole("button", { name: "When am I next on nights?" })).toBeNull();
 });
 
-it("does not read roster data until someone asks", () => {
+it("does not read roster data until someone asks", async () => {
   const input = openAsk();
   expect(readContextSpy).not.toHaveBeenCalled();
   fireEvent.change(input, { target: { value: "When am I next on nights?" } });
   fireEvent.submit(input.closest("form")!);
-  expect(readContextSpy).toHaveBeenCalled();
+  // The answering half loads after the first question.
+  await waitFor(() => expect(readContextSpy).toHaveBeenCalled());
 });
 
-it("keeps reason text out of fetch, URL and storage", () => {
+it("keeps reason text out of fetch, URL and storage", async () => {
   const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({}));
   const storageSpy = vi.spyOn(Storage.prototype, "setItem");
   const input = openAsk();
   fireEvent.change(input, { target: { value: "I can't do Tue 20 Oct night because my partner is unwell" } });
   fireEvent.submit(input.closest("form")!);
-  expect(screen.getByText("Reasons aren't saved.")).toBeInTheDocument();
+  expect(await screen.findByText("Reasons aren't saved.")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Open" }));
   expect(routerPush).toHaveBeenCalledWith(
     "/roster/requests?team=22222222-2222-4222-8222-222222222222&start=give_away&assignment=33333333-3333-4333-8333-333333333333",

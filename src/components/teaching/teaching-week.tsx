@@ -173,11 +173,11 @@ function WeekBody({
         <TeachingStateNotice state="no-team" />
         <ModeNotice>
           <Link
-            href="/teaching/whats-on"
+            href="/teaching/week?view=other"
             className="inline-flex min-h-12 items-center font-semibold text-[color:var(--clinical-accent)] underline-offset-2 hover:underline"
             data-testid="teaching-week-whats-on"
           >
-            See what&apos;s on across services
+            See sessions from other services
           </Link>
         </ModeNotice>
       </div>
@@ -248,11 +248,11 @@ function WeekBody({
             </span>
             {filter !== "presenting" ? (
               <Link
-                href="/teaching/whats-on"
+                href="/teaching/week?view=other"
                 className="inline-flex min-h-12 items-center font-semibold text-[color:var(--clinical-accent)] underline-offset-2 hover:underline"
                 data-testid="teaching-week-whats-on"
               >
-                See what&apos;s on across services
+                See sessions from other services
               </Link>
             ) : null}
           </span>

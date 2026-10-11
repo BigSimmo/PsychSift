@@ -27,7 +27,12 @@ import {
 import { mondayOf, perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
-import { NoPatientDetailsMark, TermAddItem, TermRemoveButton } from "@/components/teaching/teaching-term-kit";
+import {
+  DeviceOnlyNotice,
+  NoPatientDetailsMark,
+  TermAddItem,
+  TermRemoveButton,
+} from "@/components/teaching/teaching-term-kit";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingSignedOut } from "@/components/teaching/use-teaching-sample";
@@ -514,6 +519,12 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
   else
     body = (
       <>
+        <DeviceOnlyNotice
+          section="teachingExamPrep"
+          data={state}
+          fileName={`exam-prep-${today}.json`}
+          demoMode={demoMode}
+        />
         {!state.exam || editingExam ? (
           <T5Panel testId="teaching-exam-setup">
             <T5Heading>{state.exam ? "Edit exam" : "Your exam"}</T5Heading>

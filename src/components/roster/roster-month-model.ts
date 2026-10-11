@@ -94,6 +94,23 @@ export function monthTotals(
   return { ...counts, off, holidaysWorked, countedFrom };
 }
 
+/**
+ * The next few working shifts that have not ended, in start order: days,
+ * evenings, nights and on call alike (leave is listed on its own). `skipId`
+ * leaves out a shift the page already shows above, such as the lead shift.
+ */
+export function nextShifts(
+  shifts: readonly MonthShift[],
+  now: Date,
+  count = 3,
+  skipId: string | null = null,
+): MonthShift[] {
+  return shifts
+    .filter((shift) => shift.kind !== "leave" && shift.id !== skipId && Date.parse(shift.endsAt) > now.getTime())
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+    .slice(0, Math.max(0, count));
+}
+
 export type ComingNights = {
   readonly first: MonthShift;
   readonly count: number;

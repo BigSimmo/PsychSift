@@ -69,6 +69,21 @@ export function useTermFolder(demoMode: boolean, requestedTermId: string | null)
   const today = now ? perthDateKey(now) : null;
   const sample = useMemo(() => (demoMode && today ? sampleTermTracker(today) : null), [demoMode, today]);
   const { state } = useTermTrackerStore(sample);
+  return useTermFolderFor(demoMode, state, requestedTermId);
+}
+
+/**
+ * The folder for a term tracker the caller already holds. The Term page passes its own tracker, so an edit
+ * there (a milestone marked done, an EPA logged) moves the folder at once, the made-up sample included,
+ * which lives in that page's state rather than on the device.
+ */
+export function useTermFolderFor(
+  demoMode: boolean,
+  state: TermTrackerState | null,
+  requestedTermId: string | null,
+): TermFolderView {
+  const now = useTeachingNow();
+  const today = now ? perthDateKey(now) : null;
   const logbook = useTeachingResource<{ attendance: LogbookRow[] }>(demoMode ? null : "/api/teaching?view=logbook");
   const supervision = useTeachingResource<{ pairings: SupervisionPairingView[] }>(
     demoMode ? null : "/api/teaching/depth?view=supervision",
