@@ -861,8 +861,7 @@ export function ClinicalSidebarContent({
   const moreModesActive =
     (pinnableSidebarModeIds as readonly AppModeId[]).includes(activeMode) && !pinnedModeIds.includes(activeMode);
   const accountLabel = accountProfileLabel(identity);
-  // Drawer rows are 44px, the same as the Work list, from one CSS rule.
-  const rowItem = drawer ? sidebarItem.replace("min-h-tap", "clinical-menu-drawer__row") : sidebarItem;
+  const rowItem = sidebarItem;
   // One heading rhythm for every list heading in the drawer: a 36px row whose
   // 48px Edit target overhangs it invisibly, so the gaps above each heading match.
   const sectionHeading = drawer
@@ -1658,43 +1657,45 @@ export function ClinicalMobileSidebar({
     />
   );
 
+  // The counts reader sits beside the Sheet, not inside it: the Sheet renders
+  // nothing while closed, so a reader inside it would refetch on every open.
   return (
-    <Sheet
-      open={open}
-      onClose={close}
-      title={BRAND_NAME}
-      closeLabel="Close PsychSift menu"
-      placement="left"
-      testId="clinical-mobile-menu"
-      contentClassName={hiddenFrom === "lg" ? "lg:hidden" : "md:hidden"}
-      headerLeading={<BrandMark tone="emphasis" optical="chrome" className="h-8 w-8" />}
-      headerClassName={workAvailable ? drawerHeaderWithTabs : drawerHeader}
-      titleClassName={drawerHeaderTitle}
-      closeButtonClassName={drawerHeaderClose}
-      headerActions={
-        alertsAvailable ? <ClinicalMenuBell counts={counts} className={drawerHeaderClose} onNavigate={close} /> : null
-      }
-      headerBottom={
-        workAvailable ? <ClinicalMenuTabs side={shownSide} onChange={setSide} overdue={counts?.overdue ?? 0} /> : null
-      }
-      descriptionContent={
-        <>
-          {/* The functional sentence still reaches assistive technology, where
+    <>
+      {workAvailable ? <LazyWorkSideCounts active={opened && alertsAvailable} /> : null}
+      <Sheet
+        open={open}
+        onClose={close}
+        title={BRAND_NAME}
+        closeLabel="Close PsychSift menu"
+        placement="left"
+        testId="clinical-mobile-menu"
+        contentClassName={hiddenFrom === "lg" ? "lg:hidden" : "md:hidden"}
+        headerLeading={<BrandMark tone="emphasis" optical="chrome" className="h-8 w-8" />}
+        headerClassName={workAvailable ? drawerHeaderWithTabs : drawerHeader}
+        titleClassName={drawerHeaderTitle}
+        closeButtonClassName={drawerHeaderClose}
+        headerActions={
+          alertsAvailable ? <ClinicalMenuBell counts={counts} className={drawerHeaderClose} onNavigate={close} /> : null
+        }
+        headerBottom={
+          workAvailable ? <ClinicalMenuTabs side={shownSide} onChange={setSide} overdue={counts?.overdue ?? 0} /> : null
+        }
+        descriptionContent={
+          <>
+            {/* The functional sentence still reaches assistive technology, where
               "what does this dialog contain" is the useful answer. The visible
               line is the strapline, which is identity — the two audiences want
               different sentences, so they get different sentences rather than one
               compromise that serves neither. Under 360px it gives way to the
               bell, so the wordmark keeps its room beside two 48px controls. */}
-          <span className="sr-only">{BRAND_MENU_DESCRIPTION}</span>
-          <span aria-hidden="true" className={cn(brandStrapline, alertsAvailable && "max-[359px]:hidden")}>
-            {BRAND_CATCHPHRASE_BARE}
-          </span>
-        </>
-      }
-    >
-      {workAvailable ? (
-        <>
-          <LazyWorkSideCounts active={opened && alertsAvailable} />
+            <span className="sr-only">{BRAND_MENU_DESCRIPTION}</span>
+            <span aria-hidden="true" className={cn(brandStrapline, alertsAvailable && "max-[359px]:hidden")}>
+              {BRAND_CATCHPHRASE_BARE}
+            </span>
+          </>
+        }
+      >
+        {workAvailable ? (
           <div
             id={CLINICAL_MENU_PANEL_ID}
             role="tabpanel"
@@ -1703,10 +1704,10 @@ export function ClinicalMobileSidebar({
           >
             {content}
           </div>
-        </>
-      ) : (
-        content
-      )}
-    </Sheet>
+        ) : (
+          content
+        )}
+      </Sheet>
+    </>
   );
 }

@@ -2601,10 +2601,6 @@ html[data-work-frame] .app-toast-region {
   color: var(--text-muted);
 }
 
-.clinical-menu-drawer__row {
-  min-height: 2.75rem;
-}
-
 .work-side-menu__row {
   display: flex;
   align-items: center;
