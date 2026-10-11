@@ -14,9 +14,12 @@ import { cn, pageContainer } from "@/components/ui-primitives";
  * - Default width: `pageContainer` (`max-w-7xl`).
  * - `narrow`: patient-facing reading width (`max-w-reading`).
  * - `bleed`: children own horizontal padding (full-bleed headers, factsheet action bars).
- * - Inside a work area, a shell that lays out its own children (`gap`) declares
- *   its selected width with `data-page-width`, letting the work frame size it
- *   and line the band's title up with it (work-mode.css, "page widths").
+ * - Inside a work area every shell is a wide work page, `narrow` included:
+ *   `max-w-reading` is 64rem, the same as the work frame's wide column, and
+ *   Teaching, On Call and the rest lay out two columns inside it on desktop.
+ *   `data-page-width="wide"` lets the frame size it and line the band's title
+ *   up with it (work-mode.css, "page widths"). A reading page inside a work
+ *   area sets `data-page-width="reading"` on its own container instead.
  *
  * Opt out (different product chrome): DocumentViewer and differentials
  * presentation workflow.
@@ -67,10 +70,7 @@ export function InformationPageShell({
           shell clips: the page simply loses the right-hand edge of every
           heading and paragraph on it, silently. `minmax(0,1fr)` lets the column
           shrink and hands the overflow back to the child that owns it. */}
-      <div
-        className={cn(container, gap && "grid grid-cols-[minmax(0,1fr)] gap-5 sm:gap-6")}
-        data-page-width={width === "narrow" ? "reading" : "wide"}
-      >
+      <div className={cn(container, gap && "grid grid-cols-[minmax(0,1fr)] gap-5 sm:gap-6")} data-page-width="wide">
         {children}
       </div>
     </Tag>
