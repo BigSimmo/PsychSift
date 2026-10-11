@@ -56,6 +56,7 @@ import { dayMonth, weekdayDayMonth } from "@/lib/teaching/term-tracker";
 import { perthTime } from "@/lib/teaching/time";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
+import type { TermRecord } from "@/lib/teaching/term-tracker";
 
 /*
  * Term evidence folder (feature 12, mock-up nf_teach_acc). Since 11 Oct 2026 (owner-approved mock-up) the
@@ -435,35 +436,41 @@ function FolderBody({ view, demoMode }: { view: ReadyView; demoMode: boolean }) 
         </T5Section>
       ) : null}
       <FolderNotKept />
-      {view.earlier.length > 0 ? (
-        <T5Section label="Other terms" testId="term-folder-earlier">
-          <ul role="list" className="grid grid-cols-1 gap-2 min-[26rem]:grid-cols-2" data-print-hide>
-            {view.earlier.map((term) => (
-              <li key={term.id} className="min-w-0">
-                <Link
-                  href={`${TERM_FOLDER_PATH}?term=${encodeURIComponent(term.id)}`}
-                  className={cn(
-                    "flex min-h-12 items-center gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 no-underline",
-                    focusRing,
-                  )}
-                >
-                  <Folder aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
-                  <span className="grid min-w-0">
-                    <span className="truncate text-sm font-medium text-[color:var(--text-heading)]">
-                      {folderTermTitle(term)}
-                    </span>
-                    <span className="nums truncate text-xs font-normal text-[color:var(--text-muted)]">
-                      {`${dayMonth(term.startsOn)} to ${dayMonth(term.endsOn)} ${term.startsOn.slice(0, 4)}`}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </T5Section>
-      ) : null}
+      <FolderEarlierTerms view={view} />
       <FolderPrivacyNote folder={folder} />
     </>
+  );
+}
+
+/** Links to each earlier term's folder, so a finished term can still be opened and exported. */
+export function FolderEarlierTerms({ view }: { view: { readonly earlier: readonly TermRecord[] } }) {
+  if (view.earlier.length === 0) return null;
+  return (
+    <T5Section label="Other terms" testId="term-folder-earlier">
+      <ul role="list" className="grid grid-cols-1 gap-2 min-[26rem]:grid-cols-2" data-print-hide>
+        {view.earlier.map((term) => (
+          <li key={term.id} className="min-w-0">
+            <Link
+              href={`${TERM_FOLDER_PATH}?term=${encodeURIComponent(term.id)}`}
+              className={cn(
+                "flex min-h-12 items-center gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 no-underline",
+                focusRing,
+              )}
+            >
+              <Folder aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
+              <span className="grid min-w-0">
+                <span className="truncate text-sm font-medium text-[color:var(--text-heading)]">
+                  {folderTermTitle(term)}
+                </span>
+                <span className="nums truncate text-xs font-normal text-[color:var(--text-muted)]">
+                  {`${dayMonth(term.startsOn)} to ${dayMonth(term.endsOn)} ${term.startsOn.slice(0, 4)}`}
+                </span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </T5Section>
   );
 }
 

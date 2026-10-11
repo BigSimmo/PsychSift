@@ -87,12 +87,17 @@ const staticRouteRedirects: Record<string, string> = {
   "/on-call/education": "/teaching/week",
   // Teaching's evidence folder merged into the Term page (owner-approved mock-up,
   // 11 Oct 2026). Answered before the work-mode route gate, so a classic-mode
-  // reader with an old folder link lands on Term too, not on a 404. A `?term=`
-  // query travels but Term always shows the current term.
+  // reader with an old folder link lands on Term too, not on a 404. A link with
+  // `?term=` (an earlier term) is not redirected; see staticRouteRedirectSkipParam.
   "/teaching/term/folder": "/teaching/term",
   // What's on became Week's Other services filter (owner decision, 11 Oct 2026);
   // the redirect below also sets `view=other` so the filter opens.
   "/teaching/whats-on": "/teaching/week",
+};
+
+/** A query key that keeps the request on the old path, for a page still used with it. */
+const staticRouteRedirectSkipParam: Record<string, string> = {
+  "/teaching/term/folder": "term",
 };
 
 /** Query values a redirect adds to the target, for pages that became a filter. */
@@ -283,7 +288,9 @@ export async function proxy(request: NextRequest) {
   const legacyHomeTarget = legacyHomeRedirectUrl(request.nextUrl, request.method);
   if (legacyHomeTarget) return withCsp(NextResponse.redirect(legacyHomeTarget));
 
-  const redirectTarget = staticRouteRedirects[pathname];
+  const skipParam = staticRouteRedirectSkipParam[pathname];
+  const redirectTarget =
+    skipParam && request.nextUrl.searchParams.has(skipParam) ? undefined : staticRouteRedirects[pathname];
 
   if (redirectTarget) {
     const url = request.nextUrl.clone();

@@ -562,12 +562,18 @@ function LogForm({ pairing, today, sender }: { pairing: SupervisionPairingView; 
 
 /**
  * The personal target, folded to one line until Edit opens the form, so the page stays short on a
- * phone. Saving closes it again; a refused save keeps it open with what was typed.
+ * phone. A successful save closes it again; a refused or failed save keeps it open with what was typed.
  */
 function TargetForm({ pairing, sender }: { pairing: SupervisionPairingView; sender: Sender }) {
   const [editing, setEditing] = useState(false);
+  const [awaiting, setAwaiting] = useState(false);
   const [target, setTarget] = useState(pairing.targetHours === null ? "" : String(pairing.targetHours));
   const inert = sender.inert;
+  // Close only once the save has finished and not failed, so a refused save keeps what was typed.
+  if (awaiting && !sender.busy) {
+    setAwaiting(false);
+    if (!sender.message?.failed) setEditing(false);
+  }
   const id = pairing.pairingId;
   if (!editing)
     return (
@@ -595,7 +601,7 @@ function TargetForm({ pairing, sender }: { pairing: SupervisionPairingView; send
             targetHours: target === "" ? null : Number(target),
           })
         )
-          setEditing(false);
+          setAwaiting(true);
       }}
     >
       <div className="assess-field">

@@ -517,6 +517,10 @@ describe("Admin mode redirects", () => {
     expect(response.headers.get("content-security-policy")).toBeTruthy();
   });
 
+  it("leaves an earlier term's evidence folder on its own page", async () => {
+    expect((await proxy(requestFor("/teaching/term/folder?term=term-2026-1"))).headers.get("location")).toBeNull();
+  });
+
   it("sends What's on to Week with the Other services filter chosen", async () => {
     const response = await proxy(requestFor("/teaching/whats-on?from=bookmark"));
     expect(response.status).toBe(307);

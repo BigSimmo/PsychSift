@@ -3,7 +3,7 @@
 import { Clock, FileUp, Phone, Plus, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -453,61 +453,88 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   function comingUp() {
     const edges = comingEntryEdges(calendar.entries, today);
     if (!upcoming.length && !nights && !leave && !edges.length) return null;
+    const runListed = nightRun
+      ? upcoming.filter((item) => item.kind === "night" && nightRun.dates.includes(perthDateOf(item.startsAt))).length
+      : 0;
+    // Shifts, a later run of nights and leave, merged in date order.
+    const rows: { date: string; node: ReactNode }[] = upcoming.map((item) => {
+      const date = perthDateOf(item.startsAt);
+      const shown = byId.get(item.id);
+      const place = shown ? (shown.workplace ?? shown.location) : null;
+      // A run of nights that starts here but runs past the shifts listed keeps its length on this row.
+      const run = nightRun && nightRun.first.id === item.id && nightRun.count > runListed ? nightRun : null;
+      return {
+        date,
+        node: (
+          <li key={item.id}>
+            <WorkDateRow
+              month={monthShort(date)}
+              day={Number(date.slice(8, 10))}
+              title={run ? `Nights · ${run.count} in a row` : SHIFT_KIND_LABEL[item.kind]}
+              sub={[
+                run
+                  ? `${runWords(run.dates, dayWords)} · ${clockSpan(item)}`
+                  : `${dayWords(date)} · ${clockSpan(item)}`,
+                place,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              end={<RosterShiftChip kind={item.kind} />}
+              onClick={() => {
+                setMonth(monthKeyOf(date));
+                openDay(date);
+              }}
+              testId="roster-month-coming-shift"
+            />
+          </li>
+        ),
+      };
+    });
+    if (nights)
+      rows.push({
+        date: nights.dates[0]!,
+        node: (
+          <li key="nights">
+            <WorkDateRow
+              month={monthShort(nights.dates[0]!)}
+              day={Number(nights.dates[0]!.slice(8, 10))}
+              title={nights.count > 1 ? `Nights · ${nights.count} in a row` : "Night"}
+              sub={`${runWords(nights.dates, dayWords)} · ${clockSpan(nights.first)}`}
+              end={<RosterShiftChip kind="night" />}
+              onClick={() => {
+                setMonth(monthKeyOf(nights.dates[0]!));
+                openDay(nights.dates[0]!);
+              }}
+            />
+          </li>
+        ),
+      });
+    if (leave)
+      rows.push({
+        date: leave.from,
+        node: (
+          <li key="leave">
+            <WorkDateRow
+              month={monthShort(leave.from)}
+              day={Number(leave.from.slice(8, 10))}
+              title={leaveShift?.title || SHIFT_KIND_LABEL.leave}
+              sub={`${leave.from === leave.to ? formatPerthDay(leave.from) : `${dayWords(leave.from)} to ${formatPerthDay(leave.to)}`} · ${leave.days} ${leave.days === 1 ? "day" : "days"}`}
+              end={<RosterShiftChip kind="leave" />}
+              onClick={() => {
+                setMonth(monthKeyOf(leave.from));
+                openDay(leave.from);
+              }}
+            />
+          </li>
+        ),
+      });
+    // Stable sort: on the same day, a shift stays ahead of the leave that follows it.
+    rows.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
     return (
       <>
         <WorkSectionLabel>Coming up</WorkSectionLabel>
         <WorkCard as="ul" testId="roster-month-coming">
-          {upcoming.map((item) => {
-            const date = perthDateOf(item.startsAt);
-            const shown = byId.get(item.id);
-            const place = shown ? (shown.workplace ?? shown.location) : null;
-            return (
-              <li key={item.id}>
-                <WorkDateRow
-                  month={monthShort(date)}
-                  day={Number(date.slice(8, 10))}
-                  title={SHIFT_KIND_LABEL[item.kind]}
-                  sub={[`${dayWords(date)} · ${clockSpan(item)}`, place].filter(Boolean).join(" · ")}
-                  end={<RosterShiftChip kind={item.kind} />}
-                  onClick={() => {
-                    setMonth(monthKeyOf(date));
-                    openDay(date);
-                  }}
-                  testId="roster-month-coming-shift"
-                />
-              </li>
-            );
-          })}
-          {nights ? (
-            <li>
-              <WorkDateRow
-                month={monthShort(nights.dates[0]!)}
-                day={Number(nights.dates[0]!.slice(8, 10))}
-                title={nights.count > 1 ? `Nights · ${nights.count} in a row` : "Night"}
-                sub={`${runWords(nights.dates, dayWords)} · ${clockSpan(nights.first)}`}
-                end={<RosterShiftChip kind="night" />}
-                onClick={() => {
-                  setMonth(monthKeyOf(nights.dates[0]!));
-                  openDay(nights.dates[0]!);
-                }}
-              />
-            </li>
-          ) : null}
-          {leave ? (
-            <li>
-              <WorkDateRow
-                month={monthShort(leave.from)}
-                day={Number(leave.from.slice(8, 10))}
-                title={leaveShift?.title || SHIFT_KIND_LABEL.leave}
-                sub={`${leave.from === leave.to ? formatPerthDay(leave.from) : `${dayWords(leave.from)} to ${formatPerthDay(leave.to)}`} · ${leave.days} ${leave.days === 1 ? "day" : "days"}`}
-                end={<RosterShiftChip kind="leave" />}
-                onClick={() => {
-                  setMonth(monthKeyOf(leave.from));
-                  openDay(leave.from);
-                }}
-              />
-            </li>
-          ) : null}
+          {rows.map((row) => row.node)}
           {edges.map((edge) => (
             <li key={`${edge.entry.id}:${edge.edge}`}>
               <RosterEntryEdgeRow edge={edge} />

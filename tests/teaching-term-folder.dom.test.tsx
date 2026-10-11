@@ -317,6 +317,20 @@ describe("merged Term page layout", () => {
     expect(meeting.closest("[data-print-hide]")).not.toBeNull();
   });
 
+  it("lists earlier terms, each opening its own folder so a finished term can still be exported", async () => {
+    const state = sampleTermTracker("2026-09-30");
+    const current = state.terms[0]!;
+    const earlier = { ...current, id: "earlier-term", number: 3, startsOn: "2026-05-04", endsOn: "2026-07-10" };
+    window.localStorage.setItem(
+      TEACHING_TERM_TRACKER_STORAGE_KEY,
+      JSON.stringify({ ...state, terms: [earlier, current] }),
+    );
+    serveFetch((url) => (url.startsWith("/api/teaching") ? json(200, { attendance: [], pairings: [] }) : null));
+    renderTerm(false);
+    const others = await screen.findByTestId("term-folder-earlier");
+    expect(within(others).getByRole("link")).toHaveAttribute("href", "/teaching/term/folder?term=earlier-term");
+  });
+
   it("keeps the term summary and no folder for a reader on the classic work mode", async () => {
     render(
       <WorkModeLaunchProvider

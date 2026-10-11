@@ -37,6 +37,7 @@ import {
 } from "@/components/teaching/teaching-term-kit";
 import {
   FolderCard,
+  FolderEarlierTerms,
   FolderNotKept,
   FolderPartsSection,
   FolderPrivacyNote,
@@ -775,6 +776,8 @@ function TermWithFolder({
         }
       />
       <FolderNotKept />
+      {/* A finished term's folder still opens, and exports, on its own page. */}
+      <FolderEarlierTerms view={view} />
       <FolderPrivacyNote folder={view.folder} />
     </>
   );

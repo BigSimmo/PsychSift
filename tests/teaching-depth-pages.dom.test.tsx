@@ -416,6 +416,28 @@ describe("Teaching depth journeys", () => {
     // The topic chips wrap onto more lines instead of running off a phone screen.
     expect(screen.getByRole("button", { name: "career" }).parentElement).toHaveClass("flex-wrap");
   });
+
+  it("keeps the target editor open with what was typed when the save fails, and closes it after a save", async () => {
+    let refuse = true;
+    vi.mocked(fetch).mockImplementation(async (_url, options) =>
+      options?.method === "POST"
+        ? refuse
+          ? reply({ error: "Not saved" }, 500)
+          : reply({ ok: true })
+        : reply({ pairings: [pairingView({ targetHours: 40 })] }),
+    );
+    render(<TeachingSupervision demoMode={false} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit your personal target" }));
+    const field = () => screen.getByLabelText("Your personal target (hours, optional)");
+    fireEvent.change(field(), { target: { value: "55" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save my target/ }));
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    await waitFor(() => expect(field()).toBeEnabled());
+    expect(field()).toHaveValue(55);
+    refuse = false;
+    fireEvent.click(screen.getByRole("button", { name: /Save my target/ }));
+    await waitFor(() => expect(screen.queryByLabelText("Your personal target (hours, optional)")).toBeNull());
+  });
 });
 
 describe("Registrar supervision for a signed-out reader in the Assessments example", () => {
