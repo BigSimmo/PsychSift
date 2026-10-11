@@ -558,8 +558,14 @@ export function PwaLifecycle() {
 
     const exposeActivatedUpdate = async (controller: ServiceWorker) => {
       await exposeUpdate(controller, true);
+      // A newer waiting worker supersedes the activated notice, but a waiting
+      // worker the user already dismissed must not hide the activated release.
       const waiting = registrationRef.current?.waiting;
-      if (!cancelled && waiting && waiting !== controller) await exposeUpdate(waiting, false);
+      if (cancelled || !waiting || waiting === controller || dismissedUpdateWorkerRef.current === waiting) return;
+      const token = await workerUpdateToken(waiting);
+      if (cancelled || (token && (dismissedUpdateTokenRef.current === token || wasUpdateRecentlyDismissed(token))))
+        return;
+      await exposeUpdate(waiting, false);
     };
 
     const watchInstallingWorker = (registration: ServiceWorkerRegistration) => {
