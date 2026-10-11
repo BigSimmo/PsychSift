@@ -39,6 +39,7 @@ import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-promp
 import { CmeBandAction, CmeBanner, CmeHint, CmeNoteLine } from "@/components/cme/cme-work-kit";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { useWorkUndoToast, WorkBody } from "@/components/mode-kit/work";
+import { WorkWidePage } from "@/components/work-frame/work-desktop-layout";
 import { Sheet } from "@/components/ui/sheet";
 import { SearchField } from "@/components/ui/text-field";
 import { cn, InlineNotice } from "@/components/ui-primitives";
@@ -367,6 +368,7 @@ export function CmeLogPage({
         <aside
           aria-label="Filter your log"
           data-testid="cme-log-filter-column"
+          data-filter-column=""
           className="hidden lg:sticky lg:top-4 lg:block"
         >
           <CmeLogFilterPanel
@@ -402,7 +404,13 @@ export function CmeLogPage({
           </button>
         </div>
 
-        <div role="group" aria-label="Narrow the log" className="work-chips flex-wrap">
+        {/* From 1024px the side column holds the year, category and audit filters, so the chip row would repeat them. */}
+        <div
+          role="group"
+          aria-label="Narrow the log"
+          className="work-chips flex-wrap"
+          data-beside-filters={wide ? "" : undefined}
+        >
           {yearChip}
           <button
             ref={categoryButtonRef}
@@ -626,6 +634,9 @@ export function CmeLogPage({
     </>
   );
 
+  // The log with its filter column is a wide page from 1024px, so the list keeps a readable width; To finish stays a reading page.
+  const LogBody = showFinish ? WorkBody : WorkWidePage;
+
   return (
     <main data-testid="cme-log-page" data-mode-identity="cme" className="w-full">
       {showFinish ? null : (
@@ -636,7 +647,7 @@ export function CmeLogPage({
           testId="cme-log-filter-action"
         />
       )}
-      <WorkBody>
+      <LogBody>
         <PageTitleUnderBand className={cmePageTitle}>{showFinish ? "To finish" : "Log"}</PageTitleUnderBand>
         <div role="status" data-testid="cme-log-saved" className="contents">
           {justSaved ? <CmeBanner icon={Check}>Saved to your log.</CmeBanner> : null}
@@ -657,7 +668,12 @@ export function CmeLogPage({
 
         {showFinish ? finish : activities}
 
-        <div className="work-dock" role="group" aria-label="Log actions">
+        <div
+          className="work-dock"
+          role="group"
+          aria-label="Log actions"
+          data-beside-filters={wide && !showFinish ? "" : undefined}
+        >
           <div className="work-dock__capsule">
             <Link
               href={`/cme/new?year=${set.year}`}
@@ -683,7 +699,7 @@ export function CmeLogPage({
             ) : null}
           </div>
         </div>
-      </WorkBody>
+      </LogBody>
 
       {!showFinish ? (
         <>

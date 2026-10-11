@@ -1245,7 +1245,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await waitForDemoDashboardReady(page);
 
     const menu = await openMobileClinicalGuideMenu(page);
-    await menu.getByRole("link", { name: "Medication" }).click();
+    // The menu lists Medication twice by design: once as a pinned shortcut and once
+    // under its group. The shortcut is the one this test is about.
+    await menu.getByRole("navigation", { name: "Pinned shortcuts" }).getByRole("link", { name: "Medication" }).click();
 
     await expect.poll(() => new URL(page.url()).pathname, { timeout: 30_000 }).toBe("/");
     await expect.poll(() => new URL(page.url()).searchParams.get("mode"), { timeout: 30_000 }).toBe("prescribing");
@@ -1568,7 +1570,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await moreModesSheet.getByRole("button", { name: "Close more modes" }).click();
     expect(
       await navigation.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("aria-label"))),
-    ).toEqual(["My Day", "Answer", "Documents", "Services", "Medication", "Factsheets", "Forms", "Tools"]);
+    ).toEqual(["My Day", "Answer", "Documents", "Services", "Psychiatry", "Medication", "Forms", "Factsheets"]);
     await expect(rail.getByTestId("sidebar-more-modes")).toBeVisible();
     await expect(rail.getByTestId("sidebar-more-modes")).toBeFocused();
 
@@ -1584,14 +1586,18 @@ test.describe("PsychSift UI smoke coverage", () => {
       { path: "/documents", label: "Documents" },
       { path: "/favourites", label: "Favourites" },
       { path: "/medications", label: "Medication" },
-      { path: "/tools", label: "Tools" },
+      // Tools left the menu (usefulness and layout audit, 11 Oct 2026); Psychiatry,
+      // which now holds Calculators and Dictionary, is pinned in its place.
+      { path: "/psychiatry", label: "Psychiatry" },
     ] as const) {
       await gotoApp(page, route.path);
       if (route.path.includes("mode=answer")) {
         await waitForDemoDashboardReady(page);
       }
 
-      const activeLink = page.getByRole("link", { name: route.label, exact: true });
+      const activeLink = page
+        .getByLabel("PsychSift collapsed sidebar")
+        .getByRole("link", { name: route.label, exact: true });
       await expect(activeLink).toBeVisible();
       await expect(activeLink).toHaveAttribute("aria-current", "page");
     }
